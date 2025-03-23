@@ -57,6 +57,24 @@
           <el-menu-item index="/mods/settings">模组配置</el-menu-item>
         </el-submenu>
         
+        <el-submenu index="/rooms">
+          <template slot="title">
+            <i class="el-icon-s-grid"></i>
+            <span>房间管理</span>
+          </template>
+          <el-menu-item index="/rooms/list">房间列表</el-menu-item>
+          <el-menu-item index="/rooms/settings">房间设置</el-menu-item>
+        </el-submenu>
+        
+        <el-submenu index="/worlds">
+          <template slot="title">
+            <i class="el-icon-s-data"></i>
+            <span>世界管理</span>
+          </template>
+          <el-menu-item index="/worlds/list">世界列表</el-menu-item>
+          <el-menu-item index="/worlds/settings">世界设置</el-menu-item>
+        </el-submenu>
+        
         <el-menu-item index="/backups">
           <i class="el-icon-s-management"></i>
           <span slot="title">备份管理</span>
@@ -145,57 +163,57 @@ export default {
       const path = this.$route.path
       const pathParts = path.split('/').filter(Boolean)
       
-      pathParts.forEach(part => {
-        switch(part) {
-          case 'dashboard':
-            this.breadcrumbs.push('仪表盘')
-            break
-          case 'servers':
-            this.breadcrumbs.push('服务器管理')
-            break
-          case 'list':
-            if (pathParts.includes('servers')) {
-              this.breadcrumbs.push('服务器列表')
-            } else if (pathParts.includes('players')) {
-              this.breadcrumbs.push('玩家列表')
-            } else if (pathParts.includes('items')) {
-              this.breadcrumbs.push('物品列表')
-            } else if (pathParts.includes('mods')) {
-              this.breadcrumbs.push('模组列表')
-            }
-            break
-          case 'settings':
-            if (pathParts.includes('servers')) {
-              this.breadcrumbs.push('服务器设置')
-            } else if (pathParts.includes('mods')) {
-              this.breadcrumbs.push('模组配置')
-            } else {
-              this.breadcrumbs.push('设置')
-            }
-            break
-          case 'players':
-            this.breadcrumbs.push('玩家管理')
-            break
-          case 'ban':
-            this.breadcrumbs.push('封禁管理')
-            break
-          case 'items':
-            this.breadcrumbs.push('物品管理')
-            break
-          case 'generator':
-            this.breadcrumbs.push('物品生成器')
-            break
-          case 'mods':
-            this.breadcrumbs.push('模组管理')
-            break
-          case 'backups':
-            this.breadcrumbs.push('备份管理')
-            break
-          case 'system':
-            this.breadcrumbs.push('系统设置')
-            break
-          default:
-            this.breadcrumbs.push(part)
+      // 路径映射对象
+      const pathMap = {
+        dashboard: '仪表盘',
+        servers: '服务器管理',
+        players: '玩家管理',
+        items: '物品管理',
+        mods: '模组管理',
+        rooms: '房间管理',
+        backups: '备份管理',
+        system: '系统设置',
+        ban: '封禁管理',
+        generator: '物品生成器',
+        search: '模组搜索'
+      }
+      
+      // 子页面映射
+      const subPageMap = {
+        list: {
+          servers: '服务器列表',
+          players: '玩家列表',
+          items: '物品列表',
+          mods: '已下载模组',
+          rooms: '房间列表'
+        },
+        settings: {
+          servers: '服务器设置',
+          mods: '模组配置',
+          rooms: '房间设置',
+          default: '设置'
+        }
+      }
+      
+      // 处理面包屑
+      pathParts.forEach((part, index) => {
+        // 直接映射
+        if (pathMap[part]) {
+          this.breadcrumbs.push(pathMap[part])
+        } 
+        // 处理列表页面
+        else if (part === 'list' && index > 0) {
+          const parentPath = pathParts[index - 1]
+          this.breadcrumbs.push(subPageMap.list[parentPath] || part)
+        }
+        // 处理设置页面
+        else if (part === 'settings' && index > 0) {
+          const parentPath = pathParts[index - 1]
+          this.breadcrumbs.push(subPageMap.settings[parentPath] || subPageMap.settings.default)
+        }
+        // 默认处理
+        else if (!['list', 'settings'].includes(part)) {
+          this.breadcrumbs.push(part)
         }
       })
     }
@@ -211,7 +229,7 @@ export default {
 }
 
 .sidebar {
-  width: 220px;
+  width: 180px;
   height: 100%;
   background-color: #304156;
   transition: width 0.3s;
@@ -304,7 +322,8 @@ export default {
 .content-container {
   flex: 1;
   overflow: auto;
-  padding: 20px;
+  padding: 10px;
   background-color: #f0f2f5;
+  min-width: 800px;
 }
 </style> 

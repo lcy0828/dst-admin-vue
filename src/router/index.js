@@ -66,6 +66,45 @@ export const constantRoutes = [
         component: () => import('@/views/servers/ServerSettings.vue'),
         name: 'ServerSettings',
         meta: { title: '服务器设置', icon: 'setting' }
+      },
+      {
+        path: 'saves',
+        component: () => import('@/views/servers/SaveManager.vue'),
+        name: 'SaveManager',
+        meta: { title: '存档管理', icon: 'save' }
+      }
+    ]
+  },
+  {
+    path: '/rooms',
+    component: MainLayout,
+    redirect: '/rooms/list',
+    name: 'Rooms',
+    meta: { title: '房间管理', icon: 'house' },
+    children: [
+      {
+        path: 'list',
+        component: () => import('@/views/rooms/RoomList.vue'),
+        name: 'RoomList',
+        meta: { title: '房间列表', icon: 'list' }
+      },
+      {
+        path: 'settings',
+        component: () => import('@/views/rooms/RoomSettings.vue'),
+        name: 'RoomSettingsPage',
+        meta: { title: '房间设置', icon: 'setting' }
+      },
+      {
+        path: 'special-lists',
+        component: () => import('@/views/rooms/SpecialLists.vue'),
+        name: 'SpecialLists',
+        meta: { title: '特殊名单', icon: 'user-solid' }
+      },
+      {
+        path: 'token',
+        component: () => import('@/views/rooms/ServerToken.vue'),
+        name: 'ServerToken',
+        meta: { title: '服务器令牌', icon: 'key' }
       }
     ]
   },
@@ -111,7 +150,6 @@ export const constantRoutes = [
       }
     ]
   },
-  // 模组管理相关路由
   {
     path: '/mods',
     component: MainLayout,
@@ -136,6 +174,33 @@ export const constantRoutes = [
         component: () => import('@/views/mods/ModSettings.vue'),
         name: 'ModSettings',
         meta: { title: '模组设置', icon: 'setting' }
+      }
+    ]
+  },
+  {
+    path: '/worlds',
+    component: MainLayout,
+    redirect: '/worlds/list',
+    name: 'Worlds',
+    meta: { title: '世界管理', icon: 'earth' },
+    children: [
+      {
+        path: 'list',
+        component: () => import('@/views/worlds/WorldList.vue'),
+        name: 'WorldList',
+        meta: { title: '世界列表', icon: 'list' }
+      },
+      {
+        path: 'settings',
+        component: () => import('@/views/worlds/WorldSettings.vue'),
+        name: 'WorldSettings',
+        meta: { title: '世界设置', icon: 'setting' }
+      },
+      {
+        path: 'details',
+        component: () => import('@/views/worlds/WorldDetails.vue'),
+        name: 'WorldDetails',
+        meta: { title: '世界详情', icon: 'document' }
       }
     ]
   }

@@ -35,13 +35,21 @@
         </el-submenu>
         <el-submenu index="4">
           <template slot="title">
+            <i class="el-icon-house"></i>
+            <span>房间管理</span>
+          </template>
+          <el-menu-item index="/rooms/list">房间列表</el-menu-item>
+          <el-menu-item index="/rooms/settings">房间设置</el-menu-item>
+        </el-submenu>
+        <el-submenu index="5">
+          <template slot="title">
             <i class="el-icon-s-grid"></i>
             <span>模组管理</span>
           </template>
           <el-menu-item index="/mods/list">已安装模组</el-menu-item>
           <el-menu-item index="/mods/settings">模组设置</el-menu-item>
         </el-submenu>
-        <el-submenu index="5">
+        <el-submenu index="6">
           <template slot="title">
             <i class="el-icon-magic-stick"></i>
             <span>物品管理</span>

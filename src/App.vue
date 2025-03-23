@@ -30,6 +30,32 @@ html, body {
   height: 100%;
 }
 
+.el-dialog {
+  margin-top: 5vh !important;
+  max-height: 90vh !important;
+}
+
+/* 提高对话框层级，禁用背景遮罩层 */
+.el-dialog__wrapper {
+  background-color: transparent !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  overflow: auto !important;
+  z-index: 2001 !important;
+  pointer-events: auto !important;
+}
+
+
+.el-dialog__body {
+  overflow-y: auto !important;
+  padding: 15px 20px !important;
+  height: 60vh !important;
+  max-height: 70vh !important;
+}
+
 /* 公共样式 */
 .text-center {
   text-align: center;

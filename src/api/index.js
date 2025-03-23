@@ -1,0 +1,389 @@
+import request from './request';
+import config from './config';
+
+// 添加一个通用的请求处理函数
+function apiRequest(method, url, data = null) {
+  console.log(`API请求: ${method.toUpperCase()} ${url}`, data ? data : '');
+  
+  let requestPromise;
+  
+  switch(method.toLowerCase()) {
+    case 'get':
+      requestPromise = request.get(url, { params: data });
+      break;
+    case 'post':
+      requestPromise = request.post(url, data);
+      break;
+    case 'put':
+      requestPromise = request.put(url, data);
+      break;
+    case 'delete':
+      requestPromise = request.delete(url, { params: data });
+      break;
+    default:
+      return Promise.reject(new Error(`不支持的请求方法: ${method}`));
+  }
+  
+  return requestPromise.then(response => {
+    console.log(`API响应: ${method.toUpperCase()} ${url}`, response);
+    return response;
+  }).catch(error => {
+    console.error(`API错误: ${method.toUpperCase()} ${url}`, error);
+    return Promise.reject(error);
+  });
+}
+
+// 服务器相关API
+export const serverApi = {
+  // 获取服务器列表
+  getServerList(params) {
+    return request.get('/servers', { params });
+  },
+  // 获取服务器详情
+  getServerDetail(id) {
+    return request.get(`/servers/${id}`);
+  },
+  // 创建服务器
+  createServer(data) {
+    return request.post(`/servers`, data);
+  },
+  // 启动服务器
+  startServer(id) {
+    return request.post(`/servers/${id}/start`);
+  },
+  // 停止服务器
+  stopServer(id) {
+    return request.post(`/servers/${id}/stop`);
+  },
+  // 重启服务器
+  restartServer(id) {
+    return request.post(`/servers/${id}/restart`);
+  },
+  // 获取服务器配置
+  getServerConfig(savename) {
+    return request.get('/dstserver/config', { savename });
+  },
+  // 更新服务器配置
+  updateServerConfig(id, data) {
+    return request.put(`/servers/${id}/config`, data);
+  },
+  // 获取服务器日志
+  getServerLogs(id, params) {
+    return request.get(`/servers/${id}/logs`, params);
+  },
+  // 删除服务器
+  deleteServer(id) {
+    return request.delete(`/servers/${id}`);
+  },
+  // 获取管理员列表
+  getAdminList(savename) {
+    return request.get('/dstserver/adminlist', { savename });
+  },
+  // 获取黑名单
+  getBlockList(savename) {
+    return request.get('/dstserver/blocklist', { savename });
+  },
+  // 获取白名单
+  getWhiteList(savename) {
+    return request.get('/dstserver/whitelist', { savename });
+  },
+  // 获取服务器令牌
+  getServerToken(savename) {
+    return request.get('/dstserver/token', { savename });
+  },
+  // 更新管理员列表
+  updateAdminList(savename, list) {
+    return request.post('/dstserver/adminlist', { savename, list });
+  },
+  // 更新黑名单
+  updateBlockList(savename, list) {
+    return request.post('/dstserver/blocklist', { savename, list });
+  },
+  // 更新白名单
+  updateWhiteList(savename, list) {
+    return request.post('/dstserver/whitelist', { savename, list });
+  },
+  // 更新服务器令牌
+  updateServerToken(savename, token) {
+    return request.post('/dstserver/token', { savename, token });
+  }
+};
+
+// 房间相关API
+export const roomApi = {
+  // 获取房间列表
+  getRoomList(params) {
+    console.log("调用getRoomList API");
+    try {
+      return request.get('/dstserver/list', { params });
+    } catch (error) {
+      console.error("getRoomList API错误:", error);
+      throw error;
+    }
+  },
+  // 获取房间详情
+  getRoomDetail(id) {
+    return request.get(`/rooms/${id}`);
+  },
+  // 创建房间
+  createRoom(data) {
+    return request.post(`/rooms`, data);
+  },
+  // 更新房间
+  updateRoom(id, data) {
+    return request.put(`/rooms/${id}`, data);
+  },
+  // 删除房间
+  deleteRoom(id) {
+    return request.delete(`/rooms/${id}`);
+  },
+  // 启动房间
+  startRoom(id) {
+    return request.post(`/rooms/${id}/start`);
+  },
+  // 停止房间
+  stopRoom(id) {
+    return request.post(`/rooms/${id}/stop`);
+  },
+  // 获取房间日志
+  getRoomLogs(id, params) {
+    return request.get(`/rooms/${id}/logs`, params);
+  },
+  // 备份房间
+  backupRoom(id) {
+    return request.post(`/rooms/${id}/backup`);
+  },
+  // 复制房间
+  duplicateRoom(id, data) {
+    return request.post(`/rooms/${id}/duplicate`, data);
+  },
+  // 获取房间玩家列表
+  getRoomPlayers(id) {
+    return request.get(`/rooms/${id}/players`);
+  }
+};
+
+// 玩家相关API
+export const playerApi = {
+  // 获取玩家列表
+  getPlayerList(params) {
+    return request.get(`/players`, { params });
+  },
+  // 获取玩家详情
+  getPlayerDetail(id) {
+    return request.get(`/players/${id}`);
+  },
+  // 获取在线玩家
+  getOnlinePlayers() {
+    return request.get(`/players/online`);
+  },
+  // 踢出玩家
+  kickPlayer(id) {
+    return request.post(`/players/${id}/kick`);
+  },
+  // 封禁玩家
+  banPlayer(id, data) {
+    return request.post(`/players/${id}/ban`, data);
+  },
+  // 解除封禁
+  unbanPlayer(id) {
+    return request.post(`/players/${id}/unban`);
+  },
+  // 发送消息给玩家
+  sendMessage(id, data) {
+    return request.post(`/players/${id}/message`, data);
+  },
+  // 获取玩家历史记录
+  getPlayerHistory(id, params) {
+    return request.get(`/players/${id}/history`, params);
+  },
+  // 获取封禁列表
+  getBanList() {
+    return request.get(`/players/banlist`);
+  },
+  // 更新玩家信息
+  updatePlayer(id, data) {
+    return request.put(`/players/${id}`, data);
+  }
+};
+
+// 物品相关API
+export const itemApi = {
+  // 获取物品列表
+  getItemList(params) {
+    return request.get(`/items`, { params });
+  },
+  // 获取物品详情
+  getItemDetail(id) {
+    return request.get(`/items/${id}`);
+  },
+  // 生成物品到房间
+  generateItem(data) {
+    return request.post(`/items/generate`, data);
+  },
+  // 获取物品分类
+  getItemCategories() {
+    return request.get(`/items/categories`);
+  },
+  // 搜索物品
+  searchItems(params) {
+    return request.get(`/mod/search`, params);
+  },
+
+  saveModConfig(params) {
+    return request.get(`/items/search`, params);
+  }
+};
+
+// 模组相关API
+export const modApi = {
+
+  // 获取已安装模组列表
+  getModList(params) {
+    return request.get(`/mods`, params);
+  },
+  // 获取模组详情
+  getModDetail(id) {
+    return request.get(`/mods/${id}`);
+  },
+  // 安装模组
+  installMod(data) {
+    return request.post(`/mods/install`, data);
+  },
+  // 卸载模组
+  uninstallMod(id) {
+    return request.post(`/mods/${id}/uninstall`);
+  },
+  // 更新模组
+  updateMod(id) {
+    return request.post(`/mods/${id}/update`);
+  },
+  // 搜索工坊模组
+  searchWorkshopMods(params) {
+    return request.get(`/mods/workshop/search`, params);
+  },
+  // 获取模组配置
+  getModConfig(id, data = null) {
+    if (data) {
+      return request.post(`/mod/download`, data);
+    }
+    return request.get(`/mods/${id}/config`);
+  },
+  // 更新模组配置
+  updateModConfig(id, data) {
+    if (data && data.modid) {
+      return request.post(`/mod/save`, data);
+    }
+    return request.put(`/mods/${id}/config`, data);
+  },
+  // 获取热门模组
+  getPopularMods() {
+    return request.get(`/mods/workshop/popular`);
+  },
+  // 获取最新模组
+  getLatestMods() {
+    return request.get(`/mods/workshop/latest`);
+  },
+  // 启用模组
+  enableMod(id, data) {
+    return request.post(`/mods/${id}/enable`, data);
+  },
+  // 禁用模组
+  disableMod(id, data) {
+    return request.post(`/mods/${id}/disable`, data);
+  }
+};
+
+// 系统相关API
+export const systemApi = {
+  // 获取系统信息
+  getSystemInfo() {
+    return request.get(`/system/info`);
+  },
+  // 获取系统日志
+  getSystemLogs(params) {
+    return request.get(`/system/logs`, { params });
+  },
+  // 创建系统备份
+  createBackup(data) {
+    return request.post(`/system/backup`, data);
+  },
+  // 获取备份列表
+  getBackupList() {
+    return request.get(`/system/backups`);
+  },
+  // 从备份恢复
+  restoreFromBackup(id) {
+    return request.post(`/system/backup/${id}/restore`);
+  },
+  // 删除备份
+  deleteBackup(id) {
+    return request.delete(`/system/backup/${id}`);
+  },
+  // 获取系统状态
+  getSystemStatus() {
+    return request.get(`/system/status`);
+  },
+  // 更新系统配置
+  updateSystemConfig(data) {
+    return request.put(`/system/config`, data);
+  },
+  // 获取系统配置
+  getSystemConfig() {
+    return request.get(`/system/config`);
+  },
+  // 重启系统
+  restartSystem() {
+    return request.post(`/system/restart`);
+  },
+  // 获取公告列表
+  getAnnouncements() {
+    return request.get(`/system/announcements`);
+  },
+  // 创建公告
+  createAnnouncement(data) {
+    return request.post(`/system/announcements`, data);
+  },
+  // 更新公告
+  updateAnnouncement(id, data) {
+    return request.put(`/system/announcements/${id}`, data);
+  },
+  // 删除公告
+  deleteAnnouncement(id) {
+    return request.delete(`/system/announcements/${id}`);
+  },
+  // 获取公告详情
+  getAnnouncementDetail(id) {
+    return request.get(`/system/announcements/${id}`);
+  }
+};
+
+// 认证相关API
+export const authApi = {
+  // 登录
+  login(data) {
+    return request.post(`/auth/login`, data);
+  },
+  // 注销
+  logout() {
+    return request.post(`/auth/logout`);
+  },
+  // 获取当前用户信息
+  getCurrentUser() {
+    return request.get(`/auth/user`);
+  },
+  // 修改密码
+  changePassword(data) {
+    return request.post(`/auth/change-password`, data);
+  }
+};
+
+export default {
+  serverApi,
+  roomApi,
+  playerApi,
+  itemApi,
+  modApi,
+  systemApi,
+  authApi
+}; 

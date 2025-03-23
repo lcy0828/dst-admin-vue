@@ -1,17 +1,19 @@
 <template>
   <el-dialog
-    title="模组配置"
     :visible.sync="dialogVisible"
-    width="900px"
+    :title="`模组配置 - ${modInfo ? modInfo.name || '未命名模组' : '加载中...'}`"
     class="mod-config-dialog"
-    :fullscreen="false"
+    :close-on-click-modal="false"
+    :close-on-press-escape="false"
+    :before-close="handleClose"
+    width="50%"
     :append-to-body="true"
-    :lock-scroll="true"
-    :modal-append-to-body="false"
-    :before-close="handleClose">
+    :destroy-on-close="true"
+    align-center
+  >
     
-    <!-- 加载状态 -->
-    <div v-loading="loading" class="config-container">
+    <!-- 配置容器 -->
+    <div class="config-container">
       <!-- 模组基本信息 -->
       <div v-if="modInfo" class="mod-info-section">
         <div class="mod-info-header">
@@ -42,7 +44,7 @@
       </div>
       
       <!-- 配置选项 -->
-      <div v-if="!loading && hasOptions" class="config-options-section">
+      <div v-if="hasOptions" class="config-options-section">
         <div class="options-header">
           <h3 class="section-title">配置选项</h3>
           <div class="section-actions">
@@ -59,13 +61,19 @@
             placeholder="搜索配置选项..."
             prefix-icon="el-icon-search"
             clearable
-            size="small">
+            size="small"
+            class="search-input">
           </el-input>
         </div>
         
         <!-- 配置选项列表 -->
         <div class="config-list-container">
-          <el-collapse v-model="activeCategories">
+          <div v-if="loading" class="loading-indicator">
+            <p class="loading-text">正在加载模组配置...</p>
+            <div class="loading-spinner"></div>
+          </div>
+          
+          <el-collapse v-else v-model="activeCategories">
             <el-collapse-item 
               v-for="(category, categoryIndex) in filteredCategories" 
               :key="categoryIndex"
@@ -75,7 +83,7 @@
               </template>
               
               <div class="category-options">
-                <el-form :model="configForm" label-width="180px" size="small">
+                <el-form :model="configForm" label-width="150px" size="small">
                   <el-form-item 
                     v-for="option in category.options" 
                     :key="option.name" 
@@ -97,63 +105,72 @@
                       {{option.name}}: {{configForm[option.name]}} ({{typeof configForm[option.name]}})
                     </span>
                     
-                    <!-- 开关类型 -->
-                    <template v-if="isBooleanOption(option)">
-                      <el-switch
-                        v-model="configForm[option.name]"
-                        @change="handleConfigChange(option.name)"
-                        class="switch-option">
-                      </el-switch>
-                      <span class="option-value-text">{{ getOptionLabel(option, configForm[option.name]) }}</span>
-                    </template>
-                    
-                    <!-- 单选类型 -->
-                    <template v-else-if="isRadioOption(option)">
-                      <el-radio-group 
-                        v-model="configForm[option.name]" 
-                        @change="handleConfigChange(option.name)"
-                        class="radio-options">
-                        <el-radio 
-                          v-for="(opt, idx) in option.options" 
-                          :key="idx" 
-                          :label="opt.data">
-                          {{ opt.description }}{{ isDefaultOption(option, opt.data) && !hasDefaultText(opt.description) ? ' (默认)' : '' }}
-                        </el-radio>
-                      </el-radio-group>
-                    </template>
-                    
-                    <!-- 下拉选择类型 -->
-                    <template v-else-if="option.options && option.options.length > 0">
-                      <el-select 
-                        v-model="configForm[option.name]" 
-                        @change="handleConfigChange(option.name)"
-                        style="width: 100%">
-                        <el-option
-                          v-for="(opt, idx) in option.options"
-                          :key="idx"
-                          :label="opt.description + (isDefaultOption(option, opt.data) && !hasDefaultText(opt.description) ? ' (默认)' : '')"
-                          :value="opt.data">
-                        </el-option>
-                      </el-select>
-                    </template>
-                    
-                    <!-- 普通输入框 -->
-                    <template v-else>
-                      <el-input 
-                        v-model="configForm[option.name]" 
-                        @change="handleConfigChange(option.name)" />
-                    </template>
+                    <div class="option-control-wrapper">
+                      <!-- 开关类型 -->
+                      <template v-if="isBooleanOption(option)">
+                        <el-switch
+                          v-model="configForm[option.name]"
+                          @change="handleConfigChange(option.name)"
+                          class="switch-option">
+                        </el-switch>
+                        <span class="option-value-text">{{ getOptionLabel(option, configForm[option.name]) }}</span>
+                      </template>
+                      
+                      <!-- 单选类型 -->
+                      <template v-else-if="isRadioOption(option)">
+                        <el-radio-group 
+                          v-model="configForm[option.name]" 
+                          @change="handleConfigChange(option.name)"
+                          class="radio-options">
+                          <el-radio 
+                            v-for="(opt, idx) in option.options" 
+                            :key="idx" 
+                            :label="opt.data">
+                            {{ opt.description }}{{ isDefaultOption(option, opt.data) && !hasDefaultText(opt.description) ? ' (默认)' : '' }}
+                          </el-radio>
+                        </el-radio-group>
+                      </template>
+                      
+                      <!-- 下拉选择类型 -->
+                      <template v-else-if="option.options && option.options.length > 0">
+                        <el-select 
+                          v-model="configForm[option.name]" 
+                          @change="handleConfigChange(option.name)"
+                          class="option-select">
+                          <el-option
+                            v-for="(opt, idx) in option.options"
+                            :key="idx"
+                            :label="opt.description + (isDefaultOption(option, opt.data) && !hasDefaultText(opt.description) ? ' (默认)' : '')"
+                            :value="opt.data">
+                          </el-option>
+                        </el-select>
+                      </template>
+                      
+                      <!-- 普通输入框 -->
+                      <template v-else>
+                        <el-input 
+                          v-model="configForm[option.name]" 
+                          @change="handleConfigChange(option.name)"
+                          class="option-input" />
+                      </template>
+                    </div>
                   </el-form-item>
                 </el-form>
               </div>
             </el-collapse-item>
           </el-collapse>
         </div>
-        
-        <!-- 无配置选项提示 -->
-        <div v-if="!hasOptions" class="no-options">
-          <el-empty description="该模组没有配置选项" :image-size="150"></el-empty>
-        </div>
+      </div>
+      
+      <!-- 无配置选项提示 -->
+      <div v-if="!loading && !hasOptions && modInfo" class="no-options">
+        <el-empty description="该模组没有配置选项" :image-size="150"></el-empty>
+      </div>
+      
+      <!-- 轻量级加载提示 -->
+      <div v-if="!modInfo" class="initial-loading">
+        <i class="el-icon-loading"></i>
+        <p>加载模组信息中...</p>
       </div>
     </div>
     
@@ -165,6 +182,8 @@
 </template>
 
 <script>
+import { modApi } from '@/api';
+
 export default {
   name: 'ModConfigDialog',
   props: {
@@ -205,7 +224,11 @@ export default {
       // 当前展开的分类
       activeCategories: [],
       // 调试模式
-      debug: false
+      debug: false,
+      // 是否已初始化
+      isInitialized: false,
+      // 防止对话框自动关闭
+      keepAliveInterval: null
     };
   },
   computed: {
@@ -224,7 +247,8 @@ export default {
       let currentCategory = { name: '基本设置', options: [] };
       
       // 确保configuration_options存在并且是数组
-      const configOptions = this.modInfo.configuration_options || [];
+      const configOptions = Array.isArray(this.modInfo.configuration_options) ? 
+        this.modInfo.configuration_options : [];
       
       console.log('计算分类选项 - 总数:', configOptions.length);
       
@@ -236,10 +260,10 @@ export default {
         }
         
         // 调试输出
-        console.log(`选项[${index}] ${option.name}(${option.label}): ${option.name === 'Title' ? '分类标题' : '配置项'}`);
+        console.log(`选项[${index}] ${option.name}(${option.label || '无标签'}): ${option.name === 'Title' || option.name === 'null' ? '分类标题' : '配置项'}`);
         
         // 判断是否是分类标题
-        if (option.name === "Title") {
+        if (option.name === "Title" || option.name === "null") {
           // 将之前的分类添加到结果中(如果有选项)
           if (currentCategory.options.length > 0) {
             result.push({...currentCategory});
@@ -251,13 +275,14 @@ export default {
             name: option.label || '其他设置',
             options: []
           };
-          console.log(`创建新分类: ${currentCategory.name}`);
-        } 
-        // 普通配置选项(非分类标题)
-        else if (option.name !== "Title") {
-          // 添加所有有name的选项，无论是否有options
+        } else {
+          // 普通选项，添加到当前分类
+          // 确保选项有label属性
+          if (!option.label && option.name) {
+            option.label = option.name;
+          }
+          
           currentCategory.options.push(option);
-          console.log(`向分类 ${currentCategory.name} 添加选项: ${option.name}`);
         }
       });
       
@@ -267,26 +292,31 @@ export default {
         console.log(`添加最后分类: ${currentCategory.name} 包含 ${currentCategory.options.length} 个选项`);
       }
       
-      console.log(`最终生成 ${result.length} 个分类`);
       return result;
     },
     
-    // 过滤后的分类
+    // 添加分类和搜索过滤
     filteredCategories() {
-      if (!this.searchQuery) {
+      // 如果没有搜索查询，返回所有分类
+      if (!this.searchQuery.trim()) {
         return this.categorizedOptions;
       }
       
-      const query = this.searchQuery.toLowerCase();
+      const query = this.searchQuery.trim().toLowerCase();
+      
+      // 过滤包含查询词的选项
       return this.categorizedOptions.map(category => {
         const filteredOptions = category.options.filter(option => {
-          return option.label.toLowerCase().includes(query) || 
+          // 检查名称、标签、悬停提示
+          return (option.name && option.name.toLowerCase().includes(query)) ||
+                 (option.label && option.label.toLowerCase().includes(query)) ||
                  (option.hover && option.hover.toLowerCase().includes(query));
         });
         
+        // 如果该分类有匹配的选项，返回过滤后的分类
         if (filteredOptions.length > 0) {
-          return { 
-            ...category, 
+          return {
+            name: category.name, 
             options: filteredOptions 
           };
         }
@@ -299,19 +329,30 @@ export default {
     visible(newVal) {
       this.dialogVisible = newVal;
       if (newVal) {
-        this.initializeConfig();
-        // 打开对话框时，移除页面滚动条
-        document.body.style.overflow = 'hidden';
+        // 在visible变为true时初始化配置，用$nextTick确保DOM已更新
+        this.$nextTick(() => {
+          console.log('弹窗显示，开始初始化');
+          this.initializeConfig();
+          // 添加保持对话框活跃的定时器
+          this.setupKeepAliveTimer();
+        });
       } else {
-        // 关闭对话框时，恢复页面滚动条
-        document.body.style.overflow = '';
+        // 清除定时器
+        this.clearKeepAliveTimer();
+        // 当对话框关闭时重置初始化状态，以便下次打开可以重新初始化
+        this.isInitialized = false;
       }
     },
     dialogVisible(newVal) {
       if (!newVal) {
         this.$emit('update:visible', false);
-        // 关闭对话框时，恢复页面滚动条
-        document.body.style.overflow = '';
+        // 清除定时器
+        this.clearKeepAliveTimer();
+        // 当对话框关闭时重置初始化状态，以便下次打开可以重新初始化
+        this.isInitialized = false;
+      } else {
+        // 如果对话框变为可见状态，确保定时器已设置
+        this.setupKeepAliveTimer();
       }
     },
     filteredCategories: {
@@ -324,14 +365,66 @@ export default {
     }
   },
   methods: {
+    // 重置组件状态
+    resetComponentState() {
+      console.log('重置组件状态');
+      this.isInitialized = false;
+      this.loading = false;
+      this.saving = false;
+      this.configForm = {};
+      this.originalConfig = {};
+      this.defaultConfig = {};
+      this.searchQuery = '';
+      this.activeCategories = [];
+      // 清除定时器
+      this.clearKeepAliveTimer();
+    },
+
     // 判断描述中是否已包含"默认"字样
     hasDefaultText(description) {
       if (!description) return false;
+      // 确保description是字符串类型
+      if (typeof description !== 'string') return false;
       return description.includes('默认');
+    },
+
+    // 设置保持对话框活跃的定时器
+    setupKeepAliveTimer() {
+      // 先清除可能存在的旧定时器
+      this.clearKeepAliveTimer();
+      
+      // 设置新的定时器，每5秒触发一次保持对话框活跃
+      this.keepAliveInterval = setInterval(() => {
+        console.log('保持对话框活跃...');
+        // 如果对话框不再可见，清除定时器
+        if (!this.dialogVisible) {
+          this.clearKeepAliveTimer();
+        }
+      }, 5000);
+      
+      console.log('设置了对话框保活定时器');
+    },
+    
+    // 清除保持对话框活跃的定时器
+    clearKeepAliveTimer() {
+      if (this.keepAliveInterval) {
+        clearInterval(this.keepAliveInterval);
+        this.keepAliveInterval = null;
+        console.log('清除了对话框保活定时器');
+      }
     },
 
     // 初始化配置
     initializeConfig() {
+      // 如果已经初始化过，则不重复执行
+      if (this.isInitialized) {
+        console.log('已初始化过，跳过重复初始化');
+        return;
+      }
+      
+      console.log('开始初始化配置');
+      // 设置初始化标志位，防止重复请求
+      this.isInitialized = true;
       this.loading = true;
       this.searchQuery = '';
       
@@ -340,43 +433,72 @@ export default {
       this.originalConfig = {};
       this.defaultConfig = {};
       
-      // 如果已经有模组信息，先初始化配置选项
-      if (this.modInfo && this.modInfo.configuration_options) {
-        this.initializeConfigFromData(this.modInfo.configuration_options);
-      }
-      
-      // 如果不是新模组，可以从API获取保存的配置
-      if (this.modId) {
-        this.fetchSavedConfig();
-      } else {
+      try {
+        // 如果已经有模组信息，先初始化配置选项
+        if (this.modInfo && this.modInfo.configuration_options) {
+          console.log('从模组信息初始化配置');
+          this.initializeConfigFromData(this.modInfo.configuration_options);
+        }
+        
+        // 如果不是新模组，可以从API获取保存的配置
+        if (this.modId) {
+          this.fetchSavedConfig();
+        } else {
+          this.loading = false;
+          
+          // 延迟设置所有分类展开，确保categorizedOptions已计算完成
+          this.$nextTick(() => {
+            this.setAllCategoriesExpanded();
+          });
+        }
+      } catch (error) {
+        console.error('初始化配置出错:', error);
         this.loading = false;
+        this.$message.error('模组配置初始化失败');
+        // 如果初始化失败，重置初始化标志，以便下次可以重试
+        this.isInitialized = false;
       }
-      
-      // 延迟设置所有分类展开，确保categorizedOptions已计算完成
-      this.$nextTick(() => {
-        this.setAllCategoriesExpanded();
-      });
     },
     
     // 添加新方法用于从配置数据初始化表单
     initializeConfigFromData(configOptions) {
-      if (!configOptions || !Array.isArray(configOptions)) return;
+      if (!configOptions || !Array.isArray(configOptions)) {
+        console.warn('配置选项不存在或不是数组');
+        return;
+      }
       
       // 初始化配置表单
       configOptions.forEach(option => {
-        // 跳过分类标题
-        if (option.name && option.name !== "Title") {
+        // 跳过分类标题或没有名称的选项
+        if (!option.name || option.name === "Title" || option.name === "null") {
+          return;
+        }
+        
+        try {
           // 处理数字、字符串、布尔值等不同类型的数据
-          this.configForm[option.name] = this.parseOptionValue(option.default);
-          this.originalConfig[option.name] = this.parseOptionValue(option.default);
-          this.defaultConfig[option.name] = this.parseOptionValue(option.default);
+          const parsedValue = this.parseOptionValue(option.default);
+          console.log(`初始化选项: ${option.name}, 默认值: ${option.default} => ${parsedValue} (${typeof parsedValue})`);
+          
+          this.configForm[option.name] = parsedValue;
+          this.originalConfig[option.name] = parsedValue;
+          this.defaultConfig[option.name] = parsedValue;
+        } catch (error) {
+          console.error(`处理选项 ${option.name} 出错:`, error);
         }
       });
+      
+      // 确保更新是响应式的
+      this.configForm = {...this.configForm};
+      this.originalConfig = {...this.originalConfig};
+      this.defaultConfig = {...this.defaultConfig};
     },
     
     // 获取保存的配置
     fetchSavedConfig() {
-      this.loading = true;
+      if (!this.modId) {
+        this.loading = false;
+        return;
+      }
       
       // 准备请求参数
       const requestData = {
@@ -387,22 +509,10 @@ export default {
       
       console.log('请求模组配置参数:', requestData);
       
-      // 请求模组配置数据，使用POST请求
-      fetch('http://192.168.2.12:8000/mod/down', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData)
-      })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('获取模组配置失败');
-          }
-          return response.json();
-        })
+      // 使用全局API接口
+      modApi.getModConfig(this.modId, requestData)
         .then(data => {
-          console.log('接口返回数据:', JSON.stringify(data));
+          console.log('接口返回数据:', data ? '成功' : '失败');
           
           // 更新模组信息
           if (data && data.modinfo) {
@@ -424,7 +534,6 @@ export default {
             // 初始化配置表单为默认值
             configOptions.forEach(option => {
               if (option.name && option.name !== "Title") {
-                console.log(`处理选项: ${option.name}, 默认值: ${option.default}, 类型: ${typeof option.default}`);
                 // 处理数字、字符串、布尔值等不同类型的数据
                 this.configForm[option.name] = this.parseOptionValue(option.default);
                 this.originalConfig[option.name] = this.parseOptionValue(option.default);
@@ -434,9 +543,8 @@ export default {
             
             // 如果有保存的配置值，覆盖默认值
             if (data.config) {
-              console.log('覆盖保存的配置:', JSON.stringify(data.config));
+              console.log('覆盖保存的配置');
               Object.keys(data.config).forEach(key => {
-                console.log(`更新配置: ${key}, 值: ${data.config[key]}, 类型: ${typeof data.config[key]}`);
                 this.configForm[key] = this.parseOptionValue(data.config[key]);
                 this.originalConfig[key] = this.parseOptionValue(data.config[key]);
               });
@@ -446,8 +554,6 @@ export default {
             this.configForm = {...this.configForm};
             this.originalConfig = {...this.originalConfig};
             
-            console.log('最终配置表单:', JSON.stringify(this.configForm));
-            
             // 设置所有分类展开
             this.$nextTick(() => {
               this.setAllCategoriesExpanded();
@@ -455,7 +561,6 @@ export default {
           } else {
             this.$message.error('模组配置数据格式错误');
           }
-          this.loading = false;
         })
         .catch(error => {
           console.error('获取模组配置错误:', error);
@@ -463,30 +568,42 @@ export default {
             type: 'error',
             message: '获取模组配置失败，使用默认配置'
           });
+          // 如果请求失败，重置初始化标志，以便下次可以重试
+          this.isInitialized = false;
+        })
+        .finally(() => {
           this.loading = false;
         });
     },
     
     // 添加辅助方法来解析不同类型的配置值
     parseOptionValue(value) {
+      // 如果值是 undefined 或 null，直接返回
       if (value === undefined || value === null) {
         return value;
       }
       
-      // 处理布尔值（字符串形式）
-      if (typeof value === 'string') {
-        const lowerValue = value.toLowerCase();
-        if (lowerValue === 'true') return true;
-        if (lowerValue === 'false') return false;
-        
-        // 处理数字字符串
-        if (!isNaN(value) && value !== '') {
-          return Number(value);
+      try {
+        // 处理布尔值（字符串形式）
+        if (typeof value === 'string') {
+          const lowerValue = value.toLowerCase();
+          if (lowerValue === 'true') return true;
+          if (lowerValue === 'false') return false;
+          
+          // 处理数字字符串
+          if (!isNaN(value) && value !== '') {
+            // 检查是否是整数
+            const num = Number(value);
+            return num;
+          }
         }
+        
+        // 其他类型保持不变
+        return value;
+      } catch (error) {
+        console.error('解析配置值出错:', error, value);
+        return value;
       }
-      
-      // 其他类型保持不变
-      return value;
     },
     
     // 判断是否是布尔选项（开关类型）
@@ -564,6 +681,12 @@ export default {
     
     // 保存配置
     saveConfig() {
+      // 如果已经在保存中，不重复提交
+      if (this.saving) {
+        console.log('保存请求已在进行中，跳过');
+        return;
+      }
+      
       this.saving = true;
       
       // 准备提交的数据
@@ -574,25 +697,12 @@ export default {
         config: this.prepareConfigForSubmit(this.configForm)
       };
       
-      console.log('提交配置数据:', submitData);
+      console.log('提交配置数据:', submitData.modid);
       
-      // 发送配置数据到服务器
-      fetch('http://192.168.2.12:8000/mod/down', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(submitData)
-      })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('保存模组配置失败');
-          }
-          return response.json();
-        })
+      // 使用全局API接口
+      modApi.updateModConfig(this.modId, submitData)
         .then(data => {
-          console.log('保存配置返回:', data);
-          this.saving = false;
+          console.log('保存配置返回:', data ? '成功' : '失败');
           
           // 更新原始配置
           this.originalConfig = JSON.parse(JSON.stringify(this.configForm));
@@ -614,11 +724,13 @@ export default {
         })
         .catch(error => {
           console.error('保存模组配置错误:', error);
-          this.saving = false;
           this.$message({
             type: 'error',
             message: '保存模组配置失败'
           });
+        })
+        .finally(() => {
+          this.saving = false;
         });
     },
     
@@ -678,11 +790,15 @@ export default {
           type: 'warning'
         }).then(() => {
           this.dialogVisible = false;
+          // 清除定时器
+          this.clearKeepAliveTimer();
         }).catch(() => {
           // 用户取消关闭
         });
       } else {
         this.dialogVisible = false;
+        // 清除定时器
+        this.clearKeepAliveTimer();
       }
     },
     
@@ -701,58 +817,32 @@ export default {
     }
   },
   mounted() {
-    // 如果有模组ID但没有模组信息，主动获取模组配置
-    if (this.modId && !this.modInfo) {
-      this.fetchSavedConfig();
-    }
-    
     // 确保所有分类展开
     this.$nextTick(() => {
       this.setAllCategoriesExpanded();
     });
+  },
+  beforeDestroy() {
+    // 组件销毁前重置状态
+    this.resetComponentState();
   }
 };
 </script>
 
-<style>
-/* 隐藏主页面的右侧滚动条 */
-html, body {
-  overflow-x: hidden !important;
-}
-
-.mod-config-dialog {
-  max-width: 95%;
-  /* 防止对话框溢出 */
-  overflow: hidden;
-}
-
-.mod-config-dialog .el-dialog__wrapper {
-  overflow: hidden !important;
-}
-
-.mod-config-dialog .el-dialog__body {
-  padding: 10px 20px;
-  max-height: 70vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-.mod-config-dialog .el-dialog {
-  margin: 0 auto !important;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
+<style scoped>
 
 .config-container {
   min-height: 200px;
+  padding-right: 5px;
 }
 
 .mod-info-section {
   margin-bottom: 15px;
   padding-bottom: 15px;
   border-bottom: 1px solid #EBEEF5;
+  background-color: #f9fafc;
+  border-radius: 8px;
+  padding: 15px;
 }
 
 .mod-info-header {
@@ -761,13 +851,12 @@ html, body {
 }
 
 .mod-icon {
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
   margin-right: 15px;
-  flex-shrink: 0;
   border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
 .image-slot {
@@ -776,8 +865,9 @@ html, body {
   align-items: center;
   width: 100%;
   height: 100%;
-  background-color: #f5f7fa;
   color: #909399;
+  font-size: 20px;
+  background-color: #f6f8fa;
 }
 
 .mod-info-details {
@@ -803,7 +893,7 @@ html, body {
   margin-right: 15px;
   display: flex;
   align-items: center;
-  background: #f8f9fb;
+  background: #f0f2f5;
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -826,6 +916,8 @@ html, body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #EBEEF5;
 }
 
 .section-title {
@@ -839,6 +931,10 @@ html, body {
   margin-bottom: 12px;
 }
 
+.search-input {
+  max-width: 300px;
+}
+
 .config-list-container {
   width: 100%;
 }
@@ -850,12 +946,18 @@ html, body {
 }
 
 .category-options {
-  padding: 0;
+  padding: 10px 0;
 }
 
 .config-form-item {
-  margin-bottom: 10px;
+  margin-bottom: 15px;
   position: relative;
+  border-bottom: 1px dashed #f0f0f0;
+  padding-bottom: 10px;
+}
+
+.config-form-item:last-child {
+  border-bottom: none;
 }
 
 .config-form-item .el-form-item__label {
@@ -877,6 +979,10 @@ html, body {
   color: #409EFF;
 }
 
+.option-control-wrapper {
+  max-width: 450px;
+}
+
 .switch-option {
   margin-top: 0;
   vertical-align: middle;
@@ -887,6 +993,11 @@ html, body {
   font-size: 13px;
   color: #606266;
   vertical-align: middle;
+}
+
+.option-select, .option-input {
+  width: 100%;
+  max-width: 300px;
 }
 
 .radio-options {
@@ -906,6 +1017,7 @@ html, body {
 
 .radio-options .el-radio.is-checked {
   background-color: #F5F7FA;
+  border-color: #409EFF;
 }
 
 .no-options {
@@ -918,10 +1030,14 @@ html, body {
   background-color: #f5f7fa;
   border-left: 3px solid #409EFF;
   padding-left: 10px;
+  border-radius: 4px;
+  margin-bottom: 5px;
 }
 
 .el-collapse-item__content {
   padding: 15px;
+  background-color: #fafbfc;
+  border-radius: 0 0 4px 4px;
 }
 
 /* 响应式调整 */
@@ -955,5 +1071,48 @@ html, body {
   .radio-options {
     flex-direction: column;
   }
+}
+
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 0;
+  color: #606266;
+}
+
+.loading-text {
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #409EFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.initial-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 50px 0;
+  color: #606266;
+}
+
+.initial-loading i {
+  font-size: 32px;
+  margin-bottom: 15px;
+  color: #409EFF;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style> 

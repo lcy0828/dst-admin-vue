@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="<%= BASE_URL %>favicon.ico">
     <title>饥荒游戏后台管理系统</title>
+    <style>
+      /* 全局禁用Element UI的遮罩层 */
+      .v-modal {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        z-index: -1 !important;
+      }
+    </style>
   </head>
   <body>
     <noscript>
