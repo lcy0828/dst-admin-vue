@@ -207,6 +207,266 @@
                   <el-switch v-model="settings.notifySystemUpdates" :disabled="!settings.emailNotification"></el-switch>
                 </el-form-item>
               </el-tab-pane>
+              
+              <!-- 高级系统状态 -->
+              <el-tab-pane label="高级系统状态" name="systemStatus">
+                <div class="status-header">
+                  <span class="status-title">系统详细监控</span>
+                  <el-button type="primary" size="small" icon="el-icon-refresh" @click="refreshSystemStatus">刷新状态</el-button>
+                </div>
+                
+                <el-divider content-position="left">系统状态</el-divider>
+                
+                <el-row :gutter="20" class="status-row">
+                  <el-col :xs="24" :sm="12" :md="6">
+                    <el-card shadow="hover" class="status-card">
+                      <div slot="header" class="status-card-header">
+                        <i class="el-icon-cpu"></i> CPU状态
+                      </div>
+                      <div class="status-card-content">
+                        <div class="status-item">
+                          <div class="status-label">型号:</div>
+                          <div class="status-value">{{ systemStatus.cpu_model }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">频率:</div>
+                          <div class="status-value">{{ systemStatus.cpu_mhz }} MHz</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">物理核心:</div>
+                          <div class="status-value">{{ systemStatus.cpu_cores }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">逻辑核心:</div>
+                          <div class="status-value">{{ systemStatus.cpu_threads }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">使用率:</div>
+                          <div class="status-value progress-value">
+                            <el-progress :percentage="systemStatus.cpu_usage" :color="customColors"></el-progress>
+                          </div>
+                        </div>
+                        
+                        <!-- 添加CPU核心使用率 -->
+                        <div class="status-item cpu-cores-item">
+                          <div class="status-label">核心使用率:</div>
+                          <div class="status-value">
+                            <div class="core-usage-container" :class="getCoreGridClass">
+                              <div 
+                                v-for="(usage, index) in systemStatus.cpu_core_usage" 
+                                :key="index"
+                                class="core-usage-item"
+                              >
+                                <div class="core-usage-label">
+                                  核心 {{ index }}
+                                  <span v-if="isCoreOverloaded(usage)" class="core-overload-indicator">高负载</span>
+                                </div>
+                                <div class="core-usage-bar-container">
+                                  <div 
+                                    class="core-usage-bar" 
+                                    :style="{ width: formatCoreUsageWidth(usage), backgroundColor: getCoreColor(usage) }"
+                                  ></div>
+                                </div>
+                                <div class="core-usage-value">{{ usage.toFixed(2) }}%</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  
+                  <el-col :xs="24" :sm="12" :md="6">
+                    <el-card shadow="hover" class="status-card">
+                      <div slot="header" class="status-card-header">
+                        <i class="el-icon-loading"></i> 系统负载
+                      </div>
+                      <div class="status-card-content">
+                        <div class="status-item">
+                          <div class="status-label">1分钟:</div>
+                          <div class="status-value">{{ systemStatus.cpu_load1 }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">5分钟:</div>
+                          <div class="status-value">{{ systemStatus.cpu_load5 }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">15分钟:</div>
+                          <div class="status-value">{{ systemStatus.cpu_load15 }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">主机名:</div>
+                          <div class="status-value">{{ systemStatus.hostname }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">系统:</div>
+                          <div class="status-value">{{ systemStatus.os_info }}</div>
+                        </div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  
+                  <el-col :xs="24" :sm="12" :md="6">
+                    <el-card shadow="hover" class="status-card">
+                      <div slot="header" class="status-card-header">
+                        <i class="el-icon-coin"></i> 内存状态
+                      </div>
+                      <div class="status-card-content">
+                        <div class="status-item">
+                          <div class="status-label">总内存:</div>
+                          <div class="status-value">{{ formatMemory(systemStatus.total_memory) }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">已用内存:</div>
+                          <div class="status-value">{{ formatMemory(systemStatus.used_memory) }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">空闲内存:</div>
+                          <div class="status-value">{{ formatMemory(systemStatus.free_memory) }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">使用率:</div>
+                          <div class="status-value progress-value">
+                            <el-progress :percentage="systemStatus.memory_usage" :color="customColors"></el-progress>
+                          </div>
+                        </div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  
+                  <el-col :xs="24" :sm="12" :md="6">
+                    <el-card shadow="hover" class="status-card">
+                      <div slot="header" class="status-card-header">
+                        <i class="el-icon-folder"></i> 磁盘状态
+                      </div>
+                      <div class="status-card-content">
+                        <div class="status-item">
+                          <div class="status-label">总空间:</div>
+                          <div class="status-value">{{ systemStatus.total_disk }} GB</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">已用空间:</div>
+                          <div class="status-value">{{ systemStatus.used_disk }} GB</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">空闲空间:</div>
+                          <div class="status-value">{{ systemStatus.free_disk }} GB</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">使用率:</div>
+                          <div class="status-value progress-value">
+                            <el-progress :percentage="systemStatus.disk_usage" :color="customColors"></el-progress>
+                          </div>
+                        </div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                </el-row>
+                
+                <el-divider content-position="left">程序状态</el-divider>
+                
+                <el-row :gutter="20" class="status-row">
+                  <el-col :xs="24" :sm="12">
+                    <el-card shadow="hover" class="status-card">
+                      <div slot="header" class="status-card-header">
+                        <i class="el-icon-s-operation"></i> 进程信息
+                      </div>
+                      <div class="status-card-content">
+                        <div class="status-item">
+                          <div class="status-label">进程ID:</div>
+                          <div class="status-value">{{ systemStatus.process_id }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">运行时间:</div>
+                          <div class="status-value">{{ systemStatus.process_uptime_fmt }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">物理内存:</div>
+                          <div class="status-value">{{ systemStatus.process_memory_rss }} MB</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">虚拟内存:</div>
+                          <div class="status-value">{{ systemStatus.process_memory_vms }} MB</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">CPU使用率:</div>
+                          <div class="status-value progress-value">
+                            <el-progress :percentage="systemStatus.process_cpu_usage" :color="customColors"></el-progress>
+                          </div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">线程数:</div>
+                          <div class="status-value">{{ systemStatus.process_threads }}</div>
+                        </div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                  
+                  <el-col :xs="24" :sm="12">
+                    <el-card shadow="hover" class="status-card">
+                      <div slot="header" class="status-card-header">
+                        <i class="el-icon-s-platform"></i> Go运行时
+                      </div>
+                      <div class="status-card-content">
+                        <div class="status-item">
+                          <div class="status-label">版本:</div>
+                          <div class="status-value">{{ systemStatus.go_version }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">Goroutines:</div>
+                          <div class="status-value">{{ systemStatus.go_routines }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">堆分配:</div>
+                          <div class="status-value">{{ systemStatus.go_memory_alloc }} MB</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">系统分配:</div>
+                          <div class="status-value">{{ systemStatus.go_memory_sys }} MB</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">堆对象数:</div>
+                          <div class="status-value">{{ systemStatus.go_memory_heap_objs }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">GC暂停:</div>
+                          <div class="status-value">{{ (systemStatus.go_gc_pause / 1000000).toFixed(2) }} ms</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">GC运行次数:</div>
+                          <div class="status-value">{{ systemStatus.go_gc_runs }}</div>
+                        </div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                </el-row>
+                
+                <el-divider content-position="left">系统时间</el-divider>
+                
+                <el-row :gutter="20" class="status-row">
+                  <el-col :span="24">
+                    <el-card shadow="hover" class="status-card">
+                      <div slot="header" class="status-card-header">
+                        <i class="el-icon-time"></i> 时间信息
+                      </div>
+                      <div class="status-card-content time-card-content">
+                        <div class="status-item">
+                          <div class="status-label">系统运行时间:</div>
+                          <div class="status-value">{{ systemStatus.uptime_formatted }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">当前时间:</div>
+                          <div class="status-value">{{ systemStatus.current_time }}</div>
+                        </div>
+                        <div class="status-item">
+                          <div class="status-label">启动时间:</div>
+                          <div class="status-value">{{ systemStatus.start_time }}</div>
+                        </div>
+                      </div>
+                    </el-card>
+                  </el-col>
+                </el-row>
+              </el-tab-pane>
             </el-tabs>
             
             <div class="form-actions">
@@ -310,6 +570,55 @@ export default {
         ]
       },
       
+      // 系统状态信息
+      systemStatus: {
+        cpu_model: '加载中...',
+        cpu_mhz: 0,
+        cpu_cores: 0,
+        cpu_threads: 0,
+        cpu_usage: 0,
+        cpu_core_usage: [],
+        cpu_load1: 0,
+        cpu_load5: 0,
+        cpu_load15: 0,
+        total_memory: 0,
+        used_memory: 0,
+        free_memory: 0,
+        memory_usage: 0,
+        total_disk: 0,
+        used_disk: 0,
+        free_disk: 0,
+        disk_usage: 0,
+        os_info: '加载中...',
+        hostname: '加载中...',
+        uptime: 0,
+        uptime_formatted: '加载中...',
+        go_version: '加载中...',
+        go_routines: 0,
+        process_id: 0,
+        process_uptime: 0,
+        process_uptime_fmt: '加载中...',
+        process_memory_rss: 0,
+        process_memory_vms: 0,
+        process_cpu_usage: 0,
+        process_threads: 0,
+        go_memory_alloc: 0,
+        go_memory_sys: 0,
+        go_memory_heap_sys: 0,
+        go_memory_heap_objs: 0,
+        go_gc_pause: 0,
+        go_gc_runs: 0,
+        current_time: '加载中...',
+        start_time: '加载中...'
+      },
+      
+      // 自定义进度条颜色
+      customColors: [
+        {color: '#67C23A', percentage: 40},
+        {color: '#E6A23C', percentage: 70},
+        {color: '#F56C6C', percentage: 90}
+      ],
+      
       // 备份历史
       backupHistoryVisible: false,
       backupHistory: [
@@ -351,8 +660,37 @@ export default {
       ]
     };
   },
+  computed: {
+    // 根据CPU核心数量确定网格布局类名
+    getCoreGridClass() {
+      const coreCount = this.systemStatus.cpu_core_usage.length;
+      if (coreCount <= 4) {
+        return 'grid-cols-2';
+      } else if (coreCount <= 8) {
+        return 'grid-cols-4';
+      } else if (coreCount <= 16) {
+        return 'grid-cols-4';
+      } else {
+        return 'grid-cols-6';
+      }
+    }
+  },
   created() {
     this.loadSettings();
+  },
+  mounted() {
+    // 初始加载系统状态
+    if (this.activeTab === 'systemStatus') {
+      this.refreshSystemStatus();
+    }
+  },
+  watch: {
+    // 监听标签页切换，在切换到系统状态标签页时刷新数据
+    activeTab(newVal) {
+      if (newVal === 'systemStatus') {
+        this.refreshSystemStatus();
+      }
+    }
   },
   methods: {
     // 加载设置
@@ -497,6 +835,67 @@ export default {
           message: '邮件连接测试成功'
         });
       }, 1500);
+    },
+    
+    // 刷新系统状态信息
+    refreshSystemStatus() {
+      this.loading = true;
+      
+      this.$api.systemApi.getDashboardStatus()
+        .then(res => {
+          if (res && res.data && res.status === 200) {
+            this.systemStatus = res.data;
+            
+            this.$message({
+              type: 'success',
+              message: '系统状态已刷新'
+            });
+          } else {
+            this.$message.error('获取系统状态失败：' + (res.msg || '未知错误'));
+          }
+        })
+        .catch(err => {
+          this.$message.error('获取系统状态失败：' + (err.message || '未知错误'));
+        })
+        .finally(() => {
+          this.loading = false;
+        });
+    },
+    
+    // 格式化内存显示
+    formatMemory(memory) {
+      if (!memory) return '0 MB';
+      if (memory < 1024) {
+        return memory.toFixed(0) + ' MB';
+      } else {
+        return (memory / 1024).toFixed(2) + ' GB';
+      }
+    },
+    
+    // 格式化CPU核心使用率显示宽度
+    formatCoreUsageWidth(usage) {
+      // 数值本身就是百分比，最大限制为100%显示
+      return Math.min(usage, 100) + '%';
+    },
+    
+    // 判断CPU核心是否过载
+    isCoreOverloaded(usage) {
+      // 当使用率超过70%时认为是高负载
+      return usage > 70;
+    },
+    
+    // 根据使用率获取颜色
+    getCoreColor(percentage) {
+      // 接口返回的就是百分比值
+      if (percentage < 40) {
+        return '#67C23A'; // 绿色 - 低负载
+      } else if (percentage < 70) {
+        return '#E6A23C'; // 黄色 - 中等负载
+      } else if (percentage <= 100) {
+        return '#F56C6C'; // 红色 - 高负载
+      } else {
+        return '#800080'; // 紫色 - 超过100%负载
+      }
     }
   }
 };
@@ -587,6 +986,155 @@ export default {
     display: block;
     margin-left: 0;
     margin-top: 5px;
+  }
+}
+
+/* 系统状态样式 */
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.status-title {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.status-row {
+  margin-bottom: 20px;
+}
+
+.status-card {
+  margin-bottom: 20px;
+  height: 100%;
+}
+
+.status-card-header {
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.status-card-header i {
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+.status-card-content {
+  padding: 5px 0;
+}
+
+.status-item {
+  display: flex;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.status-label {
+  width: 90px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.status-value {
+  flex: 1;
+  color: #303133;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.progress-value {
+  padding-right: 10px;
+}
+
+.cpu-cores-item {
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+
+.cpu-cores-item .status-label {
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.cpu-cores-item .status-value {
+  width: 100%;
+}
+
+.core-usage-container {
+  width: 100%;
+  display: grid;
+  grid-gap: 10px;
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.grid-cols-6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
+.core-usage-item {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 5px;
+}
+
+.core-usage-label {
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 2px;
+}
+
+.core-usage-bar-container {
+  width: 100%;
+  height: 6px;
+  background-color: #E9E9E9;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.core-usage-bar {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.core-usage-value {
+  font-size: 11px;
+  color: #909399;
+  text-align: right;
+}
+
+.core-overload-indicator {
+  font-size: 10px;
+  color: white;
+  margin-left: 5px;
+  background-color: #F56C6C;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.time-card-content .status-item .status-label {
+  width: 120px;
+}
+
+@media (max-width: 768px) {
+  .status-item {
+    flex-direction: column;
+  }
+  
+  .status-label {
+    width: 100%;
+    margin-bottom: 4px;
   }
 }
 </style> 

@@ -80,6 +80,15 @@
           <span slot="title">备份管理</span>
         </el-menu-item>
         
+        <el-submenu index="/scheduled">
+          <template slot="title">
+            <i class="el-icon-alarm-clock"></i>
+            <span>定时任务</span>
+          </template>
+          <el-menu-item index="/scheduled/tasks">任务列表</el-menu-item>
+          <el-menu-item index="/scheduled/create">创建任务</el-menu-item>
+        </el-submenu>
+        
         <el-menu-item index="/system">
           <i class="el-icon-setting"></i>
           <span slot="title">系统设置</span>
@@ -172,6 +181,7 @@ export default {
         mods: '模组管理',
         rooms: '房间管理',
         backups: '备份管理',
+        scheduled: '定时任务',
         system: '系统设置',
         ban: '封禁管理',
         generator: '物品生成器',
@@ -192,6 +202,12 @@ export default {
           mods: '模组配置',
           rooms: '房间设置',
           default: '设置'
+        },
+        tasks: {
+          scheduled: '任务列表'
+        },
+        create: {
+          scheduled: '创建任务'
         }
       }
       

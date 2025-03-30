@@ -106,4 +106,12 @@ html, body {
   font-size: 16px;
   font-weight: bold;
 }
+
+.xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.xterm-screen {
+  width: 100% !important;
+}
 </style> 

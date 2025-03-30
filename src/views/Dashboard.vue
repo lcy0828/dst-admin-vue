@@ -136,45 +136,69 @@
         <el-card shadow="hover" class="system-info">
           <div slot="header" class="clearfix">
             <span>系统资源</span>
-            <el-button style="float: right; padding: 3px 0" type="text">详情</el-button>
+            <el-button style="float: right; padding: 3px 0" type="text" @click="refreshSystemStatus">刷新</el-button>
           </div>
-          <div class="resource-usage">
+          <div v-loading="systemLoading" class="resource-usage">
             <div class="resource-item">
-              <div class="resource-label">CPU使用率</div>
-              <el-progress :percentage="45" :color="customColors"></el-progress>
+              <div class="resource-label">
+                <span>CPU使用率</span>
+                <!-- <span class="resource-value">{{ systemStatus.cpu_usage ? systemStatus.cpu_usage.toFixed(2) + '%' : '0%' }}</span> -->
+              </div>
+              <el-progress :percentage="parseFloat(systemStatus.cpu_usage.toFixed(2)) || 0" :color="customColors"></el-progress>
+              <div class="resource-detail">
+                <span>{{ systemStatus.cpu_model || '未知CPU' }} {{ systemStatus.cpu_mhz ? '(' + systemStatus.cpu_mhz + 'MHz)' : '' }}</span>
+                <span>{{ systemStatus.cpu_cores || 0 }}核心 / {{ systemStatus.cpu_threads || 0 }}线程</span>
+              </div>
             </div>
             <div class="resource-item">
-              <div class="resource-label">内存使用率</div>
-              <el-progress :percentage="68" :color="customColors"></el-progress>
+              <div class="resource-label">
+                <span>内存使用率</span>
+                <!-- <span class="resource-value">{{ systemStatus.memory_usage ? systemStatus.memory_usage.toFixed(2) + '%' : '0%' }}</span> -->
+              </div>
+              <el-progress :percentage="parseFloat(systemStatus.memory_usage.toFixed(2)) || 0" :color="customColors"></el-progress>
+              <div class="resource-detail">
+                <span>总内存: {{ formatMemory(systemStatus.total_memory) }}</span>
+                <span>已用: {{ formatMemory(systemStatus.used_memory) }}</span>
+                <span>空闲: {{ formatMemory(systemStatus.free_memory) }}</span>
+              </div>
             </div>
             <div class="resource-item">
-              <div class="resource-label">磁盘使用率</div>
-              <el-progress :percentage="32" :color="customColors"></el-progress>
+              <div class="resource-label">
+                <span>磁盘使用率</span>
+                <!-- <span class="resource-value">{{ systemStatus.disk_usage ? systemStatus.disk_usage.toFixed(2) + '%' : '0%' }}</span> -->
+              </div>
+              <el-progress :percentage="parseFloat(systemStatus.disk_usage.toFixed(2)) || 0" :color="customColors"></el-progress>
+              <div class="resource-detail">
+                <span>总容量: {{ systemStatus.total_disk ? systemStatus.total_disk.toFixed(2) : 0 }}GB</span>
+                <span>已用: {{ systemStatus.used_disk ? systemStatus.used_disk.toFixed(2) : 0 }}GB</span>
+                <span>空闲: {{ systemStatus.free_disk ? systemStatus.free_disk.toFixed(2) : 0 }}GB</span>
+              </div>
             </div>
             <div class="resource-item">
-              <div class="resource-label">网络使用率</div>
-              <el-progress :percentage="23" :color="customColors"></el-progress>
+              <div class="resource-label">
+                <span>系统负载</span>
+                <!-- <span class="resource-value">{{ systemStatus.cpu_load1 ? systemStatus.cpu_load1.toFixed(2) : '0.00' }}</span> -->
+              </div>
+              <el-progress :percentage="parseFloat(systemStatus.cpu_load1.toFixed(2)) || 0"></el-progress>
+              <div class="resource-detail">
+                <span>1分钟: {{ systemStatus.cpu_load1 ? systemStatus.cpu_load1.toFixed(2) : '0.00' }}</span>
+                <span>5分钟: {{ systemStatus.cpu_load5 ? systemStatus.cpu_load5.toFixed(2) : '0.00' }}</span>
+                <span>15分钟: {{ systemStatus.cpu_load15 ? systemStatus.cpu_load15.toFixed(2) : '0.00' }}</span>
+              </div>
             </div>
           </div>
-          <div class="system-events">
-            <div class="event-header">最近系统事件</div>
-            <div class="event-list">
-              <div class="event-item">
-                <div class="event-time">10:25</div>
-                <div class="event-content">服务器#2自动重启完成</div>
-              </div>
-              <div class="event-item">
-                <div class="event-time">09:45</div>
-                <div class="event-content">新玩家"森林探险家"加入服务器#1</div>
-              </div>
-              <div class="event-item">
-                <div class="event-time">09:10</div>
-                <div class="event-content">已完成每日存档备份</div>
-              </div>
-              <div class="event-item">
-                <div class="event-time">08:30</div>
-                <div class="event-content">服务器#3游戏日进入夏季</div>
-              </div>
+          <div class="system-info-footer">
+            <div class="system-info-item">
+              <i class="el-icon-monitor"></i>
+              <span>{{ systemStatus.os_info || '未知系统' }}</span>
+            </div>
+            <div class="system-info-item">
+              <i class="el-icon-time"></i>
+              <span>运行时间: {{ systemStatus.uptime_formatted || '未知' }}</span>
+            </div>
+            <div class="system-info-item">
+              <i class="el-icon-refresh"></i>
+              <span>更新时间: {{ systemStatus.current_time || '未知' }}</span>
             </div>
           </div>
         </el-card>
@@ -182,6 +206,23 @@
     </el-row>
     
     <!-- 第二个分割线 -->
+    <div class="section-divider">
+      <div class="section-title">
+        <i class="el-icon-document"></i>
+        <span>世界日志</span>
+      </div>
+    </div>
+    
+    <!-- 世界日志 -->
+    <el-row :gutter="20" class="log-section">
+      <el-col :span="24">
+        <div class="world-log-wrapper">
+          <world-log ref="worldLog" style="height: 400px;"></world-log>
+        </div>
+      </el-col>
+    </el-row>
+    
+    <!-- 第三个分割线 -->
     <div class="section-divider">
       <div class="section-title">
         <i class="el-icon-s-data"></i>
@@ -259,8 +300,14 @@
 </template>
 
 <script>
+import WorldLog from '@/components/WorldLog.vue';
+import { systemApi } from '@/api/index';
+
 export default {
   name: 'Dashboard',
+  components: {
+    WorldLog
+  },
   data() {
     return {
       loading: false,
@@ -331,11 +378,14 @@ export default {
           time: '2天前',
           type: '活动'
         }
-      ]
+      ],
+      systemLoading: false,
+      systemStatus: {}
     }
   },
   created() {
     this.refreshData();
+    this.refreshSystemStatus();
   },
   methods: {
     refreshData() {
@@ -435,6 +485,78 @@ export default {
     
     gotoAnnouncement() {
       this.$router.push('/announcements');
+    },
+    
+    refreshSystemStatus() {
+      this.systemLoading = true;
+      
+      systemApi.getDashboardStatus()
+        .then(response => {
+          if (response && response.data && response.status === 200) {
+            this.systemStatus = response.data;
+            // 处理一些字段格式化
+            if (typeof this.systemStatus.memory_usage === 'number') {
+              this.systemStatus.memory_usage = parseFloat(this.systemStatus.memory_usage);
+            }
+            if (typeof this.systemStatus.cpu_usage === 'number') {
+              this.systemStatus.cpu_usage = parseFloat(this.systemStatus.cpu_usage);
+            }
+            if (typeof this.systemStatus.disk_usage === 'number') {
+              this.systemStatus.disk_usage = parseFloat(this.systemStatus.disk_usage);
+            }
+            
+            // 确保负载值为数字类型
+            if (this.systemStatus.cpu_load1) {
+              this.systemStatus.cpu_load1 = parseFloat(this.systemStatus.cpu_load1);
+            }
+            if (this.systemStatus.cpu_load5) {
+              this.systemStatus.cpu_load5 = parseFloat(this.systemStatus.cpu_load5);
+            }
+            if (this.systemStatus.cpu_load15) {
+              this.systemStatus.cpu_load15 = parseFloat(this.systemStatus.cpu_load15);
+            }
+            
+            // 确保磁盘容量为数字类型
+            if (this.systemStatus.total_disk) {
+              this.systemStatus.total_disk = parseFloat(this.systemStatus.total_disk);
+            }
+            if (this.systemStatus.used_disk) {
+              this.systemStatus.used_disk = parseFloat(this.systemStatus.used_disk);
+            }
+            if (this.systemStatus.free_disk) {
+              this.systemStatus.free_disk = parseFloat(this.systemStatus.free_disk);
+            }
+            
+            // 确保内存值为数字类型
+            if (this.systemStatus.total_memory) {
+              this.systemStatus.total_memory = parseFloat(this.systemStatus.total_memory);
+            }
+            if (this.systemStatus.used_memory) {
+              this.systemStatus.used_memory = parseFloat(this.systemStatus.used_memory);
+            }
+            if (this.systemStatus.free_memory) {
+              this.systemStatus.free_memory = parseFloat(this.systemStatus.free_memory);
+            }
+          } else {
+            this.$message.error('获取系统状态数据失败');
+          }
+        })
+        .catch(error => {
+          console.error('获取系统状态数据错误:', error);
+          this.$message.error('获取系统状态数据失败: ' + (error.message || '未知错误'));
+        })
+        .finally(() => {
+          this.systemLoading = false;
+        });
+    },
+    
+    formatMemory(memory) {
+      if (!memory) return '0 MB';
+      if (memory < 1024) {
+        return memory.toFixed(2) + ' MB';
+      } else {
+        return (memory / 1024).toFixed(2) + ' GB';
+      }
     }
   }
 }
@@ -601,10 +723,30 @@ export default {
   margin-bottom: 15px;
 }
 
+:deep(.el-progress) {
+  display: flex;
+  align-items: center;
+}
+
 .resource-label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
   font-size: 14px;
   color: #606266;
-  margin-bottom: 8px;
+}
+
+.resource-value {
+  font-weight: bold;
+  color: #303133;
+}
+
+.resource-detail {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #909399;
 }
 
 .system-events {
@@ -761,5 +903,37 @@ export default {
 .announcement-actions {
   display: flex;
   gap: 10px;
+}
+
+.log-section {
+  margin-bottom: 20px;
+}
+
+.world-log-wrapper {
+  height: 400px;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.system-info-footer {
+  display: flex;
+  flex-direction: column;
+  padding-top: 15px;
+  margin-top: 15px;
+  border-top: 1px solid #EBEEF5;
+}
+
+.system-info-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.system-info-item i {
+  margin-right: 8px;
+  color: #409EFF;
 }
 </style> 

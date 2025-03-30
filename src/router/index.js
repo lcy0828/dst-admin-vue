@@ -24,9 +24,7 @@ export const constantRoutes = [
       },
       {
         path: 'system',
-        component: () => import('@/views/System.vue'),
-        name: 'System',
-        meta: { title: '系统管理', icon: 'system' }
+        redirect: '/system/settings'
       },
       {
         path: 'system/settings',
@@ -201,6 +199,27 @@ export const constantRoutes = [
         component: () => import('@/views/worlds/WorldDetails.vue'),
         name: 'WorldDetails',
         meta: { title: '世界详情', icon: 'document' }
+      }
+    ]
+  },
+  {
+    path: '/scheduled',
+    component: MainLayout,
+    redirect: '/scheduled/tasks',
+    name: 'Scheduled',
+    meta: { title: '定时任务', icon: 'time' },
+    children: [
+      {
+        path: 'tasks',
+        component: () => import('@/views/scheduled/ScheduledTasks.vue'),
+        name: 'ScheduledTasks',
+        meta: { title: '任务列表', icon: 'list' }
+      },
+      {
+        path: 'create',
+        component: () => import('@/views/scheduled/CreateTask.vue'),
+        name: 'CreateTask',
+        meta: { title: '创建任务', icon: 'plus' }
       }
     ]
   }

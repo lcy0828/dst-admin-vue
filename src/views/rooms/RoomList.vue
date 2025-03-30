@@ -46,6 +46,7 @@
               <el-dropdown-menu slot="dropdown">
                 <el-dropdown-item command="special-lists">特殊名单</el-dropdown-item>
                 <el-dropdown-item command="token">服务器令牌</el-dropdown-item>
+                <el-dropdown-item command="logs">查看日志</el-dropdown-item>
               </el-dropdown-menu>
             </el-dropdown>
             <el-dropdown trigger="click" @command="handleMoreCommands($event, scope.row)" @click.stop>
@@ -89,6 +90,26 @@
         :savename="selectedSavename"
         @close="serverTokenVisible = false" />
     </el-dialog>
+    
+    <!-- 服务器日志对话框 -->
+    <el-dialog 
+      title="服务器日志" 
+      :visible.sync="logViewerVisible" 
+      width="80%" 
+      :before-close="closeLogViewerDialog"
+      :append-to-body="true"
+      :modal="false"
+      :destroy-on-close="true"
+      class="fullheight-dialog">
+      <LogViewer 
+        v-if="logViewerVisible" 
+        :archiveName="selectedSavename"
+        :title="'服务器日志 - ' + selectedRoomName"
+        :subtitle="selectedWorldDisplay"
+        :worlds="selectedRoomWorlds"
+        :defaultWorld="selectedRoomWorldName"
+        @close="logViewerVisible = false" />
+    </el-dialog>
   </div>
 </template>
 
@@ -96,12 +117,14 @@
 import { roomApi } from '../../api/index';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
+import LogViewer from '../servers/LogViewer.vue';
 
 export default {
   name: 'RoomList',
   components: {
     SpecialLists,
-    ServerToken
+    ServerToken,
+    LogViewer
   },
   data() {
     return {
@@ -110,7 +133,12 @@ export default {
       rooms: [],
       specialListsVisible: false,
       serverTokenVisible: false,
-      selectedSavename: ''
+      logViewerVisible: false,
+      selectedSavename: '',
+      selectedRoomName: '',
+      selectedRoomWorlds: [],
+      selectedRoomWorldName: '',
+      selectedWorldDisplay: ''
     }
   },
   computed: {
@@ -242,6 +270,17 @@ export default {
     handleRoomSettings(command, room) {
       // 设置当前选中的存档名称
       this.selectedSavename = this.getSaveName(room);
+      this.selectedRoomName = room.name;
+      this.selectedRoomWorlds = room.worlds || [];
+      
+      if (this.selectedRoomWorlds.length > 0) {
+        this.selectedRoomWorldName = this.selectedRoomWorlds[0].name;
+        
+        const worldType = this.selectedRoomWorlds[0].type;
+        this.selectedWorldDisplay = worldType ? 
+          `${this.selectedRoomWorldName} (${this.formatWorldType(worldType)})` : 
+          this.selectedRoomWorldName;
+      }
       
       switch (command) {
         case 'special-lists':
@@ -249,6 +288,9 @@ export default {
           break;
         case 'token':
           this.openServerTokenDialog();
+          break;
+        case 'logs':
+          this.openLogViewerDialog();
           break;
       }
     },
@@ -284,6 +326,23 @@ export default {
     // 关闭服务器令牌对话框
     closeServerTokenDialog() {
       this.serverTokenVisible = false;
+    },
+    // 打开日志查看对话框
+    openLogViewerDialog() {
+      this.logViewerVisible = true;
+    },
+    // 关闭日志查看对话框
+    closeLogViewerDialog() {
+      this.logViewerVisible = false;
+    },
+    // 格式化世界类型
+    formatWorldType(type) {
+      const typeMap = {
+        'forest': '主世界',
+        'cave': '洞穴',
+        'unknown': '未知'
+      };
+      return typeMap[type] || type;
     },
     duplicateRoom(room) {
       this.$prompt('请输入新房间名称', '复制房间', {

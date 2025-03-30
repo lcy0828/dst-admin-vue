@@ -1,5 +1,6 @@
 import request from './request';
 import config from './config';
+import axios from 'axios';
 
 // 添加一个通用的请求处理函数
 function apiRequest(method, url, data = null) {
@@ -37,7 +38,7 @@ function apiRequest(method, url, data = null) {
 export const serverApi = {
   // 获取服务器列表
   getServerList(params) {
-    return request.get('/servers', { params });
+    return request.get(`/servers`, { params });
   },
   // 获取服务器详情
   getServerDetail(id) {
@@ -61,7 +62,7 @@ export const serverApi = {
   },
   // 获取服务器配置
   getServerConfig(savename) {
-    return request.get('/dstserver/config', { savename });
+    return request.get(`/servers/${savename}/config`);
   },
   // 更新服务器配置
   updateServerConfig(id, data) {
@@ -70,6 +71,14 @@ export const serverApi = {
   // 获取服务器日志
   getServerLogs(id, params) {
     return request.get(`/servers/${id}/logs`, params);
+  },
+  // 获取服务器日志流URL (用于EventSource)
+  getServerLogStreamUrl(archive, world, lines = 300) {
+    return `${config.BASE_URL}/server/log/stream?archive=${archive}&world=${world}&lines=${lines}`;
+  },
+  // 获取服务器日志流 (兼容旧方法)
+  getServerLogStream(archive, world, lines = 300) {
+    return request.get(`/server/log/stream?archive=${archive}&world=${world}&lines=${lines}`);
   },
   // 删除服务器
   deleteServer(id) {
@@ -115,7 +124,18 @@ export const roomApi = {
   getRoomList(params) {
     console.log("调用getRoomList API");
     try {
-      return request.get('/dstserver/list', { params });
+      return request.get('/dstserver/list', { params })
+        .then(response => {
+          // 检查是否有标准的状态+数据格式
+          if (response && response.data) {
+            if (response.status === 200 || response.data.status === 200) {
+              // 直接返回数据数组或包装在data中的数据数组
+              return Array.isArray(response.data) ? response.data : 
+                   (Array.isArray(response.data.data) ? response.data.data : []);
+            }
+          }
+          return response; // 如果没有特殊处理，返回原始响应
+        });
     } catch (error) {
       console.error("getRoomList API错误:", error);
       throw error;
@@ -300,6 +320,10 @@ export const systemApi = {
   getSystemInfo() {
     return request.get(`/system/info`);
   },
+  // 获取仪表盘状态
+  getDashboardStatus() {
+    return request.get(`/dashboard/status`);
+  },
   // 获取系统日志
   getSystemLogs(params) {
     return request.get(`/system/logs`, { params });
@@ -355,6 +379,56 @@ export const systemApi = {
   // 获取公告详情
   getAnnouncementDetail(id) {
     return request.get(`/system/announcements/${id}`);
+  },
+  // 获取Docker容器列表
+  getDockerContainers() {
+    // 直接获取原始响应，不进行数据转换
+    return axios.get(`${config.BASE_URL}/dashboard/docker/containers`)
+      .then(response => {
+        console.log('Docker容器原始响应:', response);
+        return response.data;
+      });
+  },
+  // 启动Docker容器
+  startDockerContainer(containerId) {
+    return request.post(`/dashboard/docker/containers/${containerId}/start`);
+  },
+  // 停止Docker容器
+  stopDockerContainer(containerId) {
+    return request.post(`/dashboard/docker/containers/${containerId}/stop`);
+  },
+  // 删除Docker容器
+  deleteDockerContainer(containerId) {
+    return request.delete(`/dashboard/docker/containers/${containerId}`);
+  }
+};
+
+// 备份管理相关API
+export const backupApi = {
+  // 获取备份列表
+  getBackupList() {
+    return request.get(`/backup/list`);
+  },
+  // 下载备份
+  downloadBackup(archive, backup) {
+    return request.get(`/backup/download`, { params: { archive, backup } });
+  },
+  // 创建备份
+  createBackup(archive) {
+    return request.post(`/backup/create`, { archive });
+  },
+  // 恢复备份
+  restoreBackup(archive, backup, target_name = null, overwrite_target = false) {
+    return request.post(`/backup/restore`, { 
+      archive, 
+      backup, 
+      target_name, 
+      overwrite_target 
+    });
+  },
+  // 删除备份
+  deleteBackup(archive, backup) {
+    return request.post(`/backup/delete`, { archive, backup });
   }
 };
 
@@ -385,5 +459,6 @@ export default {
   itemApi,
   modApi,
   systemApi,
-  authApi
+  authApi,
+  backupApi
 }; 
