@@ -58,6 +58,8 @@ instance.interceptors.response.use(
     
     const res = response.data;
     console.log('API响应数据:', res);
+    console.log('响应URL:', response.config.url);
+    console.log('响应完整数据:', JSON.stringify(res));
     
     // 适配多种响应格式
     // 1. { code: 0/200, data: {}, message: '' } 标准格式
@@ -68,7 +70,7 @@ instance.interceptors.response.use(
     if (res.code !== undefined) {
       if (res.code !== 0 && res.code !== 200) {
         // 统一错误处理
-        Message.error(res.message || '操作失败');
+        Message.error(res.message || res.msg || '操作失败');
         
         // 特定错误码处理
         if (res.code === 401) {
@@ -79,8 +81,9 @@ instance.interceptors.response.use(
         return Promise.reject(res);
       }
       
-      // 返回数据部分
-      return res.data || res;
+      // 标准格式的成功响应，保留完整结构
+      console.log('返回标准响应结构:', res);
+      return res;
     }
     
     // 检查房间列表格式
@@ -163,7 +166,12 @@ instance.interceptors.response.use(
 // 封装请求方法
 const request = {
   get(url, params, config = {}) {
-    return instance.get(url, { params, ...config });
+    // 如果第二个参数是对象但不是config对象，则视为params
+    if (params && typeof params === 'object' && !params.headers && !params.timeout) {
+      return instance.get(url, { params, ...config });
+    }
+    // 如果第二个参数是config对象或未提供，直接传递
+    return instance.get(url, params ? { ...params } : config);
   },
   post(url, data, config = {}) {
     return instance.post(url, data, config);

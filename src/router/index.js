@@ -107,6 +107,33 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/agents',
+    component: MainLayout,
+    redirect: '/agents/list',
+    name: 'Agents',
+    meta: { title: 'Agent管理', icon: 'connection' },
+    children: [
+      {
+        path: 'list',
+        component: () => import('@/views/agents/AgentList.vue'),
+        name: 'AgentList',
+        meta: { title: 'Agent列表', icon: 'list' }
+      },
+      {
+        path: 'command',
+        component: () => import('@/views/agents/AgentCommand.vue'),
+        name: 'AgentCommand',
+        meta: { title: '命令管理', icon: 'terminal' }
+      },
+      {
+        path: 'security',
+        component: () => import('@/views/agents/AgentSecurity.vue'),
+        name: 'AgentSecurity',
+        meta: { title: '安全配置', icon: 'lock' }
+      }
+    ]
+  },
+  {
     path: '/players',
     component: MainLayout,
     redirect: '/players/list',
@@ -222,6 +249,27 @@ export const constantRoutes = [
         meta: { title: '创建任务', icon: 'plus' }
       }
     ]
+  },
+  {
+    path: '/agents',
+    component: MainLayout,
+    redirect: '/agents/list',
+    name: 'Agents',
+    meta: { title: 'Agent管理', icon: 'connection' },
+    children: [
+      {
+        path: 'list',
+        component: () => import('@/views/agents/AgentList.vue'),
+        name: 'AgentList',
+        meta: { title: 'Agent列表', icon: 'monitor' }
+      },
+      {
+        path: 'security',
+        component: () => import('@/views/agents/AgentSecurity.vue'),
+        name: 'AgentSecurity',
+        meta: { title: '安全设置', icon: 'lock' }
+      }
+    ]
   }
 ]
 
@@ -229,4 +277,4 @@ export default new Router({
   mode: 'history', // 去掉url中的#
   scrollBehavior: () => ({ y: 0 }),
   routes: constantRoutes
-}) 
+})

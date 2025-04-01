@@ -89,6 +89,16 @@
           <el-menu-item index="/scheduled/create">创建任务</el-menu-item>
         </el-submenu>
         
+        <el-submenu index="/agents">
+          <template slot="title">
+            <i class="el-icon-connection"></i>
+            <span>Agent管理</span>
+          </template>
+          <el-menu-item index="/agents/list">Agent列表</el-menu-item>
+          <el-menu-item index="/agents/command">命令管理</el-menu-item>
+          <el-menu-item index="/agents/security">安全设置</el-menu-item>
+        </el-submenu>
+        
         <el-menu-item index="/system">
           <i class="el-icon-setting"></i>
           <span slot="title">系统设置</span>
@@ -185,7 +195,9 @@ export default {
         system: '系统设置',
         ban: '封禁管理',
         generator: '物品生成器',
-        search: '模组搜索'
+        search: '模组搜索',
+        agents: 'Agent管理',
+        security: '安全设置'
       }
       
       // 子页面映射
@@ -195,7 +207,8 @@ export default {
           players: '玩家列表',
           items: '物品列表',
           mods: '已下载模组',
-          rooms: '房间列表'
+          rooms: '房间列表',
+          agents: 'Agent列表'
         },
         settings: {
           servers: '服务器设置',
@@ -342,4 +355,4 @@ export default {
   background-color: #f0f2f5;
   min-width: 800px;
 }
-</style> 
+</style>

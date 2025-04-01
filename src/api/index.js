@@ -452,6 +452,87 @@ export const authApi = {
   }
 };
 
+// 添加Agent相关API
+export const agentApi = {
+  // 获取Agent列表
+  getAgentList() {
+    console.log('调用getAgentList API');
+    return axios.get(`${config.BASE_URL}/agent/list`)
+      .then(response => {
+        console.log('原始Agent列表响应:', response);
+        // 返回标准化的响应格式
+        return response.data;
+      })
+      .catch(error => {
+        console.error('获取Agent列表出错:', error);
+        throw error;
+      });
+  },
+  // 获取安全密钥
+  getSecurityKey() {
+    return request.get('/agent/security/key');
+  },
+  // 生成新的安全密钥
+  generateNewKey() {
+    return request.post('/agent/security/key/generate');
+  },
+  // 执行远程命令
+  executeCommand(data) {
+    return request.post('/agent/command', data);
+  },
+  // 获取命令执行结果
+  getCommandResult(commandId) {
+    return request.get(`/agent/command/${commandId}`);
+  },
+  // 获取命令历史记录
+  getCommandHistory() {
+    // 不传任何参数，获取所有命令历史
+    console.log('获取所有命令历史');
+    return request.get('/agent/command');
+  },
+  // 根据agent_id获取命令历史
+  getCommandHistoryByAgentId(agentId) {
+    console.log('根据Agent ID获取命令历史:', agentId);
+    // 直接拼接URL参数
+    return request.get(`/agent/command?agent_id=${encodeURIComponent(agentId)}`);
+  }
+};
+
+// 房间配置相关API
+export const roomConfigApi = {
+  // 获取房间配置
+  getRoomConfig(savename) {
+    // 使用新的API路径
+    return request.get(`/dstserver/clusterconfig?savename=${encodeURIComponent(savename)}`);
+  },
+
+  // 保存房间配置
+  saveRoomConfig(savename, config) {
+    return request.post(`/dstserver/clusterconfig`, {
+      savename,
+      config
+    });
+  },
+
+  // 导入房间配置
+  importRoomConfig(savename, configFile) {
+    const formData = new FormData();
+    formData.append('config', configFile);
+    return request.post(`/dstserver/clusterconfig/${savename}/import`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  },
+
+  // 导出房间配置
+  exportRoomConfig(savename) {
+    return request.get(`/dstserver/clusterconfig/${savename}/export`, {
+      responseType: 'blob'
+    });
+  }
+};
+
 export default {
   serverApi,
   roomApi,
@@ -460,5 +541,7 @@ export default {
   modApi,
   systemApi,
   authApi,
-  backupApi
-}; 
+  backupApi,
+  agentApi,
+  roomConfigApi
+};
