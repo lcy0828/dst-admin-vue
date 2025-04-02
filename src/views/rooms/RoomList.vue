@@ -41,7 +41,6 @@
           <el-card shadow="hover" class="save-item">
             <div class="save-item-content">
               <h4 class="save-name">{{ room.name }}</h4>
-              <p class="save-desc">{{ room.savepath || '暂无描述' }}</p>
               <div class="save-worlds" v-if="room.worlds && room.worlds.length">
                 <el-tag size="small" v-for="(world, index) in room.worlds" :key="index" 
                   :type="world.type === 'master' ? 'primary' : 'success'" class="world-tag">
@@ -166,8 +165,7 @@ export default {
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         result = result.filter(room => 
-          room.name.toLowerCase().includes(query) || 
-          (room.savepath && room.savepath.toLowerCase().includes(query))
+          room.name.toLowerCase().includes(query)
         );
       }
       
@@ -252,10 +250,34 @@ export default {
       this.$confirm(`确定要开启房间 "${room.name}" 吗?`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning'
+        type: 'warning',
+        showCancelButton: true,
+        dangerouslyUseHTMLString: true, 
+        message: `
+          <div>
+            <p>确定要开启房间 "${room.name}" 吗?</p>
+            <div style="margin-top: 10px;">
+              <label>服务器模式：</label>
+              <div class="el-radio-group" style="margin-top: 5px;">
+                <label class="el-radio" id="normalMode">
+                  <input type="radio" name="serverMode" value="32" checked>
+                  <span style="padding-left: 5px;">普通模式</span>
+                </label>
+                <label class="el-radio" id="expertMode" style="margin-left: 15px;">
+                  <input type="radio" name="serverMode" value="64">
+                  <span style="padding-left: 5px;">专家模式</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        `
       }).then(() => {
         this.loading = true;
-        roomApi.startRoom(room.id)
+        
+        // 获取选择的服务器模式
+        const serverMode = document.querySelector('input[name="serverMode"]:checked').value;
+        
+        roomApi.startRoom(room.id, serverMode)
           .then(() => {
             this.$message({
               message: `房间 ${room.name} 已开启`,
@@ -263,7 +285,7 @@ export default {
             });
           })
           .catch(error => {
-            this.$message.error(`开启房间失败: ${error.message}`);
+            this.$message.error(`开启房间失败: ${error.message || '未知错误'}`);
           })
           .finally(() => {
             this.loading = false;
@@ -435,6 +457,8 @@ export default {
   .save-list {
     .save-item {
       margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
       transition: all 0.3s;
       
       &:hover {
@@ -443,26 +467,22 @@ export default {
       }
       
       .save-item-content {
-        margin-bottom: 15px;
+        min-height: 120px;
+        padding-bottom: 60px; /* 为底部操作按钮留出空间 */
         
         .save-name {
+          margin-top: 0;
+          margin-bottom: 15px;
           font-size: 16px;
           font-weight: bold;
-          margin-bottom: 5px;
           color: #303133;
-        }
-        
-        .save-desc {
-          color: #606266;
-          font-size: 13px;
-          margin-bottom: 8px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         
         .save-worlds {
-          margin-bottom: 10px;
+          margin-bottom: 15px;
           
           .world-tag {
             margin-right: 5px;
@@ -472,20 +492,28 @@ export default {
         
         .save-info {
           display: flex;
-          justify-content: space-between;
-          font-size: 12px;
+          flex-wrap: wrap;
+          font-size: 13px;
           color: #909399;
           
-          i {
-            margin-right: 3px;
+          .save-date, .save-world-count {
+            margin-right: 15px;
+            margin-bottom: 5px;
+            
+            i {
+              margin-right: 3px;
+            }
           }
         }
       }
       
       .save-actions {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
         display: flex;
         justify-content: space-between;
-        margin-top: 10px;
       }
     }
   }

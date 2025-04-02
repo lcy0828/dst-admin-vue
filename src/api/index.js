@@ -157,9 +157,98 @@ export const roomApi = {
   deleteRoom(id) {
     return request.delete(`/rooms/${id}`);
   },
-  // 启动房间
-  startRoom(id) {
-    return request.post(`/rooms/${id}/start`);
+  // 获取房间的世界列表
+  getRoomWorlds(archiveName) {
+    console.log('获取房间世界列表:', archiveName);
+    return axios.get(`${config.BASE_URL}/tmux/list`)
+      .then(response => {
+        console.log('原始服务器列表响应:', response);
+        let worlds = [];
+        
+        if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
+          // 筛选指定存档的世界
+          worlds = response.data.data
+            .filter(item => item.ArchiveName === archiveName)
+            .map(item => ({
+              worldName: item.WorldName,
+              sessionName: item.SessionName,
+              type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
+            }));
+        } else if (response && response.data && Array.isArray(response.data)) {
+          // 备用数据格式
+          worlds = response.data
+            .filter(item => item.ArchiveName === archiveName)
+            .map(item => ({
+              worldName: item.WorldName,
+              sessionName: item.SessionName,
+              type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
+            }));
+        }
+        
+        console.log('存档的世界列表:', worlds);
+        return worlds;
+      })
+      .catch(error => {
+        console.error('获取房间世界列表失败:', error);
+        return []; // 失败时返回空数组
+      });
+  },
+  // 启动房间的所有服务器
+  startRoom(archiveName, serverMode = "32") {
+    console.log('调用startRoom API:', archiveName);
+    
+    // 先获取房间的世界列表
+    return this.getRoomWorlds(archiveName)
+      .then(worlds => {
+        if (!worlds || worlds.length === 0) {
+          // 如果没有找到世界，使用默认的Forest1和Caves1
+          console.log('未找到世界列表，使用默认世界名');
+          return Promise.all([
+            axios.post(`${config.BASE_URL}/tmux/start`, {
+              archive_name: archiveName,
+              world_name: "Forest1",
+              server_mode: serverMode
+            }),
+            axios.post(`${config.BASE_URL}/tmux/start`, {
+              archive_name: archiveName,
+              world_name: "Caves1",
+              server_mode: serverMode
+            })
+          ]);
+        } else {
+          // 启动找到的所有世界
+          console.log('使用存档中的实际世界列表:', worlds);
+          const startPromises = worlds.map(world => 
+            axios.post(`${config.BASE_URL}/tmux/start`, {
+              archive_name: archiveName,
+              world_name: world.worldName,
+              server_mode: serverMode
+            })
+          );
+          
+          if (startPromises.length === 0) {
+            return Promise.reject(new Error('没有可启动的世界'));
+          }
+          
+          return Promise.all(startPromises);
+        }
+      })
+      .then(responses => {
+        console.log('启动房间响应:', responses);
+        // 返回统一的成功响应
+        return {
+          status: 200,
+          msg: '房间启动成功',
+          data: {
+            archive_name: archiveName,
+            worlds: responses.map(response => response.data.data || {})
+          }
+        };
+      })
+      .catch(error => {
+        console.error('启动房间失败:', error);
+        throw error;
+      });
   },
   // 停止房间
   stopRoom(id) {
@@ -400,6 +489,61 @@ export const systemApi = {
   // 删除Docker容器
   deleteDockerContainer(containerId) {
     return request.delete(`/dashboard/docker/containers/${containerId}`);
+  },
+  // 获取TMUX服务器列表
+  getTmuxServers() {
+    console.log('调用getTmuxServers API');
+    return axios.get(`${config.BASE_URL}/tmux/list`)
+      .then(response => {
+        console.log('TMUX服务器原始响应:', response);
+        return response.data;
+      })
+      .catch(error => {
+        console.error('获取TMUX服务器列表失败:', error);
+        throw error;
+      });
+  },
+  
+  // 启动TMUX服务器
+  startTmuxServer(data) {
+    console.log('调用startTmuxServer API:', data);
+    return axios.post(`${config.BASE_URL}/tmux/start`, data)
+      .then(response => {
+        console.log('启动TMUX服务器响应:', response);
+        return response.data;
+      })
+      .catch(error => {
+        console.error('启动TMUX服务器失败:', error);
+        throw error;
+      });
+  },
+  
+  // 停止TMUX服务器
+  stopTmuxServer(data) {
+    console.log('调用stopTmuxServer API:', data);
+    return axios.post(`${config.BASE_URL}/tmux/stop`, data)
+      .then(response => {
+        console.log('停止TMUX服务器响应:', response);
+        return response.data;
+      })
+      .catch(error => {
+        console.error('停止TMUX服务器失败:', error);
+        throw error;
+      });
+  },
+  
+  // 重启TMUX服务器
+  restartTmuxServer(data) {
+    console.log('调用restartTmuxServer API:', data);
+    return axios.post(`${config.BASE_URL}/tmux/restart`, data)
+      .then(response => {
+        console.log('重启TMUX服务器响应:', response);
+        return response.data;
+      })
+      .catch(error => {
+        console.error('重启TMUX服务器失败:', error);
+        throw error;
+      });
   }
 };
 
@@ -532,6 +676,11 @@ export const roomConfigApi = {
     });
   }
 };
+
+// 获取API基础URL
+export function getBaseUrl() {
+  return config.BASE_URL;
+}
 
 export default {
   serverApi,

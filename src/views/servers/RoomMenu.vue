@@ -138,9 +138,10 @@
             <el-tag :type="scope.row.status === '开放' ? 'success' : 'info'" size="mini">{{ scope.row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="250">
           <template slot-scope="scope">
             <el-button type="text" size="small" @click="editRoom(scope.row)">编辑</el-button>
+            <el-button type="text" size="small" @click="startRoom(scope.row)">启动</el-button>
             <el-button type="text" size="small" @click="duplicateRoom(scope.row)">复制</el-button>
             <el-button type="text" size="small" class="danger-text" @click="deleteRoom(scope.row)">删除</el-button>
           </template>
@@ -151,10 +152,42 @@
         <el-button type="primary" icon="el-icon-plus" @click="createNewRoom">创建新房间</el-button>
       </div>
     </el-card>
+
+    <el-dialog
+      title="启动房间服务器"
+      :visible.sync="startRoomDialogVisible"
+      width="500px">
+      <div v-if="currentRoom">
+        <p>您正在启动房间：<strong>{{ currentRoom.name }}</strong></p>
+        
+        <el-form :model="startForm" label-width="120px">
+          <el-form-item label="启动模式">
+            <el-radio-group v-model="startForm.worldType">
+              <el-radio label="both">完整房间（主世界+洞穴）</el-radio>
+              <el-radio label="forest">仅主世界</el-radio>
+              <el-radio label="cave">仅洞穴</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          
+          <el-form-item label="服务器模式">
+            <el-select v-model="startForm.serverMode" placeholder="选择服务器模式">
+              <el-option label="普通模式" value="32"></el-option>
+              <el-option label="专家模式" value="64"></el-option>
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="startRoomDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmStartRoom" :loading="startLoading">启动</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
+import { roomApi, systemApi } from '@/api/index';
+
 export default {
   name: 'RoomMenu',
   data() {
@@ -196,7 +229,14 @@ export default {
           styleName: '沙漠风格',
           status: '关闭'
         }
-      ]
+      ],
+      startRoomDialogVisible: false,
+      startForm: {
+        worldType: 'both',
+        serverMode: '32'
+      },
+      currentRoom: null,
+      startLoading: false
     }
   },
   methods: {
@@ -250,6 +290,89 @@ export default {
     },
     createNewRoom() {
       this.$router.push('/servers/room');
+    },
+    startRoom(room) {
+      this.currentRoom = room;
+      this.startRoomDialogVisible = true;
+    },
+    confirmStartRoom() {
+      if (!this.currentRoom || !this.currentRoom.id) {
+        this.$message.error('无法获取房间信息');
+        return;
+      }
+      
+      this.startLoading = true;
+      
+      const archiveName = this.currentRoom.id.toString();
+      const { worldType, serverMode } = this.startForm;
+      
+      console.log('启动房间:', { archiveName, worldType, serverMode });
+      
+      if (worldType === 'both') {
+        // 启动完整房间（所有世界）
+        roomApi.startRoom(archiveName, serverMode)
+          .then(response => {
+            console.log('启动房间响应:', response);
+            if (response && response.status === 200) {
+              this.$message.success('房间启动成功');
+            } else {
+              this.$message.error(response && response.msg ? response.msg : '启动房间失败');
+            }
+          })
+          .catch(error => {
+            console.error('启动房间失败:', error);
+            this.$message.error('启动房间失败: ' + (error.message || '未知错误'));
+          })
+          .finally(() => {
+            this.startRoomDialogVisible = false;
+            this.startLoading = false;
+          });
+      } else {
+        // 获取房间的世界列表
+        roomApi.getRoomWorlds(archiveName)
+          .then(worlds => {
+            // 根据选择的世界类型过滤
+            const filteredWorlds = worlds.filter(world => world.type === worldType);
+            
+            if (filteredWorlds.length === 0) {
+              // 如果没有找到匹配的世界，使用默认世界名
+              const defaultWorldName = worldType === 'forest' ? 'Forest1' : 'Caves1';
+              console.log(`未找到${worldType}类型的世界，使用默认世界名:`, defaultWorldName);
+              
+              return systemApi.startTmuxServer({
+                archive_name: archiveName,
+                world_name: defaultWorldName,
+                server_mode: serverMode
+              });
+            } else {
+              // 启动第一个找到的匹配世界
+              const worldToStart = filteredWorlds[0];
+              console.log('启动世界:', worldToStart);
+              
+              return systemApi.startTmuxServer({
+                archive_name: archiveName,
+                world_name: worldToStart.worldName,
+                server_mode: serverMode
+              });
+            }
+          })
+          .then(response => {
+            console.log('启动单个世界响应:', response);
+            if (response && (response.status === 200 || (response.data && response.data.status === 200))) {
+              this.$message.success(`${worldType === 'forest' ? '主世界' : '洞穴世界'}启动成功`);
+            } else {
+              this.$message.error(response && response.msg ? response.msg : '启动世界失败');
+            }
+          })
+          .catch(error => {
+            console.error('启动世界失败:', error);
+            this.$message.error('启动世界失败: ' + (error.message || '未知错误'));
+          })
+          .finally(() => {
+            this.startRoomDialogVisible = false;
+            this.startLoading = false;
+          });
+      }
     }
   }
 }
