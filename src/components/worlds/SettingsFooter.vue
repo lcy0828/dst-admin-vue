@@ -1,0 +1,211 @@
+<template>
+  <div class="actions-footer">
+    <div class="settings-status">
+      <el-tag v-if="hasChanges" type="warning">有未保存的更改</el-tag>
+      <el-tag v-else type="success">设置已同步</el-tag>
+      
+      <el-popover
+        v-if="hasChanges"
+        placement="top-start"
+        width="320"
+        trigger="click"
+        popper-class="changes-popover"
+      >
+        <div class="changes-list-title">已修改的设置项 ({{ changedItemsCount }})</div>
+        <div class="changes-list">
+          <div v-for="(item, index) in changedItems" :key="index" class="change-item">
+            <div class="change-item-name">{{ item.text }}</div>
+            <div class="change-item-values">
+              <span class="old-value">{{ item.oldValueText }}</span>
+              <i class="el-icon-arrow-right"></i>
+              <span class="new-value">{{ item.newValueText }}</span>
+            </div>
+          </div>
+        </div>
+        <template #reference>
+          <el-button type="text" class="view-changes-btn">
+            <i class="el-icon-view"></i> 查看变更 ({{ changedItemsCount }})
+          </el-button>
+        </template>
+      </el-popover>
+    </div>
+    <div class="action-buttons">
+      <el-button 
+        type="primary" 
+        @click="$emit('save')" 
+        :loading="saveLoading" 
+        :disabled="loading || saveLoading || !hasChanges"
+        icon="el-icon-check"
+      >保存设置</el-button>
+      <el-button 
+        @click="$emit('reset')" 
+        :disabled="loading || saveLoading || !hasChanges"
+        icon="el-icon-refresh-left"
+      >重置</el-button>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: 'SettingsFooter',
+  props: {
+    hasChanges: {
+      type: Boolean,
+      required: true
+    },
+    loading: {
+      type: Boolean,
+      default: false
+    },
+    saveLoading: {
+      type: Boolean,
+      default: false
+    },
+    changedItems: {
+      type: Array,
+      default: () => []
+    }
+  },
+  computed: {
+    changedItemsCount() {
+      return this.changedItems.length;
+    }
+  }
+}
+</script>
+
+<style scoped>
+.actions-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.settings-status {
+  display: flex;
+  align-items: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.action-buttons .el-button {
+  min-width: 90px;
+  transition: box-shadow 0.2s;
+}
+
+.action-buttons .el-button:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons .el-button--primary {
+  font-weight: 500;
+}
+
+.view-changes-btn {
+  margin-left: 15px;
+  color: #e6a23c;
+  transition: color 0.3s;
+}
+
+.view-changes-btn:hover {
+  color: #cf9236;
+  text-decoration: underline;
+}
+
+.changes-list-title {
+  font-weight: 500;
+  margin-bottom: 10px;
+  color: #303133;
+  border-bottom: 1px solid #ebeef5;
+  padding-bottom: 8px;
+}
+
+.changes-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.change-item {
+  padding: 8px 0;
+  border-bottom: 1px dashed #ebeef5;
+}
+
+.change-item:last-child {
+  border-bottom: none;
+}
+
+.change-item-name {
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.change-item-values {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.old-value {
+  color: #909399;
+  text-decoration: line-through;
+}
+
+.el-icon-arrow-right {
+  margin: 0 8px;
+  color: #909399;
+}
+
+.new-value {
+  color: #67c23a;
+  font-weight: 500;
+}
+
+/* 确保弹出层显示在固定底栏上方 */
+:deep(.changes-popover) {
+  z-index: 10000 !important;
+}
+
+/* 确保弹出层箭头正确显示 */
+:deep(.changes-popover .popper__arrow) {
+  display: none !important;
+}
+
+/* 增强弹出层样式使其更明显 */
+:deep(.changes-popover .el-popover__title) {
+  font-weight: bold;
+}
+
+:deep(.el-popover.changes-popover) {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #e6a23c !important;
+}
+
+/* 增强标签样式 */
+:deep(.el-tag) {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .actions-footer {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .settings-status {
+    justify-content: center;
+  }
+  
+  .action-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style> 
