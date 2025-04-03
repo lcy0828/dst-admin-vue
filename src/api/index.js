@@ -269,6 +269,13 @@ export const roomApi = {
   // 获取房间玩家列表
   getRoomPlayers(id) {
     return request.get(`/rooms/${id}/players`);
+  },
+  getWorlds() {
+    return request.get('/worlds');
+  },
+
+  saveWorldSettings(worldType, settings) {
+    return request.post(`/world/settings/${worldType}`, settings);
   }
 };
 
