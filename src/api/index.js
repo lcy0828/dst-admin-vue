@@ -79,7 +79,14 @@ export const serverApi = {
   },
   // 获取服务器日志流 (兼容旧方法)
   getServerLogStream(archive, world, lines = 300) {
-    return request.get(`/server/log/stream?archive=${archive}&world=${world}&lines=${lines}`);
+    // 使用axios直接请求而不是通过request模块，避免添加_t参数
+    const url = `${config.BASE_URL}/server/log/stream?archive=${archive}&world=${world}&lines=${lines}`;
+    return axios.get(url, {
+      transformResponse: [data => data], // 不要自动解析JSON，保留原始响应
+      headers: {
+        'Accept': 'text/plain, application/json, */*' // 接受多种格式
+      }
+    });
   },
   // 删除服务器
   deleteServer(id) {
@@ -161,37 +168,101 @@ export const roomApi = {
   // 获取房间的世界列表
   getRoomWorlds(archiveName) {
     console.log('获取房间世界列表:', archiveName);
-    return axios.get(`${config.BASE_URL}/tmux/list`)
+    
+    // 尝试从新的API获取房间信息
+    return axios.get(`${config.BASE_URL}/dstserver/list`)
       .then(response => {
-        console.log('原始服务器列表响应:', response);
+        console.log('新API房间列表响应:', response);
         let worlds = [];
         
+        // 处理新API格式
         if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
-          // 筛选指定存档的世界
-          worlds = response.data.data
-            .filter(item => item.ArchiveName === archiveName)
-            .map(item => ({
-              worldName: item.WorldName,
-              sessionName: item.SessionName,
-              type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
+          // 查找匹配的房间
+          const room = response.data.data.find(room => room.name === archiveName);
+          if (room && room.worlds && Array.isArray(room.worlds)) {
+            // 映射世界信息
+            worlds = room.worlds.map(world => ({
+              worldName: world.name,
+              sessionName: `${archiveName}_${world.name}`,
+              // 根据type确定世界类型，如果没有明确type或type为unknown，则通过名称判断
+              type: world.type === 'forest' ? 'forest' : 
+                   world.type === 'cave' ? 'cave' : 
+                   world.name.includes('Forest') ? 'forest' : 'cave'
             }));
-        } else if (response && response.data && Array.isArray(response.data)) {
-          // 备用数据格式
-          worlds = response.data
-            .filter(item => item.ArchiveName === archiveName)
-            .map(item => ({
-              worldName: item.WorldName,
-              sessionName: item.SessionName,
-              type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
-            }));
+            console.log('新API世界列表:', worlds);
+            return worlds;
+          }
         }
         
-        console.log('存档的世界列表:', worlds);
-        return worlds;
+        // 如果新API没有返回数据，尝试旧的API
+        return axios.get(`${config.BASE_URL}/tmux/list`)
+          .then(oldResponse => {
+            console.log('旧API服务器列表响应:', oldResponse);
+            
+            if (oldResponse && oldResponse.data && oldResponse.data.status === 200 && Array.isArray(oldResponse.data.data)) {
+              // 筛选指定存档的世界
+              worlds = oldResponse.data.data
+                .filter(item => item.ArchiveName === archiveName)
+                .map(item => ({
+                  worldName: item.WorldName,
+                  sessionName: item.SessionName,
+                  type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
+                }));
+            } else if (oldResponse && oldResponse.data && Array.isArray(oldResponse.data)) {
+              // 备用数据格式
+              worlds = oldResponse.data
+                .filter(item => item.ArchiveName === archiveName)
+                .map(item => ({
+                  worldName: item.WorldName,
+                  sessionName: item.SessionName,
+                  type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
+                }));
+            }
+            
+            console.log('存档的世界列表:', worlds);
+            return worlds;
+          })
+          .catch(error => {
+            console.error('获取旧API世界列表失败:', error);
+            return []; // 失败时返回空数组
+          });
       })
       .catch(error => {
-        console.error('获取房间世界列表失败:', error);
-        return []; // 失败时返回空数组
+        console.error('获取新API世界列表失败, 尝试旧API:', error);
+        
+        // 尝试旧API
+        return axios.get(`${config.BASE_URL}/tmux/list`)
+          .then(oldResponse => {
+            console.log('旧API服务器列表响应:', oldResponse);
+            let worlds = [];
+            
+            if (oldResponse && oldResponse.data && oldResponse.data.status === 200 && Array.isArray(oldResponse.data.data)) {
+              // 筛选指定存档的世界
+              worlds = oldResponse.data.data
+                .filter(item => item.ArchiveName === archiveName)
+                .map(item => ({
+                  worldName: item.WorldName,
+                  sessionName: item.SessionName,
+                  type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
+                }));
+            } else if (oldResponse && oldResponse.data && Array.isArray(oldResponse.data)) {
+              // 备用数据格式
+              worlds = oldResponse.data
+                .filter(item => item.ArchiveName === archiveName)
+                .map(item => ({
+                  worldName: item.WorldName,
+                  sessionName: item.SessionName,
+                  type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
+                }));
+            }
+            
+            console.log('存档的世界列表:', worlds);
+            return worlds;
+          })
+          .catch(error => {
+            console.error('获取房间世界列表失败:', error);
+            return []; // 失败时返回空数组
+          });
       });
   },
   // 启动房间的所有服务器
@@ -219,13 +290,42 @@ export const roomApi = {
         } else {
           // 启动找到的所有世界
           console.log('使用存档中的实际世界列表:', worlds);
-          const startPromises = worlds.map(world => 
-            axios.post(`${config.BASE_URL}/tmux/start`, {
+          
+          // 确保至少有一个森林世界和一个洞穴世界
+          const forestWorlds = worlds.filter(world => world.type === 'forest');
+          const caveWorlds = worlds.filter(world => world.type === 'cave');
+          
+          console.log('森林世界:', forestWorlds);
+          console.log('洞穴世界:', caveWorlds);
+          
+          let worldsToStart = [...worlds]; // 默认启动所有世界
+          
+          if (forestWorlds.length === 0) {
+            // 如果没有森林世界，添加默认的Forest1
+            worldsToStart.push({
+              worldName: 'Forest1',
+              sessionName: `${archiveName}_Forest1`,
+              type: 'forest'
+            });
+          }
+          
+          if (caveWorlds.length === 0) {
+            // 如果没有洞穴世界，添加默认的Caves1
+            worldsToStart.push({
+              worldName: 'Caves1',
+              sessionName: `${archiveName}_Caves1`,
+              type: 'cave'
+            });
+          }
+          
+          const startPromises = worldsToStart.map(world => {
+            console.log(`准备启动世界: ${world.worldName} (${world.type})`);
+            return axios.post(`${config.BASE_URL}/tmux/start`, {
               archive_name: archiveName,
               world_name: world.worldName,
               server_mode: serverMode
-            })
-          );
+            });
+          });
           
           if (startPromises.length === 0) {
             return Promise.reject(new Error('没有可启动的世界'));
@@ -242,7 +342,7 @@ export const roomApi = {
           msg: '房间启动成功',
           data: {
             archive_name: archiveName,
-            worlds: responses.map(response => response.data.data || {})
+            worlds: responses.map(response => response.data?.data || {})
           }
         };
       })

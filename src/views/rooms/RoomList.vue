@@ -42,10 +42,33 @@
             <div class="save-item-content">
               <h4 class="save-name">{{ room.name }}</h4>
               <div class="save-worlds" v-if="room.worlds && room.worlds.length">
-                <el-tag size="small" v-for="(world, index) in room.worlds" :key="index" 
-                  :type="world.type === 'master' ? 'primary' : 'success'" class="world-tag">
-                  {{ world.name }}
-                </el-tag>
+                <div class="world-category forest" v-if="getWorldsByType(room.worlds, 'forest').length > 0">
+                  <span class="world-category-title">主世界:</span>
+                  <div class="world-tags">
+                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'forest')" :key="world.name" 
+                      type="primary" class="world-tag">
+                      {{ world.name }}
+                    </el-tag>
+                  </div>
+                </div>
+                <div class="world-category cave" v-if="getWorldsByType(room.worlds, 'cave').length > 0">
+                  <span class="world-category-title">洞穴:</span>
+                  <div class="world-tags">
+                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'cave')" :key="world.name" 
+                      type="success" class="world-tag">
+                      {{ world.name }}
+                    </el-tag>
+                  </div>
+                </div>
+                <div class="world-category unknown" v-if="getWorldsByType(room.worlds, 'unknown').length > 0">
+                  <span class="world-category-title">其他:</span>
+                  <div class="world-tags">
+                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'unknown')" :key="world.name" 
+                      type="info" class="world-tag">
+                      {{ world.name }}
+                    </el-tag>
+                  </div>
+                </div>
               </div>
               <div class="save-info">
                 <span class="save-date" v-if="room.updateTime">
@@ -126,21 +149,40 @@
         :defaultWorld="selectedRoomWorldName"
         @close="logViewerVisible = false" />
     </el-dialog>
+    
+    <!-- 启动房间对话框 -->
+    <el-dialog 
+      title="启动房间" 
+      :visible.sync="startDialogVisible" 
+      width="60%" 
+      :before-close="closeStartDialog"
+      class="fullheight-dialog">
+      <StartRoomForm 
+        v-if="startDialogVisible" 
+        :room="selectedRoom"
+        :startForm="startForm"
+        @confirm="confirmStartRoom"
+        @close="closeStartDialog" />
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { roomApi } from '../../api/index';
+import config from '../../api/config';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 import LogViewer from '../servers/LogViewer.vue';
+import axios from 'axios';
+import StartRoomForm from './StartRoomForm.vue';
 
 export default {
   name: 'RoomList',
   components: {
     SpecialLists,
     ServerToken,
-    LogViewer
+    LogViewer,
+    StartRoomForm
   },
   data() {
     return {
@@ -154,7 +196,14 @@ export default {
       selectedRoomName: '',
       selectedRoomWorlds: [],
       selectedRoomWorldName: '',
-      selectedWorldDisplay: ''
+      selectedWorldDisplay: '',
+      startDialogVisible: false,
+      selectedRoom: null,
+      startForm: {
+        worldType: 'all',
+        serverMode: '32'
+      },
+      startLoading: false
     }
   },
   computed: {
@@ -184,9 +233,50 @@ export default {
     refreshRooms() {
       this.loading = true;
       console.log("开始获取房间列表");
+      console.log("API基础URL:", config.BASE_URL);
+      
+      // 尝试使用新的API获取房间列表
+      axios.get(`${config.BASE_URL}/dstserver/list`)
+        .then(response => {
+          console.log("新API房间列表响应:", response);
+          
+          if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
+            // 处理新API格式的数据
+            this.rooms = response.data.data.map(item => ({
+              id: item.name,
+              name: item.name,
+              savepath: item.savepath || '',
+              worlds: (item.worlds || []).map(world => ({
+                name: world.name,
+                type: world.type === 'unknown' ? 
+                  (world.name.includes('Forest') ? 'forest' : 'cave') : world.type
+              })),
+              updateTime: item.updateTime || new Date().toISOString()
+            }));
+            
+            this.$message({
+              message: '房间列表已刷新',
+              type: 'success'
+            });
+            this.loading = false;
+          } else {
+            // 如果新API不可用，尝试使用旧API
+            this.fetchRoomsFromOldAPI();
+          }
+        })
+        .catch(error => {
+          console.error("新API获取房间列表失败:", error);
+          // 尝试使用旧API
+          this.fetchRoomsFromOldAPI();
+        });
+    },
+    
+    // 从旧API获取房间列表
+    fetchRoomsFromOldAPI() {
+      console.log("尝试从旧API获取房间列表");
       roomApi.getRoomList()
         .then(response => {
-          console.log("房间列表API响应:", response);
+          console.log("旧API房间列表响应:", response);
           // 检查response直接是否为数组(没有经过状态包装的情况)
           if (Array.isArray(response)) {
             this.rooms = response.map(item => ({
@@ -247,55 +337,77 @@ export default {
       });
     },
     startRoom(room) {
-      this.$confirm(`确定要开启房间 "${room.name}" 吗?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
-        showCancelButton: true,
-        dangerouslyUseHTMLString: true, 
-        message: `
-          <div>
-            <p>确定要开启房间 "${room.name}" 吗?</p>
-            <div style="margin-top: 10px;">
-              <label>服务器模式：</label>
-              <div class="el-radio-group" style="margin-top: 5px;">
-                <label class="el-radio" id="normalMode">
-                  <input type="radio" name="serverMode" value="32" checked>
-                  <span style="padding-left: 5px;">普通模式</span>
-                </label>
-                <label class="el-radio" id="expertMode" style="margin-left: 15px;">
-                  <input type="radio" name="serverMode" value="64">
-                  <span style="padding-left: 5px;">专家模式</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        `
-      }).then(() => {
-        this.loading = true;
-        
-        // 获取选择的服务器模式
-        const serverMode = document.querySelector('input[name="serverMode"]:checked').value;
-        
-        roomApi.startRoom(room.id, serverMode)
-          .then(() => {
-            this.$message({
-              message: `房间 ${room.name} 已开启`,
-              type: 'success'
-            });
+      this.selectedRoom = room;
+      this.startDialogVisible = true;
+    },
+    confirmStartRoom() {
+      if (!this.selectedRoom) return;
+      
+      const archiveName = this.selectedRoom.id;
+      const serverMode = this.startForm.serverMode;
+      
+      this.startLoading = true;
+      console.log(`开启房间: ${archiveName}, 模式: ${this.startForm.worldType}, 服务器模式: ${serverMode}`);
+      
+      // 根据选择的启动模式处理
+      if (this.startForm.worldType === 'all') {
+        // 启动所有世界
+        roomApi.startRoom(archiveName, serverMode)
+          .then(response => {
+            this.$message.success(`房间 ${this.selectedRoom.name} 的所有世界已启动`);
           })
           .catch(error => {
-            this.$message.error(`开启房间失败: ${error.message || '未知错误'}`);
+            this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
           })
           .finally(() => {
-            this.loading = false;
+            this.startLoading = false;
+            this.startDialogVisible = false;
           });
-      }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
-      });
+      } else {
+        // 获取特定类型的世界列表
+        roomApi.getRoomWorlds(archiveName)
+          .then(worlds => {
+            // 根据类型过滤世界
+            const filteredWorlds = worlds.filter(world => world.type === this.startForm.worldType);
+            
+            if (filteredWorlds.length === 0) {
+              // 如果没有找到匹配的世界，使用默认世界
+              const defaultWorld = this.startForm.worldType === 'forest' ? 'Forest1' : 'Caves1';
+              
+              return Promise.all([
+                axios.post(`${config.BASE_URL}/tmux/start`, {
+                  archive_name: archiveName,
+                  world_name: defaultWorld,
+                  server_mode: serverMode
+                })
+              ]);
+            } else {
+              // 启动所有符合类型的世界
+              const startPromises = filteredWorlds.map(world => 
+                axios.post(`${config.BASE_URL}/tmux/start`, {
+                  archive_name: archiveName,
+                  world_name: world.worldName,
+                  server_mode: serverMode
+                })
+              );
+              return Promise.all(startPromises);
+            }
+          })
+          .then(responses => {
+            const worldType = this.startForm.worldType === 'forest' ? '森林' : '洞穴';
+            this.$message.success(`房间 ${this.selectedRoom.name} 的${worldType}世界已启动`);
+          })
+          .catch(error => {
+            this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
+          })
+          .finally(() => {
+            this.startLoading = false;
+            this.startDialogVisible = false;
+          });
+      }
+    },
+    closeStartDialog() {
+      this.startDialogVisible = false;
     },
     handleDropdownCommand(command, room) {
       switch(command) {
@@ -400,6 +512,15 @@ export default {
           message: '已取消操作'
         });          
       });
+    },
+    // 按类型获取世界列表
+    getWorldsByType(worlds, type) {
+      if (!worlds || !Array.isArray(worlds)) return [];
+      return worlds.filter(world => {
+        // 检查世界类型，兼容不同的数据结构
+        const worldType = world.type || (world.name && world.name.includes('Forest') ? 'forest' : 'cave');
+        return worldType === type;
+      });
     }
   }
 };
@@ -482,11 +603,44 @@ export default {
         }
         
         .save-worlds {
-          margin-bottom: 15px;
+          margin: 10px 0;
           
-          .world-tag {
-            margin-right: 5px;
-            margin-bottom: 5px;
+          .world-category {
+            margin-bottom: 8px;
+            
+            &:last-child {
+              margin-bottom: 0;
+            }
+            
+            .world-category-title {
+              font-size: 13px;
+              color: #606266;
+              margin-right: 5px;
+              display: inline-block;
+              min-width: 50px;
+            }
+            
+            .world-tags {
+              display: inline-flex;
+              flex-wrap: wrap;
+              
+              .world-tag {
+                margin-right: 5px;
+                margin-bottom: 5px;
+              }
+            }
+            
+            &.forest .world-category-title {
+              color: #409EFF;
+            }
+            
+            &.cave .world-category-title {
+              color: #67C23A;
+            }
+            
+            &.unknown .world-category-title {
+              color: #909399;
+            }
           }
         }
         

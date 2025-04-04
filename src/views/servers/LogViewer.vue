@@ -38,11 +38,14 @@
           <i class="el-icon-info"></i>
           <span>暂无日志记录</span>
         </div>
-        <pre v-else><code v-for="(line, index) in filteredLogs" :key="index" 
-          :class="{ 'log-info': line.includes('[INFO]'), 
-                    'log-warning': line.includes('[WARNING]'), 
-                    'log-error': line.includes('[ERROR]') || line.includes('[FATAL]'),
-                    'log-debug': line.includes('[DEBUG]') }">{{ line }}</code></pre>
+        <div v-else-if="logs.length > 0">
+          <div class="log-info-row">已加载 {{ logs.length }} 行日志</div>
+          <pre><code v-for="(line, index) in filteredLogs" :key="index" 
+            :class="{ 'log-info': line.includes('[INFO]') || line.includes('event:log'), 
+                      'log-warning': line.includes('[WARNING]'), 
+                      'log-error': line.includes('[ERROR]') || line.includes('[FATAL]'),
+                      'log-debug': line.includes('[DEBUG]') }">{{ line }}</code></pre>
+        </div>
       </div>
       
       <div class="log-actions-bottom">
@@ -87,7 +90,8 @@ export default {
       selectedWorld: this.defaultWorld || (this.worlds.length > 0 ? this.worlds[0].name : ''),
       searchQuery: '',
       autoScroll: true,
-      refreshInterval: null
+      refreshInterval: null,
+      eventSource: null
     };
   },
   computed: {
@@ -116,30 +120,86 @@ export default {
       }
       
       this.loading = true;
-      serverApi.getServerLogStream(this.archiveName, this.selectedWorld)
-        .then(response => {
-          if (response.data && typeof response.data === 'string') {
-            this.logs = response.data.split('\n');
-          } else if (Array.isArray(response.data)) {
-            this.logs = response.data;
-          } else {
-            this.logs = ['无法解析日志数据'];
-          }
-          
-          // 如果启用了自动滚动，滚动到底部
-          this.$nextTick(() => {
-            if (this.autoScroll) {
-              this.scrollToBottom();
-            }
-          });
-        })
-        .catch(error => {
-          this.$message.error('获取日志失败: ' + (error.message || '未知错误'));
-          console.error('获取日志失败:', error);
-        })
-        .finally(() => {
+      console.log('正在获取日志...', this.archiveName, this.selectedWorld);
+      
+      // 清空现有日志
+      this.logs = [];
+      
+      // 关闭已存在的EventSource连接
+      this.closeEventSource();
+      
+      // 创建新的EventSource连接
+      const url = serverApi.getServerLogStreamUrl(this.archiveName, this.selectedWorld);
+      console.log('EventSource URL:', url);
+      
+      try {
+        const eventSource = new EventSource(url);
+        this.eventSource = eventSource;
+        
+        // 连接建立事件
+        eventSource.addEventListener('open', () => {
+          console.log('SSE连接已建立');
           this.loading = false;
+          this.logs.push('[系统] 已连接到日志流');
         });
+        
+        // 日志事件
+        eventSource.addEventListener('log', (event) => {
+          if (event.data) {
+            console.log('收到日志事件:', event.data);
+            this.logs.push(event.data);
+            
+            // 如果启用了自动滚动，滚动到底部
+            if (this.autoScroll) {
+              this.$nextTick(() => {
+                this.scrollToBottom();
+              });
+            }
+          }
+        });
+        
+        // 消息事件 (默认事件)
+        eventSource.addEventListener('message', (event) => {
+          if (event.data) {
+            console.log('收到消息事件:', event.data);
+            this.logs.push(event.data);
+            
+            // 如果启用了自动滚动，滚动到底部
+            if (this.autoScroll) {
+              this.$nextTick(() => {
+                this.scrollToBottom();
+              });
+            }
+          }
+        });
+        
+        // 心跳事件
+        eventSource.addEventListener('heartbeat', (event) => {
+          console.log('收到心跳:', event.data);
+        });
+        
+        // 错误事件
+        eventSource.addEventListener('error', (event) => {
+          console.error('SSE连接错误:', event);
+          
+          if (this.eventSource) {
+            this.logs.push('[错误] 日志流连接断开');
+            this.loading = false;
+            this.closeEventSource();
+          }
+        });
+      } catch (error) {
+        console.error('创建EventSource失败:', error);
+        this.$message.error('连接日志流失败: ' + error.message);
+        this.loading = false;
+      }
+    },
+    closeEventSource() {
+      if (this.eventSource) {
+        console.log('关闭SSE连接');
+        this.eventSource.close();
+        this.eventSource = null;
+      }
     },
     scrollToBottom() {
       const logContent = this.$refs.logContent;
@@ -171,32 +231,28 @@ export default {
       this.logs = [];
     },
     startAutoRefresh() {
-      // 每30秒自动刷新一次日志
-      this.refreshInterval = setInterval(() => {
-        this.refreshLogs();
-      }, 30000);
+      // SSE连接会自动刷新，不需要额外的刷新逻辑
     },
     stopAutoRefresh() {
-      if (this.refreshInterval) {
-        clearInterval(this.refreshInterval);
-        this.refreshInterval = null;
-      }
+      // 关闭EventSource连接
+      this.closeEventSource();
     }
   },
   mounted() {
     this.refreshLogs();
-    this.startAutoRefresh();
   },
   beforeDestroy() {
-    this.stopAutoRefresh();
+    this.closeEventSource();
   },
   watch: {
     archiveName() {
+      this.closeEventSource();
       this.refreshLogs();
     },
     defaultWorld(newVal) {
       if (newVal && !this.selectedWorld) {
         this.selectedWorld = newVal;
+        this.closeEventSource();
         this.refreshLogs();
       }
     },
@@ -204,6 +260,7 @@ export default {
       handler(newWorlds) {
         if (newWorlds.length > 0 && !this.selectedWorld) {
           this.selectedWorld = newWorlds[0].name;
+          this.closeEventSource();
           this.refreshLogs();
         }
       },
@@ -270,17 +327,29 @@ export default {
   font-size: 13px;
   line-height: 1.5;
   overflow-y: auto;
+  min-height: 200px;
+  max-height: calc(100vh - 200px);
   white-space: pre-wrap;
   word-wrap: break-word;
 }
 
+.log-content > div {
+  height: 100%;
+}
+
 .log-content pre {
   margin: 0;
+  overflow-y: auto;
+  height: calc(100% - 30px);
 }
 
 .log-content code {
   display: block;
   width: 100%;
+  padding: 2px 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .log-info {
@@ -318,5 +387,14 @@ export default {
 .no-logs-message i {
   font-size: 48px;
   margin-bottom: 10px;
+}
+
+.log-info-row {
+  padding: 5px;
+  background-color: #2c3e50;
+  color: #ffffff;
+  font-size: 12px;
+  border-radius: 3px 3px 0 0;
+  text-align: center;
 }
 </style> 

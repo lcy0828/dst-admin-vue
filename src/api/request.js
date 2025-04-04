@@ -27,13 +27,13 @@ instance.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     
-    // 添加时间戳，防止缓存
-    if (config.method === 'get') {
-      config.params = {
-        ...config.params,
-        _t: Date.now()
-      };
-    }
+    // 注释掉添加时间戳的代码，因为它可能导致某些API请求失败
+    // if (config.method === 'get') {
+    //   config.params = {
+    //     ...config.params,
+    //     _t: Date.now()
+    //   };
+    // }
     
     return config;
   },
