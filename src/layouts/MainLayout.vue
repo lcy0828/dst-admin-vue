@@ -27,6 +27,8 @@
           </template>
           <el-menu-item index="/servers/list">服务器列表</el-menu-item>
           <el-menu-item index="/servers/settings">服务器设置</el-menu-item>
+          <el-menu-item index="/servers/saves">存档管理</el-menu-item>
+          <el-menu-item index="/servers/commands">命令设置</el-menu-item>
         </el-submenu>
         
         <el-submenu index="/players">
@@ -221,6 +223,12 @@ export default {
         },
         create: {
           scheduled: '创建任务'
+        },
+        saves: {
+          servers: '存档管理'
+        },
+        commands: {
+          servers: '命令设置'
         }
       }
       

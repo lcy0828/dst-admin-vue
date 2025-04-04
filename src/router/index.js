@@ -70,6 +70,12 @@ export const constantRoutes = [
         component: () => import('@/views/servers/SaveManager.vue'),
         name: 'SaveManager',
         meta: { title: '存档管理', icon: 'save' }
+      },
+      {
+        path: 'commands',
+        component: () => import('@/views/servers/CommandManager.vue'),
+        name: 'CommandManager',
+        meta: { title: '命令设置', icon: 'terminal' }
       }
     ]
   },

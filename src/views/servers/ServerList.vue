@@ -11,8 +11,8 @@
         <el-button size="small" icon="el-icon-refresh" @click="refreshData">刷新</el-button>
         <el-button v-if="!isProduction" size="small" type="info" @click="testApiConnection">测试API</el-button>
       </div>
-    </div>
-
+      </div>
+      
     <!-- 调试信息 -->
     <el-alert
       v-if="!isProduction"
@@ -75,13 +75,13 @@
 
     <!-- 服务器列表主体内容 -->
     <div v-loading="loading" class="server-table-container">
-      <el-table
+        <el-table
         :data="filteredServerList"
-        style="width: 100%"
-        border
-        stripe>
+          style="width: 100%"
+          border
+          stripe>
         
-        <el-table-column
+          <el-table-column
           label="服务器名称"
           prop="name"
           min-width="180">
@@ -97,49 +97,49 @@
               <i class="el-icon-folder"></i> {{ scope.row.roomName }}
             </div>
           </template>
-        </el-table-column>
-        
-        <el-table-column
+          </el-table-column>
+          
+          <el-table-column
           label="玩家"
           width="100">
-          <template slot-scope="scope">
+            <template slot-scope="scope">
             {{ scope.row.players }}
-          </template>
-        </el-table-column>
-        
-        <el-table-column
+            </template>
+          </el-table-column>
+          
+          <el-table-column
           label="天数"
           width="70">
           <template slot-scope="scope">
             {{ scope.row.days }}
           </template>
-        </el-table-column>
-        
-        <el-table-column
+          </el-table-column>
+          
+          <el-table-column
           label="季节"
           width="100">
-          <template slot-scope="scope">
+            <template slot-scope="scope">
             <el-tag :type="getSeasonType(scope.row.season)" size="medium">
               {{ scope.row.season }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        
-        <el-table-column
+              </el-tag>
+            </template>
+          </el-table-column>
+          
+          <el-table-column
           label="服务器模式"
           width="100">
-          <template slot-scope="scope">
+            <template slot-scope="scope">
             <el-tag type="info" size="medium" v-if="scope.row.serverMode">
               {{ scope.row.serverMode === '32' ? '32位' : scope.row.serverMode === '64' ? '64位' : scope.row.serverMode }}
             </el-tag>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column
+              <span v-else>-</span>
+            </template>
+          </el-table-column>
+          
+          <el-table-column
           label="运行时间/启动时间"
           min-width="140">
-          <template slot-scope="scope">
+            <template slot-scope="scope">
             <span :class="{ 'server-offline': scope.row.status === '离线' }">
               {{ scope.row.uptime }}
             </span>
@@ -153,13 +153,13 @@
             <el-tag size="medium" :type="getDeploymentType(scope.row.deployment)">
               {{ scope.row.deployment }}
             </el-tag>
-          </template>
-        </el-table-column>
-        
-        <el-table-column
-          label="操作"
+            </template>
+          </el-table-column>
+          
+          <el-table-column
+            label="操作"
           min-width="200">
-          <template slot-scope="scope">
+            <template slot-scope="scope">
             <div class="operation-buttons">
               <el-button
                 size="mini"
@@ -184,21 +184,21 @@
                 </el-dropdown-menu>
               </el-dropdown>
             </div>
-          </template>
-        </el-table-column>
-      </el-table>
-      
+            </template>
+          </el-table-column>
+        </el-table>
+        
       <!-- 空数据提示 -->
       <div class="empty-block" v-if="filteredServerList.length === 0 && !loading">
         <el-empty description="暂无服务器数据" :image-size="100">
           <div class="empty-description">
             <p>没有发现任何运行中的服务器</p>
             <p>您可以先创建一个房间，然后启动它</p>
-          </div>
+        </div>
           <div class="empty-actions">
             <el-button type="primary" @click="navigateToRoomCreation">创建新房间</el-button>
             <el-button type="success" @click="showStartRoomDialog">启动现有房间</el-button>
-          </div>
+      </div>
         </el-empty>
       </div>
     </div>
@@ -456,7 +456,7 @@ export default {
                   raw: item, // 保存原始数据以便后续操作
                   serverMode: item.server_mode ? item.server_mode : '32'
                 });
-              } else {
+          } else {
                 // 旧API格式
                 // 按存档名称分组服务器，以便正确关联房间和世界
                 // 判断是森林还是洞穴服务器
@@ -518,7 +518,7 @@ export default {
                 }
               }
               
-              return {
+        return {
                 id: item.container_id,
                 name: item.names || `Docker容器 - ${item.container_id.substring(0, 8)}`,
                 roomId: roomName,
@@ -539,7 +539,7 @@ export default {
             this.serverList = [...this.serverList, ...dockerServers];
           }
           return response;
-        });
+      });
     },
     fetchRemoteServers() {
       // 获取远程服务器列表
@@ -705,26 +705,26 @@ export default {
         });
       } else {
         this.$confirm(`确定要启动服务器 ${row.name} 吗?`, '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          this.loading = true;
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.loading = true;
           systemApi.startServer(row.id)
-            .then(response => {
-              if (response.status === 200) {
+          .then(response => {
+            if (response.status === 200) {
                 this.$message.success('服务器启动成功!');
                 this.fetchData();
-              } else {
+            } else {
                 this.$message.error(response.msg || '启动服务器失败');
-              }
-            })
-            .catch(error => {
+            }
+          })
+          .catch(error => {
               this.$message.error('启动服务器失败: ' + (error.message || '未知错误'));
-            })
-            .finally(() => {
-              this.loading = false;
-            });
+          })
+          .finally(() => {
+            this.loading = false;
+          });
         });
       }
     },
@@ -732,11 +732,11 @@ export default {
       // 判断是否为本地服务器
       if (row.deployment === '本地') {
         this.$confirm(`确定要停止服务器 ${row.name} 吗?`, '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          this.loading = true;
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        this.loading = true;
           
           // 新API格式使用session_name，旧格式使用SessionName
           const sessionName = row.raw && (row.raw.session_name || row.raw.SessionName) || row.id;
@@ -771,8 +771,8 @@ export default {
         }).then(() => {
           this.loading = true;
           systemApi.stopServer(row.id)
-            .then(response => {
-              if (response.status === 200) {
+          .then(response => {
+            if (response.status === 200) {
                 this.$message.success('服务器停止成功!');
                 this.fetchData();
               } else {
@@ -875,16 +875,16 @@ export default {
                     if (startResponse && (startResponse.status === 200 || (startResponse.data && startResponse.data.status === 200))) {
                       this.$message.success('服务器重启成功!');
                       this.fetchData();
-                    } else {
+            } else {
                       this.$message.error(startResponse && startResponse.msg ? startResponse.msg : '启动服务器失败');
-                    }
-                  })
-                  .catch(error => {
+            }
+          })
+          .catch(error => {
                     console.error('启动服务器失败:', error);
                     this.$message.error('启动服务器失败: ' + (error.message || '未知错误'));
-                  })
-                  .finally(() => {
-                    this.loading = false;
+          })
+          .finally(() => {
+            this.loading = false;
                   });
               }, 2000); // 等待2秒后重启
             })
@@ -892,30 +892,30 @@ export default {
               console.error('停止服务器失败:', error);
               this.$message.error('重启服务器失败: ' + (error.message || '未知错误'));
               this.loading = false;
-            });
         });
+      });
       } else {
         // Docker服务器重启逻辑保持不变
         this.$confirm(`确定要重启服务器 ${row.name} 吗?`, '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
           type: 'warning'
-        }).then(() => {
-          this.loading = true;
+      }).then(() => {
+        this.loading = true;
           systemApi.restartServer(row.id)
-            .then(response => {
-              if (response.status === 200) {
+          .then(response => {
+            if (response.status === 200) {
                 this.$message.success('服务器重启成功!');
                 this.fetchData();
-              } else {
+            } else {
                 this.$message.error(response.msg || '重启服务器失败');
-              }
-            })
-            .catch(error => {
+            }
+          })
+          .catch(error => {
               this.$message.error('重启服务器失败: ' + (error.message || '未知错误'));
-            })
-            .finally(() => {
-              this.loading = false;
+          })
+          .finally(() => {
+            this.loading = false;
             });
         });
       }
@@ -1395,7 +1395,7 @@ export default {
 /* 响应式调整 */
 @media (max-width: 1200px) {
   .operation-buttons {
-    flex-direction: column;
+  flex-direction: column;
     align-items: flex-start;
   }
   

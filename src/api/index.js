@@ -1,6 +1,7 @@
 import request from './request';
 import config from './config';
 import axios from 'axios';
+import commandManager, { commandApi, COMMAND_TYPES } from './commandManager';
 
 // 添加一个通用的请求处理函数
 function apiRequest(method, url, data = null) {
@@ -688,6 +689,9 @@ export const roomConfigApi = {
 export function getBaseUrl() {
   return config.BASE_URL;
 }
+
+// 导出命令相关模块
+export { commandManager, commandApi, COMMAND_TYPES };
 
 export default {
   serverApi,
