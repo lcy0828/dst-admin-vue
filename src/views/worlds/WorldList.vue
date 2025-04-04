@@ -14,78 +14,109 @@
       </div>
     </div>
     
-    <el-card shadow="hover" class="world-list-card">
-      <div slot="header" class="card-header">
-        <span>所有世界</span>
-        <div>
-          <el-button style="margin-left: 10px;" size="small" icon="el-icon-refresh" @click="refreshWorlds">刷新</el-button>
-        </div>
-      </div>
+    <el-row :gutter="20">
+      <!-- 左侧房间分类 -->
+      <el-col :span="6">
+        <room-categories 
+          :rooms="rooms" 
+          @category-change="handleCategoryChange" 
+          @refresh="refreshWorlds" />
+      </el-col>
       
-      <el-table
-        :data="filteredWorlds"
-        style="width: 100%"
-        v-loading="loading"
-        @row-click="handleRowClick">
-        <el-table-column prop="name" label="世界名称" min-width="150"></el-table-column>
-        <el-table-column prop="type" label="世界类型" width="120">
-          <template slot-scope="scope">
-            <el-tag :type="scope.row.type === 'master' ? 'primary' : 'success'">
-              {{ scope.row.type === 'master' ? '主世界' : '洞穴' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="season" label="季节" width="120"></el-table-column>
-        <el-table-column prop="day" label="天数" width="100"></el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template slot-scope="scope">
-            <el-tag :type="scope.row.status === 'running' ? 'success' : 'info'" size="mini">
-              {{ scope.row.status === 'running' ? '运行中' : '已停止' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
-          <template slot-scope="scope">
-            <el-button 
-              :type="scope.row.status === 'running' ? 'danger' : 'success'" 
-              size="mini" 
-              @click.stop="toggleWorldStatus(scope.row)">
-              {{ scope.row.status === 'running' ? '停止' : '启动' }}
-            </el-button>
-            <el-button 
-              type="primary" 
-              size="mini" 
-              @click.stop="editWorld(scope.row)">编辑</el-button>
-            <el-dropdown trigger="click" @command="handleMoreCommands($event, scope.row)" @click.stop>
-              <el-button size="mini">
-                更多<i class="el-icon-arrow-down el-icon--right"></i>
-              </el-button>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="regenerate">重新生成</el-dropdown-item>
-                <el-dropdown-item command="backup">备份世界</el-dropdown-item>
-                <el-dropdown-item command="delete" divided>
-                  <span style="color: #F56C6C;">删除世界</span>
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+      <!-- 右侧世界列表 -->
+      <el-col :span="18">
+        <el-card shadow="hover" class="world-list-card">
+          <div slot="header" class="card-header">
+            <span>{{ getCategoryTitle() }}</span>
+            <div>
+              <el-button style="margin-left: 10px;" size="small" icon="el-icon-refresh" @click="refreshWorlds">刷新</el-button>
+            </div>
+          </div>
+          
+          <el-table
+            :data="filteredWorlds"
+            style="width: 100%"
+            v-loading="loading"
+            @row-click="handleRowClick">
+            <el-table-column prop="name" label="世界名称" min-width="150"></el-table-column>
+            <el-table-column prop="roomName" label="所属房间" min-width="120"></el-table-column>
+            <el-table-column prop="type" label="世界类型" width="120">
+              <template slot-scope="scope">
+                <el-tag :type="scope.row.type === 'master' || scope.row.type === 'forest' ? 'primary' : 'success'">
+                  {{ scope.row.type === 'master' || scope.row.type === 'forest' ? '主世界' : '洞穴' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="season" label="季节" width="120"></el-table-column>
+            <el-table-column prop="day" label="天数" width="100"></el-table-column>
+            <el-table-column prop="status" label="状态" width="100">
+              <template slot-scope="scope">
+                <el-tag :type="scope.row.status === 'running' ? 'success' : 'info'" size="mini">
+                  {{ scope.row.status === 'running' ? '运行中' : '已停止' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="220" fixed="right">
+              <template slot-scope="scope">
+                <el-button 
+                  :type="scope.row.status === 'running' ? 'danger' : 'success'" 
+                  size="mini" 
+                  @click.stop="toggleWorldStatus(scope.row)">
+                  {{ scope.row.status === 'running' ? '停止' : '启动' }}
+                </el-button>
+                <el-button 
+                  type="primary" 
+                  size="mini" 
+                  @click.stop="editWorld(scope.row)">编辑</el-button>
+                <el-dropdown trigger="click" @command="handleMoreCommands($event, scope.row)" @click.stop>
+                  <el-button size="mini">
+                    更多<i class="el-icon-arrow-down el-icon--right"></i>
+                  </el-button>
+                  <el-dropdown-menu slot="dropdown">
+                    <el-dropdown-item command="regenerate">重新生成</el-dropdown-item>
+                    <el-dropdown-item command="backup">备份世界</el-dropdown-item>
+                    <el-dropdown-item command="delete" divided>
+                      <span style="color: #F56C6C;">删除世界</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </el-dropdown>
+              </template>
+            </el-table-column>
+          </el-table>
+          
+          <!-- 无世界时的提示 -->
+          <div v-if="!loading && filteredWorlds.length === 0" class="empty-worlds">
+            <i class="el-icon-warning-outline"></i>
+            <p>没有找到符合条件的世界</p>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script>
+import { roomApi } from '../../api/index';
+import RoomCategories from '../../components/worlds/RoomCategories.vue';
+
 export default {
   name: 'WorldList',
+  components: {
+    RoomCategories
+  },
   data() {
     return {
       loading: false,
       searchQuery: '',
+      currentCategory: 'all',
+      rooms: [], // 房间列表
       worlds: [
+        // 示例数据
         {
           id: 1,
           name: '生存世界',
+          roomId: 1,
+          roomName: '生存房间',
           type: 'master',
           season: '秋季',
           day: 21,
@@ -95,6 +126,8 @@ export default {
         {
           id: 2,
           name: '生存洞穴',
+          roomId: 1,
+          roomName: '生存房间',
           type: 'cave',
           season: '秋季',
           day: 21,
@@ -104,6 +137,8 @@ export default {
         {
           id: 3,
           name: '无尽模式',
+          roomId: 2,
+          roomName: '无尽房间',
           type: 'master',
           season: '春季',
           day: 12,
@@ -117,12 +152,30 @@ export default {
     filteredWorlds() {
       let result = this.worlds;
       
+      // 按分类筛选
+      if (this.currentCategory !== 'all') {
+        if (this.currentCategory === 'active') {
+          result = result.filter(world => world.status === 'running');
+        } else if (this.currentCategory === 'inactive') {
+          result = result.filter(world => world.status !== 'running');
+        } else if (this.currentCategory === 'forest') {
+          result = result.filter(world => world.type === 'master' || world.type === 'forest');
+        } else if (this.currentCategory === 'cave') {
+          result = result.filter(world => world.type === 'cave');
+        } else if (this.currentCategory.startsWith('custom_')) {
+          // 自定义分类的筛选逻辑，这里需要根据实际情况实现
+          // 可以通过解析 currentCategory 来获取自定义分类的ID
+          // 示例: const customId = parseInt(this.currentCategory.split('_')[1]);
+        }
+      }
+      
       // 按搜索查询筛选
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         result = result.filter(world => 
           world.name.toLowerCase().includes(query) || 
-          world.description.toLowerCase().includes(query)
+          world.description.toLowerCase().includes(query) ||
+          (world.roomName && world.roomName.toLowerCase().includes(query))
         );
       }
       
@@ -130,18 +183,94 @@ export default {
     }
   },
   methods: {
+    getCategoryTitle() {
+      switch(this.currentCategory) {
+        case 'all':
+          return '所有世界';
+        case 'active':
+          return '活跃世界';
+        case 'inactive':
+          return '非活跃世界';
+        case 'forest':
+          return '主世界';
+        case 'cave':
+          return '洞穴世界';
+        case 'both':
+          return '混合房间世界';
+        default:
+          if (this.currentCategory.startsWith('custom_')) {
+            const customId = parseInt(this.currentCategory.split('_')[1]);
+            // 这里应该根据customId从自定义分类列表中找到对应的分类名称
+            return '自定义分类';
+          }
+          return '所有世界';
+      }
+    },
+    handleCategoryChange(category) {
+      this.currentCategory = category;
+      this.refreshWorlds();
+    },
     refreshWorlds() {
       this.loading = true;
       console.log("开始获取世界列表");
       
-      // 模拟API调用
-      setTimeout(() => {
-        this.loading = false;
-        this.$message({
-          message: '世界列表已刷新',
-          type: 'success'
+      // 加载房间列表
+      roomApi.getRoomList()
+        .then(response => {
+          if (response && response.data) {
+            this.rooms = response.data.map(room => ({
+              id: room.id || room.name,
+              name: room.name,
+              status: '', // 需要根据API响应添加状态字段
+              worlds: [] // 先初始化为空数组
+            }));
+            
+            // 获取各个房间的世界信息
+            const promises = this.rooms.map(room => 
+              roomApi.getRoomWorlds(room.name)
+                .then(worlds => {
+                  // 更新房间的世界信息
+                  const index = this.rooms.findIndex(r => r.id === room.id);
+                  if (index !== -1) {
+                    this.rooms[index].worlds = worlds.map(world => ({
+                      worldName: world.worldName,
+                      type: world.type
+                    }));
+                  }
+                  
+                  // 返回格式化的世界数据
+                  return worlds.map(world => ({
+                    id: `${room.id}_${world.worldName}`,
+                    name: world.worldName,
+                    roomId: room.id,
+                    roomName: room.name,
+                    type: world.type,
+                    season: '未知', // 这些信息可能需要额外API获取
+                    day: 0,
+                    status: 'unknown',
+                    description: `${room.name}的${world.type === 'forest' ? '主世界' : '洞穴'}`
+                  }));
+                })
+            );
+            
+            return Promise.all(promises)
+              .then(worldArrays => {
+                // 合并所有房间的世界数组
+                this.worlds = worldArrays.flat();
+              });
+          }
+        })
+        .catch(error => {
+          console.error('获取世界列表失败:', error);
+          this.$message.error('获取世界列表失败，请稍后重试');
+        })
+        .finally(() => {
+          this.loading = false;
+          this.$message({
+            message: '世界列表已刷新',
+            type: 'success'
+          });
         });
-      }, 1000);
     },
     createWorld() {
       this.$router.push('/worlds/settings');
@@ -320,5 +449,17 @@ export default {
 
 .el-table >>> .el-table__row:hover {
   background-color: #f5f7fa;
+}
+
+/* 空列表提示样式 */
+.empty-worlds {
+  padding: 40px 0;
+  text-align: center;
+  color: #909399;
+}
+
+.empty-worlds i {
+  font-size: 48px;
+  margin-bottom: 10px;
 }
 </style> 
