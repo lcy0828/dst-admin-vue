@@ -31,15 +31,11 @@
       <div class="mod-search-results">
         <!-- 加载中提示 -->
         <div v-if="searching" class="loading-container">
-          <el-row :gutter="20">
-            <el-col 
-              :xs="24" 
-              :sm="12" 
-              :md="8" 
-              :lg="6" 
+          <div class="mod-flex-container">
+            <div 
               v-for="index in 8" 
               :key="'skeleton-' + index" 
-              class="mod-card-col">
+              class="mod-flex-item">
               <div class="loading-card">
                 <div class="loading-image"></div>
                 <div class="loading-content">
@@ -52,66 +48,90 @@
                   </div>
                 </div>
               </div>
-            </el-col>
-          </el-row>
+            </div>
+          </div>
         </div>
         
         <!-- 搜索结果 -->
         <div v-else-if="searchResults.length > 0" class="mod-grid">
-          <el-row :gutter="20">
-            <el-col 
-              :xs="24" 
-              :sm="12" 
-              :md="8" 
-              :lg="6" 
+          <div class="mod-flex-container">
+            <div
               v-for="mod in searchResults" 
               :key="mod.id" 
-              class="mod-card-col">
-              <el-card class="mod-card" shadow="hover">
-                <div class="mod-card-image">
-                  <el-image 
-                    :src="mod.img || defaultImage" 
-                    lazy>
-                    <div slot="error" class="image-slot">
-                      <i class="el-icon-picture-outline"></i>
-                    </div>
-                  </el-image>
-                  <div class="mod-card-badge" v-if="mod.isInstalled">
+              class="mod-flex-item">
+              <el-card 
+                class="mod-card" 
+                :class="{'is-installed': mod.isInstalled}"
+                shadow="hover">
+                <div class="mod-card-header">
+                  <div class="mod-card-title" :title="mod.name">{{ mod.name }}</div>
+                  <div v-if="mod.isInstalled" class="status-switch">
                     <el-tag size="small" type="success">已安装</el-tag>
                   </div>
                 </div>
-                
+
                 <div class="mod-card-content">
-                  <div class="mod-card-title" :title="mod.name">{{ mod.name }}</div>
-                  <div class="mod-card-meta">
-                    <span class="mod-card-author">
-                      <i class="el-icon-user"></i> {{ mod.auth }}
-                    </span>
-                    <span class="mod-card-stats">
-                      <i class="el-icon-star-on"></i> {{ mod.sub }}
-                    </span>
+                  <div class="mod-card-image">
+                    <el-image 
+                      :src="mod.img || defaultImage" 
+                      fit="cover"
+                      lazy>
+                      <div slot="error" class="image-slot">
+                        <i class="el-icon-picture-outline"></i>
+                      </div>
+                    </el-image>
                   </div>
-                  <div class="mod-card-description" :title="mod.describe">
-                    {{ mod.describe || '暂无描述' }}
-                  </div>
-                  <div class="mod-card-version" v-if="mod.version">
-                    <span class="version-tag">{{ mod.version }}</span>
+                  
+                  <div class="mod-card-info">
+                    <div class="mod-card-author">
+                      <i class="el-icon-user"></i>
+                      <span>{{ mod.auth }}</span>
+                    </div>
+                    <div class="mod-card-version">
+                      <i class="el-icon-info"></i>
+                      <span>{{ mod.version }}</span>
+                    </div>
+                    <div class="mod-card-update">
+                      <i class="el-icon-time"></i>
+                      <span>{{ mod.time }}</span>
+                    </div>
+                    <div class="mod-card-subscribers">
+                      <i class="el-icon-user-solid"></i>
+                      <span>{{ mod.sub }} 订阅</span>
+                    </div>
+                    <div class="mod-card-rating" v-if="mod.rating_img">
+                      <i class="el-icon-star-on"></i>
+                      <span>{{ extractRating(mod.rating_img) }} 星</span>
+                    </div>
                   </div>
                 </div>
                 
                 <div class="mod-card-actions">
                   <el-button 
                     size="small" 
-                    type="primary" 
+                    :type="mod.isInstalled ? 'success' : 'primary'" 
                     :disabled="downloadingMods[mod.id]" 
                     :loading="downloadingMods[mod.id]"
                     @click="handleDownloadMod(mod)">
-                    {{ downloadingMods[mod.id] ? '下载中...' : '下载到服务器' }}
+                    <span v-if="mod.isInstalled">
+                      <i class="el-icon-refresh"></i> 更新
+                    </span>
+                    <span v-else>
+                      {{ downloadingMods[mod.id] ? '下载中...' : '下载' }}
+                    </span>
                   </el-button>
+                  <el-dropdown trigger="click" @command="handleCommand" size="small">
+                    <el-button size="small" type="text">
+                      更多<i class="el-icon-arrow-down el-icon--right"></i>
+                    </el-button>
+                    <el-dropdown-menu slot="dropdown">
+                      <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </el-dropdown>
                 </div>
               </el-card>
-            </el-col>
-          </el-row>
+            </div>
+          </div>
           
           <!-- 分页 -->
           <div class="pagination-container">
@@ -137,6 +157,72 @@
         </div>
       </div>
     </el-card>
+    
+    <!-- 模组详情对话框 -->
+    <el-dialog
+      title="模组详情"
+      :visible.sync="detailsDialogVisible"
+      width="700px"
+      class="mod-details-dialog"
+      :modal="false"
+      :append-to-body="true">
+      <div v-if="currentModInfo" class="mod-details-content">
+        <!-- 模组基本信息 -->
+        <div class="mod-details-header">
+          <el-image 
+            :src="currentModInfo.img || defaultImage" 
+            fit="cover"
+            class="mod-details-image">
+            <div slot="error" class="image-slot">
+              <i class="el-icon-picture-outline"></i>
+            </div>
+          </el-image>
+          
+          <div class="mod-details-info">
+            <h2 class="mod-details-name">{{ currentModInfo.name }}</h2>
+            <div class="mod-details-meta">
+              <span class="mod-details-author">
+                <i class="el-icon-user"></i> {{ currentModInfo.auth }}
+              </span>
+              <span class="mod-details-version">
+                <i class="el-icon-info"></i> v{{ currentModInfo.version }}
+              </span>
+              <span class="mod-details-update">
+                <i class="el-icon-time"></i> {{ currentModInfo.time }}
+              </span>
+              <span class="mod-details-subscribers" v-if="currentModInfo.sub">
+                <i class="el-icon-user-solid"></i> {{ currentModInfo.sub }} 订阅
+              </span>
+              <span class="mod-details-rating" v-if="currentModInfo.rating_img">
+                <i class="el-icon-star-on"></i> {{ extractRating(currentModInfo.rating_img) }} 星
+              </span>
+            </div>
+            <div class="mod-details-status" v-if="currentModInfo.isInstalled">
+              <el-tag size="medium" type="success">已安装</el-tag>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 模组描述 -->
+        <div class="mod-details-description" v-if="currentModInfo.describe">
+          <h3>模组描述</h3>
+          <div class="description-content">
+            {{ currentModInfo.describe || '该模组暂无描述' }}
+          </div>
+        </div>
+      </div>
+      
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="detailsDialogVisible = false">关闭</el-button>
+        <el-button 
+          type="primary" 
+          :disabled="downloadingMods[currentModInfo?.id]"
+          :loading="downloadingMods[currentModInfo?.id]"
+          @click="handleDownloadMod(currentModInfo)">
+          {{ currentModInfo?.isInstalled ? '更新模组' : '下载模组' }}
+        </el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -157,10 +243,17 @@ export default {
       pageSize: 20,
       currentPage: 1,
       defaultImage: 'https://placehold.co/200x200/409EFF/white?text=MOD',
-      downloadingMods: {} // 跟踪正在下载的模组
+      downloadingMods: {}, // 跟踪正在下载的模组
+      installedMods: [], // 存储已安装的模组信息
+      loadingInstalledMods: false, // 加载已安装模组的状态
+      detailsDialogVisible: false, // 详情对话框可见性
+      currentModInfo: null // 当前查看的模组
     };
   },
   created() {
+    // 获取已安装模组列表
+    this.getInstalledMods();
+    
     const urlParams = new URLSearchParams(window.location.search);
     const keyword = urlParams.get('keyword');
     
@@ -170,6 +263,26 @@ export default {
     }
   },
   methods: {
+    // 获取已安装模组列表
+    getInstalledMods() {
+      this.loadingInstalledMods = true;
+      modApi.getServerList()
+        .then(res => {
+          this.installedMods = res || [];
+        })
+        .catch(err => {
+          console.error('获取已安装模组失败:', err);
+        })
+        .finally(() => {
+          this.loadingInstalledMods = false;
+        });
+    },
+    
+    // 检查模组是否已安装
+    isModInstalled(modId) {
+      return this.installedMods.some(mod => mod.modid === modId);
+    },
+    
     searchMods() {
       if (!this.searchForm.keyword.trim()) {
         this.$message.warning('请输入搜索关键词');
@@ -188,7 +301,11 @@ export default {
       itemApi.searchItems({modname: encodedKeyword})
         .then(data => {
           if (Array.isArray(data)) {
-            this.searchResults = data;
+            // 标记已安装的模组
+            this.searchResults = data.map(mod => ({
+              ...mod,
+              isInstalled: this.isModInstalled(mod.id)
+            }));
             this.totalResults = data.length;
           } else {
             this.searchResults = [];
@@ -204,6 +321,27 @@ export default {
         });
     },
     handleDownloadMod(mod) {
+      let {id, img, name, time, version, sub, rating_img, auth} = mod;
+      
+      // 如果模组已安装，询问是否要更新
+      if (mod.isInstalled) {
+        this.$confirm(`模组 "${name}" 已安装，是否要更新？`, '提示', {
+          confirmButtonText: '更新',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          this.downloadMod(mod);
+        }).catch(() => {
+          // 用户取消，不执行任何操作
+        });
+      } else {
+        // 直接下载
+        this.downloadMod(mod);
+      }
+    },
+    
+    // 实际执行下载的方法
+    downloadMod(mod) {
       let {id, img, name, time, version, sub, rating_img, auth} = mod;
       let params = {
         auth,
@@ -230,7 +368,14 @@ export default {
         .then(() => {
           // 关闭下载中消息
           loadingMessage.close();
-          this.$message.success('下载成功');
+          
+          // 更新模组状态
+          this.$set(mod, 'isInstalled', true);
+          
+          // 刷新已安装模组列表
+          this.getInstalledMods();
+          
+          this.$message.success(mod.isInstalled ? '更新成功' : '下载成功');
           this.downloadingMods[id] = false;
         })
         .catch(error => {
@@ -255,6 +400,35 @@ export default {
     goToModList() {
       this.$router.push('/mods');
     },
+
+    showModDetails(mod) {
+      this.currentModInfo = mod;
+      this.detailsDialogVisible = true;
+    },
+
+    // 提取星级评分
+    extractRating(ratingImg) {
+      if (!ratingImg) return '';
+      try {
+        // 从形如"https://community.fastly.steamstatic.com/public/images/sharedfiles/5-star.png"的图片URL提取星级
+        const match = ratingImg.match(/(\d+)-star/);
+        if (match && match[1]) {
+          return match[1];
+        }
+        return '';
+      } catch (error) {
+        return '';
+      }
+    },
+    
+    // 处理下拉菜单命令
+    handleCommand(command) {
+      switch(command.type) {
+        case 'details':
+          this.showModDetails(command.mod);
+          break;
+      }
+    }
   }
 };
 </script>
@@ -288,6 +462,36 @@ export default {
   margin-bottom: 20px;
 }
 
+.mod-flex-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.mod-flex-item {
+  flex: 0 0 calc(25% - 15px);
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+@media (max-width: 1200px) {
+  .mod-flex-item {
+    flex: 0 0 calc(33.333% - 14px);
+  }
+}
+
+@media (max-width: 992px) {
+  .mod-flex-item {
+    flex: 0 0 calc(50% - 10px);
+  }
+}
+
+@media (max-width: 768px) {
+  .mod-flex-item {
+    flex: 0 0 100%;
+  }
+}
+
 .mod-card-col {
   margin-bottom: 20px;
 }
@@ -297,35 +501,54 @@ export default {
   transition: all 0.3s;
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .mod-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.mod-card-header {
+  border-bottom: 1px solid #EBEEF5;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mod-card-title {
+  font-weight: bold;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.status-switch {
+  flex-shrink: 0;
+}
+
+.mod-card-content {
+  display: flex;
+  margin-bottom: 15px;
 }
 
 .mod-card-image {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
   position: relative;
-  width: 100%;
-  height: 0;
-  padding-bottom: 56.25%; /* 16:9 比例 */
+  margin-right: 15px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .mod-card-image .el-image {
-  position: absolute;
-  top: 0;
-  left: 0;
+  width: 100%;
   height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.mod-card:hover .mod-card-image .el-image {
-  transform: scale(1.05);
 }
 
 .image-slot {
@@ -334,91 +557,45 @@ export default {
   align-items: center;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #f5f7fa, #e4e8f0);
+  background-color: #f5f7fa;
   color: #909399;
 }
 
-.image-slot i {
-  font-size: 24px;
-  opacity: 0.7;
-}
-
-.mod-card-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 1;
-}
-
-.mod-card-badge .el-tag {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  font-weight: bold;
-}
-
-.mod-card-content {
-  padding: 15px;
+.mod-card-info {
   flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-.mod-card-title {
-  font-weight: bold;
-  font-size: 16px;
-  margin-bottom: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.mod-card-meta {
-  display: flex;
   justify-content: space-between;
-  font-size: 12px;
-  color: #606266;
-  margin-bottom: 10px;
+  font-size: 13px;
 }
 
 .mod-card-author,
-.mod-card-stats {
+.mod-card-version,
+.mod-card-update,
+.mod-card-subscribers,
+.mod-card-rating {
   display: flex;
   align-items: center;
+  margin-bottom: 5px;
 }
 
 .mod-card-author i,
-.mod-card-stats i {
+.mod-card-version i,
+.mod-card-update i,
+.mod-card-subscribers i,
+.mod-card-rating i {
   margin-right: 5px;
-}
-
-.mod-card-description {
-  font-size: 13px;
-  color: #606266;
-  margin-bottom: 10px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-}
-
-.mod-card-version {
-  margin-bottom: 10px;
-}
-
-.version-tag {
-  background-color: #f0f0f0;
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #606266;
+  width: 16px;
+  text-align: center;
+  color: #909399;
 }
 
 .mod-card-actions {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid #EBEEF5;
+  margin-top: auto;
   padding-top: 10px;
+  border-top: 1px solid #EBEEF5;
 }
 
 .pagination-container {
@@ -466,26 +643,13 @@ export default {
   border-bottom: 1px solid #EBEEF5;
 }
 
-.mod-details-preview {
-  width: 250px;
-  height: 140px;
+.mod-details-image {
+  width: 120px;
+  height: 120px;
   margin-right: 20px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
-}
-
-.mod-details-preview:hover {
-  transform: scale(1.02);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-}
-
-.mod-details-preview .el-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .mod-details-info {
@@ -507,8 +671,10 @@ export default {
 }
 
 .mod-details-author,
+.mod-details-version,
 .mod-details-update,
-.mod-details-subscribers {
+.mod-details-subscribers,
+.mod-details-rating {
   margin-right: 15px;
   margin-bottom: 5px;
   display: flex;
@@ -516,17 +682,11 @@ export default {
 }
 
 .mod-details-author i,
+.mod-details-version i,
 .mod-details-update i,
-.mod-details-subscribers i {
+.mod-details-subscribers i,
+.mod-details-rating i {
   margin-right: 5px;
-}
-
-.mod-details-version {
-  margin-top: 15px;
-}
-
-.mod-details-actions {
-  margin-top: 15px;
 }
 
 .mod-details-description {
@@ -667,5 +827,14 @@ export default {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
+}
+
+.mod-card.is-installed {
+  border: 2px solid #67c23a;
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.2);
+}
+
+.mod-card.is-installed:hover {
+  box-shadow: 0 8px 16px rgba(103, 194, 58, 0.3);
 }
 </style> 

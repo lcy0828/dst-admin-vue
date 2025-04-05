@@ -42,15 +42,11 @@
       <!-- 模组列表 -->
       <div v-loading="loading" class="mod-list-container" element-loading-background="rgba(255, 255, 255, 0.7)">
         <div v-if="modsList.length > 0" class="mod-grid">
-          <el-row :gutter="20">
-            <el-col 
-              :xs="24" 
-              :sm="12" 
-              :md="8" 
-              :lg="6" 
+          <div class="mod-flex-container">
+            <div 
               v-for="mod in filteredMods" 
               :key="mod.id" 
-              class="mod-card-col">
+              class="mod-flex-item">
               <el-card :class="['mod-card', {'is-disabled': !mod.enabled}]" shadow="hover">
                 <div class="mod-card-header">
                   <div class="mod-card-title" :title="mod.name">{{ mod.name }}</div>
@@ -121,8 +117,8 @@
                   </el-dropdown>
                 </div>
               </el-card>
-            </el-col>
-          </el-row>
+            </div>
+          </div>
         </div>
         
         <!-- 无模组提示 -->
@@ -619,8 +615,34 @@ export default {
   margin-bottom: 20px;
 }
 
-.mod-card-col {
+.mod-flex-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.mod-flex-item {
+  flex: 0 0 calc(25% - 15px);
   margin-bottom: 20px;
+  min-width: 0;
+}
+
+@media (max-width: 1200px) {
+  .mod-flex-item {
+    flex: 0 0 calc(33.333% - 14px);
+  }
+}
+
+@media (max-width: 992px) {
+  .mod-flex-item {
+    flex: 0 0 calc(50% - 10px);
+  }
+}
+
+@media (max-width: 768px) {
+  .mod-flex-item {
+    flex: 0 0 100%;
+  }
 }
 
 .mod-card {
