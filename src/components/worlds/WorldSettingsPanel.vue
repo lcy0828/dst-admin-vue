@@ -10,7 +10,38 @@
       </el-input>
     </div>
     
-    <el-tabs type="card" class="settings-tabs">
+    <div v-if="showGroup">
+      <div 
+        v-for="(group, groupKey) in filteredSettings" 
+        :key="groupKey"
+      >
+        <div 
+          v-for="category in getSortedCategories(group)" 
+          :key="category.key" 
+          class="settings-category"
+        >
+          <div class="category-header">
+            <h4>{{ category.value.text }}</h4>
+          </div>
+          
+          <div class="settings-grid">
+            <setting-item
+              v-for="(item, itemKey) in category.value.items" 
+              :key="itemKey"
+              :item="item"
+              :item-key="itemKey"
+              :category="category.value"
+              :world-type="worldType"
+              :is-changed="isItemChanged(item, itemKey)"
+              v-show="matchesSearch(item.text)"
+              @setting-change="handleSettingChange"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <el-tabs v-else type="card" class="settings-tabs">
       <el-tab-pane 
         v-for="(group, groupKey) in settings" 
         :key="groupKey" 
@@ -68,6 +99,10 @@ export default {
     searchText: {
       type: String,
       default: ''
+    },
+    showGroup: {
+      type: String,
+      default: ''
     }
   },
   data() {
@@ -75,6 +110,18 @@ export default {
       descriptionCache: {},
       itemOptionsCache: {}
     };
+  },
+  computed: {
+    filteredSettings() {
+      if (!this.showGroup || !this.settings) return this.settings;
+      
+      // 只返回指定的组
+      const result = {};
+      if (this.settings[this.showGroup]) {
+        result[this.showGroup] = this.settings[this.showGroup];
+      }
+      return result;
+    }
   },
   methods: {
     getSortedCategories(group) {

@@ -40,7 +40,10 @@
         <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="6" v-for="room in filteredRooms" :key="room.id" class="room-col">
           <el-card shadow="hover" class="save-item" body-style="padding: 0; height: 100%; display: flex; flex-direction: column;">
             <div class="save-item-content">
-              <h4 class="save-name">{{ room.name }}</h4>
+              <h4 class="save-name">
+                {{ room.name }}
+                <el-tag size="mini" type="success" v-if="room.isRunning" class="running-tag">运行中</el-tag>
+              </h4>
               <div class="save-worlds" v-if="room.worlds && room.worlds.length">
                 <div class="world-category forest" v-if="getWorldsByType(room.worlds, 'forest').length > 0">
                   <span class="world-category-title">主世界:</span>
@@ -81,7 +84,18 @@
             </div>
             <div class="save-actions">
               <el-button-group>
-                <el-button type="success" size="small" @click="startRoom(room)" icon="el-icon-video-play">开启</el-button>
+                <el-button 
+                  v-if="!room.isRunning" 
+                  type="success" 
+                  size="small" 
+                  @click="startRoom(room)" 
+                  icon="el-icon-video-play">开启</el-button>
+                <el-button 
+                  v-else 
+                  type="danger" 
+                  size="small" 
+                  @click="stopRoom(room)" 
+                  icon="el-icon-video-pause">停止</el-button>
                 <el-button type="primary" size="small" @click="editRoom(room)" icon="el-icon-edit">编辑</el-button>
               </el-button-group>
               <el-dropdown trigger="click" @command="handleDropdownCommand($event, room)" style="margin-left: 10px;">
@@ -188,6 +202,7 @@ export default {
       loading: false,
       searchQuery: '',
       rooms: [],
+      serverList: [],
       specialListsVisible: false,
       serverTokenVisible: false,
       logViewerVisible: false,
@@ -202,7 +217,9 @@ export default {
         worldType: 'all',
         serverMode: '32'
       },
-      startLoading: false
+      startLoading: false,
+      isRefreshing: false,
+      lastRefreshTime: 0
     }
   },
   computed: {
@@ -221,7 +238,20 @@ export default {
     }
   },
   created() {
+    // 在created阶段加载数据
     this.refreshRooms();
+  },
+  mounted() {
+    // 在mounted阶段只检查滚动，不再重复加载数据
+    this.$nextTick(() => {
+      this.checkScrollable();
+    });
+    // 窗口大小变化时重新检查滚动
+    window.addEventListener('resize', this.checkScrollable);
+  },
+  beforeDestroy() {
+    // 移除事件监听器
+    window.removeEventListener('resize', this.checkScrollable);
   },
   methods: {
     formatDate(timestamp) {
@@ -230,90 +260,64 @@ export default {
       return date.toLocaleString();
     },
     refreshRooms() {
+      // 如果正在刷新或者距离上次刷新不足2秒，则不进行刷新
+      const now = Date.now();
+      if (this.isRefreshing || (now - this.lastRefreshTime < 2000)) {
+        return;
+      }
+      
+      this.isRefreshing = true;
+      this.lastRefreshTime = now;
       this.loading = true;
-      // 尝试使用新的API获取房间列表
-      axios.get(`${config.BASE_URL}/dstserver/list`)
-        .then(response => {
-          if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
-            // 处理新API格式的数据，不再对unknown类型进行推断
-            this.rooms = response.data.data.map(item => ({
+      
+      // 使用Promise.all同时请求两个接口
+      Promise.all([
+        axios.get(`${config.BASE_URL}/dstserver/list`),
+        axios.get(`${config.BASE_URL}/tmux/list`)
+      ])
+        .then(([roomsResponse, serversResponse]) => {
+          // 处理房间列表数据
+          if (roomsResponse && roomsResponse.data && roomsResponse.data.status === 200 && Array.isArray(roomsResponse.data.data)) {
+            this.rooms = roomsResponse.data.data.map(item => ({
               id: item.name,
               name: item.name,
               savepath: item.savepath || '',
               worlds: (item.worlds || []).map(world => ({
                 name: world.name,
-                type: world.type // 保留原始type值
+                type: world.type
               })),
-              updateTime: item.updateTime || new Date().toISOString()
+              updateTime: item.updateTime || new Date().toISOString(),
+              isRunning: false // 默认设置为未运行
             }));
             
-            this.$message({
-              message: '房间列表已刷新',
-              type: 'success'
-            });
-            this.loading = false;
-          } else {
-            this.fetchRoomsFromOldAPI();
-          }
-        })
-        .catch(error => {
-          this.fetchRoomsFromOldAPI();
-        });
-    },
-    
-    // 从旧API获取房间列表
-    fetchRoomsFromOldAPI() {
-      roomApi.getRoomList()
-        .then(response => {
-          console.log("旧API房间列表响应:", response);
-          // 检查response直接是否为数组(没有经过状态包装的情况)
-          if (Array.isArray(response)) {
-            this.rooms = response.map(item => ({
-              id: item.name,
-              ...item,
-              // 如果没有worlds属性，添加一个空数组
-              worlds: item.worlds || []
-            }));
-            this.$message({
-              message: '房间列表已刷新',
-              type: 'success'
-            });
-          } 
-          // 检查标准的状态+数据格式
-          else if (response && response.data) {
-            // 检查data本身是否为数组
-            if (Array.isArray(response.data)) {
-              this.rooms = response.data.map(item => ({
-                id: item.name,
-                ...item,
-                worlds: item.worlds || []
-              }));
-            } 
-            // 检查data.data是否为数组(嵌套数据结构)
-            else if (response.data.data && Array.isArray(response.data.data)) {
-              this.rooms = response.data.data.map(item => ({
-                id: item.name,
-                ...item,
-                worlds: item.worlds || []
-              }));
-            } else {
-              throw new Error('返回数据格式不是预期的数组');
+            // 处理服务器列表数据
+            if (serversResponse && serversResponse.data && serversResponse.data.status === 200) {
+              this.serverList = serversResponse.data.data || [];
+              
+              // 合并数据 - 标记运行中的房间
+              this.rooms.forEach(room => {
+                // 检查该房间的任何世界是否正在运行
+                const runningServer = this.serverList.find(server => 
+                  server.cluster === room.name
+                );
+                room.isRunning = !!runningServer;
+              });
             }
             
-            this.$message({
-              message: '房间列表已刷新',
-              type: 'success'
-            });
+            this.$message.success('房间列表已刷新');
+            console.log('Refreshed rooms and server status at', new Date().toLocaleTimeString());
           } else {
-            throw new Error('API返回数据格式异常');
+            throw new Error('获取房间列表失败');
           }
         })
         .catch(error => {
-          console.error("获取房间列表失败:", error);
-          this.$message.error('获取房间列表失败: ' + (error.message || '未知错误'));
+          console.error("获取数据失败:", error);
+          this.$message.error('获取数据失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.loading = false;
+          this.isRefreshing = false;
+          this.$nextTick(() => this.checkScrollable());
         });
     },
     createRoom() {
@@ -378,6 +382,8 @@ export default {
           })
           .then(responses => {
             this.$message.success(`房间 ${this.selectedRoom.name} 的所有世界已启动`);
+            // 直接更新房间状态，而不是重新请求
+            this.selectedRoom.isRunning = true;
           })
           .catch(error => {
             this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
@@ -415,6 +421,8 @@ export default {
           .then(responses => {
             if (responses) {
               this.$message.success(`房间 ${this.selectedRoom.name} 的其他世界已启动`);
+              // 直接更新房间状态，而不是重新请求
+              this.selectedRoom.isRunning = true;
             }
           })
           .catch(error => {
@@ -453,6 +461,8 @@ export default {
           .then(responses => {
             const worldType = this.startForm.worldType === 'forest' ? '森林' : '洞穴';
             this.$message.success(`房间 ${this.selectedRoom.name} 的${worldType}世界已启动`);
+            // 直接更新房间状态，而不是重新请求
+            this.selectedRoom.isRunning = true;
           })
           .catch(error => {
             this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
@@ -518,10 +528,19 @@ export default {
         type: 'info'
       }).then(() => {
         // 调用备份房间API
-        this.$message({
-          type: 'success',
-          message: `已备份房间 ${room.name}`
-        });
+        axios.post(`${config.BASE_URL}/dstserver/backup`, {
+          name: room.name
+        })
+          .then(response => {
+            if (response.data && response.data.status === 200) {
+              this.$message.success(`已备份房间 ${room.name}`);
+            } else {
+              this.$message.error(response.data.msg || '备份房间失败');
+            }
+          })
+          .catch(error => {
+            this.$message.error('备份房间失败: ' + (error.message || '未知错误'));
+          });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -536,12 +555,27 @@ export default {
         type: 'warning'
       }).then(() => {
         // 调用删除房间API
-        this.$message({
-          type: 'success',
-          message: `已删除房间 ${room.name}`
-        });
-        // 刷新房间列表
-        this.refreshRooms();
+        axios.post(`${config.BASE_URL}/dstserver/delete`, {
+          name: room.name
+        })
+          .then(response => {
+            if (response.data && response.data.status === 200) {
+              this.$message.success(`已删除房间 ${room.name}`);
+              // 直接从当前列表中移除该房间
+              const index = this.rooms.findIndex(item => item.id === room.id);
+              if (index !== -1) {
+                this.rooms.splice(index, 1);
+              }
+            } else {
+              this.$message.error(response.data.msg || '删除房间失败');
+              // 如果删除失败，则刷新房间列表
+              this.refreshRooms();
+            }
+          })
+          .catch(error => {
+            this.$message.error('删除房间失败: ' + (error.message || '未知错误'));
+            this.refreshRooms();
+          });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -555,6 +589,48 @@ export default {
       return worlds.filter(world => {
         // 严格使用API返回的type字段
         return world.type === type;
+      });
+    },
+    // 检查世界列表是否可滚动
+    checkScrollable() {
+      this.$nextTick(() => {
+        const worldsElements = document.querySelectorAll('.save-worlds');
+        worldsElements.forEach(el => {
+          if (el.scrollHeight > el.clientHeight) {
+            el.classList.add('scrollable');
+          } else {
+            el.classList.remove('scrollable');
+          }
+        });
+      });
+    },
+    // 停止房间
+    stopRoom(room) {
+      this.$confirm(`确定要停止房间 "${room.name}" 吗?`, '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        axios.post(`${config.BASE_URL}/tmux/stop`, {
+          cluster: room.name
+        })
+          .then(response => {
+            if (response.data && response.data.status === 200) {
+              this.$message.success(`房间 ${room.name} 已停止`);
+              // 更新房间状态
+              room.isRunning = false;
+            } else {
+              this.$message.error(response.data.msg || '停止房间失败');
+            }
+          })
+          .catch(error => {
+            this.$message.error('停止房间失败: ' + (error.message || '未知错误'));
+          });
+      }).catch(() => {
+        this.$message({
+          type: 'info',
+          message: '已取消操作'
+        });
       });
     }
   }
@@ -655,7 +731,7 @@ export default {
     
     .save-item {
       width: 100%;
-      height: 320px !important;
+      height: 350px !important;
       margin-bottom: 0;
       display: flex;
       flex-direction: column;
@@ -723,12 +799,51 @@ export default {
         }
         
         .save-worlds {
-          height: 120px;
+          height: 150px;
           margin: 15px 0;
           flex: 1;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
+          border-radius: 4px;
+          position: relative;
+          
+          /* 添加渐变阴影提示滚动 */
+          &::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 15px;
+            background: linear-gradient(to top, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+            pointer-events: none;
+            opacity: 0.7;
+            display: none;
+          }
+          
+          &.scrollable::after {
+            display: block;
+          }
+          
+          /* 自定义滚动条样式 */
+          &::-webkit-scrollbar {
+            width: 6px;
+          }
+          
+          &::-webkit-scrollbar-track {
+            background: #f5f5f5;
+            border-radius: 4px;
+          }
+          
+          &::-webkit-scrollbar-thumb {
+            background: #dcdfe6;
+            border-radius: 4px;
+          }
+          
+          &::-webkit-scrollbar-thumb:hover {
+            background: #c0c4cc;
+          }
           
           .world-category {
             margin-bottom: 12px;
@@ -742,28 +857,35 @@ export default {
               font-weight: 500;
               color: #606266;
               margin-right: 10px;
-              display: inline-block;
+              display: block;
               min-width: 60px;
               position: relative;
               padding-left: 20px;
+              margin-bottom: 6px;
               
               &::before {
                 position: absolute;
                 left: 0;
+                top: 2px;
                 font-family: 'element-icons';
                 font-size: 14px;
               }
             }
             
             .world-tags {
-              display: inline-flex;
+              display: flex;
               flex-wrap: wrap;
+              width: 100%;
               
               .world-tag {
                 margin-right: 8px;
                 margin-bottom: 8px;
                 border-radius: 12px;
                 padding: 2px 10px;
+                max-width: 100%;
+                white-space: nowrap;
+                text-overflow: ellipsis;
+                overflow: hidden;
               }
             }
             
@@ -851,6 +973,16 @@ export default {
             &:hover, &:focus {
               background-color: #66b1ff;
               border-color: #66b1ff;
+            }
+          }
+          
+          &.el-button--danger {
+            background-color: #F56C6C;
+            border-color: #F56C6C;
+            
+            &:hover, &:focus {
+              background-color: #f78989;
+              border-color: #f78989;
             }
           }
           
@@ -946,5 +1078,34 @@ export default {
 
 .room-col {
   margin-bottom: 24px;
+}
+
+/* 运行状态样式 */
+.running-tag {
+  margin-left: 8px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+  height: 20px !important;
+  line-height: 18px !important;
+  background-color: #67C23A !important;
+  border-color: #67C23A !important;
+  color: #fff !important;
+  padding: 0 7px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  position: relative;
+  
+  &::before {
+    content: '•';
+    display: inline-block;
+    margin-right: 4px;
+    animation: blink 1.5s infinite;
+  }
+}
+
+@keyframes blink {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
 }
 </style> 

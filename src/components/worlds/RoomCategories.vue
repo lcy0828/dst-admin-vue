@@ -2,71 +2,77 @@
   <div class="room-categories">
     <div class="categories-header">
       <h3>房间分类</h3>
-      <el-button type="text" @click="refreshCategories" icon="el-icon-refresh">刷新</el-button>
+      <el-button type="text" @click="refreshCategories" icon="el-icon-refresh" size="small">刷新</el-button>
     </div>
     
-    <el-card shadow="hover" class="category-list">
-      <el-menu 
-        :default-active="activeCategory" 
-        @select="handleCategorySelect">
-        <el-menu-item index="all">
-          <i class="el-icon-s-grid"></i>
-          <span slot="title">所有房间</span>
-        </el-menu-item>
-        
-        <el-menu-item index="active">
-          <i class="el-icon-video-play"></i>
-          <span slot="title">活跃房间</span>
-          <el-badge :value="getCountByCategory('active')" class="category-badge" type="primary" v-if="getCountByCategory('active') > 0" />
-        </el-menu-item>
-        
-        <el-menu-item index="inactive">
-          <i class="el-icon-video-pause"></i>
-          <span slot="title">非活跃房间</span>
-          <el-badge :value="getCountByCategory('inactive')" class="category-badge" v-if="getCountByCategory('inactive') > 0" />
-        </el-menu-item>
-        
-        <el-submenu index="worldTypes">
-          <template slot="title">
-            <i class="el-icon-map-location"></i>
-            <span>按世界类型</span>
-          </template>
-          <el-menu-item index="forest">
+    <div class="category-list">
+      <div class="menu-item" :class="{'active': activeCategory === 'all'}" @click="handleCategorySelect('all')">
+        <i class="el-icon-s-grid"></i>
+        <span>所有房间</span>
+      </div>
+      
+      <div class="menu-item" :class="{'active': activeCategory === 'active'}" @click="handleCategorySelect('active')">
+        <i class="el-icon-video-play"></i>
+        <span>活跃房间</span>
+        <div class="badge" v-if="getCountByCategory('active') > 0">{{getCountByCategory('active')}}</div>
+      </div>
+      
+      <div class="menu-item" :class="{'active': activeCategory === 'inactive'}" @click="handleCategorySelect('inactive')">
+        <i class="el-icon-video-pause"></i>
+        <span>非活跃房间</span>
+        <div class="badge" v-if="getCountByCategory('inactive') > 0">{{getCountByCategory('inactive')}}</div>
+      </div>
+      
+      <div class="submenu">
+        <div class="submenu-title" @click="toggleSubmenu('worldTypes')">
+          <i class="el-icon-map-location"></i>
+          <span>按世界类型</span>
+          <i class="el-icon-arrow-down submenu-arrow" :class="{'is-open': submenuOpen.worldTypes}"></i>
+        </div>
+        <div class="submenu-content" v-show="submenuOpen.worldTypes">
+          <div class="menu-item submenu-item" :class="{'active': activeCategory === 'forest'}" @click="handleCategorySelect('forest')">
             <i class="el-icon-sunny"></i>
-            <span slot="title">主世界</span>
-            <el-badge :value="getCountByCategory('forest')" class="category-badge" v-if="getCountByCategory('forest') > 0" />
-          </el-menu-item>
-          <el-menu-item index="cave">
+            <span>主世界</span>
+            <div class="badge" v-if="getCountByCategory('forest') > 0">{{getCountByCategory('forest')}}</div>
+          </div>
+          <div class="menu-item submenu-item" :class="{'active': activeCategory === 'cave'}" @click="handleCategorySelect('cave')">
             <i class="el-icon-moon"></i>
-            <span slot="title">洞穴</span>
-            <el-badge :value="getCountByCategory('cave')" class="category-badge" v-if="getCountByCategory('cave') > 0" />
-          </el-menu-item>
-          <el-menu-item index="both">
+            <span>洞穴</span>
+            <div class="badge" v-if="getCountByCategory('cave') > 0">{{getCountByCategory('cave')}}</div>
+          </div>
+          <div class="menu-item submenu-item" :class="{'active': activeCategory === 'both'}" @click="handleCategorySelect('both')">
             <i class="el-icon-connection"></i>
-            <span slot="title">混合房间</span>
-            <el-badge :value="getCountByCategory('both')" class="category-badge" v-if="getCountByCategory('both') > 0" />
-          </el-menu-item>
-        </el-submenu>
-        
-        <el-submenu index="custom" v-if="customCategories.length > 0">
-          <template slot="title">
-            <i class="el-icon-collection-tag"></i>
-            <span>自定义分类</span>
-          </template>
-          <el-menu-item v-for="category in customCategories" :key="category.id" :index="'custom_' + category.id">
+            <span>混合房间</span>
+            <div class="badge" v-if="getCountByCategory('both') > 0">{{getCountByCategory('both')}}</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="submenu" v-if="customCategories.length > 0">
+        <div class="submenu-title" @click="toggleSubmenu('custom')">
+          <i class="el-icon-collection-tag"></i>
+          <span>自定义分类</span>
+          <i class="el-icon-arrow-down submenu-arrow" :class="{'is-open': submenuOpen.custom}"></i>
+        </div>
+        <div class="submenu-content" v-show="submenuOpen.custom">
+          <div class="menu-item submenu-item" 
+               v-for="category in customCategories" 
+               :key="category.id" 
+               :class="{'active': activeCategory === 'custom_' + category.id}" 
+               @click="handleCategorySelect('custom_' + category.id)">
             <i :class="category.icon || 'el-icon-folder'"></i>
-            <span slot="title">{{ category.name }}</span>
-            <el-badge :value="getCountByCategory('custom', category.id)" class="category-badge" v-if="getCountByCategory('custom', category.id) > 0" />
-          </el-menu-item>
-        </el-submenu>
-      </el-menu>
+            <span>{{ category.name }}</span>
+            <div class="badge" v-if="getCountByCategory('custom', category.id) > 0">{{getCountByCategory('custom', category.id)}}</div>
+          </div>
+        </div>
+      </div>
       
       <div class="category-actions">
         <el-button type="text" @click="showAddCategoryDialog" size="small">
           <i class="el-icon-plus"></i> 添加分类
         </el-button>
       </div>
-    </el-card>
+    </div>
     
     <!-- 添加分类对话框 -->
     <el-dialog
@@ -124,7 +130,13 @@ export default {
           name: '创造服务器',
           icon: 'el-icon-heart'
         }
-      ]
+      ],
+      isRefreshing: false,
+      lastRefreshTime: 0,
+      submenuOpen: {
+        worldTypes: true,
+        custom: false
+      }
     }
   },
   methods: {
@@ -132,9 +144,26 @@ export default {
       this.activeCategory = index;
       this.$emit('category-change', index);
     },
+    toggleSubmenu(menu) {
+      this.$set(this.submenuOpen, menu, !this.submenuOpen[menu]);
+    },
     refreshCategories() {
-      // 刷新分类统计数据
+      // 如果正在刷新或者距离上次刷新不足2秒，则不进行刷新
+      const now = Date.now();
+      if (this.isRefreshing || (now - this.lastRefreshTime < 2000)) {
+        return;
+      }
+      
+      this.isRefreshing = true;
+      this.lastRefreshTime = now;
+      
+      // 发出刷新请求给父组件
       this.$emit('refresh');
+      
+      // 重置状态
+      setTimeout(() => {
+        this.isRefreshing = false;
+      }, 2000);
     },
     getCountByCategory(category, customId = null) {
       switch(category) {
@@ -208,33 +237,175 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .categories-header h3 {
   margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  position: relative;
+  padding-left: 12px;
+  letter-spacing: 0.5px;
+}
+
+.categories-header h3::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  background-color: #409EFF;
+  border-radius: 2px;
 }
 
 .category-list {
-  border-radius: 4px;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #fff;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
 }
 
-.el-menu {
-  border-right: none;
+/* 菜单项基础样式 */
+.menu-item {
+  position: relative;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background-color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: center;
 }
 
-.el-menu-item, .el-submenu__title {
-  height: 45px;
-  line-height: 45px;
-}
-
-.category-badge {
-  margin-top: 14px;
-}
-
-.category-actions {
-  padding: 10px;
-  border-top: 1px solid #ebeef5;
+.menu-item i {
+  font-size: 16px;
+  margin-right: 8px;
+  color: #909399;
+  width: 24px;
   text-align: center;
+}
+
+.menu-item span {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #303133;
+}
+
+.menu-item:hover {
+  background-color: #f5f7fa;
+}
+
+.menu-item.active {
+  background-color: #ecf5ff;
+}
+
+.menu-item.active i,
+.menu-item.active span {
+  color: #409EFF;
+  font-weight: 500;
+}
+
+/* 徽章样式 */
+.badge {
+  position: relative;
+  height: 20px;
+  min-width: 20px;
+  line-height: 20px;
+  text-align: center;
+  background-color: #409EFF;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 12px;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+
+/* 子菜单样式 */
+.submenu {
+  border-bottom: 1px solid #f4f4f4;
+}
+
+.submenu-title {
+  position: relative;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+}
+
+.submenu-title i {
+  font-size: 16px;
+  margin-right: 8px;
+  color: #909399;
+  width: 24px;
+  text-align: center;
+}
+
+.submenu-title span {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #303133;
+}
+
+.submenu-arrow {
+  color: #909399;
+  transition: transform 0.3s;
+  transform: rotate(0deg);
+}
+
+.submenu-arrow.is-open {
+  transform: rotate(180deg);
+}
+
+.submenu-title:hover {
+  background-color: #f5f7fa;
+}
+
+.submenu-content {
+  background-color: #f9f9f9;
+}
+
+.submenu-item {
+  padding-left: 48px;
+  background-color: #f9f9f9;
+  height: 36px;
+  line-height: 36px;
+}
+
+.submenu-item i {
+  width: 18px;
+}
+
+/* 添加分类按钮 */
+.category-actions {
+  padding: 12px;
+  text-align: center;
+  background-color: #f5f7fa;
+  border-top: 1px solid #ebeef5;
+}
+
+.category-actions .el-button {
+  color: #409EFF;
+  font-size: 13px;
+}
+
+.category-actions .el-button:hover {
+  color: #66b1ff;
+  background-color: transparent;
 }
 </style> 
