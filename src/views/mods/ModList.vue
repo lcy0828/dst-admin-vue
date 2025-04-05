@@ -63,7 +63,7 @@
                 <div class="mod-card-content">
                   <div class="mod-card-image">
                     <el-image 
-                      :src="mod.iconUrl || defaultIcon" 
+                      :src="mod.image || defaultIcon" 
                       fit="cover"
                       lazy>
                       <div slot="error" class="image-slot">
@@ -260,6 +260,7 @@
 
 <script>
 import ModConfigDialog from './ModConfigDialog.vue';
+import { modApi } from '@/api';
 
 export default {
   name: 'ModList',
@@ -295,14 +296,10 @@ export default {
     // 筛选后的模组列表
     filteredMods() {
       let result = [...this.modsList];
-      
-      // 按状态筛选
       if (this.filterForm.status) {
         const isEnabled = this.filterForm.status === 'enabled';
         result = result.filter(mod => mod.enabled === isEnabled);
       }
-      
-      // 按关键词筛选
       if (this.filterForm.keyword) {
         const keyword = this.filterForm.keyword.toLowerCase();
         result = result.filter(mod => 
@@ -311,8 +308,6 @@ export default {
           (mod.description && mod.description.toLowerCase().includes(keyword))
         );
       }
-      
-      // 排序
       result.sort((a, b) => {
         switch (this.filterForm.sortBy) {
           case 'name':
@@ -325,7 +320,6 @@ export default {
             return 0;
         }
       });
-      
       return result;
     }
   },
@@ -336,103 +330,13 @@ export default {
     // 获取模组列表
     fetchModsList() {
       this.loading = true;
-      
-      // 模拟从API获取模组列表
-      setTimeout(() => {
-        // 生成测试数据
-        this.modsList = [
-          {
-            id: '2675609101',
-            name: '终极棱镜',
-            author: 'WIGFRID',
-            version: '1.0.4',
-            enabled: true,
-            description: '来自泰拉瑞亚的强大魔法武器。',
-            tags: ['武器', '物品'],
-            updatedAt: '2023-10-15',
-            installedAt: '2023-10-20',
-            path: '/mods/LastPrism',
-            size: '2.3 MB',
-            updateAvailable: false,
-            iconUrl: 'https://steamuserimages-a.akamaihd.net/ugc/1834650713180144448/9AEF44B007018B8BD48A8BA29874E31C069295D9/?imw=200&imh=200&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true',
-            compatibility: {
-              dst: true,
-              ds: false,
-              rog: false,
-              sw: false,
-              hamlet: false
-            }
-          },
-          {
-            id: '1392778117',
-            name: 'Legion-棱镜',
-            author: 'ti_Tout',
-            version: '1.0.2',
-            enabled: true,
-            description: '一款强大的武器模组，增加了多种棱镜武器。',
-            tags: ['武器', '物品', '装备'],
-            updatedAt: '2023-03-02',
-            installedAt: '2023-04-10',
-            path: '/mods/Legion',
-            size: '5.7 MB',
-            updateAvailable: true,
-            iconUrl: 'https://steamuserimages-a.akamaihd.net/ugc/1021698814063197415/5348EF5526A2526D1A59E45AFA3A3C6299ABD826/?imw=200&imh=200&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true',
-            compatibility: {
-              dst: true,
-              ds: false,
-              rog: false,
-              sw: false,
-              hamlet: false
-            }
-          },
-          {
-            id: '3',
-            name: '资源显示器',
-            author: 'ToolDev',
-            version: '1.0.5',
-            enabled: false,
-            description: '在屏幕上显示各种资源的数量和位置信息。',
-            tags: ['工具', '界面'],
-            updatedAt: '2023-08-20',
-            installedAt: '2023-09-05',
-            path: '/mods/ResourceDisplay',
-            size: '1.2 MB',
-            updateAvailable: false,
-            iconUrl: null,
-            compatibility: {
-              dst: true,
-              ds: true,
-              rog: true,
-              sw: false,
-              hamlet: false
-            }
-          },
-          {
-            id: '4',
-            name: '高级建造系统',
-            author: 'BuilderPro',
-            version: '3.4.1',
-            enabled: true,
-            description: '增强建造系统，提供更多建筑选项和更方便的建造工具。',
-            tags: ['建造', '工具'],
-            updatedAt: '2023-11-10',
-            installedAt: '2023-11-15',
-            path: '/mods/AdvancedBuilding',
-            size: '8.4 MB',
-            updateAvailable: false,
-            iconUrl: null,
-            compatibility: {
-              dst: true,
-              ds: false,
-              rog: false,
-              sw: false,
-              hamlet: false
-            }
-          }
-        ];
-        
+      modApi.getServerList().then(res => {
+        this.modsList = res || [];
+      }).catch(err => {
+        console.error(err);
+      }).finally(() => {
         this.loading = false;
-      }, 800);
+      });
     },
     
     // 应用筛选
@@ -458,43 +362,23 @@ export default {
     openConfigDialog(mod) {
       if (!mod.enabled) return;
       
-      // 先确保对话框已关闭，再重新打开
-      this.configDialogVisible = false;
+      // 先重置当前模组信息
+      this.currentModInfo = null;
+      this.loading = true;
       
-      // 使用nextTick确保在DOM更新后再打开对话框
-      this.$nextTick(() => {
-        this.currentModId = mod.id;
-        
-        // 准备模组信息，模拟API获取模组详细信息
-        this.loading = true;
-        
-        setTimeout(() => {
-          // 构建模组信息
-          this.currentModInfo = {
-            ...mod,
-            // 添加配置选项信息
-            configuration_options: [
-              {"hover":"语言","name":"language","label":"语言","default":true,"options":[{"description":"简体中文","data":true},{"description":"English","data":false}]},
-              {"default":0,"options":[{"description":"","data":0}],"name":"null","label":"基本设置"},
-              {"hover":"伤害","name":"damage","label":"伤害","default":5,"options":[{"description":1,"data":1},{"description":3,"data":3},{"description":5,"data":5},{"description":7,"data":7},{"description":9,"data":9},{"description":11,"data":11},{"description":13,"data":13},{"description":15,"data":15},{"description":17,"data":17},{"description":19,"data":19},{"description":21,"data":21},{"description":23,"data":23},{"description":25,"data":25},{"description":27,"data":27},{"description":29,"data":29},{"description":31,"data":31},{"description":33,"data":33},{"description":35,"data":35},{"description":37,"data":37},{"description":39,"data":39},{"description":41,"data":41},{"description":43,"data":43},{"description":45,"data":45},{"description":47,"data":47},{"description":49,"data":49},{"description":51,"data":51}]},
-              {"hover":"位面伤害","name":"planardamage","label":"位面伤害","default":2,"options":[{"description":0,"data":0},{"description":2,"data":2},{"description":4,"data":4},{"description":6,"data":6},{"description":8,"data":8},{"description":10,"data":10},{"description":12,"data":12},{"description":14,"data":14},{"description":16,"data":16},{"description":18,"data":18},{"description":20,"data":20},{"description":22,"data":22},{"description":24,"data":24},{"description":26,"data":26},{"description":28,"data":28},{"description":30,"data":30},{"description":32,"data":32},{"description":34,"data":34},{"description":36,"data":36},{"description":38,"data":38},{"description":40,"data":40},{"description":42,"data":42},{"description":44,"data":44},{"description":46,"data":46},{"description":48,"data":48},{"description":50,"data":50}]},
-              {"hover":"耐久","name":"durability","label":"耐久","default":500,"options":[{"description":300,"data":300},{"description":400,"data":400},{"description":500,"data":500},{"description":600,"data":600},{"description":700,"data":700},{"description":800,"data":800},{"description":900,"data":900},{"description":1000,"data":1000},{"description":"Infinity","data":-1}]},
-              {"default":0,"options":[{"description":"","data":0}],"name":"null","label":"高级设置"},
-              {"hover":"砍树","name":"chop","label":"砍树","default":true,"options":[{"description":"是","data":true},{"description":"否","data":false}]},
-              {"hover":"摧毁建筑","name":"hammer","label":"摧毁建筑","default":false,"options":[{"description":"是","data":true},{"description":"否","data":false}]},
-              {"hover":"挖矿","name":"mine","label":"挖矿","default":true,"options":[{"description":"是","data":true},{"description":"否","data":false}]},
-              {"hover":"铲作物","name":"dig","label":"铲作物","default":false,"options":[{"description":"是","data":true},{"description":"否","data":false}]}
-            ],
-            dst_compatible: mod.compatibility?.dst || false,
-            dont_starve_compatible: mod.compatibility?.ds || false,
-            reign_of_giants_compatible: mod.compatibility?.rog || false,
-            shipwrecked_compatible: mod.compatibility?.sw || false,
-            hamlet_compatible: mod.compatibility?.hamlet || false
-          };
-          
-          this.loading = false;
+      // 先获取模组配置数据
+      modApi.getModConfig({modid: mod.modid}).then(res => {
+        this.currentModId = mod.modid;
+        this.currentModInfo = res.modinfo;
+        // 获取数据成功后再显示对话框
+        this.$nextTick(() => {
           this.configDialogVisible = true;
-        }, 100);
+        });
+      }).catch(err => {
+        console.error(err);
+        this.$message.error('获取模组配置失败');
+      }).finally(() => {
+        this.loading = false;
       });
     },
     
@@ -504,29 +388,12 @@ export default {
         type: 'success',
         message: `模组 ${data.modId} 配置已更新！`
       });
-      
-      // 可以在这里更新模组列表中的配置状态
     },
     
     // 切换模组状态
     toggleModStatus(mod, status) {
-      // 模拟API操作
       this.loading = true;
       const action = status ? '启用' : '禁用';
-      
-      setTimeout(() => {
-        // 更新状态
-        const targetMod = this.modsList.find(m => m.id === mod.id);
-        if (targetMod) {
-          targetMod.enabled = status;
-        }
-        
-        this.loading = false;
-        this.$message({
-          type: 'success',
-          message: `模组 ${mod.name} 已${action}`
-        });
-      }, 500);
     },
     
     // 下拉菜单命令处理

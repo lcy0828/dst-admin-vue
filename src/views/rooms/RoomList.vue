@@ -92,7 +92,6 @@
                   <el-dropdown-item command="special-lists">特殊名单</el-dropdown-item>
                   <el-dropdown-item command="token">服务器令牌</el-dropdown-item>
                   <el-dropdown-item command="logs">查看日志</el-dropdown-item>
-                  <el-dropdown-item command="duplicate" divided>复制房间</el-dropdown-item>
                   <el-dropdown-item command="backup">备份房间</el-dropdown-item>
                   <el-dropdown-item command="delete" divided>
                     <span style="color: #F56C6C;">删除房间</span>
@@ -232,14 +231,9 @@ export default {
     },
     refreshRooms() {
       this.loading = true;
-      console.log("开始获取房间列表");
-      console.log("API基础URL:", config.BASE_URL);
-      
       // 尝试使用新的API获取房间列表
       axios.get(`${config.BASE_URL}/dstserver/list`)
         .then(response => {
-          console.log("新API房间列表响应:", response);
-          
           if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
             // 处理新API格式的数据
             this.rooms = response.data.data.map(item => ({
@@ -260,20 +254,16 @@ export default {
             });
             this.loading = false;
           } else {
-            // 如果新API不可用，尝试使用旧API
             this.fetchRoomsFromOldAPI();
           }
         })
         .catch(error => {
-          console.error("新API获取房间列表失败:", error);
-          // 尝试使用旧API
           this.fetchRoomsFromOldAPI();
         });
     },
     
     // 从旧API获取房间列表
     fetchRoomsFromOldAPI() {
-      console.log("尝试从旧API获取房间列表");
       roomApi.getRoomList()
         .then(response => {
           console.log("旧API房间列表响应:", response);
@@ -342,16 +332,11 @@ export default {
     },
     confirmStartRoom() {
       if (!this.selectedRoom) return;
-      
       const archiveName = this.selectedRoom.id;
       const serverMode = this.startForm.serverMode;
       
       this.startLoading = true;
-      console.log(`开启房间: ${archiveName}, 模式: ${this.startForm.worldType}, 服务器模式: ${serverMode}`);
-      
-      // 根据选择的启动模式处理
       if (this.startForm.worldType === 'all') {
-        // 启动所有世界
         roomApi.startRoom(archiveName, serverMode)
           .then(response => {
             this.$message.success(`房间 ${this.selectedRoom.name} 的所有世界已启动`);
@@ -369,22 +354,16 @@ export default {
           .then(worlds => {
             // 根据类型过滤世界
             const filteredWorlds = worlds.filter(world => world.type === this.startForm.worldType);
-            
             if (filteredWorlds.length === 0) {
-              // 如果没有找到匹配的世界，使用默认世界
               const defaultWorld = this.startForm.worldType === 'forest' ? 'Forest1' : 'Caves1';
-              
-              return Promise.all([
-                axios.post(`${config.BASE_URL}/tmux/start`, {
-                  archive_name: archiveName,
-                  world_name: defaultWorld,
-                  server_mode: serverMode
-                })
-              ]);
+              return roomApi.startRoom({
+                archive_name: archiveName,
+                world_name: defaultWorld,
+                server_mode: serverMode
+              });
             } else {
-              // 启动所有符合类型的世界
               const startPromises = filteredWorlds.map(world => 
-                axios.post(`${config.BASE_URL}/tmux/start`, {
+                roomApi.startRoom({
                   archive_name: archiveName,
                   world_name: world.worldName,
                   server_mode: serverMode
@@ -420,9 +399,6 @@ export default {
         case 'logs':
           this.handleViewLogs(room);
           break;
-        case 'duplicate':
-          this.duplicateRoom(room);
-          break;
         case 'backup':
           this.backupRoom(room);
           break;
@@ -456,24 +432,6 @@ export default {
     },
     closeLogViewerDialog() {
       this.logViewerVisible = false;
-    },
-    duplicateRoom(room) {
-      this.$confirm(`确定要复制房间 "${room.name}" 吗?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'info'
-      }).then(() => {
-        // 调用复制房间API
-        this.$message({
-          type: 'success',
-          message: `已复制房间 ${room.name}`
-        });
-      }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });          
-      });
     },
     backupRoom(room) {
       this.$confirm(`确定要备份房间 "${room.name}" 吗?`, '提示', {

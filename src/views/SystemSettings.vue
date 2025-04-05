@@ -504,6 +504,8 @@
 </template>
 
 <script>
+import { systemApi } from '@/api';
+
 export default {
   name: 'SystemSettings',
   data() {
@@ -622,41 +624,6 @@ export default {
       // 备份历史
       backupHistoryVisible: false,
       backupHistory: [
-        {
-          id: 1,
-          filename: 'backup_20231010_030005.zip',
-          size: '25.4 MB',
-          createTime: '2023-10-10 03:00:05',
-          status: 'success'
-        },
-        {
-          id: 2,
-          filename: 'backup_20231009_030002.zip',
-          size: '24.8 MB',
-          createTime: '2023-10-09 03:00:02',
-          status: 'success'
-        },
-        {
-          id: 3,
-          filename: 'backup_20231008_030003.zip',
-          size: '24.6 MB',
-          createTime: '2023-10-08 03:00:03',
-          status: 'success'
-        },
-        {
-          id: 4,
-          filename: 'backup_20231007_030001.zip',
-          size: '24.5 MB',
-          createTime: '2023-10-07 03:00:01',
-          status: 'success'
-        },
-        {
-          id: 5,
-          filename: 'backup_20231006_030004.zip',
-          size: '0 KB',
-          createTime: '2023-10-06 03:00:04',
-          status: 'failed'
-        }
       ]
     };
   },
@@ -841,7 +808,7 @@ export default {
     refreshSystemStatus() {
       this.loading = true;
       
-      this.$api.systemApi.getDashboardStatus()
+      systemApi.getDashboardStatus()
         .then(res => {
           if (res && res.data && res.status === 200) {
             this.systemStatus = res.data;

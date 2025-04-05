@@ -199,12 +199,6 @@ export const constantRoutes = [
         component: () => import('@/views/mods/ModSearch.vue'),
         name: 'ModSearch',
         meta: { title: '搜索模组', icon: 'search' }
-      },
-      {
-        path: 'settings',
-        component: () => import('@/views/mods/ModSettings.vue'),
-        name: 'ModSettings',
-        meta: { title: '模组设置', icon: 'setting' }
       }
     ]
   },
@@ -253,27 +247,6 @@ export const constantRoutes = [
         component: () => import('@/views/scheduled/CreateTask.vue'),
         name: 'CreateTask',
         meta: { title: '创建任务', icon: 'plus' }
-      }
-    ]
-  },
-  {
-    path: '/agents',
-    component: MainLayout,
-    redirect: '/agents/list',
-    name: 'Agents',
-    meta: { title: 'Agent管理', icon: 'connection' },
-    children: [
-      {
-        path: 'list',
-        component: () => import('@/views/agents/AgentList.vue'),
-        name: 'AgentList',
-        meta: { title: 'Agent列表', icon: 'monitor' }
-      },
-      {
-        path: 'security',
-        component: () => import('@/views/agents/AgentSecurity.vue'),
-        name: 'AgentSecurity',
-        meta: { title: '安全设置', icon: 'lock' }
       }
     ]
   }

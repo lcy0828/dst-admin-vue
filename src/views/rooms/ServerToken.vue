@@ -4,38 +4,22 @@
       <h2>服务器令牌管理</h2>
     </div>
     
-    <el-card class="save-selector" v-if="!savename">
-      <div slot="header">
-        <span>选择存档</span>
-      </div>
-      <el-select v-model="currentSave" placeholder="请选择存档" @change="changeSave" style="width: 100%;">
-        <el-option
-          v-for="item in saveList"
-          :key="item.value"
-          :label="item.label"
-          :value="item.value">
-        </el-option>
-      </el-select>
-    </el-card>
-    
     <el-card shadow="hover" class="token-card" v-loading="loading">
       <div slot="header" class="card-header">
         <span>服务器令牌</span>
-        <div>
+        <div v-if="serverToken">
           <el-button 
             size="small" 
             type="primary" 
             icon="el-icon-edit" 
-            @click="showTokenDialog" 
-            :disabled="!currentSave">
+            @click="showTokenDialog" >
             修改令牌
           </el-button>
           <el-button 
             size="small" 
             type="success" 
             icon="el-icon-refresh" 
-            @click="fetchServerToken" 
-            :disabled="!currentSave">
+            @click="fetchServerToken">
             刷新
           </el-button>
         </div>
@@ -63,23 +47,34 @@
             show-icon
             :closable="false">
           </el-alert>
-          
-          <div class="token-note">
-            <i class="el-icon-info"></i>
-            <span>上次更新时间: {{ lastUpdateTime || '未知' }}</span>
-          </div>
         </div>
       </div>
-      
-      <div v-else class="empty-token">
-        <i class="el-icon-warning"></i>
-        <p>{{ currentSave ? '未找到令牌信息' : '请选择存档以查看令牌' }}</p>
+
+      <div v-else>
+        <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="100px">
+          <el-form-item label="服务器令牌" prop="token">
+            <el-input v-model="ruleForm.token" placeholder="请输入服务器令牌" @input="handleInput"/>
+          </el-form-item>
+        </el-form>
+
+        <div class="token-help">
+          <el-alert
+            title="令牌用法说明"
+            type="info"
+            description="服务器令牌用于在您的服务器中标识饥荒服务器。示例: pds-g^KU_HQpffVs^dasdadadawqwqfrdgth5435gf="
+            show-icon
+            :closable="false">
+          </el-alert>
+        </div>
       </div>
     </el-card>
     
     <!-- 修改令牌对话框 -->
-    <el-dialog title="修改服务器令牌" :visible.sync="dialogVisible" width="30%" @closed="resetForm">
-      <el-form :model="tokenForm" ref="tokenForm" label-width="0px">
+    <el-dialog title="修改服务器令牌" 
+               :visible.sync="dialogVisible" 
+               width="30%" 
+               @closed="resetForm">
+      <el-form :model="tokenForm" ref="tokenForm">
         <el-form-item prop="token">
           <el-input v-model="tokenForm.token" placeholder="请输入新令牌"></el-input>
         </el-form-item>
@@ -114,10 +109,8 @@ export default {
   },
   data() {
     return {
-      saveList: [],
       currentSave: '',
       serverToken: '',
-      lastUpdateTime: '',
       loading: false,
       
       // 对话框相关
@@ -125,7 +118,19 @@ export default {
       tokenForm: {
         token: ''
       },
-      submitting: false
+      submitting: false,
+
+      // 表单相关
+      ruleForm: {
+        token: ''
+      },
+      rules: {
+        token: [
+          { required: true, message: '请输入服务器令牌', trigger: 'blur' },
+          { min: 3, max: 32, message: '长度在 3 到 32 个字符', trigger: 'blur' }
+        ]
+      }
+      
     };
   },
   watch: {
@@ -134,15 +139,13 @@ export default {
       handler(newVal) {
         if (newVal) {
           this.currentSave = newVal;
-          // 不在这里调用fetchServerToken，避免重复请求
         }
       }
     }
   },
   methods: {
-    // 切换存档
-    changeSave() {
-      this.fetchServerToken();
+    handleInput() {
+      this.$emit('input-token', this.ruleForm.token);
     },
     
     // 获取服务器令牌
@@ -153,56 +156,11 @@ export default {
       this.loading = true;
       serverApi.getServerToken(saveToUse)
         .then(res => {
-          console.log('获取服务器令牌原始响应:', res);
-          
-          // 处理各种可能的响应格式
-          if (typeof res === 'string') {
-            // 如果响应直接是字符串令牌
-            this.serverToken = res;
-            this.lastUpdateTime = this.formatTime(new Date());
-          } else if (res && typeof res === 'object') {
-            // 处理对象格式的响应
-            if (res.token) {
-              this.serverToken = res.token;
-            } else if (res.data && typeof res.data === 'string') {
-              this.serverToken = res.data;
-            } else if (res.data && res.data.token) {
-              this.serverToken = res.data.token;
-            } else if (res.server_token) {
-              this.serverToken = res.server_token;
-            } else {
-              console.warn('响应中未找到有效的token字段:', res);
-              this.serverToken = '';
-            }
-            
-            // 尝试获取更新时间
-            if (res.updateTime) {
-              this.lastUpdateTime = this.formatTime(res.updateTime);
-            } else if (res.update_time) {
-              this.lastUpdateTime = this.formatTime(res.update_time);
-            } else if (res.time || res.timestamp) {
-              this.lastUpdateTime = this.formatTime(res.time || res.timestamp);
-            } else if (res.data && (res.data.updateTime || res.data.update_time)) {
-              this.lastUpdateTime = this.formatTime(res.data.updateTime || res.data.update_time);
-            } else {
-              this.lastUpdateTime = '未知';
-            }
-          } else {
-            console.warn('无法识别的令牌响应格式:', res);
-            this.serverToken = '';
-            this.lastUpdateTime = '未知';
-          }
-          
-          console.log('处理后的令牌:', this.serverToken);
-          console.log('处理后的更新时间:', this.lastUpdateTime);
+          this.serverToken = res.data;
+          this.$emit('input-token', this.serverToken);
         })
         .catch(err => {
-          console.error('获取服务器令牌失败:', err);
           this.$message.error('获取服务器令牌失败');
-          
-          // 临时示例数据
-          this.serverToken = 'pds-g^KU_i8dHG7S^gKU_GHVNbC1234567890abcdef';
-          this.lastUpdateTime = this.formatTime(new Date());
         })
         .finally(() => {
           this.loading = false;
@@ -241,71 +199,30 @@ export default {
         this.$message.error('请输入服务器令牌');
         return;
       }
-
       this.submitting = true;
       const saveToUse = this.savename || this.currentSave;
-      
-      // 准备提交的数据
       const newToken = this.tokenForm.token;
-      
-      // 准备请求参数
-      const requestData = {
-        savename: saveToUse,
-        token: newToken
-      };
-      
-      console.log('更新令牌请求参数:', requestData);
-      
-      // 调用API更新令牌
       serverApi.updateServerToken(saveToUse, newToken)
         .then(res => {
-          console.log('更新令牌响应:', res);
           this.dialogVisible = false;
           this.$message.success('服务器令牌已更新');
-          
-          // 处理响应中可能返回的新令牌
-          if (res) {
-            if (typeof res === 'string') {
-              this.serverToken = res;
-            } else if (res.token) {
-              this.serverToken = res.token;
-            } else if (res.data && typeof res.data === 'string') {
-              this.serverToken = res.data;
-            } else if (res.data && res.data.token) {
-              this.serverToken = res.data.token;
-            }
-            
-            this.lastUpdateTime = this.formatTime(new Date());
-          }
-          
-          // 如果响应中没有返回新令牌，则使用提交的令牌
-          if (!this.serverToken) {
-            this.serverToken = newToken;
-          } else {
-            this.fetchServerToken();
-          }
         })
         .catch(err => {
-          console.error('更新令牌失败:', err);
           this.$message.error('更新令牌失败: ' + (err.message || '未知错误'));
-          
-          // 模拟成功，方便测试
           this.dialogVisible = false;
-          setTimeout(() => {
-            this.serverToken = newToken;
-            this.lastUpdateTime = this.formatTime(new Date());
-            this.$message.success('服务器令牌已更新');
-          }, 1000);
         })
         .finally(() => {
           this.submitting = false;
+          this.fetchServerToken();
         });
     },
     
+    
+    // 格式化时间
+  
     // 格式化时间
     formatTime(timestamp) {
       if (!timestamp) return '';
-      
       const date = new Date(timestamp);
       return date.toLocaleString('zh-CN', {
         year: 'numeric',
@@ -318,18 +235,9 @@ export default {
     }
   },
   mounted() {
-    // 如果有传入savename，直接使用；否则使用自身的currentSave
     if (this.savename) {
       this.currentSave = this.savename;
       this.fetchServerToken();
-    } else {
-      // 获取可用存档列表
-      // 实际应用中应该调用API获取存档列表
-      this.saveList = [
-        { label: '测试存档', value: 'test' },
-        { label: '生存模式', value: 'survival' },
-        { label: '无尽模式', value: 'endless' }
-      ];
     }
   }
 }

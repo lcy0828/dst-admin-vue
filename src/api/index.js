@@ -3,38 +3,6 @@ import config from './config';
 import axios from 'axios';
 import commandManager, { commandApi, COMMAND_TYPES } from './commandManager';
 
-// 添加一个通用的请求处理函数
-function apiRequest(method, url, data = null) {
-  console.log(`API请求: ${method.toUpperCase()} ${url}`, data ? data : '');
-  
-  let requestPromise;
-  
-  switch(method.toLowerCase()) {
-    case 'get':
-      requestPromise = request.get(url, { params: data });
-      break;
-    case 'post':
-      requestPromise = request.post(url, data);
-      break;
-    case 'put':
-      requestPromise = request.put(url, data);
-      break;
-    case 'delete':
-      requestPromise = request.delete(url, { params: data });
-      break;
-    default:
-      return Promise.reject(new Error(`不支持的请求方法: ${method}`));
-  }
-  
-  return requestPromise.then(response => {
-    console.log(`API响应: ${method.toUpperCase()} ${url}`, response);
-    return response;
-  }).catch(error => {
-    console.error(`API错误: ${method.toUpperCase()} ${url}`, error);
-    return Promise.reject(error);
-  });
-}
-
 // 服务器相关API
 export const serverApi = {
   // 获取服务器列表
@@ -126,61 +94,29 @@ export const serverApi = {
   }
 };
 
-// 房间相关API
 export const roomApi = {
-  // 获取房间列表
   getRoomList(params) {
-    console.log("调用getRoomList API");
-    try {
-      return request.get('/dstserver/list', { params })
-        .then(response => {
-          // 检查是否有标准的状态+数据格式
-          if (response && response.data) {
-            if (response.status === 200 || response.data.status === 200) {
-              // 直接返回数据数组或包装在data中的数据数组
-              return Array.isArray(response.data) ? response.data : 
-                   (Array.isArray(response.data.data) ? response.data.data : []);
-            }
-          }
-          return response; // 如果没有特殊处理，返回原始响应
-        });
-    } catch (error) {
-      console.error("getRoomList API错误:", error);
-      throw error;
-    }
+    return request.get('/dstserver/list', { params })
   },
-  // 获取房间详情
   getRoomDetail(id) {
     return request.get(`/rooms/${id}`);
   },
-  // 创建房间
   createRoom(data) {
     return request.post(`/rooms`, data);
   },
-  // 更新房间
   updateRoom(id, data) {
     return request.put(`/rooms/${id}`, data);
   },
-  // 删除房间
   deleteRoom(id) {
     return request.delete(`/rooms/${id}`);
   },
-  // 获取房间的世界列表
   getRoomWorlds(archiveName) {
-    console.log('获取房间世界列表:', archiveName);
-    
-    // 尝试从新的API获取房间信息
-    return axios.get(`${config.BASE_URL}/dstserver/list`)
+    return request.get("/dstserver/list")
       .then(response => {
-        console.log('新API房间列表响应:', response);
         let worlds = [];
-        
-        // 处理新API格式
         if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
-          // 查找匹配的房间
           const room = response.data.data.find(room => room.name === archiveName);
           if (room && room.worlds && Array.isArray(room.worlds)) {
-            // 映射世界信息
             worlds = room.worlds.map(world => ({
               worldName: world.name,
               sessionName: `${archiveName}_${world.name}`,
@@ -189,7 +125,6 @@ export const roomApi = {
                    world.type === 'cave' ? 'cave' : 
                    world.name.includes('Forest') ? 'forest' : 'cave'
             }));
-            console.log('新API世界列表:', worlds);
             return worlds;
           }
         }
@@ -197,8 +132,6 @@ export const roomApi = {
         // 如果新API没有返回数据，尝试旧的API
         return axios.get(`${config.BASE_URL}/tmux/list`)
           .then(oldResponse => {
-            console.log('旧API服务器列表响应:', oldResponse);
-            
             if (oldResponse && oldResponse.data && oldResponse.data.status === 200 && Array.isArray(oldResponse.data.data)) {
               // 筛选指定存档的世界
               worlds = oldResponse.data.data
@@ -218,8 +151,7 @@ export const roomApi = {
                   type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
                 }));
             }
-            
-            console.log('存档的世界列表:', worlds);
+          
             return worlds;
           })
           .catch(error => {
@@ -265,116 +197,27 @@ export const roomApi = {
           });
       });
   },
-  // 启动房间的所有服务器
-  startRoom(archiveName, serverMode = "32") {
-    console.log('调用startRoom API:', archiveName);
-    
-    // 先获取房间的世界列表
-    return this.getRoomWorlds(archiveName)
-      .then(worlds => {
-        if (!worlds || worlds.length === 0) {
-          // 如果没有找到世界，使用默认的Forest1和Caves1
-          console.log('未找到世界列表，使用默认世界名');
-          return Promise.all([
-            axios.post(`${config.BASE_URL}/tmux/start`, {
-              archive_name: archiveName,
-              world_name: "Forest1",
-              server_mode: serverMode
-            }),
-            axios.post(`${config.BASE_URL}/tmux/start`, {
-              archive_name: archiveName,
-              world_name: "Caves1",
-              server_mode: serverMode
-            })
-          ]);
-        } else {
-          // 启动找到的所有世界
-          console.log('使用存档中的实际世界列表:', worlds);
-          
-          // 确保至少有一个森林世界和一个洞穴世界
-          const forestWorlds = worlds.filter(world => world.type === 'forest');
-          const caveWorlds = worlds.filter(world => world.type === 'cave');
-          
-          console.log('森林世界:', forestWorlds);
-          console.log('洞穴世界:', caveWorlds);
-          
-          let worldsToStart = [...worlds]; // 默认启动所有世界
-          
-          if (forestWorlds.length === 0) {
-            // 如果没有森林世界，添加默认的Forest1
-            worldsToStart.push({
-              worldName: 'Forest1',
-              sessionName: `${archiveName}_Forest1`,
-              type: 'forest'
-            });
-          }
-          
-          if (caveWorlds.length === 0) {
-            // 如果没有洞穴世界，添加默认的Caves1
-            worldsToStart.push({
-              worldName: 'Caves1',
-              sessionName: `${archiveName}_Caves1`,
-              type: 'cave'
-            });
-          }
-          
-          const startPromises = worldsToStart.map(world => {
-            console.log(`准备启动世界: ${world.worldName} (${world.type})`);
-            return axios.post(`${config.BASE_URL}/tmux/start`, {
-              archive_name: archiveName,
-              world_name: world.worldName,
-              server_mode: serverMode
-            });
-          });
-          
-          if (startPromises.length === 0) {
-            return Promise.reject(new Error('没有可启动的世界'));
-          }
-          
-          return Promise.all(startPromises);
-        }
-      })
-      .then(responses => {
-        console.log('启动房间响应:', responses);
-        // 返回统一的成功响应
-        return {
-          status: 200,
-          msg: '房间启动成功',
-          data: {
-            archive_name: archiveName,
-            worlds: responses.map(response => response.data?.data || {})
-          }
-        };
-      })
-      .catch(error => {
-        console.error('启动房间失败:', error);
-        throw error;
-      });
+  startRoom(params) {
+    return request.post(`/tmux/start`, params);
   },
-  // 停止房间
   stopRoom(id) {
     return request.post(`/rooms/${id}/stop`);
   },
-  // 获取房间日志
   getRoomLogs(id, params) {
     return request.get(`/rooms/${id}/logs`, params);
   },
-  // 备份房间
   backupRoom(id) {
     return request.post(`/rooms/${id}/backup`);
   },
-  // 复制房间
   duplicateRoom(id, data) {
     return request.post(`/rooms/${id}/duplicate`, data);
   },
-  // 获取房间玩家列表
   getRoomPlayers(id) {
     return request.get(`/rooms/${id}/players`);
   },
   getWorlds() {
     return request.get('/worlds');
   },
-
   saveWorldSettings(worldType, settings) {
     return request.post(`/world/settings/${worldType}`, settings);
   }
@@ -454,37 +297,12 @@ export const itemApi = {
 
 // 模组相关API
 export const modApi = {
-
-  // 获取已安装模组列表
-  getModList(params) {
-    return request.get(`/mods`, params);
-  },
-  // 获取模组详情
-  getModDetail(id) {
-    return request.get(`/mods/${id}`);
-  },
-  // 安装模组
-  installMod(data) {
-    return request.post(`/mods/install`, data);
-  },
-  // 卸载模组
-  uninstallMod(id) {
-    return request.post(`/mods/${id}/uninstall`);
-  },
-  // 更新模组
-  updateMod(id) {
-    return request.post(`/mods/${id}/update`);
-  },
-  // 搜索工坊模组
-  searchWorkshopMods(params) {
-    return request.get(`/mods/workshop/search`, params);
+  getServerList() {
+    return request.get('/mod/server/list');
   },
   // 获取模组配置
-  getModConfig(id, data = null) {
-    if (data) {
-      return request.post(`/mod/download`, data);
-    }
-    return request.get(`/mods/${id}/config`);
+  getModConfig(params) {
+    return request.get("/mod/config", params);
   },
   // 更新模组配置
   updateModConfig(id, data) {
@@ -493,37 +311,17 @@ export const modApi = {
     }
     return request.put(`/mods/${id}/config`, data);
   },
-  // 获取热门模组
-  getPopularMods() {
-    return request.get(`/mods/workshop/popular`);
-  },
-  // 获取最新模组
-  getLatestMods() {
-    return request.get(`/mods/workshop/latest`);
-  },
-  // 启用模组
-  enableMod(id, data) {
-    return request.post(`/mods/${id}/enable`, data);
-  },
-  // 禁用模组
-  disableMod(id, data) {
-    return request.post(`/mods/${id}/disable`, data);
+  // 收藏模组
+  collectMod(data) {
+    return request.post("/mod/server/add", data);
   }
 };
 
 // 系统相关API
 export const systemApi = {
-  // 获取系统信息
-  getSystemInfo() {
-    return request.get(`/system/info`);
-  },
   // 获取仪表盘状态
   getDashboardStatus() {
     return request.get(`/dashboard/status`);
-  },
-  // 获取系统日志
-  getSystemLogs(params) {
-    return request.get(`/system/logs`, { params });
   },
   // 创建系统备份
   createBackup(data) {
@@ -549,14 +347,6 @@ export const systemApi = {
   updateSystemConfig(data) {
     return request.put(`/system/config`, data);
   },
-  // 获取系统配置
-  getSystemConfig() {
-    return request.get(`/system/config`);
-  },
-  // 重启系统
-  restartSystem() {
-    return request.post(`/system/restart`);
-  },
   // 获取公告列表
   getAnnouncements() {
     return request.get(`/system/announcements`);
@@ -579,12 +369,7 @@ export const systemApi = {
   },
   // 获取Docker容器列表
   getDockerContainers() {
-    // 直接获取原始响应，不进行数据转换
-    return axios.get(`${config.BASE_URL}/dashboard/docker/containers`)
-      .then(response => {
-        console.log('Docker容器原始响应:', response);
-        return response.data;
-      });
+    return request.get("/dashboard/docker/containers");
   },
   // 启动Docker容器
   startDockerContainer(containerId) {
@@ -600,58 +385,17 @@ export const systemApi = {
   },
   // 获取TMUX服务器列表
   getTmuxServers() {
-    console.log('调用getTmuxServers API');
-    return axios.get(`${config.BASE_URL}/tmux/list`)
-      .then(response => {
-        console.log('TMUX服务器原始响应:', response);
-        return response.data;
-      })
-      .catch(error => {
-        console.error('获取TMUX服务器列表失败:', error);
-        throw error;
-      });
-  },
-  
-  // 启动TMUX服务器
-  startTmuxServer(data) {
-    console.log('调用startTmuxServer API:', data);
-    return axios.post(`${config.BASE_URL}/tmux/start`, data)
-      .then(response => {
-        console.log('启动TMUX服务器响应:', response);
-        return response.data;
-      })
-      .catch(error => {
-        console.error('启动TMUX服务器失败:', error);
-        throw error;
-      });
+    return request.get('/tmux/list');
   },
   
   // 停止TMUX服务器
   stopTmuxServer(data) {
-    console.log('调用stopTmuxServer API:', data);
-    return axios.post(`${config.BASE_URL}/tmux/stop`, data)
-      .then(response => {
-        console.log('停止TMUX服务器响应:', response);
-        return response.data;
-      })
-      .catch(error => {
-        console.error('停止TMUX服务器失败:', error);
-        throw error;
-      });
+    return request.post("/tmux/stop", data);
   },
   
   // 重启TMUX服务器
   restartTmuxServer(data) {
-    console.log('调用restartTmuxServer API:', data);
-    return axios.post(`${config.BASE_URL}/tmux/restart`, data)
-      .then(response => {
-        console.log('重启TMUX服务器响应:', response);
-        return response.data;
-      })
-      .catch(error => {
-        console.error('重启TMUX服务器失败:', error);
-        throw error;
-      });
+    return request.post("/tmux/restart", data);
   }
 };
 

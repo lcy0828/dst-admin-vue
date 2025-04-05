@@ -19,13 +19,6 @@
         </div>
       </div>
 
-      <settings-preset
-        :current-preset="currentPreset"
-        :disabled="loading" 
-        @preset-change="applyPreset"
-        @save-preset="saveAsPreset"
-      />
-
       <el-tabs v-model="activeTab" type="border-card" class="custom-tabs">
         <el-tab-pane label="森林" name="forest">
           <div class="tab-header-content">
@@ -123,7 +116,6 @@
 
 <script>
 import Vue from 'vue';
-import SettingsPreset from '@/components/worlds/SettingsPreset.vue';
 import WorldSettingsPanel from '@/components/worlds/WorldSettingsPanel.vue';
 import SettingsFooter from '@/components/worlds/SettingsFooter.vue';
 
@@ -196,7 +188,6 @@ Vue.directive('optimized-select', {
 export default {
   name: 'WorldSettings',
   components: {
-    SettingsPreset,
     WorldSettingsPanel,
     SettingsFooter
   },

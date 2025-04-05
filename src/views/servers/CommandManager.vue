@@ -989,8 +989,7 @@ export default {
     // 获取所有服务器
     fetchServers() {
       // 模拟调用API获取服务器列表
-      axios.get(`${config.BASE_URL}/tmux/list`)
-        .then(response => {
+      systemApi.getTmuxServers().then(response => {
           if (response.data.status === 200) {
             this.servers = response.data.data;
           } else {
@@ -999,11 +998,6 @@ export default {
         })
         .catch(error => {
           console.error('获取服务器列表失败:', error);
-          // 假数据，实际应从API获取
-          this.servers = [
-            { id: 1, name: '服务器1', session_name: 'dstserver_1_1' },
-            { id: 2, name: '服务器2', session_name: 'dstserver_1_2' }
-          ];
         });
     },
     

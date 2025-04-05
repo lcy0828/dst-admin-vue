@@ -300,19 +300,13 @@ export default {
         this.$message.error('无法获取房间信息');
         return;
       }
-      
       this.startLoading = true;
-      
       const archiveName = this.currentRoom.id.toString();
       const { worldType, serverMode } = this.startForm;
       
-      console.log('启动房间:', { archiveName, worldType, serverMode });
-      
       if (worldType === 'both') {
-        // 启动完整房间（所有世界）
         roomApi.startRoom(archiveName, serverMode)
           .then(response => {
-            console.log('启动房间响应:', response);
             if (response && response.status === 200) {
               this.$message.success('房间启动成功');
             } else {
@@ -320,7 +314,6 @@ export default {
             }
           })
           .catch(error => {
-            console.error('启动房间失败:', error);
             this.$message.error('启动房间失败: ' + (error.message || '未知错误'));
           })
           .finally(() => {
@@ -328,28 +321,19 @@ export default {
             this.startLoading = false;
           });
       } else {
-        // 获取房间的世界列表
         roomApi.getRoomWorlds(archiveName)
           .then(worlds => {
-            // 根据选择的世界类型过滤
             const filteredWorlds = worlds.filter(world => world.type === worldType);
-            
             if (filteredWorlds.length === 0) {
-              // 如果没有找到匹配的世界，使用默认世界名
               const defaultWorldName = worldType === 'forest' ? 'Forest1' : 'Caves1';
-              console.log(`未找到${worldType}类型的世界，使用默认世界名:`, defaultWorldName);
-              
-              return systemApi.startTmuxServer({
+              return roomApi.startRoom({
                 archive_name: archiveName,
                 world_name: defaultWorldName,
                 server_mode: serverMode
               });
             } else {
-              // 启动第一个找到的匹配世界
               const worldToStart = filteredWorlds[0];
-              console.log('启动世界:', worldToStart);
-              
-              return systemApi.startTmuxServer({
+              return roomApi.startRoom({
                 archive_name: archiveName,
                 world_name: worldToStart.worldName,
                 server_mode: serverMode
@@ -357,7 +341,6 @@ export default {
             }
           })
           .then(response => {
-            console.log('启动单个世界响应:', response);
             if (response && (response.status === 200 || (response.data && response.data.status === 200))) {
               this.$message.success(`${worldType === 'forest' ? '主世界' : '洞穴世界'}启动成功`);
             } else {
@@ -365,7 +348,6 @@ export default {
             }
           })
           .catch(error => {
-            console.error('启动世界失败:', error);
             this.$message.error('启动世界失败: ' + (error.message || '未知错误'));
           })
           .finally(() => {

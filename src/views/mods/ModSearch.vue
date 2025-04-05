@@ -103,14 +103,9 @@
                   <el-button 
                     size="small" 
                     type="primary" 
-                    @click="configMod(mod)"
-                    :disabled="false">
-                    配置
-                  </el-button>
-                  <el-button 
-                    size="small" 
-                    @click="viewDetails(mod)">
-                    详情
+                    :disabled="false" 
+                    @click="handleCollectMod(mod)">
+                    收藏到服务器
                   </el-button>
                 </div>
               </el-card>
@@ -141,96 +136,14 @@
         </div>
       </div>
     </el-card>
-    
-    <!-- 模组详情对话框 -->
-    <el-dialog
-      title="模组详情"
-      :visible.sync="detailsDialogVisible"
-      width="800px"
-      class="mod-details-dialog"
-      :modal="false"
-      :append-to-body="true"
-      :destroy-on-close="true"
-      :lock-scroll="false"
-      :show-close="true"
-      top="5vh"
-    >
-      <div v-if="currentMod" class="mod-details-content">
-        <!-- 模组头部信息 -->
-        <div class="mod-details-header">
-          <div class="mod-details-preview">
-            <el-image 
-              :src="currentMod.img || defaultImage" 
-              fit="cover">
-              <div slot="error" class="image-slot">
-                <i class="el-icon-picture-outline"></i>
-              </div>
-            </el-image>
-          </div>
-          
-          <div class="mod-details-info">
-            <h2 class="mod-details-name">{{ currentMod.name }}</h2>
-            
-            <div class="mod-details-meta">
-              <span class="mod-details-author">
-                <i class="el-icon-user"></i> {{ currentMod.auth }}
-              </span>
-              <span class="mod-details-update" v-if="currentMod.time">
-                <i class="el-icon-time"></i> {{ currentMod.time }}
-              </span>
-              <span class="mod-details-subscribers">
-                <i class="el-icon-star-on"></i> {{ currentMod.sub }} 订阅者
-              </span>
-            </div>
-            
-            <div class="mod-details-version" v-if="currentMod.version">
-              <span class="version-tag">{{ currentMod.version }}</span>
-            </div>
-            
-            <div class="mod-details-actions">
-              <el-button 
-                type="primary" 
-                @click="configMod(currentMod)">
-                配置模组
-              </el-button>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 模组描述 -->
-        <div class="mod-details-description" v-if="currentMod.describe">
-          <h3>模组描述</h3>
-          <div class="description-content">
-            {{ currentMod.describe || '该模组暂无描述' }}
-          </div>
-        </div>
-      </div>
-      
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="detailsDialogVisible = false">关闭</el-button>
-      </span>
-    </el-dialog>
-    
-    <!-- 模组配置对话框 -->
-    <mod-config-dialog
-      :visible.sync="configDialogVisible"
-      :mod-id="selectedModId"
-      :mod-info="currentMod"
-      :is-new-mod="true"
-      @config-updated="handleConfigUpdated">
-    </mod-config-dialog>
   </div>
 </template>
 
 <script>
-import ModConfigDialog from './ModConfigDialog.vue';
 import { itemApi, modApi } from '@/api';
 
 export default {
   name: 'ModSearch',
-  components: {
-    ModConfigDialog
-  },
   data() {
     return {
       searchForm: {
@@ -242,16 +155,10 @@ export default {
       totalResults: 0,
       pageSize: 20,
       currentPage: 1,
-      defaultImage: 'https://placehold.co/200x200/409EFF/white?text=MOD',
-      detailsDialogVisible: false,
-      currentMod: null,
-      workshopUrl: '',
-      configDialogVisible: false,
-      selectedModId: null
+      defaultImage: 'https://placehold.co/200x200/409EFF/white?text=MOD'
     };
   },
   created() {
-    // 检查URL参数中是否有搜索关键词
     const urlParams = new URLSearchParams(window.location.search);
     const keyword = urlParams.get('keyword');
     
@@ -266,9 +173,7 @@ export default {
         this.$message.warning('请输入搜索关键词');
         return;
       }
-      
       if (this.searching) {
-        console.log('搜索请求已在进行中，跳过');
         return;
       }
       
@@ -277,27 +182,43 @@ export default {
       this.searchResults = [];
       
       const encodedKeyword = encodeURIComponent(this.searchForm.keyword);
-      console.log('搜索关键词:', encodedKeyword);
       
       itemApi.searchItems({modname: encodedKeyword})
         .then(data => {
-          console.log('搜索结果:', data);
           if (Array.isArray(data)) {
             this.searchResults = data;
             this.totalResults = data.length;
           } else {
             this.searchResults = [];
             this.totalResults = 0;
-            console.warn('未获取到有效的搜索结果数组');
           }
         })
         .catch(error => {
-          console.error('搜索错误:', error);
           this.$message.error('搜索模组失败');
           this.searchResults = [];
         })
         .finally(() => {
           this.searching = false;
+        });
+    },
+    handleCollectMod(mod) {
+      let {id, img, name, time, version, sub, rating_img, auth} = mod;
+      let params = {
+        auth,
+        id,
+        img,
+        name,
+        time,
+        version,
+        sub,
+        rating: rating_img.split('https://community.fastly.steamstatic.com/public/images/sharedfiles/')[1].split('-')[0]
+      }
+      modApi.collectMod(params)  
+        .then(() => {
+          this.$message.success('收藏成功');
+        })
+        .catch(error => {
+          this.$message.error('收藏失败');
         });
     },
     
@@ -310,121 +231,11 @@ export default {
     
     handlePageChange(page) {
       this.currentPage = page;
-      // 如果需要分页，可以在这里添加逻辑
-      // 目前API不支持分页，所以暂时不处理
     },
-    
-    formatNumber(num) {
-      return num;
-    },
-    
-    configMod(mod) {
-      if (!mod || !mod.id) {
-        this.$message.warning('模组信息不完整，无法配置');
-        return;
-      }
-      
-      this.selectedModId = mod.id;
-      
-      this.currentMod = {
-        ...mod,
-        name: mod.name || "未命名模组",
-        version: mod.version || "", 
-        configuration_options: mod.configuration_options || []
-      };
-      
-      console.log('打开配置弹窗:', this.selectedModId);
-      this.configDialogVisible = true;
-    },
-    
-    viewDetails(mod) {
-      this.currentMod = mod;
-      this.detailsDialogVisible = true;
-    },
-    
-    closeSearch() {
-      this.goToModList();
-    },
-    
+
     goToModList() {
       this.$router.push('/mods');
     },
-    
-    handleConfigUpdated(data) {
-      this.$message({
-        type: 'success',
-        message: '模组配置已保存'
-      });
-      
-      // 可选：自动返回模组列表
-      // this.goToModList();
-    },
-    
-    importFromUrl() {
-      if (!this.workshopUrl || !this.workshopUrl.trim()) {
-        this.$message.warning('请输入Steam Workshop模组URL');
-        return;
-      }
-      
-      if (!this.isValidWorkshopUrl(this.workshopUrl)) {
-        this.$message.error('无效的Steam Workshop URL，请确保URL格式正确');
-        return;
-      }
-      
-      if (this.searching) {
-        console.log('导入请求已在进行中，跳过');
-        return;
-      }
-      
-      this.searching = true;
-      
-      const modId = this.extractModIdFromUrl(this.workshopUrl);
-      
-      fetch(`http://192.168.2.12:8000/mod/import?id=${modId}`)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('导入模组失败');
-          }
-          return response.json();
-        })
-        .then(data => {
-          if (data && data.success) {
-            this.$message.success('成功导入模组');
-            if (data.mod) {
-              this.selectedModId = data.mod.id;
-              this.currentMod = data.mod;
-              this.configDialogVisible = true;
-            } else {
-              this.goToModList();
-            }
-          } else {
-            this.$message.error(data.message || '导入模组失败');
-          }
-        })
-        .catch(error => {
-          console.error('导入错误:', error);
-          this.$message.error('导入模组失败: ' + error.message);
-        })
-        .finally(() => {
-          this.searching = false;
-        });
-    },
-    
-    isValidWorkshopUrl(url) {
-      return url.includes('steamcommunity.com/sharedfiles/filedetails/') || 
-             url.includes('steamcommunity.com/workshop/filedetails/');
-    },
-    
-    extractModIdFromUrl(url) {
-      try {
-        const urlObj = new URL(url);
-        const params = new URLSearchParams(urlObj.search);
-        return params.get('id') || '';
-      } catch (error) {
-        console.error('URL解析错误:', error);
-        return '';
-      }
-    }
   }
 };
 </script>
@@ -483,14 +294,12 @@ export default {
   height: 0;
   padding-bottom: 56.25%; /* 16:9 比例 */
   overflow: hidden;
-  background-color: #f0f2f5;
 }
 
 .mod-card-image .el-image {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.5s ease;

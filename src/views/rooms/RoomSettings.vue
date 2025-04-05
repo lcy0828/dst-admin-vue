@@ -7,15 +7,7 @@
           <div class="subtitle">{{ isEdit ? '修改现有房间配置' : '创建全新的游戏房间' }}</div>
         </div>
         <div class="header-actions">
-          <el-button @click="handleBack" icon="el-icon-back">返回</el-button>
-          <el-button-group>
-            <el-button type="primary" @click="handleImport" :disabled="!isEdit">
-              <i class="el-icon-upload2"></i> 导入配置
-            </el-button>
-            <el-button type="primary" @click="handleExport" :disabled="!isEdit">
-              <i class="el-icon-download"></i> 导出配置
-            </el-button>
-          </el-button-group>
+          <el-button @click="goBack" icon="el-icon-back">返回</el-button>
           <el-button type="success" @click="saveSettings" :loading="loading" icon="el-icon-check">保存</el-button>
         </div>
       </div>
@@ -266,20 +258,12 @@
 
         <!-- 特殊名单 -->
         <el-tab-pane label="特殊名单" name="special-lists">
-          <SpecialLists v-if="isEdit" :savename="roomId"></SpecialLists>
-          <div v-else class="empty-tip">
-            <i class="el-icon-warning"></i>
-            <p>请先保存基础配置后再设置特殊名单</p>
-          </div>
+          <SpecialLists :savename="roomId" @add-user="handleAddUser"></SpecialLists>
         </el-tab-pane>
 
         <!-- 服务器令牌 -->
         <el-tab-pane label="服务器令牌" name="token">
-          <ServerToken v-if="isEdit" :savename="roomId"></ServerToken>
-          <div v-else class="empty-tip">
-            <i class="el-icon-warning"></i>
-            <p>请先保存基础配置后再设置服务器令牌</p>
-          </div>
+          <ServerToken :savename="roomId" @input-token="handleInputToken"></ServerToken>
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -287,7 +271,7 @@
 </template>
 
 <script>
-import { roomApi, roomConfigApi } from '../../api/index';
+import { roomConfigApi, serverApi } from '../../api/index';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 
@@ -348,7 +332,15 @@ export default {
         // Steam配置
         steam_group_only: false,
         steam_group_id: 0,
-        steam_group_admins: false
+        steam_group_admins: false,
+
+        // 特殊名单
+        adminList: [],
+        blockList: [],
+        whiteList: [],
+
+        // 服务器令牌
+        serverToken: ''
       },
       rules: {
         cluster_name: [
@@ -380,40 +372,18 @@ export default {
       this.roomId = roomId;
       this.loadRoomSettings(roomId);
     }
-
-    // 添加路由离开提示
-    this.$router.beforeEach((to, from, next) => {
-      if (this.unsavedChanges) {
-        this.$confirm('您有未保存的更改，确定要离开吗？', '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          next();
-        }).catch(() => {
-          next(false);
-        });
-      } else {
-        next();
-      }
-    });
   },
   methods: {
-    handleBack() {
-      if (this.unsavedChanges) {
-        this.$confirm('您有未保存的更改，确定要离开吗？', '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          this.goBack();
-        }).catch(() => {});
-      } else {
-        this.goBack();
-      }
-    },
     goBack() {
       this.$router.push('/rooms/list');
+    },
+    handleAddUser(users) {
+      this.form.adminList = users.admin;
+      this.form.blockList = users.block;
+      this.form.whiteList = users.white;
+    },
+    handleInputToken(token) {
+      this.form.serverToken = token;
     },
     async loadRoomSettings(roomId) {
       try {
@@ -508,6 +478,11 @@ export default {
           this.$message.error('请完善表单信息');
           return;
         }
+        if (!this.form.serverToken) {
+          this.$message.error('请输入服务器令牌');
+          this.activeTab = 'token';
+          return;
+        }
         
         // 将表单数据转换为API所需的格式
         const convertedData = {
@@ -559,6 +534,15 @@ export default {
           await roomConfigApi.saveRoomConfig(this.savename, convertedData);
           this.roomId = this.savename;
           this.isEdit = true;
+          let userlist = [];
+          let {adminList, blockList, whiteList} = this.form;
+          adminList.length && userlist.push(serverApi.updateAdminList(this.savename, adminList));
+          blockList.length && userlist.push(serverApi.updateBlockList(this.savename, blockList));
+          whiteList.length && userlist.push(serverApi.updateWhiteList(this.savename, whiteList));
+          Promise.all(userlist).then(() => {
+          }).catch(() => {
+          });
+          serverApi.updateServerToken(this.savename, this.form.serverToken);
         }
         
         this.$message({
@@ -572,13 +556,6 @@ export default {
       } finally {
         this.loading = false;
       }
-    },
-    handleImport() {
-      if (!this.isEdit) {
-        this.$message.warning('请先保存基础配置后再导入配置');
-        return;
-      }
-      this.$refs.fileInput.click();
     },
     async handleFileChange(event) {
       const file = event.target.files[0];
@@ -601,36 +578,6 @@ export default {
       } finally {
         this.loading = false;
         event.target.value = '';
-      }
-    },
-    async handleExport() {
-      if (!this.isEdit) {
-        this.$message.warning('请先保存基础配置后再导出配置');
-        return;
-      }
-
-      try {
-        this.loading = true;
-        this.formErrors = [];
-        const response = await roomConfigApi.exportRoomConfig(this.roomId);
-        
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `cluster_${this.roomId}.ini`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        this.$message({
-          type: 'success',
-          message: '配置导出成功'
-        });
-      } catch (error) {
-        console.error('导出配置失败:', error);
-        this.handleError(error, '导出配置失败');
-      } finally {
-        this.loading = false;
       }
     },
     handleError(error, defaultMessage) {

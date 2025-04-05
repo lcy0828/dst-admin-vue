@@ -56,7 +56,6 @@
           </template>
           <el-menu-item index="/mods/list">已下载模组</el-menu-item>
           <el-menu-item index="/mods/search">模组搜索</el-menu-item>
-          <el-menu-item index="/mods/settings">模组配置</el-menu-item>
         </el-submenu>
         
         <el-submenu index="/rooms">

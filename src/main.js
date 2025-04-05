@@ -5,20 +5,10 @@ import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-chalk/index.css'
 import './assets/css/main.css'
 import api from './api'
-// 导入xterm.js样式
 import 'xterm/css/xterm.css'
-
-// 将API挂载到Vue原型上，方便全局调用
 Vue.prototype.$api = api
 
 Vue.config.productionTip = false
-
-// 全局过滤器
-Vue.filter('formatDate', function(value) {
-  if (!value) return ''
-  const date = new Date(value)
-  return date.toLocaleDateString()
-})
 
 // 路由守卫
 router.beforeEach((to, from, next) => {

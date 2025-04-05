@@ -81,44 +81,26 @@
             size="medium"
             :row-class-name="tableRowClassName"
             highlight-current-row>
-            <el-table-column prop="name" label="服务器名称">
+            <el-table-column prop="archive_name" width="150" label="房间名称">
               <template slot-scope="scope">
-                <div class="server-name">
-                  <el-tag
-                    :type="scope.row.status === '在线' ? 'success' : scope.row.status === '重启中' ? 'warning' : 'danger'"
-                    size="mini"
-                    effect="dark">
-                    {{ scope.row.status }}
-                  </el-tag>
-                  <span class="server-title">{{ scope.row.name }}</span>
-                </div>
+                <el-tag style="margin-right: 10px;">{{ scope.row.status === 'running' ? '在线' : '离线' }}</el-tag>
+                <span>{{ scope.row.archive_name }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="players" label="玩家" width="100" align="center"></el-table-column>
-            <el-table-column prop="day" label="天数" width="80" align="center"></el-table-column>
-            <el-table-column prop="season" label="季节" width="100" align="center">
+            <el-table-column prop="world_name" label="世界名称"/>
+            <el-table-column prop="start_time" label="启动时间"/>
+            <el-table-column label="运行时间" width="120">
               <template slot-scope="scope">
-                <div class="season-badge">
-                  <span :class="getSeasonClass(scope.row.season)">{{ scope.row.season }}</span>
-                </div>
+                <div>{{ formatTimeDiff(Date.now() - new Date(scope.row.start_time).getTime()) }}</div>
               </template>
             </el-table-column>
-            <el-table-column prop="uptime" label="运行时间" width="120" align="center"></el-table-column>
             <el-table-column label="操作" width="230" align="center">
               <template slot-scope="scope">
                 <el-button
                   size="mini"
-                  :type="scope.row.status === '在线' ? 'danger' : 'success'"
-                  :disabled="scope.row.status === '重启中'"
+                  :type="scope.row.status === 'running' ? 'danger' : 'success'"
                   @click="handleServerAction(scope.row)">
-                  {{ scope.row.status === '在线' ? '停止' : '启动' }}
-                </el-button>
-                <el-button
-                  size="mini"
-                  type="warning"
-                  :disabled="scope.row.status !== '在线'"
-                  @click="handleRestart(scope.row)">
-                  重启
+                  {{ scope.row.status === 'running' ? '停止' : '启动' }}
                 </el-button>
                 <el-button
                   size="mini"
@@ -142,9 +124,8 @@
             <div class="resource-item">
               <div class="resource-label">
                 <span>CPU使用率</span>
-                <!-- <span class="resource-value">{{ systemStatus.cpu_usage ? systemStatus.cpu_usage.toFixed(2) + '%' : '0%' }}</span> -->
               </div>
-              <el-progress :percentage="parseFloat(systemStatus.cpu_usage.toFixed(2)) || 0" :color="customColors"></el-progress>
+              <el-progress :percentage="systemStatus.cpu_usage && !isNaN(systemStatus.cpu_usage) ? parseFloat(systemStatus.cpu_usage.toFixed(2)) : 0" :color="customColors"></el-progress>
               <div class="resource-detail">
                 <span>{{ systemStatus.cpu_model || '未知CPU' }} {{ systemStatus.cpu_mhz ? '(' + systemStatus.cpu_mhz + 'MHz)' : '' }}</span>
                 <span>{{ systemStatus.cpu_cores || 0 }}核心 / {{ systemStatus.cpu_threads || 0 }}线程</span>
@@ -155,7 +136,7 @@
                 <span>内存使用率</span>
                 <!-- <span class="resource-value">{{ systemStatus.memory_usage ? systemStatus.memory_usage.toFixed(2) + '%' : '0%' }}</span> -->
               </div>
-              <el-progress :percentage="parseFloat(systemStatus.memory_usage.toFixed(2)) || 0" :color="customColors"></el-progress>
+              <el-progress :percentage="systemStatus.memory_usage && !isNaN(systemStatus.memory_usage) ? parseFloat(systemStatus.memory_usage.toFixed(2)) : 0" :color="customColors"></el-progress>
               <div class="resource-detail">
                 <span>总内存: {{ formatMemory(systemStatus.total_memory) }}</span>
                 <span>已用: {{ formatMemory(systemStatus.used_memory) }}</span>
@@ -167,7 +148,7 @@
                 <span>磁盘使用率</span>
                 <!-- <span class="resource-value">{{ systemStatus.disk_usage ? systemStatus.disk_usage.toFixed(2) + '%' : '0%' }}</span> -->
               </div>
-              <el-progress :percentage="parseFloat(systemStatus.disk_usage.toFixed(2)) || 0" :color="customColors"></el-progress>
+              <el-progress :percentage="systemStatus.disk_usage && !isNaN(systemStatus.disk_usage) ? parseFloat(systemStatus.disk_usage.toFixed(2)) : 0" :color="customColors"></el-progress>
               <div class="resource-detail">
                 <span>总容量: {{ systemStatus.total_disk ? systemStatus.total_disk.toFixed(2) : 0 }}GB</span>
                 <span>已用: {{ systemStatus.used_disk ? systemStatus.used_disk.toFixed(2) : 0 }}GB</span>
@@ -179,7 +160,7 @@
                 <span>系统负载</span>
                 <!-- <span class="resource-value">{{ systemStatus.cpu_load1 ? systemStatus.cpu_load1.toFixed(2) : '0.00' }}</span> -->
               </div>
-              <el-progress :percentage="parseFloat(systemStatus.cpu_load1.toFixed(2)) || 0"></el-progress>
+              <el-progress :percentage="systemStatus.cpu_load1 && !isNaN(systemStatus.cpu_load1) ? parseFloat(systemStatus.cpu_load1.toFixed(2)) : 0"></el-progress>
               <div class="resource-detail">
                 <span>1分钟: {{ systemStatus.cpu_load1 ? systemStatus.cpu_load1.toFixed(2) : '0.00' }}</span>
                 <span>5分钟: {{ systemStatus.cpu_load5 ? systemStatus.cpu_load5.toFixed(2) : '0.00' }}</span>
@@ -205,7 +186,6 @@
       </el-col>
     </el-row>
     
-    <!-- 第二个分割线 -->
     <div class="section-divider">
       <div class="section-title">
         <i class="el-icon-document"></i>
@@ -213,7 +193,6 @@
       </div>
     </div>
     
-    <!-- 世界日志 -->
     <el-row :gutter="20" class="log-section">
       <el-col :span="24">
         <div class="world-log-wrapper">
@@ -222,7 +201,6 @@
       </el-col>
     </el-row>
     
-    <!-- 第三个分割线 -->
     <div class="section-divider">
       <div class="section-title">
         <i class="el-icon-s-data"></i>
@@ -230,7 +208,6 @@
       </div>
     </div>
     
-    <!-- 游戏数据和公告 -->
     <el-row :gutter="20" class="data-section">
       <el-col :span="12">
         <el-card shadow="hover" class="player-stats">
@@ -243,10 +220,8 @@
             </el-radio-group>
           </div>
           <div class="chart-container">
-            <!-- 这里假设使用了一个自定义的图表组件 -->
             <div class="placeholder-chart">
               <div class="chart-title">玩家活跃度</div>
-              <!-- 图表占位符 -->
               <div class="chart-placeholder"></div>
             </div>
           </div>
@@ -302,6 +277,7 @@
 <script>
 import WorldLog from '@/components/WorldLog.vue';
 import { systemApi } from '@/api/index';
+import { formatTimeDiff } from '@/utils/dateUtils';
 
 export default {
   name: 'Dashboard',
@@ -310,49 +286,9 @@ export default {
   },
   data() {
     return {
+      formatTimeDiff,
       loading: false,
-      serverList: [
-        {
-          name: '主世界服务器',
-          players: '12/20',
-          day: 128,
-          season: '秋季',
-          uptime: '3天12小时',
-          status: '在线'
-        },
-        {
-          name: '洞穴服务器',
-          players: '8/12',
-          day: 128,
-          season: '无',
-          uptime: '3天11小时',
-          status: '在线'
-        },
-        {
-          name: 'MOD测试服务器',
-          players: '7/15',
-          day: 45,
-          season: '夏季',
-          uptime: '1天8小时',
-          status: '在线'
-        },
-        {
-          name: '活动服务器',
-          players: '0/20',
-          day: 1,
-          season: '春季',
-          uptime: '0小时',
-          status: '离线'
-        },
-        {
-          name: '开发测试服务器',
-          players: '0/10',
-          day: 215,
-          season: '冬季',
-          uptime: '0小时',
-          status: '重启中'
-        }
-      ],
+      serverList: [],
       customColors: [
         {color: '#67C23A', percentage: 40},
         {color: '#E6A23C', percentage: 70},
@@ -386,8 +322,16 @@ export default {
   created() {
     this.refreshData();
     this.refreshSystemStatus();
+    this.getServerList()
   },
   methods: {
+    getServerList() {
+      systemApi.getTmuxServers().then(res => {
+        this.serverList = res.data;
+      }).catch(err => {
+        console.error(err);
+      })
+    },
     refreshData() {
       this.loading = true;
       
@@ -417,46 +361,27 @@ export default {
     },
     
     handleServerAction(server) {
-      if (server.status === '在线') {
-        this.$confirm(`确定要停止 "${server.name}" 吗？当前有 ${server.players.split('/')[0]} 名玩家在线。`, '提示', {
+      if (server.status === 'running') {
+        this.$confirm(`确定要停止 "${server.archive_name}" 吗？`, '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
-          server.status = '离线';
-          server.uptime = '0小时';
-          server.players = `0/${server.players.split('/')[1]}`;
-          this.$message({
-            type: 'success',
-            message: `${server.name} 已停止`
+          systemApi.stopTmuxServer({session_name: server.session_name}).then(res => {
+            this.$message.success(res.msg);
+            setTimeout(() => {
+              this.getServerList();
+            }, 10000);
+          }).catch(err => {
+            this.$message.error('停止失败!');
           });
-        }).catch(() => {});
-      } else {
-        server.status = '在线';
-        server.uptime = '刚刚启动';
-        this.$message({
-          type: 'success',
-          message: `${server.name} 已启动`
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: '取消停止'
+          });          
         });
       }
-    },
-    
-    handleRestart(server) {
-      this.$confirm(`确定要重启 "${server.name}" 吗？重启过程大约需要2分钟。`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        server.status = '重启中';
-        setTimeout(() => {
-          server.status = '在线';
-          server.uptime = '刚刚启动';
-          this.$message({
-            type: 'success',
-            message: `${server.name} 已重启完成`
-          });
-        }, 5000);
-      }).catch(() => {});
     },
     
     handleConfigure(server) {
@@ -542,7 +467,6 @@ export default {
           }
         })
         .catch(error => {
-          console.error('获取系统状态数据错误:', error);
           this.$message.error('获取系统状态数据失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
@@ -557,7 +481,7 @@ export default {
       } else {
         return (memory / 1024).toFixed(2) + ' GB';
       }
-    }
+    },
   }
 }
 </script>
