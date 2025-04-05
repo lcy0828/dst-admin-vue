@@ -235,15 +235,14 @@ export default {
       axios.get(`${config.BASE_URL}/dstserver/list`)
         .then(response => {
           if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
-            // 处理新API格式的数据
+            // 处理新API格式的数据，不再对unknown类型进行推断
             this.rooms = response.data.data.map(item => ({
               id: item.name,
               name: item.name,
               savepath: item.savepath || '',
               worlds: (item.worlds || []).map(world => ({
                 name: world.name,
-                type: world.type === 'unknown' ? 
-                  (world.name.includes('Forest') ? 'forest' : 'cave') : world.type
+                type: world.type // 保留原始type值
               })),
               updateTime: item.updateTime || new Date().toISOString()
             }));
@@ -337,9 +336,86 @@ export default {
       
       this.startLoading = true;
       if (this.startForm.worldType === 'all') {
-        roomApi.startRoom(archiveName, serverMode)
-          .then(response => {
+        // 获取所有世界列表，然后为每个世界发起请求
+        roomApi.getRoomWorlds(archiveName)
+          .then(worlds => {
+            if (!worlds || worlds.length === 0) {
+              // 如果没有找到世界，则默认启动Forest1和Caves1
+              const startPromises = [
+                roomApi.startRoom({
+                  archive_name: archiveName,
+                  world_name: "Forest1",
+                  server_mode: serverMode,
+                  world_type: "forest"
+                }),
+                roomApi.startRoom({
+                  archive_name: archiveName,
+                  world_name: "Caves2",
+                  server_mode: serverMode,
+                  world_type: "cave"
+                })
+              ];
+              return Promise.all(startPromises);
+            } else {
+              // 为每个世界单独发起请求
+              const startPromises = worlds.map(world => {
+                // 使用API返回的type字段，对于unknown类型的世界，根据名称推断类型
+                let worldType = world.type;
+                // 对于unknown类型，如果需要启动，需要推断一个有效的type(forest或cave)
+                if (worldType === 'unknown') {
+                  worldType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
+                }
+                
+                return roomApi.startRoom({
+                  archive_name: archiveName,
+                  world_name: world.worldName || world.name,
+                  server_mode: serverMode,
+                  world_type: worldType
+                });
+              });
+              return Promise.all(startPromises);
+            }
+          })
+          .then(responses => {
             this.$message.success(`房间 ${this.selectedRoom.name} 的所有世界已启动`);
+          })
+          .catch(error => {
+            this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
+          })
+          .finally(() => {
+            this.startLoading = false;
+            this.startDialogVisible = false;
+          });
+      } else if (this.startForm.worldType === 'unknown') {
+        // 处理特殊情况：用户选择启动unknown类型的世界
+        roomApi.getRoomWorlds(archiveName)
+          .then(worlds => {
+            // 过滤出unknown类型的世界
+            const filteredWorlds = worlds.filter(world => world.type === 'unknown');
+            if (filteredWorlds.length === 0) {
+              this.$message.warning('没有找到其他类型的世界');
+              this.startLoading = false;
+              this.startDialogVisible = false;
+              return;
+            }
+            
+            // 为每个unknown世界启动，根据名称推断类型
+            const startPromises = filteredWorlds.map(world => {
+              const inferredType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
+              return roomApi.startRoom({
+                archive_name: archiveName,
+                world_name: world.worldName || world.name,
+                server_mode: serverMode,
+                world_type: inferredType
+              });
+            });
+            
+            return Promise.all(startPromises);
+          })
+          .then(responses => {
+            if (responses) {
+              this.$message.success(`房间 ${this.selectedRoom.name} 的其他世界已启动`);
+            }
           })
           .catch(error => {
             this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
@@ -352,21 +428,23 @@ export default {
         // 获取特定类型的世界列表
         roomApi.getRoomWorlds(archiveName)
           .then(worlds => {
-            // 根据类型过滤世界
+            // 根据类型过滤世界，严格使用API返回的type字段
             const filteredWorlds = worlds.filter(world => world.type === this.startForm.worldType);
             if (filteredWorlds.length === 0) {
               const defaultWorld = this.startForm.worldType === 'forest' ? 'Forest1' : 'Caves1';
               return roomApi.startRoom({
                 archive_name: archiveName,
                 world_name: defaultWorld,
-                server_mode: serverMode
+                server_mode: serverMode,
+                world_type: this.startForm.worldType
               });
             } else {
               const startPromises = filteredWorlds.map(world => 
                 roomApi.startRoom({
                   archive_name: archiveName,
-                  world_name: world.worldName,
-                  server_mode: serverMode
+                  world_name: world.worldName || world.name,
+                  server_mode: serverMode,
+                  world_type: world.type
                 })
               );
               return Promise.all(startPromises);
@@ -475,9 +553,8 @@ export default {
     getWorldsByType(worlds, type) {
       if (!worlds || !Array.isArray(worlds)) return [];
       return worlds.filter(world => {
-        // 检查世界类型，兼容不同的数据结构
-        const worldType = world.type || (world.name && world.name.includes('Forest') ? 'forest' : 'cave');
-        return worldType === type;
+        // 严格使用API返回的type字段
+        return world.type === type;
       });
     }
   }
@@ -486,21 +563,45 @@ export default {
 
 <style lang="scss" scoped>
 .world-settings-page {
-  padding: 20px;
+  padding: 25px;
+  background-color: #f5f7fa;
+  min-height: calc(100vh - 80px);
   
   .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #ebeef5;
     
     h2 {
       margin: 0;
+      font-size: 24px;
+      color: #303133;
+      position: relative;
+      padding-left: 15px;
+      
+      &:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 4px;
+        height: 20px;
+        background-color: #409EFF;
+        border-radius: 2px;
+      }
     }
     
     .header-actions {
       display: flex;
       align-items: center;
+      
+      .el-button {
+        border-radius: 6px;
+      }
     }
   }
   
@@ -512,24 +613,32 @@ export default {
   .empty-save-content,
   .loading-saves-content {
     text-align: center;
-    padding: 40px 0;
+    padding: 60px 0;
     
     .loading-page-icon,
     .empty-save-icon,
     .loading-saves-icon {
-      font-size: 48px;
-      color: #909399;
-      margin-bottom: 20px;
+      font-size: 64px;
+      color: #409EFF;
+      margin-bottom: 25px;
     }
     
     h4 {
-      font-size: 18px;
-      margin-bottom: 10px;
+      font-size: 22px;
+      margin-bottom: 15px;
+      color: #303133;
     }
     
     p {
       color: #606266;
-      margin-bottom: 20px;
+      margin-bottom: 25px;
+      font-size: 15px;
+    }
+    
+    .el-button {
+      padding: 12px 30px;
+      border-radius: 6px;
+      font-size: 16px;
     }
   }
   
@@ -539,6 +648,7 @@ export default {
       position: relative;
       overflow: hidden;
       transition: all 0.3s;
+      border-radius: 8px;
       
       &:hover {
         transform: translateY(-5px);
@@ -552,30 +662,33 @@ export default {
         .save-name {
           margin-top: 0;
           margin-bottom: 15px;
-          font-size: 16px;
+          font-size: 18px;
           font-weight: bold;
           color: #303133;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #f0f0f0;
         }
         
         .save-worlds {
-          margin: 10px 0;
+          margin: 15px 0;
           
           .world-category {
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             
             &:last-child {
               margin-bottom: 0;
             }
             
             .world-category-title {
-              font-size: 13px;
+              font-size: 14px;
+              font-weight: 500;
               color: #606266;
-              margin-right: 5px;
+              margin-right: 10px;
               display: inline-block;
-              min-width: 50px;
+              min-width: 60px;
             }
             
             .world-tags {
@@ -583,8 +696,10 @@ export default {
               flex-wrap: wrap;
               
               .world-tag {
-                margin-right: 5px;
-                margin-bottom: 5px;
+                margin-right: 8px;
+                margin-bottom: 8px;
+                border-radius: 12px;
+                padding: 2px 10px;
               }
             }
             
@@ -607,13 +722,17 @@ export default {
           flex-wrap: wrap;
           font-size: 13px;
           color: #909399;
+          margin-top: 15px;
           
           .save-date, .save-world-count {
             margin-right: 15px;
             margin-bottom: 5px;
+            background-color: #f9f9f9;
+            padding: 3px 10px;
+            border-radius: 12px;
             
             i {
-              margin-right: 3px;
+              margin-right: 5px;
             }
           }
         }
@@ -626,6 +745,8 @@ export default {
         right: 20px;
         display: flex;
         justify-content: space-between;
+        padding-top: 15px;
+        border-top: 1px solid #f0f0f0;
       }
     }
   }
@@ -636,7 +757,17 @@ export default {
     align-items: center;
   }
   
+  .empty-save-card {
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+  }
+  
   .fullheight-dialog {
+    :deep(.el-dialog) {
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
     :deep(.el-dialog__body) {
       max-height: 70vh;
       overflow-y: auto;

@@ -9,6 +9,7 @@
             <el-radio label="all">所有世界</el-radio>
             <el-radio label="forest">仅森林世界</el-radio>
             <el-radio label="cave">仅洞穴世界</el-radio>
+            <el-radio label="unknown">仅其他世界</el-radio>
           </el-radio-group>
         </el-form-item>
         
@@ -29,8 +30,8 @@
               <div v-for="world in room.worlds" :key="world.name" class="world-item">
                 <i class="el-icon-check"></i>
                 <span>{{ world.name }}</span>
-                <el-tag size="mini" :type="world.type === 'forest' ? 'primary' : 'success'">
-                  {{ world.type === 'forest' ? '森林' : '洞穴' }}
+                <el-tag size="mini" :type="getWorldTagType(world.type)">
+                  {{ getWorldTypeName(world.type) }}
                 </el-tag>
               </div>
               <div v-if="room.worlds.length === 0" class="no-worlds">
@@ -60,6 +61,18 @@
               <div v-if="caveWorlds.length === 0" class="no-worlds">
                 <i class="el-icon-warning-outline"></i>
                 <span>未找到洞穴世界，将使用默认世界 (Caves1)</span>
+              </div>
+            </template>
+            
+            <template v-else-if="formData.worldType === 'unknown'">
+              <div v-for="world in unknownWorlds" :key="world.name" class="world-item">
+                <i class="el-icon-check"></i>
+                <span>{{ world.name }}</span>
+                <el-tag size="mini" type="info">其他</el-tag>
+              </div>
+              <div v-if="unknownWorlds.length === 0" class="no-worlds">
+                <i class="el-icon-warning-outline"></i>
+                <span>未找到其他类型世界</span>
               </div>
             </template>
           </div>
@@ -107,17 +120,15 @@ export default {
   computed: {
     forestWorlds() {
       if (!this.room || !this.room.worlds) return [];
-      return this.room.worlds.filter(world => {
-        const worldType = world.type || (world.name && world.name.includes('Forest') ? 'forest' : 'cave');
-        return worldType === 'forest';
-      });
+      return this.room.worlds.filter(world => world.type === 'forest');
     },
     caveWorlds() {
       if (!this.room || !this.room.worlds) return [];
-      return this.room.worlds.filter(world => {
-        const worldType = world.type || (world.name && world.name.includes('Forest') ? 'forest' : 'cave');
-        return worldType === 'cave';
-      });
+      return this.room.worlds.filter(world => world.type === 'cave');
+    },
+    unknownWorlds() {
+      if (!this.room || !this.room.worlds) return [];
+      return this.room.worlds.filter(world => world.type === 'unknown');
     }
   },
   watch: {
@@ -134,6 +145,16 @@ export default {
       Object.assign(this.startForm, this.formData);
       // 触发确认事件
       this.$emit('confirm');
+    },
+    getWorldTagType(type) {
+      if (type === 'forest') return 'primary';
+      if (type === 'cave') return 'success';
+      return '';
+    },
+    getWorldTypeName(type) {
+      if (type === 'forest') return '森林';
+      if (type === 'cave') return '洞穴';
+      return '其他世界';
     }
   }
 }
@@ -147,26 +168,49 @@ export default {
     h3 {
       margin-top: 0;
       margin-bottom: 20px;
+      font-size: 20px;
+      color: #303133;
+      text-align: center;
+      position: relative;
+      padding-bottom: 15px;
+      
+      &:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 3px;
+        background-color: #409EFF;
+        border-radius: 1.5px;
+      }
     }
   }
   
   .world-preview {
-    margin-top: 20px;
+    margin-top: 25px;
     
     h4 {
-      font-size: 14px;
-      margin-bottom: 10px;
+      font-size: 16px;
+      margin-bottom: 12px;
+      color: #606266;
     }
     
     .world-list {
       background-color: #f8f8f8;
-      border-radius: 4px;
-      padding: 10px;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
       
       .world-item {
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         display: flex;
         align-items: center;
+        background-color: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         
         i {
           color: #67C23A;
@@ -175,6 +219,7 @@ export default {
         
         span {
           flex: 1;
+          font-weight: 500;
         }
       }
       
@@ -182,9 +227,13 @@ export default {
         display: flex;
         align-items: center;
         color: #E6A23C;
+        background-color: #fdf6ec;
+        padding: 10px 15px;
+        border-radius: 6px;
         
         i {
           margin-right: 8px;
+          font-size: 18px;
         }
       }
     }
@@ -193,6 +242,11 @@ export default {
   .form-actions {
     margin-top: 30px;
     text-align: right;
+    
+    .el-button {
+      padding: 10px 25px;
+      border-radius: 6px;
+    }
   }
   
   .error-message {

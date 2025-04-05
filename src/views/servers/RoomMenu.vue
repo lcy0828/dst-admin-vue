@@ -156,9 +156,14 @@
     <el-dialog
       title="启动房间服务器"
       :visible.sync="startRoomDialogVisible"
-      width="500px">
-      <div v-if="currentRoom">
-        <p>您正在启动房间：<strong>{{ currentRoom.name }}</strong></p>
+      width="500px"
+      :close-on-click-modal="false"
+      custom-class="start-room-dialog">
+      <div v-if="currentRoom" class="start-room-dialog-content">
+        <div class="room-info">
+          <i class="el-icon-video-play"></i>
+          <p>您正在启动房间：<strong>{{ currentRoom.name }}</strong></p>
+        </div>
         
         <el-form :model="startForm" label-width="120px">
           <el-form-item label="启动模式">
@@ -166,6 +171,7 @@
               <el-radio label="both">完整房间（主世界+洞穴）</el-radio>
               <el-radio label="forest">仅主世界</el-radio>
               <el-radio label="cave">仅洞穴</el-radio>
+              <el-radio label="unknown">仅其他世界</el-radio>
             </el-radio-group>
           </el-form-item>
           
@@ -305,13 +311,48 @@ export default {
       const { worldType, serverMode } = this.startForm;
       
       if (worldType === 'both') {
-        roomApi.startRoom(archiveName, serverMode)
-          .then(response => {
-            if (response && response.status === 200) {
-              this.$message.success('房间启动成功');
+        // 获取所有世界列表，然后为每个世界发起请求
+        roomApi.getRoomWorlds(archiveName)
+          .then(worlds => {
+            if (!worlds || worlds.length === 0) {
+              // 如果没有找到世界，则默认启动Forest1和Caves1
+              const startPromises = [
+                roomApi.startRoom({
+                  archive_name: archiveName,
+                  world_name: "Forest1",
+                  server_mode: serverMode,
+                  world_type: "forest"
+                }),
+                roomApi.startRoom({
+                  archive_name: archiveName,
+                  world_name: "Caves2",
+                  server_mode: serverMode,
+                  world_type: "cave"
+                })
+              ];
+              return Promise.all(startPromises);
             } else {
-              this.$message.error(response && response.msg ? response.msg : '启动房间失败');
+              // 为每个世界单独发起请求
+              const startPromises = worlds.map(world => {
+                // 使用API返回的type字段，对于unknown类型的世界，根据名称推断类型
+                let worldType = world.type;
+                // 对于unknown类型，如果需要启动，需要推断一个有效的type(forest或cave)
+                if (worldType === 'unknown') {
+                  worldType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
+                }
+                
+                return roomApi.startRoom({
+                  archive_name: archiveName,
+                  world_name: world.worldName || world.name,
+                  server_mode: serverMode,
+                  world_type: worldType
+                });
+              });
+              return Promise.all(startPromises);
             }
+          })
+          .then(responses => {
+            this.$message.success('房间启动成功');
           })
           .catch(error => {
             this.$message.error('启动房间失败: ' + (error.message || '未知错误'));
@@ -320,23 +361,64 @@ export default {
             this.startRoomDialogVisible = false;
             this.startLoading = false;
           });
+      } else if (worldType === 'unknown') {
+        // 处理特殊情况：用户选择启动unknown类型的世界
+        roomApi.getRoomWorlds(archiveName)
+          .then(worlds => {
+            // 过滤出unknown类型的世界
+            const filteredWorlds = worlds.filter(world => world.type === 'unknown');
+            if (filteredWorlds.length === 0) {
+              this.$message.warning('没有找到其他类型的世界');
+              this.startLoading = false;
+              this.startRoomDialogVisible = false;
+              return;
+            }
+            
+            // 为每个unknown世界启动，根据名称推断类型
+            const startPromises = filteredWorlds.map(world => {
+              const inferredType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
+              return roomApi.startRoom({
+                archive_name: archiveName,
+                world_name: world.worldName || world.name,
+                server_mode: serverMode,
+                world_type: inferredType
+              });
+            });
+            
+            return Promise.all(startPromises);
+          })
+          .then(responses => {
+            if (responses) {
+              this.$message.success('其他类型世界启动成功');
+            }
+          })
+          .catch(error => {
+            this.$message.error('启动世界失败: ' + (error.message || '未知错误'));
+          })
+          .finally(() => {
+            this.startRoomDialogVisible = false;
+            this.startLoading = false;
+          });
       } else {
         roomApi.getRoomWorlds(archiveName)
           .then(worlds => {
+            // 严格使用API返回的type字段进行过滤
             const filteredWorlds = worlds.filter(world => world.type === worldType);
             if (filteredWorlds.length === 0) {
               const defaultWorldName = worldType === 'forest' ? 'Forest1' : 'Caves1';
               return roomApi.startRoom({
                 archive_name: archiveName,
                 world_name: defaultWorldName,
-                server_mode: serverMode
+                server_mode: serverMode,
+                world_type: worldType
               });
             } else {
               const worldToStart = filteredWorlds[0];
               return roomApi.startRoom({
                 archive_name: archiveName,
-                world_name: worldToStart.worldName,
-                server_mode: serverMode
+                world_name: worldToStart.worldName || worldToStart.name,
+                server_mode: serverMode,
+                world_type: worldToStart.type
               });
             }
           })
@@ -511,6 +593,36 @@ export default {
 @media (max-width: 768px) {
   .el-col {
     width: 100% !important;
+  }
+}
+
+.start-room-dialog {
+  border-radius: 8px;
+  overflow: hidden;
+  
+  .start-room-dialog-content {
+    .room-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px dashed #ebeef5;
+      
+      i {
+        font-size: 24px;
+        color: #67C23A;
+        margin-right: 10px;
+      }
+      
+      p {
+        margin: 0;
+        font-size: 16px;
+        
+        strong {
+          color: #409EFF;
+        }
+      }
+    }
   }
 }
 </style> 
