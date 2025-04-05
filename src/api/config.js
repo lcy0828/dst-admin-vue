@@ -6,6 +6,9 @@ const API_CONFIG = {
   // 超时时间
   TIMEOUT: 20000,
   
+  // 模组下载专用超时时间 (5分钟)
+  DOWNLOAD_TIMEOUT: 300000,
+  
   // 请求头
   HEADERS: {
     'Content-Type': 'application/json',

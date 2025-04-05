@@ -6,7 +6,7 @@
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     :before-close="handleClose"
-    width="50%"
+    width="55%"
     :append-to-body="true"
     :destroy-on-close="true"
   >
@@ -22,66 +22,108 @@
       <template v-else-if="modInfo">
         <!-- 重置按钮 -->
         <div class="reset-button-container" v-if="hasOptions">
-          <el-button size="small" type="text" @click="resetToDefault">
+          <el-button size="small" type="text" @click="resetToDefault" class="reset-button">
             <i class="el-icon-refresh-left"></i> 重置为默认配置
           </el-button>
         </div>
         
-        <!-- 配置表单 -->
-        <el-form v-if="hasOptions" :model="configForm" label-width="150px" size="small" class="config-form">
-          <el-form-item 
-            v-for="option in allOptions" 
-            :key="option.name" 
-            :label="option.label"
-            class="config-form-item">
-            
-            <!-- 配置提示 -->
-            <el-tooltip 
-              v-if="option.hover" 
-              class="item" 
-              effect="dark" 
-              :content="option.hover" 
-              placement="top">
-              <i class="el-icon-question option-tooltip"></i>
-            </el-tooltip>
-            
-            <!-- 开关类型 -->
-            <template v-if="isBooleanOption(option)">
-              <el-switch
-                v-model="configForm[option.name]"
-                @change="handleConfigChange(option.name)">
-              </el-switch>
-              <span class="option-value-text">{{ configForm[option.name] ? '开启' : '关闭' }}</span>
-            </template>
-            
-            <!-- 下拉选择类型 -->
-            <template v-else-if="option.options && option.options.length > 0">
-              <el-select 
-                v-model="configForm[option.name]" 
-                @change="handleConfigChange(option.name)"
-                class="option-select">
-                <el-option
-                  v-for="(opt, idx) in option.options"
-                  :key="idx"
-                  :label="opt.description"
-                  :value="opt.data">
-                </el-option>
-              </el-select>
-            </template>
-            
-            <!-- 普通输入框 -->
-            <template v-else>
-              <el-input 
-                v-model="configForm[option.name]" 
-                @change="handleConfigChange(option.name)"
-                class="option-input" />
-            </template>
-          </el-form-item>
-        </el-form>
-        
-        <!-- 无配置选项提示 -->
-        <div v-else class="no-options">
-          <el-empty description="该模组没有配置选项" :image-size="100"></el-empty>
+        <!-- 配置内容区域（包含描述和选项，共享一个滚动条） -->
+        <div class="config-scroll-area">
+          <!-- 模组描述 -->
+          <div class="mod-description" v-if="modInfo.description">
+            <div class="description-header">
+              <i class="el-icon-info-circle"></i>
+              <span>模组描述</span>
+            </div>
+            <div class="description-content">
+              {{ modInfo.description || '该模组暂无描述' }}
+            </div>
+          </div>
+          
+          <!-- 配置表单 -->
+          <el-form v-if="hasOptions" :model="configForm" label-width="180px" size="small" class="config-form">
+            <el-form-item 
+              v-for="option in allOptions" 
+              :key="option.name" 
+              :label="option.label"
+              class="config-form-item">
+              
+              <!-- 开关类型 -->
+              <template v-if="isBooleanOption(option)">
+                <div class="option-control-wrapper">
+                  <el-switch
+                    v-model="configForm[option.name]"
+                    @change="handleConfigChange(option.name)"
+                    active-color="#13ce66"
+                    inactive-color="#ff4949">
+                  </el-switch>
+                  <span class="option-value-text">{{ configForm[option.name] ? '开启' : '关闭' }}</span>
+                  
+                  <!-- 配置提示 -->
+                  <el-tooltip 
+                    v-if="option.hover" 
+                    class="item" 
+                    effect="dark" 
+                    :content="option.hover" 
+                    placement="top">
+                    <i class="el-icon-question option-tooltip"></i>
+                  </el-tooltip>
+                </div>
+              </template>
+              
+              <!-- 下拉选择类型 -->
+              <template v-else-if="option.options && option.options.length > 0">
+                <div class="option-control-wrapper">
+                  <el-select 
+                    v-model="configForm[option.name]" 
+                    @change="handleConfigChange(option.name)"
+                    class="option-select">
+                    <el-option
+                      v-for="(opt, idx) in option.options"
+                      :key="idx"
+                      :label="opt.description"
+                      :value="opt.data">
+                    </el-option>
+                  </el-select>
+                  
+                  <!-- 配置提示 -->
+                  <el-tooltip 
+                    v-if="option.hover" 
+                    class="item" 
+                    effect="dark" 
+                    :content="option.hover" 
+                    placement="top">
+                    <i class="el-icon-question option-tooltip"></i>
+                  </el-tooltip>
+                </div>
+              </template>
+              
+              <!-- 普通输入框 -->
+              <template v-else>
+                <div class="option-control-wrapper">
+                  <el-input 
+                    v-model="configForm[option.name]" 
+                    @change="handleConfigChange(option.name)"
+                    class="option-input" />
+                  
+                  <!-- 配置提示 -->
+                  <el-tooltip 
+                    v-if="option.hover" 
+                    class="item" 
+                    effect="dark" 
+                    :content="option.hover" 
+                    placement="top">
+                    <i class="el-icon-question option-tooltip"></i>
+                  </el-tooltip>
+                </div>
+              </template>
+            </el-form-item>
+          </el-form>
+          
+          <!-- 无配置选项提示 -->
+          <div v-if="!hasOptions" class="no-options">
+            <el-empty description="该模组没有配置选项" :image-size="100"></el-empty>
+          </div>
         </div>
       </template>
       
@@ -130,6 +172,7 @@ export default {
       configForm: {},
       originalConfig: {},
       defaultConfig: {},
+      userCustomConfig: {},
       defaultIcon: 'https://placehold.co/200x200/409EFF/white?text=MOD',
       isInitialized: false,
       keepAliveInterval: null
@@ -196,6 +239,7 @@ export default {
       this.configForm = {};
       this.originalConfig = {};
       this.defaultConfig = {};
+      this.userCustomConfig = {};
       // 清除定时器
       this.clearKeepAliveTimer();
     },
@@ -229,18 +273,43 @@ export default {
       this.configForm = {};
       this.originalConfig = {};
       this.defaultConfig = {};
+      this.userCustomConfig = {};
       
-      try {
-        if (this.modInfo.configuration_options) {
-          this.initializeConfigFromData(this.modInfo.configuration_options);
-        }
-      } catch (error) {
-        console.error('模组配置初始化失败', error);
-        this.$message.error('模组配置初始化失败');
-        this.isInitialized = false;
-      } finally {
-        this.loading = false;
+      // 先获取用户自定义配置
+      this.getUserCustomConfig()
+        .then(() => {
+          try {
+            if (this.modInfo.configuration_options) {
+              this.initializeConfigFromData(this.modInfo.configuration_options);
+            }
+          } catch (error) {
+            console.error('模组配置初始化失败', error);
+            this.$message.error('模组配置初始化失败');
+            this.isInitialized = false;
+          }
+        })
+        .finally(() => {
+          this.loading = false;
+        });
+    },
+    
+    // 获取用户自定义配置
+    getUserCustomConfig() {
+      if (!this.modId) {
+        return Promise.resolve();
       }
+      
+      return modApi.getModCustomConfig({ modid: this.modId })
+        .then(res => {
+          if (res && res.modinfo && res.modinfo.configuration_options) {
+            this.userCustomConfig = res.modinfo.configuration_options;
+            console.log('加载用户自定义配置成功', this.userCustomConfig);
+          }
+        })
+        .catch(err => {
+          console.error('获取用户自定义配置失败', err);
+          // 获取失败不阻止后续流程
+        });
     },
     
     // 从数据初始化配置表单
@@ -253,7 +322,17 @@ export default {
         try {
           const parsedValue = this.parseOptionValue(option.default);
           
-          if (parsedValue === undefined && option.options && option.options.length > 0) {
+          // 检查是否有用户自定义配置
+          const hasUserConfig = this.userCustomConfig.hasOwnProperty(option.name);
+          const userValue = hasUserConfig ? this.userCustomConfig[option.name] : undefined;
+          
+          if (userValue !== undefined) {
+            // 使用用户自定义配置
+            this.configForm[option.name] = userValue;
+            this.originalConfig[option.name] = userValue;
+            // 默认值仍保留原始默认值
+            this.defaultConfig[option.name] = parsedValue;
+          } else if (parsedValue === undefined && option.options && option.options.length > 0) {
             const defaultOption = option.options.find(opt => 
               opt.description && opt.description.includes('默认')
             );
@@ -263,11 +342,12 @@ export default {
               this.defaultConfig[option.name] = defaultOption.data;
               return;
             }
+          } else {
+            // 使用默认值
+            this.configForm[option.name] = parsedValue;
+            this.originalConfig[option.name] = parsedValue;
+            this.defaultConfig[option.name] = parsedValue;
           }
-          
-          this.configForm[option.name] = parsedValue;
-          this.originalConfig[option.name] = parsedValue;
-          this.defaultConfig[option.name] = parsedValue;
         } catch (error) {
           console.error(`解析选项 ${option.name} 的默认值失败`, error);
         }
@@ -329,14 +409,15 @@ export default {
       
       this.saving = true;
       
-      const submitData = {
+      // 准备提交数据
+      const customConfigData = {
         modid: this.modId,
-        refresh: "false",
-        version: this.modInfo?.version || "",
-        config: this.prepareConfigForSubmit(this.configForm)
+        configuration_options: this.prepareConfigForSubmit(this.configForm),
+        enabled: this.modInfo?.enabled || true
       };
       
-      modApi.updateModConfig(this.modId, submitData)
+      // 只使用新接口保存用户自定义配置
+      modApi.saveModCustomConfig(customConfigData)
         .then(() => {
           this.originalConfig = JSON.parse(JSON.stringify(this.configForm));
           
@@ -428,7 +509,7 @@ export default {
 <style scoped>
 .config-container {
   min-height: 200px;
-  padding: 0 10px;
+  padding: 0 20px;
 }
 
 .loading-container {
@@ -448,34 +529,89 @@ export default {
 
 .reset-button-container {
   text-align: right;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
-.config-form {
+.reset-button {
+  font-size: 14px;
+  padding: 0;
+}
+
+.reset-button i {
+  margin-right: 4px;
+}
+
+/* 滚动区域 */
+.config-scroll-area {
   max-height: 60vh;
   overflow-y: auto;
   padding-right: 10px;
 }
 
+/* 模组描述样式 */
+.mod-description {
+  margin-bottom: 25px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 15px;
+  border-left: 4px solid #409EFF;
+}
+
+.description-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  font-weight: 500;
+  color: #409EFF;
+}
+
+.description-header i {
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+.description-content {
+  color: #606266;
+  line-height: 1.6;
+  font-size: 14px;
+  white-space: pre-line;
+}
+
+.config-form {
+  margin-bottom: 10px;
+}
+
 .config-form-item {
   border-bottom: 1px solid #EBEEF5;
-  padding-bottom: 15px;
-  margin-bottom: 15px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
   position: relative;
 }
 
 .config-form-item:last-child {
   border-bottom: none;
+  margin-bottom: 0;
+}
+
+.config-form-item .el-form-item__label {
+  font-weight: 500;
+  color: #303133;
 }
 
 .option-tooltip {
-  margin-left: 5px;
+  margin-left: 10px;
   color: #909399;
   cursor: pointer;
+  font-size: 14px;
 }
 
 .option-tooltip:hover {
   color: #409EFF;
+}
+
+.option-control-wrapper {
+  display: flex;
+  align-items: center;
 }
 
 .option-value-text {
@@ -486,7 +622,7 @@ export default {
 
 .option-select, .option-input {
   width: 100%;
-  max-width: 300px;
+  max-width: 350px;
 }
 
 .no-options, .no-mod-info {
@@ -495,18 +631,49 @@ export default {
   padding: 30px 0;
 }
 
+.mod-config-dialog ::v-deep .el-dialog__body {
+  padding: 20px 20px;
+}
+
+.mod-config-dialog ::v-deep .el-dialog__header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #EBEEF5;
+  background-color: #f9f9f9;
+}
+
+.mod-config-dialog ::v-deep .el-dialog__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.mod-config-dialog ::v-deep .el-dialog__footer {
+  padding: 15px 20px;
+  border-top: 1px solid #EBEEF5;
+  background-color: #f9f9f9;
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
+  .mod-config-dialog ::v-deep .el-dialog {
+    width: 90% !important;
+    margin-top: 10vh !important;
+  }
+  
   .config-form-item .el-form-item__label {
     float: none;
     display: block;
     text-align: left;
-    padding: 0 0 8px;
+    padding: 0 0 10px;
     width: 100% !important;
+    line-height: 1.4;
   }
   
   .config-form-item .el-form-item__content {
     margin-left: 0 !important;
+  }
+  
+  .option-select, .option-input {
+    max-width: 100%;
   }
 }
 </style> 

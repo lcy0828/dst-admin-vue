@@ -6,6 +6,7 @@
         <div class="header-actions">
           <el-button size="small" type="primary" @click="refreshModList">刷新</el-button>
           <el-button size="small" type="success" @click="goToSearch">添加模组</el-button>
+          <el-button size="small" type="info" @click="getModConfigFile">获取配置文件</el-button>
         </div>
       </div>
 
@@ -23,7 +24,9 @@
             <el-select v-model="filterForm.sortBy">
               <el-option label="名称" value="name"></el-option>
               <el-option label="作者" value="author"></el-option>
-              <el-option label="更新时间" value="updated"></el-option>
+              <el-option label="更新时间" value="update_time"></el-option>
+              <el-option label="订阅数" value="subscribers"></el-option>
+              <el-option label="评分" value="rating"></el-option>
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -79,11 +82,19 @@
                     </div>
                     <div class="mod-card-version">
                       <i class="el-icon-info"></i>
-                      <span>v{{ mod.version }}</span>
+                      <span>{{ mod.version }}</span>
                     </div>
-                    <div class="mod-card-update" v-if="mod.updatedAt">
+                    <div class="mod-card-update" v-if="mod.update_time">
                       <i class="el-icon-time"></i>
-                      <span>{{ mod.updatedAt }}</span>
+                      <span>{{ mod.update_time }}</span>
+                    </div>
+                    <div class="mod-card-subscribers" v-if="mod.subscribers">
+                      <i class="el-icon-user-solid"></i>
+                      <span>{{ mod.subscribers }} 订阅</span>
+                    </div>
+                    <div class="mod-card-rating" v-if="mod.rating">
+                      <i class="el-icon-star-on"></i>
+                      <span>{{ mod.rating }} 星</span>
                     </div>
                     <div class="mod-card-tags" v-if="mod.tags && mod.tags.length">
                       <el-tag size="mini" v-for="tag in mod.tags" :key="tag" class="mod-tag">{{ tag }}</el-tag>
@@ -91,16 +102,11 @@
                   </div>
                 </div>
                 
-                <div class="mod-card-description" :title="mod.description">
-                  {{ mod.description || '暂无描述' }}
-                </div>
-                
                 <div class="mod-card-actions">
                   <el-button 
                     size="small" 
                     type="primary"
-                    @click="openConfigDialog(mod)"
-                    :disabled="!mod.enabled">
+                    @click="openConfigDialog(mod)">
                     配置
                   </el-button>
                   <el-dropdown trigger="click" @command="handleCommand" size="small">
@@ -153,7 +159,7 @@
         <!-- 模组基本信息 -->
         <div class="mod-details-header">
           <el-image 
-            :src="currentModInfo.iconUrl || defaultIcon" 
+            :src="currentModInfo.image || defaultIcon" 
             fit="cover"
             class="mod-details-image">
             <div slot="error" class="image-slot">
@@ -170,8 +176,14 @@
               <span class="mod-details-version">
                 <i class="el-icon-info"></i> v{{ currentModInfo.version }}
               </span>
-              <span class="mod-details-update" v-if="currentModInfo.updatedAt">
-                <i class="el-icon-time"></i> {{ currentModInfo.updatedAt }}
+              <span class="mod-details-update" v-if="currentModInfo.update_time">
+                <i class="el-icon-time"></i> {{ currentModInfo.update_time }}
+              </span>
+              <span class="mod-details-subscribers" v-if="currentModInfo.subscribers">
+                <i class="el-icon-user-solid"></i> {{ currentModInfo.subscribers }} 订阅
+              </span>
+              <span class="mod-details-rating" v-if="currentModInfo.rating">
+                <i class="el-icon-star-on"></i> {{ currentModInfo.rating }} 星
               </span>
             </div>
             <div class="mod-details-status">
@@ -217,6 +229,10 @@
           <h3>文件信息</h3>
           <div class="file-info-list">
             <div class="file-info-item">
+              <span class="file-info-label">模组ID:</span>
+              <span class="file-info-value">{{ currentModInfo.modid || '未知' }}</span>
+            </div>
+            <div class="file-info-item">
               <span class="file-info-label">安装位置:</span>
               <span class="file-info-value">{{ currentModInfo.path || '未知' }}</span>
             </div>
@@ -226,7 +242,7 @@
             </div>
             <div class="file-info-item">
               <span class="file-info-label">安装时间:</span>
-              <span class="file-info-value">{{ currentModInfo.installedAt || '未知' }}</span>
+              <span class="file-info-value">{{ currentModInfo.time || currentModInfo.installedAt || '未知' }}</span>
             </div>
           </div>
         </div>
@@ -234,7 +250,7 @@
       
       <span slot="footer" class="dialog-footer">
         <el-button @click="detailsDialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo || !currentModInfo.enabled">配置模组</el-button>
+        <el-button type="primary" @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo">配置模组</el-button>
       </span>
     </el-dialog>
 
@@ -253,6 +269,22 @@
       <span slot="footer" class="dialog-footer">
         <el-button @click="uninstallDialogVisible = false">取消</el-button>
         <el-button type="danger" @click="confirmUninstall" :loading="uninstalling">确认卸载</el-button>
+      </span>
+    </el-dialog>
+
+    <!-- 模组配置文件查看对话框 -->
+    <el-dialog
+      title="模组配置文件 (modoverrides.lua)"
+      :visible.sync="configFileDialogVisible"
+      width="60%"
+      :append-to-body="true"
+      class="config-file-dialog">
+      <div v-loading="loadingConfig" class="config-file-content">
+        <pre class="lua-code">{{ configFileContent }}</pre>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="configFileDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="downloadConfigFile">下载配置文件</el-button>
       </span>
     </el-dialog>
   </div>
@@ -289,7 +321,11 @@ export default {
       uninstallDialogVisible: false,
       uninstalling: false,
       // 默认图标
-      defaultIcon: 'https://placehold.co/200x200/409EFF/white?text=MOD'
+      defaultIcon: 'https://placehold.co/200x200/409EFF/white?text=MOD',
+      // 配置文件查看相关
+      configFileDialogVisible: false,
+      configFileContent: '',
+      loadingConfig: false,
     };
   },
   computed: {
@@ -314,8 +350,21 @@ export default {
             return a.name.localeCompare(b.name);
           case 'author':
             return a.author.localeCompare(b.author);
-          case 'updated':
-            return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
+          case 'update_time':
+            // 处理各种可能的日期格式
+            const timeA = a.update_time || a.updatedAt || '';
+            const timeB = b.update_time || b.updatedAt || '';
+            return timeB.localeCompare(timeA); // 简单字符串比较，新的日期通常字符串比较结果更大
+          case 'subscribers':
+            // 移除逗号并转为数字
+            const subsA = parseInt((a.subscribers || '0').replace(/,/g, '')) || 0;
+            const subsB = parseInt((b.subscribers || '0').replace(/,/g, '')) || 0;
+            return subsB - subsA;
+          case 'rating':
+            // 确保评分是数字
+            const ratingA = parseFloat(a.rating || 0);
+            const ratingB = parseFloat(b.rating || 0);
+            return ratingB - ratingA;
           default:
             return 0;
         }
@@ -360,8 +409,6 @@ export default {
     
     // 打开配置对话框
     openConfigDialog(mod) {
-      if (!mod.enabled) return;
-      
       // 先重置当前模组信息
       this.currentModInfo = null;
       this.loading = true;
@@ -394,6 +441,28 @@ export default {
     toggleModStatus(mod, status) {
       this.loading = true;
       const action = status ? '启用' : '禁用';
+      
+      modApi.toggleMod({
+        modid: mod.modid,
+        enabled: status
+      }).then(res => {
+        // 更新成功后,更新本地状态
+        mod.enabled = status;
+        this.$message({
+          type: 'success',
+          message: `已${action}模组 ${mod.name}`
+        });
+      }).catch(err => {
+        console.error(err);
+        // 操作失败,恢复状态
+        mod.enabled = !status;
+        this.$message({
+          type: 'error',
+          message: `${action}模组失败`
+        });
+      }).finally(() => {
+        this.loading = false;
+      });
     },
     
     // 下拉菜单命令处理
@@ -437,30 +506,86 @@ export default {
       
       this.uninstalling = true;
       
-      // 模拟API卸载操作
-      setTimeout(() => {
-        // 从列表中移除
-        const index = this.modsList.findIndex(mod => mod.id === this.currentModInfo.id);
-        if (index > -1) {
-          this.modsList.splice(index, 1);
-        }
-        
-        this.uninstalling = false;
-        this.uninstallDialogVisible = false;
-        
-        this.$message({
-          type: 'success',
-          message: `模组 ${this.currentModInfo.name} 已成功卸载`
+      // 使用新的接口卸载模组
+      modApi.deleteMod(this.currentModInfo.modid)
+        .then(() => {
+          // 从列表中移除
+          const index = this.modsList.findIndex(mod => mod.modid === this.currentModInfo.modid);
+          if (index > -1) {
+            this.modsList.splice(index, 1);
+          }
+          
+          this.$message({
+            type: 'success',
+            message: `模组 ${this.currentModInfo.name} 已成功卸载`
+          });
+        })
+        .catch(err => {
+          console.error('卸载模组失败:', err);
+          this.$message({
+            type: 'error',
+            message: `卸载模组失败: ${err.message || '未知错误'}`
+          });
+        })
+        .finally(() => {
+          this.uninstalling = false;
+          this.uninstallDialogVisible = false;
+          this.currentModInfo = null;
         });
-        
-        this.currentModInfo = null;
-      }, 1000);
     },
     
     // 导航到搜索页面
     goToSearch() {
       this.$router.push('/mods/search');
     },
+
+    // 获取配置文件
+    getModConfigFile() {
+      this.loadingConfig = true;
+      modApi.getAllModConfigFile()
+        .then(res => {
+          if (res && res.modinfo) {
+            // 保存配置文件内容并显示对话框
+            this.configFileContent = res.modinfo;
+            this.configFileDialogVisible = true;
+          } else {
+            this.$message.error('没有可用的配置文件');
+          }
+        })
+        .catch(err => {
+          console.error('获取配置文件失败:', err);
+          this.$message.error('获取配置文件失败');
+        })
+        .finally(() => {
+          this.loadingConfig = false;
+        });
+    },
+    
+    // 下载配置文件
+    downloadConfigFile() {
+      if (!this.configFileContent) {
+        this.$message.error('没有可下载的配置内容');
+        return;
+      }
+      
+      // 创建一个可下载的 Lua 文件
+      const blob = new Blob([this.configFileContent], { type: 'text/plain' });
+      
+      // 创建临时下载链接
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = 'modoverrides.lua';
+      
+      // 点击下载
+      document.body.appendChild(link);
+      link.click();
+      
+      // 清理
+      window.URL.revokeObjectURL(link.href);
+      document.body.removeChild(link);
+      
+      this.$message.success('模组配置文件已成功下载');
+    }
   }
 };
 </script>
@@ -593,6 +718,21 @@ export default {
   color: #909399;
 }
 
+.mod-card-subscribers,
+.mod-card-rating {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.mod-card-subscribers i,
+.mod-card-rating i {
+  margin-right: 5px;
+  width: 16px;
+  text-align: center;
+  color: #909399;
+}
+
 .mod-card-tags {
   margin-top: 5px;
 }
@@ -600,21 +740,6 @@ export default {
 .mod-tag {
   margin-right: 5px;
   margin-bottom: 5px;
-}
-
-.mod-card-description {
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #EBEEF5;
-  color: #606266;
-  font-size: 13px;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
 }
 
 .mod-card-actions {
@@ -673,7 +798,9 @@ export default {
 
 .mod-details-author,
 .mod-details-version,
-.mod-details-update {
+.mod-details-update,
+.mod-details-subscribers,
+.mod-details-rating {
   margin-right: 15px;
   margin-bottom: 5px;
   display: flex;
@@ -682,7 +809,9 @@ export default {
 
 .mod-details-author i,
 .mod-details-version i,
-.mod-details-update i {
+.mod-details-update i,
+.mod-details-subscribers i,
+.mod-details-rating i {
   margin-right: 5px;
 }
 
@@ -773,5 +902,28 @@ export default {
     margin-right: 0;
     margin-bottom: 10px;
   }
+}
+
+/* 配置文件对话框样式 */
+.config-file-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.lua-code {
+  font-family: 'Courier New', Courier, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.5;
+  color: #333;
+  margin: 0;
+  padding: 10px;
+}
+
+.config-file-dialog ::v-deep .el-dialog__body {
+  padding: 15px 20px;
 }
 </style> 

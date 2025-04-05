@@ -103,9 +103,10 @@
                   <el-button 
                     size="small" 
                     type="primary" 
-                    :disabled="false" 
-                    @click="handleCollectMod(mod)">
-                    收藏到服务器
+                    :disabled="downloadingMods[mod.id]" 
+                    :loading="downloadingMods[mod.id]"
+                    @click="handleDownloadMod(mod)">
+                    {{ downloadingMods[mod.id] ? '下载中...' : '下载到服务器' }}
                   </el-button>
                 </div>
               </el-card>
@@ -155,7 +156,8 @@ export default {
       totalResults: 0,
       pageSize: 20,
       currentPage: 1,
-      defaultImage: 'https://placehold.co/200x200/409EFF/white?text=MOD'
+      defaultImage: 'https://placehold.co/200x200/409EFF/white?text=MOD',
+      downloadingMods: {} // 跟踪正在下载的模组
     };
   },
   created() {
@@ -201,7 +203,7 @@ export default {
           this.searching = false;
         });
     },
-    handleCollectMod(mod) {
+    handleDownloadMod(mod) {
       let {id, img, name, time, version, sub, rating_img, auth} = mod;
       let params = {
         auth,
@@ -213,12 +215,29 @@ export default {
         sub,
         rating: rating_img.split('https://community.fastly.steamstatic.com/public/images/sharedfiles/')[1].split('-')[0]
       }
-      modApi.collectMod(params)  
+      
+      // 显示下载中消息
+      const loadingMessage = this.$message({
+        type: 'info',
+        message: '正在下载模组，请耐心等待...',
+        duration: 0,
+        showClose: true
+      });
+      
+      this.downloadingMods[id] = true;
+      
+      modApi.downloadMod(params)  
         .then(() => {
-          this.$message.success('收藏成功');
+          // 关闭下载中消息
+          loadingMessage.close();
+          this.$message.success('下载成功');
+          this.downloadingMods[id] = false;
         })
         .catch(error => {
-          this.$message.error('收藏失败');
+          // 关闭下载中消息
+          loadingMessage.close();
+          this.$message.error('下载失败：' + (error.message || '未知错误'));
+          this.downloadingMods[id] = false;
         });
     },
     
