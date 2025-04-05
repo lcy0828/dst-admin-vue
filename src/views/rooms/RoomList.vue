@@ -36,9 +36,9 @@
     
     <!-- 房间列表卡片样式展示 -->
     <div v-if="!loading && filteredRooms.length > 0" class="save-list">
-      <el-row :gutter="20">
-        <el-col :span="8" v-for="room in filteredRooms" :key="room.id">
-          <el-card shadow="hover" class="save-item">
+      <el-row :gutter="24" type="flex">
+        <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="6" v-for="room in filteredRooms" :key="room.id" class="room-col">
+          <el-card shadow="hover" class="save-item" body-style="padding: 0; height: 100%; display: flex; flex-direction: column;">
             <div class="save-item-content">
               <h4 class="save-name">{{ room.name }}</h4>
               <div class="save-worlds" v-if="room.worlds && room.worlds.length">
@@ -643,8 +643,22 @@ export default {
   }
   
   .save-list {
+    .el-row {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    
+    .room-col {
+      display: flex;
+      margin-bottom: 24px;
+    }
+    
     .save-item {
-      margin-bottom: 20px;
+      width: 100%;
+      height: 320px !important;
+      margin-bottom: 0;
+      display: flex;
+      flex-direction: column;
       position: relative;
       overflow: hidden;
       transition: all 0.3s;
@@ -653,14 +667,38 @@ export default {
       &:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border-color: #e6e6e6;
+      }
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(to right, #409EFF, #67C23A);
+        z-index: 2;
+      }
+      
+      .el-card__body {
+        height: 100%;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
       }
       
       .save-item-content {
-        min-height: 120px;
-        padding-bottom: 60px; /* 为底部操作按钮留出空间 */
+        flex: 1;
+        padding: 20px;
+        padding-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         
         .save-name {
-          margin-top: 0;
+          height: 45px;
+          margin-top: 5px;
           margin-bottom: 15px;
           font-size: 18px;
           font-weight: bold;
@@ -668,12 +706,29 @@ export default {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          padding-bottom: 8px;
+          padding-bottom: 10px;
           border-bottom: 1px solid #f0f0f0;
+          position: relative;
+          padding-left: 30px;
+          
+          &::before {
+            content: '\e7a4';
+            font-family: 'element-icons';
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 20px;
+            color: #409EFF;
+          }
         }
         
         .save-worlds {
+          height: 120px;
           margin: 15px 0;
+          flex: 1;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
           
           .world-category {
             margin-bottom: 12px;
@@ -689,6 +744,15 @@ export default {
               margin-right: 10px;
               display: inline-block;
               min-width: 60px;
+              position: relative;
+              padding-left: 20px;
+              
+              &::before {
+                position: absolute;
+                left: 0;
+                font-family: 'element-icons';
+                font-size: 14px;
+              }
             }
             
             .world-tags {
@@ -705,49 +769,143 @@ export default {
             
             &.forest .world-category-title {
               color: #409EFF;
+              
+              &::before {
+                content: '\e79b';
+                color: #409EFF;
+              }
             }
             
             &.cave .world-category-title {
               color: #67C23A;
+              
+              &::before {
+                content: '\e790';
+                color: #67C23A;
+              }
             }
             
             &.unknown .world-category-title {
               color: #909399;
+              
+              &::before {
+                content: '\e6f6';
+                color: #909399;
+              }
             }
           }
         }
         
         .save-info {
+          height: 40px;
+          margin-top: auto;
           display: flex;
           flex-wrap: wrap;
           font-size: 13px;
           color: #909399;
-          margin-top: 15px;
+          background-color: #f9f9f9;
+          padding: 8px 10px;
+          border-radius: 6px;
           
           .save-date, .save-world-count {
             margin-right: 15px;
             margin-bottom: 5px;
-            background-color: #f9f9f9;
-            padding: 3px 10px;
-            border-radius: 12px;
             
             i {
               margin-right: 5px;
+              font-size: 14px;
             }
           }
         }
       }
       
       .save-actions {
-        position: absolute;
-        bottom: 20px;
-        left: 20px;
-        right: 20px;
+        padding: 15px 20px;
+        height: 65px;
         display: flex;
         justify-content: space-between;
-        padding-top: 15px;
         border-top: 1px solid #f0f0f0;
+        background-color: #fafafa;
+        position: relative;
+        z-index: 1;
+        margin-top: auto;
+        
+        .el-button {
+          border-radius: 20px;
+          padding: 8px 15px;
+          
+          &.el-button--success {
+            background-color: #67C23A;
+            border-color: #67C23A;
+            
+            &:hover, &:focus {
+              background-color: #85ce61;
+              border-color: #85ce61;
+            }
+          }
+          
+          &.el-button--primary {
+            background-color: #409EFF;
+            border-color: #409EFF;
+            
+            &:hover, &:focus {
+              background-color: #66b1ff;
+              border-color: #66b1ff;
+            }
+          }
+          
+          i {
+            margin-right: 3px;
+          }
+        }
+        
+        .el-dropdown {
+          .el-button {
+            background-color: #f4f4f5;
+            color: #606266;
+            border-color: #f4f4f5;
+            
+            &:hover, &:focus {
+              background-color: #e9e9eb;
+              border-color: #e9e9eb;
+            }
+          }
+        }
       }
+    }
+  }
+  
+  // 响应式调整
+  @media (max-width: 767px) {
+    padding: 15px;
+    
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+      
+      h2 {
+        margin-bottom: 15px;
+      }
+      
+      .header-actions {
+        width: 100%;
+        
+        .search-input {
+          margin-bottom: 10px;
+          width: 100% !important;
+          margin-right: 0;
+        }
+        
+        .el-button {
+          margin-left: 0;
+          margin-right: 10px;
+        }
+      }
+    }
+    
+    .save-item {
+      height: auto;
+      min-height: 280px;
     }
   }
   
@@ -773,5 +931,20 @@ export default {
       overflow-y: auto;
     }
   }
+}
+
+.el-card.save-item {
+  height: 100% !important;
+  
+  .el-card__body {
+    height: 100%;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.room-col {
+  margin-bottom: 24px;
 }
 </style> 
