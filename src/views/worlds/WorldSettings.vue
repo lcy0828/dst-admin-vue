@@ -582,41 +582,21 @@ export default {
           this.loadedWorldConfigs = {};
         }
         
-        console.log(`切换到标签页 ${newTab}, 检查是否需要加载配置...`);
-        
         // 如果没有加载过该世界的配置，则加载
         if (!this.loadedWorldConfigs[worldKey]) {
-          console.log(`${newTab} 的配置未曾加载，开始加载...`);
           this.loading = true;
-          
-          // 先确保基础设置正确
-          this.ensureBaseSettings(currentWorld.type).then(() => {
-            this.loadWorldOverrides(this.roomName, currentWorld.name)
-              .then(data => {
-                console.log(`已加载 ${currentWorld.name} 的世界配置数据:`, data ? Object.keys(data).length : 0);
-                this.loadedWorldConfigs[worldKey] = true;
-                
-                // 显式触发视图更新
-                this.$forceUpdate();
-                
-                // 重新检查变更
-                this.debouncedCheckChanges();
-              })
-              .finally(() => {
-                this.loading = false;
-                
-                // 加载服务器基础配置
-                this.fetchServerIni(this.roomName, currentWorld.name);
-              });
-          });
+          this.loadWorldOverrides(this.roomName, currentWorld.name)
+            .finally(() => {
+              this.loadedWorldConfigs[worldKey] = true;
+              this.loading = false;
+            });
         } else {
-          console.log(`${newTab} 的配置已加载过，直接重新应用...`);
           // 如果已经加载过，重新应用世界配置
           this.applyCurrentWorldConfig(currentWorld);
-          
-          // 加载服务器基础配置
-          this.fetchServerIni(this.roomName, currentWorld.name);
         }
+        
+        // 加载服务器基础配置
+        this.fetchServerIni(this.roomName, currentWorld.name);
       }
       
       // 重新检查变更
@@ -628,18 +608,6 @@ export default {
         this.setupScrollListeners();
       });
     },
-    
-    // 确保基础设置已经加载
-    ensureBaseSettings(worldType) {
-      if (worldType === 'forest' && this.forestSettings) {
-        return Promise.resolve();
-      } else if (worldType === 'cave' && this.caveSettings) {
-        return Promise.resolve();
-      } else {
-        return this.loadDefaultSettings(worldType);
-      }
-    },
-    
     searchText() {
       // 搜索文本变化时，重置虚拟滚动状态
       this.virtualScrollState = {};
@@ -956,9 +924,16 @@ export default {
     
     // 加载世界的自定义配置
     loadWorldOverrides(savename, worldname) {
-      if (!savename || !worldname) return Promise.resolve(null);
+      if (!savename || !worldname) return Promise.resolve();
       
-      console.log(`加载世界 ${worldname} 的自定义配置...`);
+      const axios = require('axios');
+      const config = require('../../api/config').default;
+      
+      // 确定世界类型
+      const worldType = worldname.toLowerCase().includes('forest') || 
+                        worldname.toLowerCase().includes('master') ? 'forest' : 'cave';
+      
+      console.log(`加载世界 ${worldname} (${worldType})的自定义配置...`);
       
       // 使用统一的获取接口
       return axios.get(`${config.BASE_URL}/dstserver/worldoverrides`, {
@@ -974,11 +949,6 @@ export default {
           
           // 检查数据是否为空对象
           if (worldOverridesData && Object.keys(worldOverridesData).length > 0) {
-            // 确定世界类型
-            const worldType = worldname.toLowerCase().includes('forest') || 
-                         worldname.toLowerCase().includes('master') ? 'forest' : 'cave';
-            
-            console.log(`开始应用 ${worldname} 的自定义配置 (类型: ${worldType})...`);
             // 应用世界自定义配置到设置中
             this.applyWorldOverrides(worldOverridesData, worldType, worldname);
             
@@ -988,18 +958,21 @@ export default {
             }
             this.loadedWorldConfigs[`${savename}_${worldname}`] = true;
             
-            return worldOverridesData;
+            console.log(`成功加载并应用 ${worldname} 的配置`);
           } else {
-            console.warn(`世界 ${worldname} 的配置数据为空，将使用默认配置`);
+            console.log(`世界 ${worldname} 没有自定义配置，使用默认设置`);
           }
+          
+          return worldOverridesData;
         } else {
-          console.warn(`获取世界 ${worldname} 配置的API返回状态异常:`, response?.data);
+          console.warn(`加载世界 ${worldname} 配置的API返回状态异常:`, response?.data);
+          return null;
         }
-        return null;
       })
       .catch(error => {
         console.error(`获取世界 ${worldname} 的自定义配置失败:`, error);
-        return Promise.reject(error);
+        this.$message.error(`加载世界 ${worldname} 的配置失败: ${error.message || '未知错误'}`);
+        return Promise.resolve({}); // 返回空对象，避免继续抛出错误
       });
     },
     
@@ -1017,7 +990,7 @@ export default {
       
       // 记录配置项数量，用于日志
       const configCount = Object.keys(overridesData).length;
-      console.log(`准备应用 ${worldname} 的 ${configCount} 个配置项, 世界类型: ${worldType}`);
+      console.log(`准备应用 ${worldname} 的 ${configCount} 个配置项`);
       
       this.worldOverrides[worldname] = {
         type: worldType,
@@ -1031,11 +1004,8 @@ export default {
         return;
       }
       
-      console.log(`已找到 ${worldType} 类型的基础设置`);
-      
       // 跟踪应用的配置项数量
       let appliedCount = 0;
-      let missingCount = 0;
       
       // 遍历所有设置项，应用自定义配置
       this.traverseSettings(baseSettings, (item, itemKey) => {
@@ -1053,15 +1023,10 @@ export default {
               console.log(`已应用 ${appliedCount}/${configCount} 个配置项`);
             }
           }
-        } else {
-          missingCount++;
         }
       });
       
-      console.log(`已完成世界 ${worldname} 的 ${appliedCount} 个配置项应用，${missingCount} 个配置项在基础设置中未找到`);
-      
-      // 直接触发视图更新
-      this.$forceUpdate();
+      console.log(`已完成世界 ${worldname} 的 ${appliedCount} 个配置项应用`);
       
       // 重新标记变更状态
       this.checkChanges();
@@ -2128,11 +2093,6 @@ export default {
         return;
       }
       
-      if (!this.newWorld.type) {
-        this.$message.warning('请选择世界类型');
-        return;
-      }
-      
       this.addWorldDialogVisible = false;
       this.loading = true;
       
@@ -2140,13 +2100,9 @@ export default {
       const tempWorldName = this.newWorld.name;
       const worldType = this.newWorld.type;
       
-      console.log(`开始创建新世界: ${tempWorldName}, 类型: ${worldType}`);
-      
-      // 先确保基础设置已加载完成
+      // 获取并应用默认配置
       this.loadDefaultSettings(worldType)
         .then(() => {
-          console.log(`已加载${worldType === 'forest' ? '森林' : '洞穴'}世界默认配置`);
-          
           // 提取默认配置
           const defaultOverrides = this.extractAllSettings(worldType);
           
@@ -2155,10 +2111,8 @@ export default {
             ? `${config.BASE_URL}/dstserver/forestworld`
             : `${config.BASE_URL}/dstserver/caveworld`;
           
-          // 创建基础配置
+          // 同时创建基础配置
           const serverIni = this.createServerIniConfig(tempWorldName, worldType);
-          
-          console.log(`创建世界配置请求：${apiEndpoint}`);
           
           // 创建两个请求
           const configPromise = axios.post(apiEndpoint, {
@@ -2177,103 +2131,43 @@ export default {
           Promise.all([configPromise, serverIniPromise])
             .then(([configResponse, serverIniResponse]) => {
               let success = true;
-              let errorMessages = [];
               
               if (configResponse.data && configResponse.data.status === 200) {
-                console.log(`世界 ${tempWorldName} 配置创建成功`);
+                this.$message.success(`已创建世界 ${tempWorldName} 并设置配置`);
               } else {
-                errorMessages.push(configResponse.data?.msg || '创建世界配置失败');
+                this.$message.warning(configResponse.data?.msg || '创建世界配置失败');
                 success = false;
               }
               
               if (serverIniResponse.data && serverIniResponse.data.status === 200) {
-                console.log(`世界 ${tempWorldName} 基础配置设置成功`);
+                this.$message.success(`已设置 ${tempWorldName} 的基础配置`);
               } else {
-                errorMessages.push(serverIniResponse.data?.msg || '设置基础配置失败');
+                this.$message.warning(serverIniResponse.data?.msg || '设置基础配置失败');
                 success = false;
               }
               
               if (success) {
-                // 显示单个成功消息
-                this.$message.success(`已创建世界 ${tempWorldName} 并完成所有配置设置`);
-                
-                // 添加世界到当前视图
+                // 添加世界到当前视图，并刷新列表
                 const newWorld = {
                   name: tempWorldName,
                   type: worldType
                 };
-                
-                // 更新原始设置，确保设置在内存中已可用
-                if (worldType === 'forest') {
-                  if (!this.originalSettings) this.originalSettings = {};
-                  this.originalSettings.forest = JSON.parse(JSON.stringify(this.forestSettings));
-                  // 更新世界类型标志
-                  this.hasForestWorld = true;
-                } else {
-                  if (!this.originalSettings) this.originalSettings = {};
-                  this.originalSettings.cave = JSON.parse(JSON.stringify(this.caveSettings));
-                  // 更新世界类型标志
-                  this.hasCaveWorld = true;
-                }
-                
-                // 预先添加世界到列表，避免等待刷新
                 this.roomWorlds.push(newWorld);
                 
-                // 记录已加载此世界配置
-                const worldKey = `${this.roomName}_${tempWorldName}`;
-                if (!this.loadedWorldConfigs) {
-                  this.loadedWorldConfigs = {};
+                // 更新世界类型标志
+                if (worldType === 'forest') {
+                  this.hasForestWorld = true;
+                } else {
+                  this.hasCaveWorld = true;
                 }
-                this.loadedWorldConfigs[worldKey] = true;
-                
-                // 存储世界覆盖配置，以便正确应用
-                if (!this.worldOverrides) {
-                  this.worldOverrides = {};
-                }
-                
-                this.worldOverrides[tempWorldName] = {
-                  type: worldType,
-                  data: JSON.parse(JSON.stringify(defaultOverrides))
-                };
                 
                 // 切换到新世界标签
                 this.activeTab = tempWorldName;
                 
-                // 添加短暂延迟，确保UI更新
-                setTimeout(() => {
-                  // 刷新世界列表以获取服务器最新状态
-                  this.fetchRoomWorlds()
-                    .then(() => {
-                      console.log(`已刷新房间世界列表，尝试初始化 ${tempWorldName} 配置`);
-                      
-                      // 确保加载新世界的配置
-                      const serverWorld = this.roomWorlds.find(world => world.name === tempWorldName);
-                      if (serverWorld) {
-                        // 确保世界类型正确
-                        if (serverWorld.type !== worldType) {
-                          console.log(`更新世界类型: ${serverWorld.type} -> ${worldType}`);
-                          this.$set(serverWorld, 'type', worldType);
-                        }
-                        
-                        // 手动初始化世界配置
-                        this.initWorldConfig(serverWorld);
-                      } else {
-                        console.log(`无法在刷新后的列表中找到世界 ${tempWorldName}`);
-                      }
-                    })
-                    .catch(error => {
-                      console.error('刷新世界列表失败:', error);
-                      // 如果刷新失败，确保使用本地添加的世界
-                      this.initWorldConfig(newWorld);
-                    });
-                }, 500);
-              } else {
-                // 显示错误消息，合并多个错误
-                if (errorMessages.length > 0) {
-                  this.$message.error(errorMessages.join('；'));
-                } else {
-                  this.$message.error('创建世界失败');
-                }
+                // 刷新世界列表以获取服务器最新状态
+                this.fetchRoomWorlds().catch(() => {
+                  // 如果刷新失败，已经添加到视图，无需处理
+                });
               }
               
               this.loading = false;
@@ -2283,150 +2177,7 @@ export default {
               this.$message.error('创建世界失败: ' + (error.message || '未知错误'));
               this.loading = false;
             });
-        })
-        .catch(error => {
-          console.error('加载默认配置失败:', error);
-          this.$message.error('加载默认配置失败: ' + (error.message || '未知错误'));
-          this.loading = false;
         });
-    },
-    
-    // 初始化世界配置
-    initWorldConfig(world) {
-      if (!world || !this.roomName) return;
-      
-      // 创建加载提示
-      const loadingInstance = this.$loading({
-        lock: true,
-        text: `正在加载 ${world.name} 的配置数据...`,
-        spinner: 'el-icon-loading',
-        background: 'rgba(255, 255, 255, 0.7)'
-      });
-      
-      console.log(`开始初始化世界 ${world.name} (类型: ${world.type}) 的配置`);
-      
-      // 先确保基础设置已加载
-      const loadDefaultSettingsPromise = this.loadDefaultSettings(world.type);
-      
-      // 等待基础设置加载完成
-      loadDefaultSettingsPromise.then(() => {
-        // 设置当前世界的数据，确保其他方法能正确识别当前世界类型
-        if (world.type === 'forest') {
-          if (!this.originalSettings) this.originalSettings = {};
-          this.originalSettings.forest = JSON.parse(JSON.stringify(this.forestSettings));
-          console.log('基础森林设置已准备就绪');
-        } else {
-          if (!this.originalSettings) this.originalSettings = {};
-          this.originalSettings.cave = JSON.parse(JSON.stringify(this.caveSettings));
-          console.log('基础洞穴设置已准备就绪');
-        }
-        
-        // 记录已加载配置
-        const worldKey = `${this.roomName}_${world.name}`;
-        if (!this.loadedWorldConfigs) {
-          this.loadedWorldConfigs = {};
-        }
-
-        // 首先检查是否已有存储的覆盖配置
-        if (this.worldOverrides && this.worldOverrides[world.name]) {
-          console.log(`发现已存储的 ${world.name} 配置，直接应用缓存的配置...`);
-          
-          // 设置为已加载
-          this.loadedWorldConfigs[worldKey] = true;
-          
-          // 应用缓存的配置
-          this.applyCurrentWorldConfig(world);
-          
-          // 显式触发视图更新
-          this.$forceUpdate();
-          
-          // 获取服务器基础配置
-          this.fetchServerIni(this.roomName, world.name)
-            .catch(error => {
-              console.warn(`加载服务器基础配置失败，将使用默认配置:`, error);
-            })
-            .finally(() => {
-              // 关闭加载提示
-              loadingInstance.close();
-              this.loading = false;
-            });
-          
-          return;
-        }
-        
-        // 添加延迟，确保服务器有时间处理完成
-        console.log(`等待1.5秒, 确保服务器完成配置处理...`);
-        setTimeout(() => {
-          console.log(`开始获取 ${world.name} 的世界配置覆盖数据...`);
-          // 加载世界覆盖配置
-          this.loadWorldOverrides(this.roomName, world.name)
-            .then(data => {
-              console.log(`成功加载 ${world.name} 的世界配置, 配置项数量:`, data ? Object.keys(data).length : 0);
-              // 记录已加载
-              this.loadedWorldConfigs[worldKey] = true;
-              
-              // 显式触发视图更新
-              this.$forceUpdate();
-              
-              // 触发变更检查
-              this.debouncedCheckChanges();
-              
-              // 加载服务器基础配置
-              console.log(`开始加载 ${world.name} 的服务器基础配置...`);
-              return this.fetchServerIni(this.roomName, world.name);
-            })
-            .catch(error => {
-              console.error(`加载世界配置失败:`, error);
-              this.$message.warning(`配置加载失败，正在使用默认配置`);
-              
-              // 如果配置加载失败，使用默认配置
-              console.log(`使用默认配置...`);
-              
-              if (!this.worldOverrides) {
-                this.worldOverrides = {};
-              }
-              
-              // 创建默认配置覆盖
-              const defaultOverrides = this.extractAllSettings(world.type);
-              
-              // 存储默认配置
-              this.worldOverrides[world.name] = {
-                type: world.type,
-                data: JSON.parse(JSON.stringify(defaultOverrides))
-              };
-              
-              // 应用默认配置
-              if (world.type === 'forest') {
-                this.forestSettings = this.getDefaultForestSettings();
-              } else {
-                this.caveSettings = this.getDefaultCaveSettings();
-              }
-              
-              // 记录为已加载
-              this.loadedWorldConfigs[worldKey] = true;
-              
-              // 显式触发视图更新
-              this.$forceUpdate();
-              
-              // 触发变更检查
-              this.debouncedCheckChanges();
-            })
-            .finally(() => {
-              // 关闭加载提示
-              loadingInstance.close();
-              
-              // 标记加载完成
-              this.loading = false;
-              
-              // 设置延迟的额外检查，确保UI更新
-              setTimeout(() => {
-                console.log(`最终检查状态...`);
-                this.$forceUpdate();
-                this.debouncedCheckChanges();
-              }, 500);
-            });
-        }, 1500); // 延迟1.5秒执行，给予更多时间
-      });
     },
     
     // 创建服务器基础配置对象
@@ -2465,71 +2216,6 @@ export default {
           authentication_port: authPort
         }
       };
-    },
-    
-    // 加载指定世界的配置（处理用户选择世界类型后）
-    loadWorldConfig(world) {
-      if (!world || !this.roomName) return;
-      
-      console.log(`通过loadWorldConfig启动世界配置加载流程...`);
-      
-      // 直接调用增强的initWorldConfig方法
-      this.initWorldConfig(world);
-      
-      // 如果是未知类型的世界，则还需要设置默认配置
-      if (world.type === 'unknown' || !world.type) {
-        console.log(`检测到未知类型世界，将创建默认配置...`);
-        this.setWorldDefaultConfig(world);
-      }
-    },
-    
-    // 为未知类型的世界设置默认配置
-    setWorldDefaultConfig(world) {
-      if (!world || !this.roomName) return;
-      
-      // 根据配置获取所有默认值
-      const defaultOverrides = this.extractAllSettings(world.type);
-      
-      // 根据世界类型选择API端点
-      const apiEndpoint = world.type === 'forest' 
-        ? `${config.BASE_URL}/dstserver/forestworld`
-        : `${config.BASE_URL}/dstserver/caveworld`;
-      
-      // 创建基础配置
-      const serverIni = this.createServerIniConfig(world.name, world.type);
-      
-      console.log(`为未知类型世界 ${world.name} 设置默认配置 (类型: ${world.type})...`);
-      
-      // 调用API更新世界配置
-      axios.post(apiEndpoint, {
-        savename: this.roomName,
-        worldname: world.name,
-        overrides: defaultOverrides
-      })
-      .then(response => {
-        if (response.data && response.data.status === 200) {
-          this.$message.success(`已将世界 ${world.name} 设置为 ${world.type === 'forest' ? '森林' : '洞穴'} 类型`);
-          
-          // 设置基础配置
-          axios.post(`${config.BASE_URL}/dstserver/serverini`, {
-            savename: this.roomName,
-            worldname: world.name,
-            config: serverIni
-          })
-          .then(() => {
-            console.log(`已完成 ${world.name} 的基础配置设置`);
-          })
-          .catch(error => {
-            console.error(`设置基础配置失败:`, error);
-          });
-        } else {
-          this.$message.warning(response.data?.msg || `世界类型更新失败`);
-        }
-      })
-      .catch(error => {
-        console.error('设置默认配置失败:', error);
-        this.$message.warning(`配置设置失败，请尝试刷新页面`);
-      });
     },
     
     // 添加新世界
@@ -2725,58 +2411,51 @@ export default {
     },
     // 获取服务器基础配置
     fetchServerIni(savename, worldname) {
-      if (!savename || !worldname) return Promise.resolve(null);
+      if (!savename || !worldname) return;
       
       this.loadingServerIni = true;
       this.serverIni = null;
       this.serverIniOriginal = null;
       this.serverIniChanged = false;
       
-      return new Promise((resolve, reject) => {
-        axios.get(`${config.BASE_URL}/dstserver/serverini`, {
-          params: {
-            savename,
-            worldname
-          }
-        })
-          .then(response => {
-            if (response.data && response.data.status === 200 && response.data.data) {
-              this.serverIni = response.data.data;
-              // 深拷贝保存原始配置用于重置
-              this.serverIniOriginal = JSON.parse(JSON.stringify(response.data.data));
-              console.log('服务器基础配置加载成功:', this.serverIni);
-              resolve(this.serverIni);
-            } else {
-              // 如果API返回失败或没有数据，创建默认配置
-              const currentWorld = this.roomWorlds.find(world => world.name === worldname);
-              if (currentWorld) {
-                // 创建默认配置
-                this.createDefaultServerIni(currentWorld);
-                resolve(this.serverIni);
-              } else {
-                this.$message.warning('加载服务器基础配置失败');
-                console.warn('加载服务器基础配置失败:', response.data);
-                reject(new Error('加载服务器基础配置失败'));
-              }
-            }
-          })
-          .catch(error => {
-            // 接口出错时也创建默认配置
+      axios.get(`${config.BASE_URL}/dstserver/serverini`, {
+        params: {
+          savename,
+          worldname
+        }
+      })
+        .then(response => {
+          if (response.data && response.data.status === 200 && response.data.data) {
+            this.serverIni = response.data.data;
+            // 深拷贝保存原始配置用于重置
+            this.serverIniOriginal = JSON.parse(JSON.stringify(response.data.data));
+            console.log('服务器基础配置加载成功:', this.serverIni);
+          } else {
+            // 如果API返回失败或没有数据，创建默认配置
             const currentWorld = this.roomWorlds.find(world => world.name === worldname);
             if (currentWorld) {
               // 创建默认配置
               this.createDefaultServerIni(currentWorld);
-              resolve(this.serverIni);
             } else {
-              this.$message.error('加载服务器基础配置出错: ' + (error.message || '未知错误'));
-              console.error('加载服务器基础配置出错:', error);
-              reject(error);
+              this.$message.warning('加载服务器基础配置失败');
+              console.warn('加载服务器基础配置失败:', response.data);
             }
-          })
-          .finally(() => {
-            this.loadingServerIni = false;
-          });
-      });
+          }
+        })
+        .catch(error => {
+          // 接口出错时也创建默认配置
+          const currentWorld = this.roomWorlds.find(world => world.name === worldname);
+          if (currentWorld) {
+            // 创建默认配置
+            this.createDefaultServerIni(currentWorld);
+          } else {
+            this.$message.error('加载服务器基础配置出错: ' + (error.message || '未知错误'));
+            console.error('加载服务器基础配置出错:', error);
+          }
+        })
+        .finally(() => {
+          this.loadingServerIni = false;
+        });
     },
     
     // 创建默认服务器配置
@@ -2890,11 +2569,39 @@ export default {
     // 加载默认设置
     loadDefaultSettings(worldType) {
       return new Promise((resolve) => {
-        console.log(`加载${worldType === 'forest' ? '森林' : '洞穴'}世界默认配置...`);
+        const axios = require('axios');
+        const config = require('../../api/config').default;
         
-        // 直接使用静态默认配置
-        this.initStaticDefaultSettings(worldType);
-        resolve();
+        // 根据世界类型获取相应的默认配置
+        const url = worldType === 'forest' 
+          ? `${config.BASE_URL}/dstserver/forestdefaultsettings` 
+          : `${config.BASE_URL}/dstserver/cavedefaultsettings`;
+        
+        axios.get(url)
+          .then(response => {
+            if (response.data && response.data.status === 200 && response.data.data) {
+              if (worldType === 'forest') {
+                this.forestSettings = response.data.data;
+              } else {
+                this.caveSettings = response.data.data;
+              }
+              console.log(`加载${worldType === 'forest' ? '森林' : '洞穴'}世界默认配置成功`);
+              resolve();
+            } else {
+              console.error(`加载${worldType === 'forest' ? '森林' : '洞穴'}世界默认配置失败:`, response.data);
+              
+              // 如果API不存在或失败，则使用静态默认配置
+              this.initStaticDefaultSettings(worldType);
+              resolve();
+            }
+          })
+          .catch(error => {
+            console.error(`加载${worldType === 'forest' ? '森林' : '洞穴'}世界默认配置出错:`, error);
+            
+            // 如果API出错，则使用静态默认配置
+            this.initStaticDefaultSettings(worldType);
+            resolve();
+          });
       });
     },
     
@@ -2951,6 +2658,95 @@ export default {
           }
         }
       };
+    },
+    
+    // 加载指定世界的配置（处理用户选择世界类型后）
+    loadWorldConfig(world) {
+      if (!world || !this.roomName) return;
+      
+      // 标记为加载中
+      this.loading = true;
+      
+      // 添加到已加载配置
+      const worldKey = `${this.roomName}_${world.name}`;
+      if (!this.loadedWorldConfigs) {
+        this.loadedWorldConfigs = {};
+      }
+      
+      // 加载世界配置
+      this.loadWorldOverrides(this.roomName, world.name)
+        .finally(() => {
+          this.loadedWorldConfigs[worldKey] = true;
+          this.loading = false;
+          
+          // 加载服务器基础配置
+          this.fetchServerIni(this.roomName, world.name);
+          
+          // 向服务器更新世界类型
+          this.updateWorldType(world);
+        });
+    },
+    
+    // 更新世界类型
+    updateWorldType(world) {
+      if (!world || !this.roomName) return;
+      
+      const worldType = world.type; // 'forest' 或 'cave'
+      
+      // 先加载默认配置
+      this.loading = true;
+      this.loadDefaultSettings(worldType)
+        .then(() => {
+          // 根据配置获取所有默认值
+          const defaultOverrides = this.extractAllSettings(worldType);
+          
+          // 根据世界类型选择API端点
+          const apiEndpoint = worldType === 'forest' 
+            ? `${config.BASE_URL}/dstserver/forestworld`
+            : `${config.BASE_URL}/dstserver/caveworld`;
+          
+          // 调用API更新世界类型及默认设置
+          axios.post(apiEndpoint, {
+            savename: this.roomName,
+            worldname: world.name,
+            overrides: defaultOverrides
+          })
+            .then(response => {
+              if (response.data && response.data.status === 200) {
+                this.$message.success(`已设置世界 ${world.name} 为 ${worldType === 'forest' ? '森林' : '洞穴'} 类型`);
+                
+                // 更新原始设置
+                if (worldType === 'forest') {
+                  if (!this.originalSettings) this.originalSettings = {};
+                  this.originalSettings.forest = JSON.parse(JSON.stringify(this.forestSettings));
+                } else {
+                  if (!this.originalSettings) this.originalSettings = {};
+                  this.originalSettings.cave = JSON.parse(JSON.stringify(this.caveSettings));
+                }
+                
+                // 更新存储的世界覆盖配置
+                if (!this.worldOverrides[world.name]) {
+                  this.worldOverrides[world.name] = {
+                    type: worldType,
+                    data: {}
+                  };
+                }
+                
+                // 更新覆盖数据
+                Object.keys(defaultOverrides).forEach(key => {
+                  this.worldOverrides[world.name].data[key] = defaultOverrides[key];
+                });
+              } else {
+                this.$message.warning(response.data.msg || `世界类型更新失败，但您仍可正常编辑配置`);
+              }
+              this.loading = false;
+            })
+            .catch(error => {
+              console.error('更新世界类型失败:', error);
+              this.$message.warning(`世界类型更新失败，但您仍可正常编辑配置`);
+              this.loading = false;
+            });
+        });
     },
     
     // 提取所有设置项的值
