@@ -204,20 +204,8 @@ export const roomApi = {
   stopRoom(id) {
     return request.post(`/rooms/${id}/stop`);
   },
-  getRoomLogs(id, params) {
-    return request.get(`/rooms/${id}/logs`, params);
-  },
   backupRoom(id) {
     return request.post(`/rooms/${id}/backup`);
-  },
-  duplicateRoom(id, data) {
-    return request.post(`/rooms/${id}/duplicate`, data);
-  },
-  getRoomPlayers(id) {
-    return request.get(`/rooms/${id}/players`);
-  },
-  getWorlds() {
-    return request.get('/worlds');
   },
   saveWorldSettings(worldType, settings) {
     return request.post(`/world/settings/${worldType}`, settings);
@@ -557,9 +545,30 @@ export const roomConfigApi = {
   }
 };
 
-// 获取API基础URL
-export function getBaseUrl() {
-  return config.BASE_URL;
+const worldApi = {
+  getWorldList() {
+    return request.get('/dstserver/list');
+  },
+
+  forestWorld(params) {
+    return request.post('/dstserver/forestworld', params);
+  },
+
+  caveWorld(params) {
+    return request.post('/dstserver/caveworld', params);
+  },
+
+  getServerIni(savename, worldname) {
+    return request.get(`/dstserver/serverini?savename=${savename}&worldname=${worldname}`);
+  },
+
+  saveServerIni(params) {
+    return request.post('/dstserver/serverini', params);
+  },
+
+  deleteWorld(params) {
+    return request.post('/dstserver/deleteworld', params);
+  }
 }
 
 // 导出命令相关模块
@@ -575,5 +584,6 @@ export default {
   authApi,
   backupApi,
   agentApi,
-  roomConfigApi
+  roomConfigApi,
+  worldApi
 };

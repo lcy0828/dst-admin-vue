@@ -52,7 +52,7 @@ html, body {
 .el-dialog__body {
   overflow-y: auto !important;
   padding: 15px 20px !important;
-  height: 60vh !important;
+  height: 70vh !important;
   max-height: 70vh !important;
 }
 

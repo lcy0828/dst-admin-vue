@@ -629,7 +629,7 @@ export default {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .world-list-page {
   padding: 25px;
   background-color: #f5f7fa;
@@ -788,11 +788,18 @@ export default {
 }
 
 .room-radio-item {
+  display: flex;
+  align-items: center;
   padding: 12px;
   margin-bottom: 10px;
   border-radius: 6px;
   border: 1px solid #EBEEF5;
   transition: all 0.3s;
+  margin-right: 0;
+
+  :deep(.el-radio__label) {
+    width: 100%;
+  }
 }
 
 .room-radio-item:hover {

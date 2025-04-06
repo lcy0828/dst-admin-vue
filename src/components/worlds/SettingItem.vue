@@ -25,7 +25,6 @@
         :reserve-keyword="false"
         :popper-options="{ boundariesElement: 'viewport', gpuAcceleration: true }"
         @focus="handleSelectFocus"
-        v-optimized-select="{ popperClass: `select-popper-${itemKey}` }"
       >
         <template v-if="getOptionCount(category.desc, item.desc) > 20">
           <el-option

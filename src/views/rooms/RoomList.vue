@@ -147,7 +147,7 @@
     <el-dialog 
       title="服务器日志" 
       :visible.sync="logViewerVisible" 
-      width="80%" 
+      width="60%" 
       :before-close="closeLogViewerDialog"
       :append-to-body="true"
       :modal="false"
@@ -955,6 +955,7 @@ export default {
         .el-button {
           border-radius: 20px;
           padding: 8px 15px;
+          margin-right: 5px;
           
           &.el-button--success {
             background-color: #67C23A;
@@ -1059,7 +1060,7 @@ export default {
     }
     
     :deep(.el-dialog__body) {
-      max-height: 70vh;
+      max-height: 80vh;
       overflow-y: auto;
     }
   }
