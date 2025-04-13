@@ -119,6 +119,8 @@
 </template>
 
 <script>
+import { cronTaskApi } from '@/api/index';
+
 export default {
   name: 'ScheduledTasks',
   data() {
@@ -137,16 +139,73 @@ export default {
     fetchTasks() {
       this.loading = true;
       
-      // 模拟API请求
-      setTimeout(() => {
-        // 生成示例任务数据
-        this.taskList = this.generateDemoTasks();
-        this.totalTasks = this.taskList.length;
-        this.loading = false;
-      }, 500);
+      // 使用真实API获取任务列表
+      cronTaskApi.getTasks({
+        page: this.currentPage,
+        limit: this.pageSize
+      })
+        .then(response => {
+          if (response.data && response.data.status === 200) {
+            const apiData = response.data.data.items || [];
+            
+            // 将API数据转换为组件所需的格式
+            this.taskList = apiData.map(task => ({
+              id: task.id,
+              name: task.name,
+              type: this.getTaskType(task),
+              schedule: task.spec,
+              target: task.type === 'function' ? '函数' : task.target || '全部服务器',
+              lastRun: task.last_run || '从未执行',
+              nextRun: task.next_run || '未计划',
+              status: task.status === 1 ? '正常' : '暂停',
+              raw: task // 保存原始数据，用于操作
+            }));
+            
+            this.totalTasks = response.data.data.total || this.taskList.length;
+          } else {
+            // 如果API请求失败，使用模拟数据作为备用
+            this.taskList = this.generateDemoTasks();
+            this.totalTasks = this.taskList.length;
+            console.error('获取任务列表失败，使用模拟数据');
+          }
+        })
+        .catch(error => {
+          console.error('获取任务列表失败:', error);
+          // 出错时使用模拟数据
+          this.taskList = this.generateDemoTasks();
+          this.totalTasks = this.taskList.length;
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
     
-    // 生成示例任务数据
+    getTaskType(task) {
+      // 根据任务特征确定类型
+      if (task.type === 'function') {
+        return '函数';
+      } else if (task.type === 'shell') {
+        if (task.target.includes('backup') || task.target.includes('备份')) {
+          return '数据备份';
+        } else if (task.target.includes('restart') || task.target.includes('重启')) {
+          return '服务器维护';
+        } else if (task.target.includes('clean') || task.target.includes('清理')) {
+          return '系统维护';
+        } else if (task.target.includes('notice') || task.target.includes('公告')) {
+          return '公告通知';
+        } else if (task.target.includes('mod') || task.target.includes('模组')) {
+          return '模组管理';
+        } else if (task.target.includes('stats') || task.target.includes('统计')) {
+          return '数据分析';
+        } else if (task.target.includes('event') || task.target.includes('活动')) {
+          return '游戏活动';
+        }
+      }
+      
+      return task.group_name || '其他';
+    },
+    
+    // 保留用于备用的模拟数据生成方法
     generateDemoTasks() {
       return [
         {
@@ -237,7 +296,7 @@ export default {
     },
     
     navigateToCreate() {
-      this.$router.push('/scheduled/create');
+      this.$router.push('/cron/add');
     },
     
     handleCurrentChange(page) {
@@ -293,7 +352,7 @@ export default {
     },
     
     canRunTask(task) {
-      return task.status !== '暂停';
+      return task.status === '正常';
     },
     
     runTaskNow(task) {
@@ -302,18 +361,51 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        this.$message({
-          type: 'success',
-          message: `任务"${task.name}"已开始执行`
-        });
+        // 使用API执行任务
+        if (task.raw && task.raw.id) {
+          this.loading = true;
+          
+          cronTaskApi.runTask(task.raw.id)
+            .then(response => {
+              if (response.data && response.data.status === 200) {
+                this.$message({
+                  type: 'success',
+                  message: `任务"${task.name}"已开始执行`
+                });
+                
+                // 刷新任务列表
+                this.fetchTasks();
+              } else {
+                this.$message.error(response.data.message || '执行任务失败');
+              }
+            })
+            .catch(error => {
+              console.error('执行任务失败:', error);
+              this.$message.error('执行任务失败');
+            })
+            .finally(() => {
+              this.loading = false;
+            });
+        } else {
+          this.$message({
+            type: 'success',
+            message: `任务"${task.name}"已开始执行`
+          });
+        }
       }).catch(() => {});
     },
     
     editTask(task) {
-      this.$router.push({
-        path: '/scheduled/create',
-        query: { id: task.id }
-      });
+      if (task.raw && task.raw.id) {
+        this.$router.push({
+          path: '/cron/edit/' + task.raw.id
+        });
+      } else {
+        this.$router.push({
+          path: '/scheduled/create',
+          query: { id: task.id }
+        });
+      }
     },
     
     deleteTask(task) {
@@ -322,14 +414,36 @@ export default {
         cancelButtonText: '取消',
         type: 'danger'
       }).then(() => {
-        // 模拟删除操作
-        this.taskList = this.taskList.filter(t => t.id !== task.id);
-        this.totalTasks = this.taskList.length;
-        
-        this.$message({
-          type: 'success',
-          message: `任务"${task.name}"已删除`
-        });
+        if (task.raw && task.raw.id) {
+          // 使用API删除任务
+          cronTaskApi.deleteTask(task.raw.id)
+            .then(response => {
+              if (response.data && response.data.status === 200) {
+                this.$message({
+                  type: 'success',
+                  message: `任务"${task.name}"已删除`
+                });
+                
+                // 刷新任务列表
+                this.fetchTasks();
+              } else {
+                this.$message.error(response.data.message || '删除任务失败');
+              }
+            })
+            .catch(error => {
+              console.error('删除任务失败:', error);
+              this.$message.error('删除任务失败');
+            });
+        } else {
+          // 模拟删除操作
+          this.taskList = this.taskList.filter(t => t.id !== task.id);
+          this.totalTasks = this.taskList.length;
+          
+          this.$message({
+            type: 'success',
+            message: `任务"${task.name}"已删除`
+          });
+        }
       }).catch(() => {});
     }
   }

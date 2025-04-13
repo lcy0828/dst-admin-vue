@@ -2,18 +2,29 @@ import axios from 'axios';
 import apiConfig from './config';
 import { Message, Loading } from 'element-ui';
 import router from '@/router';
+import qs from 'qs';
 
 let loadingInstance;
 const instance = axios.create({
   baseURL: apiConfig.BASE_URL,
   timeout: apiConfig.TIMEOUT,
-  headers: apiConfig.HEADERS
+  headers: apiConfig.HEADERS,
+  paramsSerializer: params => {
+    // 使用qs库序列化参数，不使用方括号和点表示法
+    return qs.stringify(params, { arrayFormat: 'repeat', indices: false });
+  }
 });
 
 let isRefreshing = false;
 let retryRequests = [];
 instance.interceptors.request.use(
   config => {
+    // 添加请求日志
+    console.log(`请求: ${config.method.toUpperCase()} ${config.url}`, {
+      params: config.params,
+      data: config.data
+    });
+    
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -31,6 +42,12 @@ instance.interceptors.request.use(
 // 响应拦截器
 instance.interceptors.response.use(
   response => {
+    // 添加响应日志
+    console.log(`响应: ${response.config.method.toUpperCase()} ${response.config.url}`, {
+      status: response.status,
+      data: response.data
+    });
+    
     // 关闭加载中
     if (loadingInstance) {
       loadingInstance.close();
@@ -109,10 +126,19 @@ instance.interceptors.response.use(
 // 封装请求方法
 const request = {
   get(url, params, config = {}) {
-    if (params && typeof params === 'object' && !params.headers && !params.timeout) {
-      return instance.get(url, { params, ...config });
+    // 如果params是params对象嵌套的情况
+    if (params && typeof params === 'object' && params.params && typeof params.params === 'object') {
+      return instance.get(url, {
+        ...config,
+        params: params.params
+      });
     }
-    return instance.get(url, params ? { ...params } : config);
+    
+    // 普通参数情况
+    return instance.get(url, {
+      ...config,
+      params
+    });
   },
   post(url, data, config = {}) {
     return instance.post(url, data, config);
@@ -121,7 +147,19 @@ const request = {
     return instance.put(url, data, config);
   },
   delete(url, params, config = {}) {
-    return instance.delete(url, { params, ...config });
+    // 如果params是params对象嵌套的情况
+    if (params && typeof params === 'object' && params.params && typeof params.params === 'object') {
+      return instance.delete(url, {
+        ...config,
+        params: params.params
+      });
+    }
+    
+    // 普通参数情况
+    return instance.delete(url, {
+      ...config,
+      params
+    });
   },
   // 上传文件
   upload(url, file, onProgress = null) {
@@ -140,6 +178,23 @@ const request = {
   },
   // 下载文件
   download(url, params, filename) {
+    // 如果params是params对象嵌套的情况
+    if (params && typeof params === 'object' && params.params && typeof params.params === 'object') {
+      return instance.get(url, {
+        params: params.params,
+        responseType: 'blob',
+        showLoading: true
+      }).then(response => {
+        const blob = new Blob([response]);
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        link.download = filename || '下载文件';
+        link.click();
+        window.URL.revokeObjectURL(link.href);
+        return response;
+      });
+    }
+    
     return instance.get(url, {
       params,
       responseType: 'blob',

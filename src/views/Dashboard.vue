@@ -60,6 +60,76 @@
       </el-col>
     </el-row>
     
+    <!-- 版本信息卡片 -->
+    <el-row :gutter="20" class="version-info-row">
+      <el-col :span="24">
+        <el-card shadow="hover" class="version-card">
+          <div class="version-content">
+            <div class="version-icon">
+              <i class="el-icon-info"></i>
+            </div>
+            <div class="version-details">
+              <div class="version-header">
+                <span class="version-title">饥荒服务器版本信息</span>
+                <el-button type="text" size="small" icon="el-icon-refresh" @click="getVersionInfo">刷新</el-button>
+              </div>
+              <div v-if="versionInfo.local && versionInfo.latest" class="version-info">
+                <div class="version-boxes">
+                  <div class="version-box">
+                    <div class="version-box-label">当前版本</div>
+                    <div class="version-box-value">{{ versionInfo.local.version }}</div>
+                  </div>
+                  <div class="version-arrow">
+                    <i class="el-icon-arrow-right"></i>
+                  </div>
+                  <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
+                    <div class="version-box-label">最新版本</div>
+                    <a 
+                      :href="versionInfo.latest.update_url" 
+                      target="_blank" 
+                      class="version-box-value version-link">
+                      {{ versionInfo.latest.version }}
+                      <i v-if="isVersionOutdated" class="el-icon-warning version-warning-icon"></i>
+                    </a>
+                    <div class="version-box-date">{{ versionInfo.latest.release_date }} / R{{ versionInfo.latest.build_number }}</div>
+                  </div>
+                </div>
+                <div v-if="isVersionOutdated" class="version-update-notice">
+                  <i class="el-icon-warning"></i>
+                  <span>检测到新版本可用，请及时更新游戏服务端!</span>
+                  <el-button type="primary" size="small" @click="openUpdateLink">查看更新内容</el-button>
+                </div>
+              </div>
+              <div v-else class="version-loading">
+                <i class="el-icon-loading"></i>
+                <span>正在获取版本信息...</span>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    
+    <!-- 标题分割线 -->
+    <div class="section-divider">
+      <div class="section-title">
+        <i class="el-icon-connection"></i>
+        <span>快速访问</span>
+      </div>
+    </div>
+    
+    <!-- 快速访问区 -->
+    <el-row :gutter="20" class="quick-access-section">
+      <el-col :xs="12" :sm="8" :md="6" :lg="4" v-for="(item, index) in quickAccessItems" :key="index">
+        <el-card shadow="hover" class="quick-access-card" @click.native="navigateTo(item.path)">
+          <div class="quick-access-icon">
+            <i :class="item.icon"></i>
+          </div>
+          <div class="quick-access-title">{{ item.title }}</div>
+        </el-card>
+      </el-col>
+    </el-row>
+    
     <!-- 标题分割线 -->
     <div class="section-divider">
       <div class="section-title">
@@ -75,42 +145,91 @@
     <el-row :gutter="20" class="monitor-section">
       <el-col :span="16">
         <el-card shadow="hover" class="server-monitor">
+          <div slot="header" class="clearfix server-header">
+            <span><i class="el-icon-monitor"></i> 服务器状态监控</span>
+            <el-button type="text" icon="el-icon-refresh" @click="getServerList">刷新</el-button>
+          </div>
+          
           <el-table 
             :data="serverList" 
             style="width: 100%" 
             size="medium"
             :row-class-name="tableRowClassName"
-            highlight-current-row>
-            <el-table-column prop="archive_name" width="150" label="房间名称">
+            highlight-current-row
+            border>
+            <el-table-column prop="status" label="状态" width="90" align="center">
               <template slot-scope="scope">
-                <el-tag style="margin-right: 10px;">{{ scope.row.status === 'running' ? '在线' : '离线' }}</el-tag>
-                <span>{{ scope.row.archive_name }}</span>
+                <el-tag
+                  :type="scope.row.status === 'running' ? 'success' : 'info'"
+                  size="medium"
+                  effect="dark">
+                  {{ scope.row.status === 'running' ? '在线' : '离线' }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="world_name" label="世界名称"/>
-            <el-table-column prop="start_time" label="启动时间"/>
-            <el-table-column label="运行时间" width="120">
+            <el-table-column prop="archive_name" label="房间名称" min-width="120">
               <template slot-scope="scope">
-                <div>{{ formatTimeDiff(Date.now() - new Date(scope.row.start_time).getTime()) }}</div>
+                <div class="server-name-info">
+                  <span class="server-name-text">{{ scope.row.archive_name }}</span>
+                </div>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="230" align="center">
+            <el-table-column prop="world_name" label="世界名称" min-width="120">
               <template slot-scope="scope">
-                <el-button
-                  size="mini"
-                  :type="scope.row.status === 'running' ? 'danger' : 'success'"
-                  @click="handleServerAction(scope.row)">
-                  {{ scope.row.status === 'running' ? '停止' : '启动' }}
-                </el-button>
-                <el-button
-                  size="mini"
-                  type="info"
-                  @click="handleConfigure(scope.row)">
-                  配置
-                </el-button>
+                <el-tag 
+                  :type="scope.row.world_name.includes('Forest') ? 'warning' : 'primary'" 
+                  size="medium"
+                  effect="plain">
+                  {{ scope.row.world_name }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="启动时间" width="170" align="center">
+              <template slot-scope="scope">
+                <div class="time-info">
+                  <span>{{ scope.row.start_time }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="运行时间" width="90" align="center">
+              <template slot-scope="scope">
+                <div class="time-info">
+                  <span>{{ formatTimeDiff(Date.now() - new Date(scope.row.start_time).getTime()) }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="180" align="center">
+              <template slot-scope="scope">
+                <el-button-group>
+                  <el-button
+                    size="mini"
+                    :type="scope.row.status === 'running' ? 'danger' : 'success'"
+                    :icon="scope.row.status === 'running' ? 'el-icon-video-pause' : 'el-icon-video-play'"
+                    @click="handleServerAction(scope.row)">
+                    {{ scope.row.status === 'running' ? '停止' : '启动' }}
+                  </el-button>
+                  <el-button
+                    size="mini"
+                    type="primary"
+                    icon="el-icon-setting"
+                    @click="handleConfigure(scope.row)">
+                    配置
+                  </el-button>
+                </el-button-group>
               </template>
             </el-table-column>
           </el-table>
+          
+          <div class="server-footer" v-if="serverList.length > 0">
+            <span class="server-stats">共 {{ serverList.length }} 个服务器实例，{{ serverList.filter(s => s.status === 'running').length }} 个运行中</span>
+          </div>
+          
+          <div class="empty-server" v-if="serverList.length === 0">
+            <i class="el-icon-warning-outline"></i>
+            <span>暂无服务器实例运行</span>
+            <el-button type="primary" size="small" plain @click="$router.push('/servers/create')">创建新服务器</el-button>
+          </div>
+          
         </el-card>
       </el-col>
       
@@ -316,13 +435,28 @@ export default {
         }
       ],
       systemLoading: false,
-      systemStatus: {}
+      systemStatus: {},
+      // 快速访问项目
+      quickAccessItems: [
+        { title: '日志查询', icon: 'el-icon-search', path: '/logs/query' },
+        { title: '规则管理', icon: 'el-icon-setting', path: '/logs/rules' },
+        { title: '服务器列表', icon: 'el-icon-monitor', path: '/servers/list' },
+        { title: '房间列表', icon: 'el-icon-house', path: '/rooms/list' },
+        { title: '世界管理', icon: 'el-icon-earth', path: '/worlds/list' },
+        { title: '模组管理', icon: 'el-icon-s-grid', path: '/mods/list' }
+      ],
+      versionInfo: {
+        local: null,
+        latest: null,
+        isOutdated: false
+      },
     }
   },
   created() {
     this.refreshData();
     this.refreshSystemStatus();
-    this.getServerList()
+    this.getServerList();
+    this.getVersionInfo();
   },
   methods: {
     getServerList() {
@@ -482,7 +616,57 @@ export default {
         return (memory / 1024).toFixed(2) + ' GB';
       }
     },
-  }
+    
+    // 快速访问导航
+    navigateTo(path) {
+      this.$router.push(path);
+    },
+    
+    getVersionInfo() {
+      // 获取本地版本
+      systemApi.getLocalVersion().then(localRes => {
+        if (localRes.data && localRes.data.status === 200) {
+          this.versionInfo.local = localRes.data.data;
+          
+          // 获取最新版本
+          systemApi.getLatestVersion().then(latestRes => {
+            if (latestRes.data && latestRes.data.status === 200) {
+              this.versionInfo.latest = latestRes.data.data;
+              // 比较版本
+              this.checkVersionOutdated();
+            }
+          }).catch(err => {
+            console.error('获取最新版本失败:', err);
+            this.$message.error('获取最新版本信息失败');
+          });
+        }
+      }).catch(err => {
+        console.error('获取本地版本失败:', err);
+        this.$message.error('获取本地版本信息失败');
+      });
+    },
+    
+    checkVersionOutdated() {
+      if (this.versionInfo.local && this.versionInfo.latest) {
+        // 比较版本号
+        const localVersion = parseInt(this.versionInfo.local.version);
+        const latestVersion = parseInt(this.versionInfo.latest.version);
+        this.isVersionOutdated = localVersion < latestVersion;
+      } else {
+        this.isVersionOutdated = false;
+      }
+    },
+    
+    openUpdateLink() {
+      if (this.versionInfo.latest && this.versionInfo.latest.update_url) {
+        window.open(this.versionInfo.latest.update_url, '_blank');
+      }
+    }
+  },
+  
+  computed: {
+    // 用于计算属性
+  },
 }
 </script>
 
@@ -859,5 +1043,278 @@ export default {
 .system-info-item i {
   margin-right: 8px;
   color: #409EFF;
+}
+
+/* 快速访问区域样式 */
+.quick-access-section {
+  margin-bottom: 20px;
+}
+
+.quick-access-card {
+  cursor: pointer;
+  text-align: center;
+  padding: 15px;
+  transition: all 0.3s;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+}
+
+.quick-access-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.quick-access-icon {
+  font-size: 36px;
+  margin-bottom: 10px;
+  color: #409EFF;
+}
+
+.quick-access-title {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* 服务器监控相关样式 */
+.server-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.server-header span {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.server-header i {
+  margin-right: 8px;
+  color: #409EFF;
+}
+
+.server-name-info {
+  display: flex;
+  align-items: center;
+}
+
+.server-name-text {
+  font-weight: 500;
+  margin-left: 5px;
+}
+
+.time-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.time-info span:first-child {
+  font-weight: 500;
+}
+
+.time-info span:last-child {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 3px;
+}
+
+.server-footer {
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid #EBEEF5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #606266;
+  font-size: 13px;
+}
+
+.server-stats {
+  color: #909399;
+}
+
+.empty-server {
+  padding: 30px 0;
+  text-align: center;
+  color: #909399;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-server i {
+  font-size: 48px;
+  margin-bottom: 15px;
+  color: #C0C4CC;
+}
+
+.empty-server span {
+  margin-bottom: 15px;
+}
+
+/* 修改表格样式 */
+:deep(.el-table--border) {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+:deep(.el-table__row:hover) {
+  background-color: #f5f7fa!important;
+}
+
+:deep(.el-table__row.server-offline) {
+  background-color: #fafafa;
+}
+
+:deep(.el-table__row.server-offline:hover) {
+  background-color: #f5f5f5!important;
+}
+
+.version-info-row {
+  margin-bottom: 20px;
+}
+
+.version-card {
+  height: 100%;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.version-content {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+}
+
+.version-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-right: 15px;
+  font-size: 24px;
+  color: white;
+  background-color: #409EFF;
+}
+
+.version-details {
+  flex: 1;
+}
+
+.version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.version-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.version-info {
+  margin-bottom: 10px;
+}
+
+.version-boxes {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.version-box {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: #f5f7fa;
+  transition: all 0.3s;
+}
+
+.version-box-outdated {
+  background-color: #fef0f0;
+  border: 1px dashed #F56C6C;
+}
+
+.version-box-label {
+  font-size: 14px;
+  color: #909399;
+  margin-bottom: 5px;
+}
+
+.version-box-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 5px;
+}
+
+.version-arrow {
+  margin: 0 15px;
+  color: #909399;
+  font-size: 20px;
+}
+
+.version-box-date {
+  font-size: 12px;
+  color: #909399;
+}
+
+.version-link {
+  color: #409EFF;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.version-link:hover {
+  opacity: 0.8;
+}
+
+.version-warning-icon {
+  margin-left: 5px;
+  color: #F56C6C;
+  font-size: 16px;
+}
+
+.version-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #909399;
+}
+
+.version-loading i {
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+.version-update-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background-color: #fef0f0;
+  border-radius: 4px;
+  color: #F56C6C;
+}
+
+.version-update-notice i {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.version-update-notice button {
+  margin-left: 15px;
 }
 </style> 

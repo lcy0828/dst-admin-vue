@@ -31,6 +31,17 @@
           <el-menu-item index="/servers/commands">命令设置</el-menu-item>
         </el-submenu>
         
+        <el-submenu index="/logs">
+          <template slot="title">
+            <i class="el-icon-document"></i>
+            <span>日志管理器</span>
+          </template>
+          <el-menu-item index="/logs/query">日志查询</el-menu-item>
+          <el-menu-item index="/logs/rules">规则管理</el-menu-item>
+          <el-menu-item index="/logs/parser">日志解析器</el-menu-item>
+          <el-menu-item index="/logs/stats">日志统计</el-menu-item>
+        </el-submenu>
+        
         <el-submenu index="/players">
           <template slot="title">
             <i class="el-icon-user"></i>
@@ -187,6 +198,7 @@ export default {
       const pathMap = {
         dashboard: '仪表盘',
         servers: '服务器管理',
+        logs: '日志管理器',
         players: '玩家管理',
         items: '物品管理',
         mods: '模组管理',
@@ -198,7 +210,9 @@ export default {
         generator: '物品生成器',
         search: '模组搜索',
         agents: 'Agent管理',
-        security: '安全设置'
+        security: '安全设置',
+        parser: '日志解析器',
+        stats: '日志统计'
       }
       
       // 子页面映射
@@ -209,7 +223,8 @@ export default {
           items: '物品列表',
           mods: '已下载模组',
           rooms: '房间列表',
-          agents: 'Agent列表'
+          agents: 'Agent列表',
+          logs: '日志和规则管理'
         },
         settings: {
           servers: '服务器设置',
@@ -228,6 +243,12 @@ export default {
         },
         commands: {
           servers: '命令设置'
+        },
+        query: {
+          logs: '日志查询'
+        },
+        rules: {
+          logs: '规则管理'
         }
       }
       

@@ -63,15 +63,15 @@ export const serverApi = {
   },
   // 获取管理员列表
   getAdminList(savename) {
-    return request.get('/dstserver/adminlist', { savename });
+    return request.get('/dstserver/adminlist', { params: { savename } });
   },
   // 获取黑名单
   getBlockList(savename) {
-    return request.get('/dstserver/blocklist', { savename });
+    return request.get('/dstserver/blocklist', { params: { savename } });
   },
   // 获取白名单
   getWhiteList(savename) {
-    return request.get('/dstserver/whitelist', { savename });
+    return request.get('/dstserver/whitelist', { params: { savename } });
   },
   // 获取服务器令牌
   getServerToken(savename) {
@@ -574,6 +574,211 @@ const worldApi = {
 // 导出命令相关模块
 export { commandManager, commandApi, COMMAND_TYPES };
 
+// 日志管理API
+export const logApi = {
+  // 获取解析后的日志
+  getLogsData(params) {
+    // 去除params[]问题，直接构建正确的参数
+    const queryParams = {
+      archive: params.archive || '',
+      world: params.world || '',
+      page: params.page || 1,
+      page_size: params.page_size || 20
+    };
+    
+    // 只有当类型不为空时才添加
+    if (params.type) {
+      queryParams.type = params.type;
+    }
+    
+    console.log('日志查询参数:', queryParams);
+    return request.get(`/v1/parser/logs`, { params: queryParams });
+  },
+  
+  // 获取日志类型统计
+  getLogTypes(params) {
+    // 去除params[]问题，直接构建正确的参数
+    const queryParams = {};
+    if (params) {
+      if (params.archive) queryParams.archive = params.archive;
+      if (params.world) queryParams.world = params.world;
+    }
+    return request.get(`/v1/parser/log_types`, { params: queryParams });
+  },
+  
+  // 获取活跃解析器列表
+  getActiveLogParsers() {
+    return request.get(`/v1/parser/active`);
+  },
+  
+  // 获取存档列表 (用于日志查询)
+  getArchiveList() {
+    return request.get('/dstserver/list');
+  },
+
+  // 获取单个存档的世界列表
+  getWorldsByArchive(archiveName) {
+    return request.get('/dstserver/list')
+      .then(response => {
+        if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
+          const archive = response.data.data.find(item => item.name === archiveName);
+          if (archive && archive.worlds) {
+            return archive.worlds;
+          }
+        }
+        return [];
+      });
+  }
+};
+
+// 规则管理API
+export const ruleManagementApi = {
+  // 获取日志解析规则列表
+  getRulesList() {
+    return request.get('/v1/parser/rules');
+  },
+  
+  // 添加日志解析规则
+  addRule(ruleData) {
+    return request.post('/v1/parser/rules', ruleData);
+  },
+  
+  // 更新日志解析规则
+  updateRule(ruleId, ruleData) {
+    return request.put(`/v1/parser/rules/${ruleId}`, ruleData);
+  },
+  
+  // 删除日志解析规则
+  deleteRule(ruleId) {
+    return request.delete(`/v1/parser/rules/${ruleId}`);
+  }
+};
+
+// 定时任务相关API
+export const cronTaskApi = {
+  // 获取所有任务
+  getTasks(params) {
+    return request.get('/cron/tasks', { params });
+  },
+  // 获取任务详情
+  getTaskDetail(id) {
+    return request.get(`/cron/tasks/${id}`);
+  },
+  // 添加任务
+  addTask(data) {
+    return request.post('/cron/tasks', data);
+  },
+  // 更新任务
+  updateTask(id, data) {
+    return request.put(`/cron/tasks/${id}`, data);
+  },
+  // 删除任务
+  deleteTask(id) {
+    return request.delete(`/cron/tasks/${id}`);
+  },
+  // 启用任务
+  enableTask(id) {
+    return request.post(`/cron/tasks/${id}/enable`);
+  },
+  // 禁用任务
+  disableTask(id) {
+    return request.post(`/cron/tasks/${id}/disable`);
+  },
+  // 立即运行任务
+  runTask(id) {
+    return request.post(`/cron/tasks/${id}/run`);
+  },
+  // 获取所有内置函数
+  getFunctions() {
+    return request.get('/cron/functions');
+  },
+  
+  // 任务组相关API
+  getGroups() {
+    return request.get('/cron/groups');
+  },
+  getGroupDetail(id) {
+    return request.get(`/cron/groups/${id}`);
+  },
+  addGroup(data) {
+    return request.post('/cron/groups', data);
+  },
+  updateGroup(id, data) {
+    return request.put(`/cron/groups/${id}`, data);
+  },
+  deleteGroup(id) {
+    return request.delete(`/cron/groups/${id}`);
+  },
+  enableGroup(id) {
+    return request.post(`/cron/groups/${id}/enable`);
+  },
+  disableGroup(id) {
+    return request.post(`/cron/groups/${id}/disable`);
+  },
+  getGroupTasks(id) {
+    return request.get(`/cron/groups/${id}/tasks`);
+  },
+  getGroupStats(id) {
+    return request.get(`/cron/groups/${id}/stats`);
+  },
+  getGroupChart(id, params) {
+    return request.get(`/cron/groups/${id}/chart`, { params });
+  },
+  
+  // 任务日志相关API
+  getLogs(params) {
+    return request.get('/cron/logs', { params });
+  },
+  getLogDetail(id) {
+    return request.get(`/cron/logs/${id}`);
+  },
+  getTaskStats(taskId) {
+    return request.get(`/cron/logs/stats/${taskId}`);
+  },
+  clearLogs(data) {
+    return request.post('/cron/logs/clear', data);
+  },
+  getRecentLogs() {
+    return request.get('/cron/logs/recent');
+  },
+  
+  // 任务导入导出相关API
+  exportTasks(data) {
+    return request.post('/cron/export', data);
+  },
+  importTasks(data) {
+    return request.post('/cron/export/import', data);
+  },
+  getExportFiles() {
+    return request.get('/cron/export/files');
+  },
+  downloadExportFile(filename) {
+    return request.get(`/cron/export/download/${filename}`, {
+      responseType: 'blob'
+    });
+  },
+  deleteExportFile(filename) {
+    return request.delete(`/cron/export/files/${filename}`);
+  },
+  
+  // 任务图表相关API
+  getTaskChart(id, params) {
+    return request.get(`/cron/chart/task/${id}`, { params });
+  },
+  getTaskDurationChart(id, params) {
+    return request.get(`/cron/chart/task/${id}/duration`, { params });
+  },
+  getGroupsChart(params) {
+    return request.get('/cron/chart/groups', { params });
+  },
+  getGroupChart(id, params) {
+    return request.get(`/cron/chart/group/${id}`, { params });
+  },
+  getOverviewChart(params) {
+    return request.get('/cron/chart/overview', { params });
+  }
+};
+
 export default {
   serverApi,
   roomApi,
@@ -585,5 +790,8 @@ export default {
   backupApi,
   agentApi,
   roomConfigApi,
-  worldApi
+  worldApi,
+  logApi,
+  ruleManagementApi,
+  cronTaskApi
 };

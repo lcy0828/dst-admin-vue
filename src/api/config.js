@@ -1,7 +1,7 @@
 // API配置文件
 const API_CONFIG = {
   // 基础URL
-  BASE_URL: 'http://192.168.2.25:8000/api',
+  BASE_URL: 'http://192.168.2.23:8000/api',
   
   // 超时时间
   TIMEOUT: 20000,

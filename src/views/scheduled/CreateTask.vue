@@ -245,6 +245,9 @@
 </template>
 
 <script>
+import { cronTaskApi } from '@/api/index';
+import cronstrue from 'cronstrue/i18n';
+
 export default {
   name: 'CreateTask',
   data() {
@@ -495,66 +498,245 @@ export default {
     },
     
     submitForm() {
-      this.$refs.taskForm.validate(valid => {
-        if (!valid) {
-          this.$message.error('表单填写有误，请检查');
-          return;
-        }
-        
-        // 验证特定调度类型的必填字段
-        if (this.taskForm.scheduleType === 'once' && !this.taskForm.schedule.once.dateTime) {
-          this.$message.error('请选择执行时间');
-          return;
-        }
-        
-        if (this.taskForm.scheduleType === 'daily' && !this.taskForm.schedule.daily.time) {
-          this.$message.error('请选择每日执行时间');
-          return;
-        }
-        
-        if (this.taskForm.scheduleType === 'weekly') {
-          if (!this.taskForm.schedule.weekly.time) {
-            this.$message.error('请选择每周执行时间');
-            return;
-          }
+      this.$refs.taskForm.validate((valid) => {
+        if (valid) {
+          // 从表单数据构建API所需的任务对象
+          const apiTaskData = this.buildApiTaskData();
           
-          if (this.taskForm.schedule.weekly.days.length === 0) {
-            this.$message.error('请选择至少一个执行日');
-            return;
-          }
+          this.submitting = true;
+          
+          // 根据是编辑还是新建选择API
+          const apiPromise = this.isEdit 
+            ? cronTaskApi.updateTask(this.taskId, apiTaskData) 
+            : cronTaskApi.addTask(apiTaskData);
+          
+          apiPromise
+            .then(response => {
+              if (response.data && response.data.status === 200) {
+                this.$message({
+                  type: 'success',
+                  message: this.isEdit ? '任务更新成功' : '任务创建成功'
+                });
+                
+                // 跳转回任务列表
+                this.goBack();
+              } else {
+                this.$message.error(response.data.message || (this.isEdit ? '更新任务失败' : '创建任务失败'));
+              }
+            })
+            .catch(error => {
+              console.error(this.isEdit ? '更新任务失败:' : '创建任务失败:', error);
+              this.$message.error(this.isEdit ? '更新任务失败' : '创建任务失败');
+            })
+            .finally(() => {
+              this.submitting = false;
+            });
+        } else {
+          this.$message.error('请正确填写表单');
+          return false;
         }
-        
-        if (this.taskForm.scheduleType === 'custom' && !this.taskForm.schedule.custom.expression) {
-          this.$message.error('请输入Cron表达式');
-          return;
-        }
-        
+      });
+    },
+    
+    // 从表单数据构建API所需的任务对象
+    buildApiTaskData() {
+      // 基本信息
+      const apiTask = {
+        name: this.taskForm.name,
+        description: this.taskForm.description,
+        status: this.taskForm.enabled ? 1 : 0,
+        type: 'shell', // 默认为shell类型
+        target: '',   // 将根据不同操作类型设置
+        timeout: this.taskForm.timeout || 0,
+        retry_times: this.taskForm.retryTimes || 0,
+        retry_interval: this.taskForm.retryInterval || 60,
+        group_id: 0
+      };
+      
+      // 设置cron表达式
+      switch (this.taskForm.scheduleType) {
+        case 'once':
+          // 将单次执行的日期时间转换为cron表达式
+          const dateTime = new Date(this.taskForm.schedule.once.dateTime);
+          apiTask.spec = `${dateTime.getMinutes()} ${dateTime.getHours()} ${dateTime.getDate()} ${dateTime.getMonth() + 1} * ${dateTime.getFullYear()}`;
+          break;
+        case 'daily':
+          // 每日任务
+          const [hours, minutes] = this.taskForm.schedule.daily.time.split(':');
+          apiTask.spec = `${minutes} ${hours} */${this.taskForm.schedule.daily.repeatDays} * *`;
+          break;
+        case 'weekly':
+          // 每周任务
+          const [weekHours, weekMinutes] = this.taskForm.schedule.weekly.time.split(':');
+          const days = this.taskForm.schedule.weekly.days.sort().join(',');
+          apiTask.spec = `${weekMinutes} ${weekHours} * * ${days}`;
+          break;
+        case 'custom':
+          // 自定义cron表达式
+          apiTask.spec = this.taskForm.schedule.custom.expression;
+          break;
+      }
+      
+      // 设置目标和命令，基于操作类型
+      switch (this.taskForm.action.type) {
+        case 'server_restart':
+          apiTask.target = this.buildServerRestartCommand();
+          break;
+        case 'backup':
+          apiTask.target = this.buildBackupCommand();
+          break;
+        case 'custom_command':
+          apiTask.target = this.taskForm.action.params.command;
+          break;
+        case 'mod_update':
+          apiTask.target = 'mod_update.sh';
+          break;
+        case 'event':
+          apiTask.target = this.buildEventCommand();
+          break;
+        case 'function':
+          apiTask.type = 'function';
+          apiTask.target = this.taskForm.action.params.functionName;
+          apiTask.args = this.taskForm.action.params.functionArgs || [];
+          break;
+      }
+      
+      return apiTask;
+    },
+    
+    // 构建服务器重启命令
+    buildServerRestartCommand() {
+      const servers = this.taskForm.targets.join(' ');
+      const mode = this.taskForm.action.params.restartMode;
+      const notify = this.taskForm.action.params.notifyPlayers ? '--notify' : '';
+      
+      return `restart_servers.sh ${servers} --mode=${mode} ${notify}`;
+    },
+    
+    // 构建备份命令
+    buildBackupCommand() {
+      const servers = this.taskForm.targets.join(' ');
+      const backupType = this.taskForm.action.params.backupType;
+      
+      return `backup.sh ${servers} --type=${backupType}`;
+    },
+    
+    // 构建活动命令
+    buildEventCommand() {
+      const eventId = this.taskForm.action.params.eventId;
+      const action = this.taskForm.action.params.eventAction;
+      const servers = this.taskForm.targets.join(' ');
+      
+      return `event.sh ${eventId} --action=${action} --servers=${servers}`;
+    },
+    
+    // 加载任务数据（编辑模式）
+    loadTaskData() {
+      if (this.isEdit && this.taskId) {
         this.loading = true;
         
-        // 准备提交的数据
-        const formData = {
-          id: this.isEdit ? this.taskId : Date.now(), // 模拟ID
-          name: this.taskForm.name,
-          type: this.getTypeLabel(this.taskForm.type),
-          description: this.taskForm.description,
-          schedule: this.formatSchedule(),
-          target: this.formatTargets(),
-          status: '正常',
-          priority: this.taskForm.priority,
-          action: {
-            type: this.taskForm.action.type,
-            params: this.taskForm.action.params
-          }
-        };
+        cronTaskApi.getTaskDetail(this.taskId)
+          .then(response => {
+            if (response.data && response.data.status === 200) {
+              const task = response.data.data;
+              
+              // 填充基本信息
+              this.taskForm.name = task.name;
+              this.taskForm.description = task.description || '';
+              this.taskForm.enabled = task.status === 1;
+              
+              // 设置超时和重试
+              this.taskForm.timeout = task.timeout || 0;
+              this.taskForm.retryTimes = task.retry_times || 0;
+              this.taskForm.retryInterval = task.retry_interval || 60;
+              
+              // 解析cron表达式，设置调度类型
+              this.parseScheduleFromCron(task.spec);
+              
+              // 解析命令，设置操作类型
+              this.parseActionFromCommand(task.type, task.target, task.args);
+            } else {
+              this.$message.error(response.data.message || '加载任务详情失败');
+            }
+          })
+          .catch(error => {
+            console.error('加载任务详情失败:', error);
+            this.$message.error('加载任务详情失败');
+          })
+          .finally(() => {
+            this.loading = false;
+          });
+      }
+    },
+    
+    // 从cron表达式解析调度设置
+    parseScheduleFromCron(cronExpr) {
+      // 默认使用自定义模式
+      this.taskForm.scheduleType = 'custom';
+      this.taskForm.schedule.custom.expression = cronExpr;
+      
+      try {
+        // 尝试解析cron表达式的人类可读描述
+        this.cronDescription = cronstrue.toString(cronExpr, { locale: 'zh_CN' });
+      } catch (e) {
+        this.cronDescription = '无效的cron表达式';
+      }
+      
+      // TODO: 可以尝试识别常见模式，设置为daily或weekly
+    },
+    
+    // 从命令解析操作类型
+    parseActionFromCommand(type, command, args) {
+      if (type === 'function') {
+        this.taskForm.action.type = 'function';
+        this.taskForm.action.params.functionName = command;
+        this.taskForm.action.params.functionArgs = args || [];
+        return;
+      }
+      
+      // 解析shell命令
+      if (command.includes('restart_servers.sh')) {
+        this.taskForm.action.type = 'server_restart';
         
-        // 模拟API调用
-        setTimeout(() => {
-          // 成功处理
-          this.$message.success(this.isEdit ? '任务更新成功' : '任务创建成功');
-          this.loading = false;
-          this.goBack();
-        }, 800);
-      });
+        // 提取参数
+        const notifyMatch = command.match(/--notify/);
+        this.taskForm.action.params.notifyPlayers = !!notifyMatch;
+        
+        const modeMatch = command.match(/--mode=(\w+)/);
+        this.taskForm.action.params.restartMode = modeMatch ? modeMatch[1] : 'graceful';
+        
+        // 提取服务器
+        const servers = command.split(' ')[1].split(' ');
+        this.taskForm.targets = servers.filter(s => !s.startsWith('--'));
+      } else if (command.includes('backup.sh')) {
+        this.taskForm.action.type = 'backup';
+        
+        const typeMatch = command.match(/--type=(\w+)/);
+        this.taskForm.action.params.backupType = typeMatch ? typeMatch[1] : 'full';
+        
+        // 提取服务器
+        const servers = command.split(' ')[1].split(' ');
+        this.taskForm.targets = servers.filter(s => !s.startsWith('--'));
+      } else if (command.includes('event.sh')) {
+        this.taskForm.action.type = 'event';
+        
+        const eventId = command.split(' ')[1];
+        this.taskForm.action.params.eventId = eventId;
+        
+        const actionMatch = command.match(/--action=(\w+)/);
+        this.taskForm.action.params.eventAction = actionMatch ? actionMatch[1] : 'start';
+        
+        const serversMatch = command.match(/--servers=(.+)/);
+        if (serversMatch) {
+          this.taskForm.targets = serversMatch[1].split(',');
+        }
+      } else if (command === 'mod_update.sh') {
+        this.taskForm.action.type = 'mod_update';
+      } else {
+        // 默认为自定义命令
+        this.taskForm.action.type = 'custom_command';
+        this.taskForm.action.params.command = command;
+      }
     },
     
     // 获取类型显示标签

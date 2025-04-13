@@ -80,6 +80,39 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/logs',
+    component: MainLayout,
+    redirect: '/logs/query',
+    name: 'Logs',
+    meta: { title: '日志管理器', icon: 'document' },
+    children: [
+      {
+        path: 'query',
+        component: () => import('@/views/LogQueryView.vue'),
+        name: 'LogQuery',
+        meta: { title: '日志查询', icon: 'search' }
+      },
+      {
+        path: 'rules',
+        component: () => import('@/views/RuleManagementView.vue'),
+        name: 'RuleManagement',
+        meta: { title: '规则管理', icon: 'setting' }
+      },
+      {
+        path: 'list',
+        component: () => import('@/views/logs/LogsList.vue'),
+        name: 'LogsList',
+        meta: { title: '日志和规则管理', icon: 'document', hidden: true }
+      },
+      {
+        path: 'parser',
+        component: () => import('@/views/logs/LogParser.vue'),
+        name: 'LogParser',
+        meta: { title: '日志解析器', icon: 'view' }
+      }
+    ]
+  },
+  {
     path: '/rooms',
     component: MainLayout,
     redirect: '/rooms/list',
@@ -182,6 +215,81 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/cron',
+    component: MainLayout,
+    redirect: '/cron/tasks',
+    name: 'CronTasks',
+    meta: { title: '定时任务', icon: 'timer' },
+    children: [
+      {
+        path: 'tasks',
+        component: () => import('@/views/cron/TaskList.vue'),
+        name: 'TaskList',
+        meta: { title: '任务列表', icon: 'list' }
+      },
+      {
+        path: 'add',
+        component: () => import('@/views/cron/TaskForm.vue'),
+        name: 'AddTask',
+        meta: { title: '添加任务', icon: 'plus' }
+      },
+      {
+        path: 'edit/:id',
+        component: () => import('@/views/cron/TaskForm.vue'),
+        name: 'EditTask',
+        meta: { title: '编辑任务', icon: 'edit', hidden: true }
+      },
+      {
+        path: 'groups',
+        component: () => import('@/views/cron/TaskGroups.vue'),
+        name: 'TaskGroups',
+        meta: { title: '任务组管理', icon: 'folder' }
+      },
+      {
+        path: 'group/add',
+        component: () => import('@/views/cron/TaskGroupForm.vue'),
+        name: 'AddTaskGroup',
+        meta: { title: '添加任务组', icon: 'plus', hidden: true }
+      },
+      {
+        path: 'group/edit/:id',
+        component: () => import('@/views/cron/TaskGroupForm.vue'),
+        name: 'EditTaskGroup',
+        meta: { title: '编辑任务组', icon: 'edit', hidden: true }
+      },
+      {
+        path: 'group/:id',
+        component: () => import('@/views/cron/TaskGroupDetail.vue'),
+        name: 'TaskGroupDetail',
+        meta: { title: '任务组详情', icon: 'folder-opened', hidden: true }
+      },
+      {
+        path: 'logs',
+        component: () => import('@/views/cron/TaskLogs.vue'),
+        name: 'TaskLogs',
+        meta: { title: '执行日志', icon: 'document' }
+      },
+      {
+        path: 'logs/:id',
+        component: () => import('@/views/cron/TaskLogDetail.vue'),
+        name: 'TaskLogDetail',
+        meta: { title: '日志详情', icon: 'document', hidden: true }
+      },
+      {
+        path: 'charts',
+        component: () => import('@/views/cron/TaskCharts.vue'),
+        name: 'TaskCharts',
+        meta: { title: '统计图表', icon: 'pie-chart' }
+      },
+      {
+        path: 'import-export',
+        component: () => import('@/views/cron/TaskImportExport.vue'),
+        name: 'TaskImportExport',
+        meta: { title: '导入导出', icon: 'upload' }
+      }
+    ]
+  },
+  {
     path: '/mods',
     component: MainLayout,
     redirect: '/mods/list',
@@ -233,19 +341,19 @@ export const constantRoutes = [
     path: '/scheduled',
     component: MainLayout,
     redirect: '/scheduled/tasks',
-    name: 'Scheduled',
-    meta: { title: '定时任务', icon: 'time' },
+    name: 'ScheduledTasks',
+    meta: { title: '定时任务', icon: 'alarm-clock' },
     children: [
       {
         path: 'tasks',
-        component: () => import('@/views/scheduled/ScheduledTasks.vue'),
-        name: 'ScheduledTasks',
+        component: () => import('@/views/cron/TaskList.vue'),
+        name: 'ScheduledTaskList',
         meta: { title: '任务列表', icon: 'list' }
       },
       {
         path: 'create',
-        component: () => import('@/views/scheduled/CreateTask.vue'),
-        name: 'CreateTask',
+        component: () => import('@/views/cron/TaskForm.vue'),
+        name: 'CreateScheduledTask',
         meta: { title: '创建任务', icon: 'plus' }
       }
     ]
