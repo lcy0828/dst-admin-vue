@@ -103,6 +103,16 @@
               <div v-else class="version-loading">
                 <i class="el-icon-loading"></i>
                 <span>正在获取版本信息...</span>
+                <!-- 调试信息 -->
+                <div v-if="!versionInfo.local && !versionInfo.latest" style="margin-top:10px;color:#999;font-size:12px;">
+                  两者都为空
+                </div>
+                <div v-else-if="!versionInfo.local" style="margin-top:10px;color:#999;font-size:12px;">
+                  本地版本为空
+                </div>
+                <div v-else-if="!versionInfo.latest" style="margin-top:10px;color:#999;font-size:12px;">
+                  最新版本为空
+                </div>
               </div>
             </div>
           </div>
@@ -447,9 +457,9 @@ export default {
       ],
       versionInfo: {
         local: null,
-        latest: null,
-        isOutdated: false
+        latest: null
       },
+      isVersionOutdated: false,
     }
   },
   created() {
@@ -623,35 +633,56 @@ export default {
     },
     
     getVersionInfo() {
+      // 重置版本信息
+      this.versionInfo = {
+        local: null,
+        latest: null
+      };
+      
       // 获取本地版本
       systemApi.getLocalVersion().then(localRes => {
         if (localRes.data && localRes.data.status === 200) {
-          this.versionInfo.local = localRes.data.data;
-          
-          // 获取最新版本
-          systemApi.getLatestVersion().then(latestRes => {
-            if (latestRes.data && latestRes.data.status === 200) {
-              this.versionInfo.latest = latestRes.data.data;
-              // 比较版本
-              this.checkVersionOutdated();
-            }
-          }).catch(err => {
-            console.error('获取最新版本失败:', err);
-            this.$message.error('获取最新版本信息失败');
-          });
+          // 使用Vue.set或对象整体赋值确保响应式更新
+          this.$set(this.versionInfo, 'local', localRes.data.data);
+          this.checkVersionOutdated();
         }
       }).catch(err => {
         console.error('获取本地版本失败:', err);
         this.$message.error('获取本地版本信息失败');
       });
+      
+      // 获取最新版本
+      systemApi.getLatestVersion().then(latestRes => {
+        if (latestRes.data && latestRes.data.status === 200) {
+          // 使用Vue.set或对象整体赋值确保响应式更新
+          this.$set(this.versionInfo, 'latest', latestRes.data.data);
+          this.checkVersionOutdated();
+        }
+      }).catch(err => {
+        console.error('获取最新版本失败:', err);
+        this.$message.error('获取最新版本信息失败');
+      });
     },
     
     checkVersionOutdated() {
+      console.log('checkVersionOutdated 被调用', { 
+        local: this.versionInfo.local, 
+        latest: this.versionInfo.latest 
+      });
+      
       if (this.versionInfo.local && this.versionInfo.latest) {
-        // 比较版本号
-        const localVersion = parseInt(this.versionInfo.local.version);
-        const latestVersion = parseInt(this.versionInfo.latest.version);
-        this.isVersionOutdated = localVersion < latestVersion;
+        try {
+          // 比较版本号
+          const localVersion = parseInt(this.versionInfo.local.version) || 0;
+          const latestVersion = parseInt(this.versionInfo.latest.version) || 0;
+          console.log('版本比较:', { localVersion, latestVersion });
+          
+          this.isVersionOutdated = localVersion < latestVersion;
+          console.log('版本过期状态:', this.isVersionOutdated);
+        } catch (err) {
+          console.error('比较版本号时出错:', err);
+          this.isVersionOutdated = false;
+        }
       } else {
         this.isVersionOutdated = false;
       }

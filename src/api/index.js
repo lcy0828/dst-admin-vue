@@ -412,6 +412,16 @@ export const systemApi = {
   // 重启TMUX服务器
   restartTmuxServer(data) {
     return request.post("/tmux/restart", data);
+  },
+  
+  // 获取本地版本信息
+  getLocalVersion() {
+    return request.get('/dstserver/localversion');
+  },
+  
+  // 获取最新版本信息
+  getLatestVersion() {
+    return request.get('/dstserver/version');
   }
 };
 
