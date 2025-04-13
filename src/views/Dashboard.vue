@@ -103,16 +103,6 @@
               <div v-else class="version-loading">
                 <i class="el-icon-loading"></i>
                 <span>正在获取版本信息...</span>
-                <!-- 调试信息 -->
-                <div v-if="!versionInfo.local && !versionInfo.latest" style="margin-top:10px;color:#999;font-size:12px;">
-                  两者都为空
-                </div>
-                <div v-else-if="!versionInfo.local" style="margin-top:10px;color:#999;font-size:12px;">
-                  本地版本为空
-                </div>
-                <div v-else-if="!versionInfo.latest" style="margin-top:10px;color:#999;font-size:12px;">
-                  最新版本为空
-                </div>
               </div>
             </div>
           </div>
@@ -641,9 +631,9 @@ export default {
       
       // 获取本地版本
       systemApi.getLocalVersion().then(localRes => {
-        if (localRes.data && localRes.data.status === 200) {
-          // 使用Vue.set或对象整体赋值确保响应式更新
-          this.$set(this.versionInfo, 'local', localRes.data.data);
+        this.$message.info(localRes.msg);
+        if (localRes.data && localRes.status === 200) {
+          this.$set(this.versionInfo, 'local', localRes.data);
           this.checkVersionOutdated();
         }
       }).catch(err => {
@@ -653,9 +643,9 @@ export default {
       
       // 获取最新版本
       systemApi.getLatestVersion().then(latestRes => {
-        if (latestRes.data && latestRes.data.status === 200) {
+        if (latestRes.data && latestRes.status === 200) {
           // 使用Vue.set或对象整体赋值确保响应式更新
-          this.$set(this.versionInfo, 'latest', latestRes.data.data);
+          this.$set(this.versionInfo, 'latest', latestRes.data);
           this.checkVersionOutdated();
         }
       }).catch(err => {
@@ -665,20 +655,13 @@ export default {
     },
     
     checkVersionOutdated() {
-      console.log('checkVersionOutdated 被调用', { 
-        local: this.versionInfo.local, 
-        latest: this.versionInfo.latest 
-      });
-      
       if (this.versionInfo.local && this.versionInfo.latest) {
         try {
           // 比较版本号
           const localVersion = parseInt(this.versionInfo.local.version) || 0;
           const latestVersion = parseInt(this.versionInfo.latest.version) || 0;
-          console.log('版本比较:', { localVersion, latestVersion });
-          
+
           this.isVersionOutdated = localVersion < latestVersion;
-          console.log('版本过期状态:', this.isVersionOutdated);
         } catch (err) {
           console.error('比较版本号时出错:', err);
           this.isVersionOutdated = false;
@@ -693,10 +676,6 @@ export default {
         window.open(this.versionInfo.latest.update_url, '_blank');
       }
     }
-  },
-  
-  computed: {
-    // 用于计算属性
   },
 }
 </script>
