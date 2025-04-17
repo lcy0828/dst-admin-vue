@@ -2,7 +2,7 @@
   <div class="app-container">
     <el-card class="box-card" shadow="never">
       <div slot="header" class="clearfix">
-        <span>日志详情</span>
+        <span>任务执行结果</span>
         <el-button-group style="float: right">
           <el-button type="primary" icon="el-icon-refresh" @click="fetchLogDetail">刷新</el-button>
           <el-button type="info" icon="el-icon-back" @click="goBack">返回</el-button>
@@ -19,7 +19,28 @@
 
         <template>
           <div v-if="logData" class="log-content">
-            <el-descriptions title="基本信息" border :column="2">
+            <el-alert
+              v-if="logData.status === 1"
+              title="任务执行成功"
+              type="success"
+              :closable="false"
+              show-icon>
+              <div slot="description">
+                任务已成功执行，耗时 {{ logData.duration }} 毫秒
+              </div>
+            </el-alert>
+            <el-alert
+              v-else
+              title="任务执行失败"
+              type="error"
+              :closable="false"
+              show-icon>
+              <div slot="description">
+                任务执行失败，请查看错误信息
+              </div>
+            </el-alert>
+
+            <el-descriptions title="基本信息" border :column="2" class="info-section">
               <el-descriptions-item label="日志ID">{{ logData.id }}</el-descriptions-item>
               <el-descriptions-item label="任务ID">{{ logData.task_id }}</el-descriptions-item>
               <el-descriptions-item label="任务名称">
@@ -31,30 +52,18 @@
                 </router-link>
                 <span v-else>{{ logData.task_name || '未知任务' }}</span>
               </el-descriptions-item>
-              <el-descriptions-item label="任务类型">{{ getTaskTypeText(logData.task_type) }}</el-descriptions-item>
               <el-descriptions-item label="执行状态">
-                <el-tag :type="logData.status === 'success' || logData.status === 1 ? 'success' : 'danger'">
-                  {{ logData.status === 'success' || logData.status === 1 ? '成功' : '失败' }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="触发方式">
-                <el-tag :type="getTriggerTypeTag(logData.trigger_type)">
-                  {{ getTriggerTypeText(logData.trigger_type) }}
+                <el-tag :type="logData.status === 1 ? 'success' : 'danger'">
+                  {{ logData.status === 1 ? '成功' : '失败' }}
                 </el-tag>
               </el-descriptions-item>
               <el-descriptions-item label="开始时间">{{ logData.start_time || logData.created_at }}</el-descriptions-item>
               <el-descriptions-item label="结束时间">{{ logData.end_time || logData.updated_at }}</el-descriptions-item>
-              <el-descriptions-item label="执行耗时">{{ logData.duration ? logData.duration + ' 秒' : '-' }}</el-descriptions-item>
-              <el-descriptions-item label="执行者">{{ logData.executor || '系统' }}</el-descriptions-item>
-              <el-descriptions-item label="重试次数">{{ logData.retry_count || 0 }}</el-descriptions-item>
-              <el-descriptions-item label="IP地址">{{ logData.ip || '-' }}</el-descriptions-item>
+              <el-descriptions-item label="执行耗时">{{ formatDuration(logData.duration) }}</el-descriptions-item>
+              <el-descriptions-item label="触发方式">
+                <el-tag :type="getTriggerTypeTag(logData.trigger_type)">{{ getTriggerTypeText(logData.trigger_type) }}</el-tag>
+              </el-descriptions-item>
             </el-descriptions>
-
-            <div class="execution-section">
-              <h3>执行参数</h3>
-              <pre v-if="logData.params" class="code-block params">{{ formatParams(logData.params) }}</pre>
-              <el-empty v-else description="无参数" :image-size="100"></el-empty>
-            </div>
 
             <div class="execution-section">
               <h3>执行输出</h3>
@@ -68,7 +77,9 @@
             </div>
           </div>
 
-          <el-empty v-else description="未找到日志详情" :image-size="200"></el-empty>
+          <el-empty v-else description="未找到日志详情" :image-size="200">
+            <el-button type="primary" @click="fetchLogDetail">重新加载</el-button>
+          </el-empty>
         </template>
       </el-skeleton>
     </el-card>
@@ -79,12 +90,13 @@
 import { cronTaskApi } from '@/api/index';
 
 export default {
-  name: 'TaskLogDetail',
+  name: 'TaskExecutionResult',
   data() {
     return {
       loading: false,
       logId: null,
-      logData: null
+      logData: null,
+      refreshInterval: null
     };
   },
   created() {
@@ -96,6 +108,22 @@ export default {
     }
 
     this.fetchLogDetail();
+
+    // 自动刷新 - 每5秒刷新一次，直到任务完成
+    this.refreshInterval = setInterval(() => {
+      if (this.logData && this.logData.end_time) {
+        // 如果任务已完成，停止自动刷新
+        clearInterval(this.refreshInterval);
+      } else {
+        this.fetchLogDetail();
+      }
+    }, 5000);
+  },
+  beforeDestroy() {
+    // 组件销毁前清除定时器
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
   },
   methods: {
     fetchLogDetail() {
@@ -150,38 +178,32 @@ export default {
         });
     },
     goBack() {
-      // 如果是从任务详情页面进来的，就返回任务详情页面
-      if (this.$route.query.from === 'task' && this.$route.query.task_id) {
-        this.$router.push(`/cron/task/${this.$route.query.task_id}`);
+      // 如果是从任务列表页面进来的，就返回任务列表
+      if (this.$route.query.from === 'tasks') {
+        this.$router.push('/cron/tasks');
       } else {
         // 否则默认返回日志列表
         this.$router.push('/cron/logs');
       }
     },
-    getTaskTypeText(type) {
-      const typeMap = {
-        'shell': 'Shell命令',
-        'http': 'HTTP请求',
-        'script': '脚本执行',
-        'system': '系统命令'
-      };
-      return typeMap[type] || type || '未知类型';
-    },
-    formatParams(params) {
-      if (!params) return '';
+    formatDuration(duration) {
+      if (!duration) return '-';
 
-      try {
-        // 如果是字符串，尝试解析成对象
-        if (typeof params === 'string') {
-          const parsedParams = JSON.parse(params);
-          return JSON.stringify(parsedParams, null, 2);
-        }
-        // 如果已经是对象，直接格式化
-        return JSON.stringify(params, null, 2);
-      } catch (e) {
-        // 如果无法解析为JSON，则原样返回
-        return params;
+      // 如果duration小于1000，认为是毫秒
+      if (duration < 1000) {
+        return `${duration} 毫秒`;
       }
+
+      // 否则转换为秒
+      const seconds = duration / 1000;
+      if (seconds < 60) {
+        return `${seconds.toFixed(2)} 秒`;
+      }
+
+      // 如果超过60秒，转换为分钟和秒
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = (seconds % 60).toFixed(0);
+      return `${minutes} 分 ${remainingSeconds} 秒`;
     },
 
     // 根据trigger_type获取触发方式的文本描述
@@ -194,13 +216,6 @@ export default {
         3: '依赖触发', // 3 代表依赖触发
         4: 'API触发'    // 4 代表API触发
       };
-
-      // 兼容旧版的is_manual字段
-      if (triggerType === undefined && this.logData) {
-        // 注意：is_manual为1时表示手动执行，对应trigger_type为1
-        return this.logData.is_manual === 1 ? '手动触发' : '定时触发';
-      }
-
       return triggerTypeMap[triggerType] || '未知触发';
     },
 
@@ -214,13 +229,6 @@ export default {
         3: 'info',     // 3 依赖触发 - 灰色信息
         4: 'danger'    // 4 API触发 - 红色危险
       };
-
-      // 兼容旧版的is_manual字段
-      if (triggerType === undefined && this.logData) {
-        // 注意：is_manual为1时表示手动执行，对应trigger_type为1
-        return this.logData.is_manual === 1 ? 'warning' : 'primary';
-      }
-
       return triggerTypeTagMap[triggerType] || 'info';
     }
   }
@@ -231,37 +239,55 @@ export default {
 .log-content {
   padding: 0;
 }
-.execution-section {
+
+.info-section {
   margin-top: 20px;
 }
-.execution-section h3 {
-  font-size: 16px;
-  margin-bottom: 10px;
-  padding-left: 5px;
-  border-left: 3px solid #409EFF;
+
+.execution-section {
+  margin-top: 20px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #fafafa;
 }
+
+.execution-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #303133;
+}
+
 .code-block {
   background-color: #f5f5f5;
-  padding: 15px;
+  padding: 10px;
   border-radius: 4px;
-  font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+  max-height: 500px;
+  overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
-  max-height: 400px;
-  overflow-y: auto;
-  margin: 0;
+  font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.5;
 }
-.code-block.params {
+
+.code-block.output {
   background-color: #f0f9eb;
+  border: 1px solid #e1f3d8;
 }
+
 .code-block.error {
-  background-color: #fee;
-  color: #d33;
+  background-color: #fef0f0;
+  border: 1px solid #fde2e2;
+  color: #f56c6c;
 }
+
 .link-type {
   color: #409EFF;
   text-decoration: none;
 }
+
 .link-type:hover {
   text-decoration: underline;
 }

@@ -1,4 +1,5 @@
 import request from './request';
+import { commandApi } from './commandManager';
 
 // 玩家信息相关API
 export const playerApi = {
@@ -68,6 +69,62 @@ export const playerApi = {
   // 获取会话列表
   getSessions() {
     return request.get('/cron/tmux/sessions');
+  },
+
+  // 杀死玩家
+  killPlayer(playerId, archiveName) {
+    const data = {
+      command: `local player = UserToPlayer('${playerId}') if player ~= nil then player:PushEvent("death") end`,
+      session_name: archiveName
+    };
+    return request.post('/tmux/raw-command', data);
+  },
+
+  // 设置玩家无敌模式
+  setGodMode(playerId, enabled, archiveName) {
+    const godModeValue = enabled ? 'true' : 'false';
+    const data = {
+      command: `local player = UserToPlayer('${playerId}') if player ~= nil then player.components.health:SetInvincible(${godModeValue}) player.components.talker:Say("${enabled ? '无敌模式已开启' : '无敌模式已关闭'}") end`,
+      session_name: archiveName
+    };
+    return request.post('/tmux/raw-command', data);
+  },
+
+  // 设置玩家制作模式
+  setCreativeMode(playerId, enabled, archiveName) {
+    const creativeModeValue = enabled ? 'true' : 'false';
+    const data = {
+      command: `local player = UserToPlayer('${playerId}') if player ~= nil then player.components.builder.freebuildmode = ${creativeModeValue} player.components.talker:Say("${enabled ? '制作模式已开启' : '制作模式已关闭'}") end`,
+      session_name: archiveName
+    };
+    return request.post('/tmux/raw-command', data);
+  },
+
+  // 复活玩家
+  resurrectPlayer(playerId, archiveName) {
+    const data = {
+      command: `local player = UserToPlayer('${playerId}') if player == nil then UserToPlayer("${playerId}").components.talker:Say("该玩家与你不在同一世界！命令无法生效。") end player:PushEvent("respawnfromghost") player.rezsource = "DST-ADMIN-GO控制台"`,
+      session_name: archiveName
+    };
+    return request.post('/tmux/raw-command', data);
+  },
+
+  // 重选人物
+  changeCharacter(playerId, archiveName) {
+    const data = {
+      command: `c_despawn(UserToPlayer('${playerId}')) c_announce("管理员已将玩家重置，该玩家可以重新选择角色")`,
+      session_name: archiveName
+    };
+    return request.post('/tmux/raw-command', data);
+  },
+
+  // 执行自定义命令
+  executeCommand(command, archiveName) {
+    const data = {
+      command: command,
+      session_name: archiveName
+    };
+    return request.post('/tmux/raw-command', data);
   }
 };
 

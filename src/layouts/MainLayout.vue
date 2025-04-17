@@ -37,7 +37,6 @@
           <el-menu-item index="/logs/query">日志查询</el-menu-item>
           <el-menu-item index="/logs/rules">规则管理</el-menu-item>
           <el-menu-item index="/logs/parser">日志解析器</el-menu-item>
-          <el-menu-item index="/logs/stats">日志统计</el-menu-item>
         </el-submenu>
 
         <el-submenu index="/players">
@@ -46,17 +45,9 @@
             <span>玩家管理</span>
           </template>
           <el-menu-item index="/players/list">玩家列表</el-menu-item>
-          <el-menu-item index="/players/ban">封禁管理</el-menu-item>
         </el-submenu>
 
-        <el-submenu index="/items">
-          <template slot="title">
-            <i class="el-icon-goods"></i>
-            <span>物品管理</span>
-          </template>
-          <el-menu-item index="/items/list">物品列表</el-menu-item>
-          <el-menu-item index="/items/generator">物品生成器</el-menu-item>
-        </el-submenu>
+
 
         <el-submenu index="/mods">
           <template slot="title">
@@ -140,6 +131,9 @@
           </el-breadcrumb>
         </div>
         <div class="right-menu">
+          <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" class="github-link">
+            <i class="fab fa-github"></i>
+          </a>
           <el-dropdown trigger="click">
             <span class="user-dropdown">
               管理员 <i class="el-icon-arrow-down"></i>
@@ -205,12 +199,11 @@ export default {
         scheduled: '定时任务',
         system: '系统设置',
         ban: '封禁管理',
-        generator: '物品生成器',
+
         search: '模组搜索',
         agents: 'Agent管理',
         security: '安全设置',
-        parser: '日志解析器',
-        stats: '日志统计'
+        parser: '日志解析器'
       }
 
       // 子页面映射
@@ -218,7 +211,7 @@ export default {
         list: {
           servers: '服务器列表',
           players: '玩家列表',
-          items: '物品列表',
+
           mods: '已下载模组',
           rooms: '房间列表',
           agents: 'Agent列表',
@@ -372,6 +365,17 @@ export default {
 .user-dropdown {
   cursor: pointer;
   color: #606266;
+}
+
+.github-link {
+  margin-right: 20px;
+  font-size: 22px;
+  color: #606266;
+  transition: color 0.3s;
+}
+
+.github-link:hover {
+  color: #409EFF;
 }
 
 .content-container {

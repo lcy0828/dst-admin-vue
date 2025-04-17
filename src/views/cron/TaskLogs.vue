@@ -82,10 +82,10 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="执行类型" width="100" align="center">
+        <el-table-column label="触发方式" width="100" align="center">
           <template slot-scope="scope">
-            <el-tag :type="scope.row.is_manual === 1 ? 'warning' : 'info'">
-              {{ scope.row.is_manual === 1 ? '手动' : '自动' }}
+            <el-tag :type="getTriggerTypeTag(scope.row.trigger_type)">
+              {{ getTriggerTypeText(scope.row.trigger_type) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -125,9 +125,9 @@
               {{ currentLog.status === 'success' || currentLog.status === 1 ? '成功' : '失败' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="执行方式">
-            <el-tag :type="currentLog.is_manual === 1 ? 'warning' : 'info'">
-              {{ currentLog.is_manual === 1 ? '手动执行' : '自动执行' }}
+          <el-descriptions-item label="触发方式">
+            <el-tag :type="getTriggerTypeTag(currentLog.trigger_type)">
+              {{ getTriggerTypeText(currentLog.trigger_type) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="开始时间">{{ currentLog.start_time || currentLog.created_at }}</el-descriptions-item>
@@ -385,6 +385,48 @@ export default {
       }).catch(() => {
         this.$message.info('已取消清理');
       });
+    },
+
+    // 根据trigger_type获取触发方式的文本描述
+    getTriggerTypeText(triggerType) {
+      // 根据实际情况调整映射关系
+      const triggerTypeMap = {
+        0: '定时触发', // 0 代表定时触发
+        1: '手动触发', // 1 代表手动触发
+        2: '事件触发', // 2 代表事件触发
+        3: '依赖触发', // 3 代表依赖触发
+        4: 'API触发'    // 4 代表API触发
+      };
+
+      // 兼容旧版的is_manual字段
+      if (triggerType === undefined) {
+        // 如果没有trigger_type字段，则使用is_manual字段
+        // 注意：is_manual为1时表示手动执行，对应trigger_type为1
+        return this.is_manual === 1 ? '手动触发' : '定时触发';
+      }
+
+      return triggerTypeMap[triggerType] || '未知触发';
+    },
+
+    // 根据trigger_type获取标签类型
+    getTriggerTypeTag(triggerType) {
+      // 根据实际情况调整标签类型
+      const triggerTypeTagMap = {
+        0: 'primary',  // 0 定时触发 - 蓝色主要
+        1: 'warning',  // 1 手动触发 - 黄色警告
+        2: 'success',  // 2 事件触发 - 绿色成功
+        3: 'info',     // 3 依赖触发 - 灰色信息
+        4: 'danger'    // 4 API触发 - 红色危险
+      };
+
+      // 兼容旧版的is_manual字段
+      if (triggerType === undefined) {
+        // 如果没有trigger_type字段，则使用is_manual字段
+        // 注意：is_manual为1时表示手动执行，对应trigger_type为1
+        return this.is_manual === 1 ? 'warning' : 'primary';
+      }
+
+      return triggerTypeTagMap[triggerType] || 'info';
     }
   }
 };

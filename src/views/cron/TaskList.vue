@@ -5,39 +5,17 @@
         <span>定时任务管理</span>
         <el-button-group style="float: right">
           <el-button type="primary" icon="el-icon-plus" @click="handleAddTask">添加任务</el-button>
-          <el-button type="success" icon="el-icon-folder-add" @click="$router.push('/cron/group/add')">添加任务组</el-button>
-          <el-button type="info" icon="el-icon-folder" @click="$router.push('/cron/groups')">任务组管理</el-button>
           <el-button type="warning" icon="el-icon-document" @click="$router.push('/cron/logs')">执行日志</el-button>
-          <el-button type="danger" icon="el-icon-pie-chart" @click="$router.push('/cron/charts')">统计图表</el-button>
-          <el-button type="primary" icon="el-icon-upload2" @click="$router.push('/cron/import-export')">导入导出</el-button>
+          <!-- 统计图表按钮已隐藏 -->
+          <!-- 导入导出按钮已隐藏 -->
         </el-button-group>
       </div>
 
-      <el-alert
-        v-if="fetchError"
-        title="获取任务组列表失败"
-        type="error"
-        description="无法加载任务组数据，这可能会影响任务显示。"
-        show-icon
-        :closable="true"
-        @close="fetchError = false"
-        style="margin-bottom: 15px;">
-        <el-button type="primary" size="small" @click="retryFetch" style="margin-left: 15px;">重试</el-button>
-      </el-alert>
+
 
       <div class="filter-container">
         <el-form :inline="true" :model="listQuery" class="filter-form">
-          <el-form-item label="任务组">
-            <el-select v-model="listQuery.group_id" placeholder="选择任务组" clearable style="width: 200px">
-              <el-option label="全部" value=""></el-option>
-              <el-option
-                v-for="group in groupList"
-                :key="group.id"
-                :label="group.name"
-                :value="group.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
+
           <el-form-item label="任务类型">
             <el-select v-model="listQuery.type" placeholder="选择类型" clearable style="width: 150px">
               <el-option label="全部" value=""></el-option>
@@ -64,23 +42,28 @@
         </el-form>
       </div>
 
-      <el-table v-loading="loading" :data="taskList" style="width: 100%;" border>
+      <el-table
+        v-loading="loading"
+        :data="taskList"
+        style="width: 100%;"
+        border
+        stripe
+        highlight-current-row
+        :row-class-name="tableRowClassName"
+        class="task-table">
         <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
-        <el-table-column prop="name" label="任务名称" min-width="120">
+        <el-table-column prop="name" label="任务名称" min-width="150">
           <template slot-scope="scope">
-            <el-tooltip v-if="scope.row.description" :content="scope.row.description" placement="top" effect="light">
-              <span>{{ scope.row.name }}</span>
-            </el-tooltip>
-            <span v-else>{{ scope.row.name }}</span>
+            <div class="task-name-cell">
+              <div class="task-name">
+                <span class="task-name-text">{{ scope.row.name }}</span>
+                <el-tag v-if="isNewTask(scope.row)" size="mini" type="danger" class="task-tag">NEW</el-tag>
+              </div>
+              <div v-if="scope.row.description" class="task-description">{{ scope.row.description }}</div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="group_name" label="所属任务组" min-width="120">
-          <template slot-scope="scope">
-            <el-tag size="medium" @click="$router.push(`/cron/group/${scope.row.group_id}`)" style="cursor: pointer">
-              {{ scope.row.group_name || '未分组' }}
-            </el-tag>
-          </template>
-        </el-table-column>
+        <!-- 所属任务组列已隐藏 -->
         <el-table-column prop="spec" label="Cron表达式" min-width="120"></el-table-column>
         <el-table-column prop="type" label="类型" width="120">
           <template slot-scope="scope">
@@ -91,93 +74,118 @@
         </el-table-column>
         <el-table-column prop="target" label="目标" min-width="150">
           <template slot-scope="scope">
-            <el-tooltip :content="getFormattedTarget(scope.row)" placement="top" effect="light">
-              <span>{{ getFormattedTarget(scope.row) | truncate(30) }}</span>
-            </el-tooltip>
+            <div class="target-cell">
+              <el-tooltip :content="getFormattedTarget(scope.row)" placement="top" effect="light">
+                <div class="target-content">
+                  <i :class="getTargetIcon(scope.row.type)" class="target-icon"></i>
+                  <span>{{ getFormattedTarget(scope.row) | truncate(40) }}</span>
+                </div>
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="dependencies" label="依赖任务" min-width="120">
           <template slot-scope="scope">
-            <span v-if="!scope.row.dependencies || scope.row.dependencies.length === 0">无</span>
-            <div v-else>
-              <p style="margin: 0; color: #999; font-size: 10px;">(原始值: {{ JSON.stringify(scope.row.dependencies) }})</p>
-              <el-tag
-                v-for="dep in scope.row.dependencies"
-                :key="dep.id"
-                size="small"
-                type="info"
-                style="margin-right: 5px; margin-bottom: 3px;">
-                {{ dep.name || dep.id || dep }}
-              </el-tag>
+            <div class="dependencies-cell">
+              <span v-if="!scope.row.dependencies || scope.row.dependencies.length === 0" class="no-deps">无依赖</span>
+              <div v-else class="deps-list">
+                <el-tag
+                  v-for="dep in scope.row.dependencies"
+                  :key="dep.id"
+                  size="small"
+                  type="info"
+                  effect="plain"
+                  class="dep-tag">
+                  {{ dep.name || dep.id || dep }}
+                </el-tag>
+              </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="超时/重试" width="100" align="center">
+        <el-table-column label="超时/重试" width="120" align="center">
           <template slot-scope="scope">
-            <el-tooltip content="任务超时时间(秒)/重试次数" placement="top" effect="light">
-              <span>{{ scope.row.timeout || '-' }} / {{ scope.row.retry_times || '0' }}</span>
-            </el-tooltip>
+            <div class="timeout-retry-cell">
+              <el-tooltip content="任务超时时间(秒)" placement="top" effect="light">
+                <div class="timeout-value">
+                  <i class="el-icon-time"></i>
+                  <span>{{ scope.row.timeout || '无限' }}</span>
+                </div>
+              </el-tooltip>
+              <el-tooltip content="重试次数" placement="top" effect="light">
+                <div class="retry-value">
+                  <i class="el-icon-refresh"></i>
+                  <span>{{ scope.row.retry_times || '0' }}</span>
+                </div>
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="next_run" label="下次执行" min-width="120">
+        <el-table-column prop="last_run_time" label="上次执行" min-width="160">
           <template slot-scope="scope">
-            <span>{{ scope.row.next_run || '未计划' }}</span>
+            <div class="last-run-cell">
+              <div class="last-run-time">
+                <i class="el-icon-date"></i>
+                <span v-if="scope.row.last_run_time && scope.row.last_run_time !== '0001-01-01T00:00:00Z'" class="time-text">{{ formatDateTime(scope.row.last_run_time) }}</span>
+                <span v-else class="no-run">未执行</span>
+              </div>
+              <div v-if="scope.row.last_run_time && scope.row.last_run_time !== '0001-01-01T00:00:00Z'" class="last-status">
+                <el-tag size="mini" :type="scope.row.last_status === 1 ? 'success' : 'danger'">
+                  {{ scope.row.last_status === 1 ? '成功' : '失败' }}
+                </el-tag>
+              </div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="80">
+        <el-table-column prop="status" label="任务状态" width="80">
           <template slot-scope="scope">
             <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
               {{ scope.row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" align="center">
+        <el-table-column label="操作" width="180" align="center">
           <template slot-scope="scope">
-            <el-button-group>
-              <el-button
-                size="mini"
-                type="success"
-                @click="handleRunNow(scope.row)"
-                icon="el-icon-video-play">
-                执行
-              </el-button>
-              <el-button
-                size="mini"
-                :type="scope.row.status === 1 ? 'warning' : 'success'"
-                @click="handleToggleStatus(scope.row)"
-                :icon="scope.row.status === 1 ? 'el-icon-close' : 'el-icon-check'">
-                {{ scope.row.status === 1 ? '禁用' : '启用' }}
-              </el-button>
-              <el-button
-                size="mini"
-                type="primary"
-                @click="handleEdit(scope.row)"
-                icon="el-icon-edit">
-                编辑
-              </el-button>
-              <el-button
-                size="mini"
-                type="danger"
-                @click="handleDelete(scope.row)"
-                icon="el-icon-delete">
-                删除
-              </el-button>
-            </el-button-group>
-            <div style="margin-top: 5px;">
-              <el-button
-                size="mini"
-                type="info"
-                @click="viewTaskLogs(scope.row.id)"
-                icon="el-icon-document">
-                日志
-              </el-button>
-              <el-button
-                size="mini"
-                type="warning"
-                @click="viewTaskStats(scope.row.id)"
-                icon="el-icon-data-line">
-                统计
-              </el-button>
+            <div class="action-buttons">
+              <!-- 主要操作按钮组 -->
+              <el-tooltip content="立即执行" placement="top">
+                <el-button
+                  size="mini"
+                  type="success"
+                  circle
+                  @click="handleRunNow(scope.row)"
+                  icon="el-icon-video-play">
+                </el-button>
+              </el-tooltip>
+
+              <el-tooltip :content="scope.row.status === 1 ? '禁用任务' : '启用任务'" placement="top">
+                <el-button
+                  size="mini"
+                  :type="scope.row.status === 1 ? 'warning' : 'success'"
+                  circle
+                  @click="handleToggleStatus(scope.row)"
+                  :icon="scope.row.status === 1 ? 'el-icon-close' : 'el-icon-check'">
+                </el-button>
+              </el-tooltip>
+
+              <el-tooltip content="编辑任务" placement="top">
+                <el-button
+                  size="mini"
+                  type="primary"
+                  circle
+                  @click="handleEdit(scope.row)"
+                  icon="el-icon-edit">
+                </el-button>
+              </el-tooltip>
+
+              <!-- 更多操作下拉菜单 -->
+              <el-dropdown trigger="click" @command="handleCommand($event, scope.row)" size="mini">
+                <el-button size="mini" type="info" circle icon="el-icon-more"></el-button>
+                <el-dropdown-menu slot="dropdown">
+                  <el-dropdown-item command="viewLogs" icon="el-icon-document">查看日志</el-dropdown-item>
+                  <el-dropdown-item command="viewStats" icon="el-icon-data-line">查看统计</el-dropdown-item>
+                  <el-dropdown-item divided command="delete" icon="el-icon-delete" class="danger-item">删除任务</el-dropdown-item>
+                </el-dropdown-menu>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
@@ -197,17 +205,42 @@
 
     <el-dialog title="执行结果" :visible.sync="dialogVisible" width="60%">
       <div v-if="taskResult" class="task-result">
-        <p><strong>执行状态：</strong> {{ taskResult.success ? '成功' : '失败' }}</p>
-        <p><strong>执行时间：</strong> {{ taskResult.timestamp }}</p>
-        <p v-if="taskResult.duration != null"><strong>执行耗时：</strong> {{ taskResult.duration }} 秒</p>
-        <div class="result-output">
+        <div v-if="taskResult.success !== undefined">
+          <p><strong>执行状态：</strong> <el-tag :type="taskResult.success ? 'success' : 'danger'">{{ taskResult.success ? '成功' : '失败' }}</el-tag></p>
+          <p v-if="taskResult.timestamp"><strong>执行时间：</strong> {{ taskResult.timestamp }}</p>
+          <p v-if="taskResult.duration != null"><strong>执行耗时：</strong> {{ formatDuration(taskResult.duration) }}</p>
+        </div>
+
+        <div v-if="taskResult.message" class="result-message">
+          <strong>消息：</strong>
+          <p>{{ taskResult.message }}</p>
+        </div>
+
+        <div v-if="taskResult.output" class="result-output">
           <strong>输出结果：</strong>
           <pre>{{ taskResult.output }}</pre>
         </div>
+
+        <div v-if="!taskResult.success && !taskResult.output && !taskResult.message" class="result-empty">
+          <el-alert
+            title="任务已开始异步执行"
+            type="info"
+            description="任务正在后台执行，请查看任务日志获取执行结果。"
+            show-icon>
+          </el-alert>
+        </div>
+      </div>
+      <div v-else class="task-result-empty">
+        <el-alert
+          title="任务已开始异步执行"
+          type="success"
+          description="任务正在后台执行，请查看任务日志获取执行结果。"
+          show-icon>
+        </el-alert>
       </div>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="viewTaskLogs(currentTaskId)">查看完整日志</el-button>
+        <el-button type="primary" @click="viewTaskLogs(currentTaskId)">查看任务日志</el-button>
       </div>
     </el-dialog>
 
@@ -220,7 +253,10 @@
           </div>
           <div class="stats-card avg-duration">
             <div class="stats-title">平均耗时</div>
-            <div class="stats-value">{{ taskStats.avg_duration }}秒</div>
+            <div class="stats-value">
+              {{ taskStats.avg_duration }} {{ taskStats.duration_unit === 's' ? '秒' : '毫秒' }}
+              <span v-if="taskStats.duration_unit === 'ms'" class="unit-note">(约 {{ (taskStats.avg_duration / 1000).toFixed(2) }} 秒)</span>
+            </div>
           </div>
           <div class="stats-card total-runs">
             <div class="stats-title">总执行次数</div>
@@ -264,7 +300,7 @@
       </div>
       <div slot="footer" class="dialog-footer">
         <el-button @click="statsDialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="$router.push('/cron/charts')">查看更多图表</el-button>
+        <!-- 查看更多图表按钮已隐藏 -->
       </div>
     </el-dialog>
   </div>
@@ -324,6 +360,55 @@ export default {
     }, 100);
   },
   methods: {
+    // 表格行样式
+    tableRowClassName({row, rowIndex}) {
+      if (row.status === 0) {
+        return 'disabled-row';
+      }
+
+      // 只对执行失败的任务设置警告样式
+      if (row.last_status === 0 && row.last_run_time && row.last_run_time !== '0001-01-01T00:00:00Z') {
+        return 'warning-row';
+      }
+
+      // 成功执行的任务不再显示特殊背景色
+      return '';
+    },
+
+    // 判断是否是新任务（创建时间在3天内且用户未查看过）
+    isNewTask(task) {
+      if (!task.created_at || !task.id) return false;
+
+      // 从本地存储中获取已查看过的新任务ID
+      const viewedNewTasks = JSON.parse(localStorage.getItem('viewedNewTasks') || '[]');
+
+      // 如果用户已经查看过这个任务，则不显示新标签
+      if (viewedNewTasks.includes(task.id)) {
+        return false;
+      }
+
+      const createdDate = new Date(task.created_at);
+      const now = new Date();
+      const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+
+      // 如果是新任务，将其ID添加到已查看列表中
+      if (createdDate > threeDaysAgo) {
+        // 将任务ID添加到已查看列表中，下次就不会显示新标签了
+        // 注意：这里我们延迟添动作，确保用户能看到标签
+        setTimeout(() => {
+          const updatedViewedTasks = JSON.parse(localStorage.getItem('viewedNewTasks') || '[]');
+          if (!updatedViewedTasks.includes(task.id)) {
+            updatedViewedTasks.push(task.id);
+            localStorage.setItem('viewedNewTasks', JSON.stringify(updatedViewedTasks));
+          }
+        }, 2000); // 2秒后添加到已查看列表
+
+        return true;
+      }
+
+      return false;
+    },
+
     // 获取任务类型标签颜色
     getTaskTypeTag(type) {
       const typeMap = {
@@ -344,6 +429,62 @@ export default {
         'tmux_raw_command': 'TMUX原始命令'
       };
       return typeMap[type] || type;
+    },
+
+    // 获取目标图标
+    getTargetIcon(type) {
+      const iconMap = {
+        'function': 'el-icon-s-operation',
+        'shell': 'el-icon-s-platform',
+        'tmux_command': 'el-icon-s-promotion',
+        'tmux_raw_command': 'el-icon-s-opportunity'
+      };
+      return iconMap[type] || 'el-icon-s-tools';
+    },
+
+    // 格式化执行耗时
+    formatDuration(duration) {
+      if (duration === undefined || duration === null) return '-';
+
+      // 判断是否为毫秒值
+      const isMilliseconds = duration > 1000 || duration < 0.01;
+
+      if (isMilliseconds) {
+        // 如果是毫秒值
+        if (duration >= 1000) {
+          // 转换为秒
+          return `${(duration / 1000).toFixed(2)} 秒`;
+        } else {
+          // 保持毫秒
+          return `${Math.round(duration)} 毫秒`;
+        }
+      } else {
+        // 已经是秒值
+        return `${parseFloat(duration).toFixed(2)} 秒`;
+      }
+    },
+
+    // 格式化日期时间
+    formatDateTime(dateTimeStr) {
+      if (!dateTimeStr || dateTimeStr === '0001-01-01T00:00:00Z') {
+        return '未计划';
+      }
+
+      try {
+        const date = new Date(dateTimeStr);
+        return date.toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+      } catch (e) {
+        console.warn('日期格式化失败:', e);
+        return dateTimeStr;
+      }
     },
 
     // 获取TMUX命令列表
@@ -759,14 +900,62 @@ export default {
               (response.status === 200) || // 旧格式 {status: 200, ...}
               (response.data && response.data.status === 200) // 嵌套旧格式
             ) {
-              this.$message.success('任务执行成功');
-              // 处理不同格式的响应数据
-              if (response.data) {
-                this.taskResult = response.data.data || response.data;
-              } else {
-                this.taskResult = response.data;
+              // 获取成功消息
+              const successMsg =
+                response.msg ||
+                (response.data && response.data.msg) ||
+                '任务已开始运行';
+
+              this.$message.success(successMsg);
+
+              // 检查是否有日志ID
+              let logId = null;
+
+              // 尝试从不同格式的响应中获取日志ID
+              if (response.data && response.data.log_id) {
+                // 新格式: {code: 200, data: {log_id: 123}, msg: "success"}
+                logId = response.data.log_id;
+              } else if (response.data && response.data.data && response.data.data.log_id) {
+                // 嵌套格式: {data: {code: 200, data: {log_id: 123}, msg: "success"}}
+                logId = response.data.data.log_id;
               }
-              this.dialogVisible = true;
+
+              if (logId) {
+                // 如果有日志ID，跳转到任务执行结果页面
+                this.$router.push({
+                  path: `/cron/execution/${logId}`,
+                  query: { from: 'tasks' }
+                });
+              } else {
+                // 如果没有日志ID，使用旧的处理方式
+                // 处理不同格式的响应数据
+                if (response.data && response.data.data) {
+                  // 如果有详细的执行结果数据，显示结果对话框
+                  this.taskResult = response.data.data;
+                  this.dialogVisible = true;
+                } else if (response.data && typeof response.data !== 'object') {
+                  // 如果 data 不是对象，可能是简单的文本结果
+                  this.taskResult = { output: response.data };
+                  this.dialogVisible = true;
+                } else if (response.code === 200 && response.data === null) {
+                  // 如果是异步任务，不显示结果对话框，只显示成功消息
+                  // 已经在上面显示了成功消息，这里不需要额外操作
+
+                  // 可选：将任务添加到待查看列表，并提示用户查看日志
+                  this.$confirm('任务已开始异步执行，是否查看任务日志？', '任务执行中', {
+                    confirmButtonText: '查看日志',
+                    cancelButtonText: '稍后再看',
+                    type: 'success',
+                    center: true
+                  }).then(() => {
+                    this.viewTaskLogs(row.id);
+                  }).catch(() => {});
+                } else {
+                  // 其他情况，尝试显示结果
+                  this.taskResult = response.data || { message: successMsg };
+                  this.dialogVisible = true;
+                }
+              }
             } else {
               const errorMsg =
                 response.msg ||
@@ -907,9 +1096,28 @@ export default {
         }
       }
 
+      // 处理平均耗时，将毫秒转换为更易读的格式
+      let formattedDuration = 0;
+      let durationUnit = 'ms'; // 默认单位为毫秒
+
+      if (data.avg_duration) {
+        const durationMs = parseFloat(data.avg_duration);
+
+        if (durationMs >= 1000) {
+          // 如果超过1秒，转换为秒
+          formattedDuration = (durationMs / 1000).toFixed(2);
+          durationUnit = 's';
+        } else {
+          // 保持毫秒单位，但四舍五入为整数
+          formattedDuration = Math.round(durationMs);
+          durationUnit = 'ms';
+        }
+      }
+
       return {
         success_rate: successRate,
-        avg_duration: data.avg_duration ? parseFloat(data.avg_duration).toFixed(2) : 0,
+        avg_duration: formattedDuration,
+        duration_unit: durationUnit,
         total_runs: data.total_count || data.total_runs || 0,
         last_run: lastRun,
         success_count: data.success_count || 0,
@@ -1029,6 +1237,23 @@ export default {
       setTimeout(() => {
         this.fetchData();
       }, 200);
+    },
+
+    // 处理下拉菜单命令
+    handleCommand(command, row) {
+      switch (command) {
+        case 'viewLogs':
+          this.viewTaskLogs(row.id);
+          break;
+        case 'viewStats':
+          this.viewTaskStats(row.id);
+          break;
+        case 'delete':
+          this.handleDelete(row);
+          break;
+        default:
+          break;
+      }
     }
   },
   beforeDestroy() {
@@ -1049,11 +1274,208 @@ export default {
 .filter-form {
   margin-top: 15px;
 }
+
+/* 表格样式 */
+.task-table {
+  margin-bottom: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* 表格行样式 */
+.task-table /deep/ .disabled-row {
+  background-color: #f9f9f9;
+  color: #909399;
+}
+
+.task-table /deep/ .success-row {
+  background-color: #f0f9eb;
+}
+
+.task-table /deep/ .warning-row {
+  background-color: #fdf6ec;
+}
+
+/* 任务名称单元格 */
+.task-name-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-name {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.task-name-text {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.task-tag {
+  margin-left: 5px;
+}
+
+.task-description {
+  font-size: 12px;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+/* 目标单元格 */
+.target-cell {
+  display: flex;
+  align-items: center;
+}
+
+.target-content {
+  display: flex;
+  align-items: center;
+}
+
+.target-icon {
+  margin-right: 5px;
+  font-size: 16px;
+  color: #409EFF;
+}
+
+/* 依赖任务单元格 */
+.dependencies-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.no-deps {
+  color: #909399;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.deps-list {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.dep-tag {
+  margin-right: 5px;
+  margin-bottom: 5px;
+}
+
+/* 超时/重试单元格 */
+.timeout-retry-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeout-value, .retry-value {
+  display: flex;
+  align-items: center;
+  margin: 2px 0;
+}
+
+.timeout-value i, .retry-value i {
+  margin-right: 5px;
+  color: #909399;
+}
+
+/* 下次执行单元格 */
+.next-run-cell {
+  display: flex;
+  align-items: center;
+}
+
+.next-run-cell i {
+  margin-right: 5px;
+  color: #409EFF;
+}
+
+.next-run-time {
+  color: #303133;
+}
+
+.no-schedule {
+  color: #909399;
+  font-style: italic;
+}
+
+/* 上次执行单元格 */
+.last-run-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.last-run-time {
+  display: flex;
+  align-items: center;
+}
+
+.last-run-time i {
+  margin-right: 5px;
+  color: #409EFF;
+}
+
+.time-text {
+  color: #303133;
+}
+
+.no-run {
+  color: #909399;
+  font-style: italic;
+}
+
+.last-status {
+  margin-top: 3px;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.action-buttons .el-button {
+  margin: 0 3px;
+}
+
+.action-buttons .el-dropdown {
+  margin: 0 3px;
+}
+
+/deep/ .danger-item {
+  color: #F56C6C;
+}
+
+/* 统计对话框样式 */
 .task-result {
   padding: 10px;
 }
+.task-result p {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+.task-result-empty {
+  padding: 20px 0;
+}
+.result-message {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f8f8f8;
+  border-radius: 4px;
+}
+.result-message p {
+  margin: 5px 0;
+  color: #606266;
+}
 .result-output {
-  margin-top: 10px;
+  margin-top: 15px;
 }
 .result-output pre {
   background-color: #f5f5f5;
@@ -1063,6 +1485,12 @@ export default {
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
+  font-family: Consolas, Monaco, 'Andale Mono', monospace;
+  font-size: 13px;
+  color: #333;
+}
+.result-empty {
+  margin: 15px 0;
 }
 .stats-overview {
   display: flex;
@@ -1087,6 +1515,14 @@ export default {
   font-size: 24px;
   font-weight: bold;
   color: #303133;
+}
+
+.unit-note {
+  font-size: 12px;
+  font-weight: normal;
+  color: #909399;
+  display: block;
+  margin-top: 5px;
 }
 .success-rate {
   border-left: 4px solid #67C23A;

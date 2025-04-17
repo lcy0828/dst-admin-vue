@@ -172,36 +172,10 @@ export const constantRoutes = [
         component: () => import('@/views/players/PlayerList.vue'),
         name: 'PlayerList',
         meta: { title: '玩家列表', icon: 'list' }
-      },
-      {
-        path: 'ban',
-        component: () => import('@/views/players/BanList.vue'),
-        name: 'BanList',
-        meta: { title: '封禁管理', icon: 'ban' }
       }
     ]
   },
-  {
-    path: '/items',
-    component: MainLayout,
-    redirect: '/items/list',
-    name: 'Items',
-    meta: { title: '物品管理', icon: 'item' },
-    children: [
-      {
-        path: 'list',
-        component: () => import('@/views/items/ItemList.vue'),
-        name: 'ItemList',
-        meta: { title: '物品列表', icon: 'list' }
-      },
-      {
-        path: 'generator',
-        component: () => import('@/views/items/ItemGenerator.vue'),
-        name: 'ItemGenerator',
-        meta: { title: '物品生成器', icon: 'create' }
-      }
-    ]
-  },
+
   {
     path: '/cron',
     component: MainLayout,
@@ -262,6 +236,12 @@ export const constantRoutes = [
         component: () => import('@/views/cron/TaskLogDetail.vue'),
         name: 'TaskLogDetail',
         meta: { title: '日志详情', icon: 'document', hidden: true }
+      },
+      {
+        path: 'execution/:id',
+        component: () => import('@/views/cron/TaskExecutionResult.vue'),
+        name: 'TaskExecutionResult',
+        meta: { title: '任务执行结果', icon: 'video-play', hidden: true }
       },
       {
         path: 'charts',

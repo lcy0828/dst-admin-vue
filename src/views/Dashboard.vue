@@ -1,64 +1,5 @@
 <template>
   <div class="dashboard-content" v-loading="loading" element-loading-text="加载中..." element-loading-spinner="el-icon-loading">
-    <!-- 统计卡片 -->
-    <el-row :gutter="20" class="stat-cards">
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon-container server-icon">
-              <i class="el-icon-monitor"></i>
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">在线服务器</div>
-              <div class="stat-value">3/5</div>
-              <div class="stat-detail">正常运行中</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon-container player-icon">
-              <i class="el-icon-user"></i>
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">在线玩家</div>
-              <div class="stat-value">27</div>
-              <div class="stat-detail">峰值: 42</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon-container mod-icon">
-              <i class="el-icon-s-grid"></i>
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">已安装模组</div>
-              <div class="stat-value">24</div>
-              <div class="stat-detail">可用: 22</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon-container backup-icon">
-              <i class="el-icon-document"></i>
-            </div>
-            <div class="stat-info">
-              <div class="stat-title">存档备份</div>
-              <div class="stat-value">12</div>
-              <div class="stat-detail">最近备份: 1小时前</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
 
     <!-- 版本信息卡片 -->
     <el-row :gutter="20" class="version-info-row">
@@ -147,25 +88,7 @@
       </el-col>
     </el-row>
 
-    <!-- 标题分割线 -->
-    <div class="section-divider">
-      <div class="section-title">
-        <i class="el-icon-connection"></i>
-        <span>快速访问</span>
-      </div>
-    </div>
 
-    <!-- 快速访问区 -->
-    <el-row :gutter="20" class="quick-access-section">
-      <el-col :xs="12" :sm="8" :md="6" :lg="4" v-for="(item, index) in quickAccessItems" :key="index">
-        <el-card shadow="hover" class="quick-access-card" @click.native="navigateTo(item.path)">
-          <div class="quick-access-icon">
-            <i :class="item.icon"></i>
-          </div>
-          <div class="quick-access-title">{{ item.title }}</div>
-        </el-card>
-      </el-col>
-    </el-row>
 
     <!-- 标题分割线 -->
     <div class="section-divider">
@@ -535,15 +458,7 @@ export default {
       ],
       systemLoading: false,
       systemStatus: {},
-      // 快速访问项目
-      quickAccessItems: [
-        { title: '日志查询', icon: 'el-icon-search', path: '/logs/query' },
-        { title: '规则管理', icon: 'el-icon-setting', path: '/logs/rules' },
-        { title: '服务器列表', icon: 'el-icon-monitor', path: '/servers/list' },
-        { title: '房间列表', icon: 'el-icon-house', path: '/rooms/list' },
-        { title: '世界管理', icon: 'el-icon-earth', path: '/worlds/list' },
-        { title: '模组管理', icon: 'el-icon-s-grid', path: '/mods/list' }
-      ],
+
       versionInfo: {
         local: null,
         latest: null
@@ -752,10 +667,7 @@ export default {
       }
     },
 
-    // 快速访问导航
-    navigateTo(path) {
-      this.$router.push(path);
-    },
+
 
     getVersionInfo() {
       // 重置版本信息
@@ -1124,78 +1036,7 @@ export default {
   padding: 20px;
 }
 
-.stat-cards {
-  margin-bottom: 20px;
-}
 
-.stat-card {
-  border-radius: 4px;
-  overflow: hidden;
-  height: 100%;
-  border: none;
-  transition: all 0.3s;
-}
-
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-}
-
-.stat-content {
-  display: flex;
-  align-items: center;
-  padding: 5px;
-}
-
-.stat-icon-container {
-  width: 60px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  margin-right: 15px;
-  font-size: 28px;
-  color: white;
-}
-
-.server-icon {
-  background-color: #409EFF;
-}
-
-.player-icon {
-  background-color: #67C23A;
-}
-
-.mod-icon {
-  background-color: #E6A23C;
-}
-
-.backup-icon {
-  background-color: #F56C6C;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-title {
-  font-size: 14px;
-  color: #909399;
-  margin-bottom: 5px;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 5px;
-}
-
-.stat-detail {
-  font-size: 12px;
-  color: #909399;
-}
 
 .section-divider {
   display: flex;
@@ -1494,39 +1335,7 @@ export default {
   color: #409EFF;
 }
 
-/* 快速访问区域样式 */
-.quick-access-section {
-  margin-bottom: 20px;
-}
 
-.quick-access-card {
-  cursor: pointer;
-  text-align: center;
-  padding: 15px;
-  transition: all 0.3s;
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 120px;
-}
-
-.quick-access-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-}
-
-.quick-access-icon {
-  font-size: 36px;
-  margin-bottom: 10px;
-  color: #409EFF;
-}
-
-.quick-access-title {
-  font-size: 14px;
-  font-weight: bold;
-}
 
 /* 服务器监控相关样式 */
 .server-header {
