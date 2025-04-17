@@ -122,14 +122,14 @@ export const roomApi = {
               worldName: world.name,
               sessionName: `${archiveName}_${world.name}`,
               // 根据type确定世界类型，如果没有明确type或type为unknown，则通过名称判断
-              type: world.type === 'forest' ? 'forest' : 
-                   world.type === 'cave' ? 'cave' : 
+              type: world.type === 'forest' ? 'forest' :
+                   world.type === 'cave' ? 'cave' :
                    world.name.includes('Forest') ? 'forest' : 'cave'
             }));
             return worlds;
           }
         }
-        
+
         // 如果新API没有返回数据，尝试旧的API
         return axios.get(`${config.BASE_URL}/tmux/list`)
           .then(oldResponse => {
@@ -152,7 +152,7 @@ export const roomApi = {
                   type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
                 }));
             }
-          
+
             return worlds;
           })
           .catch(error => {
@@ -162,13 +162,13 @@ export const roomApi = {
       })
       .catch(error => {
         console.error('获取新API世界列表失败, 尝试旧API:', error);
-        
+
         // 尝试旧API
         return axios.get(`${config.BASE_URL}/tmux/list`)
           .then(oldResponse => {
             console.log('旧API服务器列表响应:', oldResponse);
             let worlds = [];
-            
+
             if (oldResponse && oldResponse.data && oldResponse.data.status === 200 && Array.isArray(oldResponse.data.data)) {
               // 筛选指定存档的世界
               worlds = oldResponse.data.data
@@ -188,7 +188,7 @@ export const roomApi = {
                   type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
                 }));
             }
-            
+
             console.log('存档的世界列表:', worlds);
             return worlds;
           })
@@ -403,25 +403,35 @@ export const systemApi = {
   getTmuxServers() {
     return request.get('/tmux/list');
   },
-  
+
   // 停止TMUX服务器
   stopTmuxServer(data) {
     return request.post("/tmux/stop", data);
   },
-  
+
   // 重启TMUX服务器
   restartTmuxServer(data) {
     return request.post("/tmux/restart", data);
   },
-  
+
   // 获取本地版本信息
   getLocalVersion() {
     return request.get('/dstserver/localversion');
   },
-  
+
   // 获取最新版本信息
   getLatestVersion() {
     return request.get('/dstserver/version');
+  },
+
+  // 更新饥荒服务器
+  updateDstServer(data) {
+    return request.post('/dstserver/update', data);
+  },
+
+  // 获取饥荒服务器更新状态
+  getDstUpdateStatus(session_name) {
+    return request.get('/dstserver/update/status', { params: { session_name } });
   }
 };
 
@@ -441,11 +451,11 @@ export const backupApi = {
   },
   // 恢复备份
   restoreBackup(archive, backup, target_name = null, overwrite_target = false) {
-    return request.post(`/backup/restore`, { 
-      archive, 
-      backup, 
-      target_name, 
-      overwrite_target 
+    return request.post(`/backup/restore`, {
+      archive,
+      backup,
+      target_name,
+      overwrite_target
     });
   },
   // 删除备份
@@ -595,16 +605,16 @@ export const logApi = {
       page: params.page || 1,
       page_size: params.page_size || 20
     };
-    
+
     // 只有当类型不为空时才添加
     if (params.type) {
       queryParams.type = params.type;
     }
-    
+
     console.log('日志查询参数:', queryParams);
     return request.get(`/v1/parser/logs`, { params: queryParams });
   },
-  
+
   // 获取日志类型统计
   getLogTypes(params) {
     // 去除params[]问题，直接构建正确的参数
@@ -615,27 +625,59 @@ export const logApi = {
     }
     return request.get(`/v1/parser/log_types`, { params: queryParams });
   },
-  
+
   // 获取活跃解析器列表
   getActiveLogParsers() {
     return request.get(`/v1/parser/active`);
   },
-  
-  // 获取存档列表 (用于日志查询)
+
+  // 获取有日志的存档和世界列表
+  getArchivesWithLogs() {
+    console.log('获取有日志的存档和世界列表');
+    return request.get('/v1/parser/archives_with_logs');
+  },
+
+  // 获取存档列表 (用于日志查询) - 旧方法，保留兼容性
   getArchiveList() {
+    console.log('警告: 使用旧的存档列表获取方法，建议使用 getArchivesWithLogs');
     return request.get('/dstserver/list');
   },
 
-  // 获取单个存档的世界列表
+  // 根据存档名获取世界列表
   getWorldsByArchive(archiveName) {
-    return request.get('/dstserver/list')
+    console.log('根据存档名获取世界列表:', archiveName);
+
+    // 先尝试使用新接口
+    return this.getArchivesWithLogs()
       .then(response => {
-        if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
-          const archive = response.data.data.find(item => item.name === archiveName);
-          if (archive && archive.worlds) {
-            return archive.worlds;
+        if (response && response.data && Array.isArray(response.data)) {
+          const archive = response.data.find(item => item.archive_name === archiveName);
+          if (archive && Array.isArray(archive.worlds)) {
+            // 将世界名称数组转换为对象数组，以兼容现有代码
+            return archive.worlds.map(worldName => ({ name: worldName }));
+          }
+        } else if (response && response.status === 200 && response.data && response.data.data && Array.isArray(response.data.data)) {
+          const archive = response.data.data.find(item => item.archive_name === archiveName);
+          if (archive && Array.isArray(archive.worlds)) {
+            return archive.worlds.map(worldName => ({ name: worldName }));
           }
         }
+
+        // 如果新接口失败，回退到旧接口
+        console.log('新接口获取世界列表失败，尝试旧接口');
+        return request.get('/dstserver/list')
+          .then(response => {
+            if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
+              const archive = response.data.data.find(item => item.name === archiveName);
+              if (archive && archive.worlds) {
+                return archive.worlds;
+              }
+            }
+            return [];
+          });
+      })
+      .catch(error => {
+        console.error('获取世界列表失败:', error);
         return [];
       });
   }
@@ -647,17 +689,53 @@ export const ruleManagementApi = {
   getRulesList() {
     return request.get('/v1/parser/rules');
   },
-  
+
   // 添加日志解析规则
   addRule(ruleData) {
-    return request.post('/v1/parser/rules', ruleData);
+    console.log('调用 addRule API, 数据:', ruleData);
+    try {
+      // 确保优先级是数字类型
+      if (ruleData.priority !== undefined) {
+        ruleData.priority = parseInt(ruleData.priority, 10);
+      }
+
+      // 添加默认值
+      const data = {
+        match_mode: 'single',  // 默认为单行匹配模式
+        is_regex: false,       // 默认不使用正则
+        is_enabled: true,      // 默认启用
+        priority: 50,          // 默认优先级
+        ...ruleData            // 用传入的数据覆盖默认值
+      };
+
+      console.log('处理后的规则数据:', data);
+      const result = request.post('/v1/parser/rules', data);
+      console.log('调用 addRule API 返回结果:', result);
+      return result;
+    } catch (error) {
+      console.error('调用 addRule API 失败:', error);
+      throw error;
+    }
   },
-  
+
   // 更新日志解析规则
   updateRule(ruleId, ruleData) {
-    return request.put(`/v1/parser/rules/${ruleId}`, ruleData);
+    console.log('调用 updateRule API, ID:', ruleId, '数据:', ruleData);
+    try {
+      // 确保优先级是数字类型
+      if (ruleData.priority !== undefined) {
+        ruleData.priority = parseInt(ruleData.priority, 10);
+      }
+
+      const result = request.put(`/v1/parser/rules/${ruleId}`, ruleData);
+      console.log('调用 updateRule API 返回结果:', result);
+      return result;
+    } catch (error) {
+      console.error('调用 updateRule API 失败:', error);
+      throw error;
+    }
   },
-  
+
   // 删除日志解析规则
   deleteRule(ruleId) {
     return request.delete(`/v1/parser/rules/${ruleId}`);
@@ -676,11 +754,21 @@ export const cronTaskApi = {
   },
   // 添加任务
   addTask(data) {
-    return request.post('/cron/tasks', data);
+    console.log('添加任务数据:', data);
+    return request.post('/cron/tasks', data)
+      .then(response => {
+        console.log('添加任务原始响应:', response);
+        return response;
+      });
   },
   // 更新任务
   updateTask(id, data) {
-    return request.put(`/cron/tasks/${id}`, data);
+    console.log('更新任务数据:', data);
+    return request.put(`/cron/tasks/${id}`, data)
+      .then(response => {
+        console.log('更新任务原始响应:', response);
+        return response;
+      });
   },
   // 删除任务
   deleteTask(id) {
@@ -700,9 +788,30 @@ export const cronTaskApi = {
   },
   // 获取所有内置函数
   getFunctions() {
-    return request.get('/cron/functions');
+    console.log('cronTaskApi.getFunctions 获取函数列表');
+    // 使用原始 axios 请求，避免中间件处理
+    return axios.get(`${apiConfig.BASE_URL}/cron/functions`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.log('函数列表原始响应数据:', response);
+      // 直接返回响应数据，不经过中间件处理
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        throw new Error(`请求失败，状态码: ${response.status}`);
+      }
+    }).catch(error => {
+      console.error('请求函数列表失败:', error);
+      throw error;
+    });
+
+    // 原来的请求方式
+    // return request.get('/cron/functions');
   },
-  
+
   // 任务组相关API
   getGroups() {
     return request.get('/cron/groups');
@@ -734,16 +843,91 @@ export const cronTaskApi = {
   getGroupChart(id, params) {
     return request.get(`/cron/groups/${id}/chart`, { params });
   },
-  
+
   // 任务日志相关API
   getLogs(params) {
-    return request.get('/cron/logs', { params });
+    console.log('cronTaskApi.getLogs 原始参数:', params);
+    // 确保参数名称与API期望的一致
+    const queryParams = {
+      page: params.page || 1,
+      page_size: params.page_size || 20
+    };
+
+    // 只有当这些参数有值时才添加
+    if (params.task_id) queryParams.task_id = params.task_id;
+    if (params.status) queryParams.status = params.status;
+    if (params.start_date) queryParams.start_date = params.start_date;
+    if (params.end_date) queryParams.end_date = params.end_date;
+
+    console.log('cronTaskApi.getLogs 处理后的参数:', queryParams);
+
+    // 使用原始 axios 请求，避免中间件处理
+    return axios.get(`${apiConfig.BASE_URL}/cron/logs`, {
+      params: queryParams,
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.log('原始响应数据:', response);
+      // 直接返回响应数据，不经过中间件处理
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        throw new Error(`请求失败，状态码: ${response.status}`);
+      }
+    }).catch(error => {
+      console.error('请求日志列表失败:', error);
+      throw error;
+    });
+
+    // 原来的请求方式
+    // return request.get('/cron/logs', { params: queryParams });
   },
   getLogDetail(id) {
-    return request.get(`/cron/logs/${id}`);
+    console.log('cronTaskApi.getLogDetail 获取日志详情:', id);
+    // 使用原始 axios 请求，避免中间件处理
+    return axios.get(`${apiConfig.BASE_URL}/cron/logs/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.log('日志详情原始响应数据:', response);
+      // 直接返回响应数据，不经过中间件处理
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        throw new Error(`请求失败，状态码: ${response.status}`);
+      }
+    }).catch(error => {
+      console.error('请求日志详情失败:', error);
+      throw error;
+    });
+
+    // 原来的请求方式
+    // return request.get(`/cron/logs/${id}`);
   },
   getTaskStats(taskId) {
-    return request.get(`/cron/logs/stats/${taskId}`);
+    console.log('cronTaskApi.getTaskStats 获取任务统计:', taskId);
+    // 使用原始 axios 请求，避免中间件处理
+    return axios.get(`${apiConfig.BASE_URL}/cron/logs/stats/${taskId}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.log('任务统计原始响应数据:', response);
+      // 直接返回响应数据，不经过中间件处理
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        throw new Error(`请求失败，状态码: ${response.status}`);
+      }
+    }).catch(error => {
+      console.error('请求任务统计失败:', error);
+      throw error;
+    });
   },
   clearLogs(data) {
     return request.post('/cron/logs/clear', data);
@@ -751,7 +935,7 @@ export const cronTaskApi = {
   getRecentLogs() {
     return request.get('/cron/logs/recent');
   },
-  
+
   // 任务导入导出相关API
   exportTasks(data) {
     return request.post('/cron/export', data);
@@ -770,13 +954,51 @@ export const cronTaskApi = {
   deleteExportFile(filename) {
     return request.delete(`/cron/export/files/${filename}`);
   },
-  
+
   // 任务图表相关API
   getTaskChart(id, params) {
-    return request.get(`/cron/chart/task/${id}`, { params });
+    console.log('cronTaskApi.getTaskChart 获取任务图表:', id, params);
+    // 使用原始 axios 请求，避免中间件处理
+    return axios.get(`${apiConfig.BASE_URL}/cron/chart/task/${id}`, {
+      params,
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.log('任务图表原始响应数据:', response);
+      // 直接返回响应数据，不经过中间件处理
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        throw new Error(`请求失败，状态码: ${response.status}`);
+      }
+    }).catch(error => {
+      console.error('请求任务图表失败:', error);
+      throw error;
+    });
   },
   getTaskDurationChart(id, params) {
-    return request.get(`/cron/chart/task/${id}/duration`, { params });
+    console.log('cronTaskApi.getTaskDurationChart 获取任务时长图表:', id, params);
+    // 使用原始 axios 请求，避免中间件处理
+    return axios.get(`${apiConfig.BASE_URL}/cron/chart/task/${id}/duration`, {
+      params,
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      console.log('任务时长图表原始响应数据:', response);
+      // 直接返回响应数据，不经过中间件处理
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        throw new Error(`请求失败，状态码: ${response.status}`);
+      }
+    }).catch(error => {
+      console.error('请求任务时长图表失败:', error);
+      throw error;
+    });
   },
   getGroupsChart(params) {
     return request.get('/cron/chart/groups', { params });

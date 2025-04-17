@@ -59,7 +59,7 @@
         </el-card>
       </el-col>
     </el-row>
-    
+
     <!-- 版本信息卡片 -->
     <el-row :gutter="20" class="version-info-row">
       <el-col :span="24">
@@ -71,7 +71,25 @@
             <div class="version-details">
               <div class="version-header">
                 <span class="version-title">饥荒服务器版本信息</span>
-                <el-button type="text" size="small" icon="el-icon-refresh" @click="getVersionInfo">刷新</el-button>
+                <div class="version-actions">
+                  <el-button
+                    type="success"
+                    size="small"
+                    @click="updateDstServer"
+                    :disabled="updateStatus && updateStatus.is_running"
+                    :loading="updateStatus && updateStatus.is_running"
+                  >
+                    <i v-if="!(updateStatus && updateStatus.is_running)" class="el-icon-upload2"></i>
+                    {{ updateStatus && updateStatus.is_running ? '更新中...' : '更新游戏' }}
+                  </el-button>
+                  <el-button
+                    type="text"
+                    size="small"
+                    icon="el-icon-refresh"
+                    @click="getVersionInfo"
+                    :disabled="updateStatus && updateStatus.is_running"
+                  >刷新</el-button>
+                </div>
               </div>
               <div v-if="versionInfo.local && versionInfo.latest" class="version-info">
                 <div class="version-boxes">
@@ -84,9 +102,9 @@
                   </div>
                   <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
                     <div class="version-box-label">最新版本</div>
-                    <a 
-                      :href="versionInfo.latest.update_url" 
-                      target="_blank" 
+                    <a
+                      :href="versionInfo.latest.update_url"
+                      target="_blank"
                       class="version-box-value version-link">
                       {{ versionInfo.latest.version }}
                       <i v-if="isVersionOutdated" class="el-icon-warning version-warning-icon"></i>
@@ -99,6 +117,25 @@
                   <span>检测到新版本可用，请及时更新游戏服务端!</span>
                   <el-button type="primary" size="small" @click="openUpdateLink">查看更新内容</el-button>
                 </div>
+                <div v-if="updateStatus" class="version-update-status">
+                  <div class="update-status-header">
+                    <i :class="[updateStatus.is_running ? 'el-icon-loading' : (updateStatus.is_completed ? 'el-icon-success' : 'el-icon-info')]"></i>
+                    <span>更新状态: {{ updateStatus.is_completed ? '已完成' : (updateStatus.is_running ? '进行中' : '尚未开始') }}</span>
+                  </div>
+                  <el-progress
+                    v-if="updateStatus.is_running || updateStatus.is_completed"
+                    :percentage="parseFloat(updateStatus.progress) || 0"
+                    :status="updateStatus.is_completed ? 'success' : ''"
+                  ></el-progress>
+                  <div v-if="updateStatus.last_output" class="update-output">
+                    <div class="output-label">最新输出:</div>
+                    <div class="output-content">{{ updateStatus.last_output }}</div>
+                  </div>
+                  <div v-if="updateStatus.error" class="update-error">
+                    <div class="error-label">错误信息:</div>
+                    <div class="error-content">{{ updateStatus.error }}</div>
+                  </div>
+                </div>
               </div>
               <div v-else class="version-loading">
                 <i class="el-icon-loading"></i>
@@ -109,7 +146,7 @@
         </el-card>
       </el-col>
     </el-row>
-    
+
     <!-- 标题分割线 -->
     <div class="section-divider">
       <div class="section-title">
@@ -117,7 +154,7 @@
         <span>快速访问</span>
       </div>
     </div>
-    
+
     <!-- 快速访问区 -->
     <el-row :gutter="20" class="quick-access-section">
       <el-col :xs="12" :sm="8" :md="6" :lg="4" v-for="(item, index) in quickAccessItems" :key="index">
@@ -129,7 +166,7 @@
         </el-card>
       </el-col>
     </el-row>
-    
+
     <!-- 标题分割线 -->
     <div class="section-divider">
       <div class="section-title">
@@ -140,7 +177,7 @@
         <el-button size="small" type="primary" icon="el-icon-refresh" circle @click="refreshData"></el-button>
       </div>
     </div>
-    
+
     <!-- 服务器监控 -->
     <el-row :gutter="20" class="monitor-section">
       <el-col :span="16">
@@ -149,10 +186,10 @@
             <span><i class="el-icon-monitor"></i> 服务器状态监控</span>
             <el-button type="text" icon="el-icon-refresh" @click="getServerList">刷新</el-button>
           </div>
-          
-          <el-table 
-            :data="serverList" 
-            style="width: 100%" 
+
+          <el-table
+            :data="serverList"
+            style="width: 100%"
             size="medium"
             :row-class-name="tableRowClassName"
             highlight-current-row
@@ -176,8 +213,8 @@
             </el-table-column>
             <el-table-column prop="world_name" label="世界名称" min-width="120">
               <template slot-scope="scope">
-                <el-tag 
-                  :type="scope.row.world_name.includes('Forest') ? 'warning' : 'primary'" 
+                <el-tag
+                  :type="scope.row.world_name.includes('Forest') ? 'warning' : 'primary'"
                   size="medium"
                   effect="plain">
                   {{ scope.row.world_name }}
@@ -219,20 +256,82 @@
               </template>
             </el-table-column>
           </el-table>
-          
+
           <div class="server-footer" v-if="serverList.length > 0">
             <span class="server-stats">共 {{ serverList.length }} 个服务器实例，{{ serverList.filter(s => s.status === 'running').length }} 个运行中</span>
           </div>
-          
+
           <div class="empty-server" v-if="serverList.length === 0">
             <i class="el-icon-warning-outline"></i>
             <span>暂无服务器实例运行</span>
-            <el-button type="primary" size="small" plain @click="$router.push('/servers/create')">创建新服务器</el-button>
+            <el-button type="primary" size="small" plain @click="openStartRoomDialog">启动现有房间</el-button>
           </div>
-          
+
+          <!-- 启动房间对话框 -->
+          <el-dialog
+            title="启动房间"
+            :visible.sync="startRoomDialogVisible"
+            width="500px"
+            :close-on-click-modal="false"
+            :close-on-press-escape="false">
+            <div v-loading="startRoomLoading" class="dialog-content">
+              <el-form :model="startRoomForm" label-width="100px" :rules="startRoomRules" ref="startRoomForm">
+                <el-form-item label="选择房间" prop="roomId">
+                  <el-select
+                    v-model="startRoomForm.roomId"
+                    placeholder="请选择房间"
+                    style="width: 100%"
+                    @change="fetchRoomWorlds"
+                  >
+                    <el-option
+                      v-for="(room, index) in roomList"
+                      :key="room.id || index"
+                      :label="room.name"
+                      :value="index">
+                    </el-option>
+                  </el-select>
+                </el-form-item>
+              <el-form-item label="选择世界" prop="selectedWorlds">
+                <div v-if="currentRoomWorlds.length > 0" class="world-selection">
+                  <el-checkbox-group v-model="startRoomForm.selectedWorlds">
+                    <el-checkbox
+                      v-for="world in currentRoomWorlds"
+                      :key="world.name"
+                      :label="world.name">
+                      {{ world.name }}
+                      <el-tag size="mini" :type="getWorldTagType(world.type)">
+                        {{ getWorldTypeName(world.type) }}
+                      </el-tag>
+                    </el-checkbox>
+                  </el-checkbox-group>
+                  <div class="world-selection-actions">
+                    <el-button type="text" size="small" @click="selectAllWorlds">全选</el-button>
+                    <el-button type="text" size="small" @click="unselectAllWorlds">取消全选</el-button>
+                  </div>
+                </div>
+                <div v-else class="no-worlds-tip">
+                  <i class="el-icon-warning-outline"></i>
+                  <span>该房间没有可用的世界</span>
+                </div>
+              </el-form-item>
+              <el-form-item label="服务器模式">
+                <el-radio-group v-model="startRoomForm.serverMode">
+                  <el-radio label="32">32位</el-radio>
+                  <el-radio label="64">64位</el-radio>
+                  <el-radio label="luajit">LuaJit</el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-form>
+            </div>
+            <div slot="footer" class="dialog-footer">
+              <el-button @click="startRoomDialogVisible = false" :disabled="startRoomLoading">取消</el-button>
+              <el-button type="primary" @click="startRoom" :loading="startRoomLoading" :disabled="roomList.length === 0">启动</el-button>
+            </div>
+          </el-dialog>
+
         </el-card>
       </el-col>
-      
+
       <el-col :span="8">
         <el-card shadow="hover" class="system-info">
           <div slot="header" class="clearfix">
@@ -304,14 +403,14 @@
         </el-card>
       </el-col>
     </el-row>
-    
+
     <div class="section-divider">
       <div class="section-title">
         <i class="el-icon-document"></i>
         <span>世界日志</span>
       </div>
     </div>
-    
+
     <el-row :gutter="20" class="log-section">
       <el-col :span="24">
         <div class="world-log-wrapper">
@@ -319,14 +418,14 @@
         </div>
       </el-col>
     </el-row>
-    
+
     <div class="section-divider">
       <div class="section-title">
         <i class="el-icon-s-data"></i>
         <span>最近游戏数据</span>
       </div>
     </div>
-    
+
     <el-row :gutter="20" class="data-section">
       <el-col :span="12">
         <el-card shadow="hover" class="player-stats">
@@ -364,7 +463,7 @@
           </div>
         </el-card>
       </el-col>
-      
+
       <el-col :span="12">
         <el-card shadow="hover" class="announcement-card">
           <div slot="header" class="clearfix">
@@ -395,7 +494,7 @@
 
 <script>
 import WorldLog from '@/components/WorldLog.vue';
-import { systemApi } from '@/api/index';
+import { systemApi, roomApi } from '@/api/index';
 import { formatTimeDiff } from '@/utils/dateUtils';
 
 export default {
@@ -450,6 +549,27 @@ export default {
         latest: null
       },
       isVersionOutdated: false,
+      updateStatus: null,
+      updateStatusTimer: null,
+      updateSessionName: null,
+      // 启动房间相关
+      roomList: [],
+      startRoomDialogVisible: false,
+      startRoomForm: {
+        roomId: '',
+        selectedWorlds: [], // 选中的世界列表
+        serverMode: '32'
+      },
+      currentRoomWorlds: [], // 当前房间的世界列表
+      startRoomRules: {
+        roomId: [
+          { required: true, message: '请选择要启动的房间', trigger: 'change' }
+        ],
+        selectedWorlds: [
+          { type: 'array', required: true, message: '请至少选择一个世界', trigger: 'change' }
+        ]
+      },
+      startRoomLoading: false,
     }
   },
   created() {
@@ -457,6 +577,13 @@ export default {
     this.refreshSystemStatus();
     this.getServerList();
     this.getVersionInfo();
+    this.checkOngoingUpdate();
+    this.fetchRooms(); // 获取房间列表
+  },
+
+  beforeDestroy() {
+    // 清除定时器
+    this.stopUpdateStatusPolling();
   },
   methods: {
     getServerList() {
@@ -468,13 +595,13 @@ export default {
     },
     refreshData() {
       this.loading = true;
-      
+
       // 模拟数据加载
       setTimeout(() => {
         this.loading = false;
       }, 800);
     },
-    
+
     tableRowClassName({row}) {
       if (row.status === '离线') {
         return 'server-offline';
@@ -483,7 +610,7 @@ export default {
       }
       return '';
     },
-    
+
     getSeasonClass(season) {
       switch (season) {
         case '春季': return 'season-spring';
@@ -493,7 +620,7 @@ export default {
         default: return '';
       }
     },
-    
+
     handleServerAction(server) {
       if (server.status === 'running') {
         this.$confirm(`确定要停止 "${server.archive_name}" 吗？`, '提示', {
@@ -513,15 +640,23 @@ export default {
           this.$message({
             type: 'info',
             message: '取消停止'
-          });          
+          });
         });
       }
     },
-    
+
     handleConfigure(server) {
-      this.$router.push('/servers/settings');
+      // 跳转到对应的世界管理编辑页面
+      this.$router.push({
+        path: '/worlds/settings',
+        query: {
+          roomName: server.archive_name,
+          worldName: server.world_name,
+          worldType: server.world_name.toLowerCase().includes('forest') ? 'forest' : 'cave'
+        }
+      });
     },
-    
+
     getAnnouncementTagType(type) {
       switch (type) {
         case '通知': return 'info';
@@ -530,25 +665,25 @@ export default {
         default: return '';
       }
     },
-    
+
     editAnnouncement(announcement) {
       // 编辑公告逻辑
     },
-    
+
     publishAnnouncement(announcement) {
       this.$message({
         type: 'success',
         message: `公告"${announcement.title}"已发布到所有服务器`
       });
     },
-    
+
     gotoAnnouncement() {
       this.$router.push('/announcements');
     },
-    
+
     refreshSystemStatus() {
       this.systemLoading = true;
-      
+
       systemApi.getDashboardStatus()
         .then(response => {
           if (response && response.data && response.status === 200) {
@@ -563,7 +698,7 @@ export default {
             if (typeof this.systemStatus.disk_usage === 'number') {
               this.systemStatus.disk_usage = parseFloat(this.systemStatus.disk_usage);
             }
-            
+
             // 确保负载值为数字类型
             if (this.systemStatus.cpu_load1) {
               this.systemStatus.cpu_load1 = parseFloat(this.systemStatus.cpu_load1);
@@ -574,7 +709,7 @@ export default {
             if (this.systemStatus.cpu_load15) {
               this.systemStatus.cpu_load15 = parseFloat(this.systemStatus.cpu_load15);
             }
-            
+
             // 确保磁盘容量为数字类型
             if (this.systemStatus.total_disk) {
               this.systemStatus.total_disk = parseFloat(this.systemStatus.total_disk);
@@ -585,7 +720,7 @@ export default {
             if (this.systemStatus.free_disk) {
               this.systemStatus.free_disk = parseFloat(this.systemStatus.free_disk);
             }
-            
+
             // 确保内存值为数字类型
             if (this.systemStatus.total_memory) {
               this.systemStatus.total_memory = parseFloat(this.systemStatus.total_memory);
@@ -607,7 +742,7 @@ export default {
           this.systemLoading = false;
         });
     },
-    
+
     formatMemory(memory) {
       if (!memory) return '0 MB';
       if (memory < 1024) {
@@ -616,19 +751,19 @@ export default {
         return (memory / 1024).toFixed(2) + ' GB';
       }
     },
-    
+
     // 快速访问导航
     navigateTo(path) {
       this.$router.push(path);
     },
-    
+
     getVersionInfo() {
       // 重置版本信息
       this.versionInfo = {
         local: null,
         latest: null
       };
-      
+
       // 获取本地版本
       systemApi.getLocalVersion().then(localRes => {
         this.$message.info(localRes.msg);
@@ -640,7 +775,7 @@ export default {
         console.error('获取本地版本失败:', err);
         this.$message.error('获取本地版本信息失败');
       });
-      
+
       // 获取最新版本
       systemApi.getLatestVersion().then(latestRes => {
         if (latestRes.data && latestRes.status === 200) {
@@ -653,7 +788,7 @@ export default {
         this.$message.error('获取最新版本信息失败');
       });
     },
-    
+
     checkVersionOutdated() {
       if (this.versionInfo.local && this.versionInfo.latest) {
         try {
@@ -670,12 +805,316 @@ export default {
         this.isVersionOutdated = false;
       }
     },
-    
+
     openUpdateLink() {
       if (this.versionInfo.latest && this.versionInfo.latest.update_url) {
         window.open(this.versionInfo.latest.update_url, '_blank');
       }
+    },
+
+    // 更新饥荒服务器
+    updateDstServer() {
+      this.$confirm('确定要更新饥荒服务器吗？更新过程中服务器将无法使用。', '更新确认', {
+        confirmButtonText: '确定更新',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        // 发起更新请求
+        systemApi.updateDstServer({ force: true }).then(res => {
+          if (res.status === 200 && res.data) {
+            this.$message.success(res.msg || '更新已开始');
+            // 保存会话名称用于查询状态
+            this.updateSessionName = res.data.session_name;
+            // 将会话名称保存到本地存储，以便页面刷新后仍能继续查询状态
+            localStorage.setItem('dstUpdateSessionName', this.updateSessionName);
+            // 开始轮询更新状态
+            this.startUpdateStatusPolling();
+          } else {
+            this.$message.error(res.msg || '更新失败');
+          }
+        }).catch(err => {
+          console.error('更新饥荒服务器失败:', err);
+          this.$message.error('更新饥荒服务器失败: ' + (err.message || '未知错误'));
+        });
+      }).catch(() => {
+        this.$message.info('已取消更新');
+      });
+    },
+
+    // 开始轮询更新状态
+    startUpdateStatusPolling() {
+      // 清除可能存在的定时器
+      this.stopUpdateStatusPolling();
+
+      // 立即获取一次状态
+      this.getUpdateStatus();
+
+      // 设置定时器，每3秒轮询一次
+      this.updateStatusTimer = setInterval(() => {
+        this.getUpdateStatus();
+      }, 3000);
+    },
+
+    // 停止轮询更新状态
+    stopUpdateStatusPolling() {
+      if (this.updateStatusTimer) {
+        clearInterval(this.updateStatusTimer);
+        this.updateStatusTimer = null;
+      }
+    },
+
+    // 获取更新状态
+    // 检查是否有正在进行的更新
+    checkOngoingUpdate() {
+      // 尝试从本地存储中获取上次更新的会话名称
+      try {
+        const savedSession = localStorage.getItem('dstUpdateSessionName');
+        if (savedSession) {
+          this.updateSessionName = savedSession;
+          // 获取更新状态
+          this.getUpdateStatus();
+          // 如果更新仍在进行中，开始轮询
+          if (this.updateStatus && this.updateStatus.is_running) {
+            this.startUpdateStatusPolling();
+          }
+        }
+      } catch (err) {
+        console.error('检查正在进行的更新失败:', err);
+      }
+    },
+
+    getUpdateStatus() {
+      // 如果没有会话名称，则不进行查询
+      if (!this.updateSessionName) {
+        console.warn('没有更新会话名称，无法查询更新状态');
+        return;
+      }
+
+      systemApi.getDstUpdateStatus(this.updateSessionName).then(res => {
+        if (res.status === 200) {
+          this.updateStatus = res.data;
+
+          // 如果更新已完成或出错，停止轮询
+          if (this.updateStatus && (this.updateStatus.is_completed || this.updateStatus.error)) {
+            this.stopUpdateStatusPolling();
+            // 清除存储的会话名称
+            localStorage.removeItem('dstUpdateSessionName');
+
+            // 如果更新完成，刷新版本信息
+            if (this.updateStatus.is_completed && !this.updateStatus.error) {
+              // 等待一下再刷新，确保服务器已完全更新
+              setTimeout(() => {
+                this.getVersionInfo();
+              }, 3000);
+            }
+          }
+        }
+      }).catch(err => {
+        console.error('获取更新状态失败:', err);
+      });
+    },
+
+    // 获取房间列表
+    fetchRooms() {
+      roomApi.getRoomList()
+        .then(response => {
+          console.log('房间列表响应:', response);
+          if (response && response.status === 200) {
+            // 直接使用 response.data 而不是 response.data.data
+            this.roomList = response.data || [];
+            console.log('处理后的房间列表:', this.roomList);
+          } else {
+            console.warn('房间列表响应不符合预期:', response);
+          }
+        })
+        .catch(error => {
+          console.error('获取房间列表失败:', error);
+          this.$message.error('获取房间列表失败');
+        });
+    },
+
+    // 打开启动房间对话框
+    openStartRoomDialog() {
+      // 重置表单
+      this.startRoomForm = {
+        roomId: '',
+        selectedWorlds: [],
+        serverMode: '32'
+      };
+      this.currentRoomWorlds = [];
+
+      // 打开对话框并显示加载状态
+      this.startRoomDialogVisible = true;
+      this.startRoomLoading = true;
+
+      // 获取房间列表
+      roomApi.getRoomList()
+        .then(response => {
+          console.log('打开对话框时获取房间列表:', response);
+          if (response && response.status === 200) {
+            this.roomList = response.data || [];
+            if (this.roomList.length === 0) {
+              this.$message.warning('没有找到可用的房间');
+            }
+          } else {
+            this.$message.error('获取房间列表失败');
+          }
+        })
+        .catch(error => {
+          console.error('获取房间列表失败:', error);
+          this.$message.error('获取房间列表失败');
+        })
+        .finally(() => {
+          this.startRoomLoading = false;
+        });
+    },
+
+    // 当选择房间变化时获取该房间的世界列表
+    fetchRoomWorlds(roomIndex) {
+      if (roomIndex === '' || roomIndex === null || roomIndex === undefined) {
+        this.currentRoomWorlds = [];
+        this.startRoomForm.selectedWorlds = [];
+        return;
+      }
+
+      const selectedRoom = this.roomList[roomIndex];
+      if (!selectedRoom) {
+        this.currentRoomWorlds = [];
+        this.startRoomForm.selectedWorlds = [];
+        return;
+      }
+
+      this.startRoomLoading = true;
+
+      // 直接使用房间对象中的世界列表
+      if (selectedRoom.worlds && Array.isArray(selectedRoom.worlds)) {
+        this.currentRoomWorlds = selectedRoom.worlds;
+        // 默认选中非 unknown 类型的世界
+        this.startRoomForm.selectedWorlds = this.currentRoomWorlds
+          .filter(world => world.type !== 'unknown')
+          .map(world => world.name);
+        this.startRoomLoading = false;
+      } else {
+        // 如果房间对象中没有世界列表，则调用API获取
+        roomApi.getRoomWorlds(selectedRoom.name)
+          .then(worlds => {
+            this.currentRoomWorlds = worlds || [];
+            // 默认选中非 unknown 类型的世界
+            this.startRoomForm.selectedWorlds = this.currentRoomWorlds
+              .filter(world => world.type !== 'unknown')
+              .map(world => world.name);
+          })
+          .catch(error => {
+            console.error('获取房间世界列表失败:', error);
+            this.$message.error('获取房间世界列表失败');
+            this.currentRoomWorlds = [];
+            this.startRoomForm.selectedWorlds = [];
+          })
+          .finally(() => {
+            this.startRoomLoading = false;
+          });
+      }
+    },
+
+    // 选择所有世界
+    selectAllWorlds() {
+      this.startRoomForm.selectedWorlds = this.currentRoomWorlds
+        .filter(world => world.type !== 'unknown')
+        .map(world => world.name);
+    },
+
+    // 取消选择所有世界
+    unselectAllWorlds() {
+      this.startRoomForm.selectedWorlds = [];
+    },
+
+    // 获取世界类型的标签类型
+    getWorldTagType(type) {
+      switch(type) {
+        case 'forest': return 'success';
+        case 'cave': return 'warning';
+        case 'unknown': return 'info';
+        default: return 'info';
+      }
+    },
+
+    // 获取世界类型的名称
+    getWorldTypeName(type) {
+      switch(type) {
+        case 'forest': return '森林';
+        case 'cave': return '洞穴';
+        case 'unknown': return '未知';
+        default: return '未知';
+      }
+    },
+
+    // 启动房间
+    startRoom() {
+      this.$refs.startRoomForm.validate((valid) => {
+        if (valid) {
+          this.startRoomLoading = true;
+          const selectedRoom = this.roomList[this.startRoomForm.roomId];
+          console.log('选中的房间:', selectedRoom);
+          console.log('选中的世界:', this.startRoomForm.selectedWorlds);
+
+          if (!selectedRoom) {
+            this.$message.error('无法获取房间信息，请重新选择');
+            this.startRoomLoading = false;
+            return;
+          }
+
+          if (this.startRoomForm.selectedWorlds.length === 0) {
+            this.$message.error('请至少选择一个世界');
+            this.startRoomLoading = false;
+            return;
+          }
+
+          const archiveName = selectedRoom.name;
+          const { selectedWorlds, serverMode } = this.startRoomForm;
+
+          // 获取选中世界的详细信息
+          const worldsToStart = this.currentRoomWorlds.filter(world =>
+            selectedWorlds.includes(world.name)
+          );
+
+          if (worldsToStart.length === 0) {
+            this.$message.error('无法获取选中世界的信息');
+            this.startRoomLoading = false;
+            return;
+          }
+
+          // 为每个选中的世界发起启动请求
+          const startPromises = worldsToStart.map(world => {
+            // 使用世界的原始类型，包括 unknown
+            let worldType = world.type;
+
+            return roomApi.startRoom({
+              archive_name: archiveName,
+              world_name: world.name,
+              server_mode: serverMode,
+              world_type: worldType
+            });
+          });
+
+          Promise.all(startPromises)
+            .then(() => {
+              this.$message.success(`房间 ${selectedRoom.name} 的选中世界已启动`);
+              this.startRoomDialogVisible = false;
+              // 刷新服务器列表
+              setTimeout(() => {
+                this.getServerList();
+              }, 3000);
+            })
+            .catch(error => {
+              this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
+            })
+            .finally(() => {
+              this.startRoomLoading = false;
+            });
+        }
+      });
     }
+
   },
 }
 </script>
@@ -934,7 +1373,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to right, 
+  background: linear-gradient(to right,
     transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
   animation: shimmer 2s infinite;
 }
@@ -1167,6 +1606,57 @@ export default {
   margin-bottom: 15px;
 }
 
+/* 启动房间对话框相关样式 */
+.el-dialog__body {
+  padding: 20px 30px;
+}
+
+.dialog-content {
+  min-height: 200px;
+}
+
+.dialog-footer {
+  text-align: right;
+  margin-top: 20px;
+}
+
+.world-selection {
+  margin-bottom: 10px;
+}
+
+.world-selection .el-checkbox {
+  display: block;
+  margin-left: 0;
+  margin-bottom: 10px;
+}
+
+.world-selection .el-tag {
+  margin-left: 5px;
+}
+
+.world-selection-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.no-worlds-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #909399;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.no-worlds-tip i {
+  margin-right: 8px;
+  font-size: 18px;
+  color: #E6A23C;
+}
+
 /* 修改表格样式 */
 :deep(.el-table--border) {
   border-radius: 4px;
@@ -1223,6 +1713,12 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
+}
+
+.version-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .version-title {
@@ -1327,4 +1823,48 @@ export default {
 .version-update-notice button {
   margin-left: 15px;
 }
-</style> 
+
+.version-update-status {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+}
+
+.update-status-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.update-status-header i {
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.update-output, .update-error {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.output-label, .error-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.output-content {
+  padding: 5px;
+  background-color: #f0f9eb;
+  border-radius: 3px;
+  word-break: break-all;
+}
+
+.error-content {
+  padding: 5px;
+  background-color: #fef0f0;
+  border-radius: 3px;
+  color: #F56C6C;
+  word-break: break-all;
+}
+</style>

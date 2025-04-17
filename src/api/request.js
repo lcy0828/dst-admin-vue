@@ -24,7 +24,7 @@ instance.interceptors.request.use(
       params: config.params,
       data: config.data
     });
-    
+
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -47,24 +47,29 @@ instance.interceptors.response.use(
       status: response.status,
       data: response.data
     });
-    
+
     // 关闭加载中
     if (loadingInstance) {
       loadingInstance.close();
     }
-    
+
     const res = response.data;
+
+    // 处理带code字段的响应
     if (res.code !== undefined) {
-      if (res.code !== 0 && res.code !== 200) {
+      // 成功状态码
+      if (res.code === 0 || res.code === 200) {
+        // 如果是单个对象的响应，不进行特殊处理，直接返回
+        return res;
+      } else {
+        // 处理错误状态码
         if (res.code === 401) {
           router.push('/login');
         }
-        
         return Promise.reject(res);
       }
-      return res;
     }
-    
+
     // 检查房间列表格式
     if (res.status !== undefined) {
       if (res.status !== 200) {
@@ -78,10 +83,10 @@ instance.interceptors.response.use(
     if (loadingInstance) {
       loadingInstance.close();
     }
-    
+
     if (error.response) {
       const { status, data } = error.response;
-      
+
       switch (status) {
         case 400:
           break;
@@ -92,7 +97,7 @@ instance.interceptors.response.use(
             localStorage.removeItem('isLoggedIn');
             Message.error('登录已过期，请重新登录');
             router.push('/login');
-            
+
             setTimeout(() => {
               isRefreshing = false;
               retryRequests = [];
@@ -118,7 +123,7 @@ instance.interceptors.response.use(
     } else {
       Message.error(`请求错误：${error.message || '未知错误'}`);
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -126,24 +131,38 @@ instance.interceptors.response.use(
 // 封装请求方法
 const request = {
   get(url, params, config = {}) {
+    console.log('request.get 调用:', { url, params, config });
+
     // 如果params是params对象嵌套的情况
     if (params && typeof params === 'object' && params.params && typeof params.params === 'object') {
+      console.log('request.get 使用嵌套参数:', params.params);
       return instance.get(url, {
         ...config,
         params: params.params
       });
     }
-    
+
     // 普通参数情况
+    console.log('request.get 使用普通参数:', params);
     return instance.get(url, {
       ...config,
       params
     });
   },
   post(url, data, config = {}) {
+    console.log('request.post 调用:', { url, data, config });
+    console.log('data 类型:', typeof data);
+    if (data && data.priority !== undefined) {
+      console.log('priority 类型:', typeof data.priority, 'priority 值:', data.priority);
+    }
     return instance.post(url, data, config);
   },
   put(url, data, config = {}) {
+    console.log('request.put 调用:', { url, data, config });
+    console.log('data 类型:', typeof data);
+    if (data && data.priority !== undefined) {
+      console.log('priority 类型:', typeof data.priority, 'priority 值:', data.priority);
+    }
     return instance.put(url, data, config);
   },
   delete(url, params, config = {}) {
@@ -154,7 +173,7 @@ const request = {
         params: params.params
       });
     }
-    
+
     // 普通参数情况
     return instance.delete(url, {
       ...config,
@@ -165,7 +184,7 @@ const request = {
   upload(url, file, onProgress = null) {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     return instance.post(url, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
@@ -194,7 +213,7 @@ const request = {
         return response;
       });
     }
-    
+
     return instance.get(url, {
       params,
       responseType: 'blob',
@@ -211,4 +230,4 @@ const request = {
   }
 };
 
-export default request; 
+export default request;

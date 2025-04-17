@@ -14,23 +14,21 @@
         :collapse="isCollapse"
         :unique-opened="true"
         router>
-        
+
         <el-menu-item index="/dashboard">
           <i class="el-icon-s-home"></i>
           <span slot="title">仪表盘</span>
         </el-menu-item>
-        
+
         <el-submenu index="/servers">
           <template slot="title">
             <i class="el-icon-s-platform"></i>
             <span>服务器管理</span>
           </template>
           <el-menu-item index="/servers/list">服务器列表</el-menu-item>
-          <el-menu-item index="/servers/settings">服务器设置</el-menu-item>
-          <el-menu-item index="/servers/saves">存档管理</el-menu-item>
           <el-menu-item index="/servers/commands">命令设置</el-menu-item>
         </el-submenu>
-        
+
         <el-submenu index="/logs">
           <template slot="title">
             <i class="el-icon-document"></i>
@@ -41,7 +39,7 @@
           <el-menu-item index="/logs/parser">日志解析器</el-menu-item>
           <el-menu-item index="/logs/stats">日志统计</el-menu-item>
         </el-submenu>
-        
+
         <el-submenu index="/players">
           <template slot="title">
             <i class="el-icon-user"></i>
@@ -50,7 +48,7 @@
           <el-menu-item index="/players/list">玩家列表</el-menu-item>
           <el-menu-item index="/players/ban">封禁管理</el-menu-item>
         </el-submenu>
-        
+
         <el-submenu index="/items">
           <template slot="title">
             <i class="el-icon-goods"></i>
@@ -59,7 +57,7 @@
           <el-menu-item index="/items/list">物品列表</el-menu-item>
           <el-menu-item index="/items/generator">物品生成器</el-menu-item>
         </el-submenu>
-        
+
         <el-submenu index="/mods">
           <template slot="title">
             <i class="el-icon-s-operation"></i>
@@ -68,7 +66,7 @@
           <el-menu-item index="/mods/list">已下载模组</el-menu-item>
           <el-menu-item index="/mods/search">模组搜索</el-menu-item>
         </el-submenu>
-        
+
         <el-submenu index="/rooms">
           <template slot="title">
             <i class="el-icon-s-grid"></i>
@@ -77,7 +75,7 @@
           <el-menu-item index="/rooms/list">房间列表</el-menu-item>
           <el-menu-item index="/rooms/settings">房间设置</el-menu-item>
         </el-submenu>
-        
+
         <el-submenu index="/worlds">
           <template slot="title">
             <i class="el-icon-s-data"></i>
@@ -86,12 +84,12 @@
           <el-menu-item index="/worlds/list">世界列表</el-menu-item>
           <el-menu-item index="/worlds/settings">世界设置</el-menu-item>
         </el-submenu>
-        
+
         <el-menu-item index="/backups">
           <i class="el-icon-s-management"></i>
           <span slot="title">备份管理</span>
         </el-menu-item>
-        
+
         <el-submenu index="/scheduled">
           <template slot="title">
             <i class="el-icon-alarm-clock"></i>
@@ -100,7 +98,7 @@
           <el-menu-item index="/scheduled/tasks">任务列表</el-menu-item>
           <el-menu-item index="/scheduled/create">创建任务</el-menu-item>
         </el-submenu>
-        
+
         <el-submenu index="/agents">
           <template slot="title">
             <i class="el-icon-connection"></i>
@@ -110,25 +108,25 @@
           <el-menu-item index="/agents/command">命令管理</el-menu-item>
           <el-menu-item index="/agents/security">安全设置</el-menu-item>
         </el-submenu>
-        
+
         <el-menu-item index="/system">
           <i class="el-icon-setting"></i>
           <span slot="title">系统设置</span>
         </el-menu-item>
       </el-menu>
-      
+
       <div class="sidebar-footer">
         <el-tooltip content="折叠菜单" placement="right">
-          <el-button 
+          <el-button
             class="collapse-btn"
-            type="text" 
+            type="text"
             @click="toggleCollapse"
             :icon="isCollapse ? 'el-icon-s-unfold' : 'el-icon-s-fold'">
           </el-button>
         </el-tooltip>
       </div>
     </div>
-    
+
     <!-- 主内容区 -->
     <div class="main-container" :class="{'is-collapsed': isCollapse}">
       <!-- 顶部导航栏 -->
@@ -154,7 +152,7 @@
           </el-dropdown>
         </div>
       </header>
-      
+
       <!-- 内容区域 -->
       <main class="content-container">
         <router-view></router-view>
@@ -193,7 +191,7 @@ export default {
       this.breadcrumbs = []
       const path = this.$route.path
       const pathParts = path.split('/').filter(Boolean)
-      
+
       // 路径映射对象
       const pathMap = {
         dashboard: '仪表盘',
@@ -214,7 +212,7 @@ export default {
         parser: '日志解析器',
         stats: '日志统计'
       }
-      
+
       // 子页面映射
       const subPageMap = {
         list: {
@@ -251,13 +249,13 @@ export default {
           logs: '规则管理'
         }
       }
-      
+
       // 处理面包屑
       pathParts.forEach((part, index) => {
         // 直接映射
         if (pathMap[part]) {
           this.breadcrumbs.push(pathMap[part])
-        } 
+        }
         // 处理列表页面
         else if (part === 'list' && index > 0) {
           const parentPath = pathParts[index - 1]

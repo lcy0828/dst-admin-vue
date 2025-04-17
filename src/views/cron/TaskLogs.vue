@@ -9,7 +9,7 @@
           <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回任务列表</el-button>
         </el-button-group>
       </div>
-      
+
       <div class="filter-container">
         <el-form :inline="true" :model="listQuery" class="filter-form">
           <el-form-item label="任务">
@@ -48,7 +48,11 @@
         </el-form>
       </div>
 
-      <el-table v-loading="loading" :data="logList" style="width: 100%;" border>
+      <div v-if="logList.length === 0 && !loading" class="empty-logs">
+        <el-empty description="暂无日志记录" :image-size="200"></el-empty>
+      </div>
+
+      <el-table v-else v-loading="loading" :data="logList" style="width: 100%;" border>
         <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
         <el-table-column prop="task_name" label="任务名称" min-width="120">
           <template slot-scope="scope">
@@ -61,20 +65,20 @@
             <span v-else>{{ scope.row.task_name || '未知任务' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="执行时间" width="170" align="center">
+        <el-table-column label="开始时间" width="170" align="center">
           <template slot-scope="scope">
-            {{ scope.row.created_at }}
+            {{ scope.row.start_time || scope.row.created_at }}
           </template>
         </el-table-column>
         <el-table-column prop="duration" label="执行耗时" width="100" align="center">
           <template slot-scope="scope">
-            {{ scope.row.duration ? scope.row.duration + ' 秒' : '-' }}
+            {{ scope.row.duration ? scope.row.duration + ' 毫秒' : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template slot-scope="scope">
-            <el-tag :type="scope.row.status === 'success' ? 'success' : 'danger'">
-              {{ scope.row.status === 'success' ? '成功' : '失败' }}
+            <el-tag :type="scope.row.status === 'success' || scope.row.status === 1 ? 'success' : 'danger'">
+              {{ scope.row.status === 'success' || scope.row.status === 1 ? '成功' : '失败' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -87,37 +91,38 @@
         </el-table-column>
         <el-table-column label="操作" width="120" align="center">
           <template slot-scope="scope">
-            <el-button 
-              size="mini" 
-              type="primary" 
-              @click="viewLogDetail(scope.row)" 
+            <el-button
+              size="mini"
+              type="primary"
+              @click="viewLogDetail(scope.row)"
               icon="el-icon-view">
               查看详情
             </el-button>
           </template>
         </el-table-column>
       </el-table>
-      
+
       <el-pagination
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
         :current-page="listQuery.page"
         :page-sizes="[10, 20, 50, 100]"
-        :page-size="listQuery.limit"
+        :page-size="listQuery.page_size"
         layout="total, sizes, prev, pager, next, jumper"
         :total="total"
         style="margin-top: 15px; text-align: right;">
       </el-pagination>
     </el-card>
-    
+
     <el-dialog title="日志详情" :visible.sync="dialogVisible" width="70%">
       <div v-if="currentLog" class="log-detail">
         <el-descriptions border :column="2">
+          <el-descriptions-item label="日志ID">{{ currentLog.id }}</el-descriptions-item>
           <el-descriptions-item label="任务ID">{{ currentLog.task_id }}</el-descriptions-item>
           <el-descriptions-item label="任务名称">{{ currentLog.task_name }}</el-descriptions-item>
           <el-descriptions-item label="执行状态">
-            <el-tag :type="currentLog.status === 'success' ? 'success' : 'danger'">
-              {{ currentLog.status === 'success' ? '成功' : '失败' }}
+            <el-tag :type="currentLog.status === 'success' || currentLog.status === 1 ? 'success' : 'danger'">
+              {{ currentLog.status === 'success' || currentLog.status === 1 ? '成功' : '失败' }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="执行方式">
@@ -125,17 +130,18 @@
               {{ currentLog.is_manual === 1 ? '手动执行' : '自动执行' }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="开始时间">{{ currentLog.created_at }}</el-descriptions-item>
-          <el-descriptions-item label="执行耗时">{{ currentLog.duration ? currentLog.duration + ' 秒' : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="开始时间">{{ currentLog.start_time || currentLog.created_at }}</el-descriptions-item>
+          <el-descriptions-item label="结束时间">{{ currentLog.end_time || currentLog.updated_at || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="执行耗时">{{ currentLog.duration ? currentLog.duration + ' 毫秒' : '-' }}</el-descriptions-item>
           <el-descriptions-item label="执行者">{{ currentLog.executor || '系统' }}</el-descriptions-item>
           <el-descriptions-item label="重试次数">{{ currentLog.retry_count || 0 }}</el-descriptions-item>
         </el-descriptions>
-        
+
         <div class="log-output">
           <div class="log-title">执行输出：</div>
           <pre class="log-content">{{ currentLog.output || '无输出' }}</pre>
         </div>
-        
+
         <div v-if="currentLog.error" class="log-error">
           <div class="log-title">错误信息：</div>
           <pre class="log-content error">{{ currentLog.error }}</pre>
@@ -145,7 +151,7 @@
         <el-empty description="未找到日志详情"></el-empty>
       </div>
     </el-dialog>
-    
+
     <el-dialog title="清理日志" :visible.sync="clearDialogVisible" width="500px">
       <el-form :model="clearForm" label-width="120px">
         <el-form-item label="保留时间">
@@ -197,7 +203,7 @@ export default {
       total: 0,
       listQuery: {
         page: 1,
-        limit: 20,
+        page_size: 20,  // 修改为page_size以匹配API期望的参数
         task_id: '',
         status: '',
         start_date: '',
@@ -221,7 +227,7 @@ export default {
     if (task_id) {
       this.listQuery.task_id = task_id;
     }
-    
+
     this.fetchTasks();
     this.fetchData();
   },
@@ -240,7 +246,16 @@ export default {
     fetchTasks() {
       cronTaskApi.getTasks()
         .then(response => {
-          if (response.data && response.data.status === 200) {
+          console.log('任务列表响应:', response);
+          if (response.data && response.data.code === 200) {
+            // 适配新的API响应结构
+            const tasks = response.data.data.tasks || [];
+            this.taskOptions = tasks.map(task => ({
+              id: task.id,
+              name: task.name
+            }));
+          } else if (response.data && response.data.status === 200) {
+            // 兼容旧的API响应结构
             this.taskOptions = (response.data.data.items || []).map(task => ({
               id: task.id,
               name: task.name
@@ -253,13 +268,53 @@ export default {
     },
     fetchData() {
       this.loading = true;
+      console.log('发送日志查询参数:', this.listQuery);
       cronTaskApi.getLogs(this.listQuery)
         .then(response => {
-          if (response.data && response.data.status === 200) {
+          console.log('日志列表原始响应:', response);
+
+          // 直接处理原始响应数据
+          if (response && response.code === 200 && response.data && response.data.logs) {
+            console.log('使用标准响应格式');
+            this.logList = response.data.logs || [];
+            this.total = response.data.total || 0;
+            console.log('处理后的日志列表:', this.logList);
+            console.log('总数:', this.total);
+          }
+          // 处理嵌套的响应格式
+          else if (response.data && response.data.code === 200 && response.data.data && response.data.data.logs) {
+            console.log('使用嵌套的响应结构处理数据');
+            this.logList = response.data.data.logs || [];
+            this.total = response.data.data.total || 0;
+            console.log('处理后的日志列表:', this.logList);
+            console.log('总数:', this.total);
+          }
+          // 兼容旧的响应格式
+          else if (response.data && response.data.status === 200 && response.data.data && response.data.data.items) {
+            console.log('使用旧API响应结构处理数据');
             this.logList = response.data.data.items || [];
             this.total = response.data.data.total || 0;
+            console.log('处理后的日志列表:', this.logList);
+            console.log('总数:', this.total);
           } else {
-            this.$message.error(response.data.message || '获取日志列表失败');
+            // 尝试直接解析响应数据
+            try {
+              console.log('尝试直接解析响应数据');
+              // 如果是字符串，尝试解析为JSON
+              const data = typeof response === 'string' ? JSON.parse(response) : response;
+
+              if (data && data.code === 200 && data.data && data.data.logs) {
+                this.logList = data.data.logs;
+                this.total = data.data.total || 0;
+                console.log('成功解析数据:', this.logList);
+                return;
+              }
+            } catch (e) {
+              console.error('解析响应数据失败:', e);
+            }
+
+            console.error('响应格式不符合预期:', response);
+            this.$message.error('获取日志列表失败: 响应格式不符合预期');
           }
         })
         .catch(error => {
@@ -278,7 +333,7 @@ export default {
       this.dateRange = [];
       this.listQuery = {
         page: 1,
-        limit: 20,
+        page_size: 20,
         task_id: '',
         status: '',
         start_date: '',
@@ -287,7 +342,7 @@ export default {
       this.fetchData();
     },
     handleSizeChange(val) {
-      this.listQuery.limit = val;
+      this.listQuery.page_size = val;
       this.fetchData();
     },
     handleCurrentChange(val) {
@@ -310,12 +365,14 @@ export default {
         this.clearLoading = true;
         cronTaskApi.clearLogs(this.clearForm)
           .then(response => {
-            if (response.data && response.data.status === 200) {
-              this.$message.success(`成功清理了 ${response.data.data.deleted_count || 0} 条日志`);
+            console.log('清理日志响应:', response);
+            if (response.data && (response.data.code === 200 || response.data.status === 200)) {
+              const deletedCount = response.data.data.deleted_count || response.data.data.count || 0;
+              this.$message.success(`成功清理了 ${deletedCount} 条日志`);
               this.clearDialogVisible = false;
               this.fetchData();
             } else {
-              this.$message.error(response.data.message || '清理日志失败');
+              this.$message.error(response.data.msg || response.data.message || '清理日志失败');
             }
           })
           .catch(error => {
@@ -343,6 +400,13 @@ export default {
 .empty-data {
   padding: 40px 0;
   text-align: center;
+}
+.empty-logs {
+  padding: 50px 0;
+  text-align: center;
+  background-color: #fafafa;
+  border-radius: 4px;
+  margin-bottom: 20px;
 }
 .log-detail {
   margin-bottom: 20px;
@@ -372,4 +436,4 @@ export default {
 .link-type:hover {
   text-decoration: underline;
 }
-</style> 
+</style>

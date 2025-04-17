@@ -60,18 +60,6 @@ export const constantRoutes = [
         meta: { title: '服务器列表', icon: 'list' }
       },
       {
-        path: 'settings',
-        component: () => import('@/views/servers/ServerSettings.vue'),
-        name: 'ServerSettings',
-        meta: { title: '服务器设置', icon: 'setting' }
-      },
-      {
-        path: 'saves',
-        component: () => import('@/views/servers/SaveManager.vue'),
-        name: 'SaveManager',
-        meta: { title: '存档管理', icon: 'save' }
-      },
-      {
         path: 'commands',
         component: () => import('@/views/servers/CommandManager.vue'),
         name: 'CommandManager',

@@ -10,17 +10,17 @@
         <el-button size="small" icon="el-icon-refresh" @click="refreshData">刷新</el-button>
       </div>
       </div>
-    
+
     <!-- 服务器分组及筛选区域 -->
     <div class="filter-container">
       <el-tabs v-model="activeTab" @tab-click="handleTabChange">
         <el-tab-pane label="全部服务器" name="all"></el-tab-pane>
         <el-tab-pane label="本机服务器" name="local"></el-tab-pane>
-        <el-tab-pane label="Docker服务器" name="docker"></el-tab-pane>
-        <el-tab-pane label="远程服务器" name="remote"></el-tab-pane>
-        <el-tab-pane label="K8s服务器" name="k8s"></el-tab-pane>
+        <el-tab-pane label="Docker服务器 (未来功能)" name="docker" disabled></el-tab-pane>
+        <el-tab-pane label="远程服务器 (未来功能)" name="remote" disabled></el-tab-pane>
+        <el-tab-pane label="K8s服务器 (未来功能)" name="k8s" disabled></el-tab-pane>
       </el-tabs>
-      
+
       <div class="filter-options">
         <el-select v-model="roomFilter" placeholder="按存档筛选" size="small" clearable @change="filterServers">
           <el-option
@@ -30,12 +30,12 @@
             :value="room.id">
           </el-option>
         </el-select>
-        
+
         <el-select v-model="typeFilter" placeholder="按类型筛选" size="small" clearable @change="filterServers">
           <el-option label="森林服务器" value="forest"></el-option>
           <el-option label="洞穴服务器" value="cave"></el-option>
         </el-select>
-        
+
         <el-select v-model="statusFilter" placeholder="按状态筛选" size="small" clearable @change="filterServers">
           <el-option label="在线" value="online"></el-option>
           <el-option label="离线" value="offline"></el-option>
@@ -68,8 +68,8 @@
           <template slot-scope="scope">
             <div class="server-name-container">
               <div :class="['server-status', scope.row.status === 'running' ? 'online' : 'offline']"></div>
-              <el-tag size="mini" :type="scope.row.type === 'forest' ? 'success' : 'warning'" class="server-type-tag">
-                {{ scope.row.type === 'forest' ? '森林' : '洞穴' }}
+              <el-tag size="mini" :type="getWorldTypeTagType(scope.row.world_name)" class="server-type-tag">
+                {{ getWorldTypeName(scope.row.world_name) }}
               </el-tag>
               <div class="server-room">
                 {{ scope.row.archive_name }}
@@ -77,7 +77,7 @@
             </div>
           </template>
           </el-table-column>
-          
+
           <el-table-column
           label="玩家"
           width="100">
@@ -85,7 +85,7 @@
             {{ scope.row.players }}
             </template>
           </el-table-column>
-          
+
           <el-table-column
           label="天数"
           width="70">
@@ -93,7 +93,7 @@
             {{ scope.row.days }}
           </template>
           </el-table-column>
-          
+
           <el-table-column
           label="季节"
           width="100">
@@ -103,18 +103,18 @@
               </el-tag>
             </template>
           </el-table-column>
-          
+
           <el-table-column
           label="服务器模式"
           width="100">
             <template slot-scope="scope">
-            <el-tag type="info" size="medium" v-if="scope.row.serverMode">
-              {{ scope.row.serverMode === '32' ? '32位' : scope.row.serverMode === '64' ? '64位' : scope.row.serverMode }}
+            <el-tag type="info" size="medium" v-if="scope.row.server_mode">
+              {{ getServerModeText(scope.row.server_mode) }}
             </el-tag>
               <span v-else>-</span>
             </template>
           </el-table-column>
-          
+
           <el-table-column
           label="运行时间"
           min-width="140">
@@ -122,7 +122,7 @@
               <div>{{ formatTimeDiff(Date.now() - new Date(scope.row.start_time).getTime()) }}</div>
           </template>
         </el-table-column>
-        
+
         <el-table-column
           label="部署方式"
           width="100">
@@ -132,7 +132,7 @@
             </el-tag>
             </template>
           </el-table-column>
-          
+
           <el-table-column
             label="操作"
             min-width="200">
@@ -154,7 +154,7 @@
             </template>
           </el-table-column>
         </el-table>
-        
+
       <!-- 空数据提示 -->
       <div class="empty-block" v-if="filteredServerList.length === 0 && !loading">
         <el-empty description="暂无服务器数据" :image-size="100">
@@ -187,27 +187,31 @@
               </el-option>
             </el-select>
           </el-form-item>
-          
+
           <el-form-item label="选择世界" prop="worldType" v-if="startRoomForm.roomIndex !== ''">
             <el-checkbox-group v-model="startRoomForm.worldType">
-              <el-checkbox v-for="world in roomList[startRoomForm.roomIndex].worlds" 
-              :label="world" 
+              <el-checkbox v-for="world in roomList[startRoomForm.roomIndex].worlds"
+              :label="world"
               :key="world.type">
               {{world.name}}
             </el-checkbox>
             </el-checkbox-group>
           </el-form-item>
-          
+
           <el-form-item label="服务器模式">
             <el-select v-model="startRoomForm.serverMode" placeholder="选择服务器模式">
-              <el-option label="普通模式 (32位)" value="32"></el-option>
-              <el-option label="专家模式 (64位)" value="64"></el-option>
+              <el-option label="32位" value="32"></el-option>
+              <el-option label="64位" value="64"></el-option>
+              <el-option label="LuaJit" value="luajit"></el-option>
             </el-select>
             <div class="mode-description" v-if="startRoomForm.serverMode === '64'">
-              <i class="el-icon-warning-outline"></i> 专家模式使用64位引擎，可能会更耗内存但性能更好
+              <i class="el-icon-warning-outline"></i> 64位模式使用64位引擎，可能会更耗内存但性能更好
+            </div>
+            <div class="mode-description" v-else-if="startRoomForm.serverMode === 'luajit'">
+              <i class="el-icon-star-on"></i> LuaJit模式使用JIT编译器，可能提供更好的性能
             </div>
             <div class="mode-description" v-else>
-              <i class="el-icon-info"></i> 普通模式使用32位引擎，适合大多数服务器
+              <i class="el-icon-info"></i> 32位模式使用32位引擎，适合大多数服务器
             </div>
           </el-form-item>
         </el-form>
@@ -254,52 +258,64 @@ export default {
   computed: {
     filteredServerList() {
       let result = this.serverList;
-      
+
       // 根据标签页筛选
-      if (this.activeTab !== 'all') {
+      if (this.activeTab !== 'all' && this.activeTab !== 'local') {
+        // 当前只有本机服务器，所以当选择本机服务器标签时，显示所有服务器
+        // 其他标签页都是未来功能，已经禁用，不会进入这个分支
         const deploymentMap = {
-          'local': '本地',
           'docker': 'Docker',
           'remote': '远程',
           'k8s': 'K8s'
         };
         result = result.filter(server => server.deployment === deploymentMap[this.activeTab]);
       }
-      
+
       // 根据服务器类型筛选
       if (this.typeFilter) {
-        result = result.filter(server => server.type === this.typeFilter);
+        result = result.filter(server => {
+          // 根据 world_name 判断服务器类型
+          const worldName = server.world_name || '';
+          const lowerWorldName = worldName.toLowerCase();
+
+          if (this.typeFilter === 'forest') {
+            return lowerWorldName.includes('forest');
+          } else if (this.typeFilter === 'cave') {
+            return lowerWorldName.includes('cave');
+          }
+
+          return false;
+        });
       }
-      
+
       // 根据状态筛选
       if (this.statusFilter) {
         const statusMap = {
-          'online': '在线',
-          'offline': '离线',
-          'restarting': '重启中'
+          'online': 'running',
+          'offline': 'stopped'
         };
         result = result.filter(server => server.status === statusMap[this.statusFilter]);
       }
-      
+
       // 根据关闭时间筛选
       if (this.closedTimeFilter && this.closedTimeFilter !== 'all') {
         const hours = parseInt(this.closedTimeFilter);
         if (!isNaN(hours)) {
           const now = new Date();
           const cutoffTime = new Date(now.getTime() - hours * 60 * 60 * 1000);
-          
+
           result = result.filter(server => {
             // 只对离线的服务器进行筛选
-            if (server.status !== '离线') {
+            if (server.status !== 'stopped') {
               return true;
             }
-            
+
             // 提取服务器关闭时间
-            const startTime = server.raw && server.raw.start_time;
+            const startTime = server.start_time;
             if (!startTime) {
               return true; // 如果没有开始时间，默认显示
             }
-            
+
             try {
               const serverCloseTime = new Date(startTime);
               // 如果服务器关闭时间在截止时间之后，则显示
@@ -311,7 +327,7 @@ export default {
           });
         }
       }
-      
+
       return result;
     }
   },
@@ -364,6 +380,41 @@ export default {
       };
       return seasonMap[season] || '';
     },
+
+    getServerModeText(mode) {
+      switch(mode) {
+        case '32': return '32位';
+        case '64': return '64位';
+        case 'luajit': return 'LuaJit';
+        default: return mode;
+      }
+    },
+
+    getWorldTypeTagType(worldName) {
+      if (!worldName) return 'info';
+
+      const lowerName = worldName.toLowerCase();
+      if (lowerName.includes('forest')) {
+        return 'success';
+      } else if (lowerName.includes('cave')) {
+        return 'warning';
+      } else {
+        return 'info';
+      }
+    },
+
+    getWorldTypeName(worldName) {
+      if (!worldName) return '未知';
+
+      const lowerName = worldName.toLowerCase();
+      if (lowerName.includes('forest')) {
+        return '森林';
+      } else if (lowerName.includes('cave')) {
+        return '洞穴';
+      } else {
+        return '未知';
+      }
+    },
     getDeploymentType(deployment) {
       const deploymentMap = {
         '本地': '',
@@ -378,7 +429,7 @@ export default {
       this.startRoomDialogVisible = true;
       this.fetchRooms();
     },
-    
+
     handleStartRoomFrom(formName) {
       this.$refs[formName].validate((valid) => {
         if (valid) {
@@ -423,7 +474,7 @@ export default {
           this.$message({
             type: 'info',
             message: '取消停止'
-          });          
+          });
         });
       }
     },
@@ -565,7 +616,7 @@ export default {
   flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .operation-buttons .el-button {
     margin-bottom: 5px;
   }
@@ -575,7 +626,7 @@ export default {
   .filter-options {
     flex-direction: column;
   }
-  
+
   .filter-options .el-select {
     width: 100%;
     margin-right: 0;
@@ -593,4 +644,20 @@ export default {
   margin-top: 5px;
   line-height: 1.4;
 }
-</style> 
+
+/* 禁用标签的样式 */
+.el-tabs__item.is-disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.el-tabs__item.is-disabled::after {
+  content: '\1F512'; /* 锁定图标 Unicode */
+  font-size: 12px;
+  margin-left: 4px;
+  position: absolute;
+  top: 0;
+  right: -15px;
+}
+</style>
