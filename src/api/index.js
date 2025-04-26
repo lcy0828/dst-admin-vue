@@ -680,6 +680,12 @@ export const logApi = {
         console.error('获取世界列表失败:', error);
         return [];
       });
+  },
+
+  // 清空日志
+  cleanupLog(data) {
+    console.log('清空日志参数:', data);
+    return request.post('/v1/parser/cleanup_log', data);
   }
 };
 

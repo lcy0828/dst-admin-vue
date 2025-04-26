@@ -82,10 +82,22 @@
         @sort-change="handleSortChange">
         <el-table-column prop="id" label="ID" width="80" sortable></el-table-column>
         <el-table-column prop="archive_name" label="存档名称" width="120" sortable></el-table-column>
-        <el-table-column prop="player_name" label="玩家名称" min-width="120">
+        <el-table-column prop="player_name" label="玩家名称" width="150">
           <template slot-scope="scope">
             <div class="player-name-cell">
-              <span>{{ scope.row.player_name }}</span>
+              <el-tooltip :content="scope.row.player_name" placement="top" effect="light">
+                <div class="name-with-badges">
+                  <span class="truncated-name">{{ scope.row.player_name }}</span>
+                  <div class="name-badges">
+                    <el-tooltip v-if="scope.row.is_admin" content="管理员" placement="top" effect="light">
+                      <i class="el-icon-trophy admin-icon-small"></i>
+                    </el-tooltip>
+                    <el-tooltip v-if="scope.row.is_friend" content="好友" placement="top" effect="light">
+                      <i class="el-icon-s-custom friend-icon-small"></i>
+                    </el-tooltip>
+                  </div>
+                </div>
+              </el-tooltip>
             </div>
           </template>
         </el-table-column>
@@ -101,6 +113,63 @@
             <el-tag :type="scope.row.status === 'online' ? 'success' : 'info'" size="mini">
               {{ scope.row.status === 'online' ? '在线' : '离线' }}
             </el-tag>
+          </template>
+        </el-table-column>
+
+        <!-- 网络质量 -->
+        <el-table-column label="网络质量" width="100" align="center">
+          <template slot-scope="scope">
+            <div class="network-quality">
+              <div v-if="scope.row.status === 'online'" class="signal-icon">
+                <div class="signal-bars" :class="getNetworkSignalClass(scope.row.net_score)">
+                  <div class="bar bar1"></div>
+                  <div class="bar bar2"></div>
+                  <div class="bar bar3"></div>
+                  <div class="bar bar4"></div>
+                </div>
+                <span class="signal-text" :style="{color: getNetworkColor(scope.row.net_score)}">
+                  {{ getNetworkQuality(scope.row.net_score) }}
+                </span>
+              </div>
+              <span v-else>-</span>
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- 玩家性能 -->
+        <el-table-column label="玩家性能" width="100" align="center">
+          <template slot-scope="scope">
+            <div class="performance-container">
+              <el-tooltip content="性能指标" placement="top" effect="light">
+                <div class="performance-indicator" :class="getPerformanceClass(scope.row.performance)">
+                  <div class="p-bar p-bar1"></div>
+                  <div class="p-bar p-bar2"></div>
+                  <div class="p-bar p-bar3"></div>
+                </div>
+              </el-tooltip>
+              <span class="performance-text" :style="{color: getPerformanceColor(scope.row.performance)}">
+                {{ getPerformanceText(scope.row.performance) }}
+              </span>
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- SteamID -->
+        <el-table-column label="Steam ID" width="150">
+          <template slot-scope="scope">
+            <div class="steam-id-container">
+              <el-tooltip content="点击复制 Steam ID" placement="top" effect="light">
+                <span class="steam-id-text" @click="copySteamID(scope.row.net_id)">{{ formatSteamID(scope.row.net_id) }}</span>
+              </el-tooltip>
+              <el-tooltip content="在 Steam 中查看" placement="top" effect="light">
+                <div class="steam-icon-container" @click="openSteamProfile(scope.row.net_id)">
+                  <svg class="steam-svg-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 1.5c-3.6 0-6.5 2.9-6.5 6.5 0 3.6 2.9 6.5 6.5 6.5 3.6 0 6.5-2.9 6.5-6.5 0-3.6-2.9-6.5-6.5-6.5zM8 0c4.4 0 8 3.6 8 8s-3.6 8-8 8-8-3.6-8-8 3.6-8 8-8v0z"></path>
+                    <path d="M7.3 7.8l-1.2 2.4c-0.2-0.1-0.4-0.1-0.6-0.1-0.8 0-1.5 0.7-1.5 1.5s0.7 1.5 1.5 1.5c0.8 0 1.4-0.6 1.5-1.4l1.7-1.2c0.9 0.4 1.9 0.1 2.3-0.8s0.1-1.9-0.8-2.3c-0.9-0.4-1.9-0.1-2.3 0.8-0.1 0.2-0.2 0.4-0.2 0.6l-2.4 1.2c-0.2-0.1-0.4-0.2-0.6-0.2-0.1 0-0.1 0-0.2 0l1.1-2.3c0.1 0 0.1 0 0.2 0 0.8 0 1.5-0.7 1.5-1.5s-0.7-1.5-1.5-1.5c-0.8 0-1.5 0.7-1.5 1.5 0 0.5 0.3 1 0.7 1.3l-1.1 2.1c-0.7-0.3-1.5 0-1.8 0.7s0 1.5 0.7 1.8c0.7 0.3 1.5 0 1.8-0.7 0.1-0.2 0.1-0.4 0.1-0.6l1.7-1.2c0.3 0.1 0.7 0.2 1 0.2 1.1 0 2-0.9 2-2s-0.9-2-2-2c-0.8 0-1.5 0.5-1.8 1.2z"></path>
+                  </svg>
+                </div>
+              </el-tooltip>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="first_seen" label="首次登录" width="170" sortable>
@@ -121,7 +190,7 @@
                 <el-button size="mini" type="primary" icon="el-icon-view" circle @click="viewPlayerDetail(scope.row)"></el-button>
               </el-tooltip>
 
-              <el-tooltip v-if="scope.row.status === 'online'" content="踢出玩家" placement="top" effect="light">
+              <el-tooltip content="踢出玩家" placement="top" effect="light">
                 <el-button
                   size="mini"
                   type="danger"
@@ -131,7 +200,7 @@
                 </el-button>
               </el-tooltip>
 
-              <el-tooltip v-else content="封禁玩家" placement="top" effect="light">
+              <el-tooltip content="封禁玩家" placement="top" effect="light">
                 <el-button
                   size="mini"
                   type="info"
@@ -141,8 +210,8 @@
                 </el-button>
               </el-tooltip>
 
-              <!-- 在线玩家的额外操作按钮 -->
-              <el-tooltip v-if="scope.row.status === 'online'" content="杀死玩家" placement="top" effect="light">
+              <!-- 其他操作按钮 -->
+              <el-tooltip content="杀死玩家" placement="top" effect="light">
                 <el-button
                   size="mini"
                   type="warning"
@@ -152,7 +221,7 @@
                 </el-button>
               </el-tooltip>
 
-              <el-tooltip v-if="scope.row.status === 'online'" content="无敌模式" placement="top" effect="light">
+              <el-tooltip content="无敌模式" placement="top" effect="light">
                 <el-button
                   size="mini"
                   type="success"
@@ -162,7 +231,7 @@
                 </el-button>
               </el-tooltip>
 
-              <el-tooltip v-if="scope.row.status === 'online'" content="制作模式" placement="top" effect="light">
+              <el-tooltip content="制作模式" placement="top" effect="light">
                 <el-button
                   size="mini"
                   type="success"
@@ -172,7 +241,7 @@
                 </el-button>
               </el-tooltip>
 
-              <el-tooltip v-if="scope.row.status === 'online'" content="复活玩家" placement="top" effect="light">
+              <el-tooltip content="复活玩家" placement="top" effect="light">
                 <el-button
                   size="mini"
                   type="success"
@@ -182,7 +251,7 @@
                 </el-button>
               </el-tooltip>
 
-              <el-tooltip v-if="scope.row.status === 'online'" content="重选人物" placement="top" effect="light">
+              <el-tooltip content="重选人物" placement="top" effect="light">
                 <el-button
                   size="mini"
                   type="primary"
@@ -218,7 +287,15 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="玩家ID">{{ currentPlayer.id }}</el-descriptions-item>
           <el-descriptions-item label="KU ID">{{ currentPlayer.user_id }}</el-descriptions-item>
-          <el-descriptions-item label="玩家名称">{{ currentPlayer.player_name }}</el-descriptions-item>
+          <el-descriptions-item label="玩家名称">
+            <div class="detail-name-with-badges">
+              <span>{{ currentPlayer.player_name }}</span>
+              <div class="detail-badges-container">
+                <i v-if="currentPlayer.is_admin" class="el-icon-trophy admin-icon-small" title="管理员"></i>
+                <i v-if="currentPlayer.is_friend" class="el-icon-s-custom friend-icon-small" title="好友"></i>
+              </div>
+            </div>
+          </el-descriptions-item>
           <el-descriptions-item label="存档名称">{{ currentPlayer.archive_name }}</el-descriptions-item>
           <el-descriptions-item label="角色">{{ getCharacterName(currentPlayer.prefab) }}</el-descriptions-item>
           <el-descriptions-item label="天数">{{ currentPlayer.player_age }}</el-descriptions-item>
@@ -228,6 +305,47 @@
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="状态变更时间">{{ formatDate(currentPlayer.status_change) }}</el-descriptions-item>
+          <el-descriptions-item label="Steam ID">
+            <div class="detail-steam-id">
+              <el-tooltip content="点击复制 Steam ID" placement="top" effect="light">
+                <span class="detail-steam-id-text" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</span>
+              </el-tooltip>
+              <el-tooltip content="在 Steam 中查看" placement="top" effect="light">
+                <div class="steam-icon-container" @click="openSteamProfile(currentPlayer.net_id)">
+                  <svg class="steam-svg-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 1.5c-3.6 0-6.5 2.9-6.5 6.5 0 3.6 2.9 6.5 6.5 6.5 3.6 0 6.5-2.9 6.5-6.5 0-3.6-2.9-6.5-6.5-6.5zM8 0c4.4 0 8 3.6 8 8s-3.6 8-8 8-8-3.6-8-8 3.6-8 8-8v0z"></path>
+                    <path d="M7.3 7.8l-1.2 2.4c-0.2-0.1-0.4-0.1-0.6-0.1-0.8 0-1.5 0.7-1.5 1.5s0.7 1.5 1.5 1.5c0.8 0 1.4-0.6 1.5-1.4l1.7-1.2c0.9 0.4 1.9 0.1 2.3-0.8s0.1-1.9-0.8-2.3c-0.9-0.4-1.9-0.1-2.3 0.8-0.1 0.2-0.2 0.4-0.2 0.6l-2.4 1.2c-0.2-0.1-0.4-0.2-0.6-0.2-0.1 0-0.1 0-0.2 0l1.1-2.3c0.1 0 0.1 0 0.2 0 0.8 0 1.5-0.7 1.5-1.5s-0.7-1.5-1.5-1.5c-0.8 0-1.5 0.7-1.5 1.5 0 0.5 0.3 1 0.7 1.3l-1.1 2.1c-0.7-0.3-1.5 0-1.8 0.7s0 1.5 0.7 1.8c0.7 0.3 1.5 0 1.8-0.7 0.1-0.2 0.1-0.4 0.1-0.6l1.7-1.2c0.3 0.1 0.7 0.2 1 0.2 1.1 0 2-0.9 2-2s-0.9-2-2-2c-0.8 0-1.5 0.5-1.8 1.2z"></path>
+                  </svg>
+                </div>
+              </el-tooltip>
+            </div>
+          </el-descriptions-item>
+          <el-descriptions-item label="网络质量">
+            <div v-if="currentPlayer.status === 'online'" class="network-quality">
+              <div class="signal-bars" :class="getNetworkSignalClass(currentPlayer.net_score)">
+                <div class="bar bar1"></div>
+                <div class="bar bar2"></div>
+                <div class="bar bar3"></div>
+                <div class="bar bar4"></div>
+              </div>
+              <span class="signal-text" :style="{color: getNetworkColor(currentPlayer.net_score)}">
+                {{ getNetworkQuality(currentPlayer.net_score) }}
+              </span>
+            </div>
+            <span v-else>-</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="性能指标">
+            <div class="detail-performance">
+              <div class="performance-indicator" :class="getPerformanceClass(currentPlayer.performance)">
+                <div class="p-bar p-bar1"></div>
+                <div class="p-bar p-bar2"></div>
+                <div class="p-bar p-bar3"></div>
+              </div>
+              <span :style="{color: getPerformanceColor(currentPlayer.performance)}">
+                {{ getPerformanceText(currentPlayer.performance) }}
+              </span>
+            </div>
+          </el-descriptions-item>
           <el-descriptions-item label="首次登录">{{ formatDate(currentPlayer.first_seen) }}</el-descriptions-item>
           <el-descriptions-item label="最后登录">{{ formatDate(currentPlayer.last_seen) }}</el-descriptions-item>
           <el-descriptions-item label="创建时间">{{ formatDate(currentPlayer.created_at) }}</el-descriptions-item>
@@ -235,15 +353,13 @@
         </el-descriptions>
 
         <div class="detail-actions">
-          <el-button-group v-if="currentPlayer.status === 'online'">
+          <el-button-group>
             <el-button type="danger" size="small" icon="el-icon-close" @click="kickPlayer(currentPlayer)">踢出</el-button>
             <el-button type="warning" size="small" icon="el-icon-delete" @click="killPlayer(currentPlayer)">杀死</el-button>
-          </el-button-group>
-          <el-button-group v-else>
             <el-button type="info" size="small" icon="el-icon-lock" @click="banPlayer(currentPlayer)">封禁</el-button>
           </el-button-group>
 
-          <el-button-group v-if="currentPlayer.status === 'online'">
+          <el-button-group>
             <el-button type="success" size="small" icon="el-icon-magic-stick" @click="toggleGodMode(currentPlayer)">无敌模式</el-button>
             <el-button type="success" size="small" icon="el-icon-s-tools" @click="toggleCreativeMode(currentPlayer)">制作模式</el-button>
             <el-button type="success" size="small" icon="el-icon-refresh" @click="resurrectPlayer(currentPlayer)">复活</el-button>
@@ -512,13 +628,18 @@ export default {
         { label: 'WX-78', value: 'wx78' },
         { label: '薇克巴顿', value: 'wickerbottom' },
         { label: '伍迪', value: 'woodie' },
-        { label: '麦斯威尔', value: 'maxwell' },
+        { label: '韦斯', value: 'wes' },
+        { label: '麦斯威尔', value: 'waxwell' },
+        { label: '薇格弗德', value: 'wathgrithr' },
         { label: '韦伯', value: 'webber' },
-        { label: '旺达', value: 'wanda' },
+        { label: '薇诺娜', value: 'winona' },
         { label: '沃利', value: 'warly' },
-        { label: '沃特', value: 'walter' },
-        { label: '薇格弗德', value: 'wigfrid' },
-        { label: '温迪', value: 'winona' }
+        { label: '沃尔特', value: 'walter' },
+        { label: '沃拓克斯', value: 'wortox' },
+        { label: '沃姆伍德', value: 'wormwood' },
+        { label: '沃特', value: 'wurt' },
+        { label: '旺达', value: 'wanda' },
+        { label: '芜猴', value: 'wonkey' }
       ],
 
       // 排序参数
@@ -896,6 +1017,117 @@ export default {
       return character ? character.label : prefab;
     },
 
+    // 获取网络质量文本
+    getNetworkQuality(netScore) {
+      switch(netScore) {
+        case 0: return '极佳';
+        case 1: return '中等';
+        case 2: return '很差';
+        default: return '未知';
+      }
+    },
+
+    // 获取网络质量颜色
+    getNetworkColor(netScore) {
+      switch(netScore) {
+        case 0: return '#67C23A'; // 绿色
+        case 1: return '#E6A23C'; // 黄色
+        case 2: return '#F56C6C'; // 红色
+        default: return '#909399'; // 灰色
+      }
+    },
+
+    // 获取性能指标文本
+    getPerformanceText(performance) {
+      switch(performance) {
+        case 0: return '性能良好';
+        case 1: return '性能一般';
+        case 2: return '性能差';
+        default: return '未知';
+      }
+    },
+
+    // 获取性能标签类型
+    getPerformanceTagType(performance) {
+      switch(performance) {
+        case 0: return 'success';
+        case 1: return 'warning';
+        case 2: return 'danger';
+        default: return 'info';
+      }
+    },
+
+    // 获取性能颜色
+    getPerformanceColor(performance) {
+      switch(performance) {
+        case 0: return '#67C23A'; // 绿色
+        case 1: return '#E6A23C'; // 黄色
+        case 2: return '#F56C6C'; // 红色
+        default: return '#909399'; // 灰色
+      }
+    },
+
+    // 格式化 Steam ID
+    formatSteamID(steamID) {
+      if (!steamID) return '-';
+      // 只显示前后几位，中间用省略号
+      if (steamID.length > 8) {
+        return steamID.substring(0, 4) + '...' + steamID.substring(steamID.length - 4);
+      }
+      return steamID;
+    },
+
+    // 复制 Steam ID
+    copySteamID(steamID) {
+      if (!steamID) return;
+
+      // 创建一个临时的文本区域来复制文本
+      const textArea = document.createElement('textarea');
+      textArea.value = steamID;
+      document.body.appendChild(textArea);
+      textArea.select();
+
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          this.$message.success('Steam ID 已复制到剪贴板');
+        } else {
+          this.$message.error('复制失败');
+        }
+      } catch (err) {
+        this.$message.error('复制失败: ' + err);
+      }
+
+      document.body.removeChild(textArea);
+    },
+
+    // 打开 Steam 个人资料页面
+    openSteamProfile(steamID) {
+      if (!steamID) return;
+      const url = `https://steamcommunity.com/profiles/${steamID}`;
+      window.open(url, '_blank');
+    },
+
+    // 获取网络信号类名
+    getNetworkSignalClass(netScore) {
+      switch(netScore) {
+        case 0: return 'signal-excellent'; // 极佳
+        case 1: return 'signal-medium';    // 中等
+        case 2: return 'signal-poor';      // 很差
+        default: return 'signal-unknown';  // 未知
+      }
+    },
+
+    // 获取性能指标类名
+    getPerformanceClass(performance) {
+      switch(performance) {
+        case 0: return 'performance-excellent'; // 良好
+        case 1: return 'performance-medium';    // 一般
+        case 2: return 'performance-poor';      // 差
+        default: return 'performance-unknown';   // 未知
+      }
+    },
+
     // 获取存档列表
     fetchArchives() {
       playerApi.getArchives()
@@ -1211,6 +1443,14 @@ export default {
   align-items: center;
 }
 
+.truncated-name {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+
 .detail-actions {
   margin-top: 20px;
   display: flex;
@@ -1223,8 +1463,13 @@ export default {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   flex-wrap: wrap;
+}
+
+.operation-buttons .el-button--mini {
+  padding: 5px;
+  margin-bottom: 3px;
 }
 
 .el-dropdown-menu__item i {
@@ -1282,5 +1527,245 @@ export default {
   background-color: #f8f8f8;
   padding: 10px;
   border-radius: 4px;
+}
+
+/* 网络质量样式 */
+.network-quality {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.signal-icon {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.signal-text {
+  font-size: 12px;
+  margin-left: 5px;
+}
+
+/* 信号条样式 */
+.signal-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  height: 16px;
+  width: 18px;
+}
+
+.bar {
+  width: 3px;
+  margin-right: 1px;
+  background-color: #DCDFE6;
+  border-radius: 1px;
+}
+
+.bar1 { height: 25%; }
+.bar2 { height: 50%; }
+.bar3 { height: 75%; }
+.bar4 { height: 100%; }
+
+/* 信号等级样式 */
+.signal-excellent .bar {
+  background-color: #67C23A;
+}
+
+.signal-medium .bar1,
+.signal-medium .bar2,
+.signal-medium .bar3 {
+  background-color: #E6A23C;
+}
+
+.signal-poor .bar1 {
+  background-color: #F56C6C;
+}
+
+.signal-unknown .bar {
+  background-color: #909399;
+}
+
+/* 用户标识样式 */
+.user-badges {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.admin-icon {
+  color: #F56C6C;
+  font-size: 16px;
+}
+
+.admin-icon-small {
+  color: #F56C6C;
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.name-with-badges {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.name-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+}
+
+.friend-icon {
+  color: #E6A23C;
+  font-size: 16px;
+}
+
+.friend-icon-small {
+  color: #E6A23C;
+  font-size: 14px;
+}
+
+/* 性能指标样式 */
+.performance-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.performance-indicator {
+  display: inline-flex;
+  align-items: flex-end;
+  height: 16px;
+  width: 16px;
+}
+
+.performance-text {
+  font-size: 12px;
+  margin-left: 5px;
+}
+
+.performance-indicator-small {
+  display: inline-flex;
+  align-items: flex-end;
+  height: 12px;
+  width: 12px;
+  margin-right: 4px;
+}
+
+.p-bar {
+  width: 3px;
+  margin-right: 1px;
+  background-color: #DCDFE6;
+  border-radius: 1px;
+}
+
+.p-bar1 { height: 40%; }
+.p-bar2 { height: 70%; }
+.p-bar3 { height: 100%; }
+
+/* 性能等级样式 */
+.performance-excellent .p-bar {
+  background-color: #67C23A;
+}
+
+.performance-medium .p-bar1,
+.performance-medium .p-bar2 {
+  background-color: #E6A23C;
+}
+
+.performance-poor .p-bar1 {
+  background-color: #F56C6C;
+}
+
+.performance-unknown .p-bar {
+  background-color: #909399;
+}
+
+.detail-name-with-badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-badges-container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.detail-performance {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Steam ID 相关样式 */
+.steam-id-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.steam-id-text {
+  font-family: monospace;
+  color: #606266;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.steam-id-text:hover {
+  color: #409EFF;
+}
+
+.steam-icon-container {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.steam-svg-icon {
+  width: 16px;
+  height: 16px;
+  fill: #1b2838;
+  transition: fill 0.3s;
+  margin-left: 4px;
+}
+
+.steam-svg-icon:hover {
+  fill: #409EFF;
+}
+
+.detail-steam-id {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.detail-steam-id-text {
+  font-family: monospace;
+  color: #606266;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.detail-steam-id-text:hover {
+  color: #409EFF;
+}
+
+.truncated-text {
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
 }
 </style>

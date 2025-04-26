@@ -40,6 +40,7 @@
         <el-form-item>
           <el-button type="primary" @click="queryLogs">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
+          <el-button type="danger" @click="showCleanupLogDialog">清空日志</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -135,6 +136,30 @@
       <el-button type="primary" @click="saveRule">保存规则</el-button>
     </span>
     </el-dialog>
+
+    <!-- 清空日志对话框 -->
+    <el-dialog
+      title="清空日志"
+      :visible.sync="cleanupDialogVisible"
+      width="30%"
+      :close-on-click-modal="false"
+    >
+      <div class="cleanup-dialog-content">
+        <p class="warning-text">警告：此操作将清空所选存档和世界的所有日志记录，并重置日志解析器的位置。此操作不可恢复！</p>
+        <el-form :model="cleanupForm" label-width="80px">
+          <el-form-item label="存档" required>
+            <el-input v-model="cleanupForm.archive_name" disabled></el-input>
+          </el-form-item>
+          <el-form-item label="世界" required>
+            <el-input v-model="cleanupForm.world_name" disabled></el-input>
+          </el-form-item>
+        </el-form>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="cleanupDialogVisible = false">取消</el-button>
+        <el-button type="danger" @click="cleanupLog" :loading="cleanupLoading">确认清空</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -207,6 +232,14 @@ export default {
         log_type: [
           { required: true, message: '请选择日志类型', trigger: 'change' }
         ]
+      },
+
+      // 清空日志相关
+      cleanupDialogVisible: false,
+      cleanupLoading: false,
+      cleanupForm: {
+        archive_name: '',
+        world_name: ''
       }
     };
   },
@@ -802,6 +835,63 @@ export default {
         // 如果没有修改，直接关闭
         closeDialog();
       }
+    },
+
+    // 显示清空日志对话框
+    showCleanupLogDialog() {
+      // 检查是否选择了存档和世界
+      if (!this.queryParams.archive) {
+        this.$message.warning('请先选择存档');
+        return;
+      }
+
+      if (!this.queryParams.world) {
+        this.$message.warning('请先选择世界');
+        return;
+      }
+
+      // 设置清空日志表单的值
+      this.cleanupForm.archive_name = this.queryParams.archive;
+      this.cleanupForm.world_name = this.queryParams.world;
+
+      // 显示对话框
+      this.cleanupDialogVisible = true;
+    },
+
+    // 清空日志
+    async cleanupLog() {
+      // 再次确认
+      try {
+        await this.$confirm('此操作将清空所选存档和世界的所有日志记录，并重置日志解析器的位置。此操作不可恢复！是否确认继续？', '警告', {
+          confirmButtonText: '确认清空',
+          cancelButtonText: '取消',
+          type: 'warning',
+          distinguishCancelAndClose: true
+        });
+      } catch (e) {
+        return; // 用户取消操作
+      }
+
+      this.cleanupLoading = true;
+      try {
+        const response = await logApi.cleanupLog(this.cleanupForm);
+        console.log('清空日志响应:', response);
+
+        if (response && response.status === 200) {
+          this.$message.success(response.msg || '成功清空日志记录');
+          // 关闭对话框
+          this.cleanupDialogVisible = false;
+          // 重新查询日志，刷新列表
+          this.queryLogs();
+        } else {
+          this.$message.error(response?.msg || '清空日志失败');
+        }
+      } catch (error) {
+        console.error('清空日志失败:', error);
+        this.$message.error('清空日志失败: ' + (error.message || '未知错误'));
+      } finally {
+        this.cleanupLoading = false;
+      }
     }
   }
 };
@@ -864,5 +954,20 @@ export default {
 /* 确保对话框不会太高 */
 .rule-dialog >>> .el-dialog {
   margin-bottom: 5vh;
+}
+
+/* 清空日志对话框样式 */
+.cleanup-dialog-content {
+  padding: 10px 0;
+}
+
+.warning-text {
+  color: #E6A23C;
+  font-weight: bold;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #FDF6EC;
+  border-radius: 4px;
+  border-left: 4px solid #E6A23C;
 }
 </style>
