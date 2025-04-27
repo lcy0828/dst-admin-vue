@@ -588,6 +588,11 @@ const worldApi = {
 
   deleteWorld(params) {
     return request.post('/dstserver/deleteworld', params);
+  },
+
+  // 获取世界状态信息
+  getWorldState(params) {
+    return request.post('/world/state', params);
   }
 }
 

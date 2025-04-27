@@ -302,6 +302,12 @@ export const constantRoutes = [
         component: () => import('@/views/worlds/WorldDetails.vue'),
         name: 'WorldDetails',
         meta: { title: '世界详情', icon: 'document' }
+      },
+      {
+        path: 'state',
+        component: () => import('@/views/worlds/WorldState.vue'),
+        name: 'WorldState',
+        meta: { title: '世界状态', icon: 'data-analysis' }
       }
     ]
   },

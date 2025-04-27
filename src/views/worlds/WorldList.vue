@@ -14,28 +14,28 @@
         <el-button type="primary" size="small" icon="el-icon-plus" @click="createWorld">创建世界</el-button>
       </div>
     </div>
-    
+
     <el-row :gutter="20">
       <!-- 左侧房间分类 -->
       <el-col :span="4">
         <div class="sidebar-container">
-          <room-categories 
-            :rooms="rooms" 
-            @category-change="handleCategoryChange" 
+          <room-categories
+            :rooms="rooms"
+            @category-change="handleCategoryChange"
             @refresh="refreshWorlds" />
         </div>
       </el-col>
-      
+
       <!-- 右侧世界列表 -->
       <el-col :span="20">
         <el-card shadow="hover" class="world-list-card">
           <div slot="header" class="card-header">
             <div class="header-left">
               <span>{{ getCategoryTitle() }}</span>
-              <el-select 
-                v-model="selectedRoom" 
-                placeholder="选择房间" 
-                size="small" 
+              <el-select
+                v-model="selectedRoom"
+                placeholder="选择房间"
+                size="small"
                 style="margin-left: 15px; width: 180px;"
                 clearable
                 filterable
@@ -57,7 +57,7 @@
               <el-button style="margin-left: 10px;" size="small" icon="el-icon-refresh" @click="refreshWorlds">刷新</el-button>
             </div>
           </div>
-          
+
           <el-table
             :data="filteredWorlds"
             style="width: 100%"
@@ -86,21 +86,22 @@
             </el-table-column>
             <el-table-column label="操作" width="200" fixed="right">
               <template slot-scope="scope">
-                <el-button 
-                  :type="scope.row.status === 'running' ? 'danger' : 'success'" 
-                  size="mini" 
+                <el-button
+                  :type="scope.row.status === 'running' ? 'danger' : 'success'"
+                  size="mini"
                   @click.stop="toggleWorldStatus(scope.row)">
                   {{ scope.row.status === 'running' ? '停止' : '启动' }}
                 </el-button>
-                <el-button 
-                  type="primary" 
-                  size="mini" 
+                <el-button
+                  type="primary"
+                  size="mini"
                   @click.stop="editWorld(scope.row)">编辑</el-button>
                 <el-dropdown trigger="click" @command="handleMoreCommands($event, scope.row)" @click.stop>
                   <el-button size="mini">
                     更多<i class="el-icon-arrow-down el-icon--right"></i>
                   </el-button>
                   <el-dropdown-menu slot="dropdown">
+                    <el-dropdown-item command="viewState">查看状态</el-dropdown-item>
                     <el-dropdown-item command="regenerate">重新生成</el-dropdown-item>
                     <el-dropdown-item command="backup">备份世界</el-dropdown-item>
                     <el-dropdown-item command="delete" divided>
@@ -111,7 +112,7 @@
               </template>
             </el-table-column>
           </el-table>
-          
+
           <!-- 筛选信息提示 -->
           <div class="filter-info" v-if="selectedRoom && !loading">
             <el-alert
@@ -124,7 +125,7 @@
               </template>
             </el-alert>
           </div>
-          
+
           <!-- 无世界时的提示 -->
           <div v-if="!loading && filteredWorlds.length === 0" class="empty-worlds">
             <i class="el-icon-warning-outline"></i>
@@ -133,7 +134,7 @@
         </el-card>
       </el-col>
     </el-row>
-    
+
     <!-- 添加房间选择对话框 -->
     <el-dialog
       title="选择房间"
@@ -142,7 +143,7 @@
       class="room-select-dialog">
       <div class="room-select-content">
         <p class="dialog-tip">请选择要在哪个房间中创建新世界：</p>
-        
+
         <el-input
           placeholder="搜索房间"
           v-model="roomSearchQuery"
@@ -150,12 +151,12 @@
           prefix-icon="el-icon-search"
           clearable>
         </el-input>
-        
+
         <div class="room-list">
           <el-radio-group v-model="tempSelectedRoom" class="room-radio-group">
-            <el-radio 
-              v-for="room in filteredDialogRooms" 
-              :key="room.id" 
+            <el-radio
+              v-for="room in filteredDialogRooms"
+              :key="room.id"
               :label="room.id"
               class="room-radio-item">
               <div class="room-item-content">
@@ -167,7 +168,7 @@
               </div>
             </el-radio>
           </el-radio-group>
-          
+
           <div v-if="filteredDialogRooms.length === 0" class="no-rooms-tip">
             <i class="el-icon-info"></i>
             <span>没有找到符合条件的房间</span>
@@ -211,7 +212,7 @@ export default {
   computed: {
     filteredWorlds() {
       let result = this.worlds;
-      
+
       // 按分类筛选
       if (this.currentCategory !== 'all') {
         if (this.currentCategory === 'active') {
@@ -228,31 +229,31 @@ export default {
           // 示例: const customId = parseInt(this.currentCategory.split('_')[1]);
         }
       }
-      
+
       // 按搜索查询筛选
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
-        result = result.filter(world => 
-          world.name.toLowerCase().includes(query) || 
+        result = result.filter(world =>
+          world.name.toLowerCase().includes(query) ||
           world.description.toLowerCase().includes(query) ||
           (world.roomName && world.roomName.toLowerCase().includes(query))
         );
       }
-      
+
       // 按房间筛选
       if (this.selectedRoom) {
         result = result.filter(world => world.roomId === this.selectedRoom);
       }
-      
+
       return result;
     },
     filteredDialogRooms() {
       if (!this.roomSearchQuery) {
         return this.rooms;
       }
-      
+
       const query = this.roomSearchQuery.toLowerCase();
-      return this.rooms.filter(room => 
+      return this.rooms.filter(room =>
         room.name.toLowerCase().includes(query)
       );
     }
@@ -288,12 +289,12 @@ export default {
             title = '所有世界';
           }
       }
-      
+
       // 添加房间信息
       if (this.selectedRoom) {
         title += ` - ${this.getSelectedRoomName()}`;
       }
-      
+
       return title;
     },
     handleCategoryChange(category) {
@@ -306,26 +307,26 @@ export default {
           if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
             const servers = response.data.data;
             console.log("服务器状态数据:", servers);
-            
+
             // 更新世界状态
             this.worlds.forEach(world => {
               // 正确匹配：通过archive_name(房间名)和world_name(世界名)来匹配
-              const runningServer = servers.find(server => 
-                server.archive_name === world.roomName && 
+              const runningServer = servers.find(server =>
+                server.archive_name === world.roomName &&
                 server.world_name === world.name
               );
-              
+
               if (runningServer) {
                 console.log(`世界 ${world.name} 运行状态: ${runningServer.status}`);
                 world.status = runningServer.status; // 使用实际状态
               }
             });
-            
+
             // 更新房间状态
             this.rooms.forEach(room => {
               // 如果该房间下有任何世界在运行，则认为房间正在运行
-              const runningServer = servers.find(server => 
-                server.archive_name === room.name && 
+              const runningServer = servers.find(server =>
+                server.archive_name === room.name &&
                 server.status === "running"
               );
               room.status = runningServer ? 'running' : 'stopped';
@@ -342,27 +343,27 @@ export default {
       if (this.isRefreshing || (now - this.lastRefreshTime < 2000)) {
         return;
       }
-      
+
       this.isRefreshing = true;
       this.lastRefreshTime = now;
       this.loading = true;
       console.log("开始获取世界列表");
-      
+
       // 加载房间列表
       roomApi.getRoomList()
         .then(response => {
           if (response && (Array.isArray(response) || response.data)) {
-            const roomsData = Array.isArray(response) ? response : 
-                         (Array.isArray(response.data) ? response.data : 
+            const roomsData = Array.isArray(response) ? response :
+                         (Array.isArray(response.data) ? response.data :
                          (response.data && Array.isArray(response.data.data) ? response.data.data : []));
-            
+
             this.rooms = roomsData.map(room => ({
               id: room.id || room.name,
               name: room.name,
               status: '',
               worlds: room.worlds || []
             }));
-            
+
             // 直接从房间数据中提取世界信息
             let allWorlds = [];
             this.rooms.forEach(room => {
@@ -381,9 +382,9 @@ export default {
                 allWorlds = [...allWorlds, ...worldsData];
               }
             });
-            
+
             this.worlds = allWorlds;
-            
+
             // 获取运行状态
             return this.getServerStatus();
           } else {
@@ -438,7 +439,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-        
+
         if (world.status === 'running') {
           // 停止世界
           axios.post(`${config.BASE_URL}/tmux/stop`, {
@@ -500,6 +501,9 @@ export default {
     },
     handleMoreCommands(command, world) {
       switch (command) {
+        case 'viewState':
+          this.viewWorldState(world);
+          break;
         case 'regenerate':
           this.regenerateWorld(world);
           break;
@@ -511,6 +515,12 @@ export default {
           break;
       }
     },
+    viewWorldState(world) {
+      this.$router.push({
+        path: '/worlds/state',
+        query: { archive: world.roomName, world: world.name }
+      });
+    },
     regenerateWorld(world) {
       this.$confirm(`确定要重新生成世界 "${world.name}" 吗？现有的世界数据将会丢失！`, '警告', {
         confirmButtonText: '确定',
@@ -518,7 +528,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-        
+
         // 模拟API调用
         setTimeout(() => {
           this.loading = false;
@@ -541,7 +551,7 @@ export default {
         type: 'info'
       }).then(() => {
         this.loading = true;
-        
+
         // 模拟API调用
         setTimeout(() => {
           this.loading = false;
@@ -564,12 +574,12 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-        
+
         // 模拟API调用
         setTimeout(() => {
           // 从本地列表中移除
           this.worlds = this.worlds.filter(w => w.id !== world.id);
-          
+
           this.loading = false;
           this.$message({
             type: 'success',
@@ -595,21 +605,21 @@ export default {
         this.$message.warning('请选择一个房间');
         return;
       }
-      
+
       // 获取选择的房间信息
       const room = this.rooms.find(r => r.id === this.tempSelectedRoom);
       if (!room) {
         this.$message.error('获取房间信息失败');
         return;
       }
-      
+
       // 关闭对话框
       this.roomSelectDialogVisible = false;
-      
+
       // 重置临时选择
       this.tempSelectedRoom = null;
       this.roomSearchQuery = '';
-      
+
       // 跳转到创建世界页面
       this.$router.push({
         path: '/worlds/settings',
@@ -835,4 +845,4 @@ export default {
 .no-rooms-tip i {
   margin-right: 5px;
 }
-</style> 
+</style>

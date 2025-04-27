@@ -74,6 +74,7 @@
           </template>
           <el-menu-item index="/worlds/list">世界列表</el-menu-item>
           <el-menu-item index="/worlds/settings">世界设置</el-menu-item>
+          <el-menu-item index="/worlds/state">世界状态</el-menu-item>
         </el-submenu>
 
         <el-menu-item index="/backups">

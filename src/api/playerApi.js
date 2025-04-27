@@ -32,8 +32,13 @@ export const playerApi = {
   },
 
   // 手动更新玩家信息
-  updatePlayerInfo(sessionName) {
-    return request.post('/player/update', { session_name: sessionName });
+  updatePlayerInfo(data) {
+    // 兼容旧版本调用方式
+    if (typeof data === 'string') {
+      return request.post('/player/config', { archive_name: data });
+    }
+    // 新版本调用方式，支持更多参数
+    return request.post('/player/config', data);
   },
 
   // 踢出玩家

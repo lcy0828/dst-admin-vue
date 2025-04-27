@@ -481,29 +481,30 @@
 
     <!-- 手动更新玩家列表对话框 -->
     <el-dialog title="手动更新玩家列表" :visible.sync="updateDialogVisible" width="30%">
-      <el-form :model="updateForm" label-width="80px">
-        <el-form-item label="选择会话" required>
-          <el-select v-model="updateForm.session_name" placeholder="选择会话" style="width: 100%">
+      <el-form :model="updateForm" label-width="100px">
+        <el-form-item label="存档名称" required>
+          <el-select v-model="updateForm.archive_name" placeholder="选择存档" style="width: 100%" @change="onArchiveChange">
             <el-option
-              v-for="session in sessionList"
-              :key="session.name"
-              :label="session.name"
-              :value="session.name">
-              <span style="float: left">
-                {{ session.name }}
-              </span>
-              <span style="float: right; color: #8492a6; font-size: 13px">
-                {{ session.state }}
-              </span>
+              v-for="archive in archiveOptions"
+              :key="archive.value"
+              :label="archive.label"
+              :value="archive.value">
             </el-option>
           </el-select>
         </el-form-item>
-        <el-alert
-          v-if="sessionList.length === 0"
-          title="没有可用的会话"
-          type="warning"
-          :closable="false">
-        </el-alert>
+
+        <el-form-item label="世界名称">
+          <el-select v-model="updateForm.world_name" placeholder="选择世界（可选）" style="width: 100%">
+            <el-option
+              v-for="world in worldOptions"
+              :key="world.value"
+              :label="world.label"
+              :value="world.value">
+            </el-option>
+          </el-select>
+          <div class="form-help-text">留空表示所有世界</div>
+        </el-form-item>
+
         <el-alert
           type="info"
           title="提示：手动更新将从服务器获取最新的玩家信息"
@@ -513,7 +514,7 @@
       </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="updateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmUpdate" :loading="updating" :disabled="sessionList.length === 0">开始更新</el-button>
+        <el-button type="primary" @click="confirmUpdate" :loading="updating" :disabled="!updateForm.archive_name">开始更新</el-button>
       </span>
     </el-dialog>
 
@@ -666,8 +667,10 @@ export default {
       sessionList: [],
       updateDialogVisible: false,
       updateForm: {
-        session_name: ''
+        archive_name: '',
+        world_name: ''
       },
+      worldOptions: [],
       updating: false,
 
       // 无敌模式
@@ -1067,6 +1070,45 @@ export default {
       }
     },
 
+    // 从会话名称中提取世界名称
+    extractWorldName(sessionName) {
+      if (!sessionName) return '';
+
+      // 移除前缀 'dstserver_'
+      let worldName = sessionName.replace(/^dstserver_/, '');
+
+      // 如果有存档名称，移除存档名称和下划线
+      if (this.updateForm && this.updateForm.archive_name) {
+        const archivePrefix = this.updateForm.archive_name + '_';
+        worldName = worldName.replace(new RegExp('^' + archivePrefix), '');
+      }
+
+      return worldName;
+    },
+
+    // 生成世界名称选项
+    generateWorldOptions() {
+      const worldOptions = [];
+
+      if (this.sessionList && this.sessionList.length > 0) {
+        this.sessionList.forEach(session => {
+          const worldName = this.extractWorldName(session.name);
+          if (worldName) {
+            // 检查是否已经存在相同的世界名称
+            const exists = worldOptions.some(option => option.value === worldName);
+            if (!exists) {
+              worldOptions.push({
+                label: worldName,
+                value: worldName
+              });
+            }
+          }
+        });
+      }
+
+      return worldOptions;
+    },
+
     // 格式化 Steam ID
     formatSteamID(steamID) {
       if (!steamID) return '-';
@@ -1359,19 +1401,47 @@ export default {
 
     // 手动更新玩家列表
     showUpdateDialog() {
+      // 初始化表单数据
+      this.updateForm = {
+        archive_name: this.archiveOptions.length > 0 ? this.archiveOptions[0].value : '',
+        world_name: ''
+      };
+
+      // 生成世界名称选项
+      this.$nextTick(() => {
+        this.worldOptions = this.generateWorldOptions();
+      });
+
       this.updateDialogVisible = true;
+    },
+
+    // 存档变更时更新世界选项
+    onArchiveChange() {
+      // 重置世界名称
+      this.updateForm.world_name = '';
+
+      // 重新生成世界选项
+      this.$nextTick(() => {
+        this.worldOptions = this.generateWorldOptions();
+      });
     },
 
     // 确认更新玩家列表
     confirmUpdate() {
-      if (!this.updateForm.session_name) {
-        this.$message.warning('请选择会话');
+      if (!this.updateForm.archive_name) {
+        this.$message.warning('请选择存档');
         return;
       }
 
       this.updating = true;
 
-      playerApi.updatePlayerInfo(this.updateForm.session_name)
+      // 准备请求参数
+      const updateParams = {
+        archive_name: this.updateForm.archive_name,
+        world_name: this.updateForm.world_name || ''
+      };
+
+      playerApi.updatePlayerInfo(updateParams)
         .then(() => {
           this.$message.success('玩家列表更新成功');
           this.updateDialogVisible = false;
@@ -1767,5 +1837,12 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   display: inline-block;
+}
+
+.form-help-text {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 5px;
+  line-height: 1.2;
 }
 </style>
