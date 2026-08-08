@@ -16,24 +16,25 @@
 
 /* 全局CSS变量 */
 :root {
-  --primary-color: #e5482d;
-  --accent-color: #f59e0b;
-  --success-color: #2f8a57;
-  --warning-color: #c97908;
-  --danger-color: #d14343;
-  --info-color: #707672;
-  --text-primary: #252826;
-  --text-regular: #4f5551;
-  --text-secondary: #707672;
-  --border-color: #e1e4e1;
-  --bg-color: #f7f7f5;
-  --surface-color: #ffffff;
-  --surface-muted: #f0f1ee;
-  --sidebar-color: #242626;
-  --sidebar-color-deep: #1b1d1c;
-  --sidebar-text: #e9ece9;
-  --sidebar-active: #ffb24a;
-  --sidebar-active-bg: #312e29;
+  /* Legacy aliases resolve through shadcn semantic tokens so old pages stay theme-aware. */
+  --primary-color: var(--primary);
+  --accent-color: var(--chart-3);
+  --success-color: var(--chart-2);
+  --warning-color: var(--chart-3);
+  --danger-color: var(--destructive);
+  --info-color: var(--muted-foreground);
+  --text-primary: var(--foreground);
+  --text-regular: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --border-color: var(--border);
+  --bg-color: var(--background);
+  --surface-color: var(--card);
+  --surface-muted: var(--muted);
+  --sidebar-color: var(--sidebar);
+  --sidebar-color-deep: var(--sidebar-accent);
+  --sidebar-text: var(--sidebar-foreground);
+  --sidebar-active: var(--sidebar-primary);
+  --sidebar-active-bg: var(--sidebar-accent);
   --shadow-card: 0 1px 2px rgba(37, 40, 38, 0.06);
   --shadow-card-hover: 0 2px 6px rgba(37, 40, 38, 0.08);
   --shadow-overlay: 0 12px 32px rgba(37, 40, 38, 0.16);
@@ -115,270 +116,76 @@ a,
 }
 
 ::-webkit-scrollbar-track {
-  background: #efefec;
+  background: var(--muted);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #b9bdb9;
+  background: var(--input);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #919792;
+  background: var(--muted-foreground);
 }
 
-/* 常用间距和布局类 */
-.mt-10 { margin-top: 10px; }
-.mt-20 { margin-top: 20px; }
-.mb-10 { margin-bottom: 10px; }
-.mb-20 { margin-bottom: 20px; }
-.ml-10 { margin-left: 10px; }
-.mr-10 { margin-right: 10px; }
-.p-10 { padding: 10px; }
-.p-20 { padding: 20px; }
-
-.flex { display: flex; }
-.flex-column { flex-direction: column; }
-.flex-wrap { flex-wrap: wrap; }
-.justify-between { justify-content: space-between; }
-.justify-center { justify-content: center; }
-.align-center { align-items: center; }
-.flex-1 { flex: 1; }
-
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-left { text-align: left; }
-
-/* 卡片样式 */
-.card {
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: var(--shadow-card);
-  padding: 16px;
-  margin-bottom: var(--page-gap);
-}
-
-.card-header {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-/* 标签样式 */
-.tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 2px;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.tag-blue {
-  color: #fff;
-  background-color: var(--primary-color);
-}
-
-.tag-green {
-  color: #fff;
-  background-color: var(--success-color);
-}
-
-.tag-orange {
-  color: #fff;
-  background-color: var(--warning-color);
-}
-
-.tag-red {
-  color: #fff;
-  background-color: var(--danger-color);
-}
-
-.tag-gray {
-  color: #fff;
-  background-color: var(--info-color);
-}
-
-/* 通用页面结构 */
+/* Routed page framework */
 .page-container,
 .page-content {
   width: 100%;
+  min-width: 0;
 }
 
-.page-header,
-.toolbar,
-.filter-bar,
-.search-bar,
-.action-bar,
-.table-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.page-header {
-  justify-content: space-between;
-  margin-bottom: var(--page-gap);
-}
-
-.page-title {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 28px;
-}
-
-.page-subtitle,
-.help-text {
-  color: var(--text-secondary);
-  line-height: 20px;
-}
-
-.toolbar,
-.filter-bar,
-.search-bar {
-  margin-bottom: var(--section-gap);
-}
-
-.table-container,
-.table-wrapper {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 14px;
-}
-
-/* 按钮样式增强 */
-.btn-icon {
-  margin-right: 5px;
-}
-
-/* 响应式布局辅助 */
-@media (max-width: 768px) {
-  .hide-sm {
-    display: none !important;
-  }
-
-  .col-sm-12 {
-    width: 100% !important;
-  }
-
-  .card {
-    padding: 12px;
-    margin-bottom: 12px;
-  }
-
-  .page-header {
-    align-items: flex-start;
-    margin-bottom: 12px;
-  }
-
-  .toolbar,
-  .filter-bar,
-  .search-bar,
-  .action-bar {
-    gap: 8px;
-  }
-
-  .toolbar > input,
-  .toolbar > select,
-  .filter-bar > input,
-  .filter-bar > select,
-  .search-bar > input,
-  .search-bar > select {
-    width: 100% !important;
-    max-width: none !important;
-  }
-
-  .pagination-container {
-    justify-content: center;
-  }
-}
-
-/* 旧页面统一为紧凑后台面板，避免卡片悬浮、夸张圆角和重阴影。 */
-.content-container [class$='-card'],
-.content-container [class*='-card '] {
-  border-radius: 5px !important;
-  box-shadow: none !important;
-}
-
-.content-container [class$='-card']:hover,
-.content-container [class*='-card ']:hover {
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-.content-container .setting-item:hover {
-  transform: none !important;
-}
-
-.content-container .setting-item:hover .item-image,
-.content-container .state-card:hover .state-icon-container {
-  transform: none !important;
-}
-
-.content-container :is(
-  .settings-category,
-  .presets-section,
-  .category-list,
-  .api-key-box,
-  .info-statistics,
-  .filter-info,
-  .world-list
-) {
-  border-radius: 5px !important;
-  box-shadow: none !important;
-}
-
-/* Routed page framework: keeps legacy views aligned with the shared application shell. */
 .content-container > * {
+  display: flex;
   width: 100%;
-  max-width: 1680px;
+  max-width: 1600px;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
   margin-right: auto;
   margin-left: auto;
 }
 
-.content-container > * > .page-header,
-.content-container > * > header.page-header {
-  display: flex !important;
-  min-height: 46px;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 14px;
-  margin: 0 0 16px !important;
-  padding: 0 0 12px !important;
-  color: var(--text-primary) !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+.content-container > .remote-context-state {
+  display: block;
 }
 
-.content-container > * > .page-header :is(h1, h2),
+.content-container > * > :is(.page-header, .dashboard-header, .settings-page-header, .page-heading) {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0;
+  padding: 0 0 12px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.content-container > * > :is(.page-header, .dashboard-header, .settings-page-header, .page-heading) :is(h1, h2),
 .content-container > * > h1,
 .content-container > * > h2 {
   margin: 0;
-  color: var(--text-primary) !important;
-  font-size: 20px !important;
-  font-weight: 650 !important;
-  line-height: 28px !important;
-  letter-spacing: 0 !important;
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 28px;
+  letter-spacing: 0;
 }
 
-.content-container > * > .page-header :is(.header-actions, .title-actions),
-.content-container .card-header :is(.header-actions, .title-actions),
-.content-container .tab-header :is(.header-actions, .title-actions) {
+.content-container > * > :is(.page-header, .dashboard-header, .settings-page-header, .page-heading) p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.content-container :is(.header-actions, .title-actions, .action-buttons, .row-actions, .table-actions, .field-actions) {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
@@ -388,12 +195,12 @@ a,
 }
 
 .content-container > * > :is(.filter-container, .filter-section, .search-form-container, .toolbar) {
-  margin: 0 0 16px !important;
-  padding: 12px 14px !important;
-  background: var(--surface-color) !important;
-  border: 1px solid var(--border-color) !important;
-  border-radius: 5px !important;
-  box-shadow: none !important;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .content-container :is(.filter-form, .search-form, .toolbar, .action-bar) {
@@ -404,66 +211,78 @@ a,
   gap: 8px 10px;
 }
 
-.content-container :is(.card-header, .list-header, .rule-header, .agent-list-header) {
-  min-height: 46px;
-  color: var(--text-primary);
-  font-weight: 600;
+.content-container [data-slot='field'] [data-slot='select-trigger'],
+.content-container [data-slot='field'] [data-slot='native-select-wrapper'] {
+  width: 100%;
 }
 
-.content-container :is(.table-container, .table-wrapper, [class$='-table-container']) {
+.content-container :is(.table-container, .table-wrapper, .table-wrap, [class$='-table-container']),
+.content-container [data-slot='table-container'] {
+  width: 100%;
   max-width: 100%;
   overflow-x: auto;
   background: var(--surface-color);
-  border-radius: 5px;
+  border-radius: 4px;
 }
 
-.content-container :is([class^='empty-'], [class*=' empty-']) {
-  color: var(--text-secondary);
+.content-container [data-slot='table-container'] {
+  border: 1px solid var(--border-color);
 }
 
-.content-container :is([class^='empty-'], [class*=' empty-']):not(.empty-text) {
-  background: var(--surface-muted);
-  border-color: var(--border-color) !important;
-  border-radius: 5px !important;
-  box-shadow: none !important;
+.content-container [data-slot='card-content'] > [data-slot='table-container'],
+.content-container [data-slot='card-content'] > .table-wrap > [data-slot='table-container'] {
+  border: 0;
 }
 
-.content-container :is([class$='-card'], [class*='-card ']) {
+.content-container [data-slot='card'] {
+  box-shadow: none;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.content-container :is([class$='-card'], [class*='-card ']):hover {
-  transform: none !important;
+.content-container [data-slot='tabs-list'] {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.pagination-container,
+.pagination-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 .content-container pre {
   max-width: 100%;
   overflow: auto;
   color: var(--text-regular);
-  background: var(--surface-muted) !important;
+  background: var(--surface-muted);
   border: 1px solid var(--border-color);
-  border-radius: 5px !important;
+  border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   line-height: 1.65;
 }
 
 @media (max-width: 768px) {
-  .content-container > * > .page-header,
-  .content-container > * > header.page-header {
+  .content-container > * {
+    gap: 12px;
+  }
+
+  .content-container > * > :is(.page-header, .dashboard-header, .settings-page-header, .page-heading) {
     min-height: 0;
-    align-items: flex-start !important;
+    align-items: flex-start;
     flex-direction: column;
     gap: 10px;
   }
 
-  .content-container > * > .page-header :is(.header-actions, .title-actions) {
+  .content-container > * > :is(.page-header, .dashboard-header, .settings-page-header, .page-heading) :is(.header-actions, .title-actions) {
     width: 100%;
     justify-content: flex-start;
   }
 
   .content-container > * > :is(.filter-container, .filter-section, .search-form-container, .toolbar) {
-    padding: 10px !important;
+    padding: 10px;
   }
 
   .content-container :is(.filter-form, .search-form, .toolbar, .action-bar) {
@@ -474,6 +293,17 @@ a,
   .content-container :is(.filter-form, .search-form) > * {
     width: 100%;
     max-width: none;
+  }
+
+  .pagination-container,
+  .pagination-bar {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .content-container > * > :is(.page-header, .dashboard-header, .settings-page-header, .page-heading) :is(.header-actions, .title-actions) > [data-slot='button'] {
+    flex: 1 1 auto;
   }
 }
 

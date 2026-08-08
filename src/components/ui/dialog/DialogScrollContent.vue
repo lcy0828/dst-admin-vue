@@ -4,11 +4,12 @@ import { reactiveOmit } from "@vueuse/core";
 import {
   DialogClose,
   DialogContent,
-  DialogOverlay,
   DialogPortal,
   useForwardPropsEmits,
 } from "reka-ui";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import DialogOverlay from "./DialogOverlay.vue";
 
 defineOptions({
   inheritAttrs: false,
@@ -42,12 +43,12 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
 <template>
   <DialogPortal>
     <DialogOverlay
-      class="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="grid place-items-center overflow-y-auto p-4"
     >
       <DialogContent
         :class="
           cn(
-            'relative z-50 grid w-full max-w-lg my-8 gap-4 border border-border bg-background p-6 shadow-lg duration-200 sm:rounded-lg md:w-full',
+            'relative my-4 grid w-full max-w-lg gap-4 rounded-md bg-popover p-4 text-popover-foreground shadow-lg ring-1 ring-foreground/10 duration-100 md:w-full',
             props.class,
           )
         "
@@ -67,11 +68,11 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
       >
         <slot />
 
-        <DialogClose
-          class="absolute top-4 right-4 p-0.5 transition-colors rounded-md hover:bg-secondary"
-        >
-          <XIcon class="w-4 h-4" />
-          <span class="sr-only">Close</span>
+        <DialogClose as-child>
+          <Button class="absolute top-2 right-2" variant="ghost" size="icon-sm">
+            <XIcon />
+            <span class="sr-only">关闭</span>
+          </Button>
         </DialogClose>
       </DialogContent>
     </DialogOverlay>

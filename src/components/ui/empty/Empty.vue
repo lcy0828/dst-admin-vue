@@ -15,7 +15,7 @@ const props = defineProps({
     data-slot="empty"
     :class="
       cn(
-        'gap-4 rounded-xl border-dashed p-6 flex w-full min-w-0 flex-1 flex-col items-center justify-center text-center text-balance',
+        'gap-3 rounded-md border border-dashed bg-muted/15 px-5 py-8 flex w-full min-w-0 flex-1 flex-col items-center justify-center text-center text-balance',
         props.class,
       )
     "

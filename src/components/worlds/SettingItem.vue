@@ -303,7 +303,7 @@ export default {
 .setting-item-changed {
   border-color: var(--warning-color) !important;
   box-shadow: inset 3px 0 0 var(--warning-color) !important;
-  background-color: #fff8eb !important;
+  background-color: color-mix(in srgb, var(--warning-color) 8%, var(--card)) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

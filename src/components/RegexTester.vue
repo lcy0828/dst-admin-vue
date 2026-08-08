@@ -29,10 +29,10 @@
       </Field>
 
       <Field orientation="horizontal">
-        <div>
+        <FieldContent>
           <FieldLabel for="regex-enabled">使用正则表达式</FieldLabel>
           <FieldDescription>关闭后按普通字符串匹配。</FieldDescription>
-        </div>
+        </FieldContent>
         <UiSwitch id="regex-enabled" v-model="regexForm.isRegex" @update:model-value="testRegex" />
       </Field>
 
@@ -111,7 +111,7 @@
 import { CircleCheckIcon, CircleXIcon, RefreshCwIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button as UiButton } from '@/components/ui/button'
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch as UiSwitch } from '@/components/ui/switch'
@@ -126,6 +126,7 @@ export default {
     CircleCheckIcon,
     CircleXIcon,
     Field,
+    FieldContent,
     FieldDescription,
     FieldGroup,
     FieldLabel,
@@ -541,14 +542,17 @@ export default {
 }
 
 .highlighted-content :deep(.highlight) {
-  background-color: #ffeaa7;
+  background-color: color-mix(in srgb, var(--chart-3) 35%, var(--background));
+  color: var(--foreground);
   padding: 2px 0;
   border-radius: 2px;
 }
 
 .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 20px;
-  text-align: right;
 }
 
 </style>
