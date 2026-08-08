@@ -1,10 +1,12 @@
 <template>
   <div class="page-container">
     <el-card class="main-card">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>物品生成器</span>
         <el-button style="float: right; padding: 3px 0" type="text" @click="resetGenerator">重置</el-button>
       </div>
+</template>
 
       <el-row :gutter="20">
         <!-- 左侧生成器控制面板 -->
@@ -205,7 +207,7 @@
                 
                 <el-form-item label="持续时间">
                   <el-input-number v-model="generatorForm.duration" :min="0" :max="3600" :step="30" size="small">
-                    <template slot="append">秒</template>
+                    <template v-slot:append>秒</template>
                   </el-input-number>
                 </el-form-item>
               </div>
@@ -235,15 +237,17 @@
                   
                   <el-form-item label="自定义种子">
                     <el-input v-model="generatorForm.seed" placeholder="留空使用随机种子">
-                      <el-button slot="append" icon="el-icon-refresh" @click="generateRandomSeed"></el-button>
+                      <template v-slot:append>
+<el-button  icon="el-icon-refresh" @click="generateRandomSeed" disabled title="真实 v2 物品接口尚未实现"></el-button>
+</template>
                     </el-input>
                   </el-form-item>
                 </el-collapse-item>
               </el-collapse>
               
               <el-form-item>
-                <el-button type="primary" @click="generateItems" :disabled="!isDistributionValid || isGenerating" style="width: 100%">
-                  <component is="el-icon-magic-stick" class="legacy-icon" /> 生成物品
+                <el-button type="primary" @click="generateItems" disabled title="真实 v2 物品接口尚未实现" style="width: 100%">
+                  <component :is="'el-icon-magic-stick'" class="legacy-icon" /> 生成物品
                 </el-button>
               </el-form-item>
             </el-form>
@@ -256,13 +260,13 @@
             <div class="result-header">
               <h3>生成结果 <span v-if="generatedItems.length">（{{ generatedItems.length }}个物品）</span></h3>
               <div class="result-actions" v-if="generatedItems.length">
-                <el-button size="small" type="success" icon="el-icon-download" @click="exportGeneratedItems">导出</el-button>
-                <el-button size="small" type="primary" icon="el-icon-plus" @click="saveToInventory">保存到物品库</el-button>
+                <el-button size="small" type="success" icon="el-icon-download" @click="exportGeneratedItems" disabled>导出</el-button>
+                <el-button size="small" type="primary" icon="el-icon-plus" @click="saveToInventory" disabled>保存到物品库</el-button>
               </div>
             </div>
             
             <div v-if="!generatedItems.length" class="empty-result">
-              <component is="el-icon-box" class="legacy-icon" />
+              <component :is="'el-icon-box'" class="legacy-icon" />
               <p>请设置参数并点击"生成物品"按钮</p>
             </div>
             
@@ -345,8 +349,8 @@
                 </div>
                 
                 <div class="item-card-actions">
-                  <el-button size="mini" type="primary" icon="el-icon-edit" @click="editGeneratedItem(item)">编辑</el-button>
-                  <el-button size="mini" type="success" icon="el-icon-plus" @click="saveGeneratedItem(item)">保存</el-button>
+                  <el-button size="mini" type="primary" icon="el-icon-edit" @click="editGeneratedItem(item)" disabled>编辑</el-button>
+                  <el-button size="mini" type="success" icon="el-icon-plus" @click="saveGeneratedItem(item)" disabled>保存</el-button>
                 </div>
               </el-card>
             </div>
@@ -472,10 +476,12 @@
           </el-form-item>
         </div>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitEditForm">确定</el-button>
+        <el-button type="primary" @click="submitEditForm" disabled>确定</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>
@@ -670,28 +676,13 @@ export default {
     },
     // 生成随机种子
     generateRandomSeed() {
-      this.generatorForm.seed = Math.random().toString(36).substring(2, 15);
+      this.$message.error('真实后端尚未提供物品生成接口');
     },
     // 生成物品
     generateItems() {
-      if (!this.isDistributionValid) return;
-      
-      this.isGenerating = true;
       this.generatedItems = [];
-      
-      // 使用用户提供的种子或生成新种子
-      const seed = this.generatorForm.seed || Math.random().toString(36).substring(2, 15);
-      
-      // 模拟生成
-      setTimeout(() => {
-        for (let i = 0; i < this.generatorForm.count; i++) {
-          // 生成物品
-          const item = this.generateSingleItem(i, seed + i);
-          this.generatedItems.push(item);
-        }
-        
-        this.isGenerating = false;
-      }, 1000);
+      this.isGenerating = false;
+      this.$message.error('真实后端尚未提供物品生成接口');
     },
     // 生成单个物品
     generateSingleItem(index, seed) {
@@ -706,7 +697,7 @@ export default {
       let rarity = 'common';
       let rarityBonus = 1;
       
-      const { common, rare, epic, legendary } = this.generatorForm.rarityDistribution;
+      const { common, rare, epic } = this.generatorForm.rarityDistribution;
       
       if (rarityRoll >= common) {
         rarity = 'rare';
@@ -887,7 +878,7 @@ export default {
       };
     },
     // 生成材料
-    generateMaterial(item, random, rarityBonus) {
+    generateMaterial(item, random) {
       const materialNames = ['铁矿石', '金矿石', '银矿石', '铜矿石', '木材', '皮革', '布料', '宝石', '骨头', '石头'];
       const materialName = materialNames[Math.floor(random() * materialNames.length)];
       const description = '用于制作物品和装备的基础材料。';
@@ -946,7 +937,7 @@ export default {
     },
     // 随机名称生成
     getRandomName(nameArray) {
-      return nameArray[Math.floor(Math.random() * nameArray.length)];
+      return nameArray[0] || '';
     },
     // 生成物品ID
     generateItemId(type) {
@@ -958,47 +949,47 @@ export default {
         material: 'M',
         equipment: 'E'
       };
-      return typePrefix[type] + Math.floor(Math.random() * 100000).toString();
+      return typePrefix[type] || '';
     },
     // 导出物品
     exportGeneratedItems() {
-      // 实现导出物品的逻辑
+      this.$message.error('没有真实物品数据可导出');
     },
     // 保存物品到物品库
     saveToInventory() {
-      // 实现保存物品到物品库的逻辑
+      this.$message.error('真实后端尚未提供物品库接口');
     },
     // 编辑生成的物品
-    editGeneratedItem(item) {
-      // 实现编辑生成的物品的逻辑
+    editGeneratedItem() {
+      this.$message.error('真实后端尚未提供物品编辑接口');
     },
     // 保存编辑后的物品
     submitEditForm() {
-      // 实现保存编辑后的物品的逻辑
+      this.$message.error('真实后端尚未提供物品编辑接口');
     },
     // 获取物品类型标签
     getItemTypeTag(type) {
-      // 实现获取物品类型标签的逻辑
+      return { weapon: 'danger', tool: 'primary', food: 'success', equipment: 'warning' }[type] || 'info';
     },
     // 获取物品类型名称
     getItemTypeName(type) {
-      // 实现获取物品类型名称的逻辑
+      return { weapon: '武器', tool: '工具', food: '食物', material: '材料', equipment: '装备' }[type] || '其他';
     },
     // 获取物品稀有度标签
     getItemRarityTag(rarity) {
-      // 实现获取物品稀有度标签的逻辑
+      return { rare: 'primary', epic: 'success', legendary: 'danger' }[rarity] || 'info';
     },
     // 获取物品稀有度名称
     getItemRarityName(rarity) {
-      // 实现获取物品稀有度名称的逻辑
+      return { common: '普通', rare: '稀有', epic: '史诗', legendary: '传说' }[rarity] || '未知';
     },
     // 获取装备槽位名称
     getEquipmentSlotName(slot) {
-      // 实现获取装备槽位名称的逻辑
+      return { head: '头部', body: '身体', legs: '腿部', feet: '脚部', accessory: '饰品' }[slot] || '未知';
     },
     // 保存生成的物品
-    saveGeneratedItem(item) {
-      // 实现保存生成的物品的逻辑
+    saveGeneratedItem() {
+      this.$message.error('真实后端尚未提供物品库接口');
     }
   }
 };
@@ -1303,4 +1294,4 @@ export default {
     margin-top: 10px;
   }
 }
-</style> 
+</style>

@@ -4,18 +4,20 @@
       <h2 class="page-title">定时任务管理</h2>
       <div class="page-actions">
         <el-button type="primary" @click="navigateToCreate">
-          <component is="el-icon-plus" class="legacy-icon" /> 创建任务
+          <component :is="'el-icon-plus'" class="legacy-icon" /> 创建任务
         </el-button>
       </div>
     </div>
     
     <el-card shadow="hover" class="task-list-card">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>任务列表</span>
         <el-button style="float: right; padding: 3px 0" type="text" @click="refreshTasks">
-          <component is="el-icon-refresh" class="legacy-icon" /> 刷新
+          <component :is="'el-icon-refresh'" class="legacy-icon" /> 刷新
         </el-button>
       </div>
+</template>
       
       <el-table 
         :data="taskList" 
@@ -23,7 +25,7 @@
         style="width: 100%"
         :row-class-name="getRowClassName">
         <el-table-column prop="name" label="任务名称" min-width="180">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="task-name">
               <el-tag 
                 :type="getTaskTypeTag(scope.row.type)" 
@@ -37,10 +39,10 @@
         </el-table-column>
         
         <el-table-column prop="schedule" label="执行计划" min-width="180">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tooltip :content="getScheduleDescription(scope.row.schedule)" placement="top">
               <div class="task-schedule">
-                <component is="el-icon-time" class="legacy-icon" />
+                <component :is="'el-icon-time'" class="legacy-icon" />
                 <span>{{ scope.row.schedule }}</span>
               </div>
             </el-tooltip>
@@ -48,25 +50,25 @@
         </el-table-column>
         
         <el-table-column prop="target" label="目标服务器" min-width="150">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag size="mini" type="info">{{ scope.row.target }}</el-tag>
           </template>
         </el-table-column>
         
         <el-table-column prop="lastRun" label="上次执行" min-width="150">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <span>{{ scope.row.lastRun || '从未执行' }}</span>
           </template>
         </el-table-column>
         
         <el-table-column prop="nextRun" label="下次执行" min-width="150">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <span>{{ scope.row.nextRun }}</span>
           </template>
         </el-table-column>
         
         <el-table-column prop="status" label="状态" width="100">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag 
               :type="getStatusType(scope.row.status)" 
               effect="dark" 
@@ -77,7 +79,7 @@
         </el-table-column>
         
         <el-table-column label="操作" width="220">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-button 
               size="mini" 
               type="primary" 
@@ -110,7 +112,7 @@
           layout="total, prev, pager, next"
           :total="totalTasks"
           :page-size="pageSize"
-          :current-page.sync="currentPage"
+          v-model:current-page="currentPage"
           @current-change="handleCurrentChange">
         </el-pagination>
       </div>
@@ -163,17 +165,15 @@ export default {
             
             this.totalTasks = response.data.data.total || this.taskList.length;
           } else {
-            // 如果API请求失败，使用模拟数据作为备用
-            this.taskList = this.generateDemoTasks();
-            this.totalTasks = this.taskList.length;
-            console.error('获取任务列表失败，使用模拟数据');
+            this.taskList = [];
+            this.totalTasks = 0;
+            this.$message.error('获取任务列表失败');
           }
         })
         .catch(error => {
-          console.error('获取任务列表失败:', error);
-          // 出错时使用模拟数据
-          this.taskList = this.generateDemoTasks();
-          this.totalTasks = this.taskList.length;
+          this.taskList = [];
+          this.totalTasks = 0;
+          this.$message.error(error.message || '获取任务列表失败');
         })
         .finally(() => {
           this.loading = false;
@@ -203,92 +203,6 @@ export default {
       }
       
       return task.group_name || '其他';
-    },
-    
-    // 保留用于备用的模拟数据生成方法
-    generateDemoTasks() {
-      return [
-        {
-          id: 1,
-          name: '每日服务器重启',
-          type: '服务器维护',
-          schedule: '每天 04:00',
-          target: '主世界服务器',
-          lastRun: '2023-05-10 04:00',
-          nextRun: '2023-05-11 04:00',
-          status: '正常'
-        },
-        {
-          id: 2,
-          name: '周末活动开启',
-          type: '游戏活动',
-          schedule: '每周五 18:00',
-          target: '全部服务器',
-          lastRun: '2023-05-05 18:00',
-          nextRun: '2023-05-12 18:00',
-          status: '正常'
-        },
-        {
-          id: 3,
-          name: '玩家数据备份',
-          type: '数据备份',
-          schedule: '每6小时',
-          target: '全部服务器',
-          lastRun: '2023-05-10 18:00',
-          nextRun: '2023-05-11 00:00',
-          status: '正常'
-        },
-        {
-          id: 4,
-          name: '服务器资源清理',
-          type: '系统维护',
-          schedule: '每周一 03:00',
-          target: '全部服务器',
-          lastRun: '2023-05-08 03:00',
-          nextRun: '2023-05-15 03:00',
-          status: '正常'
-        },
-        {
-          id: 5,
-          name: '游戏公告推送',
-          type: '公告通知',
-          schedule: '每天 12:00, 18:00',
-          target: '全部服务器',
-          lastRun: '2023-05-10 12:00',
-          nextRun: '2023-05-10 18:00',
-          status: '正常'
-        },
-        {
-          id: 6,
-          name: '模组更新检查',
-          type: '模组管理',
-          schedule: '每天 02:00',
-          target: '全部服务器',
-          lastRun: '2023-05-10 02:00',
-          nextRun: '2023-05-11 02:00',
-          status: '暂停'
-        },
-        {
-          id: 7,
-          name: '季节性活动结束',
-          type: '游戏活动',
-          schedule: '2023-05-20 23:59',
-          target: '全部服务器',
-          lastRun: null,
-          nextRun: '2023-05-20 23:59',
-          status: '待执行'
-        },
-        {
-          id: 8,
-          name: '玩家活跃度统计',
-          type: '数据分析',
-          schedule: '每周日 23:00',
-          target: '全部服务器',
-          lastRun: '2023-05-07 23:00',
-          nextRun: '2023-05-14 23:00',
-          status: '正常'
-        }
-      ];
     },
     
     refreshTasks() {
@@ -336,19 +250,7 @@ export default {
     },
     
     getScheduleDescription(schedule) {
-      // 提供更详细的调度说明
-      const descriptions = {
-        '每天 04:00': '每天凌晨4点执行服务器重启',
-        '每周五 18:00': '每周五晚上6点开启周末活动',
-        '每6小时': '每6小时执行一次数据备份，保证数据安全',
-        '每周一 03:00': '每周一凌晨3点进行服务器资源回收与清理',
-        '每天 12:00, 18:00': '每天中午12点和晚上6点推送游戏公告',
-        '每天 02:00': '每天凌晨2点检查并更新模组',
-        '2023-05-20 23:59': '在2023年5月20日晚上11:59结束季节性活动',
-        '每周日 23:00': '每周日晚上11点统计玩家一周活跃数据'
-      };
-      
-      return descriptions[schedule] || schedule;
+      return schedule;
     },
     
     canRunTask(task) {
@@ -387,10 +289,7 @@ export default {
               this.loading = false;
             });
         } else {
-          this.$message({
-            type: 'success',
-            message: `任务"${task.name}"已开始执行`
-          });
+          this.$message.error('任务缺少真实后端标识，无法执行');
         }
       }).catch(() => {});
     },
@@ -400,12 +299,7 @@ export default {
         this.$router.push({
           path: '/cron/edit/' + task.raw.id
         });
-      } else {
-        this.$router.push({
-          path: '/scheduled/create',
-          query: { id: task.id }
-        });
-      }
+      } else this.$message.error('任务缺少真实后端标识，无法编辑');
     },
     
     deleteTask(task) {
@@ -434,16 +328,7 @@ export default {
               console.error('删除任务失败:', error);
               this.$message.error('删除任务失败');
             });
-        } else {
-          // 模拟删除操作
-          this.taskList = this.taskList.filter(t => t.id !== task.id);
-          this.totalTasks = this.taskList.length;
-          
-          this.$message({
-            type: 'success',
-            message: `任务"${task.name}"已删除`
-          });
-        }
+        } else this.$message.error('任务缺少真实后端标识，无法删除');
       }).catch(() => {});
     }
   }
@@ -506,4 +391,4 @@ export default {
 :deep(.el-table .cell) {
   white-space: nowrap;
 }
-</style> 
+</style>

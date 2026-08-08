@@ -1,9 +1,10 @@
 <template>
   <div class="world-settings-container">
     <el-card class="settings-card" shadow="hover">
-      <div slot="header" class="card-header">
+      <template v-slot:header>
+<div  class="card-header">
         <div class="header-title">
-          <component is="el-icon-earth" class="legacy-icon" />
+          <component :is="'el-icon-earth'" class="legacy-icon" />
           <h2>世界设置{{ roomName ? ` - ${roomName}` : '' }}</h2>
         </div>
         <div class="header-actions">
@@ -18,6 +19,7 @@
           >刷新设置</el-button>
         </div>
       </div>
+</template>
 
       <el-tabs v-model="activeTab" type="border-card" class="custom-tabs">
         <!-- 动态生成世界标签页 -->
@@ -26,9 +28,9 @@
           :key="world.name" 
           :label="world.name + (world.type === 'forest' ? ' (森林)' : world.type === 'cave' ? ' (洞穴)' : '')" 
           :name="world.name">
-          <template slot="label">
+          <template v-slot:label>
             <span>{{ world.name + (world.type === 'forest' ? ' (森林)' : world.type === 'cave' ? ' (洞穴)' : '') }}</span>
-            <component is="el-icon-close" class="legacy-icon world-delete-icon" @click.stop="confirmDeleteWorld(world)" />
+            <component :is="'el-icon-close'" class="legacy-icon world-delete-icon" @click.stop="confirmDeleteWorld(world)" />
           </template>
           <div class="tab-header-content">
             <div class="world-icon" :class="world.type === 'forest' ? 'forest-icon' : 'cave-icon'"></div>
@@ -170,9 +172,9 @@
         
         <!-- 添加世界按钮 -->
         <el-tab-pane name="add-world" disabled>
-          <template slot="label">
+          <template v-slot:label>
             <div class="add-world-tab" @click.stop="showAddWorldDialog">
-              <component is="el-icon-plus" class="legacy-icon" />
+              <component :is="'el-icon-plus'" class="legacy-icon" />
               <span>新增世界</span>
             </div>
           </template>
@@ -265,10 +267,12 @@
           <el-input type="textarea" v-model="newPreset.description" rows="3" placeholder="请简要描述这个预设的特点"></el-input>
         </el-form-item>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="presetDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmSavePreset">保存</el-button>
       </span>
+</template>
     </el-dialog>
     
     <!-- 添加世界对话框 -->
@@ -290,10 +294,12 @@
           </el-select>
         </el-form-item>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="addWorldDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="addWorld" :loading="addWorldLoading">创建</el-button>
       </span>
+</template>
     </el-dialog>
     
     <!-- 删除世界确认对话框 -->
@@ -309,16 +315,17 @@
         v-model="deleteConfirmation"
         :placeholder="roomName ? `请输入完整房间名 ${roomName}` : '请输入完整房间名'">
       </el-input>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="deleteWorldDialogVisible = false">取消</el-button>
         <el-button type="danger" @click="deleteWorld" :loading="deleteWorldLoading">删除</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import Vue from 'vue';
 import WorldSettingsPanel from '@/components/worlds/WorldSettingsPanel.vue';
 import SettingsFooter from '@/components/worlds/SettingsFooter.vue';
 import api from '@/api';
@@ -355,6 +362,8 @@ export default {
       defaultValueCache: {}, // 用于缓存默认值
       virtualScrollState: {}, // 虚拟滚动状态
       renderQueue: [], // 渲染队列
+      scrollContainer: null,
+      debouncedScrollHandler: null,
       windowSize: {
         width: window.innerWidth,
         height: window.innerHeight
@@ -415,11 +424,14 @@ export default {
     this.debouncedResize = this.debounce(this.handleResize, 150);
     window.addEventListener('resize', this.debouncedResize);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // 清理事件监听器
     document.removeEventListener('click', this.debouncedGlobalClick);
     window.removeEventListener('resize', this.debouncedResize);
     window.removeEventListener('resize', this.handleResize);
+    if (this.scrollContainer && this.debouncedScrollHandler) {
+      this.scrollContainer.removeEventListener('scroll', this.debouncedScrollHandler);
+    }
     
     // 清理DOM观察器
     if (this.domObserver) {
@@ -469,7 +481,7 @@ export default {
             closeOnClickModal: false
           }).then(() => {
             // 用户选择了森林世界
-            this.$set(currentWorld, 'type', 'forest');
+            currentWorld.type = 'forest';
             // 更新世界类型标志
             this.hasForestWorld = true;
             // 加载该世界的配置
@@ -477,7 +489,7 @@ export default {
           }).catch(action => {
             if (action === 'cancel') {
               // 用户选择了洞穴世界
-              this.$set(currentWorld, 'type', 'cave');
+              currentWorld.type = 'cave';
               // 更新世界类型标志
               this.hasCaveWorld = true;
               // 加载该世界的配置
@@ -837,7 +849,7 @@ export default {
           
           // 只在值不同时更新
           if (oldValue !== newValue) {
-            Vue.set(item, 'value', newValue);
+            item.value = newValue;
           }
         }
       });
@@ -868,7 +880,7 @@ export default {
       if (item.value === value) return;
       
       // 更新值
-      Vue.set(item, 'value', value);
+      item.value = value;
       
       // 使用防抖优化变更检查
       this.debouncedCheckChanges();
@@ -1045,43 +1057,12 @@ export default {
         const category = this.getCategoryByPath(target, path);
         if (category && category.items && category.items[itemKey]) {
           // 直接设置值，避免深度克隆
-          Vue.set(category.items[itemKey], 'value', sourceItem.value);
+          category.items[itemKey].value = sourceItem.value;
         }
       });
     },
     confirmSavePreset() {
-      if (!this.newPreset.name) {
-        this.$message.warning('请输入预设名称');
-        return;
-      }
-      
-      // 保存当前设置为自定义预设
-      const presetId = 'custom_' + Date.now();
-      
-      // 创建高效的预设对象，只保存必要信息
-      const preset = {
-        id: presetId,
-        name: this.newPreset.name,
-        description: this.newPreset.description,
-        createdAt: new Date().toISOString(),
-        settings: {}
-      };
-      
-      // 只保存当前标签页的设置
-      if (this.activeTab === 'forest' && this.forestSettings) {
-        preset.settings.forest = this.extractEssentialSettings(this.forestSettings);
-      } else if (this.activeTab === 'cave' && this.caveSettings) {
-        preset.settings.cave = this.extractEssentialSettings(this.caveSettings);
-      }
-      
-      // 添加到预设列表
-      this.customPresets.push(preset);
-      
-      // 高效保存到本地存储
-      this.savePresetsToLocalStorage();
-      
-      this.$message.success('预设保存成功');
-      this.presetDialogVisible = false;
+      this.$message.error('真实后端尚未提供自定义预设持久化接口');
     },
     extractEssentialSettings(settings) {
       const result = {};
@@ -1116,22 +1097,6 @@ export default {
       });
       
       return result;
-    },
-    savePresetsToLocalStorage() {
-      try {
-        // 先处理预设数据，减少存储大小
-        const minimalPresets = this.customPresets.map(preset => ({
-          id: preset.id,
-          name: preset.name,
-          description: preset.description,
-          createdAt: preset.createdAt,
-          settings: preset.settings
-        }));
-        
-        localStorage.setItem('dst_custom_presets', JSON.stringify(minimalPresets));
-      } catch (e) {
-        this.$message.error('保存预设失败，可能是存储空间不足');
-      }
     },
     getChangedItems() {
       if (this.changedItemsCache !== null) {
@@ -1196,7 +1161,7 @@ export default {
                           'spiders', 'hounds', 'bearger', 'deerclops'];
       
       commonKeys.forEach(key => {
-        this.$set(this.loadedSelects, key, true);
+        if (this.loadedSelects) this.loadedSelects[key] = true;
       });
       
       // 延迟加载其他选择器
@@ -1211,7 +1176,7 @@ export default {
           // 从自定义属性或ID中提取键名
           const key = item.getAttribute('data-key') || item.id;
           if (key) {
-            this.$set(this.loadedSelects, key, true);
+            if (this.loadedSelects) this.loadedSelects[key] = true;
           }
         });
       }, 500);
@@ -1285,7 +1250,7 @@ export default {
       const keys = Object.keys(category.items).slice(0, 5);
       keys.forEach(key => {
         if (key !== currentItemKey) {
-          this.$set(this.loadedSelects, key, true);
+          if (this.loadedSelects) this.loadedSelects[key] = true;
         }
       });
     },
@@ -1463,9 +1428,8 @@ export default {
         }, 100);
         
         scrollContainer.addEventListener('scroll', debouncedScrollHandler, { passive: true });
-        this.$once('hook:beforeDestroy', () => {
-          scrollContainer.removeEventListener('scroll', debouncedScrollHandler);
-        });
+        this.scrollContainer = scrollContainer;
+        this.debouncedScrollHandler = debouncedScrollHandler;
       }
     },
     updateScrollItems() {
@@ -1523,7 +1487,7 @@ export default {
           this.traverseSettings(settings, (item, itemKey) => {
             // 如果存在覆盖配置，则应用
             if (Object.prototype.hasOwnProperty.call(worldOverride.data, itemKey)) {
-              Vue.set(item, 'value', worldOverride.data[itemKey]);
+              item.value = worldOverride.data[itemKey];
             }
           });
         }

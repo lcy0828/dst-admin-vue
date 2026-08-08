@@ -4,7 +4,7 @@
       <h2 class="page-title">{{ isEdit ? '编辑任务' : '创建新任务' }}</h2>
       <div class="page-actions">
         <el-button @click="goBack">
-          <component is="el-icon-back" class="legacy-icon" /> 返回列表
+          <component :is="'el-icon-back'" class="legacy-icon" /> 返回列表
         </el-button>
       </div>
     </div>
@@ -302,13 +302,7 @@ export default {
         { value: 'run_command', label: '运行命令' }
       ],
       cronDescription: '',
-      serverList: [
-        { id: 1, name: '主世界服务器' },
-        { id: 2, name: '洞穴服务器' },
-        { id: 3, name: 'MOD测试服务器' },
-        { id: 4, name: '活动服务器' },
-        { id: 5, name: '开发测试服务器' }
-      ],
+      serverList: [],
       rules: {
         name: [
           { required: true, message: '请输入任务名称', trigger: 'blur' },
@@ -327,16 +321,26 @@ export default {
       }
     };
   },
-  created() {
+  async created() {
+    await this.loadRoomScope();
     // 检查是否是编辑模式
     const { id } = this.$route.query;
     if (id) {
       this.isEdit = true;
       this.taskId = parseInt(id);
-      this.fetchTaskData();
+      this.loadTaskData();
     }
   },
   methods: {
+    async loadRoomScope() {
+      try {
+        const scope = await cronTaskApi.getRoomScope(true);
+        this.serverList = scope.rooms;
+      } catch (error) {
+        this.serverList = [];
+        this.$message.error(error.message || '读取真实房间列表失败');
+      }
+    },
     goBack() {
       this.$router.push('/scheduled/tasks');
     },
@@ -555,22 +559,25 @@ export default {
       
       // 设置cron表达式
       switch (this.taskForm.scheduleType) {
-        case 'once':
+        case 'once': {
           // 将单次执行的日期时间转换为cron表达式
           const dateTime = new Date(this.taskForm.schedule.once.dateTime);
           apiTask.spec = `${dateTime.getMinutes()} ${dateTime.getHours()} ${dateTime.getDate()} ${dateTime.getMonth() + 1} * ${dateTime.getFullYear()}`;
           break;
-        case 'daily':
+        }
+        case 'daily': {
           // 每日任务
           const [hours, minutes] = this.taskForm.schedule.daily.time.split(':');
           apiTask.spec = `${minutes} ${hours} */${this.taskForm.schedule.daily.repeatDays} * *`;
           break;
-        case 'weekly':
+        }
+        case 'weekly': {
           // 每周任务
           const [weekHours, weekMinutes] = this.taskForm.schedule.weekly.time.split(':');
           const days = this.taskForm.schedule.weekly.days.sort().join(',');
           apiTask.spec = `${weekMinutes} ${weekHours} * * ${days}`;
           break;
+        }
         case 'custom':
           // 自定义cron表达式
           apiTask.spec = this.taskForm.schedule.custom.expression;
@@ -782,45 +789,6 @@ export default {
       }
     },
     
-    fetchTaskData() {
-      if (!this.taskId) return;
-      
-      this.loading = true;
-      
-      // 模拟API请求
-      setTimeout(() => {
-        // 获取示例任务数据
-        const demoTasks = this.getDemoTasks();
-        const taskData = demoTasks.find(task => task.id === this.taskId);
-        
-        if (taskData) {
-          // 填充表单数据
-          this.taskForm = {
-            name: taskData.name,
-            type: this.mapTypeToValue(taskData.type),
-            description: taskData.description || '',
-            targets: this.parseTargets(taskData.target),
-            priority: taskData.priority || 'normal',
-            scheduleType: this.parseScheduleType(taskData.schedule),
-            schedule: this.parseSchedule(taskData.schedule),
-            action: {
-              type: 'server_restart',
-              params: {
-                restartMode: 'graceful',
-                notifyPlayers: true,
-                notifyTime: '5'
-              }
-            }
-          };
-        } else {
-          this.$message.error('未找到任务数据');
-          this.goBack();
-        }
-        
-        this.loading = false;
-      }, 500);
-    },
-    
     // 映射任务类型文本到值
     mapTypeToValue(typeText) {
       const typeMap = {
@@ -912,59 +880,6 @@ export default {
       return schedule;
     },
     
-    // 获取示例任务数据
-    getDemoTasks() {
-      return [
-        {
-          id: 1,
-          name: '每日服务器重启',
-          type: '服务器维护',
-          description: '每天凌晨自动重启服务器，清理内存并刷新游戏状态',
-          schedule: '每天 04:00',
-          target: '主世界服务器',
-          lastRun: '2023-05-10 04:00',
-          nextRun: '2023-05-11 04:00',
-          status: '正常',
-          priority: 'high'
-        },
-        {
-          id: 2,
-          name: '周末活动开启',
-          type: '游戏活动',
-          description: '自动开启周末特别活动，增加掉落率和特殊游戏规则',
-          schedule: '每周五 18:00',
-          target: '全部服务器',
-          lastRun: '2023-05-05 18:00',
-          nextRun: '2023-05-12 18:00',
-          status: '正常',
-          priority: 'normal'
-        },
-        {
-          id: 3,
-          name: '玩家数据备份',
-          type: '数据备份',
-          description: '定期备份玩家数据，防止数据丢失',
-          schedule: '每6小时',
-          target: '全部服务器',
-          lastRun: '2023-05-10 18:00',
-          nextRun: '2023-05-11 00:00',
-          status: '正常',
-          priority: 'high'
-        },
-        {
-          id: 4,
-          name: '服务器资源清理',
-          type: '系统维护',
-          description: '清理服务器上的临时文件和日志，释放磁盘空间',
-          schedule: '每周一 03:00',
-          target: '全部服务器',
-          lastRun: '2023-05-08 03:00',
-          nextRun: '2023-05-15 03:00',
-          status: '正常',
-          priority: 'normal'
-        }
-      ];
-    }
   }
 };
 </script>
@@ -1048,4 +963,4 @@ export default {
   color: #d97932;
   font-family: Consolas, Monaco, monospace;
 }
-</style> 
+</style>

@@ -111,36 +111,16 @@ export const roomApi = legacyRoomApi;
 
 export const playerApi = realPlayerApi;
 
+const unavailableItemAPI = () => Promise.reject(new Error('当前真实后端未提供物品目录与生成接口'));
+
 // 物品相关API
 export const itemApi = {
-  // 获取物品列表
-  getItemList(params) {
-    return request.get(`/items`, { params });
-  },
-  // 获取物品详情
-  getItemDetail(id) {
-    return request.get(`/items/${id}`);
-  },
-  // 生成物品到房间
-  generateItem(data) {
-    return request.post(`/items/generate`, data);
-  },
-  // 获取物品分类
-  getItemCategories() {
-    return request.get(`/items/categories`);
-  },
-  // 搜索物品
-  searchItems(params) {
-    return realModApi.searchMods({
-      keyword: params.modname,
-      page: params.page,
-      pageSize: params.pageSize
-    });
-  },
-
-  saveModConfig(params) {
-    return request.get(`/items/search`, params);
-  }
+  getItemList: unavailableItemAPI,
+  getItemDetail: unavailableItemAPI,
+  generateItem: unavailableItemAPI,
+  getItemCategories: unavailableItemAPI,
+  searchItems: unavailableItemAPI,
+  saveModConfig: unavailableItemAPI
 };
 
 // 模组相关API

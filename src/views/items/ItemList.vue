@@ -1,10 +1,12 @@
 <template>
   <div class="page-container">
     <el-card class="main-card">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>物品管理</span>
-        <el-button style="float: right; padding: 3px 0" type="text" @click="refreshData">刷新</el-button>
+        <el-button style="float: right; padding: 3px 0" type="text" @click="refreshData" disabled>刷新</el-button>
       </div>
+</template>
 
       <!-- 搜索区域 -->
       <el-form :inline="true" :model="searchForm" class="search-form" size="small">
@@ -30,17 +32,17 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" icon="el-icon-search" @click="handleSearch">搜索</el-button>
-          <el-button icon="el-icon-refresh" @click="resetSearch">重置</el-button>
+          <el-button type="primary" icon="el-icon-search" @click="handleSearch" disabled>搜索</el-button>
+          <el-button icon="el-icon-refresh" @click="resetSearch" disabled>重置</el-button>
         </el-form-item>
       </el-form>
 
       <!-- 工具栏 -->
       <div class="tool-bar">
-        <el-button type="primary" icon="el-icon-plus" @click="handleAdd">添加物品</el-button>
+        <el-button type="primary" icon="el-icon-plus" @click="handleAdd" disabled title="真实 v2 物品目录接口尚未实现">添加物品</el-button>
         <el-button type="danger" icon="el-icon-delete" :disabled="!hasSelection" @click="handleBatchDelete">批量删除</el-button>
-        <el-button type="warning" icon="el-icon-download" @click="exportItems">导出列表</el-button>
-        <el-button type="success" icon="el-icon-upload2" @click="importDialogVisible = true">导入物品</el-button>
+        <el-button type="warning" icon="el-icon-download" @click="exportItems" disabled>导出列表</el-button>
+        <el-button type="success" icon="el-icon-upload2" @click="importDialogVisible = true" disabled>导入物品</el-button>
       </div>
 
       <!-- 物品列表 -->
@@ -54,7 +56,7 @@
           <el-table-column type="selection" width="55"></el-table-column>
           <el-table-column prop="itemId" label="物品ID" width="100" align="center"></el-table-column>
           <el-table-column prop="name" label="物品名称" min-width="150">
-            <template slot-scope="scope">
+            <template v-slot="scope">
               <div class="item-info">
                 <el-image :src="scope.row.iconUrl" :preview-src-list="[scope.row.iconUrl]" class="item-icon"></el-image>
                 <div class="item-detail">
@@ -65,32 +67,33 @@
             </template>
           </el-table-column>
           <el-table-column prop="type" label="类型" width="100" align="center">
-            <template slot-scope="scope">
+            <template v-slot="scope">
               <el-tag :type="getItemTypeTag(scope.row.type)">{{ getItemTypeName(scope.row.type) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="rarity" label="稀有度" width="100" align="center">
-            <template slot-scope="scope">
+            <template v-slot="scope">
               <el-tag :type="getItemRarityTag(scope.row.rarity)">{{ getItemRarityName(scope.row.rarity) }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column prop="stackSize" label="堆叠上限" width="100" align="center"></el-table-column>
           <el-table-column prop="value" label="价值" width="100" align="center">
-            <template slot-scope="scope">
+            <template v-slot="scope">
               {{ scope.row.value }} 金币
             </template>
           </el-table-column>
           <el-table-column prop="weight" label="重量" width="100" align="center">
-            <template slot-scope="scope">
+            <template v-slot="scope">
               {{ scope.row.weight }} 单位
             </template>
           </el-table-column>
           <el-table-column label="操作" width="200" align="center">
-            <template slot-scope="scope">
+            <template v-slot="scope">
               <el-button 
                 size="mini" 
                 type="primary" 
-                icon="el-icon-edit" 
+                  icon="el-icon-edit"
+                  disabled
                 @click="handleEdit(scope.row)">
                 编辑
               </el-button>
@@ -104,7 +107,8 @@
               <el-button 
                 size="mini" 
                 type="danger" 
-                icon="el-icon-delete" 
+                  icon="el-icon-delete"
+                  disabled
                 @click="handleDelete(scope.row)">
                 删除
               </el-button>
@@ -250,15 +254,17 @@
             :http-request="uploadIcon"
             :before-upload="beforeIconUpload">
             <img v-if="itemForm.iconUrl" :src="itemForm.iconUrl" class="avatar">
-            <component v-else is="el-icon-plus" class="legacy-icon avatar-uploader-icon" />
+            <component v-else :is="'el-icon-plus'" class="legacy-icon avatar-uploader-icon" />
           </el-upload>
           <div class="upload-tip">请上传物品图标，建议尺寸 128x128 像素</div>
         </el-form-item>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitItemForm">确定</el-button>
+        <el-button type="primary" @click="submitItemForm" disabled>确定</el-button>
       </span>
+</template>
     </el-dialog>
 
     <!-- 物品预览对话框 -->
@@ -355,12 +361,16 @@
         :file-list="importFileList"
         accept=".json">
         <el-button size="small" type="primary">点击上传</el-button>
-        <div slot="tip" class="el-upload__tip">请上传JSON格式的物品数据文件</div>
+        <template v-slot:tip>
+<div  class="el-upload__tip">请上传JSON格式的物品数据文件</div>
+</template>
       </el-upload>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="importDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmImport" :disabled="!importFileList.length">确定导入</el-button>
+        <el-button type="primary" @click="confirmImport" disabled>确定导入</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>
@@ -457,116 +467,9 @@ export default {
   },
   methods: {
     fetchItemsList() {
-      this.loading = true;
-      
-      // 模拟从API获取物品列表
-      setTimeout(() => {
-        // 生成测试数据
-        this.itemsList = [
-          {
-            id: 1,
-            itemId: 'W001',
-            name: '钢剑',
-            description: '锋利的钢制长剑，可造成不俗的伤害。',
-            type: 'weapon',
-            rarity: 'common',
-            stackSize: 1,
-            value: 150,
-            weight: 3.5,
-            iconUrl: 'https://placehold.co/128x128/409EFF/white?text=W1',
-            attackPower: 25,
-            attackSpeed: 1.2,
-            weaponEffect: ''
-          },
-          {
-            id: 2,
-            itemId: 'F001',
-            name: '烤肉',
-            description: '香喷喷的烤肉，恢复大量饥饿值和少量生命值。',
-            type: 'food',
-            rarity: 'common',
-            stackSize: 20,
-            value: 10,
-            weight: 0.5,
-            iconUrl: 'https://placehold.co/128x128/67C23A/white?text=F1',
-            hungerRestore: 30,
-            healthRestore: 10,
-            foodEffect: '短暂体力恢复'
-          },
-          {
-            id: 3,
-            itemId: 'M001',
-            name: '铁矿石',
-            description: '可以冶炼成铁锭的矿石，是制作武器和工具的基础材料。',
-            type: 'material',
-            rarity: 'common',
-            stackSize: 50,
-            value: 5,
-            weight: 1.2,
-            iconUrl: 'https://placehold.co/128x128/909399/white?text=M1'
-          },
-          {
-            id: 4,
-            itemId: 'E001',
-            name: '皮甲',
-            description: '用动物皮革制作的轻型护甲，提供基础防护。',
-            type: 'equipment',
-            rarity: 'common',
-            stackSize: 1,
-            value: 100,
-            weight: 4.0,
-            iconUrl: 'https://placehold.co/128x128/E6A23C/white?text=E1',
-            defense: 15,
-            durability: 100,
-            equipmentSlot: 'body'
-          },
-          {
-            id: 5,
-            itemId: 'W002',
-            name: '火焰魔杖',
-            description: '蕴含火焰魔法的魔杖，可以释放火球术。',
-            type: 'weapon',
-            rarity: 'rare',
-            stackSize: 1,
-            value: 500,
-            weight: 1.0,
-            iconUrl: 'https://placehold.co/128x128/F56C6C/white?text=W2',
-            attackPower: 35,
-            attackSpeed: 0.8,
-            weaponEffect: '燃烧'
-          },
-          {
-            id: 6,
-            itemId: 'T001',
-            name: '钢镐',
-            description: '坚固的挖矿工具，可以高效开采矿石。',
-            type: 'tool',
-            rarity: 'common',
-            stackSize: 1,
-            value: 120,
-            weight: 2.5,
-            iconUrl: 'https://placehold.co/128x128/409EFF/white?text=T1'
-          },
-          {
-            id: 7,
-            itemId: 'E002',
-            name: '传说之盔',
-            description: '传说中英雄佩戴的头盔，提供强大的防护能力。',
-            type: 'equipment',
-            rarity: 'legendary',
-            stackSize: 1,
-            value: 2000,
-            weight: 2.0,
-            iconUrl: 'https://placehold.co/128x128/F56C6C/white?text=E2',
-            defense: 50,
-            durability: 500,
-            equipmentSlot: 'head'
-          }
-        ];
-        
-        this.pagination.total = this.itemsList.length;
-        this.loading = false;
-      }, 800);
+      this.itemsList = [];
+      this.pagination.total = 0;
+      this.loading = false;
     },
     
     refreshData() {
@@ -580,26 +483,7 @@ export default {
     },
     
     handleSearch() {
-      this.pagination.currentPage = 1;
-      this.loading = true;
-      
-      // 模拟搜索
-      setTimeout(() => {
-        const { name, type, rarity } = this.searchForm;
-        
-        // 根据搜索条件过滤物品列表
-        const filteredItems = this.itemsList.filter(item => {
-          const nameMatch = !name || item.name.toLowerCase().includes(name.toLowerCase());
-          const typeMatch = !type || item.type === type;
-          const rarityMatch = !rarity || item.rarity === rarity;
-          
-          return nameMatch && typeMatch && rarityMatch;
-        });
-        
-        this.itemsList = filteredItems;
-        this.pagination.total = filteredItems.length;
-        this.loading = false;
-      }, 500);
+      this.$message.error('真实后端尚未提供物品目录接口');
     },
     
     resetSearch() {
@@ -612,35 +496,12 @@ export default {
     },
     
     handleAdd() {
-      this.dialogType = 'add';
-      this.itemForm = {
-        id: null,
-        itemId: this.generateItemId(),
-        name: '',
-        description: '',
-        type: '',
-        rarity: 'common',
-        stackSize: 99,
-        value: 0,
-        weight: 0,
-        iconUrl: '',
-        attackPower: 0,
-        attackSpeed: 1.0,
-        weaponEffect: '',
-        hungerRestore: 0,
-        healthRestore: 0,
-        foodEffect: '',
-        defense: 0,
-        durability: 100,
-        equipmentSlot: ''
-      };
-      this.dialogVisible = true;
+      this.$message.error('真实后端尚未提供物品创建接口');
     },
     
     handleEdit(item) {
-      this.dialogType = 'edit';
-      this.itemForm = JSON.parse(JSON.stringify(item)); // 深拷贝避免直接修改
-      this.dialogVisible = true;
+      void item;
+      this.$message.error('真实后端尚未提供物品编辑接口');
     },
     
     handlePreview(item) {
@@ -649,60 +510,12 @@ export default {
     },
     
     handleDelete(item) {
-      this.$confirm(`确定要删除物品"${item.name}"吗？此操作不可恢复！`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.loading = true;
-        
-        // 模拟删除操作
-        setTimeout(() => {
-          this.itemsList = this.itemsList.filter(i => i.id !== item.id);
-          this.pagination.total--;
-          
-          this.loading = false;
-          this.$message({
-            type: 'success',
-            message: `物品"${item.name}"已删除！`
-          });
-        }, 500);
-      }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消删除'
-        });
-      });
+      void item;
+      this.$message.error('真实后端尚未提供物品删除接口');
     },
     
     handleBatchDelete() {
-      if (this.selectedItems.length === 0) return;
-      
-      this.$confirm(`确定要删除选中的${this.selectedItems.length}个物品吗？此操作不可恢复！`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.loading = true;
-        
-        // 模拟批量删除操作
-        setTimeout(() => {
-          const selectedIds = this.selectedItems.map(item => item.id);
-          this.itemsList = this.itemsList.filter(item => !selectedIds.includes(item.id));
-          this.pagination.total -= selectedIds.length;
-          
-          this.loading = false;
-          this.$message({
-            type: 'success',
-            message: `已删除${selectedIds.length}个物品！`
-          });
-        }, 500);
-      }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消删除'
-        });
-      });
+      this.$message.error('真实后端尚未提供物品删除接口');
     },
     
     handleSelectionChange(selection) {
@@ -720,31 +533,7 @@ export default {
     },
     
     exportItems() {
-      this.loading = true;
-      
-      // 模拟导出操作
-      setTimeout(() => {
-        // 准备导出的数据
-        const exportData = JSON.stringify(this.itemsList, null, 2);
-        
-        // 创建Blob对象
-        const blob = new Blob([exportData], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        
-        // 创建一个a标签用于下载
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', 'items-export.json');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        this.loading = false;
-        this.$message({
-          type: 'success',
-          message: '物品列表导出成功！'
-        });
-      }, 800);
+      this.$message.error('没有真实物品数据可导出');
     },
     
     importItems(options) {
@@ -774,46 +563,12 @@ export default {
     },
     
     confirmImport() {
-      if (!this.importData) return;
-      
-      this.loading = true;
-      
-      // 模拟导入操作
-      setTimeout(() => {
-        // 为导入的物品生成新ID
-        const importedItems = this.importData.map((item, index) => {
-          return {
-            ...item,
-            id: this.itemsList.length + index + 1
-          };
-        });
-        
-        this.itemsList = [...this.itemsList, ...importedItems];
-        this.pagination.total += importedItems.length;
-        
-        this.importDialogVisible = false;
-        this.importFileList = [];
-        this.importData = null;
-        
-        this.loading = false;
-        this.$message({
-          type: 'success',
-          message: `已成功导入${importedItems.length}个物品！`
-        });
-      }, 1000);
+      this.$message.error('真实后端尚未提供物品导入接口');
     },
     
     uploadIcon(options) {
-      const file = options.file;
-      // 模拟上传图标
-      // 在实际应用中，这里应该是上传图片到服务器，然后获取URL
-      
-      // 使用本地URL预览（仅用于演示）
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        this.itemForm.iconUrl = e.target.result;
-      };
-      reader.readAsDataURL(file);
+      void options;
+      this.$message.error('真实后端尚未提供物品图标接口');
     },
     
     beforeIconUpload(file) {
@@ -831,50 +586,7 @@ export default {
     },
     
     submitItemForm() {
-      this.$refs.itemForm.validate((valid) => {
-        if (valid) {
-          this.loading = true;
-          
-          if (this.dialogType === 'add') {
-            // 模拟添加物品
-            setTimeout(() => {
-              const newItem = {
-                ...this.itemForm,
-                id: this.itemsList.length + 1
-              };
-              
-              this.itemsList.unshift(newItem);
-              this.pagination.total++;
-              
-              this.dialogVisible = false;
-              this.loading = false;
-              
-              this.$message({
-                type: 'success',
-                message: '物品添加成功！'
-              });
-            }, 800);
-          } else {
-            // 模拟编辑物品
-            setTimeout(() => {
-              const index = this.itemsList.findIndex(item => item.id === this.itemForm.id);
-              if (index !== -1) {
-                this.itemsList[index] = { ...this.itemForm };
-              }
-              
-              this.dialogVisible = false;
-              this.loading = false;
-              
-              this.$message({
-                type: 'success',
-                message: '物品更新成功！'
-              });
-            }, 500);
-          }
-        } else {
-          return false;
-        }
-      });
+      this.$message.error('真实后端尚未提供物品写入接口');
     },
     
     getItemTypeTag(type) {
@@ -938,23 +650,7 @@ export default {
     },
     
     generateItemId() {
-      // 根据物品类型生成ID
-      const typePrefix = {
-        weapon: 'W',
-        tool: 'T',
-        food: 'F',
-        material: 'M',
-        equipment: 'E',
-        other: 'O'
-      };
-      
-      // 默认前缀
-      const prefix = 'I';
-      
-      // 随机数
-      const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      
-      return `${prefix}${randomNum}`;
+      return '';
     }
   }
 };
@@ -1219,4 +915,4 @@ export default {
     margin-bottom: 15px;
   }
 }
-</style> 
+</style>
