@@ -6,40 +6,59 @@
         <p>{{ setupRequired ? '首次使用，请创建管理员' : "Don't Starve Together 管理后台" }}</p>
       </div>
 
-      <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="login-form">
-        <el-form-item prop="username">
-          <el-input
+      <form class="login-form" @submit.prevent="handleLogin">
+        <FieldGroup>
+          <Field :data-invalid="Boolean(validationErrors.username)">
+            <FieldLabel for="login-username" class="sr-only">用户名</FieldLabel>
+            <InputGroup>
+              <InputGroupAddon><UserIcon /></InputGroupAddon>
+              <InputGroupInput
+                id="login-username"
             v-model="loginForm.username"
-            prefix-icon="el-icon-user"
-            placeholder="用户名">
-          </el-input>
-        </el-form-item>
+                placeholder="用户名"
+                autocomplete="username"
+                :aria-invalid="Boolean(validationErrors.username)"
+              />
+            </InputGroup>
+            <FieldError v-if="validationErrors.username">{{ validationErrors.username }}</FieldError>
+          </Field>
 
-        <el-form-item prop="password">
-          <el-input
+          <Field :data-invalid="Boolean(validationErrors.password)">
+            <FieldLabel for="login-password" class="sr-only">密码</FieldLabel>
+            <InputGroup>
+              <InputGroupAddon><LockKeyholeIcon /></InputGroupAddon>
+              <InputGroupInput
+                id="login-password"
             v-model="loginForm.password"
-            prefix-icon="el-icon-lock"
             type="password"
-            placeholder="密码"
-            @keyup.enter="handleLogin">
-          </el-input>
-        </el-form-item>
+                placeholder="密码"
+                autocomplete="current-password"
+                :aria-invalid="Boolean(validationErrors.password)"
+              />
+            </InputGroup>
+            <FieldError v-if="validationErrors.password">{{ validationErrors.password }}</FieldError>
+          </Field>
 
-        <el-form-item>
-          <el-checkbox v-model="loginForm.remember">记住我</el-checkbox>
-          <span v-if="setupRequired" class="password-hint">密码至少 6 位</span>
-        </el-form-item>
+          <Field orientation="horizontal">
+            <div class="remember-field">
+              <Checkbox id="remember-login" v-model="loginForm.remember" />
+              <FieldLabel for="remember-login">记住我</FieldLabel>
+            </div>
+            <FieldDescription v-if="setupRequired">密码至少 6 位</FieldDescription>
+          </Field>
 
-        <el-form-item>
-          <el-button
-            type="primary"
+          <Field>
+            <UiButton
+              type="submit"
             class="login-button"
-            :loading="loading"
-            @click="handleLogin">
+              :disabled="loading"
+            >
+              <Spinner v-if="loading" data-icon="inline-start" />
             {{ setupRequired ? '创建管理员' : '登录' }}
-          </el-button>
-        </el-form-item>
-      </el-form>
+            </UiButton>
+          </Field>
+        </FieldGroup>
+      </form>
 
       <div class="login-footer">
         <p>DST Admin · Don't Starve Together Server Console</p>
@@ -53,10 +72,32 @@
 </template>
 
 <script>
+import { LockKeyholeIcon, UserIcon } from '@lucide/vue'
 import { authAPI } from '@/api/v2'
+import { Button as UiButton } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Spinner } from '@/components/ui/spinner'
+import { toast } from 'vue-sonner'
 
 export default {
   name: 'LoginView',
+  components: {
+    Checkbox,
+    Field,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    LockKeyholeIcon,
+    Spinner,
+    UiButton,
+    UserIcon
+  },
   data() {
     return {
       loginForm: {
@@ -64,14 +105,9 @@ export default {
         password: '',
         remember: false
       },
-      loginRules: {
-        username: [
-          { required: true, message: '请输入用户名', trigger: 'blur' }
-        ],
-        password: [
-          { required: true, message: '请输入密码', trigger: 'blur' },
-          { min: 6, message: '密码长度不少于6位', trigger: 'blur' }
-        ]
+      validationErrors: {
+        username: '',
+        password: ''
       },
       loading: false,
       setupRequired: false
@@ -87,22 +123,25 @@ export default {
         this.setupRequired = session.setupRequired === true
       } catch (error) {
         if (this.$route.query.reason === 'backend-unavailable') {
-          this.$message.error(error.message)
+          toast.error(error.message)
         }
       }
     },
     async handleLogin() {
-      const valid = await this.$refs.loginForm.validate().catch(() => false)
-      if (!valid) return
+      this.validationErrors.username = this.loginForm.username.trim() ? '' : '请输入用户名'
+      this.validationErrors.password = this.loginForm.password
+        ? (this.loginForm.password.length >= 6 ? '' : '密码长度不少于6位')
+        : '请输入密码'
+      if (this.validationErrors.username || this.validationErrors.password) return
 
       this.loading = true
       try {
         const action = this.setupRequired ? authAPI.setup : authAPI.login
         await action(this.loginForm.username, this.loginForm.password)
         await this.$router.push('/')
-        this.$message.success(this.setupRequired ? '管理员创建成功' : '登录成功')
+        toast.success(this.setupRequired ? '管理员创建成功' : '登录成功')
       } catch (error) {
-        this.$message.error(error.message || '登录失败')
+        toast.error(error.message || '登录失败')
       } finally {
         this.loading = false
       }
@@ -156,11 +195,10 @@ export default {
   border-radius: 4px;
 }
 
-.password-hint {
-  float: right;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 32px;
+.remember-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .login-footer {

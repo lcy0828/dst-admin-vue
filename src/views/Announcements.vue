@@ -3,133 +3,166 @@
     <div class="page-header">
       <h2>公告管理</h2>
       <div class="header-actions">
-        <el-button type="primary" icon="el-icon-plus" @click="createAnnouncement">发布公告</el-button>
-        <el-button icon="el-icon-refresh" @click="refreshAnnouncements">刷新</el-button>
+        <UiButton @click="createAnnouncement"><PlusIcon data-icon="inline-start" />发布公告</UiButton>
+        <UiButton variant="outline" :disabled="loading" @click="refreshAnnouncements">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <RefreshCwIcon v-else data-icon="inline-start" />
+          刷新
+        </UiButton>
       </div>
     </div>
-    
-    <el-card shadow="hover" class="announcements-card">
-      <template v-slot:header>
-<div  class="card-header">
-        <span>公告列表</span>
-        <el-select v-model="statusFilter" placeholder="状态筛选" size="small">
-          <el-option label="全部" value="all"></el-option>
-          <el-option label="有效" value="active"></el-option>
-          <el-option label="已过期" value="expired"></el-option>
-        </el-select>
-      </div>
-</template>
-      
-      <el-table
-        :data="filteredAnnouncements"
-        style="width: 100%"
-        v-loading="loading">
-        <el-table-column prop="title" label="标题">
-          <template v-slot="scope">
-            <div class="announcement-title">
-              <el-badge v-if="scope.row.important" value="重要" class="important-badge" />
-              {{ scope.row.title }}
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="publishTime" label="发布时间" width="180"></el-table-column>
-        <el-table-column prop="expireTime" label="过期时间" width="180"></el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template v-slot="scope">
-            <el-tag :type="scope.row.status === 'active' ? 'success' : 'info'" size="mini">
-              {{ scope.row.status === 'active' ? '有效' : '已过期' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200">
-          <template v-slot="scope">
-            <el-button 
-              type="primary" 
-              size="mini" 
-              @click="viewAnnouncement(scope.row)">查看</el-button>
-            <el-button 
-              type="warning" 
-              size="mini" 
-              @click="editAnnouncement(scope.row)">编辑</el-button>
-            <el-button 
-              type="danger" 
-              size="mini" 
-              @click="deleteAnnouncement(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    
-    <!-- 公告详情对话框 -->
-    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="50%">
-      <template v-if="currentAnnouncement">
+    <Card class="announcements-card">
+      <CardHeader class="card-header">
+        <div>
+          <CardTitle>公告列表</CardTitle>
+          <CardDescription>管理面向玩家和管理员的系统公告。</CardDescription>
+        </div>
+        <UiSelect v-model="statusFilter">
+          <SelectTrigger class="status-filter"><SelectValue placeholder="状态筛选" /></SelectTrigger>
+          <SelectContent><SelectGroup>
+            <SelectItem value="all">全部</SelectItem>
+            <SelectItem value="active">有效</SelectItem>
+            <SelectItem value="expired">已过期</SelectItem>
+          </SelectGroup></SelectContent>
+        </UiSelect>
+      </CardHeader>
+      <CardContent>
+        <ShadcnTable>
+          <TableHeader><TableRow>
+            <TableHead>标题</TableHead><TableHead>发布时间</TableHead><TableHead>过期时间</TableHead><TableHead>状态</TableHead><TableHead class="actions-column">操作</TableHead>
+          </TableRow></TableHeader>
+          <TableBody>
+            <TableRow v-for="announcement in filteredAnnouncements" :key="announcement.id">
+              <TableCell><div class="announcement-title"><Badge v-if="announcement.important" variant="destructive">重要</Badge>{{ announcement.title }}</div></TableCell>
+              <TableCell>{{ announcement.publishTime }}</TableCell>
+              <TableCell>{{ announcement.expireTime }}</TableCell>
+              <TableCell><Badge :variant="announcement.status === 'active' ? 'default' : 'secondary'">{{ announcement.status === 'active' ? '有效' : '已过期' }}</Badge></TableCell>
+              <TableCell><div class="row-actions">
+                <UiButton variant="ghost" size="sm" @click="viewAnnouncement(announcement)">查看</UiButton>
+                <UiButton variant="outline" size="sm" @click="editAnnouncement(announcement)">编辑</UiButton>
+                <UiButton variant="destructive" size="sm" @click="deleteAnnouncement(announcement)">删除</UiButton>
+              </div></TableCell>
+            </TableRow>
+            <TableEmpty v-if="!loading && filteredAnnouncements.length === 0" :colspan="5">
+              <Empty><EmptyHeader><EmptyTitle>暂无公告</EmptyTitle><EmptyDescription>当前筛选条件下没有公告记录。</EmptyDescription></EmptyHeader></Empty>
+            </TableEmpty>
+            <TableEmpty v-if="loading" :colspan="5"><Spinner />正在加载公告</TableEmpty>
+          </TableBody>
+        </ShadcnTable>
+      </CardContent>
+    </Card>
+
+    <UiDialog v-model:open="dialogVisible">
+      <DialogContent class="sm:max-w-2xl">
+        <DialogHeader><DialogTitle>{{ dialogTitle }}</DialogTitle><DialogDescription>查看公告内容和生效时间。</DialogDescription></DialogHeader>
+        <template v-if="currentAnnouncement">
         <div class="announcement-detail">
           <div class="announcement-header">
             <h3>{{ currentAnnouncement.title }}</h3>
             <div class="announcement-meta">
               <span>发布时间: {{ currentAnnouncement.publishTime }}</span>
               <span>过期时间: {{ currentAnnouncement.expireTime }}</span>
-              <el-tag v-if="currentAnnouncement.important" type="danger" size="mini">重要</el-tag>
+              <Badge v-if="currentAnnouncement.important" variant="destructive">重要</Badge>
             </div>
           </div>
           <div class="announcement-content" v-html="currentAnnouncement.content"></div>
         </div>
-      </template>
-      <template v-slot:footer>
-<div  class="dialog-footer">
-        <el-button @click="dialogVisible = false">关闭</el-button>
+        </template>
+        <DialogFooter>
+        <UiButton variant="outline" @click="dialogVisible = false">关闭</UiButton>
         <template v-if="dialogMode === 'view'">
-          <el-button type="primary" @click="editCurrentAnnouncement">编辑</el-button>
+          <UiButton @click="editCurrentAnnouncement">编辑</UiButton>
         </template>
         <template v-else>
-          <el-button type="success" @click="saveAnnouncement">保存</el-button>
+          <UiButton @click="saveAnnouncement">保存</UiButton>
         </template>
-      </div>
-</template>
-    </el-dialog>
-    
-    <!-- 编辑/创建公告表单 -->
-    <el-dialog :title="formTitle" v-model="formVisible" width="70%">
-      <el-form :model="announcementForm" :rules="rules" ref="announcementForm" label-width="100px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="announcementForm.title" placeholder="请输入公告标题"></el-input>
-        </el-form-item>
-        <el-form-item label="内容" prop="content">
-          <el-input type="textarea" v-model="announcementForm.content" placeholder="请输入公告内容" :rows="8"></el-input>
-        </el-form-item>
-        <el-form-item label="过期时间" prop="expireTime">
-          <el-date-picker
-            v-model="announcementForm.expireTime"
-            type="datetime"
-            placeholder="选择过期时间"
-            format="yyyy-MM-dd HH:mm:ss"
-            value-format="yyyy-MM-dd HH:mm:ss">
-          </el-date-picker>
-        </el-form-item>
-        <el-form-item label="发送对象" prop="target">
-          <el-radio-group v-model="announcementForm.target">
-            <el-radio label="all">所有玩家</el-radio>
-            <el-radio label="online">在线玩家</el-radio>
-            <el-radio label="admins">管理员</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="重要公告">
-          <el-switch v-model="announcementForm.important"></el-switch>
-        </el-form-item>
-      </el-form>
-      <template v-slot:footer>
-<div  class="dialog-footer">
-        <el-button @click="formVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitAnnouncementForm">确定</el-button>
-      </div>
-</template>
-    </el-dialog>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="formVisible">
+      <DialogContent class="sm:max-w-3xl">
+        <DialogHeader><DialogTitle>{{ formTitle }}</DialogTitle><DialogDescription>设置公告内容、接收对象和过期时间。</DialogDescription></DialogHeader>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(formErrors.title)"><FieldLabel for="announcement-title">标题</FieldLabel><UiInput id="announcement-title" v-model="announcementForm.title" :aria-invalid="Boolean(formErrors.title)" placeholder="请输入公告标题" /><FieldError v-if="formErrors.title">{{ formErrors.title }}</FieldError></Field>
+          <Field :data-invalid="Boolean(formErrors.content)"><FieldLabel for="announcement-content">内容</FieldLabel><UiTextarea id="announcement-content" v-model="announcementForm.content" :aria-invalid="Boolean(formErrors.content)" rows="8" placeholder="请输入公告内容" /><FieldError v-if="formErrors.content">{{ formErrors.content }}</FieldError></Field>
+          <Field :data-invalid="Boolean(formErrors.expireTime)"><FieldLabel for="announcement-expire">过期时间</FieldLabel><UiInput id="announcement-expire" type="datetime-local" :model-value="toDateTimeLocal(announcementForm.expireTime)" :aria-invalid="Boolean(formErrors.expireTime)" @update:model-value="setExpireTime" /><FieldError v-if="formErrors.expireTime">{{ formErrors.expireTime }}</FieldError></Field>
+          <FieldSet><FieldLegend variant="label">发送对象</FieldLegend><RadioGroup v-model="announcementForm.target"><Field v-for="target in targetOptions" :key="target.value" orientation="horizontal"><RadioGroupItem :id="`target-${target.value}`" :value="target.value" /><FieldLabel :for="`target-${target.value}`">{{ target.label }}</FieldLabel></Field></RadioGroup></FieldSet>
+          <Field orientation="horizontal"><div><FieldLabel for="announcement-important">重要公告</FieldLabel><FieldDescription>重要公告将在列表中突出显示。</FieldDescription></div><UiSwitch id="announcement-important" v-model="announcementForm.important" /></Field>
+        </FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="formVisible = false">取消</UiButton><UiButton :disabled="loading" @click="submitAnnouncementForm"><Spinner v-if="loading" data-icon="inline-start" />确定</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { PlusIcon, RefreshCwIcon } from '@lucide/vue'
+import { Badge } from '@/components/ui/badge'
+import { Button as UiButton } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import { Input as UiInput } from '@/components/ui/input'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Spinner } from '@/components/ui/spinner'
+import { Switch as UiSwitch } from '@/components/ui/switch'
+import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Textarea as UiTextarea } from '@/components/ui/textarea'
+import { confirmAction } from '@/lib/feedback'
+import { toast } from 'vue-sonner'
+
 export default {
   name: 'AnnouncementsView',
+  components: {
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+    Field,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    FieldLegend,
+    FieldSet,
+    PlusIcon,
+    RadioGroup,
+    RadioGroupItem,
+    RefreshCwIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    ShadcnTable,
+    Spinner,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+    UiButton,
+    UiDialog,
+    UiInput,
+    UiSelect,
+    UiSwitch,
+    UiTextarea
+  },
   data() {
     return {
       loading: false,
@@ -148,18 +181,12 @@ export default {
         target: 'all',
         important: false
       },
-      rules: {
-        title: [
-          { required: true, message: '请输入公告标题', trigger: 'blur' },
-          { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-        ],
-        content: [
-          { required: true, message: '请输入公告内容', trigger: 'blur' }
-        ],
-        expireTime: [
-          { required: true, message: '请选择过期时间', trigger: 'change' }
-        ]
-      }
+      formErrors: { title: '', content: '', expireTime: '' },
+      targetOptions: [
+        { label: '所有玩家', value: 'all' },
+        { label: '在线玩家', value: 'online' },
+        { label: '管理员', value: 'admins' }
+      ]
     }
   },
   computed: {
@@ -174,7 +201,7 @@ export default {
   methods: {
     refreshAnnouncements() {
       this.loading = true;
-      this.$api.systemApi.getAnnouncements()
+      return this.$api.systemApi.getAnnouncements()
         .then(res => {
           this.announcements = res.map(announcement => ({
             ...announcement,
@@ -183,7 +210,7 @@ export default {
           }));
         })
         .catch(err => {
-          this.$message.error('获取公告列表失败：' + err.message);
+          toast.error('获取公告列表失败：' + err.message);
         })
         .finally(() => {
           this.loading = false;
@@ -208,6 +235,7 @@ export default {
         target: 'all',
         important: false
       };
+      this.formErrors = { title: '', content: '', expireTime: '' }
       this.formVisible = true;
     },
     editAnnouncement(announcement) {
@@ -220,62 +248,55 @@ export default {
         target: announcement.target || 'all',
         important: announcement.important
       };
+      this.formErrors = { title: '', content: '', expireTime: '' }
       this.formVisible = true;
     },
-    submitAnnouncementForm() {
-      this.$refs.announcementForm.validate(valid => {
-        if (valid) {
-          this.loading = true;
-          const isEdit = !!this.announcementForm.id;
-          const apiRequest = isEdit 
-            ? this.$api.systemApi.updateAnnouncement(this.announcementForm.id, this.announcementForm)
-            : this.$api.systemApi.createAnnouncement(this.announcementForm);
-          
-          apiRequest
-            .then(() => {
-              this.$message({
-                type: 'success',
-                message: isEdit ? '更新公告成功' : '创建公告成功'
-              });
-              this.formVisible = false;
-              this.refreshAnnouncements();
-            })
-            .catch(err => {
-              this.$message.error((isEdit ? '更新公告失败：' : '创建公告失败：') + err.message);
-            })
-            .finally(() => {
-              this.loading = false;
-            });
-        }
-      });
+    validateAnnouncementForm() {
+      const titleLength = this.announcementForm.title.trim().length
+      this.formErrors.title = titleLength === 0
+        ? '请输入公告标题'
+        : (titleLength < 2 || titleLength > 50 ? '长度在 2 到 50 个字符' : '')
+      this.formErrors.content = this.announcementForm.content.trim() ? '' : '请输入公告内容'
+      this.formErrors.expireTime = this.announcementForm.expireTime ? '' : '请选择过期时间'
+      return !Object.values(this.formErrors).some(Boolean)
     },
-    deleteAnnouncement(announcement) {
-      this.$confirm(`确定要删除公告"${announcement.title}"吗?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.loading = true;
-        this.$api.systemApi.deleteAnnouncement(announcement.id)
-          .then(() => {
-            this.announcements = this.announcements.filter(item => item.id !== announcement.id);
-            this.$message({
-              type: 'success',
-              message: '删除公告成功'
-            });
-          })
-          .catch(err => {
-            this.$message.error('删除公告失败：' + err.message);
-          })
-          .finally(() => {
-            this.loading = false;
-          });
-      }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消删除'
-        });
-      });
+    async submitAnnouncementForm() {
+      if (!this.validateAnnouncementForm()) return
+
+      this.loading = true
+      const isEdit = Boolean(this.announcementForm.id)
+      try {
+        if (isEdit) {
+          await this.$api.systemApi.updateAnnouncement(this.announcementForm.id, this.announcementForm)
+        } else {
+          await this.$api.systemApi.createAnnouncement(this.announcementForm)
+        }
+        toast.success(isEdit ? '更新公告成功' : '创建公告成功')
+        this.formVisible = false
+        await this.refreshAnnouncements()
+      } catch (error) {
+        toast.error((isEdit ? '更新公告失败：' : '创建公告失败：') + error.message)
+      } finally {
+        this.loading = false
+      }
+    },
+    async deleteAnnouncement(announcement) {
+      try {
+        await confirmAction(`确定要删除公告“${announcement.title}”吗？`, '删除公告', {
+          confirmButtonText: '删除',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        this.loading = true
+        await this.$api.systemApi.deleteAnnouncement(announcement.id)
+        this.announcements = this.announcements.filter(item => item.id !== announcement.id)
+        toast.success('删除公告成功')
+      } catch (error) {
+        if (error === 'cancel') toast.info('已取消删除')
+        else toast.error('删除公告失败：' + error.message)
+      } finally {
+        this.loading = false
+      }
     },
     saveAnnouncement() {
       // 从查看模式切换到编辑模式时使用
@@ -297,6 +318,12 @@ export default {
       const date = new Date();
       date.setDate(date.getDate() + 7); // 默认7天后过期
       return date.toISOString().substring(0, 19).replace('T', ' ');
+    },
+    toDateTimeLocal(value) {
+      return value ? value.replace(' ', 'T').slice(0, 16) : ''
+    },
+    setExpireTime(value) {
+      this.announcementForm.expireTime = value ? `${value.replace('T', ' ')}:00` : ''
     }
   },
   mounted() {
@@ -343,6 +370,21 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.status-filter {
+  width: 132px;
+}
+
+.actions-column {
+  width: 220px;
+  text-align: right;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .announcement-title {
@@ -395,8 +437,13 @@ export default {
     width: 100%;
   }
 
-  .card-header :deep(.el-select) {
+  .status-filter {
     width: 100%;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 </style>

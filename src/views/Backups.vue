@@ -3,88 +3,24 @@
     <div class="page-header">
       <h2>备份管理</h2>
       <div class="header-actions">
-        <el-button type="primary" icon="el-icon-plus" @click="showCreateBackupDialog">创建备份</el-button>
-        <el-button icon="el-icon-refresh" @click="refreshBackups">刷新</el-button>
+        <UiButton @click="showCreateBackupDialog"><PlusIcon data-icon="inline-start" />创建备份</UiButton>
+        <UiButton variant="outline" :disabled="loading" @click="refreshBackups"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCwIcon v-else data-icon="inline-start" />刷新</UiButton>
       </div>
     </div>
-    
-    <el-card shadow="hover" class="backups-card">
-      <template v-slot:header>
-<div  class="card-header">
-        <span>备份列表</span>
-        <el-select v-model="selectedFilter" placeholder="选择存档" clearable style="width: 180px">
-          <el-option label="全部" value=""></el-option>
-          <el-option 
-            v-for="archive in archiveOptions" 
-            :key="archive" 
-            :label="archive" 
-            :value="archive">
-          </el-option>
-        </el-select>
-      </div>
-</template>
-      
-      <el-table
-        :data="filteredBackups"
-        style="width: 100%"
-        v-loading="loading">
-        <el-table-column prop="name" label="备份名称">
-          <template v-slot="scope">
-            <div class="backup-name">
-              <component :is="'el-icon-document'" class="legacy-icon" />
-              {{ scope.row.name }}
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="archive_name" label="存档名称" width="120"></el-table-column>
-        <el-table-column prop="size_formatted" label="大小" width="120"></el-table-column>
-        <el-table-column prop="create_time" label="创建时间" width="180"></el-table-column>
-        <el-table-column label="操作" width="280">
-          <template v-slot="scope">
-            <el-button 
-              type="success" 
-              size="mini" 
-              @click="downloadBackup(scope.row)">下载</el-button>
-            <el-button 
-              type="primary" 
-              size="mini" 
-              @click="showRestoreDialog(scope.row)">恢复</el-button>
-            <el-button 
-              type="danger" 
-              size="mini" 
-              @click="confirmDeleteBackup(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+    <Card class="backups-card">
+      <CardHeader class="card-header"><div><CardTitle>备份列表</CardTitle><CardDescription>下载、恢复或删除现有世界存档备份。</CardDescription></div>
+        <UiSelect v-model="selectedFilter"><SelectTrigger class="archive-filter"><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="__all__">全部</SelectItem><SelectItem v-for="archive in archiveOptions" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect>
+      </CardHeader>
+      <CardContent><ShadcnTable><TableHeader><TableRow><TableHead>备份名称</TableHead><TableHead>存档名称</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
+        <TableRow v-for="backup in filteredBackups" :key="`${backup.archive_name}-${backup.name}`"><TableCell><div class="backup-name"><FileArchiveIcon />{{ backup.name }}</div></TableCell><TableCell>{{ backup.archive_name }}</TableCell><TableCell>{{ backup.size_formatted }}</TableCell><TableCell>{{ backup.create_time }}</TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><DownloadIcon data-icon="inline-start" />下载</UiButton><UiButton size="sm" @click="showRestoreDialog(backup)">恢复</UiButton><UiButton variant="destructive" size="sm" @click="confirmDeleteBackup(backup)">删除</UiButton></div></TableCell></TableRow>
+        <TableEmpty v-if="loading" :colspan="5"><Spinner />正在加载备份</TableEmpty>
+        <TableEmpty v-else-if="filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>暂无备份</EmptyTitle><EmptyDescription>当前存档还没有可用备份。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
+      </TableBody></ShadcnTable></CardContent>
+    </Card>
 
-    <!-- 创建备份对话框 -->
-    <el-dialog
-      title="创建存档备份"
-      v-model="createDialogVisible"
-      width="30%">
-      <span>选择要备份的存档：</span>
-      <el-select v-model="selectedArchive" placeholder="请选择存档" style="width: 100%; margin-top: 15px;">
-        <el-option
-          v-for="archive in archivesList"
-          :key="archive"
-          :label="archive"
-          :value="archive">
-        </el-option>
-      </el-select>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="createDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="createBackup" :loading="createLoading">创建</el-button>
-      </span>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="createDialogVisible"><DialogContent><DialogHeader><DialogTitle>创建存档备份</DialogTitle><DialogDescription>选择需要立即备份的房间存档。</DialogDescription></DialogHeader><Field><FieldLabel>存档</FieldLabel><UiSelect v-model="selectedArchive"><SelectTrigger><SelectValue placeholder="请选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archivesList" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><DialogFooter><UiButton variant="outline" @click="createDialogVisible = false">取消</UiButton><UiButton :disabled="createLoading" @click="createBackup"><Spinner v-if="createLoading" data-icon="inline-start" />创建</UiButton></DialogFooter></DialogContent></UiDialog>
 
-    <!-- 恢复备份对话框 -->
-    <el-dialog
-      title="恢复存档备份"
-      v-model="restoreDialogVisible"
-      width="40%">
+    <UiDialog v-model:open="restoreDialogVisible"><DialogContent class="sm:max-w-xl"><DialogHeader><DialogTitle>恢复存档备份</DialogTitle><DialogDescription>选择覆盖原存档或恢复为新存档。</DialogDescription></DialogHeader>
       <div class="restore-dialog-content">
         <div class="info-row">
           <span class="label">备份文件：</span>
@@ -94,45 +30,92 @@
           <span class="label">源存档：</span>
           <span class="value">{{ currentBackup ? currentBackup.archive_name : '' }}</span>
         </div>
-        <el-divider></el-divider>
+        <Separator />
         <div class="restore-options">
           <div class="option-title">恢复选项</div>
-          <el-radio-group v-model="restoreOption" class="restore-radio-group">
-            <el-radio :label="'original'">恢复到原存档</el-radio>
-            <el-radio :label="'new'">恢复到新存档</el-radio>
-          </el-radio-group>
+          <RadioGroup v-model="restoreOption" class="restore-radio-group"><Field orientation="horizontal"><RadioGroupItem id="restore-original" value="original" /><FieldLabel for="restore-original">恢复到原存档</FieldLabel></Field><Field orientation="horizontal"><RadioGroupItem id="restore-new" value="new" /><FieldLabel for="restore-new">恢复到新存档</FieldLabel></Field></RadioGroup>
 
           <div v-if="restoreOption === 'original'" class="original-archive-option">
-            <div class="warning-message">
-              <component :is="'el-icon-warning'" class="legacy-icon" />
-              <span>警告：此操作将覆盖原存档的所有内容，且无法撤销，请确保已备份重要数据！</span>
-            </div>
+            <Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>将覆盖原存档</AlertTitle><AlertDescription>此操作无法撤销，请确保已备份重要数据。</AlertDescription></Alert>
           </div>
 
           <div v-if="restoreOption === 'new'" class="new-archive-option">
-            <div class="form-item">
-              <span class="label">新存档名称：</span>
-              <el-input v-model="newArchiveName" placeholder="请输入新存档名称"></el-input>
-            </div>
-            <div class="form-item">
-              <el-checkbox v-model="overwriteExisting">如果存档已存在则覆盖</el-checkbox>
-            </div>
+            <Field><FieldLabel for="new-archive-name">新存档名称</FieldLabel><UiInput id="new-archive-name" v-model="newArchiveName" placeholder="请输入新存档名称" /></Field>
+            <Field orientation="horizontal"><Checkbox id="overwrite-existing" v-model="overwriteExisting" /><FieldLabel for="overwrite-existing">如果存档已存在则覆盖</FieldLabel></Field>
           </div>
         </div>
       </div>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="restoreDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="restoreBackup" :loading="restoreLoading">恢复</el-button>
-      </span>
-</template>
-    </el-dialog>
+      <DialogFooter><UiButton variant="outline" @click="restoreDialogVisible = false">取消</UiButton><UiButton :disabled="restoreLoading" @click="restoreBackup"><Spinner v-if="restoreLoading" data-icon="inline-start" />恢复</UiButton></DialogFooter></DialogContent></UiDialog>
   </div>
 </template>
 
 <script>
+import { DownloadIcon, FileArchiveIcon, PlusIcon, RefreshCwIcon, TriangleAlertIcon } from '@lucide/vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button as UiButton } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldLabel } from '@/components/ui/field'
+import { Input as UiInput } from '@/components/ui/input'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { Spinner } from '@/components/ui/spinner'
+import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { confirmAction } from '@/lib/feedback'
+import { toast } from 'vue-sonner'
+
 export default {
   name: 'BackupsView',
+  components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Checkbox,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DownloadIcon,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+    Field,
+    FieldLabel,
+    FileArchiveIcon,
+    PlusIcon,
+    RadioGroup,
+    RadioGroupItem,
+    RefreshCwIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Separator,
+    ShadcnTable,
+    Spinner,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+    TriangleAlertIcon,
+    UiButton,
+    UiDialog,
+    UiInput,
+    UiSelect
+  },
   data() {
     return {
       loading: false,
@@ -157,7 +140,7 @@ export default {
       return [...new Set(archives)];
     },
     filteredBackups() {
-      if (!this.selectedFilter) {
+      if (!this.selectedFilter || this.selectedFilter === '__all__') {
         return this.backupsList;
       }
       return this.backupsList.filter(backup => backup.archive_name === this.selectedFilter);
@@ -166,7 +149,7 @@ export default {
   methods: {
     refreshBackups() {
       this.loading = true;
-      this.$api.backupApi.getBackupList()
+      return this.$api.backupApi.getBackupList()
         .then(res => {
           if (res.status === 200) {
             // 处理返回的数据结构
@@ -184,11 +167,11 @@ export default {
             }
             this.backupsList = allBackups;
           } else {
-            this.$message.error('获取备份列表失败：' + res.msg);
+            toast.error('获取备份列表失败：' + res.msg);
           }
         })
         .catch(err => {
-          this.$message.error('获取备份列表失败：' + err.message);
+          toast.error('获取备份列表失败：' + err.message);
         })
         .finally(() => {
           this.loading = false;
@@ -208,16 +191,16 @@ export default {
           }
           
           if (this.archivesList.length === 0) {
-            this.$message.warning('没有可用的存档');
+            toast.warning('没有可用的存档');
           }
         })
         .catch(err => {
-          this.$message.error('获取存档列表失败：' + (err.message || '未知错误'));
+          toast.error('获取存档列表失败：' + (err.message || '未知错误'));
         });
     },
     createBackup() {
       if (!this.selectedArchive) {
-        this.$message.warning('请选择要备份的存档');
+        toast.warning('请选择要备份的存档');
         return;
       }
       
@@ -225,18 +208,15 @@ export default {
       this.$api.backupApi.createBackup(this.selectedArchive)
         .then(res => {
           if (res.status === 200) {
-            this.$message({
-              type: 'success',
-              message: res.msg || '创建备份成功'
-            });
+            toast.success(res.msg || '创建备份成功');
             this.createDialogVisible = false;
             this.refreshBackups();
           } else {
-            this.$message.error('创建备份失败：' + res.msg);
+            toast.error('创建备份失败：' + res.msg);
           }
         })
         .catch(err => {
-          this.$message.error('创建备份失败：' + err.message);
+          toast.error('创建备份失败：' + err.message);
         })
         .finally(() => {
           this.createLoading = false;
@@ -253,9 +233,9 @@ export default {
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          this.$message.success(`正在下载备份：${name}`);
+          toast.success(`正在下载备份：${name}`);
         })
-        .catch(error => this.$message.error(`下载备份失败：${error.message}`));
+        .catch(error => toast.error(`下载备份失败：${error.message}`));
     },
     
     // 显示恢复备份对话框
@@ -268,9 +248,9 @@ export default {
     },
     
     // 恢复备份
-    restoreBackup() {
+    async restoreBackup() {
       if (!this.currentBackup) {
-        this.$message.warning('未选择备份文件');
+        toast.warning('未选择备份文件');
         return;
       }
       
@@ -279,24 +259,20 @@ export default {
       
       if (this.restoreOption === 'original') {
         // 恢复到原存档时再次确认
-        this.$confirm('您确定要恢复此备份到原存档吗？此操作将覆盖原存档所有内容且无法撤销！', '警告', {
-          confirmButtonText: '确认恢复',
-          cancelButtonText: '取消',
-          type: 'warning',
-          distinguishCancelAndClose: true
-        }).then(() => {
+        try {
+          await confirmAction('您确定要恢复此备份到原存档吗？此操作将覆盖原存档所有内容且无法撤销！', '恢复备份', {
+            confirmButtonText: '确认恢复',
+            cancelButtonText: '取消',
+            type: 'warning'
+          })
           this.executeRestore(this.currentBackup.archive_name, this.currentBackup.name, null, true);
-        }).catch(() => {
-          // 用户取消操作
-          this.$message({
-            type: 'info',
-            message: '已取消恢复操作'
-          });
-        });
+        } catch {
+          toast.info('已取消恢复操作')
+        }
         return;
       } else if (this.restoreOption === 'new') {
         if (!this.newArchiveName) {
-          this.$message.warning('请输入新存档名称');
+          toast.warning('请输入新存档名称');
           return;
         }
         targetName = this.newArchiveName;
@@ -317,18 +293,15 @@ export default {
       )
         .then(res => {
           if (res.status === 200) {
-            this.$message({
-              type: 'success',
-              message: res.msg || '备份恢复成功'
-            });
+            toast.success(res.msg || '备份恢复成功');
             this.restoreDialogVisible = false;
             this.refreshBackups();
           } else {
-            this.$message.error('恢复备份失败：' + res.msg);
+            toast.error('恢复备份失败：' + res.msg);
           }
         })
         .catch(err => {
-          this.$message.error('恢复备份失败：' + err.message);
+          toast.error('恢复备份失败：' + err.message);
         })
         .finally(() => {
           this.restoreLoading = false;
@@ -336,21 +309,18 @@ export default {
     },
     
     // 确认删除备份
-    confirmDeleteBackup(backup) {
+    async confirmDeleteBackup(backup) {
       const { archive_name, name } = backup;
-      this.$confirm(`确定要删除备份文件 "${name}" 吗？此操作不可逆！`, '警告', {
-        confirmButtonText: '确认删除',
-        cancelButtonText: '取消',
-        type: 'warning',
-        distinguishCancelAndClose: true
-      }).then(() => {
+      try {
+        await confirmAction(`确定要删除备份文件“${name}”吗？此操作不可逆！`, '删除备份', {
+          confirmButtonText: '确认删除',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
         this.deleteBackup(archive_name, name);
-      }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消删除'
-        });
-      });
+      } catch {
+        toast.info('已取消删除')
+      }
     },
     
     // 删除备份
@@ -359,17 +329,14 @@ export default {
       this.$api.backupApi.deleteBackup(archive, backup)
         .then(res => {
           if (res.status === 200) {
-            this.$message({
-              type: 'success',
-              message: res.msg || '备份删除成功'
-            });
+            toast.success(res.msg || '备份删除成功');
             this.refreshBackups();
           } else {
-            this.$message.error('删除备份失败：' + res.msg);
+            toast.error('删除备份失败：' + res.msg);
           }
         })
         .catch(err => {
-          this.$message.error('删除备份失败：' + err.message);
+          toast.error('删除备份失败：' + err.message);
         })
         .finally(() => {
           this.loading = false;
@@ -433,8 +400,19 @@ export default {
   color: var(--primary-color);
 }
 
-.el-table :deep(.el-table__row) {
-  cursor: pointer;
+.archive-filter {
+  width: 180px;
+}
+
+.actions-column {
+  width: 270px;
+  text-align: right;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 /* 恢复对话框样式 */
@@ -466,33 +444,13 @@ export default {
   flex-direction: column;
 }
 
-.restore-radio-group .el-radio {
+.restore-radio-group [data-slot="field"] {
   margin-bottom: 10px;
   margin-left: 0;
 }
 
 .original-archive-option {
   margin-top: 15px;
-  padding: 15px;
-  background-color: var(--surface-muted);
-  border-radius: 4px;
-  border: 1px solid #ffb3b3;
-}
-
-.warning-message {
-  display: flex;
-  align-items: flex-start;
-  color: #c94f4f;
-}
-
-.warning-message i {
-  font-size: 18px;
-  margin-right: 8px;
-  margin-top: 2px;
-}
-
-.warning-message span {
-  line-height: 1.5;
 }
 
 .form-item {
@@ -519,8 +477,13 @@ export default {
     flex-direction: column;
   }
 
-  .card-header :deep(.el-select) {
-    width: 100% !important;
+  .archive-filter {
+    width: 100%;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 </style>
