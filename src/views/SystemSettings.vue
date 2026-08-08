@@ -1,568 +1,436 @@
 <template>
   <div class="page-container">
-    <el-row :gutter="20">
-      <el-col :span="24">
-        <el-card class="main-card">
-          <template v-slot:header>
-<div class="settings-card-header">
-            <span>系统设置</span>
-            <el-button size="small" icon="el-icon-refresh" @click="loadSettings">刷新</el-button>
-          </div>
-</template>
+    <header class="settings-page-header">
+      <div>
+        <h1>系统设置</h1>
+        <p>管理界面、安全、备份、通知和当前主机运行状态。</p>
+      </div>
+      <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSettings()">
+        <Spinner v-if="loading" data-icon="inline-start" />
+        <RefreshCw v-else data-icon="inline-start" />
+        刷新
+      </UiButton>
+    </header>
 
-          <el-form :model="settings" :rules="rules" ref="settingsForm" label-width="160px" v-loading="loading">
-            <el-tabs v-model="activeTab">
-              <!-- 基本设置 -->
-              <el-tab-pane label="基本设置" name="basic">
-                <el-form-item label="管理系统名称" prop="systemName">
-                  <el-input v-model="settings.systemName" placeholder="请输入管理系统名称"></el-input>
-                </el-form-item>
+    <Tabs v-model="activeTab" class="settings-tabs-root">
+      <div class="settings-tabs-scroll">
+        <TabsList variant="line" class="settings-tabs">
+          <TabsTrigger value="basic">基本设置</TabsTrigger>
+          <TabsTrigger value="security">安全设置</TabsTrigger>
+          <TabsTrigger value="backup">备份设置</TabsTrigger>
+          <TabsTrigger value="notification">通知设置</TabsTrigger>
+          <TabsTrigger value="systemStatus">高级系统状态</TabsTrigger>
+        </TabsList>
+      </div>
 
-                <el-form-item label="管理员联系邮箱" prop="adminEmail">
-                  <el-input v-model="settings.adminEmail" placeholder="请输入管理员联系邮箱"></el-input>
-                </el-form-item>
+      <TabsContent value="basic">
+        <Card>
+          <CardHeader>
+            <CardTitle>基本设置</CardTitle>
+            <CardDescription>设置管理系统的显示名称、地区格式和界面主题。</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup class="settings-form">
+              <Field orientation="responsive" :data-invalid="Boolean(formErrors.systemName)">
+                <FieldContent>
+                  <FieldLabel for="system-name">管理系统名称</FieldLabel>
+                  <FieldError v-if="formErrors.systemName">{{ formErrors.systemName }}</FieldError>
+                </FieldContent>
+                <UiInput id="system-name" v-model="settings.systemName" class="setting-control" :aria-invalid="Boolean(formErrors.systemName)" placeholder="请输入管理系统名称" @input="formErrors.systemName = ''" />
+              </Field>
 
-                <el-form-item label="系统语言" prop="language">
-                  <el-select v-model="settings.language" placeholder="请选择系统语言" style="width: 100%">
-                    <el-option label="简体中文" value="zh-CN"></el-option>
-                    <el-option label="English" value="en-US" disabled></el-option>
-                    <el-option label="日本語" value="ja-JP" disabled></el-option>
-                  </el-select>
-                </el-form-item>
+              <Field orientation="responsive" :data-invalid="Boolean(formErrors.adminEmail)">
+                <FieldContent>
+                  <FieldLabel for="admin-email">管理员联系邮箱</FieldLabel>
+                  <FieldDescription>可留空；填写后用于接收管理通知。</FieldDescription>
+                  <FieldError v-if="formErrors.adminEmail">{{ formErrors.adminEmail }}</FieldError>
+                </FieldContent>
+                <UiInput id="admin-email" v-model="settings.adminEmail" class="setting-control" type="email" :aria-invalid="Boolean(formErrors.adminEmail)" placeholder="请输入管理员联系邮箱" @input="formErrors.adminEmail = ''" />
+              </Field>
 
-                <el-form-item label="时区设置" prop="timezone">
-                  <el-select v-model="settings.timezone" placeholder="请选择时区" style="width: 100%">
-                    <el-option label="(GMT+08:00) 北京时间" value="Asia/Shanghai"></el-option>
-                    <el-option label="(GMT+00:00) 协调世界时" value="UTC"></el-option>
-                    <el-option label="(GMT-08:00) 太平洋标准时间" value="America/Los_Angeles"></el-option>
-                    <el-option label="(GMT-05:00) 东部标准时间" value="America/New_York"></el-option>
-                    <el-option label="(GMT+01:00) 中欧标准时间" value="Europe/Berlin"></el-option>
-                    <el-option label="(GMT+09:00) 日本标准时间" value="Asia/Tokyo"></el-option>
-                  </el-select>
-                </el-form-item>
+              <Field orientation="responsive">
+                <FieldContent><FieldLabel>系统语言</FieldLabel></FieldContent>
+                <UiSelect v-model="settings.language">
+                  <SelectTrigger class="setting-control"><SelectValue placeholder="请选择系统语言" /></SelectTrigger>
+                  <SelectContent><SelectGroup>
+                    <SelectItem value="zh-CN">简体中文</SelectItem>
+                    <SelectItem value="en-US" disabled>English</SelectItem>
+                    <SelectItem value="ja-JP" disabled>日本語</SelectItem>
+                  </SelectGroup></SelectContent>
+                </UiSelect>
+              </Field>
 
-                <el-form-item label="日期格式" prop="dateFormat">
-                  <el-select v-model="settings.dateFormat" placeholder="请选择日期格式" style="width: 100%">
-                    <el-option label="YYYY-MM-DD" value="YYYY-MM-DD"></el-option>
-                    <el-option label="MM/DD/YYYY" value="MM/DD/YYYY"></el-option>
-                    <el-option label="DD/MM/YYYY" value="DD/MM/YYYY"></el-option>
-                    <el-option label="YYYY年MM月DD日" value="YYYY年MM月DD日"></el-option>
-                  </el-select>
-                </el-form-item>
+              <Field orientation="responsive">
+                <FieldContent><FieldLabel>时区设置</FieldLabel></FieldContent>
+                <UiSelect v-model="settings.timezone">
+                  <SelectTrigger class="setting-control"><SelectValue placeholder="请选择时区" /></SelectTrigger>
+                  <SelectContent><SelectGroup>
+                    <SelectItem value="Asia/Shanghai">(GMT+08:00) 北京时间</SelectItem>
+                    <SelectItem value="UTC">(GMT+00:00) 协调世界时</SelectItem>
+                    <SelectItem value="America/Los_Angeles">(GMT-08:00) 太平洋标准时间</SelectItem>
+                    <SelectItem value="America/New_York">(GMT-05:00) 东部标准时间</SelectItem>
+                    <SelectItem value="Europe/Berlin">(GMT+01:00) 中欧标准时间</SelectItem>
+                    <SelectItem value="Asia/Tokyo">(GMT+09:00) 日本标准时间</SelectItem>
+                  </SelectGroup></SelectContent>
+                </UiSelect>
+              </Field>
 
-                <el-form-item label="界面主题" prop="theme">
-                  <div class="theme-control">
-                    <div class="theme-options" role="radiogroup" aria-label="界面主题">
-                      <button
-                        v-for="preset in themePresets"
-                        :key="preset.id"
-                        type="button"
-                        class="theme-option"
-                        :class="{ 'is-selected': selectedThemeId === preset.id }"
-                        :style="themeOptionStyle(preset)"
-                        role="radio"
-                        :aria-checked="selectedThemeId === preset.id"
-                        @click="selectTheme(preset)">
-                        <span class="theme-option-head">
-                          <span class="theme-option-name">{{ preset.name }}</span>
-                          <span v-if="selectedThemeId === preset.id" class="theme-option-status">已选择</span>
-                        </span>
-                        <span class="theme-swatches" aria-hidden="true">
-                          <span class="theme-swatch theme-swatch-sidebar"></span>
-                          <span class="theme-swatch theme-swatch-primary"></span>
-                          <span class="theme-swatch theme-swatch-accent"></span>
-                          <span class="theme-swatch theme-swatch-background"></span>
-                        </span>
-                      </button>
-                    </div>
-                    <div class="custom-theme-control" :class="{ 'is-selected': selectedThemeId === 'custom' }">
-                      <span class="custom-theme-label">自定义主色</span>
-                      <el-color-picker v-model="settings.theme" @change="previewCustomTheme"></el-color-picker>
-                      <span v-if="selectedThemeId === 'custom'" class="custom-theme-status">已选择</span>
-                      <el-button type="text" @click="resetDefaultTheme">恢复石墨默认</el-button>
-                    </div>
+              <Field orientation="responsive">
+                <FieldContent><FieldLabel>日期格式</FieldLabel></FieldContent>
+                <UiSelect v-model="settings.dateFormat">
+                  <SelectTrigger class="setting-control"><SelectValue placeholder="请选择日期格式" /></SelectTrigger>
+                  <SelectContent><SelectGroup>
+                    <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                    <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
+                    <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
+                    <SelectItem value="YYYY年MM月DD日">YYYY年MM月DD日</SelectItem>
+                  </SelectGroup></SelectContent>
+                </UiSelect>
+              </Field>
+
+              <Field>
+                <FieldContent>
+                  <FieldLabel>界面主题</FieldLabel>
+                  <FieldDescription>默认使用石墨朱橙，也可以切换预设或选择自定义主色。</FieldDescription>
+                </FieldContent>
+                <ToggleGroup :model-value="selectedThemeId" type="single" class="theme-options" @update:model-value="selectThemeById">
+                  <ToggleGroupItem v-for="preset in themePresets" :key="preset.id" :value="preset.id" class="theme-option" :style="themeOptionStyle(preset)">
+                    <span class="theme-option-head">
+                      <span class="theme-option-name">{{ preset.name }}</span>
+                      <Badge v-if="selectedThemeId === preset.id" variant="secondary">已选择</Badge>
+                    </span>
+                    <span class="theme-swatches" aria-hidden="true">
+                      <span class="theme-swatch theme-swatch-sidebar"></span>
+                      <span class="theme-swatch theme-swatch-primary"></span>
+                      <span class="theme-swatch theme-swatch-accent"></span>
+                      <span class="theme-swatch theme-swatch-background"></span>
+                    </span>
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                <div class="custom-theme-control">
+                  <div class="custom-theme-copy">
+                    <FieldLabel for="custom-theme-color">自定义主色</FieldLabel>
+                    <FieldDescription>{{ selectedThemeId === 'custom' ? '当前使用自定义颜色。' : '选择颜色后立即预览。' }}</FieldDescription>
                   </div>
-                </el-form-item>
-              </el-tab-pane>
-
-              <!-- 安全设置 -->
-              <el-tab-pane label="安全设置" name="security">
-                <el-form-item label="启用密码复杂度检查" prop="passwordComplexity">
-                  <el-switch v-model="settings.passwordComplexity"></el-switch>
-                  <span class="setting-desc">开启后，密码必须包含大小写字母、数字和特殊字符</span>
-                </el-form-item>
-
-                <el-form-item label="密码最小长度" prop="minPasswordLength">
-                  <el-input-number
-                    v-model="settings.minPasswordLength"
-                    :min="6"
-                    :max="20"
-                    :disabled="!settings.passwordComplexity">
-                  </el-input-number>
-                  <span class="setting-desc">密码的最小长度要求</span>
-                </el-form-item>
-
-                <el-form-item label="会话超时时间(分钟)" prop="sessionTimeout">
-                  <el-input-number
-                    v-model="settings.sessionTimeout"
-                    :min="5"
-                    :max="1440">
-                  </el-input-number>
-                  <span class="setting-desc">用户无操作后自动退出系统的时间</span>
-                </el-form-item>
-
-                <el-form-item label="最大登录尝试次数" prop="maxLoginAttempts">
-                  <el-input-number
-                    v-model="settings.maxLoginAttempts"
-                    :min="3"
-                    :max="10">
-                  </el-input-number>
-                  <span class="setting-desc">超过次数后账户将被临时锁定</span>
-                </el-form-item>
-
-                <el-form-item label="启用双因素认证" prop="twoFactorAuth">
-                  <el-switch v-model="settings.twoFactorAuth" disabled></el-switch>
-                  <span class="setting-desc">需要先完成身份验证器密钥绑定，当前版本尚未开放</span>
-                </el-form-item>
-
-                <el-form-item label="IP白名单" prop="ipWhitelist">
-                  <el-input
-                    type="textarea"
-                    v-model="settings.ipWhitelist"
-                    rows="3"
-                    placeholder="每行一个IP地址或网段，例如：192.168.1.1 或 192.168.1.0/24">
-                  </el-input>
-                  <span class="setting-desc">仅允许这些IP地址访问管理系统，留空表示不限制</span>
-                </el-form-item>
-              </el-tab-pane>
-
-              <!-- 备份设置 -->
-              <el-tab-pane label="备份设置" name="backup">
-                <el-form-item label="启用自动备份" prop="autoBackup">
-                  <el-switch v-model="settings.autoBackup"></el-switch>
-                  <span class="setting-desc">定期自动备份系统数据</span>
-                </el-form-item>
-
-                <el-form-item label="备份频率" prop="backupFrequency" :disabled="!settings.autoBackup">
-                  <el-select v-model="settings.backupFrequency" placeholder="请选择备份频率" style="width: 100%" :disabled="!settings.autoBackup">
-                    <el-option label="每天" value="daily"></el-option>
-                    <el-option label="每周" value="weekly"></el-option>
-                    <el-option label="每月" value="monthly"></el-option>
-                  </el-select>
-                </el-form-item>
-
-                <el-form-item label="备份时间" prop="backupTime" :disabled="!settings.autoBackup">
-                  <el-time-picker
-                    v-model="settings.backupTime"
-                    format="HH:mm"
-                    value-format="HH:mm"
-                    placeholder="选择备份时间"
-                    style="width: 100%"
-                    :disabled="!settings.autoBackup">
-                  </el-time-picker>
-                </el-form-item>
-
-                <el-form-item label="保留备份数量" prop="backupRetention" :disabled="!settings.autoBackup">
-                  <el-input-number
-                    v-model="settings.backupRetention"
-                    :min="1"
-                    :max="100"
-                    :disabled="!settings.autoBackup">
-                  </el-input-number>
-                  <span class="setting-desc">系统将保留的最近备份数量</span>
-                </el-form-item>
-
-                <el-form-item label="备份存储位置" prop="backupLocation" :disabled="!settings.autoBackup">
-                  <el-input v-model="settings.backupLocation" placeholder="请输入备份存储路径" :disabled="!settings.autoBackup"></el-input>
-                  <span class="setting-desc">真实本地备份路径，修改后重启服务生效</span>
-                </el-form-item>
-
-                <el-divider content-position="left">手动备份</el-divider>
-
-                <el-form-item>
-                  <el-button type="primary" @click="handleBackupNow">立即备份</el-button>
-                  <el-button type="success" @click="showBackupHistory">查看备份历史</el-button>
-                </el-form-item>
-              </el-tab-pane>
-
-              <!-- 通知设置 -->
-              <el-tab-pane label="通知设置" name="notification">
-                <el-form-item label="启用邮件通知" prop="emailNotification">
-                  <el-switch v-model="settings.emailNotification"></el-switch>
-                  <span class="setting-desc">启用系统邮件通知功能</span>
-                </el-form-item>
-
-                <el-form-item label="SMTP服务器" prop="smtpServer" :disabled="!settings.emailNotification">
-                  <el-input v-model="settings.smtpServer" placeholder="例如：smtp.example.com" :disabled="!settings.emailNotification"></el-input>
-                </el-form-item>
-
-                <el-form-item label="SMTP端口" prop="smtpPort" :disabled="!settings.emailNotification">
-                  <el-input-number v-model="settings.smtpPort" :min="1" :max="65535" :disabled="!settings.emailNotification"></el-input-number>
-                </el-form-item>
-
-                <el-form-item label="SMTP用户名" prop="smtpUsername" :disabled="!settings.emailNotification">
-                  <el-input v-model="settings.smtpUsername" placeholder="邮箱账号" :disabled="!settings.emailNotification"></el-input>
-                </el-form-item>
-
-                <el-form-item label="SMTP密码" prop="smtpPassword" :disabled="!settings.emailNotification">
-                  <el-input v-model="settings.smtpPassword" type="password" :placeholder="smtpPasswordConfigured ? '已配置，留空表示保持不变' : '邮箱密码或授权码'" show-password :disabled="!settings.emailNotification"></el-input>
-                </el-form-item>
-
-                <el-form-item label="发件人邮箱" prop="senderEmail" :disabled="!settings.emailNotification">
-                  <el-input v-model="settings.senderEmail" placeholder="系统发送邮件的邮箱地址" :disabled="!settings.emailNotification"></el-input>
-                </el-form-item>
-
-                <el-form-item>
-                  <el-button type="primary" @click="testEmailConnection" :disabled="!settings.emailNotification">测试邮件连接</el-button>
-                </el-form-item>
-
-                <el-divider content-position="left">通知事件</el-divider>
-
-                <el-form-item label="服务器状态变更" prop="notifyServerStatus">
-                  <el-switch v-model="settings.notifyServerStatus" disabled></el-switch>
-                </el-form-item>
-
-                <el-form-item label="用户登录异常" prop="notifyLoginFailures">
-                  <el-switch v-model="settings.notifyLoginFailures" disabled></el-switch>
-                </el-form-item>
-
-                <el-form-item label="数据库备份结果" prop="notifyBackupResults">
-                  <el-switch v-model="settings.notifyBackupResults" disabled></el-switch>
-                </el-form-item>
-
-                <el-form-item label="系统更新通知" prop="notifySystemUpdates">
-                  <el-switch v-model="settings.notifySystemUpdates" disabled></el-switch>
-                </el-form-item>
-              </el-tab-pane>
-
-              <!-- 高级系统状态 -->
-              <el-tab-pane label="高级系统状态" name="systemStatus">
-                <div class="status-header">
-                  <span class="status-title">系统详细监控</span>
-                  <el-button type="primary" size="small" icon="el-icon-refresh" @click="refreshSystemStatus">刷新状态</el-button>
+                  <UiInput id="custom-theme-color" v-model="settings.theme" class="color-input" type="color" aria-label="自定义主题主色" @update:model-value="previewCustomTheme" />
+                  <Badge v-if="selectedThemeId === 'custom'" variant="secondary">已选择</Badge>
+                  <UiButton variant="ghost" size="sm" @click="resetDefaultTheme">恢复石墨默认</UiButton>
                 </div>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-                <el-divider content-position="left">系统状态</el-divider>
+      <TabsContent value="security">
+        <Card>
+          <CardHeader><CardTitle>安全设置</CardTitle><CardDescription>控制登录密码、会话和管理端访问范围。</CardDescription></CardHeader>
+          <CardContent>
+            <FieldGroup class="settings-form">
+              <Field orientation="horizontal">
+                <FieldContent><FieldLabel for="password-complexity">启用密码复杂度检查</FieldLabel><FieldDescription>开启后，密码必须包含大小写字母、数字和特殊字符。</FieldDescription></FieldContent>
+                <UiSwitch id="password-complexity" v-model="settings.passwordComplexity" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.passwordComplexity">
+                <FieldContent><FieldLabel for="min-password-length">密码最小长度</FieldLabel><FieldDescription>允许设置 6 至 20 位。</FieldDescription></FieldContent>
+                <UiInput id="min-password-length" class="number-control" type="number" min="6" max="20" :disabled="!settings.passwordComplexity" :model-value="String(settings.minPasswordLength)" @update:model-value="settings.minPasswordLength = Number($event)" />
+              </Field>
+              <Field orientation="responsive">
+                <FieldContent><FieldLabel for="session-timeout">会话超时时间（分钟）</FieldLabel><FieldDescription>用户无操作后自动退出系统的时间。</FieldDescription></FieldContent>
+                <UiInput id="session-timeout" class="number-control" type="number" min="5" max="1440" :model-value="String(settings.sessionTimeout)" @update:model-value="settings.sessionTimeout = Number($event)" />
+              </Field>
+              <Field orientation="responsive">
+                <FieldContent><FieldLabel for="max-login-attempts">最大登录尝试次数</FieldLabel><FieldDescription>超过次数后账户将被临时锁定。</FieldDescription></FieldContent>
+                <UiInput id="max-login-attempts" class="number-control" type="number" min="3" max="10" :model-value="String(settings.maxLoginAttempts)" @update:model-value="settings.maxLoginAttempts = Number($event)" />
+              </Field>
+              <Field orientation="horizontal" data-disabled>
+                <FieldContent><FieldLabel for="two-factor-auth">启用双因素认证</FieldLabel><FieldDescription>需要先完成身份验证器密钥绑定，当前版本尚未开放。</FieldDescription></FieldContent>
+                <UiSwitch id="two-factor-auth" v-model="settings.twoFactorAuth" disabled />
+              </Field>
+              <Field>
+                <FieldLabel for="ip-whitelist">IP 白名单</FieldLabel>
+                <UiTextarea id="ip-whitelist" v-model="settings.ipWhitelist" rows="3" placeholder="每行一个 IP 地址或网段，例如：192.168.1.1 或 192.168.1.0/24" />
+                <FieldDescription>仅允许这些 IP 地址访问管理系统，留空表示不限制。</FieldDescription>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-                <el-row :gutter="20" class="status-row">
-                  <el-col :xs="24" :sm="12" :md="6">
-                    <el-card shadow="hover" class="status-card">
-                      <template v-slot:header>
-<div  class="status-card-header">
-                        <component :is="'el-icon-cpu'" class="legacy-icon" /> CPU状态
-                      </div>
-</template>
-                      <div class="status-card-content">
-                        <div class="status-item">
-                          <div class="status-label">型号:</div>
-                          <div class="status-value">{{ systemStatus.cpu_model }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">频率:</div>
-                          <div class="status-value">{{ systemStatus.cpu_mhz }} MHz</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">物理核心:</div>
-                          <div class="status-value">{{ systemStatus.cpu_cores }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">逻辑核心:</div>
-                          <div class="status-value">{{ systemStatus.cpu_threads }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">使用率:</div>
-                          <div class="status-value progress-value">
-                            <el-progress :percentage="systemStatus.cpu_usage" :color="customColors"></el-progress>
-                          </div>
-                        </div>
+      <TabsContent value="backup">
+        <Card>
+          <CardHeader><CardTitle>备份设置</CardTitle><CardDescription>为所有已接管房间同步真实备份策略。</CardDescription></CardHeader>
+          <CardContent>
+            <FieldGroup class="settings-form">
+              <Field orientation="horizontal">
+                <FieldContent><FieldLabel for="auto-backup">启用自动备份</FieldLabel><FieldDescription>定期自动备份系统数据。</FieldDescription></FieldContent>
+                <UiSwitch id="auto-backup" v-model="settings.autoBackup" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.autoBackup">
+                <FieldContent><FieldLabel>备份频率</FieldLabel></FieldContent>
+                <UiSelect v-model="settings.backupFrequency" :disabled="!settings.autoBackup">
+                  <SelectTrigger class="setting-control"><SelectValue placeholder="请选择备份频率" /></SelectTrigger>
+                  <SelectContent><SelectGroup><SelectItem value="daily">每天</SelectItem><SelectItem value="weekly">每周</SelectItem><SelectItem value="monthly">每月</SelectItem></SelectGroup></SelectContent>
+                </UiSelect>
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.autoBackup">
+                <FieldContent><FieldLabel for="backup-time">备份时间</FieldLabel></FieldContent>
+                <UiInput id="backup-time" v-model="settings.backupTime" class="setting-control" type="time" :disabled="!settings.autoBackup" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.autoBackup">
+                <FieldContent><FieldLabel for="backup-retention">保留备份数量</FieldLabel><FieldDescription>系统将保留的最近备份数量。</FieldDescription></FieldContent>
+                <UiInput id="backup-retention" class="number-control" type="number" min="1" max="100" :disabled="!settings.autoBackup" :model-value="String(settings.backupRetention)" @update:model-value="settings.backupRetention = Number($event)" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.autoBackup">
+                <FieldContent><FieldLabel for="backup-location">备份存储位置</FieldLabel><FieldDescription>真实本地备份路径，修改后重启服务生效。</FieldDescription></FieldContent>
+                <UiInput id="backup-location" v-model="settings.backupLocation" class="setting-control" :disabled="!settings.autoBackup" placeholder="请输入备份存储路径" />
+              </Field>
+              <FieldSeparator>手动备份</FieldSeparator>
+              <Field orientation="horizontal">
+                <FieldContent><FieldTitle>立即执行</FieldTitle><FieldDescription>对当前所有已接管房间创建备份，或查看真实备份历史。</FieldDescription></FieldContent>
+                <div class="field-actions">
+                  <UiButton :disabled="loading" @click="handleBackupNow"><DatabaseBackup data-icon="inline-start" />立即备份</UiButton>
+                  <UiButton variant="outline" :disabled="loading" @click="showBackupHistory"><History data-icon="inline-start" />查看备份历史</UiButton>
+                </div>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-                        <!-- 添加CPU核心使用率 -->
-                        <div class="status-item cpu-cores-item">
-                          <div class="status-label">核心使用率:</div>
-                          <div class="status-value">
-                            <div class="core-usage-container" :class="getCoreGridClass">
-                              <div
-                                v-for="(usage, index) in systemStatus.cpu_core_usage"
-                                :key="index"
-                                class="core-usage-item"
-                              >
-                                <div class="core-usage-label">
-                                  核心 {{ index }}
-                                  <span v-if="isCoreOverloaded(usage)" class="core-overload-indicator">高负载</span>
-                                </div>
-                                <div class="core-usage-bar-container">
-                                  <div
-                                    class="core-usage-bar"
-                                    :style="{ width: formatCoreUsageWidth(usage), backgroundColor: getCoreColor(usage) }"
-                                  ></div>
-                                </div>
-                                <div class="core-usage-value">{{ usage.toFixed(2) }}%</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </el-card>
-                  </el-col>
+      <TabsContent value="notification">
+        <Card>
+          <CardHeader><CardTitle>通知设置</CardTitle><CardDescription>配置 SMTP 连接；通知事件开关将在后续版本开放。</CardDescription></CardHeader>
+          <CardContent>
+            <FieldGroup class="settings-form">
+              <Field orientation="horizontal">
+                <FieldContent><FieldLabel for="email-notification">启用邮件通知</FieldLabel><FieldDescription>启用系统邮件通知功能。</FieldDescription></FieldContent>
+                <UiSwitch id="email-notification" v-model="settings.emailNotification" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpServer)">
+                <FieldContent><FieldLabel for="smtp-server">SMTP 服务器</FieldLabel><FieldError v-if="formErrors.smtpServer">{{ formErrors.smtpServer }}</FieldError></FieldContent>
+                <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.smtpServer)" placeholder="例如：smtp.example.com" @input="formErrors.smtpServer = ''" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.emailNotification">
+                <FieldContent><FieldLabel for="smtp-port">SMTP 端口</FieldLabel></FieldContent>
+                <UiInput id="smtp-port" class="number-control" type="number" min="1" max="65535" :disabled="!settings.emailNotification" :model-value="String(settings.smtpPort)" @update:model-value="settings.smtpPort = Number($event)" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpUsername)">
+                <FieldContent><FieldLabel for="smtp-username">SMTP 用户名</FieldLabel><FieldError v-if="formErrors.smtpUsername">{{ formErrors.smtpUsername }}</FieldError></FieldContent>
+                <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.smtpUsername)" placeholder="邮箱账号" @input="formErrors.smtpUsername = ''" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpPassword)">
+                <FieldContent><FieldLabel for="smtp-password">SMTP 密码</FieldLabel><FieldError v-if="formErrors.smtpPassword">{{ formErrors.smtpPassword }}</FieldError></FieldContent>
+                <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="smtpPasswordConfigured ? '已配置，留空表示保持不变' : '邮箱密码或授权码'" @input="formErrors.smtpPassword = ''" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.senderEmail)">
+                <FieldContent><FieldLabel for="sender-email">发件人邮箱</FieldLabel><FieldError v-if="formErrors.senderEmail">{{ formErrors.senderEmail }}</FieldError></FieldContent>
+                <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.senderEmail)" placeholder="系统发送邮件的邮箱地址" @input="formErrors.senderEmail = ''" />
+              </Field>
+              <Field orientation="horizontal">
+                <FieldContent><FieldTitle>连接检查</FieldTitle><FieldDescription>使用当前 SMTP 参数执行一次真实连接与认证测试。</FieldDescription></FieldContent>
+                <UiButton variant="outline" :disabled="loading || !settings.emailNotification" @click="testEmailConnection"><Send data-icon="inline-start" />测试邮件连接</UiButton>
+              </Field>
+              <FieldSeparator>通知事件</FieldSeparator>
+              <FieldGroup class="notification-events">
+                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-server-status">服务器状态变更</FieldLabel><UiSwitch id="notify-server-status" v-model="settings.notifyServerStatus" disabled /></Field>
+                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-login-failures">用户登录异常</FieldLabel><UiSwitch id="notify-login-failures" v-model="settings.notifyLoginFailures" disabled /></Field>
+                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-backup-results">数据库备份结果</FieldLabel><UiSwitch id="notify-backup-results" v-model="settings.notifyBackupResults" disabled /></Field>
+                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-system-updates">系统更新通知</FieldLabel><UiSwitch id="notify-system-updates" v-model="settings.notifySystemUpdates" disabled /></Field>
+              </FieldGroup>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-                  <el-col :xs="24" :sm="12" :md="6">
-                    <el-card shadow="hover" class="status-card">
-                      <template v-slot:header>
-<div  class="status-card-header">
-                        <component :is="'el-icon-loading'" class="legacy-icon" /> 系统负载
-                      </div>
-</template>
-                      <div class="status-card-content">
-                        <div class="status-item">
-                          <div class="status-label">1分钟:</div>
-                          <div class="status-value">{{ systemStatus.cpu_load1 }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">5分钟:</div>
-                          <div class="status-value">{{ systemStatus.cpu_load5 }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">15分钟:</div>
-                          <div class="status-value">{{ systemStatus.cpu_load15 }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">主机名:</div>
-                          <div class="status-value">{{ systemStatus.hostname }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">系统:</div>
-                          <div class="status-value">{{ systemStatus.os_info }}</div>
-                        </div>
-                      </div>
-                    </el-card>
-                  </el-col>
+      <TabsContent value="systemStatus">
+        <div class="status-header">
+          <div><h2>系统详细监控</h2><p>查看当前运行管理后端的主机与 Go 进程状态。</p></div>
+          <UiButton size="sm" :disabled="loading" @click="refreshSystemStatus"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新状态</UiButton>
+        </div>
 
-                  <el-col :xs="24" :sm="12" :md="6">
-                    <el-card shadow="hover" class="status-card">
-                      <template v-slot:header>
-<div  class="status-card-header">
-                        <component :is="'el-icon-coin'" class="legacy-icon" /> 内存状态
-                      </div>
-</template>
-                      <div class="status-card-content">
-                        <div class="status-item">
-                          <div class="status-label">总内存:</div>
-                          <div class="status-value">{{ formatMemory(systemStatus.total_memory) }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">已用内存:</div>
-                          <div class="status-value">{{ formatMemory(systemStatus.used_memory) }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">空闲内存:</div>
-                          <div class="status-value">{{ formatMemory(systemStatus.free_memory) }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">使用率:</div>
-                          <div class="status-value progress-value">
-                            <el-progress :percentage="systemStatus.memory_usage" :color="customColors"></el-progress>
-                          </div>
-                        </div>
-                      </div>
-                    </el-card>
-                  </el-col>
+        <div class="status-section-heading"><h3>系统状态</h3><Separator /></div>
+        <div class="status-grid system-status-grid">
+          <Card>
+            <CardHeader><CardTitle class="status-card-title"><Cpu />CPU 状态</CardTitle><CardDescription>{{ systemStatus.cpu_model }}</CardDescription></CardHeader>
+            <CardContent class="status-card-content">
+              <dl class="status-list"><div><dt>频率</dt><dd>{{ systemStatus.cpu_mhz }} MHz</dd></div><div><dt>物理核心</dt><dd>{{ systemStatus.cpu_cores }}</dd></div><div><dt>逻辑核心</dt><dd>{{ systemStatus.cpu_threads }}</dd></div></dl>
+              <div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.cpu_usage)" /></div>
+              <div v-if="(systemStatus.cpu_core_usage || []).length" class="core-usage-container">
+                <div v-for="(usage, index) in (systemStatus.cpu_core_usage || [])" :key="index" class="core-usage-item">
+                  <div class="core-usage-label"><span>核心 {{ index }}</span><Badge v-if="isCoreOverloaded(usage)" variant="destructive">高负载</Badge><span>{{ Number(usage).toFixed(2) }}%</span></div>
+                  <UiProgress :model-value="clampPercent(usage)" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                  <el-col :xs="24" :sm="12" :md="6">
-                    <el-card shadow="hover" class="status-card">
-                      <template v-slot:header>
-<div  class="status-card-header">
-                        <component :is="'el-icon-folder'" class="legacy-icon" /> 磁盘状态
-                      </div>
-</template>
-                      <div class="status-card-content">
-                        <div class="status-item">
-                          <div class="status-label">总空间:</div>
-                          <div class="status-value">{{ systemStatus.total_disk }} GB</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">已用空间:</div>
-                          <div class="status-value">{{ systemStatus.used_disk }} GB</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">空闲空间:</div>
-                          <div class="status-value">{{ systemStatus.free_disk }} GB</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">使用率:</div>
-                          <div class="status-value progress-value">
-                            <el-progress :percentage="systemStatus.disk_usage" :color="customColors"></el-progress>
-                          </div>
-                        </div>
-                      </div>
-                    </el-card>
-                  </el-col>
-                </el-row>
+          <Card>
+            <CardHeader><CardTitle class="status-card-title"><Activity />系统负载</CardTitle><CardDescription>{{ systemStatus.hostname }}</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>1 分钟</dt><dd>{{ systemStatus.cpu_load1 }}</dd></div><div><dt>5 分钟</dt><dd>{{ systemStatus.cpu_load5 }}</dd></div><div><dt>15 分钟</dt><dd>{{ systemStatus.cpu_load15 }}</dd></div><div><dt>系统</dt><dd>{{ systemStatus.os_info }}</dd></div></dl></CardContent>
+          </Card>
 
-                <el-divider content-position="left">程序状态</el-divider>
+          <Card>
+            <CardHeader><CardTitle class="status-card-title"><MemoryStick />内存状态</CardTitle><CardDescription>物理内存占用</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>总内存</dt><dd>{{ formatMemory(systemStatus.total_memory) }}</dd></div><div><dt>已用内存</dt><dd>{{ formatMemory(systemStatus.used_memory) }}</dd></div><div><dt>空闲内存</dt><dd>{{ formatMemory(systemStatus.free_memory) }}</dd></div></dl><div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.memory_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.memory_usage)" /></div></CardContent>
+          </Card>
 
-                <el-row :gutter="20" class="status-row">
-                  <el-col :xs="24" :sm="12">
-                    <el-card shadow="hover" class="status-card">
-                      <template v-slot:header>
-<div  class="status-card-header">
-                        <component :is="'el-icon-s-operation'" class="legacy-icon" /> 进程信息
-                      </div>
-</template>
-                      <div class="status-card-content">
-                        <div class="status-item">
-                          <div class="status-label">进程ID:</div>
-                          <div class="status-value">{{ systemStatus.process_id }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">运行时间:</div>
-                          <div class="status-value">{{ systemStatus.process_uptime_fmt }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">物理内存:</div>
-                          <div class="status-value">{{ systemStatus.process_memory_rss }} MB</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">虚拟内存:</div>
-                          <div class="status-value">{{ systemStatus.process_memory_vms }} MB</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">CPU使用率:</div>
-                          <div class="status-value progress-value">
-                            <el-progress :percentage="systemStatus.process_cpu_usage" :color="customColors"></el-progress>
-                          </div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">线程数:</div>
-                          <div class="status-value">{{ systemStatus.process_threads }}</div>
-                        </div>
-                      </div>
-                    </el-card>
-                  </el-col>
+          <Card>
+            <CardHeader><CardTitle class="status-card-title"><HardDrive />磁盘状态</CardTitle><CardDescription>管理后端所在磁盘</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>总空间</dt><dd>{{ systemStatus.total_disk }} GB</dd></div><div><dt>已用空间</dt><dd>{{ systemStatus.used_disk }} GB</dd></div><div><dt>空闲空间</dt><dd>{{ systemStatus.free_disk }} GB</dd></div></dl><div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.disk_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.disk_usage)" /></div></CardContent>
+          </Card>
+        </div>
 
-                  <el-col :xs="24" :sm="12">
-                    <el-card shadow="hover" class="status-card">
-                      <template v-slot:header>
-<div  class="status-card-header">
-                        <component :is="'el-icon-s-platform'" class="legacy-icon" /> Go运行时
-                      </div>
-</template>
-                      <div class="status-card-content">
-                        <div class="status-item">
-                          <div class="status-label">版本:</div>
-                          <div class="status-value">{{ systemStatus.go_version }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">Goroutines:</div>
-                          <div class="status-value">{{ systemStatus.go_routines }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">堆分配:</div>
-                          <div class="status-value">{{ systemStatus.go_memory_alloc }} MB</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">系统分配:</div>
-                          <div class="status-value">{{ systemStatus.go_memory_sys }} MB</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">堆对象数:</div>
-                          <div class="status-value">{{ systemStatus.go_memory_heap_objs }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">GC暂停:</div>
-                          <div class="status-value">{{ (systemStatus.go_gc_pause / 1000000).toFixed(2) }} ms</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">GC运行次数:</div>
-                          <div class="status-value">{{ systemStatus.go_gc_runs }}</div>
-                        </div>
-                      </div>
-                    </el-card>
-                  </el-col>
-                </el-row>
+        <div class="status-section-heading"><h3>程序状态</h3><Separator /></div>
+        <div class="status-grid process-status-grid">
+          <Card>
+            <CardHeader><CardTitle class="status-card-title"><ChartNoAxesCombined />进程信息</CardTitle><CardDescription>当前管理后端进程</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>进程 ID</dt><dd>{{ systemStatus.process_id }}</dd></div><div><dt>运行时间</dt><dd>{{ systemStatus.process_uptime_fmt }}</dd></div><div><dt>物理内存</dt><dd>{{ systemStatus.process_memory_rss }} MB</dd></div><div><dt>虚拟内存</dt><dd>{{ systemStatus.process_memory_vms }} MB</dd></div><div><dt>线程数</dt><dd>{{ systemStatus.process_threads }}</dd></div></dl><div class="usage-block"><div><span>CPU 使用率</span><strong>{{ clampPercent(systemStatus.process_cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.process_cpu_usage)" /></div></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle class="status-card-title"><CodeXml />Go 运行时</CardTitle><CardDescription>{{ systemStatus.go_version }}</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>Goroutines</dt><dd>{{ systemStatus.go_routines }}</dd></div><div><dt>堆分配</dt><dd>{{ systemStatus.go_memory_alloc }} MB</dd></div><div><dt>系统分配</dt><dd>{{ systemStatus.go_memory_sys }} MB</dd></div><div><dt>堆对象数</dt><dd>{{ systemStatus.go_memory_heap_objs }}</dd></div><div><dt>GC 暂停</dt><dd>{{ (systemStatus.go_gc_pause / 1000000).toFixed(2) }} ms</dd></div><div><dt>GC 运行次数</dt><dd>{{ systemStatus.go_gc_runs }}</dd></div></dl></CardContent>
+          </Card>
+        </div>
 
-                <el-divider content-position="left">系统时间</el-divider>
+        <div class="status-section-heading"><h3>系统时间</h3><Separator /></div>
+        <Card>
+          <CardHeader><CardTitle class="status-card-title"><Clock3 />时间信息</CardTitle><CardDescription>主机启动与当前时间</CardDescription></CardHeader>
+          <CardContent><dl class="status-list time-status-list"><div><dt>系统运行时间</dt><dd>{{ systemStatus.uptime_formatted }}</dd></div><div><dt>当前时间</dt><dd>{{ systemStatus.current_time }}</dd></div><div><dt>启动时间</dt><dd>{{ systemStatus.start_time }}</dd></div></dl></CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
 
-                <el-row :gutter="20" class="status-row">
-                  <el-col :span="24">
-                    <el-card shadow="hover" class="status-card">
-                      <template v-slot:header>
-<div  class="status-card-header">
-                        <component :is="'el-icon-time'" class="legacy-icon" /> 时间信息
-                      </div>
-</template>
-                      <div class="status-card-content time-card-content">
-                        <div class="status-item">
-                          <div class="status-label">系统运行时间:</div>
-                          <div class="status-value">{{ systemStatus.uptime_formatted }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">当前时间:</div>
-                          <div class="status-value">{{ systemStatus.current_time }}</div>
-                        </div>
-                        <div class="status-item">
-                          <div class="status-label">启动时间:</div>
-                          <div class="status-value">{{ systemStatus.start_time }}</div>
-                        </div>
-                      </div>
-                    </el-card>
-                  </el-col>
-                </el-row>
-              </el-tab-pane>
-            </el-tabs>
+    <div v-if="activeTab !== 'systemStatus'" class="form-actions">
+      <UiButton variant="outline" :disabled="loading" @click="resetSettings">重置</UiButton>
+      <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+    </div>
 
-            <div class="form-actions">
-              <el-button type="primary" @click="saveSettings">保存设置</el-button>
-              <el-button @click="resetSettings">重置</el-button>
-            </div>
-          </el-form>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 备份历史对话框 -->
-    <el-dialog title="备份历史记录" v-model="backupHistoryVisible" width="700px">
-      <el-table :data="backupHistory" border style="width: 100%">
-        <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
-        <el-table-column prop="filename" label="文件名" min-width="180"></el-table-column>
-        <el-table-column prop="size" label="大小" width="100" align="center"></el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" align="center"></el-table-column>
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template v-slot="scope">
-            <el-tag :type="scope.row.status === 'success' ? 'success' : 'danger'">
-              {{ scope.row.status === 'success' ? '成功' : '失败' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" align="center">
-          <template v-slot="scope">
-            <el-button size="mini" type="primary" @click="downloadBackup(scope.row)">下载</el-button>
-            <el-button size="mini" type="danger" @click="deleteBackup(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
+    <UiDialog v-model:open="backupHistoryVisible">
+      <DialogContent class="sm:max-w-4xl">
+        <DialogHeader><DialogTitle>备份历史记录</DialogTitle><DialogDescription>所有已接管房间的真实备份文件。</DialogDescription></DialogHeader>
+        <div class="table-scroll">
+          <ShadcnTable>
+            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>房间</TableHead><TableHead>文件名</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead>状态</TableHead><TableHead class="table-actions-head">操作</TableHead></TableRow></TableHeader>
+            <TableBody>
+              <TableRow v-for="backup in backupHistory" :key="backup.id"><TableCell>{{ backup.id }}</TableCell><TableCell>{{ backup.roomName }}</TableCell><TableCell>{{ backup.filename }}</TableCell><TableCell>{{ backup.size }}</TableCell><TableCell>{{ backup.createTime }}</TableCell><TableCell><Badge :variant="backup.status === 'success' ? 'secondary' : 'destructive'">{{ backup.status === 'success' ? '成功' : '失败' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><Download data-icon="inline-start" />下载</UiButton><UiButton variant="destructive" size="sm" @click="deleteBackup(backup)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow>
+              <TableEmpty v-if="backupHistory.length === 0" :colspan="7">暂无备份记录</TableEmpty>
+            </TableBody>
+          </ShadcnTable>
+        </div>
+        <DialogFooter><UiButton variant="outline" @click="backupHistoryVisible = false">关闭</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import {
+  Activity,
+  ChartNoAxesCombined,
+  Clock3,
+  CodeXml,
+  Cpu,
+  DatabaseBackup,
+  Download,
+  HardDrive,
+  History,
+  MemoryStick,
+  RefreshCw,
+  Save,
+  Send,
+  Trash2
+} from '@lucide/vue';
 import { systemApi } from '@/api';
 import { backupsV2API, jobsV2API, roomsV2API, systemV2API } from '@/api/v2';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldSeparator, FieldTitle } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Progress as UiProgress } from '@/components/ui/progress';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { confirmAction } from '@/lib/feedback';
 import { THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
 import { applySystemPreferences, previewSystemTheme } from '@/utils/systemPreferences';
+import { toast } from 'vue-sonner';
 
 const APPLY_CONFIRMATION = 'APPLY SYSTEM SETTINGS';
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'cancelled']);
 
 export default {
   name: 'SystemSettings',
+  components: {
+    Activity,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    ChartNoAxesCombined,
+    Clock3,
+    CodeXml,
+    Cpu,
+    DatabaseBackup,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Download,
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    FieldSeparator,
+    FieldTitle,
+    HardDrive,
+    History,
+    MemoryStick,
+    UiProgress,
+    RefreshCw,
+    Save,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Send,
+    Separator,
+    ShadcnTable,
+    Spinner,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    ToggleGroup,
+    ToggleGroupItem,
+    Trash2,
+    UiButton,
+    UiDialog,
+    UiInput,
+    UiSelect,
+    UiSwitch,
+    UiTextarea
+  },
   data() {
-    const requiredEmailSetting = (label, configuredSecret = false) => (_rule, value, callback) => {
-      if (!this.settings.emailNotification || String(value || '').trim() || configuredSecret && this.smtpPasswordConfigured) {
-        callback();
-        return;
-      }
-      callback(new Error(`请输入${label}`));
-    };
     return {
       loading: false,
       activeTab: 'basic',
@@ -570,6 +438,14 @@ export default {
       settingsResponse: null,
       smtpPasswordConfigured: false,
       themePresets: THEME_PRESETS,
+      formErrors: {
+        systemName: '',
+        adminEmail: '',
+        smtpServer: '',
+        smtpUsername: '',
+        smtpPassword: '',
+        senderEmail: ''
+      },
       settings: {
         // 基本设置
         systemName: '',
@@ -605,28 +481,6 @@ export default {
         notifyLoginFailures: true,
         notifyBackupResults: true,
         notifySystemUpdates: true
-      },
-
-      rules: {
-        systemName: [
-          { required: true, message: '请输入系统名称', trigger: 'blur' }
-        ],
-        adminEmail: [
-          { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-        ],
-        smtpServer: [
-          { validator: requiredEmailSetting('SMTP服务器地址'), trigger: 'blur' }
-        ],
-        smtpUsername: [
-          { validator: requiredEmailSetting('SMTP用户名'), trigger: 'blur' }
-        ],
-        smtpPassword: [
-          { validator: requiredEmailSetting('SMTP密码', true), trigger: 'blur' }
-        ],
-        senderEmail: [
-          { validator: requiredEmailSetting('发件人邮箱'), trigger: 'blur' },
-          { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-        ]
       },
 
       // 系统状态信息
@@ -671,13 +525,6 @@ export default {
         start_time: '加载中...'
       },
 
-      // 自定义进度条颜色
-      customColors: [
-        {color: '#4f8a5b', percentage: 40},
-        {color: '#d99b32', percentage: 70},
-        {color: '#c94f4f', percentage: 90}
-      ],
-
       // 备份历史
       backupHistoryVisible: false,
       backupHistory: [
@@ -687,19 +534,6 @@ export default {
   computed: {
     selectedThemeId() {
       return resolveThemePreset(this.settings.theme).id;
-    },
-    // 根据CPU核心数量确定网格布局类名
-    getCoreGridClass() {
-      const coreCount = this.systemStatus.cpu_core_usage.length;
-      if (coreCount <= 4) {
-        return 'grid-cols-2';
-      } else if (coreCount <= 8) {
-        return 'grid-cols-4';
-      } else if (coreCount <= 16) {
-        return 'grid-cols-4';
-      } else {
-        return 'grid-cols-6';
-      }
     }
   },
   created() {
@@ -740,6 +574,10 @@ export default {
         '--theme-sidebar': preset.sidebar,
         '--theme-background': preset.background
       };
+    },
+    selectThemeById(id) {
+      if (!id) return;
+      this.selectTheme(themePresetById(id));
     },
     selectTheme(preset) {
       this.settings.theme = preset.primary;
@@ -786,6 +624,7 @@ export default {
         notifyBackupResults: this.fieldBoolean(response, 'notification.backupResults', true),
         notifySystemUpdates: this.fieldBoolean(response, 'notification.systemUpdates', true)
       };
+      this.resetFormErrors();
     },
     async loadSettings(showMessage = true) {
       this.loading = true;
@@ -793,12 +632,49 @@ export default {
         const response = await systemV2API.settings();
         this.populateSettings(response);
         applySystemPreferences(response);
-        if (showMessage === true) this.$message.success('设置已刷新');
+        if (showMessage === true) toast.success('设置已刷新');
       } catch (error) {
-        this.$message.error(error.message || '读取系统设置失败');
+        toast.error(error.message || '读取系统设置失败');
       } finally {
         this.loading = false;
       }
+    },
+    resetFormErrors(fields = Object.keys(this.formErrors)) {
+      fields.forEach(field => {
+        this.formErrors[field] = '';
+      });
+    },
+    isValidEmail(value) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+    },
+    validateEmailFields(includeSender = true) {
+      const fields = includeSender
+        ? ['smtpServer', 'smtpUsername', 'smtpPassword', 'senderEmail']
+        : ['smtpServer', 'smtpUsername', 'smtpPassword'];
+      this.resetFormErrors(fields);
+      if (!this.settings.emailNotification) return true;
+
+      if (!String(this.settings.smtpServer || '').trim()) this.formErrors.smtpServer = '请输入 SMTP 服务器地址';
+      if (!String(this.settings.smtpUsername || '').trim()) this.formErrors.smtpUsername = '请输入 SMTP 用户名';
+      if (!String(this.settings.smtpPassword || '').trim() && !this.smtpPasswordConfigured) this.formErrors.smtpPassword = '请输入 SMTP 密码';
+      if (includeSender) {
+        if (!String(this.settings.senderEmail || '').trim()) this.formErrors.senderEmail = '请输入发件人邮箱';
+        else if (!this.isValidEmail(this.settings.senderEmail)) this.formErrors.senderEmail = '请输入正确的邮箱地址';
+      }
+      return fields.every(field => !this.formErrors[field]);
+    },
+    validateSettings() {
+      this.resetFormErrors();
+      if (!String(this.settings.systemName || '').trim()) this.formErrors.systemName = '请输入系统名称';
+      if (String(this.settings.adminEmail || '').trim() && !this.isValidEmail(this.settings.adminEmail)) {
+        this.formErrors.adminEmail = '请输入正确的邮箱地址';
+      }
+      const emailValid = this.validateEmailFields(true);
+      const basicValid = !this.formErrors.systemName && !this.formErrors.adminEmail;
+      if (!basicValid) this.activeTab = 'basic';
+      else if (!emailValid) this.activeTab = 'notification';
+      if (!basicValid || !emailValid) toast.warning('请检查表单中的错误');
+      return basicValid && emailValid;
     },
     settingsInput() {
       const values = {
@@ -832,8 +708,7 @@ export default {
       return { revision: this.revision, values, clearSecrets: [] };
     },
     async saveSettings() {
-      const valid = await this.$refs.settingsForm.validate().catch(() => false);
-      if (!valid) return;
+      if (!this.validateSettings()) return;
       this.loading = true;
       try {
         const input = this.settingsInput();
@@ -843,7 +718,7 @@ export default {
           throw new Error(messages.join('；') || '系统设置校验失败');
         }
         if (preview.changes.length === 0) {
-          this.$message.info('设置没有变化');
+          toast.info('设置没有变化');
           return;
         }
         const result = await systemV2API.applySettings({ ...input, confirmation: APPLY_CONFIRMATION });
@@ -851,21 +726,23 @@ export default {
         this.populateSettings(result.settings);
         applySystemPreferences(result.settings);
         const suffix = result.settings.restartRequired ? '；路径或运行参数需要重启服务后生效' : '';
-        this.$message.success(`设置已保存并生效${suffix}`);
+        toast.success(`设置已保存并生效${suffix}`);
       } catch (error) {
-        this.$message.error(error.message || '保存系统设置失败');
+        toast.error(error.message || '保存系统设置失败');
       } finally {
         this.loading = false;
       }
     },
-    resetSettings() {
-      this.$confirm('确定放弃当前未保存的修改，并重新读取服务器设置吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.loadSettings(false);
-      }).catch(() => {});
+    async resetSettings() {
+      try {
+        await confirmAction('确定放弃当前未保存的修改，并重新读取服务器设置吗？', '重置系统设置', {
+          confirmButtonText: '确定重置',
+          cancelButtonText: '取消'
+        });
+        await this.loadSettings(false);
+      } catch (error) {
+        if (error !== 'cancel' && error !== 'close') toast.error(error.message || '重置系统设置失败');
+      }
     },
     backupIntervalMinutes() {
       return { daily: 1440, weekly: 10080, monthly: 43200 }[this.settings.backupFrequency] || 1440;
@@ -899,9 +776,9 @@ export default {
         const jobs = await Promise.all(rooms.map(room => backupsV2API.create(room.id)));
         await this.waitForJobs(jobs);
         await this.loadBackupHistory();
-        this.$message.success(`已完成 ${rooms.length} 个房间的真实备份`);
+        toast.success(`已完成 ${rooms.length} 个房间的真实备份`);
       } catch (error) {
-        this.$message.error(error.message || '创建备份失败');
+        toast.error(error.message || '创建备份失败');
       } finally {
         this.loading = false;
       }
@@ -937,7 +814,7 @@ export default {
         await this.loadBackupHistory();
         this.backupHistoryVisible = true;
       } catch (error) {
-        this.$message.error(error.message || '读取备份历史失败');
+        toast.error(error.message || '读取备份历史失败');
       } finally {
         this.loading = false;
       }
@@ -952,19 +829,22 @@ export default {
     },
     async deleteBackup(backup) {
       try {
-        await this.$confirm(`确定要删除备份：${backup.filename}吗？`, '提示', {
-          confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
+        await confirmAction(`确定要删除备份：${backup.filename}吗？`, '删除备份', {
+          confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning'
         });
         await backupsV2API.delete(backup.id, backup.name);
         await this.loadBackupHistory();
-        this.$message.success('备份已删除');
+        toast.success('备份已删除');
       } catch (error) {
-        if (error !== 'cancel' && error !== 'close') this.$message.error(error.message || '删除备份失败');
+        if (error !== 'cancel' && error !== 'close') toast.error(error.message || '删除备份失败');
       }
     },
     async testEmailConnection() {
-      const valid = await this.$refs.settingsForm.validateField(['smtpServer', 'smtpUsername', 'smtpPassword']).then(() => true).catch(() => false);
-      if (!valid) return;
+      if (!this.validateEmailFields(false)) {
+        this.activeTab = 'notification';
+        toast.warning('请检查 SMTP 连接参数');
+        return;
+      }
       this.loading = true;
       try {
         const result = await systemV2API.testEmail({
@@ -973,9 +853,9 @@ export default {
           username: this.settings.smtpUsername,
           password: this.settings.smtpPassword
         });
-        this.$message.success(`SMTP 连接与认证成功（${result.tls ? 'TLS' : '本机明文连接'}）`);
+        toast.success(`SMTP 连接与认证成功（${result.tls ? 'TLS' : '本机明文连接'}）`);
       } catch (error) {
-        this.$message.error(error.details?.reason || error.message || 'SMTP 连接测试失败');
+        toast.error(error.details?.reason || error.message || 'SMTP 连接测试失败');
       } finally {
         this.loading = false;
       }
@@ -989,17 +869,13 @@ export default {
         .then(res => {
           if (res && res.data && res.status === 200) {
             this.systemStatus = res.data;
-
-            this.$message({
-              type: 'success',
-              message: '系统状态已刷新'
-            });
+            toast.success('系统状态已刷新');
           } else {
-            this.$message.error('获取系统状态失败：' + (res.msg || '未知错误'));
+            toast.error('获取系统状态失败：' + (res?.msg || '未知错误'));
           }
         })
         .catch(err => {
-          this.$message.error('获取系统状态失败：' + (err.message || '未知错误'));
+          toast.error('获取系统状态失败：' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading = false;
@@ -1021,40 +897,19 @@ export default {
         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
       }).format(new Date(value)).replaceAll('/', '-');
     },
-    // 格式化内存显示
     formatMemory(memory) {
-      if (!memory) return '0 MB';
-      if (memory < 1024) {
-        return memory.toFixed(0) + ' MB';
+      const value = Number(memory) || 0;
+      if (value < 1024) {
+        return value.toFixed(0) + ' MB';
       } else {
-        return (memory / 1024).toFixed(2) + ' GB';
+        return (value / 1024).toFixed(2) + ' GB';
       }
     },
-
-    // 格式化CPU核心使用率显示宽度
-    formatCoreUsageWidth(usage) {
-      // 数值本身就是百分比，最大限制为100%显示
-      return Math.min(usage, 100) + '%';
+    clampPercent(value) {
+      return Math.min(Math.max(Number(value) || 0, 0), 100);
     },
-
-    // 判断CPU核心是否过载
     isCoreOverloaded(usage) {
-      // 当使用率超过70%时认为是高负载
-      return usage > 70;
-    },
-
-    // 根据使用率获取颜色
-    getCoreColor(percentage) {
-      // 接口返回的就是百分比值
-      if (percentage < 40) {
-        return '#4f8a5b'; // 绿色 - 低负载
-      } else if (percentage < 70) {
-        return '#d99b32'; // 黄色 - 中等负载
-      } else if (percentage <= 100) {
-        return '#c94f4f'; // 红色 - 高负载
-      } else {
-        return '#800080'; // 紫色 - 超过100%负载
-      }
+      return Number(usage) > 70;
     }
   }
 };
@@ -1065,71 +920,93 @@ export default {
   width: 100%;
 }
 
-.main-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-.settings-card-header {
+.settings-page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.main-card > :deep(.el-card__body > .el-form) {
+.settings-page-header h1,
+.status-header h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.settings-page-header p,
+.status-header p {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.settings-tabs-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-tabs-scroll {
+  width: 100%;
+  overflow-x: auto;
+  padding: 0 2px 6px;
+  scrollbar-width: thin;
+}
+
+.settings-tabs {
+  min-width: max-content;
+}
+
+.settings-form {
   max-width: 960px;
+}
+
+.setting-control {
+  width: min(100%, 480px);
+}
+
+.number-control {
+  width: min(100%, 180px);
+}
+
+.field-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 24px;
-}
-
-.setting-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-left: 8px;
-  line-height: 20px;
-}
-
-.theme-control {
-  width: min(100%, 720px);
+  margin-top: 16px;
 }
 
 .theme-options {
   display: grid;
+  width: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .theme-option {
+  display: flex;
+  width: 100%;
   min-width: 0;
-  min-height: 82px;
+  height: auto;
+  min-height: 80px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
   padding: 12px;
-  color: var(--text-regular);
   text-align: left;
-  cursor: pointer;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.theme-option:hover,
-.theme-option:focus-visible {
-  border-color: var(--theme-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-primary) 14%, transparent);
-  outline: none;
-}
-
-.theme-option.is-selected {
-  color: var(--text-primary);
-  border-color: var(--theme-primary);
-  box-shadow: inset 3px 0 0 var(--theme-primary);
+  white-space: normal;
 }
 
 .theme-option-head {
@@ -1141,34 +1018,22 @@ export default {
 }
 
 .theme-option-name {
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 22px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.theme-option-status,
-.custom-theme-status {
-  flex: 0 0 auto;
-  color: var(--primary-color);
-  font-size: 12px;
-  line-height: 20px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .theme-swatches {
   display: grid;
-  grid-template-columns: repeat(4, 24px);
+  grid-template-columns: repeat(4, 28px);
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .theme-swatch {
-  width: 24px;
-  height: 18px;
-  border: 1px solid rgba(37, 40, 38, 0.1);
-  border-radius: 3px;
+  width: 28px;
+  height: 16px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 4px;
 }
 
 .theme-swatch-sidebar {
@@ -1189,265 +1054,230 @@ export default {
 
 .custom-theme-control {
   display: flex;
-  min-height: 42px;
+  min-height: 52px;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
 
-.custom-theme-label {
-  color: var(--text-regular);
-  font-size: 13px;
+.custom-theme-copy {
+  min-width: 200px;
+  flex: 1;
 }
 
-.custom-theme-control.is-selected .custom-theme-label {
-  color: var(--text-primary);
-  font-weight: 600;
+.color-input {
+  width: 48px;
+  min-width: 48px;
+  padding: 3px;
 }
 
-:deep(.el-tabs__header) {
-  margin-bottom: 20px;
+.status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-:deep(.el-tabs__item) {
-  font-size: 15px;
-  font-weight: 500;
+.status-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 10px;
 }
 
-:deep(.el-tabs__item.is-active) {
-  color: var(--primary-color);
-}
-
-:deep(.el-form-item) {
-  margin-bottom: 22px;
-}
-
-:deep(.el-form-item__label) {
-  font-weight: 500;
-}
-
-:deep(.el-input-number) {
-  width: 200px;
-}
-
-:deep(.el-select) {
-  width: 100%;
-}
-
-:deep(.el-divider__text) {
+.status-section-heading h3 {
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--foreground);
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-regular);
-  background-color: var(--surface-color);
 }
 
-:deep(.el-tabs__nav-wrap::after) {
-  height: 1px;
+.status-grid {
+  display: grid;
+  gap: 12px;
 }
 
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .settings-card-header {
-    min-height: 32px;
+.system-status-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.process-status-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.status-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+
+.status-list > div {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.status-list dt {
+  color: var(--muted-foreground);
+}
+
+.status-list dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.usage-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.usage-block > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.usage-block strong {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.core-usage-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.core-usage-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.core-usage-label {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.time-status-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.time-status-list > div {
+  grid-template-columns: 1fr;
+  gap: 3px;
+}
+
+.time-status-list dd {
+  text-align: left;
+}
+
+.notification-events {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-actions-head {
+  text-align: right;
+}
+
+.table-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+@media (min-width: 1280px) {
+  .system-status-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
 
-  :deep(.el-form-item) {
-    display: flex;
-    flex-direction: column;
+@media (max-width: 768px) {
+  .settings-page-header,
+  .status-header {
     align-items: flex-start;
   }
 
-  :deep(.el-form-item__label) {
-    text-align: left;
-    width: 100% !important;
-    padding: 0 0 10px 0;
+  .settings-page-header > div,
+  .status-header > div {
+    min-width: 0;
   }
 
-  :deep(.el-form-item__content) {
-    width: 100%;
-    margin-left: 0 !important;
-  }
-
-  .setting-desc {
-    display: block;
-    margin-left: 0;
-    margin-top: 5px;
+  .system-status-grid,
+  .process-status-grid,
+  .notification-events,
+  .time-status-list {
+    grid-template-columns: 1fr;
   }
 
   .theme-options {
     grid-template-columns: 1fr;
   }
 
-  .custom-theme-control {
-    flex-wrap: wrap;
+  .field-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .setting-control,
+  .number-control {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .settings-page-header,
+  .status-header {
+    flex-direction: column;
+  }
+
+  .settings-page-header > button,
+  .status-header > button {
+    width: 100%;
   }
 
   .form-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    margin-top: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .form-actions :deep(.el-button) {
-    width: 100%;
-    margin: 0;
-  }
-
-  :deep(.el-tabs__nav-wrap) {
-    padding: 0 4px;
-  }
-}
-
-/* 系统状态样式 */
-.status-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.status-title {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.status-row {
-  margin-bottom: 20px;
-}
-
-.status-card {
-  margin-bottom: 20px;
-  height: 100%;
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-.status-card-header {
-  display: flex;
-  align-items: center;
-  font-weight: 500;
-}
-
-.status-card-header i {
-  margin-right: 8px;
-  font-size: 18px;
-}
-
-.status-card-content {
-  padding: 5px 0;
-}
-
-.status-item {
-  display: flex;
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
-
-.status-label {
-  width: 90px;
-  color: var(--text-regular);
-  font-size: 14px;
-}
-
-.status-value {
-  flex: 1;
-  color: var(--text-primary);
-  font-size: 14px;
-  word-break: break-all;
-}
-
-.progress-value {
-  padding-right: 10px;
-}
-
-.cpu-cores-item {
-  flex-direction: column;
-  align-items: flex-start;
-  margin-top: 10px;
-}
-
-.cpu-cores-item .status-label {
-  margin-bottom: 8px;
-  width: 100%;
-}
-
-.cpu-cores-item .status-value {
-  width: 100%;
-}
-
-.core-usage-container {
-  width: 100%;
-  display: grid;
-  grid-gap: 10px;
-}
-
-.grid-cols-2 {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.grid-cols-4 {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-.grid-cols-6 {
-  grid-template-columns: repeat(6, 1fr);
-}
-
-.core-usage-item {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 5px;
-}
-
-.core-usage-label {
-  font-size: 12px;
-  color: var(--text-regular);
-  margin-bottom: 2px;
-}
-
-.core-usage-bar-container {
-  width: 100%;
-  height: 6px;
-  background-color: #E9E9E9;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 2px;
-}
-
-.core-usage-bar {
-  height: 100%;
-  border-radius: 3px;
-}
-
-.core-usage-value {
-  font-size: 11px;
-  color: var(--text-secondary);
-  text-align: right;
-}
-
-.core-overload-indicator {
-  font-size: 10px;
-  color: white;
-  margin-left: 5px;
-  background-color: #c94f4f;
-  padding: 1px 4px;
-  border-radius: 2px;
-}
-
-.time-card-content .status-item .status-label {
-  width: 120px;
-}
-
-@media (max-width: 768px) {
-  .status-item {
-    flex-direction: column;
-  }
-
-  .status-label {
-    width: 100%;
-    margin-bottom: 4px;
+  .form-actions > button,
+  .field-actions > button {
+    min-width: 0;
+    flex: 1;
   }
 }
 </style>
