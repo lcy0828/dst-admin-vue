@@ -1,270 +1,241 @@
 <template>
   <div class="world-state-page">
-    <!-- 页面标题 -->
     <div class="page-header">
       <h2>世界状态信息</h2>
-      <div class="header-actions">
-        <el-button type="primary" icon="el-icon-refresh" @click="refreshData" :loading="loading">刷新</el-button>
-      </div>
+      <UiButton @click="refreshData" :disabled="loading || !selectedArchive || !selectedWorld">
+        <Spinner v-if="loading" data-icon="inline-start" />
+        <RefreshCw v-else data-icon="inline-start" />
+        刷新
+      </UiButton>
     </div>
 
-    <!-- 选择存档和世界 -->
-    <el-card shadow="hover" class="filter-card">
-      <div class="filter-container">
-        <el-form :inline="true" class="filter-form">
-          <el-form-item label="存档名称">
-            <el-select v-model="selectedArchive" placeholder="请选择存档" @change="handleArchiveChange" filterable>
-              <el-option
-                v-for="archive in archives"
-                :key="archive.id || archive.name"
-                :label="archive.name || archive.id"
-                :value="archive.name || archive.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="世界名称">
-            <el-select v-model="selectedWorld" placeholder="请选择世界" filterable>
-              <el-option
-                v-for="world in worldsOfSelectedArchive"
-                :key="world.id || world.name"
-                :label="world.name || (typeof world === 'string' ? world : world.id)"
-                :value="world.name || (typeof world === 'string' ? world : world.id)">
-              </el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="fetchWorldState" :disabled="!selectedArchive || !selectedWorld">查询</el-button>
-          </el-form-item>
-        </el-form>
+    <Card class="filter-card">
+      <CardHeader>
+        <CardTitle>状态查询</CardTitle>
+        <CardDescription>选择房间存档和世界分片。</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup class="filter-grid">
+          <Field>
+            <FieldLabel>存档名称</FieldLabel>
+            <UiSelect v-model="selectedArchive" @update:model-value="handleArchiveChange">
+              <SelectTrigger><SelectValue placeholder="请选择存档" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem v-for="archive in archives" :key="archive.id || archive.name" :value="archive.name || archive.id">
+                    {{ archive.name || archive.id }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+          </Field>
+          <Field>
+            <FieldLabel>世界名称</FieldLabel>
+            <UiSelect v-model="selectedWorld" :disabled="!selectedArchive">
+              <SelectTrigger><SelectValue placeholder="请选择世界" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem
+                    v-for="world in worldsOfSelectedArchive"
+                    :key="world.id || world.name || world"
+                    :value="world.name || (typeof world === 'string' ? world : world.id)"
+                  >
+                    {{ world.name || (typeof world === 'string' ? world : world.id) }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+          </Field>
+          <Field class="query-action">
+            <FieldLabel class="sr-only">查询状态</FieldLabel>
+            <UiButton @click="fetchWorldState" :disabled="loading || !selectedArchive || !selectedWorld">查询</UiButton>
+          </Field>
+        </FieldGroup>
+      </CardContent>
+    </Card>
+
+    <div v-if="loading" class="loading-state"><Spinner /><span>正在读取世界状态</span></div>
+
+    <Empty v-else-if="!worldState">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><Activity /></EmptyMedia>
+        <EmptyTitle>暂无世界状态</EmptyTitle>
+        <EmptyDescription>{{ selectedArchive && selectedWorld ? '点击查询获取最新状态。' : '请选择存档和世界。' }}</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+
+    <div v-else class="state-content">
+      <div class="state-cards">
+        <Card class="state-card">
+          <CardContent>
+            <component :is="getSeasonIcon()" class="state-icon" />
+            <div><span>季节</span><strong>{{ getSeasonName() }}</strong><small>{{ getSeasonDetail() }}</small><small>世界天数: {{ displayValue(worldState.cycles) }}</small></div>
+          </CardContent>
+        </Card>
+        <Card class="state-card">
+          <CardContent>
+            <component :is="getPhaseIcon()" class="state-icon" />
+            <div><span>地表时间</span><strong>{{ getPhaseName() }}</strong><small>{{ getPhaseDetail() }}</small><small>全天进度: {{ formatPercent(worldState.time) }}</small></div>
+          </CardContent>
+        </Card>
+        <Card class="state-card">
+          <CardContent>
+            <component :is="getWeatherIcon()" class="state-icon" />
+            <div><span>地表天气</span><strong>{{ getWeatherName() }}</strong><small>温度: {{ formatNumber(worldState.temperature, 1, '°C') }}</small><small>{{ getWeatherDetail() }}</small></div>
+          </CardContent>
+        </Card>
+        <Card class="state-card">
+          <CardContent>
+            <component :is="getMoonIcon()" class="state-icon" />
+            <div><span>地表月相</span><strong>{{ getMoonPhaseName() }}</strong><small>{{ getMoonPhaseDetail() }}</small></div>
+          </CardContent>
+        </Card>
+        <Card v-if="hasCaveInfo()" class="state-card">
+          <CardContent>
+            <component :is="getCavePhaseIcon()" class="state-icon" />
+            <div><span>洞穴时间</span><strong>{{ getCavePhaseName() }}</strong><small>洞穴时间阶段</small></div>
+          </CardContent>
+        </Card>
+        <Card v-if="hasCaveInfo()" class="state-card">
+          <CardContent>
+            <component :is="getCaveMoonIcon()" class="state-icon" />
+            <div><span>洞穴月相</span><strong>{{ getCaveMoonPhaseName() }}</strong><small>{{ getCaveMoonPhaseDetail() }}</small></div>
+          </CardContent>
+        </Card>
+        <Card v-if="hasNightmareInfo()" class="state-card">
+          <CardContent>
+            <component :is="getNightmarePhaseIcon()" class="state-icon" />
+            <div><span>梦魇循环</span><strong>{{ getNightmarePhaseName() }}</strong><small>{{ getNightmarePhaseDetail() }}</small></div>
+          </CardContent>
+        </Card>
       </div>
-    </el-card>
 
-    <!-- 世界状态信息展示 -->
-    <div v-loading="loading" class="state-content">
-      <div v-if="!worldState" class="empty-state">
-        <component :is="'el-icon-info'" class="legacy-icon" />
-        <p v-if="selectedArchive && selectedWorld">没有找到世界状态信息，请点击查询按钮获取最新数据</p>
-        <p v-else>请选择存档和世界，然后点击查询按钮获取世界状态信息</p>
-      </div>
-      <div v-else>
-        <!-- 基本信息卡片 -->
-        <el-row :gutter="20" class="state-cards">
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-card shadow="hover" class="state-card">
-              <div class="state-card-content">
-                <div class="state-icon-container" :class="getSeasonClass()">
-                  <component :is="getSeasonIcon()" class="legacy-icon" />
-                </div>
-                <div class="state-info">
-                  <div class="state-title">季节</div>
-                  <div class="state-value">{{ getSeasonName() }}</div>
-                  <div class="state-detail">{{ getSeasonDetail() }}</div>
-                  <div class="state-detail">世界天数: {{ displayValue(worldState.cycles) }}</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-card shadow="hover" class="state-card">
-              <div class="state-card-content">
-                <div class="state-icon-container" :class="getPhaseClass()">
-                  <component :is="getPhaseIcon()" class="legacy-icon" />
-                </div>
-                <div class="state-info">
-                  <div class="state-title">地表时间</div>
-                  <div class="state-value">{{ getPhaseName() }}</div>
-                  <div class="state-detail">{{ getPhaseDetail() }}</div>
-                  <div class="state-detail">全天进度: {{ formatPercent(worldState.time) }}</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-card shadow="hover" class="state-card">
-              <div class="state-card-content">
-                <div class="state-icon-container" :class="getWeatherClass()">
-                  <component :is="getWeatherIcon()" class="legacy-icon" />
-                </div>
-                <div class="state-info">
-                  <div class="state-title">地表天气</div>
-                  <div class="state-value">{{ getWeatherName() }}</div>
-                  <div class="state-detail">温度: {{ formatNumber(worldState.temperature, 1, '°C') }}</div>
-                  <div class="state-detail">{{ getWeatherDetail() }}</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-card shadow="hover" class="state-card">
-              <div class="state-card-content">
-                <div class="state-icon-container" :class="getMoonClass()">
-                  <component :is="getMoonIcon()" class="legacy-icon" />
-                </div>
-                <div class="state-info">
-                  <div class="state-title">地表月相</div>
-                  <div class="state-value">{{ getMoonPhaseName() }}</div>
-                  <div class="state-detail">{{ getMoonPhaseDetail() }}</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-
-        <!-- 洞穴信息卡片 -->
-        <el-row :gutter="20" class="state-cards" v-if="hasCaveInfo()">
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-card shadow="hover" class="state-card">
-              <div class="state-card-content">
-                <div class="state-icon-container" :class="getCavePhaseClass()">
-                  <component :is="getCavePhaseIcon()" class="legacy-icon" />
-                </div>
-                <div class="state-info">
-                  <div class="state-title">洞穴时间</div>
-                  <div class="state-value">{{ getCavePhaseName() }}</div>
-                  <div class="state-detail">洞穴时间阶段</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-card shadow="hover" class="state-card">
-              <div class="state-card-content">
-                <div class="state-icon-container" :class="getCaveMoonClass()">
-                  <component :is="getCaveMoonIcon()" class="legacy-icon" />
-                </div>
-                <div class="state-info">
-                  <div class="state-title">洞穴月相</div>
-                  <div class="state-value">{{ getCaveMoonPhaseName() }}</div>
-                  <div class="state-detail">{{ getCaveMoonPhaseDetail() }}</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-
-        <!-- 梦魇循环信息卡片 -->
-        <el-row :gutter="20" class="state-cards" v-if="hasNightmareInfo()">
-          <el-col :xs="24" :sm="12" :md="6">
-            <el-card shadow="hover" class="state-card">
-              <div class="state-card-content">
-                <div class="state-icon-container" :class="getNightmarePhaseClass()">
-                  <component :is="getNightmarePhaseIcon()" class="legacy-icon" />
-                </div>
-                <div class="state-info">
-                  <div class="state-title">梦魇循环</div>
-                  <div class="state-value">{{ getNightmarePhaseName() }}</div>
-                  <div class="state-detail">{{ getNightmarePhaseDetail() }}</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-
-        <!-- 季节进度条 -->
-        <el-card shadow="hover" class="season-progress-card">
-          <template v-slot:header>
-<div  class="clearfix">
-            <span>地表季节进度</span>
-            <span class="season-days">
-              已过 {{ displayValue(worldState.elapsed_days_in_season) }} 天 / 剩余 {{ displayValue(worldState.remaining_days_in_season) }} 天
-            </span>
-          </div>
-</template>
-          <div class="season-progress">
-            <el-progress
-              v-if="isFiniteNumber(worldState.season_progress)"
-              :percentage="(worldState.season_progress * 100).toFixed(1)"
-              :color="getSeasonColor()"
-              :stroke-width="20"
-              :format="format => `${format}%`">
-            </el-progress>
-            <span v-else>--</span>
-          </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>地表季节进度</CardTitle>
+          <CardDescription>已过 {{ displayValue(worldState.elapsed_days_in_season) }} 天 / 剩余 {{ displayValue(worldState.remaining_days_in_season) }} 天</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <UiProgress v-if="isFiniteNumber(worldState.season_progress)" :model-value="worldState.season_progress * 100" />
+          <span v-else>--</span>
           <div class="season-lengths">
-            <div class="season-length">
-              <span class="season-name autumn">秋季:</span>
-              <span class="season-days">{{ displayValue(worldState.autumn_length) }} 天</span>
-            </div>
-            <div class="season-length">
-              <span class="season-name winter">冬季:</span>
-              <span class="season-days">{{ displayValue(worldState.winter_length) }} 天</span>
-            </div>
-            <div class="season-length">
-              <span class="season-name spring">春季:</span>
-              <span class="season-days">{{ displayValue(worldState.spring_length) }} 天</span>
-            </div>
-            <div class="season-length">
-              <span class="season-name summer">夏季:</span>
-              <span class="season-days">{{ displayValue(worldState.summer_length) }} 天</span>
-            </div>
+            <Badge variant="outline">秋季 {{ displayValue(worldState.autumn_length) }} 天</Badge>
+            <Badge variant="outline">冬季 {{ displayValue(worldState.winter_length) }} 天</Badge>
+            <Badge variant="outline">春季 {{ displayValue(worldState.spring_length) }} 天</Badge>
+            <Badge variant="outline">夏季 {{ displayValue(worldState.summer_length) }} 天</Badge>
           </div>
-        </el-card>
+        </CardContent>
+      </Card>
 
-        <!-- 详细信息表格 -->
-        <el-card shadow="hover" class="details-card">
-          <template v-slot:header>
-<div  class="clearfix">
-            <span>详细信息</span>
-            <el-dropdown style="float: right; margin-left: 10px;" @command="handleCategoryFilter">
-              <el-button type="text">
-                {{ currentCategory || '所有分类' }} <component :is="'el-icon-arrow-down'" class="legacy-icon" />
-              </el-button>
-              <template v-slot:dropdown>
-<el-dropdown-menu >
-                <el-dropdown-item command="">所有分类</el-dropdown-item>
-                <el-dropdown-item command="basic">基本信息</el-dropdown-item>
-                <el-dropdown-item command="season">季节信息</el-dropdown-item>
-                <el-dropdown-item command="time">时间信息</el-dropdown-item>
-                <el-dropdown-item command="moon">月相信息</el-dropdown-item>
-                <el-dropdown-item command="weather">天气信息</el-dropdown-item>
-                <el-dropdown-item command="cave">洞穴信息</el-dropdown-item>
-                <el-dropdown-item command="nightmare">梦魇循环信息</el-dropdown-item>
-                <el-dropdown-item command="other">其他信息</el-dropdown-item>
-              </el-dropdown-menu>
-</template>
-            </el-dropdown>
-            <el-input
-              placeholder="搜索属性或描述"
-              v-model="searchQuery"
-              style="float: right; width: 200px;"
-              clearable
-              @clear="handleSearchClear"
-              prefix-icon="el-icon-search">
-            </el-input>
+      <Card>
+        <CardHeader class="details-header">
+          <div>
+            <CardTitle>详细信息</CardTitle>
+            <CardDescription>按属性、描述或分类筛选状态字段。</CardDescription>
           </div>
-</template>
-          <el-table :data="filteredDetailsTableData" style="width: 100%" border stripe>
-            <el-table-column prop="name" label="属性" width="180"></el-table-column>
-            <el-table-column prop="value" label="值"></el-table-column>
-            <el-table-column prop="description" label="描述"></el-table-column>
-          </el-table>
-        </el-card>
+          <div class="details-filters">
+            <InputGroup>
+              <InputGroupAddon><Search /></InputGroupAddon>
+              <InputGroupInput v-model="searchQuery" placeholder="搜索属性或描述" />
+            </InputGroup>
+            <UiSelect v-model="currentCategory">
+              <SelectTrigger><SelectValue placeholder="所有分类" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">所有分类</SelectItem>
+                  <SelectItem v-for="(label, key) in categoryMap" :key="key" :value="key">{{ label }}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+          </div>
+        </CardHeader>
+        <CardContent class="table-wrap">
+          <UiTable>
+            <TableHeader><TableRow><TableHead>属性</TableHead><TableHead>值</TableHead><TableHead>描述</TableHead></TableRow></TableHeader>
+            <TableBody>
+              <TableRow v-for="item in filteredDetailsTableData" :key="item.name">
+                <TableCell>{{ item.name }}</TableCell><TableCell>{{ item.value }}</TableCell><TableCell>{{ item.description }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </UiTable>
+        </CardContent>
+      </Card>
 
-        <!-- 原始数据 -->
-        <el-card shadow="hover" class="raw-data-card">
-          <template v-slot:header>
-<div  class="clearfix">
-            <span>原始数据</span>
-            <el-button style="float: right; padding: 3px 0" type="text" @click="toggleRawData">
-              {{ showRawData ? '隐藏' : '显示' }}
-            </el-button>
-          </div>
-</template>
-          <div v-if="showRawData" class="raw-data">
-            <pre>{{ worldState.raw_data }}</pre>
-          </div>
-        </el-card>
-      </div>
+      <Collapsible v-model:open="showRawData">
+        <Card>
+          <CardHeader class="raw-header">
+            <div><CardTitle>原始数据</CardTitle><CardDescription>后端返回的原始世界状态。</CardDescription></div>
+            <CollapsibleTrigger as-child>
+              <UiButton variant="outline" size="sm">{{ showRawData ? '隐藏' : '显示' }}</UiButton>
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent><pre class="raw-data">{{ worldState.raw_data }}</pre></CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   </div>
 </template>
 
 <script>
+import { Activity, CircleHelp, CircleMinus, CloudRain, CloudSnow, Leaf, Moon, RefreshCw, Search, Snowflake, Sprout, Sun, Sunrise, Sunset, TriangleAlert, Zap } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import api from '@/api';
-import { getSystemPreferences } from '@/utils/systemPreferences';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Progress as UiProgress } from '@/components/ui/progress';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default {
   name: 'WorldState',
+  components: {
+    Activity,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    Field,
+    FieldGroup,
+    FieldLabel,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    RefreshCw,
+    Search,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Spinner,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    UiButton,
+    UiProgress,
+    UiSelect,
+    UiTable
+  },
   data() {
     return {
       loading: false,
@@ -383,7 +354,7 @@ export default {
           }
         })
         .catch(error => {
-          this.$message.error(`获取存档列表失败: ${error.message || '未知错误'}`);
+          toast.error(`获取存档列表失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.loading = false;
@@ -398,7 +369,7 @@ export default {
     // 获取世界状态
     fetchWorldState() {
       if (!this.selectedArchive || !this.selectedWorld) {
-        this.$message.warning('请选择存档和世界');
+        toast.warning('请选择存档和世界');
         return;
       }
 
@@ -417,10 +388,10 @@ export default {
               query: { archive: this.selectedArchive, world: this.selectedWorld }
             });
           }
-          this.$message.success(response.msg || '获取世界状态信息成功');
+          toast.success(response.msg || '获取世界状态信息成功');
         })
         .catch(error => {
-          this.$message.error(`获取世界状态失败: ${error.message || '未知错误'}`);
+          toast.error(`获取世界状态失败: ${error.message || '未知错误'}`);
           this.worldState = null;
           this.detailsTableData = [];
         })
@@ -678,23 +649,23 @@ export default {
 
     // 获取季节图标
     getSeasonIcon() {
-      if (!this.worldState) return 'el-icon-question';
+      if (!this.worldState) return CircleHelp;
 
       try {
         const iconMap = {
-          autumn: 'el-icon-umbrella',
-          winter: 'el-icon-heavy-rain',
-          spring: 'el-icon-sunrise',
-          summer: 'el-icon-sunny'
+          autumn: Leaf,
+          winter: Snowflake,
+          spring: Sprout,
+          summer: Sun
         };
 
         const season = this.worldState.season;
-        if (!season) return 'el-icon-question';
+        if (!season) return CircleHelp;
 
-        return iconMap[season] || 'el-icon-question';
+        return iconMap[season] || CircleHelp;
       } catch (err) {
         console.error('获取季节图标时出错:', err);
-        return 'el-icon-question';
+        return CircleHelp;
       }
     },
 
@@ -711,20 +682,6 @@ export default {
         console.error('获取季节样式类时出错:', err);
         return 'season-unknown';
       }
-    },
-
-    // 获取季节颜色
-    getSeasonColor() {
-      if (!this.worldState) return getSystemPreferences().theme;
-
-      const colorMap = {
-        autumn: '#d99b32',
-        winter: '#758078',
-        spring: '#4f8a5b',
-        summer: '#c94f4f'
-      };
-
-      return colorMap[this.worldState.season] || getSystemPreferences().theme;
     },
 
     // 获取时间阶段名称
@@ -762,15 +719,15 @@ export default {
 
     // 获取时间阶段图标
     getPhaseIcon() {
-      if (!this.worldState) return 'el-icon-question';
+      if (!this.worldState) return CircleHelp;
 
       const iconMap = {
-        day: 'el-icon-sunny',
-        dusk: 'el-icon-sunset',
-        night: 'el-icon-moon'
+        day: Sun,
+        dusk: Sunset,
+        night: Moon
       };
 
-      return iconMap[this.worldState.phase] || 'el-icon-question';
+      return iconMap[this.worldState.phase] || CircleHelp;
     },
 
     // 获取时间阶段样式类
@@ -844,12 +801,12 @@ export default {
 
     // 获取天气图标
     getWeatherIcon() {
-      if (!this.worldState) return 'el-icon-question';
+      if (!this.worldState) return CircleHelp;
 
-      if (this.worldState.precipitation === 'snow') return 'el-icon-heavy-rain';
-      if (this.worldState.precipitation === 'rain') return 'el-icon-umbrella';
-      if (this.worldState.precipitation === 'none') return 'el-icon-sunny';
-      return 'el-icon-question';
+      if (this.worldState.precipitation === 'snow') return CloudSnow;
+      if (this.worldState.precipitation === 'rain') return CloudRain;
+      if (this.worldState.precipitation === 'none') return Sun;
+      return CircleHelp;
     },
 
     // 获取天气样式类
@@ -900,10 +857,10 @@ export default {
 
     // 获取月相图标
     getMoonIcon() {
-      if (!this.worldState) return 'el-icon-question';
+      if (!this.worldState) return CircleHelp;
 
       // 使用默认图标，因为Element UI没有所有月相的图标
-      return 'el-icon-moon';
+      return Moon;
     },
 
     // 获取月相样式类
@@ -971,22 +928,22 @@ export default {
 
     // 获取洞穴时间阶段图标
     getCavePhaseIcon() {
-      if (!this.worldState) return 'el-icon-question';
+      if (!this.worldState) return CircleHelp;
 
       try {
         const iconMap = {
-          day: 'el-icon-sunny',
-          dusk: 'el-icon-sunset',
-          night: 'el-icon-moon'
+          day: Sun,
+          dusk: Sunset,
+          night: Moon
         };
 
         const phase = this.worldState.cavephase;
-        if (!phase) return 'el-icon-question';
+        if (!phase) return CircleHelp;
 
-        return iconMap[phase] || 'el-icon-question';
+        return iconMap[phase] || CircleHelp;
       } catch (err) {
         console.error('获取洞穴时间阶段图标时出错:', err);
-        return 'el-icon-question';
+        return CircleHelp;
       }
     },
 
@@ -1030,8 +987,8 @@ export default {
 
     // 获取洞穴月相图标
     getCaveMoonIcon() {
-      if (!this.worldState) return 'el-icon-question';
-      return 'el-icon-moon';
+      if (!this.worldState) return CircleHelp;
+      return Moon;
     },
 
     // 获取洞穴月相样式类
@@ -1109,24 +1066,24 @@ export default {
 
     // 获取梦魇循环阶段图标
     getNightmarePhaseIcon() {
-      if (!this.worldState) return 'el-icon-question';
+      if (!this.worldState) return CircleHelp;
 
       try {
         const iconMap = {
-          calm: 'el-icon-sunny',
-          warn: 'el-icon-warning',
-          wild: 'el-icon-lightning',
-          dawn: 'el-icon-sunset',
-          none: 'el-icon-remove'
+          calm: Sun,
+          warn: TriangleAlert,
+          wild: Zap,
+          dawn: Sunrise,
+          none: CircleMinus
         };
 
         const phase = this.worldState.nightmarephase;
-        if (!phase) return 'el-icon-question';
+        if (!phase) return CircleHelp;
 
-        return iconMap[phase] || 'el-icon-question';
+        return iconMap[phase] || CircleHelp;
       } catch (err) {
         console.error('获取梦魇循环阶段图标时出错:', err);
-        return 'el-icon-question';
+        return CircleHelp;
       }
     },
 
@@ -1181,358 +1138,156 @@ export default {
   min-width: 0;
 }
 
-.page-header {
+.page-header,
+.loading-state,
+.details-header,
+.details-filters,
+.raw-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+}
+
+.page-header {
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .page-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
 }
 
 .filter-card {
   margin-bottom: 16px;
-  box-shadow: none;
 }
 
-.filter-card:hover {
-  transform: none;
-  box-shadow: none;
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
 }
 
-.filter-container {
-  display: flex;
-  align-items: center;
+.query-action {
+  min-width: 90px;
+}
+
+.loading-state {
+  min-height: 180px;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-foreground);
 }
 
 .state-content {
-  min-height: 300px;
-}
-
-.empty-state {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 260px;
-  color: var(--text-secondary);
-}
-
-.empty-state .legacy-icon {
-  font-size: 30px;
-  margin-bottom: 10px;
-}
-
-.empty-state p {
-  max-width: 520px;
-  margin: 0;
-  font-size: 14px;
-  line-height: 22px;
-  text-align: center;
+  gap: 16px;
 }
 
 .state-cards {
-  margin-bottom: 4px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
 }
 
-.state-card {
-  height: 122px;
-  margin-bottom: 16px;
-  box-shadow: none;
-  transition: border-color 0.15s ease;
-}
-
-.state-card:hover {
-  border-color: var(--el-color-primary-light-5);
-  transform: none;
-  box-shadow: none;
-}
-
-.state-card-content {
+.state-card [data-slot="card-content"] {
   display: flex;
-  align-items: center;
-  height: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 18px;
 }
 
-.state-icon-container {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  border-radius: 4px;
+.state-icon {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  color: var(--primary);
+}
+
+.state-card [data-slot="card-content"] > div {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-  color: white;
-  box-shadow: none;
-  transition: none;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.state-card:hover .state-icon-container {
-  transform: none;
-}
-
-.state-icon-container .legacy-icon {
-  font-size: 20px;
-}
-
-.state-info {
-  flex: 1;
-}
-
-.state-title {
+.state-card span,
+.state-card small {
+  color: var(--muted-foreground);
   font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 5px;
 }
 
-.state-value {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 5px;
-  transition: all 0.3s;
-}
-
-.state-card:hover .state-value {
-  color: var(--text-primary);
-}
-
-.state-detail {
-  font-size: 12px;
-  color: var(--text-regular);
-  margin-bottom: 3px;
-}
-
-/* 季节样式 */
-.season-autumn {
-  background-color: #d99b32;
-}
-
-.season-winter {
-  background-color: var(--text-secondary);
-}
-
-.season-spring {
-  background-color: #4f8a5b;
-}
-
-.season-summer {
-  background-color: #c94f4f;
-}
-
-.season-unknown {
-  background-color: var(--text-secondary);
-}
-
-/* 时间阶段样式 */
-.phase-day, .phase-unknown {
-  background-color: var(--primary-color);
-}
-
-.phase-dusk {
-  background-color: #d99b32;
-}
-
-.phase-night {
-  background-color: var(--text-regular);
-}
-
-/* 天气样式 */
-.weather-clear {
-  background-color: var(--primary-color);
-}
-
-.weather-rain {
-  background-color: #4f8a5b;
-}
-
-.weather-snow {
-  background-color: var(--text-secondary);
-}
-
-.weather-acid {
-  background-color: #c94f4f;
-}
-
-.weather-hail {
-  background-color: #d99b32;
-}
-
-/* 梦魇循环样式 */
-.nightmare-calm, .nightmare-unknown {
-  background-color: #4f8a5b;
-}
-
-.nightmare-warn {
-  background-color: #d99b32;
-}
-
-.nightmare-wild {
-  background-color: #c94f4f;
-}
-
-.nightmare-dawn {
-  background-color: var(--text-secondary);
-}
-
-.nightmare-none {
-  background-color: var(--text-secondary);
-}
-
-/* 月相样式 */
-.moon-new, .moon-quarter, .moon-half, .moon-threequarter, .moon-full, .moon-unknown {
-  background-color: var(--text-regular);
-}
-
-/* 季节进度条 */
-.season-progress-card {
-  margin-bottom: 16px;
-  box-shadow: none;
-  transition: border-color 0.15s ease;
-}
-
-.season-progress-card:hover {
-  transform: none;
-  box-shadow: none;
-}
-
-.season-progress {
-  margin-bottom: 15px;
-}
-
-.season-days {
-  float: right;
-  color: var(--text-secondary);
-  font-size: 14px;
+.state-card strong {
+  font-size: 16px;
 }
 
 .season-lengths {
   display: flex;
-  justify-content: space-between;
   flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
 }
 
-.season-length {
-  margin-right: 20px;
-  margin-bottom: 10px;
+.details-header,
+.raw-header {
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.season-name {
-  font-weight: bold;
-  margin-right: 5px;
+.details-filters {
+  width: min(500px, 100%);
+  gap: 8px;
 }
 
-.season-name.autumn {
-  color: #d99b32;
+.details-filters > * {
+  flex: 1;
 }
 
-.season-name.winter {
-  color: var(--text-secondary);
-}
-
-.season-name.spring {
-  color: #4f8a5b;
-}
-
-.season-name.summer {
-  color: #c94f4f;
-}
-
-/* 详细信息表格 */
-.details-card {
-  margin-bottom: 16px;
-  box-shadow: none;
-}
-
-.details-card .el-table {
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.details-card .el-table th {
-  background-color: var(--surface-muted);
-  color: var(--text-regular);
-  font-weight: bold;
-}
-
-.details-card .el-table td {
-  padding: 8px 0;
-}
-
-/* 原始数据 */
-.raw-data-card {
-  margin-bottom: 16px;
-  box-shadow: none;
-  transition: border-color 0.15s ease;
-}
-
-.raw-data-card:hover {
-  transform: none;
-  box-shadow: none;
+.table-wrap {
+  overflow-x: auto;
 }
 
 .raw-data {
-  max-height: 300px;
-  overflow-y: auto;
-  background-color: var(--surface-muted);
-  padding: 15px;
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  transition: background-color 0.15s ease;
-}
-
-.raw-data:hover {
-  background-color: var(--surface-muted);
-}
-
-.raw-data pre {
+  max-height: 420px;
   margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 12px;
   white-space: pre-wrap;
-  word-break: break-all;
-  font-family: 'Courier New', Courier, monospace;
-  color: var(--text-regular);
+  word-break: break-word;
 }
 
-@media (max-width: 768px) {
-  .page-header {
-    align-items: flex-start;
+@media (max-width: 760px) {
+  .filter-grid {
+    grid-template-columns: 1fr;
   }
 
-  .filter-form :deep(.el-form-item) {
-    display: block;
-    width: 100%;
-    margin-right: 0;
-  }
-
-  .filter-form :deep(.el-select) {
+  .query-action {
     width: 100%;
   }
 
-  .state-card {
-    height: auto;
+  .query-action > * {
+    width: 100%;
   }
 
-  .season-lengths {
-    flex-direction: column;
-  }
-
-  .details-card :deep(.clearfix) {
-    display: flex;
-    gap: 8px;
+  .details-header,
+  .raw-header {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .details-card :deep(.clearfix .el-input) {
-    width: 100% !important;
+  .details-filters {
+    width: 100%;
+    flex-direction: column;
   }
 }
 </style>

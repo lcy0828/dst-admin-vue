@@ -3,146 +3,116 @@
     <div class="page-header">
       <h2>世界详情</h2>
       <div class="header-actions">
-        <el-button @click="goBack">返回列表</el-button>
-        <el-button type="primary" @click="editWorld" icon="el-icon-edit">编辑世界</el-button>
+        <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回列表</UiButton>
+        <UiButton @click="editWorld"><Pencil data-icon="inline-start" />编辑世界</UiButton>
       </div>
     </div>
-    
-    <el-row :gutter="20" v-loading="loading">
-      <el-col :span="16">
-        <el-card shadow="hover" class="details-card">
-          <template v-slot:header>
-<div  class="card-header">
-            <span>世界信息</span>
-            <el-tag :type="getStatusTag(world.status)">
-              {{ getStatusName(world.status) }}
-            </el-tag>
-          </div>
-</template>
-          
-          <div class="world-info">
-            <div class="info-item">
-              <div class="info-label">世界名称</div>
-              <div class="info-value">{{ world.name || '--' }}</div>
+
+    <div v-if="loading" class="loading-state"><Spinner /><span>正在加载世界信息</span></div>
+
+    <div class="details-layout">
+      <div class="main-column">
+        <Card>
+          <CardHeader>
+            <div class="card-header">
+              <CardTitle>世界信息</CardTitle>
+              <Badge :variant="getStatusTag(world.status)">{{ getStatusName(world.status) }}</Badge>
             </div>
-            <div class="info-item">
-              <div class="info-label">世界类型</div>
-              <div class="info-value">
-                <el-tag :type="getTypeTag(world.type)">
-                  {{ getTypeName(world.type) }}
-                </el-tag>
-              </div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">当前季节</div>
-              <div class="info-value">{{ world.season || '--' }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">当前天数</div>
-              <div class="info-value">{{ world.day ?? '--' }}</div>
-            </div>
-            <div class="info-item">
-              <div class="info-label">描述</div>
-              <div class="info-value description">{{ world.description || '--' }}</div>
-            </div>
-          </div>
-        </el-card>
-        
-        <el-card shadow="hover" class="details-card" style="margin-top: 20px;">
-          <template v-slot:header>
-<div  class="card-header">
-            <span>世界统计</span>
-          </div>
-</template>
-          
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <div class="stat-item">
-                <div class="stat-value">--</div>
-                <div class="stat-label">玩家访问次数</div>
-              </div>
-            </el-col>
-            <el-col :span="8">
-              <div class="stat-item">
-                <div class="stat-value">{{ world.day ?? '--' }}</div>
-                <div class="stat-label">总游戏天数</div>
-              </div>
-            </el-col>
-            <el-col :span="8">
-              <div class="stat-item">
-                <div class="stat-value">--</div>
-                <div class="stat-label">死亡次数</div>
-              </div>
-            </el-col>
-          </el-row>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="8">
-        <el-card shadow="hover" class="details-card">
-          <template v-slot:header>
-<div  class="card-header">
-            <span>快捷操作</span>
-          </div>
-</template>
-          
-          <div class="action-list">
-            <el-button 
-              :type="world.status === 'running' ? 'danger' : 'success'" 
-              icon="el-icon-video-play"
-              class="action-button"
-              :disabled="world.controlAvailable === false"
-              @click="toggleWorldStatus">
+            <CardDescription>{{ world.roomName ? `所属房间：${world.roomName}` : '世界基础信息' }}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <dl class="world-info">
+              <div class="info-item"><dt>世界名称</dt><dd>{{ world.name || '--' }}</dd></div>
+              <div class="info-item"><dt>世界类型</dt><dd><Badge :variant="getTypeTag(world.type)">{{ getTypeName(world.type) }}</Badge></dd></div>
+              <div class="info-item"><dt>当前季节</dt><dd>{{ world.season || '--' }}</dd></div>
+              <div class="info-item"><dt>当前天数</dt><dd>{{ world.day ?? '--' }}</dd></div>
+              <div class="info-item"><dt>描述</dt><dd class="description">{{ world.description || '--' }}</dd></div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>世界统计</CardTitle><CardDescription>当前后端可以提供的世界统计。</CardDescription></CardHeader>
+          <CardContent class="stats-grid">
+            <div class="stat-item"><strong>--</strong><span>玩家访问次数</span></div>
+            <div class="stat-item"><strong>{{ world.day ?? '--' }}</strong><span>总游戏天数</span></div>
+            <div class="stat-item"><strong>--</strong><span>死亡次数</span></div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div class="side-column">
+        <Card>
+          <CardHeader><CardTitle>快捷操作</CardTitle><CardDescription>操作当前世界及其所属房间。</CardDescription></CardHeader>
+          <CardContent class="action-list">
+            <UiButton
+              :variant="world.status === 'running' ? 'destructive' : 'default'"
+              :disabled="world.controlAvailable === false || loading"
+              @click="toggleWorldStatus"
+            >
+              <Square v-if="world.status === 'running'" data-icon="inline-start" />
+              <Play v-else data-icon="inline-start" />
               {{ world.status === 'running' ? '停止世界' : '启动世界' }}
-            </el-button>
-            
-            <el-button 
-              type="primary" 
-              icon="el-icon-refresh-right"
-              class="action-button"
-              @click="regenerateWorld">
-              重新生成
-            </el-button>
-            
-            <el-button 
-              type="warning" 
-              icon="el-icon-copy-document"
-              class="action-button"
-              @click="backupWorld">
-              备份世界
-            </el-button>
-            
-            <el-button 
-              type="danger" 
-              icon="el-icon-delete"
-              class="action-button"
-              @click="deleteWorld">
-              删除世界
-            </el-button>
-          </div>
-        </el-card>
-        
-        <el-card shadow="hover" class="details-card" style="margin-top: 20px;">
-          <template v-slot:header>
-<div  class="card-header">
-            <span>最近活动</span>
-          </div>
-</template>
-          
-          <div class="activity-list">
-            <el-empty description="暂无真实活动数据" :image-size="60" />
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+            </UiButton>
+            <UiButton variant="outline" :disabled="loading" @click="regenerateWorld"><RefreshCw data-icon="inline-start" />重新生成</UiButton>
+            <UiButton variant="outline" :disabled="loading" @click="backupWorld"><Archive data-icon="inline-start" />备份世界</UiButton>
+            <UiButton variant="destructive" :disabled="loading" @click="deleteWorld"><Trash2 data-icon="inline-start" />删除世界</UiButton>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>最近活动</CardTitle></CardHeader>
+          <CardContent>
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><Activity /></EmptyMedia>
+                <EmptyTitle>暂无真实活动数据</EmptyTitle>
+                <EmptyDescription>后端返回活动记录后将在这里显示。</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import { Activity, Archive, ArrowLeft, Pencil, Play, RefreshCw, Square, Trash2 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { roomApi } from '../../api/index';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Spinner } from '@/components/ui/spinner';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'WorldDetails',
+  components: {
+    Activity,
+    Archive,
+    ArrowLeft,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    Pencil,
+    Play,
+    RefreshCw,
+    Spinner,
+    Square,
+    Trash2,
+    UiButton
+  },
   data() {
     return {
       loading: false,
@@ -176,9 +146,8 @@ export default {
       return '未知';
     },
     getStatusTag(status) {
-      if (status === 'running') return 'success';
-      if (status === 'stopped') return 'info';
-      return 'warning';
+      if (status === 'running') return 'default';
+      return 'secondary';
     },
     getTypeName(type) {
       if (type === 'forest' || type === 'master') return '主世界';
@@ -186,13 +155,12 @@ export default {
       return '其他';
     },
     getTypeTag(type) {
-      if (type === 'forest' || type === 'master') return 'primary';
-      if (type === 'cave') return 'success';
-      return 'info';
+      if (type === 'cave') return 'secondary';
+      return 'outline';
     },
     toggleWorldStatus() {
       const action = this.world.status === 'running' ? '停止' : '启动';
-      this.$confirm(`确定要${action}世界 "${this.world.name}" 吗?`, '提示', {
+      confirmAction(`确定要${action}世界 "${this.world.name}" 吗?`, `${action}世界`, {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -205,55 +173,46 @@ export default {
         operation
           .then(async response => {
             await this.loadWorldData();
-            this.$message.success(response.msg || `${action}完成`);
+            toast.success(response.msg || `${action}完成`);
           })
-          .catch(error => this.$message.error(`${action}失败：${error.message}`))
+          .catch(error => toast.error(`${action}失败：${error.message}`))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     regenerateWorld() {
-      this.$confirm(`确定要重新生成世界 "${this.world.name}" 吗？现有的世界数据将会丢失！`, '警告', {
+      confirmAction(`确定要重新生成世界 "${this.world.name}" 吗？现有的世界数据将会丢失！`, '重新生成世界', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
         this.loading = true;
         roomApi.regenerateWorld({ room_id: this.roomId, world_id: this.worldId })
-          .then(response => this.$message.success(response.msg))
-          .catch(error => this.$message.error(error.message))
+          .then(response => toast.success(response.msg))
+          .catch(error => toast.error(error.message))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     backupWorld() {
-      this.$confirm(`v2 后端将备份世界 "${this.world.name}" 所属的整个房间 "${this.world.roomName}"，确定继续吗?`, '提示', {
+      confirmAction(`v2 后端将备份世界 "${this.world.name}" 所属的整个房间 "${this.world.roomName}"，确定继续吗?`, '备份世界', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'info'
       }).then(() => {
         this.loading = true;
         roomApi.backupRoom(this.roomId, `世界 ${this.world.name}`)
-          .then(response => this.$message.success(response.msg || '房间备份已创建'))
-          .catch(error => this.$message.error(`备份失败：${error.message}`))
+          .then(response => toast.success(response.msg || '房间备份已创建'))
+          .catch(error => toast.error(`备份失败：${error.message}`))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     deleteWorld() {
-      this.$confirm(`确定要删除世界 "${this.world.name}" 吗？此操作不可恢复!`, '警告', {
+      confirmAction(`确定要删除世界 "${this.world.name}" 吗？此操作不可恢复!`, '删除世界', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -261,16 +220,13 @@ export default {
         this.loading = true;
         roomApi.deleteWorld({ room_id: this.roomId, world_id: this.worldId })
           .then(response => {
-            this.$message.success(response.msg);
+            toast.success(response.msg);
             this.goBack();
           })
-          .catch(error => this.$message.error(error.message))
+          .catch(error => toast.error(error.message))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     loadWorldData() {
@@ -290,7 +246,7 @@ export default {
           };
         })
         .catch(error => {
-          this.$message.error(`获取世界详情失败：${error.message}`);
+          toast.error(`获取世界详情失败：${error.message}`);
         })
         .finally(() => { this.loading = false; });
     }
@@ -302,7 +258,7 @@ export default {
       this.worldId = worldId || id;
       this.loadWorldData();
     } else {
-      this.$message.error('未指定世界ID');
+      toast.error('未指定世界ID');
       this.goBack();
     }
   }
@@ -315,14 +271,20 @@ export default {
   min-width: 0;
 }
 
-.page-header {
+.page-header,
+.header-actions,
+.card-header,
+.loading-state {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+}
+
+.page-header {
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .page-header h2 {
@@ -332,124 +294,119 @@ export default {
 }
 
 .header-actions {
-  display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
-.details-card {
+.loading-state {
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
   margin-bottom: 16px;
-  border-radius: 4px;
-  box-shadow: none;
+  color: var(--muted-foreground);
+}
+
+.details-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 16px;
+}
+
+.main-column,
+.side-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .card-header {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
+  gap: 12px;
 }
 
 .world-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  margin: 0;
 }
 
 .info-item {
-  display: flex;
-  border-bottom: 1px solid var(--border-color);
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
   gap: 12px;
   padding: 10px 0;
+  border-bottom: 1px solid var(--border);
 }
 
-.info-label {
-  width: 100px;
-  color: var(--text-secondary);
+.info-item:last-child {
+  border-bottom: 0;
+}
+
+.info-item dt {
+  color: var(--muted-foreground);
   font-size: 13px;
-  font-weight: 500;
 }
 
-.info-value {
-  flex: 1;
+.info-item dd {
+  min-width: 0;
+  margin: 0;
 }
 
-.info-value.description {
+.description {
   white-space: pre-line;
-  line-height: 1.5;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .stat-item {
-  text-align: center;
-  padding: 15px 0;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
-.stat-value {
+.stat-item strong {
   font-size: 20px;
-  font-weight: 600;
-  color: var(--primary-color);
 }
 
-.stat-label {
-  color: var(--text-secondary);
-  margin-top: 5px;
+.stat-item span {
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .action-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.action-button {
-  display: block;
+.action-list > * {
   width: 100%;
-  margin-bottom: 10px;
 }
 
-@media (max-width: 900px) {
-  .world-details-page > .el-row {
-    display: flex;
-    gap: 0;
-    flex-direction: column;
-  }
-
-  .world-details-page > .el-row > .el-col {
-    width: 100%;
-    max-width: none;
-    flex: 0 0 auto;
+@media (max-width: 860px) {
+  .details-layout {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
   .page-header {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
   }
 
-  .header-actions {
-    width: 100%;
+  .header-actions > * {
+    flex: 1;
   }
-}
 
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.activity-item {
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.activity-time {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 5px;
-}
-
-.activity-content {
-  color: var(--text-regular);
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

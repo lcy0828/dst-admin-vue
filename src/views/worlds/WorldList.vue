@@ -3,205 +3,241 @@
     <div class="page-header">
       <h2>世界列表</h2>
       <div class="header-actions">
-        <el-input
-          placeholder="搜索世界"
-          v-model="searchQuery"
-          class="search-input"
-          prefix-icon="el-icon-search"
-          size="small"
-          clearable>
-        </el-input>
-        <el-button type="primary" size="small" icon="el-icon-plus" @click="createWorld">创建世界</el-button>
+        <InputGroup class="search-input">
+          <InputGroupAddon><Search /></InputGroupAddon>
+          <InputGroupInput v-model="searchQuery" placeholder="搜索世界" />
+        </InputGroup>
+        <UiButton @click="createWorld"><Plus data-icon="inline-start" />创建世界</UiButton>
       </div>
     </div>
 
-    <el-row :gutter="20">
-      <!-- 左侧房间分类 -->
-      <el-col :span="4">
-        <div class="sidebar-container">
-          <room-categories
-            :rooms="rooms"
-            @category-change="handleCategoryChange"
-            @refresh="refreshWorlds" />
-        </div>
-      </el-col>
+    <div class="world-layout">
+      <aside class="sidebar-container">
+        <room-categories :rooms="rooms" @category-change="handleCategoryChange" @refresh="refreshWorlds" />
+      </aside>
 
-      <!-- 右侧世界列表 -->
-      <el-col :span="20">
-        <el-card shadow="hover" class="world-list-card">
-          <template v-slot:header>
-<div  class="card-header">
-            <div class="header-left">
-              <span>{{ getCategoryTitle() }}</span>
-              <el-select
-                v-model="selectedRoom"
-                placeholder="选择房间"
-                size="small"
-                style="margin-left: 15px; width: 180px;"
-                clearable
-                filterable
-                @change="handleRoomChange">
-                <el-option
-                  v-for="room in rooms"
-                  :key="room.id"
-                  :label="room.name"
-                  :value="room.id">
-                  <span style="float: left">{{ room.name }}</span>
-                  <span style="float: right; color: #8492a6; font-size: 12px">
-                    {{ room.worlds ? room.worlds.length : 0 }}个世界
-                    <el-tag size="mini" type="success" v-if="room.status === 'running'">运行中</el-tag>
-                  </span>
-                </el-option>
-              </el-select>
-            </div>
-            <div>
-              <el-button style="margin-left: 10px;" size="small" icon="el-icon-refresh" @click="refreshWorlds">刷新</el-button>
-            </div>
+      <Card class="world-list-card">
+        <CardHeader class="card-header">
+          <div>
+            <CardTitle>{{ getCategoryTitle() }}</CardTitle>
+            <CardDescription>按房间筛选并管理世界运行状态。</CardDescription>
           </div>
-</template>
+          <div class="list-actions">
+            <UiSelect v-model="selectedRoom" @update:model-value="handleRoomChange">
+              <SelectTrigger class="room-select"><SelectValue placeholder="选择房间" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem v-for="room in rooms" :key="room.id" :value="room.id">
+                    {{ room.name }} · {{ room.worlds ? room.worlds.length : 0 }} 个世界
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+            <UiButton variant="outline" size="sm" :disabled="isRefreshing" @click="refreshWorlds">
+              <Spinner v-if="isRefreshing" data-icon="inline-start" />
+              <RefreshCw v-else data-icon="inline-start" />
+              刷新
+            </UiButton>
+          </div>
+        </CardHeader>
 
-          <el-table
-            :data="filteredWorlds"
-            style="width: 100%"
-            v-loading="loading"
-            border
-            stripe
-            highlight-current-row
-            @row-click="handleRowClick">
-            <el-table-column prop="name" label="世界名称" min-width="120"></el-table-column>
-            <el-table-column prop="roomName" label="所属房间" min-width="100"></el-table-column>
-            <el-table-column prop="type" label="世界类型" width="100">
-              <template v-slot="scope">
-                <el-tag size="small" :type="getWorldTypeTag(scope.row.type)">
-                  {{ getWorldTypeName(scope.row.type) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="season" label="季节" width="90">
-              <template v-slot="scope">{{ scope.row.season ?? '--' }}</template>
-            </el-table-column>
-            <el-table-column prop="day" label="天数" width="70" align="center">
-              <template v-slot="scope">{{ scope.row.day ?? '--' }}</template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="90" align="center">
-              <template v-slot="scope">
-                <el-tag :type="getWorldStatusTag(scope.row.status)" size="small">
-                  {{ getWorldStatusName(scope.row.status) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="200" fixed="right">
-              <template v-slot="scope">
-                <el-button
-                  :type="scope.row.status === 'running' ? 'danger' : 'success'"
-                  size="mini"
-                  :disabled="scope.row.controlAvailable === false"
-                  @click.stop="toggleWorldStatus(scope.row)">
-                  {{ scope.row.status === 'running' ? '停止' : '启动' }}
-                </el-button>
-                <el-button
-                  type="primary"
-                  size="mini"
-                  @click.stop="editWorld(scope.row)">编辑</el-button>
-                <el-dropdown trigger="click" @command="handleMoreCommands($event, scope.row)" @click.stop>
-                  <el-button size="mini">
-                    更多<component :is="'el-icon-arrow-down'" class="legacy-icon el-icon--right" />
-                  </el-button>
-                  <template v-slot:dropdown>
-<el-dropdown-menu >
-                    <el-dropdown-item command="viewState">查看状态</el-dropdown-item>
-                    <el-dropdown-item command="regenerate">重新生成</el-dropdown-item>
-                    <el-dropdown-item command="backup">备份世界</el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>
-                      <span style="color: #c94f4f;">删除世界</span>
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-</template>
-                </el-dropdown>
-              </template>
-            </el-table-column>
-          </el-table>
+        <CardContent>
+          <Alert v-if="selectedRoom && !loading" class="filter-info">
+            <Info />
+            <AlertTitle>房间筛选</AlertTitle>
+            <AlertDescription>当前只显示 {{ getSelectedRoomName() }} 房间的世界。</AlertDescription>
+            <AlertAction><UiButton variant="ghost" size="sm" @click="selectedRoom = null">查看全部</UiButton></AlertAction>
+          </Alert>
 
-          <!-- 筛选信息提示 -->
-          <div class="filter-info" v-if="selectedRoom && !loading">
-            <el-alert
-              type="info"
-              :closable="false"
-              show-icon>
-              <template v-slot:title>
-                当前只显示 <b>{{ getSelectedRoomName() }}</b> 房间的世界
-                <el-button type="text" @click="selectedRoom = null" style="margin-left: 10px;">查看全部</el-button>
-              </template>
-            </el-alert>
+          <div v-if="loading" class="loading-state"><Spinner /><span>正在加载世界列表</span></div>
+
+          <div v-else-if="filteredWorlds.length > 0" class="table-wrap">
+            <UiTable>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>世界名称</TableHead>
+                  <TableHead>所属房间</TableHead>
+                  <TableHead>世界类型</TableHead>
+                  <TableHead>季节</TableHead>
+                  <TableHead>天数</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead class="action-column">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-for="world in filteredWorlds" :key="`${world.roomId}-${world.id}`" class="world-row" @click="handleRowClick(world)">
+                  <TableCell>{{ world.name }}</TableCell>
+                  <TableCell>{{ world.roomName }}</TableCell>
+                  <TableCell><Badge :variant="getWorldTypeTag(world.type)">{{ getWorldTypeName(world.type) }}</Badge></TableCell>
+                  <TableCell>{{ world.season ?? '--' }}</TableCell>
+                  <TableCell>{{ world.day ?? '--' }}</TableCell>
+                  <TableCell><Badge :variant="getWorldStatusTag(world.status)">{{ getWorldStatusName(world.status) }}</Badge></TableCell>
+                  <TableCell class="action-column" @click.stop>
+                    <div class="row-actions">
+                      <UiButton
+                        :variant="world.status === 'running' ? 'destructive' : 'default'"
+                        size="sm"
+                        :disabled="world.controlAvailable === false"
+                        @click="toggleWorldStatus(world)"
+                      >
+                        {{ world.status === 'running' ? '停止' : '启动' }}
+                      </UiButton>
+                      <UiButton variant="outline" size="sm" @click="editWorld(world)">编辑</UiButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuGroup>
+                            <DropdownMenuItem @select="viewWorldState(world)">查看状态</DropdownMenuItem>
+                            <DropdownMenuItem @select="regenerateWorld(world)">重新生成</DropdownMenuItem>
+                            <DropdownMenuItem @select="backupWorld(world)">备份世界</DropdownMenuItem>
+                          </DropdownMenuGroup>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuGroup>
+                            <DropdownMenuItem variant="destructive" @select="deleteWorld(world)">删除世界</DropdownMenuItem>
+                          </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </UiTable>
           </div>
 
-          <!-- 无世界时的提示 -->
-          <div v-if="!loading && filteredWorlds.length === 0" class="empty-worlds">
-            <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-            <p>没有找到符合条件的世界</p>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+          <Empty v-else>
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
+              <EmptyTitle>没有找到符合条件的世界</EmptyTitle>
+              <EmptyDescription>调整搜索条件或选择其他房间。</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </CardContent>
+      </Card>
+    </div>
 
-    <!-- 添加房间选择对话框 -->
-    <el-dialog
-      title="选择房间"
-      v-model="roomSelectDialogVisible"
-      width="500px"
-      class="room-select-dialog">
-      <div class="room-select-content">
-        <p class="dialog-tip">请选择要在哪个房间中创建新世界：</p>
-
-        <el-input
-          placeholder="搜索房间"
-          v-model="roomSearchQuery"
-          class="room-search-input"
-          prefix-icon="el-icon-search"
-          clearable>
-        </el-input>
-
-        <div class="room-list">
-          <el-radio-group v-model="tempSelectedRoom" class="room-radio-group">
-            <el-radio
-              v-for="room in filteredDialogRooms"
-              :key="room.id"
-              :label="room.id"
-              class="room-radio-item">
-              <div class="room-item-content">
-                <div class="room-name">{{ room.name }}</div>
-                <div class="room-info">
-                  <span>{{ room.worlds ? room.worlds.length : 0 }}个世界</span>
-                  <el-tag size="mini" type="success" v-if="room.status === 'running'">运行中</el-tag>
-                </div>
-              </div>
-            </el-radio>
-          </el-radio-group>
-
-          <div v-if="filteredDialogRooms.length === 0" class="no-rooms-tip">
-            <component :is="'el-icon-info'" class="legacy-icon" />
-            <span>没有找到符合条件的房间</span>
-          </div>
-        </div>
-      </div>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="closeRoomDialog">取消</el-button>
-        <el-button type="primary" @click="confirmRoomSelect" :disabled="!tempSelectedRoom">确定</el-button>
-      </span>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="roomSelectDialogVisible" @update:open="handleRoomDialogOpenChange">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>选择房间</DialogTitle>
+          <DialogDescription>选择要创建新世界的目标房间。</DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel for="room-dialog-search">搜索房间</FieldLabel>
+            <InputGroup>
+              <InputGroupAddon><Search /></InputGroupAddon>
+              <InputGroupInput id="room-dialog-search" v-model="roomSearchQuery" placeholder="搜索房间" />
+            </InputGroup>
+          </Field>
+          <FieldSet>
+            <FieldLegend variant="label">目标房间</FieldLegend>
+            <RadioGroup v-model="tempSelectedRoom" class="room-radio-group">
+              <Field v-for="room in filteredDialogRooms" :key="room.id" orientation="horizontal" class="room-radio-item">
+                <RadioGroupItem :id="`target-room-${room.id}`" :value="room.id" />
+                <FieldContent>
+                  <FieldLabel :for="`target-room-${room.id}`">{{ room.name }}</FieldLabel>
+                  <FieldDescription>{{ room.worlds ? room.worlds.length : 0 }} 个世界</FieldDescription>
+                </FieldContent>
+                <Badge v-if="room.status === 'running'">运行中</Badge>
+              </Field>
+            </RadioGroup>
+            <Empty v-if="filteredDialogRooms.length === 0">
+              <EmptyHeader><EmptyTitle>没有找到符合条件的房间</EmptyTitle></EmptyHeader>
+            </Empty>
+          </FieldSet>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" @click="closeRoomDialog">取消</UiButton>
+          <UiButton @click="confirmRoomSelect" :disabled="!tempSelectedRoom">确定</UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { Globe2, Info, MoreHorizontal, Plus, RefreshCw, Search } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '../../api/index';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { confirmAction } from '@/lib/feedback';
 import RoomCategories from '../../components/worlds/RoomCategories.vue';
 
 export default {
   name: 'WorldList',
   components: {
-    RoomCategories
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    FieldLegend,
+    FieldSet,
+    Globe2,
+    Info,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    MoreHorizontal,
+    Plus,
+    RadioGroup,
+    RadioGroupItem,
+    RefreshCw,
+    RoomCategories,
+    Search,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Spinner,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    UiButton,
+    UiDialog,
+    UiSelect,
+    UiTable
   },
   data() {
     return {
@@ -314,9 +350,8 @@ export default {
       return '其他';
     },
     getWorldTypeTag(type) {
-      if (type === 'forest' || type === 'master') return 'primary';
-      if (type === 'cave') return 'success';
-      return 'info';
+      if (type === 'cave') return 'secondary';
+      return 'outline';
     },
     getWorldStatusName(status) {
       if (status === 'running') return '运行中';
@@ -324,9 +359,8 @@ export default {
       return '未知';
     },
     getWorldStatusTag(status) {
-      if (status === 'running') return 'success';
-      if (status === 'stopped') return 'info';
-      return 'warning';
+      if (status === 'running') return 'default';
+      return 'secondary';
     },
     handleCategoryChange(category) {
       this.currentCategory = category;
@@ -418,20 +452,20 @@ export default {
             // 获取运行状态
             return this.getServerStatus();
           } else {
-            this.$message.warning('获取房间列表数据格式异常');
+            toast.warning('获取房间列表数据格式异常');
             return Promise.reject(new Error('获取房间列表数据格式异常'));
           }
         })
         .then(() => {
           if (this.worlds.length > 0) {
-            this.$message.success('世界列表已刷新');
+            toast.success('世界列表已刷新');
           } else {
-            this.$message.warning('没有找到任何世界');
+            toast.warning('没有找到任何世界');
           }
         })
         .catch(error => {
           console.error('获取世界列表失败:', error);
-          this.$message.error('获取世界列表失败: ' + (error.message || '未知错误'));
+          toast.error('获取世界列表失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.loading = false;
@@ -448,7 +482,7 @@ export default {
             query: { roomId: room.id, roomName: room.name }
           });
         } else {
-          this.$message.error('获取房间信息失败');
+          toast.error('获取房间信息失败');
         }
       } else {
         // 未选择房间，显示选择对话框
@@ -463,7 +497,7 @@ export default {
     },
     toggleWorldStatus(world) {
       const action = world.status === 'running' ? '停止' : '启动';
-      this.$confirm(`确定要${action}世界 "${world.name}" 吗?`, '提示', {
+      confirmAction(`确定要${action}世界 "${world.name}" 吗?`, `${action}世界`, {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -479,19 +513,16 @@ export default {
         operation
           .then(async response => {
             await this.refreshWorlds(true);
-            this.$message.success(response.msg || `${action}完成`);
+            toast.success(response.msg || `${action}完成`);
           })
           .catch(error => {
-            this.$message.error(`${action}世界失败: ${error.message || '未知错误'}`);
+            toast.error(`${action}世界失败: ${error.message || '未知错误'}`);
           })
           .finally(() => {
             this.loading = false;
           });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     handleRowClick(row) {
@@ -524,43 +555,37 @@ export default {
       });
     },
     regenerateWorld(world) {
-      this.$confirm(`确定要重新生成世界 "${world.name}" 吗？现有的世界数据将会丢失！`, '警告', {
+      confirmAction(`确定要重新生成世界 "${world.name}" 吗？现有的世界数据将会丢失！`, '重新生成世界', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
         this.loading = true;
         roomApi.regenerateWorld({ room_id: world.roomId, world_id: world.id })
-          .then(response => this.$message.success(response.msg))
-          .catch(error => this.$message.error(error.message))
+          .then(response => toast.success(response.msg))
+          .catch(error => toast.error(error.message))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     backupWorld(world) {
-      this.$confirm(`v2 后端将备份世界 "${world.name}" 所属的整个房间 "${world.roomName}"，确定继续吗?`, '提示', {
+      confirmAction(`v2 后端将备份世界 "${world.name}" 所属的整个房间 "${world.roomName}"，确定继续吗?`, '备份世界', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'info'
       }).then(() => {
         this.loading = true;
         roomApi.backupRoom(world.roomId, `世界 ${world.name}`)
-          .then(response => this.$message.success(response.msg || '房间备份已创建'))
-          .catch(error => this.$message.error(`备份失败：${error.message}`))
+          .then(response => toast.success(response.msg || '房间备份已创建'))
+          .catch(error => toast.error(`备份失败：${error.message}`))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     deleteWorld(world) {
-      this.$confirm(`确定要删除世界 "${world.name}" 吗？此操作不可恢复!`, '警告', {
+      confirmAction(`确定要删除世界 "${world.name}" 吗？此操作不可恢复!`, '删除世界', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -568,16 +593,13 @@ export default {
         this.loading = true;
         roomApi.deleteWorld({ room_id: world.roomId, world_id: world.id })
           .then(response => {
-            this.$message.success(response.msg);
+            toast.success(response.msg);
             this.refreshWorlds();
           })
-          .catch(error => this.$message.error(error.message))
+          .catch(error => toast.error(error.message))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     handleRoomChange(value) {
@@ -589,14 +611,14 @@ export default {
     },
     confirmRoomSelect() {
       if (!this.tempSelectedRoom) {
-        this.$message.warning('请选择一个房间');
+        toast.warning('请选择一个房间');
         return;
       }
 
       // 获取选择的房间信息
       const room = this.rooms.find(r => r.id === this.tempSelectedRoom);
       if (!room) {
-        this.$message.error('获取房间信息失败');
+        toast.error('获取房间信息失败');
         return;
       }
 
@@ -617,6 +639,9 @@ export default {
       this.roomSelectDialogVisible = false;
       this.tempSelectedRoom = null;
       this.roomSearchQuery = '';
+    },
+    handleRoomDialogOpenChange(open) {
+      if (!open) this.closeRoomDialog();
     }
   },
   mounted() {
@@ -632,229 +657,127 @@ export default {
   min-width: 0;
 }
 
-.page-header {
+.page-header,
+.header-actions,
+.card-header,
+.list-actions,
+.row-actions,
+.loading-state {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+}
+
+.page-header {
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .page-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  line-height: 28px;
-  color: var(--text-primary);
 }
 
-.header-actions {
-  display: flex;
+.header-actions,
+.list-actions,
+.row-actions {
   gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
 }
 
 .search-input {
-  width: 250px;
+  width: min(250px, 100%);
 }
 
+.world-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.sidebar-container,
 .world-list-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
+  min-width: 0;
 }
 
 .card-header {
-  display: flex;
   justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-  color: var(--text-primary);
+  gap: 16px;
 }
 
-.header-left {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.header-left span {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.el-table {
-  border-radius: 0;
-  overflow: hidden;
-}
-
-.el-table :deep(th) {
-  background-color: var(--surface-muted) !important;
-  color: var(--text-regular);
-  font-weight: 600;
-}
-
-/* 表格行悬停样式 */
-.el-table :deep(.el-table__row) {
-  cursor: pointer;
-}
-
-.empty-worlds {
-  padding: 40px 16px;
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-.empty-worlds .legacy-icon {
-  font-size: 28px;
-  margin-bottom: 8px;
-  color: var(--el-border-color);
-}
-
-.empty-worlds p {
-  margin: 0;
-  font-size: 14px;
-}
-
-.sidebar-container {
-  background-color: transparent;
-  padding: 0;
-}
-
-.el-row {
-  margin-left: -10px !important;
-  margin-right: -10px !important;
-}
-
-.el-col {
-  padding-left: 10px !important;
-  padding-right: 10px !important;
+.room-select {
+  width: 210px;
 }
 
 .filter-info {
-  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
-/* 房间选择对话框样式 */
-.room-select-content {
-  padding: 10px 0;
+.loading-state {
+  min-height: 220px;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-foreground);
 }
 
-.dialog-tip {
-  font-size: 14px;
-  color: var(--text-regular);
-  margin-bottom: 15px;
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
 }
 
-.room-search-input {
-  margin-bottom: 20px;
+.world-row {
+  cursor: pointer;
 }
 
-.room-list {
-  max-height: 300px;
-  overflow-y: auto;
+.action-column {
+  min-width: 230px;
+  text-align: right;
+}
+
+.row-actions {
+  justify-content: flex-end;
 }
 
 .room-radio-group {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .room-radio-item {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  margin: 0;
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-  margin-right: 0;
-
-  :deep(.el-radio__label) {
-    width: 100%;
-  }
-}
-
-.room-radio-item:hover {
-  background-color: var(--surface-muted);
-  border-color: var(--el-color-primary-light-5);
-}
-
-.room-item-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.room-name {
-  font-weight: bold;
-  color: var(--text-primary);
-}
-
-.room-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.no-rooms-tip {
-  text-align: center;
-  padding: 20px;
-  color: var(--text-secondary);
-}
-
-.no-rooms-tip i {
-  margin-right: 5px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 @media (max-width: 900px) {
-  .world-list-page > .el-row {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  .world-layout {
+    grid-template-columns: 1fr;
   }
 
-  .world-list-page > .el-row > .el-col {
-    width: 100%;
-    max-width: none;
-    flex: 0 0 auto;
+  .sidebar-container {
+    max-height: 260px;
+    overflow-y: auto;
   }
 }
 
 @media (max-width: 640px) {
-  .page-header {
+  .page-header,
+  .card-header {
     align-items: stretch;
     flex-direction: column;
   }
 
   .header-actions,
-  .search-input {
+  .list-actions {
     width: 100%;
+    flex-wrap: wrap;
   }
 
-  .header-actions :deep(.el-button) {
-    margin: 0;
-  }
-
-  .card-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .header-left,
-  .header-left :deep(.el-select) {
-    width: 100% !important;
-    margin-left: 0 !important;
+  .search-input,
+  .room-select {
+    width: 100%;
   }
 }
 </style>

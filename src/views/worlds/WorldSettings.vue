@@ -1,349 +1,321 @@
 <template>
   <div class="world-settings-container">
     <section class="settings-surface">
-      <div class="card-header">
-        <div class="header-title">
-          <component :is="'el-icon-earth'" class="legacy-icon" />
-          <h2>世界设置{{ roomName ? ` - ${roomName}` : '' }}</h2>
+      <div class="page-header">
+        <div>
+          <h2><Globe2 />世界设置{{ roomName ? ` - ${roomName}` : '' }}</h2>
+          <p>管理世界生成、运行参数和模组配置。</p>
         </div>
         <div class="header-actions">
-          <el-button 
-            size="small" 
-            type="primary"
-            plain
-            icon="el-icon-refresh" 
-            @click="fetchWorldSettings" 
-            :loading="loading"
-            :disabled="loading"
-          >刷新设置</el-button>
+          <UiButton variant="outline" size="sm" @click="fetchWorldSettings" :disabled="loading">
+            <Spinner v-if="loading" data-icon="inline-start" />
+            <RefreshCw v-else data-icon="inline-start" />
+            刷新设置
+          </UiButton>
+          <UiButton size="sm" @click="showAddWorldDialog"><Plus data-icon="inline-start" />新增世界</UiButton>
         </div>
       </div>
 
-      <el-tabs v-model="activeTab" type="border-card" class="custom-tabs">
-        <!-- 动态生成世界标签页 -->
-        <el-tab-pane 
-          v-for="world in sortedRoomWorlds" 
-          :key="world.name" 
-          :label="world.name + (world.type === 'forest' ? ' (森林)' : world.type === 'cave' ? ' (洞穴)' : '')" 
-          :name="world.name">
-          <template v-slot:label>
-            <span>{{ world.name + (world.type === 'forest' ? ' (森林)' : world.type === 'cave' ? ' (洞穴)' : '') }}</span>
-            <component :is="'el-icon-close'" class="legacy-icon world-delete-icon" @click.stop="confirmDeleteWorld(world)" />
-          </template>
-          <div class="tab-header-content">
-            <div class="world-icon" :class="world.type === 'forest' ? 'forest-icon' : 'cave-icon'">
-              <component :is="world.type === 'forest' ? 'el-icon-sunny' : 'el-icon-moon-night'" />
-            </div>
-            <div class="world-description">
-              <h3>{{ world.name }} {{ world.type === 'forest' ? '森林世界' : '洞穴世界' }}</h3>
-              <p>配置游戏的{{ world.type === 'forest' ? '主' : '地下' }}世界设置，包括地形、资源、危险等各种生成规则</p>
-            </div>
-          </div>
-          
-          <el-tabs type="card" class="settings-tabs">
-            <el-tab-pane label="世界生成组">
-              <div v-if="loading" class="loading-container">
-                <el-skeleton :rows="10" animated />
-              </div>
-              <world-settings-panel
-                v-else-if="world.type === 'forest' ? forestSettings : caveSettings"
-                :settings="world.type === 'forest' ? filteredForestSettings : filteredCaveSettings"
-                :original-settings="originalSettings && originalSettings[world.type]"
-                :world-type="world.type"
-                :search-text="searchText"
-                :show-group="'WORLDGEN_GROUP'"
-                @setting-change="handleSettingChange"
-                @search-input="searchText = $event"
-              />
-              <div v-else class="empty-state">
-                <el-empty :description="`暂无${world.type === 'forest' ? '森林' : '洞穴'}世界设置数据`"></el-empty>
-              </div>
-            </el-tab-pane>
-            
-            <el-tab-pane label="世界设置组">
-              <div v-if="loading" class="loading-container">
-                <el-skeleton :rows="10" animated />
-              </div>
-              <world-settings-panel
-                v-else-if="world.type === 'forest' ? forestSettings : caveSettings"
-                :settings="world.type === 'forest' ? filteredForestSettings : filteredCaveSettings"
-                :original-settings="originalSettings && originalSettings[world.type]"
-                :world-type="world.type"
-                :search-text="searchText"
-                :show-group="'WORLDSETTINGS_GROUP'"
-                @setting-change="handleSettingChange"
-                @search-input="searchText = $event"
-              />
-              <div v-else class="empty-state">
-                <el-empty :description="`暂无${world.type === 'forest' ? '森林' : '洞穴'}世界设置数据`"></el-empty>
-              </div>
-            </el-tab-pane>
-            
-            <el-tab-pane label="基础配置">
-              <div v-if="loading || loadingServerIni" class="loading-container">
-                <el-skeleton :rows="10" animated />
-              </div>
-              <div v-else-if="serverIni">
-                <el-form label-width="120px" class="server-ini-form">
-                  <h3>网络设置</h3>
-                  <el-form-item label="服务器端口">
-                    <el-input-number 
-                      v-model="serverIni.network.server_port" 
-                      :min="1024" 
-                      :max="65535"
-                      @change="serverIniChanged = true">
-                    </el-input-number>
-                  </el-form-item>
-                  
-                  <h3>分片设置</h3>
-                  <el-form-item label="是否为主世界">
-                    <el-switch 
-                      v-model="serverIni.shard.is_master"
-                      active-color="#13ce66"
-                      @change="handleMasterWorldChange">
-                    </el-switch>
-                  </el-form-item>
-                  <el-form-item label="世界名称">
-                    <el-input 
-                      v-model="serverIni.shard.name"
-                      @input="serverIniChanged = true">
-                    </el-input>
-                  </el-form-item>
-                  <el-form-item label="世界ID">
-                    <el-input-number 
-                      v-model="serverIni.shard.id" 
-                      :min="1"
-                      :max="999"
-                      @change="serverIniChanged = true">
-                    </el-input-number>
-                  </el-form-item>
-                  
-                  <h3>账户设置</h3>
-                  <el-form-item label="编码用户路径">
-                    <el-switch 
-                      v-model="serverIni.account.encode_user_path"
-                      active-color="#13ce66"
-                      @change="serverIniChanged = true">
-                    </el-switch>
-                  </el-form-item>
-                  
-                  <h3>Steam设置</h3>
-                  <el-form-item label="主服务器端口">
-                    <el-input-number 
-                      v-model="serverIni.steam.master_server_port" 
-                      :min="1024" 
-                      :max="65535"
-                      @change="serverIniChanged = true">
-                    </el-input-number>
-                  </el-form-item>
-                  <el-form-item label="验证端口">
-                    <el-input-number 
-                      v-model="serverIni.steam.authentication_port" 
-                      :min="1024" 
-                      :max="65535"
-                      @change="serverIniChanged = true">
-                    </el-input-number>
-                  </el-form-item>
-                  
-                  <el-form-item>
-                    <el-button 
-                      type="primary" 
-                      @click="saveServerIni"
-                      :loading="savingServerIni"
-                      :disabled="!serverIniChanged">
-                      保存配置
-                    </el-button>
-                    <el-button @click="resetServerIni" :disabled="!serverIniChanged">重置</el-button>
-                  </el-form-item>
-                </el-form>
-              </div>
-              <div v-else class="empty-state">
-                <el-empty description="暂无基础配置数据"></el-empty>
-              </div>
-            </el-tab-pane>
-            
-            <el-tab-pane label="模组配置">
-              <div class="context-action-state">
-                <component :is="'el-icon-s-operation'" class="legacy-icon" />
+      <Tabs v-model="activeTab" class="world-tabs">
+        <div class="world-tabs-toolbar">
+          <TabsList class="world-tab-list">
+            <TabsTrigger v-for="world in visibleWorlds" :key="world.name" :value="world.name">
+              {{ world.name }}{{ world.type === 'forest' ? ' · 森林' : world.type === 'cave' ? ' · 洞穴' : '' }}
+            </TabsTrigger>
+          </TabsList>
+          <UiButton
+            v-if="currentWorld && !currentWorld.fallback"
+            variant="destructive"
+            size="icon-sm"
+            title="删除当前世界"
+            @click="confirmDeleteWorld(currentWorld)"
+          >
+            <Trash2 />
+          </UiButton>
+        </div>
+
+        <TabsContent v-for="world in visibleWorlds" :key="world.name" :value="world.name">
+          <Card>
+            <CardHeader class="world-header">
+              <div class="world-heading">
+                <Sun v-if="world.type === 'forest'" />
+                <Moon v-else />
                 <div>
-                  <strong>{{ roomName }} / {{ world.name }}</strong>
-                  <span>当前世界的模组启用状态与配置</span>
+                  <CardTitle>{{ world.name }} {{ world.type === 'forest' ? '森林世界' : '洞穴世界' }}</CardTitle>
+                  <CardDescription>配置地形、资源、危险、分片参数和模组。</CardDescription>
                 </div>
-                <el-button type="primary" @click="openWorldMods(world)">打开模组配置</el-button>
               </div>
-            </el-tab-pane>
-          </el-tabs>
-        </el-tab-pane>
-        
-        <!-- 添加世界按钮 -->
-        <el-tab-pane name="add-world" disabled>
-          <template v-slot:label>
-            <div class="add-world-tab" @click.stop="showAddWorldDialog">
-              <component :is="'el-icon-plus'" class="legacy-icon" />
-              <span>新增世界</span>
-            </div>
-          </template>
-        </el-tab-pane>
-        
-        <!-- 如果没有世界，显示默认的标签页 -->
-        <el-tab-pane label="森林" name="forest" v-if="roomWorlds.length === 0 && hasForestWorld">
-          <div class="tab-header-content">
-            <div class="world-icon forest-icon"><component :is="'el-icon-sunny'" /></div>
-            <div class="world-description">
-              <h3>森林世界</h3>
-              <p>配置游戏的主世界设置，包括地形、资源、危险等各种生成规则</p>
-            </div>
-          </div>
-          
-          <div v-if="loading" class="loading-container">
-            <el-skeleton :rows="10" animated />
-          </div>
-          <world-settings-panel
-            v-else-if="forestSettings"
-            :settings="currentFilteredSettings"
-            :original-settings="originalSettings && originalSettings.forest"
-            :world-type="'forest'"
-            :search-text="searchText"
-            @setting-change="handleSettingChange"
-            @search-input="searchText = $event"
-          />
-          <div v-else class="empty-state">
-            <el-empty description="暂无森林世界设置数据"></el-empty>
-          </div>
-        </el-tab-pane>
+              <Badge :variant="world.type === 'forest' ? 'outline' : 'secondary'">{{ world.type === 'forest' ? '森林' : '洞穴' }}</Badge>
+            </CardHeader>
+            <CardContent>
+              <Tabs v-model="worldSectionTab">
+                <TabsList class="section-tab-list">
+                  <TabsTrigger value="worldgen">世界生成组</TabsTrigger>
+                  <TabsTrigger value="worldsettings">世界设置组</TabsTrigger>
+                  <TabsTrigger value="server-ini">基础配置</TabsTrigger>
+                  <TabsTrigger value="mods">模组配置</TabsTrigger>
+                </TabsList>
 
-        <el-tab-pane label="洞穴" name="cave" v-if="roomWorlds.length === 0 && hasCaveWorld">
-          <div class="tab-header-content">
-            <div class="world-icon cave-icon"><component :is="'el-icon-moon-night'" /></div>
-            <div class="world-description">
-              <h3>洞穴世界</h3>
-              <p>配置游戏的地下世界设置，包括地形、资源、危险等各种生成规则</p>
-            </div>
-          </div>
-          
-          <div v-if="loading" class="loading-container">
-            <el-skeleton :rows="10" animated />
-          </div>
-          <world-settings-panel
-            v-else-if="caveSettings"
-            :settings="currentFilteredSettings"
-            :original-settings="originalSettings && originalSettings.cave"
-            :world-type="'cave'"
-            :search-text="searchText"
-            @setting-change="handleSettingChange"
-            @search-input="searchText = $event"
-          />
-          <div v-else class="empty-state">
-            <el-empty description="暂无洞穴世界设置数据"></el-empty>
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+                <TabsContent value="worldgen">
+                  <div v-if="loading" class="skeleton-stack">
+                    <Skeleton v-for="index in 8" :key="index" class="skeleton-row" />
+                  </div>
+                  <world-settings-panel
+                    v-else-if="getSettingsForWorld(world)"
+                    :settings="getSettingsForWorld(world)"
+                    :original-settings="originalSettings && originalSettings[world.type]"
+                    :world-type="world.type"
+                    :search-text="searchText"
+                    show-group="WORLDGEN_GROUP"
+                    @setting-change="handleSettingChange"
+                    @search-input="searchText = $event"
+                  />
+                  <Empty v-else>
+                    <EmptyHeader><EmptyTitle>暂无{{ world.type === 'forest' ? '森林' : '洞穴' }}世界生成数据</EmptyTitle></EmptyHeader>
+                  </Empty>
+                </TabsContent>
 
-      <!-- 为固定底栏预留空间 -->
+                <TabsContent value="worldsettings">
+                  <div v-if="loading" class="skeleton-stack">
+                    <Skeleton v-for="index in 8" :key="index" class="skeleton-row" />
+                  </div>
+                  <world-settings-panel
+                    v-else-if="getSettingsForWorld(world)"
+                    :settings="getSettingsForWorld(world)"
+                    :original-settings="originalSettings && originalSettings[world.type]"
+                    :world-type="world.type"
+                    :search-text="searchText"
+                    show-group="WORLDSETTINGS_GROUP"
+                    @setting-change="handleSettingChange"
+                    @search-input="searchText = $event"
+                  />
+                  <Empty v-else>
+                    <EmptyHeader><EmptyTitle>暂无{{ world.type === 'forest' ? '森林' : '洞穴' }}世界设置数据</EmptyTitle></EmptyHeader>
+                  </Empty>
+                </TabsContent>
+
+                <TabsContent value="server-ini">
+                  <div v-if="loading || loadingServerIni" class="skeleton-stack">
+                    <Skeleton v-for="index in 6" :key="index" class="skeleton-row" />
+                  </div>
+                  <FieldGroup v-else-if="serverIni" class="server-ini-grid">
+                    <Field>
+                      <FieldLabel for="world-server-port">服务器端口</FieldLabel>
+                      <UiInput id="world-server-port" v-model.number="serverIni.network.server_port" type="number" min="1024" max="65535" @change="serverIniChanged = true" />
+                    </Field>
+                    <Field orientation="horizontal">
+                      <FieldContent><FieldLabel for="world-is-master">主世界</FieldLabel><FieldDescription>主世界的分片 ID 固定为 1。</FieldDescription></FieldContent>
+                      <UiSwitch id="world-is-master" v-model="serverIni.shard.is_master" @update:model-value="handleMasterWorldChange" />
+                    </Field>
+                    <Field>
+                      <FieldLabel for="world-shard-name">世界名称</FieldLabel>
+                      <UiInput id="world-shard-name" v-model="serverIni.shard.name" @input="serverIniChanged = true" />
+                    </Field>
+                    <Field>
+                      <FieldLabel for="world-shard-id">世界 ID</FieldLabel>
+                      <UiInput id="world-shard-id" v-model.number="serverIni.shard.id" type="number" min="1" max="999" @change="serverIniChanged = true" />
+                    </Field>
+                    <Field orientation="horizontal">
+                      <FieldContent><FieldLabel for="world-encode-path">编码用户路径</FieldLabel><FieldDescription>使用编码后的用户目录。</FieldDescription></FieldContent>
+                      <UiSwitch id="world-encode-path" v-model="serverIni.account.encode_user_path" @update:model-value="serverIniChanged = true" />
+                    </Field>
+                    <Field>
+                      <FieldLabel for="world-master-port">主服务器端口</FieldLabel>
+                      <UiInput id="world-master-port" v-model.number="serverIni.steam.master_server_port" type="number" min="1024" max="65535" @change="serverIniChanged = true" />
+                    </Field>
+                    <Field>
+                      <FieldLabel for="world-auth-port">验证端口</FieldLabel>
+                      <UiInput id="world-auth-port" v-model.number="serverIni.steam.authentication_port" type="number" min="1024" max="65535" @change="serverIniChanged = true" />
+                    </Field>
+                    <div class="form-actions">
+                      <UiButton @click="saveServerIni" :disabled="savingServerIni || !serverIniChanged">
+                        <Spinner v-if="savingServerIni" data-icon="inline-start" />保存配置
+                      </UiButton>
+                      <UiButton variant="outline" @click="resetServerIni" :disabled="!serverIniChanged">重置</UiButton>
+                    </div>
+                  </FieldGroup>
+                  <Empty v-else>
+                    <EmptyHeader><EmptyTitle>暂无基础配置数据</EmptyTitle></EmptyHeader>
+                  </Empty>
+                </TabsContent>
+
+                <TabsContent value="mods">
+                  <Alert>
+                    <Package />
+                    <AlertTitle>{{ roomName }} / {{ world.name }}</AlertTitle>
+                    <AlertDescription>管理当前世界的模组启用状态与配置。</AlertDescription>
+                    <AlertAction><UiButton @click="openWorldMods(world)">打开模组配置</UiButton></AlertAction>
+                  </Alert>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Empty v-if="visibleWorlds.length === 0">
+        <EmptyHeader>
+          <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
+          <EmptyTitle>当前房间没有世界</EmptyTitle>
+          <EmptyDescription>创建森林或洞穴世界后即可配置。</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent><UiButton @click="showAddWorldDialog"><Plus data-icon="inline-start" />新增世界</UiButton></EmptyContent>
+      </Empty>
+
       <div class="footer-spacer" aria-hidden="true"></div>
     </section>
 
-    <!-- 底部工具栏 - 使用内联样式确保直接生效 -->
-    <div id="settings-fixed-footer" :style="footerStyle">
-      <div :style="hasChanges ? footerChangedContentStyle : footerContentStyle">
-        <settings-footer
-          :has-changes="hasChanges"
-          :loading="loading"
-          :save-loading="saveLoading"
-          :changed-items="getChangedItems()"
-          @save="saveSettings"
-          @reset="resetSettings"
-        />
-      </div>
+    <div id="settings-fixed-footer">
+      <settings-footer
+        :has-changes="hasChanges"
+        :loading="loading"
+        :save-loading="saveLoading"
+        :changed-items="getChangedItems()"
+        @save="saveSettings"
+        @reset="resetSettings"
+      />
     </div>
 
-    <el-dialog
-      title="保存为自定义预设"
-      v-model="presetDialogVisible"
-      width="30%"
-      :close-on-click-modal="false"
-      append-to-body
-    >
-      <el-form :model="newPreset" label-width="80px">
-        <el-form-item label="预设名称">
-          <el-input v-model="newPreset.name" placeholder="输入一个唯一的预设名称"></el-input>
-        </el-form-item>
-        <el-form-item label="预设描述">
-          <el-input type="textarea" v-model="newPreset.description" rows="3" placeholder="请简要描述这个预设的特点"></el-input>
-        </el-form-item>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="presetDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmSavePreset">保存</el-button>
-      </span>
-</template>
-    </el-dialog>
-    
-    <!-- 添加世界对话框 -->
-    <el-dialog
-      title="新增世界"
-      v-model="addWorldDialogVisible"
-      width="30%"
-      :close-on-click-modal="false"
-      append-to-body
-    >
-      <el-form :model="newWorld" label-width="80px">
-        <el-form-item label="世界名称">
-          <el-input v-model="newWorld.name" placeholder="请输入世界名称"></el-input>
-        </el-form-item>
-        <el-form-item label="世界类型">
-          <el-select v-model="newWorld.type" placeholder="请选择世界类型" @change="handleWorldTypeChange">
-            <el-option label="森林" value="forest"></el-option>
-            <el-option label="洞穴" value="cave"></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="addWorldDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="addWorld" :loading="addWorldLoading">创建</el-button>
-      </span>
-</template>
-    </el-dialog>
-    
-    <!-- 删除世界确认对话框 -->
-    <el-dialog
-      title="删除世界"
-      v-model="deleteWorldDialogVisible"
-      width="30%"
-      :close-on-click-modal="false"
-      append-to-body
-    >
-      <p>确定要删除世界 <strong>{{ worldToDelete ? worldToDelete.name : '' }}</strong> 吗？世界会被移入服务器上的可恢复目录。</p>
-      <el-input
-        v-model="deleteConfirmation"
-        :placeholder="roomName ? `请输入完整房间名 ${roomName}` : '请输入完整房间名'">
-      </el-input>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="deleteWorldDialogVisible = false">取消</el-button>
-        <el-button type="danger" @click="deleteWorld" :loading="deleteWorldLoading">删除</el-button>
-      </span>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="presetDialogVisible">
+      <DialogContent>
+        <DialogHeader><DialogTitle>保存为自定义预设</DialogTitle><DialogDescription>为当前设置创建易识别的预设名称。</DialogDescription></DialogHeader>
+        <FieldGroup>
+          <Field><FieldLabel for="preset-name">预设名称</FieldLabel><UiInput id="preset-name" v-model="newPreset.name" placeholder="输入唯一的预设名称" /></Field>
+          <Field><FieldLabel for="preset-description">预设描述</FieldLabel><UiTextarea id="preset-description" v-model="newPreset.description" rows="3" placeholder="简要描述预设特点" /></Field>
+        </FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="presetDialogVisible = false">取消</UiButton><UiButton @click="confirmSavePreset">保存</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="addWorldDialogVisible">
+      <DialogContent>
+        <DialogHeader><DialogTitle>新增世界</DialogTitle><DialogDescription>在当前房间中创建新的森林或洞穴分片。</DialogDescription></DialogHeader>
+        <FieldGroup>
+          <Field><FieldLabel for="new-world-name">世界名称</FieldLabel><UiInput id="new-world-name" v-model="newWorld.name" placeholder="请输入世界名称" /></Field>
+          <Field>
+            <FieldLabel>世界类型</FieldLabel>
+            <UiSelect v-model="newWorld.type" @update:model-value="handleWorldTypeChange">
+              <SelectTrigger><SelectValue placeholder="请选择世界类型" /></SelectTrigger>
+              <SelectContent><SelectGroup><SelectItem value="forest">森林</SelectItem><SelectItem value="cave">洞穴</SelectItem></SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" @click="addWorldDialogVisible = false">取消</UiButton>
+          <UiButton @click="addWorld" :disabled="addWorldLoading">
+            <Spinner v-if="addWorldLoading" data-icon="inline-start" />创建
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="deleteWorldDialogVisible">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>删除世界</DialogTitle>
+          <DialogDescription>世界 {{ worldToDelete ? worldToDelete.name : '' }} 会被移入服务器上的可恢复目录。</DialogDescription>
+        </DialogHeader>
+        <Alert variant="destructive"><TriangleAlert /><AlertTitle>需要房间名确认</AlertTitle><AlertDescription>输入完整房间名后才能继续。</AlertDescription></Alert>
+        <FieldGroup>
+          <Field>
+            <FieldLabel for="delete-world-confirmation">完整房间名</FieldLabel>
+            <UiInput id="delete-world-confirmation" v-model="deleteConfirmation" :placeholder="roomName ? `请输入 ${roomName}` : '请输入完整房间名'" />
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" @click="deleteWorldDialogVisible = false">取消</UiButton>
+          <UiButton variant="destructive" @click="deleteWorld" :disabled="deleteWorldLoading">
+            <Spinner v-if="deleteWorldLoading" data-icon="inline-start" />删除
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { Globe2, Moon, Package, Plus, RefreshCw, Sun, Trash2, TriangleAlert } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import WorldSettingsPanel from '@/components/worlds/WorldSettingsPanel.vue';
 import SettingsFooter from '@/components/worlds/SettingsFooter.vue';
 import api from '@/api';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'WorldSettings',
   components: {
-    WorldSettingsPanel,
-    SettingsFooter
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    Globe2,
+    Moon,
+    Package,
+    Plus,
+    RefreshCw,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    SettingsFooter,
+    Skeleton,
+    Spinner,
+    Sun,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    Trash2,
+    TriangleAlert,
+    UiButton,
+    UiDialog,
+    UiInput,
+    UiSelect,
+    UiSwitch,
+    UiTextarea,
+    WorldSettingsPanel
   },
   data() {
     return {
       activeTab: 'forest',
+      worldSectionTab: 'worldgen',
       forestSettings: null,
       caveSettings: null,
       originalSettings: null,
@@ -477,7 +449,7 @@ export default {
       if (currentWorld && this.roomName) {
         // 如果世界类型是未知的，弹出对话框让用户选择
         if (currentWorld.type === 'unknown' || !currentWorld.type) {
-          this.$confirm('这个世界的类型未知，请选择世界类型', '选择世界类型', {
+          confirmAction('这个世界的类型未知，请选择世界类型', '选择世界类型', {
             confirmButtonText: '森林世界',
             cancelButtonText: '洞穴世界',
             type: 'warning',
@@ -619,53 +591,18 @@ export default {
       return this.activeTab === 'forest' ? this.filteredForestSettings : this.filteredCaveSettings;
     },
     
-    // 固定底栏跟随主内容区宽度，移动端侧栏为抽屉，不占页面宽度。
-    footerStyle() {
-      const compact = this.windowSize.width <= 768;
-      return {
-        position: 'fixed',
-        right: '0',
-        bottom: '0',
-        left: compact ? '0' : this.menuWidth,
-        width: 'auto',
-        zIndex: 900,
-        backgroundColor: 'var(--surface-color)',
-        boxShadow: '0 -3px 14px rgba(38, 53, 46, 0.1)',
-        borderTop: '1px solid var(--border-color)',
-        transition: 'left 0.2s ease',
-        padding: compact ? '8px 12px' : '8px 20px',
-        display: 'flex',
-        alignItems: 'center'
-      };
+    currentWorld() {
+      return this.visibleWorlds.find(world => world.name === this.activeTab) || this.visibleWorlds[0] || null;
     },
-    
-    // 底栏内容样式
-    footerContentStyle() {
-      return {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '100%'
-      };
+
+    visibleWorlds() {
+      if (this.roomWorlds.length > 0) return this.sortedRoomWorlds;
+      const worlds = [];
+      if (this.hasForestWorld) worlds.push({ name: 'forest', type: 'forest', fallback: true });
+      if (this.hasCaveWorld) worlds.push({ name: 'cave', type: 'cave', fallback: true });
+      return worlds;
     },
-    
-    // 有变更时的底栏内容样式
-    footerChangedContentStyle() {
-      const style = {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        width: '100%',
-        position: 'relative'
-      };
-      
-      // 添加顶部警告线
-      style.paddingTop = '3px';
-      style.borderTop = '3px solid #d99b32';
-      style.marginTop = '-3px';
-      
-      return style;
-    },
+
     // 世界按照ID数字排序
     sortedRoomWorlds() {
       return this.roomWorlds.slice().sort((a, b) => {
@@ -684,6 +621,9 @@ export default {
     }
   },
   methods: {
+    getSettingsForWorld(world) {
+      return world.type === 'cave' ? this.filteredCaveSettings : this.filteredForestSettings;
+    },
     openWorldMods(world) {
       this.$router.push({
         path: '/mods/list',
@@ -703,8 +643,6 @@ export default {
 
         // 尝试获取左侧菜单元素，查找多种可能的选择器
         const sidebarSelectors = [
-          '.el-aside',
-          '.el-menu-vertical',
           '.sidebar',
           '.app-sidebar',
           '.left-menu',
@@ -775,7 +713,7 @@ export default {
             .then(() => this.fetchServerIni(this.roomName, firstWorld.name));
         })
         .catch(error => {
-          this.$message.error('获取房间世界列表失败: ' + (error.message || '未知错误'));
+          toast.error('获取房间世界列表失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.initializingWorlds = false;
@@ -809,7 +747,7 @@ export default {
         }
         delete this.worldOriginalSettings[worldname];
         delete this.worldOverrides[worldname];
-        this.$message.error(`加载世界 ${worldname} 的配置失败: ${error.message || '未知错误'}`);
+        toast.error(`加载世界 ${worldname} 的配置失败: ${error.message || '未知错误'}`);
         return null;
       });
     },
@@ -921,7 +859,7 @@ export default {
           return data; // 返回数据以便链式调用
         })
         .catch(error => {
-          this.$message.error('加载设置失败');
+          toast.error('加载设置失败');
           return Promise.reject(error);
         })
         .finally(() => {
@@ -952,7 +890,7 @@ export default {
       const currentWorld = this.roomWorlds.find(world => world.name === this.activeTab);
       
       if (!currentWorld) {
-        this.$message.error('无法确定要保存的世界');
+        toast.error('无法确定要保存的世界');
         this.saveLoading = false;
         return;
       }
@@ -984,7 +922,7 @@ export default {
       })
         .then(response => {
           if (response.status === 200) {
-            this.$message.success(`${currentWorld.name} 世界设置保存成功`);
+            toast.success(`${currentWorld.name} 世界设置保存成功`);
             const activeSettings = worldType === 'forest' ? this.forestSettings : this.caveSettings;
             this.worldOriginalSettings[currentWorld.name] = JSON.parse(JSON.stringify(activeSettings));
 
@@ -1003,7 +941,7 @@ export default {
           }
         })
         .catch(error => {
-          this.$message.error(`保存 ${currentWorld.name} 世界设置失败: ${error.message || '未知错误'}`);
+          toast.error(`保存 ${currentWorld.name} 世界设置失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.saveLoading = false;
@@ -1037,10 +975,10 @@ export default {
 
       if (worldType === 'forest') {
         this.applySettingsValues(this.forestSettings, baseline);
-        this.$message.info('森林世界设置已重置');
+        toast.info('森林世界设置已重置');
       } else {
         this.applySettingsValues(this.caveSettings, baseline);
-        this.$message.info('洞穴世界设置已重置');
+        toast.info('洞穴世界设置已重置');
       }
       
       // 清除变更状态和缓存
@@ -1060,7 +998,7 @@ export default {
       });
     },
     confirmSavePreset() {
-      this.$message.error('真实后端尚未提供自定义预设持久化接口');
+      toast.error('真实后端尚未提供自定义预设持久化接口');
     },
     extractEssentialSettings(settings) {
       const result = {};
@@ -1261,27 +1199,8 @@ export default {
         }, delay);
       };
     },
-    handleGlobalClick(event) {
-      // 检查是否点击在下拉菜单外部
-      const selectDropdowns = document.querySelectorAll('.el-select-dropdown.el-popper');
-      
-      if (selectDropdowns.length > 0) {
-        // 检查是否点击在任何下拉菜单或选择器上
-        const clickedOnSelect = !!event.target.closest('.el-select');
-        const clickedOnDropdown = Array.from(selectDropdowns).some(dropdown => 
-          dropdown.contains(event.target)
-        );
-        
-        // 如果点击在下拉菜单和选择器之外，关闭所有下拉菜单
-        if (!clickedOnSelect && !clickedOnDropdown) {
-          // 使用 requestAnimationFrame 优化性能
-          window.requestAnimationFrame(() => {
-            selectDropdowns.forEach(dropdown => {
-              dropdown.style.display = 'none';
-            });
-          });
-        }
-      }
+    handleGlobalClick() {
+      // Reka Select 自行管理浮层关闭行为。
     },
     buildCaches() {
       // 清空旧缓存
@@ -1360,59 +1279,11 @@ export default {
     },
     
     optimizeVisibleSelectComponents() {
-      // 只处理可见区域内的选择框
-      const visibleSelects = Array.from(document.querySelectorAll('.el-select'))
-        .filter(el => this.isElementInViewport(el));
-      
-      // 分批处理，避免一次性处理过多DOM导致卡顿
-      const batchSize = 5;
-      const processBatch = (startIndex) => {
-        const endIndex = Math.min(startIndex + batchSize, visibleSelects.length);
-        const batch = visibleSelects.slice(startIndex, endIndex);
-        
-        batch.forEach(select => {
-          // 减少repaint/reflow
-          select.style.willChange = 'transform';
-          
-          // 优化下拉菜单渲染
-          const dropdown = select.querySelector('.el-select-dropdown');
-          if (dropdown) {
-            dropdown.style.willChange = 'transform, opacity';
-            dropdown.style.transition = 'transform 0.1s ease-out, opacity 0.1s ease-out';
-          }
-        });
-        
-        // 继续处理下一批
-        if (endIndex < visibleSelects.length) {
-          setTimeout(() => processBatch(endIndex), 0);
-        }
-      };
-      
-      processBatch(0);
+      // Reka Select 不需要额外的 DOM 渲染补丁。
     },
     
     updateVisibleSelectLabels() {
-      // 使用 requestAnimationFrame 优化性能
-      window.requestAnimationFrame(() => {
-        const selects = document.querySelectorAll('.el-select');
-        
-        // 处理前20个可见的选择器，避免一次处理过多
-        const visibleSelects = Array.from(selects)
-          .filter(el => this.isElementInViewport(el))
-          .slice(0, 20);
-        
-        visibleSelects.forEach(select => {
-          const component = select.__vue__;
-          const input = select.querySelector('.el-input__inner');
-          
-          if (component && input && component.value) {
-            const option = component.options.find(opt => opt.value === component.value);
-            if (option && option.currentLabel) {
-              input.value = option.currentLabel;
-            }
-          }
-        });
-      });
+      // SelectValue 根据 modelValue 自动更新标签。
     },
     
     // 添加滚动事件监听，优化滚动时的性能
@@ -1548,7 +1419,7 @@ export default {
     // 添加新世界
     addWorld() {
       if (!this.newWorld.name) {
-        this.$message.warning('请输入世界名称');
+        toast.warning('请输入世界名称');
         return;
       }
 
@@ -1579,18 +1450,18 @@ export default {
       })
         .then(response => {
           if (response.status === 200) {
-            this.$message.success(`成功创建${worldType === 'forest' ? '森林' : '洞穴'}世界 ${this.newWorld.name}`);
+            toast.success(`成功创建${worldType === 'forest' ? '森林' : '洞穴'}世界 ${this.newWorld.name}`);
             this.addWorldDialogVisible = false;
             const createdWorldName = this.newWorld.name;
             this.fetchRoomWorlds().then(() => {
               this.activeTab = createdWorldName;
             });
           } else {
-            this.$message.error(response.data.msg || '创建世界失败');
+            toast.error(response.data.msg || '创建世界失败');
           }
         })
         .catch(error => {
-          this.$message.error('创建世界失败: ' + (error.message || '未知错误'));
+          toast.error('创建世界失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.addWorldLoading = false;
@@ -1607,11 +1478,11 @@ export default {
     // 删除世界
     deleteWorld() {
       if (!this.worldToDelete) {
-        this.$message.warning('未选择要删除的世界');
+        toast.warning('未选择要删除的世界');
         return;
       }
       if (!this.deleteConfirmation) {
-        this.$message.warning('请输入完整房间名确认删除');
+        toast.warning('请输入完整房间名确认删除');
         return;
       }
       
@@ -1624,17 +1495,17 @@ export default {
       })
         .then(response => {
           if (response.status === 200) {
-            this.$message.success(`已将世界 ${this.worldToDelete.name} 移入可恢复目录`);
+            toast.success(`已将世界 ${this.worldToDelete.name} 移入可恢复目录`);
             this.deleteWorldDialogVisible = false;
             
             // 刷新世界列表
             this.fetchRoomWorlds();
           } else {
-            this.$message.error(response.data.msg || '删除世界失败');
+            toast.error(response.data.msg || '删除世界失败');
           }
         })
         .catch(error => {
-          this.$message.error('删除世界失败: ' + (error.message || '未知错误'));
+          toast.error('删除世界失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.deleteWorldLoading = false;
@@ -1701,7 +1572,7 @@ export default {
         .catch(error => {
           this.serverIni = null;
           this.serverIniOriginal = null;
-          this.$message.error('加载服务器基础配置失败: ' + (error.message || '未知错误'));
+          toast.error('加载服务器基础配置失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.loadingServerIni = false;
@@ -1714,14 +1585,14 @@ export default {
       
       const currentWorld = this.roomWorlds.find(world => world.name === this.activeTab);
       if (!currentWorld) {
-        this.$message.error('无法找到当前世界');
+        toast.error('无法找到当前世界');
         return;
       }
       
       // 检查规则：如果是主世界，分片ID必须为1
       if (this.serverIni.shard.is_master && this.serverIni.shard.id !== 1) {
         this.serverIni.shard.id = 1;
-        this.$message.warning('主世界的世界ID已自动设置为1');
+        toast.warning('主世界的世界ID已自动设置为1');
       }
       
       this.savingServerIni = true;
@@ -1733,14 +1604,14 @@ export default {
       })
         .then(response => {
           if (response.status === 200) {
-            this.$message.success('服务器基础配置保存成功');
+            toast.success('服务器基础配置保存成功');
             // 更新原始配置
             this.serverIniOriginal = JSON.parse(JSON.stringify(this.serverIni));
             this.serverIniChanged = false;
           }
         })
         .catch(error => {
-          this.$message.error('保存服务器基础配置失败: ' + (error.message || '未知错误'));
+          toast.error('保存服务器基础配置失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.savingServerIni = false;
@@ -1760,7 +1631,7 @@ export default {
       // 如果设置为主世界，确保世界ID为1
       if (value && this.serverIni) {
         this.serverIni.shard.id = 1;
-        this.$message.info('已将主世界的世界ID自动设置为1');
+        toast.info('已将主世界的世界ID自动设置为1');
       }
     },
     
@@ -1821,10 +1692,10 @@ export default {
       let apiMethod = worldType === 'forest' ? api.worldApi.forestWorld : api.worldApi.caveWorld;
       apiMethod(params).then(response => {
         if (response.status === 200) {
-          this.$message.success('世界类型更新成功');
+          toast.success('世界类型更新成功');
         }
       }).catch(error => {
-        this.$message.error('更新世界类型失败: ' + (error.message || '未知错误'));
+        toast.error('更新世界类型失败: ' + (error.message || '未知错误'));
       }).finally(() => {
         this.loading = false;
       });
@@ -1855,256 +1726,146 @@ export default {
 <style scoped>
 .world-settings-container {
   width: 100%;
-  min-height: 100%;
+  min-width: 0;
   padding-bottom: 88px;
 }
 
 .settings-surface {
-  display: block;
   min-width: 0;
 }
 
-.card-header {
+.page-header,
+.header-actions,
+.world-tabs-toolbar,
+.world-header,
+.world-heading,
+.form-actions {
   display: flex;
+  align-items: center;
+}
+
+.page-header {
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color);
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
 }
 
-.header-title {
+.page-header h2 {
   display: flex;
-  min-width: 0;
   align-items: center;
-  gap: 10px;
-}
-
-.header-title i {
-  font-size: 24px;
-  color: var(--primary-color);
-}
-
-.header-title h2 {
+  gap: 8px;
   margin: 0;
-  overflow: hidden;
   font-size: 18px;
   font-weight: 600;
-  line-height: 28px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-primary);
 }
 
-.header-actions {
-  display: flex;
+.page-header h2 svg {
+  width: 18px;
+  height: 18px;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.header-actions,
+.form-actions {
+  gap: 8px;
+}
+
+.world-tabs-toolbar {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.world-tab-list,
+.section-tab-list {
+  max-width: 100%;
+  justify-content: flex-start;
+  overflow-x: auto;
+}
+
+.world-header {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.world-heading {
   gap: 10px;
 }
 
-.custom-tabs {
-  margin-top: 0;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: none;
-  overflow: hidden;
+.world-heading > svg {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  color: var(--primary);
 }
 
-.tab-header-content {
+.skeleton-stack {
   display: flex;
-  margin-bottom: 16px;
-  padding: 10px 0 12px;
-  border-bottom: 1px solid var(--border-color);
-  background: transparent;
-  border-radius: 0;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.world-icon {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  border-radius: 4px;
-  margin-right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 22px;
+.skeleton-row {
+  height: 36px;
+  width: 100%;
 }
 
-.forest-icon {
-  background-color: #4f8a5b;
-}
-
-.cave-icon {
-  background-color: var(--text-secondary);
-}
-
-.world-description h3 {
-  margin: 0 0 5px 0;
-  font-size: 16px;
-}
-
-.world-description p {
-  margin: 0;
-  color: var(--text-regular);
-  font-size: 14px;
-}
-
-.loading-container, .empty-state {
-  padding: 24px;
-  text-align: center;
-}
-
-.add-world-tab {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--primary-color);
-  cursor: pointer;
-  padding: 0 10px;
-}
-
-.add-world-tab:hover {
-  color: var(--el-color-primary-light-3);
-}
-
-.world-delete-icon {
-  margin-left: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.world-delete-icon:hover {
-  color: #c94f4f;
-}
-
-.server-ini-form {
-  max-width: 760px;
-  padding: 16px;
-  background-color: #fff;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-.server-ini-form h3 {
-  margin-top: 20px;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--primary-color);
-}
-
-.server-ini-form h3:first-child {
-  margin-top: 0;
-}
-
-.settings-tabs {
-  margin-bottom: 16px;
-}
-
-.context-action-state {
+.server-ini-grid {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  min-height: 86px;
-  padding: 14px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 24px;
 }
 
-.context-action-state > .legacy-icon {
-  justify-self: center;
-  color: var(--primary-color);
-  font-size: 24px;
-}
-
-.context-action-state strong,
-.context-action-state span {
-  display: block;
-}
-
-.context-action-state strong {
-  color: var(--text-primary);
-}
-
-.context-action-state span {
-  margin-top: 3px;
-  color: var(--text-secondary);
-  font-size: 12px;
+.form-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
 }
 
 .footer-spacer {
-  width: 100%;
   height: 72px;
 }
 
+#settings-fixed-footer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: var(--sidebar-width, 216px);
+  display: flex;
+  align-items: center;
+  padding: 8px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--background);
+  box-shadow: 0 -3px 14px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
 @media (max-width: 768px) {
-  .world-settings-container {
-    padding-bottom: 116px;
-  }
-
-  .card-header {
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .header-title h2 {
-    white-space: normal;
+  .page-header,
+  .world-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .header-actions {
-    flex: 0 0 auto;
+    flex-wrap: wrap;
   }
 
-  .custom-tabs {
-    margin-top: 8px;
-  }
-
-  .tab-header-content {
+  .world-tabs-toolbar {
     align-items: flex-start;
   }
 
-  .world-description {
-    min-width: 0;
+  .server-ini-grid {
+    grid-template-columns: 1fr;
   }
 
-  .world-description p {
-    line-height: 20px;
-  }
-
-  .server-ini-form {
-    padding: 12px;
-  }
-
-  .context-action-state {
-    grid-template-columns: 36px minmax(0, 1fr);
-  }
-
-  .context-action-state :deep(.el-button) {
-    grid-column: 1 / -1;
-    width: 100%;
-    margin: 0;
-  }
-
-  .server-ini-form :deep(.el-form-item) {
-    display: block;
-  }
-
-  .server-ini-form :deep(.el-form-item__label),
-  .server-ini-form :deep(.el-form-item__content) {
-    width: 100% !important;
-    margin-left: 0 !important;
-    text-align: left;
-  }
-
-  .footer-spacer {
-    height: 104px;
+  #settings-fixed-footer {
+    left: 0;
+    padding: 8px 12px;
   }
 }
 </style>
