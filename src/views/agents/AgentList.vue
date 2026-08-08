@@ -1,14 +1,10 @@
 <template>
   <div class="agent-list-container">
     <section class="main-panel">
-        <div class="page-header agent-page-header">
-        <span class="card-title">
-          <component :is="'el-icon-connection'" class="legacy-icon" /> Agent管理中心
-        </span>
-        <el-button icon="el-icon-refresh" @click="refreshData">
-          刷新
-        </el-button>
-        </div>
+      <div class="page-header agent-page-header">
+        <span class="card-title"><Network />Agent 管理中心</span>
+        <UiButton variant="outline" :disabled="loading" @click="refreshData"><RefreshCw data-icon="inline-start" />刷新</UiButton>
+      </div>
 
       <div class="agent-list-header">
         <div class="stat-cards">
@@ -27,36 +23,27 @@
         </div>
       </div>
 
-      <div v-loading="loading" class="agent-list-content">
-        <template v-if="agentList.length > 0">
-          <el-row :gutter="20">
-            <el-col :span="24" v-for="agent in agentList" :key="agent.id">
-              <el-card class="agent-card" :class="{ 'agent-connected': agent.connected }" shadow="hover">
-                <div class="agent-card-header">
+      <div class="agent-list-content">
+        <div v-if="loading" class="loading-state"><Spinner /><span>正在读取 Agent 状态...</span></div>
+        <div v-else-if="agentList.length > 0" class="agent-stack">
+              <Card v-for="agent in agentList" :key="agent.id" class="agent-card" :class="{ 'agent-connected': agent.connected }">
+                <CardHeader class="agent-card-header">
                   <div class="agent-name">
-                    <el-tag :type="agent.connected ? 'success' : 'danger'" size="small" effect="dark">
-                      {{ agent.connected ? '在线' : '离线' }}
-                    </el-tag>
+                    <Badge :variant="agent.connected ? 'default' : 'destructive'">{{ agent.connected ? '在线' : '离线' }}</Badge>
                     <span class="hostname">{{ agent.hostname }}</span>
                   </div>
                   <div class="agent-actions">
-                    <el-button size="small" icon="el-icon-view" @click="showAgentDetails(agent)">详情</el-button>
-                    <el-button
-                      :type="runtimeFor(agent).configured ? '' : 'primary'"
-                      size="small"
-                      icon="el-icon-setting"
-                      @click="openRuntimeConfig(agent)"
-                    >
+                    <UiButton size="sm" variant="outline" @click="showAgentDetails(agent)"><Eye data-icon="inline-start" />详情</UiButton>
+                    <UiButton :variant="runtimeFor(agent).configured ? 'outline' : 'default'" size="sm" @click="openRuntimeConfig(agent)"><Settings data-icon="inline-start" />
                       {{ runtimeFor(agent).configured ? '运行时配置' : '配置远程运行时' }}
-                    </el-button>
-                    <el-button size="small" icon="el-icon-edit" @click="navigateToCommand(agent.id)">执行命令</el-button>
-                    <el-button type="danger" size="small" icon="el-icon-delete" :disabled="agent.connected" @click="forgetAgent(agent)">移除</el-button>
+                    </UiButton>
+                    <UiButton size="sm" variant="outline" @click="navigateToCommand(agent.id)"><Terminal data-icon="inline-start" />执行命令</UiButton>
+                    <UiButton variant="destructive" size="sm" :disabled="agent.connected" @click="forgetAgent(agent)"><Trash2 data-icon="inline-start" />移除</UiButton>
                   </div>
-                </div>
-
-                <el-divider></el-divider>
-
-                <div class="agent-info-grid">
+                </CardHeader>
+                <CardContent>
+                  <Separator />
+                  <div class="agent-info-grid">
                   <div class="info-item">
                     <div class="info-label">UUID</div>
                     <div class="info-value uuid-value">{{ agent.agent_uuid }}</div>
@@ -65,20 +52,15 @@
                   <div class="info-item">
                     <div class="info-label">系统</div>
                     <div class="info-value">
-                      <component :is="getOsIcon(agent.os)" class="legacy-icon system-icon" />
+                      <component :is="getOsIcon(agent.os)" class="system-icon" />
                       {{ agent.os }} ({{ agent.arch }})
                     </div>
                   </div>
 
                   <div class="info-item">
                     <div class="info-label">IP地址</div>
-                    <div class="info-value">
-                      <el-tooltip effect="dark" placement="top" v-for="(ip, idx) in agent.ip_addresses" :key="idx">
-                        <template #content>
-                          <div>{{ ip }}</div>
-                        </template>
-                        <el-tag size="mini" style="margin-right: 5px; margin-bottom: 5px">{{ ip }}</el-tag>
-                      </el-tooltip>
+                    <div class="info-value ip-list">
+                      <Tooltip v-for="(ip, idx) in agent.ip_addresses" :key="idx"><TooltipTrigger as-child><Badge variant="outline">{{ ip }}</Badge></TooltipTrigger><TooltipContent>{{ ip }}</TooltipContent></Tooltip>
                     </div>
                   </div>
 
@@ -114,118 +96,85 @@
                     <div class="info-label">最后心跳</div>
                     <div class="info-value">{{ formatTime(agent.last_heartbeat) }}</div>
                   </div>
-                </div>
+                  </div>
 
-                <div class="resource-monitor" v-if="agent.connected">
-                  <el-progress
-                    :text-inside="true"
-                    :stroke-width="16"
-                    :percentage="calculateMemoryUsage(agent)"
-                    :color="getProgressColor"
-                    class="progress-item">
-                    内存使用
-                  </el-progress>
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
-        </template>
-
-        <div v-else-if="!loading" class="empty-agents">
-          <component :is="'el-icon-connection'" class="legacy-icon empty-icon" />
-          <div class="empty-text">暂无Agent连接</div>
-          <el-button type="primary" @click="navigateToSecurity">添加Agent</el-button>
+                  <div v-if="agent.connected" class="resource-monitor">
+                    <div class="progress-label"><span>内存使用</span><span>{{ calculateMemoryUsage(agent) }}%</span></div>
+                    <UiProgress :model-value="calculateMemoryUsage(agent)" />
+                  </div>
+                </CardContent>
+              </Card>
         </div>
+
+        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Network /></EmptyMedia><EmptyTitle>暂无 Agent 连接</EmptyTitle><EmptyDescription>配置安全密钥并启动 Agent 后，节点会显示在这里。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="navigateToSecurity">添加 Agent</UiButton></EmptyContent></Empty>
       </div>
     </section>
 
-    <el-dialog v-model="detailVisible" title="Agent详情" width="680px">
-      <el-descriptions v-if="selectedAgent" :column="2" border>
-        <el-descriptions-item label="UUID" :span="2">{{ selectedAgent.agent_uuid }}</el-descriptions-item>
-        <el-descriptions-item label="主机名">{{ selectedAgent.hostname || 'N/A' }}</el-descriptions-item>
-        <el-descriptions-item label="状态">{{ selectedAgent.connected ? '在线' : '离线' }}</el-descriptions-item>
-        <el-descriptions-item label="系统">{{ selectedAgent.os || 'N/A' }} ({{ selectedAgent.arch || 'N/A' }})</el-descriptions-item>
-        <el-descriptions-item label="版本">{{ selectedAgent.version || 'N/A' }}</el-descriptions-item>
-        <el-descriptions-item label="最后心跳">{{ formatTime(selectedAgent.last_heartbeat) }}</el-descriptions-item>
-        <el-descriptions-item label="运行时间">{{ formatUptime(selectedAgent.uptime_seconds) }}</el-descriptions-item>
-        <el-descriptions-item label="IP地址" :span="2">{{ (selectedAgent.ip_addresses || []).join(', ') || 'N/A' }}</el-descriptions-item>
-        <el-descriptions-item label="能力" :span="2">{{ (selectedAgent.capabilities || []).join(', ') || 'N/A' }}</el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
+    <UiDialog v-model:open="detailVisible"><DialogContent class="detail-dialog"><DialogHeader><DialogTitle>Agent 详情</DialogTitle><DialogDescription>节点身份、系统与连接信息。</DialogDescription></DialogHeader>
+      <dl v-if="selectedAgent" class="detail-grid">
+        <div class="detail-wide"><dt>UUID</dt><dd>{{ selectedAgent.agent_uuid }}</dd></div><div><dt>主机名</dt><dd>{{ selectedAgent.hostname || 'N/A' }}</dd></div>
+        <div><dt>状态</dt><dd>{{ selectedAgent.connected ? '在线' : '离线' }}</dd></div><div><dt>系统</dt><dd>{{ selectedAgent.os || 'N/A' }} ({{ selectedAgent.arch || 'N/A' }})</dd></div>
+        <div><dt>版本</dt><dd>{{ selectedAgent.version || 'N/A' }}</dd></div><div><dt>最后心跳</dt><dd>{{ formatTime(selectedAgent.last_heartbeat) }}</dd></div>
+        <div><dt>运行时间</dt><dd>{{ formatUptime(selectedAgent.uptime_seconds) }}</dd></div><div class="detail-wide"><dt>IP 地址</dt><dd>{{ (selectedAgent.ip_addresses || []).join(', ') || 'N/A' }}</dd></div>
+        <div class="detail-wide"><dt>能力</dt><dd>{{ (selectedAgent.capabilities || []).join(', ') || 'N/A' }}</dd></div>
+      </dl>
+    </DialogContent></UiDialog>
 
-    <el-dialog v-model="runtimeVisible" title="远程运行时配置" width="720px" :close-on-click-modal="false">
+    <UiDialog v-model:open="runtimeVisible"><DialogContent class="runtime-dialog"><DialogHeader><DialogTitle>远程运行时配置</DialogTitle><DialogDescription>配置此 Agent 的 DST 路径和兼容运行时。</DialogDescription></DialogHeader>
       <div v-if="runtimeAgent" class="runtime-scope">
         <div>
           <strong>{{ runtimeAgent.hostname }}</strong>
           <span>{{ runtimeAgent.os }} {{ runtimeAgent.arch }}</span>
         </div>
-        <el-tag effect="plain">配置作用域：仅此 Agent</el-tag>
+        <Badge variant="outline">配置作用域：仅此 Agent</Badge>
       </div>
-      <el-form
-        ref="runtimeForm"
-        :model="runtimeForm"
-        :rules="runtimeRules"
-        label-position="top"
-        class="runtime-form"
-      >
+      <FieldGroup class="runtime-form">
         <div class="runtime-form-grid">
-          <el-form-item label="显示名称" prop="displayName">
-            <el-input v-model="runtimeForm.displayName" maxlength="100" />
-          </el-form-item>
-          <el-form-item label="服务端模式" prop="serverMode">
-            <el-radio-group v-model="runtimeForm.serverMode">
-              <el-radio-button label="64">64 位</el-radio-button>
-              <el-radio-button label="32">32 位</el-radio-button>
-              <el-radio-button label="luajit">LuaJIT</el-radio-button>
-            </el-radio-group>
-          </el-form-item>
+          <Field :data-invalid="Boolean(runtimeErrors.displayName)"><FieldLabel for="runtime-name">显示名称</FieldLabel><UiInput id="runtime-name" v-model="runtimeForm.displayName" maxlength="100" :aria-invalid="Boolean(runtimeErrors.displayName)" /><FieldError v-if="runtimeErrors.displayName">{{ runtimeErrors.displayName }}</FieldError></Field>
+          <Field><FieldLabel>服务端模式</FieldLabel><ToggleGroup v-model="runtimeForm.serverMode" type="single"><ToggleGroupItem value="64">64 位</ToggleGroupItem><ToggleGroupItem value="32">32 位</ToggleGroupItem><ToggleGroupItem value="luajit">LuaJIT</ToggleGroupItem></ToggleGroup></Field>
         </div>
-        <el-form-item label="DST 存档路径" prop="savePath">
-          <el-input v-model="runtimeForm.savePath" :placeholder="pathPlaceholder('save')" />
-        </el-form-item>
-        <el-form-item label="DST 服务端路径" prop="serverPath">
-          <el-input v-model="runtimeForm.serverPath" :placeholder="pathPlaceholder('server')" />
-        </el-form-item>
-        <el-form-item label="备份路径" prop="backupPath">
-          <el-input v-model="runtimeForm.backupPath" :placeholder="pathPlaceholder('backup')" />
-        </el-form-item>
-        <el-collapse v-model="runtimeAdvanced" class="runtime-advanced">
-          <el-collapse-item title="模组与兼容运行时" name="advanced">
-            <el-form-item label="UGC 路径" prop="ugcPath">
-              <el-input v-model="runtimeForm.ugcPath" />
-            </el-form-item>
-            <el-form-item label="SteamCMD 路径" prop="steamcmdPath">
-              <el-input v-model="runtimeForm.steamcmdPath" />
-            </el-form-item>
-            <el-form-item label="Workshop 内容路径" prop="workshopContentPath">
-              <el-input v-model="runtimeForm.workshopContentPath" />
-            </el-form-item>
+        <Field :data-invalid="Boolean(runtimeErrors.savePath)"><FieldLabel for="runtime-save">DST 存档路径</FieldLabel><UiInput id="runtime-save" v-model="runtimeForm.savePath" :placeholder="pathPlaceholder('save')" :aria-invalid="Boolean(runtimeErrors.savePath)" /><FieldError v-if="runtimeErrors.savePath">{{ runtimeErrors.savePath }}</FieldError></Field>
+        <Field :data-invalid="Boolean(runtimeErrors.serverPath)"><FieldLabel for="runtime-server">DST 服务端路径</FieldLabel><UiInput id="runtime-server" v-model="runtimeForm.serverPath" :placeholder="pathPlaceholder('server')" :aria-invalid="Boolean(runtimeErrors.serverPath)" /><FieldError v-if="runtimeErrors.serverPath">{{ runtimeErrors.serverPath }}</FieldError></Field>
+        <Field><FieldLabel for="runtime-backup">备份路径</FieldLabel><UiInput id="runtime-backup" v-model="runtimeForm.backupPath" :placeholder="pathPlaceholder('backup')" /></Field>
+        <Accordion type="single" collapsible class="runtime-advanced"><AccordionItem value="advanced"><AccordionTrigger>模组与兼容运行时</AccordionTrigger><AccordionContent><FieldGroup>
+            <Field><FieldLabel for="runtime-ugc">UGC 路径</FieldLabel><UiInput id="runtime-ugc" v-model="runtimeForm.ugcPath" /></Field>
+            <Field><FieldLabel for="runtime-steamcmd">SteamCMD 路径</FieldLabel><UiInput id="runtime-steamcmd" v-model="runtimeForm.steamcmdPath" /></Field>
+            <Field><FieldLabel for="runtime-workshop">Workshop 内容路径</FieldLabel><UiInput id="runtime-workshop" v-model="runtimeForm.workshopContentPath" /></Field>
             <div class="runtime-form-grid">
-              <el-form-item label="Lua 命令" prop="luaBinary">
-                <el-input v-model="runtimeForm.luaBinary" placeholder="lua" />
-              </el-form-item>
-              <el-form-item label="Lua fallback 路径" prop="luaFallbackPath">
-                <el-input v-model="runtimeForm.luaFallbackPath" />
-              </el-form-item>
+              <Field><FieldLabel for="runtime-lua">Lua 命令</FieldLabel><UiInput id="runtime-lua" v-model="runtimeForm.luaBinary" placeholder="lua" /></Field>
+              <Field><FieldLabel for="runtime-lua-fallback">Lua fallback 路径</FieldLabel><UiInput id="runtime-lua-fallback" v-model="runtimeForm.luaFallbackPath" /></Field>
             </div>
-          </el-collapse-item>
-        </el-collapse>
-      </el-form>
-      <template #footer>
-        <div class="runtime-dialog-footer">
-          <el-button v-if="runtimeConfigured" type="danger" plain @click="removeRuntimeConfig">移除配置</el-button>
+        </FieldGroup></AccordionContent></AccordionItem></Accordion>
+      </FieldGroup>
+      <DialogFooter class="runtime-dialog-footer">
+          <UiButton v-if="runtimeConfigured" variant="destructive" @click="removeRuntimeConfig">移除配置</UiButton>
           <span class="runtime-footer-spacer"></span>
-          <el-button @click="runtimeVisible = false">取消</el-button>
-          <el-button type="primary" :loading="runtimeSaving" @click="saveRuntimeConfig">保存配置</el-button>
-        </div>
-      </template>
-    </el-dialog>
+          <UiButton variant="outline" @click="runtimeVisible = false">取消</UiButton>
+          <UiButton :disabled="runtimeSaving" @click="saveRuntimeConfig"><Spinner v-if="runtimeSaving" data-icon="inline-start" />保存配置</UiButton>
+      </DialogFooter>
+    </DialogContent></UiDialog>
   </div>
 </template>
 
 <script>
+import { Apple, Eye, Monitor, Network, RefreshCw, Settings, Terminal, Trash2 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
 import { runtimeTargetsV2API } from '@/api/v2';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Progress as UiProgress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { confirmAction } from '@/lib/feedback';
 import { announceRuntimeTargetsUpdated } from '@/utils/runtimeTarget';
 
 const emptyRuntimeConfig = agent => ({
@@ -250,6 +199,13 @@ const editableRuntimeConfig = (agent, config = {}) => {
 
 export default {
   name: 'AgentList',
+  components: {
+    Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge, Card, CardContent, CardHeader,
+    DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
+    EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldError, FieldGroup,
+    FieldLabel, Network, RefreshCw, Separator, Settings, Spinner, Terminal, ToggleGroup, ToggleGroupItem,
+    Tooltip, TooltipContent, TooltipTrigger, Trash2, UiButton, UiDialog, UiInput, UiProgress
+  },
   data() {
     return {
       loading: false,
@@ -264,6 +220,7 @@ export default {
       runtimeAgent: null,
       runtimeAdvanced: [],
       runtimeForm: emptyRuntimeConfig(),
+      runtimeErrors: {},
       runtimeRules: {
         displayName: [{ required: true, message: '请输入显示名称', trigger: 'blur' }],
         savePath: [{ required: true, message: '请输入远程存档路径', trigger: 'blur' }],
@@ -296,7 +253,7 @@ export default {
         await this.fetchRuntimeTargets();
       } catch (error) {
         this.agentList = [];
-        this.$message.error('获取Agent列表失败: ' + (error.message || '未知错误'));
+        toast.error('获取Agent列表失败: ' + (error.message || '未知错误'));
       } finally {
         this.loading = false;
       }
@@ -322,22 +279,29 @@ export default {
       this.runtimeAgent = agent;
       this.runtimeConfigured = target.configured;
       this.runtimeAdvanced = [];
+      this.runtimeErrors = {};
       this.runtimeForm = editableRuntimeConfig(agent, target.config);
       this.runtimeVisible = true;
-      this.$nextTick(() => this.$refs.runtimeForm?.clearValidate());
     },
     async saveRuntimeConfig() {
-      const valid = await this.$refs.runtimeForm.validate().catch(() => false);
-      if (!valid || !this.runtimeAgent) return;
+      const errors = {};
+      if (!this.runtimeForm.displayName.trim()) errors.displayName = '请输入显示名称';
+      if (!this.runtimeForm.savePath.trim()) errors.savePath = '请输入远程存档路径';
+      if (!this.runtimeForm.serverPath.trim()) errors.serverPath = '请输入远程服务端路径';
+      this.runtimeErrors = errors;
+      if (Object.keys(errors).length > 0 || !this.runtimeAgent) {
+        if (Object.keys(errors).length > 0) toast.warning('请完成必填的运行时配置');
+        return;
+      }
       this.runtimeSaving = true;
       try {
         await runtimeTargetsV2API.save(this.runtimeAgent.id, this.runtimeForm);
-        this.$message.success('远程运行时配置已保存');
+        toast.success('远程运行时配置已保存');
         this.runtimeVisible = false;
         await this.fetchRuntimeTargets();
         announceRuntimeTargetsUpdated();
       } catch (error) {
-        this.$message.error(error.message || '保存远程运行时配置失败');
+        toast.error(error.message || '保存远程运行时配置失败');
       } finally {
         this.runtimeSaving = false;
       }
@@ -345,7 +309,7 @@ export default {
     async removeRuntimeConfig() {
       if (!this.runtimeAgent) return;
       try {
-        await this.$confirm(`确定移除 “${this.runtimeAgent.hostname}” 的远程运行时配置吗？`, '移除运行时配置', {
+        await confirmAction(`确定移除 “${this.runtimeAgent.hostname}” 的远程运行时配置吗？`, '移除运行时配置', {
           confirmButtonText: '移除',
           cancelButtonText: '取消',
           type: 'warning'
@@ -354,10 +318,10 @@ export default {
         this.runtimeVisible = false;
         await this.fetchRuntimeTargets();
         announceRuntimeTargetsUpdated();
-        this.$message.success('远程运行时配置已移除');
+        toast.success('远程运行时配置已移除');
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
-          this.$message.error(error.message || '移除远程运行时配置失败');
+          toast.error(error.message || '移除远程运行时配置失败');
         }
       }
     },
@@ -388,27 +352,27 @@ export default {
     },
     async forgetAgent(agent) {
       try {
-        await this.$confirm(`确定移除离线 Agent “${agent.hostname || agent.id}” 的历史记录吗？`, '移除Agent', {
+        await confirmAction(`确定移除离线 Agent “${agent.hostname || agent.id}” 的历史记录吗？`, '移除 Agent', {
           confirmButtonText: '移除',
           cancelButtonText: '取消',
           type: 'warning'
         });
         await agentApi.forgetAgent(agent.id);
-        this.$message.success('Agent 记录已移除');
+        toast.success('Agent 记录已移除');
         await this.fetchAgentList();
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
-          this.$message.error('移除 Agent 失败: ' + (error.message || '未知错误'));
+          toast.error('移除 Agent 失败: ' + (error.message || '未知错误'));
         }
       }
     },
     getOsIcon(os) {
-      if (!os) return 'el-icon-monitor';
+      if (!os) return Monitor;
 
       const osLower = os.toLowerCase();
-      if (osLower.includes('mac') || osLower.includes('darwin')) return 'el-icon-apple';
+      if (osLower.includes('mac') || osLower.includes('darwin')) return Apple;
 
-      return 'el-icon-monitor';
+      return Monitor;
     },
     formatBytes(bytes) {
       if (bytes === 0 || !bytes) return '0 B';
@@ -449,11 +413,6 @@ export default {
       }
 
       return Math.round((agent.memory.allocated / agent.memory.system) * 100);
-    },
-    getProgressColor(percentage) {
-      if (percentage < 70) return '#4f8a5b';
-      if (percentage < 90) return '#d99b32';
-      return '#c94f4f';
     }
   }
 };
@@ -519,7 +478,7 @@ export default {
 }
 
 .agent-card:hover {
-  border-color: var(--el-color-primary-light-5);
+  border-color: var(--ring);
   box-shadow: none;
 }
 
@@ -532,6 +491,45 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+}
+
+.agent-stack,
+.agent-actions,
+.ip-list,
+.loading-state,
+.progress-label {
+  display: flex;
+}
+
+.agent-stack {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.agent-actions,
+.ip-list,
+.loading-state,
+.progress-label {
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-actions,
+.ip-list {
+  flex-wrap: wrap;
+}
+
+.loading-state {
+  justify-content: center;
+  min-height: 220px;
+  color: var(--muted-foreground);
+}
+
+.progress-label {
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .agent-name {
@@ -663,6 +661,39 @@ export default {
   flex: 1;
 }
 
+.detail-dialog,
+.runtime-dialog {
+  max-width: 720px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.detail-grid > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-grid dt {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.detail-grid dd {
+  margin: 3px 0 0;
+  word-break: break-all;
+}
+
+.detail-wide {
+  grid-column: 1 / -1;
+}
+
 /* 响应式调整 */
 @media (max-width: 1200px) {
   .agent-info-grid {
@@ -706,13 +737,8 @@ export default {
     flex-wrap: wrap;
   }
 
-  .agent-actions :deep(.el-button) {
+  .agent-actions > * {
     flex: 1 1 auto;
-    margin: 0;
-  }
-
-  :deep(.el-descriptions__body) {
-    overflow-x: auto;
   }
 
   .runtime-scope {
@@ -731,6 +757,14 @@ export default {
 
   .runtime-footer-spacer {
     display: none;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-wide {
+    grid-column: auto;
   }
 }
 </style>

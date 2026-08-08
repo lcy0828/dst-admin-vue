@@ -1,441 +1,59 @@
 <template>
-  <div>
-    <el-card class="box-card command-execute-card">
-      <template #header>
-        <div class="clearfix">
-        <span>执行命令</span>
-        <el-radio-group v-model="commandMode" size="small" style="float: right;">
-          <el-radio-button label="structured">结构化命令</el-radio-button>
-          <el-radio-button label="raw">原始命令</el-radio-button>
-        </el-radio-group>
-        </div>
-      </template>
-
-      <!-- 结构化命令模式 -->
-      <el-form v-if="commandMode === 'structured'" :model="executeForm" label-width="120px">
-        <el-form-item label="选择服务器">
-          <el-select v-model="executeForm.server" placeholder="请选择服务器" style="width: 100%">
-            <el-option
-              v-for="server in servers"
-              :key="server.id"
-              :label="server.name"
-              :value="server.session_name">
-            </el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="选择命令">
-          <el-select
-            v-model="executeForm.commandId"
-            placeholder="请选择要执行的命令"
-            style="width: 100%"
-            @change="handleCommandChange">
-            <el-option-group
-              v-for="group in commandGroups"
-              :key="group.type"
-              :label="group.type">
-              <el-option
-                v-for="command in group.commands"
-                :key="command.id"
-                :label="command.name"
-                :value="command.id">
-              </el-option>
-            </el-option-group>
-          </el-select>
-        </el-form-item>
-
-        <template v-if="currentCommand && (currentCommand.parameterized || currentCommand.needs_params)">
-          <el-divider content-position="left">命令参数</el-divider>
-
-          <el-form-item
-            v-for="param in currentCommand.parameters"
-            :key="param.name"
-            :label="param.label || param.name"
-            :prop="'params.' + param.name"
-            :rules="param.required ? [{ required: true, message: '参数不能为空', trigger: 'blur' }] : []">
-
-            <!-- 根据参数类型显示不同的输入控件 -->
-            <el-input
-              v-if="param.type === 'string' || !param.type"
-              v-model="executeForm.params[param.name]"
-              :placeholder="currentCommand.example ? '示例: ' + currentCommand.example : '请输入' + (param.label || param.name)">
-              <template v-if="currentCommand.example" #append>
-                <el-button
-                  size="mini"
-                  type="primary"
-                  @click="applyExample(param.name)">
-                  使用示例
-                </el-button>
-              </template>
-            </el-input>
-
-            <el-input-number
-              v-else-if="param.type === 'number' || param.type === 'integer'"
-              v-model="executeForm.params[param.name]"
-              :min="param.minimum"
-              :max="param.maximum"
-              :placeholder="currentCommand.example ? '示例: ' + currentCommand.example : '请输入' + (param.label || param.name)">
-            </el-input-number>
-
-            <el-switch
-              v-else-if="param.type === 'boolean'"
-              v-model="executeForm.params[param.name]">
-            </el-switch>
-
-            <el-select
-              v-else-if="param.type === 'enum'"
-              v-model="executeForm.params[param.name]"
-              :placeholder="'请选择' + (param.label || param.name)"
-              style="width: 100%">
-              <el-option v-for="option in param.options" :key="option" :label="option" :value="option" />
-            </el-select>
-
-            <!-- 显示参数描述和示例 -->
-            <div class="param-help" v-if="param.description || currentCommand.example">
-              <div v-if="param.description" class="param-description">{{ param.description }}</div>
-              <div v-if="currentCommand.example" class="param-example">示例: {{ currentCommand.example }}</div>
-            </div>
-          </el-form-item>
-        </template>
-
-        <el-form-item v-if="!currentCommand || (!currentCommand.parameterized && !currentCommand.needs_params)">
-          <div class="command-preview" v-if="currentCommand">
-            <strong>命令预览：</strong>
-            <pre>{{ currentCommand.command || currentCommand.script }}</pre>
-          </div>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="executeCommand" :loading="executing">执行命令</el-button>
-        </el-form-item>
-      </el-form>
-
-      <!-- 原始命令模式 -->
-      <el-form v-else :model="rawCommandForm" label-width="120px">
-        <el-form-item label="选择服务器">
-          <el-select v-model="rawCommandForm.server" placeholder="请选择服务器" style="width: 100%">
-            <el-option
-              v-for="server in servers"
-              :key="server.id"
-              :label="server.name"
-              :value="server.session_name">
-            </el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="命令内容">
-          <el-input
-            v-model="rawCommandForm.command"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入原始命令，例如：c_announce('欢迎来到服务器')"
-          />
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="executeRawCommand" :loading="executing">执行命令</el-button>
-          <el-popover
-            placement="right"
-            width="400"
-            trigger="click">
-            <div>
-              <h3 style="margin-top: 0;">常用命令</h3>
-              <el-input
-                placeholder="搜索命令"
-                v-model="commandSearch"
-                clearable
-                prefix-icon="el-icon-search"
-                style="margin-bottom: 10px">
-              </el-input>
-              <el-table
-                :data="filteredCommonCommands"
-                style="width: 100%"
-                size="mini"
-                max-height="300">
-                <el-table-column prop="name" label="名称" width="100" />
-                <el-table-column prop="description" label="描述" show-overflow-tooltip />
-                <el-table-column label="操作" width="80" align="center">
-                  <template #default="scope">
-                    <el-button
-                      type="text"
-                      size="mini"
-                      @click="applyCommonCommand(scope.row.command)">
-                      使用
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
-            <template #reference>
-              <el-button type="primary" plain size="small">常用命令</el-button>
-            </template>
-          </el-popover>
-          <el-button type="warning" plain size="small" @click="showBatchCommandDialog">批量命令</el-button>
-        </el-form-item>
-      </el-form>
-
-      <!-- 执行结果 -->
-      <div v-if="executionResult" class="execution-result">
-        <el-divider content-position="left">执行结果</el-divider>
-        <div class="result-header">
-          <span class="status" :class="{'success': executionResult.status === 200}">
-            状态：{{ executionResult.status === 200 ? '成功' : '失败' }}
-          </span>
-          <span class="time">耗时：{{ executionResult.data.elapsed_time || 'N/A' }}</span>
-        </div>
-        <div class="result-message">
-          <pre>{{ executionResult.msg }}</pre>
-        </div>
-      </div>
-
-      <!-- 命令历史记录 -->
-      <div class="command-history" v-if="commandHistory.length > 0">
-        <el-divider content-position="left">命令历史记录</el-divider>
-        <el-table
-          :data="commandHistory"
-          style="width: 100%"
-          size="small"
-          :max-height="250"
-        >
-          <el-table-column prop="time" label="执行时间" width="180" />
-          <el-table-column prop="serverName" label="服务器" width="150" />
-          <el-table-column label="命令" show-overflow-tooltip>
-            <template #default="scope">
-              <span v-if="scope.row.mode === 'structured'">{{ scope.row.commandName }}</span>
-              <code v-else>{{ scope.row.command }}</code>
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="状态" width="80" align="center">
-            <template #default="scope">
-              <el-tag type="success" size="mini" v-if="scope.row.status === 200">成功</el-tag>
-              <el-tag type="danger" size="mini" v-else>失败</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="150" align="center">
-            <template #default="scope">
-              <el-button type="text" size="mini" @click="rerunCommand(scope.row)">重新执行</el-button>
-              <el-button type="text" size="mini" @click="copyCommand(scope.row)">复制命令</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        <div class="history-actions">
-          <el-button type="text" size="small" @click="clearHistory">清空历史记录</el-button>
-          <el-button type="text" size="small" @click="saveHistoryToFile">保存到文件</el-button>
-        </div>
-      </div>
-    </el-card>
-
-    <el-card class="box-card" style="margin-top: 20px;">
-      <template #header>
-        <div class="clearfix">
-        <span>服务器命令管理</span>
-        <el-button
-          style="float: right; margin-left: 10px"
-          type="primary"
-          size="small"
-          @click="showAddCommandDialog"
-        >
-          添加命令
-        </el-button>
-        <el-button
-          style="float: right"
-          type="success"
-          size="small"
-          @click="importCommands"
-        >
-          导入命令
-        </el-button>
-        <el-button
-          style="float: right; margin-right: 10px"
-          type="info"
-          size="small"
-          @click="exportCommands"
-        >
-          导出命令
-        </el-button>
-        </div>
-      </template>
-
-      <!-- 命令类型过滤 -->
-      <el-row :gutter="20" style="margin-bottom: 20px">
-        <el-col :span="24">
-          <el-radio-group v-model="currentType" @change="filterCommandsByType">
-            <el-radio-button label="">全部命令</el-radio-button>
-            <el-radio-button v-for="type in commandTypes" :key="type" :label="type">
-              {{ type }}
-            </el-radio-button>
-          </el-radio-group>
-        </el-col>
-      </el-row>
-
-      <!-- 命令列表 -->
-      <el-table
-        :data="displayCommands"
-        style="width: 100%"
-        v-loading="loading"
-      >
-        <el-table-column
-          prop="name"
-          label="命令名称"
-          width="200"
-        />
-        <el-table-column
-          prop="type"
-          label="命令类型"
-          width="150"
-        />
-        <el-table-column
-          prop="description"
-          label="命令描述"
-        />
-        <el-table-column
-          label="内置命令"
-          width="100"
-          align="center"
-        >
-          <template #default="scope">
-            <el-tag v-if="scope.row.isBuiltin || scope.row.is_builtin" type="success">是</el-tag>
-            <el-tag v-else type="info">否</el-tag>
+  <div class="command-manager-page">
+    <Card>
+      <CardHeader class="card-header-row"><div><CardTitle>执行命令</CardTitle><CardDescription>使用结构化模板或直接向分片发送 Lua 命令。</CardDescription></div><ToggleGroup v-model="commandMode" type="single"><ToggleGroupItem value="structured">结构化命令</ToggleGroupItem><ToggleGroupItem value="raw">原始命令</ToggleGroupItem></ToggleGroup></CardHeader>
+      <CardContent class="content-stack">
+        <FieldGroup v-if="commandMode === 'structured'">
+          <Field><FieldLabel>选择服务器</FieldLabel><UiSelect v-model="executeForm.server"><SelectTrigger class="w-full"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="server in servers" :key="server.id" :value="server.session_name">{{ server.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel>选择命令</FieldLabel><UiSelect v-model="executeForm.commandId" @update:model-value="handleCommandChange"><SelectTrigger class="w-full"><SelectValue placeholder="请选择要执行的命令" /></SelectTrigger><SelectContent><SelectGroup v-for="group in commandGroups" :key="group.type"><SelectLabel>{{ group.type }}</SelectLabel><SelectItem v-for="command in group.commands" :key="command.id" :value="command.id">{{ command.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <template v-if="currentCommand && (currentCommand.parameterized || currentCommand.needs_params)">
+            <Separator /><h3 class="subheading">命令参数</h3>
+            <Field v-for="param in currentCommand.parameters" :key="param.name">
+              <FieldLabel :for="`execute-${param.name}`">{{ param.label || param.name }}</FieldLabel>
+              <div v-if="param.type === 'string' || !param.type" class="input-action"><UiInput :id="`execute-${param.name}`" v-model="executeForm.params[param.name]" :placeholder="currentCommand.example ? '示例: ' + currentCommand.example : '请输入' + (param.label || param.name)" /><UiButton v-if="currentCommand.example" size="sm" variant="outline" @click="applyExample(param.name)">使用示例</UiButton></div>
+              <UiInput v-else-if="param.type === 'number' || param.type === 'integer'" :id="`execute-${param.name}`" v-model.number="executeForm.params[param.name]" type="number" :min="param.minimum" :max="param.maximum" />
+              <UiSwitch v-else-if="param.type === 'boolean'" :id="`execute-${param.name}`" v-model="executeForm.params[param.name]" />
+              <UiSelect v-else-if="param.type === 'enum'" v-model="executeForm.params[param.name]"><SelectTrigger class="w-full"><SelectValue :placeholder="'请选择' + (param.label || param.name)" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="option in param.options" :key="option" :value="option">{{ option }}</SelectItem></SelectGroup></SelectContent></UiSelect>
+              <FieldDescription v-if="param.description || currentCommand.example">{{ param.description }}<span v-if="currentCommand.example"> 示例：{{ currentCommand.example }}</span></FieldDescription>
+            </Field>
           </template>
-        </el-table-column>
-        <el-table-column
-          label="操作"
-          width="200"
-          align="center"
-        >
-          <template #default="scope">
-            <el-button
-              size="mini"
-              type="primary"
-              icon="el-icon-edit"
-              @click="editCommand(scope.row)"
-              :disabled="scope.row.isBuiltin || scope.row.is_builtin"
-            >
-              编辑
-            </el-button>
-            <el-button
-              size="mini"
-              type="danger"
-              icon="el-icon-delete"
-              @click="handleDelete(scope.row)"
-              :disabled="scope.row.isBuiltin || scope.row.is_builtin"
-            >
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+          <div v-else-if="currentCommand" class="command-preview"><strong>命令预览</strong><pre>{{ currentCommand.command || currentCommand.script }}</pre></div>
+          <UiButton :disabled="executing" @click="executeCommand"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行命令</UiButton>
+        </FieldGroup>
 
-    <!-- 添加/编辑命令对话框 -->
-    <el-dialog
-      :title="dialogType === 'add' ? '添加命令' : '编辑命令'"
-      v-model="dialogVisible"
-      width="50%"
-    >
-      <el-form
-        :model="commandForm"
-        :rules="formRules"
-        label-width="120px"
-        ref="commandForm"
-      >
-        <el-form-item label="命令名称" prop="name">
-          <el-input v-model="commandForm.name" placeholder="请输入命令名称" />
-        </el-form-item>
-
-        <el-form-item label="命令类型" prop="type">
-          <el-select v-model="commandForm.type" placeholder="请选择命令类型" style="width: 100%">
-            <el-option
-              v-for="type in commandTypes"
-              :key="type"
-              :label="type"
-              :value="type"
-            />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="命令描述" prop="description">
-          <el-input
-            v-model="commandForm.description"
-            type="textarea"
-            :rows="2"
-            placeholder="请输入命令描述"
-          />
-        </el-form-item>
-
-        <el-form-item label="命令脚本" prop="command">
-          <el-input
-            v-model="commandForm.command"
-            type="textarea"
-            :rows="5"
-            placeholder="请输入Lua命令脚本，例如: c_announce('Hello World')"
-          />
-        </el-form-item>
-
-        <el-form-item label="包含参数">
-          <el-switch v-model="commandForm.parameterized" @change="handleParamSwitch" />
-        </el-form-item>
-
-        <template v-if="commandForm.parameterized">
-          <el-divider content-position="left">参数设置</el-divider>
-
-          <div v-for="(param, index) in commandForm.parameters" :key="index" style="margin-bottom: 15px; border: 1px dashed #ccc; padding: 15px; border-radius: 4px;">
-            <el-row :gutter="10">
-              <el-col :span="8">
-                <el-form-item :label="'参数名'" :prop="'parameters.' + index + '.name'" :rules="[{ required: true, message: '参数名不能为空', trigger: 'blur' }]">
-                  <el-input v-model="param.name" placeholder="参数名，如：message" />
-                </el-form-item>
-              </el-col>
-
-              <el-col :span="8">
-                <el-form-item :label="'标签'" :prop="'parameters.' + index + '.label'">
-                  <el-input v-model="param.label" placeholder="用户友好的名称，如：消息内容" />
-                </el-form-item>
-              </el-col>
-
-              <el-col :span="8">
-                <el-form-item :label="'类型'" :prop="'parameters.' + index + '.type'">
-                  <el-select v-model="param.type" placeholder="参数类型" style="width: 100%">
-                    <el-option label="字符串" value="string" />
-                    <el-option label="数字" value="number" />
-                    <el-option label="布尔值" value="boolean" />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-            </el-row>
-
-            <el-row :gutter="10">
-              <el-col :span="12">
-                <el-form-item :label="'默认值'" :prop="'parameters.' + index + '.default'">
-                  <el-input v-model="param.default" placeholder="默认值" />
-                </el-form-item>
-              </el-col>
-
-              <el-col :span="8">
-                <el-form-item :label="'必填'" :prop="'parameters.' + index + '.required'">
-                  <el-switch v-model="param.required" />
-                </el-form-item>
-              </el-col>
-
-              <el-col :span="4" style="display: flex; align-items: center; justify-content: center;">
-                <el-button type="danger" icon="el-icon-delete" circle @click="removeParam(index)" />
-              </el-col>
-            </el-row>
+        <FieldGroup v-else>
+          <Field><FieldLabel>选择服务器</FieldLabel><UiSelect v-model="rawCommandForm.server"><SelectTrigger class="w-full"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="server in servers" :key="server.id" :value="server.session_name">{{ server.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="raw-command">命令内容</FieldLabel><UiTextarea id="raw-command" v-model="rawCommandForm.command" rows="4" placeholder="请输入原始命令，例如：c_announce('欢迎来到服务器')" /></Field>
+          <div class="form-actions"><UiButton :disabled="executing" @click="executeRawCommand"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行命令</UiButton>
+            <Popover><PopoverTrigger as-child><UiButton variant="outline"><BookOpen data-icon="inline-start" />常用命令</UiButton></PopoverTrigger><PopoverContent class="common-command-popover"><Field><FieldLabel class="sr-only" for="command-search">搜索命令</FieldLabel><UiInput id="command-search" v-model="commandSearch" placeholder="搜索命令" /></Field><div class="common-command-list"><button v-for="command in filteredCommonCommands" :key="command.command" type="button" @click="applyCommonCommand(command.command)"><strong>{{ command.name }}</strong><span>{{ command.description }}</span></button></div></PopoverContent></Popover>
+            <UiButton variant="outline" @click="showBatchCommandDialog"><ListPlus data-icon="inline-start" />批量命令</UiButton>
           </div>
+        </FieldGroup>
 
-          <el-button type="primary" plain icon="el-icon-plus" @click="addParameter">添加参数</el-button>
-        </template>
-      </el-form>
+        <Alert v-if="executionResult" :variant="executionResult.status === 200 ? 'default' : 'destructive'"><CircleCheck v-if="executionResult.status === 200" /><CircleAlert v-else /><AlertTitle>{{ executionResult.status === 200 ? '执行成功' : '执行失败' }}</AlertTitle><AlertDescription><pre>{{ executionResult.msg }}</pre></AlertDescription></Alert>
 
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitForm">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+        <div v-if="commandHistory.length" class="command-history"><Separator /><div class="section-heading"><h3>命令历史记录</h3><div><UiButton size="sm" variant="ghost" @click="clearHistory">清空历史</UiButton><UiButton size="sm" variant="ghost" @click="saveHistoryToFile"><Download data-icon="inline-start" />保存文件</UiButton></div></div><ShadcnTable><TableHeader><TableRow><TableHead>执行时间</TableHead><TableHead>服务器</TableHead><TableHead>命令</TableHead><TableHead>状态</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="item in commandHistory" :key="item.id"><TableCell>{{ item.time }}</TableCell><TableCell>{{ item.serverName }}</TableCell><TableCell class="truncate-cell">{{ item.mode === 'structured' ? item.commandName : item.command }}</TableCell><TableCell><Badge :variant="item.status === 200 ? 'default' : 'destructive'">{{ item.status === 200 ? '成功' : '失败' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton size="xs" variant="ghost" @click="rerunCommand(item)">重新执行</UiButton><UiButton size="xs" variant="ghost" @click="copyCommand(item)">复制命令</UiButton></div></TableCell></TableRow></TableBody></ShadcnTable></div>
+      </CardContent>
+    </Card>
 
-    <!-- 导入命令对话框(隐藏) -->
+    <Card>
+      <CardHeader class="card-header-row"><div><CardTitle>服务器命令管理</CardTitle><CardDescription>维护自定义 Lua 命令及参数定义。</CardDescription></div><div class="form-actions"><UiButton size="sm" variant="outline" @click="exportCommands"><Download data-icon="inline-start" />导出</UiButton><UiButton size="sm" variant="outline" @click="importCommands"><Upload data-icon="inline-start" />导入</UiButton><UiButton size="sm" @click="showAddCommandDialog"><Plus data-icon="inline-start" />添加命令</UiButton></div></CardHeader>
+      <CardContent class="content-stack">
+        <ToggleGroup :model-value="currentType || '__all'" type="single" class="type-filter" @update:model-value="filterCommandsByType($event === '__all' ? '' : $event)"><ToggleGroupItem value="__all">全部命令</ToggleGroupItem><ToggleGroupItem v-for="type in commandTypes" :key="type" :value="type">{{ type }}</ToggleGroupItem></ToggleGroup>
+        <div v-if="loading" class="loading-state"><Spinner /><span>正在读取命令...</span></div>
+        <ShadcnTable v-else><TableHeader><TableRow><TableHead>命令名称</TableHead><TableHead>命令类型</TableHead><TableHead>命令描述</TableHead><TableHead>内置命令</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="command in displayCommands" :key="command.id"><TableCell class="font-medium">{{ command.name }}</TableCell><TableCell>{{ command.type || command.category }}</TableCell><TableCell>{{ command.description }}</TableCell><TableCell><Badge :variant="command.isBuiltin || command.is_builtin ? 'default' : 'outline'">{{ command.isBuiltin || command.is_builtin ? '是' : '否' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton size="xs" variant="outline" :disabled="command.isBuiltin || command.is_builtin" @click="editCommand(command)"><Pencil data-icon="inline-start" />编辑</UiButton><UiButton size="xs" variant="destructive" :disabled="command.isBuiltin || command.is_builtin" @click="handleDelete(command)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow></TableBody></ShadcnTable>
+      </CardContent>
+    </Card>
+
+    <UiDialog v-model:open="dialogVisible"><DialogContent class="wide-dialog"><DialogHeader><DialogTitle>{{ dialogType === 'add' ? '添加命令' : '编辑命令' }}</DialogTitle><DialogDescription>定义命令脚本、分类及可选参数。</DialogDescription></DialogHeader><FieldGroup>
+      <Field><FieldLabel for="command-name">命令名称</FieldLabel><UiInput id="command-name" v-model="commandForm.name" placeholder="请输入命令名称" /></Field>
+      <Field><FieldLabel>命令类型</FieldLabel><UiSelect v-model="commandForm.type"><SelectTrigger class="w-full"><SelectValue placeholder="请选择命令类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in commandTypes" :key="type" :value="type">{{ type }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+      <Field><FieldLabel for="command-description">命令描述</FieldLabel><UiTextarea id="command-description" v-model="commandForm.description" rows="2" placeholder="请输入命令描述" /></Field>
+      <Field><FieldLabel for="command-script">命令脚本</FieldLabel><UiTextarea id="command-script" v-model="commandForm.command" rows="5" placeholder="请输入 Lua 命令脚本，例如: c_announce('Hello World')" /></Field>
+      <Field orientation="horizontal"><UiSwitch id="command-parameterized" v-model="commandForm.parameterized" @update:model-value="handleParamSwitch" /><FieldLabel for="command-parameterized">包含参数</FieldLabel></Field>
+      <template v-if="commandForm.parameterized"><Separator /><div v-for="(param, index) in commandForm.parameters" :key="index" class="parameter-editor"><div class="parameter-grid"><Field><FieldLabel :for="`param-name-${index}`">参数名</FieldLabel><UiInput :id="`param-name-${index}`" v-model="param.name" placeholder="message" /></Field><Field><FieldLabel :for="`param-label-${index}`">标签</FieldLabel><UiInput :id="`param-label-${index}`" v-model="param.label" placeholder="消息内容" /></Field><Field><FieldLabel>类型</FieldLabel><UiSelect v-model="param.type"><SelectTrigger class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="string">字符串</SelectItem><SelectItem value="number">数字</SelectItem><SelectItem value="boolean">布尔值</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel :for="`param-default-${index}`">默认值</FieldLabel><UiInput :id="`param-default-${index}`" v-model="param.default" placeholder="默认值" /></Field><Field orientation="horizontal"><UiSwitch :id="`param-required-${index}`" v-model="param.required" /><FieldLabel :for="`param-required-${index}`">必填</FieldLabel></Field><UiButton size="icon" variant="destructive" aria-label="删除参数" @click="removeParam(index)"><Trash2 /></UiButton></div></div><UiButton variant="outline" @click="addParameter"><Plus data-icon="inline-start" />添加参数</UiButton></template>
+    </FieldGroup><DialogFooter><UiButton variant="outline" @click="dialogVisible = false">取消</UiButton><UiButton @click="submitForm">确定</UiButton></DialogFooter></DialogContent></UiDialog>
+
     <input
       ref="importInput"
       type="file"
@@ -444,73 +62,50 @@
       @change="handleImportFile"
     />
 
-    <!-- 批量命令对话框 -->
-    <el-dialog
-      title="批量执行命令"
-      v-model="batchCommandDialogVisible"
-      width="60%"
-    >
-      <p class="batch-instructions">每行输入一条命令，按顺序执行。可使用#开头添加注释。</p>
-
-      <el-form :model="batchCommandForm" label-width="120px">
-        <el-form-item label="选择服务器">
-          <el-select v-model="batchCommandForm.server" placeholder="请选择服务器" style="width: 100%">
-            <el-option
-              v-for="server in servers"
-              :key="server.id"
-              :label="server.name"
-              :value="server.session_name">
-            </el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="命令列表">
-          <el-input
-            v-model="batchCommandForm.commands"
-            type="textarea"
-            :rows="10"
-            placeholder="# 在这里输入多行命令，每行一条
-c_announce('批量命令开始执行')
-c_give('flint', 10)
-print('命令执行完成')"
-          />
-        </el-form-item>
-
-        <el-form-item label="执行间隔(毫秒)">
-          <el-input-number v-model="batchCommandForm.interval" :min="100" :max="5000" :step="100" />
-        </el-form-item>
-      </el-form>
-
-      <div class="batch-results" v-if="batchResults.length > 0">
-        <el-divider content-position="left">执行结果</el-divider>
-        <el-progress :percentage="batchProgress" :status="batchStatus"></el-progress>
-        <div class="batch-result-list">
-          <div v-for="(result, index) in batchResults" :key="index" class="batch-result-item">
-            <span class="batch-command">{{ result.command }}</span>
-            <el-tag size="mini" :type="result.success ? 'success' : 'danger'">
-              {{ result.success ? '成功' : '失败' }}
-            </el-tag>
-          </div>
-        </div>
-      </div>
-
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="batchCommandDialogVisible = false">关闭</el-button>
-          <el-button type="primary" @click="executeBatchCommands" :loading="executingBatch" :disabled="!batchCommandForm.server || !batchCommandForm.commands">
-            开始执行
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <UiDialog v-model:open="batchCommandDialogVisible"><DialogContent class="wide-dialog"><DialogHeader><DialogTitle>批量执行命令</DialogTitle><DialogDescription>每行一条命令，按顺序执行；以 # 开头的行会被忽略。</DialogDescription></DialogHeader><FieldGroup>
+      <Field><FieldLabel>选择服务器</FieldLabel><UiSelect v-model="batchCommandForm.server"><SelectTrigger class="w-full"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="server in servers" :key="server.id" :value="server.session_name">{{ server.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+      <Field><FieldLabel for="batch-commands">命令列表</FieldLabel><UiTextarea id="batch-commands" v-model="batchCommandForm.commands" rows="10" placeholder="# 每行输入一条命令" /></Field>
+      <Field><FieldLabel for="batch-interval">执行间隔（毫秒）</FieldLabel><UiInput id="batch-interval" v-model.number="batchCommandForm.interval" type="number" min="100" max="5000" step="100" /></Field>
+      <div v-if="batchResults.length" class="batch-results"><UiProgress :model-value="batchProgress" /><div class="batch-result-list"><div v-for="(result, index) in batchResults" :key="index" class="batch-result-item"><span class="batch-command">{{ result.command }}</span><Badge :variant="result.success ? 'default' : 'destructive'">{{ result.success ? '成功' : '失败' }}</Badge></div></div></div>
+    </FieldGroup><DialogFooter><UiButton variant="outline" @click="batchCommandDialogVisible = false">关闭</UiButton><UiButton :disabled="executingBatch || !batchCommandForm.server || !batchCommandForm.commands" @click="executeBatchCommands"><Spinner v-if="executingBatch" data-icon="inline-start" />开始执行</UiButton></DialogFooter></DialogContent></UiDialog>
   </div>
 </template>
 
 <script>
+import {
+  BookOpen, CircleAlert, CircleCheck, Download, ListPlus, Pencil, Play, Plus, Trash2, Upload
+} from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { commandManager, commandApi, COMMAND_TYPES } from '@/api';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Progress as UiProgress } from '@/components/ui/progress';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { confirmAction, promptText } from '@/lib/feedback';
 
 export default {
   name: 'CommandManager',
+  components: {
+    Alert, AlertDescription, AlertTitle, Badge, BookOpen, Card, CardContent, CardDescription,
+    CardHeader, CardTitle, CircleAlert, CircleCheck, DialogContent, DialogDescription, DialogFooter,
+    DialogHeader, DialogTitle, Download, Field, FieldDescription, FieldGroup, FieldLabel, ListPlus,
+    Pencil, Play, Plus, Popover, PopoverContent, PopoverTrigger, SelectContent, SelectGroup,
+    SelectItem, SelectLabel, SelectTrigger, SelectValue, Separator, ShadcnTable, Spinner, TableBody,
+    TableCell, TableHead, TableHeader, TableRow, ToggleGroup, ToggleGroupItem, Trash2, UiButton,
+    UiDialog, UiInput, UiProgress, UiSelect, UiSwitch, UiTextarea, Upload
+  },
   data() {
     return {
       loading: false,
@@ -708,7 +303,7 @@ export default {
       } catch (error) {
         this.commands = [];
         this.displayCommands = [];
-        this.$message.error('获取命令列表失败: ' + error.message);
+        toast.error('获取命令列表失败: ' + error.message);
       } finally {
         this.loading = false;
       }
@@ -765,10 +360,6 @@ export default {
         parameters: []
       };
 
-      // 如果表单ref存在，重置表单验证
-      if (this.$refs.commandForm) {
-        this.$refs.commandForm.resetFields();
-      }
     },
 
     handleParamSwitch(value) {
@@ -794,10 +385,13 @@ export default {
       this.commandForm.parameters.splice(index, 1);
     },
 
-    submitForm() {
-      this.$refs.commandForm.validate(async (valid) => {
-        if (!valid) return;
-
+    async submitForm() {
+      const name = this.commandForm.name.trim();
+      const invalidParameter = this.commandForm.parameterized && this.commandForm.parameters.some(param => !param.name.trim());
+      if (!name || name.length < 2 || name.length > 50 || !this.commandForm.type || !this.commandForm.description.trim() || !this.commandForm.command.trim() || invalidParameter) {
+        toast.warning(invalidParameter ? '参数名不能为空' : '请完整填写命令名称、类型、描述和脚本');
+        return;
+      }
         try {
           const requestData = {
             name: this.commandForm.name,
@@ -810,34 +404,32 @@ export default {
 
           if (this.dialogType === 'add') {
             await commandManager.addCommand(requestData);
-            this.$message.success('添加命令成功');
+            toast.success('添加命令成功');
           } else {
             await commandManager.updateCommand(this.currentCommandId, requestData);
-            this.$message.success('更新命令成功');
+            toast.success('更新命令成功');
           }
 
           await this.fetchCommands();
           this.dialogVisible = false;
         } catch (error) {
-          this.$message.error(error.message || '操作失败');
+          toast.error(error.message || '操作失败');
         }
-      });
     },
 
-    handleDelete(command) {
-      this.$confirm(`确定要删除命令"${command.name}"吗？`, '提示', {
+    async handleDelete(command) {
+      try {
+        await confirmAction(`确定要删除命令"${command.name}"吗？`, '删除命令', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(async () => {
-        try {
+        });
           await commandManager.deleteCommand(command.id);
-          this.$message.success('删除命令成功');
+          toast.success('删除命令成功');
           await this.fetchCommands();
-        } catch (error) {
-          this.$message.error(error.message || '删除命令失败');
-        }
-      }).catch(() => {});
+      } catch (error) {
+        if (error !== 'cancel') toast.error(error.message || '删除命令失败');
+      }
     },
 
     importCommands() {
@@ -855,10 +447,10 @@ export default {
       reader.onload = async (e) => {
         try {
           const importedCommands = await commandManager.importCommands(e.target.result);
-          this.$message.success(`成功导入 ${importedCommands.length} 个命令`);
+          toast.success(`成功导入 ${importedCommands.length} 个命令`);
           await this.fetchCommands();
         } catch (error) {
-          this.$message.error('导入命令失败: ' + error.message);
+          toast.error('导入命令失败: ' + error.message);
         }
       };
 
@@ -889,9 +481,9 @@ export default {
         URL.revokeObjectURL(url);
         document.body.removeChild(link);
 
-        this.$message.success('命令导出成功');
+        toast.success('命令导出成功');
       } catch (error) {
-        this.$message.error('导出命令失败: ' + error.message);
+        toast.error('导出命令失败: ' + error.message);
       }
     },
 
@@ -900,7 +492,7 @@ export default {
         this.servers = await commandApi.getServers();
       } catch (error) {
         this.servers = [];
-        this.$message.error('获取服务器列表失败: ' + error.message);
+        toast.error('获取服务器列表失败: ' + error.message);
       }
     },
 
@@ -921,7 +513,7 @@ export default {
         };
       } catch (error) {
         this.currentCommand = null;
-        this.$message.error('获取命令详情失败: ' + error.message);
+        toast.error('获取命令详情失败: ' + error.message);
       } finally {
         this.executing = false;
       }
@@ -930,18 +522,18 @@ export default {
     applyExample(paramName) {
       if (this.currentCommand && this.currentCommand.example) {
         this.executeForm.params[paramName] = this.currentCommand.example;
-        this.$message.success('已应用示例值');
+        toast.success('已应用示例值');
       }
     },
 
     async executeCommand() {
       if (!this.executeForm.server) {
-        this.$message.warning('请选择服务器');
+        toast.warning('请选择服务器');
         return;
       }
 
       if (!this.executeForm.commandId) {
-        this.$message.warning('请选择要执行的命令');
+        toast.warning('请选择要执行的命令');
         return;
       }
 
@@ -963,7 +555,7 @@ export default {
           confirmation
         );
         this.showRunResult(run);
-        this.$message.success('命令已发送');
+        toast.success('命令已发送');
         await this.loadCommandHistory();
       } catch (error) {
         this.showExecutionError(error);
@@ -974,12 +566,12 @@ export default {
 
     async executeRawCommand() {
       if (!this.rawCommandForm.server) {
-        this.$message.warning('请选择服务器');
+        toast.warning('请选择服务器');
         return;
       }
 
       if (!this.rawCommandForm.command) {
-        this.$message.warning('请输入命令内容');
+        toast.warning('请输入命令内容');
         return;
       }
 
@@ -998,7 +590,7 @@ export default {
           confirmation
         );
         this.showRunResult(run);
-        this.$message.success('命令已发送');
+        toast.success('命令已发送');
         await this.loadCommandHistory();
       } catch (error) {
         this.showExecutionError(error);
@@ -1010,7 +602,7 @@ export default {
     async requestRoomConfirmation(serverKey) {
       const server = this.servers.find(item => item.session_name === serverKey);
       if (!server) throw new Error('未找到目标服务器');
-      const response = await this.$prompt(
+      const response = await promptText(
         `该操作会向游戏控制台发送 Lua 命令，请输入房间名“${server.room_name}”确认`,
         '执行确认',
         {
@@ -1037,7 +629,7 @@ export default {
         msg: error.message || '执行命令时发生错误',
         data: {}
       };
-      this.$message.error('命令执行出错: ' + (error.message || '未知错误'));
+      toast.error('命令执行出错: ' + (error.message || '未知错误'));
     },
 
     // 根据服务器ID获取服务器名称
@@ -1052,7 +644,7 @@ export default {
         this.commandHistory = runs.map(run => this.mapHistoryRun(run));
       } catch (error) {
         this.commandHistory = [];
-        this.$message.error('加载命令历史记录失败: ' + error.message);
+        toast.error('加载命令历史记录失败: ' + error.message);
       }
     },
 
@@ -1075,17 +667,17 @@ export default {
     // 清空历史记录
     async clearHistory() {
       try {
-        await this.$confirm('确定要清空所有命令历史记录吗？', '提示', {
+        await confirmAction('确定要清空所有命令历史记录吗？', '清空命令历史', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         });
         const deleted = await commandApi.clearCommandHistory();
         await this.loadCommandHistory();
-        this.$message.success(`已清空 ${deleted} 条历史记录`);
+        toast.success(`已清空 ${deleted} 条历史记录`);
       } catch (error) {
         if (error === 'cancel' || error === 'close') return;
-        this.$message.error('清空历史记录失败: ' + (error.message || '未知错误'));
+        toast.error('清空历史记录失败: ' + (error.message || '未知错误'));
       }
     },
 
@@ -1116,13 +708,13 @@ export default {
           this.executeForm.params = {...historyItem.params};
         }
 
-        this.$message.info('已加载命令，点击执行按钮运行');
+        toast.info('已加载命令，点击执行按钮运行');
       } else {
         this.commandMode = 'raw';
         this.rawCommandForm.server = historyItem.server;
         this.rawCommandForm.command = historyItem.command;
 
-        this.$message.info('已加载命令，点击执行按钮运行');
+        toast.info('已加载命令，点击执行按钮运行');
       }
     },
 
@@ -1138,17 +730,17 @@ export default {
         textToCopy = command ? (command.command || command.script) : '';
       } else if (historyItem.mode === 'batch') {
         // 对于批量命令，不支持直接复制
-        this.$message.warning('批量命令无法直接复制');
+        toast.warning('批量命令无法直接复制');
         return;
       }
 
       if (textToCopy) {
         // 使用Clipboard API复制文本
         navigator.clipboard.writeText(textToCopy).then(() => {
-          this.$message.success('命令已复制到剪贴板');
+          toast.success('命令已复制到剪贴板');
         }).catch(err => {
           console.error('复制失败:', err);
-          this.$message.error('复制命令失败');
+          toast.error('复制命令失败');
         });
       }
     },
@@ -1170,12 +762,12 @@ export default {
     // 执行批量命令
     async executeBatchCommands() {
       if (!this.batchCommandForm.server) {
-        this.$message.warning('请选择服务器');
+        toast.warning('请选择服务器');
         return;
       }
 
       if (!this.batchCommandForm.commands.trim()) {
-        this.$message.warning('请输入命令列表');
+        toast.warning('请输入命令列表');
         return;
       }
 
@@ -1190,7 +782,7 @@ export default {
           .filter(line => line.trim() && !line.trim().startsWith('#'));
 
         if (commandLines.length === 0) {
-          this.$message.warning('没有有效的命令');
+          toast.warning('没有有效的命令');
           this.executingBatch = false;
           return;
         }
@@ -1237,12 +829,12 @@ export default {
 
         const successCount = this.batchResults.filter(r => r.success).length;
         this.batchStatus = successCount === totalCommands ? 'success' : 'exception';
-        this.$message.success(`批量命令执行完成：共 ${totalCommands} 条命令，成功 ${successCount} 条，失败 ${totalCommands - successCount} 条`);
+        toast.success(`批量命令执行完成：共 ${totalCommands} 条命令，成功 ${successCount} 条，失败 ${totalCommands - successCount} 条`);
         await this.loadCommandHistory();
       } catch (error) {
         if (error === 'cancel' || error === 'close') return;
         this.batchStatus = 'exception';
-        this.$message.error('批量命令执行失败: ' + (error.message || '未知错误'));
+        toast.error('批量命令执行失败: ' + (error.message || '未知错误'));
       } finally {
         this.executingBatch = false;
       }
@@ -1252,37 +844,52 @@ export default {
 </script>
 
 <style scoped>
-.param-help {
-  margin-top: 5px;
-  font-size: 12px;
-  color: var(--text-secondary);
+.command-manager-page,
+.content-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
 
-.param-description {
-  margin-bottom: 3px;
+.card-header-row,
+.form-actions,
+.section-heading,
+.table-actions,
+.input-action,
+.loading-state,
+.parameter-grid {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.param-example {
-  font-style: italic;
-}
-.clearfix:before,
-.clearfix:after {
-  display: table;
-  content: "";
-}
-.clearfix:after {
-  clear: both;
+.card-header-row,
+.section-heading {
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-direction: row;
 }
 
-.command-execute-card {
-  margin-bottom: 20px;
+.form-actions,
+.table-actions,
+.type-filter {
+  flex-wrap: wrap;
 }
 
-.command-preview {
-  background-color: #f9f9f9;
-  padding: 10px;
-  border-radius: 4px;
-  border: 1px solid #eee;
+.subheading,
+.section-heading h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.command-preview,
+.parameter-editor {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
 }
 
 .command-preview pre {
@@ -1291,123 +898,80 @@ export default {
   word-break: break-all;
 }
 
-.execution-result {
-  background-color: var(--surface-muted);
-  padding: 15px;
-  border-radius: 4px;
-  margin-top: 15px;
+.input-action > :first-child {
+  flex: 1;
 }
 
-.result-header {
+.common-command-popover {
+  width: min(420px, calc(100vw - 32px));
+}
+
+.common-command-list {
   display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
+  flex-direction: column;
+  max-height: 300px;
+  margin-top: 8px;
+  overflow-y: auto;
 }
 
-.status {
-  font-weight: bold;
-  color: #c94f4f;
+.common-command-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
 }
 
-.status.success {
-  color: #4f8a5b;
+.common-command-list button:hover {
+  background: var(--accent);
 }
 
-.time {
-  color: var(--text-secondary);
-}
-
-.result-message {
-  background-color: #ffffff;
-  padding: 10px;
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-}
-
-.result-message pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
+.common-command-list span {
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .command-history {
-  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.history-actions {
-  margin-top: 10px;
-  text-align: right;
+.truncate-cell {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.command-examples {
-  max-height: 300px;
+.loading-state {
+  justify-content: center;
+  min-height: 180px;
+  color: var(--muted-foreground);
+}
+
+.wide-dialog {
+  max-width: min(820px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
-  padding-left: 20px;
 }
 
-.command-examples li {
-  margin-bottom: 8px;
-}
-
-.command-examples a {
-  color: var(--primary-color);
-  text-decoration: none;
-}
-
-.command-examples a:hover {
-  text-decoration: underline;
-}
-
-.result-container {
-  background-color: var(--surface-muted);
-  border-radius: 4px;
-  padding: 10px;
-  margin-top: 15px;
-  border: 1px solid var(--border-color);
-}
-
-/* 可选的暗色主题支持 */
-.dark-theme .command-execute-card {
-  background-color: #1e1e1e;
-  color: #ffffff;
-}
-
-.dark-theme .result-container {
-  background-color: #2d2d2d;
-  border-color: #444;
-}
-
-@media (max-width: 768px) {
-  .el-form-item__label {
-    width: 100% !important;
-    text-align: left;
-  }
-
-  .el-form-item__content {
-    margin-left: 0 !important;
-  }
-}
-
-.el-form-item__content {
-  margin-left: 0 !important;
-}
-
-.batch-instructions {
-  background-color: var(--surface-muted);
-  padding: 10px 15px;
-  border-radius: 4px;
-  color: #666;
-  font-size: 14px;
-  margin-bottom: 20px;
-  border-left: 3px solid var(--primary-color);
+.parameter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .batch-result-list {
   max-height: 200px;
   overflow-y: auto;
   margin-top: 15px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .batch-result-item {
@@ -1415,7 +979,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 8px 15px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .batch-result-item:last-child {
@@ -1429,5 +993,22 @@ export default {
   white-space: nowrap;
   margin-right: 10px;
   max-width: 80%;
+}
+
+@media (max-width: 768px) {
+  .card-header-row,
+  .section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .parameter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .input-action {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 </style>

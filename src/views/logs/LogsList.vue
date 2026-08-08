@@ -1,26 +1,44 @@
 <template>
   <div class="redirect-container">
-    <el-card class="box-card">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>功能已更新</span>
-      </div>
-</template>
-      <div class="content">
-        <p>日志和规则管理功能已更新，现已分为以下两个独立模块：</p>
+    <Card class="box-card">
+      <CardHeader>
+        <CardTitle>功能已更新</CardTitle>
+        <CardDescription>日志功能现已拆分为独立的查询与规则管理模块。</CardDescription>
+      </CardHeader>
+      <CardContent class="content">
         <div class="button-container">
-          <el-button type="primary" @click="goToLogQuery">前往日志查询</el-button>
-          <el-button type="success" @click="goToRuleManagement">前往规则管理</el-button>
+          <UiButton @click="goToLogQuery">
+            <FileSearch data-icon="inline-start" />
+            前往日志查询
+          </UiButton>
+          <UiButton variant="outline" @click="goToRuleManagement">
+            <ListChecks data-icon="inline-start" />
+            前往规则管理
+          </UiButton>
         </div>
-        <p class="tip">您将在3秒后自动跳转到日志查询页面...</p>
-      </div>
-    </el-card>
+        <p class="tip">3 秒后将自动跳转到日志查询页面</p>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { FileSearch, ListChecks } from '@lucide/vue';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
 export default {
   name: 'LogsList',
+  components: {
+    UiButton,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    FileSearch,
+    ListChecks
+  },
   data() {
     return {
       redirectTimer: null
@@ -30,15 +48,11 @@ export default {
     this.startRedirectTimer();
   },
   beforeUnmount() {
-    if (this.redirectTimer) {
-      clearTimeout(this.redirectTimer);
-    }
+    if (this.redirectTimer) clearTimeout(this.redirectTimer);
   },
   methods: {
     startRedirectTimer() {
-      this.redirectTimer = setTimeout(() => {
-        this.goToLogQuery();
-      }, 3000);
+      this.redirectTimer = setTimeout(() => this.goToLogQuery(), 3000);
     },
     goToLogQuery() {
       this.$router.push('/logs/query');
@@ -63,8 +77,6 @@ export default {
 .box-card {
   width: 500px;
   max-width: 100%;
-  border-radius: 4px;
-  box-shadow: none;
 }
 
 .content {
@@ -72,16 +84,15 @@ export default {
 }
 
 .button-container {
-  margin: 16px 0;
   display: flex;
   justify-content: center;
   gap: 8px;
 }
 
 .tip {
-  font-size: 14px;
-  color: var(--text-secondary);
   margin-top: 20px;
+  color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 @media (max-width: 480px) {

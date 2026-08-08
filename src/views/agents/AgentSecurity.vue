@@ -1,17 +1,14 @@
 <template>
   <div class="agent-security-container">
-    <el-card class="main-card" shadow="hover">
-      <template #header>
-        <div class="clearfix">
-        <span class="card-title">
-          <component :is="'el-icon-lock'" class="legacy-icon" /> Agent安全设置
-        </span>
-        </div>
-      </template>
-      
-      <div v-loading="loading" class="security-content">
+    <Card class="main-card">
+      <CardHeader>
+        <CardTitle class="card-title"><LockKeyhole />Agent 安全设置</CardTitle>
+        <CardDescription>管理 Agent 连接密钥和安装配置。</CardDescription>
+      </CardHeader>
+      <CardContent class="security-content">
+        <div v-if="loading" class="loading-state"><Spinner /><span>正在读取安全配置...</span></div>
         <div class="section-title">
-          <component :is="'el-icon-key'" class="legacy-icon" /> API密钥管理
+          <KeyRound /> API 密钥管理
         </div>
         
         <div class="api-key-box">
@@ -20,87 +17,77 @@
             <div class="key-value-wrapper">
               <span v-if="!showKey" class="key-value-masked">••••••••••••••••••••••••••••••••</span>
               <span v-else class="key-value">{{ apiKey || '未配置' }}</span>
-              <el-button 
-                type="text" 
-                :icon="showKey ? 'el-icon-view' : 'el-icon-hide'" 
+              <UiButton
+                variant="ghost"
+                size="sm"
                 :disabled="!apiKey"
                 @click="toggleKeyVisibility" 
                 class="key-toggle">
+                <EyeOff v-if="showKey" data-icon="inline-start" />
+                <Eye v-else data-icon="inline-start" />
                 {{ showKey ? '隐藏' : '显示' }}
-              </el-button>
+              </UiButton>
             </div>
           </div>
           
           <div class="key-actions">
-            <el-tooltip content="复制密钥" placement="top">
-              <el-button 
-                type="primary" 
-                icon="el-icon-document-copy" 
-                :disabled="!keyRevealed"
-                circle 
-                @click="copyKey">
-              </el-button>
-            </el-tooltip>
-            <el-tooltip content="生成新密钥 (注意: 将会使现有密钥失效!)" placement="top">
-              <el-button 
-                type="warning" 
-                icon="el-icon-refresh" 
-                :disabled="!securityAvailable"
-                circle 
-                @click="confirmGenerateNewKey">
-              </el-button>
-            </el-tooltip>
+            <Tooltip><TooltipTrigger as-child><UiButton size="icon" :disabled="!keyRevealed" aria-label="复制密钥" @click="copyKey"><Copy /></UiButton></TooltipTrigger><TooltipContent>复制密钥</TooltipContent></Tooltip>
+            <Tooltip><TooltipTrigger as-child><UiButton variant="outline" size="icon" :disabled="!securityAvailable" aria-label="生成新密钥" @click="confirmGenerateNewKey"><RefreshCw /></UiButton></TooltipTrigger><TooltipContent>生成新密钥，现有密钥将失效</TooltipContent></Tooltip>
           </div>
         </div>
-        
-        <el-divider content-position="center">安装指南</el-divider>
+
+        <Separator />
         
         <div class="installation-guide">
-          <div class="section-subtitle">快速安装 <span class="beta-badge">Beta</span></div>
-          
-          <el-tabs v-model="activeInstallTab" type="card">
-            <el-tab-pane label="Linux" name="linux">
+          <div class="section-subtitle">快速安装 <Badge variant="secondary">Beta</Badge></div>
+
+          <Tabs v-model="activeInstallTab">
+            <TabsList><TabsTrigger value="linux">Linux</TabsTrigger><TabsTrigger value="windows">Windows</TabsTrigger><TabsTrigger value="docker">Docker</TabsTrigger></TabsList>
+            <TabsContent value="linux">
               <div class="code-block">
                 <pre><code>go build -o dst-admin-agent ./agent/cmd/agent
 ./dst-admin-agent -server "wss://your-domain/agent" -key "{{ apiKey }}"</code></pre>
-                <el-button 
-                  type="text" 
-                  icon="el-icon-document-copy" 
+                <UiButton
+                  variant="ghost"
+                  size="sm"
                   :disabled="!keyRevealed"
                   class="copy-btn"
                   @click="copyInstallCommand('linux')">
+                  <Copy data-icon="inline-start" />
                   复制
-                </el-button>
+                </UiButton>
               </div>
-            </el-tab-pane>
-            <el-tab-pane label="Windows" name="windows">
+            </TabsContent>
+            <TabsContent value="windows">
               <div class="code-block">
                 <pre><code>go build -o dst-admin-agent.exe ./agent/cmd/agent
 .\dst-admin-agent.exe -server "wss://your-domain/agent" -key "{{ apiKey }}"</code></pre>
-                <el-button 
-                  type="text" 
-                  icon="el-icon-document-copy" 
+                <UiButton
+                  variant="ghost"
+                  size="sm"
                   :disabled="!keyRevealed"
                   class="copy-btn"
                   @click="copyInstallCommand('windows')">
+                  <Copy data-icon="inline-start" />
                   复制
-                </el-button>
+                </UiButton>
               </div>
-            </el-tab-pane>
-            <el-tab-pane label="Docker" name="docker">
+            </TabsContent>
+            <TabsContent value="docker">
               <div class="code-block">
                 <pre><code>当前仓库没有发布可验证的 Agent Docker 镜像。</code></pre>
-                <el-button 
-                  type="text" 
-                  icon="el-icon-document-copy" 
+                <UiButton
+                  variant="ghost"
+                  size="sm"
                   disabled
                   class="copy-btn"
                   @click="copyInstallCommand('docker')">
+                  <Copy data-icon="inline-start" />
                   复制
-                </el-button>
+                </UiButton>
               </div>
-            </el-tab-pane>
-          </el-tabs>
+            </TabsContent>
+          </Tabs>
           
           <div class="section-subtitle">手动安装</div>
           <ol class="manual-steps">
@@ -118,14 +105,15 @@
                   <pre><code>[agent]
 SECURITY_KEY = {{ apiKey }}
 SERVER_URL = wss://your-domain/agent</code></pre>
-                  <el-button 
-                    type="text" 
-                    icon="el-icon-document-copy" 
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
                     :disabled="!keyRevealed"
                     class="copy-btn"
                     @click="copyConfigYaml()">
+                    <Copy data-icon="inline-start" />
                     复制
-                  </el-button>
+                  </UiButton>
                 </div>
               </div>
             </li>
@@ -134,14 +122,15 @@ SERVER_URL = wss://your-domain/agent</code></pre>
               <div class="step-content">
                 <div class="code-block linux-cmd">
                   <pre><code>./dst-admin-agent -server "wss://your-domain/agent" -keyfile ./conf/app.conf</code></pre>
-                  <el-button 
-                    type="text" 
-                    icon="el-icon-document-copy" 
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
                     :disabled="!keyRevealed"
                     class="copy-btn"
                     @click="copyRunCommand()">
+                    <Copy data-icon="inline-start" />
                     复制
-                  </el-button>
+                  </UiButton>
                 </div>
               </div>
             </li>
@@ -149,21 +138,36 @@ SERVER_URL = wss://your-domain/agent</code></pre>
               <div class="step-title">设置为系统服务 (可选)</div>
               <div class="step-content">
                 为确保Agent在系统重启后自动运行，您可以将其设置为系统服务。
-                <el-link type="primary" icon="el-icon-document" href="#" target="_blank">查看详细指南</el-link>
+                <a class="guide-link" href="#" target="_blank"><FileText />查看详细指南</a>
               </div>
             </li>
           </ol>
         </div>
-      </div>
-    </el-card>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { Copy, Eye, EyeOff, FileText, KeyRound, LockKeyhole, RefreshCw } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'AgentSecurity',
+  components: {
+    Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Copy, Eye, EyeOff,
+    FileText, KeyRound, LockKeyhole, RefreshCw, Separator, Spinner, Tabs, TabsContent,
+    TabsList, TabsTrigger, Tooltip, TooltipContent, TooltipTrigger, UiButton
+  },
   data() {
     return {
       loading: false,
@@ -190,7 +194,7 @@ export default {
         this.apiKey = '';
         this.keyRevealed = false;
         this.securityAvailable = false;
-        this.$message.error('获取API密钥失败: ' + (error.message || '未知错误'));
+        toast.error('获取API密钥失败: ' + (error.message || '未知错误'));
       } finally {
         this.loading = false;
       }
@@ -200,20 +204,23 @@ export default {
     },
     copyKey() {
       if (!this.keyRevealed) {
-        this.$message.warning('现有密钥只提供掩码；轮换后可复制一次新密钥');
+        toast.warning('现有密钥只提供掩码；轮换后可复制一次新密钥');
         return;
       }
       this.copyToClipboard(this.apiKey);
-      this.$message.success('API密钥已复制到剪贴板');
+      toast.success('API密钥已复制到剪贴板');
     },
-    confirmGenerateNewKey() {
-      this.$confirm('生成新密钥将使现有密钥失效，所有使用旧密钥的Agent需要更新配置。确定要继续吗?', '警告', {
+    async confirmGenerateNewKey() {
+      try {
+        await confirmAction('生成新密钥将使现有密钥失效，所有使用旧密钥的 Agent 需要更新配置。确定要继续吗?', '生成新密钥', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(() => {
+        });
         this.generateNewKey();
-      }).catch(() => {});
+      } catch {
+        // 用户取消轮换。
+      }
     },
     async generateNewKey() {
       this.loading = true;
@@ -222,9 +229,9 @@ export default {
         this.apiKey = response.data.key;
         this.keyRevealed = true;
         this.showKey = true;
-        this.$message.success(response.message || '新密钥已生成，请立即保存');
+        toast.success(response.message || '新密钥已生成，请立即保存');
       } catch (error) {
-        this.$message.error('生成新密钥失败: ' + (error.message || '未知错误'));
+        toast.error('生成新密钥失败: ' + (error.message || '未知错误'));
       } finally {
         this.loading = false;
       }
@@ -243,19 +250,19 @@ export default {
           return;
       }
       this.copyToClipboard(command);
-      this.$message.success('安装命令已复制到剪贴板');
+      toast.success('安装命令已复制到剪贴板');
     },
     copyConfigYaml() {
       if (!this.keyRevealed) return;
       const config = `[agent]\nSECURITY_KEY = ${this.apiKey}\nSERVER_URL = wss://your-domain/agent`;
       this.copyToClipboard(config);
-      this.$message.success('配置内容已复制到剪贴板');
+      toast.success('配置内容已复制到剪贴板');
     },
     copyRunCommand() {
       if (!this.keyRevealed) return;
       const command = './dst-admin-agent -server "wss://your-domain/agent" -keyfile ./conf/app.conf';
       this.copyToClipboard(command);
-      this.$message.success('运行命令已复制到剪贴板');
+      toast.success('运行命令已复制到剪贴板');
     },
     copyToClipboard(text) {
       const el = document.createElement('textarea');
@@ -355,7 +362,7 @@ export default {
   align-items: center;
   background-color: var(--surface-color);
   border-radius: 4px;
-  border: 1px solid var(--el-border-color);
+  border: 1px solid var(--border);
   padding: 8px 12px;
 }
 
@@ -416,6 +423,31 @@ export default {
   color: #fff;
 }
 
+.loading-state,
+.guide-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-state {
+  justify-content: center;
+  min-height: 120px;
+  color: var(--muted-foreground);
+}
+
+.guide-link {
+  width: fit-content;
+  margin-top: 8px;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.guide-link > svg {
+  width: 16px;
+  height: 16px;
+}
+
 .manual-steps {
   counter-reset: step-counter;
   list-style-type: none;
@@ -474,23 +506,5 @@ export default {
     width: 100%;
     justify-content: flex-end;
   }
-}
-</style>
-
-<style>
-/* 全局自定义 Element UI 标签页样式 */
-.agent-security-container .el-tabs__item {
-  height: 40px;
-  line-height: 40px;
-}
-
-.agent-security-container .el-tabs__item.is-active {
-  color: var(--primary-color);
-  font-weight: 600;
-}
-
-.agent-security-container .el-tabs__nav-wrap::after {
-  height: 1px;
-  background-color: var(--el-border-color);
 }
 </style>

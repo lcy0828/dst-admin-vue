@@ -4,70 +4,127 @@
       <h2>房间设置</h2>
       <p>配置游戏房间的基本信息和风格设置</p>
     </div>
-    
-    <el-card class="settings-card">
-      <template v-slot:header>
-<div  class="card-header">
-        <span>基本信息设置</span>
-        <el-button style="float: right; padding: 3px 0" type="text" @click="saveSettings">保存设置</el-button>
-      </div>
-</template>
-      
-      <el-form :model="roomForm" label-width="100px" :rules="rules" ref="roomForm">
-        <el-form-item label="房间名称" prop="name">
-          <el-input v-model="roomForm.name" placeholder="请输入房间名称"></el-input>
-        </el-form-item>
-        
-        <el-form-item label="房间描述" prop="description">
-          <el-input type="textarea" v-model="roomForm.description" placeholder="请输入房间描述" :rows="4"></el-input>
-        </el-form-item>
-        
-        <el-form-item label="房间风格" prop="style">
-          <el-select v-model="roomForm.style" placeholder="请选择房间风格" style="width: 100%">
-            <el-option v-for="item in roomStyles" :key="item.value" :label="item.label" :value="item.value">
-              <div class="style-option">
-                <div class="style-color" :style="{ backgroundColor: item.color }"></div>
-                <span>{{ item.label }}</span>
-              </div>
-            </el-option>
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="预览">
-          <div class="room-preview" :class="'room-style-' + roomForm.style">
-            <div class="preview-header">{{ roomForm.name || '房间名称' }}</div>
-            <div class="preview-content">{{ roomForm.description || '房间描述内容' }}</div>
-          </div>
-        </el-form-item>
-        
-        <el-form-item label="高级设置">
-          <el-collapse>
-            <el-collapse-item title="自定义样式设置" name="1">
-              <el-form-item label="文字颜色">
-                <el-color-picker v-model="customStyle.textColor" show-alpha></el-color-picker>
-              </el-form-item>
-              <el-form-item label="背景颜色">
-                <el-color-picker v-model="customStyle.backgroundColor" show-alpha></el-color-picker>
-              </el-form-item>
-              <el-form-item label="边框样式">
-                <el-select v-model="customStyle.borderStyle" placeholder="请选择边框样式">
-                  <el-option label="无边框" value="none"></el-option>
-                  <el-option label="实线边框" value="solid"></el-option>
-                  <el-option label="虚线边框" value="dashed"></el-option>
-                  <el-option label="点线边框" value="dotted"></el-option>
-                </el-select>
-              </el-form-item>
-            </el-collapse-item>
-          </el-collapse>
-        </el-form-item>
-      </el-form>
-    </el-card>
+
+    <Card>
+      <CardHeader class="card-header">
+        <div>
+          <CardTitle>基本信息设置</CardTitle>
+          <CardDescription>设置房间展示信息，并在保存前检查预览效果。</CardDescription>
+        </div>
+        <UiButton size="sm" @click="saveSettings">
+          <Save data-icon="inline-start" />
+          保存设置
+        </UiButton>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(errors.name)">
+            <FieldLabel for="room-name">房间名称</FieldLabel>
+            <UiInput
+              id="room-name"
+              v-model="roomForm.name"
+              :aria-invalid="Boolean(errors.name)"
+              placeholder="请输入房间名称"
+              maxlength="30"
+            />
+            <FieldError v-if="errors.name">{{ errors.name }}</FieldError>
+          </Field>
+
+          <Field :data-invalid="Boolean(errors.description)">
+            <FieldLabel for="room-description">房间描述</FieldLabel>
+            <UiTextarea
+              id="room-description"
+              v-model="roomForm.description"
+              :aria-invalid="Boolean(errors.description)"
+              placeholder="请输入房间描述"
+              rows="4"
+              maxlength="200"
+            />
+            <FieldError v-if="errors.description">{{ errors.description }}</FieldError>
+          </Field>
+
+          <Field>
+            <FieldLabel>房间风格</FieldLabel>
+            <UiSelect v-model="roomForm.style">
+              <SelectTrigger class="w-full">
+                <SelectValue placeholder="请选择房间风格" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem v-for="item in roomStyles" :key="item.value" :value="item.value">
+                    {{ item.label }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+          </Field>
+
+          <Field>
+            <FieldLabel>预览</FieldLabel>
+            <div class="room-preview" :class="'room-style-' + roomForm.style">
+              <div class="preview-header">{{ roomForm.name || '房间名称' }}</div>
+              <div class="preview-content">{{ roomForm.description || '房间描述内容' }}</div>
+            </div>
+          </Field>
+
+          <Field>
+            <FieldLabel>高级设置</FieldLabel>
+            <Accordion type="single" collapsible class="advanced-settings">
+              <AccordionItem value="custom-style">
+                <AccordionTrigger>自定义样式设置</AccordionTrigger>
+                <AccordionContent>
+                  <FieldGroup>
+                    <Field orientation="horizontal">
+                      <FieldLabel for="text-color">文字颜色</FieldLabel>
+                      <input id="text-color" v-model="customStyle.textColor" class="color-input" type="color">
+                    </Field>
+                    <Field orientation="horizontal">
+                      <FieldLabel for="background-color">背景颜色</FieldLabel>
+                      <input id="background-color" v-model="customStyle.backgroundColor" class="color-input" type="color">
+                    </Field>
+                    <Field>
+                      <FieldLabel>边框样式</FieldLabel>
+                      <UiSelect v-model="customStyle.borderStyle">
+                        <SelectTrigger class="w-full"><SelectValue placeholder="请选择边框样式" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            <SelectItem value="none">无边框</SelectItem>
+                            <SelectItem value="solid">实线边框</SelectItem>
+                            <SelectItem value="dashed">虚线边框</SelectItem>
+                            <SelectItem value="dotted">点线边框</SelectItem>
+                          </SelectGroup>
+                        </SelectContent>
+                      </UiSelect>
+                    </Field>
+                  </FieldGroup>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </Field>
+        </FieldGroup>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { Save } from '@lucide/vue';
+import { toast } from 'vue-sonner';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
+
 export default {
   name: 'RoomSettings',
+  components: {
+    Accordion, AccordionContent, AccordionItem, AccordionTrigger, UiButton, Card, CardContent,
+    CardDescription, CardHeader, CardTitle, Field, FieldError, FieldGroup, FieldLabel, UiInput,
+    Save, UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, UiTextarea
+  },
   data() {
     return {
       roomForm: {
@@ -81,41 +138,32 @@ export default {
         borderStyle: 'solid'
       },
       roomStyles: [
-        { value: 'default', label: '默认风格', color: '#f9f9f9' },
-        { value: 'dark', label: '暗黑风格', color: '#333333' },
-        { value: 'forest', label: '森林风格', color: '#2c7744' },
-        { value: 'desert', label: '沙漠风格', color: '#e8c07d' },
-        { value: 'winter', label: '冬季风格', color: '#a8d8ff' },
-        { value: 'cave', label: '洞穴风格', color: '#514b4a' }
+        { value: 'default', label: '默认风格' },
+        { value: 'dark', label: '暗黑风格' },
+        { value: 'forest', label: '森林风格' },
+        { value: 'desert', label: '沙漠风格' },
+        { value: 'winter', label: '冬季风格' },
+        { value: 'cave', label: '洞穴风格' }
       ],
-      rules: {
-        name: [
-          { required: true, message: '请输入房间名称', trigger: 'blur' },
-          { min: 3, max: 30, message: '长度在 3 到 30 个字符', trigger: 'blur' }
-        ],
-        description: [
-          { max: 200, message: '描述不能超过200个字符', trigger: 'blur' }
-        ]
-      }
-    }
+      errors: {}
+    };
   },
   methods: {
     saveSettings() {
-      this.$refs.roomForm.validate((valid) => {
-        if (valid) {
-          this.$message({
-            message: '房间设置已保存',
-            type: 'success'
-          });
-          // 这里可以添加API调用，将设置保存到后端
-        } else {
-          this.$message.error('表单验证失败，请检查输入');
-          return false;
-        }
-      });
+      const errors = {};
+      const name = this.roomForm.name.trim();
+      if (!name) errors.name = '请输入房间名称';
+      else if (name.length < 3 || name.length > 30) errors.name = '长度应为 3 到 30 个字符';
+      if (this.roomForm.description.length > 200) errors.description = '描述不能超过 200 个字符';
+      this.errors = errors;
+      if (Object.keys(errors).length > 0) {
+        toast.error('表单验证失败，请检查输入');
+        return;
+      }
+      toast.success('房间设置已保存');
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -127,66 +175,58 @@ export default {
 .page-header {
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
-.settings-card {
-  margin-bottom: 16px;
-  border-radius: 4px;
-  box-shadow: none;
+.page-header p {
+  color: var(--muted-foreground);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-}
-
-.style-option {
-  display: flex;
-  align-items: center;
-}
-
-.style-color {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  margin-right: 10px;
+  align-items: flex-start;
+  flex-direction: row;
+  gap: 12px;
 }
 
 .room-preview {
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  padding: 14px;
-  background-color: var(--surface-muted);
   min-height: 150px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--muted);
 }
 
 .preview-header {
-  font-size: 18px;
-  font-weight: bold;
   margin-bottom: 10px;
-  border-bottom: 1px solid #eaeaea;
   padding-bottom: 10px;
+  border-bottom: 1px solid currentColor;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .preview-content {
   font-size: 14px;
-  color: var(--text-regular);
 }
 
-/* 不同风格的房间预览 */
+.advanced-settings {
+  width: 100%;
+}
+
+.color-input {
+  width: 44px;
+  height: 32px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  cursor: pointer;
+}
+
 .room-style-dark {
   background-color: #333333;
   color: #ffffff;
-}
-
-.room-style-dark .preview-header {
-  border-bottom-color: #555555;
-}
-
-.room-style-dark .preview-content {
-  color: #cccccc;
 }
 
 .room-style-forest {
@@ -194,25 +234,9 @@ export default {
   color: #1b5e20;
 }
 
-.room-style-forest .preview-header {
-  border-bottom-color: #c8e6c9;
-}
-
-.room-style-forest .preview-content {
-  color: #388e3c;
-}
-
 .room-style-desert {
   background-color: #fff8e1;
   color: #ff8f00;
-}
-
-.room-style-desert .preview-header {
-  border-bottom-color: #ffecb3;
-}
-
-.room-style-desert .preview-content {
-  color: #ff6f00;
 }
 
 .room-style-winter {
@@ -220,24 +244,15 @@ export default {
   color: #326343;
 }
 
-.room-style-winter .preview-header {
-  border-bottom-color: #bbdefb;
-}
-
-.room-style-winter .preview-content {
-  color: #1976d2;
-}
-
 .room-style-cave {
   background-color: #3e3e3e;
   color: #e0e0e0;
 }
 
-.room-style-cave .preview-header {
-  border-bottom-color: #4a4a4a;
-}
-
-.room-style-cave .preview-content {
-  color: #bdbdbd;
+@media (max-width: 640px) {
+  .card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 </style>

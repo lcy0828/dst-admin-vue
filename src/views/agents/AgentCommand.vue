@@ -1,328 +1,104 @@
 <template>
   <div class="agent-command-container">
-    <el-card class="main-card" shadow="hover">
-      <template #header>
-        <div class="clearfix">
-        <span class="card-title">
-          <component :is="'el-icon-terminal'" class="legacy-icon" /> Agent命令管理
-        </span>
-        <div class="header-actions">
-          <el-button type="primary" size="small" icon="el-icon-plus" @click="showCommandTemplates">使用模板</el-button>
-        </div>
-        </div>
-      </template>
-      
-      <div v-loading="loading" class="command-content">
-        <!-- 命令执行表单 -->
+    <Card class="main-card">
+      <CardHeader class="card-header-row">
+        <div><CardTitle class="card-title"><Terminal />Agent 命令管理</CardTitle><CardDescription>向已连接节点发送白名单动作并检查执行结果。</CardDescription></div>
+        <UiButton size="sm" @click="showCommandTemplates"><LayoutTemplate data-icon="inline-start" />使用模板</UiButton>
+      </CardHeader>
+      <CardContent class="command-content">
+        <div v-if="loading" class="loading-state"><Spinner /><span>正在加载命令数据...</span></div>
         <div class="section">
           <div class="section-title">
-            <component :is="'el-icon-edit'" class="legacy-icon" /> 命令执行
-            <el-switch
-              v-model="batchMode"
-              active-text="批量执行"
-              inactive-text="单个执行"
-              class="batch-mode-switch"
-              @change="onBatchModeChange">
-            </el-switch>
+            <span><SquareTerminal />命令执行</span>
+            <Field orientation="horizontal" class="batch-mode-switch"><UiSwitch id="batch-mode" v-model="batchMode" @update:model-value="onBatchModeChange" /><FieldLabel for="batch-mode">批量执行</FieldLabel></Field>
           </div>
-          
-          <el-form label-position="top" :model="commandForm" ref="commandForm" :rules="commandRules">
-            <el-form-item label="Agent ID" prop="agent_id">
-              <el-select 
-                v-model="commandForm.agent_id" 
-                filterable 
-                placeholder="请选择Agent" 
-                style="width: 100%"
-                @visible-change="handleAgentSelectVisibleChange"
-                :loading="agentListLoading"
-                :multiple="batchMode">
-                <template #empty>
-                  <div v-if="agentListLoading" class="agent-loading">
-                    <component :is="'el-icon-loading'" class="legacy-icon" /> 加载中...
-                  </div>
-                  <div v-else class="agent-empty">没有已连接的Agent</div>
-                </template>
-                <el-option 
-                  v-for="agent in agentList" 
-                  :key="agent.id"
-                  :label="`${agent.hostname || '未知'} (${agent.id || '未知'})`"
-                  :value="agent.id">
-                  <div class="agent-option">
-                    <component :is="getOsIcon(agent.os)" class="legacy-icon agent-os-icon" />
-                    <div class="agent-option-content">
-                      <div class="agent-hostname">{{ agent.hostname || 'Unknown' }}</div>
-                      <div class="agent-details">
-                        ID: {{ agent.id }} | IP: {{ agent.ip || 'Unknown' }}
-                      </div>
-                    </div>
-                    <el-tag size="mini" :type="agent.status === 'online' ? 'success' : 'danger'">
-                      {{ agent.status || 'unknown' }}
-                    </el-tag>
-                  </div>
-                </el-option>
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="命令类型" prop="type">
-              <el-select v-model="commandForm.type" placeholder="请选择命令类型" style="width: 100%">
-                <el-option label="Shell命令" value="shell"></el-option>
-                <el-option label="PowerShell命令" value="powershell"></el-option>
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="命令内容" prop="content">
-              <el-input 
-                type="textarea" 
-                v-model="commandForm.content" 
-                :rows="4"
-                placeholder="请输入要执行的命令内容"></el-input>
-            </el-form-item>
-            
-            <el-form-item label="超时时间 (秒)" prop="timeout">
-              <el-input-number v-model="commandForm.timeout" :min="1" :max="600" :step="5"></el-input-number>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-button type="primary" @click="executeCommand" :loading="commandLoading">执行命令</el-button>
-              <el-button @click="resetCommand">重置</el-button>
-            </el-form-item>
-          </el-form>
+
+          <FieldGroup>
+            <Field v-if="!batchMode"><FieldLabel>Agent ID</FieldLabel><UiSelect v-model="commandForm.agent_id" @update:open="handleAgentSelectVisibleChange"><SelectTrigger class="w-full"><SelectValue placeholder="请选择 Agent" /></SelectTrigger><SelectContent><SelectGroup>
+              <SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.hostname || '未知' }} ({{ agent.id || '未知' }})</SelectItem>
+            </SelectGroup></SelectContent></UiSelect></Field>
+            <FieldSet v-else><FieldLegend variant="label">Agent ID</FieldLegend><FieldDescription>选择一个或多个在线 Agent。</FieldDescription><FieldGroup class="agent-checkboxes">
+              <Field v-for="agent in agentList" :key="agent.id" orientation="horizontal"><UiCheckbox :id="`command-agent-${agent.id}`" :model-value="isBatchAgentSelected(agent.id)" @update:model-value="toggleBatchAgent(agent.id, $event)" /><FieldLabel :for="`command-agent-${agent.id}`" class="font-normal">{{ agent.hostname || '未知' }} · {{ agent.id }}</FieldLabel></Field>
+            </FieldGroup></FieldSet>
+            <Field><FieldLabel>命令类型</FieldLabel><UiSelect v-model="commandForm.type"><SelectTrigger class="w-full"><SelectValue placeholder="请选择命令类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="shell">Shell 命令</SelectItem><SelectItem value="powershell">PowerShell 命令</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field><FieldLabel for="agent-command-content">命令内容</FieldLabel><UiTextarea id="agent-command-content" v-model="commandForm.content" rows="4" placeholder="请输入要执行的命令内容" /></Field>
+            <Field><FieldLabel for="agent-command-timeout">超时时间（秒）</FieldLabel><UiInput id="agent-command-timeout" v-model.number="commandForm.timeout" type="number" min="1" max="600" step="5" /></Field>
+            <div class="form-actions"><UiButton :disabled="commandLoading" @click="executeCommand"><Spinner v-if="commandLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行命令</UiButton><UiButton variant="outline" @click="resetCommand">重置</UiButton></div>
+          </FieldGroup>
         </div>
 
-        <!-- 命令历史记录 -->
         <div class="section">
           <div class="section-title">
-            <component :is="'el-icon-time'" class="legacy-icon" /> 命令历史
-            <div class="history-filter">
-              <el-select
-                v-model="historyFilter.agent_id"
-                placeholder="选择Agent"
-                clearable
-                @change="onAgentFilterChange"
-                style="width: 240px; margin-left: 15px;">
-                <el-option 
-                  v-for="agent in agentList" 
-                  :key="agent.id"
-                  :label="`${agent.hostname || '未知'} (${agent.id || '未知'})`"
-                  :value="agent.id">
-                </el-option>
-              </el-select>
-              <el-select
-                v-model="historyFilter.status"
-                placeholder="命令状态"
-                clearable
-                @change="onStatusFilterChange"
-                style="width: 120px; margin-left: 10px;">
-                <el-option value="pending" label="待执行"></el-option>
-                <el-option value="running" label="执行中"></el-option>
-                <el-option value="completed" label="已完成"></el-option>
-                <el-option value="failed" label="失败"></el-option>
-                <el-option value="timeout" label="超时"></el-option>
-                <el-option value="canceled" label="已取消"></el-option>
-              </el-select>
-              <el-input
-                v-model="historyFilter.search"
-                placeholder="搜索命令内容"
-                clearable
-                prefix-icon="el-icon-search"
-                @input="onSearchChange"
-                style="width: 180px; margin-left: 10px;">
-              </el-input>
-              <el-date-picker
-                v-model="historyFilter.date_range"
-                type="daterange"
-                align="right"
-                value-format="timestamp"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                :picker-options="pickerOptions"
-                style="width: 260px; margin-left: 10px;"
-                @change="onDateRangeChange">
-              </el-date-picker>
-              <el-button type="primary" plain size="small" icon="el-icon-refresh" @click="refreshHistory" style="margin-left: 10px;">刷新</el-button>
-              <el-button type="info" plain size="small" @click="getAllHistory" style="margin-left: 10px;">获取全部历史</el-button>
-            </div>
+            <span><History />命令历史</span>
           </div>
-          
-          <el-table
-            :data="commandHistory"
-            style="width: 100%"
-            v-loading="historyLoading">
-            <el-table-column prop="command_id" label="命令ID" width="120"></el-table-column>
-            <el-table-column prop="agent_id" label="Agent ID" width="120" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="type" label="类型" width="100">
-              <template #default="scope">
-                <el-tag size="mini" :type="scope.row.type === 'shell' ? 'primary' : 'success'">
-                  {{ scope.row.type }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="content" label="命令内容" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="status" label="状态" width="100">
-              <template #default="scope">
-                <el-tag size="mini" :type="getStatusType(scope.row.status)">
-                  {{ scope.row.status }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="success" label="结果" width="80">
-              <template #default="scope">
-                <el-tag 
-                  size="mini"
-                  :type="scope.row.success ? 'success' : 'danger'"
-                  v-if="scope.row.status === 'completed'">
-                  {{ scope.row.success ? '成功' : '失败' }}
-                </el-tag>
-                <span v-else>-</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="start_time" label="执行时间" width="180">
-              <template #default="scope">
-                {{ formatTime(scope.row.start_time) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
-              <template #default="scope">
-                <el-button type="text" size="mini" @click="viewCommandDetail(scope.row)">
-                  查看详情
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="history-filter">
+            <UiSelect v-model="historyFilter.agent_id" @update:model-value="onAgentFilterChange"><SelectTrigger><SelectValue placeholder="选择 Agent" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部 Agent</SelectItem><SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.hostname }} ({{ agent.id }})</SelectItem></SelectGroup></SelectContent></UiSelect>
+            <UiSelect v-model="historyFilter.status" @update:model-value="onStatusFilterChange"><SelectTrigger><SelectValue placeholder="命令状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部状态</SelectItem><SelectItem v-for="status in commandStatuses" :key="status.value" :value="status.value">{{ status.label }}</SelectItem></SelectGroup></SelectContent></UiSelect>
+            <UiInput v-model="historyFilter.search" placeholder="搜索命令内容" @input="onSearchChange" />
+            <UiInput v-model="historyFilter.date_range[0]" type="date" aria-label="开始日期" @change="onDateRangeChange" /><UiInput v-model="historyFilter.date_range[1]" type="date" aria-label="结束日期" @change="onDateRangeChange" />
+            <UiButton size="sm" variant="outline" @click="refreshHistory"><RefreshCw data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="ghost" @click="getAllHistory">全部历史</UiButton>
+          </div>
 
-          <div class="pagination-container">
-            <el-pagination
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-              :current-page="currentPage"
-              :page-sizes="[10, 20, 50, 100]"
-              :page-size="pageSize"
-              layout="total, sizes, prev, pager, next, jumper"
-              :total="total">
-            </el-pagination>
-          </div>
+          <div v-if="historyLoading" class="loading-state compact"><Spinner /><span>正在读取历史...</span></div>
+          <ShadcnTable v-else><TableHeader><TableRow><TableHead>命令 ID</TableHead><TableHead>Agent ID</TableHead><TableHead>类型</TableHead><TableHead>命令内容</TableHead><TableHead>状态</TableHead><TableHead>结果</TableHead><TableHead>执行时间</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody>
+            <TableRow v-for="command in commandHistory" :key="command.command_id"><TableCell>{{ command.command_id }}</TableCell><TableCell class="truncate-cell">{{ command.agent_id }}</TableCell><TableCell><Badge variant="outline">{{ command.type }}</Badge></TableCell><TableCell class="truncate-cell">{{ command.content }}</TableCell><TableCell><Badge :variant="getStatusVariant(command.status)">{{ command.status }}</Badge></TableCell><TableCell><Badge v-if="command.status === 'completed'" :variant="command.success ? 'default' : 'destructive'">{{ command.success ? '成功' : '失败' }}</Badge><span v-else>-</span></TableCell><TableCell>{{ formatTime(command.start_time) }}</TableCell><TableCell><UiButton size="xs" variant="ghost" @click="viewCommandDetail(command)">查看详情</UiButton></TableCell></TableRow>
+          </TableBody></ShadcnTable>
+          <div class="pagination-container"><span>共 {{ total }} 条</span><UiSelect :model-value="String(pageSize)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="page-size"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ size }} 条/页</SelectItem></SelectGroup></SelectContent></UiSelect><UiButton size="icon-sm" variant="outline" :disabled="currentPage <= 1" aria-label="上一页" @click="handleCurrentChange(currentPage - 1)"><ChevronLeft /></UiButton><span>{{ currentPage }} / {{ totalPages }}</span><UiButton size="icon-sm" variant="outline" :disabled="currentPage >= totalPages" aria-label="下一页" @click="handleCurrentChange(currentPage + 1)"><ChevronRight /></UiButton></div>
         </div>
 
-        <!-- 命令详情对话框 -->
-        <el-dialog
-          title="命令详情"
-          v-model="dialogVisible"
-          width="70%"
-          class="command-detail-dialog">
+        <UiDialog v-model:open="dialogVisible"><DialogContent class="wide-dialog"><DialogHeader><DialogTitle>命令详情</DialogTitle><DialogDescription>查看命令参数、状态和节点返回内容。</DialogDescription></DialogHeader>
           <div v-if="selectedCommand" class="command-detail">
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="命令ID">{{ selectedCommand.command_id }}</el-descriptions-item>
-              <el-descriptions-item label="Agent ID">{{ selectedCommand.agent_id }}</el-descriptions-item>
-              <el-descriptions-item label="命令类型">{{ selectedCommand.type }}</el-descriptions-item>
-              <el-descriptions-item label="状态">
-                <el-tag :type="getStatusType(selectedCommand.status)">
-                  {{ selectedCommand.status }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="退出码">
-                <el-tag :type="selectedCommand.exit_code === 0 ? 'success' : 'danger'" v-if="selectedCommand.status === 'completed'">
-                  {{ selectedCommand.exit_code }}
-                </el-tag>
-                <span v-else>-</span>
-              </el-descriptions-item>
-              <el-descriptions-item label="成功">
-                <el-tag :type="selectedCommand.success ? 'success' : 'danger'" v-if="selectedCommand.status === 'completed'">
-                  {{ selectedCommand.success ? '成功' : '失败' }}
-                </el-tag>
-                <span v-else>-</span>
-              </el-descriptions-item>
-              <el-descriptions-item label="开始时间">{{ formatTime(selectedCommand.start_time) }}</el-descriptions-item>
-              <el-descriptions-item label="结束时间">{{ formatTime(selectedCommand.end_time) }}</el-descriptions-item>
-              <el-descriptions-item label="命令内容" :span="2">
-                <pre class="command-content">{{ selectedCommand.content }}</pre>
-              </el-descriptions-item>
-              <el-descriptions-item label="命令输出" :span="2">
-                <el-tabs type="border-card">
-                  <el-tab-pane label="输出">
-                    <pre class="command-output" v-if="selectedCommand.output">{{ selectedCommand.output }}</pre>
-                    <div class="no-output" v-else>无输出内容</div>
-                  </el-tab-pane>
-                  <el-tab-pane label="错误" v-if="selectedCommand.error_msg">
-                    <pre class="command-error">{{ selectedCommand.error_msg }}</pre>
-                  </el-tab-pane>
-                </el-tabs>
-              </el-descriptions-item>
-            </el-descriptions>
-            
+            <dl class="detail-grid"><div><dt>命令 ID</dt><dd>{{ selectedCommand.command_id }}</dd></div><div><dt>Agent ID</dt><dd>{{ selectedCommand.agent_id }}</dd></div><div><dt>命令类型</dt><dd>{{ selectedCommand.type }}</dd></div><div><dt>状态</dt><dd><Badge :variant="getStatusVariant(selectedCommand.status)">{{ selectedCommand.status }}</Badge></dd></div><div><dt>退出码</dt><dd>{{ selectedCommand.status === 'completed' ? selectedCommand.exit_code : '-' }}</dd></div><div><dt>结果</dt><dd>{{ selectedCommand.status === 'completed' ? (selectedCommand.success ? '成功' : '失败') : '-' }}</dd></div><div><dt>开始时间</dt><dd>{{ formatTime(selectedCommand.start_time) }}</dd></div><div><dt>结束时间</dt><dd>{{ formatTime(selectedCommand.end_time) }}</dd></div></dl>
+            <pre class="command-content">{{ selectedCommand.content }}</pre>
+            <Tabs default-value="output"><TabsList><TabsTrigger value="output">输出</TabsTrigger><TabsTrigger v-if="selectedCommand.error_msg" value="error">错误</TabsTrigger></TabsList><TabsContent value="output"><pre v-if="selectedCommand.output" class="command-output">{{ selectedCommand.output }}</pre><div v-else class="no-output">无输出内容</div></TabsContent><TabsContent v-if="selectedCommand.error_msg" value="error"><pre class="command-error">{{ selectedCommand.error_msg }}</pre></TabsContent></Tabs>
             <div class="detail-actions">
-              <el-button 
-                type="primary" 
-                size="small" 
-                icon="el-icon-refresh" 
-                @click="refreshCommandDetail(selectedCommand.command_id)"
-                :loading="detailLoading">
-                刷新结果
-              </el-button>
-              <el-button 
-                type="success" 
-                size="small" 
-                icon="el-icon-document-copy" 
-                @click="copyCommandDetailOutput">
-                复制输出
-              </el-button>
+              <UiButton size="sm" :disabled="detailLoading" @click="refreshCommandDetail(selectedCommand.command_id)"><Spinner v-if="detailLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新结果</UiButton>
+              <UiButton variant="outline" size="sm" @click="copyCommandDetailOutput"><Copy data-icon="inline-start" />复制输出</UiButton>
             </div>
           </div>
-        </el-dialog>
-        
-        <!-- 命令模板对话框 -->
-        <el-dialog
-          title="命令模板"
-          v-model="templateDialogVisible"
-          width="60%"
-          class="template-dialog">
+        </DialogContent></UiDialog>
+
+        <UiDialog v-model:open="templateDialogVisible"><DialogContent class="wide-dialog"><DialogHeader><DialogTitle>命令模板</DialogTitle><DialogDescription>仅可使用后端白名单允许的动作模板。</DialogDescription></DialogHeader>
           <div class="template-container">
-            <el-tabs v-model="activeTemplateCategory" type="card">
-              <el-tab-pane label="系统信息" name="system">
-                <el-table :data="systemTemplates" border style="width: 100%">
-                  <el-table-column prop="name" label="模板名称" width="180"></el-table-column>
-                  <el-table-column prop="description" label="描述"></el-table-column>
-                  <el-table-column label="操作" width="120" fixed="right">
-                    <template #default="scope">
-                      <el-button type="text" size="small" :disabled="!scope.row.supported" @click="useTemplate(scope.row)">使用</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </el-tab-pane>
-              <el-tab-pane label="文件操作" name="file">
-                <el-table :data="fileTemplates" border style="width: 100%">
-                  <el-table-column prop="name" label="模板名称" width="180"></el-table-column>
-                  <el-table-column prop="description" label="描述"></el-table-column>
-                  <el-table-column label="操作" width="120" fixed="right">
-                    <template #default="scope">
-                      <el-button type="text" size="small" :disabled="!scope.row.supported" @click="useTemplate(scope.row)">使用</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </el-tab-pane>
-              <el-tab-pane label="网络工具" name="network">
-                <el-table :data="networkTemplates" border style="width: 100%">
-                  <el-table-column prop="name" label="模板名称" width="180"></el-table-column>
-                  <el-table-column prop="description" label="描述"></el-table-column>
-                  <el-table-column label="操作" width="120" fixed="right">
-                    <template #default="scope">
-                      <el-button type="text" size="small" :disabled="!scope.row.supported" @click="useTemplate(scope.row)">使用</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </el-tab-pane>
-            </el-tabs>
+            <Tabs v-model="activeTemplateCategory"><TabsList><TabsTrigger value="system">系统信息</TabsTrigger><TabsTrigger value="file">文件操作</TabsTrigger><TabsTrigger value="network">网络工具</TabsTrigger></TabsList>
+              <TabsContent v-for="category in templateCategories" :key="category.value" :value="category.value"><ShadcnTable><TableHeader><TableRow><TableHead>模板名称</TableHead><TableHead>描述</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="item in category.items" :key="item.id"><TableCell>{{ item.name }}</TableCell><TableCell>{{ item.description }}</TableCell><TableCell><UiButton size="xs" variant="ghost" :disabled="!item.supported" @click="useTemplate(item)">使用</UiButton></TableCell></TableRow></TableBody></ShadcnTable></TabsContent>
+            </Tabs>
           </div>
-        </el-dialog>
-      </div>
-    </el-card>
+        </DialogContent></UiDialog>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { ChevronLeft, ChevronRight, Copy, History, LayoutTemplate, Play, RefreshCw, SquareTerminal, Terminal } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
 
 export default {
   name: 'AgentCommand',
+  components: {
+    Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, ChevronLeft, ChevronRight,
+    Copy, DialogContent, DialogDescription, DialogHeader, DialogTitle, Field, FieldDescription,
+    FieldGroup, FieldLabel, FieldLegend, FieldSet, History, LayoutTemplate, Play, RefreshCw,
+    SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, ShadcnTable, Spinner,
+    SquareTerminal, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent,
+    TabsList, TabsTrigger, Terminal, UiButton, UiCheckbox, UiDialog, UiInput, UiSelect, UiSwitch,
+    UiTextarea
+  },
   data() {
     return {
       loading: false,
@@ -354,8 +130,13 @@ export default {
         agent_id: '',
         status: '',
         search: '',
-        date_range: []
+        date_range: ['', '']
       },
+      commandStatuses: [
+        { value: 'pending', label: '待执行' }, { value: 'running', label: '执行中' },
+        { value: 'completed', label: '已完成' }, { value: 'failed', label: '失败' },
+        { value: 'timeout', label: '超时' }, { value: 'canceled', label: '已取消' }
+      ],
       pickerOptions: {
         shortcuts: [{
           text: '最近一周',
@@ -391,6 +172,18 @@ export default {
       networkTemplates: [],
       detailLoading: false
     };
+  },
+  computed: {
+    totalPages() {
+      return Math.max(1, Math.ceil(this.total / this.pageSize));
+    },
+    templateCategories() {
+      return [
+        { value: 'system', items: this.systemTemplates },
+        { value: 'file', items: this.fileTemplates },
+        { value: 'network', items: this.networkTemplates }
+      ];
+    }
   },
   created() {
     this.fetchAgentList();
@@ -435,11 +228,11 @@ export default {
           
         } else {
           console.error('Agent列表响应格式错误:', response);
-          this.$message.error('获取Agent列表响应格式错误');
+          toast.error('获取 Agent 列表响应格式错误');
         }
       } catch (error) {
         console.error('获取Agent列表失败:', error);
-        this.$message.error('获取Agent列表失败：' + error.message);
+        toast.error('获取 Agent 列表失败：' + error.message);
       } finally {
         this.agentListLoading = false;
       }
@@ -449,15 +242,6 @@ export default {
         this.fetchAgentList();
       }
     },
-    getOsIcon(os) {
-      if (!os) return 'el-icon-monitor';
-      const osLower = os.toLowerCase();
-      if (osLower.includes('windows')) return 'el-icon-platform-eleme';
-      if (osLower.includes('linux')) return 'el-icon-platform-eleme';
-      if (osLower.includes('darwin')) return 'el-icon-apple';
-      return 'el-icon-monitor';
-    },
-
     // 初始化命令模板
     initCommandTemplates() {
       // 初始化内置的命令模板
@@ -484,7 +268,7 @@ export default {
     },
     useTemplate(template) {
       if (!template.supported) {
-        this.$message.warning('此模板未包含在后端返回的生产动作白名单中');
+        toast.warning('此模板未包含在后端返回的生产动作白名单中');
         return;
       }
       this.commandForm.type = template.type || 'shell';
@@ -495,7 +279,13 @@ export default {
     // 命令执行相关方法
     async executeCommand() {
       try {
-        await this.$refs.commandForm.validate();
+        const agentSelected = this.batchMode
+          ? Array.isArray(this.commandForm.agent_id) && this.commandForm.agent_id.length > 0
+          : Boolean(this.commandForm.agent_id);
+        if (!agentSelected || !this.commandForm.type || !this.commandForm.content.trim() || !this.commandForm.timeout) {
+          toast.warning(!agentSelected ? '请选择 Agent' : '请完整填写命令类型、内容和超时时间');
+          return;
+        }
         this.commandLoading = true;
         
         if (this.batchMode && Array.isArray(this.commandForm.agent_id) && this.commandForm.agent_id.length > 0) {
@@ -541,10 +331,10 @@ export default {
           }
           
           if (successCount > 0) {
-            this.$message.success(`成功发送命令至 ${successCount} 个Agent`);
+            toast.success(`成功发送命令至 ${successCount} 个 Agent`);
           }
           if (failCount > 0) {
-            this.$message.warning(`${failCount} 个Agent命令发送失败`);
+            toast.warning(`${failCount} 个 Agent 命令发送失败`);
           }
           
           // 更新命令历史
@@ -566,7 +356,7 @@ export default {
           
           const response = await agentApi.executeCommand(commandData);
           if (response && response.code === 200) {
-            this.$message.success('命令已发送');
+            toast.success('命令已发送');
             
             // 获取命令ID
             const commandId = response.data.command_id;
@@ -583,11 +373,11 @@ export default {
             // 重置表单
             this.resetCommand();
           } else {
-            this.$message.error(response.msg || '命令执行失败');
+            toast.error(response.msg || '命令执行失败');
           }
         }
       } catch (error) {
-        this.$message.error('命令执行失败：' + (error.message || '未知错误'));
+        toast.error('命令执行失败：' + (error.message || '未知错误'));
       } finally {
         this.commandLoading = false;
       }
@@ -596,7 +386,7 @@ export default {
     // 轮询命令结果
     async pollCommandResult(commandId, attempts = 0) {
       if (attempts > 20) { // 最多尝试20次，约1分钟
-        this.$message.warning('命令执行时间较长，请在历史记录中查看结果');
+        toast.warning('命令执行时间较长，请在历史记录中查看结果');
         return;
       }
       
@@ -613,9 +403,9 @@ export default {
             
             // 根据结果显示不同的消息
             if (result.success) {
-              this.$message.success('命令执行成功');
+              toast.success('命令执行成功');
             } else {
-              this.$message.warning('命令执行失败: ' + (result.error_msg || '未知错误'));
+              toast.warning('命令执行失败: ' + (result.error_msg || '未知错误'));
             }
             
             return;
@@ -640,8 +430,7 @@ export default {
       }
     },
     resetCommand() {
-      this.$refs.commandForm.resetFields();
-      this.commandForm.action = '';
+      this.commandForm = { agent_id: this.batchMode ? [] : '', type: 'shell', content: '', action: '', timeout: 30 };
     },
     resolveCommandAction() {
       if (this.commandForm.action) return this.commandForm.action;
@@ -656,7 +445,7 @@ export default {
       this.historyLoading = true;
       try {
         const params = this.commandHistoryParams();
-        const agentId = this.historyFilter.agent_id || '';
+        const agentId = this.historyFilter.agent_id === 'all' ? '' : (this.historyFilter.agent_id || '');
         const response = agentId
           ? await agentApi.getCommandHistoryByAgentId(agentId, params)
           : await agentApi.getCommandHistory(params);
@@ -667,7 +456,7 @@ export default {
         this.commandHistory = items;
         this.total = this.historyFilter.status === 'timeout' ? items.length : (response.data?.total || 0);
       } catch (error) {
-        this.$message.error('获取命令历史失败：' + (error.message || '未知错误'));
+        toast.error('获取命令历史失败：' + (error.message || '未知错误'));
         this.commandHistory = [];
         this.total = 0;
       } finally {
@@ -683,22 +472,18 @@ export default {
       this.currentPage = val;
       this.fetchCommandHistory();
     },
-    getStatusType(status) {
+    getStatusVariant(status) {
       const statusMap = {
-        'pending': 'info',
-        'running': 'warning',
-        'completed': 'success',
-        'failed': 'danger',
-        'timeout': 'danger',
-        'canceled': 'info'
+        pending: 'secondary', running: 'secondary', completed: 'default',
+        failed: 'destructive', timeout: 'destructive', canceled: 'outline'
       };
-      return statusMap[status] || 'info';
+      return statusMap[status] || 'outline';
     },
     commandHistoryParams() {
       const params = {
         page: this.currentPage,
         page_size: this.pageSize,
-        status: this.historyFilter.status,
+        status: this.historyFilter.status === 'all' ? '' : this.historyFilter.status,
         search: this.historyFilter.search
       };
       const range = this.historyFilter.date_range || [];
@@ -767,7 +552,16 @@ export default {
       this.fetchCommandHistory();
     },
     onBatchModeChange() {
+      this.commandForm.agent_id = this.batchMode ? [] : '';
       this.fetchAgentList();
+    },
+    isBatchAgentSelected(agentId) {
+      return Array.isArray(this.commandForm.agent_id) && this.commandForm.agent_id.includes(agentId);
+    },
+    toggleBatchAgent(agentId, checked) {
+      if (!Array.isArray(this.commandForm.agent_id)) this.commandForm.agent_id = [];
+      if (checked && !this.commandForm.agent_id.includes(agentId)) this.commandForm.agent_id.push(agentId);
+      if (!checked) this.commandForm.agent_id = this.commandForm.agent_id.filter(id => id !== agentId);
     },
     showCommandTemplates() {
       this.templateDialogVisible = true;
@@ -781,7 +575,7 @@ export default {
           supported: item.action ? allowed.has(item.action) : false
         }));
       } catch (error) {
-        this.$message.error('获取允许动作失败：' + error.message);
+        toast.error('获取允许动作失败：' + error.message);
       }
     },
     async refreshCommandDetail(commandId) {
@@ -791,12 +585,12 @@ export default {
         if (response && response.code === 200) {
           this.selectedCommand = response.data;
           this.dialogVisible = true;
-          this.$message.success('命令结果刷新成功');
+          toast.success('命令结果刷新成功');
         } else {
-          this.$message.error(response.msg || '刷新命令结果失败');
+          toast.error(response.msg || '刷新命令结果失败');
         }
       } catch (error) {
-        this.$message.error('刷新命令结果失败：' + (error.message || '未知错误'));
+        toast.error('刷新命令结果失败：' + (error.message || '未知错误'));
       } finally {
         this.detailLoading = false;
       }
@@ -809,13 +603,13 @@ export default {
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        this.$message.success('命令输出已复制到剪贴板');
+        toast.success('命令输出已复制到剪贴板');
       } else {
-        this.$message.warning('没有可复制的命令输出');
+        toast.warning('没有可复制的命令输出');
       }
     },
     getAllHistory() {
-      this.historyFilter = { agent_id: '', status: '', search: '', date_range: [] };
+      this.historyFilter = { agent_id: 'all', status: 'all', search: '', date_range: ['', ''] };
       this.currentPage = 1;
       this.fetchCommandHistory();
     }
@@ -827,151 +621,174 @@ export default {
 .agent-command-container {
   width: 100%;
   min-width: 0;
+}
 
-  .main-card {
-    border-radius: 4px;
-    box-shadow: none;
+.card-header-row,
+.card-title,
+.section-title,
+.section-title > span,
+.history-filter,
+.form-actions,
+.pagination-container,
+.loading-state {
+  display: flex;
+  align-items: center;
+}
 
-    .card-title {
-      font-size: 18px;
-      font-weight: 600;
-      i {
-        margin-right: 8px;
-      }
-    }
-    
-    .header-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-    }
+.card-header-row {
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.card-title,
+.section-title > span,
+.history-filter,
+.form-actions,
+.pagination-container,
+.loading-state {
+  gap: 8px;
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.history-filter {
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.history-filter > * {
+  flex: 1 1 150px;
+}
+
+.agent-checkboxes {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.loading-state {
+  justify-content: center;
+  min-height: 180px;
+  color: var(--muted-foreground);
+}
+
+.loading-state.compact {
+  min-height: 100px;
+}
+
+.pagination-container {
+  justify-content: flex-end;
+  margin-top: 16px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.page-size {
+  width: 110px;
+}
+
+.truncate-cell {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wide-dialog {
+  max-width: min(900px, calc(100vw - 32px));
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detail-grid > div,
+.command-content {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+}
+
+.detail-grid dt {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.detail-grid dd {
+  margin: 3px 0 0;
+  word-break: break-all;
+}
+
+.command-content,
+.command-output,
+.command-error {
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+
+.command-output,
+.command-error {
+  max-height: 300px;
+  padding: 10px;
+  overflow-y: auto;
+  border-radius: var(--radius);
+  background: #1e1e1e;
+  color: #fff;
+}
+
+.command-error {
+  color: #ff7979;
+}
+
+.no-output {
+  padding: 20px;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.template-container {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .card-header-row,
+  .section-title {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .section {
-    margin-bottom: 24px;
-
-    .section-title {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 14px;
-      color: var(--primary-color);
-      display: flex;
-      align-items: center;
-      
-      i {
-        margin-right: 8px;
-      }
-      
-      .history-filter {
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      
-      .batch-mode-switch {
-        margin-left: auto;
-      }
-    }
+  .history-filter > * {
+    flex-basis: 100%;
   }
 
-  .agent-option {
-    display: flex;
-    align-items: center;
-    padding: 5px 0;
-
-    .agent-os-icon {
-      margin-right: 10px;
-      font-size: 20px;
-    }
-
-    .agent-option-content {
-      flex: 1;
-
-      .agent-hostname {
-        font-weight: bold;
-      }
-
-      .agent-details {
-        font-size: 12px;
-        color: var(--text-secondary);
-      }
-    }
-  }
-
-  .command-detail {
-    .command-content {
-      background: var(--surface-muted);
-      padding: 10px;
-      border-radius: 4px;
-      font-family: monospace;
-      white-space: pre-wrap;
-    }
-
-    .command-output,
-    .command-error {
-      background: #1e1e1e;
-      color: #fff;
-      padding: 10px;
-      border-radius: 4px;
-      font-family: monospace;
-      white-space: pre-wrap;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    .command-error {
-      color: #ff4949;
-    }
-
-    .no-output {
-      color: var(--text-secondary);
-      text-align: center;
-      padding: 20px;
-    }
-    
-    .detail-actions {
-      margin-top: 20px;
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-  }
-
-  .pagination-container {
-    margin-top: 20px;
-    text-align: right;
-  }
-  
-  .template-container {
-    max-height: 500px;
-    overflow-y: auto;
-  }
-
-  @media (max-width: 768px) {
-    .main-card .header-actions,
-    .section .section-title,
-    .section .section-title .history-filter {
-      width: 100%;
-      align-items: stretch;
-      flex-direction: column;
-    }
-
-    .section .section-title {
-      gap: 8px;
-    }
-
-    .section .section-title .history-filter {
-      margin-left: 0;
-    }
-
-    .section .section-title .history-filter :deep(.el-select),
-    .section .section-title .history-filter :deep(.el-input),
-    .section .section-title .history-filter :deep(.el-date-editor) {
-      width: 100% !important;
-    }
+  .detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

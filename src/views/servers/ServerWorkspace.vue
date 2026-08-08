@@ -13,21 +13,15 @@
       </div>
 
       <div class="workspace-toolbar">
-        <el-select
+        <UiSelect
           v-model="selectedRoomId"
-          aria-label="选择房间"
-          placeholder="选择房间"
-          filterable
-          :loading="loading"
-          @change="handleRoomChange"
+          @update:model-value="handleRoomChange"
         >
-          <el-option
-            v-for="room in rooms"
-            :key="room.id"
-            :label="room.name"
-            :value="room.id"
-          />
-        </el-select>
+          <SelectTrigger class="room-select" aria-label="选择房间"><SelectValue placeholder="选择房间" /></SelectTrigger>
+          <SelectContent><SelectGroup>
+            <SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
+          </SelectGroup></SelectContent>
+        </UiSelect>
         <Tooltip>
           <TooltipTrigger as-child>
             <UiButton
@@ -63,9 +57,10 @@
       </AlertAction>
     </Alert>
 
-    <el-empty v-else-if="!loading && rooms.length === 0" description="当前目标没有已接管的房间">
-      <el-button type="primary" @click="$router.push('/rooms/list')">前往房间管理</el-button>
-    </el-empty>
+    <Empty v-else-if="!loading && rooms.length === 0">
+      <EmptyHeader><EmptyMedia variant="icon"><ServerOff /></EmptyMedia><EmptyTitle>当前目标没有已接管的房间</EmptyTitle></EmptyHeader>
+      <EmptyContent><UiButton @click="$router.push('/rooms/list')">前往房间管理</UiButton></EmptyContent>
+    </Empty>
 
     <template v-else-if="selectedRoom">
       <section class="status-strip" aria-label="服务器概况">
@@ -99,7 +94,7 @@
             <h2>世界与分片</h2>
             <span>{{ selectedRoom.directoryName || selectedRoom.savepath || '' }}</span>
           </div>
-          <el-button text icon="el-icon-setting" @click="openRoomSettings">房间设置</el-button>
+          <UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />房间设置</UiButton>
         </div>
 
         <div v-if="worlds.length" class="world-grid">
@@ -192,16 +187,17 @@
             </div>
           </article>
         </div>
-        <el-empty v-else description="当前房间没有世界" :image-size="72" />
+        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>当前房间没有世界</EmptyTitle></EmptyHeader></Empty>
       </section>
 
       <div class="workspace-grid">
         <section class="operation-panel">
-          <el-tabs v-model="activeOperation" class="operation-tabs">
-            <el-tab-pane name="logs">
-              <template #label>
-                <span class="tab-label"><component :is="'el-icon-document'" />实时日志</span>
-              </template>
+          <Tabs v-model="activeOperation" class="operation-tabs">
+            <TabsList>
+              <TabsTrigger value="logs"><FileText />实时日志</TabsTrigger>
+              <TabsTrigger value="console"><Terminal />控制台</TabsTrigger>
+            </TabsList>
+            <TabsContent value="logs">
               <world-log
                 v-if="selectedWorld"
                 :key="`${selectedRoomId}:${selectedWorldId}`"
@@ -212,62 +208,46 @@
                 title="分片日志"
                 class="workspace-log"
               />
-              <el-empty v-else description="请选择世界" :image-size="72" />
-            </el-tab-pane>
+              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>请选择世界</EmptyTitle></EmptyHeader></Empty>
+            </TabsContent>
 
-            <el-tab-pane name="console">
-              <template #label>
-                <span class="tab-label"><component :is="'el-icon-monitor'" />控制台</span>
-              </template>
-              <div v-loading="contextLoading" class="console-panel">
+            <TabsContent value="console">
+              <div class="console-panel">
+                <div v-if="contextLoading" class="panel-loading"><Spinner /><span>正在加载控制台...</span></div>
                 <div class="console-toolbar">
-                  <el-select v-model="consoleServer" placeholder="选择目标世界" aria-label="选择控制台目标世界">
-                    <el-option
-                      v-for="server in roomConsoleServers"
-                      :key="server.session_name"
-                      :label="server.name"
-                      :value="server.session_name"
-                    />
-                  </el-select>
-                  <el-dropdown trigger="click" @command="applyCommonCommand">
-                    <el-button>常用命令<component :is="'el-icon-arrow-down'" class="button-tail-icon" /></el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item v-for="item in commonCommands" :key="item.command" :command="item.command">
-                          {{ item.name }}
-                        </el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                  <el-button text icon="el-icon-setting" @click="$router.push('/servers/commands')">命令管理</el-button>
+                  <UiSelect v-model="consoleServer">
+                    <SelectTrigger class="console-select" aria-label="选择控制台目标世界"><SelectValue placeholder="选择目标世界" /></SelectTrigger>
+                    <SelectContent><SelectGroup>
+                      <SelectItem v-for="server in roomConsoleServers" :key="server.session_name" :value="server.session_name">{{ server.name }}</SelectItem>
+                    </SelectGroup></SelectContent>
+                  </UiSelect>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child><UiButton variant="outline">常用命令<ChevronDown data-icon="inline-end" /></UiButton></DropdownMenuTrigger>
+                    <DropdownMenuContent><DropdownMenuGroup>
+                      <DropdownMenuItem v-for="item in commonCommands" :key="item.command" @select="applyCommonCommand(item.command)">{{ item.name }}</DropdownMenuItem>
+                    </DropdownMenuGroup></DropdownMenuContent>
+                  </DropdownMenu>
+                  <UiButton variant="ghost" @click="$router.push('/servers/commands')"><Settings data-icon="inline-start" />命令管理</UiButton>
                 </div>
-                <el-alert
-                  v-if="contextErrors.console"
-                  class="context-error"
-                  type="error"
-                  :closable="false"
-                  show-icon
-                  :title="contextErrors.console"
-                />
-                <el-input
+                <Alert v-if="contextErrors.console" class="context-error" variant="destructive">
+                  <CircleAlert /><AlertTitle>控制台不可用</AlertTitle><AlertDescription>{{ contextErrors.console }}</AlertDescription>
+                </Alert>
+                <UiTextarea
                   v-model="rawCommand"
-                  type="textarea"
-                  :rows="7"
-                  resize="vertical"
+                  rows="7"
                   placeholder="输入 Lua 控制台命令"
                   aria-label="Lua 控制台命令"
                 />
                 <div class="console-footer">
                   <span>目标：{{ selectedConsoleServer?.name || '未选择' }}</span>
-                  <el-button
-                    type="primary"
-                    icon="el-icon-position"
-                    :loading="commandExecuting"
+                  <UiButton
                     :disabled="!consoleServer || !rawCommand.trim()"
                     @click="executeRawCommand"
                   >
+                    <Spinner v-if="commandExecuting" data-icon="inline-start" />
+                    <Send v-else data-icon="inline-start" />
                     执行
-                  </el-button>
+                  </UiButton>
                 </div>
                 <div v-if="commandResult" class="command-result" :class="{ failed: !commandResult.success }" role="status">
                   <div>
@@ -277,18 +257,19 @@
                   <p>{{ commandResult.message }}</p>
                 </div>
               </div>
-            </el-tab-pane>
-          </el-tabs>
+            </TabsContent>
+          </Tabs>
         </section>
 
-        <aside v-loading="contextLoading" class="context-rail" :aria-busy="contextLoading">
+        <aside class="context-rail" :aria-busy="contextLoading">
+          <div v-if="contextLoading" class="panel-loading"><Spinner /><span>正在加载房间信息...</span></div>
           <section class="rail-section">
             <div class="rail-heading">
               <div>
                 <h2>玩家</h2>
                 <span>{{ contextErrors.players ? '数据读取失败' : (playerStats ? `${playerStats.online_count} 人在线` : '状态不可用') }}</span>
               </div>
-              <el-button text icon="el-icon-arrow-right" @click="openPlayers">全部</el-button>
+              <UiButton variant="ghost" size="sm" @click="openPlayers">全部<ArrowRight data-icon="inline-end" /></UiButton>
             </div>
             <div v-if="recentPlayers.length" class="player-list">
               <button
@@ -298,7 +279,7 @@
                 class="player-row"
                 @click="openPlayers"
               >
-                <span class="player-avatar"><component :is="'el-icon-user'" /></span>
+                <span class="player-avatar"><User /></span>
                 <span class="player-copy">
                   <strong>{{ player.player_name || player.user_id }}</strong>
                   <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || '未知世界' }}</span>
@@ -317,11 +298,11 @@
                 <h2>最近备份</h2>
                 <span>{{ contextErrors.backups ? '列表读取失败' : `${backups.length} 个记录` }}</span>
               </div>
-              <el-button text icon="el-icon-arrow-right" @click="$router.push('/backups')">全部</el-button>
+              <UiButton variant="ghost" size="sm" @click="$router.push('/backups')">全部<ArrowRight data-icon="inline-end" /></UiButton>
             </div>
             <div v-if="backups.length" class="backup-list">
               <div v-for="backup in backups.slice(0, 3)" :key="backup.id || backup.name" class="backup-row">
-                <component :is="'el-icon-document-checked'" />
+                <FileCheck2 />
                 <span>
                   <strong>{{ backup.name }}</strong>
                   <small>{{ backup.create_time || formatCompactTime(backup.createdAt) }} · {{ backup.size_formatted || '--' }}</small>
@@ -333,19 +314,19 @@
 
           <nav class="quick-nav" aria-label="服务器快捷入口">
             <button type="button" @click="openPlayers">
-              <component :is="'el-icon-user'" />
+              <User />
               <span>玩家管理</span>
             </button>
             <button type="button" @click="openMods">
-              <component :is="'el-icon-s-operation'" />
+              <PackageOpen />
               <span>模组管理</span>
             </button>
             <button type="button" @click="openWorldState">
-              <component :is="'el-icon-data-analysis'" />
+              <ChartNoAxesCombined />
               <span>世界状态</span>
             </button>
             <button type="button" @click="$router.push('/logs/query')">
-              <component :is="'el-icon-search'" />
+              <Search />
               <span>日志查询</span>
             </button>
           </nav>
@@ -361,9 +342,20 @@ import { backupApi, commandApi, playerApi, roomApi, systemApi } from '@/api'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { CircleAlert, DatabaseBackup, Play, RefreshCw, RotateCw, Settings, Square } from '@lucide/vue'
+import { confirmAction, promptText } from '@/lib/feedback'
+import {
+  ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, DatabaseBackup, FileCheck2,
+  FileText, Globe2, Moon, PackageOpen, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
+  Settings, Square, Sun, Terminal, User
+} from '@lucide/vue'
+import { toast } from 'vue-sonner'
 
 const CHARACTER_NAMES = {
   wilson: '威尔逊',
@@ -395,17 +387,52 @@ export default {
     AlertTitle,
     Badge,
     CircleAlert,
+    ArrowRight,
+    ChartNoAxesCombined,
+    ChevronDown,
     DatabaseBackup,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    Empty,
+    EmptyContent,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    FileCheck2,
+    FileText,
+    Globe2,
+    Moon,
+    PackageOpen,
     Play,
     RefreshCw,
     RotateCw,
+    Search,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Send,
+    ServerOff,
     Settings,
     Spinner,
     Square,
+    Sun,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    Terminal,
     Tooltip,
     TooltipContent,
     TooltipTrigger,
     UiButton,
+    UiSelect,
+    UiTextarea,
+    User,
     WorldLog
   },
   data() {
@@ -604,7 +631,7 @@ export default {
     async handleWorldAction(world, action) {
       const label = { start: '启动', stop: '停止', restart: '重启' }[action]
       try {
-        await this.$confirm(`确定要${label}“${this.selectedRoom.name} / ${world.name}”吗？`, `${label}世界`, {
+        await confirmAction(`确定要${label}“${this.selectedRoom.name} / ${world.name}”吗？`, `${label}世界`, {
           confirmButtonText: `确认${label}`,
           cancelButtonText: '取消',
           type: action === 'start' ? 'info' : 'warning'
@@ -624,10 +651,10 @@ export default {
           archive_name: this.selectedRoom.name,
           world_name: world.name
         })
-        this.$message.success(response?.msg || `${label}完成`)
+        toast.success(response?.msg || `${label}完成`)
         await this.refreshWorkspace(true)
       } catch (error) {
-        this.$message.error(`${label}失败：${error.message || '未知错误'}`)
+        toast.error(`${label}失败：${error.message || '未知错误'}`)
       } finally {
         this.worldActionId = ''
       }
@@ -637,10 +664,10 @@ export default {
       this.backupCreating = true
       try {
         const response = await backupApi.createBackup(this.selectedRoom.name)
-        this.$message.success(response?.msg || '备份已创建')
+        toast.success(response?.msg || '备份已创建')
         await this.refreshRoomContext()
       } catch (error) {
-        this.$message.error(`创建备份失败：${error.message || '未知错误'}`)
+        toast.error(`创建备份失败：${error.message || '未知错误'}`)
       } finally {
         this.backupCreating = false
       }
@@ -654,7 +681,7 @@ export default {
 
       let confirmation
       try {
-        const response = await this.$prompt(
+        const response = await promptText(
           `该操作会向分片发送 Lua 命令，请输入房间名“${server.room_name}”确认`,
           '执行确认',
           {
@@ -678,11 +705,11 @@ export default {
           runId: run.id,
           message: run.message || run.errorMessage || (success ? '命令已发送到分片控制台' : '命令发送失败')
         }
-        if (success) this.$message.success('命令已发送')
-        else this.$message.error(this.commandResult.message)
+        if (success) toast.success('命令已发送')
+        else toast.error(this.commandResult.message)
       } catch (error) {
         this.commandResult = { success: false, message: error.message || '命令发送失败' }
-        this.$message.error(this.commandResult.message)
+        toast.error(this.commandResult.message)
       } finally {
         this.commandExecuting = false
       }
@@ -723,7 +750,7 @@ export default {
       })
     },
     worldIcon(world) {
-      return ['cave', 'caves'].includes(world.type || world.role) ? 'el-icon-moon-night' : 'el-icon-sunny'
+      return ['cave', 'caves'].includes(world.type || world.role) ? Moon : Sun
     },
     worldTone(world) {
       return ['cave', 'caves'].includes(world.type || world.role) ? 'cave' : 'forest'
@@ -830,7 +857,7 @@ export default {
   flex-wrap: wrap;
 }
 
-.workspace-toolbar :deep(.el-select) {
+.room-select {
   width: 220px;
 }
 
@@ -941,13 +968,13 @@ export default {
 
 .world-item:hover,
 .world-item:focus-visible {
-  border-color: var(--el-border-color);
+  border-color: var(--border);
   outline: none;
 }
 
 .world-item.selected {
-  background: var(--el-color-primary-light-9);
-  border-color: var(--el-color-primary-light-5);
+  background: var(--accent);
+  border-color: var(--ring);
 }
 
 .world-item.running::before {
@@ -1057,12 +1084,7 @@ export default {
   overflow: hidden;
 }
 
-.operation-tabs :deep(.el-tabs__header) {
-  margin: 0;
-  padding: 0 14px;
-}
-
-.operation-tabs :deep(.el-tabs__content) {
+.operation-tabs {
   padding: 14px;
 }
 
@@ -1086,8 +1108,18 @@ export default {
   flex-wrap: wrap;
 }
 
-.console-toolbar :deep(.el-select) {
+.console-select {
   width: min(320px, 100%);
+}
+
+.panel-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .context-error {
@@ -1187,7 +1219,7 @@ export default {
 }
 
 .player-row:focus-visible {
-  outline: 2px solid var(--el-color-primary-light-5);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
@@ -1308,7 +1340,7 @@ export default {
 .quick-nav button:hover,
 .quick-nav button:focus-visible {
   color: var(--primary-color);
-  background: var(--el-color-primary-light-9);
+  background: var(--accent);
   outline: none;
 }
 
@@ -1361,7 +1393,7 @@ export default {
     justify-content: flex-start;
   }
 
-  .workspace-toolbar :deep(.el-select) {
+  .room-select {
     flex: 1 1 180px;
     width: auto;
   }
@@ -1389,7 +1421,7 @@ export default {
     height: 520px;
   }
 
-  .console-toolbar :deep(.el-select) {
+  .console-select {
     flex: 1 1 100%;
     width: 100%;
   }

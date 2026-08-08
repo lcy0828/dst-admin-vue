@@ -4,204 +4,154 @@
       <h2>房间管理</h2>
       <p>管理游戏房间的所有设置选项</p>
     </div>
-    
-    <el-row :gutter="20">
-      <!-- 房间设置卡片 -->
-      <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room')">
-          <div class="card-icon">
-            <component :is="'el-icon-setting'" class="legacy-icon" />
-          </div>
-          <div class="card-content">
-            <h3>基本设置</h3>
-            <p>配置房间的基本信息和样式</p>
-            <div class="card-features">
-              <span>• 房间名称</span>
-              <span>• 房间描述</span>
-              <span>• 房间风格</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <!-- 房间权限卡片 -->
-      <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/permissions')">
-          <div class="card-icon permission-icon">
-            <component :is="'el-icon-lock'" class="legacy-icon" />
-          </div>
-          <div class="card-content">
-            <h3>权限设置</h3>
-            <p>管理房间的访问权限和玩家权限</p>
-            <div class="card-features">
-              <span>• 访问控制</span>
-              <span>• 玩家权限</span>
-              <span>• 白名单管理</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <!-- 房间游戏设置卡片 -->
-      <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/gameplay')">
-          <div class="card-icon gameplay-icon">
-            <component :is="'el-icon-odometer'" class="legacy-icon" />
-          </div>
-          <div class="card-content">
-            <h3>游戏设置</h3>
-            <p>调整房间的游戏规则和难度设置</p>
-            <div class="card-features">
-              <span>• 游戏模式</span>
-              <span>• 难度设置</span>
-              <span>• 资源设置</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-    
-    <el-row :gutter="20" style="margin-top: 20px;">
-      <!-- 房间模组设置卡片 -->
-      <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/mods')">
-          <div class="card-icon mods-icon">
-            <component :is="'el-icon-s-grid'" class="legacy-icon" />
-          </div>
-          <div class="card-content">
-            <h3>模组设置</h3>
-            <p>管理房间使用的模组和配置</p>
-            <div class="card-features">
-              <span>• 模组选择</span>
-              <span>• 模组配置</span>
-              <span>• 模组兼容性</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <!-- 房间季节设置卡片 -->
-      <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/seasons')">
-          <div class="card-icon seasons-icon">
-            <component :is="'el-icon-sunny'" class="legacy-icon" />
-          </div>
-          <div class="card-content">
-            <h3>季节设置</h3>
-            <p>调整房间的季节时长和天气设置</p>
-            <div class="card-features">
-              <span>• 季节长度</span>
-              <span>• 天气效果</span>
-              <span>• 特殊事件</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <!-- 房间世界设置卡片 -->
-      <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/world')">
-          <div class="card-icon world-icon">
-            <component :is="'el-icon-map-location'" class="legacy-icon" />
-          </div>
-          <div class="card-content">
-            <h3>世界设置</h3>
-            <p>配置世界生成和资源分布</p>
-            <div class="card-features">
-              <span>• 地图大小</span>
-              <span>• 资源分布</span>
-              <span>• 地形设置</span>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-    
-    <!-- 激活房间卡片 -->
-    <el-card shadow="hover" class="active-rooms-card" style="margin-top: 20px;">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>当前激活房间</span>
-        <el-button style="float: right; padding: 3px 0" type="text" @click="refreshRooms">刷新列表</el-button>
-      </div>
-</template>
-      
-      <el-table :data="activeRooms" style="width: 100%">
-        <el-table-column prop="name" label="房间名称"></el-table-column>
-        <el-table-column prop="players" label="玩家数" width="100"></el-table-column>
-        <el-table-column prop="mode" label="游戏模式" width="120"></el-table-column>
-        <el-table-column prop="style" label="风格" width="100">
-          <template v-slot="scope">
-            <div class="style-tag" :class="'style-' + scope.row.style">{{ scope.row.styleName }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template v-slot="scope">
-            <el-tag :type="scope.row.status === '开放' ? 'success' : 'info'" size="mini">{{ scope.row.status }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="250">
-          <template v-slot="scope">
-            <el-button type="text" size="small" @click="editRoom(scope.row)">编辑</el-button>
-            <el-button type="text" size="small" @click="startRoom(scope.row)">启动</el-button>
-            <el-button type="text" size="small" @click="duplicateRoom(scope.row)">复制</el-button>
-            <el-button type="text" size="small" class="danger-text" @click="deleteRoom(scope.row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <div class="add-room-button">
-        <el-button type="primary" icon="el-icon-plus" @click="createNewRoom">创建新房间</el-button>
-      </div>
-    </el-card>
 
-    <el-dialog
-      title="启动房间服务器"
-      v-model="startRoomDialogVisible"
-      width="500px"
-      :close-on-click-modal="false"
-      custom-class="start-room-dialog">
-      <div v-if="currentRoom" class="start-room-dialog-content">
-        <div class="room-info">
-          <component :is="'el-icon-video-play'" class="legacy-icon" />
-          <p>您正在启动房间：<strong>{{ currentRoom.name }}</strong></p>
+    <div class="menu-grid">
+      <Card
+        v-for="section in roomSections"
+        :key="section.path"
+        class="menu-card"
+        tabindex="0"
+        @click="navigateTo(section.path)"
+        @keydown.enter="navigateTo(section.path)"
+      >
+        <CardHeader class="menu-card-header">
+          <div class="card-icon"><component :is="section.icon" /></div>
+          <div>
+            <CardTitle>{{ section.title }}</CardTitle>
+            <CardDescription>{{ section.description }}</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent class="card-features">
+          <Badge v-for="feature in section.features" :key="feature" variant="secondary">{{ feature }}</Badge>
+        </CardContent>
+      </Card>
+    </div>
+
+    <Card class="active-rooms-card">
+      <CardHeader class="active-rooms-header">
+        <div>
+          <CardTitle>当前激活房间</CardTitle>
+          <CardDescription>查看房间状态并执行常用操作。</CardDescription>
         </div>
-        
-        <el-form :model="startForm" label-width="120px">
-          <el-form-item label="启动模式">
-            <el-radio-group v-model="startForm.worldType">
-              <el-radio label="both">完整房间（主世界+洞穴）</el-radio>
-              <el-radio label="forest">仅主世界</el-radio>
-              <el-radio label="cave">仅洞穴</el-radio>
-              <el-radio label="unknown">仅其他世界</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          
-          <el-form-item label="服务器模式">
-            <el-select v-model="startForm.serverMode" placeholder="选择服务器模式">
-              <el-option label="普通模式" value="32"></el-option>
-              <el-option label="专家模式" value="64"></el-option>
-            </el-select>
-          </el-form-item>
-        </el-form>
-      </div>
-      <template v-slot:footer>
-<div  class="dialog-footer">
-        <el-button @click="startRoomDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmStartRoom" :loading="startLoading">启动</el-button>
-      </div>
-</template>
-    </el-dialog>
+        <UiButton size="sm" variant="outline" @click="refreshRooms">
+          <RefreshCw data-icon="inline-start" />
+          刷新列表
+        </UiButton>
+      </CardHeader>
+      <CardContent>
+        <ShadcnTable>
+          <TableHeader>
+            <TableRow>
+              <TableHead>房间名称</TableHead><TableHead>玩家数</TableHead><TableHead>游戏模式</TableHead>
+              <TableHead>风格</TableHead><TableHead>状态</TableHead><TableHead>操作</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="room in activeRooms" :key="room.id">
+              <TableCell class="font-medium">{{ room.name }}</TableCell>
+              <TableCell>{{ room.players }}</TableCell>
+              <TableCell>{{ room.mode }}</TableCell>
+              <TableCell><Badge variant="outline">{{ room.styleName }}</Badge></TableCell>
+              <TableCell><Badge :variant="room.status === '开放' ? 'default' : 'secondary'">{{ room.status }}</Badge></TableCell>
+              <TableCell>
+                <div class="table-actions">
+                  <UiButton size="xs" variant="ghost" @click="editRoom(room)">编辑</UiButton>
+                  <UiButton size="xs" variant="ghost" @click="startRoom(room)">启动</UiButton>
+                  <UiButton size="xs" variant="ghost" @click="duplicateRoom(room)">复制</UiButton>
+                  <UiButton size="xs" variant="destructive" @click="deleteRoom(room)">删除</UiButton>
+                </div>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </ShadcnTable>
+      </CardContent>
+      <CardFooter class="add-room-button">
+        <UiButton @click="createNewRoom"><Plus data-icon="inline-start" />创建新房间</UiButton>
+      </CardFooter>
+    </Card>
+
+    <UiDialog v-model:open="startRoomDialogVisible">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>启动房间服务器</DialogTitle>
+          <DialogDescription v-if="currentRoom">配置“{{ currentRoom.name }}”的启动范围和服务端模式。</DialogDescription>
+        </DialogHeader>
+        <FieldGroup v-if="currentRoom">
+          <FieldSet>
+            <FieldLegend variant="label">启动模式</FieldLegend>
+            <RadioGroup v-model="startForm.worldType" class="radio-list">
+              <Field v-for="option in worldTypeOptions" :key="option.value" orientation="horizontal">
+                <RadioGroupItem :id="`world-${option.value}`" :value="option.value" />
+                <FieldLabel :for="`world-${option.value}`" class="font-normal">{{ option.label }}</FieldLabel>
+              </Field>
+            </RadioGroup>
+          </FieldSet>
+          <Field>
+            <FieldLabel>服务器模式</FieldLabel>
+            <UiSelect v-model="startForm.serverMode">
+              <SelectTrigger class="w-full"><SelectValue placeholder="选择服务器模式" /></SelectTrigger>
+              <SelectContent><SelectGroup>
+                <SelectItem value="32">普通模式</SelectItem>
+                <SelectItem value="64">专家模式</SelectItem>
+              </SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" @click="startRoomDialogVisible = false">取消</UiButton>
+          <UiButton :disabled="startLoading" @click="confirmStartRoom">
+            <Spinner v-if="startLoading" data-icon="inline-start" />
+            <Play v-else data-icon="inline-start" />
+            启动
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { Gamepad2, Globe2, Lock, PackageOpen, Play, Plus, RefreshCw, Settings, Sun } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { roomApi } from '@/api/index';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { confirmAction } from '@/lib/feedback';
+
+const ROOM_SECTIONS = [
+  { path: '/servers/room', title: '基本设置', description: '配置房间的基本信息和样式', icon: Settings, features: ['房间名称', '房间描述', '房间风格'] },
+  { path: '/servers/room/permissions', title: '权限设置', description: '管理房间的访问权限和玩家权限', icon: Lock, features: ['访问控制', '玩家权限', '白名单管理'] },
+  { path: '/servers/room/gameplay', title: '游戏设置', description: '调整房间的游戏规则和难度设置', icon: Gamepad2, features: ['游戏模式', '难度设置', '资源设置'] },
+  { path: '/servers/room/mods', title: '模组设置', description: '管理房间使用的模组和配置', icon: PackageOpen, features: ['模组选择', '模组配置', '模组兼容性'] },
+  { path: '/servers/room/seasons', title: '季节设置', description: '调整房间的季节时长和天气设置', icon: Sun, features: ['季节长度', '天气效果', '特殊事件'] },
+  { path: '/servers/room/world', title: '世界设置', description: '配置世界生成和资源分布', icon: Globe2, features: ['地图大小', '资源分布', '地形设置'] }
+];
 
 export default {
   name: 'RoomMenu',
+  components: {
+    Badge, UiButton, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
+    UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field,
+    FieldGroup, FieldLabel, FieldLegend, FieldSet, Play, Plus, RadioGroup, RadioGroupItem,
+    RefreshCw, UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
+    Spinner, ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow
+  },
   data() {
     return {
+      roomSections: ROOM_SECTIONS,
+      worldTypeOptions: [
+        { value: 'both', label: '完整房间（主世界 + 洞穴）' },
+        { value: 'forest', label: '仅主世界' },
+        { value: 'cave', label: '仅洞穴' },
+        { value: 'unknown', label: '仅其他世界' }
+      ],
       activeRooms: [
         {
           id: 1,
@@ -254,49 +204,28 @@ export default {
       this.$router.push(path);
     },
     refreshRooms() {
-      this.$message({
-        message: '房间列表已刷新',
-        type: 'success'
-      });
+      toast.success('房间列表已刷新');
     },
     editRoom() {
       this.$router.push('/servers/room');
       // 可以传递房间ID作为参数，以便加载特定房间的设置
       // this.$router.push({ path: '/servers/room', query: { id: room.id } });
     },
-    duplicateRoom(room) {
-      this.$confirm(`确定要复制房间 "${room.name}" 吗?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'info'
-      }).then(() => {
-        this.$message({
-          type: 'success',
-          message: `已复制房间 ${room.name}`
-        });
-      }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });          
-      });
+    async duplicateRoom(room) {
+      try {
+        await confirmAction(`确定要复制房间 "${room.name}" 吗?`, '复制房间');
+        toast.success(`已复制房间 ${room.name}`);
+      } catch {
+        toast.info('已取消操作');
+      }
     },
-    deleteRoom(room) {
-      this.$confirm(`确定要删除房间 "${room.name}" 吗? 此操作不可恢复!`, '警告', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.$message({
-          type: 'success',
-          message: `已删除房间 ${room.name}`
-        });
-      }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });          
-      });
+    async deleteRoom(room) {
+      try {
+        await confirmAction(`确定要删除房间 "${room.name}" 吗? 此操作不可恢复!`, '删除房间', { destructive: true });
+        toast.success(`已删除房间 ${room.name}`);
+      } catch {
+        toast.info('已取消操作');
+      }
     },
     createNewRoom() {
       this.$router.push('/servers/room');
@@ -307,7 +236,7 @@ export default {
     },
     confirmStartRoom() {
       if (!this.currentRoom || !this.currentRoom.id) {
-        this.$message.error('无法获取房间信息');
+        toast.error('无法获取房间信息');
         return;
       }
       this.startLoading = true;
@@ -356,10 +285,10 @@ export default {
             }
           })
           .then(() => {
-            this.$message.success('房间启动成功');
+            toast.success('房间启动成功');
           })
           .catch(error => {
-            this.$message.error('启动房间失败: ' + (error.message || '未知错误'));
+            toast.error('启动房间失败: ' + (error.message || '未知错误'));
           })
           .finally(() => {
             this.startRoomDialogVisible = false;
@@ -372,7 +301,7 @@ export default {
             // 过滤出unknown类型的世界
             const filteredWorlds = worlds.filter(world => world.type === 'unknown');
             if (filteredWorlds.length === 0) {
-              this.$message.warning('没有找到其他类型的世界');
+              toast.warning('没有找到其他类型的世界');
               this.startLoading = false;
               this.startRoomDialogVisible = false;
               return;
@@ -393,11 +322,11 @@ export default {
           })
           .then(responses => {
             if (responses) {
-              this.$message.success('其他类型世界启动成功');
+              toast.success('其他类型世界启动成功');
             }
           })
           .catch(error => {
-            this.$message.error('启动世界失败: ' + (error.message || '未知错误'));
+            toast.error('启动世界失败: ' + (error.message || '未知错误'));
           })
           .finally(() => {
             this.startRoomDialogVisible = false;
@@ -428,13 +357,13 @@ export default {
           })
           .then(response => {
             if (response && (response.status === 200 || (response.data && response.data.status === 200))) {
-              this.$message.success(`${worldType === 'forest' ? '主世界' : '洞穴世界'}启动成功`);
+              toast.success(`${worldType === 'forest' ? '主世界' : '洞穴世界'}启动成功`);
             } else {
-              this.$message.error(response && response.msg ? response.msg : '启动世界失败');
+              toast.error(response && response.msg ? response.msg : '启动世界失败');
             }
           })
           .catch(error => {
-            this.$message.error('启动世界失败: ' + (error.message || '未知错误'));
+            toast.error('启动世界失败: ' + (error.message || '未知错误'));
           })
           .finally(() => {
             this.startRoomDialogVisible = false;
@@ -455,7 +384,7 @@ export default {
 .page-header {
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .page-header h2 {
@@ -467,184 +396,97 @@ export default {
 
 .page-header p {
   margin: 2px 0 0;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 13px;
+}
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .menu-card {
-  height: 164px;
+  min-height: 164px;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
-  display: flex;
-  align-items: flex-start;
-  padding: 16px;
-  border-radius: 4px;
-  box-shadow: none;
 }
 
 .menu-card:hover {
-  transform: none;
-  border-color: var(--el-color-primary-light-5);
-  box-shadow: none;
+  border-color: var(--ring);
+  background: var(--muted);
+}
+
+.menu-card-header {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: row;
+  gap: 12px;
 }
 
 .card-icon {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  border-radius: 4px;
-  background-color: var(--el-color-primary-light-9);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  color: var(--primary-color);
-  margin-right: 12px;
-}
-
-.permission-icon,
-.gameplay-icon,
-.mods-icon,
-.seasons-icon,
-.world-icon {
-  background-color: var(--surface-muted);
-  color: var(--text-regular);
-}
-
-.card-content {
-  min-width: 0;
-  text-align: left;
-}
-
-.card-content h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.card-content p {
-  color: var(--text-regular);
-  font-size: 13px;
-  margin: 0 0 10px;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .card-features {
   display: flex;
-  gap: 5px 10px;
+  gap: 6px;
   align-items: flex-start;
   flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.card-features span {
-  margin: 0;
 }
 
 .active-rooms-card {
   margin-top: 16px;
-  border-radius: 4px;
-  box-shadow: none;
 }
 
-.style-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 12px;
-}
-
-.style-default {
-  background-color: #f9f9f9;
-  color: #333333;
-  border: 1px solid var(--el-border-color);
-}
-
-.style-dark {
-  background-color: #333333;
-  color: #ffffff;
-}
-
-.style-forest {
-  background-color: #e8f5e9;
-  color: #1b5e20;
-}
-
-.style-desert {
-  background-color: #fff8e1;
-  color: #ff8f00;
-}
-
-.style-winter {
-  background-color: #edf6ee;
-  color: #326343;
-}
-
-.style-cave {
-  background-color: #3e3e3e;
-  color: #e0e0e0;
-}
-
-.danger-text {
-  color: #c94f4f;
-}
-
-.danger-text:hover {
-  color: #f78989;
+.active-rooms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-direction: row;
+  gap: 12px;
 }
 
 .add-room-button {
-  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.table-actions,
+.radio-list {
   display: flex;
-  justify-content: center;
+  gap: 6px;
 }
 
-/* 响应式调整 */
-@media (max-width: 1200px) {
-  .room-menu-page > .el-row > .el-col {
-    width: 50% !important;
-    margin-bottom: 16px;
+.table-actions {
+  flex-wrap: wrap;
+}
+
+.radio-list {
+  flex-direction: column;
+}
+
+@media (max-width: 1000px) {
+  .menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 768px) {
-  .room-menu-page > .el-row > .el-col {
-    width: 100% !important;
+@media (max-width: 640px) {
+  .menu-grid {
+    grid-template-columns: 1fr;
   }
 
-  .menu-card {
-    height: auto;
-    min-height: 136px;
-  }
-}
-
-.start-room-dialog {
-  border-radius: 4px;
-  overflow: hidden;
-  
-  .start-room-dialog-content {
-    .room-info {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-      padding-bottom: 15px;
-      border-bottom: 1px dashed var(--border-color);
-      
-      i {
-        font-size: 24px;
-        color: #4f8a5b;
-        margin-right: 10px;
-      }
-      
-      p {
-        margin: 0;
-        font-size: 16px;
-        
-        strong {
-          color: var(--primary-color);
-        }
-      }
-    }
+  .active-rooms-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

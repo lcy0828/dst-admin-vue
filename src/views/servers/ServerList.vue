@@ -1,237 +1,129 @@
 <template>
   <div class="server-list-page">
-    <!-- 标题及操作按钮 -->
     <div class="page-header">
       <div class="title-container">
-        <component :is="'el-icon-monitor'" class="legacy-icon" />
+        <Server />
         <span>服务器状态监控</span>
       </div>
-      <div class="action-buttons">
-        <el-button size="small" icon="el-icon-refresh" @click="refreshData">刷新</el-button>
-      </div>
-      </div>
-
-    <!-- 服务器分组及筛选区域 -->
-    <div class="filter-container">
-      <el-tabs v-model="activeTab" @tab-click="handleTabChange">
-        <el-tab-pane label="全部服务器" name="all"></el-tab-pane>
-        <el-tab-pane label="本机服务器" name="local"></el-tab-pane>
-        <el-tab-pane label="Docker服务器 (未来功能)" name="docker" disabled></el-tab-pane>
-        <el-tab-pane label="远程服务器 (未来功能)" name="remote" disabled></el-tab-pane>
-        <el-tab-pane label="K8s服务器 (未来功能)" name="k8s" disabled></el-tab-pane>
-      </el-tabs>
-
-      <div class="filter-options">
-        <el-select v-model="roomFilter" placeholder="按存档筛选" size="small" clearable @change="filterServers">
-          <el-option
-            v-for="room in roomList"
-            :key="room.id"
-            :label="room.name"
-            :value="room.id">
-          </el-option>
-        </el-select>
-
-        <el-select v-model="typeFilter" placeholder="按类型筛选" size="small" clearable @change="filterServers">
-          <el-option label="森林服务器" value="forest"></el-option>
-          <el-option label="洞穴服务器" value="cave"></el-option>
-        </el-select>
-
-        <el-select v-model="statusFilter" placeholder="按状态筛选" size="small" clearable @change="filterServers">
-          <el-option label="在线" value="online"></el-option>
-          <el-option label="离线" value="offline"></el-option>
-          <el-option label="重启中" value="restarting"></el-option>
-        </el-select>
-
-        <el-select v-model="closedTimeFilter" placeholder="按关闭时间筛选" size="small" clearable @change="filterServers">
-          <el-option label="显示所有" value="all"></el-option>
-          <el-option label="1小时内关闭" value="1"></el-option>
-          <el-option label="6小时内关闭" value="6"></el-option>
-          <el-option label="12小时内关闭" value="12"></el-option>
-          <el-option label="24小时内关闭" value="24"></el-option>
-          <el-option label="3天内关闭" value="72"></el-option>
-          <el-option label="7天内关闭" value="168"></el-option>
-        </el-select>
-      </div>
+      <UiButton size="sm" variant="outline" :disabled="loading" @click="refreshData"><RefreshCw data-icon="inline-start" />刷新</UiButton>
     </div>
 
-    <!-- 服务器列表主体内容 -->
-    <div v-loading="loading" class="server-table-container">
-        <el-table
-          :data="filteredServerList"
-          style="width: 100%"
-          border
-          stripe>
-          <el-table-column
-          label="服务器名称"
-          prop="name"
-          min-width="180">
-          <template #default="scope">
-            <div class="server-name-container">
-              <div :class="['server-status', scope.row.status === 'running' ? 'online' : 'offline']"></div>
-              <el-tag size="mini" :type="getWorldTypeTagType(scope.row.world_name)" class="server-type-tag">
-                {{ getWorldTypeName(scope.row.world_name) }}
-              </el-tag>
-              <div class="server-room">
-                {{ scope.row.archive_name }}
-              </div>
-            </div>
-          </template>
-          </el-table-column>
+    <Card class="filter-container">
+      <CardContent class="filter-content">
+        <Tabs v-model="activeTab" @update:model-value="handleTabChange">
+          <TabsList>
+            <TabsTrigger value="all">全部服务器</TabsTrigger><TabsTrigger value="local">本机服务器</TabsTrigger>
+            <TabsTrigger value="docker" disabled>Docker</TabsTrigger><TabsTrigger value="remote" disabled>远程</TabsTrigger><TabsTrigger value="k8s" disabled>K8s</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-          <el-table-column
-          label="玩家"
-          width="100">
-            <template v-slot="scope">
-            {{ scope.row.players }}
-            </template>
-          </el-table-column>
-
-          <el-table-column
-          label="天数"
-          width="70">
-          <template #default="scope">
-            {{ scope.row.days }}
-          </template>
-          </el-table-column>
-
-          <el-table-column
-          label="季节"
-          width="100">
-            <template v-slot="scope">
-            <el-tag v-if="scope.row.season" :type="getSeasonType(scope.row.season)" size="medium">
-              {{ scope.row.season }}
-              </el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column
-          label="服务器模式"
-          width="100">
-            <template v-slot="scope">
-            <el-tag type="info" size="medium" v-if="scope.row.server_mode">
-              {{ getServerModeText(scope.row.server_mode) }}
-            </el-tag>
-              <span v-else>-</span>
-            </template>
-          </el-table-column>
-
-          <el-table-column
-          label="运行时间"
-          min-width="140">
-            <template v-slot="scope">
-              <div>{{ formatTimeDiff(Date.now() - new Date(scope.row.start_time).getTime()) }}</div>
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          label="部署方式"
-          width="100">
-          <template #default>
-            <el-tag size="medium">
-              本地
-            </el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column
-            label="操作"
-            min-width="200">
-            <template v-slot="scope">
-            <div class="operation-buttons">
-              <el-button
-                size="mini"
-                :type="scope.row.status === 'running' ? 'danger' : 'success'"
-                @click="handleServerAction(scope.row)">
-                {{ scope.row.status === 'running' ? '停止' : '启动' }}
-              </el-button>
-              <el-button
-                size="mini"
-                type="info"
-                @click="handleConfigure(scope.row)">
-                配置
-              </el-button>
-            </div>
-            </template>
-          </el-table-column>
-        </el-table>
-
-      <!-- 空数据提示 -->
-      <div class="empty-block" v-if="filteredServerList.length === 0 && !loading">
-        <el-empty description="暂无服务器数据" :image-size="100">
-          <div class="empty-description">
-            <p>没有发现任何运行中的服务器</p>
-            <p>您可以先创建一个房间，然后启动它</p>
+        <div class="filter-options">
+          <UiSelect v-model="roomFilter"><SelectTrigger><SelectValue placeholder="按存档筛选" /></SelectTrigger><SelectContent><SelectGroup>
+            <SelectItem value="all">全部存档</SelectItem><SelectItem v-for="room in roomList" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
+          </SelectGroup></SelectContent></UiSelect>
+          <UiSelect v-model="typeFilter"><SelectTrigger><SelectValue placeholder="按类型筛选" /></SelectTrigger><SelectContent><SelectGroup>
+            <SelectItem value="all">全部类型</SelectItem><SelectItem value="forest">森林服务器</SelectItem><SelectItem value="cave">洞穴服务器</SelectItem>
+          </SelectGroup></SelectContent></UiSelect>
+          <UiSelect v-model="statusFilter"><SelectTrigger><SelectValue placeholder="按状态筛选" /></SelectTrigger><SelectContent><SelectGroup>
+            <SelectItem value="all">全部状态</SelectItem><SelectItem value="online">在线</SelectItem><SelectItem value="offline">离线</SelectItem><SelectItem value="restarting">重启中</SelectItem>
+          </SelectGroup></SelectContent></UiSelect>
+          <UiSelect v-model="closedTimeFilter"><SelectTrigger><SelectValue placeholder="按关闭时间筛选" /></SelectTrigger><SelectContent><SelectGroup>
+            <SelectItem value="all">显示所有</SelectItem><SelectItem value="1">1 小时内关闭</SelectItem><SelectItem value="6">6 小时内关闭</SelectItem>
+            <SelectItem value="12">12 小时内关闭</SelectItem><SelectItem value="24">24 小时内关闭</SelectItem><SelectItem value="72">3 天内关闭</SelectItem><SelectItem value="168">7 天内关闭</SelectItem>
+          </SelectGroup></SelectContent></UiSelect>
         </div>
-          <div class="empty-actions">
-            <el-button type="primary" @click="navigateToRoomCreation">创建新房间</el-button>
-            <el-button type="success" @click="showStartRoomDialog">启动现有房间</el-button>
-      </div>
-        </el-empty>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
 
-    <!-- 启动房间对话框 -->
-    <el-dialog
-      title="选择并启动房间"
-      v-model="startRoomDialogVisible"
-      width="500px">
-      <div>
-        <el-form label-width="120px" :model="startRoomForm" :rules="rules" ref="startRoomForm">
-          <el-form-item label="选择房间">
-            <el-select v-model="startRoomForm.roomIndex" placeholder="请选择房间" style="width: 100%">
-              <el-option
-                v-for="(room, index) in roomList"
-                :key="room.id"
-                :label="room.name"
-                :value="index">
-              </el-option>
-            </el-select>
-          </el-form-item>
+    <Card class="server-table-container">
+      <CardContent class="table-content">
+        <div v-if="loading" class="loading-state"><Spinner /><span>正在读取服务器状态...</span></div>
+        <ShadcnTable v-else-if="filteredServerList.length">
+          <TableHeader><TableRow>
+            <TableHead>服务器名称</TableHead><TableHead>玩家</TableHead><TableHead>天数</TableHead><TableHead>季节</TableHead>
+            <TableHead>服务器模式</TableHead><TableHead>运行时间</TableHead><TableHead>部署方式</TableHead><TableHead>操作</TableHead>
+          </TableRow></TableHeader>
+          <TableBody><TableRow v-for="server in filteredServerList" :key="server.session_name">
+            <TableCell>
+            <div class="server-name-container">
+              <span class="server-status" :class="server.status === 'running' ? 'online' : 'offline'"></span>
+              <Badge variant="outline">{{ getWorldTypeName(server.world_name) }}</Badge>
+              <div class="server-room">{{ server.archive_name }}</div>
+            </div>
+            </TableCell>
+            <TableCell>{{ server.players }}</TableCell><TableCell>{{ server.days }}</TableCell>
+            <TableCell><Badge v-if="server.season" variant="secondary">{{ server.season }}</Badge><span v-else>-</span></TableCell>
+            <TableCell><Badge v-if="server.server_mode" variant="outline">{{ getServerModeText(server.server_mode) }}</Badge><span v-else>-</span></TableCell>
+            <TableCell>{{ formatTimeDiff(Date.now() - new Date(server.start_time).getTime()) }}</TableCell><TableCell><Badge variant="secondary">本地</Badge></TableCell>
+            <TableCell><div class="operation-buttons">
+              <UiButton size="xs" :variant="server.status === 'running' ? 'destructive' : 'default'" @click="handleServerAction(server)">{{ server.status === 'running' ? '停止' : '启动' }}</UiButton>
+              <UiButton size="xs" variant="outline" @click="handleConfigure(server)">配置</UiButton>
+            </div></TableCell>
+          </TableRow></TableBody>
+        </ShadcnTable>
+        <Empty v-else>
+          <EmptyHeader><EmptyMedia variant="icon"><ServerOff /></EmptyMedia><EmptyTitle>暂无服务器数据</EmptyTitle><EmptyDescription>创建房间后，可以在这里启动和监控服务器。</EmptyDescription></EmptyHeader>
+          <EmptyContent class="empty-actions"><UiButton @click="navigateToRoomCreation">创建新房间</UiButton><UiButton variant="outline" @click="showStartRoomDialog">启动现有房间</UiButton></EmptyContent>
+        </Empty>
+      </CardContent>
+    </Card>
 
-          <el-form-item label="选择世界" prop="worldType" v-if="startRoomForm.roomIndex !== ''">
-            <el-checkbox-group v-model="startRoomForm.worldType">
-              <el-checkbox v-for="world in roomList[startRoomForm.roomIndex].worlds"
-              :label="world"
-              :key="world.type">
-              {{world.name}}
-            </el-checkbox>
-            </el-checkbox-group>
-          </el-form-item>
-
-          <el-form-item label="服务器模式">
-            <el-select v-model="startRoomForm.serverMode" placeholder="选择服务器模式">
-              <el-option label="32位" value="32"></el-option>
-              <el-option label="64位" value="64"></el-option>
-              <el-option label="LuaJit" value="luajit"></el-option>
-            </el-select>
-            <div class="mode-description" v-if="startRoomForm.serverMode === '64'">
-              <component :is="'el-icon-warning-outline'" class="legacy-icon" /> 64位模式使用64位引擎，可能会更耗内存但性能更好
-            </div>
-            <div class="mode-description" v-else-if="startRoomForm.serverMode === 'luajit'">
-              <component :is="'el-icon-star-on'" class="legacy-icon" /> LuaJit模式使用JIT编译器，可能提供更好的性能
-            </div>
-            <div class="mode-description" v-else>
-              <component :is="'el-icon-info'" class="legacy-icon" /> 32位模式使用32位引擎，适合大多数服务器
-            </div>
-          </el-form-item>
-        </el-form>
-      </div>
-      <template v-slot:footer>
-<div  class="dialog-footer">
-        <el-button @click="startRoomDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleStartRoomFrom('startRoomForm')" :loading="startRoomLoading">启动</el-button>
-      </div>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="startRoomDialogVisible">
+      <DialogContent>
+        <DialogHeader><DialogTitle>选择并启动房间</DialogTitle><DialogDescription>选择房间、世界分片和服务端运行模式。</DialogDescription></DialogHeader>
+        <FieldGroup>
+          <Field><FieldLabel>选择房间</FieldLabel><UiSelect v-model="startRoomForm.roomIndex"><SelectTrigger class="w-full"><SelectValue placeholder="请选择房间" /></SelectTrigger><SelectContent><SelectGroup>
+            <SelectItem v-for="(room, index) in roomList" :key="room.id" :value="String(index)">{{ room.name }}</SelectItem>
+          </SelectGroup></SelectContent></UiSelect></Field>
+          <FieldSet v-if="startRoomForm.roomIndex !== ''">
+            <FieldLegend variant="label">选择世界</FieldLegend>
+            <FieldGroup>
+              <Field v-for="world in roomList[Number(startRoomForm.roomIndex)].worlds" :key="world.type" orientation="horizontal">
+                <UiCheckbox :id="`world-${world.type}`" :model-value="isWorldSelected(world)" @update:model-value="toggleWorld(world, $event)" />
+                <FieldLabel :for="`world-${world.type}`" class="font-normal">{{ world.name }}</FieldLabel>
+              </Field>
+            </FieldGroup>
+          </FieldSet>
+          <Field><FieldLabel>服务器模式</FieldLabel><UiSelect v-model="startRoomForm.serverMode"><SelectTrigger class="w-full"><SelectValue placeholder="选择服务器模式" /></SelectTrigger><SelectContent><SelectGroup>
+            <SelectItem value="32">32 位</SelectItem><SelectItem value="64">64 位</SelectItem><SelectItem value="luajit">LuaJit</SelectItem>
+          </SelectGroup></SelectContent></UiSelect>
+            <FieldDescription>{{ serverModeDescription }}</FieldDescription>
+          </Field>
+        </FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="startRoomDialogVisible = false">取消</UiButton><UiButton :disabled="startRoomLoading" @click="handleStartRoomFrom"><Spinner v-if="startRoomLoading" data-icon="inline-start" />启动</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { RefreshCw, Server, ServerOff } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { systemApi, roomApi } from '@/api/index';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { confirmAction } from '@/lib/feedback';
 import { formatTimeDiff } from '@/utils/dateUtils';
 
 export default {
   name: 'ServerList',
+  components: {
+    Badge, Card, CardContent, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+    DialogTitle, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
+    Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet, RefreshCw, SelectContent,
+    SelectGroup, SelectItem, SelectTrigger, SelectValue, Server, ServerOff, ShadcnTable, Spinner,
+    TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsList, TabsTrigger, UiButton,
+    UiCheckbox, UiDialog, UiSelect
+  },
   data() {
     return {
       formatTimeDiff,
@@ -261,6 +153,10 @@ export default {
     filteredServerList() {
       let result = this.serverList;
 
+      if (this.roomFilter && this.roomFilter !== 'all') {
+        result = result.filter(server => server.room_id === this.roomFilter || server.archive_name === this.roomFilter);
+      }
+
       // 根据标签页筛选
       if (this.activeTab !== 'all' && this.activeTab !== 'local') {
         // 当前只有本机服务器，所以当选择本机服务器标签时，显示所有服务器
@@ -274,7 +170,7 @@ export default {
       }
 
       // 根据服务器类型筛选
-      if (this.typeFilter) {
+      if (this.typeFilter && this.typeFilter !== 'all') {
         result = result.filter(server => {
           // 根据 world_name 判断服务器类型
           const worldName = server.world_name || '';
@@ -291,7 +187,7 @@ export default {
       }
 
       // 根据状态筛选
-      if (this.statusFilter) {
+      if (this.statusFilter && this.statusFilter !== 'all') {
         const statusMap = {
           'online': 'running',
           'offline': 'stopped'
@@ -331,6 +227,11 @@ export default {
       }
 
       return result;
+    },
+    serverModeDescription() {
+      if (this.startRoomForm.serverMode === '64') return '64 位模式可使用更多内存，适合大型模组房间。';
+      if (this.startRoomForm.serverMode === 'luajit') return 'LuaJit 模式使用 JIT 编译器，适合需要该运行时的模组。';
+      return '32 位模式适合兼容性要求较高的房间。';
     }
   },
   created() {
@@ -342,7 +243,7 @@ export default {
       this.serverList = [];
       return systemApi.getTmuxServers().then(res => {
         this.serverList = res.data || [];
-        this.$message.success(res.msg);
+        if (res.msg) toast.success(res.msg);
       }).catch(err => {
         console.error(err);
       }).finally(() => {
@@ -373,35 +274,12 @@ export default {
     },
     navigateToRoom() {
     },
-    getSeasonType(season) {
-      const seasonMap = {
-        '秋季': '',
-        '冬季': 'info',
-        '春季': 'success',
-        '夏季': 'warning'
-      };
-      return seasonMap[season] || '';
-    },
-
     getServerModeText(mode) {
       switch(mode) {
         case '32': return '32位';
         case '64': return '64位';
         case 'luajit': return 'LuaJit';
         default: return mode;
-      }
-    },
-
-    getWorldTypeTagType(worldName) {
-      if (!worldName) return 'info';
-
-      const lowerName = worldName.toLowerCase();
-      if (lowerName.includes('forest')) {
-        return 'success';
-      } else if (lowerName.includes('cave')) {
-        return 'warning';
-      } else {
-        return 'info';
       }
     },
 
@@ -417,28 +295,30 @@ export default {
         return '未知';
       }
     },
-    getDeploymentType(deployment) {
-      const deploymentMap = {
-        '本地': '',
-        'Docker': 'success',
-        '远程': 'warning',
-        'K8s': 'info'
-      };
-      return deploymentMap[deployment] || '';
-    },
-
     showStartRoomDialog() {
       this.startRoomDialogVisible = true;
       this.fetchRooms();
     },
 
-    handleStartRoomFrom(formName) {
-      this.$refs[formName].validate((valid) => {
-        if (valid) {
+    isWorldSelected(world) {
+      return this.startRoomForm.worldType.some(item => item.type === world.type && item.name === world.name);
+    },
+    toggleWorld(world, checked) {
+      if (checked) {
+        if (!this.isWorldSelected(world)) this.startRoomForm.worldType.push(world);
+      } else {
+        this.startRoomForm.worldType = this.startRoomForm.worldType.filter(item => item.type !== world.type || item.name !== world.name);
+      }
+    },
+    handleStartRoomFrom() {
+      if (this.startRoomForm.roomIndex === '' || this.startRoomForm.worldType.length === 0) {
+        toast.warning(this.startRoomForm.roomIndex === '' ? '请选择房间' : '请至少选择一个世界');
+        return;
+      }
           let promises = [];
           this.startRoomForm.worldType.forEach(world => {
             let params = {
-              archive_name: this.roomList[this.startRoomForm.roomIndex].name,
+              archive_name: this.roomList[Number(this.startRoomForm.roomIndex)].name,
               server_mode: this.startRoomForm.serverMode,
               world_name: world.name,
               world_type: world.type
@@ -446,42 +326,43 @@ export default {
             promises.push(roomApi.startRoom(params));
           });
           Promise.all(promises).then(() => {
-            this.$message.success('启动成功');
+            toast.success('启动成功');
             this.startRoomDialogVisible = false;
             this.fetchData();
           }).catch(error => {
             console.error(error);
+            toast.error(error.message || '启动失败');
           });
-        } else {
-          return false;
-        }
-      });
     },
-    handleServerAction(server) {
+    async handleServerAction(server) {
       if (server.status === 'running') {
-        this.$confirm(`确定要停止 "${server.archive_name}" 吗？`, '提示', {
+        try {
+          await confirmAction(`确定要停止 "${server.archive_name}" 吗？`, '停止服务器', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
-        }).then(() => {
+          });
           this.loading = true;
           systemApi.stopTmuxServer({session_name: server.session_name}).then(res => {
             return this.fetchData().then(() => {
-              this.$message.success(res.msg || '停止完成');
+              toast.success(res.msg || '停止完成');
             });
           }).catch(() => {
-            this.$message.error('停止失败!');
+            toast.error('停止失败!');
           }).finally(() => {
             this.loading = false;
           });
-        }).catch(() => {
-          this.$message({
-            type: 'info',
-            message: '取消停止'
-          });
-        });
+        } catch {
+          toast.info('取消停止');
+        }
       }
     },
+    handleConfigure(server) {
+      this.$router.push({
+        path: '/worlds/settings',
+        query: { roomName: server.archive_name, worldName: server.world_name }
+      });
+    }
   }
 };
 </script>
@@ -499,7 +380,7 @@ export default {
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .title-container {
@@ -512,17 +393,15 @@ export default {
   color: var(--text-primary);
 }
 
-.title-container .legacy-icon {
-  color: var(--primary-color);
-  font-size: 18px;
-}
-
 .filter-container {
   margin-bottom: 16px;
-  padding: 0 14px 14px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+}
+
+.filter-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
 }
 
 .filter-options {
@@ -532,17 +411,17 @@ export default {
   flex-wrap: wrap;
 }
 
-.filter-options .el-select {
+.filter-options > * {
   width: 160px;
 }
 
 .server-table-container {
   min-width: 0;
-  padding: 0;
   overflow: hidden;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+}
+
+.table-content {
+  padding: 0;
 }
 
 .server-name-container {
@@ -594,32 +473,20 @@ export default {
   flex-wrap: wrap;
 }
 
-.operation-buttons .el-button {
-  margin: 0;
-}
-
-.operation-dropdown {
-  margin-right: 0;
-}
-
-.empty-block {
-  padding: 36px 16px;
-}
-
-.empty-description {
-  margin-bottom: 15px;
-  color: var(--text-secondary);
-}
-
-.empty-description p {
-  margin: 5px 0;
-}
-
 .empty-actions {
   display: flex;
   gap: 8px;
   justify-content: center;
   margin-top: 16px;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 220px;
+  color: var(--muted-foreground);
 }
 
 @media (max-width: 768px) {
@@ -632,8 +499,8 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .filter-options .el-select {
-    width: 100%;
+  .filter-options > * {
+    width: 100% !important;
   }
 
   .empty-actions {
@@ -657,8 +524,4 @@ export default {
   line-height: 1.4;
 }
 
-:deep(.el-tabs__item.is-disabled) {
-  color: var(--text-secondary);
-  cursor: not-allowed;
-}
 </style>

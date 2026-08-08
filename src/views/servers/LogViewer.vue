@@ -6,36 +6,46 @@
         <span class="log-subtitle">{{ subtitle }}</span>
       </div>
       <div class="log-actions">
-        <el-button size="small" type="primary" icon="el-icon-refresh" @click="refreshLogs">刷新</el-button>
-        <el-button size="small" icon="el-icon-download" @click="downloadLogs">下载日志</el-button>
-        <el-button size="small" icon="el-icon-close" @click="$emit('close')">关闭</el-button>
+        <UiButton size="sm" @click="refreshLogs">
+          <RefreshCw data-icon="inline-start" />
+          刷新
+        </UiButton>
+        <UiButton size="sm" variant="outline" @click="downloadLogs">
+          <Download data-icon="inline-start" />
+          下载日志
+        </UiButton>
+        <UiButton size="sm" variant="ghost" @click="$emit('close')">
+          <X data-icon="inline-start" />
+          关闭
+        </UiButton>
       </div>
     </div>
     
     <div class="log-content-wrapper">
       <div class="log-filter">
-        <el-select v-model="selectedWorld" placeholder="选择世界" size="small" style="width: 180px" @change="refreshLogs">
-          <el-option
-            v-for="world in worlds"
-            :key="world.name"
-            :label="world.name + (world.type ? ' (' + formatWorldType(world.type) + ')' : '')"
-            :value="world.name">
-          </el-option>
-        </el-select>
-        
-        <el-input
-          placeholder="搜索日志"
-          v-model="searchQuery"
-          size="small"
-          prefix-icon="el-icon-search"
-          clearable
-          style="width: 200px; margin-left: 10px;">
-        </el-input>
+        <UiSelect v-model="selectedWorld" @update:model-value="refreshLogs">
+          <SelectTrigger class="world-select"><SelectValue placeholder="选择世界" /></SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem v-for="world in worlds" :key="world.name" :value="world.name">
+                {{ world.name + (world.type ? ' (' + formatWorldType(world.type) + ')' : '') }}
+              </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </UiSelect>
+        <div class="search-wrapper">
+          <Search />
+          <UiInput v-model="searchQuery" placeholder="搜索日志" aria-label="搜索日志" />
+        </div>
       </div>
       
-      <div class="log-content" ref="logContent" v-loading="loading">
+      <div class="log-content" ref="logContent">
+        <div v-if="loading" class="log-loading">
+          <Spinner />
+          <span>正在连接日志流...</span>
+        </div>
         <div v-if="logs.length === 0 && !loading" class="no-logs-message">
-          <component :is="'el-icon-info'" class="legacy-icon" />
+          <Info />
           <span>暂无日志记录</span>
         </div>
         <div v-else-if="logs.length > 0">
@@ -49,18 +59,32 @@
       </div>
       
       <div class="log-actions-bottom">
-        <el-checkbox v-model="autoScroll">自动滚动到最新日志</el-checkbox>
-        <el-button size="small" type="text" @click="clearLogs">清空日志</el-button>
+        <label class="auto-scroll-control">
+          <UiCheckbox v-model="autoScroll" />
+          <span>自动滚动到最新日志</span>
+        </label>
+        <UiButton size="sm" variant="ghost" @click="clearLogs">清空日志</UiButton>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import { Download, Info, RefreshCw, Search, X } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
+import { Button as UiButton } from '@/components/ui/button';
+import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
+import { Input as UiInput } from '@/components/ui/input';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 
 export default {
   name: 'LogViewer',
+  components: {
+    UiButton, UiCheckbox, Download, Info, UiInput, RefreshCw, Search, UiSelect, SelectContent,
+    SelectGroup, SelectItem, SelectTrigger, SelectValue, Spinner, X
+  },
   props: {
     archiveName: {
       type: String,
@@ -115,7 +139,7 @@ export default {
     },
     refreshLogs() {
       if (!this.archiveName || !this.selectedWorld) {
-        this.$message.warning('未指定存档或世界');
+        toast.warning('未指定存档或世界');
         return;
       }
       
@@ -190,7 +214,7 @@ export default {
         });
       } catch (error) {
         console.error('创建EventSource失败:', error);
-        this.$message.error('连接日志流失败: ' + error.message);
+        toast.error('连接日志流失败: ' + error.message);
         this.loading = false;
       }
     },
@@ -209,7 +233,7 @@ export default {
     },
     downloadLogs() {
       if (this.logs.length === 0) {
-        this.$message.warning('没有日志可下载');
+        toast.warning('没有日志可下载');
         return;
       }
       
@@ -225,7 +249,7 @@ export default {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       
-      this.$message.success('日志下载已开始');
+      toast.success('日志下载已开始');
     },
     clearLogs() {
       this.logs = [];
@@ -321,6 +345,30 @@ export default {
   margin-bottom: 10px;
 }
 
+.world-select {
+  width: 180px;
+}
+
+.search-wrapper {
+  position: relative;
+  width: 220px;
+}
+
+.search-wrapper > svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.search-wrapper input {
+  padding-left: 34px;
+}
+
 .log-content {
   flex: 1;
   padding: 10px;
@@ -388,9 +436,27 @@ export default {
   color: var(--text-secondary);
 }
 
-.no-logs-message i {
-  font-size: 30px;
+.no-logs-message svg {
+  width: 30px;
+  height: 30px;
   margin-bottom: 10px;
+}
+
+.log-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  color: #d4d4d4;
+}
+
+.auto-scroll-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  cursor: pointer;
 }
 
 .log-info-row {
@@ -414,10 +480,9 @@ export default {
     flex-wrap: wrap;
   }
 
-  .log-filter :deep(.el-select),
-  .log-filter :deep(.el-input) {
-    width: 100% !important;
-    margin-left: 0 !important;
+  .world-select,
+  .search-wrapper {
+    width: 100%;
   }
 
   .log-content {
