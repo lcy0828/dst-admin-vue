@@ -16,6 +16,17 @@ const success = (data, msg = '操作成功') => ({ status: 200, data, msg })
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 
+function gameUpdateCapabilities(version = {}) {
+  return {
+    updateSupported: typeof version.updateSupported === 'boolean'
+      ? version.updateSupported
+      : version.updateMethod !== 'steam-client',
+    steamcmdAvailable: typeof version.steamcmdAvailable === 'boolean'
+      ? version.steamcmdAvailable
+      : null
+  }
+}
+
 function formatUptime(seconds) {
   if (!Number.isFinite(Number(seconds))) return ''
   const total = Math.max(0, Math.floor(seconds))
@@ -383,24 +394,69 @@ export const legacySystemApi = {
     roomCatalog = []
     return success(job, '重启任务已提交')
   },
+  async getGameVersion() {
+    const version = await gameV2API.version()
+    const checkError = version.checkError || null
+    const capabilities = gameUpdateCapabilities(version)
+    const installed = typeof version.installed === 'boolean'
+      ? version.installed
+      : Boolean(version.localVersion)
+    return success({
+      local: {
+        version: version.localVersion || null,
+        path: version.installPath || null,
+        installed,
+        checked_at: version.checkedAt || null,
+        check_error: checkError
+      },
+      latest: {
+        version: version.latestVersion || null,
+        update_url: null,
+        release_date: null,
+        build_number: null,
+        up_to_date: typeof version.upToDate === 'boolean' ? version.upToDate : null,
+        checked_at: version.checkedAt || null,
+        check_error: checkError
+      },
+      installed,
+      app_id: version.appId || null,
+      install_path: version.installPath || null,
+      update_method: version.updateMethod || null,
+      update_supported: capabilities.updateSupported,
+      steamcmd_available: capabilities.steamcmdAvailable,
+      steamcmd_path: version.steamcmdPath || null,
+      check_error: checkError,
+      checked_at: version.checkedAt || null
+    }, '游戏版本状态已刷新')
+  },
   async getLocalVersion() {
     const version = await gameV2API.version()
+    const capabilities = gameUpdateCapabilities(version)
     return success({
       version: version.localVersion || null,
       path: version.installPath || null,
       installed: version.installed,
+      app_id: version.appId || null,
+      update_method: version.updateMethod || null,
+      update_supported: capabilities.updateSupported,
+      steamcmd_available: capabilities.steamcmdAvailable,
       checked_at: version.checkedAt,
       check_error: version.checkError || null
     }, '本地版本已读取')
   },
   async getLatestVersion() {
     const version = await gameV2API.version()
+    const capabilities = gameUpdateCapabilities(version)
     return success({
       version: version.latestVersion || null,
       update_url: null,
       release_date: null,
       build_number: null,
       up_to_date: version.upToDate,
+      app_id: version.appId || null,
+      update_method: version.updateMethod || null,
+      update_supported: capabilities.updateSupported,
+      steamcmd_available: capabilities.steamcmdAvailable,
       checked_at: version.checkedAt,
       check_error: version.checkError || null
     }, '最新版本已读取')

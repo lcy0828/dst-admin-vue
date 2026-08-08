@@ -4,7 +4,7 @@
     <!-- 版本信息卡片 -->
     <el-row :gutter="20" class="version-info-row">
       <el-col :span="24">
-        <el-card shadow="hover" class="version-card">
+        <el-card shadow="never" class="version-card">
           <div class="version-content">
             <div class="version-icon">
               <component :is="'el-icon-info'" class="legacy-icon" />
@@ -14,10 +14,11 @@
                 <span class="version-title">饥荒服务器版本信息</span>
                 <div class="version-actions">
                   <el-button
-                    type="success"
+                    v-if="versionInfo.update_supported"
+                    type="primary"
                     size="small"
                     @click="updateDstServer"
-                    :disabled="updateStatus && updateStatus.is_running"
+                    :disabled="versionLoading || (updateStatus && updateStatus.is_running)"
                     :loading="updateStatus && updateStatus.is_running"
                   >
                     <component v-if="!(updateStatus && updateStatus.is_running)" :is="'el-icon-upload2'" class="legacy-icon" />
@@ -28,15 +29,26 @@
                     size="small"
                     icon="el-icon-refresh"
                     @click="getVersionInfo"
+                    :loading="versionLoading"
                     :disabled="updateStatus && updateStatus.is_running"
                   >刷新</el-button>
                 </div>
               </div>
-              <div v-if="versionInfo.local && versionInfo.latest" class="version-info">
+              <div v-if="versionLoading" class="version-loading">
+                <component :is="'el-icon-loading'" class="legacy-icon" />
+                <span>正在获取版本信息...</span>
+              </div>
+              <div v-else-if="versionError && !versionInfo.local" class="version-error" role="status">
+                <component :is="'el-icon-warning-outline'" class="legacy-icon" />
+                <span>{{ versionError }}</span>
+                <el-button type="text" size="small" @click="getVersionInfo">重试</el-button>
+              </div>
+              <div v-else class="version-info">
                 <div class="version-boxes">
                   <div class="version-box">
                     <div class="version-box-label">当前版本</div>
-                    <div class="version-box-value">{{ versionInfo.local.version || '--' }}</div>
+                    <div class="version-box-value">{{ versionInfo.local?.version || '--' }}</div>
+                    <div class="version-box-date">{{ versionInfo.installed ? '已安装' : '未检测到安装' }}</div>
                   </div>
                   <div class="version-arrow">
                     <component :is="'el-icon-arrow-right'" class="legacy-icon" />
@@ -44,21 +56,38 @@
                   <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
                     <div class="version-box-label">最新版本</div>
                     <a
-                      v-if="versionInfo.latest.update_url"
+                      v-if="versionInfo.latest?.update_url"
                       :href="versionInfo.latest.update_url"
                       target="_blank"
                       class="version-box-value version-link">
                       {{ versionInfo.latest.version }}
                       <component v-if="isVersionOutdated" :is="'el-icon-warning'" class="legacy-icon version-warning-icon" />
                     </a>
-                    <span v-else class="version-box-value">{{ versionInfo.latest.version || '--' }}</span>
-                    <div class="version-box-date">{{ versionInfo.latest.release_date || '--' }} / R{{ versionInfo.latest.build_number || '--' }}</div>
+                    <span v-else class="version-box-value">{{ versionInfo.latest?.version || '--' }}</span>
+                    <div class="version-box-date">{{ versionInfo.latest?.version ? (isVersionOutdated ? '有可用更新' : '已是最新版本') : '暂未取得 Steam 版本' }}</div>
                   </div>
+                </div>
+                <div class="version-meta">
+                  <span>安装位置：{{ versionInfo.install_path || '--' }}</span>
+                  <span v-if="versionInfo.app_id">App ID：{{ versionInfo.app_id }}</span>
+                  <span v-if="versionInfo.checked_at">检查时间：{{ formatCheckedAt(versionInfo.checked_at) }}</span>
+                </div>
+                <div v-if="versionInfo.update_method === 'steam-client'" class="version-managed-notice">
+                  <component :is="'el-icon-info'" class="legacy-icon" />
+                  <span>当前为 macOS Steam 客户端安装，请在 Steam 中更新游戏。</span>
+                </div>
+                <div v-else-if="!versionInfo.update_supported" class="version-managed-notice">
+                  <component :is="'el-icon-info'" class="legacy-icon" />
+                  <span>{{ versionInfo.steamcmd_available ? '当前安装方式不支持面板更新。' : '未检测到 SteamCMD，面板更新不可用。' }}</span>
+                </div>
+                <div v-if="versionInfo.check_error || versionError" class="version-check-warning" role="status">
+                  <component :is="'el-icon-warning-outline'" class="legacy-icon" />
+                  <span>Steam 最新版本检查失败：{{ versionInfo.check_error || versionError }}</span>
                 </div>
                 <div v-if="isVersionOutdated" class="version-update-notice">
                   <component :is="'el-icon-warning'" class="legacy-icon" />
                   <span>检测到新版本可用，请及时更新游戏服务端!</span>
-                  <el-button type="primary" size="small" @click="openUpdateLink">查看更新内容</el-button>
+                  <el-button v-if="versionInfo.latest?.update_url" type="primary" size="small" @click="openUpdateLink">查看更新内容</el-button>
                 </div>
                 <div v-if="updateStatus" class="version-update-status">
                   <div class="update-status-header">
@@ -81,33 +110,15 @@
                   </div>
                 </div>
               </div>
-              <div v-else class="version-loading">
-                <component :is="'el-icon-loading'" class="legacy-icon" />
-                <span>正在获取版本信息...</span>
-              </div>
             </div>
           </div>
         </el-card>
       </el-col>
     </el-row>
-
-
-
-    <!-- 标题分割线 -->
-    <div class="section-divider">
-      <div class="section-title">
-        <component :is="'el-icon-data-analysis'" class="legacy-icon" />
-        <span>服务器状态监控</span>
-      </div>
-      <div class="refresh-btn">
-        <el-button size="small" type="primary" icon="el-icon-refresh" circle @click="refreshData"></el-button>
-      </div>
-    </div>
-
     <!-- 服务器监控 -->
     <el-row :gutter="20" class="monitor-section">
       <el-col :xs="24" :sm="24" :md="16" :span="16">
-        <el-card shadow="hover" class="server-monitor">
+        <el-card shadow="never" class="server-monitor">
           <template v-slot:header>
 <div  class="clearfix server-header">
             <span><component :is="'el-icon-monitor'" class="legacy-icon" /> 服务器状态监控</span>
@@ -264,7 +275,7 @@
       </el-col>
 
       <el-col :xs="24" :sm="24" :md="8" :span="8">
-        <el-card shadow="hover" class="system-info">
+        <el-card shadow="never" class="system-info">
           <template v-slot:header>
 <div  class="clearfix">
             <span>系统资源</span>
@@ -365,7 +376,7 @@
 
     <el-row :gutter="20" class="data-section">
       <el-col :xs="24" :sm="24" :md="12" :span="12">
-        <el-card shadow="hover" class="player-stats">
+        <el-card shadow="never" class="player-stats">
           <template v-slot:header>
 <div  class="clearfix">
             <span>玩家数据统计</span>
@@ -404,7 +415,7 @@
       </el-col>
 
       <el-col :xs="24" :sm="24" :md="12" :span="12">
-        <el-card shadow="hover" class="announcement-card">
+        <el-card shadow="never" class="announcement-card">
           <template v-slot:header>
 <div  class="clearfix">
             <span>公告管理</span>
@@ -467,8 +478,18 @@ export default {
 
       versionInfo: {
         local: null,
-        latest: null
+        latest: null,
+        installed: false,
+        app_id: null,
+        install_path: null,
+        update_method: null,
+        update_supported: false,
+        steamcmd_available: false,
+        check_error: null,
+        checked_at: null
       },
+      versionLoading: false,
+      versionError: '',
       isVersionOutdated: false,
       updateStatus: null,
       updateStatusTimer: null,
@@ -691,7 +712,7 @@ export default {
       return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
     },
     metricPercentage(value) {
-      return Math.min(100, Math.max(0, Number(value)));
+      return Number(Math.min(100, Math.max(0, Number(value))).toFixed(1));
     },
     displayMetric(value) {
       return this.hasMetric(value) ? value : '--';
@@ -715,35 +736,22 @@ export default {
 
 
 
-    getVersionInfo() {
-      // 重置版本信息
-      this.versionInfo = {
-        local: null,
-        latest: null
-      };
-
-      // 获取本地版本
-      systemApi.getLocalVersion().then(localRes => {
-        this.$message.info(localRes.msg);
-        if (localRes.data && localRes.status === 200) {
-          this.versionInfo.local = localRes.data;
-          this.checkVersionOutdated();
+    async getVersionInfo() {
+      this.versionLoading = true;
+      this.versionError = '';
+      try {
+        const response = await systemApi.getGameVersion();
+        if (!response?.data || response.status !== 200) {
+          throw new Error(response?.msg || '服务器返回了无效的版本信息');
         }
-      }).catch(err => {
-        console.error('获取本地版本失败:', err);
-        this.$message.error('获取本地版本信息失败');
-      });
-
-      // 获取最新版本
-      systemApi.getLatestVersion().then(latestRes => {
-        if (latestRes.data && latestRes.status === 200) {
-          this.versionInfo.latest = latestRes.data;
-          this.checkVersionOutdated();
-        }
-      }).catch(err => {
-        console.error('获取最新版本失败:', err);
-        this.$message.error('获取最新版本信息失败');
-      });
+        this.versionInfo = response.data;
+        this.checkVersionOutdated();
+      } catch (error) {
+        console.error('获取游戏版本失败:', error);
+        this.versionError = error.message || '获取游戏版本信息失败';
+      } finally {
+        this.versionLoading = false;
+      }
     },
 
     checkVersionOutdated() {
@@ -772,8 +780,21 @@ export default {
       }
     },
 
+    formatCheckedAt(value) {
+      if (!value) return '--';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false });
+    },
+
     // 更新饥荒服务器
     updateDstServer() {
+      if (!this.versionInfo.update_supported) {
+        const message = this.versionInfo.update_method === 'steam-client'
+          ? '当前游戏由 Steam 客户端管理，请在 Steam 中更新。'
+          : '当前环境不支持面板更新，请检查 SteamCMD 配置。';
+        this.$message.warning(message);
+        return;
+      }
       this.$confirm('确定要更新饥荒服务器吗？更新过程中服务器将无法使用。', '更新确认', {
         confirmButtonText: '确定更新',
         cancelButtonText: '取消',
@@ -1090,14 +1111,24 @@ export default {
   color: var(--primary-color);
 }
 
-.monitor-section, .data-section {
+.data-section {
   margin-bottom: 20px;
 }
 
 .server-monitor, .system-info, .player-stats, .announcement-card {
-  height: 100%;
   box-shadow: var(--shadow-card);
-  border-radius: 6px;
+  border-radius: 4px;
+}
+
+.monitor-section {
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.server-monitor,
+.system-info {
+  width: 100%;
+  height: auto;
 }
 
 .server-name {
@@ -1145,11 +1176,22 @@ export default {
 }
 
 .resource-usage {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .resource-item {
-  margin-bottom: 15px;
+  margin-bottom: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.resource-item:first-child {
+  padding-top: 0;
+}
+
+.resource-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .metric-unavailable {
@@ -1185,7 +1227,8 @@ export default {
 .resource-detail {
   display: flex;
   justify-content: space-between;
-  margin-top: 5px;
+  gap: 4px 12px;
+  margin-top: 4px;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -1361,8 +1404,8 @@ export default {
 .system-info-footer {
   display: flex;
   flex-direction: column;
-  padding-top: 15px;
-  margin-top: 15px;
+  padding-top: 12px;
+  margin-top: 12px;
   border-top: 1px solid var(--border-color);
 }
 
@@ -1440,7 +1483,8 @@ export default {
 }
 
 .empty-server {
-  padding: 30px 0;
+  min-height: 132px;
+  padding: 24px 0;
   text-align: center;
   color: var(--text-secondary);
   display: flex;
@@ -1449,14 +1493,15 @@ export default {
   justify-content: center;
 }
 
-.empty-server i {
-  font-size: 48px;
-  margin-bottom: 15px;
+.empty-server .legacy-icon {
+  width: 22px;
+  height: 22px;
+  margin: 0 0 10px;
   color: #9aa69e;
 }
 
 .empty-server span {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 /* 启动房间对话框相关样式 */
@@ -1529,35 +1574,40 @@ export default {
 }
 
 .version-info-row {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .version-card {
-  height: 100%;
+  height: auto;
   box-shadow: var(--shadow-card);
-  border-radius: 6px;
+  border-radius: 4px;
+}
+
+.version-card :deep(.el-card__body) {
+  padding: 0 !important;
 }
 
 .version-content {
-  display: flex;
-  align-items: center;
-  padding: 15px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 14px 16px;
 }
 
 .version-icon {
-  width: 50px;
-  height: 50px;
+  width: 22px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  margin-right: 15px;
-  font-size: 24px;
-  color: white;
-  background-color: var(--primary-color);
+  margin-right: 0;
+  font-size: 17px;
+  color: var(--primary-color);
 }
 
 .version-details {
+  min-width: 0;
   flex: 1;
 }
 
@@ -1565,7 +1615,8 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  min-height: 34px;
+  margin-bottom: 0;
 }
 
 .version-actions {
@@ -1575,51 +1626,56 @@ export default {
 }
 
 .version-title {
-  font-size: 16px;
-  font-weight: bold;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
 .version-info {
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .version-boxes {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 15px;
+  justify-content: flex-start;
+  max-width: 760px;
+  margin: 10px 0 0;
+  border-top: 1px solid var(--border-color);
 }
 
 .version-box {
-  flex: 1;
-  text-align: center;
-  padding: 10px;
-  border-radius: 4px;
-  background-color: var(--surface-muted);
-  transition: all 0.3s;
+  flex: 1 1 260px;
+  padding: 10px 0 0;
+  text-align: left;
+  background-color: transparent;
+  transition: color 0.15s ease;
 }
 
 .version-box-outdated {
-  background-color: #fef0f0;
-  border: 1px dashed #c94f4f;
+  color: var(--danger-color);
+}
+
+.version-box-outdated .version-box-value {
+  color: var(--danger-color);
 }
 
 .version-box-label {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .version-box-value {
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .version-arrow {
-  margin: 0 15px;
+  align-self: center;
+  margin: 10px 20px 0;
   color: var(--text-secondary);
   font-size: 20px;
 }
@@ -1648,24 +1704,57 @@ export default {
 .version-loading {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  justify-content: flex-start;
+  min-height: 32px;
+  padding: 8px 0 0;
   color: var(--text-secondary);
 }
 
-.version-loading i {
-  margin-right: 10px;
-  font-size: 16px;
+.version-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding-top: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.version-managed-notice,
+.version-check-warning,
+.version-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-left: 2px solid var(--el-color-info);
+  background: var(--surface-muted);
+  color: var(--text-regular);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.version-check-warning,
+.version-error {
+  border-left-color: var(--warning-color);
+  background: var(--el-color-warning-light-9);
+}
+
+.version-error .el-button {
+  margin-left: auto;
 }
 
 .version-update-notice {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 10px;
-  background-color: #fef0f0;
-  border-radius: 4px;
-  color: #c94f4f;
+  justify-content: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-left: 2px solid var(--danger-color);
+  background-color: var(--el-color-danger-light-9);
+  color: var(--danger-color);
 }
 
 .version-update-notice i {
@@ -1674,7 +1763,7 @@ export default {
 }
 
 .version-update-notice button {
-  margin-left: 15px;
+  margin-left: auto;
 }
 
 .version-update-status {
