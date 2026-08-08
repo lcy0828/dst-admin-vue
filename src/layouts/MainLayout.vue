@@ -504,7 +504,8 @@ const NAVIGATION_SECTIONS = [
         label: '玩家管理',
         icon: UsersRound,
         children: [
-          { label: '玩家列表', to: '/players/list' }
+          { label: '玩家列表', to: '/players/list' },
+          { label: '封禁管理', to: '/players/bans' }
         ]
       }
     ]
@@ -529,8 +530,8 @@ const NAVIGATION_SECTIONS = [
         label: '定时任务',
         icon: CalendarClock,
         children: [
-          { label: '任务列表', to: '/scheduled/tasks' },
-          { label: '创建任务', to: '/scheduled/create' },
+          { label: '任务列表', to: '/cron/tasks' },
+          { label: '创建任务', to: '/cron/add' },
           { label: '任务组', to: '/cron/groups' },
           { label: '执行日志', to: '/cron/logs' },
           { label: '运行统计', to: '/cron/charts' },
@@ -696,7 +697,7 @@ export default {
   },
   methods: {
     updateViewportMode() {
-      const compact = window.innerWidth <= 768
+      const compact = window.innerWidth <= 900
       this.isCompactViewport = compact
       if (!compact) this.mobileSidebarOpen = false
     },
@@ -886,8 +887,8 @@ export default {
   position: relative;
   z-index: 20;
   display: flex;
-  flex: 0 0 252px;
-  width: 252px;
+  flex: 0 0 240px;
+  width: 240px;
   min-width: 0;
   height: 100%;
   flex-direction: column;
@@ -906,7 +907,7 @@ export default {
 .brand-container {
   position: relative;
   display: flex;
-  flex: 0 0 64px;
+  flex: 0 0 60px;
   align-items: center;
   padding: 0 12px;
   border-bottom: 1px solid var(--sidebar-border);
@@ -1235,13 +1236,13 @@ export default {
   position: relative;
   z-index: 10;
   display: flex;
-  flex: 0 0 64px;
-  height: 64px;
+  flex: 0 0 60px;
+  height: 60px;
   min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 24px;
+  padding: 0 20px;
   background: var(--surface-color);
   border-bottom: 1px solid var(--border-color);
 }
@@ -1281,7 +1282,7 @@ export default {
   flex: 1 1 auto;
   min-width: 0;
   overflow: auto;
-  padding: 20px 24px 28px;
+  padding: 18px 20px 24px;
   background: var(--bg-color);
   scroll-behavior: smooth;
 }
@@ -1422,7 +1423,7 @@ export default {
   align-self: flex-start;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .sidebar {
     position: fixed;
     top: 0;

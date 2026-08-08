@@ -91,9 +91,8 @@ export const constantRoutes = [
       },
       {
         path: 'list',
-        component: () => import('@/views/logs/LogsList.vue'),
-        name: 'LogsList',
-        meta: { title: '日志和规则管理', icon: 'document', hidden: true }
+        redirect: '/logs/query',
+        meta: { hidden: true }
       },
       {
         path: 'parser',
@@ -175,6 +174,12 @@ export const constantRoutes = [
         component: () => import('@/views/players/PlayerList.vue'),
         name: 'PlayerList',
         meta: { title: '玩家列表', icon: 'list' }
+      },
+      {
+        path: 'bans',
+        component: () => import('@/views/players/BanList.vue'),
+        name: 'BanList',
+        meta: { title: '封禁管理', icon: 'shield-off' }
       }
     ]
   },
@@ -316,24 +321,15 @@ export const constantRoutes = [
   },
   {
     path: '/scheduled',
-    component: MainLayout,
-    redirect: '/scheduled/tasks',
-    name: 'ScheduledTasks',
-    meta: { title: '定时任务', icon: 'alarm-clock' },
-    children: [
-      {
-        path: 'tasks',
-        component: () => import('@/views/cron/TaskList.vue'),
-        name: 'ScheduledTaskList',
-        meta: { title: '任务列表', icon: 'list' }
-      },
-      {
-        path: 'create',
-        component: () => import('@/views/cron/TaskForm.vue'),
-        name: 'CreateScheduledTask',
-        meta: { title: '创建任务', icon: 'plus' }
-      }
-    ]
+    redirect: '/cron/tasks'
+  },
+  {
+    path: '/scheduled/tasks',
+    redirect: '/cron/tasks'
+  },
+  {
+    path: '/scheduled/create',
+    redirect: '/cron/add'
   }
 ]
 

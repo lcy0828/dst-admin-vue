@@ -1,7 +1,7 @@
 <template>
   <div class="player-list-page">
     <div class="page-header">
-      <div class="title-container"><Users /><h2>玩家列表</h2></div>
+      <div class="title-container"><Users /><h1>玩家列表</h1></div>
       <div class="action-buttons">
         <UiButton size="sm" variant="outline" @click="refreshData" :disabled="loading"><RefreshCw data-icon="inline-start" />刷新</UiButton>
         <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />手动更新</UiButton>
@@ -83,7 +83,7 @@
                 <TableCell><Badge v-if="player.status === 'online'" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
                 <TableCell><Badge :variant="getPerformanceBadgeVariant(player.performance)">{{ getPerformanceText(player.performance) }}</Badge></TableCell>
                 <TableCell>
-                  <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" title="在 Steam 中查看" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
+                  <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" title="在 Steam 中查看" aria-label="在 Steam 中查看玩家" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
                 </TableCell>
                 <TableCell>{{ formatDate(player.first_seen) }}</TableCell>
                 <TableCell>{{ formatDate(player.last_seen) }}</TableCell>
@@ -91,7 +91,7 @@
                   <div class="row-actions">
                     <UiButton variant="ghost" size="sm" @click="viewPlayerDetail(player)">详情</UiButton>
                     <DropdownMenu>
-                      <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
+                      <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" aria-label="打开玩家操作菜单" title="玩家操作"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
                           <DropdownMenuItem @select="toggleGodMode(player)">无敌模式</DropdownMenuItem>
@@ -1230,7 +1230,7 @@ export default {
   white-space: nowrap;
 }
 
-.title-container h2 {
+.title-container h1 {
   font-size: 18px;
   font-weight: 600;
   line-height: 28px;

@@ -206,6 +206,31 @@ export const playerApi = {
     return listPlayers(params)
   },
 
+  async getBannedPlayers(params = {}) {
+    const response = await listPlayers({
+      ...params,
+      page: 1,
+      page_size: 100000,
+      sort_by: 'banned_at',
+      sort_order: 'desc'
+    }, false)
+    const keyword = String(params.keyword || '').trim().toLocaleLowerCase('zh-CN')
+    const bannedPlayers = response.data.filter(player => {
+      if (!player.banned) return false
+      if (!keyword) return true
+      return [player.player_name, player.user_id, player.ban_reason]
+        .some(value => String(value || '').toLocaleLowerCase('zh-CN').includes(keyword))
+    })
+    const page = Math.max(1, Number.parseInt(params.page, 10) || 1)
+    const pageSize = Math.max(1, Number.parseInt(params.page_size, 10) || 20)
+    return {
+      data: bannedPlayers.slice((page - 1) * pageSize, page * pageSize),
+      total: bannedPlayers.length,
+      page,
+      size: pageSize
+    }
+  },
+
   async getPlayerStats(archiveName) {
     const response = await listPlayers({ archive_name: archiveName }, false)
     const online = response.data.filter(player => player.status === 'online').length
@@ -251,6 +276,15 @@ export const playerApi = {
         duration: data.duration
       })
     ).then(job => waitForV2Job(job)).then(job => success(job, '玩家已封禁'))
+  },
+
+  unbanPlayer(player) {
+    return actionContext(player).then(target =>
+      playersV2API.action(target.room.id, target.playerId, 'unban', {
+        worldId: target.worldId,
+        confirmation: target.room.name
+      })
+    ).then(job => waitForV2Job(job)).then(job => success(job, '已解除玩家封禁'))
   },
 
   sendMessage(player, message, selectedSession) {
