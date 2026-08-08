@@ -207,14 +207,14 @@ export default {
 <style scoped>
 .room-categories {
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .categories-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
 }
@@ -224,28 +224,15 @@ export default {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  position: relative;
-  padding-left: 12px;
-  letter-spacing: 0.5px;
-}
-
-.categories-header h3::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 16px;
-  background-color: var(--primary-color);
-  border-radius: 2px;
+  letter-spacing: 0;
 }
 
 .category-list {
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
   overflow: hidden;
-  background-color: #fff;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  background-color: var(--surface-color);
+  box-shadow: none;
 }
 
 /* 菜单项基础样式 */
@@ -255,8 +242,8 @@ export default {
   line-height: 40px;
   padding: 0 16px;
   cursor: pointer;
-  transition: all 0.3s;
-  background-color: #fff;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  background-color: var(--surface-color);
   margin: 0;
   display: flex;
   align-items: center;
@@ -283,7 +270,7 @@ export default {
 }
 
 .menu-item.active {
-  background-color: #fff3e6;
+  background-color: var(--el-color-primary-light-9);
 }
 
 .menu-item.active i,
@@ -301,7 +288,7 @@ export default {
   text-align: center;
   background-color: var(--primary-color);
   color: #fff;
-  border-radius: 10px;
+  border-radius: 3px;
   font-size: 12px;
   padding: 0 6px;
   box-sizing: border-box;
@@ -309,7 +296,7 @@ export default {
 
 /* 子菜单样式 */
 .submenu {
-  border-bottom: 1px solid #f4f4f4;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .submenu-title {
@@ -318,7 +305,7 @@ export default {
   line-height: 40px;
   padding: 0 16px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: color 0.15s ease, background-color 0.15s ease;
   display: flex;
   align-items: center;
 }
@@ -341,7 +328,7 @@ export default {
 
 .submenu-arrow {
   color: var(--text-secondary);
-  transition: transform 0.3s;
+  transition: transform 0.15s ease;
   transform: rotate(0deg);
 }
 
@@ -354,12 +341,12 @@ export default {
 }
 
 .submenu-content {
-  background-color: #f9f9f9;
+  background-color: var(--surface-muted);
 }
 
 .submenu-item {
   padding-left: 48px;
-  background-color: #f9f9f9;
+  background-color: var(--surface-muted);
   height: 36px;
   line-height: 36px;
 }

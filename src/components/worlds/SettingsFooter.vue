@@ -164,27 +164,20 @@ export default {
   font-weight: 500;
 }
 
-/* 确保弹出层显示在固定底栏上方 */
-:deep(.changes-popover) {
-  z-index: 10000 !important;
-}
-
 /* 确保弹出层箭头正确显示 */
 :deep(.changes-popover .popper__arrow) {
   display: none !important;
 }
 
-/* 增强弹出层样式使其更明显 */
 :deep(.changes-popover .el-popover__title) {
-  font-weight: bold;
+  font-weight: 600;
 }
 
 :deep(.el-popover.changes-popover) {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
-  border: 1px solid #d99b32 !important;
+  box-shadow: var(--shadow-card) !important;
+  border: 1px solid var(--border-color) !important;
 }
 
-/* 增强标签样式 */
 :deep(.el-tag) {
   padding: 4px 8px;
   border-radius: 4px;

@@ -658,31 +658,37 @@ export default {
 
 <style scoped>
 .page-container {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .main-card {
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 0;
+  box-shadow: none;
   border-radius: 4px;
 }
 
 .search-form {
-  margin-bottom: 20px;
-  padding-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .tool-bar {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+}
+
+.tool-bar :deep(.el-button) {
+  margin: 0;
 }
 
 .pagination-container {
-  margin-top: 20px;
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 /* 物品列表样式 */
@@ -705,7 +711,7 @@ export default {
 }
 
 .item-name {
-  font-weight: bold;
+  font-weight: 600;
   margin-bottom: 4px;
 }
 
@@ -724,7 +730,7 @@ export default {
   width: 100px;
   height: 100px;
   border: 1px dashed #d9d9d9;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
@@ -760,7 +766,8 @@ export default {
 .special-props {
   margin-top: 15px;
   padding: 15px;
-  background-color: #f9fbfc;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
@@ -864,7 +871,7 @@ export default {
 
 /* 对话框样式调整 */
 :deep(.el-dialog__body) {
-  padding: 20px 30px 10px;
+  padding: 16px;
 }
 
 :deep(.el-dialog__header) {
@@ -888,20 +895,30 @@ export default {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-regular);
-  background-color: #f9fbfc;
+  background-color: var(--surface-muted);
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
+  .search-form {
+    display: block;
+  }
+
+  .search-form :deep(.el-form-item),
+  .search-form :deep(.el-form-item__content),
+  .search-form :deep(.el-select),
+  .search-form :deep(.el-input) {
+    width: 100%;
+    margin-right: 0;
+  }
+
   .tool-bar {
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   
-  .tool-bar .el-button {
+  .tool-bar :deep(.el-button) {
     width: 100%;
-    margin-left: 0;
-    margin-bottom: 10px;
   }
   
   .preview-header {

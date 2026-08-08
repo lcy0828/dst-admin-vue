@@ -8,7 +8,7 @@
       </div>
 </template>
 
-      <el-row :gutter="20">
+      <el-row :gutter="20" class="generator-layout">
         <!-- 左侧生成器控制面板 -->
         <el-col :span="8">
           <div class="generator-panel">
@@ -997,19 +997,21 @@ export default {
 
 <style scoped>
 .page-container {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .main-card {
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 0;
+  box-shadow: none;
   border-radius: 4px;
 }
 
 /* 生成器面板样式 */
 .generator-panel {
-  padding: 10px;
-  background-color: #f9fafc;
+  padding: 14px;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   height: 100%;
 }
@@ -1020,6 +1022,8 @@ export default {
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
 }
 
 /* 稀有度滑块样式 */
@@ -1062,14 +1066,15 @@ export default {
 .type-specific-settings {
   margin-top: 15px;
   padding: 15px;
-  background-color: #fff;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 /* 生成结果面板样式 */
 .result-panel {
-  padding: 10px;
+  padding: 0;
   height: 100%;
   min-height: 600px;
 }
@@ -1103,32 +1108,34 @@ export default {
 }
 
 .empty-result i {
-  font-size: 64px;
-  margin-bottom: 20px;
+  font-size: 30px;
+  margin-bottom: 10px;
 }
 
 .empty-result p {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 /* 物品卡片网格样式 */
 .items-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .item-card {
   border-radius: 4px;
-  transition: all 0.3s;
+  box-shadow: none;
+  transition: border-color 0.15s ease;
   position: relative;
   overflow: hidden;
 }
 
 .item-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  transform: none;
+  border-color: var(--el-color-primary-light-5);
+  box-shadow: none;
 }
 
 .item-card::before {
@@ -1137,7 +1144,9 @@ export default {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  width: 3px;
+  height: 100%;
+  right: auto;
   background-color: var(--text-secondary);
 }
 
@@ -1176,7 +1185,7 @@ export default {
 }
 
 .item-card-name {
-  font-weight: bold;
+  font-weight: 600;
   margin-bottom: 5px;
   color: var(--text-primary);
 }
@@ -1200,7 +1209,7 @@ export default {
 }
 
 .item-card-stats {
-  background-color: #f9fafc;
+  background-color: var(--surface-muted);
   padding: 10px;
   border-radius: 4px;
   margin-bottom: 15px;
@@ -1266,7 +1275,7 @@ export default {
 }
 
 :deep(.el-divider__text) {
-  background-color: #f9fafc;
+  background-color: var(--surface-muted);
   font-weight: 600;
   color: var(--text-regular);
 }
@@ -1275,12 +1284,24 @@ export default {
 .special-props {
   margin-top: 15px;
   padding: 15px;
-  background-color: #f9fbfc;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
+  .generator-layout {
+    display: flex;
+    gap: 16px;
+    flex-direction: column;
+  }
+
+  .generator-layout > :deep(.el-col) {
+    width: 100%;
+    max-width: none;
+  }
+
   .items-grid {
     grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
   }

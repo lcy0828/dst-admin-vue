@@ -63,13 +63,12 @@ export default {
 
 <style scoped>
 .presets-section {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   background-color: var(--surface-muted);
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  will-change: transform;
-  transform: translateZ(0);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 12px;
+  box-shadow: none;
 }
 
 .preset-title {
@@ -89,7 +88,7 @@ export default {
 .preset-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -99,4 +98,4 @@ export default {
     align-items: stretch;
   }
 }
-</style> 
+</style>
