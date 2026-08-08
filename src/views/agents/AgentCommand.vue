@@ -1,20 +1,22 @@
 <template>
   <div class="agent-command-container">
     <el-card class="main-card" shadow="hover">
-      <div slot="header" class="clearfix">
+      <template #header>
+        <div class="clearfix">
         <span class="card-title">
-          <component is="el-icon-terminal" class="legacy-icon" /> Agent命令管理
+          <component :is="'el-icon-terminal'" class="legacy-icon" /> Agent命令管理
         </span>
         <div class="header-actions">
           <el-button type="primary" size="small" icon="el-icon-plus" @click="showCommandTemplates">使用模板</el-button>
         </div>
-      </div>
+        </div>
+      </template>
       
       <div v-loading="loading" class="command-content">
         <!-- 命令执行表单 -->
         <div class="section">
           <div class="section-title">
-            <component is="el-icon-edit" class="legacy-icon" /> 命令执行
+            <component :is="'el-icon-edit'" class="legacy-icon" /> 命令执行
             <el-switch
               v-model="batchMode"
               active-text="批量执行"
@@ -34,12 +36,12 @@
                 @visible-change="handleAgentSelectVisibleChange"
                 :loading="agentListLoading"
                 :multiple="batchMode">
-                <div slot="empty" v-if="agentListLoading" class="agent-loading">
-                  <component is="el-icon-loading" class="legacy-icon" /> 加载中...
-                </div>
-                <div slot="empty" v-else class="agent-empty">
-                  没有已连接的Agent
-                </div>
+                <template #empty>
+                  <div v-if="agentListLoading" class="agent-loading">
+                    <component :is="'el-icon-loading'" class="legacy-icon" /> 加载中...
+                  </div>
+                  <div v-else class="agent-empty">没有已连接的Agent</div>
+                </template>
                 <el-option 
                   v-for="agent in agentList" 
                   :key="agent.id"
@@ -90,7 +92,7 @@
         <!-- 命令历史记录 -->
         <div class="section">
           <div class="section-title">
-            <component is="el-icon-time" class="legacy-icon" /> 命令历史
+            <component :is="'el-icon-time'" class="legacy-icon" /> 命令历史
             <div class="history-filter">
               <el-select
                 v-model="historyFilter.agent_id"
@@ -116,6 +118,7 @@
                 <el-option value="completed" label="已完成"></el-option>
                 <el-option value="failed" label="失败"></el-option>
                 <el-option value="timeout" label="超时"></el-option>
+                <el-option value="canceled" label="已取消"></el-option>
               </el-select>
               <el-input
                 v-model="historyFilter.search"
@@ -148,7 +151,7 @@
             <el-table-column prop="command_id" label="命令ID" width="120"></el-table-column>
             <el-table-column prop="agent_id" label="Agent ID" width="120" show-overflow-tooltip></el-table-column>
             <el-table-column prop="type" label="类型" width="100">
-              <template slot-scope="scope">
+              <template #default="scope">
                 <el-tag size="mini" :type="scope.row.type === 'shell' ? 'primary' : 'success'">
                   {{ scope.row.type }}
                 </el-tag>
@@ -156,14 +159,14 @@
             </el-table-column>
             <el-table-column prop="content" label="命令内容" show-overflow-tooltip></el-table-column>
             <el-table-column prop="status" label="状态" width="100">
-              <template slot-scope="scope">
+              <template #default="scope">
                 <el-tag size="mini" :type="getStatusType(scope.row.status)">
                   {{ scope.row.status }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="success" label="结果" width="80">
-              <template slot-scope="scope">
+              <template #default="scope">
                 <el-tag 
                   size="mini"
                   :type="scope.row.success ? 'success' : 'danger'"
@@ -174,12 +177,12 @@
               </template>
             </el-table-column>
             <el-table-column prop="start_time" label="执行时间" width="180">
-              <template slot-scope="scope">
+              <template #default="scope">
                 {{ formatTime(scope.row.start_time) }}
               </template>
             </el-table-column>
             <el-table-column label="操作" width="120" fixed="right">
-              <template slot-scope="scope">
+              <template #default="scope">
                 <el-button type="text" size="mini" @click="viewCommandDetail(scope.row)">
                   查看详情
                 </el-button>
@@ -279,8 +282,8 @@
                   <el-table-column prop="name" label="模板名称" width="180"></el-table-column>
                   <el-table-column prop="description" label="描述"></el-table-column>
                   <el-table-column label="操作" width="120" fixed="right">
-                    <template slot-scope="scope">
-                      <el-button type="text" size="small" @click="useTemplate(scope.row)">使用</el-button>
+                    <template #default="scope">
+                      <el-button type="text" size="small" :disabled="!scope.row.supported" @click="useTemplate(scope.row)">使用</el-button>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -290,8 +293,8 @@
                   <el-table-column prop="name" label="模板名称" width="180"></el-table-column>
                   <el-table-column prop="description" label="描述"></el-table-column>
                   <el-table-column label="操作" width="120" fixed="right">
-                    <template slot-scope="scope">
-                      <el-button type="text" size="small" @click="useTemplate(scope.row)">使用</el-button>
+                    <template #default="scope">
+                      <el-button type="text" size="small" :disabled="!scope.row.supported" @click="useTemplate(scope.row)">使用</el-button>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -301,8 +304,8 @@
                   <el-table-column prop="name" label="模板名称" width="180"></el-table-column>
                   <el-table-column prop="description" label="描述"></el-table-column>
                   <el-table-column label="操作" width="120" fixed="right">
-                    <template slot-scope="scope">
-                      <el-button type="text" size="small" @click="useTemplate(scope.row)">使用</el-button>
+                    <template #default="scope">
+                      <el-button type="text" size="small" :disabled="!scope.row.supported" @click="useTemplate(scope.row)">使用</el-button>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -338,6 +341,7 @@ export default {
         agent_id: '',
         type: 'shell',
         content: '',
+        action: '',
         timeout: 30
       },
       commandRules: {
@@ -391,7 +395,9 @@ export default {
   created() {
     this.fetchAgentList();
     this.initCommandTemplates();
+    this.fetchTemplates();
     this.processQueryParams();
+    this.fetchCommandHistory();
   },
   methods: {
     // 处理查询参数
@@ -406,25 +412,16 @@ export default {
       this.agentListLoading = true;
       try {
         const response = await agentApi.getAgentList();
-        console.log('获取Agent列表原始响应:', response);
-        
         if (response && response.code === 200) {
-          // 处理返回的数据结构，将每个agent对象转换为列表项
           const agentData = response.data || {};
-          console.log('Agent数据对象:', agentData);
-          
           if (typeof agentData === 'object' && !Array.isArray(agentData)) {
-            // 对象格式，需要映射为数组
-            this.agentList = Object.entries(agentData).map(([key, agent]) => {
-              console.log('处理Agent:', key, agent);
-              return {
+            this.agentList = Object.values(agentData).map(agent => ({
                 id: agent.agent_uuid,  // 使用agent_uuid作为id
                 hostname: agent.hostname || agent.name || '未知主机',  // 尝试多个可能的名称字段
                 ip: agent.ip_addresses ? agent.ip_addresses[0] : agent.ip || '',  // 尝试多种IP字段
                 os: agent.os || agent.system || '',  // 操作系统信息
                 status: agent.connected ? 'online' : 'offline'  // 连接状态
-              };
-            });
+              }));
           } else if (Array.isArray(agentData)) {
             // 数组格式，直接映射
             this.agentList = agentData.map(agent => ({
@@ -436,7 +433,6 @@ export default {
             }));
           }
           
-          console.log('处理后的Agent列表:', this.agentList);
         } else {
           console.error('Agent列表响应格式错误:', response);
           this.$message.error('获取Agent列表响应格式错误');
@@ -466,29 +462,34 @@ export default {
     initCommandTemplates() {
       // 初始化内置的命令模板
       this.systemTemplates = [
-        { id: 1, name: '系统信息', description: '获取基础系统信息', type: 'shell', content: 'uname -a && cat /etc/os-release' },
-        { id: 2, name: '磁盘空间', description: '查看磁盘空间使用情况', type: 'shell', content: 'df -h' },
-        { id: 3, name: '内存信息', description: '查看内存使用情况', type: 'shell', content: 'free -m' },
-        { id: 4, name: 'CPU信息', description: '查看CPU信息', type: 'shell', content: 'cat /proc/cpuinfo' },
-        { id: 5, name: '进程列表', description: '查看占用资源最多的进程', type: 'shell', content: 'ps aux --sort=-%cpu | head -10' }
+        { id: 1, name: '系统信息', description: '获取基础系统信息', type: 'shell', content: 'system.refresh', action: 'system.refresh', supported: true },
+        { id: 2, name: '磁盘空间', description: '查看磁盘空间使用情况', type: 'shell', content: 'disk.inspect', action: 'disk.inspect', supported: true },
+        { id: 3, name: '内存信息', description: '当前生产白名单未开放', type: 'shell', content: 'free -m', supported: false },
+        { id: 4, name: 'CPU信息', description: '当前生产白名单未开放', type: 'shell', content: 'cat /proc/cpuinfo', supported: false },
+        { id: 5, name: '进程列表', description: '当前生产白名单未开放', type: 'shell', content: 'ps aux --sort=-%cpu | head -10', supported: false }
       ];
       
       this.fileTemplates = [
-        { id: 6, name: '列出目录', description: '列出指定目录内容', type: 'shell', content: 'ls -la /path/to/directory' },
-        { id: 7, name: '查找文件', description: '根据名称查找文件', type: 'shell', content: 'find / -name "filename" -type f' },
-        { id: 8, name: '最近修改', description: '列出最近修改的文件', type: 'shell', content: 'find / -type f -mtime -1 | grep -v "/proc/" | grep -v "/sys/" | head -20' }
+        { id: 6, name: '列出目录', description: '当前生产白名单未开放', type: 'shell', content: 'ls -la /path/to/directory', supported: false },
+        { id: 7, name: '查找文件', description: '当前生产白名单未开放', type: 'shell', content: 'find / -name "filename" -type f', supported: false },
+        { id: 8, name: '最近修改', description: '当前生产白名单未开放', type: 'shell', content: 'find / -type f -mtime -1 | grep -v "/proc/" | grep -v "/sys/" | head -20', supported: false }
       ];
       
       this.networkTemplates = [
-        { id: 9, name: '网络连接', description: '查看网络连接状态', type: 'shell', content: 'netstat -tuln' },
-        { id: 10, name: 'Ping测试', description: '测试与目标主机的连接', type: 'shell', content: 'ping -c 4 google.com' },
-        { id: 11, name: 'IP配置', description: '查看IP配置信息', type: 'shell', content: 'ip addr show' },
-        { id: 12, name: '路由表', description: '查看路由表', type: 'shell', content: 'ip route' }
+        { id: 9, name: '网络连接', description: '当前生产白名单未开放', type: 'shell', content: 'netstat -tuln', supported: false },
+        { id: 10, name: 'Ping测试', description: '当前生产白名单未开放', type: 'shell', content: 'ping -c 4 127.0.0.1', supported: false },
+        { id: 11, name: 'IP配置', description: '当前生产白名单未开放', type: 'shell', content: 'ip addr show', supported: false },
+        { id: 12, name: '路由表', description: '当前生产白名单未开放', type: 'shell', content: 'ip route', supported: false }
       ];
     },
     useTemplate(template) {
+      if (!template.supported) {
+        this.$message.warning('此模板未包含在后端返回的生产动作白名单中');
+        return;
+      }
       this.commandForm.type = template.type || 'shell';
       this.commandForm.content = template.content;
+      this.commandForm.action = template.action;
       this.templateDialogVisible = false;
     },
     // 命令执行相关方法
@@ -509,6 +510,7 @@ export default {
                 agent_id: agentId,
                 type: this.commandForm.type,
                 content: this.commandForm.content,
+                action: this.resolveCommandAction(),
                 timeout: this.commandForm.timeout
               };
               
@@ -558,6 +560,7 @@ export default {
             agent_id: this.batchMode ? this.commandForm.agent_id[0] : this.commandForm.agent_id,
             type: this.commandForm.type,
             content: this.commandForm.content,
+            action: this.resolveCommandAction(),
             timeout: this.commandForm.timeout
           };
           
@@ -604,7 +607,7 @@ export default {
           const result = response.data;
           
           // 如果命令已完成或出错，显示详情
-          if (result.status === 'completed' || result.status === 'failed' || result.status === 'timeout') {
+          if (result.status === 'completed' || result.status === 'failed' || result.status === 'timeout' || result.status === 'canceled') {
             this.selectedCommand = result;
             this.dialogVisible = true;
             
@@ -638,56 +641,32 @@ export default {
     },
     resetCommand() {
       this.$refs.commandForm.resetFields();
+      this.commandForm.action = '';
+    },
+    resolveCommandAction() {
+      if (this.commandForm.action) return this.commandForm.action;
+      const content = String(this.commandForm.content || '').trim();
+      if (content === 'system.refresh' || content === 'uname -a && cat /etc/os-release') return 'system.refresh';
+      if (content === 'disk.inspect' || content === 'df -h' || content === 'df -Pk') return 'disk.inspect';
+      return '';
     },
 
     // 命令历史相关方法
     async fetchCommandHistory() {
       this.historyLoading = true;
       try {
-        // 直接使用agent_id参数，而不是嵌套在page和page_size中
-        let agent_id = this.historyFilter.agent_id || '';
-        
-        console.log('获取命令历史参数:', { agent_id });
-        
-        // 使用更直接的URL请求
-        let response;
-        if (agent_id) {
-          response = await agentApi.getCommandHistoryByAgentId(agent_id);
-        } else {
-          // 如果没有选择agent_id，则不发送请求
-          this.commandHistory = [];
-          this.total = 0;
-          this.historyLoading = false;
-          return;
+        const params = this.commandHistoryParams();
+        const agentId = this.historyFilter.agent_id || '';
+        const response = agentId
+          ? await agentApi.getCommandHistoryByAgentId(agentId, params)
+          : await agentApi.getCommandHistory(params);
+        let items = response.data?.items || [];
+        if (this.historyFilter.status === 'timeout') {
+          items = items.filter(item => String(item.error_msg || '').includes('超时'));
         }
-        
-        if (response && response.code === 200) {
-          // 接口返回标准格式: {code: 200, data: [...命令列表], msg: "获取成功"}
-          if (Array.isArray(response.data)) {
-            // 直接使用返回的数组
-            this.commandHistory = response.data;
-            this.total = response.data.length;
-          } else if (response.data && response.data.items && Array.isArray(response.data.items)) {
-            // 分页格式: {items: [...], total: 数量}
-            this.commandHistory = response.data.items;
-            this.total = response.data.total || response.data.items.length;
-          } else if (response.data && typeof response.data === 'object') {
-            // 对象格式，转换为数组
-            this.commandHistory = Object.values(response.data);
-            this.total = this.commandHistory.length;
-          } else {
-            this.commandHistory = [];
-            this.total = 0;
-          }
-          
-          console.log('命令历史数据:', this.commandHistory);
-        } else {
-          this.$message.error(response.msg || '获取命令历史失败');
-          this.commandHistory = [];
-          this.total = 0;
-        }
+        this.commandHistory = items;
+        this.total = this.historyFilter.status === 'timeout' ? items.length : (response.data?.total || 0);
       } catch (error) {
-        console.error('获取命令历史失败:', error);
         this.$message.error('获取命令历史失败：' + (error.message || '未知错误'));
         this.commandHistory = [];
         this.total = 0;
@@ -697,6 +676,7 @@ export default {
     },
     handleSizeChange(val) {
       this.pageSize = val;
+      this.currentPage = 1;
       this.fetchCommandHistory();
     },
     handleCurrentChange(val) {
@@ -709,9 +689,29 @@ export default {
         'running': 'warning',
         'completed': 'success',
         'failed': 'danger',
-        'timeout': 'danger'
+        'timeout': 'danger',
+        'canceled': 'info'
       };
       return statusMap[status] || 'info';
+    },
+    commandHistoryParams() {
+      const params = {
+        page: this.currentPage,
+        page_size: this.pageSize,
+        status: this.historyFilter.status,
+        search: this.historyFilter.search
+      };
+      const range = this.historyFilter.date_range || [];
+      if (range[0]) params.startDate = this.formatFilterDate(range[0]);
+      if (range[1]) params.endDate = this.formatFilterDate(range[1]);
+      return params;
+    },
+    formatFilterDate(value) {
+      const date = new Date(value);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     },
     viewCommandDetail(command) {
       this.selectedCommand = command;
@@ -748,22 +748,19 @@ export default {
       }
     },
     onAgentFilterChange() {
-      // 只有当选择了 agent_id 时才获取命令历史
-      if (this.historyFilter.agent_id) {
-        this.fetchCommandHistory();
-      } else {
-        // 如果清除了 agent_id，则清空命令历史
-        this.commandHistory = [];
-        this.total = 0;
-      }
+      this.currentPage = 1;
+      this.fetchCommandHistory();
     },
     onStatusFilterChange() {
+      this.currentPage = 1;
       this.fetchCommandHistory();
     },
     onSearchChange() {
+      this.currentPage = 1;
       this.fetchCommandHistory();
     },
     onDateRangeChange() {
+      this.currentPage = 1;
       this.fetchCommandHistory();
     },
     refreshHistory() {
@@ -777,14 +774,14 @@ export default {
     },
     async fetchTemplates() {
       try {
-        const response = await agentApi.getTemplates();
-        if (response && response.code === 200) {
-          this.systemTemplates = response.data.system || [];
-          this.fileTemplates = response.data.file || [];
-          this.networkTemplates = response.data.network || [];
-        }
+        const response = await agentApi.getActions();
+        const allowed = new Set((response.data || []).map(item => item.id));
+        this.systemTemplates = this.systemTemplates.map(item => ({
+          ...item,
+          supported: item.action ? allowed.has(item.action) : false
+        }));
       } catch (error) {
-        this.$message.error('获取命令模板失败：' + error.message);
+        this.$message.error('获取允许动作失败：' + error.message);
       }
     },
     async refreshCommandDetail(commandId) {
@@ -818,50 +815,9 @@ export default {
       }
     },
     getAllHistory() {
-      try {
-        this.historyLoading = true;
-        // 清除当前的agent_id过滤器
-        this.historyFilter.agent_id = '';
-        
-        // 直接调用获取所有命令历史的API
-        agentApi.getCommandHistory()
-          .then(response => {
-            if (response && response.code === 200) {
-              // 处理响应数据
-              if (Array.isArray(response.data)) {
-                this.commandHistory = response.data;
-                this.total = response.data.length;
-              } else if (response.data && response.data.items && Array.isArray(response.data.items)) {
-                this.commandHistory = response.data.items;
-                this.total = response.data.total || response.data.items.length;
-              } else if (response.data && typeof response.data === 'object') {
-                this.commandHistory = Object.values(response.data);
-                this.total = this.commandHistory.length;
-              } else {
-                this.commandHistory = [];
-                this.total = 0;
-              }
-              console.log('获取所有命令历史成功:', this.commandHistory);
-            } else {
-              this.$message.error(response.msg || '获取命令历史失败');
-              this.commandHistory = [];
-              this.total = 0;
-            }
-          })
-          .catch(error => {
-            console.error('获取所有命令历史失败:', error);
-            this.$message.error('获取命令历史失败：' + (error.message || '未知错误'));
-            this.commandHistory = [];
-            this.total = 0;
-          })
-          .finally(() => {
-            this.historyLoading = false;
-          });
-      } catch (error) {
-        console.error('获取所有命令历史异常:', error);
-        this.$message.error('获取命令历史失败：' + (error.message || '未知错误'));
-        this.historyLoading = false;
-      }
+      this.historyFilter = { agent_id: '', status: '', search: '', date_range: [] };
+      this.currentPage = 1;
+      this.fetchCommandHistory();
     }
   }
 };

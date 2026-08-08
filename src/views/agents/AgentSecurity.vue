@@ -1,15 +1,17 @@
 <template>
   <div class="agent-security-container">
     <el-card class="main-card" shadow="hover">
-      <div slot="header" class="clearfix">
+      <template #header>
+        <div class="clearfix">
         <span class="card-title">
-          <component is="el-icon-lock" class="legacy-icon" /> Agent安全设置
+          <component :is="'el-icon-lock'" class="legacy-icon" /> Agent安全设置
         </span>
-      </div>
+        </div>
+      </template>
       
       <div v-loading="loading" class="security-content">
         <div class="section-title">
-          <component is="el-icon-key" class="legacy-icon" /> API密钥管理
+          <component :is="'el-icon-key'" class="legacy-icon" /> API密钥管理
         </div>
         
         <div class="api-key-box">
@@ -17,10 +19,11 @@
             <span class="key-label">当前密钥</span>
             <div class="key-value-wrapper">
               <span v-if="!showKey" class="key-value-masked">••••••••••••••••••••••••••••••••</span>
-              <span v-else class="key-value">{{ apiKey }}</span>
+              <span v-else class="key-value">{{ apiKey || '未配置' }}</span>
               <el-button 
                 type="text" 
                 :icon="showKey ? 'el-icon-view' : 'el-icon-hide'" 
+                :disabled="!apiKey"
                 @click="toggleKeyVisibility" 
                 class="key-toggle">
                 {{ showKey ? '隐藏' : '显示' }}
@@ -33,7 +36,7 @@
               <el-button 
                 type="primary" 
                 icon="el-icon-document-copy" 
-                :disabled="!apiKey"
+                :disabled="!keyRevealed"
                 circle 
                 @click="copyKey">
               </el-button>
@@ -42,6 +45,7 @@
               <el-button 
                 type="warning" 
                 icon="el-icon-refresh" 
+                :disabled="!securityAvailable"
                 circle 
                 @click="confirmGenerateNewKey">
               </el-button>
@@ -57,12 +61,12 @@
           <el-tabs v-model="activeInstallTab" type="card">
             <el-tab-pane label="Linux" name="linux">
               <div class="code-block">
-                <pre><code>wget -O agent-install.sh https://example.com/agent-install.sh
-chmod +x agent-install.sh
-sudo API_KEY="{{ apiKey }}" ./agent-install.sh</code></pre>
+                <pre><code>go build -o dst-admin-agent ./agent/cmd/agent
+./dst-admin-agent -server "wss://your-domain/agent" -key "{{ apiKey }}"</code></pre>
                 <el-button 
                   type="text" 
                   icon="el-icon-document-copy" 
+                  :disabled="!keyRevealed"
                   class="copy-btn"
                   @click="copyInstallCommand('linux')">
                   复制
@@ -71,11 +75,12 @@ sudo API_KEY="{{ apiKey }}" ./agent-install.sh</code></pre>
             </el-tab-pane>
             <el-tab-pane label="Windows" name="windows">
               <div class="code-block">
-                <pre><code>powershell -Command "Invoke-WebRequest -Uri 'https://example.com/agent-install.ps1' -OutFile 'agent-install.ps1'"
-powershell -ExecutionPolicy Bypass -Command ".\agent-install.ps1 -ApiKey '{{ apiKey }}'"</code></pre>
+                <pre><code>go build -o dst-admin-agent.exe ./agent/cmd/agent
+.\dst-admin-agent.exe -server "wss://your-domain/agent" -key "{{ apiKey }}"</code></pre>
                 <el-button 
                   type="text" 
                   icon="el-icon-document-copy" 
+                  :disabled="!keyRevealed"
                   class="copy-btn"
                   @click="copyInstallCommand('windows')">
                   复制
@@ -84,14 +89,11 @@ powershell -ExecutionPolicy Bypass -Command ".\agent-install.ps1 -ApiKey '{{ api
             </el-tab-pane>
             <el-tab-pane label="Docker" name="docker">
               <div class="code-block">
-                <pre><code>docker run -d --name dst-admin-agent \
---restart always \
--e API_KEY="{{ apiKey }}" \
--e SERVER_URL="http://your-server-address:8000" \
-dst-admin/agent:latest</code></pre>
+                <pre><code>当前仓库没有发布可验证的 Agent Docker 镜像。</code></pre>
                 <el-button 
                   type="text" 
                   icon="el-icon-document-copy" 
+                  disabled
                   class="copy-btn"
                   @click="copyInstallCommand('docker')">
                   复制
@@ -105,20 +107,21 @@ dst-admin/agent:latest</code></pre>
             <li>
               <div class="step-title">下载Agent安装文件</div>
               <div class="step-content">
-                从 <a href="https://github.com/yourusername/dst-admin-agent/releases" target="_blank">GitHub Releases</a> 页面下载适合您系统的二进制文件。
+                从 <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" rel="noopener noreferrer">项目仓库</a> 构建适合您系统的 Agent 二进制文件。
               </div>
             </li>
             <li>
               <div class="step-title">配置Agent</div>
               <div class="step-content">
-                创建配置文件 <code>config.yaml</code>，并添加以下内容：
+                创建配置文件 <code>conf/app.conf</code>，并添加以下内容：
                 <div class="code-block">
-                  <pre><code>api_key: "{{ apiKey }}"
-server_url: "http://your-server-address:8000"
-log_level: "info"</code></pre>
+                  <pre><code>[agent]
+SECURITY_KEY = {{ apiKey }}
+SERVER_URL = wss://your-domain/agent</code></pre>
                   <el-button 
                     type="text" 
                     icon="el-icon-document-copy" 
+                    :disabled="!keyRevealed"
                     class="copy-btn"
                     @click="copyConfigYaml()">
                     复制
@@ -130,10 +133,11 @@ log_level: "info"</code></pre>
               <div class="step-title">运行Agent</div>
               <div class="step-content">
                 <div class="code-block linux-cmd">
-                  <pre><code>./dst-admin-agent --config config.yaml</code></pre>
+                  <pre><code>./dst-admin-agent -server "wss://your-domain/agent" -keyfile ./conf/app.conf</code></pre>
                   <el-button 
                     type="text" 
                     icon="el-icon-document-copy" 
+                    :disabled="!keyRevealed"
                     class="copy-btn"
                     @click="copyRunCommand()">
                     复制
@@ -164,76 +168,41 @@ export default {
     return {
       loading: false,
       apiKey: '',
+      keyRevealed: false,
+      securityAvailable: false,
       showKey: false,
-      activeInstallTab: 'linux',
-      debugMode: process.env.NODE_ENV === 'development'
+      activeInstallTab: 'linux'
     };
   },
   created() {
     this.fetchApiKey();
-    
-    // 开发环境下添加全局访问点以便调试
-    if (this.debugMode) {
-      window.agentSecurityComponent = this;
-      console.info('开发模式: 可通过window.agentSecurityComponent访问组件实例');
-    }
   },
   methods: {
-    fetchApiKey() {
+    async fetchApiKey() {
       this.loading = true;
-      agentApi.getSecurityKey()
-        .then(response => {
-          console.log('安全密钥响应:', response);
-          console.log('响应类型:', typeof response);
-          console.log('响应JSON:', JSON.stringify(response));
-          console.log('响应键:', Object.keys(response));
-          
-          // 尝试从各种可能的响应格式中提取key
-          let key = null;
-          
-          // 标准数据结构 {code: 200, data: {key: '...'}, msg: '...'}
-          if (response && response.code === 200 && response.data && response.data.key) {
-            key = response.data.key;
-          } 
-          // 直接数据结构 {key: '...'}
-          else if (response && response.key) {
-            key = response.key;
-          }
-          // 调试模式尝试其他可能的结构
-          else if (this.debugMode) {
-            // 尝试使用调试工具提取
-            key = this.debugExtractKey(response);
-          }
-          
-          if (key) {
-            this.apiKey = key;
-            console.log('设置的密钥值:', this.apiKey);
-          } else {
-            this.$message.error('无法识别API密钥格式');
-            console.error('无法识别的API密钥格式:', response);
-          }
-        })
-        .catch(error => {
-          console.error('获取API密钥失败:', error);
-          this.$message.error('获取API密钥失败: ' + (error.message || '未知错误'));
-          
-          // 开发环境下尝试从错误对象中提取可能的密钥
-          if (this.debugMode && error && error.response) {
-            const possibleKey = this.debugExtractKey(error.response.data);
-            if (possibleKey) {
-              console.info('从错误响应中提取到可能的密钥:', possibleKey);
-              this.apiKey = possibleKey;
-            }
-          }
-        })
-        .finally(() => {
-          this.loading = false;
-        });
+      try {
+        const response = await agentApi.getSecurityKey();
+        this.apiKey = response.data?.key || '';
+        this.keyRevealed = false;
+        this.securityAvailable = response.data?.available === true;
+        this.showKey = false;
+      } catch (error) {
+        this.apiKey = '';
+        this.keyRevealed = false;
+        this.securityAvailable = false;
+        this.$message.error('获取API密钥失败: ' + (error.message || '未知错误'));
+      } finally {
+        this.loading = false;
+      }
     },
     toggleKeyVisibility() {
       this.showKey = !this.showKey;
     },
     copyKey() {
+      if (!this.keyRevealed) {
+        this.$message.warning('现有密钥只提供掩码；轮换后可复制一次新密钥');
+        return;
+      }
       this.copyToClipboard(this.apiKey);
       this.$message.success('API密钥已复制到剪贴板');
     },
@@ -246,52 +215,45 @@ export default {
         this.generateNewKey();
       }).catch(() => {});
     },
-    generateNewKey() {
+    async generateNewKey() {
       this.loading = true;
-      agentApi.generateNewKey()
-        .then(response => {
-          console.log('生成新密钥响应:', response);
-          console.log('响应JSON:', JSON.stringify(response));
-          
-          if (response && (response.success || response.code === 200)) {
-            this.$message.success(response.message || response.msg || '新密钥生成成功');
-            // 重新获取最新的密钥
-            this.fetchApiKey();
-          } else {
-            this.$message.error(response.msg || '生成新密钥失败');
-          }
-        })
-        .catch(error => {
-          console.error('生成新密钥失败:', error);
-          this.$message.error('生成新密钥失败: ' + (error.message || '未知错误'));
-        })
-        .finally(() => {
-          this.loading = false;
-        });
+      try {
+        const response = await agentApi.generateNewKey();
+        this.apiKey = response.data.key;
+        this.keyRevealed = true;
+        this.showKey = true;
+        this.$message.success(response.message || '新密钥已生成，请立即保存');
+      } catch (error) {
+        this.$message.error('生成新密钥失败: ' + (error.message || '未知错误'));
+      } finally {
+        this.loading = false;
+      }
     },
     copyInstallCommand(type) {
+      if (!this.keyRevealed) return;
       let command = '';
       switch (type) {
         case 'linux':
-          command = `wget -O agent-install.sh https://example.com/agent-install.sh\nchmod +x agent-install.sh\nsudo API_KEY="${this.apiKey}" ./agent-install.sh`;
+          command = `go build -o dst-admin-agent ./agent/cmd/agent\n./dst-admin-agent -server "wss://your-domain/agent" -key "${this.apiKey}"`;
           break;
         case 'windows':
-          command = `powershell -Command "Invoke-WebRequest -Uri 'https://example.com/agent-install.ps1' -OutFile 'agent-install.ps1'"\npowershell -ExecutionPolicy Bypass -Command ".\\agent-install.ps1 -ApiKey '${this.apiKey}'"`;
+          command = `go build -o dst-admin-agent.exe ./agent/cmd/agent\n.\\dst-admin-agent.exe -server "wss://your-domain/agent" -key "${this.apiKey}"`;
           break;
-        case 'docker':
-          command = `docker run -d --name dst-admin-agent \\\n--restart always \\\n-e API_KEY="${this.apiKey}" \\\n-e SERVER_URL="http://your-server-address:8000" \\\ndst-admin/agent:latest`;
-          break;
+        default:
+          return;
       }
       this.copyToClipboard(command);
       this.$message.success('安装命令已复制到剪贴板');
     },
     copyConfigYaml() {
-      const config = `api_key: "${this.apiKey}"\nserver_url: "http://your-server-address:8000"\nlog_level: "info"`;
+      if (!this.keyRevealed) return;
+      const config = `[agent]\nSECURITY_KEY = ${this.apiKey}\nSERVER_URL = wss://your-domain/agent`;
       this.copyToClipboard(config);
       this.$message.success('配置内容已复制到剪贴板');
     },
     copyRunCommand() {
-      const command = `./dst-admin-agent --config config.yaml`;
+      if (!this.keyRevealed) return;
+      const command = './dst-admin-agent -server "wss://your-domain/agent" -keyfile ./conf/app.conf';
       this.copyToClipboard(command);
       this.$message.success('运行命令已复制到剪贴板');
     },
@@ -305,41 +267,6 @@ export default {
       el.select();
       document.execCommand('copy');
       document.body.removeChild(el);
-    },
-    
-    // 调试辅助方法
-    debugExtractKey(response) {
-      if (!this.debugMode) return;
-      
-      try {
-        console.group('密钥提取调试');
-        console.log('原始响应:', response);
-        
-        if (typeof response === 'string') {
-          try {
-            response = JSON.parse(response);
-            console.log('解析后的JSON:', response);
-          } catch(e) {
-            console.error('无法解析JSON字符串:', e);
-          }
-        }
-        
-        if (response && response.data && response.data.key) {
-          console.log('找到密钥:', response.data.key);
-          return response.data.key;
-        } else if (response && response.key) {
-          console.log('找到直接密钥:', response.key);
-          return response.key;
-        }
-        
-        console.warn('无法找到密钥');
-        console.groupEnd();
-        return null;
-      } catch(e) {
-        console.error('调试提取过程出错:', e);
-        console.groupEnd();
-        return null;
-      }
     }
   }
 };

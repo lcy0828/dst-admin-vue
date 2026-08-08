@@ -1,14 +1,16 @@
 <template>
   <div class="agent-list-container">
     <el-card class="main-card" shadow="hover">
-      <div slot="header" class="clearfix">
+      <template #header>
+        <div class="clearfix">
         <span class="card-title">
-          <component is="el-icon-connection" class="legacy-icon" /> Agent管理中心
+          <component :is="'el-icon-connection'" class="legacy-icon" /> Agent管理中心
         </span>
         <el-button style="float: right; padding: 3px 0" type="text" @click="refreshData">
-          <component is="el-icon-refresh" class="legacy-icon" /> 刷新
+          <component :is="'el-icon-refresh'" class="legacy-icon" /> 刷新
         </el-button>
-      </div>
+        </div>
+      </template>
 
       <div class="agent-list-header">
         <div class="stat-cards">
@@ -30,7 +32,7 @@
       <div v-loading="loading" class="agent-list-content">
         <template v-if="agentList.length > 0">
           <el-row :gutter="20">
-            <el-col :span="24" v-for="(agent, agentId) in agentList" :key="agentId">
+            <el-col :span="24" v-for="agent in agentList" :key="agent.id">
               <el-card class="agent-card" :class="{ 'agent-connected': agent.connected }" shadow="hover">
                 <div class="agent-card-header">
                   <div class="agent-name">
@@ -40,9 +42,9 @@
                     <span class="hostname">{{ agent.hostname }}</span>
                   </div>
                   <div class="agent-actions">
-                    <el-button type="primary" size="mini" icon="el-icon-view">详情</el-button>
+                    <el-button type="primary" size="mini" icon="el-icon-view" @click="showAgentDetails(agent)">详情</el-button>
                     <el-button type="success" size="mini" icon="el-icon-edit" @click="navigateToCommand(agent.id)">执行命令</el-button>
-                    <el-button type="danger" size="mini" icon="el-icon-delete">移除</el-button>
+                    <el-button type="danger" size="mini" icon="el-icon-delete" :disabled="agent.connected" @click="forgetAgent(agent)">移除</el-button>
                   </div>
                 </div>
 
@@ -66,7 +68,9 @@
                     <div class="info-label">IP地址</div>
                     <div class="info-value">
                       <el-tooltip effect="dark" placement="top" v-for="(ip, idx) in agent.ip_addresses" :key="idx">
-                        <div slot="content">{{ ip }}</div>
+                        <template #content>
+                          <div>{{ ip }}</div>
+                        </template>
                         <el-tag size="mini" style="margin-right: 5px; margin-bottom: 5px">{{ ip }}</el-tag>
                       </el-tooltip>
                     </div>
@@ -122,12 +126,26 @@
         </template>
 
         <div v-else-if="!loading" class="empty-agents">
-          <component is="el-icon-connection" class="legacy-icon empty-icon" />
+          <component :is="'el-icon-connection'" class="legacy-icon empty-icon" />
           <div class="empty-text">暂无Agent连接</div>
           <el-button type="primary" @click="navigateToSecurity">添加Agent</el-button>
         </div>
       </div>
     </el-card>
+
+    <el-dialog v-model="detailVisible" title="Agent详情" width="680px">
+      <el-descriptions v-if="selectedAgent" :column="2" border>
+        <el-descriptions-item label="UUID" :span="2">{{ selectedAgent.agent_uuid }}</el-descriptions-item>
+        <el-descriptions-item label="主机名">{{ selectedAgent.hostname || 'N/A' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">{{ selectedAgent.connected ? '在线' : '离线' }}</el-descriptions-item>
+        <el-descriptions-item label="系统">{{ selectedAgent.os || 'N/A' }} ({{ selectedAgent.arch || 'N/A' }})</el-descriptions-item>
+        <el-descriptions-item label="版本">{{ selectedAgent.version || 'N/A' }}</el-descriptions-item>
+        <el-descriptions-item label="最后心跳">{{ formatTime(selectedAgent.last_heartbeat) }}</el-descriptions-item>
+        <el-descriptions-item label="运行时间">{{ formatUptime(selectedAgent.uptime_seconds) }}</el-descriptions-item>
+        <el-descriptions-item label="IP地址" :span="2">{{ (selectedAgent.ip_addresses || []).join(', ') || 'N/A' }}</el-descriptions-item>
+        <el-descriptions-item label="能力" :span="2">{{ (selectedAgent.capabilities || []).join(', ') || 'N/A' }}</el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
@@ -140,7 +158,9 @@ export default {
     return {
       loading: false,
       agentData: {},
-      agentList: []
+      agentList: [],
+      detailVisible: false,
+      selectedAgent: null
     };
   },
   computed: {
@@ -159,56 +179,17 @@ export default {
     this.fetchAgentList();
   },
   methods: {
-    fetchAgentList() {
+    async fetchAgentList() {
       this.loading = true;
-      console.log('开始获取Agent列表...');
-
-      agentApi.getAgentList()
-        .then(response => {
-          console.log('Agent列表原始响应:', response);
-          // 检查数据是否存在
-          if (response) {
-            console.log('响应详情:', {
-              'response.code': response.code,
-              'response.msg': response.msg,
-              'response.data 类型': typeof response.data,
-              'response.data 是否存在': !!response.data,
-            });
-
-            if (response.code === 200 && response.data) {
-              this.agentData = response.data;
-              console.log('提取的Agent数据:', this.agentData);
-              this.processAgentData();
-            } else {
-              this.$message.error(response.msg || '获取Agent列表失败');
-            }
-          } else {
-            this.$message.error('获取Agent列表失败：响应为空');
-          }
-        })
-        .catch(error => {
-          console.error('获取Agent列表失败:', error);
-          this.$message.error('获取Agent列表失败: ' + (error.message || '未知错误'));
-        })
-        .finally(() => {
-          this.loading = false;
-        });
-    },
-    processAgentData() {
-      // 将对象转换为数组
-      console.log('处理Agent数据，原始数据:', this.agentData);
-
-      // 检查数据结构
-      if (typeof this.agentData === 'object' && !Array.isArray(this.agentData)) {
-        this.agentList = Object.values(this.agentData);
-        console.log('转换为数组后的Agent列表:', this.agentList);
-        console.log('Agent数量:', this.agentList.length);
-      } else if (Array.isArray(this.agentData)) {
-        this.agentList = this.agentData;
-        console.log('数据已是数组格式, Agent数量:', this.agentList.length);
-      } else {
-        console.error('无法处理的Agent数据格式:', typeof this.agentData);
+      try {
+        const response = await agentApi.getAgentList();
+        this.agentData = response.data || [];
+        this.agentList = Array.isArray(this.agentData) ? this.agentData : Object.values(this.agentData);
+      } catch (error) {
         this.agentList = [];
+        this.$message.error('获取Agent列表失败: ' + (error.message || '未知错误'));
+      } finally {
+        this.loading = false;
       }
     },
     refreshData() {
@@ -220,13 +201,31 @@ export default {
     navigateToCommand(id) {
       this.$router.push({ path: '/agents/command', query: { id } });
     },
+    showAgentDetails(agent) {
+      this.selectedAgent = agent;
+      this.detailVisible = true;
+    },
+    async forgetAgent(agent) {
+      try {
+        await this.$confirm(`确定移除离线 Agent “${agent.hostname || agent.id}” 的历史记录吗？`, '移除Agent', {
+          confirmButtonText: '移除',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+        await agentApi.forgetAgent(agent.id);
+        this.$message.success('Agent 记录已移除');
+        await this.fetchAgentList();
+      } catch (error) {
+        if (error !== 'cancel' && error !== 'close') {
+          this.$message.error('移除 Agent 失败: ' + (error.message || '未知错误'));
+        }
+      }
+    },
     getOsIcon(os) {
       if (!os) return 'el-icon-monitor';
 
       const osLower = os.toLowerCase();
-      if (osLower.includes('linux')) return 'fab fa-linux';
-      if (osLower.includes('windows')) return 'fab fa-windows';
-      if (osLower.includes('mac') || osLower.includes('darwin')) return 'fab fa-apple';
+      if (osLower.includes('mac') || osLower.includes('darwin')) return 'el-icon-apple';
 
       return 'el-icon-monitor';
     },
@@ -257,9 +256,11 @@ export default {
     formatTime(timestamp) {
       if (!timestamp) return 'N/A';
 
-      // 将时间戳转换为本地时间
-      const date = new Date(timestamp * 1000);
-      return date.toLocaleString();
+      const numeric = typeof timestamp === 'string' && /^\d+$/.test(timestamp) ? Number(timestamp) : timestamp;
+      const date = typeof numeric === 'number'
+        ? new Date(numeric < 1000000000000 ? numeric * 1000 : numeric)
+        : new Date(numeric);
+      return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleString();
     },
     calculateMemoryUsage(agent) {
       if (!agent.memory || !agent.memory.allocated || !agent.memory.system) {

@@ -6,6 +6,7 @@ import { playerApi as realPlayerApi } from './playerApi';
 import { realModApi } from './modApi';
 import { realLogApi, realRuleManagementApi } from './logApi';
 import { realCronTaskApi } from './cronApi';
+import { realAgentApi } from './agentApi';
 import { legacyBackupApi, legacyRoomApi, legacySystemApi, legacyWorldApi } from './v2LegacyAdapters';
 import { legacyAccessApi, legacyRoomConfigApi, legacyWorldConfigurationApi } from './v2ConfigurationAdapters';
 
@@ -171,51 +172,7 @@ export const authApi = {
   }
 };
 
-// 添加Agent相关API
-export const agentApi = {
-  // 获取Agent列表
-  getAgentList() {
-    console.log('调用getAgentList API');
-    return axios.get(`${config.BASE_URL}/agent/list`)
-      .then(response => {
-        console.log('原始Agent列表响应:', response);
-        // 返回标准化的响应格式
-        return response.data;
-      })
-      .catch(error => {
-        console.error('获取Agent列表出错:', error);
-        throw error;
-      });
-  },
-  // 获取安全密钥
-  getSecurityKey() {
-    return request.get('/agent/security/key');
-  },
-  // 生成新的安全密钥
-  generateNewKey() {
-    return request.post('/agent/security/key/generate');
-  },
-  // 执行远程命令
-  executeCommand(data) {
-    return request.post('/agent/command', data);
-  },
-  // 获取命令执行结果
-  getCommandResult(commandId) {
-    return request.get(`/agent/command/${commandId}`);
-  },
-  // 获取命令历史记录
-  getCommandHistory() {
-    // 不传任何参数，获取所有命令历史
-    console.log('获取所有命令历史');
-    return request.get('/agent/command');
-  },
-  // 根据agent_id获取命令历史
-  getCommandHistoryByAgentId(agentId) {
-    console.log('根据Agent ID获取命令历史:', agentId);
-    // 直接拼接URL参数
-    return request.get(`/agent/command?agent_id=${encodeURIComponent(agentId)}`);
-  }
-};
+export const agentApi = realAgentApi;
 
 // 房间配置相关API（保留旧页面调用形状，实际只访问 /api/v2）
 export const roomConfigApi = legacyRoomConfigApi;

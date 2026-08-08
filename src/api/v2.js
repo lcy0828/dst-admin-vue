@@ -220,6 +220,19 @@ export const automationV2API = {
 	import: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/imports`, input)
 }
 
+export const agentsV2API = {
+	list: () => client.get('/agents', { headers: { 'Cache-Control': 'no-store' } }),
+	get: agentId => client.get(`/agents/${encode(agentId)}`, { headers: { 'Cache-Control': 'no-store' } }),
+	forget: agentId => client.delete(`/agents/${encode(agentId)}`),
+	actions: () => client.get('/agents/actions'),
+	commands: (params = {}) => client.get('/agents/commands', { params }),
+	command: commandId => client.get(`/agents/commands/${encode(commandId)}`, { headers: { 'Cache-Control': 'no-store' } }),
+	agentCommands: (agentId, params = {}) => client.get(`/agents/${encode(agentId)}/commands`, { params }),
+	runCommand: (agentId, input) => client.post(`/agents/${encode(agentId)}/commands`, input),
+	security: () => client.get('/agents/security', { headers: { 'Cache-Control': 'no-store' } }),
+	rotateKey: confirmation => client.post('/agents/security/actions/rotate', { confirmation })
+}
+
 export const consoleV2API = {
 	definitions: roomId => client.get(`/rooms/${encode(roomId)}/commands`)
 }
