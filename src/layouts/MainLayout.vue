@@ -1,6 +1,7 @@
 <template>
-  <div class="app-layout">
-    <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <TooltipProvider :delay-duration="300">
+    <div class="app-layout">
+      <a class="skip-link" href="#main-content">跳到主要内容</a>
 
     <button
       class="sidebar-overlay"
@@ -154,49 +155,88 @@
       <!-- 顶部导航栏 -->
       <header class="header-container">
         <div class="left-menu">
-          <el-button
+          <UiButton
             class="mobile-menu-btn"
-            text
-            circle
+            variant="ghost"
+            size="icon"
             aria-label="打开导航菜单"
             aria-controls="primary-navigation"
             :aria-expanded="mobileSidebarOpen"
             @click="openMobileSidebar"
           >
-            <component :is="'el-icon-s-fold'" class="header-icon" />
-          </el-button>
-          <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-            <el-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="index">
-              {{item}}
-            </el-breadcrumb-item>
-          </el-breadcrumb>
+            <MenuIcon />
+          </UiButton>
+          <Breadcrumb class="header-breadcrumb">
+            <BreadcrumbList class="breadcrumb-trail">
+              <BreadcrumbItem>
+                <BreadcrumbLink as-child>
+                  <router-link to="/dashboard">首页</router-link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <template v-for="(item, index) in breadcrumbs" :key="`${item}-${index}`">
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{{ item }}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </template>
+            </BreadcrumbList>
+          </Breadcrumb>
         </div>
         <div class="right-menu">
           <RuntimeTargetSwitch @change="handleRuntimeTargetChange" />
-          <a
-            href="https://github.com/lcy0828/dst-admin-go"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="github-link"
-            aria-label="打开 GitHub 项目"
-          >
-            <i class="fab fa-github"></i>
-          </a>
-          <el-dropdown trigger="click" @command="handleUserCommand">
-            <button type="button" class="user-dropdown" aria-label="打开用户菜单">
-              <component :is="'el-icon-user-solid'" class="user-icon" />
-              <span class="user-name">{{ currentUser.username || '管理员' }}</span>
-              <component :is="'el-icon-arrow-down'" class="dropdown-arrow" />
-            </button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人资料</el-dropdown-item>
-                <el-dropdown-item command="password">修改密码</el-dropdown-item>
-                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <UiButton class="github-link" variant="ghost" size="icon" as-child>
+                <a
+                  href="https://github.com/lcy0828/dst-admin-go"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="打开 GitHub 项目"
+                >
+                  <GitFork />
+                </a>
+              </UiButton>
+            </TooltipTrigger>
+            <TooltipContent>查看 GitHub 项目</TooltipContent>
+          </Tooltip>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <UiButton
+                class="user-dropdown"
+                variant="ghost"
+                :aria-label="`打开用户菜单，当前用户 ${currentUser.username || '管理员'}`"
+              >
+                <Avatar size="sm">
+                  <AvatarFallback>{{ userInitial }}</AvatarFallback>
+                </Avatar>
+                <span class="user-name">{{ currentUser.username || '管理员' }}</span>
+                <ChevronDown data-icon="inline-end" />
+              </UiButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" class="w-52">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  <span class="account-menu-label">当前账户</span>
+                  <span class="account-menu-name">{{ currentUser.username || '管理员' }}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuItem @select="handleUserCommand('profile')">
+                  <UserRound />
+                  个人资料
+                </DropdownMenuItem>
+                <DropdownMenuItem @select="handleUserCommand('password')">
+                  <KeyRound />
+                  修改密码
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem variant="destructive" @select="handleUserCommand('logout')">
+                  <LogOut />
+                  退出登录
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -208,17 +248,17 @@
               <p class="remote-state-label">当前管理目标</p>
               <h2>{{ runtimeTarget.name }}</h2>
             </div>
-            <el-tag :type="runtimeTarget.online ? 'success' : 'danger'" effect="plain">
+            <Badge :variant="runtimeTarget.online ? 'secondary' : 'destructive'">
               {{ runtimeTarget.online ? 'Agent 在线' : 'Agent 离线' }}
-            </el-tag>
+            </Badge>
           </div>
-          <el-alert
-            type="warning"
-            :closable="false"
-            show-icon
-            title="远程领域操作尚未启用"
-            description="当前节点的路径配置保持独立。房间、世界、模组和备份操作已锁定，防止请求误落到本机。"
-          />
+          <Alert>
+            <TriangleAlert />
+            <AlertTitle>远程领域操作尚未启用</AlertTitle>
+            <AlertDescription>
+              当前节点的路径配置保持独立。房间、世界、模组和备份操作已锁定，防止请求误落到本机。
+            </AlertDescription>
+          </Alert>
           <dl class="remote-runtime-summary">
             <div>
               <dt>主机</dt>
@@ -238,44 +278,168 @@
             </div>
           </dl>
           <div class="remote-state-actions">
-            <el-button type="primary" @click="$router.push('/agents/list')">远程运行时配置</el-button>
-            <el-button @click="switchToLocalRuntime">切换到本机</el-button>
+            <UiButton @click="$router.push('/agents/list')">
+              <Settings data-icon="inline-start" />
+              远程运行时配置
+            </UiButton>
+            <UiButton variant="outline" @click="switchToLocalRuntime">切换到本机</UiButton>
           </div>
         </section>
         <router-view v-else></router-view>
       </main>
     </div>
 
-    <el-dialog title="个人资料" v-model="profileVisible" width="420px">
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="用户名">{{ currentUser.username || '管理员' }}</el-descriptions-item>
-        <el-descriptions-item label="账户类型">系统管理员</el-descriptions-item>
-      </el-descriptions>
-    </el-dialog>
+      <UiDialog v-model:open="profileVisible">
+        <DialogContent class="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>个人资料</DialogTitle>
+            <DialogDescription>当前登录账户与权限信息</DialogDescription>
+          </DialogHeader>
+          <div class="profile-summary">
+            <Avatar size="lg">
+              <AvatarFallback>{{ userInitial }}</AvatarFallback>
+            </Avatar>
+            <div class="profile-identity">
+              <strong>{{ currentUser.username || '管理员' }}</strong>
+              <span>系统管理员</span>
+            </div>
+          </div>
+          <Separator />
+          <dl class="profile-details">
+            <div>
+              <dt>用户名</dt>
+              <dd>{{ currentUser.username || '管理员' }}</dd>
+            </div>
+            <div>
+              <dt>账户类型</dt>
+              <dd>系统管理员</dd>
+            </div>
+          </dl>
+        </DialogContent>
+      </UiDialog>
 
-    <el-dialog title="修改密码" v-model="passwordVisible" width="460px">
-      <el-form ref="passwordForm" :model="passwordForm" :rules="passwordRules" label-width="100px">
-        <el-form-item label="当前密码" prop="currentPassword">
-          <el-input v-model="passwordForm.currentPassword" type="password" show-password autocomplete="current-password" />
-        </el-form-item>
-        <el-form-item label="新密码" prop="newPassword">
-          <el-input v-model="passwordForm.newPassword" type="password" show-password autocomplete="new-password" />
-        </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input v-model="passwordForm.confirmPassword" type="password" show-password autocomplete="new-password" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="passwordVisible = false">取消</el-button>
-        <el-button type="primary" :loading="passwordSaving" @click="changePassword">确认修改</el-button>
-      </template>
-    </el-dialog>
-  </div>
+      <UiDialog v-model:open="passwordVisible" @update:open="handlePasswordDialogChange">
+        <DialogContent class="sm:max-w-md">
+          <form class="password-form" novalidate @submit.prevent="changePassword">
+            <DialogHeader>
+              <DialogTitle>修改密码</DialogTitle>
+              <DialogDescription>新密码至少 6 位，修改后需要重新登录。</DialogDescription>
+            </DialogHeader>
+            <FieldGroup>
+              <Field :data-invalid="Boolean(passwordErrors.currentPassword)">
+                <FieldLabel for="current-password">当前密码</FieldLabel>
+                <UiInput
+                  id="current-password"
+                  v-model="passwordForm.currentPassword"
+                  :type="passwordsVisible ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  :aria-invalid="Boolean(passwordErrors.currentPassword)"
+                  @blur="validatePasswordField('currentPassword')"
+                />
+                <FieldError v-if="passwordErrors.currentPassword">
+                  {{ passwordErrors.currentPassword }}
+                </FieldError>
+              </Field>
+              <Field :data-invalid="Boolean(passwordErrors.newPassword)">
+                <FieldLabel for="new-password">新密码</FieldLabel>
+                <UiInput
+                  id="new-password"
+                  v-model="passwordForm.newPassword"
+                  :type="passwordsVisible ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  :aria-invalid="Boolean(passwordErrors.newPassword)"
+                  @blur="validatePasswordField('newPassword')"
+                />
+                <FieldError v-if="passwordErrors.newPassword">
+                  {{ passwordErrors.newPassword }}
+                </FieldError>
+              </Field>
+              <Field :data-invalid="Boolean(passwordErrors.confirmPassword)">
+                <FieldLabel for="confirm-password">确认密码</FieldLabel>
+                <UiInput
+                  id="confirm-password"
+                  v-model="passwordForm.confirmPassword"
+                  :type="passwordsVisible ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  :aria-invalid="Boolean(passwordErrors.confirmPassword)"
+                  @blur="validatePasswordField('confirmPassword')"
+                />
+                <FieldError v-if="passwordErrors.confirmPassword">
+                  {{ passwordErrors.confirmPassword }}
+                </FieldError>
+              </Field>
+            </FieldGroup>
+            <UiButton class="password-visibility" type="button" variant="ghost" @click="passwordsVisible = !passwordsVisible">
+              <EyeOff v-if="passwordsVisible" data-icon="inline-start" />
+              <Eye v-else data-icon="inline-start" />
+              {{ passwordsVisible ? '隐藏密码' : '显示密码' }}
+            </UiButton>
+            <DialogFooter>
+              <DialogClose as-child>
+                <UiButton type="button" variant="outline">取消</UiButton>
+              </DialogClose>
+              <UiButton type="submit" :disabled="passwordSaving">
+                <Spinner v-if="passwordSaving" data-icon="inline-start" />
+                {{ passwordSaving ? '正在修改' : '确认修改' }}
+              </UiButton>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </UiDialog>
+    </div>
+  </TooltipProvider>
 </template>
 
 <script>
 import { authAPI } from '@/api/v2'
 import RuntimeTargetSwitch from '@/components/RuntimeTargetSwitch.vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from '@/components/ui/breadcrumb'
+import { Button as UiButton } from '@/components/ui/button'
+import {
+  Dialog as UiDialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input as UiInput } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { Spinner } from '@/components/ui/spinner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  ChevronDown,
+  Eye,
+  EyeOff,
+  GitFork,
+  KeyRound,
+  LogOut,
+  Menu as MenuIcon,
+  Settings,
+  TriangleAlert,
+  UserRound
+} from '@lucide/vue'
 import {
   getActiveRuntimeTarget,
   LOCAL_RUNTIME_TARGET_ID,
@@ -286,7 +450,57 @@ import { getSystemPreferences } from '@/utils/systemPreferences'
 
 export default {
   name: 'MainLayout',
-  components: { RuntimeTargetSwitch },
+  components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    Avatar,
+    AvatarFallback,
+    Badge,
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+    UiButton,
+    ChevronDown,
+    UiDialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    Eye,
+    EyeOff,
+    Field,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    GitFork,
+    UiInput,
+    KeyRound,
+    LogOut,
+    MenuIcon,
+    RuntimeTargetSwitch,
+    Separator,
+    Settings,
+    Spinner,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+    TriangleAlert,
+    UserRound
+  },
   data() {
     return {
       systemName: getSystemPreferences().systemName,
@@ -299,18 +513,16 @@ export default {
       profileVisible: false,
       passwordVisible: false,
       passwordSaving: false,
+      passwordsVisible: false,
       passwordForm: {
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
       },
-      passwordRules: {
-        currentPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
-        newPassword: [
-          { required: true, message: '请输入新密码', trigger: 'blur' },
-          { min: 6, message: '密码长度不少于 6 位', trigger: 'blur' }
-        ],
-        confirmPassword: [{ required: true, message: '请再次输入新密码', trigger: 'blur' }]
+      passwordErrors: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
       }
     }
   },
@@ -320,6 +532,9 @@ export default {
     },
     remoteContextBlocked() {
       return this.runtimeTarget.id !== LOCAL_RUNTIME_TARGET_ID && !this.$route.path.startsWith('/agents')
+    },
+    userInitial() {
+      return (this.currentUser.username || '管').trim().slice(0, 1).toUpperCase()
     }
   },
   watch: {
@@ -393,18 +608,52 @@ export default {
       if (command === 'profile') this.profileVisible = true
       if (command === 'password') this.passwordVisible = true
     },
-    async changePassword() {
-      const valid = await this.$refs.passwordForm.validate().catch(() => false)
-      if (!valid) return
-      if (this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
-        this.$message.error('两次输入的新密码不一致')
-        return
+    handlePasswordDialogChange(open) {
+      if (!open) this.resetPasswordForm()
+    },
+    resetPasswordForm() {
+      this.passwordForm = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
       }
+      this.passwordErrors = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }
+      this.passwordsVisible = false
+    },
+    validatePasswordField(field) {
+      const value = this.passwordForm[field]
+      let message = ''
+      if (!value) {
+        message = field === 'currentPassword' ? '请输入当前密码' : '请输入新密码'
+        if (field === 'confirmPassword') message = '请再次输入新密码'
+      } else if (field === 'newPassword' && value.length < 6) {
+        message = '密码长度不少于 6 位'
+      } else if (field === 'confirmPassword' && value !== this.passwordForm.newPassword) {
+        message = '两次输入的新密码不一致'
+      }
+      this.passwordErrors[field] = message
+      if (field === 'newPassword' && this.passwordForm.confirmPassword) {
+        this.validatePasswordField('confirmPassword')
+      }
+      return !message
+    },
+    validatePasswordForm() {
+      return ['currentPassword', 'newPassword', 'confirmPassword']
+        .map(field => this.validatePasswordField(field))
+        .every(Boolean)
+    },
+    async changePassword() {
+      if (!this.validatePasswordForm()) return
 
       this.passwordSaving = true
       try {
         await authAPI.changePassword(this.passwordForm.currentPassword, this.passwordForm.newPassword)
         this.passwordVisible = false
+        this.resetPasswordForm()
         this.$message.success('密码已修改，请重新登录')
         await this.$router.push('/login')
       } catch (error) {
@@ -539,22 +788,6 @@ export default {
 .right-menu {
   display: flex;
   align-items: center;
-}
-
-.user-dropdown {
-  cursor: pointer;
-  color: var(--text-regular);
-}
-
-.github-link {
-  margin-right: 20px;
-  font-size: 22px;
-  color: var(--text-regular);
-  transition: color 0.3s;
-}
-
-.github-link:hover {
-  color: var(--primary-color);
 }
 
 .content-container {
@@ -772,46 +1005,17 @@ export default {
 }
 
 .user-dropdown {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 7px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-}
-
-.user-dropdown:hover,
-.user-dropdown:focus-visible {
-  color: var(--primary-color);
-  background: var(--el-color-primary-light-9);
-}
-
-.user-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.dropdown-arrow {
-  width: 12px;
-  height: 12px;
+  max-width: 190px;
 }
 
 .github-link {
-  display: inline-flex;
-  width: 36px;
-  height: 36px;
-  align-items: center;
-  justify-content: center;
-  margin-right: 0;
-  border-radius: 4px;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  flex: 0 0 auto;
 }
 
-.github-link:hover,
-.github-link:focus-visible {
-  background: var(--el-color-primary-light-9);
+.user-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .content-container {
@@ -886,6 +1090,76 @@ export default {
   gap: 8px;
 }
 
+.account-menu-label,
+.account-menu-name {
+  display: block;
+}
+
+.account-menu-label {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.account-menu-name {
+  max-width: 180px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.profile-identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-identity span,
+.profile-details dt {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-details > div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.profile-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.password-visibility {
+  align-self: flex-start;
+}
+
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -921,11 +1195,11 @@ export default {
     color: var(--sidebar-text);
   }
 
-  .mobile-close-btn:hover,
-  .mobile-close-btn:focus-visible {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.1);
-  }
+.mobile-close-btn:hover,
+.mobile-close-btn:focus-visible {
+  color: var(--sidebar-foreground);
+  background: rgba(255, 255, 255, 0.1);
+}
 
   .sidebar-footer {
     display: none;
@@ -947,31 +1221,22 @@ export default {
     flex: 0 0 40px;
     width: 40px;
     margin-right: 4px;
-    color: var(--text-primary);
   }
 
-  .mobile-menu-btn:hover,
-  .mobile-menu-btn:focus-visible {
-    color: var(--primary-color);
-    background: var(--el-color-primary-light-9);
-  }
-
-  :deep(.el-breadcrumb) {
+  .header-breadcrumb {
     min-width: 0;
     overflow: hidden;
-    white-space: nowrap;
   }
 
-  :deep(.el-breadcrumb__item:not(:last-child)) {
+  .breadcrumb-trail :deep([data-slot='breadcrumb-item']:not(:last-child)),
+  .breadcrumb-trail :deep([data-slot='breadcrumb-separator']) {
     display: none;
   }
 
-  :deep(.el-breadcrumb__item:last-child .el-breadcrumb__inner) {
+  .breadcrumb-trail :deep([data-slot='breadcrumb-item']:last-child) {
     display: block;
     max-width: 150px;
     overflow: hidden;
-    color: var(--text-primary);
-    font-weight: 600;
     text-overflow: ellipsis;
   }
 
@@ -980,14 +1245,14 @@ export default {
   }
 
   .user-dropdown {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     justify-content: center;
     padding: 0;
   }
 
   .user-name,
-  .dropdown-arrow {
+  .user-dropdown > [data-icon='inline-end'] {
     display: none;
   }
 
@@ -1016,7 +1281,7 @@ export default {
 }
 
 @media (max-width: 600px) {
-  .left-menu :deep(.el-breadcrumb) {
+  .header-breadcrumb {
     display: none;
   }
 
