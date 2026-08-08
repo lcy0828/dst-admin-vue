@@ -366,11 +366,11 @@ export default {
           console.error("获取服务器状态失败:", error);
         });
     },
-    refreshWorlds() {
+    refreshWorlds(force = false) {
       // 如果正在刷新或者距离上次刷新不足2秒，则不进行刷新
       const now = Date.now();
-      if (this.isRefreshing || (now - this.lastRefreshTime < 2000)) {
-        return;
+      if (this.isRefreshing || (!force && now - this.lastRefreshTime < 2000)) {
+        return Promise.resolve();
       }
 
       this.isRefreshing = true;
@@ -379,7 +379,7 @@ export default {
       console.log("开始获取世界列表");
 
       // 加载房间列表
-      roomApi.getRoomList()
+      return roomApi.getRoomList()
         .then(response => {
           if (response && (Array.isArray(response) || response.data)) {
             const roomsData = Array.isArray(response) ? response :
@@ -477,8 +477,9 @@ export default {
           ? roomApi.stopRoom(request)
           : roomApi.startRoom(request);
         operation
-          .then(response => {
-            this.$message.success(response.msg || `${action}任务已提交`);
+          .then(async response => {
+            await this.refreshWorlds(true);
+            this.$message.success(response.msg || `${action}完成`);
           })
           .catch(error => {
             this.$message.error(`${action}世界失败: ${error.message || '未知错误'}`);
@@ -548,7 +549,7 @@ export default {
       }).then(() => {
         this.loading = true;
         roomApi.backupRoom(world.roomId, `世界 ${world.name}`)
-          .then(response => this.$message.success(response.msg || '房间备份任务已提交'))
+          .then(response => this.$message.success(response.msg || '房间备份已创建'))
           .catch(error => this.$message.error(`备份失败：${error.message}`))
           .finally(() => { this.loading = false; });
       }).catch(() => {

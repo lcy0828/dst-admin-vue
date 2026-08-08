@@ -587,8 +587,8 @@ export default {
           archive_name: this.selectedRoom.name,
           world_name: world.name
         })
-        this.$message.success(response?.msg || `${label}任务已提交`)
-        window.setTimeout(() => this.refreshWorkspace(true), 1500)
+        this.$message.success(response?.msg || `${label}完成`)
+        await this.refreshWorkspace(true)
       } catch (error) {
         this.$message.error(`${label}失败：${error.message || '未知错误'}`)
       } finally {
@@ -600,8 +600,8 @@ export default {
       this.backupCreating = true
       try {
         const response = await backupApi.createBackup(this.selectedRoom.name)
-        this.$message.success(response?.msg || '备份任务已提交')
-        window.setTimeout(() => this.refreshRoomContext(), 1500)
+        this.$message.success(response?.msg || '备份已创建')
+        await this.refreshRoomContext()
       } catch (error) {
         this.$message.error(`创建备份失败：${error.message || '未知错误'}`)
       } finally {

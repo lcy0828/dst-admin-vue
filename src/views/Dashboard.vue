@@ -652,10 +652,14 @@ export default {
         }).then(() => {
           const request = { room_id: server.room_id, world_id: server.world_id };
           const operation = isRunning ? roomApi.stopRoom(request) : roomApi.startRoom(request);
-          operation.then(res => {
-            this.$message.success(res.msg || `${action}任务已提交`);
+          this.serverLoading = true;
+          operation.then(async res => {
+            await this.refreshServerData();
+            this.$message.success(res.msg || `${action}完成`);
           }).catch(err => {
             this.$message.error(`${action}失败：${err.message || '未知错误'}`);
+          }).finally(() => {
+            this.serverLoading = false;
           });
         }).catch(() => {
           this.$message({
@@ -1137,8 +1141,9 @@ export default {
             room_id: selectedRoom.id,
             world_ids: worldsToStart.map(world => world.id)
           })
-            .then(() => {
-              this.$message.success(`房间 ${selectedRoom.name} 的启动任务已提交`);
+            .then(async response => {
+              await this.refreshServerData();
+              this.$message.success(response.msg || `房间 ${selectedRoom.name} 已启动`);
               this.startRoomDialogVisible = false;
             })
             .catch(error => {

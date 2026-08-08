@@ -203,7 +203,10 @@ export default {
           ? roomApi.stopRoom(request)
           : roomApi.startRoom(request);
         operation
-          .then(response => this.$message.success(response.msg || `${action}任务已提交`))
+          .then(async response => {
+            await this.loadWorldData();
+            this.$message.success(response.msg || `${action}完成`);
+          })
           .catch(error => this.$message.error(`${action}失败：${error.message}`))
           .finally(() => { this.loading = false; });
       }).catch(() => {
@@ -239,7 +242,7 @@ export default {
       }).then(() => {
         this.loading = true;
         roomApi.backupRoom(this.roomId, `世界 ${this.world.name}`)
-          .then(response => this.$message.success(response.msg || '房间备份任务已提交'))
+          .then(response => this.$message.success(response.msg || '房间备份已创建'))
           .catch(error => this.$message.error(`备份失败：${error.message}`))
           .finally(() => { this.loading = false; });
       }).catch(() => {
@@ -273,7 +276,7 @@ export default {
     loadWorldData() {
       if (!this.roomId || !this.worldId) return;
       this.loading = true;
-      Promise.all([
+      return Promise.all([
         roomApi.getRoomDetail(this.roomId),
         roomApi.getRoomWorlds(this.roomId)
       ])

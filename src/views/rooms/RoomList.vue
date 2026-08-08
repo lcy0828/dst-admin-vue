@@ -258,11 +258,11 @@ export default {
       const date = new Date(timestamp);
       return date.toLocaleString();
     },
-    refreshRooms() {
+    refreshRooms(force = false) {
       // 如果正在刷新或者距离上次刷新不足2秒，则不进行刷新
       const now = Date.now();
-      if (this.isRefreshing || (now - this.lastRefreshTime < 2000)) {
-        return;
+      if (this.isRefreshing || (!force && now - this.lastRefreshTime < 2000)) {
+        return Promise.resolve();
       }
 
       this.isRefreshing = true;
@@ -270,7 +270,7 @@ export default {
       this.loading = true;
 
       // 同时读取 v2 房间目录和真实运行状态。
-      Promise.all([
+      return Promise.all([
         roomApi.getRoomList(),
         systemApi.getTmuxServers()
       ])
@@ -347,9 +347,10 @@ export default {
             world_ids: selectedWorlds.map(world => world.id)
           });
         })
-        .then(response => {
-          this.$message.success(response.msg || `房间 ${this.selectedRoom.name} 的启动任务已提交`);
+        .then(async response => {
           this.startDialogVisible = false;
+          await this.refreshRooms(true);
+          this.$message.success(response.msg || `房间 ${this.selectedRoom.name} 已启动`);
         })
         .catch(error => {
           this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
@@ -414,7 +415,7 @@ export default {
       }).then(() => {
         roomApi.backupRoom(room.roomId || room.id)
           .then(response => {
-            this.$message.success(response.msg || `房间 ${room.name} 的备份任务已提交`);
+            this.$message.success(response.msg || `房间 ${room.name} 的备份已创建`);
           })
           .catch(error => {
             this.$message.error('备份房间失败: ' + (error.message || '未知错误'));
@@ -476,12 +477,17 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
+        this.loading = true;
         roomApi.stopRoom(room.roomId || room.id)
-          .then(response => {
-            this.$message.success(response.msg || `房间 ${room.name} 的停止任务已提交`);
+          .then(async response => {
+            await this.refreshRooms(true);
+            this.$message.success(response.msg || `房间 ${room.name} 已停止`);
           })
           .catch(error => {
             this.$message.error('停止房间失败: ' + (error.message || '未知错误'));
+          })
+          .finally(() => {
+            this.loading = false;
           });
       }).catch(() => {
         this.$message({

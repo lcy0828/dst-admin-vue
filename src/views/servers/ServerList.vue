@@ -340,7 +340,7 @@ export default {
     fetchData() {
       this.loading = true;
       this.serverList = [];
-      systemApi.getTmuxServers().then(res => {
+      return systemApi.getTmuxServers().then(res => {
         this.serverList = res.data || [];
         this.$message.success(res.msg);
       }).catch(err => {
@@ -464,13 +464,15 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
+          this.loading = true;
           systemApi.stopTmuxServer({session_name: server.session_name}).then(res => {
-            this.$message.success(res.msg);
-            setTimeout(() => {
-              this.fetchData();
-            }, 10000);
+            return this.fetchData().then(() => {
+              this.$message.success(res.msg || '停止完成');
+            });
           }).catch(() => {
             this.$message.error('停止失败!');
+          }).finally(() => {
+            this.loading = false;
           });
         }).catch(() => {
           this.$message({
