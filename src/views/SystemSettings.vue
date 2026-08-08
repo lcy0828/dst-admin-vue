@@ -50,14 +50,38 @@
                   </el-select>
                 </el-form-item>
 
-                <el-form-item label="主题颜色" prop="theme">
-                  <el-color-picker v-model="settings.theme" show-alpha></el-color-picker>
-                  <el-button
-                    type="text"
-                    style="margin-left: 10px;"
-                    @click="settings.theme = '#3f7656'">
-                    重置为默认
-                  </el-button>
+                <el-form-item label="界面主题" prop="theme">
+                  <div class="theme-control">
+                    <div class="theme-options" role="radiogroup" aria-label="界面主题">
+                      <button
+                        v-for="preset in themePresets"
+                        :key="preset.id"
+                        type="button"
+                        class="theme-option"
+                        :class="{ 'is-selected': selectedThemeId === preset.id }"
+                        :style="themeOptionStyle(preset)"
+                        role="radio"
+                        :aria-checked="selectedThemeId === preset.id"
+                        @click="selectTheme(preset)">
+                        <span class="theme-option-head">
+                          <span class="theme-option-name">{{ preset.name }}</span>
+                          <span v-if="selectedThemeId === preset.id" class="theme-option-status">已选择</span>
+                        </span>
+                        <span class="theme-swatches" aria-hidden="true">
+                          <span class="theme-swatch theme-swatch-sidebar"></span>
+                          <span class="theme-swatch theme-swatch-primary"></span>
+                          <span class="theme-swatch theme-swatch-accent"></span>
+                          <span class="theme-swatch theme-swatch-background"></span>
+                        </span>
+                      </button>
+                    </div>
+                    <div class="custom-theme-control" :class="{ 'is-selected': selectedThemeId === 'custom' }">
+                      <span class="custom-theme-label">自定义主色</span>
+                      <el-color-picker v-model="settings.theme" @change="previewCustomTheme"></el-color-picker>
+                      <span v-if="selectedThemeId === 'custom'" class="custom-theme-status">已选择</span>
+                      <el-button type="text" @click="resetDefaultTheme">恢复石墨默认</el-button>
+                    </div>
+                  </div>
                 </el-form-item>
               </el-tab-pane>
 
@@ -523,7 +547,8 @@
 <script>
 import { systemApi } from '@/api';
 import { backupsV2API, jobsV2API, roomsV2API, systemV2API } from '@/api/v2';
-import { applySystemPreferences } from '@/utils/systemPreferences';
+import { THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
+import { applySystemPreferences, previewSystemTheme } from '@/utils/systemPreferences';
 
 const APPLY_CONFIRMATION = 'APPLY SYSTEM SETTINGS';
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'cancelled']);
@@ -544,6 +569,7 @@ export default {
       revision: '',
       settingsResponse: null,
       smtpPasswordConfigured: false,
+      themePresets: THEME_PRESETS,
       settings: {
         // 基本设置
         systemName: '',
@@ -551,7 +577,7 @@ export default {
         language: 'zh-CN',
         timezone: 'Asia/Shanghai',
         dateFormat: 'YYYY-MM-DD',
-        theme: '#3f7656',
+        theme: '#e5482d',
 
         // 安全设置
         passwordComplexity: false,
@@ -659,6 +685,9 @@ export default {
     };
   },
   computed: {
+    selectedThemeId() {
+      return resolveThemePreset(this.settings.theme).id;
+    },
     // 根据CPU核心数量确定网格布局类名
     getCoreGridClass() {
       const coreCount = this.systemStatus.cpu_core_usage.length;
@@ -702,8 +731,27 @@ export default {
       return this.field(response, id, String(fallback)).value === 'true';
     },
     themeValue(response) {
-      const value = this.field(response, 'ui.theme', '#3f7656').value;
-      return String(value).toLowerCase() === '#d97932' ? '#3f7656' : value;
+      return normalizeThemeColor(this.field(response, 'ui.theme', '#e5482d').value);
+    },
+    themeOptionStyle(preset) {
+      return {
+        '--theme-primary': preset.primary,
+        '--theme-accent': preset.accent,
+        '--theme-sidebar': preset.sidebar,
+        '--theme-background': preset.background
+      };
+    },
+    selectTheme(preset) {
+      this.settings.theme = preset.primary;
+      previewSystemTheme(preset.primary);
+    },
+    previewCustomTheme(value) {
+      if (!value) return;
+      this.settings.theme = normalizeThemeColor(value);
+      previewSystemTheme(this.settings.theme);
+    },
+    resetDefaultTheme() {
+      this.selectTheme(themePresetById('graphite'));
     },
     populateSettings(response) {
       this.settingsResponse = response;
@@ -1046,6 +1094,117 @@ export default {
   line-height: 20px;
 }
 
+.theme-control {
+  width: min(100%, 720px);
+}
+
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.theme-option {
+  min-width: 0;
+  min-height: 82px;
+  padding: 12px;
+  color: var(--text-regular);
+  text-align: left;
+  cursor: pointer;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.theme-option:hover,
+.theme-option:focus-visible {
+  border-color: var(--theme-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme-primary) 14%, transparent);
+  outline: none;
+}
+
+.theme-option.is-selected {
+  color: var(--text-primary);
+  border-color: var(--theme-primary);
+  box-shadow: inset 3px 0 0 var(--theme-primary);
+}
+
+.theme-option-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.theme-option-name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-option-status,
+.custom-theme-status {
+  flex: 0 0 auto;
+  color: var(--primary-color);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.theme-swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 24px);
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.theme-swatch {
+  width: 24px;
+  height: 18px;
+  border: 1px solid rgba(37, 40, 38, 0.1);
+  border-radius: 3px;
+}
+
+.theme-swatch-sidebar {
+  background: var(--theme-sidebar);
+}
+
+.theme-swatch-primary {
+  background: var(--theme-primary);
+}
+
+.theme-swatch-accent {
+  background: var(--theme-accent);
+}
+
+.theme-swatch-background {
+  background: var(--theme-background);
+}
+
+.custom-theme-control {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.custom-theme-label {
+  color: var(--text-regular);
+  font-size: 13px;
+}
+
+.custom-theme-control.is-selected .custom-theme-label {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
 :deep(.el-tabs__header) {
   margin-bottom: 20px;
 }
@@ -1079,7 +1238,7 @@ export default {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-regular);
-  background-color: #fff;
+  background-color: var(--surface-color);
 }
 
 :deep(.el-tabs__nav-wrap::after) {
@@ -1113,6 +1272,14 @@ export default {
     display: block;
     margin-left: 0;
     margin-top: 5px;
+  }
+
+  .theme-options {
+    grid-template-columns: 1fr;
+  }
+
+  .custom-theme-control {
+    flex-wrap: wrap;
   }
 
   .form-actions {

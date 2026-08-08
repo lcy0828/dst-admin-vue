@@ -321,6 +321,7 @@
 import { cronTaskApi } from '@/api/index';
 import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { getSystemPreferences } from '@/utils/systemPreferences';
 
 export default {
   name: 'TaskList',
@@ -1214,7 +1215,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: '#3f7656'
+              color: getSystemPreferences().theme
             }
           }
         ]

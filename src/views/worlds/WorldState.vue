@@ -261,6 +261,7 @@
 
 <script>
 import api from '@/api';
+import { getSystemPreferences } from '@/utils/systemPreferences';
 
 export default {
   name: 'WorldState',
@@ -714,7 +715,7 @@ export default {
 
     // 获取季节颜色
     getSeasonColor() {
-      if (!this.worldState) return '#3f7656';
+      if (!this.worldState) return getSystemPreferences().theme;
 
       const colorMap = {
         autumn: '#d99b32',
@@ -723,7 +724,7 @@ export default {
         summer: '#c94f4f'
       };
 
-      return colorMap[this.worldState.season] || '#3f7656';
+      return colorMap[this.worldState.season] || getSystemPreferences().theme;
     },
 
     // 获取时间阶段名称

@@ -3,56 +3,56 @@
  * 使用CSS变量实现主题切换
  */
 
-/* 科技白主题（默认） */
+/* 石墨朱橙主题（默认） */
 :root {
   /* 主要颜色 */
-  --primary-color: #3f7656;
-  --accent-color: #b85c1e;
-  --success-color: #4f8a5b;
-  --warning-color: #b85c1e;
-  --danger-color: #c94f4f;
-  --info-color: #66756c;
+  --primary-color: #e5482d;
+  --accent-color: #f59e0b;
+  --success-color: #2f8a57;
+  --warning-color: #c97908;
+  --danger-color: #d14343;
+  --info-color: #707672;
 
   /* 背景颜色 */
-  --bg-color: #f5f6f2;
+  --bg-color: #f7f7f5;
   --bg-color-light: #ffffff;
-  --bg-color-dark: #f0f3ee;
+  --bg-color-dark: #f0f1ee;
   
   /* 文本颜色 */
-  --text-color-primary: #26352e;
-  --text-color-regular: #536159;
-  --text-color-secondary: #66756c;
-  --text-color-placeholder: #839087;
+  --text-color-primary: #252826;
+  --text-color-regular: #4f5551;
+  --text-color-secondary: #707672;
+  --text-color-placeholder: #8d928e;
   
   /* 边框颜色 */
-  --border-color-base: #ced9d1;
-  --border-color-light: #dce4dd;
-  --border-color-lighter: #e8ede9;
-  --border-color-extra-light: #f2f5f2;
+  --border-color-base: #cdd2ce;
+  --border-color-light: #e1e4e1;
+  --border-color-lighter: #ebecea;
+  --border-color-extra-light: #f3f4f2;
   
   /* 阴影 */
-  --box-shadow-base: 0 6px 16px rgba(38, 53, 46, 0.1);
-  --box-shadow-light: 0 1px 3px rgba(38, 53, 46, 0.08);
+  --box-shadow-base: 0 6px 16px rgba(37, 40, 38, 0.1);
+  --box-shadow-light: 0 1px 3px rgba(37, 40, 38, 0.08);
   
   /* 侧边栏 */
-  --sidebar-bg: #2f5b43;
-  --sidebar-text: #eaf2ec;
-  --sidebar-active-text: #ffbd78;
-  --sidebar-hover-bg: #254936;
+  --sidebar-bg: #242626;
+  --sidebar-text: #e9ece9;
+  --sidebar-active-text: #ffb24a;
+  --sidebar-hover-bg: #1b1d1c;
   
   /* 头部导航栏 */
   --header-bg: #ffffff;
-  --header-text: #536159;
-  --header-border: #dce4dd;
+  --header-text: #4f5551;
+  --header-border: #e1e4e1;
   
   /* 卡片 */
   --card-bg: #ffffff;
-  --card-border: #e8ede9;
+  --card-border: #ebecea;
   
   /* 表格 */
-  --table-header-bg: #f0f3ee;
-  --table-row-hover-bg: #f3f6f2;
-  --table-border: #e8ede9;
+  --table-header-bg: #f0f1ee;
+  --table-row-hover-bg: #f6f6f4;
+  --table-border: #ebecea;
   
   /* 过渡动画 */
   --transition-time: 0.3s;

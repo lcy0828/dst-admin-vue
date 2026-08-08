@@ -1,52 +1,53 @@
 /* 全局CSS变量 */
 :root {
-  --primary-color: #3f7656;
-  --accent-color: #b85c1e;
-  --success-color: #4f8a5b;
-  --warning-color: #b85c1e;
-  --danger-color: #c94f4f;
-  --info-color: #66756c;
-  --text-primary: #26352e;
-  --text-regular: #536159;
-  --text-secondary: #66756c;
-  --border-color: #dce4dd;
-  --bg-color: #f5f6f2;
+  --primary-color: #e5482d;
+  --accent-color: #f59e0b;
+  --success-color: #2f8a57;
+  --warning-color: #c97908;
+  --danger-color: #d14343;
+  --info-color: #707672;
+  --text-primary: #252826;
+  --text-regular: #4f5551;
+  --text-secondary: #707672;
+  --border-color: #e1e4e1;
+  --bg-color: #f7f7f5;
   --surface-color: #ffffff;
-  --surface-muted: #f0f3ee;
-  --sidebar-color: #2f5b43;
-  --sidebar-color-deep: #254936;
-  --sidebar-text: #eaf2ec;
-  --sidebar-active: #ffbd78;
-  --shadow-card: 0 1px 3px rgba(38, 53, 46, 0.08);
-  --shadow-card-hover: 0 6px 18px rgba(38, 53, 46, 0.11);
-  --shadow-overlay: 0 12px 32px rgba(38, 53, 46, 0.16);
+  --surface-muted: #f0f1ee;
+  --sidebar-color: #242626;
+  --sidebar-color-deep: #1b1d1c;
+  --sidebar-text: #e9ece9;
+  --sidebar-active: #ffb24a;
+  --sidebar-active-bg: #4b4030;
+  --shadow-card: 0 1px 3px rgba(37, 40, 38, 0.08);
+  --shadow-card-hover: 0 6px 18px rgba(37, 40, 38, 0.11);
+  --shadow-overlay: 0 12px 32px rgba(37, 40, 38, 0.16);
   --control-height: 36px;
   --control-height-small: 32px;
   --control-height-large: 40px;
   --page-gap: 16px;
   --section-gap: 12px;
 
-  --el-color-primary: #3f7656;
-  --el-color-primary-light-3: #799f89;
-  --el-color-primary-light-5: #9fbbab;
-  --el-color-primary-light-7: #c5d6cc;
-  --el-color-primary-light-8: #d9e4dd;
-  --el-color-primary-light-9: #ecf1ee;
-  --el-color-primary-dark-2: #325e45;
-  --el-color-success: #4f8a5b;
-  --el-color-warning: #b85c1e;
-  --el-color-danger: #c94f4f;
-  --el-color-info: #66756c;
-  --el-text-color-primary: #26352e;
-  --el-text-color-regular: #536159;
-  --el-text-color-secondary: #66756c;
-  --el-border-color: #ced9d1;
-  --el-border-color-light: #dce4dd;
-  --el-border-color-lighter: #e8ede9;
-  --el-fill-color-light: #f0f3ee;
-  --el-fill-color-lighter: #f7f9f6;
+  --el-color-primary: #e5482d;
+  --el-color-primary-light-3: #ed7f6c;
+  --el-color-primary-light-5: #f2a496;
+  --el-color-primary-light-7: #f7c8c0;
+  --el-color-primary-light-8: #fadad5;
+  --el-color-primary-light-9: #fcedea;
+  --el-color-primary-dark-2: #b73a24;
+  --el-color-success: #2f8a57;
+  --el-color-warning: #c97908;
+  --el-color-danger: #d14343;
+  --el-color-info: #707672;
+  --el-text-color-primary: #252826;
+  --el-text-color-regular: #4f5551;
+  --el-text-color-secondary: #707672;
+  --el-border-color: #cdd2ce;
+  --el-border-color-light: #e1e4e1;
+  --el-border-color-lighter: #ebecea;
+  --el-fill-color-light: #f0f1ee;
+  --el-fill-color-lighter: #f7f8f6;
   --el-fill-color-blank: #ffffff;
-  --el-bg-color-page: #f5f6f2;
+  --el-bg-color-page: #f7f7f5;
   --el-border-radius-base: 6px;
   --el-border-radius-small: 4px;
   --el-border-radius-round: 999px;
@@ -93,17 +94,17 @@ a,
 }
 
 ::-webkit-scrollbar-track {
-  background: #edf0ec;
+  background: #efefec;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #b8c4ba;
+  background: #b9bdb9;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #8fa094;
+  background: #919792;
 }
 
 /* 常用间距和布局类 */

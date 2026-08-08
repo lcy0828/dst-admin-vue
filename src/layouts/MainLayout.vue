@@ -637,7 +637,7 @@ export default {
 
 :deep(.el-menu-item.is-active) {
   position: relative;
-  background-color: rgba(255, 189, 120, 0.13) !important;
+  background-color: var(--sidebar-active-bg) !important;
   font-weight: 600;
 }
 

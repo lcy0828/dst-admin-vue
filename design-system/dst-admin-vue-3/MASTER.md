@@ -23,25 +23,37 @@ This file is the visual migration contract for the Vue 3 upgrade.
 
 ## Palette
 
+`石墨朱橙` is the default theme. The system settings page also exposes `翡翠橙光`, `青柚珊瑚`, and `靛蓝琥珀`; selecting one previews the full token set immediately, while saving persists its primary color through the existing `ui.theme` field. Unknown custom primary colors use the graphite structural palette so legacy color customization remains compatible.
+
 | Role | Value | Token |
 | --- | --- | --- |
-| Primary action | `#3f7656` | `--primary-color` |
-| Primary hover | `#799f89` | Element Plus primary light token |
-| Warm accent / warning | `#b85c1e` | `--accent-color`, `--warning-color` |
-| Success / online | `#4f8a5b` | `--success-color` |
-| Danger | `#c94f4f` | `--danger-color` |
-| Page background | `#f5f6f2` | `--bg-color` |
+| Primary action | `#e5482d` | `--primary-color` |
+| Primary hover | `#ed7f6c` | Element Plus primary light token |
+| Warm accent | `#f59e0b` | `--accent-color` |
+| Warning | `#c97908` | `--warning-color` |
+| Success / online | `#2f8a57` | `--success-color` |
+| Danger | `#d14343` | `--danger-color` |
+| Page background | `#f7f7f5` | `--bg-color` |
 | Surface | `#ffffff` | `--surface-color` |
-| Muted surface | `#f0f3ee` | `--surface-muted` |
-| Sidebar | `#2f5b43` | `--sidebar-color` |
-| Sidebar deep | `#254936` | `--sidebar-color-deep` |
-| Sidebar text | `#eaf2ec` | `--sidebar-text` |
-| Sidebar active | `#ffbd78` | `--sidebar-active` |
-| Primary text | `#26352e` | `--text-primary` |
-| Regular text | `#536159` | `--text-regular` |
-| Border | `#dce4dd` | `--border-color` |
+| Muted surface | `#f0f1ee` | `--surface-muted` |
+| Sidebar | `#242626` | `--sidebar-color` |
+| Sidebar deep | `#1b1d1c` | `--sidebar-color-deep` |
+| Sidebar text | `#e9ece9` | `--sidebar-text` |
+| Sidebar active | `#ffb24a` | `--sidebar-active` |
+| Primary text | `#252826` | `--text-primary` |
+| Regular text | `#4f5551` | `--text-regular` |
+| Border | `#e1e4e1` | `--border-color` |
 
-Primary green owns controls, links, focus and active content states. Warm orange is limited to warnings and the active sidebar marker so the two hues do not compete across every component.
+Vermilion owns controls, links, focus, and active content states. Amber is limited to secondary emphasis and the active sidebar marker so the two warm hues do not compete across every component. Semantic success, warning, and danger colors remain stable across presets.
+
+### Theme Presets
+
+| Preset | Primary | Accent | Sidebar | Background |
+| --- | --- | --- | --- | --- |
+| 石墨朱橙 (default) | `#e5482d` | `#f59e0b` | `#242626` | `#f7f7f5` |
+| 翡翠橙光 | `#0f8a5f` | `#ff7a1a` | `#102a24` | `#f5f8f6` |
+| 青柚珊瑚 | `#0e8f88` | `#ff6b4a` | `#173b3f` | `#f5f9f8` |
+| 靛蓝琥珀 | `#4f46e5` | `#f59e0b` | `#25294a` | `#f7f7fc` |
 
 ## Typography And Spacing
 
