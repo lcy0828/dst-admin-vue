@@ -406,6 +406,7 @@ import { Input as UiInput } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { toast } from 'vue-sonner'
 import {
   ArchiveRestore,
   Blocks,
@@ -812,10 +813,10 @@ export default {
         await authAPI.changePassword(this.passwordForm.currentPassword, this.passwordForm.newPassword)
         this.passwordVisible = false
         this.resetPasswordForm()
-        this.$message.success('密码已修改，请重新登录')
+        toast.success('密码已修改，请重新登录')
         await this.$router.push('/login')
       } catch (error) {
-        this.$message.error(error.message || '密码修改失败')
+        toast.error(error.message || '密码修改失败')
       } finally {
         this.passwordSaving = false
       }
@@ -1529,10 +1530,6 @@ export default {
     padding-right: 0;
   }
 
-  :deep(.el-dialog) {
-    width: calc(100vw - 24px) !important;
-    max-width: 520px;
-  }
 }
 
 @media (max-width: 600px) {

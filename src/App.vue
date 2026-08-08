@@ -40,36 +40,6 @@ html, body {
   height: 100%;
 }
 
-.el-dialog {
-  display: flex;
-  flex-direction: column;
-  margin-top: 5vh !important;
-  max-height: 90vh !important;
-}
-
-/* 提高对话框层级，禁用背景遮罩层 */
-.el-dialog__wrapper {
-  background-color: transparent !important;
-  position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  overflow: auto !important;
-  z-index: 2001 !important;
-  pointer-events: auto !important;
-}
-
-
-.el-dialog__body {
-  flex: 0 1 auto;
-  min-height: 0;
-  overflow-y: auto !important;
-  padding: 15px 20px !important;
-  height: auto !important;
-  max-height: calc(90vh - 124px) !important;
-}
-
 /* 公共样式 */
 .text-center {
   text-align: center;
@@ -109,16 +79,6 @@ html, body {
   border: 1px solid #FDE2E2;
   padding: 2px 6px;
   border-radius: 2px;
-}
-
-/* 修改Element UI样式 */
-.el-table th {
-  background-color: var(--surface-muted) !important;
-}
-
-.el-card__header {
-  font-size: 16px;
-  font-weight: bold;
 }
 
 .xterm-viewport {

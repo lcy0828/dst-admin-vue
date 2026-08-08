@@ -1,6 +1,6 @@
 import axios from 'axios';
 import apiConfig from './config';
-import { ElMessage as Message } from 'element-plus';
+import { toast } from 'vue-sonner';
 import router from '@/router';
 import qs from 'qs';
 
@@ -61,7 +61,7 @@ instance.interceptors.response.use(
           break;
         case 401:
           if (router.currentRoute.value.path !== '/login') {
-            Message.error('登录已过期，请重新登录');
+            toast.error('登录已过期，请重新登录');
             void router.push('/login');
           }
           break;
@@ -75,9 +75,9 @@ instance.interceptors.response.use(
           break;
       }
     } else if (error.request) {
-      Message.error('服务器无响应，请稍后重试');
+      toast.error('服务器无响应，请稍后重试');
     } else {
-      Message.error(`请求错误：${error.message || '未知错误'}`);
+      toast.error(`请求错误：${error.message || '未知错误'}`);
     }
 
     return Promise.reject(error);
