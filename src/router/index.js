@@ -46,10 +46,16 @@ export const constantRoutes = [
   {
     path: '/servers',
     component: MainLayout,
-    redirect: '/servers/list',
+    redirect: '/servers/workspace',
     name: 'Servers',
     meta: { title: '服务器管理', icon: 'server' },
     children: [
+      {
+        path: 'workspace',
+        component: () => import('@/views/servers/ServerWorkspace.vue'),
+        name: 'ServerWorkspace',
+        meta: { title: '服务器工作台', icon: 'monitor' }
+      },
       {
         path: 'list',
         component: () => import('@/views/servers/ServerList.vue'),

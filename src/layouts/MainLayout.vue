@@ -54,6 +54,7 @@
             <component :is="'el-icon-s-platform'" class="legacy-icon" />
             <span>服务器管理</span>
           </template>
+          <el-menu-item index="/servers/workspace">服务器工作台</el-menu-item>
           <el-menu-item index="/servers/list">服务器列表</el-menu-item>
           <el-menu-item index="/servers/commands">命令设置</el-menu-item>
         </el-sub-menu>
