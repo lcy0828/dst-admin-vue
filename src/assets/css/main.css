@@ -17,9 +17,9 @@
   --sidebar-color-deep: #1b1d1c;
   --sidebar-text: #e9ece9;
   --sidebar-active: #ffb24a;
-  --sidebar-active-bg: #4b4030;
-  --shadow-card: 0 1px 3px rgba(37, 40, 38, 0.08);
-  --shadow-card-hover: 0 6px 18px rgba(37, 40, 38, 0.11);
+  --sidebar-active-bg: #312e29;
+  --shadow-card: 0 1px 2px rgba(37, 40, 38, 0.06);
+  --shadow-card-hover: 0 2px 6px rgba(37, 40, 38, 0.08);
   --shadow-overlay: 0 12px 32px rgba(37, 40, 38, 0.16);
   --control-height: 36px;
   --control-height-small: 32px;
@@ -48,7 +48,7 @@
   --el-fill-color-lighter: #f7f8f6;
   --el-fill-color-blank: #ffffff;
   --el-bg-color-page: #f7f7f5;
-  --el-border-radius-base: 6px;
+  --el-border-radius-base: 4px;
   --el-border-radius-small: 4px;
   --el-border-radius-round: 999px;
   --el-component-size: 36px;
@@ -133,7 +133,7 @@ a,
 .card {
   background-color: var(--surface-color);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 4px;
   box-shadow: var(--shadow-card);
   padding: 16px;
   margin-bottom: var(--page-gap);
@@ -287,33 +287,72 @@ a,
 /* Element Plus 控件规范 */
 .el-card {
   border: 1px solid var(--border-color) !important;
-  border-radius: 6px !important;
+  border-radius: 4px !important;
   box-shadow: var(--shadow-card) !important;
   margin-bottom: var(--page-gap);
   overflow: hidden;
 }
 
 .el-card.is-hover-shadow:hover {
+  box-shadow: var(--shadow-card) !important;
+  border-color: var(--el-border-color) !important;
+  transform: none !important;
+}
+
+/* 旧页面统一为紧凑后台面板，避免卡片悬浮、夸张圆角和重阴影。 */
+.content-container [class$='-card'],
+.content-container [class*='-card '] {
+  border-radius: 4px !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.content-container [class$='-card']:hover,
+.content-container [class*='-card ']:hover {
   box-shadow: var(--shadow-card-hover) !important;
+  transform: none !important;
+}
+
+.content-container .setting-item:hover,
+.content-container .el-button:hover,
+.content-container .el-tabs__item:hover {
+  transform: none !important;
+}
+
+.content-container .setting-item:hover .item-image,
+.content-container .state-card:hover .state-icon-container {
+  transform: none !important;
+}
+
+.content-container :is(
+  .settings-category,
+  .presets-section,
+  .category-list,
+  .api-key-box,
+  .info-statistics,
+  .filter-info,
+  .world-list
+) {
+  border-radius: 4px !important;
+  box-shadow: var(--shadow-card) !important;
 }
 
 .el-card__header {
-  min-height: 52px;
-  padding: 13px 16px !important;
+  min-height: 48px;
+  padding: 12px 14px !important;
   border-bottom-color: var(--border-color) !important;
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .el-card__body {
-  padding: 16px !important;
+  padding: 14px !important;
 }
 
 .el-button {
   min-height: var(--control-height);
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -362,7 +401,7 @@ a,
 .el-textarea__inner,
 .el-input-number,
 .el-date-editor.el-input__wrapper {
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .el-input__wrapper,
@@ -456,7 +495,7 @@ a,
 
 .el-dialog {
   max-width: calc(100vw - 32px);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--shadow-overlay);
 }
 
@@ -471,7 +510,7 @@ a,
 
 .el-message-box {
   max-width: calc(100vw - 32px);
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .el-message-box__status {
@@ -496,13 +535,13 @@ a,
 }
 
 .el-alert {
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .el-dropdown-menu,
 .el-select-dropdown,
 .el-picker-panel {
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .el-dropdown-menu__item {
@@ -530,6 +569,17 @@ a,
 :focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -564,17 +614,6 @@ a,
   .el-pagination .el-pagination__total,
   .el-pagination .el-pagination__jump {
     margin: 0 6px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
   }
 }
 

@@ -11,10 +11,6 @@
           <el-button type="success" @click="saveSettings" :loading="loading" icon="el-icon-check">保存</el-button>
         </div>
       </div>
-      <div class="tech-decoration">
-        <div class="tech-line"></div>
-        <div class="tech-dots"></div>
-      </div>
     </div>
 
     <!-- 隐藏的文件输入框 -->
@@ -64,7 +60,7 @@
               <span>游戏模式配置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <el-card class="form-section">
+              <div class="form-section">
                 <div class="form-grid">
                   <el-form-item label="游戏模式" prop="game_mode">
                     <el-select v-model="form.game_mode" placeholder="请选择游戏模式">
@@ -95,7 +91,7 @@
                     <div class="form-item-desc">是否允许玩家投票踢出其他玩家</div>
                   </el-form-item>
                 </div>
-              </el-card>
+              </div>
             </el-form>
           </div>
         </el-tab-pane>
@@ -108,7 +104,7 @@
               <span>网络配置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <el-card class="form-section">
+              <div class="form-section">
                 <div class="form-grid">
                   <el-form-item label="局域网游戏" prop="lan_only_cluster">
                     <el-switch v-model="form.lan_only_cluster"></el-switch>
@@ -163,7 +159,7 @@
                     <div class="form-item-desc">玩家挂机超过此时间后自动踢出，0表示不启用</div>
                   </el-form-item>
                 </div>
-              </el-card>
+              </div>
             </el-form>
           </div>
         </el-tab-pane>
@@ -176,7 +172,7 @@
               <span>系统设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <el-card class="form-section">
+              <div class="form-section">
                 <div class="form-grid">
                   <el-form-item label="开启控制台" prop="console_enabled">
                     <el-switch v-model="form.console_enabled"></el-switch>
@@ -187,7 +183,7 @@
                     <div class="form-item-desc">保存的最大存档快照数量</div>
                   </el-form-item>
                 </div>
-              </el-card>
+              </div>
             </el-form>
           </div>
         </el-tab-pane>
@@ -200,7 +196,7 @@
               <span>分片设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <el-card class="form-section">
+              <div class="form-section">
                 <div class="form-grid">
                   <el-form-item label="开启服务器共享" prop="shard_enabled">
                     <el-switch v-model="form.shard_enabled"></el-switch>
@@ -223,7 +219,7 @@
                     <div class="form-item-desc">服务器之间的连接密码，所有服务器必须相同</div>
                   </el-form-item>
                 </div>
-              </el-card>
+              </div>
             </el-form>
           </div>
         </el-tab-pane>
@@ -236,7 +232,7 @@
               <span>Steam设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <el-card class="form-section">
+              <div class="form-section">
                 <div class="form-grid">
                   <el-form-item label="仅Steam组" prop="steam_group_only">
                     <el-switch v-model="form.steam_group_only"></el-switch>
@@ -251,7 +247,7 @@
                     <div class="form-item-desc">是否给予Steam组管理员服务器管理权限</div>
                   </el-form-item>
                 </div>
-              </el-card>
+              </div>
             </el-form>
           </div>
         </el-tab-pane>
@@ -972,5 +968,178 @@ export default {
 :deep(.el-switch.is-checked .el-switch__core) {
   border-color: var(--primary-color);
   background-color: var(--primary-color);
+}
+
+/* 传统设置页：保留原有表单分组，移除装饰背景、悬浮和卡片嵌套感。 */
+.room-settings-page {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.room-settings-page::before,
+.room-settings-page .page-header::before,
+.room-settings-page .settings-tabs::after,
+.room-settings-page .settings-tabs .tab-content::before,
+.room-settings-page .form-section::before,
+.room-settings-page .save-name-card::before {
+  display: none;
+}
+
+.room-settings-page .page-header {
+  padding: 0 0 14px;
+  margin-bottom: 16px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.room-settings-page .page-header .header-content {
+  gap: 16px;
+}
+
+.room-settings-page .page-header .header-content .title-section h2 {
+  font-size: 18px;
+  line-height: 28px;
+  color: var(--text-primary);
+}
+
+.room-settings-page .page-header .header-content .title-section h2::after {
+  display: none;
+}
+
+.room-settings-page .page-header .header-content .title-section .subtitle {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.room-settings-page .page-header .header-content .header-actions {
+  gap: 8px;
+}
+
+.room-settings-page .page-header .header-content .header-actions .el-button,
+.room-settings-page .page-header .header-content .header-actions .el-button:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.room-settings-page .save-name-card {
+  margin-bottom: 16px;
+  background: var(--surface-color);
+  border-radius: 4px;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.15s ease;
+}
+
+.room-settings-page .save-name-card:hover {
+  box-shadow: var(--shadow-card);
+  transform: none;
+}
+
+.room-settings-page .save-name-card .single-column {
+  padding: 0;
+}
+
+.room-settings-page .settings-tabs {
+  overflow: hidden;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.room-settings-page .settings-tabs .tab-content {
+  padding: 16px;
+  animation: none;
+}
+
+.room-settings-page .settings-tabs .tab-content .tab-header {
+  gap: 7px;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.room-settings-page .settings-tabs .tab-content .tab-header .legacy-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 0;
+  color: var(--primary-color);
+}
+
+.room-settings-page .settings-tabs .form-section {
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transition: none;
+}
+
+.room-settings-page .settings-tabs .form-section:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.room-settings-page .settings-tabs .form-section .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 24px;
+  padding: 0;
+}
+
+.room-settings-page .settings-tabs .form-item-desc {
+  padding: 0;
+  margin-top: 4px;
+  background: transparent;
+  border-left: 0;
+  border-radius: 0;
+  line-height: 18px;
+}
+
+.room-settings-page .settings-tabs .form-item-desc:hover {
+  background: transparent;
+}
+
+.tab-content,
+:deep(.el-input__inner):focus {
+  animation: none;
+}
+
+:deep(.el-tabs__nav-wrap)::after {
+  background: var(--border-color);
+}
+
+:deep(.el-tabs__item),
+:deep(.el-tabs__item:hover) {
+  transform: none;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+@media (max-width: 900px) {
+  .room-settings-page .settings-tabs .form-section .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .room-settings-page .page-header .header-content {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .room-settings-page .page-header .header-content .header-actions {
+    width: 100%;
+  }
+
+  .room-settings-page .settings-tabs .tab-content {
+    padding: 12px;
+  }
 }
 </style>

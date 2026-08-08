@@ -383,8 +383,8 @@ export default {
 }
 
 .logo-container {
-  height: 60px;
-  line-height: 60px;
+  height: 54px;
+  line-height: 54px;
   text-align: center;
   background-color: var(--sidebar-color-deep);
 }
@@ -456,7 +456,7 @@ export default {
 }
 
 .header-container {
-  height: 60px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -547,7 +547,7 @@ export default {
   padding: 8px 14px;
   color: #fff;
   background: var(--primary-color);
-  border-radius: 6px;
+  border-radius: 4px;
   transform: translate(-50%, -160%);
   transition: transform 0.2s ease;
 }
@@ -579,8 +579,8 @@ export default {
 .sidebar {
   position: relative;
   z-index: 2;
-  flex: 0 0 216px;
-  width: 216px;
+  flex: 0 0 200px;
+  width: 200px;
   box-shadow: 1px 0 0 rgba(255, 255, 255, 0.06);
   transition: width 0.2s ease, flex-basis 0.2s ease, transform 0.2s ease;
 }
@@ -592,7 +592,7 @@ export default {
 .logo-container {
   position: relative;
   display: flex;
-  flex: 0 0 60px;
+  flex: 0 0 54px;
   align-items: center;
   justify-content: center;
   line-height: normal;
@@ -601,9 +601,19 @@ export default {
 .logo {
   width: 100%;
   padding: 0 16px;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 24px;
   letter-spacing: 0;
+  text-align: left;
+}
+
+.sidebar.collapsed .logo-container {
+  justify-content: center;
+}
+
+.sidebar.collapsed .logo {
+  padding: 0;
+  text-align: center;
 }
 
 .mobile-close-btn,
@@ -617,16 +627,16 @@ export default {
 }
 
 .el-menu-vertical {
-  padding: 8px 0;
+  padding: 6px 0;
 }
 
 :deep(.el-menu-item),
 :deep(.el-sub-menu__title) {
   width: calc(100% - 16px);
-  height: 44px;
-  margin: 2px 8px;
-  border-radius: 4px;
-  line-height: 44px;
+  height: 40px;
+  margin: 1px 8px;
+  border-radius: 2px;
+  line-height: 40px;
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
@@ -638,15 +648,15 @@ export default {
 :deep(.el-menu-item.is-active) {
   position: relative;
   background-color: var(--sidebar-active-bg) !important;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 :deep(.el-menu-item.is-active::before) {
   position: absolute;
-  top: 9px;
+  top: 8px;
   left: 0;
-  width: 3px;
-  height: 26px;
+  width: 2px;
+  height: 24px;
   background: var(--sidebar-active);
   border-radius: 0 2px 2px 0;
   content: '';
@@ -660,8 +670,8 @@ export default {
 }
 
 .sidebar-footer {
-  flex: 0 0 52px;
-  height: 52px;
+  flex: 0 0 46px;
+  height: 46px;
   padding: 0 12px;
   align-items: center;
   line-height: normal;
@@ -681,7 +691,7 @@ export default {
 .header-container {
   position: relative;
   z-index: 10;
-  flex: 0 0 60px;
+  flex: 0 0 54px;
   gap: 16px;
   padding: 0 18px;
 }
@@ -730,7 +740,7 @@ export default {
   align-items: center;
   justify-content: center;
   margin-right: 0;
-  border-radius: 6px;
+  border-radius: 4px;
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
@@ -741,7 +751,7 @@ export default {
 
 .content-container {
   min-width: 0;
-  padding: 16px;
+  padding: 18px;
   scroll-behavior: smooth;
 }
 
