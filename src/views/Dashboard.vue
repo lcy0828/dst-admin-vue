@@ -1,139 +1,164 @@
 <template>
   <div class="dashboard-content" v-loading="loading" element-loading-text="加载中..." element-loading-spinner="el-icon-loading">
+    <header class="dashboard-header">
+      <div class="dashboard-heading">
+        <h1>服务总览</h1>
+        <span>{{ formatCheckedAt(systemStatus.current_time) }}</span>
+      </div>
+      <div class="dashboard-summary">
+        <Badge variant="outline" class="summary-badge">
+          <span class="summary-status-dot" :class="{ online: runningServerCount > 0 }" aria-hidden="true"></span>
+          {{ runningServerCount }} / {{ serverList.length }} 分片运行
+        </Badge>
+        <Badge variant="outline" class="summary-badge">
+          <UsersRound />
+          {{ playerSummary.online }} 人在线
+        </Badge>
+        <UiButton variant="outline" size="sm" :disabled="dashboardRefreshing" @click="refreshDashboard">
+          <Spinner v-if="dashboardRefreshing" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          刷新全部
+        </UiButton>
+      </div>
+    </header>
 
-    <!-- 版本信息卡片 -->
-    <el-row :gutter="20" class="version-info-row">
-      <el-col :span="24">
-        <el-card shadow="never" class="version-card">
-          <div class="version-content">
-            <div class="version-icon">
-              <component :is="'el-icon-info'" class="legacy-icon" />
+    <section class="version-strip" aria-labelledby="version-title">
+      <div class="version-strip-heading">
+        <span class="version-icon" aria-hidden="true"><PackageCheck /></span>
+        <div>
+          <span>游戏服务端</span>
+          <strong id="version-title">版本与更新</strong>
+        </div>
+      </div>
+      <div class="version-details">
+        <div v-if="versionLoading" class="version-loading">
+          <Spinner />
+          <span>正在获取版本信息...</span>
+        </div>
+        <div v-else-if="versionError && !versionInfo.local" class="version-error" role="status">
+          <CircleAlert />
+          <span>{{ versionError }}</span>
+          <UiButton variant="ghost" size="sm" @click="getVersionInfo">重试</UiButton>
+        </div>
+        <div v-else class="version-info">
+          <div class="version-boxes">
+            <div class="version-box">
+              <span class="version-box-label">当前版本</span>
+              <strong class="version-box-value">{{ versionInfo.local?.version || '--' }}</strong>
+              <Badge :variant="versionInfo.installed ? 'secondary' : 'outline'">
+                {{ versionInfo.installed ? '已安装' : '未检测到安装' }}
+              </Badge>
             </div>
-            <div class="version-details">
-              <div class="version-header">
-                <span class="version-title">饥荒服务器版本信息</span>
-                <div class="version-actions">
-                  <UiButton
-                    v-if="canUpdateGame"
-                    size="sm"
-                    @click="updateDstServer"
-                    :disabled="versionLoading || gameUpdateBusy"
-                  >
-                    <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
-                    <Download v-else data-icon="inline-start" />
-                    {{ gameUpdateBusy ? '更新中' : '更新游戏' }}
-                  </UiButton>
-                  <UiButton
-                    variant="ghost"
-                    size="sm"
-                    @click="getVersionInfo"
-                    :disabled="versionLoading || gameUpdateBusy"
-                  >
-                    <Spinner v-if="versionLoading" data-icon="inline-start" />
-                    <RefreshCw v-else data-icon="inline-start" />
-                    刷新
-                  </UiButton>
-                </div>
-              </div>
-              <div v-if="versionLoading" class="version-loading">
-                <Spinner />
-                <span>正在获取版本信息...</span>
-              </div>
-              <div v-else-if="versionError && !versionInfo.local" class="version-error" role="status">
-                <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-                <span>{{ versionError }}</span>
-                <UiButton variant="ghost" size="sm" @click="getVersionInfo">重试</UiButton>
-              </div>
-              <div v-else class="version-info">
-                <div class="version-boxes">
-                  <div class="version-box">
-                    <div class="version-box-label">当前版本</div>
-                    <div class="version-box-value">{{ versionInfo.local?.version || '--' }}</div>
-                    <div class="version-box-date">{{ versionInfo.installed ? '已安装' : '未检测到安装' }}</div>
-                  </div>
-                  <div class="version-arrow">
-                    <component :is="'el-icon-arrow-right'" class="legacy-icon" />
-                  </div>
-                  <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
-                    <div class="version-box-label">最新版本</div>
-                    <a
-                      v-if="versionInfo.latest?.update_url"
-                      :href="versionInfo.latest.update_url"
-                      target="_blank"
-                      class="version-box-value version-link">
-                      {{ versionInfo.latest.version }}
-                      <component v-if="isVersionOutdated" :is="'el-icon-warning'" class="legacy-icon version-warning-icon" />
-                    </a>
-                    <span v-else class="version-box-value">{{ versionInfo.latest?.version || '--' }}</span>
-                    <div class="version-box-date">{{ versionInfo.latest?.version ? (isVersionOutdated ? '有可用更新' : '已是最新版本') : '暂未取得 Steam 版本' }}</div>
-                  </div>
-                </div>
-                <div class="version-meta">
-                  <span>安装位置：{{ versionInfo.install_path || '--' }}</span>
-                  <span v-if="versionInfo.app_id">App ID：{{ versionInfo.app_id }}</span>
-                  <span v-if="versionInfo.checked_at">检查时间：{{ formatCheckedAt(versionInfo.checked_at) }}</span>
-                </div>
-                <div v-if="!versionInfo.installed" class="version-check-warning" role="status">
-                  <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-                  <span>未检测到有效的 DST 安装，请检查系统设置中的服务端目录。</span>
-                </div>
-                <div v-else-if="versionInfo.update_method === 'steam-client'" class="version-managed-notice">
-                  <component :is="'el-icon-info'" class="legacy-icon" />
-                  <span>当前为 macOS Steam 客户端安装，请在 Steam 中更新游戏。</span>
-                </div>
-                <div v-else-if="!versionInfo.update_supported" class="version-managed-notice">
-                  <component :is="'el-icon-info'" class="legacy-icon" />
-                  <span>{{ versionInfo.steamcmd_available ? '当前安装方式不支持面板更新。' : '未检测到 SteamCMD，面板更新不可用。' }}</span>
-                </div>
-                <div v-if="versionInfo.check_error || versionError" class="version-check-warning" role="status">
-                  <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-                  <span>Steam 最新版本检查失败：{{ versionInfo.check_error || versionError }}</span>
-                </div>
-                <div v-if="isVersionOutdated" class="version-update-notice">
-                  <component :is="'el-icon-warning'" class="legacy-icon" />
-                  <span>检测到新版本可用，请及时更新游戏服务端!</span>
-                  <UiButton v-if="versionInfo.latest?.update_url" size="sm" @click="openUpdateLink">查看更新内容</UiButton>
-                </div>
-                <div v-if="updateStatus" class="version-update-status">
-                  <div class="update-status-header">
-                    <component :is="updateStatus.is_running ? 'el-icon-loading' : (updateStatus.is_completed ? 'el-icon-success' : 'el-icon-info')" class="legacy-icon" />
-                    <span>更新状态: {{ updateStatus.is_completed ? '已完成' : (updateStatus.is_running ? '进行中' : '尚未开始') }}</span>
-                  </div>
-                  <el-progress
-                    v-if="updateStatus.is_completed || hasMetric(updateStatus.progress)"
-                    :percentage="Number(updateStatus.progress)"
-                    :status="updateStatus.is_completed ? 'success' : ''"
-                  ></el-progress>
-                  <div v-else-if="updateStatus.is_running" class="metric-unavailable">进度：--</div>
-                  <div v-if="updateStatus.last_output" class="update-output">
-                    <div class="output-label">最新输出:</div>
-                    <div class="output-content">{{ updateStatus.last_output }}</div>
-                  </div>
-                  <div v-if="updateStatus.error" class="update-error">
-                    <div class="error-label">错误信息:</div>
-                    <div class="error-content">{{ updateStatus.error }}</div>
-                  </div>
-                </div>
-              </div>
+            <ChevronRight class="version-arrow" />
+            <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
+              <span class="version-box-label">Steam 最新版本</span>
+              <a
+                v-if="versionInfo.latest?.update_url"
+                :href="versionInfo.latest.update_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="version-box-value version-link"
+              >
+                {{ versionInfo.latest.version }}
+              </a>
+              <strong v-else class="version-box-value">{{ versionInfo.latest?.version || '--' }}</strong>
+              <Badge :variant="isVersionOutdated ? 'destructive' : 'outline'">
+                {{ versionInfo.latest?.version ? (isVersionOutdated ? '可更新' : '已是最新') : '检查中' }}
+              </Badge>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+          <div class="version-meta">
+            <span>{{ versionInfo.install_path || '未配置安装位置' }}</span>
+            <span v-if="versionInfo.app_id">App ID {{ versionInfo.app_id }}</span>
+            <span v-if="versionInfo.checked_at">检查于 {{ formatCheckedAt(versionInfo.checked_at) }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="version-actions">
+        <UiButton
+          v-if="canUpdateGame"
+          size="sm"
+          :disabled="versionLoading || gameUpdateBusy"
+          @click="updateDstServer"
+        >
+          <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
+          <Download v-else data-icon="inline-start" />
+          {{ gameUpdateBusy ? '更新中' : '更新游戏' }}
+        </UiButton>
+        <UiButton
+          variant="ghost"
+          size="sm"
+          :disabled="versionLoading || gameUpdateBusy"
+          @click="getVersionInfo"
+        >
+          <Spinner v-if="versionLoading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          检查版本
+        </UiButton>
+      </div>
+      <div class="version-notices">
+        <div v-if="!versionInfo.installed && !versionLoading" class="version-check-warning" role="status">
+          <CircleAlert />
+          <span>未检测到有效的 DST 安装，请检查系统设置中的服务端目录。</span>
+        </div>
+        <div v-else-if="versionInfo.update_method === 'steam-client'" class="version-managed-notice">
+          <CircleAlert />
+          <span>当前为 macOS Steam 客户端安装，请在 Steam 中更新游戏。</span>
+        </div>
+        <div v-else-if="versionInfo.installed && !versionInfo.update_supported" class="version-managed-notice">
+          <CircleAlert />
+          <span>{{ versionInfo.steamcmd_available ? '当前安装方式不支持面板更新。' : '未检测到 SteamCMD，面板更新不可用。' }}</span>
+        </div>
+        <div v-if="versionInfo.check_error || (versionError && versionInfo.local)" class="version-check-warning" role="status">
+          <CircleAlert />
+          <span>Steam 最新版本检查失败：{{ versionInfo.check_error || versionError }}</span>
+        </div>
+        <div v-if="isVersionOutdated" class="version-update-notice">
+          <CircleAlert />
+          <span>检测到新版本可用，请及时更新游戏服务端。</span>
+          <UiButton v-if="versionInfo.latest?.update_url" size="sm" @click="openUpdateLink">查看更新内容</UiButton>
+        </div>
+        <div v-if="updateStatus" class="version-update-status">
+          <div class="update-status-header">
+            <Spinner v-if="updateStatus.is_running" />
+            <CircleAlert v-else />
+            <span>更新状态：{{ updateStatus.is_completed ? '已完成' : (updateStatus.is_running ? '进行中' : '尚未开始') }}</span>
+          </div>
+          <el-progress
+            v-if="updateStatus.is_completed || hasMetric(updateStatus.progress)"
+            :percentage="Number(updateStatus.progress)"
+            :status="updateStatus.is_completed ? 'success' : ''"
+          ></el-progress>
+          <div v-else-if="updateStatus.is_running" class="metric-unavailable">进度：--</div>
+          <div v-if="updateStatus.last_output" class="update-output">
+            <div class="output-label">最新输出</div>
+            <div class="output-content">{{ updateStatus.last_output }}</div>
+          </div>
+          <div v-if="updateStatus.error" class="update-error">
+            <div class="error-label">错误信息</div>
+            <div class="error-content">{{ updateStatus.error }}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- 服务器监控 -->
-    <el-row :gutter="20" class="monitor-section">
-      <el-col :xs="24" :sm="24" :md="16" :span="16">
-        <el-card shadow="never" class="server-monitor">
-          <template v-slot:header>
-<div  class="clearfix server-header">
-            <span><component :is="'el-icon-monitor'" class="legacy-icon" /> 服务器状态监控</span>
-            <UiButton variant="ghost" size="sm" :disabled="serverLoading" @click="refreshServerData">
-              <Spinner v-if="serverLoading" data-icon="inline-start" />
-              <RefreshCw v-else data-icon="inline-start" />
-              刷新
-            </UiButton>
+    <div class="operations-grid">
+      <section class="operation-panel server-monitor" aria-labelledby="server-monitor-title">
+        <div class="operation-panel-header server-header">
+          <div class="panel-title">
+            <Activity aria-hidden="true" />
+            <div>
+              <h2 id="server-monitor-title">服务器状态</h2>
+              <span>{{ serverList.length }} 个分片，{{ runningServerCount }} 个运行中</span>
+            </div>
           </div>
-</template>
+          <UiButton variant="ghost" size="sm" :disabled="serverLoading" @click="refreshServerData">
+            <Spinner v-if="serverLoading" data-icon="inline-start" />
+            <RefreshCw v-else data-icon="inline-start" />
+            刷新
+          </UiButton>
+        </div>
           <div v-loading="serverLoading" class="server-monitor-body">
           <el-table
             v-if="serverList.length > 0 && !serverDataError"
@@ -306,31 +331,33 @@
 </template>
           </el-dialog>
 
-        </el-card>
-      </el-col>
+      </section>
 
-      <el-col :xs="24" :sm="24" :md="8" :span="8">
-        <el-card shadow="never" class="system-info">
-          <template v-slot:header>
-<div class="panel-header">
-            <span>系统资源</span>
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <UiButton
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="刷新系统资源"
-                  :disabled="systemLoading"
-                  @click="refreshSystemStatus"
-                >
-                  <Spinner v-if="systemLoading" />
-                  <RefreshCw v-else />
-                </UiButton>
-              </TooltipTrigger>
-              <TooltipContent>刷新系统资源</TooltipContent>
-            </Tooltip>
+      <aside class="operation-panel system-info" aria-labelledby="system-resource-title">
+        <div class="operation-panel-header panel-header">
+          <div class="panel-title">
+            <Gauge aria-hidden="true" />
+            <div>
+              <h2 id="system-resource-title">系统资源</h2>
+              <span>{{ systemStatus.os_info || '等待系统信息' }}</span>
+            </div>
           </div>
-</template>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <UiButton
+                variant="ghost"
+                size="icon-sm"
+                aria-label="刷新系统资源"
+                :disabled="systemLoading"
+                @click="refreshSystemStatus"
+              >
+                <Spinner v-if="systemLoading" />
+                <RefreshCw v-else />
+              </UiButton>
+            </TooltipTrigger>
+            <TooltipContent>刷新系统资源</TooltipContent>
+          </Tooltip>
+        </div>
           <div v-loading="systemLoading" class="resource-usage">
             <div class="resource-item">
               <div class="resource-label">
@@ -385,21 +412,20 @@
           </div>
           <div class="system-info-footer">
             <div class="system-info-item">
-              <component :is="'el-icon-monitor'" class="legacy-icon" />
+              <Cpu aria-hidden="true" />
               <span>{{ systemStatus.os_info || '--' }}</span>
             </div>
             <div class="system-info-item">
-              <component :is="'el-icon-time'" class="legacy-icon" />
+              <Clock3 aria-hidden="true" />
               <span>运行时间: {{ systemStatus.uptime_formatted || '--' }}</span>
             </div>
             <div class="system-info-item">
-              <component :is="'el-icon-refresh'" class="legacy-icon" />
+              <RefreshCw aria-hidden="true" />
               <span>更新时间: {{ formatCheckedAt(systemStatus.current_time) }}</span>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+      </aside>
+    </div>
 
     <div class="section-divider">
       <div class="section-title">
@@ -520,18 +546,38 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { CircleAlert, Download, Play, RefreshCw, Settings, Square } from '@lucide/vue';
+import {
+  Activity,
+  ChevronRight,
+  CircleAlert,
+  Clock3,
+  Cpu,
+  Download,
+  Gauge,
+  PackageCheck,
+  Play,
+  RefreshCw,
+  Settings,
+  Square,
+  UsersRound
+} from '@lucide/vue';
 import { formatTimeDiff } from '@/utils/dateUtils';
 
 export default {
   name: 'DashboardView',
   components: {
+    Activity,
     Alert,
     AlertDescription,
     AlertTitle,
     Badge,
+    ChevronRight,
     CircleAlert,
+    Clock3,
+    Cpu,
     Download,
+    Gauge,
+    PackageCheck,
     Play,
     RefreshCw,
     Settings,
@@ -542,6 +588,7 @@ export default {
     TooltipContent,
     TooltipTrigger,
     UiButton,
+    UsersRound,
     WorldLog
   },
   data() {
@@ -610,6 +657,12 @@ export default {
     }
   },
   computed: {
+    dashboardRefreshing() {
+      return this.loading || this.serverLoading || this.systemLoading || this.versionLoading;
+    },
+    runningServerCount() {
+      return this.serverList.filter(server => server.status === 'running').length;
+    },
     canUpdateGame() {
       return Boolean(
         this.versionInfo.installed &&
@@ -710,7 +763,7 @@ export default {
     },
     refreshData() {
       this.loading = true;
-      systemApi.getAnnouncements()
+      return systemApi.getAnnouncements()
         .then(response => {
           this.announcements = Array.isArray(response.data) ? response.data : [];
           this.announcementsError = '';
@@ -810,7 +863,7 @@ export default {
     refreshSystemStatus() {
       this.systemLoading = true;
 
-      systemApi.getDashboardStatus()
+      return systemApi.getDashboardStatus()
         .then(response => {
           if (response && response.data && response.status === 200) {
             this.systemStatus = response.data;
@@ -867,6 +920,14 @@ export default {
         .finally(() => {
           this.systemLoading = false;
         });
+    },
+    async refreshDashboard() {
+      await Promise.allSettled([
+        this.refreshData(),
+        this.refreshSystemStatus(),
+        this.refreshServerData(),
+        this.getVersionInfo()
+      ]);
     },
 
     formatMemory(memory) {
@@ -2123,6 +2184,598 @@ export default {
 
   .version-update-notice button {
     margin-left: 0;
+  }
+}
+
+/* Dashboard workspace hierarchy */
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dashboard-header {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-heading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.dashboard-heading h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 28px;
+  letter-spacing: 0;
+}
+
+.dashboard-heading span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.dashboard-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.summary-badge {
+  min-height: 30px;
+  gap: 6px;
+  padding-right: 10px;
+  padding-left: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.summary-status-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--muted-foreground);
+  border-radius: 50%;
+}
+
+.summary-status-dot.online {
+  background: var(--success-color);
+}
+
+.version-strip {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.version-strip-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.version-strip-heading > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.version-strip-heading span:not(.version-icon) {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.version-strip-heading strong {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 19px;
+}
+
+.version-icon {
+  display: inline-flex;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: var(--primary-color);
+  background: var(--accent);
+  border-radius: 5px;
+}
+
+.version-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.version-details,
+.version-info {
+  min-width: 0;
+}
+
+.version-boxes {
+  display: flex;
+  max-width: none;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  margin: 0;
+  border: 0;
+}
+
+.version-box {
+  display: grid;
+  flex: 0 1 auto;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 2px 8px;
+  min-width: 148px;
+  padding: 0;
+  text-align: left;
+}
+
+.version-box-label {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.version-box-value {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-box-outdated .version-box-value,
+.version-link {
+  color: var(--primary-color);
+}
+
+.version-link {
+  text-decoration: none;
+}
+
+.version-link:hover {
+  text-decoration: underline;
+  opacity: 1;
+}
+
+.version-arrow {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.version-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  padding-top: 7px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.version-meta span:first-child {
+  max-width: 480px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.version-loading,
+.version-error {
+  min-height: 42px;
+  padding: 0;
+}
+
+.version-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--warning-color);
+  background: transparent;
+  border: 0;
+}
+
+.version-error svg,
+.version-notices svg {
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+}
+
+.version-notices {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.version-notices:empty {
+  display: none;
+}
+
+.version-managed-notice,
+.version-check-warning,
+.version-update-notice {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 6px 9px;
+  color: var(--text-regular);
+  background: var(--surface-muted);
+  border: 0;
+  border-left: 2px solid var(--info-color);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.version-check-warning {
+  border-left-color: var(--warning-color);
+}
+
+.version-update-notice {
+  color: var(--danger-color);
+  border-left-color: var(--danger-color);
+}
+
+.version-update-notice button {
+  margin-left: auto;
+}
+
+.version-update-status {
+  margin: 0;
+  padding: 10px;
+  background: var(--surface-muted);
+  border-radius: 4px;
+}
+
+.operations-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 0.8fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.operation-panel {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.operation-panel-header {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-title > svg {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--primary-color);
+}
+
+.panel-title > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.panel-title h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
+.server-header .panel-title span,
+.panel-title span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.server-monitor,
+.system-info {
+  width: 100%;
+  height: auto;
+  margin: 0;
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.server-monitor-body {
+  min-height: 236px;
+  padding: 0 14px 12px;
+  overflow-x: auto;
+}
+
+.server-monitor :deep(.el-table) {
+  margin-top: 0;
+}
+
+.server-monitor :deep(.el-table--border) {
+  border: 0;
+  border-radius: 0;
+}
+
+.server-monitor :deep(.el-table th.el-table__cell) {
+  height: 38px;
+  background: var(--surface-color) !important;
+  border-top: 0;
+}
+
+.server-monitor :deep(.el-table td.el-table__cell) {
+  height: 42px;
+}
+
+.server-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.system-info .resource-usage {
+  padding: 0 14px;
+}
+
+.resource-item {
+  padding: 11px 0;
+}
+
+.resource-item:first-child {
+  padding-top: 12px;
+}
+
+.resource-label {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.resource-detail {
+  justify-content: flex-start;
+  gap: 4px 12px;
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.system-info-footer {
+  gap: 6px;
+  margin: 0 14px;
+  padding: 11px 0 13px;
+}
+
+.system-info-item {
+  min-width: 0;
+  gap: 7px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.system-info-item svg {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+}
+
+.section-divider {
+  min-height: 34px;
+  margin: 4px 0 -4px;
+  padding: 0;
+  border-bottom: 0;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.monitor-section,
+.version-info-row {
+  margin: 0;
+}
+
+@media (max-width: 1180px) {
+  .operations-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .system-info {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.4fr);
+  }
+
+  .system-info .operation-panel-header {
+    grid-column: 1 / -1;
+  }
+
+  .system-info-footer {
+    align-self: stretch;
+    justify-content: center;
+    margin-left: 0;
+    padding-left: 14px;
+    border-top: 0;
+    border-left: 1px solid var(--border-color);
+  }
+}
+
+@media (max-width: 900px) {
+  .version-strip {
+    grid-template-columns: 140px minmax(0, 1fr);
+  }
+
+  .version-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    gap: 12px;
+    padding: 0;
+  }
+
+  .dashboard-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .dashboard-heading {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dashboard-summary {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .dashboard-summary > button {
+    margin-left: auto;
+  }
+
+  .version-strip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .version-actions,
+  .version-notices {
+    grid-column: auto;
+  }
+
+  .version-actions {
+    justify-content: flex-start;
+  }
+
+  .version-boxes {
+    align-items: stretch;
+  }
+
+  .version-box {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .version-meta span:first-child {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .operation-panel-header {
+    min-height: 54px;
+    padding: 9px 12px;
+  }
+
+  .server-monitor-body {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .system-info {
+    display: block;
+  }
+
+  .system-info-footer {
+    margin-left: 14px;
+    padding-left: 0;
+    border-top: 1px solid var(--border-color);
+    border-left: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .dashboard-heading span,
+  .summary-badge:nth-child(2) {
+    display: none;
+  }
+
+  .dashboard-summary > button {
+    margin-left: 0;
+  }
+
+  .version-boxes {
+    flex-wrap: wrap;
+  }
+
+  .version-box {
+    flex-basis: calc(50% - 16px);
   }
 }
 </style>
