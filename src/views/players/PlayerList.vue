@@ -184,86 +184,28 @@
             {{ formatDate(scope.row.last_seen) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="320" fixed="right">
+        <el-table-column label="操作" width="132" fixed="right" align="center">
           <template v-slot="scope">
             <div class="operation-buttons">
-              <!-- 基本操作按钮 -->
-              <el-tooltip content="查看详情" placement="top" effect="light">
-                <el-button size="mini" type="primary" icon="el-icon-view" circle @click="viewPlayerDetail(scope.row)"></el-button>
-              </el-tooltip>
-
-              <el-tooltip content="踢出玩家" placement="top" effect="light">
-                <el-button
-                  size="mini"
-                  type="danger"
-                  icon="el-icon-close"
-                  circle
-                  @click="kickPlayer(scope.row)">
+              <el-button size="small" type="primary" text icon="el-icon-view" @click="viewPlayerDetail(scope.row)">
+                详情
+              </el-button>
+              <el-dropdown trigger="click" @command="handlePlayerCommand">
+                <el-button size="small" text aria-label="更多玩家操作">
+                  <component :is="'el-icon-more'" class="legacy-icon" />
                 </el-button>
-              </el-tooltip>
-
-              <el-tooltip content="封禁玩家" placement="top" effect="light">
-                <el-button
-                  size="mini"
-                  type="info"
-                  icon="el-icon-lock"
-                  circle
-                  @click="banPlayer(scope.row)">
-                </el-button>
-              </el-tooltip>
-
-              <!-- 其他操作按钮 -->
-              <el-tooltip content="杀死玩家" placement="top" effect="light">
-                <el-button
-                  size="mini"
-                  type="warning"
-                  icon="el-icon-delete"
-                  circle
-                  @click="killPlayer(scope.row)">
-                </el-button>
-              </el-tooltip>
-
-              <el-tooltip content="无敌模式" placement="top" effect="light">
-                <el-button
-                  size="mini"
-                  type="success"
-                  icon="el-icon-magic-stick"
-                  circle
-                  @click="toggleGodMode(scope.row)">
-                </el-button>
-              </el-tooltip>
-
-              <el-tooltip content="制作模式" placement="top" effect="light">
-                <el-button
-                  size="mini"
-                  type="success"
-                  icon="el-icon-s-tools"
-                  circle
-                  @click="toggleCreativeMode(scope.row)">
-                </el-button>
-              </el-tooltip>
-
-              <el-tooltip content="复活玩家" placement="top" effect="light">
-                <el-button
-                  size="mini"
-                  type="success"
-                  icon="el-icon-refresh"
-                  circle
-                  @click="resurrectPlayer(scope.row)">
-                </el-button>
-              </el-tooltip>
-
-              <el-tooltip content="重选人物" placement="top" effect="light">
-                <el-button
-                  size="mini"
-                  type="primary"
-                  icon="el-icon-user"
-                  circle
-                  @click="changeCharacter(scope.row)">
-                </el-button>
-              </el-tooltip>
-
-
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item :command="{ action: 'god', player: scope.row }">无敌模式</el-dropdown-item>
+                    <el-dropdown-item :command="{ action: 'creative', player: scope.row }">制作模式</el-dropdown-item>
+                    <el-dropdown-item :command="{ action: 'resurrect', player: scope.row }">复活玩家</el-dropdown-item>
+                    <el-dropdown-item :command="{ action: 'character', player: scope.row }">重选人物</el-dropdown-item>
+                    <el-dropdown-item divided :command="{ action: 'kick', player: scope.row }">踢出玩家</el-dropdown-item>
+                    <el-dropdown-item :command="{ action: 'ban', player: scope.row }">封禁玩家</el-dropdown-item>
+                    <el-dropdown-item :command="{ action: 'kill', player: scope.row }">杀死玩家</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </div>
           </template>
         </el-table-column>
@@ -283,10 +225,30 @@
       </div>
     </el-card>
 
-    <!-- 玩家详情对话框 -->
-    <el-dialog title="玩家详情" v-model="playerDetailVisible" width="50%">
+    <!-- 玩家详情抽屉 -->
+    <el-drawer
+      v-model="playerDetailVisible"
+      title="玩家详情"
+      direction="rtl"
+      size="min(620px, 94vw)"
+      destroy-on-close
+      class="player-detail-drawer"
+    >
       <div v-if="currentPlayer" class="player-detail">
-        <el-descriptions :column="2" border>
+        <div class="player-detail-heading">
+          <span class="detail-avatar"><component :is="'el-icon-user'" /></span>
+          <div>
+            <div class="detail-player-name">
+              <strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong>
+              <el-tag :type="currentPlayer.status === 'online' ? 'success' : 'info'" size="small">
+                {{ currentPlayer.status === 'online' ? '在线' : '离线' }}
+              </el-tag>
+            </div>
+            <span>{{ getCharacterName(currentPlayer.prefab) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || '未知世界' }}</span>
+          </div>
+        </div>
+
+        <el-descriptions :column="2" border class="player-descriptions">
           <el-descriptions-item label="玩家ID">{{ currentPlayer.id }}</el-descriptions-item>
           <el-descriptions-item label="KU ID">{{ currentPlayer.user_id }}</el-descriptions-item>
           <el-descriptions-item label="玩家名称">
@@ -355,21 +317,26 @@
         </el-descriptions>
 
         <div class="detail-actions">
-          <el-button-group>
-            <el-button type="danger" size="small" icon="el-icon-close" @click="kickPlayer(currentPlayer)">踢出</el-button>
-            <el-button type="warning" size="small" icon="el-icon-delete" @click="killPlayer(currentPlayer)">杀死</el-button>
-            <el-button type="info" size="small" icon="el-icon-lock" @click="banPlayer(currentPlayer)">封禁</el-button>
-          </el-button-group>
-
-          <el-button-group>
-            <el-button type="success" size="small" icon="el-icon-magic-stick" @click="toggleGodMode(currentPlayer)">无敌模式</el-button>
-            <el-button type="success" size="small" icon="el-icon-s-tools" @click="toggleCreativeMode(currentPlayer)">制作模式</el-button>
-            <el-button type="success" size="small" icon="el-icon-refresh" @click="resurrectPlayer(currentPlayer)">复活</el-button>
-            <el-button type="primary" size="small" icon="el-icon-user" @click="changeCharacter(currentPlayer)">重选人物</el-button>
-          </el-button-group>
+          <section>
+            <h3>游戏操作</h3>
+            <div class="detail-action-grid">
+              <el-button size="small" icon="el-icon-magic-stick" @click="toggleGodMode(currentPlayer)">无敌模式</el-button>
+              <el-button size="small" icon="el-icon-s-tools" @click="toggleCreativeMode(currentPlayer)">制作模式</el-button>
+              <el-button size="small" icon="el-icon-refresh" @click="resurrectPlayer(currentPlayer)">复活玩家</el-button>
+              <el-button size="small" icon="el-icon-user" @click="changeCharacter(currentPlayer)">重选人物</el-button>
+            </div>
+          </section>
+          <section class="danger-actions">
+            <h3>危险操作</h3>
+            <div class="detail-action-grid danger">
+              <el-button type="danger" plain size="small" icon="el-icon-close" @click="kickPlayer(currentPlayer)">踢出</el-button>
+              <el-button type="danger" plain size="small" icon="el-icon-lock" @click="banPlayer(currentPlayer)">封禁</el-button>
+              <el-button type="danger" plain size="small" icon="el-icon-delete" @click="killPlayer(currentPlayer)">杀死</el-button>
+            </div>
+          </section>
         </div>
       </div>
-    </el-dialog>
+    </el-drawer>
 
 
 
@@ -626,7 +593,7 @@ export default {
 
       // 筛选表单
       filterForm: {
-        archive_name: '',
+        archive_name: this.$route.query.archive || '',
         status: '',
         prefab: '',
         keyword: ''
@@ -774,6 +741,19 @@ export default {
     }
   },
   methods: {
+    handlePlayerCommand(command) {
+      if (!command?.player) return;
+      const actions = {
+        god: this.toggleGodMode,
+        creative: this.toggleCreativeMode,
+        resurrect: this.resurrectPlayer,
+        character: this.changeCharacter,
+        kick: this.kickPlayer,
+        ban: this.banPlayer,
+        kill: this.killPlayer
+      };
+      actions[command.action]?.call(this, command.player);
+    },
     // 获取玩家列表
     fetchPlayerList() {
       this.loading = true;
@@ -1593,24 +1573,87 @@ export default {
 }
 
 .detail-actions {
-  margin-top: 20px;
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.detail-actions h3 {
+  margin: 0 0 9px;
+  color: var(--text-primary);
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.detail-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.detail-action-grid :deep(.el-button) {
+  width: 100%;
+  margin: 0;
+}
+
+.detail-action-grid.danger {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.danger-actions {
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.player-detail-heading {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.detail-avatar {
+  display: grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: #9b5a0b;
+  background: #fff0d8;
+  border-radius: 4px;
+}
+
+.detail-player-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-player-name strong {
+  color: var(--text-primary);
+  font-size: 17px;
+}
+
+.player-detail-heading > div > span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.player-descriptions {
+  width: 100%;
 }
 
 .operation-buttons {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 2px;
 }
 
-.operation-buttons .el-button--mini {
-  padding: 5px;
-  margin-bottom: 3px;
+.operation-buttons :deep(.el-button) {
+  margin: 0;
 }
 
 .el-dropdown-menu__item i {
@@ -1970,6 +2013,19 @@ export default {
 
   .pagination-container {
     justify-content: center;
+  }
+
+  .player-detail :deep(.el-descriptions__body) table,
+  .player-detail :deep(.el-descriptions__body) tbody,
+  .player-detail :deep(.el-descriptions__body) tr,
+  .player-detail :deep(.el-descriptions__body) td {
+    display: block;
+    width: 100%;
+  }
+
+  .detail-action-grid,
+  .detail-action-grid.danger {
+    grid-template-columns: 1fr;
   }
 }
 </style>

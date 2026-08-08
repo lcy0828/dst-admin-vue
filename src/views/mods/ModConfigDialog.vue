@@ -1,12 +1,13 @@
 <template>
-  <el-dialog
+  <el-drawer
     v-model="dialogVisible"
     :title="`模组配置 - ${modInfo ? modInfo.name || '未命名模组' : '加载中...'}`"
     class="mod-config-dialog"
+    direction="rtl"
+    size="min(680px, 96vw)"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     :before-close="handleClose"
-    width="55%"
     :append-to-body="true"
     :destroy-on-close="true"
   >
@@ -141,7 +142,7 @@
         <el-button type="primary" @click="saveConfig" :loading="saving">保存配置</el-button>
       </span>
     </template>
-  </el-dialog>
+  </el-drawer>
 </template>
 
 <script>
@@ -511,7 +512,7 @@ export default {
     },
     
     // 关闭对话框
-    handleClose() {
+    handleClose(done) {
       let hasChanges = false;
       
       for (const key in this.configForm) {
@@ -527,11 +528,13 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
-          this.dialogVisible = false;
+          if (typeof done === 'function') done();
+          else this.dialogVisible = false;
           this.clearKeepAliveTimer();
         }).catch(() => {});
       } else {
-        this.dialogVisible = false;
+        if (typeof done === 'function') done();
+        else this.dialogVisible = false;
         this.clearKeepAliveTimer();
       }
     }
@@ -545,7 +548,7 @@ export default {
 <style scoped>
 .config-container {
   min-height: 200px;
-  padding: 0 20px;
+  padding: 0 4px;
 }
 
 .loading-container {
@@ -579,18 +582,16 @@ export default {
 
 /* 滚动区域 */
 .config-scroll-area {
-  max-height: 60vh;
-  overflow-y: auto;
-  padding-right: 10px;
+  padding-right: 4px;
 }
 
 /* 模组描述样式 */
 .mod-description {
-  margin-bottom: 25px;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  padding: 15px;
-  border-left: 4px solid var(--primary-color);
+  margin-bottom: 18px;
+  padding: 13px;
+  background-color: var(--surface-muted);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 4px;
 }
 
 .description-header {
@@ -667,34 +668,30 @@ export default {
   padding: 30px 0;
 }
 
-.mod-config-dialog :deep(.el-dialog__body) {
-  padding: 20px 20px;
+.mod-config-dialog :deep(.el-drawer__body) {
+  padding: 16px 18px;
 }
 
-.mod-config-dialog :deep(.el-dialog__header) {
-  padding: 15px 20px;
+.mod-config-dialog :deep(.el-drawer__header) {
+  margin-bottom: 0;
+  padding: 15px 18px;
   border-bottom: 1px solid var(--border-color);
-  background-color: #f9f9f9;
+  background-color: var(--surface-color);
 }
 
-.mod-config-dialog :deep(.el-dialog__title) {
+.mod-config-dialog :deep(.el-drawer__title) {
   font-size: 16px;
   font-weight: 600;
 }
 
-.mod-config-dialog :deep(.el-dialog__footer) {
-  padding: 15px 20px;
+.mod-config-dialog :deep(.el-drawer__footer) {
+  padding: 12px 18px;
   border-top: 1px solid var(--border-color);
-  background-color: #f9f9f9;
+  background-color: var(--surface-color);
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-  .mod-config-dialog :deep(.el-dialog) {
-    width: 90% !important;
-    margin-top: 10vh !important;
-  }
-  
   .config-form-item .el-form-item__label {
     float: none;
     display: block;

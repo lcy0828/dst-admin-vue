@@ -183,13 +183,14 @@
       @config-updated="handleConfigUpdated">
     </mod-config-dialog>
 
-    <!-- 模组详情对话框 -->
-    <el-dialog
+    <!-- 模组详情抽屉 -->
+    <el-drawer
       title="模组详情"
       v-model="detailsDialogVisible"
-      width="700px"
+      direction="rtl"
+      size="min(680px, 96vw)"
       class="mod-details-dialog"
-      :modal="false"
+      destroy-on-close
       :append-to-body="true">
       <div v-if="currentModInfo" class="mod-details-content">
         <!-- 模组基本信息 -->
@@ -292,7 +293,7 @@
           <el-button type="primary" @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo || !selectedWorldId">配置模组</el-button>
         </span>
       </template>
-    </el-dialog>
+    </el-drawer>
 
     <!-- 卸载确认对话框 -->
     <el-dialog
@@ -1032,7 +1033,7 @@ export default {
 
 .description-content {
   padding: 10px;
-  background-color: #f8f8f8;
+  background-color: var(--surface-muted);
   border-radius: 4px;
   color: var(--text-regular);
   line-height: 1.6;
@@ -1046,7 +1047,7 @@ export default {
 }
 
 .file-info-list {
-  background-color: #f8f8f8;
+  background-color: var(--surface-muted);
   border-radius: 4px;
   padding: 10px;
 }
