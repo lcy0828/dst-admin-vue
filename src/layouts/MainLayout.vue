@@ -665,6 +665,7 @@ export default {
   watch: {
     '$route'() {
       this.updateBreadcrumbs()
+      this.expandActiveNavigationGroup()
       this.closeMobileSidebar()
     }
   },
@@ -675,6 +676,7 @@ export default {
     window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetEvent)
     this.updateViewportMode()
     this.updateBreadcrumbs()
+    this.expandActiveNavigationGroup()
     this.loadCurrentUser()
   },
   beforeUnmount() {
@@ -712,6 +714,15 @@ export default {
     },
     isNavigationGroupActive(item) {
       return item.children.some(child => this.isNavigationActive(child.to))
+    },
+    expandActiveNavigationGroup() {
+      for (const section of NAVIGATION_SECTIONS) {
+        for (const item of section.items) {
+          if (item.children && this.isNavigationGroupActive(item)) {
+            this.openNavGroups[item.key] = true
+          }
+        }
+      }
     },
     setNavGroupOpen(key, open) {
       this.openNavGroups[key] = open
