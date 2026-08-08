@@ -27,6 +27,10 @@ const client = axios.create({
 client.interceptors.request.use(config => {
   const method = (config.method || 'get').toUpperCase()
   config.headers['X-DST-Runtime-Target'] = getActiveRuntimeTarget().id
+  if (['GET', 'HEAD'].includes(method)) {
+    config.headers['Cache-Control'] = 'no-store'
+    config.headers.Pragma = 'no-cache'
+  }
   if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     config.headers['X-CSRF-Token'] = csrfToken
     if (!config.headers['Idempotency-Key']) config.headers['Idempotency-Key'] = crypto.randomUUID()

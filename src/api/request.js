@@ -14,6 +14,15 @@ const instance = axios.create({
   }
 });
 
+instance.interceptors.request.use(config => {
+  const method = (config.method || 'get').toUpperCase();
+  if (method === 'GET' || method === 'HEAD') {
+    config.headers['Cache-Control'] = 'no-store';
+    config.headers.Pragma = 'no-cache';
+  }
+  return config;
+});
+
 // 响应拦截器
 instance.interceptors.response.use(
   response => {
