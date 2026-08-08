@@ -255,7 +255,7 @@ export default {
     connectEventSource() {
       this.manuallyClosedEventSource = false
       this.streamState = 'connecting'
-      const source = new EventSource(worldLogsV2API.eventURL(this.selectedRoomId, this.selectedWorldId, 30))
+      const source = new EventSource(worldLogsV2API.eventURL(this.selectedRoomId, this.selectedWorldId, 300))
       this.eventSource = source
 
       source.addEventListener('connected', event => {

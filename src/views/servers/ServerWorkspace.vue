@@ -431,6 +431,7 @@ export default {
     async refreshWorkspace(silent = false) {
       if (!silent) this.loading = true
       this.loadError = ''
+      const previousRoomId = this.selectedRoomId
       const [roomsResult, systemResult] = await Promise.allSettled([
         roomApi.getRoomList(),
         systemApi.getDashboardStatus()
@@ -448,7 +449,10 @@ export default {
         ? (systemResult.value?.data || {})
         : {}
 
-      if (this.selectedRoom) await this.refreshRoomContext()
+      if (this.selectedRoom) {
+        if (silent && previousRoomId === this.selectedRoomId) await this.refreshPlayerStats()
+        else await this.refreshRoomContext()
+      }
       if (!silent) this.loading = false
     },
     resolveSelection() {
@@ -491,6 +495,16 @@ export default {
       this.consoleServers = consoleResult.status === 'fulfilled' ? consoleResult.value : []
       this.syncConsoleTarget()
       this.contextLoading = false
+    },
+    async refreshPlayerStats() {
+      if (!this.selectedRoom) return
+      const roomId = this.selectedRoomId
+      try {
+        const response = await playerApi.getPlayerStats(this.selectedRoom.name)
+        if (this.selectedRoomId === roomId) this.playerStats = response?.data || null
+      } catch {
+        if (this.selectedRoomId === roomId) this.playerStats = null
+      }
     },
     selectWorld(world) {
       this.selectedWorldId = world.id
@@ -601,7 +615,7 @@ export default {
       }
     },
     openRoomSettings() {
-      this.$router.push({ path: '/rooms/settings', query: { roomId: this.selectedRoomId } })
+      this.$router.push({ path: '/rooms/settings', query: { id: this.selectedRoomId } })
     },
     openWorldSettings(world) {
       this.$router.push({
