@@ -141,6 +141,19 @@ export const structuredLogsV2API = {
   clear: (roomId, worldId) => client.post(`/rooms/${encode(roomId)}/structured-logs/actions/clear`, { worldId })
 }
 
+export const worldLogsV2API = {
+  snapshot: (roomId, worldId, params = {}) => client.get(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/logs`,
+    { params }
+  ),
+  eventURL: (roomId, worldId, tail = 200) => (
+    `${baseURL}/rooms/${encode(roomId)}/worlds/${encode(worldId)}/logs/events?tail=${encode(tail)}`
+  ),
+  downloadURL: (roomId, worldId) => (
+    `${baseURL}/rooms/${encode(roomId)}/worlds/${encode(worldId)}/logs/download`
+  )
+}
+
 export const logRulesV2API = {
   list: roomId => client.get(`/rooms/${encode(roomId)}/log-rules`, {
     headers: { 'Cache-Control': 'no-store' }

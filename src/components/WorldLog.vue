@@ -4,62 +4,72 @@
       <div class="log-title">
         <component :is="'el-icon-document'" class="legacy-icon" />
         <span>{{ title || '世界日志' }}</span>
+        <span class="stream-state" :class="`is-${streamState}`">
+          <span class="state-dot"></span>
+          {{ streamStateLabel }}
+        </span>
       </div>
+
       <div class="log-actions">
-        <el-select 
-          v-model="selectedArchive" 
-          placeholder="选择存档" 
+        <el-select
+          v-model="selectedRoomId"
+          aria-label="选择房间"
+          placeholder="选择房间"
           size="small"
-          @change="handleArchiveChange">
+          @change="handleRoomChange"
+        >
           <el-option
-            v-for="archive in archives"
-            :key="archive.name"
-            :label="archive.name"
-            :value="archive.name">
-          </el-option>
+            v-for="room in archives"
+            :key="room.id"
+            :label="room.name"
+            :value="room.id"
+          />
         </el-select>
-        
-        <el-select 
-          v-model="selectedWorld" 
-          placeholder="选择世界" 
+
+        <el-select
+          v-model="selectedWorldId"
+          aria-label="选择世界"
+          placeholder="选择世界"
           size="small"
+          :disabled="!selectedRoomId || currentRoomWorlds.length === 0"
           @change="handleWorldChange"
-          :disabled="!selectedArchive || !currentArchiveWorlds.length">
+        >
           <el-option
-            v-for="world in currentArchiveWorlds"
-            :key="world.name"
-            :label="world.name + ' (' + formatWorldType(world.type) + ')'"
-            :value="world.name">
-          </el-option>
+            v-for="world in currentRoomWorlds"
+            :key="world.id"
+            :label="`${world.name} (${formatWorldType(world.type || world.role)})`"
+            :value="world.id"
+          />
         </el-select>
-        
-        <el-tooltip content="自动刷新日志" placement="top">
+
+        <el-tooltip content="实时跟随日志" placement="top">
           <el-switch
-            v-model="autoRefresh"
-            active-color="#13ce66"
-            inactive-color="#ff4949"
-            @change="handleAutoRefreshChange">
-          </el-switch>
+            v-model="followLog"
+            aria-label="实时跟随日志"
+            @change="handleFollowChange"
+          />
         </el-tooltip>
-        
+
         <el-tooltip content="自动滚动到最新日志" placement="top">
           <el-switch
             v-model="autoScroll"
-            active-color="var(--primary-color)"
-            inactive-color="#758078">
-          </el-switch>
+            aria-label="自动滚动到最新日志"
+          />
         </el-tooltip>
-        
-        <el-button 
-          size="small" 
-          type="primary" 
-          icon="el-icon-refresh" 
+
+        <el-button
+          size="small"
+          icon="el-icon-refresh"
+          aria-label="刷新日志"
+          :loading="loading"
+          :disabled="!selectedWorldId"
           @click="refreshLog"
-          :loading="loading">
+        >
           刷新
         </el-button>
       </div>
     </div>
+
     <div class="log-content">
       <div ref="terminal" class="terminal-container"></div>
     </div>
@@ -67,10 +77,11 @@
 </template>
 
 <script>
-import { Terminal } from 'xterm';
-import { FitAddon } from 'xterm-addon-fit';
-import 'xterm/css/xterm.css';
-import { serverApi, roomApi } from '@/api/index';
+import { Terminal } from 'xterm'
+import { FitAddon } from 'xterm-addon-fit'
+import 'xterm/css/xterm.css'
+import { roomApi } from '@/api/index'
+import { worldLogsV2API } from '@/api/v2'
 
 export default {
   name: 'WorldLog',
@@ -78,6 +89,14 @@ export default {
     title: {
       type: String,
       default: '世界日志'
+    },
+    roomId: {
+      type: String,
+      default: ''
+    },
+    worldId: {
+      type: String,
+      default: ''
     },
     archiveName: {
       type: String,
@@ -92,424 +111,373 @@ export default {
     return {
       terminal: null,
       fitAddon: null,
-      selectedArchive: this.archiveName || '',
-      selectedWorld: this.worldName || '',
-      loading: false,
-      autoRefresh: false,
-      refreshInterval: null,
-      refreshRate: 30000, // 30秒自动刷新一次
+      selectedRoomId: this.roomId || '',
+      selectedWorldId: this.worldId || '',
       archives: [],
-      logContent: '',
+      loading: false,
+      followLog: true,
+      autoScroll: true,
       eventSource: null,
       manuallyClosedEventSource: false,
-      autoScroll: true // 默认启用自动滚动
-    };
+      streamState: 'idle'
+    }
   },
   computed: {
-    currentArchiveWorlds() {
-      if (!this.selectedArchive) return [];
-      
-      const archive = this.archives.find(a => a.name === this.selectedArchive);
-      return archive && archive.worlds ? archive.worlds : [];
+    currentRoom() {
+      return this.archives.find(room => room.id === this.selectedRoomId) || null
+    },
+    currentRoomWorlds() {
+      return this.currentRoom?.worlds || []
+    },
+    currentWorld() {
+      return this.currentRoomWorlds.find(world => world.id === this.selectedWorldId) || null
+    },
+    streamStateLabel() {
+      return {
+        idle: '待选择',
+        connecting: '连接中',
+        connected: '实时',
+        paused: '已暂停',
+        error: '已断开'
+      }[this.streamState] || '未知'
     }
   },
-  mounted() {
-    this.initTerminal();
-    this.loadArchives();
-    
-    // 如果设置了初始存档和世界，尝试加载日志
-    if (this.selectedArchive && this.selectedWorld) {
-      this.$nextTick(() => {
-        this.loadLog();
-      });
-    }
-    
-    // 监听窗口大小变化，调整终端大小
-    window.addEventListener('resize', this.onResize);
+  async mounted() {
+    this.initTerminal()
+    window.addEventListener('resize', this.onResize)
+    await this.loadArchives()
   },
   beforeUnmount() {
-    // 清理事件监听
-    window.removeEventListener('resize', this.onResize);
-    
-    // 清除自动刷新定时器
-    this.clearRefreshInterval();
-    
-    // 关闭EventSource连接
-    this.closeEventSource();
-    
-    // 销毁终端
-    if (this.terminal) {
-      this.terminal.dispose();
-    }
+    window.removeEventListener('resize', this.onResize)
+    this.closeEventSource()
+    this.terminal?.dispose()
   },
   methods: {
     initTerminal() {
-      // 创建终端实例
       this.terminal = new Terminal({
         cursorBlink: false,
-        disableStdin: true, // 禁用输入
-        fontSize: 14,
+        disableStdin: true,
+        fontSize: 13,
+        lineHeight: 1.35,
         fontFamily: 'Menlo, Monaco, "Courier New", monospace',
         theme: {
-          background: '#1e1e1e',
-          foreground: '#f0f0f0',
-          cursor: 'transparent'
+          background: '#181a19',
+          foreground: '#e6e9e6',
+          cursor: 'transparent',
+          selectionBackground: '#5c4736'
         },
-        rendererType: 'canvas',
         scrollback: 5000
-      });
-      
-      // 创建自适应插件
-      this.fitAddon = new FitAddon();
-      this.terminal.loadAddon(this.fitAddon);
-      
-      // 挂载终端
-      this.terminal.open(this.$refs.terminal);
-      
-      // 调整大小
-      this.$nextTick(() => {
-        this.fitAddon.fit();
-      });
-      
-      // 写入欢迎信息
-      this.terminal.writeln('\x1B[1;3;36m欢迎使用饥荒联机版服务器日志查看器\x1B[0m');
-      this.terminal.writeln('\x1B[90m请选择一个存档和世界以查看其日志记录...\x1B[0m');
-      this.terminal.writeln('');
+      })
+      this.fitAddon = new FitAddon()
+      this.terminal.loadAddon(this.fitAddon)
+      this.terminal.open(this.$refs.terminal)
+      this.$nextTick(() => this.fitAddon.fit())
+      this.writeSystemLine('请选择房间和世界以查看日志')
     },
-    
-    loadArchives() {
-      this.loading = true;
-      roomApi.getRoomList()
-        .then(response => {
-          // 检查是否是数组
-          if (Array.isArray(response)) {
-            this.archives = response;
-          }
-          // 如果设置了初始存档，但没有世界，尝试从加载的数据中找到对应的世界
-          if (this.selectedArchive && !this.selectedWorld) {
-            const archive = this.archives.find(a => a.name === this.selectedArchive);
-            if (archive && archive.worlds && archive.worlds.length > 0) {
-              this.selectedWorld = archive.worlds[0].name;
-            }
-          }
-        })
-        .catch(error => {
-          console.error('获取存档列表失败:', error);
-          this.terminal.writeln('\x1B[31m获取存档列表失败，请稍后重试。\x1B[0m');
-        })
-        .finally(() => {
-          this.loading = false;
-        });
-    },
-    
-    handleArchiveChange() {
-      // 关闭现有的EventSource连接
-      this.closeEventSource();
-      
-      // 当切换存档时，重置所选世界
-      this.selectedWorld = '';
-      
-      // 如果当前存档有世界，自动选择第一个
-      if (this.currentArchiveWorlds.length > 0) {
-        this.selectedWorld = this.currentArchiveWorlds[0].name;
-        this.loadLog();
+    async loadArchives() {
+      this.loading = true
+      try {
+        const response = await roomApi.getRoomList()
+        this.archives = Array.isArray(response)
+          ? response
+          : (Array.isArray(response?.data) ? response.data : [])
+        this.resolveInitialSelection()
+        if (this.selectedRoomId && this.selectedWorldId) await this.loadLog()
+      } catch (error) {
+        this.archives = []
+        this.streamState = 'error'
+        this.writeErrorLine(error.message || '获取房间列表失败')
+      } finally {
+        this.loading = false
       }
     },
-    
+    resolveInitialSelection() {
+      const preferredRoom = this.archives.find(room =>
+        room.id === this.roomId || room.name === this.archiveName
+      )
+      const selectedRoom = preferredRoom || this.currentRoom || this.archives[0]
+      this.selectedRoomId = selectedRoom?.id || ''
+
+      const worlds = selectedRoom?.worlds || []
+      const preferredWorld = worlds.find(world =>
+        world.id === this.worldId || world.name === this.worldName
+      )
+      const selectedWorld = preferredWorld || worlds.find(world => world.status === 'running') || worlds[0]
+      this.selectedWorldId = selectedWorld?.id || ''
+    },
+    handleRoomChange() {
+      this.closeEventSource()
+      const worlds = this.currentRoomWorlds
+      this.selectedWorldId = (worlds.find(world => world.status === 'running') || worlds[0])?.id || ''
+      if (this.selectedWorldId) this.loadLog()
+      else {
+        this.streamState = 'idle'
+        this.terminal.clear()
+        this.writeSystemLine('当前房间没有可用世界')
+      }
+    },
     handleWorldChange() {
-      // 关闭现有的EventSource连接
-      this.closeEventSource();
-      
-      this.loadLog();
+      this.loadLog()
     },
-    
-    onResize() {
-      if (this.fitAddon) {
-        this.fitAddon.fit();
-      }
-    },
-    
-    refreshLog() {
-      if (this.selectedArchive && this.selectedWorld) {
-        // 关闭现有的EventSource连接
-        this.closeEventSource();
-        
-        // 重置手动关闭标志
-        this.manuallyClosedEventSource = false;
-        
-        // 重新加载日志
-        this.loadLog();
-      } else {
-        this.$message.warning('请先选择存档和世界');
-      }
-    },
-    
     formatWorldType(type) {
-      const typeMap = {
-        'forest': '主世界',
-        'cave': '洞穴',
-        'unknown': '未知'
-      };
-      return typeMap[type] || type;
+      return {
+        forest: '森林',
+        master: '森林',
+        cave: '洞穴',
+        caves: '洞穴',
+        unknown: '自定义'
+      }[type] || '自定义'
     },
-    
-    loadLog() {
-      if (!this.selectedArchive || !this.selectedWorld) return;
-      
-      this.loading = true;
-      
-      // 清空终端内容
-      this.terminal.clear();
-      
-      const archive = this.selectedArchive;
-      const world = this.selectedWorld;
-      
-      // 写入日志标题
-      this.terminal.writeln(`\x1B[1;32m=== ${archive}/${world} 日志记录 ===\x1B[0m`);
-      this.terminal.writeln('');
-      
-      // 关闭之前的EventSource连接
-      this.closeEventSource();
-      
-      // 创建新的EventSource连接
-      const url = serverApi.getServerLogStreamUrl(archive, world);
-      const eventSource = new EventSource(url);
-      this.eventSource = eventSource;
-      
-      // 连接建立事件
-      eventSource.addEventListener('connected', (event) => {
-        console.log('与服务器的SSE连接已建立:', event.data);
-        this.terminal.writeln(`\x1B[36m[系统]\x1B[0m 已连接到日志流`);
-      });
-      
-      // 日志事件
-      eventSource.addEventListener('log', (event) => {
-        if (event.data) {
-          // 根据日志类型添加颜色
-          let coloredLog = event.data;
-          if (coloredLog.includes('[INFO]')) {
-            coloredLog = coloredLog.replace('[INFO]', '\x1B[32m[INFO]\x1B[0m');
-          } else if (coloredLog.includes('[WARN]') || coloredLog.includes('[WARNING]')) {
-            coloredLog = coloredLog.replace(/\[(WARN|WARNING)\]/, '\x1B[33m[$1]\x1B[0m');
-          } else if (coloredLog.includes('[ERROR]') || coloredLog.includes('[FATAL]')) {
-            coloredLog = coloredLog.replace(/\[(ERROR|FATAL)\]/, '\x1B[31m[$1]\x1B[0m');
-          } else if (coloredLog.includes('[DEBUG]')) {
-            coloredLog = coloredLog.replace('[DEBUG]', '\x1B[36m[DEBUG]\x1B[0m');
-          } else if (coloredLog.includes('[SYSTEM]')) {
-            coloredLog = coloredLog.replace('[SYSTEM]', '\x1B[35m[SYSTEM]\x1B[0m');
-          }
-          
-          this.terminal.writeln(coloredLog);
-          
-          // 如果启用了自动滚动，滚动到底部
-          if (this.autoScroll) {
-            this.scrollToBottom();
-          }
-        }
-      });
-      
-      // 心跳事件
-      eventSource.addEventListener('heartbeat', (event) => {
-        console.log('收到心跳:', event.data);
-      });
-      
-      // 错误事件
-      eventSource.addEventListener('error', (event) => {
-        if (event.data) {
-          console.error('服务器报告错误:', event.data);
-          this.terminal.writeln(`\x1B[31m[错误]\x1B[0m ${event.data}`);
-        }
-      });
-      
-      // 连接错误处理
-      eventSource.onerror = (error) => {
-        console.error('SSE连接错误:', error);
-        this.terminal.writeln(`\x1B[31m[错误]\x1B[0m 日志流连接断开，尝试重新连接...`);
-        
-        // 如果不是手动关闭的连接，则尝试重新连接
-        if (this.autoRefresh && !this.manuallyClosedEventSource) {
-          setTimeout(() => {
-            if (this.autoRefresh) {
-              this.loadLog();
-            }
-          }, 5000); // 5秒后尝试重连
-        }
-      };
-      
-      this.loading = false;
+    async refreshLog() {
+      if (!this.selectedRoomId || !this.selectedWorldId) return
+      await this.loadLog()
     },
-    
-    // 关闭EventSource连接
-    closeEventSource() {
-      if (this.eventSource) {
-        this.manuallyClosedEventSource = true;
-        this.eventSource.close();
-        this.eventSource = null;
-        console.log('已关闭日志流连接');
+    async loadLog() {
+      if (!this.selectedRoomId || !this.selectedWorldId || !this.terminal) return
+
+      this.loading = true
+      this.closeEventSource()
+      this.terminal.clear()
+      this.terminal.writeln(`\x1B[1;33m${this.currentRoom?.name || '-'} / ${this.currentWorld?.name || '-'}\x1B[0m`)
+
+      try {
+        const snapshot = await worldLogsV2API.snapshot(this.selectedRoomId, this.selectedWorldId, { limit: 300 })
+        this.renderSnapshot(snapshot)
+        if (this.followLog) this.connectEventSource()
+        else this.streamState = 'paused'
+      } catch (error) {
+        this.streamState = 'error'
+        this.writeErrorLine(error.message || '日志读取失败')
+      } finally {
+        this.loading = false
       }
     },
-    
-    // 清除自动刷新定时器
-    clearRefreshInterval() {
-      if (this.refreshInterval) {
-        clearInterval(this.refreshInterval);
-        this.refreshInterval = null;
+    connectEventSource() {
+      this.manuallyClosedEventSource = false
+      this.streamState = 'connecting'
+      const source = new EventSource(worldLogsV2API.eventURL(this.selectedRoomId, this.selectedWorldId, 30))
+      this.eventSource = source
+
+      source.addEventListener('connected', event => {
+        const payload = this.parseEvent(event)
+        this.streamState = 'connected'
+        if (payload?.snapshot) this.renderSnapshot(payload.snapshot)
+      })
+      source.addEventListener('line', event => {
+        const payload = this.parseEvent(event)
+        if (payload?.line?.text !== undefined) this.writeLogLine(payload.line.text)
+      })
+      source.addEventListener('reset', event => {
+        const payload = this.parseEvent(event)
+        this.terminal.clear()
+        this.writeSystemLine(`日志文件已轮转：${payload?.snapshot?.fileName || 'server_log.txt'}`)
+      })
+      source.addEventListener('heartbeat', () => {
+        if (this.streamState !== 'connected') this.streamState = 'connected'
+      })
+      source.onerror = event => {
+        if (this.manuallyClosedEventSource) return
+        const payload = this.parseEvent(event)
+        this.streamState = 'error'
+        if (payload?.message) this.writeErrorLine(payload.message)
       }
     },
-    
-    // 仅追加新日志，不清空现有日志 (不再需要，由EventSource自动处理)
-    appendNewLogs() {
-      // 已由EventSource的log事件处理
-      // 仅保留方法用于兼容，实际上不执行任何操作
-    },
-    
-    // 滚动到终端底部
-    scrollToBottom() {
-      if (this.terminal) {
-        this.terminal.scrollToBottom();
+    parseEvent(event) {
+      if (!event?.data) return null
+      try {
+        return JSON.parse(event.data)
+      } catch {
+        return { message: event.data }
       }
     },
-    
-    // 处理自动刷新开关变化
-    handleAutoRefreshChange(value) {
-      if (value) {
-        this.startAutoRefresh();
+    renderSnapshot(snapshot) {
+      if (!snapshot) return
+      this.terminal.clear()
+      this.terminal.writeln(`\x1B[90m${snapshot.fileName || 'server_log.txt'} · ${snapshot.lines?.length || 0} 行\x1B[0m`)
+      ;(snapshot.lines || []).forEach(line => this.writeLogLine(line.text))
+      if (this.autoScroll) this.terminal.scrollToBottom()
+    },
+    writeLogLine(line) {
+      this.terminal.writeln(String(line ?? ''))
+      if (this.autoScroll) this.terminal.scrollToBottom()
+    },
+    writeSystemLine(message) {
+      this.terminal?.writeln(`\x1B[36m[系统]\x1B[0m ${message}`)
+    },
+    writeErrorLine(message) {
+      this.terminal?.writeln(`\x1B[31m[错误]\x1B[0m ${message}`)
+    },
+    handleFollowChange(enabled) {
+      if (enabled) {
+        if (this.selectedWorldId) this.connectEventSource()
       } else {
-        this.clearRefreshInterval();
+        this.closeEventSource()
+        this.streamState = 'paused'
       }
     },
-    
-    // 启动自动刷新
-    startAutoRefresh() {
-      // 先清除可能存在的旧定时器
-      this.clearRefreshInterval();
-      
-      // 如果没有选择存档或世界，不启动自动刷新
-      if (!this.selectedArchive || !this.selectedWorld) {
-        this.$message.warning('请先选择存档和世界');
-        this.autoRefresh = false;
-        return;
-      }
-      
-      // 创建新的定时器
-      this.refreshInterval = setInterval(() => {
-        if (!this.loading) {
-          this.appendNewLogs();
-        }
-      }, this.refreshRate);
-      
-      this.$message.success(`已开启自动刷新，间隔${this.refreshRate / 1000}秒`);
+    closeEventSource() {
+      if (!this.eventSource) return
+      this.manuallyClosedEventSource = true
+      this.eventSource.close()
+      this.eventSource = null
+    },
+    onResize() {
+      this.fitAddon?.fit()
     }
   },
   watch: {
-    archiveName(newValue) {
-      // 关闭现有的EventSource连接
-      this.closeEventSource();
-      
-      this.selectedArchive = newValue;
-      if (newValue && this.archives.length > 0) {
-        const archive = this.archives.find(a => a.name === newValue);
-        if (archive && archive.worlds && archive.worlds.length > 0 && !this.selectedWorld) {
-          this.selectedWorld = archive.worlds[0].name;
-        }
-        if (this.selectedWorld) {
-          this.loadLog();
-        }
+    roomId(value) {
+      if (!value || value === this.selectedRoomId) return
+      this.selectedRoomId = value
+      this.handleRoomChange()
+    },
+    worldId(value) {
+      if (!value || value === this.selectedWorldId) return
+      this.selectedWorldId = value
+      this.handleWorldChange()
+    },
+    archiveName(value) {
+      if (!value) return
+      const room = this.archives.find(item => item.name === value)
+      if (room && room.id !== this.selectedRoomId) {
+        this.selectedRoomId = room.id
+        this.handleRoomChange()
       }
     },
-    worldName(newValue) {
-      // 关闭现有的EventSource连接
-      this.closeEventSource();
-      
-      this.selectedWorld = newValue;
-      if (this.selectedArchive && newValue) {
-        this.loadLog();
+    worldName(value) {
+      if (!value) return
+      const world = this.currentRoomWorlds.find(item => item.name === value)
+      if (world && world.id !== this.selectedWorldId) {
+        this.selectedWorldId = world.id
+        this.handleWorldChange()
       }
     }
   }
-};
+}
 </script>
 
 <style scoped>
 .world-log-container {
   display: flex;
   flex-direction: column;
+  min-height: 360px;
   height: 100%;
-  border-radius: 4px;
   overflow: hidden;
-  background: var(--surface-muted);
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  background: #181a19;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
 }
 
 .log-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 15px;
-  background: #ffffff;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface-color);
   border-bottom: 1px solid var(--border-color);
 }
 
-.log-title {
+.log-title,
+.log-actions,
+.stream-state {
   display: flex;
   align-items: center;
-  font-size: 16px;
-  font-weight: bold;
+}
+
+.log-title {
+  flex: 0 0 auto;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
-.log-title i {
-  margin-right: 8px;
+.log-title > .legacy-icon {
   color: var(--primary-color);
 }
 
+.stream-state {
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.state-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--info-color);
+}
+
+.stream-state.is-connected .state-dot {
+  background: var(--success-color);
+}
+
+.stream-state.is-connecting .state-dot {
+  background: var(--warning-color);
+}
+
+.stream-state.is-error .state-dot {
+  background: var(--danger-color);
+}
+
 .log-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.log-actions :deep(.el-select) {
+  width: 150px;
 }
 
 .log-content {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
   padding: 10px;
-  background: #1e1e1e;
+  overflow: hidden;
+  background: #181a19;
 }
 
 .terminal-container {
   width: 100%;
   height: 100%;
-  background: #1e1e1e;
-  border-radius: 4px;
+  min-height: 300px;
   overflow: hidden;
 }
 
-/* 自定义下拉选择器样式 */
-:deep(.el-select) {
-  width: 150px;
-}
-
-/* 自定义按钮样式 */
-:deep(.el-button) {
-  padding: 8px 15px;
-}
-
-/* 显示滚动条的自定义样式 */
 :deep(.xterm-viewport::-webkit-scrollbar) {
   width: 6px;
   height: 6px;
 }
 
 :deep(.xterm-viewport::-webkit-scrollbar-thumb) {
-  background: rgba(144, 147, 153, 0.3);
+  background: rgba(230, 233, 230, 0.28);
   border-radius: 3px;
 }
 
-:deep(.xterm-viewport::-webkit-scrollbar-track) {
-  background: transparent;
-}
+@media (max-width: 768px) {
+  .world-log-container {
+    min-height: 440px;
+  }
 
-:deep(.xterm-viewport:hover::-webkit-scrollbar-thumb) {
-  background: rgba(144, 147, 153, 0.5);
+  .log-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .log-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .log-actions :deep(.el-select) {
+    flex: 1 1 140px;
+    width: auto;
+  }
 }
 </style>
