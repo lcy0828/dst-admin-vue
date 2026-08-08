@@ -6,9 +6,12 @@ import {
   systemV2API,
   worldStatesV2API
 } from './v2'
+import { waitForV2Job } from './v2ConfigurationAdapters'
 
 const MEBIBYTE = 1024 * 1024
 const GIBIBYTE = 1024 * 1024 * 1024
+const ROOM_JOB_TIMEOUT = 3 * 60 * 1000
+const BACKUP_JOB_TIMEOUT = 5 * 60 * 1000
 
 let roomCatalog = []
 
@@ -289,20 +292,27 @@ export const legacyRoomApi = {
   },
   async startRoom(params) {
     const room = await resolveRoom(roomReference(params))
-    const job = await roomsV2API.action(room.id, 'start', selectedWorldIDs(room, params))
+    const job = await waitForV2Job(
+      await roomsV2API.action(room.id, 'start', selectedWorldIDs(room, params)),
+      ROOM_JOB_TIMEOUT
+    )
     roomCatalog = []
-    return success(job, '启动任务已提交')
+    return success(job, '启动完成')
   },
   async stopRoom(input) {
     const room = await resolveRoom(roomReference(input))
     const worldIds = input && typeof input === 'object' ? selectedWorldIDs(room, input) : []
-    const job = await roomsV2API.action(room.id, 'stop', worldIds)
+    const job = await waitForV2Job(
+      await roomsV2API.action(room.id, 'stop', worldIds),
+      ROOM_JOB_TIMEOUT
+    )
     roomCatalog = []
-    return success(job, '停止任务已提交')
+    return success(job, '停止完成')
   },
   async backupRoom(roomValue, name = '') {
     const room = await resolveRoom(roomValue)
-    return success(await backupsV2API.create(room.id, name), '备份任务已提交')
+    const job = await waitForV2Job(await backupsV2API.create(room.id, name), BACKUP_JOB_TIMEOUT)
+    return success(job, '备份已创建')
   },
   async deleteRoom() {
     throw new Error('真实 v2 后端暂未提供房间删除接口')
@@ -379,9 +389,12 @@ export const legacySystemApi = {
       (item.archive_name === params.archive_name && item.world_name === params.world_name)
     )
     if (!server) throw new Error('未找到要停止的世界')
-    const job = await roomsV2API.action(server.room_id, 'stop', [server.world_id])
+    const job = await waitForV2Job(
+      await roomsV2API.action(server.room_id, 'stop', [server.world_id]),
+      ROOM_JOB_TIMEOUT
+    )
     roomCatalog = []
-    return success(job, '停止任务已提交')
+    return success(job, '停止完成')
   },
   async restartTmuxServer(params) {
     const rooms = roomCatalog.length ? roomCatalog : await loadRoomCatalog()
@@ -390,9 +403,12 @@ export const legacySystemApi = {
       (item.archive_name === params.archive_name && item.world_name === params.world_name)
     )
     if (!server) throw new Error('未找到要重启的世界')
-    const job = await roomsV2API.action(server.room_id, 'restart', [server.world_id])
+    const job = await waitForV2Job(
+      await roomsV2API.action(server.room_id, 'restart', [server.world_id]),
+      ROOM_JOB_TIMEOUT
+    )
     roomCatalog = []
-    return success(job, '重启任务已提交')
+    return success(job, '重启完成')
   },
   async getGameVersion() {
     const version = await gameV2API.version()
@@ -496,16 +512,22 @@ export const legacySystemApi = {
     return success(list.items || [], '容器列表已刷新')
   },
   async startDockerContainer(containerId) {
-    return success(await containersV2API.action(containerId, 'start'), '容器启动任务已提交')
+    const job = await waitForV2Job(await containersV2API.action(containerId, 'start'), ROOM_JOB_TIMEOUT)
+    return success(job, '容器启动完成')
   },
   async stopDockerContainer(containerId) {
-    return success(await containersV2API.action(containerId, 'stop'), '容器停止任务已提交')
+    const job = await waitForV2Job(await containersV2API.action(containerId, 'stop'), ROOM_JOB_TIMEOUT)
+    return success(job, '容器停止完成')
   },
   async deleteDockerContainer(containerId) {
     const list = await containersV2API.list()
     const container = (list.items || []).find(item => item.id === containerId)
     if (!container) throw new Error('未找到要删除的容器')
-    return success(await containersV2API.action(containerId, 'remove', container.name), '容器删除任务已提交')
+    const job = await waitForV2Job(
+      await containersV2API.action(containerId, 'remove', container.name),
+      ROOM_JOB_TIMEOUT
+    )
+    return success(job, '容器删除完成')
   }
 }
 
@@ -521,7 +543,8 @@ export const legacyBackupApi = {
   },
   async createBackup(archive) {
     const room = await resolveRoom(archive)
-    return success(await backupsV2API.create(room.id), '备份任务已提交')
+    const job = await waitForV2Job(await backupsV2API.create(room.id), BACKUP_JOB_TIMEOUT)
+    return success(job, '备份已创建')
   },
   async restoreBackup(archive, backupName, targetName) {
     if (targetName) throw new Error('真实 v2 后端暂不支持恢复到新房间')
@@ -529,7 +552,12 @@ export const legacyBackupApi = {
     const response = await backupsV2API.list(room.id)
     const backup = (response.items || []).find(item => item.name === backupName || item.id === backupName)
     if (!backup) throw new Error(`未找到备份：${backupName}`)
-    return success(await backupsV2API.restore(backup.id, room.name), '恢复任务已提交')
+    const job = await waitForV2Job(
+      await backupsV2API.restore(backup.id, room.name),
+      BACKUP_JOB_TIMEOUT
+    )
+    roomCatalog = []
+    return success(job, '备份恢复完成')
   },
   async deleteBackup(archive, backupName) {
     const room = await resolveRoom(archive)
