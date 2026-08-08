@@ -2,7 +2,7 @@
   <div class="world-log-container">
     <div class="log-header">
       <div class="log-title">
-        <component :is="'el-icon-document'" class="legacy-icon" />
+        <FileTextIcon />
         <span>{{ title || '世界日志' }}</span>
         <span class="stream-state" :class="`is-${streamState}`">
           <span class="state-dot"></span>
@@ -11,62 +11,62 @@
       </div>
 
       <div class="log-actions">
-        <el-select
+        <UiSelect
           v-model="selectedRoomId"
           aria-label="选择房间"
-          placeholder="选择房间"
-          size="small"
-          @change="handleRoomChange"
+          @update:model-value="handleRoomChange"
         >
-          <el-option
-            v-for="room in archives"
-            :key="room.id"
-            :label="room.name"
-            :value="room.id"
-          />
-        </el-select>
+          <SelectTrigger><SelectValue placeholder="选择房间" /></SelectTrigger>
+          <SelectContent><SelectGroup>
+            <SelectItem v-for="room in archives" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
+          </SelectGroup></SelectContent>
+        </UiSelect>
 
-        <el-select
+        <UiSelect
           v-model="selectedWorldId"
           aria-label="选择世界"
-          placeholder="选择世界"
-          size="small"
           :disabled="!selectedRoomId || currentRoomWorlds.length === 0"
-          @change="handleWorldChange"
+          @update:model-value="handleWorldChange"
         >
-          <el-option
-            v-for="world in currentRoomWorlds"
-            :key="world.id"
-            :label="`${world.name} (${formatWorldType(world.type || world.role)})`"
-            :value="world.id"
-          />
-        </el-select>
+          <SelectTrigger><SelectValue placeholder="选择世界" /></SelectTrigger>
+          <SelectContent><SelectGroup>
+            <SelectItem v-for="world in currentRoomWorlds" :key="world.id" :value="world.id">
+              {{ world.name }} ({{ formatWorldType(world.type || world.role) }})
+            </SelectItem>
+          </SelectGroup></SelectContent>
+        </UiSelect>
 
-        <el-tooltip content="实时跟随日志" placement="top">
-          <el-switch
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <UiSwitch
             v-model="followLog"
             aria-label="实时跟随日志"
-            @change="handleFollowChange"
+            @update:model-value="handleFollowChange"
           />
-        </el-tooltip>
+          </TooltipTrigger>
+          <TooltipContent>实时跟随日志</TooltipContent>
+        </Tooltip>
 
-        <el-tooltip content="自动滚动到最新日志" placement="top">
-          <el-switch
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <UiSwitch
             v-model="autoScroll"
             aria-label="自动滚动到最新日志"
           />
-        </el-tooltip>
+          </TooltipTrigger>
+          <TooltipContent>自动滚动到最新日志</TooltipContent>
+        </Tooltip>
 
-        <el-button
-          size="small"
-          icon="el-icon-refresh"
+        <UiButton
+          size="sm"
           aria-label="刷新日志"
-          :loading="loading"
-          :disabled="!selectedWorldId"
+          :disabled="loading || !selectedWorldId"
           @click="refreshLog"
         >
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <RefreshCwIcon v-else data-icon="inline-start" />
           刷新
-        </el-button>
+        </UiButton>
       </div>
     </div>
 
@@ -77,14 +77,36 @@
 </template>
 
 <script>
+import { FileTextIcon, RefreshCwIcon } from '@lucide/vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { roomApi } from '@/api/index'
 import { worldLogsV2API } from '@/api/v2'
+import { Button as UiButton } from '@/components/ui/button'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Spinner } from '@/components/ui/spinner'
+import { Switch as UiSwitch } from '@/components/ui/switch'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default {
   name: 'WorldLog',
+  components: {
+    FileTextIcon,
+    RefreshCwIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Spinner,
+    UiSwitch,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+    UiButton,
+    UiSelect
+  },
   props: {
     title: {
       type: String,
@@ -394,7 +416,7 @@ export default {
   color: var(--text-primary);
 }
 
-.log-title > .legacy-icon {
+.log-title > svg {
   color: var(--primary-color);
 }
 
@@ -431,7 +453,7 @@ export default {
   flex-wrap: wrap;
 }
 
-.log-actions :deep(.el-select) {
+.log-actions > * {
   width: 150px;
 }
 
@@ -475,7 +497,7 @@ export default {
     justify-content: flex-start;
   }
 
-  .log-actions :deep(.el-select) {
+  .log-actions > * {
     flex: 1 1 140px;
     width: auto;
   }

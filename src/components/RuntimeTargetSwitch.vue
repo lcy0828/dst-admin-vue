@@ -1,47 +1,75 @@
 <template>
   <div class="runtime-target-switch">
     <span class="target-label">管理目标</span>
-    <el-select
+    <UiSelect
       v-model="selectedId"
-      class="target-select"
-      :loading="loading"
+      :disabled="loading"
       aria-label="选择管理目标"
-      popper-class="runtime-target-popper"
-      @change="selectTarget"
+      @update:model-value="selectTarget"
     >
-      <el-option
-        v-for="target in targets"
-        :key="target.id"
-        :label="optionLabel(target)"
-        :value="target.id"
-        :disabled="target.kind === 'agent' && !target.configured"
-      >
-        <div class="target-option">
-          <span class="status-dot" :class="statusClass(target)"></span>
-          <span class="option-name">{{ target.name }}</span>
-          <span class="option-meta">{{ optionMeta(target) }}</span>
-        </div>
-      </el-option>
-    </el-select>
-    <el-tooltip content="远程运行时配置" placement="bottom">
-      <el-button class="target-settings" text circle aria-label="打开远程运行时配置" @click="openAgentSettings">
-        <component :is="'el-icon-setting'" class="target-settings-icon" />
-      </el-button>
-    </el-tooltip>
+      <SelectTrigger class="target-select">
+        <Spinner v-if="loading" />
+        <SelectValue placeholder="选择管理目标" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectItem
+            v-for="target in targets"
+            :key="target.id"
+            :value="target.id"
+            :disabled="target.kind === 'agent' && !target.configured"
+          >
+            <div class="target-option">
+              <span class="status-dot" :class="statusClass(target)"></span>
+              <span class="option-name">{{ target.name }}</span>
+              <span class="option-meta">{{ optionMeta(target) }}</span>
+            </div>
+          </SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </UiSelect>
+    <Tooltip>
+      <TooltipTrigger as-child>
+        <UiButton class="target-settings" variant="ghost" size="icon-sm" aria-label="打开远程运行时配置" @click="openAgentSettings">
+          <SettingsIcon />
+        </UiButton>
+      </TooltipTrigger>
+      <TooltipContent>远程运行时配置</TooltipContent>
+    </Tooltip>
   </div>
 </template>
 
 <script>
+import { SettingsIcon } from '@lucide/vue'
 import { runtimeTargetsV2API } from '@/api/v2'
+import { Button as UiButton } from '@/components/ui/button'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Spinner } from '@/components/ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   getActiveRuntimeTarget,
   RUNTIME_TARGET_CHANGED_EVENT,
   RUNTIME_TARGETS_UPDATED_EVENT,
   setActiveRuntimeTarget
 } from '@/utils/runtimeTarget'
+import { toast } from 'vue-sonner'
 
 export default {
   name: 'RuntimeTargetSwitch',
+  components: {
+    UiButton,
+    UiSelect,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    SettingsIcon,
+    Spinner,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger
+  },
   emits: ['change'],
   data() {
     return {
@@ -75,7 +103,7 @@ export default {
         this.selectedId = local.id
         this.targets = [local]
         this.$emit('change', local)
-        this.$message.error(error.message || '获取管理目标失败')
+        toast.error(error.message || '获取管理目标失败')
       } finally {
         this.loading = false
       }
@@ -139,17 +167,6 @@ export default {
   color: var(--text-regular);
 }
 
-.target-settings:hover,
-.target-settings:focus-visible {
-  color: var(--primary-color);
-  background: var(--el-color-primary-light-9);
-}
-
-.target-settings-icon {
-  width: 17px;
-  height: 17px;
-}
-
 .target-option {
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto;
@@ -161,7 +178,7 @@ export default {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--el-text-color-placeholder);
+  background: var(--muted-foreground);
 }
 
 .status-dot.online {

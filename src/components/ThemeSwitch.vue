@@ -1,32 +1,33 @@
 <template>
   <div class="theme-switch">
-    <el-tooltip :content="tooltipText" placement="bottom" effect="light">
-      <div class="theme-switch-icon" @click="toggleTheme">
-        <i :class="themeIcon"></i>
-      </div>
-    </el-tooltip>
+    <Tooltip>
+      <TooltipTrigger as-child>
+        <UiButton variant="ghost" size="icon-sm" :aria-label="tooltipText" @click="toggleTheme">
+          <MoonIcon v-if="currentTheme === themes.LIGHT" />
+          <SunIcon v-else />
+        </UiButton>
+      </TooltipTrigger>
+      <TooltipContent>{{ tooltipText }}</TooltipContent>
+    </Tooltip>
   </div>
 </template>
 
 <script>
+import { MoonIcon, SunIcon } from '@lucide/vue'
+import { Button as UiButton } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import themeManager, { THEMES } from '@/utils/themeManager';
 
 export default {
   name: 'ThemeSwitch',
+  components: { UiButton, MoonIcon, SunIcon, Tooltip, TooltipContent, TooltipTrigger },
   data() {
     return {
-      currentTheme: themeManager.getTheme()
+      currentTheme: themeManager.getTheme(),
+      themes: THEMES
     };
   },
   computed: {
-    /**
-     * 根据当前主题返回图标类名
-     */
-    themeIcon() {
-      return this.currentTheme === THEMES.LIGHT 
-        ? 'fas fa-moon' // 当前是亮色主题，显示月亮图标表示可以切换到暗色
-        : 'fas fa-sun';  // 当前是暗色主题，显示太阳图标表示可以切换到亮色
-    },
     /**
      * 根据当前主题返回提示文本
      */
@@ -66,15 +67,4 @@ export default {
   display: inline-block;
 }
 
-.theme-switch-icon {
-  cursor: pointer;
-  font-size: 20px;
-  color: var(--text-regular);
-  transition: color 0.3s;
-  padding: 5px;
-}
-
-.theme-switch-icon:hover {
-  color: var(--primary-color);
-}
 </style>

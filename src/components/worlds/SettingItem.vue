@@ -14,58 +14,58 @@
       <p class="setting-name">
         {{ item.text }}
       </p>
-      <el-select 
-        :value="item.value"
-        @change="handleSelectChange"
-        size="small" 
-        :placeholder="'选择' + item.text" 
-        popper-append-to-body
-        :popper-class="`select-popper-${itemKey}`"
-        :value-key="itemKey"
-        :reserve-keyword="false"
-        :popper-options="{ boundariesElement: 'viewport', gpuAcceleration: true }"
-        @focus="handleSelectFocus"
-      >
-        <template v-if="getOptionCount(category.desc, item.desc) > 20">
-          <el-option
-            v-for="(descText, descKey) in getVisibleOptions(category.desc, item.desc)"
-            :key="descKey" 
-            :label="descText" 
-            :value="descKey"
-            :class="{ 'default-option': isDefaultOption(descKey) }"
-          >
-            <span>{{ descText }}</span>
-            <span v-if="isDefaultOption(descKey)" class="default-tag">默认</span>
-          </el-option>
-        </template>
-        <template v-else>
-          <el-option 
-            v-for="(descText, descKey) in getItemOptions(category.desc, item.desc)" 
-            :key="descKey" 
-            :label="descText" 
-            :value="descKey"
-            :class="{ 'default-option': isDefaultOption(descKey) }"
-          >
-            <span>{{ descText }}</span>
-            <span v-if="isDefaultOption(descKey)" class="default-tag">默认</span>
-          </el-option>
-        </template>
-      </el-select>
+      <UiSelect :model-value="item.value" @update:model-value="handleSelectChange" @update:open="handleSelectOpen">
+        <SelectTrigger>
+          <SelectValue :placeholder="'选择' + item.text" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem
+              v-for="(descText, descKey) in displayedOptions"
+              :key="descKey"
+              :value="descKey"
+            >
+              <span>{{ descText }}</span>
+              <Badge v-if="isDefaultOption(descKey)" variant="secondary">默认</Badge>
+            </SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </UiSelect>
     </div>
-    <el-tooltip 
-      :content="getSettingDescription()" 
-      placement="top" 
-      effect="light"
-      class="setting-hover-tips"
-    >
-      <component :is="'el-icon-question'" class="legacy-icon" />
-    </el-tooltip>
+    <Tooltip>
+      <TooltipTrigger as-child>
+        <UiButton class="setting-hover-tips" variant="ghost" size="icon-xs" aria-label="查看设置说明">
+          <CircleHelpIcon />
+        </UiButton>
+      </TooltipTrigger>
+      <TooltipContent>{{ getSettingDescription() }}</TooltipContent>
+    </Tooltip>
   </div>
 </template>
 
 <script>
+import { CircleHelpIcon } from '@lucide/vue'
+import { Badge } from '@/components/ui/badge'
+import { Button as UiButton } from '@/components/ui/button'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
 export default {
   name: 'SettingItem',
+  components: {
+    Badge,
+    CircleHelpIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+    UiButton,
+    UiSelect
+  },
   props: {
     item: {
       type: Object,
@@ -94,6 +94,14 @@ export default {
       descriptionCache: {},
       itemOptionsCache: {}
     };
+  },
+  computed: {
+    displayedOptions() {
+      if (this.getOptionCount(this.category.desc, this.item.desc) > 20) {
+        return this.getVisibleOptions(this.category.desc, this.item.desc)
+      }
+      return this.getItemOptions(this.category.desc, this.item.desc)
+    }
   },
   methods: {
     getItemImageStyle(image, atlas) {
@@ -186,9 +194,8 @@ export default {
       this.$emit('setting-change', { item: this.item, value });
     },
     
-    handleSelectFocus() {
-      // 当选择器获得焦点时加载全部选项
-      this.loadedSelects = true;
+    handleSelectOpen(open) {
+      if (open) this.loadedSelects = true;
     },
     
     getOptionCount(categoryDesc, itemDesc) {
@@ -245,8 +252,8 @@ export default {
 }
 
 .setting-item:hover {
-  border-color: var(--el-color-primary-light-5);
-  background-color: var(--el-color-primary-light-9);
+  border-color: var(--ring);
+  background-color: var(--accent);
 }
 
 .setting-item:hover .setting-hover-tips {
@@ -289,7 +296,7 @@ export default {
   color: var(--text-primary);
 }
 
-.setting-info :deep(.el-select) {
+.setting-info > * {
   width: 100%;
 }
 
@@ -297,21 +304,6 @@ export default {
   border-color: var(--warning-color) !important;
   box-shadow: inset 3px 0 0 var(--warning-color) !important;
   background-color: #fff8eb !important;
-}
-
-.default-tag {
-  margin-left: 8px;
-  padding: 0 5px;
-  background-color: #f0f9eb;
-  color: #4f8a5b;
-  font-size: 12px;
-  border-radius: 3px;
-  line-height: 1.2;
-  display: inline-block;
-}
-
-.default-option {
-  background-color: rgba(103, 194, 58, 0.1);
 }
 
 @media (prefers-reduced-motion: reduce) {

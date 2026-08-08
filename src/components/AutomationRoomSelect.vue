@@ -1,29 +1,35 @@
 <template>
   <div class="automation-room-select">
     <span class="automation-room-label">房间</span>
-    <el-select
+    <UiSelect
       v-model="roomId"
-      size="small"
-      filterable
-      :loading="loading"
-      placeholder="请选择房间"
-      @change="handleChange"
+      :disabled="loading"
+      @update:model-value="handleChange"
     >
-      <el-option
-        v-for="room in rooms"
-        :key="room.id"
-        :label="room.name"
-        :value="room.id"
-      />
-    </el-select>
+      <SelectTrigger class="automation-room-trigger">
+        <Spinner v-if="loading" />
+        <SelectValue placeholder="请选择房间" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectItem v-for="room in rooms" :key="room.id" :value="room.id">
+            {{ room.name }}
+          </SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </UiSelect>
   </div>
 </template>
 
 <script>
 import { cronTaskApi } from '@/api/index'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Spinner } from '@/components/ui/spinner'
+import { toast } from 'vue-sonner'
 
 export default {
   name: 'AutomationRoomSelect',
+  components: { UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, Spinner },
   emits: ['ready', 'change'],
   data() {
     return {
@@ -44,7 +50,7 @@ export default {
         this.roomId = scope.roomId
         if (this.roomId) this.$emit('ready', this.roomId)
       } catch (error) {
-        this.$message.error(error.message || '读取房间列表失败')
+        toast.error(error.message || '读取房间列表失败')
       } finally {
         this.loading = false
       }
@@ -72,7 +78,7 @@ export default {
   font-size: 13px;
 }
 
-.automation-room-select :deep(.el-select) {
+.automation-room-trigger {
   flex: 1;
 }
 

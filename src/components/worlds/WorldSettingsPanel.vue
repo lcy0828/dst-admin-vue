@@ -1,13 +1,14 @@
 <template>
   <div class="settings-wrapper">
     <div class="search-box">
-      <el-input
+      <InputGroup>
+        <InputGroupAddon><SearchIcon /></InputGroupAddon>
+        <InputGroupInput
         placeholder="搜索设置项..."
-        prefix-icon="el-icon-search"
-        :value="searchText"
-        @input="$emit('search-input', $event)"
-        clearable>
-      </el-input>
+        :model-value="searchText"
+        @update:model-value="$emit('search-input', $event)"
+        />
+      </InputGroup>
     </div>
     
     <div v-if="showGroup">
@@ -41,12 +42,13 @@
       </div>
     </div>
     
-    <el-tabs v-else type="card" class="settings-tabs">
-      <el-tab-pane 
-        v-for="(group, groupKey) in settings" 
-        :key="groupKey" 
-        :label="groupKey === 'WORLDGEN_GROUP' ? '世界生成组' : '世界设置组'"
-      >
+    <Tabs v-else :default-value="Object.keys(settings)[0]" class="settings-tabs">
+      <TabsList>
+        <TabsTrigger v-for="(group, groupKey) in settings" :key="groupKey" :value="groupKey">
+          {{ groupKey === 'WORLDGEN_GROUP' ? '世界生成组' : '世界设置组' }}
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent v-for="(group, groupKey) in settings" :key="groupKey" :value="groupKey">
         <div 
           v-for="category in getSortedCategories(group)" 
           :key="category.key" 
@@ -70,18 +72,29 @@
             />
           </div>
         </div>
-      </el-tab-pane>
-    </el-tabs>
+      </TabsContent>
+    </Tabs>
   </div>
 </template>
 
 <script>
+import { SearchIcon } from '@lucide/vue'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import SettingItem from './SettingItem.vue';
 
 export default {
   name: 'WorldSettingsPanel',
   components: {
-    SettingItem
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    SearchIcon,
+    SettingItem,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger
   },
   props: {
     settings: {
@@ -218,20 +231,6 @@ export default {
 
 .settings-tabs {
   margin-bottom: 20px;
-}
-
-.settings-tabs :deep(.el-tabs__header) {
-  margin-bottom: 14px;
-}
-
-.settings-tabs :deep(.el-tabs__nav) {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.settings-tabs :deep(.el-tabs__item) {
-  font-size: 14px;
 }
 
 .settings-category {

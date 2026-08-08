@@ -2,33 +2,53 @@
   <div class="presets-section">
     <div class="preset-title">
       <span>快速预设：</span>
-      <el-tooltip content="根据预设快速配置所有设置项" placement="top">
-        <component :is="'el-icon-question'" class="legacy-icon" />
-      </el-tooltip>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <UiButton variant="ghost" size="icon-xs" aria-label="查看预设说明"><CircleHelpIcon /></UiButton>
+        </TooltipTrigger>
+        <TooltipContent>根据预设快速配置所有设置项</TooltipContent>
+      </Tooltip>
     </div>
     <div class="preset-options">
-      <el-radio-group v-model="selectedPreset" size="small" @change="handlePresetChange">
-        <el-radio-button label="default">默认设置</el-radio-button>
-        <el-radio-button label="easy">简单模式</el-radio-button>
-        <el-radio-button label="hard">困难模式</el-radio-button>
-        <el-radio-button label="abundant">资源丰富</el-radio-button>
-        <el-radio-button label="scarce">资源稀缺</el-radio-button>
-        <el-radio-button label="custom">自定义</el-radio-button>
-      </el-radio-group>
-      <el-button 
-        type="success" 
-        size="small" 
-        icon="el-icon-star-off" 
+      <ToggleGroup v-model="selectedPreset" type="single" variant="outline" :spacing="1">
+        <ToggleGroupItem value="default">默认设置</ToggleGroupItem>
+        <ToggleGroupItem value="easy">简单模式</ToggleGroupItem>
+        <ToggleGroupItem value="hard">困难模式</ToggleGroupItem>
+        <ToggleGroupItem value="abundant">资源丰富</ToggleGroupItem>
+        <ToggleGroupItem value="scarce">资源稀缺</ToggleGroupItem>
+        <ToggleGroupItem value="custom">自定义</ToggleGroupItem>
+      </ToggleGroup>
+      <UiButton
+        variant="secondary"
+        size="sm"
         @click="handleSavePreset"
         :disabled="selectedPreset !== 'custom' || disabled"
-      >保存为预设</el-button>
+      >
+        <StarIcon data-icon="inline-start" />
+        保存为预设
+      </UiButton>
     </div>
   </div>
 </template>
 
 <script>
+import { CircleHelpIcon, StarIcon } from '@lucide/vue'
+import { Button as UiButton } from '@/components/ui/button'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+
 export default {
   name: 'SettingsPreset',
+  components: {
+    CircleHelpIcon,
+    StarIcon,
+    ToggleGroup,
+    ToggleGroupItem,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+    UiButton
+  },
   props: {
     currentPreset: {
       type: String,
@@ -51,9 +71,6 @@ export default {
     }
   },
   methods: {
-    handlePresetChange(value) {
-      this.$emit('preset-change', value);
-    },
     handleSavePreset() {
       this.$emit('save-preset');
     }

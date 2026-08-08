@@ -1,54 +1,81 @@
 <template>
   <div class="actions-footer">
     <div class="settings-status">
-      <el-tag v-if="hasChanges" type="warning">有未保存的更改</el-tag>
-      <el-tag v-else type="success">设置已同步</el-tag>
+      <Badge v-if="hasChanges" variant="secondary">有未保存的更改</Badge>
+      <Badge v-else variant="outline">设置已同步</Badge>
       
-      <el-popover
-        v-if="hasChanges"
-        placement="top-start"
-        width="320"
-        trigger="click"
-        popper-class="changes-popover"
-      >
-        <div class="changes-list-title">已修改的设置项 ({{ changedItemsCount }})</div>
-        <div class="changes-list">
-          <div v-for="(item, index) in changedItems" :key="index" class="change-item">
-            <div class="change-item-name">{{ item.text }}</div>
-            <div class="change-item-values">
-              <span class="old-value">{{ item.oldValueText }}</span>
-              <component :is="'el-icon-arrow-right'" class="legacy-icon" />
-              <span class="new-value">{{ item.newValueText }}</span>
+      <Popover v-if="hasChanges">
+        <PopoverTrigger as-child>
+          <UiButton variant="ghost" size="sm" class="view-changes-btn">
+            <EyeIcon data-icon="inline-start" />
+            查看变更 ({{ changedItemsCount }})
+          </UiButton>
+        </PopoverTrigger>
+        <PopoverContent class="changes-popover">
+          <PopoverHeader>
+            <PopoverTitle>已修改的设置项 ({{ changedItemsCount }})</PopoverTitle>
+            <PopoverDescription>保存后将应用以下配置变更。</PopoverDescription>
+          </PopoverHeader>
+          <ScrollArea class="changes-list">
+            <div v-for="(item, index) in changedItems" :key="index" class="change-item">
+              <div class="change-item-name">{{ item.text }}</div>
+              <div class="change-item-values">
+                <span class="old-value">{{ item.oldValueText }}</span>
+                <ArrowRightIcon />
+                <span class="new-value">{{ item.newValueText }}</span>
+              </div>
             </div>
-          </div>
-        </div>
-        <template #reference>
-          <el-button type="text" class="view-changes-btn">
-            <component :is="'el-icon-view'" class="legacy-icon" /> 查看变更 ({{ changedItemsCount }})
-          </el-button>
-        </template>
-      </el-popover>
+          </ScrollArea>
+        </PopoverContent>
+      </Popover>
     </div>
     <div class="action-buttons">
-      <el-button 
-        type="primary" 
+      <UiButton
         @click="$emit('save')" 
-        :loading="saveLoading" 
         :disabled="loading || saveLoading || !hasChanges"
-        icon="el-icon-check"
-      >保存设置</el-button>
-      <el-button 
+      >
+        <Spinner v-if="saveLoading" data-icon="inline-start" />
+        <CheckIcon v-else data-icon="inline-start" />
+        保存设置
+      </UiButton>
+      <UiButton
+        variant="outline"
         @click="$emit('reset')" 
         :disabled="loading || saveLoading || !hasChanges"
-        icon="el-icon-refresh-left"
-      >重置</el-button>
+      >
+        <RotateCcwIcon data-icon="inline-start" />
+        重置
+      </UiButton>
     </div>
   </div>
 </template>
 
 <script>
+import { ArrowRightIcon, CheckIcon, EyeIcon, RotateCcwIcon } from '@lucide/vue'
+import { Badge } from '@/components/ui/badge'
+import { Button as UiButton } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Spinner } from '@/components/ui/spinner'
+
 export default {
   name: 'SettingsFooter',
+  components: {
+    ArrowRightIcon,
+    Badge,
+    CheckIcon,
+    EyeIcon,
+    Popover,
+    PopoverContent,
+    PopoverDescription,
+    PopoverHeader,
+    PopoverTitle,
+    PopoverTrigger,
+    RotateCcwIcon,
+    ScrollArea,
+    Spinner,
+    UiButton
+  },
   props: {
     hasChanges: {
       type: Boolean,
@@ -97,12 +124,8 @@ export default {
   gap: 10px;
 }
 
-.action-buttons .el-button {
+.action-buttons button {
   min-width: 90px;
-}
-
-.action-buttons .el-button--primary {
-  font-weight: 500;
 }
 
 .view-changes-btn {
@@ -111,17 +134,8 @@ export default {
   transition: color 0.3s;
 }
 
-.view-changes-btn:hover {
-  color: #cf9236;
-  text-decoration: underline;
-}
-
-.changes-list-title {
-  font-weight: 500;
-  margin-bottom: 10px;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 8px;
+.changes-popover {
+  width: 320px;
 }
 
 .changes-list {
@@ -154,33 +168,13 @@ export default {
   text-decoration: line-through;
 }
 
-.el-icon-arrow-right {
+.change-item-values svg {
   margin: 0 8px;
   color: var(--text-secondary);
 }
 
 .new-value {
-  color: #4f8a5b;
-  font-weight: 500;
-}
-
-/* 确保弹出层箭头正确显示 */
-:deep(.changes-popover .popper__arrow) {
-  display: none !important;
-}
-
-:deep(.changes-popover .el-popover__title) {
-  font-weight: 600;
-}
-
-:deep(.el-popover.changes-popover) {
-  box-shadow: var(--shadow-card) !important;
-  border: 1px solid var(--border-color) !important;
-}
-
-:deep(.el-tag) {
-  padding: 4px 8px;
-  border-radius: 4px;
+  color: var(--foreground);
   font-weight: 500;
 }
 
@@ -202,7 +196,7 @@ export default {
     gap: 8px;
   }
 
-  .action-buttons .el-button {
+  .action-buttons button {
     width: 100%;
     min-width: 0;
     margin: 0;

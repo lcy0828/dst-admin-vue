@@ -1,22 +1,73 @@
 <template>
-  <div class="pagination-container">
-    <el-pagination
-      :background="background"
-      v-model:current-page="currentPage"
-      v-model:page-size="pageSize"
-      :layout="layout"
-      :page-sizes="pageSizes"
+  <div v-if="!hidden" class="pagination-container">
+    <span class="pagination-total">共 {{ total }} 条</span>
+    <NativeSelect v-model="pageSize" aria-label="每页条数" class="page-size-select" @change="handleSizeChange(pageSize)">
+      <NativeSelectOption v-for="size in pageSizes" :key="size" :value="size">
+        {{ size }} 条/页
+      </NativeSelectOption>
+    </NativeSelect>
+    <ShadcnPagination
+      :page="currentPage"
+      :items-per-page="pageSize"
       :total="total"
-      v-bind="$attrs"
-      @size-change="handleSizeChange"
-      @current-change="handleCurrentChange"
+      show-edges
+      @update:page="handleCurrentChange"
+    >
+      <PaginationContent v-slot="{ items }">
+        <PaginationPrevious><ChevronLeftIcon /><span class="sr-only">上一页</span></PaginationPrevious>
+        <template v-for="(item, index) in items" :key="index">
+          <PaginationItem
+            v-if="item.type === 'page'"
+            :value="item.value"
+            :is-active="item.value === currentPage"
+          >
+            {{ item.value }}
+          </PaginationItem>
+          <PaginationEllipsis v-else :index="index" />
+        </template>
+        <PaginationNext><ChevronRightIcon /><span class="sr-only">下一页</span></PaginationNext>
+      </PaginationContent>
+    </ShadcnPagination>
+    <UiInput
+      class="page-jumper"
+      type="number"
+      min="1"
+      :max="pageCount"
+      :model-value="currentPage"
+      aria-label="跳转页码"
+      @change="handleJump"
     />
   </div>
 </template>
 
 <script>
+import { ChevronLeftIcon, ChevronRightIcon } from '@lucide/vue'
+import { Input as UiInput } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import {
+  Pagination as ShadcnPagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious
+} from '@/components/ui/pagination'
+
 export default {
   name: 'AppPagination',
+  components: {
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    UiInput,
+    NativeSelect,
+    NativeSelectOption,
+    ShadcnPagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationNext,
+    PaginationPrevious
+  },
   props: {
     total: {
       required: true,
@@ -54,6 +105,9 @@ export default {
     }
   },
   computed: {
+    pageCount() {
+      return Math.max(1, Math.ceil(this.total / this.pageSize))
+    },
     currentPage: {
       get() {
         return this.page
@@ -76,7 +130,12 @@ export default {
       this.$emit('pagination', { page: this.currentPage, limit: val })
     },
     handleCurrentChange(val) {
+      this.currentPage = val
       this.$emit('pagination', { page: val, limit: this.pageSize })
+    },
+    handleJump(event) {
+      const page = Math.min(this.pageCount, Math.max(1, Number(event.target.value) || 1))
+      this.handleCurrentChange(page)
     }
   }
 }
@@ -84,7 +143,23 @@ export default {
 
 <style scoped>
 .pagination-container {
-  background: #fff;
-  padding: 32px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 20px 0;
+}
+
+.pagination-total {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.page-size-select {
+  width: 104px;
+}
+
+.page-jumper {
+  width: 64px;
 }
 </style>

@@ -2,57 +2,60 @@
   <div class="room-categories">
     <div class="categories-header">
       <h3>房间分类</h3>
-      <el-button type="text" @click="refreshCategories" icon="el-icon-refresh" size="small">刷新</el-button>
+      <UiButton variant="ghost" size="sm" :disabled="isRefreshing" @click="refreshCategories">
+        <RefreshCwIcon data-icon="inline-start" :class="{ 'animate-spin': isRefreshing }" />
+        刷新
+      </UiButton>
     </div>
 
     <div class="category-list">
       <div class="menu-item" :class="{'active': activeCategory === 'all'}" @click="handleCategorySelect('all')">
-        <component :is="'el-icon-s-grid'" class="legacy-icon" />
+        <LayoutGridIcon />
         <span>所有房间</span>
       </div>
 
       <div class="menu-item" :class="{'active': activeCategory === 'active'}" @click="handleCategorySelect('active')">
-        <component :is="'el-icon-video-play'" class="legacy-icon" />
+        <PlayIcon />
         <span>活跃房间</span>
-        <div class="badge" v-if="getCountByCategory('active') > 0">{{getCountByCategory('active')}}</div>
+        <Badge v-if="getCountByCategory('active') > 0" variant="secondary">{{getCountByCategory('active')}}</Badge>
       </div>
 
       <div class="menu-item" :class="{'active': activeCategory === 'inactive'}" @click="handleCategorySelect('inactive')">
-        <component :is="'el-icon-video-pause'" class="legacy-icon" />
+        <PauseIcon />
         <span>非活跃房间</span>
-        <div class="badge" v-if="getCountByCategory('inactive') > 0">{{getCountByCategory('inactive')}}</div>
+        <Badge v-if="getCountByCategory('inactive') > 0" variant="secondary">{{getCountByCategory('inactive')}}</Badge>
       </div>
 
       <div class="submenu">
         <div class="submenu-title" @click="toggleSubmenu('worldTypes')">
-          <component :is="'el-icon-map-location'" class="legacy-icon" />
+          <MapIcon />
           <span>按世界类型</span>
-          <component :is="'el-icon-arrow-down'" class="legacy-icon submenu-arrow" :class="{'is-open': submenuOpen.worldTypes}" />
+          <ChevronDownIcon class="submenu-arrow" :class="{'is-open': submenuOpen.worldTypes}" />
         </div>
         <div class="submenu-content" v-show="submenuOpen.worldTypes">
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'forest'}" @click="handleCategorySelect('forest')">
-            <component :is="'el-icon-sunny'" class="legacy-icon" />
+            <SunIcon />
             <span>主世界</span>
-            <div class="badge" v-if="getCountByCategory('forest') > 0">{{getCountByCategory('forest')}}</div>
+            <Badge v-if="getCountByCategory('forest') > 0" variant="secondary">{{getCountByCategory('forest')}}</Badge>
           </div>
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'cave'}" @click="handleCategorySelect('cave')">
-            <component :is="'el-icon-moon'" class="legacy-icon" />
+            <MoonIcon />
             <span>洞穴</span>
-            <div class="badge" v-if="getCountByCategory('cave') > 0">{{getCountByCategory('cave')}}</div>
+            <Badge v-if="getCountByCategory('cave') > 0" variant="secondary">{{getCountByCategory('cave')}}</Badge>
           </div>
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'both'}" @click="handleCategorySelect('both')">
-            <component :is="'el-icon-connection'" class="legacy-icon" />
+            <NetworkIcon />
             <span>混合房间</span>
-            <div class="badge" v-if="getCountByCategory('both') > 0">{{getCountByCategory('both')}}</div>
+            <Badge v-if="getCountByCategory('both') > 0" variant="secondary">{{getCountByCategory('both')}}</Badge>
           </div>
         </div>
       </div>
 
       <div class="submenu" v-if="customCategories.length > 0">
         <div class="submenu-title" @click="toggleSubmenu('custom')">
-          <component :is="'el-icon-collection-tag'" class="legacy-icon" />
+          <TagsIcon />
           <span>自定义分类</span>
-          <component :is="'el-icon-arrow-down'" class="legacy-icon submenu-arrow" :class="{'is-open': submenuOpen.custom}" />
+          <ChevronDownIcon class="submenu-arrow" :class="{'is-open': submenuOpen.custom}" />
         </div>
         <div class="submenu-content" v-show="submenuOpen.custom">
           <div class="menu-item submenu-item"
@@ -60,52 +63,118 @@
                :key="category.id"
                :class="{'active': activeCategory === 'custom_' + category.id}"
                @click="handleCategorySelect('custom_' + category.id)">
-            <component :is="category.icon || 'el-icon-folder'" class="legacy-icon" />
+            <component :is="categoryIcon(category)" />
             <span>{{ category.name }}</span>
-            <div class="badge" v-if="getCountByCategory('custom', category.id) > 0">{{getCountByCategory('custom', category.id)}}</div>
+            <Badge v-if="getCountByCategory('custom', category.id) > 0" variant="secondary">{{getCountByCategory('custom', category.id)}}</Badge>
           </div>
         </div>
       </div>
 
       <div class="category-actions">
-        <el-button type="text" @click="showAddCategoryDialog" size="small">
-          <component :is="'el-icon-plus'" class="legacy-icon" /> 添加分类
-        </el-button>
+        <UiButton variant="ghost" size="sm" @click="showAddCategoryDialog">
+          <PlusIcon data-icon="inline-start" />
+          添加分类
+        </UiButton>
       </div>
     </div>
 
-    <!-- 添加分类对话框 -->
-    <el-dialog
-      title="添加自定义分类"
-      v-model="addCategoryDialogVisible"
-      width="400px">
-      <el-form :model="newCategory" label-width="80px">
-        <el-form-item label="分类名称">
-          <el-input v-model="newCategory.name" placeholder="输入分类名称"></el-input>
-        </el-form-item>
-        <el-form-item label="图标">
-          <el-select v-model="newCategory.icon" placeholder="选择图标">
-            <el-option label="文件夹" value="el-icon-folder"></el-option>
-            <el-option label="星星" value="el-icon-star-off"></el-option>
-            <el-option label="心形" value="el-icon-heart"></el-option>
-            <el-option label="旗帜" value="el-icon-flag"></el-option>
-            <el-option label="位置" value="el-icon-location"></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="addCategoryDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="addCategory">确定</el-button>
-      </span>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="addCategoryDialogVisible">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>添加自定义分类</DialogTitle>
+          <DialogDescription>设置分类名称和用于识别的图标。</DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel for="category-name">分类名称</FieldLabel>
+            <UiInput id="category-name" v-model="newCategory.name" placeholder="输入分类名称" />
+          </Field>
+          <Field>
+            <FieldLabel>图标</FieldLabel>
+            <UiSelect v-model="newCategory.icon">
+              <SelectTrigger><SelectValue placeholder="选择图标" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem v-for="option in iconOptions" :key="option.label" :value="option.icon">
+                    <component :is="option.icon" />
+                    {{ option.label }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" @click="addCategoryDialogVisible = false">取消</UiButton>
+          <UiButton @click="addCategory">确定</UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import {
+  ChevronDownIcon,
+  FlagIcon,
+  FolderIcon,
+  HeartIcon,
+  LayoutGridIcon,
+  MapIcon,
+  MapPinIcon,
+  MoonIcon,
+  NetworkIcon,
+  PauseIcon,
+  PlayIcon,
+  PlusIcon,
+  RefreshCwIcon,
+  StarIcon,
+  SunIcon,
+  TagsIcon
+} from '@lucide/vue'
+import { markRaw } from 'vue'
+import { Badge } from '@/components/ui/badge'
+import { Button as UiButton } from '@/components/ui/button'
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input as UiInput } from '@/components/ui/input'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { toast } from 'vue-sonner'
+
 export default {
   name: 'RoomCategories',
+  components: {
+    Badge,
+    ChevronDownIcon,
+    UiDialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Field,
+    FieldGroup,
+    FieldLabel,
+    FolderIcon,
+    LayoutGridIcon,
+    MapIcon,
+    MoonIcon,
+    NetworkIcon,
+    PauseIcon,
+    PlayIcon,
+    PlusIcon,
+    RefreshCwIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    SunIcon,
+    TagsIcon,
+    UiButton,
+    UiInput,
+    UiSelect
+  },
   props: {
     rooms: {
       type: Array,
@@ -118,8 +187,15 @@ export default {
       addCategoryDialogVisible: false,
       newCategory: {
         name: '',
-        icon: 'el-icon-folder'
+        icon: markRaw(FolderIcon)
       },
+      iconOptions: [
+        { label: '文件夹', icon: markRaw(FolderIcon) },
+        { label: '星星', icon: markRaw(StarIcon) },
+        { label: '心形', icon: markRaw(HeartIcon) },
+        { label: '旗帜', icon: markRaw(FlagIcon) },
+        { label: '位置', icon: markRaw(MapPinIcon) }
+      ],
       customCategories: [],
       isRefreshing: false,
       lastRefreshTime: 0,
@@ -130,6 +206,9 @@ export default {
     }
   },
   methods: {
+    categoryIcon(category) {
+      return category.icon || FolderIcon
+    },
     handleCategorySelect(index) {
       this.activeCategory = index;
       this.$emit('category-change', index);
@@ -189,16 +268,16 @@ export default {
       this.addCategoryDialogVisible = true;
       this.newCategory = {
         name: '',
-        icon: 'el-icon-folder'
+        icon: markRaw(FolderIcon)
       };
     },
     addCategory() {
       if (!this.newCategory.name) {
-        this.$message.warning('请输入分类名称');
+        toast.warning('请输入分类名称');
         return;
       }
 
-      this.$message.error('真实 v2 后端暂未提供自定义分类持久化接口，未保存任何数据');
+      toast.error('真实 v2 后端暂未提供自定义分类持久化接口，未保存任何数据');
     }
   }
 }
@@ -270,7 +349,7 @@ export default {
 }
 
 .menu-item.active {
-  background-color: var(--el-color-primary-light-9);
+  background-color: var(--accent);
 }
 
 .menu-item.active i,
@@ -280,20 +359,6 @@ export default {
 }
 
 /* 徽章样式 */
-.badge {
-  position: relative;
-  height: 20px;
-  min-width: 20px;
-  line-height: 20px;
-  text-align: center;
-  background-color: var(--primary-color);
-  color: #fff;
-  border-radius: 3px;
-  font-size: 12px;
-  padding: 0 6px;
-  box-sizing: border-box;
-}
-
 /* 子菜单样式 */
 .submenu {
   border-bottom: 1px solid var(--border-color);
@@ -363,13 +428,13 @@ export default {
   border-top: 1px solid var(--border-color);
 }
 
-.category-actions .el-button {
+.category-actions button {
   color: var(--primary-color);
   font-size: 13px;
 }
 
-.category-actions .el-button:hover {
-  color: var(--el-color-primary-light-3);
+.category-actions button:hover {
+  color: var(--primary);
   background-color: transparent;
 }
 </style>

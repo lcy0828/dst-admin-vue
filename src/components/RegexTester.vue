@@ -1,60 +1,89 @@
 <template>
   <div class="regex-tester">
-    <el-form :model="regexForm" label-width="120px" ref="regexForm">
-      <el-form-item label="测试内容" prop="testContent">
-        <el-input
-          type="textarea"
+    <FieldGroup>
+      <Field>
+        <FieldLabel for="regex-test-content">测试内容</FieldLabel>
+        <UiTextarea
+          id="regex-test-content"
           v-model="regexForm.testContent"
-          :rows="5"
+          rows="5"
           placeholder="输入要测试的日志内容"
-        ></el-input>
-      </el-form-item>
+        />
+      </Field>
 
-      <el-form-item label="正则表达式" prop="pattern">
-        <div class="input-with-button">
-          <el-input
+      <Field>
+        <FieldLabel for="regex-pattern">正则表达式</FieldLabel>
+        <InputGroup>
+          <InputGroupInput
+            id="regex-pattern"
             v-model="regexForm.pattern"
             placeholder="输入正则表达式"
-          ></el-input>
-          <el-button type="primary" @click="testRegex" icon="el-icon-refresh">测试</el-button>
+          />
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton variant="default" @click="testRegex">
+              <RefreshCwIcon data-icon="inline-start" />
+              测试
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
+      </Field>
+
+      <Field orientation="horizontal">
+        <div>
+          <FieldLabel for="regex-enabled">使用正则表达式</FieldLabel>
+          <FieldDescription>关闭后按普通字符串匹配。</FieldDescription>
         </div>
-      </el-form-item>
+        <UiSwitch id="regex-enabled" v-model="regexForm.isRegex" @update:model-value="testRegex" />
+      </Field>
 
-      <el-form-item label="是否使用正则" prop="isRegex">
-        <el-switch v-model="regexForm.isRegex" @change="testRegex"></el-switch>
-      </el-form-item>
+      <Field>
+        <FieldLabel>匹配模式</FieldLabel>
+        <UiSelect v-model="regexForm.matchMode" @update:model-value="testRegex">
+          <SelectTrigger><SelectValue placeholder="选择匹配模式" /></SelectTrigger>
+          <SelectContent><SelectGroup>
+            <SelectItem value="single">单行匹配</SelectItem>
+            <SelectItem value="multi_line">多行匹配</SelectItem>
+            <SelectItem value="head_tail">首尾行匹配</SelectItem>
+          </SelectGroup></SelectContent>
+        </UiSelect>
+      </Field>
 
-      <el-form-item label="匹配模式" prop="matchMode">
-        <el-select v-model="regexForm.matchMode" placeholder="选择匹配模式" @change="testRegex">
-          <el-option label="单行匹配" value="single"></el-option>
-          <el-option label="多行匹配" value="multi_line"></el-option>
-          <el-option label="首尾行匹配" value="head_tail"></el-option>
-        </el-select>
-      </el-form-item>
-
-      <el-form-item label="尾行匹配模式" prop="tailPattern" v-if="regexForm.matchMode === 'head_tail'">
-        <div class="input-with-button">
-          <el-input
+      <Field v-if="regexForm.matchMode === 'head_tail'">
+        <FieldLabel for="regex-tail-pattern">尾行匹配模式</FieldLabel>
+        <InputGroup>
+          <InputGroupInput
+            id="regex-tail-pattern"
             v-model="regexForm.tailPattern"
             placeholder="输入尾行匹配模式"
-          ></el-input>
-          <el-button type="primary" @click="testRegex" icon="el-icon-refresh">测试</el-button>
-        </div>
-      </el-form-item>
-    </el-form>
+          />
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton variant="default" @click="testRegex">
+              <RefreshCwIcon data-icon="inline-start" />
+              测试
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
+      </Field>
+    </FieldGroup>
 
     <div class="test-results">
       <h4>测试结果</h4>
-      <div v-if="testResult.isValid === false" class="error-message">
-        <component :is="'el-icon-error'" class="legacy-icon" /> 正则表达式无效: {{ testResult.error }}
-      </div>
+      <Alert v-if="testResult.isValid === false" variant="destructive">
+        <CircleXIcon />
+        <AlertTitle>正则表达式无效</AlertTitle>
+        <AlertDescription>{{ testResult.error }}</AlertDescription>
+      </Alert>
       <div v-else-if="testResult.isValid === true">
-        <div v-if="testResult.matches.length > 0" class="success-message">
-          <component :is="'el-icon-success'" class="legacy-icon" /> 匹配成功! 找到 {{ testResult.matches.length }} 个匹配项
-        </div>
-        <div v-else class="warning-message">
-          <component :is="'el-icon-warning'" class="legacy-icon" /> 未找到匹配项
-        </div>
+        <Alert v-if="testResult.matches.length > 0">
+          <CircleCheckIcon />
+          <AlertTitle>匹配成功</AlertTitle>
+          <AlertDescription>找到 {{ testResult.matches.length }} 个匹配项</AlertDescription>
+        </Alert>
+        <Alert v-else>
+          <TriangleAlertIcon />
+          <AlertTitle>未找到匹配项</AlertTitle>
+          <AlertDescription>请检查测试内容、表达式和匹配模式。</AlertDescription>
+        </Alert>
 
         <div v-if="testResult.matches.length > 0" class="matches-container">
           <h5>匹配结果:</h5>
@@ -72,15 +101,50 @@
     </div>
 
     <div class="actions">
-      <el-button type="primary" @click="applyRegex">应用到规则</el-button>
-      <el-button @click="resetForm">重置</el-button>
+      <UiButton @click="applyRegex">应用到规则</UiButton>
+      <UiButton variant="outline" @click="resetForm">重置</UiButton>
     </div>
   </div>
 </template>
 
 <script>
+import { CircleCheckIcon, CircleXIcon, RefreshCwIcon, TriangleAlertIcon } from '@lucide/vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button as UiButton } from '@/components/ui/button'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch as UiSwitch } from '@/components/ui/switch'
+import { Textarea as UiTextarea } from '@/components/ui/textarea'
+
 export default {
   name: 'RegexTester',
+  components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    CircleCheckIcon,
+    CircleXIcon,
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupButton,
+    InputGroupInput,
+    RefreshCwIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    UiSwitch,
+    UiTextarea,
+    TriangleAlertIcon,
+    UiButton,
+    UiSelect
+  },
   props: {
     initialContent: {
       type: String,
@@ -434,24 +498,9 @@ export default {
 .test-results {
   margin-top: 20px;
   padding: 15px;
-  border: 1px solid var(--el-border-color);
+  border: 1px solid var(--border);
   border-radius: 4px;
   background-color: var(--surface-muted);
-}
-
-.error-message {
-  color: #c94f4f;
-  margin-bottom: 10px;
-}
-
-.success-message {
-  color: #4f8a5b;
-  margin-bottom: 10px;
-}
-
-.warning-message {
-  color: #d99b32;
-  margin-bottom: 10px;
 }
 
 .matches-container {
@@ -461,7 +510,7 @@ export default {
 .match-item {
   margin-bottom: 10px;
   padding: 10px;
-  border: 1px solid var(--el-border-color);
+  border: 1px solid var(--border);
   border-radius: 4px;
   background-color: var(--surface-color);
 }
@@ -484,7 +533,7 @@ export default {
 .highlighted-content {
   margin-top: 15px;
   padding: 10px;
-  border: 1px solid var(--el-border-color);
+  border: 1px solid var(--border);
   border-radius: 4px;
   background-color: var(--surface-color);
   max-height: 300px;
@@ -502,13 +551,4 @@ export default {
   text-align: right;
 }
 
-.input-with-button {
-  display: flex;
-  align-items: center;
-}
-
-.input-with-button .el-input {
-  flex: 1;
-  margin-right: 10px;
-}
 </style>
