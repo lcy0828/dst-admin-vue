@@ -19,139 +19,116 @@
       :class="{ collapsed: isCollapse && !isCompactViewport, 'mobile-open': mobileSidebarOpen }"
       :aria-hidden="isCompactViewport && !mobileSidebarOpen"
     >
-      <div class="logo-container">
-        <h1 class="logo">
-          <span class="logo-full">{{ systemName }}</span>
-          <span class="logo-compact">饥</span>
-        </h1>
-        <el-button
+      <div class="brand-container">
+        <router-link class="brand-link" to="/dashboard" aria-label="返回仪表盘">
+          <span class="brand-mark" aria-hidden="true">
+            <Gamepad2 />
+          </span>
+          <span class="brand-copy">
+            <strong>{{ systemName }}</strong>
+            <small>DST SERVER CONSOLE</small>
+          </span>
+        </router-link>
+        <UiButton
           class="mobile-close-btn"
-          text
-          circle
+          variant="ghost"
+          size="icon-sm"
           aria-label="关闭导航菜单"
           @click="closeMobileSidebar"
         >
-          <component :is="'el-icon-close'" class="header-icon" />
-        </el-button>
+          <X />
+        </UiButton>
       </div>
-      <el-menu
-        :default-active="activeMenu"
-        class="el-menu-vertical"
-        background-color="var(--sidebar-color)"
-        text-color="var(--sidebar-text)"
-        active-text-color="var(--sidebar-active)"
-        :collapse="isCollapse && !isCompactViewport"
-        :unique-opened="true"
-        router
-        @select="handleMenuSelect">
+      <nav class="sidebar-navigation" aria-label="主导航">
+        <section v-for="section in navigationSections" :key="section.label" class="nav-section">
+          <p class="nav-section-label">{{ section.label }}</p>
+          <ul class="nav-list">
+            <li v-for="item in section.items" :key="item.key" class="nav-item">
+              <Tooltip v-if="!item.children">
+                <TooltipTrigger as-child>
+                  <router-link
+                    :to="item.to"
+                    class="nav-link"
+                    :class="{ active: isNavigationActive(item.to) }"
+                    @click="handleMenuSelect"
+                  >
+                    <component :is="item.icon" class="nav-icon" />
+                    <span class="nav-label">{{ item.label }}</span>
+                  </router-link>
+                </TooltipTrigger>
+                <TooltipContent v-if="isNavigationCollapsed" side="right">{{ item.label }}</TooltipContent>
+              </Tooltip>
 
-        <el-menu-item index="/dashboard">
-          <component :is="'el-icon-s-home'" class="legacy-icon" />
-          <span>仪表盘</span>
-        </el-menu-item>
-
-        <el-sub-menu index="/servers">
-          <template #title>
-            <component :is="'el-icon-s-platform'" class="legacy-icon" />
-            <span>服务器管理</span>
-          </template>
-          <el-menu-item index="/servers/workspace">服务器工作台</el-menu-item>
-          <el-menu-item index="/servers/list">服务器列表</el-menu-item>
-          <el-menu-item index="/servers/commands">命令设置</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="/logs">
-          <template #title>
-            <component :is="'el-icon-document'" class="legacy-icon" />
-            <span>日志管理器</span>
-          </template>
-          <el-menu-item index="/logs/query">日志查询</el-menu-item>
-          <el-menu-item index="/logs/rules">规则管理</el-menu-item>
-          <el-menu-item index="/logs/parser">日志解析器</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="/players">
-          <template #title>
-            <component :is="'el-icon-user'" class="legacy-icon" />
-            <span>玩家管理</span>
-          </template>
-          <el-menu-item index="/players/list">玩家列表</el-menu-item>
-        </el-sub-menu>
-
-
-
-        <el-sub-menu index="/mods">
-          <template #title>
-            <component :is="'el-icon-s-operation'" class="legacy-icon" />
-            <span>模组管理</span>
-          </template>
-          <el-menu-item index="/mods/list">已下载模组</el-menu-item>
-          <el-menu-item index="/mods/search">模组搜索</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="/rooms">
-          <template #title>
-            <component :is="'el-icon-s-grid'" class="legacy-icon" />
-            <span>房间管理</span>
-          </template>
-          <el-menu-item index="/rooms/list">房间列表</el-menu-item>
-          <el-menu-item index="/rooms/settings">房间设置</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="/worlds">
-          <template v-slot:title>
-            <component :is="'el-icon-s-data'" class="legacy-icon" />
-            <span>世界管理</span>
-          </template>
-          <el-menu-item index="/worlds/list">世界列表</el-menu-item>
-          <el-menu-item index="/worlds/settings">世界设置</el-menu-item>
-          <el-menu-item index="/worlds/state">世界状态</el-menu-item>
-        </el-sub-menu>
-
-        <el-menu-item index="/backups">
-          <component :is="'el-icon-s-management'" class="legacy-icon" />
-          <span>备份管理</span>
-        </el-menu-item>
-
-        <el-sub-menu index="/scheduled">
-          <template #title>
-            <component :is="'el-icon-alarm-clock'" class="legacy-icon" />
-            <span>定时任务</span>
-          </template>
-          <el-menu-item index="/scheduled/tasks">任务列表</el-menu-item>
-          <el-menu-item index="/scheduled/create">创建任务</el-menu-item>
-        </el-sub-menu>
-
-        <el-sub-menu index="/agents">
-          <template #title>
-            <component :is="'el-icon-connection'" class="legacy-icon" />
-            <span>Agent管理</span>
-          </template>
-          <el-menu-item index="/agents/list">Agent列表</el-menu-item>
-          <el-menu-item index="/agents/command">命令管理</el-menu-item>
-          <el-menu-item index="/agents/security">安全设置</el-menu-item>
-        </el-sub-menu>
-
-        <el-menu-item index="/system">
-          <component :is="'el-icon-setting'" class="legacy-icon" />
-          <span>系统设置</span>
-        </el-menu-item>
-      </el-menu>
+              <Collapsible
+                v-else
+                :open="openNavGroups[item.key]"
+                @update:open="setNavGroupOpen(item.key, $event)"
+              >
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <CollapsibleTrigger as-child>
+                      <button
+                        class="nav-link nav-group-trigger"
+                        :class="{ active: isNavigationGroupActive(item) }"
+                        type="button"
+                        @click="handleCollapsedGroupNavigation(item)"
+                      >
+                        <component :is="item.icon" class="nav-icon" />
+                        <span class="nav-label">{{ item.label }}</span>
+                        <ChevronRight class="nav-chevron" />
+                      </button>
+                    </CollapsibleTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent v-if="isNavigationCollapsed" side="right">{{ item.label }}</TooltipContent>
+                </Tooltip>
+                <CollapsibleContent class="nav-submenu-wrap">
+                  <ul class="nav-submenu">
+                    <li v-for="child in item.children" :key="child.to">
+                      <router-link
+                        :to="child.to"
+                        class="nav-submenu-link"
+                        :class="{ active: isNavigationActive(child.to) }"
+                        @click="handleMenuSelect"
+                      >
+                        {{ child.label }}
+                      </router-link>
+                    </li>
+                  </ul>
+                </CollapsibleContent>
+              </Collapsible>
+            </li>
+          </ul>
+        </section>
+      </nav>
 
       <div class="sidebar-footer">
-        <el-tooltip content="折叠菜单" placement="right">
-          <el-button
-            class="collapse-btn"
-            type="text"
-            @click="toggleCollapse"
-            :icon="isCollapse ? 'el-icon-s-unfold' : 'el-icon-s-fold'">
-          </el-button>
-        </el-tooltip>
+        <div class="runtime-summary" :title="runtimeTarget.name">
+          <span class="runtime-dot" :class="{ online: runtimeTarget.online !== false }" aria-hidden="true"></span>
+          <span class="runtime-copy">
+            <small>{{ runtimeTarget.id === localRuntimeTargetId ? '本机运行时' : '远程运行时' }}</small>
+            <strong>{{ runtimeTarget.name || '本机' }}</strong>
+          </span>
+        </div>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <UiButton
+              class="collapse-btn"
+              variant="ghost"
+              size="icon-sm"
+              :aria-label="isCollapse ? '展开导航菜单' : '折叠导航菜单'"
+              @click="toggleCollapse"
+            >
+              <PanelLeftOpen v-if="isCollapse" />
+              <PanelLeftClose v-else />
+            </UiButton>
+          </TooltipTrigger>
+          <TooltipContent side="right">{{ isCollapse ? '展开导航菜单' : '折叠菜单' }}</TooltipContent>
+        </Tooltip>
       </div>
     </aside>
 
     <!-- 主内容区 -->
-    <div class="main-container" :class="{'is-collapsed': isCollapse}">
+    <div class="main-container">
       <!-- 顶部导航栏 -->
       <header class="header-container">
         <div class="left-menu">
@@ -405,6 +382,7 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
 import { Button as UiButton } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog as UiDialog,
   DialogClose,
@@ -429,16 +407,32 @@ import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
+  ArchiveRestore,
+  Blocks,
+  CalendarClock,
   ChevronDown,
+  ChevronRight,
   Eye,
   EyeOff,
+  FileSearch,
+  Gamepad2,
   GitFork,
+  Globe2,
+  House,
   KeyRound,
+  LayoutDashboard,
   LogOut,
   Menu as MenuIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RadioTower,
+  ServerCog,
   Settings,
+  Settings2,
   TriangleAlert,
-  UserRound
+  UserRound,
+  UsersRound,
+  X
 } from '@lucide/vue'
 import {
   getActiveRuntimeTarget,
@@ -447,6 +441,112 @@ import {
   setActiveRuntimeTarget
 } from '@/utils/runtimeTarget'
 import { getSystemPreferences } from '@/utils/systemPreferences'
+
+const NAVIGATION_SECTIONS = [
+  {
+    label: '总览',
+    items: [
+      { key: 'dashboard', label: '仪表盘', to: '/dashboard', icon: LayoutDashboard }
+    ]
+  },
+  {
+    label: '服务与世界',
+    items: [
+      {
+        key: 'servers',
+        label: '服务器管理',
+        icon: ServerCog,
+        children: [
+          { label: '服务器工作台', to: '/servers/workspace' },
+          { label: '服务器列表', to: '/servers/list' },
+          { label: '命令设置', to: '/servers/commands' }
+        ]
+      },
+      {
+        key: 'rooms',
+        label: '房间管理',
+        icon: House,
+        children: [
+          { label: '房间列表', to: '/rooms/list' },
+          { label: '房间设置', to: '/rooms/settings' }
+        ]
+      },
+      {
+        key: 'worlds',
+        label: '世界管理',
+        icon: Globe2,
+        children: [
+          { label: '世界列表', to: '/worlds/list' },
+          { label: '世界设置', to: '/worlds/settings' },
+          { label: '世界状态', to: '/worlds/state' }
+        ]
+      }
+    ]
+  },
+  {
+    label: '内容与玩家',
+    items: [
+      {
+        key: 'mods',
+        label: '模组管理',
+        icon: Blocks,
+        children: [
+          { label: '已下载模组', to: '/mods/list' },
+          { label: '模组搜索', to: '/mods/search' }
+        ]
+      },
+      {
+        key: 'players',
+        label: '玩家管理',
+        icon: UsersRound,
+        children: [
+          { label: '玩家列表', to: '/players/list' }
+        ]
+      }
+    ]
+  },
+  {
+    label: '运维工具',
+    items: [
+      {
+        key: 'logs',
+        label: '日志管理器',
+        icon: FileSearch,
+        children: [
+          { label: '日志查询', to: '/logs/query' },
+          { label: '规则管理', to: '/logs/rules' },
+          { label: '日志解析器', to: '/logs/parser' }
+        ]
+      },
+      { key: 'backups', label: '备份管理', to: '/backups', icon: ArchiveRestore },
+      {
+        key: 'scheduled',
+        label: '定时任务',
+        icon: CalendarClock,
+        children: [
+          { label: '任务列表', to: '/scheduled/tasks' },
+          { label: '创建任务', to: '/scheduled/create' }
+        ]
+      }
+    ]
+  },
+  {
+    label: '连接与设置',
+    items: [
+      {
+        key: 'agents',
+        label: 'Agent 管理',
+        icon: RadioTower,
+        children: [
+          { label: 'Agent 列表', to: '/agents/list' },
+          { label: '命令管理', to: '/agents/command' },
+          { label: '安全设置', to: '/agents/security' }
+        ]
+      },
+      { key: 'system', label: '系统设置', to: '/system', icon: Settings2 }
+    ]
+  }
+]
 
 export default {
   name: 'MainLayout',
@@ -465,6 +565,10 @@ export default {
     BreadcrumbSeparator,
     UiButton,
     ChevronDown,
+    ChevronRight,
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
     UiDialog,
     DialogClose,
     DialogContent,
@@ -486,10 +590,13 @@ export default {
     FieldGroup,
     FieldLabel,
     GitFork,
+    Gamepad2,
     UiInput,
     KeyRound,
     LogOut,
     MenuIcon,
+    PanelLeftClose,
+    PanelLeftOpen,
     RuntimeTargetSwitch,
     Separator,
     Settings,
@@ -499,7 +606,8 @@ export default {
     TooltipProvider,
     TooltipTrigger,
     TriangleAlert,
-    UserRound
+    UserRound,
+    X
   },
   data() {
     return {
@@ -510,6 +618,17 @@ export default {
       breadcrumbs: [],
       currentUser: {},
       runtimeTarget: getActiveRuntimeTarget(),
+      localRuntimeTargetId: LOCAL_RUNTIME_TARGET_ID,
+      openNavGroups: {
+        servers: true,
+        rooms: false,
+        worlds: false,
+        mods: false,
+        players: false,
+        logs: false,
+        scheduled: false,
+        agents: false
+      },
       profileVisible: false,
       passwordVisible: false,
       passwordSaving: false,
@@ -527,8 +646,14 @@ export default {
     }
   },
   computed: {
+    navigationSections() {
+      return NAVIGATION_SECTIONS
+    },
     activeMenu() {
       return this.$route.path
+    },
+    isNavigationCollapsed() {
+      return this.isCollapse && !this.isCompactViewport
     },
     remoteContextBlocked() {
       return this.runtimeTarget.id !== LOCAL_RUNTIME_TARGET_ID && !this.$route.path.startsWith('/agents')
@@ -581,6 +706,20 @@ export default {
     },
     handleMenuSelect() {
       if (this.isCompactViewport) this.closeMobileSidebar()
+    },
+    isNavigationActive(path) {
+      return this.activeMenu === path || this.activeMenu.startsWith(`${path}/`)
+    },
+    isNavigationGroupActive(item) {
+      return item.children.some(child => this.isNavigationActive(child.to))
+    },
+    setNavGroupOpen(key, open) {
+      this.openNavGroups[key] = open
+    },
+    handleCollapsedGroupNavigation(item) {
+      if (this.isNavigationCollapsed && item.children?.length) {
+        this.$router.push(item.children[0].to)
+      }
     },
     handleGlobalKeydown(event) {
       if (event.key === 'Escape') this.closeMobileSidebar()
@@ -677,164 +816,14 @@ export default {
 
 <style scoped>
 .app-layout {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
-
-.sidebar {
-  width: 180px;
-  height: 100%;
-  background-color: var(--sidebar-color);
-  transition: width 0.3s;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.sidebar.collapsed {
-  width: 64px;
-}
-
-.logo-container {
-  height: 54px;
-  line-height: 54px;
-  text-align: center;
-  background-color: var(--sidebar-color-deep);
-}
-
-.logo {
-  margin: 0;
-  color: #fff;
-  padding: 0 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.logo-compact {
-  display: none;
-}
-
-.sidebar.collapsed .logo-full {
-  display: none;
-}
-
-.sidebar.collapsed .logo-compact {
-  display: inline;
-}
-
-.el-menu-vertical {
-  border-right: none;
-  flex: 1;
-  overflow-y: auto;
-}
-
-.el-menu-vertical::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-
-.sidebar-footer {
-  height: 50px;
-  line-height: 50px;
-  text-align: center;
-  background-color: var(--sidebar-color-deep);
-  padding: 0 10px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.sidebar.collapsed .sidebar-footer {
-  justify-content: center;
-  padding: 0;
-}
-
-.collapse-btn {
-  color: var(--sidebar-text);
-  font-size: 20px;
-}
-
-.main-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: margin-left 0.3s;
-}
-
-.main-container.is-collapsed {
-  margin-left: 0;
-}
-
-.header-container {
-  height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 1px 2px rgba(38, 53, 46, 0.04);
-  background-color: var(--surface-color);
-}
-
-.left-menu {
-  display: flex;
-  align-items: center;
-}
-
-.right-menu {
-  display: flex;
-  align-items: center;
-}
-
-.content-container {
-  flex: 1;
-  overflow: auto;
-  padding: 10px;
-  background-color: var(--bg-color);
-  min-width: 800px;
-}
-
-@media (max-width: 768px) {
-  .header-container {
-    padding: 0 10px;
-  }
-
-  .left-menu {
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .right-menu {
-    flex: 0 0 auto;
-    margin-left: 8px;
-  }
-
-  .github-link {
-    margin-right: 12px;
-  }
-
-  .user-dropdown {
-    white-space: nowrap;
-  }
-
-  .content-container {
-    min-width: 0;
-    padding: 8px;
-  }
-
-  :deep(.el-dialog) {
-    max-width: calc(100vw - 24px);
-  }
-}
-
-/* Responsive application shell */
-.app-layout {
   position: relative;
+  display: flex;
+  width: 100%;
   min-width: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: var(--background);
 }
 
 .skip-link {
@@ -843,9 +832,9 @@ export default {
   left: 50%;
   z-index: 3000;
   padding: 8px 14px;
-  color: #fff;
-  background: var(--primary-color);
-  border-radius: 4px;
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border-radius: var(--radius);
   transform: translate(-50%, -160%);
   transition: transform 0.2s ease;
 }
@@ -858,12 +847,11 @@ export default {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  display: block;
   width: 100%;
   height: 100%;
   padding: 0;
   border: 0;
-  background: rgba(22, 31, 26, 0.46);
+  background: color-mix(in srgb, var(--foreground) 46%, transparent);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -876,42 +864,84 @@ export default {
 
 .sidebar {
   position: relative;
-  z-index: 2;
-  flex: 0 0 200px;
-  width: 200px;
-  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.06);
+  z-index: 20;
+  display: flex;
+  flex: 0 0 252px;
+  width: 252px;
+  min-width: 0;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--sidebar-foreground);
+  background: var(--sidebar);
+  border-right: 1px solid var(--sidebar-border);
   transition: width 0.2s ease, flex-basis 0.2s ease, transform 0.2s ease;
 }
 
 .sidebar.collapsed {
   flex-basis: 64px;
+  width: 64px;
 }
 
-.logo-container {
+.brand-container {
   position: relative;
   display: flex;
-  flex: 0 0 54px;
+  flex: 0 0 64px;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.brand-link {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: inline-flex;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
   align-items: center;
   justify-content: center;
-  line-height: normal;
+  color: var(--sidebar-primary-foreground);
+  background: var(--sidebar-primary);
+  border-radius: 6px;
 }
 
-.logo {
-  width: 100%;
-  padding: 0 16px;
-  font-size: 16px;
-  line-height: 24px;
+.brand-mark svg {
+  width: 19px;
+  height: 19px;
+}
+
+.brand-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-copy strong {
+  overflow: hidden;
+  color: var(--sidebar-foreground);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-copy small {
+  color: color-mix(in srgb, var(--sidebar-foreground) 58%, transparent);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 12px;
   letter-spacing: 0;
-  text-align: left;
-}
-
-.sidebar.collapsed .logo-container {
-  justify-content: center;
-}
-
-.sidebar.collapsed .logo {
-  padding: 0;
-  text-align: center;
+  white-space: nowrap;
 }
 
 .mobile-close-btn,
@@ -919,83 +949,292 @@ export default {
   display: none;
 }
 
-.header-icon {
-  width: 18px;
-  height: 18px;
+.sidebar-navigation {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 10px 8px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
-.el-menu-vertical {
-  padding: 6px 0;
+.nav-section + .nav-section {
+  margin-top: 12px;
 }
 
-:deep(.el-menu-item),
-:deep(.el-sub-menu__title) {
-  width: calc(100% - 16px);
-  height: 40px;
-  margin: 1px 8px;
-  border-radius: 2px;
-  line-height: 40px;
+.nav-section-label {
+  margin: 0 0 4px;
+  padding: 0 10px;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--sidebar-foreground) 52%, transparent);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+.nav-list,
+.nav-submenu {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.nav-item + .nav-item {
+  margin-top: 2px;
+}
+
+.nav-link {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  color: color-mix(in srgb, var(--sidebar-foreground) 82%, transparent);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  outline: none;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-:deep(.el-menu-item:hover),
-:deep(.el-sub-menu__title:hover) {
-  background-color: rgba(255, 255, 255, 0.09) !important;
+.nav-link:hover,
+.nav-link:focus-visible {
+  color: var(--sidebar-accent-foreground);
+  background: var(--sidebar-accent);
 }
 
-:deep(.el-menu-item.is-active) {
-  position: relative;
-  background-color: var(--sidebar-active-bg) !important;
-  font-weight: 500;
+.nav-link:focus-visible {
+  box-shadow: 0 0 0 2px var(--sidebar-ring);
 }
 
-:deep(.el-menu-item.is-active::before) {
+.nav-link.active {
+  color: var(--sidebar-primary);
+  background: var(--sidebar-accent);
+  font-weight: 600;
+}
+
+.nav-link.active::before {
   position: absolute;
   top: 8px;
   left: 0;
-  width: 2px;
-  height: 24px;
-  background: var(--sidebar-active);
-  border-radius: 0 2px 2px 0;
+  width: 3px;
+  height: 20px;
+  background: var(--sidebar-primary);
+  border-radius: 0 3px 3px 0;
   content: '';
 }
 
-.sidebar.collapsed :deep(.el-menu-item),
-.sidebar.collapsed :deep(.el-sub-menu__title) {
-  width: calc(100% - 12px);
-  margin-right: 6px;
-  margin-left: 6px;
+.nav-icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+.nav-label {
+  min-width: 0;
+  overflow: hidden;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav-chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  transition: transform 0.18s ease;
+}
+
+[data-slot='collapsible'][data-state='open'] .nav-chevron {
+  transform: rotate(90deg);
+}
+
+.nav-submenu-wrap {
+  overflow: hidden;
+}
+
+.nav-submenu {
+  margin: 3px 0 5px 18px;
+  padding-left: 18px;
+  border-left: 1px solid var(--sidebar-border);
+}
+
+.nav-submenu-link {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  height: 30px;
+  align-items: center;
+  padding: 0 9px;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--sidebar-foreground) 67%, transparent);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.nav-submenu-link:hover,
+.nav-submenu-link:focus-visible,
+.nav-submenu-link.active {
+  color: var(--sidebar-accent-foreground);
+  background: var(--sidebar-accent);
+}
+
+.nav-submenu-link.active {
+  color: var(--sidebar-primary);
+  font-weight: 600;
 }
 
 .sidebar-footer {
-  flex: 0 0 46px;
-  height: 46px;
-  padding: 0 12px;
+  display: flex;
+  flex: 0 0 62px;
   align-items: center;
-  line-height: normal;
+  gap: 8px;
+  padding: 10px 10px 10px 14px;
+  border-top: 1px solid var(--sidebar-border);
 }
 
-.collapse-btn:hover,
-.collapse-btn:focus-visible {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
+.runtime-summary {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 9px;
+}
+
+.runtime-dot {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--muted-foreground);
+  border: 2px solid var(--sidebar);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--sidebar-border);
+}
+
+.runtime-dot.online {
+  background: var(--chart-2);
+}
+
+.runtime-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.runtime-copy small {
+  color: color-mix(in srgb, var(--sidebar-foreground) 54%, transparent);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.runtime-copy strong {
+  overflow: hidden;
+  color: var(--sidebar-foreground);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collapse-btn {
+  flex: 0 0 auto;
+  color: var(--sidebar-foreground);
+}
+
+.sidebar.collapsed .brand-container {
+  padding: 0 14px;
+}
+
+.sidebar.collapsed .brand-copy,
+.sidebar.collapsed .nav-section-label,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-chevron,
+.sidebar.collapsed .nav-submenu-wrap,
+.sidebar.collapsed .runtime-copy {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-navigation {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.sidebar.collapsed .nav-section + .nav-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.sidebar.collapsed .nav-link {
+  width: 40px;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar.collapsed .nav-link.active::before {
+  top: 10px;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  height: 80px;
+  padding: 8px;
+}
+
+.sidebar.collapsed .runtime-summary {
+  flex: 0 0 auto;
 }
 
 .main-container {
+  display: flex;
+  flex: 1 1 auto;
   min-width: 0;
-  transition: none;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .header-container {
   position: relative;
   z-index: 10;
-  flex: 0 0 54px;
+  display: flex;
+  flex: 0 0 64px;
+  height: 64px;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
   gap: 16px;
-  padding: 0 18px;
+  padding: 0 24px;
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.left-menu,
+.right-menu {
+  display: flex;
+  min-width: 0;
+  align-items: center;
 }
 
 .left-menu {
-  min-width: 0;
+  flex: 1;
   overflow: hidden;
 }
 
@@ -1019,8 +1258,11 @@ export default {
 }
 
 .content-container {
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 18px;
+  overflow: auto;
+  padding: 20px 24px 28px;
+  background: var(--bg-color);
   scroll-behavior: smooth;
 }
 
@@ -1167,10 +1409,11 @@ export default {
     bottom: 0;
     left: 0;
     z-index: 1010;
-    width: 240px;
-    max-width: calc(100vw - 48px);
-    flex-basis: 240px;
-    box-shadow: 8px 0 28px rgba(22, 31, 26, 0.2);
+    width: 280px;
+    max-width: calc(100vw - 44px);
+    flex-basis: 280px;
+    border-right-color: var(--sidebar-border);
+    box-shadow: var(--shadow-overlay);
     transform: translateX(-100%);
   }
 
@@ -1178,36 +1421,29 @@ export default {
     transform: translateX(0);
   }
 
-  .logo-container {
-    justify-content: flex-start;
+  .brand-container {
     padding-right: 52px;
-  }
-
-  .logo {
-    text-align: left;
   }
 
   .mobile-close-btn {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 16px;
+    right: 12px;
     display: inline-flex;
-    color: var(--sidebar-text);
+    color: var(--sidebar-foreground);
   }
 
-.mobile-close-btn:hover,
-.mobile-close-btn:focus-visible {
-  color: var(--sidebar-foreground);
-  background: rgba(255, 255, 255, 0.1);
-}
-
   .sidebar-footer {
+    height: 62px;
+  }
+
+  .collapse-btn {
     display: none;
   }
 
   .header-container {
-    height: 56px;
     flex-basis: 56px;
+    height: 56px;
     gap: 8px;
     padding: 0 10px;
   }
