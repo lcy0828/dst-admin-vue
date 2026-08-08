@@ -46,14 +46,14 @@
     <div class="test-results">
       <h4>测试结果</h4>
       <div v-if="testResult.isValid === false" class="error-message">
-        <component is="el-icon-error" class="legacy-icon" /> 正则表达式无效: {{ testResult.error }}
+        <component :is="'el-icon-error'" class="legacy-icon" /> 正则表达式无效: {{ testResult.error }}
       </div>
       <div v-else-if="testResult.isValid === true">
         <div v-if="testResult.matches.length > 0" class="success-message">
-          <component is="el-icon-success" class="legacy-icon" /> 匹配成功! 找到 {{ testResult.matches.length }} 个匹配项
+          <component :is="'el-icon-success'" class="legacy-icon" /> 匹配成功! 找到 {{ testResult.matches.length }} 个匹配项
         </div>
         <div v-else class="warning-message">
-          <component is="el-icon-warning" class="legacy-icon" /> 未找到匹配项
+          <component :is="'el-icon-warning'" class="legacy-icon" /> 未找到匹配项
         </div>
 
         <div v-if="testResult.matches.length > 0" class="matches-container">

@@ -60,7 +60,7 @@
         <el-tab-pane label="游戏模式" name="gameplay">
           <div class="tab-content">
             <div class="tab-header">
-              <component is="el-icon-game" class="legacy-icon" />
+              <component :is="'el-icon-game'" class="legacy-icon" />
               <span>游戏模式配置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -104,7 +104,7 @@
         <el-tab-pane label="网络设置" name="network">
           <div class="tab-content">
             <div class="tab-header">
-              <component is="el-icon-network" class="legacy-icon" />
+              <component :is="'el-icon-network'" class="legacy-icon" />
               <span>网络配置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -172,7 +172,7 @@
         <el-tab-pane label="系统设置" name="system">
           <div class="tab-content">
             <div class="tab-header">
-              <component is="el-icon-system" class="legacy-icon" />
+              <component :is="'el-icon-system'" class="legacy-icon" />
               <span>系统设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -196,7 +196,7 @@
         <el-tab-pane label="分片设置" name="shard">
           <div class="tab-content">
             <div class="tab-header">
-              <component is="el-icon-shard" class="legacy-icon" />
+              <component :is="'el-icon-shard'" class="legacy-icon" />
               <span>分片设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -232,7 +232,7 @@
         <el-tab-pane label="Steam设置" name="steam">
           <div class="tab-content">
             <div class="tab-header">
-              <component is="el-icon-steam" class="legacy-icon" />
+              <component :is="'el-icon-steam'" class="legacy-icon" />
               <span>Steam设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">

@@ -29,7 +29,8 @@
       <!-- 右侧世界列表 -->
       <el-col :span="20">
         <el-card shadow="hover" class="world-list-card">
-          <div slot="header" class="card-header">
+          <template v-slot:header>
+<div  class="card-header">
             <div class="header-left">
               <span>{{ getCategoryTitle() }}</span>
               <el-select
@@ -57,6 +58,7 @@
               <el-button style="margin-left: 10px;" size="small" icon="el-icon-refresh" @click="refreshWorlds">刷新</el-button>
             </div>
           </div>
+</template>
 
           <el-table
             :data="filteredWorlds"
@@ -69,27 +71,27 @@
             <el-table-column prop="name" label="世界名称" min-width="120"></el-table-column>
             <el-table-column prop="roomName" label="所属房间" min-width="100"></el-table-column>
             <el-table-column prop="type" label="世界类型" width="100">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tag size="small" :type="getWorldTypeTag(scope.row.type)">
                   {{ getWorldTypeName(scope.row.type) }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="season" label="季节" width="90">
-              <template slot-scope="scope">{{ scope.row.season ?? '--' }}</template>
+              <template v-slot="scope">{{ scope.row.season ?? '--' }}</template>
             </el-table-column>
             <el-table-column prop="day" label="天数" width="70" align="center">
-              <template slot-scope="scope">{{ scope.row.day ?? '--' }}</template>
+              <template v-slot="scope">{{ scope.row.day ?? '--' }}</template>
             </el-table-column>
             <el-table-column prop="status" label="状态" width="90" align="center">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tag :type="getWorldStatusTag(scope.row.status)" size="small">
                   {{ getWorldStatusName(scope.row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="200" fixed="right">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-button
                   :type="scope.row.status === 'running' ? 'danger' : 'success'"
                   size="mini"
@@ -103,9 +105,10 @@
                   @click.stop="editWorld(scope.row)">编辑</el-button>
                 <el-dropdown trigger="click" @command="handleMoreCommands($event, scope.row)" @click.stop>
                   <el-button size="mini">
-                    更多<component is="el-icon-arrow-down" class="legacy-icon el-icon--right" />
+                    更多<component :is="'el-icon-arrow-down'" class="legacy-icon el-icon--right" />
                   </el-button>
-                  <el-dropdown-menu slot="dropdown">
+                  <template v-slot:dropdown>
+<el-dropdown-menu >
                     <el-dropdown-item command="viewState">查看状态</el-dropdown-item>
                     <el-dropdown-item command="regenerate">重新生成</el-dropdown-item>
                     <el-dropdown-item command="backup">备份世界</el-dropdown-item>
@@ -113,6 +116,7 @@
                       <span style="color: #c94f4f;">删除世界</span>
                     </el-dropdown-item>
                   </el-dropdown-menu>
+</template>
                 </el-dropdown>
               </template>
             </el-table-column>
@@ -124,7 +128,7 @@
               type="info"
               :closable="false"
               show-icon>
-              <template slot="title">
+              <template v-slot:title>
                 当前只显示 <b>{{ getSelectedRoomName() }}</b> 房间的世界
                 <el-button type="text" @click="selectedRoom = null" style="margin-left: 10px;">查看全部</el-button>
               </template>
@@ -133,7 +137,7 @@
 
           <!-- 无世界时的提示 -->
           <div v-if="!loading && filteredWorlds.length === 0" class="empty-worlds">
-            <component is="el-icon-warning-outline" class="legacy-icon" />
+            <component :is="'el-icon-warning-outline'" class="legacy-icon" />
             <p>没有找到符合条件的世界</p>
           </div>
         </el-card>
@@ -175,15 +179,17 @@
           </el-radio-group>
 
           <div v-if="filteredDialogRooms.length === 0" class="no-rooms-tip">
-            <component is="el-icon-info" class="legacy-icon" />
+            <component :is="'el-icon-info'" class="legacy-icon" />
             <span>没有找到符合条件的房间</span>
           </div>
         </div>
       </div>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="closeRoomDialog">取消</el-button>
         <el-button type="primary" @click="confirmRoomSelect" :disabled="!tempSelectedRoom">确定</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>

@@ -3,7 +3,7 @@
     <div class="preset-title">
       <span>快速预设：</span>
       <el-tooltip content="根据预设快速配置所有设置项" placement="top">
-        <component is="el-icon-question" class="legacy-icon" />
+        <component :is="'el-icon-question'" class="legacy-icon" />
       </el-tooltip>
     </div>
     <div class="preset-options">

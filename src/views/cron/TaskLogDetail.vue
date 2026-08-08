@@ -1,16 +1,18 @@
 <template>
   <div class="app-container">
     <el-card class="box-card" shadow="never">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>日志详情</span>
         <el-button-group style="float: right">
           <el-button type="primary" icon="el-icon-refresh" @click="fetchLogDetail">刷新</el-button>
           <el-button type="info" icon="el-icon-back" @click="goBack">返回</el-button>
         </el-button-group>
       </div>
+</template>
 
       <el-skeleton :loading="loading" animated>
-        <template slot="template">
+        <template v-slot:template>
           <div style="padding: 20px;">
             <el-skeleton-item variant="text" style="width: 30%; height: 40px;"></el-skeleton-item>
             <el-skeleton-item variant="text" style="margin-top: 20px; width: 100%; height: 300px;"></el-skeleton-item>

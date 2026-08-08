@@ -1,9 +1,12 @@
 <template>
   <div class="app-layout">
     <!-- 侧边导航栏 -->
-    <div class="sidebar">
+    <div class="sidebar" :class="{ collapsed: isCollapse }">
       <div class="logo-container">
-        <h1 class="logo">饥荒管理</h1>
+        <h1 class="logo">
+          <span class="logo-full">{{ systemName }}</span>
+          <span class="logo-compact">饥</span>
+        </h1>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -16,13 +19,13 @@
         router>
 
         <el-menu-item index="/dashboard">
-          <component is="el-icon-s-home" class="legacy-icon" />
+          <component :is="'el-icon-s-home'" class="legacy-icon" />
           <span>仪表盘</span>
         </el-menu-item>
 
         <el-sub-menu index="/servers">
           <template #title>
-            <component is="el-icon-s-platform" class="legacy-icon" />
+            <component :is="'el-icon-s-platform'" class="legacy-icon" />
             <span>服务器管理</span>
           </template>
           <el-menu-item index="/servers/list">服务器列表</el-menu-item>
@@ -31,7 +34,7 @@
 
         <el-sub-menu index="/logs">
           <template #title>
-            <component is="el-icon-document" class="legacy-icon" />
+            <component :is="'el-icon-document'" class="legacy-icon" />
             <span>日志管理器</span>
           </template>
           <el-menu-item index="/logs/query">日志查询</el-menu-item>
@@ -41,7 +44,7 @@
 
         <el-sub-menu index="/players">
           <template #title>
-            <component is="el-icon-user" class="legacy-icon" />
+            <component :is="'el-icon-user'" class="legacy-icon" />
             <span>玩家管理</span>
           </template>
           <el-menu-item index="/players/list">玩家列表</el-menu-item>
@@ -51,7 +54,7 @@
 
         <el-sub-menu index="/mods">
           <template #title>
-            <component is="el-icon-s-operation" class="legacy-icon" />
+            <component :is="'el-icon-s-operation'" class="legacy-icon" />
             <span>模组管理</span>
           </template>
           <el-menu-item index="/mods/list">已下载模组</el-menu-item>
@@ -60,7 +63,7 @@
 
         <el-sub-menu index="/rooms">
           <template #title>
-            <component is="el-icon-s-grid" class="legacy-icon" />
+            <component :is="'el-icon-s-grid'" class="legacy-icon" />
             <span>房间管理</span>
           </template>
           <el-menu-item index="/rooms/list">房间列表</el-menu-item>
@@ -68,8 +71,8 @@
         </el-sub-menu>
 
         <el-sub-menu index="/worlds">
-          <template slot="title">
-            <component is="el-icon-s-data" class="legacy-icon" />
+          <template v-slot:title>
+            <component :is="'el-icon-s-data'" class="legacy-icon" />
             <span>世界管理</span>
           </template>
           <el-menu-item index="/worlds/list">世界列表</el-menu-item>
@@ -78,13 +81,13 @@
         </el-sub-menu>
 
         <el-menu-item index="/backups">
-          <component is="el-icon-s-management" class="legacy-icon" />
+          <component :is="'el-icon-s-management'" class="legacy-icon" />
           <span>备份管理</span>
         </el-menu-item>
 
         <el-sub-menu index="/scheduled">
           <template #title>
-            <component is="el-icon-alarm-clock" class="legacy-icon" />
+            <component :is="'el-icon-alarm-clock'" class="legacy-icon" />
             <span>定时任务</span>
           </template>
           <el-menu-item index="/scheduled/tasks">任务列表</el-menu-item>
@@ -93,7 +96,7 @@
 
         <el-sub-menu index="/agents">
           <template #title>
-            <component is="el-icon-connection" class="legacy-icon" />
+            <component :is="'el-icon-connection'" class="legacy-icon" />
             <span>Agent管理</span>
           </template>
           <el-menu-item index="/agents/list">Agent列表</el-menu-item>
@@ -102,7 +105,7 @@
         </el-sub-menu>
 
         <el-menu-item index="/system">
-          <component is="el-icon-setting" class="legacy-icon" />
+          <component :is="'el-icon-setting'" class="legacy-icon" />
           <span>系统设置</span>
         </el-menu-item>
       </el-menu>
@@ -137,7 +140,7 @@
           </a>
           <el-dropdown trigger="click" @command="handleUserCommand">
             <span class="user-dropdown">
-              管理员 <component is="el-icon-arrow-down" class="legacy-icon" />
+              管理员 <component :is="'el-icon-arrow-down'" class="legacy-icon" />
             </span>
             <template #dropdown>
               <el-dropdown-menu>
@@ -185,12 +188,15 @@
 
 <script>
 import { authAPI } from '@/api/v2'
+import { getSystemPreferences } from '@/utils/systemPreferences'
 
 export default {
   name: 'MainLayout',
   data() {
     return {
+      systemName: getSystemPreferences().systemName,
       isCollapse: false,
+      isCompactViewport: false,
       breadcrumbs: [],
       currentUser: {},
       profileVisible: false,
@@ -222,10 +228,26 @@ export default {
     }
   },
   mounted() {
+    window.addEventListener('system-preferences-updated', this.updateSystemName)
+    window.addEventListener('resize', this.updateViewportMode)
+    this.updateViewportMode()
     this.updateBreadcrumbs()
     this.loadCurrentUser()
   },
+  beforeUnmount() {
+    window.removeEventListener('system-preferences-updated', this.updateSystemName)
+    window.removeEventListener('resize', this.updateViewportMode)
+  },
   methods: {
+    updateViewportMode() {
+      const compact = window.innerWidth <= 768
+      if (compact === this.isCompactViewport) return
+      this.isCompactViewport = compact
+      this.isCollapse = compact
+    },
+    updateSystemName(event) {
+      this.systemName = event.detail?.systemName || getSystemPreferences().systemName
+    },
     async loadCurrentUser() {
       try {
         const session = await authAPI.session()
@@ -388,8 +410,24 @@ export default {
 .logo {
   margin: 0;
   color: #fff;
+  padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 18px;
   font-weight: 600;
+}
+
+.logo-compact {
+  display: none;
+}
+
+.sidebar.collapsed .logo-full {
+  display: none;
+}
+
+.sidebar.collapsed .logo-compact {
+  display: inline;
 }
 
 .el-menu-vertical {
@@ -413,6 +451,11 @@ export default {
   justify-content: flex-end;
 }
 
+.sidebar.collapsed .sidebar-footer {
+  justify-content: center;
+  padding: 0;
+}
+
 .collapse-btn {
   color: var(--sidebar-text);
   font-size: 20px;
@@ -427,7 +470,7 @@ export default {
 }
 
 .main-container.is-collapsed {
-  margin-left: -156px;
+  margin-left: 0;
 }
 
 .header-container {
@@ -472,5 +515,38 @@ export default {
   padding: 10px;
   background-color: var(--bg-color);
   min-width: 800px;
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    padding: 0 10px;
+  }
+
+  .left-menu {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .right-menu {
+    flex: 0 0 auto;
+    margin-left: 8px;
+  }
+
+  .github-link {
+    margin-right: 12px;
+  }
+
+  .user-dropdown {
+    white-space: nowrap;
+  }
+
+  .content-container {
+    min-width: 0;
+    padding: 8px;
+  }
+
+  :deep(.el-dialog) {
+    max-width: calc(100vw - 24px);
+  }
 }
 </style>

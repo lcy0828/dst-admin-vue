@@ -382,7 +382,7 @@ export default {
       if (!task.created_at || !task.id) return false;
 
       // 从本地存储中获取已查看过的新任务ID
-      const viewedNewTasks = JSON.parse(localStorage.getItem('viewedNewTasks') || '[]');
+      const viewedNewTasks = JSON.parse(sessionStorage.getItem('viewedNewTasks') || '[]');
 
       // 如果用户已经查看过这个任务，则不显示新标签
       if (viewedNewTasks.includes(task.id)) {
@@ -398,10 +398,10 @@ export default {
         // 将任务ID添加到已查看列表中，下次就不会显示新标签了
         // 注意：这里我们延迟添动作，确保用户能看到标签
         setTimeout(() => {
-          const updatedViewedTasks = JSON.parse(localStorage.getItem('viewedNewTasks') || '[]');
+          const updatedViewedTasks = JSON.parse(sessionStorage.getItem('viewedNewTasks') || '[]');
           if (!updatedViewedTasks.includes(task.id)) {
             updatedViewedTasks.push(task.id);
-            localStorage.setItem('viewedNewTasks', JSON.stringify(updatedViewedTasks));
+            sessionStorage.setItem('viewedNewTasks', JSON.stringify(updatedViewedTasks));
           }
         }, 2000); // 2秒后添加到已查看列表
 

@@ -35,7 +35,7 @@
       
       <div class="log-content" ref="logContent" v-loading="loading">
         <div v-if="logs.length === 0 && !loading" class="no-logs-message">
-          <component is="el-icon-info" class="legacy-icon" />
+          <component :is="'el-icon-info'" class="legacy-icon" />
           <span>暂无日志记录</span>
         </div>
         <div v-else-if="logs.length > 0">
@@ -241,7 +241,7 @@ export default {
   mounted() {
     this.refreshLogs();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.closeEventSource();
   },
   watch: {
@@ -397,4 +397,4 @@ export default {
   border-radius: 3px 3px 0 0;
   text-align: center;
 }
-</style> 
+</style>

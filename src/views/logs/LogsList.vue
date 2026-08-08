@@ -1,9 +1,11 @@
 <template>
   <div class="redirect-container">
     <el-card class="box-card">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>功能已更新</span>
       </div>
+</template>
       <div class="content">
         <p>日志和规则管理功能已更新，现已分为以下两个独立模块：</p>
         <div class="button-container">
@@ -27,7 +29,7 @@ export default {
   created() {
     this.startRedirectTimer();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.redirectTimer) {
       clearTimeout(this.redirectTimer);
     }

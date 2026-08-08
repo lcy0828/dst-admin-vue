@@ -40,7 +40,7 @@ export default {
     // 添加主题变化监听器
     themeManager.addListener(this.onThemeChange);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // 移除主题变化监听器
     themeManager.removeListener(this.onThemeChange);
   },

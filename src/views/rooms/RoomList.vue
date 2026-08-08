@@ -19,7 +19,7 @@
     <!-- 页面加载状态 -->
     <el-card v-if="loading" shadow="hover" class="settings-card">
       <div class="loading-page-content">
-        <component is="el-icon-loading" class="legacy-icon loading-page-icon" />
+        <component :is="'el-icon-loading'" class="legacy-icon loading-page-icon" />
         <p>正在加载页面内容...</p>
       </div>
     </el-card>
@@ -27,7 +27,7 @@
     <!-- 无存档时的导引提示 -->
     <el-card v-if="!loading && filteredRooms.length === 0" shadow="hover" class="settings-card empty-save-card">
       <div class="empty-save-content">
-        <component is="el-icon-folder-add" class="legacy-icon empty-save-icon" />
+        <component :is="'el-icon-folder-add'" class="legacy-icon empty-save-icon" />
         <h4>暂无房间</h4>
         <p>您尚未创建任何房间，请点击下方按钮创建新房间</p>
         <el-button type="primary" @click="createRoom">创建新房间</el-button>
@@ -75,10 +75,10 @@
               </div>
               <div class="save-info">
                 <span class="save-date" v-if="room.updateTime">
-                  <component is="el-icon-time" class="legacy-icon" /> {{ formatDate(room.updateTime) }}
+                  <component :is="'el-icon-time'" class="legacy-icon" /> {{ formatDate(room.updateTime) }}
                 </span>
                 <span class="save-world-count" v-if="room.worlds">
-                  <component is="el-icon-s-grid" class="legacy-icon" /> {{ room.worlds ? room.worlds.length : 0 }} 个世界
+                  <component :is="'el-icon-s-grid'" class="legacy-icon" /> {{ room.worlds ? room.worlds.length : 0 }} 个世界
                 </span>
               </div>
             </div>
@@ -100,9 +100,10 @@
               </el-button-group>
               <el-dropdown trigger="click" @command="handleDropdownCommand($event, room)" style="margin-left: 10px;">
                 <el-button type="info" size="small">
-                  更多操作<component is="el-icon-arrow-down" class="legacy-icon el-icon--right" />
+                  更多操作<component :is="'el-icon-arrow-down'" class="legacy-icon el-icon--right" />
                 </el-button>
-                <el-dropdown-menu slot="dropdown">
+                <template v-slot:dropdown>
+<el-dropdown-menu >
                   <el-dropdown-item command="special-lists">特殊名单</el-dropdown-item>
                   <el-dropdown-item command="token">服务器令牌</el-dropdown-item>
                   <el-dropdown-item command="logs">查看日志</el-dropdown-item>
@@ -111,6 +112,7 @@
                     <span style="color: #c94f4f;">删除房间</span>
                   </el-dropdown-item>
                 </el-dropdown-menu>
+</template>
               </el-dropdown>
             </div>
           </el-card>

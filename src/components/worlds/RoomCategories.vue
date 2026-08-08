@@ -7,41 +7,41 @@
 
     <div class="category-list">
       <div class="menu-item" :class="{'active': activeCategory === 'all'}" @click="handleCategorySelect('all')">
-        <component is="el-icon-s-grid" class="legacy-icon" />
+        <component :is="'el-icon-s-grid'" class="legacy-icon" />
         <span>所有房间</span>
       </div>
 
       <div class="menu-item" :class="{'active': activeCategory === 'active'}" @click="handleCategorySelect('active')">
-        <component is="el-icon-video-play" class="legacy-icon" />
+        <component :is="'el-icon-video-play'" class="legacy-icon" />
         <span>活跃房间</span>
         <div class="badge" v-if="getCountByCategory('active') > 0">{{getCountByCategory('active')}}</div>
       </div>
 
       <div class="menu-item" :class="{'active': activeCategory === 'inactive'}" @click="handleCategorySelect('inactive')">
-        <component is="el-icon-video-pause" class="legacy-icon" />
+        <component :is="'el-icon-video-pause'" class="legacy-icon" />
         <span>非活跃房间</span>
         <div class="badge" v-if="getCountByCategory('inactive') > 0">{{getCountByCategory('inactive')}}</div>
       </div>
 
       <div class="submenu">
         <div class="submenu-title" @click="toggleSubmenu('worldTypes')">
-          <component is="el-icon-map-location" class="legacy-icon" />
+          <component :is="'el-icon-map-location'" class="legacy-icon" />
           <span>按世界类型</span>
-          <component is="el-icon-arrow-down" class="legacy-icon submenu-arrow" :class="{'is-open': submenuOpen.worldTypes}" />
+          <component :is="'el-icon-arrow-down'" class="legacy-icon submenu-arrow" :class="{'is-open': submenuOpen.worldTypes}" />
         </div>
         <div class="submenu-content" v-show="submenuOpen.worldTypes">
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'forest'}" @click="handleCategorySelect('forest')">
-            <component is="el-icon-sunny" class="legacy-icon" />
+            <component :is="'el-icon-sunny'" class="legacy-icon" />
             <span>主世界</span>
             <div class="badge" v-if="getCountByCategory('forest') > 0">{{getCountByCategory('forest')}}</div>
           </div>
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'cave'}" @click="handleCategorySelect('cave')">
-            <component is="el-icon-moon" class="legacy-icon" />
+            <component :is="'el-icon-moon'" class="legacy-icon" />
             <span>洞穴</span>
             <div class="badge" v-if="getCountByCategory('cave') > 0">{{getCountByCategory('cave')}}</div>
           </div>
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'both'}" @click="handleCategorySelect('both')">
-            <component is="el-icon-connection" class="legacy-icon" />
+            <component :is="'el-icon-connection'" class="legacy-icon" />
             <span>混合房间</span>
             <div class="badge" v-if="getCountByCategory('both') > 0">{{getCountByCategory('both')}}</div>
           </div>
@@ -50,9 +50,9 @@
 
       <div class="submenu" v-if="customCategories.length > 0">
         <div class="submenu-title" @click="toggleSubmenu('custom')">
-          <component is="el-icon-collection-tag" class="legacy-icon" />
+          <component :is="'el-icon-collection-tag'" class="legacy-icon" />
           <span>自定义分类</span>
-          <component is="el-icon-arrow-down" class="legacy-icon submenu-arrow" :class="{'is-open': submenuOpen.custom}" />
+          <component :is="'el-icon-arrow-down'" class="legacy-icon submenu-arrow" :class="{'is-open': submenuOpen.custom}" />
         </div>
         <div class="submenu-content" v-show="submenuOpen.custom">
           <div class="menu-item submenu-item"
@@ -69,7 +69,7 @@
 
       <div class="category-actions">
         <el-button type="text" @click="showAddCategoryDialog" size="small">
-          <component is="el-icon-plus" class="legacy-icon" /> 添加分类
+          <component :is="'el-icon-plus'" class="legacy-icon" /> 添加分类
         </el-button>
       </div>
     </div>
@@ -93,10 +93,12 @@
           </el-select>
         </el-form-item>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="addCategoryDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="addCategory">确定</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>

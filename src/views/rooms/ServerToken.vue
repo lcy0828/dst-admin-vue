@@ -5,7 +5,8 @@
     </div>
 
     <el-card shadow="hover" class="token-card" v-loading="loading">
-      <div slot="header" class="card-header">
+      <template v-slot:header>
+<div  class="card-header">
         <span>服务器令牌</span>
         <div v-if="savename || serverToken">
           <el-button
@@ -30,6 +31,7 @@
           </el-button>
         </div>
       </div>
+</template>
 
       <div v-if="savename || serverToken" class="token-info">
         <div class="token-display">
@@ -39,7 +41,7 @@
             readonly
             style="width: 100%;"
             size="medium">
-            <template slot="append">
+            <template v-slot:append>
               <el-button :disabled="!tokenRevealed" @click="copyToken">复制</el-button>
             </template>
           </el-input>
@@ -100,10 +102,12 @@
           </el-alert>
         </div>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitTokenForm" :loading="submitting">确定</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>
@@ -172,7 +176,7 @@ export default {
 
       this.loading = true;
       return serverApi.getServerTokenStatus(saveToUse)
-        .then(() => {
+        .then(res => {
           this.serverToken = res.data.maskedValue || '';
           this.tokenConfigured = Boolean(res.data.configured);
           this.tokenRevealed = false;

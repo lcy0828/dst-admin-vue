@@ -11,12 +11,14 @@
     <el-row :gutter="20" v-loading="loading">
       <el-col :span="16">
         <el-card shadow="hover" class="details-card">
-          <div slot="header" class="card-header">
+          <template v-slot:header>
+<div  class="card-header">
             <span>世界信息</span>
             <el-tag :type="getStatusTag(world.status)">
               {{ getStatusName(world.status) }}
             </el-tag>
           </div>
+</template>
           
           <div class="world-info">
             <div class="info-item">
@@ -47,9 +49,11 @@
         </el-card>
         
         <el-card shadow="hover" class="details-card" style="margin-top: 20px;">
-          <div slot="header" class="card-header">
+          <template v-slot:header>
+<div  class="card-header">
             <span>世界统计</span>
           </div>
+</template>
           
           <el-row :gutter="20">
             <el-col :span="8">
@@ -76,9 +80,11 @@
       
       <el-col :span="8">
         <el-card shadow="hover" class="details-card">
-          <div slot="header" class="card-header">
+          <template v-slot:header>
+<div  class="card-header">
             <span>快捷操作</span>
           </div>
+</template>
           
           <div class="action-list">
             <el-button 
@@ -117,9 +123,11 @@
         </el-card>
         
         <el-card shadow="hover" class="details-card" style="margin-top: 20px;">
-          <div slot="header" class="card-header">
+          <template v-slot:header>
+<div  class="card-header">
             <span>最近活动</span>
           </div>
+</template>
           
           <div class="activity-list">
             <el-empty description="暂无真实活动数据" :image-size="60" />

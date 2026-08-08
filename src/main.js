@@ -6,16 +6,24 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import 'element-plus/dist/index.css'
 import './assets/css/main.css'
 import api from './api'
-import { authAPI } from './api/v2'
+import { authAPI, systemV2API } from './api/v2'
 import { installLegacyIcons } from './compat/legacyIcons'
+import { applySystemPreferences, getSystemPreferences } from './utils/systemPreferences'
 import 'xterm/css/xterm.css'
 
 // 路由守卫
 router.beforeEach(async to => {
-  document.title = to.meta.title ? `${to.meta.title} - 饥荒管理系统` : '饥荒管理系统'
-
   try {
     const session = await authAPI.session()
+    if (session.authenticated) {
+      try {
+        applySystemPreferences(await systemV2API.settings())
+      } catch (error) {
+        console.error('读取系统偏好失败，继续使用当前主题', error)
+      }
+    }
+    const systemName = getSystemPreferences().systemName
+    document.title = to.meta.title ? `${to.meta.title} - ${systemName}` : systemName
     if (to.path === '/login') return session.authenticated ? '/dashboard' : true
     return session.authenticated ? true : '/login'
   } catch {

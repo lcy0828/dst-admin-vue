@@ -279,7 +279,10 @@ export default {
           }));
 
           if (this.archives.length > 0) {
-            this.queryParams.archive = this.archives[0].name;
+            const requestedArchive = this.$route.query.archive;
+            this.queryParams.archive = this.archives.some(item => item.name === requestedArchive)
+              ? requestedArchive
+              : this.archives[0].name;
             this.getWorlds(this.queryParams.archive);
           }
         } else if (response && response.data && Array.isArray(response.data)) {
@@ -378,7 +381,10 @@ export default {
           console.log('从选中存档中获取并排序世界列表:', this.worlds);
 
           if (this.worlds.length > 0) {
-            this.queryParams.world = this.worlds[0].name;
+            const requestedWorld = this.$route.query.world;
+            this.queryParams.world = this.worlds.some(item => item.name === requestedWorld)
+              ? requestedWorld
+              : this.worlds[0].name;
             // 触发一次查询
             this.$nextTick(() => {
               this.queryLogs();

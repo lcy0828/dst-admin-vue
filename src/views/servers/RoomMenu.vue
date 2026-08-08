@@ -10,7 +10,7 @@
       <el-col :span="8">
         <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room')">
           <div class="card-icon">
-            <component is="el-icon-setting" class="legacy-icon" />
+            <component :is="'el-icon-setting'" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>基本设置</h3>
@@ -28,7 +28,7 @@
       <el-col :span="8">
         <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/permissions')">
           <div class="card-icon permission-icon">
-            <component is="el-icon-lock" class="legacy-icon" />
+            <component :is="'el-icon-lock'" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>权限设置</h3>
@@ -46,7 +46,7 @@
       <el-col :span="8">
         <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/gameplay')">
           <div class="card-icon gameplay-icon">
-            <component is="el-icon-odometer" class="legacy-icon" />
+            <component :is="'el-icon-odometer'" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>游戏设置</h3>
@@ -66,7 +66,7 @@
       <el-col :span="8">
         <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/mods')">
           <div class="card-icon mods-icon">
-            <component is="el-icon-s-grid" class="legacy-icon" />
+            <component :is="'el-icon-s-grid'" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>模组设置</h3>
@@ -84,7 +84,7 @@
       <el-col :span="8">
         <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/seasons')">
           <div class="card-icon seasons-icon">
-            <component is="el-icon-sunny" class="legacy-icon" />
+            <component :is="'el-icon-sunny'" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>季节设置</h3>
@@ -102,7 +102,7 @@
       <el-col :span="8">
         <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/world')">
           <div class="card-icon world-icon">
-            <component is="el-icon-map-location" class="legacy-icon" />
+            <component :is="'el-icon-map-location'" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>世界设置</h3>
@@ -119,27 +119,29 @@
     
     <!-- 激活房间卡片 -->
     <el-card shadow="hover" class="active-rooms-card" style="margin-top: 20px;">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>当前激活房间</span>
         <el-button style="float: right; padding: 3px 0" type="text" @click="refreshRooms">刷新列表</el-button>
       </div>
+</template>
       
       <el-table :data="activeRooms" style="width: 100%">
         <el-table-column prop="name" label="房间名称"></el-table-column>
         <el-table-column prop="players" label="玩家数" width="100"></el-table-column>
         <el-table-column prop="mode" label="游戏模式" width="120"></el-table-column>
         <el-table-column prop="style" label="风格" width="100">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="style-tag" :class="'style-' + scope.row.style">{{ scope.row.styleName }}</div>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag :type="scope.row.status === '开放' ? 'success' : 'info'" size="mini">{{ scope.row.status }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="250">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-button type="text" size="small" @click="editRoom(scope.row)">编辑</el-button>
             <el-button type="text" size="small" @click="startRoom(scope.row)">启动</el-button>
             <el-button type="text" size="small" @click="duplicateRoom(scope.row)">复制</el-button>
@@ -161,7 +163,7 @@
       custom-class="start-room-dialog">
       <div v-if="currentRoom" class="start-room-dialog-content">
         <div class="room-info">
-          <component is="el-icon-video-play" class="legacy-icon" />
+          <component :is="'el-icon-video-play'" class="legacy-icon" />
           <p>您正在启动房间：<strong>{{ currentRoom.name }}</strong></p>
         </div>
         
@@ -183,16 +185,18 @@
           </el-form-item>
         </el-form>
       </div>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="startRoomDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmStartRoom" :loading="startLoading">启动</el-button>
       </div>
+</template>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { roomApi, systemApi } from '@/api/index';
+import { roomApi } from '@/api/index';
 
 export default {
   name: 'RoomMenu',
@@ -255,7 +259,7 @@ export default {
         type: 'success'
       });
     },
-    editRoom(room) {
+    editRoom() {
       this.$router.push('/servers/room');
       // 可以传递房间ID作为参数，以便加载特定房间的设置
       // this.$router.push({ path: '/servers/room', query: { id: room.id } });
@@ -351,7 +355,7 @@ export default {
               return Promise.all(startPromises);
             }
           })
-          .then(responses => {
+          .then(() => {
             this.$message.success('房间启动成功');
           })
           .catch(error => {
@@ -625,4 +629,4 @@ export default {
     }
   }
 }
-</style> 
+</style>

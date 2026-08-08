@@ -9,7 +9,8 @@
     </div>
     
     <el-card shadow="hover" class="announcements-card">
-      <div slot="header" class="card-header">
+      <template v-slot:header>
+<div  class="card-header">
         <span>公告列表</span>
         <el-select v-model="statusFilter" placeholder="状态筛选" size="small">
           <el-option label="全部" value="all"></el-option>
@@ -17,13 +18,14 @@
           <el-option label="已过期" value="expired"></el-option>
         </el-select>
       </div>
+</template>
       
       <el-table
         :data="filteredAnnouncements"
         style="width: 100%"
         v-loading="loading">
         <el-table-column prop="title" label="标题">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="announcement-title">
               <el-badge v-if="scope.row.important" value="重要" class="important-badge" />
               {{ scope.row.title }}
@@ -33,14 +35,14 @@
         <el-table-column prop="publishTime" label="发布时间" width="180"></el-table-column>
         <el-table-column prop="expireTime" label="过期时间" width="180"></el-table-column>
         <el-table-column prop="status" label="状态" width="100">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag :type="scope.row.status === 'active' ? 'success' : 'info'" size="mini">
               {{ scope.row.status === 'active' ? '有效' : '已过期' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-button 
               type="primary" 
               size="mini" 
@@ -73,7 +75,8 @@
           <div class="announcement-content" v-html="currentAnnouncement.content"></div>
         </div>
       </template>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
         <template v-if="dialogMode === 'view'">
           <el-button type="primary" @click="editCurrentAnnouncement">编辑</el-button>
@@ -82,6 +85,7 @@
           <el-button type="success" @click="saveAnnouncement">保存</el-button>
         </template>
       </div>
+</template>
     </el-dialog>
     
     <!-- 编辑/创建公告表单 -->
@@ -113,17 +117,19 @@
           <el-switch v-model="announcementForm.important"></el-switch>
         </el-form-item>
       </el-form>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="formVisible = false">取消</el-button>
         <el-button type="primary" @click="submitAnnouncementForm">确定</el-button>
       </div>
+</template>
     </el-dialog>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'Announcements',
+  name: 'AnnouncementsView',
   data() {
     return {
       loading: false,
@@ -361,4 +367,4 @@ export default {
   line-height: 1.6;
   white-space: pre-wrap;
 }
-</style> 
+</style>

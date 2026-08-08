@@ -6,10 +6,12 @@
     </div>
     
     <el-card class="settings-card">
-      <div slot="header" class="card-header">
+      <template v-slot:header>
+<div  class="card-header">
         <span>基本信息设置</span>
         <el-button style="float: right; padding: 3px 0" type="text" @click="saveSettings">保存设置</el-button>
       </div>
+</template>
       
       <el-form :model="roomForm" label-width="100px" :rules="rules" ref="roomForm">
         <el-form-item label="房间名称" prop="name">

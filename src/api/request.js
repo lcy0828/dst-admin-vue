@@ -1,10 +1,9 @@
 import axios from 'axios';
 import apiConfig from './config';
-import { ElMessage as Message, ElLoading as Loading } from 'element-plus';
+import { ElMessage as Message } from 'element-plus';
 import router from '@/router';
 import qs from 'qs';
 
-let loadingInstance;
 const instance = axios.create({
   baseURL: apiConfig.BASE_URL,
   timeout: apiConfig.TIMEOUT,
@@ -15,44 +14,9 @@ const instance = axios.create({
   }
 });
 
-let isRefreshing = false;
-let retryRequests = [];
-instance.interceptors.request.use(
-  config => {
-    // 添加请求日志
-    console.log(`请求: ${config.method.toUpperCase()} ${config.url}`, {
-      params: config.params,
-      data: config.data
-    });
-
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  error => {
-    if (loadingInstance) {
-      loadingInstance.close();
-    }
-    return Promise.reject(error);
-  }
-);
-
 // 响应拦截器
 instance.interceptors.response.use(
   response => {
-    // 添加响应日志
-    console.log(`响应: ${response.config.method.toUpperCase()} ${response.config.url}`, {
-      status: response.status,
-      data: response.data
-    });
-
-    // 关闭加载中
-    if (loadingInstance) {
-      loadingInstance.close();
-    }
-
     const res = response.data;
 
     // 处理带code字段的响应
@@ -80,35 +44,18 @@ instance.interceptors.response.use(
     return res;
   },
   error => {
-    if (loadingInstance) {
-      loadingInstance.close();
-    }
-
     if (error.response) {
-      const { status, data } = error.response;
+      const { status } = error.response;
 
       switch (status) {
         case 400:
           break;
         case 401:
-          if (!isRefreshing) {
-            isRefreshing = true;
-            localStorage.removeItem('token');
-            localStorage.removeItem('isLoggedIn');
+          if (router.currentRoute.value.path !== '/login') {
             Message.error('登录已过期，请重新登录');
-            router.push('/login');
-
-            setTimeout(() => {
-              isRefreshing = false;
-              retryRequests = [];
-            }, 1000);
+            void router.push('/login');
           }
-          return new Promise((resolve) => {
-            retryRequests.push((token) => {
-              error.config.headers['Authorization'] = `Bearer ${token}`;
-              resolve(instance(error.config));
-            });
-          });
+          break;
         case 403:
           break;
         case 404:
@@ -131,11 +78,8 @@ instance.interceptors.response.use(
 // 封装请求方法
 const request = {
   get(url, params, config = {}) {
-    console.log('request.get 调用:', { url, params, config });
-
     // 如果params是params对象嵌套的情况
     if (params && typeof params === 'object' && params.params && typeof params.params === 'object') {
-      console.log('request.get 使用嵌套参数:', params.params);
       return instance.get(url, {
         ...config,
         params: params.params
@@ -143,26 +87,15 @@ const request = {
     }
 
     // 普通参数情况
-    console.log('request.get 使用普通参数:', params);
     return instance.get(url, {
       ...config,
       params
     });
   },
   post(url, data, config = {}) {
-    console.log('request.post 调用:', { url, data, config });
-    console.log('data 类型:', typeof data);
-    if (data && data.priority !== undefined) {
-      console.log('priority 类型:', typeof data.priority, 'priority 值:', data.priority);
-    }
     return instance.post(url, data, config);
   },
   put(url, data, config = {}) {
-    console.log('request.put 调用:', { url, data, config });
-    console.log('data 类型:', typeof data);
-    if (data && data.priority !== undefined) {
-      console.log('priority 类型:', typeof data.priority, 'priority 值:', data.priority);
-    }
     return instance.put(url, data, config);
   },
   delete(url, params, config = {}) {

@@ -7,7 +7,7 @@
 
 <script>
 export default {
-  name: 'System'
+  name: 'SystemView'
 }
 </script>
 
@@ -15,4 +15,4 @@ export default {
 .system-page {
   padding: 20px;
 }
-</style> 
+</style>

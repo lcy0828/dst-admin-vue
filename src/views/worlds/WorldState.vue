@@ -42,7 +42,7 @@
     <!-- 世界状态信息展示 -->
     <div v-loading="loading" class="state-content">
       <div v-if="!worldState" class="empty-state">
-        <component is="el-icon-info" class="legacy-icon" />
+        <component :is="'el-icon-info'" class="legacy-icon" />
         <p v-if="selectedArchive && selectedWorld">没有找到世界状态信息，请点击查询按钮获取最新数据</p>
         <p v-else>请选择存档和世界，然后点击查询按钮获取世界状态信息</p>
       </div>
@@ -162,12 +162,14 @@
 
         <!-- 季节进度条 -->
         <el-card shadow="hover" class="season-progress-card">
-          <div slot="header" class="clearfix">
+          <template v-slot:header>
+<div  class="clearfix">
             <span>地表季节进度</span>
             <span class="season-days">
               已过 {{ displayValue(worldState.elapsed_days_in_season) }} 天 / 剩余 {{ displayValue(worldState.remaining_days_in_season) }} 天
             </span>
           </div>
+</template>
           <div class="season-progress">
             <el-progress
               v-if="isFiniteNumber(worldState.season_progress)"
@@ -200,13 +202,15 @@
 
         <!-- 详细信息表格 -->
         <el-card shadow="hover" class="details-card">
-          <div slot="header" class="clearfix">
+          <template v-slot:header>
+<div  class="clearfix">
             <span>详细信息</span>
             <el-dropdown style="float: right; margin-left: 10px;" @command="handleCategoryFilter">
               <el-button type="text">
-                {{ currentCategory || '所有分类' }} <component is="el-icon-arrow-down" class="legacy-icon" />
+                {{ currentCategory || '所有分类' }} <component :is="'el-icon-arrow-down'" class="legacy-icon" />
               </el-button>
-              <el-dropdown-menu slot="dropdown">
+              <template v-slot:dropdown>
+<el-dropdown-menu >
                 <el-dropdown-item command="">所有分类</el-dropdown-item>
                 <el-dropdown-item command="basic">基本信息</el-dropdown-item>
                 <el-dropdown-item command="season">季节信息</el-dropdown-item>
@@ -217,6 +221,7 @@
                 <el-dropdown-item command="nightmare">梦魇循环信息</el-dropdown-item>
                 <el-dropdown-item command="other">其他信息</el-dropdown-item>
               </el-dropdown-menu>
+</template>
             </el-dropdown>
             <el-input
               placeholder="搜索属性或描述"
@@ -227,6 +232,7 @@
               prefix-icon="el-icon-search">
             </el-input>
           </div>
+</template>
           <el-table :data="filteredDetailsTableData" style="width: 100%" border stripe>
             <el-table-column prop="name" label="属性" width="180"></el-table-column>
             <el-table-column prop="value" label="值"></el-table-column>
@@ -236,12 +242,14 @@
 
         <!-- 原始数据 -->
         <el-card shadow="hover" class="raw-data-card">
-          <div slot="header" class="clearfix">
+          <template v-slot:header>
+<div  class="clearfix">
             <span>原始数据</span>
             <el-button style="float: right; padding: 3px 0" type="text" @click="toggleRawData">
               {{ showRawData ? '隐藏' : '显示' }}
             </el-button>
           </div>
+</template>
           <div v-if="showRawData" class="raw-data">
             <pre>{{ worldState.raw_data }}</pre>
           </div>

@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div class="app-root">
     <router-view/>
   </div>
 </template>
@@ -26,7 +26,8 @@ html, body {
   color: #333;
 }
 
-#app {
+#app,
+.app-root {
   height: 100%;
 }
 
@@ -114,4 +115,4 @@ html, body {
 .xterm-screen {
   width: 100% !important;
 }
-</style> 
+</style>

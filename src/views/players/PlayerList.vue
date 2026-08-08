@@ -3,7 +3,7 @@
     <!-- 页面标题和操作区域 -->
     <div class="page-header">
       <div class="title-container">
-        <component is="el-icon-user" class="legacy-icon" />
+        <component :is="'el-icon-user'" class="legacy-icon" />
         <span>玩家列表</span>
       </div>
       <div class="action-buttons">
@@ -66,12 +66,14 @@
 
     <!-- 数据表格 -->
     <el-card class="table-card" shadow="hover" v-loading="loading">
-      <div class="table-operations" slot="header">
+      <template v-slot:header>
+<div class="table-operations" >
         <span>玩家列表</span>
         <div class="table-actions">
           <el-button size="mini" type="primary" icon="el-icon-download" @click="exportPlayerData">导出数据</el-button>
         </div>
       </div>
+</template>
 
       <el-table
         :data="playerList"
@@ -83,17 +85,17 @@
         <el-table-column prop="id" label="ID" width="80" sortable></el-table-column>
         <el-table-column prop="archive_name" label="存档名称" width="120" sortable></el-table-column>
         <el-table-column prop="player_name" label="玩家名称" width="150">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="player-name-cell">
               <el-tooltip :content="scope.row.player_name" placement="top" effect="light">
                 <div class="name-with-badges">
                   <span class="truncated-name">{{ scope.row.player_name }}</span>
                   <div class="name-badges">
                     <el-tooltip v-if="scope.row.is_admin" content="管理员" placement="top" effect="light">
-                      <component is="el-icon-trophy" class="legacy-icon admin-icon-small" />
+                      <component :is="'el-icon-trophy'" class="legacy-icon admin-icon-small" />
                     </el-tooltip>
                     <el-tooltip v-if="scope.row.is_friend" content="好友" placement="top" effect="light">
-                      <component is="el-icon-s-custom" class="legacy-icon friend-icon-small" />
+                      <component :is="'el-icon-s-custom'" class="legacy-icon friend-icon-small" />
                     </el-tooltip>
                   </div>
                 </div>
@@ -103,13 +105,13 @@
         </el-table-column>
         <el-table-column prop="user_id" label="KU ID" width="150"></el-table-column>
         <el-table-column prop="prefab" label="角色" width="100">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag size="mini" type="info">{{ getCharacterName(scope.row.prefab) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="player_age" label="天数" width="80" sortable></el-table-column>
         <el-table-column prop="status" label="状态" width="100" sortable>
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag :type="scope.row.status === 'online' ? 'success' : 'info'" size="mini">
               {{ scope.row.status === 'online' ? '在线' : '离线' }}
             </el-tag>
@@ -118,7 +120,7 @@
 
         <!-- 网络质量 -->
         <el-table-column label="网络质量" width="100" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="network-quality">
               <div v-if="scope.row.status === 'online'" class="signal-icon">
                 <div class="signal-bars" :class="getNetworkSignalClass(scope.row.net_score)">
@@ -138,7 +140,7 @@
 
         <!-- 玩家性能 -->
         <el-table-column label="玩家性能" width="100" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="performance-container">
               <el-tooltip content="性能指标" placement="top" effect="light">
                 <div class="performance-indicator" :class="getPerformanceClass(scope.row.performance)">
@@ -156,7 +158,7 @@
 
         <!-- SteamID -->
         <el-table-column label="Steam ID" width="150">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="steam-id-container">
               <el-tooltip content="点击复制 Steam ID" placement="top" effect="light">
                 <span class="steam-id-text" @click="copySteamID(scope.row.net_id)">{{ formatSteamID(scope.row.net_id) }}</span>
@@ -173,17 +175,17 @@
           </template>
         </el-table-column>
         <el-table-column prop="first_seen" label="首次登录" width="170" sortable>
-          <template slot-scope="scope">
+          <template v-slot="scope">
             {{ formatDate(scope.row.first_seen) }}
           </template>
         </el-table-column>
         <el-table-column prop="last_seen" label="最后登录" width="170" sortable>
-          <template slot-scope="scope">
+          <template v-slot="scope">
             {{ formatDate(scope.row.last_seen) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="320" fixed="right">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="operation-buttons">
               <!-- 基本操作按钮 -->
               <el-tooltip content="查看详情" placement="top" effect="light">
@@ -291,8 +293,8 @@
             <div class="detail-name-with-badges">
               <span>{{ currentPlayer.player_name }}</span>
               <div class="detail-badges-container">
-                <component v-if="currentPlayer.is_admin" is="el-icon-trophy" class="legacy-icon admin-icon-small" title="管理员" />
-                <component v-if="currentPlayer.is_friend" is="el-icon-s-custom" class="legacy-icon friend-icon-small" title="好友" />
+                <component v-if="currentPlayer.is_admin" :is="'el-icon-trophy'" class="legacy-icon admin-icon-small" title="管理员" />
+                <component v-if="currentPlayer.is_friend" :is="'el-icon-s-custom'" class="legacy-icon friend-icon-small" title="好友" />
               </div>
             </div>
           </el-descriptions-item>
@@ -395,10 +397,12 @@
           </el-select>
         </el-form-item>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="banDialogVisible = false">取消</el-button>
         <el-button type="danger" @click="confirmBanPlayer" :loading="banning">确认封禁</el-button>
       </span>
+</template>
     </el-dialog>
 
     <!-- 无敌模式对话框 -->
@@ -415,10 +419,12 @@
           </el-form-item>
         </el-form>
       </div>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="godModeDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmGodMode" :loading="settingGodMode">确认</el-button>
       </span>
+</template>
     </el-dialog>
 
     <!-- 制作模式对话框 -->
@@ -435,10 +441,12 @@
           </el-form-item>
         </el-form>
       </div>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="creativeModeDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmCreativeMode" :loading="settingCreativeMode">确认</el-button>
       </span>
+</template>
     </el-dialog>
 
     <!-- 会话选择对话框 -->
@@ -473,10 +481,12 @@
           style="margin-top: 10px">
         </el-alert>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="sessionSelectDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmSessionSelect">确认</el-button>
       </span>
+</template>
     </el-dialog>
 
     <!-- 手动更新玩家列表对话框 -->
@@ -512,10 +522,12 @@
           style="margin-top: 10px">
         </el-alert>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="updateDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmUpdate" :loading="updating" :disabled="!updateForm.archive_name">开始更新</el-button>
       </span>
+</template>
     </el-dialog>
 
     <!-- 重选人物对话框 -->
@@ -530,10 +542,12 @@
           style="margin: 10px 0">
         </el-alert>
       </div>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="characterDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmChangeCharacter" :loading="changingCharacter">确认重选</el-button>
       </span>
+</template>
     </el-dialog>
 
     <!-- 定时更新任务对话框 -->
@@ -582,10 +596,12 @@
           <el-input type="textarea" :rows="2" v-model="scheduleForm.description" placeholder="请输入任务描述"></el-input>
         </el-form-item>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="scheduleDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="confirmAddSchedule" :loading="addingSchedule">确认添加</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>

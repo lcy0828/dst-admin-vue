@@ -17,14 +17,14 @@
             <div class="change-item-name">{{ item.text }}</div>
             <div class="change-item-values">
               <span class="old-value">{{ item.oldValueText }}</span>
-              <component is="el-icon-arrow-right" class="legacy-icon" />
+              <component :is="'el-icon-arrow-right'" class="legacy-icon" />
               <span class="new-value">{{ item.newValueText }}</span>
             </div>
           </div>
         </div>
         <template #reference>
           <el-button type="text" class="view-changes-btn">
-            <component is="el-icon-view" class="legacy-icon" /> 查看变更 ({{ changedItemsCount }})
+            <component :is="'el-icon-view'" class="legacy-icon" /> 查看变更 ({{ changedItemsCount }})
           </el-button>
         </template>
       </el-popover>

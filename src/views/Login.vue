@@ -56,7 +56,7 @@
 import { authAPI } from '@/api/v2'
 
 export default {
-  name: 'Login',
+  name: 'LoginView',
   data() {
     return {
       loginForm: {

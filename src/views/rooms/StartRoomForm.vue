@@ -29,7 +29,7 @@
           <div class="world-list">
             <template v-if="formData.worldType === 'all'">
               <div v-for="world in room.worlds" :key="world.name" class="world-item">
-                <component is="el-icon-check" class="legacy-icon" />
+                <component :is="'el-icon-check'" class="legacy-icon" />
                 <span>{{ world.name }}</span>
                 <el-tag size="mini" :type="getWorldTagType(world.type)">
                   {{ getWorldTypeName(world.type) }}
@@ -39,36 +39,36 @@
             
             <template v-else-if="formData.worldType === 'forest'">
               <div v-for="world in forestWorlds" :key="world.name" class="world-item">
-                <component is="el-icon-check" class="legacy-icon" />
+                <component :is="'el-icon-check'" class="legacy-icon" />
                 <span>{{ world.name }}</span>
                 <el-tag size="mini" type="primary">森林</el-tag>
               </div>
               <div v-if="forestWorlds.length === 0" class="no-worlds">
-                <component is="el-icon-warning-outline" class="legacy-icon" />
+                <component :is="'el-icon-warning-outline'" class="legacy-icon" />
                 <span>未找到森林世界</span>
               </div>
             </template>
             
             <template v-else-if="formData.worldType === 'cave'">
               <div v-for="world in caveWorlds" :key="world.name" class="world-item">
-                <component is="el-icon-check" class="legacy-icon" />
+                <component :is="'el-icon-check'" class="legacy-icon" />
                 <span>{{ world.name }}</span>
                 <el-tag size="mini" type="success">洞穴</el-tag>
               </div>
               <div v-if="caveWorlds.length === 0" class="no-worlds">
-                <component is="el-icon-warning-outline" class="legacy-icon" />
+                <component :is="'el-icon-warning-outline'" class="legacy-icon" />
                 <span>未找到洞穴世界</span>
               </div>
             </template>
             
             <template v-else-if="formData.worldType === 'unknown'">
               <div v-for="world in unknownWorlds" :key="world.name" class="world-item">
-                <component is="el-icon-check" class="legacy-icon" />
+                <component :is="'el-icon-check'" class="legacy-icon" />
                 <span>{{ world.name }}</span>
                 <el-tag size="mini" type="info">其他</el-tag>
               </div>
               <div v-if="unknownWorlds.length === 0" class="no-worlds">
-                <component is="el-icon-warning-outline" class="legacy-icon" />
+                <component :is="'el-icon-warning-outline'" class="legacy-icon" />
                 <span>未找到其他类型世界</span>
               </div>
             </template>
@@ -83,7 +83,7 @@
     </div>
     
     <div v-else class="error-message">
-      <component is="el-icon-warning-outline" class="legacy-icon" />
+      <component :is="'el-icon-warning-outline'" class="legacy-icon" />
       <p>无法加载房间信息</p>
     </div>
   </div>

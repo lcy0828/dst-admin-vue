@@ -58,7 +58,7 @@
       effect="light"
       class="setting-hover-tips"
     >
-      <component is="el-icon-question" class="legacy-icon" />
+      <component :is="'el-icon-question'" class="legacy-icon" />
     </el-tooltip>
   </div>
 </template>

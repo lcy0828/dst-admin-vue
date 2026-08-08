@@ -3,7 +3,7 @@
     <!-- 标题及操作按钮 -->
     <div class="page-header">
       <div class="title-container">
-        <component is="el-icon-monitor" class="legacy-icon" />
+        <component :is="'el-icon-monitor'" class="legacy-icon" />
         <span>服务器状态监控</span>
       </div>
       <div class="action-buttons">
@@ -65,7 +65,7 @@
           label="服务器名称"
           prop="name"
           min-width="180">
-          <template slot-scope="scope">
+          <template #default="scope">
             <div class="server-name-container">
               <div :class="['server-status', scope.row.status === 'running' ? 'online' : 'offline']"></div>
               <el-tag size="mini" :type="getWorldTypeTagType(scope.row.world_name)" class="server-type-tag">
@@ -81,7 +81,7 @@
           <el-table-column
           label="玩家"
           width="100">
-            <template slot-scope="scope">
+            <template v-slot="scope">
             {{ scope.row.players }}
             </template>
           </el-table-column>
@@ -89,7 +89,7 @@
           <el-table-column
           label="天数"
           width="70">
-          <template slot-scope="scope">
+          <template #default="scope">
             {{ scope.row.days }}
           </template>
           </el-table-column>
@@ -97,7 +97,7 @@
           <el-table-column
           label="季节"
           width="100">
-            <template slot-scope="scope">
+            <template v-slot="scope">
             <el-tag v-if="scope.row.season" :type="getSeasonType(scope.row.season)" size="medium">
               {{ scope.row.season }}
               </el-tag>
@@ -107,7 +107,7 @@
           <el-table-column
           label="服务器模式"
           width="100">
-            <template slot-scope="scope">
+            <template v-slot="scope">
             <el-tag type="info" size="medium" v-if="scope.row.server_mode">
               {{ getServerModeText(scope.row.server_mode) }}
             </el-tag>
@@ -118,7 +118,7 @@
           <el-table-column
           label="运行时间"
           min-width="140">
-            <template slot-scope="scope">
+            <template v-slot="scope">
               <div>{{ formatTimeDiff(Date.now() - new Date(scope.row.start_time).getTime()) }}</div>
           </template>
         </el-table-column>
@@ -126,7 +126,7 @@
         <el-table-column
           label="部署方式"
           width="100">
-          <template slot-scope="scope">
+          <template #default>
             <el-tag size="medium">
               本地
             </el-tag>
@@ -136,7 +136,7 @@
           <el-table-column
             label="操作"
             min-width="200">
-            <template slot-scope="scope">
+            <template v-slot="scope">
             <div class="operation-buttons">
               <el-button
                 size="mini"
@@ -205,21 +205,23 @@
               <el-option label="LuaJit" value="luajit"></el-option>
             </el-select>
             <div class="mode-description" v-if="startRoomForm.serverMode === '64'">
-              <component is="el-icon-warning-outline" class="legacy-icon" /> 64位模式使用64位引擎，可能会更耗内存但性能更好
+              <component :is="'el-icon-warning-outline'" class="legacy-icon" /> 64位模式使用64位引擎，可能会更耗内存但性能更好
             </div>
             <div class="mode-description" v-else-if="startRoomForm.serverMode === 'luajit'">
-              <component is="el-icon-star-on" class="legacy-icon" /> LuaJit模式使用JIT编译器，可能提供更好的性能
+              <component :is="'el-icon-star-on'" class="legacy-icon" /> LuaJit模式使用JIT编译器，可能提供更好的性能
             </div>
             <div class="mode-description" v-else>
-              <component is="el-icon-info" class="legacy-icon" /> 32位模式使用32位引擎，适合大多数服务器
+              <component :is="'el-icon-info'" class="legacy-icon" /> 32位模式使用32位引擎，适合大多数服务器
             </div>
           </el-form-item>
         </el-form>
       </div>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="startRoomDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleStartRoomFrom('startRoomForm')" :loading="startRoomLoading">启动</el-button>
       </div>
+</template>
     </el-dialog>
   </div>
 </template>
@@ -369,7 +371,7 @@ export default {
       // 跳转到房间创建页面
       this.$router.push('/rooms/settings');
     },
-    navigateToRoom(row) {
+    navigateToRoom() {
     },
     getSeasonType(season) {
       const seasonMap = {
@@ -443,12 +445,12 @@ export default {
             }
             promises.push(roomApi.startRoom(params));
           });
-          Promise.all(promises).then(res => {
+          Promise.all(promises).then(() => {
             this.$message.success('启动成功');
             this.startRoomDialogVisible = false;
             this.fetchData();
-          }).catch(err => {
-            console.error(err);
+          }).catch(error => {
+            console.error(error);
           });
         } else {
           return false;
@@ -467,7 +469,7 @@ export default {
             setTimeout(() => {
               this.fetchData();
             }, 10000);
-          }).catch(err => {
+          }).catch(() => {
             this.$message.error('停止失败!');
           });
         }).catch(() => {

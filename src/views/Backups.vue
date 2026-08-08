@@ -9,7 +9,8 @@
     </div>
     
     <el-card shadow="hover" class="backups-card">
-      <div slot="header" class="card-header">
+      <template v-slot:header>
+<div  class="card-header">
         <span>备份列表</span>
         <el-select v-model="selectedFilter" placeholder="选择存档" clearable style="width: 180px">
           <el-option label="全部" value=""></el-option>
@@ -21,15 +22,16 @@
           </el-option>
         </el-select>
       </div>
+</template>
       
       <el-table
         :data="filteredBackups"
         style="width: 100%"
         v-loading="loading">
         <el-table-column prop="name" label="备份名称">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="backup-name">
-              <component is="el-icon-document" class="legacy-icon" />
+              <component :is="'el-icon-document'" class="legacy-icon" />
               {{ scope.row.name }}
             </div>
           </template>
@@ -38,7 +40,7 @@
         <el-table-column prop="size_formatted" label="大小" width="120"></el-table-column>
         <el-table-column prop="create_time" label="创建时间" width="180"></el-table-column>
         <el-table-column label="操作" width="280">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-button 
               type="success" 
               size="mini" 
@@ -70,10 +72,12 @@
           :value="archive">
         </el-option>
       </el-select>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="createDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="createBackup" :loading="createLoading">创建</el-button>
       </span>
+</template>
     </el-dialog>
 
     <!-- 恢复备份对话框 -->
@@ -100,7 +104,7 @@
 
           <div v-if="restoreOption === 'original'" class="original-archive-option">
             <div class="warning-message">
-              <component is="el-icon-warning" class="legacy-icon" />
+              <component :is="'el-icon-warning'" class="legacy-icon" />
               <span>警告：此操作将覆盖原存档的所有内容，且无法撤销，请确保已备份重要数据！</span>
             </div>
           </div>
@@ -116,17 +120,19 @@
           </div>
         </div>
       </div>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="restoreDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="restoreBackup" :loading="restoreLoading">恢复</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'Backups',
+  name: 'BackupsView',
   data() {
     return {
       loading: false,

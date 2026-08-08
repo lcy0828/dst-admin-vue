@@ -7,21 +7,23 @@
     <el-tabs v-model="activeTab" type="card">
       <el-tab-pane label="管理员名单" name="admin">
         <el-card shadow="hover" v-loading="loading.admin">
-          <div slot="header" class="list-header">
+          <template v-slot:header>
+<div  class="list-header">
             <span>管理员列表</span>
             <div>
               <el-button size="small" type="primary" @click="addUser('admin')">添加管理员</el-button>
             </div>
           </div>
+</template>
           
           <div v-if="adminList.length > 0">
             <el-table :data="adminList" style="width: 100%">
               <el-table-column prop="name" label="玩家名称"></el-table-column>
               <el-table-column prop="id" label="KU ID"></el-table-column>
               <el-table-column fixed="right" label="操作" width="120">
-                <template slot-scope="scope">
+                <template v-slot="scope">
                   <el-button
-                    @click.native.prevent="removeUser('admin', scope.$index, scope.row)"
+                    @click.prevent="removeUser('admin', scope.$index, scope.row)"
                     type="danger"
                     size="small">
                     移除
@@ -31,7 +33,7 @@
             </el-table>
           </div>
           <div v-else class="empty-list">
-            <component is="el-icon-info" class="legacy-icon" />
+            <component :is="'el-icon-info'" class="legacy-icon" />
             <p>暂无管理员</p>
           </div>
         </el-card>
@@ -39,21 +41,23 @@
       
       <el-tab-pane label="黑名单" name="block">
         <el-card shadow="hover" v-loading="loading.block">
-          <div slot="header" class="list-header">
+          <template v-slot:header>
+<div  class="list-header">
             <span>黑名单列表</span>
             <div>
               <el-button size="small" type="primary" @click="addUser('block')">添加黑名单</el-button>
             </div>
           </div>
+</template>
           
           <div v-if="blockList.length > 0">
             <el-table :data="blockList" style="width: 100%">
               <el-table-column prop="name" label="玩家名称"></el-table-column>
               <el-table-column prop="id" label="KU ID"></el-table-column>
               <el-table-column fixed="right" label="操作" width="120">
-                <template slot-scope="scope">
+                <template v-slot="scope">
                   <el-button
-                    @click.native.prevent="removeUser('block', scope.$index, scope.row)"
+                    @click.prevent="removeUser('block', scope.$index, scope.row)"
                     type="danger"
                     size="small">
                     移除
@@ -63,7 +67,7 @@
             </el-table>
           </div>
           <div v-else class="empty-list">
-            <component is="el-icon-info" class="legacy-icon" />
+            <component :is="'el-icon-info'" class="legacy-icon" />
             <p>暂无黑名单用户</p>
           </div>
         </el-card>
@@ -71,21 +75,23 @@
       
       <el-tab-pane label="白名单" name="white">
         <el-card shadow="hover" v-loading="loading.white">
-          <div slot="header" class="list-header">
+          <template v-slot:header>
+<div  class="list-header">
             <span>白名单列表</span>
             <div>
               <el-button size="small" type="primary" @click="addUser('white')">添加白名单</el-button>
             </div>
           </div>
+</template>
           
           <div v-if="whiteList.length > 0">
             <el-table :data="whiteList" style="width: 100%">
               <el-table-column prop="name" label="玩家名称"></el-table-column>
               <el-table-column prop="id" label="KU ID"></el-table-column>
               <el-table-column fixed="right" label="操作" width="120">
-                <template slot-scope="scope">
+                <template v-slot="scope">
                   <el-button
-                    @click.native.prevent="removeUser('white', scope.$index, scope.row)"
+                    @click.prevent="removeUser('white', scope.$index, scope.row)"
                     type="danger"
                     size="small">
                     移除
@@ -95,7 +101,7 @@
             </el-table>
           </div>
           <div v-else class="empty-list">
-            <component is="el-icon-info" class="legacy-icon" />
+            <component :is="'el-icon-info'" class="legacy-icon" />
             <p>暂无白名单用户</p>
           </div>
         </el-card>
@@ -109,10 +115,12 @@
           <el-input v-model="userForm.id" placeholder="格式: KU_XXXXX"></el-input>
         </el-form-item>
       </el-form>
-      <span slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<span  class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitUserForm" :loading="submitting">确定</el-button>
       </span>
+</template>
     </el-dialog>
   </div>
 </template>

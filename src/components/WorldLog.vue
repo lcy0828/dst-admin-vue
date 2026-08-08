@@ -2,7 +2,7 @@
   <div class="world-log-container">
     <div class="log-header">
       <div class="log-title">
-        <component is="el-icon-document" class="legacy-icon" />
+        <component :is="'el-icon-document'" class="legacy-icon" />
         <span>{{ title || '世界日志' }}</span>
       </div>
       <div class="log-actions">
@@ -127,7 +127,7 @@ export default {
     // 监听窗口大小变化，调整终端大小
     window.addEventListener('resize', this.onResize);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // 清理事件监听
     window.removeEventListener('resize', this.onResize);
     
@@ -512,4 +512,4 @@ export default {
 :deep(.xterm-viewport:hover::-webkit-scrollbar-thumb) {
   background: rgba(144, 147, 153, 0.5);
 }
-</style> 
+</style>
