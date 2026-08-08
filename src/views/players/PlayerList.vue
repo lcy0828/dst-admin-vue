@@ -1,583 +1,342 @@
 <template>
   <div class="player-list-page">
-    <!-- 页面标题和操作区域 -->
     <div class="page-header">
-      <div class="title-container">
-        <component :is="'el-icon-user'" class="legacy-icon" />
-        <span>玩家列表</span>
-      </div>
+      <div class="title-container"><Users /><h2>玩家列表</h2></div>
       <div class="action-buttons">
-        <el-button size="small" icon="el-icon-refresh" @click="refreshData">刷新</el-button>
-        <el-button size="small" type="primary" icon="el-icon-upload2" @click="showUpdateDialog">手动更新玩家列表</el-button>
-        <el-button size="small" type="success" icon="el-icon-s-operation" @click="showSessionSelect">选择游戏世界</el-button>
-        <el-button size="small" type="warning" icon="el-icon-alarm-clock" @click="showScheduleDialog">添加定时更新任务</el-button>
-        <el-tag v-if="activeSessionName" type="success" effect="dark">当前世界: {{ activeSessionLabel }}</el-tag>
+        <UiButton size="sm" variant="outline" @click="refreshData" :disabled="loading"><RefreshCw data-icon="inline-start" />刷新</UiButton>
+        <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />手动更新</UiButton>
+        <UiButton size="sm" variant="outline" @click="showSessionSelect"><Globe2 data-icon="inline-start" />选择游戏世界</UiButton>
+        <UiButton size="sm" @click="showScheduleDialog"><Clock3 data-icon="inline-start" />添加定时任务</UiButton>
+        <Badge v-if="activeSessionName">当前世界: {{ activeSessionLabel }}</Badge>
       </div>
     </div>
 
-    <!-- 筛选区域 -->
-    <el-card class="filter-card" shadow="never">
-      <el-form :inline="true" :model="filterForm" class="filter-form" size="small">
-        <el-form-item label="存档名称">
-          <el-select v-model="filterForm.archive_name" placeholder="选择存档" clearable @change="handleFilter">
-            <el-option label="全部存档" value=""></el-option>
-            <el-option
-              v-for="archive in archiveOptions"
-              :key="archive.value"
-              :label="archive.label"
-              :value="archive.value">
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="玩家状态">
-          <el-select v-model="filterForm.status" placeholder="选择状态" clearable @change="handleFilter">
-            <el-option label="全部状态" value=""></el-option>
-            <el-option label="在线" value="online"></el-option>
-            <el-option label="离线" value="offline"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="角色">
-          <el-select v-model="filterForm.prefab" placeholder="选择角色" clearable @change="handleFilter">
-            <el-option label="全部角色" value=""></el-option>
-            <el-option
-              v-for="character in characterOptions"
-              :key="character.value"
-              :label="character.label"
-              :value="character.value">
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-input
-            v-model="filterForm.keyword"
-            placeholder="搜索玩家名称/ID"
-            prefix-icon="el-icon-search"
-            clearable
-            @keyup.enter="handleFilter"
-            @clear="handleFilter">
-          </el-input>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" icon="el-icon-search" @click="handleFilter">搜索</el-button>
-          <el-button icon="el-icon-refresh" @click="resetFilter">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <Card class="filter-card">
+      <CardContent>
+        <FieldGroup class="filter-form">
+          <Field>
+            <FieldLabel for="player-archive-filter">存档名称</FieldLabel>
+            <NativeSelect id="player-archive-filter" v-model="filterForm.archive_name" @change="handleFilter">
+              <NativeSelectOption value="">全部存档</NativeSelectOption>
+              <NativeSelectOption v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</NativeSelectOption>
+            </NativeSelect>
+          </Field>
+          <Field>
+            <FieldLabel for="player-status-filter">玩家状态</FieldLabel>
+            <NativeSelect id="player-status-filter" v-model="filterForm.status" @change="handleFilter">
+              <NativeSelectOption value="">全部状态</NativeSelectOption><NativeSelectOption value="online">在线</NativeSelectOption><NativeSelectOption value="offline">离线</NativeSelectOption>
+            </NativeSelect>
+          </Field>
+          <Field>
+            <FieldLabel for="player-character-filter">角色</FieldLabel>
+            <NativeSelect id="player-character-filter" v-model="filterForm.prefab" @change="handleFilter">
+              <NativeSelectOption value="">全部角色</NativeSelectOption>
+              <NativeSelectOption v-for="character in characterOptions" :key="character.value" :value="character.value">{{ character.label }}</NativeSelectOption>
+            </NativeSelect>
+          </Field>
+          <Field>
+            <FieldLabel for="player-keyword-filter">关键词</FieldLabel>
+            <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="player-keyword-filter" v-model="filterForm.keyword" placeholder="搜索玩家名称或 ID" @keyup.enter="handleFilter" /></InputGroup>
+          </Field>
+          <div class="filter-actions"><UiButton @click="handleFilter"><Search data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetFilter">重置</UiButton></div>
+        </FieldGroup>
+      </CardContent>
+    </Card>
 
-    <!-- 数据表格 -->
-    <el-card class="table-card" shadow="hover" v-loading="loading">
-      <template v-slot:header>
-<div class="table-operations" >
-        <span>玩家列表</span>
-        <div class="table-actions">
-          <el-button size="mini" type="primary" icon="el-icon-download" @click="exportPlayerData">导出数据</el-button>
-        </div>
-      </div>
-</template>
-
-      <el-table
-        :data="playerList"
-        style="width: 100%"
-        border
-        stripe
-        :default-sort="{prop: 'last_seen', order: 'descending'}"
-        @sort-change="handleSortChange">
-        <el-table-column prop="id" label="ID" width="80" sortable></el-table-column>
-        <el-table-column prop="archive_name" label="存档名称" width="120" sortable></el-table-column>
-        <el-table-column prop="player_name" label="玩家名称" width="150">
-          <template v-slot="scope">
-            <div class="player-name-cell">
-              <el-tooltip :content="scope.row.player_name" placement="top" effect="light">
-                <div class="name-with-badges">
-                  <span class="truncated-name">{{ scope.row.player_name }}</span>
-                  <div class="name-badges">
-                    <el-tooltip v-if="scope.row.is_admin" content="管理员" placement="top" effect="light">
-                      <component :is="'el-icon-trophy'" class="legacy-icon admin-icon-small" />
-                    </el-tooltip>
-                    <el-tooltip v-if="scope.row.is_friend" content="好友" placement="top" effect="light">
-                      <component :is="'el-icon-s-custom'" class="legacy-icon friend-icon-small" />
-                    </el-tooltip>
+    <Card class="table-card">
+      <CardHeader class="table-operations">
+        <div><CardTitle>玩家列表</CardTitle><CardDescription>共 {{ pagination.total }} 名玩家</CardDescription></div>
+        <UiButton size="sm" @click="exportPlayerData"><Download data-icon="inline-start" />导出数据</UiButton>
+      </CardHeader>
+      <CardContent>
+        <div v-if="loading" class="loading-state"><Spinner /><span>正在加载玩家列表</span></div>
+        <div v-else-if="playerList.length > 0" class="table-wrap">
+          <UiTable>
+            <TableHeader>
+              <TableRow>
+                <TableHead><SortButton label="ID" field="id" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead><SortButton label="存档名称" field="archive_name" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead>玩家名称</TableHead>
+                <TableHead>KU ID</TableHead>
+                <TableHead>角色</TableHead>
+                <TableHead><SortButton label="天数" field="player_age" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead><SortButton label="状态" field="status" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead>网络质量</TableHead>
+                <TableHead>性能</TableHead>
+                <TableHead>Steam ID</TableHead>
+                <TableHead><SortButton label="首次登录" field="first_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead><SortButton label="最后登录" field="last_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead class="action-column">操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="player in playerList" :key="player.id">
+                <TableCell>{{ player.id }}</TableCell>
+                <TableCell>{{ player.archive_name }}</TableCell>
+                <TableCell>
+                  <div class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" title="管理员" /><UserRoundCheck v-if="player.is_friend" title="好友" /></div>
+                </TableCell>
+                <TableCell class="mono-cell">{{ player.user_id }}</TableCell>
+                <TableCell><Badge variant="outline">{{ getCharacterName(player.prefab) }}</Badge></TableCell>
+                <TableCell>{{ player.player_age }}</TableCell>
+                <TableCell><Badge :variant="player.status === 'online' ? 'default' : 'secondary'">{{ player.status === 'online' ? '在线' : '离线' }}</Badge></TableCell>
+                <TableCell><Badge v-if="player.status === 'online'" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
+                <TableCell><Badge :variant="getPerformanceBadgeVariant(player.performance)">{{ getPerformanceText(player.performance) }}</Badge></TableCell>
+                <TableCell>
+                  <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" title="在 Steam 中查看" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
+                </TableCell>
+                <TableCell>{{ formatDate(player.first_seen) }}</TableCell>
+                <TableCell>{{ formatDate(player.last_seen) }}</TableCell>
+                <TableCell class="action-column">
+                  <div class="row-actions">
+                    <UiButton variant="ghost" size="sm" @click="viewPlayerDetail(player)">详情</UiButton>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem @select="toggleGodMode(player)">无敌模式</DropdownMenuItem>
+                          <DropdownMenuItem @select="toggleCreativeMode(player)">制作模式</DropdownMenuItem>
+                          <DropdownMenuItem @select="resurrectPlayer(player)">复活玩家</DropdownMenuItem>
+                          <DropdownMenuItem @select="changeCharacter(player)">重选人物</DropdownMenuItem>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                          <DropdownMenuItem variant="destructive" @select="kickPlayer(player)">踢出玩家</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" @select="banPlayer(player)">封禁玩家</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" @select="killPlayer(player)">杀死玩家</DropdownMenuItem>
+                        </DropdownMenuGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </div>
-              </el-tooltip>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="user_id" label="KU ID" width="150"></el-table-column>
-        <el-table-column prop="prefab" label="角色" width="100">
-          <template v-slot="scope">
-            <el-tag size="mini" type="info">{{ getCharacterName(scope.row.prefab) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="player_age" label="天数" width="80" sortable></el-table-column>
-        <el-table-column prop="status" label="状态" width="100" sortable>
-          <template v-slot="scope">
-            <el-tag :type="scope.row.status === 'online' ? 'success' : 'info'" size="mini">
-              {{ scope.row.status === 'online' ? '在线' : '离线' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <!-- 网络质量 -->
-        <el-table-column label="网络质量" width="100" align="center">
-          <template v-slot="scope">
-            <div class="network-quality">
-              <div v-if="scope.row.status === 'online'" class="signal-icon">
-                <div class="signal-bars" :class="getNetworkSignalClass(scope.row.net_score)">
-                  <div class="bar bar1"></div>
-                  <div class="bar bar2"></div>
-                  <div class="bar bar3"></div>
-                  <div class="bar bar4"></div>
-                </div>
-                <span class="signal-text" :style="{color: getNetworkColor(scope.row.net_score)}">
-                  {{ getNetworkQuality(scope.row.net_score) }}
-                </span>
-              </div>
-              <span v-else>-</span>
-            </div>
-          </template>
-        </el-table-column>
-
-        <!-- 玩家性能 -->
-        <el-table-column label="玩家性能" width="100" align="center">
-          <template v-slot="scope">
-            <div class="performance-container">
-              <el-tooltip content="性能指标" placement="top" effect="light">
-                <div class="performance-indicator" :class="getPerformanceClass(scope.row.performance)">
-                  <div class="p-bar p-bar1"></div>
-                  <div class="p-bar p-bar2"></div>
-                  <div class="p-bar p-bar3"></div>
-                </div>
-              </el-tooltip>
-              <span class="performance-text" :style="{color: getPerformanceColor(scope.row.performance)}">
-                {{ getPerformanceText(scope.row.performance) }}
-              </span>
-            </div>
-          </template>
-        </el-table-column>
-
-        <!-- SteamID -->
-        <el-table-column label="Steam ID" width="150">
-          <template v-slot="scope">
-            <div class="steam-id-container">
-              <el-tooltip content="点击复制 Steam ID" placement="top" effect="light">
-                <span class="steam-id-text" @click="copySteamID(scope.row.net_id)">{{ formatSteamID(scope.row.net_id) }}</span>
-              </el-tooltip>
-              <el-tooltip content="在 Steam 中查看" placement="top" effect="light">
-                <div class="steam-icon-container" @click="openSteamProfile(scope.row.net_id)">
-                  <svg class="steam-svg-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 1.5c-3.6 0-6.5 2.9-6.5 6.5 0 3.6 2.9 6.5 6.5 6.5 3.6 0 6.5-2.9 6.5-6.5 0-3.6-2.9-6.5-6.5-6.5zM8 0c4.4 0 8 3.6 8 8s-3.6 8-8 8-8-3.6-8-8 3.6-8 8-8v0z"></path>
-                    <path d="M7.3 7.8l-1.2 2.4c-0.2-0.1-0.4-0.1-0.6-0.1-0.8 0-1.5 0.7-1.5 1.5s0.7 1.5 1.5 1.5c0.8 0 1.4-0.6 1.5-1.4l1.7-1.2c0.9 0.4 1.9 0.1 2.3-0.8s0.1-1.9-0.8-2.3c-0.9-0.4-1.9-0.1-2.3 0.8-0.1 0.2-0.2 0.4-0.2 0.6l-2.4 1.2c-0.2-0.1-0.4-0.2-0.6-0.2-0.1 0-0.1 0-0.2 0l1.1-2.3c0.1 0 0.1 0 0.2 0 0.8 0 1.5-0.7 1.5-1.5s-0.7-1.5-1.5-1.5c-0.8 0-1.5 0.7-1.5 1.5 0 0.5 0.3 1 0.7 1.3l-1.1 2.1c-0.7-0.3-1.5 0-1.8 0.7s0 1.5 0.7 1.8c0.7 0.3 1.5 0 1.8-0.7 0.1-0.2 0.1-0.4 0.1-0.6l1.7-1.2c0.3 0.1 0.7 0.2 1 0.2 1.1 0 2-0.9 2-2s-0.9-2-2-2c-0.8 0-1.5 0.5-1.8 1.2z"></path>
-                  </svg>
-                </div>
-              </el-tooltip>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="first_seen" label="首次登录" width="170" sortable>
-          <template v-slot="scope">
-            {{ formatDate(scope.row.first_seen) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="last_seen" label="最后登录" width="170" sortable>
-          <template v-slot="scope">
-            {{ formatDate(scope.row.last_seen) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="132" fixed="right" align="center">
-          <template v-slot="scope">
-            <div class="operation-buttons">
-              <el-button size="small" type="primary" text icon="el-icon-view" @click="viewPlayerDetail(scope.row)">
-                详情
-              </el-button>
-              <el-dropdown trigger="click" @command="handlePlayerCommand">
-                <el-button size="small" text aria-label="更多玩家操作">
-                  <component :is="'el-icon-more'" class="legacy-icon" />
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item :command="{ action: 'god', player: scope.row }">无敌模式</el-dropdown-item>
-                    <el-dropdown-item :command="{ action: 'creative', player: scope.row }">制作模式</el-dropdown-item>
-                    <el-dropdown-item :command="{ action: 'resurrect', player: scope.row }">复活玩家</el-dropdown-item>
-                    <el-dropdown-item :command="{ action: 'character', player: scope.row }">重选人物</el-dropdown-item>
-                    <el-dropdown-item divided :command="{ action: 'kick', player: scope.row }">踢出玩家</el-dropdown-item>
-                    <el-dropdown-item :command="{ action: 'ban', player: scope.row }">封禁玩家</el-dropdown-item>
-                    <el-dropdown-item :command="{ action: 'kill', player: scope.row }">杀死玩家</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <!-- 分页 -->
-      <div class="pagination-container">
-        <el-pagination
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-          :current-page="pagination.page"
-          :page-sizes="[10, 20, 50, 100]"
-          :page-size="pagination.page_size"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="pagination.total">
-        </el-pagination>
-      </div>
-    </el-card>
-
-    <!-- 玩家详情抽屉 -->
-    <el-drawer
-      v-model="playerDetailVisible"
-      title="玩家详情"
-      direction="rtl"
-      size="min(620px, 94vw)"
-      destroy-on-close
-      class="player-detail-drawer"
-    >
-      <div v-if="currentPlayer" class="player-detail">
-        <div class="player-detail-heading">
-          <span class="detail-avatar"><component :is="'el-icon-user'" /></span>
-          <div>
-            <div class="detail-player-name">
-              <strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong>
-              <el-tag :type="currentPlayer.status === 'online' ? 'success' : 'info'" size="small">
-                {{ currentPlayer.status === 'online' ? '在线' : '离线' }}
-              </el-tag>
-            </div>
-            <span>{{ getCharacterName(currentPlayer.prefab) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || '未知世界' }}</span>
-          </div>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </UiTable>
         </div>
+        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>暂无玩家数据</EmptyTitle><EmptyDescription>选择存档或手动更新玩家列表。</EmptyDescription></EmptyHeader></Empty>
 
-        <el-descriptions :column="2" border class="player-descriptions">
-          <el-descriptions-item label="玩家ID">{{ currentPlayer.id }}</el-descriptions-item>
-          <el-descriptions-item label="KU ID">{{ currentPlayer.user_id }}</el-descriptions-item>
-          <el-descriptions-item label="玩家名称">
-            <div class="detail-name-with-badges">
-              <span>{{ currentPlayer.player_name }}</span>
-              <div class="detail-badges-container">
-                <component v-if="currentPlayer.is_admin" :is="'el-icon-trophy'" class="legacy-icon admin-icon-small" title="管理员" />
-                <component v-if="currentPlayer.is_friend" :is="'el-icon-s-custom'" class="legacy-icon friend-icon-small" title="好友" />
-              </div>
-            </div>
-          </el-descriptions-item>
-          <el-descriptions-item label="存档名称">{{ currentPlayer.archive_name }}</el-descriptions-item>
-          <el-descriptions-item label="角色">{{ getCharacterName(currentPlayer.prefab) }}</el-descriptions-item>
-          <el-descriptions-item label="天数">{{ currentPlayer.player_age }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
-            <el-tag :type="currentPlayer.status === 'online' ? 'success' : 'info'">
-              {{ currentPlayer.status === 'online' ? '在线' : '离线' }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="状态变更时间">{{ formatDate(currentPlayer.status_change) }}</el-descriptions-item>
-          <el-descriptions-item label="Steam ID">
-            <div class="detail-steam-id">
-              <el-tooltip content="点击复制 Steam ID" placement="top" effect="light">
-                <span class="detail-steam-id-text" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</span>
-              </el-tooltip>
-              <el-tooltip content="在 Steam 中查看" placement="top" effect="light">
-                <div class="steam-icon-container" @click="openSteamProfile(currentPlayer.net_id)">
-                  <svg class="steam-svg-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8 1.5c-3.6 0-6.5 2.9-6.5 6.5 0 3.6 2.9 6.5 6.5 6.5 3.6 0 6.5-2.9 6.5-6.5 0-3.6-2.9-6.5-6.5-6.5zM8 0c4.4 0 8 3.6 8 8s-3.6 8-8 8-8-3.6-8-8 3.6-8 8-8v0z"></path>
-                    <path d="M7.3 7.8l-1.2 2.4c-0.2-0.1-0.4-0.1-0.6-0.1-0.8 0-1.5 0.7-1.5 1.5s0.7 1.5 1.5 1.5c0.8 0 1.4-0.6 1.5-1.4l1.7-1.2c0.9 0.4 1.9 0.1 2.3-0.8s0.1-1.9-0.8-2.3c-0.9-0.4-1.9-0.1-2.3 0.8-0.1 0.2-0.2 0.4-0.2 0.6l-2.4 1.2c-0.2-0.1-0.4-0.2-0.6-0.2-0.1 0-0.1 0-0.2 0l1.1-2.3c0.1 0 0.1 0 0.2 0 0.8 0 1.5-0.7 1.5-1.5s-0.7-1.5-1.5-1.5c-0.8 0-1.5 0.7-1.5 1.5 0 0.5 0.3 1 0.7 1.3l-1.1 2.1c-0.7-0.3-1.5 0-1.8 0.7s0 1.5 0.7 1.8c0.7 0.3 1.5 0 1.8-0.7 0.1-0.2 0.1-0.4 0.1-0.6l1.7-1.2c0.3 0.1 0.7 0.2 1 0.2 1.1 0 2-0.9 2-2s-0.9-2-2-2c-0.8 0-1.5 0.5-1.8 1.2z"></path>
-                  </svg>
-                </div>
-              </el-tooltip>
-            </div>
-          </el-descriptions-item>
-          <el-descriptions-item label="网络质量">
-            <div v-if="currentPlayer.status === 'online'" class="network-quality">
-              <div class="signal-bars" :class="getNetworkSignalClass(currentPlayer.net_score)">
-                <div class="bar bar1"></div>
-                <div class="bar bar2"></div>
-                <div class="bar bar3"></div>
-                <div class="bar bar4"></div>
-              </div>
-              <span class="signal-text" :style="{color: getNetworkColor(currentPlayer.net_score)}">
-                {{ getNetworkQuality(currentPlayer.net_score) }}
-              </span>
-            </div>
-            <span v-else>-</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="性能指标">
-            <div class="detail-performance">
-              <div class="performance-indicator" :class="getPerformanceClass(currentPlayer.performance)">
-                <div class="p-bar p-bar1"></div>
-                <div class="p-bar p-bar2"></div>
-                <div class="p-bar p-bar3"></div>
-              </div>
-              <span :style="{color: getPerformanceColor(currentPlayer.performance)}">
-                {{ getPerformanceText(currentPlayer.performance) }}
-              </span>
-            </div>
-          </el-descriptions-item>
-          <el-descriptions-item label="首次登录">{{ formatDate(currentPlayer.first_seen) }}</el-descriptions-item>
-          <el-descriptions-item label="最后登录">{{ formatDate(currentPlayer.last_seen) }}</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatDate(currentPlayer.created_at) }}</el-descriptions-item>
-          <el-descriptions-item label="更新时间">{{ formatDate(currentPlayer.updated_at) }}</el-descriptions-item>
-        </el-descriptions>
-
-        <div class="detail-actions">
-          <section>
-            <h3>游戏操作</h3>
-            <div class="detail-action-grid">
-              <el-button size="small" icon="el-icon-magic-stick" @click="toggleGodMode(currentPlayer)">无敌模式</el-button>
-              <el-button size="small" icon="el-icon-s-tools" @click="toggleCreativeMode(currentPlayer)">制作模式</el-button>
-              <el-button size="small" icon="el-icon-refresh" @click="resurrectPlayer(currentPlayer)">复活玩家</el-button>
-              <el-button size="small" icon="el-icon-user" @click="changeCharacter(currentPlayer)">重选人物</el-button>
-            </div>
-          </section>
-          <section class="danger-actions">
-            <h3>危险操作</h3>
-            <div class="detail-action-grid danger">
-              <el-button type="danger" plain size="small" icon="el-icon-close" @click="kickPlayer(currentPlayer)">踢出</el-button>
-              <el-button type="danger" plain size="small" icon="el-icon-lock" @click="banPlayer(currentPlayer)">封禁</el-button>
-              <el-button type="danger" plain size="small" icon="el-icon-delete" @click="killPlayer(currentPlayer)">杀死</el-button>
-            </div>
-          </section>
+        <div class="pagination-bar">
+          <span>每页</span>
+          <NativeSelect :model-value="String(pagination.page_size)" @update:model-value="value => handleSizeChange(Number(value))">
+            <NativeSelectOption value="10">10</NativeSelectOption><NativeSelectOption value="20">20</NativeSelectOption><NativeSelectOption value="50">50</NativeSelectOption><NativeSelectOption value="100">100</NativeSelectOption>
+          </NativeSelect>
+          <Pagination :page="pagination.page" :total="pagination.total" :items-per-page="pagination.page_size" show-edges @update:page="handleCurrentChange">
+            <PaginationContent v-slot="{ items }">
+              <PaginationPrevious />
+              <template v-for="(item, index) in items" :key="index">
+                <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === pagination.page">{{ item.value }}</PaginationItem>
+                <PaginationEllipsis v-else :index="index" />
+              </template>
+              <PaginationNext />
+            </PaginationContent>
+          </Pagination>
         </div>
-      </div>
-    </el-drawer>
+      </CardContent>
+    </Card>
 
-
-
-    <!-- 封禁对话框 -->
-    <el-dialog title="封禁玩家" v-model="banDialogVisible" width="30%">
-      <el-form :model="banForm" label-width="80px">
-        <el-form-item label="封禁原因" required>
-          <el-input
-            type="textarea"
-            v-model="banForm.reason"
-            :rows="3"
-            placeholder="请输入封禁原因">
-          </el-input>
-        </el-form-item>
-        <el-form-item label="封禁时长">
-          <el-select v-model="banForm.duration" placeholder="选择封禁时长">
-            <el-option label="1小时" value="1h"></el-option>
-            <el-option label="6小时" value="6h"></el-option>
-            <el-option label="12小时" value="12h"></el-option>
-            <el-option label="1天" value="1d"></el-option>
-            <el-option label="3天" value="3d"></el-option>
-            <el-option label="7天" value="7d"></el-option>
-            <el-option label="30天" value="30d"></el-option>
-            <el-option label="永久" value="permanent"></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="banDialogVisible = false">取消</el-button>
-        <el-button type="danger" @click="confirmBanPlayer" :loading="banning">确认封禁</el-button>
-      </span>
-</template>
-    </el-dialog>
-
-    <!-- 无敌模式对话框 -->
-    <el-dialog title="设置无敌模式" v-model="godModeDialogVisible" width="30%">
-      <div v-if="currentPlayer">
-        <p>您将为玩家 <strong>{{ currentPlayer.player_name }}</strong> 设置无敌模式。</p>
-        <el-form :model="godModeForm" label-width="80px">
-          <el-form-item label="状态">
-            <el-switch
-              v-model="godModeForm.enabled"
-              active-text="开启"
-              inactive-text="关闭">
-            </el-switch>
-          </el-form-item>
-        </el-form>
-      </div>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="godModeDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmGodMode" :loading="settingGodMode">确认</el-button>
-      </span>
-</template>
-    </el-dialog>
-
-    <!-- 制作模式对话框 -->
-    <el-dialog title="设置制作模式" v-model="creativeModeDialogVisible" width="30%">
-      <div v-if="currentPlayer">
-        <p>您将为玩家 <strong>{{ currentPlayer.player_name }}</strong> 设置制作模式。</p>
-        <el-form :model="creativeModeForm" label-width="80px">
-          <el-form-item label="状态">
-            <el-switch
-              v-model="creativeModeForm.enabled"
-              active-text="开启"
-              inactive-text="关闭">
-            </el-switch>
-          </el-form-item>
-        </el-form>
-      </div>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="creativeModeDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmCreativeMode" :loading="settingCreativeMode">确认</el-button>
-      </span>
-</template>
-    </el-dialog>
-
-    <!-- 会话选择对话框 -->
-    <el-dialog title="选择游戏世界" v-model="sessionSelectDialogVisible" width="30%">
-      <el-form label-width="80px">
-        <el-form-item label="选择世界" required>
-          <el-select v-model="selectedSessionName" placeholder="选择世界" style="width: 100%">
-            <el-option
-              v-for="session in sessionList"
-              :key="session.key"
-              :label="session.name"
-              :value="session.key">
-              <span style="float: left">
-                {{ session.name }}
-              </span>
-              <span style="float: right; color: #8492a6; font-size: 13px">
-                {{ session.state }}
-              </span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-alert
-          v-if="sessionList.length === 0"
-          title="没有可用的世界"
-          type="warning"
-          :closable="false">
-        </el-alert>
-        <el-alert
-          type="info"
-          title="提示：默认选择Forest1世界，如果需要在其他世界执行操作，请选择相应的世界"
-          :closable="false"
-          style="margin-top: 10px">
-        </el-alert>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="sessionSelectDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmSessionSelect">确认</el-button>
-      </span>
-</template>
-    </el-dialog>
-
-    <!-- 手动更新玩家列表对话框 -->
-    <el-dialog title="手动更新玩家列表" v-model="updateDialogVisible" width="30%">
-      <el-form :model="updateForm" label-width="100px">
-        <el-form-item label="存档名称" required>
-          <el-select v-model="updateForm.archive_name" placeholder="选择存档" style="width: 100%" @change="onArchiveChange">
-            <el-option
-              v-for="archive in archiveOptions"
-              :key="archive.value"
-              :label="archive.label"
-              :value="archive.value">
-            </el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="世界名称">
-          <el-select v-model="updateForm.world_name" placeholder="选择世界（可选）" style="width: 100%">
-            <el-option
-              v-for="world in worldOptions"
-              :key="world.value"
-              :label="world.label"
-              :value="world.value">
-            </el-option>
-          </el-select>
-          <div class="form-help-text">留空表示所有世界</div>
-        </el-form-item>
-
-        <el-alert
-          type="info"
-          title="提示：手动更新将从服务器获取最新的玩家信息"
-          :closable="false"
-          style="margin-top: 10px">
-        </el-alert>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="updateDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmUpdate" :loading="updating" :disabled="!updateForm.archive_name">开始更新</el-button>
-      </span>
-</template>
-    </el-dialog>
-
-    <!-- 重选人物对话框 -->
-    <el-dialog title="重选人物" v-model="characterDialogVisible" width="30%">
-      <div v-if="currentPlayer">
-        <p>您将让玩家 <strong>{{ currentPlayer.player_name }}</strong> 重新选择角色。</p>
-        <p>当前角色：<strong>{{ getCharacterName(currentPlayer.prefab) }}</strong></p>
-        <el-alert
-          type="warning"
-          title="注意：此操作会将玩家重置，玩家可以直接重新选择角色"
-          :closable="false"
-          style="margin: 10px 0">
-        </el-alert>
-      </div>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="characterDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmChangeCharacter" :loading="changingCharacter">确认重选</el-button>
-      </span>
-</template>
-    </el-dialog>
-
-    <!-- 定时更新任务对话框 -->
-    <el-dialog title="添加定时更新任务" v-model="scheduleDialogVisible" width="40%">
-      <el-form :model="scheduleForm" :rules="scheduleRules" ref="scheduleForm" label-width="100px">
-        <el-form-item label="任务名称" prop="name">
-          <el-input v-model="scheduleForm.name" placeholder="请输入任务名称"></el-input>
-        </el-form-item>
-
-        <el-form-item label="选择世界" prop="session_name">
-          <el-select v-model="scheduleForm.session_name" placeholder="选择游戏世界" style="width: 100%">
-            <el-option
-              v-for="session in sessionList"
-              :key="session.key"
-              :label="session.name"
-              :value="session.key">
-              <span style="float: left">
-                {{ session.name }}
-              </span>
-              <span style="float: right; color: #8492a6; font-size: 13px">
-                {{ session.state }}
-              </span>
-            </el-option>
-          </el-select>
-          <div class="world-help">
-            <p class="important-note">重要提示：使用函数类型的定时任务，将自动调用update_player_info函数更新玩家列表。</p>
+    <Sheet v-model:open="playerDetailVisible">
+      <SheetContent side="right" class="player-detail-sheet">
+        <SheetHeader><SheetTitle>玩家详情</SheetTitle><SheetDescription>身份、连接状态和服务器操作。</SheetDescription></SheetHeader>
+        <ScrollArea class="player-detail-scroll">
+          <div v-if="currentPlayer" class="player-detail">
+            <div class="player-detail-heading">
+              <Avatar size="lg"><AvatarFallback>{{ getPlayerInitials(currentPlayer) }}</AvatarFallback></Avatar>
+              <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="currentPlayer.status === 'online' ? 'default' : 'secondary'">{{ currentPlayer.status === 'online' ? '在线' : '离线' }}</Badge></div><span>{{ getCharacterName(currentPlayer.prefab) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || '未知世界' }}</span></div>
+            </div>
+            <dl class="player-description-grid">
+              <div><dt>玩家 ID</dt><dd>{{ currentPlayer.id }}</dd></div><div><dt>KU ID</dt><dd>{{ currentPlayer.user_id }}</dd></div>
+              <div><dt>玩家名称</dt><dd>{{ currentPlayer.player_name }}</dd></div><div><dt>存档名称</dt><dd>{{ currentPlayer.archive_name }}</dd></div>
+              <div><dt>角色</dt><dd>{{ getCharacterName(currentPlayer.prefab) }}</dd></div><div><dt>天数</dt><dd>{{ currentPlayer.player_age }}</dd></div>
+              <div><dt>状态变更</dt><dd>{{ formatDate(currentPlayer.status_change) }}</dd></div><div><dt>Steam ID</dt><dd><UiButton variant="link" size="sm" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</UiButton></dd></div>
+              <div><dt>网络质量</dt><dd>{{ currentPlayer.status === 'online' ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div><div><dt>性能指标</dt><dd>{{ getPerformanceText(currentPlayer.performance) }}</dd></div>
+              <div><dt>首次登录</dt><dd>{{ formatDate(currentPlayer.first_seen) }}</dd></div><div><dt>最后登录</dt><dd>{{ formatDate(currentPlayer.last_seen) }}</dd></div>
+              <div><dt>创建时间</dt><dd>{{ formatDate(currentPlayer.created_at) }}</dd></div><div><dt>更新时间</dt><dd>{{ formatDate(currentPlayer.updated_at) }}</dd></div>
+            </dl>
+            <Separator />
+            <section><h3>游戏操作</h3><div class="detail-action-grid">
+              <UiButton size="sm" variant="outline" @click="toggleGodMode(currentPlayer)">无敌模式</UiButton><UiButton size="sm" variant="outline" @click="toggleCreativeMode(currentPlayer)">制作模式</UiButton><UiButton size="sm" variant="outline" @click="resurrectPlayer(currentPlayer)">复活玩家</UiButton><UiButton size="sm" variant="outline" @click="changeCharacter(currentPlayer)">重选人物</UiButton>
+            </div></section>
+            <section><h3>危险操作</h3><div class="detail-action-grid">
+              <UiButton variant="destructive" size="sm" @click="kickPlayer(currentPlayer)">踢出</UiButton><UiButton variant="destructive" size="sm" @click="banPlayer(currentPlayer)">封禁</UiButton><UiButton variant="destructive" size="sm" @click="killPlayer(currentPlayer)">杀死</UiButton>
+            </div></section>
           </div>
-        </el-form-item>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
 
-        <el-form-item label="执行计划" prop="spec">
-          <el-input v-model="scheduleForm.spec" placeholder="Cron表达式，例如：0 */3 * * * *"></el-input>
-          <div class="cron-help">
-            <p>常用Cron表达式示例：</p>
-            <ul>
-              <li><code>0 */1 * * * *</code> - 每分钟执行一次</li>
-              <li><code>0 */5 * * * *</code> - 每5分钟执行一次</li>
-              <li><code>0 */30 * * * *</code> - 每30分钟执行一次</li>
-              <li><code>0 0 * * * *</code> - 每小时执行一次</li>
-              <li><code>0 0 */2 * * *</code> - 每两小时执行一次</li>
-            </ul>
-            <p class="important-note">重要提示：执行频率应根据服务器性能决定，低配置服务器建议设置为每3分钟或更久。</p>
-          </div>
-        </el-form-item>
+    <UiDialog v-model:open="banDialogVisible">
+      <DialogContent><DialogHeader><DialogTitle>封禁玩家</DialogTitle><DialogDescription>{{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
+        <FieldGroup><Field :data-invalid="Boolean(banFormError)"><FieldLabel for="ban-reason">封禁原因</FieldLabel><UiTextarea id="ban-reason" v-model="banForm.reason" rows="3" placeholder="请输入封禁原因" :aria-invalid="Boolean(banFormError)" /><FieldError v-if="banFormError">{{ banFormError }}</FieldError></Field>
+          <Field><FieldLabel>封禁时长</FieldLabel><UiSelect v-model="banForm.duration"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="duration in banDurations" :key="duration.value" :value="duration.value">{{ duration.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="banDialogVisible = false">取消</UiButton><UiButton variant="destructive" @click="confirmBanPlayer" :disabled="banning"><Spinner v-if="banning" data-icon="inline-start" />确认封禁</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
 
-        <el-form-item label="任务描述" prop="description">
-          <el-input type="textarea" :rows="2" v-model="scheduleForm.description" placeholder="请输入任务描述"></el-input>
-        </el-form-item>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="scheduleDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmAddSchedule" :loading="addingSchedule">确认添加</el-button>
-      </span>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="godModeDialogVisible">
+      <DialogContent><DialogHeader><DialogTitle>设置无敌模式</DialogTitle><DialogDescription>玩家 {{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
+        <Field orientation="horizontal"><FieldContent><FieldLabel for="god-mode-enabled">无敌模式</FieldLabel><FieldDescription>{{ godModeForm.enabled ? '开启' : '关闭' }}</FieldDescription></FieldContent><UiSwitch id="god-mode-enabled" v-model="godModeForm.enabled" /></Field>
+        <DialogFooter><UiButton variant="outline" @click="godModeDialogVisible = false">取消</UiButton><UiButton @click="confirmGodMode" :disabled="settingGodMode"><Spinner v-if="settingGodMode" data-icon="inline-start" />确认</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="creativeModeDialogVisible">
+      <DialogContent><DialogHeader><DialogTitle>设置制作模式</DialogTitle><DialogDescription>玩家 {{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
+        <Field orientation="horizontal"><FieldContent><FieldLabel for="creative-mode-enabled">制作模式</FieldLabel><FieldDescription>{{ creativeModeForm.enabled ? '开启' : '关闭' }}</FieldDescription></FieldContent><UiSwitch id="creative-mode-enabled" v-model="creativeModeForm.enabled" /></Field>
+        <DialogFooter><UiButton variant="outline" @click="creativeModeDialogVisible = false">取消</UiButton><UiButton @click="confirmCreativeMode" :disabled="settingCreativeMode"><Spinner v-if="settingCreativeMode" data-icon="inline-start" />确认</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="sessionSelectDialogVisible">
+      <DialogContent><DialogHeader><DialogTitle>选择游戏世界</DialogTitle><DialogDescription>玩家操作将在选中的世界执行。</DialogDescription></DialogHeader>
+        <FieldGroup><Field><FieldLabel>游戏世界</FieldLabel><UiSelect v-model="selectedSessionName"><SelectTrigger><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
+        <Alert v-if="sessionList.length === 0" variant="destructive"><TriangleAlert /><AlertTitle>没有可用的世界</AlertTitle></Alert>
+        <DialogFooter><UiButton variant="outline" @click="sessionSelectDialogVisible = false">取消</UiButton><UiButton @click="confirmSessionSelect">确认</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="updateDialogVisible">
+      <DialogContent><DialogHeader><DialogTitle>手动更新玩家列表</DialogTitle><DialogDescription>从服务器读取最新的真实玩家信息。</DialogDescription></DialogHeader>
+        <FieldGroup><Field><FieldLabel>存档名称</FieldLabel><UiSelect v-model="updateForm.archive_name" @update:model-value="onArchiveChange"><SelectTrigger><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="update-world">世界名称</FieldLabel><NativeSelect id="update-world" v-model="updateForm.world_name"><NativeSelectOption value="">所有世界</NativeSelectOption><NativeSelectOption v-for="world in worldOptions" :key="world.value" :value="world.value">{{ world.label }}</NativeSelectOption></NativeSelect><FieldDescription>留空表示所有世界。</FieldDescription></Field></FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="updateDialogVisible = false">取消</UiButton><UiButton @click="confirmUpdate" :disabled="updating || !updateForm.archive_name"><Spinner v-if="updating" data-icon="inline-start" />开始更新</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="characterDialogVisible">
+      <DialogContent><DialogHeader><DialogTitle>重选人物</DialogTitle><DialogDescription>玩家 {{ currentPlayer?.player_name || '' }} 当前角色为 {{ currentPlayer ? getCharacterName(currentPlayer.prefab) : '' }}。</DialogDescription></DialogHeader>
+        <Alert variant="destructive"><TriangleAlert /><AlertTitle>玩家数据会被重置</AlertTitle><AlertDescription>完成后玩家可以重新选择角色。</AlertDescription></Alert>
+        <DialogFooter><UiButton variant="outline" @click="characterDialogVisible = false">取消</UiButton><UiButton @click="confirmChangeCharacter" :disabled="changingCharacter"><Spinner v-if="changingCharacter" data-icon="inline-start" />确认重选</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="scheduleDialogVisible">
+      <DialogContent class="max-w-2xl"><DialogHeader><DialogTitle>添加定时更新任务</DialogTitle><DialogDescription>定期从选中世界同步玩家列表。</DialogDescription></DialogHeader>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(scheduleErrors.name)"><FieldLabel for="schedule-name">任务名称</FieldLabel><UiInput id="schedule-name" v-model="scheduleForm.name" :aria-invalid="Boolean(scheduleErrors.name)" /><FieldError v-if="scheduleErrors.name">{{ scheduleErrors.name }}</FieldError></Field>
+          <Field :data-invalid="Boolean(scheduleErrors.session_name)"><FieldLabel>游戏世界</FieldLabel><UiSelect v-model="scheduleForm.session_name"><SelectTrigger :aria-invalid="Boolean(scheduleErrors.session_name)"><SelectValue placeholder="选择游戏世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="scheduleErrors.session_name">{{ scheduleErrors.session_name }}</FieldError></Field>
+          <Field :data-invalid="Boolean(scheduleErrors.spec)"><FieldLabel for="schedule-spec">执行计划</FieldLabel><UiInput id="schedule-spec" v-model="scheduleForm.spec" placeholder="例如：0 */3 * * * *" :aria-invalid="Boolean(scheduleErrors.spec)" /><FieldDescription>支持五段 Cron，或以 0 秒开头的六段 Cron。</FieldDescription><FieldError v-if="scheduleErrors.spec">{{ scheduleErrors.spec }}</FieldError></Field>
+          <Field><FieldLabel for="schedule-description">任务描述</FieldLabel><UiTextarea id="schedule-description" v-model="scheduleForm.description" rows="2" /></Field>
+        </FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="scheduleDialogVisible = false">取消</UiButton><UiButton @click="confirmAddSchedule" :disabled="addingSchedule"><Spinner v-if="addingSchedule" data-icon="inline-start" />确认添加</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { Clock3, Crown, Download, ExternalLink, Globe2, MoreHorizontal, RefreshCw, Search, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { playerApi } from '@/api/playerApi';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import { confirmAction } from '@/lib/feedback';
+import SortButton from './SortButton.vue';
 
 export default {
   name: 'PlayerList',
+  components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    Avatar,
+    AvatarFallback,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Clock3,
+    Crown,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Download,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    ExternalLink,
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    Globe2,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    MoreHorizontal,
+    NativeSelect,
+    NativeSelectOption,
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationNext,
+    PaginationPrevious,
+    RefreshCw,
+    ScrollArea,
+    Search,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Separator,
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SortButton,
+    Spinner,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    TriangleAlert,
+    UiButton,
+    UiDialog,
+    UiInput,
+    UiSelect,
+    UiSwitch,
+    UiTable,
+    UiTextarea,
+    Upload,
+    UserRoundCheck,
+    Users
+  },
   data() {
     return {
       // 玩家列表数据
@@ -643,6 +402,17 @@ export default {
         reason: '',
         duration: '1d'
       },
+      banFormError: '',
+      banDurations: [
+        { label: '1小时', value: '1h' },
+        { label: '6小时', value: '6h' },
+        { label: '12小时', value: '12h' },
+        { label: '1天', value: '1d' },
+        { label: '3天', value: '3d' },
+        { label: '7天', value: '7d' },
+        { label: '30天', value: '30d' },
+        { label: '永久', value: 'permanent' }
+      ],
       banning: false,
 
       // 会话列表
@@ -682,18 +452,7 @@ export default {
         session_name: '',
         spec: '0 */3 * * * *' // 默认每3分钟执行一次
       },
-      scheduleRules: {
-        name: [
-          { required: true, message: '请输入任务名称', trigger: 'blur' },
-          { min: 2, max: 50, message: '长度在2到50个字符', trigger: 'blur' }
-        ],
-        session_name: [
-          { required: true, message: '请选择游戏世界', trigger: 'change' }
-        ],
-        spec: [
-          { required: true, message: '请输入Cron表达式', trigger: 'blur' }
-        ]
-      },
+      scheduleErrors: {},
 
       // 会话选择
       selectedSessionName: '',
@@ -779,7 +538,7 @@ export default {
           console.error('获取玩家列表失败:', error);
           this.playerList = [];
           this.pagination.total = 0;
-          this.$message.error(`获取玩家列表失败: ${error.message || '未知错误'}`);
+          toast.error(`获取玩家列表失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.loading = false;
@@ -808,10 +567,12 @@ export default {
       this.handleFilter();
     },
 
-    // 处理排序变化
-    handleSortChange({ prop, order }) {
-      this.sortParams.prop = prop;
-      this.sortParams.order = order;
+    toggleSort(field) {
+      const isCurrentField = this.sortParams.prop === field;
+      this.sortParams.prop = field;
+      this.sortParams.order = isCurrentField && this.sortParams.order === 'ascending'
+        ? 'descending'
+        : 'ascending';
       this.fetchPlayerList();
     },
 
@@ -835,34 +596,25 @@ export default {
     },
 
     // 踢出玩家
-    kickPlayer(player) {
-      this.$confirm(`确定要踢出玩家 ${player.player_name} 吗?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        const loading = this.$loading({
-          lock: true,
-          text: '正在踢出玩家...',
-          spinner: 'el-icon-loading',
-          background: 'rgba(0, 0, 0, 0.7)'
-        });
+    async kickPlayer(player) {
+      try {
+        await confirmAction(`确定要踢出玩家 ${player.player_name} 吗？`, '踢出玩家', { destructive: true });
+      } catch {
+        return;
+      }
 
-        playerApi.kickPlayer(player, this.activeSessionName)
-          .then(() => {
-            this.$message.success(`已踢出玩家 ${player.player_name}`);
-            this.refreshData();
-          })
-          .catch(error => {
-            console.error('踢出玩家失败:', error);
-            this.$message.error(`踢出玩家失败: ${error.message || '未知错误'}`);
-          })
-          .finally(() => {
-            loading.close();
-          });
-      }).catch(() => {
-        // 取消操作
-      });
+      const loadingId = toast.loading('正在踢出玩家...');
+      try {
+        await playerApi.kickPlayer(player, this.activeSessionName);
+        toast.success(`已踢出玩家 ${player.player_name}`);
+        this.playerDetailVisible = false;
+        this.refreshData();
+      } catch (error) {
+        console.error('踢出玩家失败:', error);
+        toast.error(`踢出玩家失败: ${error.message || '未知错误'}`);
+      } finally {
+        toast.dismiss(loadingId);
+      }
     },
 
     // 封禁玩家
@@ -872,33 +624,37 @@ export default {
         reason: '',
         duration: '1d'
       };
+      this.banFormError = '';
       this.banDialogVisible = true;
     },
 
     // 确认封禁玩家
     confirmBanPlayer() {
-      if (!this.banForm.reason) {
-        this.$message.warning('请输入封禁原因');
+      const reason = this.banForm.reason.trim();
+      if (!reason) {
+        this.banFormError = '请输入封禁原因';
         return;
       }
+      this.banFormError = '';
 
       this.banning = true;
 
       const banData = {
-        reason: this.banForm.reason,
+        reason,
         duration: this.banForm.duration,
         archive_name: this.activeSessionName
       };
 
       playerApi.banPlayer(this.currentPlayer, banData)
         .then(() => {
-          this.$message.success(`已封禁玩家 ${this.currentPlayer.player_name}`);
+          toast.success(`已封禁玩家 ${this.currentPlayer.player_name}`);
           this.banDialogVisible = false;
+          this.playerDetailVisible = false;
           this.refreshData();
         })
         .catch(error => {
           console.error('封禁玩家失败:', error);
-          this.$message.error(`封禁玩家失败: ${error.message || '未知错误'}`);
+          toast.error(`封禁玩家失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.banning = false;
@@ -914,41 +670,38 @@ export default {
     },
 
     // 确认重选人物
-    confirmChangeCharacter() {
-      this.$confirm(`确定要让玩家 ${this.currentPlayer.player_name} 重选人物吗?该操作会将玩家重置！`, '警告', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.changingCharacter = true;
+    async confirmChangeCharacter() {
+      try {
+        await confirmAction(
+          `确定要让玩家 ${this.currentPlayer.player_name} 重选人物吗？该操作会重置玩家数据。`,
+          '确认重选人物',
+          { destructive: true }
+        );
+      } catch {
+        return;
+      }
 
-        playerApi.changeCharacter(this.currentPlayer, this.activeSessionName)
-          .then(response => {
-            if (response && response.status === 200) {
-              this.$message.success(`已重置玩家 ${this.currentPlayer.player_name}，玩家可以重新选择角色`);
-              this.characterDialogVisible = false;
-              this.refreshData();
-            } else {
-              throw new Error(response.msg || '命令执行失败');
-            }
-          })
-          .catch(error => {
-            console.error('重选人物失败:', error);
-            this.$message.error(`重选人物失败: ${error.message || '未知错误'}`);
-          })
-          .finally(() => {
-            this.changingCharacter = false;
-          });
-      }).catch(() => {
-        // 取消操作
-      });
+      this.changingCharacter = true;
+      try {
+        const response = await playerApi.changeCharacter(this.currentPlayer, this.activeSessionName);
+        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
+        toast.success(`已重置玩家 ${this.currentPlayer.player_name}，玩家可以重新选择角色`);
+        this.characterDialogVisible = false;
+        this.playerDetailVisible = false;
+        this.refreshData();
+      } catch (error) {
+        console.error('重选人物失败:', error);
+        toast.error(`重选人物失败: ${error.message || '未知错误'}`);
+      } finally {
+        this.changingCharacter = false;
+      }
     },
 
     // 显示定时更新对话框
     showScheduleDialog() {
       const sessionKey = this.activeSessionName;
       if (!sessionKey) {
-        this.$message.warning('没有可用于定时更新的游戏世界');
+        toast.warning('没有可用于定时更新的游戏世界');
         return;
       }
       const sessionName = this.activeSessionLabel;
@@ -958,53 +711,63 @@ export default {
         session_name: sessionKey,
         spec: '0 */3 * * * *' // 默认每3分钟执行一次
       };
+      this.scheduleErrors = {};
       this.scheduleDialogVisible = true;
+    },
+
+    validateScheduleForm() {
+      const errors = {};
+      const name = this.scheduleForm.name.trim();
+      const spec = this.scheduleForm.spec.trim();
+      const cronFields = spec.split(/\s+/).filter(Boolean);
+
+      if (!name) errors.name = '请输入任务名称';
+      else if (name.length < 2 || name.length > 50) errors.name = '长度应在 2 到 50 个字符之间';
+      if (!this.scheduleForm.session_name) errors.session_name = '请选择游戏世界';
+      if (!spec) errors.spec = '请输入 Cron 表达式';
+      else if (cronFields.length !== 5 && !(cronFields.length === 6 && cronFields[0] === '0')) {
+        errors.spec = '请输入五段 Cron，或以 0 秒开头的六段 Cron';
+      }
+
+      this.scheduleErrors = errors;
+      return Object.keys(errors).length === 0;
     },
 
     // 确认添加定时任务
     confirmAddSchedule() {
-      this.$refs.scheduleForm.validate(valid => {
-        if (valid) {
-          this.addingSchedule = true;
+      if (!this.validateScheduleForm()) {
+        toast.warning('请完善表单信息');
+        return;
+      }
 
-          // 构建任务数据 - 使用函数类型
-          const taskData = {
-            name: this.scheduleForm.name,
-            description: this.scheduleForm.description,
-            spec: this.scheduleForm.spec,
-            session_name: this.scheduleForm.session_name
-          };
+      this.addingSchedule = true;
+      const taskData = {
+        name: this.scheduleForm.name.trim(),
+        description: this.scheduleForm.description.trim(),
+        spec: this.scheduleForm.spec.trim(),
+        session_name: this.scheduleForm.session_name
+      };
 
-          playerApi.addRefreshSchedule(taskData)
-            .then(response => {
-              if (response && response.status === 200) {
-                this.$message.success('定时更新任务添加成功');
-                this.scheduleDialogVisible = false;
-              } else {
-                throw new Error(response.msg || response.message || '添加失败');
-              }
-            })
-            .catch(error => {
-              console.error('添加定时任务失败:', error);
-              this.$message.error(`添加定时任务失败: ${error.message || '未知错误'}`);
-            })
-            .finally(() => {
-              this.addingSchedule = false;
-            });
-        } else {
-          this.$message.warning('请完善表单信息');
-        }
-      });
+      playerApi.addRefreshSchedule(taskData)
+        .then(response => {
+          if (!response || response.status !== 200) {
+            throw new Error(response?.msg || response?.message || '添加失败');
+          }
+          toast.success('定时更新任务添加成功');
+          this.scheduleDialogVisible = false;
+        })
+        .catch(error => {
+          console.error('添加定时任务失败:', error);
+          toast.error(`添加定时任务失败: ${error.message || '未知错误'}`);
+        })
+        .finally(() => {
+          this.addingSchedule = false;
+        });
     },
 
     // 导出玩家数据
     exportPlayerData() {
-      const loading = this.$loading({
-        lock: true,
-        text: '正在导出真实玩家数据...',
-        spinner: 'el-icon-loading',
-        background: 'rgba(0, 0, 0, 0.7)'
-      });
+      const loadingId = toast.loading('正在导出真实玩家数据...');
       const params = {
         ...this.filterForm,
         sort_by: this.sortParams.prop,
@@ -1042,13 +805,13 @@ export default {
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-          this.$message.success(`已导出 ${players.length} 条真实玩家数据`);
+          toast.success(`已导出 ${players.length} 条真实玩家数据`);
         })
         .catch(error => {
           console.error('导出玩家数据失败:', error);
-          this.$message.error(`导出玩家数据失败: ${error.message || '未知错误'}`);
+          toast.error(`导出玩家数据失败: ${error.message || '未知错误'}`);
         })
-        .finally(() => loading.close());
+        .finally(() => toast.dismiss(loadingId));
     },
 
     // 格式化日期
@@ -1082,14 +845,11 @@ export default {
       }
     },
 
-    // 获取网络质量颜色
-    getNetworkColor(netScore) {
-      switch(netScore) {
-        case 0: return '#4f8a5b'; // 绿色
-        case 1: return '#d99b32'; // 黄色
-        case 2: return '#c94f4f'; // 红色
-        default: return '#758078'; // 灰色
-      }
+    getNetworkBadgeVariant(netScore) {
+      if (netScore === 0) return 'default';
+      if (netScore === 1) return 'secondary';
+      if (netScore === 2) return 'destructive';
+      return 'outline';
     },
 
     // 获取性能指标文本
@@ -1102,24 +862,16 @@ export default {
       }
     },
 
-    // 获取性能标签类型
-    getPerformanceTagType(performance) {
-      switch(performance) {
-        case 0: return 'success';
-        case 1: return 'warning';
-        case 2: return 'danger';
-        default: return 'info';
-      }
+    getPerformanceBadgeVariant(performance) {
+      if (performance === 0) return 'default';
+      if (performance === 1) return 'secondary';
+      if (performance === 2) return 'destructive';
+      return 'outline';
     },
 
-    // 获取性能颜色
-    getPerformanceColor(performance) {
-      switch(performance) {
-        case 0: return '#4f8a5b'; // 绿色
-        case 1: return '#d99b32'; // 黄色
-        case 2: return '#c94f4f'; // 红色
-        default: return '#758078'; // 灰色
-      }
+    getPlayerInitials(player) {
+      const name = (player?.player_name || player?.user_id || '?').trim();
+      return Array.from(name).slice(0, 2).join('').toUpperCase();
     },
 
     // 从会话名称中提取世界名称
@@ -1162,27 +914,27 @@ export default {
     },
 
     // 复制 Steam ID
-    copySteamID(steamID) {
+    async copySteamID(steamID) {
       if (!steamID) return;
 
-      // 创建一个临时的文本区域来复制文本
-      const textArea = document.createElement('textarea');
-      textArea.value = steamID;
-      document.body.appendChild(textArea);
-      textArea.select();
-
       try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-          this.$message.success('Steam ID 已复制到剪贴板');
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(steamID);
         } else {
-          this.$message.error('复制失败');
+          const textArea = document.createElement('textarea');
+          textArea.value = steamID;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
+          if (!successful) throw new Error('浏览器未允许复制');
         }
+        toast.success('Steam ID 已复制到剪贴板');
       } catch (err) {
-        this.$message.error('复制失败: ' + err);
+        toast.error(`复制失败: ${err.message || err}`);
       }
-
-      document.body.removeChild(textArea);
     },
 
     // 打开 Steam 个人资料页面
@@ -1190,26 +942,6 @@ export default {
       if (!steamID) return;
       const url = `https://steamcommunity.com/profiles/${steamID}`;
       window.open(url, '_blank');
-    },
-
-    // 获取网络信号类名
-    getNetworkSignalClass(netScore) {
-      switch(netScore) {
-        case 0: return 'signal-excellent'; // 极佳
-        case 1: return 'signal-medium';    // 中等
-        case 2: return 'signal-poor';      // 很差
-        default: return 'signal-unknown';  // 未知
-      }
-    },
-
-    // 获取性能指标类名
-    getPerformanceClass(performance) {
-      switch(performance) {
-        case 0: return 'performance-excellent'; // 良好
-        case 1: return 'performance-medium';    // 一般
-        case 2: return 'performance-poor';      // 差
-        default: return 'performance-unknown';   // 未知
-      }
     },
 
     // 获取存档列表
@@ -1226,7 +958,7 @@ export default {
         .catch(error => {
           console.error('获取存档列表失败:', error);
           this.archiveOptions = [];
-          this.$message.error(`获取存档列表失败: ${error.message || '未知错误'}`);
+          toast.error(`获取存档列表失败: ${error.message || '未知错误'}`);
         });
     },
 
@@ -1247,7 +979,7 @@ export default {
         .catch(error => {
           console.error('获取会话列表失败:', error);
           this.sessionList = [];
-          this.$message.error(`获取游戏世界失败: ${error.message || '未知错误'}`);
+          toast.error(`获取游戏世界失败: ${error.message || '未知错误'}`);
         });
     },
 
@@ -1263,11 +995,11 @@ export default {
     // 确认选择会话
     confirmSessionSelect() {
       if (!this.selectedSessionName) {
-        this.$message.warning('请选择一个游戏世界');
+        toast.warning('请选择一个游戏世界');
         return;
       }
 
-      this.$message.success(`已选择游戏世界: ${this.activeSessionLabel}`);
+      toast.success(`已选择游戏世界: ${this.activeSessionLabel}`);
       this.sessionSelectDialogVisible = false;
     },
 
@@ -1302,39 +1034,30 @@ export default {
     },
 
     // 杀死玩家
-    killPlayer(player) {
-      this.$confirm(`确定要杀死玩家 ${player.player_name} 吗?该操作会导致玩家死亡！`, '警告', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        const loading = this.$loading({
-          lock: true,
-          text: '正在执行操作...',
-          spinner: 'el-icon-loading',
-          background: 'rgba(0, 0, 0, 0.7)'
-        });
+    async killPlayer(player) {
+      try {
+        await confirmAction(
+          `确定要杀死玩家 ${player.player_name} 吗？该操作会导致玩家死亡。`,
+          '杀死玩家',
+          { destructive: true }
+        );
+      } catch {
+        return;
+      }
 
-        // 使用KU ID杀死玩家
-        playerApi.killPlayer(player, this.activeSessionName)
-          .then(response => {
-            if (response && response.status === 200) {
-              this.$message.success(`已杀死玩家 ${player.player_name}`);
-              this.refreshData();
-            } else {
-              throw new Error(response.msg || '命令执行失败');
-            }
-          })
-          .catch(error => {
-            console.error('杀死玩家失败:', error);
-            this.$message.error(`杀死玩家失败: ${error.message || '未知错误'}`);
-          })
-          .finally(() => {
-            loading.close();
-          });
-      }).catch(() => {
-        // 取消操作
-      });
+      const loadingId = toast.loading('正在执行操作...');
+      try {
+        const response = await playerApi.killPlayer(player, this.activeSessionName);
+        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
+        toast.success(`已杀死玩家 ${player.player_name}`);
+        this.playerDetailVisible = false;
+        this.refreshData();
+      } catch (error) {
+        console.error('杀死玩家失败:', error);
+        toast.error(`杀死玩家失败: ${error.message || '未知错误'}`);
+      } finally {
+        toast.dismiss(loadingId);
+      }
     },
 
     // 切换无敌模式
@@ -1356,7 +1079,7 @@ export default {
         .then(response => {
           if (response && response.status === 200) {
             const status = this.godModeForm.enabled ? '开启' : '关闭';
-            this.$message.success(`已${status}玩家 ${this.currentPlayer.player_name} 的无敌模式`);
+            toast.success(`已${status}玩家 ${this.currentPlayer.player_name} 的无敌模式`);
             this.godModeDialogVisible = false;
           } else {
             throw new Error(response.msg || '命令执行失败');
@@ -1364,7 +1087,7 @@ export default {
         })
         .catch(error => {
           console.error('设置无敌模式失败:', error);
-          this.$message.error(`设置无敌模式失败: ${error.message || '未知错误'}`);
+          toast.error(`设置无敌模式失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.settingGodMode = false;
@@ -1390,7 +1113,7 @@ export default {
         .then(response => {
           if (response && response.status === 200) {
             const status = this.creativeModeForm.enabled ? '开启' : '关闭';
-            this.$message.success(`已${status}玩家 ${this.currentPlayer.player_name} 的制作模式`);
+            toast.success(`已${status}玩家 ${this.currentPlayer.player_name} 的制作模式`);
             this.creativeModeDialogVisible = false;
           } else {
             throw new Error(response.msg || '命令执行失败');
@@ -1398,7 +1121,7 @@ export default {
         })
         .catch(error => {
           console.error('设置制作模式失败:', error);
-          this.$message.error(`设置制作模式失败: ${error.message || '未知错误'}`);
+          toast.error(`设置制作模式失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.settingCreativeMode = false;
@@ -1406,37 +1129,25 @@ export default {
     },
 
     // 复活玩家
-    resurrectPlayer(player) {
-      this.$confirm(`确定要复活玩家 ${player.player_name} 吗?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'info'
-      }).then(() => {
-        const loading = this.$loading({
-          lock: true,
-          text: '正在执行操作...',
-          spinner: 'el-icon-loading',
-          background: 'rgba(0, 0, 0, 0.7)'
-        });
+    async resurrectPlayer(player) {
+      try {
+        await confirmAction(`确定要复活玩家 ${player.player_name} 吗？`, '复活玩家');
+      } catch {
+        return;
+      }
 
-        playerApi.resurrectPlayer(player, this.activeSessionName)
-          .then(response => {
-            if (response && response.status === 200) {
-              this.$message.success(`已复活玩家 ${player.player_name}`);
-            } else {
-              throw new Error(response.msg || '命令执行失败');
-            }
-          })
-          .catch(error => {
-            console.error('复活玩家失败:', error);
-            this.$message.error(`复活玩家失败: ${error.message || '未知错误'}`);
-          })
-          .finally(() => {
-            loading.close();
-          });
-      }).catch(() => {
-        // 取消操作
-      });
+      const loadingId = toast.loading('正在执行操作...');
+      try {
+        const response = await playerApi.resurrectPlayer(player, this.activeSessionName);
+        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
+        toast.success(`已复活玩家 ${player.player_name}`);
+        this.refreshData();
+      } catch (error) {
+        console.error('复活玩家失败:', error);
+        toast.error(`复活玩家失败: ${error.message || '未知错误'}`);
+      } finally {
+        toast.dismiss(loadingId);
+      }
     },
 
     // 手动更新玩家列表
@@ -1469,7 +1180,7 @@ export default {
     // 确认更新玩家列表
     confirmUpdate() {
       if (!this.updateForm.archive_name) {
-        this.$message.warning('请选择存档');
+        toast.warning('请选择存档');
         return;
       }
 
@@ -1483,13 +1194,13 @@ export default {
 
       playerApi.updatePlayerInfo(updateParams)
         .then(() => {
-          this.$message.success('玩家列表更新成功');
+          toast.success('玩家列表更新成功');
           this.updateDialogVisible = false;
           this.refreshData();
         })
         .catch(error => {
           console.error('更新玩家列表失败:', error);
-          this.$message.error(`更新玩家列表失败: ${error.message || '未知错误'}`);
+          toast.error(`更新玩家列表失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.updating = false;
@@ -1507,89 +1218,196 @@ export default {
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .title-container {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 28px;
+  gap: 8px;
   white-space: nowrap;
 }
 
-.title-container .legacy-icon {
-  margin-right: 8px;
-  color: var(--primary-color);
+.title-container h2 {
   font-size: 18px;
+  font-weight: 600;
+  line-height: 28px;
 }
 
 .filter-card {
   margin-bottom: 16px;
-  border-radius: 4px;
-  box-shadow: none;
 }
 
 .filter-form {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
   align-items: flex-end;
-  gap: 0 10px;
+  gap: 12px;
 }
 
-.filter-form :deep(.el-form-item) {
-  margin-right: 0;
-  margin-bottom: 10px;
-}
-
-.table-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
+.filter-actions,
+.action-buttons,
+.row-actions,
+.steam-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .table-operations {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
 }
 
-.pagination-container {
-  margin-top: 14px;
-  display: flex;
+.action-buttons {
   justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-wrap :deep(table) {
+  min-width: 1280px;
+}
+
+.action-column {
+  position: sticky;
+  right: 0;
+  min-width: 108px;
+  background: var(--card);
+  text-align: right;
 }
 
 .player-name-cell {
   display: flex;
+  max-width: 180px;
   align-items: center;
+  gap: 6px;
 }
 
-.truncated-name {
-  max-width: 100%;
-  white-space: nowrap;
+.player-name-cell > svg {
+  flex: none;
+  color: var(--muted-foreground);
+}
+
+.mono-cell {
+  max-width: 180px;
   overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   text-overflow: ellipsis;
-  display: inline-block;
+  white-space: nowrap;
 }
 
-.detail-actions {
-  display: grid;
+.pagination-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.pagination-bar :deep([data-slot='native-select-wrapper']) {
+  width: 76px;
+}
+
+.player-detail-sheet {
+  width: min(94vw, 560px);
+  max-width: 560px;
+}
+
+.player-detail-scroll {
+  min-height: 0;
+  flex: 1;
+  padding-right: 12px;
+}
+
+.player-detail {
+  display: flex;
+  flex-direction: column;
   gap: 18px;
-  margin-top: 18px;
+  padding: 2px 0 24px;
 }
 
-.detail-actions h3 {
-  margin: 0 0 9px;
-  color: var(--text-primary);
+.player-detail-heading,
+.detail-player-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-detail-heading > div {
+  min-width: 0;
+}
+
+.detail-player-name strong {
+  overflow-wrap: anywhere;
+  font-size: 16px;
+}
+
+.player-detail-heading > div > span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.player-description-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.player-description-grid > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.player-description-grid > div:nth-child(odd) {
+  border-right: 1px solid var(--border);
+}
+
+.player-description-grid > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.player-description-grid dt {
+  margin-bottom: 3px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.player-description-grid dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.player-detail section h3 {
+  margin-bottom: 8px;
   font-size: 14px;
-  letter-spacing: 0;
+  font-weight: 600;
 }
 
 .detail-action-grid {
@@ -1598,440 +1416,70 @@ export default {
   gap: 8px;
 }
 
-.detail-action-grid :deep(.el-button) {
-  width: 100%;
-  margin: 0;
+@media (max-width: 1180px) {
+  .filter-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-actions {
+    grid-column: 1 / -1;
+  }
 }
 
-.detail-action-grid.danger {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.danger-actions {
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
-}
-
-.player-detail-heading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.detail-avatar {
-  display: grid;
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  color: #9b5a0b;
-  background: #fff0d8;
-  border-radius: 4px;
-}
-
-.detail-player-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.detail-player-name strong {
-  color: var(--text-primary);
-  font-size: 17px;
-}
-
-.player-detail-heading > div > span {
-  display: block;
-  margin-top: 3px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.player-descriptions {
-  width: 100%;
-}
-
-.operation-buttons {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 2px;
-}
-
-.operation-buttons :deep(.el-button) {
-  margin: 0;
-}
-
-.el-dropdown-menu__item i {
-  margin-right: 5px;
-  font-size: 16px;
-}
-
-.action-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.action-buttons .el-tag {
-  margin-left: 10px;
-}
-
-.cron-help {
-  margin-top: 5px;
-  color: var(--text-regular);
-  font-size: 12px;
-  background-color: var(--surface-muted);
-  padding: 10px;
-  border-radius: 4px;
-}
-
-.cron-help p {
-  margin: 5px 0;
-}
-
-.cron-help ul {
-  margin: 5px 0;
-  padding-left: 20px;
-}
-
-.cron-help code {
-  background-color: var(--surface-color);
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-family: monospace;
-}
-
-.important-note {
-  color: #d99b32;
-  font-weight: bold;
-  border-left: 3px solid #d99b32;
-  padding-left: 10px;
-  margin: 10px 0;
-}
-
-.world-help {
-  margin-top: 5px;
-  color: var(--text-regular);
-  font-size: 12px;
-  background-color: var(--surface-muted);
-  padding: 10px;
-  border-radius: 4px;
-}
-
-/* 网络质量样式 */
-.network-quality {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-}
-
-.signal-icon {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.signal-text {
-  font-size: 12px;
-  margin-left: 5px;
-}
-
-/* 信号条样式 */
-.signal-bars {
-  display: inline-flex;
-  align-items: flex-end;
-  height: 16px;
-  width: 18px;
-}
-
-.bar {
-  width: 3px;
-  margin-right: 1px;
-  background-color: var(--el-border-color);
-  border-radius: 1px;
-}
-
-.bar1 { height: 25%; }
-.bar2 { height: 50%; }
-.bar3 { height: 75%; }
-.bar4 { height: 100%; }
-
-/* 信号等级样式 */
-.signal-excellent .bar {
-  background-color: #4f8a5b;
-}
-
-.signal-medium .bar1,
-.signal-medium .bar2,
-.signal-medium .bar3 {
-  background-color: #d99b32;
-}
-
-.signal-poor .bar1 {
-  background-color: #c94f4f;
-}
-
-.signal-unknown .bar {
-  background-color: var(--text-secondary);
-}
-
-/* 用户标识样式 */
-.user-badges {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.admin-icon {
-  color: #c94f4f;
-  font-size: 16px;
-}
-
-.admin-icon-small {
-  color: #c94f4f;
-  font-size: 14px;
-  margin-right: 4px;
-}
-
-.name-with-badges {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.name-badges {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 6px;
-}
-
-.friend-icon {
-  color: #d99b32;
-  font-size: 16px;
-}
-
-.friend-icon-small {
-  color: #d99b32;
-  font-size: 14px;
-}
-
-/* 性能指标样式 */
-.performance-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-}
-
-.performance-indicator {
-  display: inline-flex;
-  align-items: flex-end;
-  height: 16px;
-  width: 16px;
-}
-
-.performance-text {
-  font-size: 12px;
-  margin-left: 5px;
-}
-
-.performance-indicator-small {
-  display: inline-flex;
-  align-items: flex-end;
-  height: 12px;
-  width: 12px;
-  margin-right: 4px;
-}
-
-.p-bar {
-  width: 3px;
-  margin-right: 1px;
-  background-color: var(--el-border-color);
-  border-radius: 1px;
-}
-
-.p-bar1 { height: 40%; }
-.p-bar2 { height: 70%; }
-.p-bar3 { height: 100%; }
-
-/* 性能等级样式 */
-.performance-excellent .p-bar {
-  background-color: #4f8a5b;
-}
-
-.performance-medium .p-bar1,
-.performance-medium .p-bar2 {
-  background-color: #d99b32;
-}
-
-.performance-poor .p-bar1 {
-  background-color: #c94f4f;
-}
-
-.performance-unknown .p-bar {
-  background-color: var(--text-secondary);
-}
-
-.detail-name-with-badges {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.detail-badges-container {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.detail-performance {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Steam ID 相关样式 */
-.steam-id-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.steam-id-text {
-  font-family: monospace;
-  color: var(--text-regular);
-  cursor: pointer;
-  transition: color 0.3s;
-}
-
-.steam-id-text:hover {
-  color: var(--primary-color);
-}
-
-.steam-icon-container {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.steam-svg-icon {
-  width: 16px;
-  height: 16px;
-  fill: #1b2838;
-  transition: fill 0.3s;
-  margin-left: 4px;
-}
-
-.steam-svg-icon:hover {
-  fill: var(--primary-color);
-}
-
-.detail-steam-id {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.detail-steam-id-text {
-  font-family: monospace;
-  color: var(--text-regular);
-  cursor: pointer;
-  transition: color 0.3s;
-}
-
-.detail-steam-id-text:hover {
-  color: var(--primary-color);
-}
-
-.truncated-text {
-  max-width: 140px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: inline-block;
-}
-
-.form-help-text {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 5px;
-  line-height: 1.2;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 720px) {
   .page-header {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .title-container {
-    width: 100%;
   }
 
   .action-buttons {
     justify-content: flex-start;
   }
 
-  .action-buttons :deep(.el-button) {
+  .action-buttons > :deep(button) {
     flex: 1 1 calc(50% - 4px);
-    margin: 0;
   }
 
-  .action-buttons :deep(.el-tag) {
+  .action-buttons > :deep([data-slot='badge']) {
     width: 100%;
-    height: auto;
-    margin: 0;
-    padding: 5px 8px;
     white-space: normal;
   }
 
   .filter-form {
-    display: block;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .filter-form :deep(.el-form-item),
-  .filter-form :deep(.el-form-item__content),
-  .filter-form :deep(.el-select),
-  .filter-form :deep(.el-input) {
-    width: 100%;
-  }
-
-  .filter-form :deep(.el-form-item:last-child .el-form-item__content) {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+  .filter-actions {
+    grid-column: auto;
   }
 
   .table-operations {
-    gap: 8px;
+    align-items: stretch;
+    flex-direction: column;
     flex-wrap: wrap;
   }
 
-  .pagination-container {
-    justify-content: center;
+  .pagination-bar {
+    justify-content: flex-start;
+    overflow-x: auto;
   }
 
-  .player-detail :deep(.el-descriptions__body) table,
-  .player-detail :deep(.el-descriptions__body) tbody,
-  .player-detail :deep(.el-descriptions__body) tr,
-  .player-detail :deep(.el-descriptions__body) td {
-    display: block;
-    width: 100%;
+  .player-description-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .detail-action-grid,
-  .detail-action-grid.danger {
+  .player-description-grid > div,
+  .player-description-grid > div:nth-child(odd),
+  .player-description-grid > div:nth-last-child(-n + 2) {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .player-description-grid > div:last-child {
+    border-bottom: 0;
+  }
+
+  .detail-action-grid {
     grid-template-columns: 1fr;
   }
 }
