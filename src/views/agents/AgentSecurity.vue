@@ -3,13 +3,13 @@
     <el-card class="main-card" shadow="hover">
       <div slot="header" class="clearfix">
         <span class="card-title">
-          <i class="el-icon-lock"></i> Agent安全设置
+          <component is="el-icon-lock" class="legacy-icon" /> Agent安全设置
         </span>
       </div>
       
       <div v-loading="loading" class="security-content">
         <div class="section-title">
-          <i class="el-icon-key"></i> API密钥管理
+          <component is="el-icon-key" class="legacy-icon" /> API密钥管理
         </div>
         
         <div class="api-key-box">
@@ -363,7 +363,7 @@ export default {
 .card-title {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
 }
 
 .security-content {
@@ -373,7 +373,7 @@ export default {
 .section-title {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
   margin-bottom: 20px;
   display: flex;
   align-items: center;
@@ -383,14 +383,14 @@ export default {
 .section-subtitle {
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
   margin: 20px 0 15px;
   display: flex;
   align-items: center;
 }
 
 .beta-badge {
-  background-color: #409EFF;
+  background-color: #d97932;
   color: white;
   font-size: 11px;
   padding: 2px 6px;
@@ -399,7 +399,7 @@ export default {
 }
 
 .api-key-box {
-  background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%);
+  background: linear-gradient(135deg, #f1f4ed 0%, #eef2f7 100%);
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 20px;
@@ -418,7 +418,7 @@ export default {
 .key-label {
   display: block;
   font-size: 13px;
-  color: #909399;
+  color: #758078;
   margin-bottom: 8px;
 }
 
@@ -427,7 +427,7 @@ export default {
   align-items: center;
   background-color: #fff;
   border-radius: 4px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #d4ddd3;
   padding: 8px 12px;
 }
 
@@ -438,11 +438,11 @@ export default {
 }
 
 .key-value {
-  color: #409EFF;
+  color: #d97932;
 }
 
 .key-value-masked {
-  color: #606266;
+  color: #536159;
   letter-spacing: 2px;
 }
 
@@ -506,7 +506,7 @@ export default {
   position: absolute;
   left: 0;
   top: 0;
-  background-color: #409EFF;
+  background-color: #d97932;
   color: white;
   font-weight: bold;
   border-radius: 50%;
@@ -519,11 +519,11 @@ export default {
 .step-title {
   font-weight: 600;
   margin-bottom: 5px;
-  color: #303133;
+  color: #27352f;
 }
 
 .step-content {
-  color: #606266;
+  color: #536159;
 }
 
 .linux-cmd code {
@@ -551,12 +551,12 @@ export default {
 }
 
 .agent-security-container .el-tabs__item.is-active {
-  color: #409EFF;
+  color: #d97932;
   font-weight: 600;
 }
 
 .agent-security-container .el-tabs__nav-wrap::after {
   height: 1px;
-  background-color: #dcdfe6;
+  background-color: #d4ddd3;
 }
 </style>

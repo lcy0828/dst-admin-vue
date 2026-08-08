@@ -243,7 +243,7 @@
               
               <el-form-item>
                 <el-button type="primary" @click="generateItems" :disabled="!isDistributionValid || isGenerating" style="width: 100%">
-                  <i class="el-icon-magic-stick"></i> 生成物品
+                  <component is="el-icon-magic-stick" class="legacy-icon" /> 生成物品
                 </el-button>
               </el-form-item>
             </el-form>
@@ -262,7 +262,7 @@
             </div>
             
             <div v-if="!generatedItems.length" class="empty-result">
-              <i class="el-icon-box"></i>
+              <component is="el-icon-box" class="legacy-icon" />
               <p>请设置参数并点击"生成物品"按钮</p>
             </div>
             
@@ -356,7 +356,7 @@
     </el-card>
 
     <!-- 编辑生成的物品 -->
-    <el-dialog title="编辑物品" :visible.sync="editDialogVisible" width="650px">
+    <el-dialog title="编辑物品" v-model="editDialogVisible" width="650px">
       <el-form :model="editItemForm" :rules="itemRules" ref="editItemForm" label-width="100px">
         <el-form-item label="物品名称" prop="name">
           <el-input v-model="editItemForm.name" placeholder="请输入物品名称"></el-input>
@@ -1027,8 +1027,8 @@ export default {
   margin-top: 0;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #EBEEF5;
-  color: #303133;
+  border-bottom: 1px solid #e8ece5;
+  color: #27352f;
 }
 
 /* 稀有度滑块样式 */
@@ -1046,25 +1046,25 @@ export default {
   width: 60px;
   text-align: right;
   padding-right: 10px;
-  color: #606266;
+  color: #536159;
 }
 
 .rarity-value {
   width: 50px;
   text-align: left;
   padding-left: 10px;
-  color: #606266;
+  color: #536159;
 }
 
 .distribution-total {
   text-align: right;
-  color: #67C23A;
+  color: #4f8a5b;
   font-size: 13px;
   margin-top: 10px;
 }
 
 .distribution-error {
-  color: #F56C6C;
+  color: #c94f4f;
 }
 
 /* 类型特定设置样式 */
@@ -1089,12 +1089,12 @@ export default {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .result-header h3 {
   margin: 0;
-  color: #303133;
+  color: #27352f;
 }
 
 .result-actions {
@@ -1108,7 +1108,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 300px;
-  color: #909399;
+  color: #758078;
 }
 
 .empty-result i {
@@ -1147,23 +1147,23 @@ export default {
   left: 0;
   right: 0;
   height: 4px;
-  background-color: #909399;
+  background-color: #758078;
 }
 
 .rarity-common::before {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 .rarity-rare::before {
-  background-color: #409EFF;
+  background-color: #d97932;
 }
 
 .rarity-epic::before {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .rarity-legendary::before {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .item-card-header {
@@ -1177,7 +1177,7 @@ export default {
   height: 40px;
   border-radius: 4px;
   margin-right: 10px;
-  border: 1px solid #EBEEF5;
+  border: 1px solid #e8ece5;
 }
 
 .item-card-title {
@@ -1187,7 +1187,7 @@ export default {
 .item-card-name {
   font-weight: bold;
   margin-bottom: 5px;
-  color: #303133;
+  color: #27352f;
 }
 
 .item-card-tags {
@@ -1196,7 +1196,7 @@ export default {
 }
 
 .item-card-description {
-  color: #606266;
+  color: #536159;
   font-size: 13px;
   margin-bottom: 15px;
   min-height: 40px;
@@ -1220,7 +1220,7 @@ export default {
   justify-content: space-between;
   padding: 5px 0;
   font-size: 13px;
-  border-bottom: 1px dashed #EBEEF5;
+  border-bottom: 1px dashed #e8ece5;
 }
 
 .item-stat-row:last-child {
@@ -1228,16 +1228,16 @@ export default {
 }
 
 .item-stat-label {
-  color: #909399;
+  color: #758078;
 }
 
 .item-stat-value {
-  color: #303133;
+  color: #27352f;
   font-weight: 500;
 }
 
 .item-special-stat {
-  color: #409EFF;
+  color: #d97932;
 }
 
 .item-card-actions {
@@ -1246,38 +1246,38 @@ export default {
 }
 
 /* 表单样式调整 */
-::v-deep .el-form-item {
+:deep(.el-form-item) {
   margin-bottom: 18px;
 }
 
-::v-deep .el-form-item__label {
+:deep(.el-form-item__label) {
   font-weight: 500;
 }
 
-::v-deep .el-select {
+:deep(.el-select) {
   width: 100%;
 }
 
-::v-deep .el-slider {
+:deep(.el-slider) {
   margin-top: 10px;
 }
 
-::v-deep .el-slider__runway {
+:deep(.el-slider__runway) {
   margin: 8px 0;
 }
 
-::v-deep .el-collapse-item__header {
+:deep(.el-collapse-item__header) {
   font-weight: 600;
 }
 
-::v-deep .el-collapse-item__content {
+:deep(.el-collapse-item__content) {
   padding: 15px 0;
 }
 
-::v-deep .el-divider__text {
+:deep(.el-divider__text) {
   background-color: #f9fafc;
   font-weight: 600;
-  color: #606266;
+  color: #536159;
 }
 
 /* 特殊属性样式 */

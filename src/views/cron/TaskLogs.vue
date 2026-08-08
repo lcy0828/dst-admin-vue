@@ -114,7 +114,7 @@
       </el-pagination>
     </el-card>
 
-    <el-dialog title="日志详情" :visible.sync="dialogVisible" width="70%">
+    <el-dialog title="日志详情" v-model="dialogVisible" width="70%">
       <div v-if="currentLog" class="log-detail">
         <el-descriptions border :column="2">
           <el-descriptions-item label="日志ID">{{ currentLog.id }}</el-descriptions-item>
@@ -152,7 +152,7 @@
       </div>
     </el-dialog>
 
-    <el-dialog title="清理日志" :visible.sync="clearDialogVisible" width="500px">
+    <el-dialog title="清理日志" v-model="clearDialogVisible" width="500px">
       <el-form :model="clearForm" label-width="120px">
         <el-form-item label="保留时间">
           <el-select v-model="clearForm.keep_days" style="width: 100%">
@@ -472,7 +472,7 @@ export default {
   color: #d33;
 }
 .link-type {
-  color: #409EFF;
+  color: #d97932;
   text-decoration: none;
 }
 .link-type:hover {

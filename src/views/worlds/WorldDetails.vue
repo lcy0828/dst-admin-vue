@@ -331,13 +331,13 @@ export default {
 
 .info-item {
   display: flex;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
   padding-bottom: 10px;
 }
 
 .info-label {
   width: 100px;
-  color: #909399;
+  color: #758078;
   font-weight: bold;
 }
 
@@ -358,11 +358,11 @@ export default {
 .stat-value {
   font-size: 24px;
   font-weight: bold;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .stat-label {
-  color: #909399;
+  color: #758078;
   margin-top: 5px;
 }
 
@@ -388,16 +388,16 @@ export default {
   display: flex;
   flex-direction: column;
   padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .activity-time {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   margin-bottom: 5px;
 }
 
 .activity-content {
-  color: #606266;
+  color: #536159;
 }
 </style> 

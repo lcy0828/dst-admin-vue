@@ -4,7 +4,7 @@
       <h2 class="page-title">{{ isEdit ? '编辑任务' : '创建新任务' }}</h2>
       <div class="page-actions">
         <el-button @click="goBack">
-          <i class="el-icon-back"></i> 返回列表
+          <component is="el-icon-back" class="legacy-icon" /> 返回列表
         </el-button>
       </div>
     </div>
@@ -985,7 +985,7 @@ export default {
   margin: 0;
   font-size: 22px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
 }
 
 .task-form-card {
@@ -998,12 +998,12 @@ export default {
 
 .el-divider__text {
   font-weight: bold;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .form-item-hint {
   margin-left: 10px;
-  color: #909399;
+  color: #758078;
   font-size: 13px;
 }
 
@@ -1017,35 +1017,35 @@ export default {
   margin-bottom: 10px;
 }
 
-::v-deep .cron-help {
+:deep(.cron-help) {
   text-align: left;
 }
 
-::v-deep .cron-help h3 {
+:deep(.cron-help h3) {
   margin-top: 16px;
   margin-bottom: 8px;
   font-size: 16px;
-  color: #303133;
+  color: #27352f;
 }
 
-::v-deep .cron-help p {
+:deep(.cron-help p) {
   margin: 8px 0;
 }
 
-::v-deep .cron-help ul {
+:deep(.cron-help ul) {
   padding-left: 20px;
   margin: 8px 0;
 }
 
-::v-deep .cron-help li {
+:deep(.cron-help li) {
   margin-bottom: 4px;
 }
 
-::v-deep .cron-help code {
-  background-color: #f5f7fa;
+:deep(.cron-help code) {
+  background-color: #f1f4ed;
   border-radius: 4px;
   padding: 2px 6px;
-  color: #409EFF;
+  color: #d97932;
   font-family: Consolas, Monaco, monospace;
 }
 </style> 

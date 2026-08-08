@@ -92,7 +92,7 @@
     <!-- 创建规则对话框 -->
     <el-dialog
       title="基于日志创建解析规则"
-      :visible.sync="ruleDialogVisible"
+      v-model="ruleDialogVisible"
       width="80%"
       :close-on-click-modal="false"
       :before-close="handleRuleDialogClose"
@@ -140,7 +140,7 @@
     <!-- 清空日志对话框 -->
     <el-dialog
       title="清空日志"
-      :visible.sync="cleanupDialogVisible"
+      v-model="cleanupDialogVisible"
       width="30%"
       :close-on-click-modal="false"
     >
@@ -952,7 +952,7 @@ export default {
 }
 
 /* 确保对话框不会太高 */
-.rule-dialog >>> .el-dialog {
+.rule-dialog :deep(.el-dialog) {
   margin-bottom: 5vh;
 }
 
@@ -962,12 +962,12 @@ export default {
 }
 
 .warning-text {
-  color: #E6A23C;
+  color: #d99b32;
   font-weight: bold;
   margin-bottom: 20px;
   padding: 10px;
   background-color: #FDF6EC;
   border-radius: 4px;
-  border-left: 4px solid #E6A23C;
+  border-left: 4px solid #d99b32;
 }
 </style>

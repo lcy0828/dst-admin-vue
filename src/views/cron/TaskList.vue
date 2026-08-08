@@ -77,7 +77,7 @@
             <div class="target-cell">
               <el-tooltip :content="getFormattedTarget(scope.row)" placement="top" effect="light">
                 <div class="target-content">
-                  <i :class="getTargetIcon(scope.row.type)" class="target-icon"></i>
+                  <component :is="getTargetIcon(scope.row.type)" class="legacy-icon target-icon" />
                   <span>{{ getFormattedTarget(scope.row) | truncate(40) }}</span>
                 </div>
               </el-tooltip>
@@ -107,13 +107,13 @@
             <div class="timeout-retry-cell">
               <el-tooltip content="任务超时时间(秒)" placement="top" effect="light">
                 <div class="timeout-value">
-                  <i class="el-icon-time"></i>
+                  <component is="el-icon-time" class="legacy-icon" />
                   <span>{{ scope.row.timeout || '无限' }}</span>
                 </div>
               </el-tooltip>
               <el-tooltip content="重试次数" placement="top" effect="light">
                 <div class="retry-value">
-                  <i class="el-icon-refresh"></i>
+                  <component is="el-icon-refresh" class="legacy-icon" />
                   <span>{{ scope.row.retry_times || '0' }}</span>
                 </div>
               </el-tooltip>
@@ -124,7 +124,7 @@
           <template slot-scope="scope">
             <div class="last-run-cell">
               <div class="last-run-time">
-                <i class="el-icon-date"></i>
+                <component is="el-icon-date" class="legacy-icon" />
                 <span v-if="scope.row.last_run_time && scope.row.last_run_time !== '0001-01-01T00:00:00Z'" class="time-text">{{ formatDateTime(scope.row.last_run_time) }}</span>
                 <span v-else class="no-run">未执行</span>
               </div>
@@ -203,7 +203,7 @@
       </el-pagination>
     </el-card>
 
-    <el-dialog title="执行结果" :visible.sync="dialogVisible" width="60%">
+    <el-dialog title="执行结果" v-model="dialogVisible" width="60%">
       <div v-if="taskResult" class="task-result">
         <div v-if="taskResult.success !== undefined">
           <p><strong>执行状态：</strong> <el-tag :type="taskResult.success ? 'success' : 'danger'">{{ taskResult.success ? '成功' : '失败' }}</el-tag></p>
@@ -244,7 +244,7 @@
       </div>
     </el-dialog>
 
-    <el-dialog title="任务统计" :visible.sync="statsDialogVisible" width="70%">
+    <el-dialog title="任务统计" v-model="statsDialogVisible" width="70%">
       <div v-loading="statsLoading" class="task-stats">
         <div v-if="taskStats" class="stats-overview">
           <div class="stats-card success-rate">
@@ -308,7 +308,7 @@
 
 <script>
 import { cronTaskApi } from '@/api/index';
-import echarts from 'echarts';
+import * as echarts from 'echarts';
 import axios from 'axios';
 import config from '@/api/config';
 
@@ -1166,7 +1166,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#67C23A'
+              color: '#4f8a5b'
             },
             data: data.success || []
           },
@@ -1175,7 +1175,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#F56C6C'
+              color: '#c94f4f'
             },
             data: data.failed || []
           }
@@ -1221,7 +1221,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: '#409EFF'
+              color: '#d97932'
             }
           }
         ]
@@ -1283,16 +1283,16 @@ export default {
 }
 
 /* 表格行样式 */
-.task-table /deep/ .disabled-row {
+.task-table :deep(.disabled-row) {
   background-color: #f9f9f9;
-  color: #909399;
+  color: #758078;
 }
 
-.task-table /deep/ .success-row {
+.task-table :deep(.success-row) {
   background-color: #f0f9eb;
 }
 
-.task-table /deep/ .warning-row {
+.task-table :deep(.warning-row) {
   background-color: #fdf6ec;
 }
 
@@ -1319,7 +1319,7 @@ export default {
 
 .task-description {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1340,7 +1340,7 @@ export default {
 .target-icon {
   margin-right: 5px;
   font-size: 16px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 /* 依赖任务单元格 */
@@ -1350,7 +1350,7 @@ export default {
 }
 
 .no-deps {
-  color: #909399;
+  color: #758078;
   font-size: 12px;
   font-style: italic;
 }
@@ -1380,7 +1380,7 @@ export default {
 
 .timeout-value i, .retry-value i {
   margin-right: 5px;
-  color: #909399;
+  color: #758078;
 }
 
 /* 下次执行单元格 */
@@ -1391,15 +1391,15 @@ export default {
 
 .next-run-cell i {
   margin-right: 5px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .next-run-time {
-  color: #303133;
+  color: #27352f;
 }
 
 .no-schedule {
-  color: #909399;
+  color: #758078;
   font-style: italic;
 }
 
@@ -1417,15 +1417,15 @@ export default {
 
 .last-run-time i {
   margin-right: 5px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .time-text {
-  color: #303133;
+  color: #27352f;
 }
 
 .no-run {
-  color: #909399;
+  color: #758078;
   font-style: italic;
 }
 
@@ -1449,8 +1449,8 @@ export default {
   margin: 0 3px;
 }
 
-/deep/ .danger-item {
-  color: #F56C6C;
+:deep(.danger-item) {
+  color: #c94f4f;
 }
 
 /* 统计对话框样式 */
@@ -1472,7 +1472,7 @@ export default {
 }
 .result-message p {
   margin: 5px 0;
-  color: #606266;
+  color: #536159;
 }
 .result-output {
   margin-top: 15px;
@@ -1508,33 +1508,33 @@ export default {
 }
 .stats-title {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
   margin-bottom: 10px;
 }
 .stats-value {
   font-size: 24px;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
 }
 
 .unit-note {
   font-size: 12px;
   font-weight: normal;
-  color: #909399;
+  color: #758078;
   display: block;
   margin-top: 5px;
 }
 .success-rate {
-  border-left: 4px solid #67C23A;
+  border-left: 4px solid #4f8a5b;
 }
 .avg-duration {
-  border-left: 4px solid #409EFF;
+  border-left: 4px solid #d97932;
 }
 .total-runs {
-  border-left: 4px solid #E6A23C;
+  border-left: 4px solid #d99b32;
 }
 .last-run {
-  border-left: 4px solid #909399;
+  border-left: 4px solid #758078;
 }
 .stats-detail {
   margin: 20px 0;
@@ -1549,7 +1549,7 @@ export default {
 }
 .detail-label {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
   margin-right: 10px;
   min-width: 80px;
 }
@@ -1558,10 +1558,10 @@ export default {
   font-weight: bold;
 }
 .detail-value.success {
-  color: #67C23A;
+  color: #4f8a5b;
 }
 .detail-value.fail {
-  color: #F56C6C;
+  color: #c94f4f;
 }
 .stats-charts {
   margin-top: 20px;

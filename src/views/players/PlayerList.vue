@@ -3,7 +3,7 @@
     <!-- 页面标题和操作区域 -->
     <div class="page-header">
       <div class="title-container">
-        <i class="el-icon-user"></i>
+        <component is="el-icon-user" class="legacy-icon" />
         <span>玩家列表</span>
       </div>
       <div class="action-buttons">
@@ -53,7 +53,7 @@
             placeholder="搜索玩家名称/ID"
             prefix-icon="el-icon-search"
             clearable
-            @keyup.enter.native="handleFilter"
+            @keyup.enter="handleFilter"
             @clear="handleFilter">
           </el-input>
         </el-form-item>
@@ -90,10 +90,10 @@
                   <span class="truncated-name">{{ scope.row.player_name }}</span>
                   <div class="name-badges">
                     <el-tooltip v-if="scope.row.is_admin" content="管理员" placement="top" effect="light">
-                      <i class="el-icon-trophy admin-icon-small"></i>
+                      <component is="el-icon-trophy" class="legacy-icon admin-icon-small" />
                     </el-tooltip>
                     <el-tooltip v-if="scope.row.is_friend" content="好友" placement="top" effect="light">
-                      <i class="el-icon-s-custom friend-icon-small"></i>
+                      <component is="el-icon-s-custom" class="legacy-icon friend-icon-small" />
                     </el-tooltip>
                   </div>
                 </div>
@@ -282,7 +282,7 @@
     </el-card>
 
     <!-- 玩家详情对话框 -->
-    <el-dialog title="玩家详情" :visible.sync="playerDetailVisible" width="50%">
+    <el-dialog title="玩家详情" v-model="playerDetailVisible" width="50%">
       <div v-if="currentPlayer" class="player-detail">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="玩家ID">{{ currentPlayer.id }}</el-descriptions-item>
@@ -291,8 +291,8 @@
             <div class="detail-name-with-badges">
               <span>{{ currentPlayer.player_name }}</span>
               <div class="detail-badges-container">
-                <i v-if="currentPlayer.is_admin" class="el-icon-trophy admin-icon-small" title="管理员"></i>
-                <i v-if="currentPlayer.is_friend" class="el-icon-s-custom friend-icon-small" title="好友"></i>
+                <component v-if="currentPlayer.is_admin" is="el-icon-trophy" class="legacy-icon admin-icon-small" title="管理员" />
+                <component v-if="currentPlayer.is_friend" is="el-icon-s-custom" class="legacy-icon friend-icon-small" title="好友" />
               </div>
             </div>
           </el-descriptions-item>
@@ -372,7 +372,7 @@
 
 
     <!-- 封禁对话框 -->
-    <el-dialog title="封禁玩家" :visible.sync="banDialogVisible" width="30%">
+    <el-dialog title="封禁玩家" v-model="banDialogVisible" width="30%">
       <el-form :model="banForm" label-width="80px">
         <el-form-item label="封禁原因" required>
           <el-input
@@ -402,7 +402,7 @@
     </el-dialog>
 
     <!-- 无敌模式对话框 -->
-    <el-dialog title="设置无敌模式" :visible.sync="godModeDialogVisible" width="30%">
+    <el-dialog title="设置无敌模式" v-model="godModeDialogVisible" width="30%">
       <div v-if="currentPlayer">
         <p>您将为玩家 <strong>{{ currentPlayer.player_name }}</strong> 设置无敌模式。</p>
         <el-form :model="godModeForm" label-width="80px">
@@ -422,7 +422,7 @@
     </el-dialog>
 
     <!-- 制作模式对话框 -->
-    <el-dialog title="设置制作模式" :visible.sync="creativeModeDialogVisible" width="30%">
+    <el-dialog title="设置制作模式" v-model="creativeModeDialogVisible" width="30%">
       <div v-if="currentPlayer">
         <p>您将为玩家 <strong>{{ currentPlayer.player_name }}</strong> 设置制作模式。</p>
         <el-form :model="creativeModeForm" label-width="80px">
@@ -442,7 +442,7 @@
     </el-dialog>
 
     <!-- 会话选择对话框 -->
-    <el-dialog title="选择游戏世界" :visible.sync="sessionSelectDialogVisible" width="30%">
+    <el-dialog title="选择游戏世界" v-model="sessionSelectDialogVisible" width="30%">
       <el-form label-width="80px">
         <el-form-item label="选择世界" required>
           <el-select v-model="selectedSessionName" placeholder="选择世界" style="width: 100%">
@@ -480,7 +480,7 @@
     </el-dialog>
 
     <!-- 手动更新玩家列表对话框 -->
-    <el-dialog title="手动更新玩家列表" :visible.sync="updateDialogVisible" width="30%">
+    <el-dialog title="手动更新玩家列表" v-model="updateDialogVisible" width="30%">
       <el-form :model="updateForm" label-width="100px">
         <el-form-item label="存档名称" required>
           <el-select v-model="updateForm.archive_name" placeholder="选择存档" style="width: 100%" @change="onArchiveChange">
@@ -519,7 +519,7 @@
     </el-dialog>
 
     <!-- 重选人物对话框 -->
-    <el-dialog title="重选人物" :visible.sync="characterDialogVisible" width="30%">
+    <el-dialog title="重选人物" v-model="characterDialogVisible" width="30%">
       <div v-if="currentPlayer">
         <p>您将让玩家 <strong>{{ currentPlayer.player_name }}</strong> 重新选择角色。</p>
         <p>当前角色：<strong>{{ getCharacterName(currentPlayer.prefab) }}</strong></p>
@@ -537,7 +537,7 @@
     </el-dialog>
 
     <!-- 定时更新任务对话框 -->
-    <el-dialog title="添加定时更新任务" :visible.sync="scheduleDialogVisible" width="40%">
+    <el-dialog title="添加定时更新任务" v-model="scheduleDialogVisible" width="40%">
       <el-form :model="scheduleForm" :rules="scheduleRules" ref="scheduleForm" label-width="100px">
         <el-form-item label="任务名称" prop="name">
           <el-input v-model="scheduleForm.name" placeholder="请输入任务名称"></el-input>
@@ -1033,10 +1033,10 @@ export default {
     // 获取网络质量颜色
     getNetworkColor(netScore) {
       switch(netScore) {
-        case 0: return '#67C23A'; // 绿色
-        case 1: return '#E6A23C'; // 黄色
-        case 2: return '#F56C6C'; // 红色
-        default: return '#909399'; // 灰色
+        case 0: return '#4f8a5b'; // 绿色
+        case 1: return '#d99b32'; // 黄色
+        case 2: return '#c94f4f'; // 红色
+        default: return '#758078'; // 灰色
       }
     },
 
@@ -1063,10 +1063,10 @@ export default {
     // 获取性能颜色
     getPerformanceColor(performance) {
       switch(performance) {
-        case 0: return '#67C23A'; // 绿色
-        case 1: return '#E6A23C'; // 黄色
-        case 2: return '#F56C6C'; // 红色
-        default: return '#909399'; // 灰色
+        case 0: return '#4f8a5b'; // 绿色
+        case 1: return '#d99b32'; // 黄色
+        case 2: return '#c94f4f'; // 红色
+        default: return '#758078'; // 灰色
       }
     },
 
@@ -1583,9 +1583,9 @@ export default {
 }
 
 .important-note {
-  color: #e6a23c;
+  color: #d99b32;
   font-weight: bold;
-  border-left: 3px solid #e6a23c;
+  border-left: 3px solid #d99b32;
   padding-left: 10px;
   margin: 10px 0;
 }
@@ -1629,7 +1629,7 @@ export default {
 .bar {
   width: 3px;
   margin-right: 1px;
-  background-color: #DCDFE6;
+  background-color: #d4ddd3;
   border-radius: 1px;
 }
 
@@ -1640,21 +1640,21 @@ export default {
 
 /* 信号等级样式 */
 .signal-excellent .bar {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .signal-medium .bar1,
 .signal-medium .bar2,
 .signal-medium .bar3 {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .signal-poor .bar1 {
-  background-color: #F56C6C;
+  background-color: #c94f4f;
 }
 
 .signal-unknown .bar {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 /* 用户标识样式 */
@@ -1666,12 +1666,12 @@ export default {
 }
 
 .admin-icon {
-  color: #F56C6C;
+  color: #c94f4f;
   font-size: 16px;
 }
 
 .admin-icon-small {
-  color: #F56C6C;
+  color: #c94f4f;
   font-size: 14px;
   margin-right: 4px;
 }
@@ -1691,12 +1691,12 @@ export default {
 }
 
 .friend-icon {
-  color: #E6A23C;
+  color: #d99b32;
   font-size: 16px;
 }
 
 .friend-icon-small {
-  color: #E6A23C;
+  color: #d99b32;
   font-size: 14px;
 }
 
@@ -1731,7 +1731,7 @@ export default {
 .p-bar {
   width: 3px;
   margin-right: 1px;
-  background-color: #DCDFE6;
+  background-color: #d4ddd3;
   border-radius: 1px;
 }
 
@@ -1741,20 +1741,20 @@ export default {
 
 /* 性能等级样式 */
 .performance-excellent .p-bar {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .performance-medium .p-bar1,
 .performance-medium .p-bar2 {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .performance-poor .p-bar1 {
-  background-color: #F56C6C;
+  background-color: #c94f4f;
 }
 
 .performance-unknown .p-bar {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 .detail-name-with-badges {
@@ -1785,13 +1785,13 @@ export default {
 
 .steam-id-text {
   font-family: monospace;
-  color: #606266;
+  color: #536159;
   cursor: pointer;
   transition: color 0.3s;
 }
 
 .steam-id-text:hover {
-  color: #409EFF;
+  color: #d97932;
 }
 
 .steam-icon-container {
@@ -1810,7 +1810,7 @@ export default {
 }
 
 .steam-svg-icon:hover {
-  fill: #409EFF;
+  fill: #d97932;
 }
 
 .detail-steam-id {
@@ -1822,13 +1822,13 @@ export default {
 
 .detail-steam-id-text {
   font-family: monospace;
-  color: #606266;
+  color: #536159;
   cursor: pointer;
   transition: color 0.3s;
 }
 
 .detail-steam-id-text:hover {
-  color: #409EFF;
+  color: #d97932;
 }
 
 .truncated-text {
@@ -1841,7 +1841,7 @@ export default {
 
 .form-help-text {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   margin-top: 5px;
   line-height: 1.2;
 }

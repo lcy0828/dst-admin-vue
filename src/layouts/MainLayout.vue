@@ -8,102 +8,102 @@
       <el-menu
         :default-active="activeMenu"
         class="el-menu-vertical"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
+        background-color="#315a46"
+        text-color="#e2ede5"
+        active-text-color="#ffb15e"
         :collapse="isCollapse"
         :unique-opened="true"
         router>
 
         <el-menu-item index="/dashboard">
-          <i class="el-icon-s-home"></i>
-          <span slot="title">仪表盘</span>
+          <component is="el-icon-s-home" class="legacy-icon" />
+          <span>仪表盘</span>
         </el-menu-item>
 
-        <el-submenu index="/servers">
-          <template slot="title">
-            <i class="el-icon-s-platform"></i>
+        <el-sub-menu index="/servers">
+          <template #title>
+            <component is="el-icon-s-platform" class="legacy-icon" />
             <span>服务器管理</span>
           </template>
           <el-menu-item index="/servers/list">服务器列表</el-menu-item>
           <el-menu-item index="/servers/commands">命令设置</el-menu-item>
-        </el-submenu>
+        </el-sub-menu>
 
-        <el-submenu index="/logs">
-          <template slot="title">
-            <i class="el-icon-document"></i>
+        <el-sub-menu index="/logs">
+          <template #title>
+            <component is="el-icon-document" class="legacy-icon" />
             <span>日志管理器</span>
           </template>
           <el-menu-item index="/logs/query">日志查询</el-menu-item>
           <el-menu-item index="/logs/rules">规则管理</el-menu-item>
           <el-menu-item index="/logs/parser">日志解析器</el-menu-item>
-        </el-submenu>
+        </el-sub-menu>
 
-        <el-submenu index="/players">
-          <template slot="title">
-            <i class="el-icon-user"></i>
+        <el-sub-menu index="/players">
+          <template #title>
+            <component is="el-icon-user" class="legacy-icon" />
             <span>玩家管理</span>
           </template>
           <el-menu-item index="/players/list">玩家列表</el-menu-item>
-        </el-submenu>
+        </el-sub-menu>
 
 
 
-        <el-submenu index="/mods">
-          <template slot="title">
-            <i class="el-icon-s-operation"></i>
+        <el-sub-menu index="/mods">
+          <template #title>
+            <component is="el-icon-s-operation" class="legacy-icon" />
             <span>模组管理</span>
           </template>
           <el-menu-item index="/mods/list">已下载模组</el-menu-item>
           <el-menu-item index="/mods/search">模组搜索</el-menu-item>
-        </el-submenu>
+        </el-sub-menu>
 
-        <el-submenu index="/rooms">
-          <template slot="title">
-            <i class="el-icon-s-grid"></i>
+        <el-sub-menu index="/rooms">
+          <template #title>
+            <component is="el-icon-s-grid" class="legacy-icon" />
             <span>房间管理</span>
           </template>
           <el-menu-item index="/rooms/list">房间列表</el-menu-item>
           <el-menu-item index="/rooms/settings">房间设置</el-menu-item>
-        </el-submenu>
+        </el-sub-menu>
 
-        <el-submenu index="/worlds">
+        <el-sub-menu index="/worlds">
           <template slot="title">
-            <i class="el-icon-s-data"></i>
+            <component is="el-icon-s-data" class="legacy-icon" />
             <span>世界管理</span>
           </template>
           <el-menu-item index="/worlds/list">世界列表</el-menu-item>
           <el-menu-item index="/worlds/settings">世界设置</el-menu-item>
           <el-menu-item index="/worlds/state">世界状态</el-menu-item>
-        </el-submenu>
+        </el-sub-menu>
 
         <el-menu-item index="/backups">
-          <i class="el-icon-s-management"></i>
-          <span slot="title">备份管理</span>
+          <component is="el-icon-s-management" class="legacy-icon" />
+          <span>备份管理</span>
         </el-menu-item>
 
-        <el-submenu index="/scheduled">
-          <template slot="title">
-            <i class="el-icon-alarm-clock"></i>
+        <el-sub-menu index="/scheduled">
+          <template #title>
+            <component is="el-icon-alarm-clock" class="legacy-icon" />
             <span>定时任务</span>
           </template>
           <el-menu-item index="/scheduled/tasks">任务列表</el-menu-item>
           <el-menu-item index="/scheduled/create">创建任务</el-menu-item>
-        </el-submenu>
+        </el-sub-menu>
 
-        <el-submenu index="/agents">
-          <template slot="title">
-            <i class="el-icon-connection"></i>
+        <el-sub-menu index="/agents">
+          <template #title>
+            <component is="el-icon-connection" class="legacy-icon" />
             <span>Agent管理</span>
           </template>
           <el-menu-item index="/agents/list">Agent列表</el-menu-item>
           <el-menu-item index="/agents/command">命令管理</el-menu-item>
           <el-menu-item index="/agents/security">安全设置</el-menu-item>
-        </el-submenu>
+        </el-sub-menu>
 
         <el-menu-item index="/system">
-          <i class="el-icon-setting"></i>
-          <span slot="title">系统设置</span>
+          <component is="el-icon-setting" class="legacy-icon" />
+          <span>系统设置</span>
         </el-menu-item>
       </el-menu>
 
@@ -135,15 +135,17 @@
           <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" class="github-link">
             <i class="fab fa-github"></i>
           </a>
-          <el-dropdown trigger="click">
+          <el-dropdown trigger="click" @command="handleUserCommand">
             <span class="user-dropdown">
-              管理员 <i class="el-icon-arrow-down"></i>
+              管理员 <component is="el-icon-arrow-down" class="legacy-icon" />
             </span>
-            <el-dropdown-menu slot="dropdown">
-              <el-dropdown-item>个人资料</el-dropdown-item>
-              <el-dropdown-item>修改密码</el-dropdown-item>
-              <el-dropdown-item divided>退出登录</el-dropdown-item>
-            </el-dropdown-menu>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="profile">个人资料</el-dropdown-item>
+                <el-dropdown-item command="password">修改密码</el-dropdown-item>
+                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
           </el-dropdown>
         </div>
       </header>
@@ -153,16 +155,60 @@
         <router-view></router-view>
       </main>
     </div>
+
+    <el-dialog title="个人资料" v-model="profileVisible" width="420px">
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="用户名">{{ currentUser.username || '管理员' }}</el-descriptions-item>
+        <el-descriptions-item label="账户类型">系统管理员</el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
+
+    <el-dialog title="修改密码" v-model="passwordVisible" width="460px">
+      <el-form ref="passwordForm" :model="passwordForm" :rules="passwordRules" label-width="100px">
+        <el-form-item label="当前密码" prop="currentPassword">
+          <el-input v-model="passwordForm.currentPassword" type="password" show-password autocomplete="current-password" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="passwordForm.newPassword" type="password" show-password autocomplete="new-password" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="passwordForm.confirmPassword" type="password" show-password autocomplete="new-password" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="passwordVisible = false">取消</el-button>
+        <el-button type="primary" :loading="passwordSaving" @click="changePassword">确认修改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
+import { authAPI } from '@/api/v2'
+
 export default {
   name: 'MainLayout',
   data() {
     return {
       isCollapse: false,
-      breadcrumbs: []
+      breadcrumbs: [],
+      currentUser: {},
+      profileVisible: false,
+      passwordVisible: false,
+      passwordSaving: false,
+      passwordForm: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      },
+      passwordRules: {
+        currentPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
+        newPassword: [
+          { required: true, message: '请输入新密码', trigger: 'blur' },
+          { min: 6, message: '密码长度不少于 6 位', trigger: 'blur' }
+        ],
+        confirmPassword: [{ required: true, message: '请再次输入新密码', trigger: 'blur' }]
+      }
     }
   },
   computed: {
@@ -177,8 +223,49 @@ export default {
   },
   mounted() {
     this.updateBreadcrumbs()
+    this.loadCurrentUser()
   },
   methods: {
+    async loadCurrentUser() {
+      try {
+        const session = await authAPI.session()
+        this.currentUser = session.user || {}
+      } catch {
+        this.currentUser = {}
+      }
+    },
+    async handleUserCommand(command) {
+      if (command === 'logout') {
+        try {
+          await authAPI.logout()
+        } finally {
+          await this.$router.push('/login')
+        }
+        return
+      }
+      if (command === 'profile') this.profileVisible = true
+      if (command === 'password') this.passwordVisible = true
+    },
+    async changePassword() {
+      const valid = await this.$refs.passwordForm.validate().catch(() => false)
+      if (!valid) return
+      if (this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
+        this.$message.error('两次输入的新密码不一致')
+        return
+      }
+
+      this.passwordSaving = true
+      try {
+        await authAPI.changePassword(this.passwordForm.currentPassword, this.passwordForm.newPassword)
+        this.passwordVisible = false
+        this.$message.success('密码已修改，请重新登录')
+        await this.$router.push('/login')
+      } catch (error) {
+        this.$message.error(error.message || '密码修改失败')
+      } finally {
+        this.passwordSaving = false
+      }
+    },
     toggleCollapse() {
       this.isCollapse = !this.isCollapse
     },
@@ -280,7 +367,7 @@ export default {
 .sidebar {
   width: 180px;
   height: 100%;
-  background-color: #304156;
+  background-color: var(--sidebar-color);
   transition: width 0.3s;
   display: flex;
   flex-direction: column;
@@ -295,7 +382,7 @@ export default {
   height: 60px;
   line-height: 60px;
   text-align: center;
-  background-color: #263445;
+  background-color: var(--sidebar-color-deep);
 }
 
 .logo {
@@ -320,14 +407,14 @@ export default {
   height: 50px;
   line-height: 50px;
   text-align: center;
-  background-color: #263445;
+  background-color: var(--sidebar-color-deep);
   padding: 0 10px;
   display: flex;
   justify-content: flex-end;
 }
 
 .collapse-btn {
-  color: #bfcbd9;
+  color: var(--sidebar-text);
   font-size: 20px;
 }
 
@@ -350,7 +437,7 @@ export default {
   justify-content: space-between;
   padding: 0 20px;
   box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-  background-color: #fff;
+  background-color: var(--surface-color);
 }
 
 .left-menu {
@@ -365,25 +452,25 @@ export default {
 
 .user-dropdown {
   cursor: pointer;
-  color: #606266;
+  color: var(--text-regular);
 }
 
 .github-link {
   margin-right: 20px;
   font-size: 22px;
-  color: #606266;
+  color: var(--text-regular);
   transition: color 0.3s;
 }
 
 .github-link:hover {
-  color: #409EFF;
+  color: var(--primary-color);
 }
 
 .content-container {
   flex: 1;
   overflow: auto;
   padding: 10px;
-  background-color: #f0f2f5;
+  background-color: var(--bg-color);
   min-width: 800px;
 }
 </style>

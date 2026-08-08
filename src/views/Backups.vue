@@ -29,7 +29,7 @@
         <el-table-column prop="name" label="备份名称">
           <template slot-scope="scope">
             <div class="backup-name">
-              <i class="el-icon-document"></i>
+              <component is="el-icon-document" class="legacy-icon" />
               {{ scope.row.name }}
             </div>
           </template>
@@ -59,7 +59,7 @@
     <!-- 创建备份对话框 -->
     <el-dialog
       title="创建存档备份"
-      :visible.sync="createDialogVisible"
+      v-model="createDialogVisible"
       width="30%">
       <span>选择要备份的存档：</span>
       <el-select v-model="selectedArchive" placeholder="请选择存档" style="width: 100%; margin-top: 15px;">
@@ -79,7 +79,7 @@
     <!-- 恢复备份对话框 -->
     <el-dialog
       title="恢复存档备份"
-      :visible.sync="restoreDialogVisible"
+      v-model="restoreDialogVisible"
       width="40%">
       <div class="restore-dialog-content">
         <div class="info-row">
@@ -100,7 +100,7 @@
 
           <div v-if="restoreOption === 'original'" class="original-archive-option">
             <div class="warning-message">
-              <i class="el-icon-warning"></i>
+              <component is="el-icon-warning" class="legacy-icon" />
               <span>警告：此操作将覆盖原存档的所有内容，且无法撤销，请确保已备份重要数据！</span>
             </div>
           </div>
@@ -419,10 +419,10 @@ export default {
 .backup-name i {
   margin-right: 10px;
   font-size: 18px;
-  color: #409EFF;
+  color: #d97932;
 }
 
-.el-table >>> .el-table__row {
+.el-table :deep(.el-table__row) {
   cursor: pointer;
 }
 
@@ -471,7 +471,7 @@ export default {
 .warning-message {
   display: flex;
   align-items: flex-start;
-  color: #f56c6c;
+  color: #c94f4f;
 }
 
 .warning-message i {
@@ -497,7 +497,7 @@ export default {
 .new-archive-option {
   margin-top: 15px;
   padding: 15px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   border-radius: 4px;
 }
 </style> 

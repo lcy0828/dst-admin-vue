@@ -28,50 +28,50 @@
           <div class="world-list">
             <template v-if="formData.worldType === 'all'">
               <div v-for="world in room.worlds" :key="world.name" class="world-item">
-                <i class="el-icon-check"></i>
+                <component is="el-icon-check" class="legacy-icon" />
                 <span>{{ world.name }}</span>
                 <el-tag size="mini" :type="getWorldTagType(world.type)">
                   {{ getWorldTypeName(world.type) }}
                 </el-tag>
               </div>
               <div v-if="room.worlds.length === 0" class="no-worlds">
-                <i class="el-icon-warning-outline"></i>
+                <component is="el-icon-warning-outline" class="legacy-icon" />
                 <span>未找到世界，将使用默认世界 (Forest1 和 Caves1)</span>
               </div>
             </template>
             
             <template v-else-if="formData.worldType === 'forest'">
               <div v-for="world in forestWorlds" :key="world.name" class="world-item">
-                <i class="el-icon-check"></i>
+                <component is="el-icon-check" class="legacy-icon" />
                 <span>{{ world.name }}</span>
                 <el-tag size="mini" type="primary">森林</el-tag>
               </div>
               <div v-if="forestWorlds.length === 0" class="no-worlds">
-                <i class="el-icon-warning-outline"></i>
+                <component is="el-icon-warning-outline" class="legacy-icon" />
                 <span>未找到森林世界，将使用默认世界 (Forest1)</span>
               </div>
             </template>
             
             <template v-else-if="formData.worldType === 'cave'">
               <div v-for="world in caveWorlds" :key="world.name" class="world-item">
-                <i class="el-icon-check"></i>
+                <component is="el-icon-check" class="legacy-icon" />
                 <span>{{ world.name }}</span>
                 <el-tag size="mini" type="success">洞穴</el-tag>
               </div>
               <div v-if="caveWorlds.length === 0" class="no-worlds">
-                <i class="el-icon-warning-outline"></i>
+                <component is="el-icon-warning-outline" class="legacy-icon" />
                 <span>未找到洞穴世界，将使用默认世界 (Caves1)</span>
               </div>
             </template>
             
             <template v-else-if="formData.worldType === 'unknown'">
               <div v-for="world in unknownWorlds" :key="world.name" class="world-item">
-                <i class="el-icon-check"></i>
+                <component is="el-icon-check" class="legacy-icon" />
                 <span>{{ world.name }}</span>
                 <el-tag size="mini" type="info">其他</el-tag>
               </div>
               <div v-if="unknownWorlds.length === 0" class="no-worlds">
-                <i class="el-icon-warning-outline"></i>
+                <component is="el-icon-warning-outline" class="legacy-icon" />
                 <span>未找到其他类型世界</span>
               </div>
             </template>
@@ -86,7 +86,7 @@
     </div>
     
     <div v-else class="error-message">
-      <i class="el-icon-warning-outline"></i>
+      <component is="el-icon-warning-outline" class="legacy-icon" />
       <p>无法加载房间信息</p>
     </div>
   </div>
@@ -169,7 +169,7 @@ export default {
       margin-top: 0;
       margin-bottom: 20px;
       font-size: 20px;
-      color: #303133;
+      color: #27352f;
       text-align: center;
       position: relative;
       padding-bottom: 15px;
@@ -182,7 +182,7 @@ export default {
         transform: translateX(-50%);
         width: 60px;
         height: 3px;
-        background-color: #409EFF;
+        background-color: #d97932;
         border-radius: 1.5px;
       }
     }
@@ -194,7 +194,7 @@ export default {
     h4 {
       font-size: 16px;
       margin-bottom: 12px;
-      color: #606266;
+      color: #536159;
     }
     
     .world-list {
@@ -213,7 +213,7 @@ export default {
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         
         i {
-          color: #67C23A;
+          color: #4f8a5b;
           margin-right: 8px;
         }
         
@@ -226,7 +226,7 @@ export default {
       .no-worlds {
         display: flex;
         align-items: center;
-        color: #E6A23C;
+        color: #d99b32;
         background-color: #fdf6ec;
         padding: 10px 15px;
         border-radius: 6px;
@@ -252,7 +252,7 @@ export default {
   .error-message {
     text-align: center;
     padding: 30px 0;
-    color: #F56C6C;
+    color: #c94f4f;
     
     i {
       font-size: 36px;

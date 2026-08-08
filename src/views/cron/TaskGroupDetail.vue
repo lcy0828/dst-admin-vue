@@ -104,7 +104,7 @@
       </div>
     </el-card>
     
-    <el-dialog title="执行结果" :visible.sync="dialogVisible" width="60%">
+    <el-dialog title="执行结果" v-model="dialogVisible" width="60%">
       <div v-if="taskResult" class="task-result">
         <p><strong>执行状态：</strong> {{ taskResult.success ? '成功' : '失败' }}</p>
         <p><strong>执行时间：</strong> {{ taskResult.timestamp }}</p>

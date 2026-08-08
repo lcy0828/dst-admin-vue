@@ -84,7 +84,7 @@
 
 <script>
 import { cronTaskApi } from '@/api/index';
-import echarts from 'echarts';
+import * as echarts from 'echarts';
 
 export default {
   name: 'TaskCharts',
@@ -353,7 +353,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#67C23A'
+              color: '#4f8a5b'
             },
             data: data.success || []
           },
@@ -362,7 +362,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#F56C6C'
+              color: '#c94f4f'
             },
             data: data.failed || []
           }
@@ -412,7 +412,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: '#409EFF'
+              color: '#d97932'
             }
           }
         ]
@@ -512,7 +512,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#67C23A'
+              color: '#4f8a5b'
             },
             data: data.success || []
           },
@@ -521,7 +521,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#F56C6C'
+              color: '#c94f4f'
             },
             data: data.failed || []
           }
@@ -571,7 +571,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: '#409EFF'
+              color: '#d97932'
             }
           }
         ]
@@ -610,13 +610,13 @@ export default {
 }
 .stat-title {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
   margin-bottom: 10px;
 }
 .stat-value {
   font-size: 28px;
   font-weight: bold;
-  color: #409EFF;
+  color: #d97932;
 }
 .chart-container {
   margin-top: 30px;
@@ -626,7 +626,7 @@ export default {
   font-size: 16px;
   margin-bottom: 15px;
   padding-left: 10px;
-  border-left: 4px solid #409EFF;
+  border-left: 4px solid #d97932;
 }
 .chart-box {
   width: 100%;

@@ -96,7 +96,7 @@
       </el-table>
     </el-card>
     
-    <el-dialog title="任务组统计" :visible.sync="statsDialogVisible" width="70%">
+    <el-dialog title="任务组统计" v-model="statsDialogVisible" width="70%">
       <div v-loading="statsLoading" class="group-stats">
         <div v-if="groupStats" class="stats-overview">
           <div class="stats-card total-tasks">
@@ -130,7 +130,7 @@
 
 <script>
 import { cronTaskApi } from '@/api/index';
-import echarts from 'echarts';
+import * as echarts from 'echarts';
 
 export default {
   name: 'TaskGroups',
@@ -362,7 +362,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#67C23A'
+              color: '#4f8a5b'
             },
             data: data.success || []
           },
@@ -371,7 +371,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#F56C6C'
+              color: '#c94f4f'
             },
             data: data.failed || []
           }
@@ -397,7 +397,7 @@ export default {
   margin-top: 10px;
 }
 .link-type {
-  color: #409EFF;
+  color: #d97932;
   text-decoration: none;
 }
 .link-type:hover {
@@ -419,25 +419,25 @@ export default {
 }
 .stats-title {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
   margin-bottom: 10px;
 }
 .stats-value {
   font-size: 24px;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
 }
 .total-tasks {
-  border-left: 4px solid #409EFF;
+  border-left: 4px solid #d97932;
 }
 .enabled-tasks {
-  border-left: 4px solid #67C23A;
+  border-left: 4px solid #4f8a5b;
 }
 .success-rate {
-  border-left: 4px solid #E6A23C;
+  border-left: 4px solid #d99b32;
 }
 .avg-duration {
-  border-left: 4px solid #909399;
+  border-left: 4px solid #758078;
 }
 .stats-charts {
   margin-top: 20px;

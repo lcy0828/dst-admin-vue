@@ -2,29 +2,29 @@
 :root {
   /* 主色调 */
   --tech-white-primary: #ffffff;
-  --tech-white-secondary: #f5f7fa;
+  --tech-white-secondary: #f1f4ed;
   --tech-white-tertiary: #eef1f6;
   
   /* 强调色 */
-  --tech-accent-blue: #409eff;
-  --tech-accent-light-blue: #ecf5ff;
-  --tech-accent-dark-blue: #337ecc;
+  --tech-accent-blue: #d97932;
+  --tech-accent-light-blue: #fff3e6;
+  --tech-accent-dark-blue: #b95f23;
   
   /* 文本颜色 */
-  --tech-text-primary: #303133;
-  --tech-text-secondary: #606266;
-  --tech-text-tertiary: #909399;
+  --tech-text-primary: #27352f;
+  --tech-text-secondary: #536159;
+  --tech-text-tertiary: #758078;
   
   /* 边框颜色 */
-  --tech-border-light: #e4e7ed;
-  --tech-border-lighter: #ebeef5;
+  --tech-border-light: #dde4dc;
+  --tech-border-lighter: #e8ece5;
   --tech-border-extra-light: #f2f6fc;
   
   /* 功能色 */
-  --tech-success: #67c23a;
-  --tech-warning: #e6a23c;
-  --tech-danger: #f56c6c;
-  --tech-info: #909399;
+  --tech-success: #4f8a5b;
+  --tech-warning: #d99b32;
+  --tech-danger: #c94f4f;
+  --tech-info: #758078;
   
   /* 阴影 */
   --tech-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.05);

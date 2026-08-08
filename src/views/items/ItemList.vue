@@ -128,7 +128,7 @@
     </el-card>
 
     <!-- 添加/编辑物品对话框 -->
-    <el-dialog :title="dialogType === 'add' ? '添加物品' : '编辑物品'" :visible.sync="dialogVisible" width="650px">
+    <el-dialog :title="dialogType === 'add' ? '添加物品' : '编辑物品'" v-model="dialogVisible" width="650px">
       <el-form :model="itemForm" :rules="itemRules" ref="itemForm" label-width="100px">
         <el-form-item label="物品名称" prop="name">
           <el-input v-model="itemForm.name" placeholder="请输入物品名称"></el-input>
@@ -250,7 +250,7 @@
             :http-request="uploadIcon"
             :before-upload="beforeIconUpload">
             <img v-if="itemForm.iconUrl" :src="itemForm.iconUrl" class="avatar">
-            <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+            <component v-else is="el-icon-plus" class="legacy-icon avatar-uploader-icon" />
           </el-upload>
           <div class="upload-tip">请上传物品图标，建议尺寸 128x128 像素</div>
         </el-form-item>
@@ -262,7 +262,7 @@
     </el-dialog>
 
     <!-- 物品预览对话框 -->
-    <el-dialog title="物品预览" :visible.sync="previewVisible" width="500px" center>
+    <el-dialog title="物品预览" v-model="previewVisible" width="500px" center>
       <div class="item-preview" v-if="previewItem">
         <div class="preview-header">
           <el-image :src="previewItem.iconUrl" class="preview-icon"></el-image>
@@ -345,7 +345,7 @@
     </el-dialog>
 
     <!-- 导入物品对话框 -->
-    <el-dialog title="导入物品" :visible.sync="importDialogVisible" width="500px">
+    <el-dialog title="导入物品" v-model="importDialogVisible" width="500px">
       <el-upload
         class="upload-demo"
         action="#"
@@ -974,7 +974,7 @@ export default {
 .search-form {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .tool-bar {
@@ -1000,7 +1000,7 @@ export default {
   height: 40px;
   margin-right: 12px;
   border-radius: 4px;
-  border: 1px solid #EBEEF5;
+  border: 1px solid #e8ece5;
 }
 
 .item-detail {
@@ -1015,7 +1015,7 @@ export default {
 
 .item-description {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -1036,7 +1036,7 @@ export default {
 }
 
 .avatar-uploader:hover {
-  border-color: #409EFF;
+  border-color: #d97932;
 }
 
 .avatar-uploader-icon {
@@ -1056,7 +1056,7 @@ export default {
 
 .upload-tip {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   margin-top: 5px;
 }
 
@@ -1082,7 +1082,7 @@ export default {
   width: 64px;
   height: 64px;
   border-radius: 4px;
-  border: 1px solid #EBEEF5;
+  border: 1px solid #e8ece5;
   margin-right: 15px;
 }
 
@@ -1094,7 +1094,7 @@ export default {
   margin-top: 0;
   margin-bottom: 10px;
   font-size: 20px;
-  color: #303133;
+  color: #27352f;
 }
 
 .preview-tags {
@@ -1103,13 +1103,13 @@ export default {
 }
 
 .preview-description {
-  color: #606266;
+  color: #536159;
   line-height: 1.6;
   margin-bottom: 20px;
 }
 
 .preview-stats {
-  color: #606266;
+  color: #536159;
   font-size: 14px;
 }
 
@@ -1117,7 +1117,7 @@ export default {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px dashed #EBEEF5;
+  border-bottom: 1px dashed #e8ece5;
 }
 
 .stat-row:last-child {
@@ -1125,73 +1125,73 @@ export default {
 }
 
 .stat-label {
-  color: #909399;
+  color: #758078;
   flex: 1;
 }
 
 .stat-value {
-  color: #303133;
+  color: #27352f;
   font-weight: 500;
   flex: 2;
 }
 
 /* 表格样式调整 */
-::v-deep .el-table {
+:deep(.el-table) {
   margin-bottom: 20px;
 }
 
-::v-deep .el-table th {
-  background-color: #f5f7fa;
+:deep(.el-table th) {
+  background-color: #f1f4ed;
 }
 
-::v-deep .el-table .el-table__row:hover {
-  background-color: #f5f7fa;
+:deep(.el-table .el-table__row:hover) {
+  background-color: #f1f4ed;
 }
 
 /* 表单布局样式 */
-::v-deep .el-form-item__label {
+:deep(.el-form-item__label) {
   font-weight: 500;
 }
 
-::v-deep .el-input-number {
+:deep(.el-input-number) {
   width: 100%;
 }
 
-::v-deep .el-select {
+:deep(.el-select) {
   width: 100%;
 }
 
 /* 标签样式调整 */
-::v-deep .el-tag {
+:deep(.el-tag) {
   border-radius: 3px;
 }
 
 /* 对话框样式调整 */
-::v-deep .el-dialog__body {
+:deep(.el-dialog__body) {
   padding: 20px 30px 10px;
 }
 
-::v-deep .el-dialog__header {
+:deep(.el-dialog__header) {
   padding: 15px 20px;
-  background-color: #f5f7fa;
-  border-bottom: 1px solid #EBEEF5;
+  background-color: #f1f4ed;
+  border-bottom: 1px solid #e8ece5;
 }
 
-::v-deep .el-dialog__title {
+:deep(.el-dialog__title) {
   font-size: 16px;
   font-weight: 600;
 }
 
-::v-deep .el-dialog__footer {
+:deep(.el-dialog__footer) {
   padding: 15px 20px;
-  border-top: 1px solid #EBEEF5;
+  border-top: 1px solid #e8ece5;
 }
 
 /* 分隔线样式 */
-::v-deep .el-divider__text {
+:deep(.el-divider__text) {
   font-size: 14px;
   font-weight: 600;
-  color: #606266;
+  color: #536159;
   background-color: #f9fbfc;
 }
 

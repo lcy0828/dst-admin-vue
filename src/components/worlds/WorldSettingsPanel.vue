@@ -221,17 +221,17 @@ export default {
   margin-bottom: 20px;
 }
 
-.settings-tabs ::v-deep .el-tabs__header {
+.settings-tabs :deep(.el-tabs__header) {
   margin-bottom: 20px;
 }
 
-.settings-tabs ::v-deep .el-tabs__nav {
+.settings-tabs :deep(.el-tabs__nav) {
   display: flex;
   align-items: center;
   width: 100%;
 }
 
-.settings-tabs ::v-deep .el-tabs__item {
+.settings-tabs :deep(.el-tabs__item) {
   font-size: 16px;
 }
 
@@ -249,17 +249,17 @@ export default {
   align-items: center;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
   user-select: none;
 }
 
 .category-header:hover h4 {
-  color: #66b1ff;
+  color: #e59252;
 }
 
 .category-header h4 {
   margin: 0;
-  color: #409EFF;
+  color: #d97932;
   font-size: 16px;
 }
 

@@ -17,14 +17,14 @@
             <div class="change-item-name">{{ item.text }}</div>
             <div class="change-item-values">
               <span class="old-value">{{ item.oldValueText }}</span>
-              <i class="el-icon-arrow-right"></i>
+              <component is="el-icon-arrow-right" class="legacy-icon" />
               <span class="new-value">{{ item.newValueText }}</span>
             </div>
           </div>
         </div>
         <template #reference>
           <el-button type="text" class="view-changes-btn">
-            <i class="el-icon-view"></i> 查看变更 ({{ changedItemsCount }})
+            <component is="el-icon-view" class="legacy-icon" /> 查看变更 ({{ changedItemsCount }})
           </el-button>
         </template>
       </el-popover>
@@ -109,7 +109,7 @@ export default {
 
 .view-changes-btn {
   margin-left: 15px;
-  color: #e6a23c;
+  color: #d99b32;
   transition: color 0.3s;
 }
 
@@ -121,8 +121,8 @@ export default {
 .changes-list-title {
   font-weight: 500;
   margin-bottom: 10px;
-  color: #303133;
-  border-bottom: 1px solid #ebeef5;
+  color: #27352f;
+  border-bottom: 1px solid #e8ece5;
   padding-bottom: 8px;
 }
 
@@ -133,7 +133,7 @@ export default {
 
 .change-item {
   padding: 8px 0;
-  border-bottom: 1px dashed #ebeef5;
+  border-bottom: 1px dashed #e8ece5;
 }
 
 .change-item:last-child {
@@ -152,17 +152,17 @@ export default {
 }
 
 .old-value {
-  color: #909399;
+  color: #758078;
   text-decoration: line-through;
 }
 
 .el-icon-arrow-right {
   margin: 0 8px;
-  color: #909399;
+  color: #758078;
 }
 
 .new-value {
-  color: #67c23a;
+  color: #4f8a5b;
   font-weight: 500;
 }
 
@@ -183,7 +183,7 @@ export default {
 
 :deep(.el-popover.changes-popover) {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15) !important;
-  border: 1px solid #e6a23c !important;
+  border: 1px solid #d99b32 !important;
 }
 
 /* 增强标签样式 */

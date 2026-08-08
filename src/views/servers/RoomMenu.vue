@@ -8,9 +8,9 @@
     <el-row :gutter="20">
       <!-- 房间设置卡片 -->
       <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click.native="navigateTo('/servers/room')">
+        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room')">
           <div class="card-icon">
-            <i class="el-icon-setting"></i>
+            <component is="el-icon-setting" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>基本设置</h3>
@@ -26,9 +26,9 @@
       
       <!-- 房间权限卡片 -->
       <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click.native="navigateTo('/servers/room/permissions')">
+        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/permissions')">
           <div class="card-icon permission-icon">
-            <i class="el-icon-lock"></i>
+            <component is="el-icon-lock" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>权限设置</h3>
@@ -44,9 +44,9 @@
       
       <!-- 房间游戏设置卡片 -->
       <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click.native="navigateTo('/servers/room/gameplay')">
+        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/gameplay')">
           <div class="card-icon gameplay-icon">
-            <i class="el-icon-odometer"></i>
+            <component is="el-icon-odometer" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>游戏设置</h3>
@@ -64,9 +64,9 @@
     <el-row :gutter="20" style="margin-top: 20px;">
       <!-- 房间模组设置卡片 -->
       <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click.native="navigateTo('/servers/room/mods')">
+        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/mods')">
           <div class="card-icon mods-icon">
-            <i class="el-icon-s-grid"></i>
+            <component is="el-icon-s-grid" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>模组设置</h3>
@@ -82,9 +82,9 @@
       
       <!-- 房间季节设置卡片 -->
       <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click.native="navigateTo('/servers/room/seasons')">
+        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/seasons')">
           <div class="card-icon seasons-icon">
-            <i class="el-icon-sunny"></i>
+            <component is="el-icon-sunny" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>季节设置</h3>
@@ -100,9 +100,9 @@
       
       <!-- 房间世界设置卡片 -->
       <el-col :span="8">
-        <el-card shadow="hover" class="menu-card" @click.native="navigateTo('/servers/room/world')">
+        <el-card shadow="hover" class="menu-card" @click="navigateTo('/servers/room/world')">
           <div class="card-icon world-icon">
-            <i class="el-icon-map-location"></i>
+            <component is="el-icon-map-location" class="legacy-icon" />
           </div>
           <div class="card-content">
             <h3>世界设置</h3>
@@ -155,13 +155,13 @@
 
     <el-dialog
       title="启动房间服务器"
-      :visible.sync="startRoomDialogVisible"
+      v-model="startRoomDialogVisible"
       width="500px"
       :close-on-click-modal="false"
       custom-class="start-room-dialog">
       <div v-if="currentRoom" class="start-room-dialog-content">
         <div class="room-info">
-          <i class="el-icon-video-play"></i>
+          <component is="el-icon-video-play" class="legacy-icon" />
           <p>您正在启动房间：<strong>{{ currentRoom.name }}</strong></p>
         </div>
         
@@ -470,7 +470,7 @@ export default {
   width: 70px;
   height: 70px;
   border-radius: 35px;
-  background-color: #409EFF;
+  background-color: #d97932;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -480,19 +480,19 @@ export default {
 }
 
 .permission-icon {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .gameplay-icon {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .mods-icon {
-  background-color: #F56C6C;
+  background-color: #c94f4f;
 }
 
 .seasons-icon {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 .world-icon {
@@ -509,7 +509,7 @@ export default {
 }
 
 .card-content p {
-  color: #606266;
+  color: #536159;
   font-size: 14px;
   margin-bottom: 15px;
 }
@@ -519,7 +519,7 @@ export default {
   flex-direction: column;
   align-items: center;
   font-size: 12px;
-  color: #909399;
+  color: #758078;
 }
 
 .card-features span {
@@ -540,7 +540,7 @@ export default {
 .style-default {
   background-color: #f9f9f9;
   color: #333333;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #d4ddd3;
 }
 
 .style-dark {
@@ -559,8 +559,8 @@ export default {
 }
 
 .style-winter {
-  background-color: #e3f2fd;
-  color: #0d47a1;
+  background-color: #edf6ee;
+  color: #326343;
 }
 
 .style-cave {
@@ -569,7 +569,7 @@ export default {
 }
 
 .danger-text {
-  color: #F56C6C;
+  color: #c94f4f;
 }
 
 .danger-text:hover {
@@ -606,11 +606,11 @@ export default {
       align-items: center;
       margin-bottom: 20px;
       padding-bottom: 15px;
-      border-bottom: 1px dashed #ebeef5;
+      border-bottom: 1px dashed #e8ece5;
       
       i {
         font-size: 24px;
-        color: #67C23A;
+        color: #4f8a5b;
         margin-right: 10px;
       }
       
@@ -619,7 +619,7 @@ export default {
         font-size: 16px;
         
         strong {
-          color: #409EFF;
+          color: #d97932;
         }
       }
     }

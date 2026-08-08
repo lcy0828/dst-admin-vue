@@ -58,7 +58,7 @@
       effect="light"
       class="setting-hover-tips"
     >
-      <i class="el-icon-question"></i>
+      <component is="el-icon-question" class="legacy-icon" />
     </el-tooltip>
   </div>
 </template>
@@ -235,7 +235,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 12px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8ece5;
   border-radius: 6px;
   transition: all 0.3s;
   background-color: #f9fafc;
@@ -249,8 +249,8 @@ export default {
 }
 
 .setting-item:hover {
-  border-color: #409EFF;
-  background-color: #ecf5ff;
+  border-color: #d97932;
+  background-color: #fff3e6;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
@@ -264,7 +264,7 @@ export default {
   top: 5px;
   right: 5px;
   font-size: 16px;
-  color: #909399;
+  color: #758078;
   opacity: 0;
   transition: all 0.3s;
   z-index: 2;
@@ -281,7 +281,7 @@ export default {
 }
 
 .setting-item:hover .item-image {
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(217, 121, 50, 0.2);
   transform: scale(1.05);
 }
 
@@ -296,11 +296,11 @@ export default {
 .setting-name {
   margin: 0 0 8px;
   font-weight: 500;
-  color: #303133;
+  color: #27352f;
 }
 
 .setting-item-changed {
-  border: 1px solid #e6a23c !important;
+  border: 1px solid #d99b32 !important;
   background-color: rgba(230, 162, 60, 0.1) !important;
 }
 
@@ -312,7 +312,7 @@ export default {
   margin-left: 8px;
   padding: 0 5px;
   background-color: #f0f9eb;
-  color: #67c23a;
+  color: #4f8a5b;
   font-size: 12px;
   border-radius: 3px;
   line-height: 1.2;

@@ -7,7 +7,7 @@
         <el-card shadow="hover" class="version-card">
           <div class="version-content">
             <div class="version-icon">
-              <i class="el-icon-info"></i>
+              <component is="el-icon-info" class="legacy-icon" />
             </div>
             <div class="version-details">
               <div class="version-header">
@@ -20,7 +20,7 @@
                     :disabled="updateStatus && updateStatus.is_running"
                     :loading="updateStatus && updateStatus.is_running"
                   >
-                    <i v-if="!(updateStatus && updateStatus.is_running)" class="el-icon-upload2"></i>
+                    <component v-if="!(updateStatus && updateStatus.is_running)" is="el-icon-upload2" class="legacy-icon" />
                     {{ updateStatus && updateStatus.is_running ? '更新中...' : '更新游戏' }}
                   </el-button>
                   <el-button
@@ -39,7 +39,7 @@
                     <div class="version-box-value">{{ versionInfo.local.version }}</div>
                   </div>
                   <div class="version-arrow">
-                    <i class="el-icon-arrow-right"></i>
+                    <component is="el-icon-arrow-right" class="legacy-icon" />
                   </div>
                   <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
                     <div class="version-box-label">最新版本</div>
@@ -48,19 +48,19 @@
                       target="_blank"
                       class="version-box-value version-link">
                       {{ versionInfo.latest.version }}
-                      <i v-if="isVersionOutdated" class="el-icon-warning version-warning-icon"></i>
+                      <component v-if="isVersionOutdated" is="el-icon-warning" class="legacy-icon version-warning-icon" />
                     </a>
                     <div class="version-box-date">{{ versionInfo.latest.release_date }} / R{{ versionInfo.latest.build_number }}</div>
                   </div>
                 </div>
                 <div v-if="isVersionOutdated" class="version-update-notice">
-                  <i class="el-icon-warning"></i>
+                  <component is="el-icon-warning" class="legacy-icon" />
                   <span>检测到新版本可用，请及时更新游戏服务端!</span>
                   <el-button type="primary" size="small" @click="openUpdateLink">查看更新内容</el-button>
                 </div>
                 <div v-if="updateStatus" class="version-update-status">
                   <div class="update-status-header">
-                    <i :class="[updateStatus.is_running ? 'el-icon-loading' : (updateStatus.is_completed ? 'el-icon-success' : 'el-icon-info')]"></i>
+                    <component :is="updateStatus.is_running ? 'el-icon-loading' : (updateStatus.is_completed ? 'el-icon-success' : 'el-icon-info')" class="legacy-icon" />
                     <span>更新状态: {{ updateStatus.is_completed ? '已完成' : (updateStatus.is_running ? '进行中' : '尚未开始') }}</span>
                   </div>
                   <el-progress
@@ -79,7 +79,7 @@
                 </div>
               </div>
               <div v-else class="version-loading">
-                <i class="el-icon-loading"></i>
+                <component is="el-icon-loading" class="legacy-icon" />
                 <span>正在获取版本信息...</span>
               </div>
             </div>
@@ -93,7 +93,7 @@
     <!-- 标题分割线 -->
     <div class="section-divider">
       <div class="section-title">
-        <i class="el-icon-data-analysis"></i>
+        <component is="el-icon-data-analysis" class="legacy-icon" />
         <span>服务器状态监控</span>
       </div>
       <div class="refresh-btn">
@@ -106,7 +106,7 @@
       <el-col :span="16">
         <el-card shadow="hover" class="server-monitor">
           <div slot="header" class="clearfix server-header">
-            <span><i class="el-icon-monitor"></i> 服务器状态监控</span>
+            <span><component is="el-icon-monitor" class="legacy-icon" /> 服务器状态监控</span>
             <el-button type="text" icon="el-icon-refresh" @click="getServerList">刷新</el-button>
           </div>
 
@@ -185,7 +185,7 @@
           </div>
 
           <div class="empty-server" v-if="serverList.length === 0">
-            <i class="el-icon-warning-outline"></i>
+            <component is="el-icon-warning-outline" class="legacy-icon" />
             <span>暂无服务器实例运行</span>
             <el-button type="primary" size="small" plain @click="openStartRoomDialog">启动现有房间</el-button>
           </div>
@@ -193,7 +193,7 @@
           <!-- 启动房间对话框 -->
           <el-dialog
             title="启动房间"
-            :visible.sync="startRoomDialogVisible"
+            v-model="startRoomDialogVisible"
             width="500px"
             :close-on-click-modal="false"
             :close-on-press-escape="false">
@@ -233,7 +233,7 @@
                   </div>
                 </div>
                 <div v-else class="no-worlds-tip">
-                  <i class="el-icon-warning-outline"></i>
+                  <component is="el-icon-warning-outline" class="legacy-icon" />
                   <span>该房间没有可用的世界</span>
                 </div>
               </el-form-item>
@@ -311,15 +311,15 @@
           </div>
           <div class="system-info-footer">
             <div class="system-info-item">
-              <i class="el-icon-monitor"></i>
+              <component is="el-icon-monitor" class="legacy-icon" />
               <span>{{ systemStatus.os_info || '未知系统' }}</span>
             </div>
             <div class="system-info-item">
-              <i class="el-icon-time"></i>
+              <component is="el-icon-time" class="legacy-icon" />
               <span>运行时间: {{ systemStatus.uptime_formatted || '未知' }}</span>
             </div>
             <div class="system-info-item">
-              <i class="el-icon-refresh"></i>
+              <component is="el-icon-refresh" class="legacy-icon" />
               <span>更新时间: {{ systemStatus.current_time || '未知' }}</span>
             </div>
           </div>
@@ -329,7 +329,7 @@
 
     <div class="section-divider">
       <div class="section-title">
-        <i class="el-icon-document"></i>
+        <component is="el-icon-document" class="legacy-icon" />
         <span>世界日志</span>
       </div>
     </div>
@@ -344,7 +344,7 @@
 
     <div class="section-divider">
       <div class="section-title">
-        <i class="el-icon-s-data"></i>
+        <component is="el-icon-s-data" class="legacy-icon" />
         <span>最近游戏数据</span>
       </div>
     </div>
@@ -431,9 +431,9 @@ export default {
       loading: false,
       serverList: [],
       customColors: [
-        {color: '#67C23A', percentage: 40},
-        {color: '#E6A23C', percentage: 70},
-        {color: '#F56C6C', percentage: 90}
+        {color: '#4f8a5b', percentage: 40},
+        {color: '#d99b32', percentage: 70},
+        {color: '#c94f4f', percentage: 90}
       ],
       timeRange: 'week',
       announcements: [
@@ -1048,7 +1048,7 @@ export default {
 .section-title {
   font-size: 18px;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
   display: flex;
   align-items: center;
 }
@@ -1056,7 +1056,7 @@ export default {
 .section-title i {
   margin-right: 8px;
   font-size: 20px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .monitor-section, .data-section {
@@ -1077,12 +1077,12 @@ export default {
 .server-title {
   margin-left: 10px;
   font-weight: 500;
-  color: #303133;
+  color: #27352f;
 }
 
 .server-offline {
   background-color: #f9f9f9;
-  color: #909399;
+  color: #758078;
 }
 
 .server-restarting {
@@ -1098,19 +1098,19 @@ export default {
 }
 
 .season-spring {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .season-summer {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .season-autumn {
-  background-color: #F56C6C;
+  background-color: #c94f4f;
 }
 
 .season-winter {
-  background-color: #409EFF;
+  background-color: #d97932;
 }
 
 .resource-usage {
@@ -1131,12 +1131,12 @@ export default {
   justify-content: space-between;
   margin-bottom: 5px;
   font-size: 14px;
-  color: #606266;
+  color: #536159;
 }
 
 .resource-value {
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
 }
 
 .resource-detail {
@@ -1144,11 +1144,11 @@ export default {
   justify-content: space-between;
   margin-top: 5px;
   font-size: 12px;
-  color: #909399;
+  color: #758078;
 }
 
 .system-events {
-  border-top: 1px solid #EBEEF5;
+  border-top: 1px solid #e8ece5;
   padding-top: 15px;
   margin-top: 5px;
 }
@@ -1156,7 +1156,7 @@ export default {
 .event-header {
   font-size: 14px;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
   margin-bottom: 10px;
 }
 
@@ -1173,13 +1173,13 @@ export default {
 
 .event-time {
   width: 45px;
-  color: #909399;
+  color: #758078;
   flex-shrink: 0;
 }
 
 .event-content {
   flex: 1;
-  color: #606266;
+  color: #536159;
 }
 
 .chart-container {
@@ -1196,7 +1196,7 @@ export default {
 .chart-title {
   font-size: 14px;
   margin-bottom: 10px;
-  color: #303133;
+  color: #27352f;
 }
 
 .chart-placeholder {
@@ -1240,14 +1240,14 @@ export default {
 
 .stats-label {
   font-size: 13px;
-  color: #909399;
+  color: #758078;
   margin-bottom: 5px;
 }
 
 .stats-value {
   font-size: 18px;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
 }
 
 .announcement-list {
@@ -1257,7 +1257,7 @@ export default {
 
 .announcement-item {
   padding: 15px 0;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .announcement-item:last-child {
@@ -1277,12 +1277,12 @@ export default {
 .announcement-title span {
   font-size: 14px;
   font-weight: 500;
-  color: #303133;
+  color: #27352f;
 }
 
 .announcement-body {
   font-size: 13px;
-  color: #606266;
+  color: #536159;
   margin-bottom: 10px;
   line-height: 1.5;
 }
@@ -1295,7 +1295,7 @@ export default {
 }
 
 .announcement-time {
-  color: #909399;
+  color: #758078;
 }
 
 .announcement-actions {
@@ -1319,7 +1319,7 @@ export default {
   flex-direction: column;
   padding-top: 15px;
   margin-top: 15px;
-  border-top: 1px solid #EBEEF5;
+  border-top: 1px solid #e8ece5;
 }
 
 .system-info-item {
@@ -1327,12 +1327,12 @@ export default {
   align-items: center;
   margin-bottom: 8px;
   font-size: 13px;
-  color: #606266;
+  color: #536159;
 }
 
 .system-info-item i {
   margin-right: 8px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 
@@ -1351,7 +1351,7 @@ export default {
 
 .server-header i {
   margin-right: 8px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .server-name-info {
@@ -1376,29 +1376,29 @@ export default {
 
 .time-info span:last-child {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   margin-top: 3px;
 }
 
 .server-footer {
   margin-top: 15px;
   padding-top: 10px;
-  border-top: 1px solid #EBEEF5;
+  border-top: 1px solid #e8ece5;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #606266;
+  color: #536159;
   font-size: 13px;
 }
 
 .server-stats {
-  color: #909399;
+  color: #758078;
 }
 
 .empty-server {
   padding: 30px 0;
   text-align: center;
-  color: #909399;
+  color: #758078;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1408,7 +1408,7 @@ export default {
 .empty-server i {
   font-size: 48px;
   margin-bottom: 15px;
-  color: #C0C4CC;
+  color: #9aa69e;
 }
 
 .empty-server span {
@@ -1455,15 +1455,15 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  color: #909399;
-  background-color: #f5f7fa;
+  color: #758078;
+  background-color: #f1f4ed;
   border-radius: 4px;
 }
 
 .no-worlds-tip i {
   margin-right: 8px;
   font-size: 18px;
-  color: #E6A23C;
+  color: #d99b32;
 }
 
 /* 修改表格样式 */
@@ -1473,7 +1473,7 @@ export default {
 }
 
 :deep(.el-table__row:hover) {
-  background-color: #f5f7fa!important;
+  background-color: #f1f4ed!important;
 }
 
 :deep(.el-table__row.server-offline) {
@@ -1510,7 +1510,7 @@ export default {
   margin-right: 15px;
   font-size: 24px;
   color: white;
-  background-color: #409EFF;
+  background-color: #d97932;
 }
 
 .version-details {
@@ -1533,7 +1533,7 @@ export default {
 .version-title {
   font-size: 16px;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
 }
 
 .version-info {
@@ -1552,41 +1552,41 @@ export default {
   text-align: center;
   padding: 10px;
   border-radius: 4px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   transition: all 0.3s;
 }
 
 .version-box-outdated {
   background-color: #fef0f0;
-  border: 1px dashed #F56C6C;
+  border: 1px dashed #c94f4f;
 }
 
 .version-box-label {
   font-size: 14px;
-  color: #909399;
+  color: #758078;
   margin-bottom: 5px;
 }
 
 .version-box-value {
   font-size: 20px;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
   margin-bottom: 5px;
 }
 
 .version-arrow {
   margin: 0 15px;
-  color: #909399;
+  color: #758078;
   font-size: 20px;
 }
 
 .version-box-date {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
 }
 
 .version-link {
-  color: #409EFF;
+  color: #d97932;
   text-decoration: none;
   transition: all 0.3s;
 }
@@ -1597,7 +1597,7 @@ export default {
 
 .version-warning-icon {
   margin-left: 5px;
-  color: #F56C6C;
+  color: #c94f4f;
   font-size: 16px;
 }
 
@@ -1606,7 +1606,7 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  color: #909399;
+  color: #758078;
 }
 
 .version-loading i {
@@ -1621,7 +1621,7 @@ export default {
   padding: 10px;
   background-color: #fef0f0;
   border-radius: 4px;
-  color: #F56C6C;
+  color: #c94f4f;
 }
 
 .version-update-notice i {
@@ -1636,7 +1636,7 @@ export default {
 .version-update-status {
   margin-top: 15px;
   padding: 10px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   border-radius: 4px;
 }
 
@@ -1673,7 +1673,7 @@ export default {
   padding: 5px;
   background-color: #fef0f0;
   border-radius: 3px;
-  color: #F56C6C;
+  color: #c94f4f;
   word-break: break-all;
 }
 </style>

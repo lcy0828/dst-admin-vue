@@ -3,7 +3,7 @@
     <el-card class="settings-card" shadow="hover">
       <div slot="header" class="card-header">
         <div class="header-title">
-          <i class="el-icon-earth"></i>
+          <component is="el-icon-earth" class="legacy-icon" />
           <h2>世界设置{{ roomName ? ` - ${roomName}` : '' }}</h2>
         </div>
         <div class="header-actions">
@@ -28,7 +28,7 @@
           :name="world.name">
           <template slot="label">
             <span>{{ world.name + (world.type === 'forest' ? ' (森林)' : world.type === 'cave' ? ' (洞穴)' : '') }}</span>
-            <i class="el-icon-close world-delete-icon" @click.stop="confirmDeleteWorld(world)"></i>
+            <component is="el-icon-close" class="legacy-icon world-delete-icon" @click.stop="confirmDeleteWorld(world)" />
           </template>
           <div class="tab-header-content">
             <div class="world-icon" :class="world.type === 'forest' ? 'forest-icon' : 'cave-icon'"></div>
@@ -172,7 +172,7 @@
         <el-tab-pane name="add-world" disabled>
           <template slot="label">
             <div class="add-world-tab" @click.stop="showAddWorldDialog">
-              <i class="el-icon-plus"></i>
+              <component is="el-icon-plus" class="legacy-icon" />
               <span>新增世界</span>
             </div>
           </template>
@@ -252,7 +252,7 @@
 
     <el-dialog
       title="保存为自定义预设"
-      :visible.sync="presetDialogVisible"
+      v-model="presetDialogVisible"
       width="30%"
       :close-on-click-modal="false"
       append-to-body
@@ -274,7 +274,7 @@
     <!-- 添加世界对话框 -->
     <el-dialog
       title="新增世界"
-      :visible.sync="addWorldDialogVisible"
+      v-model="addWorldDialogVisible"
       width="30%"
       :close-on-click-modal="false"
       append-to-body
@@ -299,7 +299,7 @@
     <!-- 删除世界确认对话框 -->
     <el-dialog
       title="删除世界"
-      :visible.sync="deleteWorldDialogVisible"
+      v-model="deleteWorldDialogVisible"
       width="30%"
       :close-on-click-modal="false"
       append-to-body
@@ -658,7 +658,7 @@ export default {
       
       // 添加顶部警告线
       style.paddingTop = '3px';
-      style.borderTop = '3px solid #e6a23c';
+      style.borderTop = '3px solid #d99b32';
       style.marginTop = '-3px';
       
       return style;
@@ -2076,13 +2076,13 @@ export default {
 
 .header-title i {
   font-size: 24px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .header-title h2 {
   margin: 0;
   font-size: 20px;
-  color: #303133;
+  color: #27352f;
 }
 
 .header-actions {
@@ -2100,7 +2100,7 @@ export default {
   display: flex;
   margin-bottom: 20px;
   padding: 15px;
-  background-color: rgba(64, 158, 255, 0.1);
+  background-color: rgba(217, 121, 50, 0.1);
   border-radius: 8px;
   align-items: center;
 }
@@ -2119,7 +2119,7 @@ export default {
 }
 
 .forest-icon {
-  background-color: #67c23a;
+  background-color: #4f8a5b;
 }
 
 .forest-icon::before {
@@ -2130,7 +2130,7 @@ export default {
 }
 
 .cave-icon {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 .cave-icon::before {
@@ -2147,7 +2147,7 @@ export default {
 
 .world-description p {
   margin: 0;
-  color: #606266;
+  color: #536159;
   font-size: 14px;
 }
 
@@ -2160,24 +2160,24 @@ export default {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #409EFF;
+  color: #d97932;
   cursor: pointer;
   padding: 0 10px;
 }
 
 .add-world-tab:hover {
-  color: #66b1ff;
+  color: #e59252;
 }
 
 .world-delete-icon {
   margin-left: 8px;
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   cursor: pointer;
 }
 
 .world-delete-icon:hover {
-  color: #F56C6C;
+  color: #c94f4f;
 }
 
 .server-ini-form {
@@ -2191,8 +2191,8 @@ export default {
   margin-top: 20px;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
-  color: #409EFF;
+  border-bottom: 1px solid #e8ece5;
+  color: #d97932;
 }
 
 .server-ini-form h3:first-child {

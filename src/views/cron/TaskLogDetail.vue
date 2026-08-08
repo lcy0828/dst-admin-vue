@@ -238,7 +238,7 @@ export default {
   font-size: 16px;
   margin-bottom: 10px;
   padding-left: 5px;
-  border-left: 3px solid #409EFF;
+  border-left: 3px solid #d97932;
 }
 .code-block {
   background-color: #f5f5f5;
@@ -259,7 +259,7 @@ export default {
   color: #d33;
 }
 .link-type {
-  color: #409EFF;
+  color: #d97932;
   text-decoration: none;
 }
 .link-type:hover {

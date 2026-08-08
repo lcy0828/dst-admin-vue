@@ -31,7 +31,7 @@
             </el-table>
           </div>
           <div v-else class="empty-list">
-            <i class="el-icon-info"></i>
+            <component is="el-icon-info" class="legacy-icon" />
             <p>暂无管理员</p>
           </div>
         </el-card>
@@ -63,7 +63,7 @@
             </el-table>
           </div>
           <div v-else class="empty-list">
-            <i class="el-icon-info"></i>
+            <component is="el-icon-info" class="legacy-icon" />
             <p>暂无黑名单用户</p>
           </div>
         </el-card>
@@ -95,7 +95,7 @@
             </el-table>
           </div>
           <div v-else class="empty-list">
-            <i class="el-icon-info"></i>
+            <component is="el-icon-info" class="legacy-icon" />
             <p>暂无白名单用户</p>
           </div>
         </el-card>
@@ -103,7 +103,7 @@
     </el-tabs>
     
     <!-- 添加用户对话框 -->
-    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="30%">
+    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="30%">
       <el-form :model="userForm" ref="userForm" :rules="userRules" label-width="100px">
         <el-form-item label="KU ID" prop="id">
           <el-input v-model="userForm.id" placeholder="格式: KU_XXXXX"></el-input>
@@ -443,7 +443,7 @@ export default {
 .empty-list {
   text-align: center;
   padding: 30px 0;
-  color: #909399;
+  color: #758078;
 }
 
 .empty-list i {

@@ -4,7 +4,7 @@
       <h2 class="page-title">定时任务管理</h2>
       <div class="page-actions">
         <el-button type="primary" @click="navigateToCreate">
-          <i class="el-icon-plus"></i> 创建任务
+          <component is="el-icon-plus" class="legacy-icon" /> 创建任务
         </el-button>
       </div>
     </div>
@@ -13,7 +13,7 @@
       <div slot="header" class="clearfix">
         <span>任务列表</span>
         <el-button style="float: right; padding: 3px 0" type="text" @click="refreshTasks">
-          <i class="el-icon-refresh"></i> 刷新
+          <component is="el-icon-refresh" class="legacy-icon" /> 刷新
         </el-button>
       </div>
       
@@ -40,7 +40,7 @@
           <template slot-scope="scope">
             <el-tooltip :content="getScheduleDescription(scope.row.schedule)" placement="top">
               <div class="task-schedule">
-                <i class="el-icon-time"></i>
+                <component is="el-icon-time" class="legacy-icon" />
                 <span>{{ scope.row.schedule }}</span>
               </div>
             </el-tooltip>
@@ -466,7 +466,7 @@ export default {
   margin: 0;
   font-size: 22px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
 }
 
 .task-list-card {
@@ -490,7 +490,7 @@ export default {
 
 .task-schedule i {
   margin-right: 5px;
-  color: #909399;
+  color: #758078;
 }
 
 .pagination-container {
@@ -500,10 +500,10 @@ export default {
 
 .task-paused {
   background-color: #f9f9f9;
-  color: #909399;
+  color: #758078;
 }
 
-::v-deep .el-table .cell {
+:deep(.el-table .cell) {
   white-space: nowrap;
 }
 </style> 

@@ -3,7 +3,7 @@
     <div class="preset-title">
       <span>快速预设：</span>
       <el-tooltip content="根据预设快速配置所有设置项" placement="top">
-        <i class="el-icon-question"></i>
+        <component is="el-icon-question" class="legacy-icon" />
       </el-tooltip>
     </div>
     <div class="preset-options">
@@ -64,7 +64,7 @@ export default {
 <style scoped>
 .presets-section {
   margin-bottom: 20px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -81,7 +81,7 @@ export default {
 }
 
 .preset-title i {
-  color: #909399;
+  color: #758078;
   font-size: 16px;
   cursor: help;
 }

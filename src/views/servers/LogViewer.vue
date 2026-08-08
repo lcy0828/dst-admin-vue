@@ -35,7 +35,7 @@
       
       <div class="log-content" ref="logContent" v-loading="loading">
         <div v-if="logs.length === 0 && !loading" class="no-logs-message">
-          <i class="el-icon-info"></i>
+          <component is="el-icon-info" class="legacy-icon" />
           <span>暂无日志记录</span>
         </div>
         <div v-else-if="logs.length > 0">
@@ -301,7 +301,7 @@ export default {
 
 .log-subtitle {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
 }
 
 .log-content-wrapper {
@@ -381,7 +381,7 @@ export default {
   justify-content: center;
   align-items: center;
   height: 100%;
-  color: #909399;
+  color: #758078;
 }
 
 .no-logs-message i {

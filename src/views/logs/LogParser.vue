@@ -4,16 +4,16 @@
       <div slot="header" class="clearfix">
         <div class="header-container">
           <div class="header-title">
-            <i class="el-icon-monitor"></i>
+            <component is="el-icon-monitor" class="legacy-icon" />
             <span>活跃日志解析器</span>
           </div>
           <el-button type="primary" size="small" icon="el-icon-refresh" @click="getActiveParsers">刷新</el-button>
         </div>
       </div>
-      
+
       <div v-loading="loading">
         <div v-if="!activeParsers || activeParsers.length === 0" class="empty-data">
-          <i class="el-icon-warning-outline"></i>
+          <component is="el-icon-warning-outline" class="legacy-icon" />
           <p>暂无运行中的日志解析器</p>
         </div>
         <div v-else class="parsers-container">
@@ -23,7 +23,7 @@
                 <div class="parser-header">
                   <div class="parser-title">
                     <div class="type-indicator" :class="{'forest-indicator': parser.server_type === 'Forest', 'caves-indicator': parser.server_type === 'Caves'}">
-                      <i :class="parser.server_type === 'Forest' ? 'el-icon-sunny' : 'el-icon-moon'"></i>
+                      <component :is="parser.server_type === 'Forest' ? 'el-icon-sunny' : 'el-icon-moon'" class="legacy-icon" />
                     </div>
                     <div>
                       <h3>{{ parser.archive_name }} / {{ parser.world_name }}</h3>
@@ -35,15 +35,15 @@
                   </div>
                   <div class="parser-id">ID: {{ parser.id.split('_').pop() }}</div>
                 </div>
-                
+
                 <div class="parser-info">
                   <div class="info-item">
-                    <i class="el-icon-refresh"></i>
+                    <component is="el-icon-refresh" class="legacy-icon" />
                     <span class="label">最近活动:</span>
                     <span class="value">{{ formatTime(parser.last_activity) }}</span>
                   </div>
                   <div class="info-item">
-                    <i class="el-icon-document"></i>
+                    <component is="el-icon-document" class="legacy-icon" />
                     <span class="label">日志文件:</span>
                     <span class="value path-value">{{ parser.log_file }}</span>
                   </div>
@@ -54,7 +54,7 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <div class="parser-actions">
                   <el-button type="primary" size="small" icon="el-icon-view">查看日志</el-button>
                   <el-button type="info" size="small" icon="el-icon-refresh">重新启动</el-button>
@@ -91,7 +91,7 @@ export default {
         if (response && response.data) {
           if (Array.isArray(response.data)) {
             this.activeParsers = response.data;
-          } 
+          }
           else if (response.data.status === 200 && Array.isArray(response.data.data)) {
             this.activeParsers = response.data.data;
           }
@@ -169,7 +169,7 @@ export default {
 .header-title i {
   margin-right: 8px;
   font-size: 22px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .empty-data {
@@ -177,7 +177,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #909399;
+  color: #758078;
   padding: 80px 0;
   font-size: 16px;
 }
@@ -185,7 +185,7 @@ export default {
 .empty-data i {
   font-size: 50px;
   margin-bottom: 15px;
-  color: #c0c4cc;
+  color: #9aa69e;
 }
 
 .parsers-container {
@@ -206,11 +206,11 @@ export default {
 }
 
 .forest-card {
-  border-left: 4px solid #67c23a;
+  border-left: 4px solid #4f8a5b;
 }
 
 .caves-card {
-  border-left: 4px solid #e6a23c;
+  border-left: 4px solid #d99b32;
 }
 
 .parser-header {
@@ -219,7 +219,7 @@ export default {
   align-items: flex-start;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .parser-title {
@@ -239,11 +239,11 @@ export default {
 }
 
 .forest-indicator {
-  background-color: #67c23a;
+  background-color: #4f8a5b;
 }
 
 .caves-indicator {
-  background-color: #e6a23c;
+  background-color: #d99b32;
 }
 
 .type-indicator i {
@@ -253,7 +253,7 @@ export default {
 .parser-title h3 {
   margin: 0 0 8px 0;
   font-size: 18px;
-  color: #303133;
+  color: #27352f;
 }
 
 .parser-subtitle {
@@ -262,7 +262,7 @@ export default {
 }
 
 .parser-id {
-  color: #909399;
+  color: #758078;
   font-size: 13px;
 }
 
@@ -274,13 +274,13 @@ export default {
   display: flex;
   align-items: center;
   padding: 6px 0;
-  color: #606266;
+  color: #536159;
 }
 
 .info-item i {
   margin-right: 8px;
   font-size: 16px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .info-item .label {
@@ -294,10 +294,10 @@ export default {
 }
 
 .path-value {
-  color: #606266;
+  color: #536159;
   font-family: monospace;
   font-size: 13px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -305,7 +305,7 @@ export default {
 .info-statistics {
   display: flex;
   justify-content: space-around;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   border-radius: 8px;
   padding: 15px;
   margin-top: 15px;
@@ -318,12 +318,12 @@ export default {
 .stat-value {
   font-size: 22px;
   font-weight: bold;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .stat-label {
   font-size: 13px;
-  color: #606266;
+  color: #536159;
   margin-top: 5px;
 }
 
@@ -333,6 +333,6 @@ export default {
   gap: 10px;
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid #e8ece5;
 }
-</style> 
+</style>

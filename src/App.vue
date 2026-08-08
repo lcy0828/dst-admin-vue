@@ -74,7 +74,7 @@ html, body {
 }
 
 .tag-success {
-  color: #67C23A;
+  color: #4f8a5b;
   background-color: #F0F9EB;
   border: 1px solid #E1F3D8;
   padding: 2px 6px;
@@ -82,7 +82,7 @@ html, body {
 }
 
 .tag-warning {
-  color: #E6A23C;
+  color: #d99b32;
   background-color: #FDF6EC;
   border: 1px solid #FAECD8;
   padding: 2px 6px;
@@ -90,7 +90,7 @@ html, body {
 }
 
 .tag-error {
-  color: #F56C6C;
+  color: #c94f4f;
   background-color: #FEF0F0;
   border: 1px solid #FDE2E2;
   padding: 2px 6px;
@@ -99,7 +99,7 @@ html, body {
 
 /* 修改Element UI样式 */
 .el-table th {
-  background-color: #F5F7FA !important;
+  background-color: #f1f4ed !important;
 }
 
 .el-card__header {

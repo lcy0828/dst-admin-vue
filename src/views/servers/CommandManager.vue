@@ -317,7 +317,7 @@
     <!-- 添加/编辑命令对话框 -->
     <el-dialog
       :title="dialogType === 'add' ? '添加命令' : '编辑命令'"
-      :visible.sync="dialogVisible"
+      v-model="dialogVisible"
       width="50%"
     >
       <el-form
@@ -432,7 +432,7 @@
     <!-- 批量命令对话框 -->
     <el-dialog
       title="批量执行命令"
-      :visible.sync="batchCommandDialogVisible"
+      v-model="batchCommandDialogVisible"
       width="60%"
     >
       <p class="batch-instructions">每行输入一条命令，按顺序执行。可使用#开头添加注释。</p>
@@ -1518,7 +1518,7 @@ export default {
 .param-help {
   margin-top: 5px;
   font-size: 12px;
-  color: #909399;
+  color: #758078;
 }
 
 .param-description {
@@ -1555,7 +1555,7 @@ export default {
 }
 
 .execution-result {
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   padding: 15px;
   border-radius: 4px;
   margin-top: 15px;
@@ -1569,22 +1569,22 @@ export default {
 
 .status {
   font-weight: bold;
-  color: #f56c6c;
+  color: #c94f4f;
 }
 
 .status.success {
-  color: #67c23a;
+  color: #4f8a5b;
 }
 
 .time {
-  color: #909399;
+  color: #758078;
 }
 
 .result-message {
   background-color: #ffffff;
   padding: 10px;
   border-radius: 4px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8ece5;
 }
 
 .result-message pre {
@@ -1613,7 +1613,7 @@ export default {
 }
 
 .command-examples a {
-  color: #409EFF;
+  color: #d97932;
   text-decoration: none;
 }
 
@@ -1622,11 +1622,11 @@ export default {
 }
 
 .result-container {
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   border-radius: 4px;
   padding: 10px;
   margin-top: 15px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8ece5;
 }
 
 /* 可选的暗色主题支持 */
@@ -1656,20 +1656,20 @@ export default {
 }
 
 .batch-instructions {
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   padding: 10px 15px;
   border-radius: 4px;
   color: #666;
   font-size: 14px;
   margin-bottom: 20px;
-  border-left: 3px solid #409EFF;
+  border-left: 3px solid #d97932;
 }
 
 .batch-result-list {
   max-height: 200px;
   overflow-y: auto;
   margin-top: 15px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8ece5;
   border-radius: 4px;
 }
 
@@ -1678,7 +1678,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 8px 15px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .batch-result-item:last-child {

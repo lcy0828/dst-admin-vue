@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    :visible.sync="dialogVisible"
+    v-model="dialogVisible"
     :title="`模组配置 - ${modInfo ? modInfo.name || '未命名模组' : '加载中...'}`"
     class="mod-config-dialog"
     :close-on-click-modal="false"
@@ -14,7 +14,7 @@
     <div class="config-container">
       <!-- 加载指示器 -->
       <div v-if="loading" class="loading-container">
-        <i class="el-icon-loading"></i>
+        <component is="el-icon-loading" class="legacy-icon" />
         <p>加载模组配置中...</p>
       </div>
       
@@ -23,7 +23,7 @@
         <!-- 重置按钮 -->
         <div class="reset-button-container" v-if="hasOptions">
           <el-button size="small" type="text" @click="resetToDefault" class="reset-button">
-            <i class="el-icon-refresh-left"></i> 重置为默认配置
+            <component is="el-icon-refresh-left" class="legacy-icon" /> 重置为默认配置
           </el-button>
         </div>
         
@@ -32,7 +32,7 @@
           <!-- 模组描述 -->
           <div class="mod-description" v-if="modInfo.description">
             <div class="description-header">
-              <i class="el-icon-info-circle"></i>
+              <component is="el-icon-info-circle" class="legacy-icon" />
               <span>模组描述</span>
             </div>
             <div class="description-content">
@@ -66,7 +66,7 @@
                     effect="dark" 
                     :content="option.hover" 
                     placement="top">
-                    <i class="el-icon-question option-tooltip"></i>
+                    <component is="el-icon-question" class="legacy-icon option-tooltip" />
                   </el-tooltip>
                 </div>
               </template>
@@ -93,7 +93,7 @@
                     effect="dark" 
                     :content="option.hover" 
                     placement="top">
-                    <i class="el-icon-question option-tooltip"></i>
+                    <component is="el-icon-question" class="legacy-icon option-tooltip" />
                   </el-tooltip>
                 </div>
               </template>
@@ -113,7 +113,7 @@
                     effect="dark" 
                     :content="option.hover" 
                     placement="top">
-                    <i class="el-icon-question option-tooltip"></i>
+                    <component is="el-icon-question" class="legacy-icon option-tooltip" />
                   </el-tooltip>
                 </div>
               </template>
@@ -518,13 +518,13 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 40px 0;
-  color: #606266;
+  color: #536159;
 }
 
 .loading-container i {
   font-size: 32px;
   margin-bottom: 10px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .reset-button-container {
@@ -554,7 +554,7 @@ export default {
   background-color: #f8f9fa;
   border-radius: 6px;
   padding: 15px;
-  border-left: 4px solid #409EFF;
+  border-left: 4px solid #d97932;
 }
 
 .description-header {
@@ -562,7 +562,7 @@ export default {
   align-items: center;
   margin-bottom: 10px;
   font-weight: 500;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .description-header i {
@@ -571,7 +571,7 @@ export default {
 }
 
 .description-content {
-  color: #606266;
+  color: #536159;
   line-height: 1.6;
   font-size: 14px;
   white-space: pre-line;
@@ -582,7 +582,7 @@ export default {
 }
 
 .config-form-item {
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
   padding-bottom: 20px;
   margin-bottom: 20px;
   position: relative;
@@ -595,18 +595,18 @@ export default {
 
 .config-form-item .el-form-item__label {
   font-weight: 500;
-  color: #303133;
+  color: #27352f;
 }
 
 .option-tooltip {
   margin-left: 10px;
-  color: #909399;
+  color: #758078;
   cursor: pointer;
   font-size: 14px;
 }
 
 .option-tooltip:hover {
-  color: #409EFF;
+  color: #d97932;
 }
 
 .option-control-wrapper {
@@ -617,7 +617,7 @@ export default {
 .option-value-text {
   margin-left: 10px;
   font-size: 13px;
-  color: #606266;
+  color: #536159;
 }
 
 .option-select, .option-input {
@@ -631,30 +631,30 @@ export default {
   padding: 30px 0;
 }
 
-.mod-config-dialog ::v-deep .el-dialog__body {
+.mod-config-dialog :deep(.el-dialog__body) {
   padding: 20px 20px;
 }
 
-.mod-config-dialog ::v-deep .el-dialog__header {
+.mod-config-dialog :deep(.el-dialog__header) {
   padding: 15px 20px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
   background-color: #f9f9f9;
 }
 
-.mod-config-dialog ::v-deep .el-dialog__title {
+.mod-config-dialog :deep(.el-dialog__title) {
   font-size: 16px;
   font-weight: 600;
 }
 
-.mod-config-dialog ::v-deep .el-dialog__footer {
+.mod-config-dialog :deep(.el-dialog__footer) {
   padding: 15px 20px;
-  border-top: 1px solid #EBEEF5;
+  border-top: 1px solid #e8ece5;
   background-color: #f9f9f9;
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-  .mod-config-dialog ::v-deep .el-dialog {
+  .mod-config-dialog :deep(.el-dialog) {
     width: 90% !important;
     margin-top: 10vh !important;
   }

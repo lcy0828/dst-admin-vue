@@ -1,6 +1,6 @@
 import axios from 'axios';
 import apiConfig from './config';
-import { Message, Loading } from 'element-ui';
+import { ElMessage as Message, ElLoading as Loading } from 'element-plus';
 import router from '@/router';
 import qs from 'qs';
 

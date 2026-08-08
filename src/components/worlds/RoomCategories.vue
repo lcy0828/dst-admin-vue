@@ -4,80 +4,80 @@
       <h3>房间分类</h3>
       <el-button type="text" @click="refreshCategories" icon="el-icon-refresh" size="small">刷新</el-button>
     </div>
-    
+
     <div class="category-list">
       <div class="menu-item" :class="{'active': activeCategory === 'all'}" @click="handleCategorySelect('all')">
-        <i class="el-icon-s-grid"></i>
+        <component is="el-icon-s-grid" class="legacy-icon" />
         <span>所有房间</span>
       </div>
-      
+
       <div class="menu-item" :class="{'active': activeCategory === 'active'}" @click="handleCategorySelect('active')">
-        <i class="el-icon-video-play"></i>
+        <component is="el-icon-video-play" class="legacy-icon" />
         <span>活跃房间</span>
         <div class="badge" v-if="getCountByCategory('active') > 0">{{getCountByCategory('active')}}</div>
       </div>
-      
+
       <div class="menu-item" :class="{'active': activeCategory === 'inactive'}" @click="handleCategorySelect('inactive')">
-        <i class="el-icon-video-pause"></i>
+        <component is="el-icon-video-pause" class="legacy-icon" />
         <span>非活跃房间</span>
         <div class="badge" v-if="getCountByCategory('inactive') > 0">{{getCountByCategory('inactive')}}</div>
       </div>
-      
+
       <div class="submenu">
         <div class="submenu-title" @click="toggleSubmenu('worldTypes')">
-          <i class="el-icon-map-location"></i>
+          <component is="el-icon-map-location" class="legacy-icon" />
           <span>按世界类型</span>
-          <i class="el-icon-arrow-down submenu-arrow" :class="{'is-open': submenuOpen.worldTypes}"></i>
+          <component is="el-icon-arrow-down" class="legacy-icon submenu-arrow" :class="{'is-open': submenuOpen.worldTypes}" />
         </div>
         <div class="submenu-content" v-show="submenuOpen.worldTypes">
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'forest'}" @click="handleCategorySelect('forest')">
-            <i class="el-icon-sunny"></i>
+            <component is="el-icon-sunny" class="legacy-icon" />
             <span>主世界</span>
             <div class="badge" v-if="getCountByCategory('forest') > 0">{{getCountByCategory('forest')}}</div>
           </div>
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'cave'}" @click="handleCategorySelect('cave')">
-            <i class="el-icon-moon"></i>
+            <component is="el-icon-moon" class="legacy-icon" />
             <span>洞穴</span>
             <div class="badge" v-if="getCountByCategory('cave') > 0">{{getCountByCategory('cave')}}</div>
           </div>
           <div class="menu-item submenu-item" :class="{'active': activeCategory === 'both'}" @click="handleCategorySelect('both')">
-            <i class="el-icon-connection"></i>
+            <component is="el-icon-connection" class="legacy-icon" />
             <span>混合房间</span>
             <div class="badge" v-if="getCountByCategory('both') > 0">{{getCountByCategory('both')}}</div>
           </div>
         </div>
       </div>
-      
+
       <div class="submenu" v-if="customCategories.length > 0">
         <div class="submenu-title" @click="toggleSubmenu('custom')">
-          <i class="el-icon-collection-tag"></i>
+          <component is="el-icon-collection-tag" class="legacy-icon" />
           <span>自定义分类</span>
-          <i class="el-icon-arrow-down submenu-arrow" :class="{'is-open': submenuOpen.custom}"></i>
+          <component is="el-icon-arrow-down" class="legacy-icon submenu-arrow" :class="{'is-open': submenuOpen.custom}" />
         </div>
         <div class="submenu-content" v-show="submenuOpen.custom">
-          <div class="menu-item submenu-item" 
-               v-for="category in customCategories" 
-               :key="category.id" 
-               :class="{'active': activeCategory === 'custom_' + category.id}" 
+          <div class="menu-item submenu-item"
+               v-for="category in customCategories"
+               :key="category.id"
+               :class="{'active': activeCategory === 'custom_' + category.id}"
                @click="handleCategorySelect('custom_' + category.id)">
-            <i :class="category.icon || 'el-icon-folder'"></i>
+            <component :is="category.icon || 'el-icon-folder'" class="legacy-icon" />
             <span>{{ category.name }}</span>
             <div class="badge" v-if="getCountByCategory('custom', category.id) > 0">{{getCountByCategory('custom', category.id)}}</div>
           </div>
         </div>
       </div>
-      
+
       <div class="category-actions">
         <el-button type="text" @click="showAddCategoryDialog" size="small">
-          <i class="el-icon-plus"></i> 添加分类
+          <component is="el-icon-plus" class="legacy-icon" /> 添加分类
         </el-button>
       </div>
     </div>
-    
+
     <!-- 添加分类对话框 -->
     <el-dialog
       title="添加自定义分类"
-      :visible.sync="addCategoryDialogVisible"
+      v-model="addCategoryDialogVisible"
       width="400px">
       <el-form :model="newCategory" label-width="80px">
         <el-form-item label="分类名称">
@@ -153,13 +153,13 @@ export default {
       if (this.isRefreshing || (now - this.lastRefreshTime < 2000)) {
         return;
       }
-      
+
       this.isRefreshing = true;
       this.lastRefreshTime = now;
-      
+
       // 发出刷新请求给父组件
       this.$emit('refresh');
-      
+
       // 重置状态
       setTimeout(() => {
         this.isRefreshing = false;
@@ -174,19 +174,19 @@ export default {
         case 'forest':
           return this.rooms.filter(room => {
             if (!room.worlds) return false;
-            return room.worlds.some(world => world.type === 'forest') && 
+            return room.worlds.some(world => world.type === 'forest') &&
                   !room.worlds.some(world => world.type === 'cave');
           }).length;
         case 'cave':
           return this.rooms.filter(room => {
             if (!room.worlds) return false;
-            return room.worlds.some(world => world.type === 'cave') && 
+            return room.worlds.some(world => world.type === 'cave') &&
                   !room.worlds.some(world => world.type === 'forest');
           }).length;
         case 'both':
           return this.rooms.filter(room => {
             if (!room.worlds) return false;
-            return room.worlds.some(world => world.type === 'forest') && 
+            return room.worlds.some(world => world.type === 'forest') &&
                   room.worlds.some(world => world.type === 'cave');
           }).length;
         case 'custom':
@@ -209,17 +209,17 @@ export default {
         this.$message.warning('请输入分类名称');
         return;
       }
-      
-      const newId = this.customCategories.length > 0 
-        ? Math.max(...this.customCategories.map(c => c.id)) + 1 
+
+      const newId = this.customCategories.length > 0
+        ? Math.max(...this.customCategories.map(c => c.id)) + 1
         : 1;
-      
+
       this.customCategories.push({
         id: newId,
         name: this.newCategory.name,
         icon: this.newCategory.icon
       });
-      
+
       this.$message.success(`分类 "${this.newCategory.name}" 已添加`);
       this.addCategoryDialogVisible = false;
     }
@@ -239,14 +239,14 @@ export default {
   align-items: center;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .categories-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
   position: relative;
   padding-left: 12px;
   letter-spacing: 0.5px;
@@ -260,7 +260,7 @@ export default {
   transform: translateY(-50%);
   width: 4px;
   height: 16px;
-  background-color: #409EFF;
+  background-color: #d97932;
   border-radius: 2px;
 }
 
@@ -288,7 +288,7 @@ export default {
 .menu-item i {
   font-size: 16px;
   margin-right: 8px;
-  color: #909399;
+  color: #758078;
   width: 24px;
   text-align: center;
 }
@@ -298,20 +298,20 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #303133;
+  color: #27352f;
 }
 
 .menu-item:hover {
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
 }
 
 .menu-item.active {
-  background-color: #ecf5ff;
+  background-color: #fff3e6;
 }
 
 .menu-item.active i,
 .menu-item.active span {
-  color: #409EFF;
+  color: #d97932;
   font-weight: 500;
 }
 
@@ -322,7 +322,7 @@ export default {
   min-width: 20px;
   line-height: 20px;
   text-align: center;
-  background-color: #409EFF;
+  background-color: #d97932;
   color: #fff;
   border-radius: 10px;
   font-size: 12px;
@@ -349,7 +349,7 @@ export default {
 .submenu-title i {
   font-size: 16px;
   margin-right: 8px;
-  color: #909399;
+  color: #758078;
   width: 24px;
   text-align: center;
 }
@@ -359,11 +359,11 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #303133;
+  color: #27352f;
 }
 
 .submenu-arrow {
-  color: #909399;
+  color: #758078;
   transition: transform 0.3s;
   transform: rotate(0deg);
 }
@@ -373,7 +373,7 @@ export default {
 }
 
 .submenu-title:hover {
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
 }
 
 .submenu-content {
@@ -395,17 +395,17 @@ export default {
 .category-actions {
   padding: 12px;
   text-align: center;
-  background-color: #f5f7fa;
-  border-top: 1px solid #ebeef5;
+  background-color: #f1f4ed;
+  border-top: 1px solid #e8ece5;
 }
 
 .category-actions .el-button {
-  color: #409EFF;
+  color: #d97932;
   font-size: 13px;
 }
 
 .category-actions .el-button:hover {
-  color: #66b1ff;
+  color: #e59252;
   background-color: transparent;
 }
-</style> 
+</style>

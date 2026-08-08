@@ -53,7 +53,7 @@
                   <el-button 
                     type="text" 
                     style="margin-left: 10px;" 
-                    @click="settings.theme = '#409EFF'">
+                    @click="settings.theme = '#d97932'">
                     重置为默认
                   </el-button>
                 </el-form-item>
@@ -221,7 +221,7 @@
                   <el-col :xs="24" :sm="12" :md="6">
                     <el-card shadow="hover" class="status-card">
                       <div slot="header" class="status-card-header">
-                        <i class="el-icon-cpu"></i> CPU状态
+                        <component is="el-icon-cpu" class="legacy-icon" /> CPU状态
                       </div>
                       <div class="status-card-content">
                         <div class="status-item">
@@ -279,7 +279,7 @@
                   <el-col :xs="24" :sm="12" :md="6">
                     <el-card shadow="hover" class="status-card">
                       <div slot="header" class="status-card-header">
-                        <i class="el-icon-loading"></i> 系统负载
+                        <component is="el-icon-loading" class="legacy-icon" /> 系统负载
                       </div>
                       <div class="status-card-content">
                         <div class="status-item">
@@ -309,7 +309,7 @@
                   <el-col :xs="24" :sm="12" :md="6">
                     <el-card shadow="hover" class="status-card">
                       <div slot="header" class="status-card-header">
-                        <i class="el-icon-coin"></i> 内存状态
+                        <component is="el-icon-coin" class="legacy-icon" /> 内存状态
                       </div>
                       <div class="status-card-content">
                         <div class="status-item">
@@ -337,7 +337,7 @@
                   <el-col :xs="24" :sm="12" :md="6">
                     <el-card shadow="hover" class="status-card">
                       <div slot="header" class="status-card-header">
-                        <i class="el-icon-folder"></i> 磁盘状态
+                        <component is="el-icon-folder" class="legacy-icon" /> 磁盘状态
                       </div>
                       <div class="status-card-content">
                         <div class="status-item">
@@ -369,7 +369,7 @@
                   <el-col :xs="24" :sm="12">
                     <el-card shadow="hover" class="status-card">
                       <div slot="header" class="status-card-header">
-                        <i class="el-icon-s-operation"></i> 进程信息
+                        <component is="el-icon-s-operation" class="legacy-icon" /> 进程信息
                       </div>
                       <div class="status-card-content">
                         <div class="status-item">
@@ -405,7 +405,7 @@
                   <el-col :xs="24" :sm="12">
                     <el-card shadow="hover" class="status-card">
                       <div slot="header" class="status-card-header">
-                        <i class="el-icon-s-platform"></i> Go运行时
+                        <component is="el-icon-s-platform" class="legacy-icon" /> Go运行时
                       </div>
                       <div class="status-card-content">
                         <div class="status-item">
@@ -447,7 +447,7 @@
                   <el-col :span="24">
                     <el-card shadow="hover" class="status-card">
                       <div slot="header" class="status-card-header">
-                        <i class="el-icon-time"></i> 时间信息
+                        <component is="el-icon-time" class="legacy-icon" /> 时间信息
                       </div>
                       <div class="status-card-content time-card-content">
                         <div class="status-item">
@@ -479,7 +479,7 @@
     </el-row>
     
     <!-- 备份历史对话框 -->
-    <el-dialog title="备份历史记录" :visible.sync="backupHistoryVisible" width="700px">
+    <el-dialog title="备份历史记录" v-model="backupHistoryVisible" width="700px">
       <el-table :data="backupHistory" border style="width: 100%">
         <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
         <el-table-column prop="filename" label="文件名" min-width="180"></el-table-column>
@@ -519,7 +519,7 @@ export default {
         language: 'zh-CN',
         timezone: 'Asia/Shanghai',
         dateFormat: 'YYYY-MM-DD',
-        theme: '#409EFF',
+        theme: '#d97932',
         
         // 安全设置
         passwordComplexity: true,
@@ -616,9 +616,9 @@ export default {
       
       // 自定义进度条颜色
       customColors: [
-        {color: '#67C23A', percentage: 40},
-        {color: '#E6A23C', percentage: 70},
-        {color: '#F56C6C', percentage: 90}
+        {color: '#4f8a5b', percentage: 40},
+        {color: '#d99b32', percentage: 70},
+        {color: '#c94f4f', percentage: 90}
       ],
       
       // 备份历史
@@ -855,11 +855,11 @@ export default {
     getCoreColor(percentage) {
       // 接口返回的就是百分比值
       if (percentage < 40) {
-        return '#67C23A'; // 绿色 - 低负载
+        return '#4f8a5b'; // 绿色 - 低负载
       } else if (percentage < 70) {
-        return '#E6A23C'; // 黄色 - 中等负载
+        return '#d99b32'; // 黄色 - 中等负载
       } else if (percentage <= 100) {
-        return '#F56C6C'; // 红色 - 高负载
+        return '#c94f4f'; // 红色 - 高负载
       } else {
         return '#800080'; // 紫色 - 超过100%负载
       }
@@ -886,65 +886,65 @@ export default {
 
 .setting-desc {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   margin-left: 10px;
 }
 
-::v-deep .el-tabs__header {
+:deep(.el-tabs__header) {
   margin-bottom: 25px;
 }
 
-::v-deep .el-tabs__item {
+:deep(.el-tabs__item) {
   font-size: 15px;
   font-weight: 500;
 }
 
-::v-deep .el-tabs__item.is-active {
-  color: #409EFF;
+:deep(.el-tabs__item.is-active) {
+  color: #d97932;
 }
 
-::v-deep .el-form-item {
+:deep(.el-form-item) {
   margin-bottom: 22px;
 }
 
-::v-deep .el-form-item__label {
+:deep(.el-form-item__label) {
   font-weight: 500;
 }
 
-::v-deep .el-input-number {
+:deep(.el-input-number) {
   width: 200px;
 }
 
-::v-deep .el-select {
+:deep(.el-select) {
   width: 100%;
 }
 
-::v-deep .el-divider__text {
+:deep(.el-divider__text) {
   font-size: 14px;
   font-weight: 600;
-  color: #606266;
+  color: #536159;
   background-color: #fff;
 }
 
-::v-deep .el-tabs__nav-wrap::after {
+:deep(.el-tabs__nav-wrap::after) {
   height: 1px;
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
-  ::v-deep .el-form-item {
+  :deep(.el-form-item) {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
   }
   
-  ::v-deep .el-form-item__label {
+  :deep(.el-form-item__label) {
     text-align: left;
     width: 100% !important;
     padding: 0 0 10px 0;
   }
   
-  ::v-deep .el-form-item__content {
+  :deep(.el-form-item__content) {
     width: 100%;
     margin-left: 0 !important;
   }
@@ -1001,13 +1001,13 @@ export default {
 
 .status-label {
   width: 90px;
-  color: #606266;
+  color: #536159;
   font-size: 14px;
 }
 
 .status-value {
   flex: 1;
-  color: #303133;
+  color: #27352f;
   font-size: 14px;
   word-break: break-all;
 }
@@ -1057,7 +1057,7 @@ export default {
 
 .core-usage-label {
   font-size: 12px;
-  color: #606266;
+  color: #536159;
   margin-bottom: 2px;
 }
 
@@ -1077,7 +1077,7 @@ export default {
 
 .core-usage-value {
   font-size: 11px;
-  color: #909399;
+  color: #758078;
   text-align: right;
 }
 
@@ -1085,7 +1085,7 @@ export default {
   font-size: 10px;
   color: white;
   margin-left: 5px;
-  background-color: #F56C6C;
+  background-color: #c94f4f;
   padding: 1px 4px;
   border-radius: 2px;
 }

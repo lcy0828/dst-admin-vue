@@ -3,7 +3,7 @@
     <el-card class="main-card" shadow="hover">
       <div slot="header" class="clearfix">
         <span class="card-title">
-          <i class="el-icon-terminal"></i> Agent命令管理
+          <component is="el-icon-terminal" class="legacy-icon" /> Agent命令管理
         </span>
         <div class="header-actions">
           <el-button type="primary" size="small" icon="el-icon-plus" @click="showCommandTemplates">使用模板</el-button>
@@ -14,7 +14,7 @@
         <!-- 命令执行表单 -->
         <div class="section">
           <div class="section-title">
-            <i class="el-icon-edit"></i> 命令执行
+            <component is="el-icon-edit" class="legacy-icon" /> 命令执行
             <el-switch
               v-model="batchMode"
               active-text="批量执行"
@@ -35,7 +35,7 @@
                 :loading="agentListLoading"
                 :multiple="batchMode">
                 <div slot="empty" v-if="agentListLoading" class="agent-loading">
-                  <i class="el-icon-loading"></i> 加载中...
+                  <component is="el-icon-loading" class="legacy-icon" /> 加载中...
                 </div>
                 <div slot="empty" v-else class="agent-empty">
                   没有已连接的Agent
@@ -46,7 +46,7 @@
                   :label="`${agent.hostname || '未知'} (${agent.id || '未知'})`"
                   :value="agent.id">
                   <div class="agent-option">
-                    <i :class="getOsIcon(agent.os)" class="agent-os-icon"></i>
+                    <component :is="getOsIcon(agent.os)" class="legacy-icon agent-os-icon" />
                     <div class="agent-option-content">
                       <div class="agent-hostname">{{ agent.hostname || 'Unknown' }}</div>
                       <div class="agent-details">
@@ -90,7 +90,7 @@
         <!-- 命令历史记录 -->
         <div class="section">
           <div class="section-title">
-            <i class="el-icon-time"></i> 命令历史
+            <component is="el-icon-time" class="legacy-icon" /> 命令历史
             <div class="history-filter">
               <el-select
                 v-model="historyFilter.agent_id"
@@ -203,7 +203,7 @@
         <!-- 命令详情对话框 -->
         <el-dialog
           title="命令详情"
-          :visible.sync="dialogVisible"
+          v-model="dialogVisible"
           width="70%"
           class="command-detail-dialog">
           <div v-if="selectedCommand" class="command-detail">
@@ -269,7 +269,7 @@
         <!-- 命令模板对话框 -->
         <el-dialog
           title="命令模板"
-          :visible.sync="templateDialogVisible"
+          v-model="templateDialogVisible"
           width="60%"
           class="template-dialog">
           <div class="template-container">
@@ -892,7 +892,7 @@ export default {
       font-size: 16px;
       font-weight: bold;
       margin-bottom: 20px;
-      color: #409EFF;
+      color: #d97932;
       display: flex;
       align-items: center;
       
@@ -931,14 +931,14 @@ export default {
 
       .agent-details {
         font-size: 12px;
-        color: #909399;
+        color: #758078;
       }
     }
   }
 
   .command-detail {
     .command-content {
-      background: #f5f7fa;
+      background: #f1f4ed;
       padding: 10px;
       border-radius: 4px;
       font-family: monospace;
@@ -962,7 +962,7 @@ export default {
     }
 
     .no-output {
-      color: #909399;
+      color: #758078;
       text-align: center;
       padding: 20px;
     }

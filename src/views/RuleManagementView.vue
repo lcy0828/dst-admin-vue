@@ -72,7 +72,7 @@
     <!-- 添加/编辑解析规则对话框 -->
     <el-dialog
       :title="ruleForm.id ? '编辑解析规则' : '添加解析规则'"
-      :visible.sync="dialogVisible.parser"
+      v-model="dialogVisible.parser"
       width="50%"
       :close-on-click-modal="false"
       :before-close="handleDialogClose"
@@ -92,7 +92,7 @@
             filterable
             @change="handleLogTypeChange"
             @visible-change="handleSelectVisibleChange"
-            @keyup.enter.native="handleEnterKey"
+            @keyup.enter="handleEnterKey"
             @blur="handleSelectBlur">
             <el-option
               v-for="type in uniqueLogTypes"

@@ -66,30 +66,30 @@
                       fit="cover"
                       lazy>
                       <div slot="error" class="image-slot">
-                        <i class="el-icon-picture-outline"></i>
+                        <component is="el-icon-picture-outline" class="legacy-icon" />
                       </div>
                     </el-image>
                   </div>
                   
                   <div class="mod-card-info">
                     <div class="mod-card-author">
-                      <i class="el-icon-user"></i>
+                      <component is="el-icon-user" class="legacy-icon" />
                       <span>{{ mod.author }}</span>
                     </div>
                     <div class="mod-card-version">
-                      <i class="el-icon-info"></i>
+                      <component is="el-icon-info" class="legacy-icon" />
                       <span>{{ mod.version }}</span>
                     </div>
                     <div class="mod-card-update" v-if="mod.update_time">
-                      <i class="el-icon-time"></i>
+                      <component is="el-icon-time" class="legacy-icon" />
                       <span>{{ mod.update_time }}</span>
                     </div>
                     <div class="mod-card-subscribers" v-if="mod.subscribers">
-                      <i class="el-icon-user-solid"></i>
+                      <component is="el-icon-user-solid" class="legacy-icon" />
                       <span>{{ mod.subscribers }} 订阅</span>
                     </div>
                     <div class="mod-card-rating" v-if="mod.rating">
-                      <i class="el-icon-star-on"></i>
+                      <component is="el-icon-star-on" class="legacy-icon" />
                       <span>{{ mod.rating }} 星</span>
                     </div>
                     <div class="mod-card-tags" v-if="mod.tags && mod.tags.length">
@@ -107,7 +107,7 @@
                   </el-button>
                   <el-dropdown trigger="click" @command="handleCommand" size="small">
                     <el-button size="small" type="text">
-                      更多<i class="el-icon-arrow-down el-icon--right"></i>
+                      更多<component is="el-icon-arrow-down" class="legacy-icon el-icon--right" />
                     </el-button>
                     <el-dropdown-menu slot="dropdown">
                       <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
@@ -136,7 +136,7 @@
     
     <!-- 模组配置对话框 -->
     <mod-config-dialog
-      :visible.sync="configDialogVisible"
+      v-model="configDialogVisible"
       :mod-id="currentModId"
       :mod-info="currentModInfo"
       :is-new-mod="false"
@@ -146,7 +146,7 @@
     <!-- 模组详情对话框 -->
     <el-dialog
       title="模组详情"
-      :visible.sync="detailsDialogVisible"
+      v-model="detailsDialogVisible"
       width="700px"
       class="mod-details-dialog"
       :modal="false"
@@ -159,7 +159,7 @@
             fit="cover"
             class="mod-details-image">
             <div slot="error" class="image-slot">
-              <i class="el-icon-picture-outline"></i>
+              <component is="el-icon-picture-outline" class="legacy-icon" />
             </div>
           </el-image>
           
@@ -167,19 +167,19 @@
             <h2 class="mod-details-name">{{ currentModInfo.name }}</h2>
             <div class="mod-details-meta">
               <span class="mod-details-author">
-                <i class="el-icon-user"></i> {{ currentModInfo.author }}
+                <component is="el-icon-user" class="legacy-icon" /> {{ currentModInfo.author }}
               </span>
               <span class="mod-details-version">
-                <i class="el-icon-info"></i> v{{ currentModInfo.version }}
+                <component is="el-icon-info" class="legacy-icon" /> v{{ currentModInfo.version }}
               </span>
               <span class="mod-details-update" v-if="currentModInfo.update_time">
-                <i class="el-icon-time"></i> {{ currentModInfo.update_time }}
+                <component is="el-icon-time" class="legacy-icon" /> {{ currentModInfo.update_time }}
               </span>
               <span class="mod-details-subscribers" v-if="currentModInfo.subscribers">
-                <i class="el-icon-user-solid"></i> {{ currentModInfo.subscribers }} 订阅
+                <component is="el-icon-user-solid" class="legacy-icon" /> {{ currentModInfo.subscribers }} 订阅
               </span>
               <span class="mod-details-rating" v-if="currentModInfo.rating">
-                <i class="el-icon-star-on"></i> {{ currentModInfo.rating }} 星
+                <component is="el-icon-star-on" class="legacy-icon" /> {{ currentModInfo.rating }} 星
               </span>
             </div>
             <div class="mod-details-status">
@@ -253,7 +253,7 @@
     <!-- 卸载确认对话框 -->
     <el-dialog
       title="卸载模组"
-      :visible.sync="uninstallDialogVisible"
+      v-model="uninstallDialogVisible"
       width="500px"
       :modal="false"
       :append-to-body="true">
@@ -271,7 +271,7 @@
     <!-- 模组配置文件查看对话框 -->
     <el-dialog
       title="模组配置文件 (modoverrides.lua)"
-      :visible.sync="configFileDialogVisible"
+      v-model="configFileDialogVisible"
       width="60%"
       :append-to-body="true"
       class="config-file-dialog">
@@ -604,7 +604,7 @@ export default {
 .filter-container {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .mod-list-container {
@@ -663,7 +663,7 @@ export default {
 }
 
 .mod-card-header {
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
   padding-bottom: 10px;
   margin-bottom: 15px;
   display: flex;
@@ -711,8 +711,8 @@ export default {
   align-items: center;
   width: 100%;
   height: 100%;
-  background-color: #f5f7fa;
-  color: #909399;
+  background-color: #f1f4ed;
+  color: #758078;
 }
 
 .mod-card-info {
@@ -737,7 +737,7 @@ export default {
   margin-right: 5px;
   width: 16px;
   text-align: center;
-  color: #909399;
+  color: #758078;
 }
 
 .mod-card-subscribers,
@@ -752,7 +752,7 @@ export default {
   margin-right: 5px;
   width: 16px;
   text-align: center;
-  color: #909399;
+  color: #758078;
 }
 
 .mod-card-tags {
@@ -788,7 +788,7 @@ export default {
   display: flex;
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .mod-details-image {
@@ -807,7 +807,7 @@ export default {
 .mod-details-name {
   margin: 0 0 15px 0;
   font-size: 24px;
-  color: #303133;
+  color: #27352f;
   line-height: 1.2;
 }
 
@@ -815,7 +815,7 @@ export default {
   display: flex;
   flex-wrap: wrap;
   margin-bottom: 15px;
-  color: #606266;
+  color: #536159;
 }
 
 .mod-details-author,
@@ -852,14 +852,14 @@ export default {
 .mod-details-files h3 {
   font-size: 16px;
   margin: 0 0 10px 0;
-  color: #303133;
+  color: #27352f;
 }
 
 .description-content {
   padding: 10px;
   background-color: #f8f8f8;
   border-radius: 4px;
-  color: #606266;
+  color: #536159;
   line-height: 1.6;
   font-size: 14px;
 }
@@ -882,13 +882,13 @@ export default {
 }
 
 .file-info-label {
-  color: #909399;
+  color: #758078;
   width: 100px;
   flex-shrink: 0;
 }
 
 .file-info-value {
-  color: #606266;
+  color: #536159;
 }
 
 /* 卸载对话框 */
@@ -898,7 +898,7 @@ export default {
 }
 
 .warning-text {
-  color: #F56C6C;
+  color: #c94f4f;
   margin-top: 10px;
 }
 
@@ -931,7 +931,7 @@ export default {
   max-height: 60vh;
   overflow-y: auto;
   padding: 10px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   border-radius: 4px;
 }
 
@@ -945,7 +945,7 @@ export default {
   padding: 10px;
 }
 
-.config-file-dialog ::v-deep .el-dialog__body {
+.config-file-dialog :deep(.el-dialog__body) {
   padding: 15px 20px;
 }
 </style> 

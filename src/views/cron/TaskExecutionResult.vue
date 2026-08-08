@@ -246,7 +246,7 @@ export default {
 
 .execution-section {
   margin-top: 20px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8ece5;
   border-radius: 4px;
   padding: 15px;
   background-color: #fafafa;
@@ -256,7 +256,7 @@ export default {
   margin-top: 0;
   margin-bottom: 15px;
   font-size: 16px;
-  color: #303133;
+  color: #27352f;
 }
 
 .code-block {
@@ -280,11 +280,11 @@ export default {
 .code-block.error {
   background-color: #fef0f0;
   border: 1px solid #fde2e2;
-  color: #f56c6c;
+  color: #c94f4f;
 }
 
 .link-type {
-  color: #409EFF;
+  color: #d97932;
   text-decoration: none;
 }
 

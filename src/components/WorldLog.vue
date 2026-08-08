@@ -2,7 +2,7 @@
   <div class="world-log-container">
     <div class="log-header">
       <div class="log-title">
-        <i class="el-icon-document"></i>
+        <component is="el-icon-document" class="legacy-icon" />
         <span>{{ title || '世界日志' }}</span>
       </div>
       <div class="log-actions">
@@ -45,8 +45,8 @@
         <el-tooltip content="自动滚动到最新日志" placement="top">
           <el-switch
             v-model="autoScroll"
-            active-color="#409EFF"
-            inactive-color="#909399">
+            active-color="#d97932"
+            inactive-color="#758078">
           </el-switch>
         </el-tooltip>
         
@@ -437,7 +437,7 @@ export default {
   height: 100%;
   border-radius: 4px;
   overflow: hidden;
-  background: #f5f7fa;
+  background: #f1f4ed;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
@@ -447,7 +447,7 @@ export default {
   align-items: center;
   padding: 12px 15px;
   background: #ffffff;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .log-title {
@@ -455,12 +455,12 @@ export default {
   align-items: center;
   font-size: 16px;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
 }
 
 .log-title i {
   margin-right: 8px;
-  color: #409EFF;
+  color: #d97932;
 }
 
 .log-actions {

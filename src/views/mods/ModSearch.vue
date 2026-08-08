@@ -17,7 +17,7 @@
               placeholder="输入模组名称搜索..." 
               prefix-icon="el-icon-search" 
               clearable
-              @keyup.enter.native="searchMods">
+              @keyup.enter="searchMods">
             </el-input>
           </el-form-item>
           <el-form-item>
@@ -77,30 +77,30 @@
                       fit="cover"
                       lazy>
                       <div slot="error" class="image-slot">
-                        <i class="el-icon-picture-outline"></i>
+                        <component is="el-icon-picture-outline" class="legacy-icon" />
                       </div>
                     </el-image>
                   </div>
                   
                   <div class="mod-card-info">
                     <div class="mod-card-author">
-                      <i class="el-icon-user"></i>
+                      <component is="el-icon-user" class="legacy-icon" />
                       <span>{{ mod.auth }}</span>
                     </div>
                     <div class="mod-card-version">
-                      <i class="el-icon-info"></i>
+                      <component is="el-icon-info" class="legacy-icon" />
                       <span>{{ mod.version }}</span>
                     </div>
                     <div class="mod-card-update">
-                      <i class="el-icon-time"></i>
+                      <component is="el-icon-time" class="legacy-icon" />
                       <span>{{ mod.time }}</span>
                     </div>
                     <div class="mod-card-subscribers">
-                      <i class="el-icon-user-solid"></i>
+                      <component is="el-icon-user-solid" class="legacy-icon" />
                       <span>{{ mod.sub }} 订阅</span>
                     </div>
                     <div class="mod-card-rating" v-if="mod.rating_img">
-                      <i class="el-icon-star-on"></i>
+                      <component is="el-icon-star-on" class="legacy-icon" />
                       <span>{{ extractRating(mod.rating_img) }} 星</span>
                     </div>
                   </div>
@@ -114,7 +114,7 @@
                     :loading="downloadingMods[mod.id]"
                     @click="handleDownloadMod(mod)">
                     <span v-if="mod.isInstalled">
-                      <i class="el-icon-refresh"></i> 更新
+                      <component is="el-icon-refresh" class="legacy-icon" /> 更新
                     </span>
                     <span v-else>
                       {{ downloadingMods[mod.id] ? '下载中...' : '下载' }}
@@ -122,7 +122,7 @@
                   </el-button>
                   <el-dropdown trigger="click" @command="handleCommand" size="small">
                     <el-button size="small" type="text">
-                      更多<i class="el-icon-arrow-down el-icon--right"></i>
+                      更多<component is="el-icon-arrow-down" class="legacy-icon el-icon--right" />
                     </el-button>
                     <el-dropdown-menu slot="dropdown">
                       <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
@@ -161,7 +161,7 @@
     <!-- 模组详情对话框 -->
     <el-dialog
       title="模组详情"
-      :visible.sync="detailsDialogVisible"
+      v-model="detailsDialogVisible"
       width="700px"
       class="mod-details-dialog"
       :modal="false"
@@ -174,7 +174,7 @@
             fit="cover"
             class="mod-details-image">
             <div slot="error" class="image-slot">
-              <i class="el-icon-picture-outline"></i>
+              <component is="el-icon-picture-outline" class="legacy-icon" />
             </div>
           </el-image>
           
@@ -182,19 +182,19 @@
             <h2 class="mod-details-name">{{ currentModInfo.name }}</h2>
             <div class="mod-details-meta">
               <span class="mod-details-author">
-                <i class="el-icon-user"></i> {{ currentModInfo.auth }}
+                <component is="el-icon-user" class="legacy-icon" /> {{ currentModInfo.auth }}
               </span>
               <span class="mod-details-version">
-                <i class="el-icon-info"></i> v{{ currentModInfo.version }}
+                <component is="el-icon-info" class="legacy-icon" /> v{{ currentModInfo.version }}
               </span>
               <span class="mod-details-update">
-                <i class="el-icon-time"></i> {{ currentModInfo.time }}
+                <component is="el-icon-time" class="legacy-icon" /> {{ currentModInfo.time }}
               </span>
               <span class="mod-details-subscribers" v-if="currentModInfo.sub">
-                <i class="el-icon-user-solid"></i> {{ currentModInfo.sub }} 订阅
+                <component is="el-icon-user-solid" class="legacy-icon" /> {{ currentModInfo.sub }} 订阅
               </span>
               <span class="mod-details-rating" v-if="currentModInfo.rating_img">
-                <i class="el-icon-star-on"></i> {{ extractRating(currentModInfo.rating_img) }} 星
+                <component is="el-icon-star-on" class="legacy-icon" /> {{ extractRating(currentModInfo.rating_img) }} 星
               </span>
             </div>
             <div class="mod-details-status" v-if="currentModInfo.isInstalled">
@@ -451,7 +451,7 @@ export default {
 .search-form-container {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .mod-search-results {
@@ -509,7 +509,7 @@ export default {
 }
 
 .mod-card-header {
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
   padding-bottom: 10px;
   margin-bottom: 15px;
   display: flex;
@@ -557,8 +557,8 @@ export default {
   align-items: center;
   width: 100%;
   height: 100%;
-  background-color: #f5f7fa;
-  color: #909399;
+  background-color: #f1f4ed;
+  color: #758078;
 }
 
 .mod-card-info {
@@ -587,7 +587,7 @@ export default {
   margin-right: 5px;
   width: 16px;
   text-align: center;
-  color: #909399;
+  color: #758078;
 }
 
 .mod-card-actions {
@@ -595,7 +595,7 @@ export default {
   justify-content: space-between;
   margin-top: auto;
   padding-top: 10px;
-  border-top: 1px solid #EBEEF5;
+  border-top: 1px solid #e8ece5;
 }
 
 .pagination-container {
@@ -616,7 +616,7 @@ export default {
 
 .prompt-icon {
   font-size: 48px;
-  color: #409EFF;
+  color: #d97932;
   margin-bottom: 20px;
 }
 
@@ -640,7 +640,7 @@ export default {
   display: flex;
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .mod-details-image {
@@ -659,7 +659,7 @@ export default {
 .mod-details-name {
   margin: 0 0 15px 0;
   font-size: 24px;
-  color: #303133;
+  color: #27352f;
   line-height: 1.2;
 }
 
@@ -667,7 +667,7 @@ export default {
   display: flex;
   flex-wrap: wrap;
   margin-bottom: 15px;
-  color: #606266;
+  color: #536159;
 }
 
 .mod-details-author,
@@ -696,14 +696,14 @@ export default {
 .mod-details-description h3 {
   font-size: 16px;
   margin: 0 0 10px 0;
-  color: #303133;
+  color: #27352f;
 }
 
 .description-content {
   padding: 15px;
   background-color: #f8f8f8;
   border-radius: 4px;
-  color: #606266;
+  color: #536159;
   line-height: 1.6;
   font-size: 14px;
 }
@@ -719,7 +719,7 @@ export default {
 
 .loading-card {
   height: 300px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -773,7 +773,7 @@ export default {
   justify-content: space-between;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid #e8ece5;
 }
 
 .loading-button {
@@ -814,23 +814,23 @@ export default {
 }
 
 /* 禁用蒙版和对话框覆盖样式 */
-::v-deep .el-dialog__wrapper {
+:deep(.el-dialog__wrapper) {
   background-color: transparent !important;
   pointer-events: auto !important;
 }
 
-::v-deep .el-dialog {
+:deep(.el-dialog) {
   pointer-events: auto !important;
 }
 
-::v-deep .v-modal {
+:deep(.v-modal) {
   display: none !important;
   opacity: 0 !important;
   visibility: hidden !important;
 }
 
 .mod-card.is-installed {
-  border: 2px solid #67c23a;
+  border: 2px solid #4f8a5b;
   box-shadow: 0 4px 12px rgba(103, 194, 58, 0.2);
 }
 

@@ -42,7 +42,7 @@
     <!-- 世界状态信息展示 -->
     <div v-loading="loading" class="state-content">
       <div v-if="!worldState" class="empty-state">
-        <i class="el-icon-info"></i>
+        <component is="el-icon-info" class="legacy-icon" />
         <p v-if="selectedArchive && selectedWorld">没有找到世界状态信息，请点击查询按钮获取最新数据</p>
         <p v-else>请选择存档和世界，然后点击查询按钮获取世界状态信息</p>
       </div>
@@ -53,7 +53,7 @@
             <el-card shadow="hover" class="state-card">
               <div class="state-card-content">
                 <div class="state-icon-container" :class="getSeasonClass()">
-                  <i :class="getSeasonIcon()"></i>
+                  <component :is="getSeasonIcon()" class="legacy-icon" />
                 </div>
                 <div class="state-info">
                   <div class="state-title">季节</div>
@@ -68,7 +68,7 @@
             <el-card shadow="hover" class="state-card">
               <div class="state-card-content">
                 <div class="state-icon-container" :class="getPhaseClass()">
-                  <i :class="getPhaseIcon()"></i>
+                  <component :is="getPhaseIcon()" class="legacy-icon" />
                 </div>
                 <div class="state-info">
                   <div class="state-title">地表时间</div>
@@ -83,7 +83,7 @@
             <el-card shadow="hover" class="state-card">
               <div class="state-card-content">
                 <div class="state-icon-container" :class="getWeatherClass()">
-                  <i :class="getWeatherIcon()"></i>
+                  <component :is="getWeatherIcon()" class="legacy-icon" />
                 </div>
                 <div class="state-info">
                   <div class="state-title">地表天气</div>
@@ -98,7 +98,7 @@
             <el-card shadow="hover" class="state-card">
               <div class="state-card-content">
                 <div class="state-icon-container" :class="getMoonClass()">
-                  <i :class="getMoonIcon()"></i>
+                  <component :is="getMoonIcon()" class="legacy-icon" />
                 </div>
                 <div class="state-info">
                   <div class="state-title">地表月相</div>
@@ -116,7 +116,7 @@
             <el-card shadow="hover" class="state-card">
               <div class="state-card-content">
                 <div class="state-icon-container" :class="getCavePhaseClass()">
-                  <i :class="getCavePhaseIcon()"></i>
+                  <component :is="getCavePhaseIcon()" class="legacy-icon" />
                 </div>
                 <div class="state-info">
                   <div class="state-title">洞穴时间</div>
@@ -130,7 +130,7 @@
             <el-card shadow="hover" class="state-card">
               <div class="state-card-content">
                 <div class="state-icon-container" :class="getCaveMoonClass()">
-                  <i :class="getCaveMoonIcon()"></i>
+                  <component :is="getCaveMoonIcon()" class="legacy-icon" />
                 </div>
                 <div class="state-info">
                   <div class="state-title">洞穴月相</div>
@@ -148,7 +148,7 @@
             <el-card shadow="hover" class="state-card">
               <div class="state-card-content">
                 <div class="state-icon-container" :class="getNightmarePhaseClass()">
-                  <i :class="getNightmarePhaseIcon()"></i>
+                  <component :is="getNightmarePhaseIcon()" class="legacy-icon" />
                 </div>
                 <div class="state-info">
                   <div class="state-title">梦魇循环</div>
@@ -202,7 +202,7 @@
             <span>详细信息</span>
             <el-dropdown style="float: right; margin-left: 10px;" @command="handleCategoryFilter">
               <el-button type="text">
-                {{ currentCategory || '所有分类' }} <i class="el-icon-arrow-down"></i>
+                {{ currentCategory || '所有分类' }} <component is="el-icon-arrow-down" class="legacy-icon" />
               </el-button>
               <el-dropdown-menu slot="dropdown">
                 <el-dropdown-item command="">所有分类</el-dropdown-item>
@@ -811,16 +811,16 @@ export default {
 
     // 获取季节颜色
     getSeasonColor() {
-      if (!this.worldState) return '#409EFF';
+      if (!this.worldState) return '#d97932';
 
       const colorMap = {
-        autumn: '#E6A23C',
-        winter: '#909399',
-        spring: '#67C23A',
-        summer: '#F56C6C'
+        autumn: '#d99b32',
+        winter: '#758078',
+        spring: '#4f8a5b',
+        summer: '#c94f4f'
       };
 
-      return colorMap[this.worldState.season] || '#409EFF';
+      return colorMap[this.worldState.season] || '#d97932';
     },
 
     // 获取时间阶段名称
@@ -1300,7 +1300,7 @@ export default {
 <style scoped>
 .world-state-page {
   padding: 20px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   min-height: calc(100vh - 84px);
 }
 
@@ -1310,14 +1310,14 @@ export default {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .page-header h2 {
   margin: 0;
   font-size: 22px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
 }
 
 .filter-card {
@@ -1345,7 +1345,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 300px;
-  color: #909399;
+  color: #758078;
 }
 
 .empty-state i {
@@ -1405,7 +1405,7 @@ export default {
 
 .state-title {
   font-size: 14px;
-  color: #909399;
+  color: #758078;
   margin-bottom: 5px;
 }
 
@@ -1417,94 +1417,94 @@ export default {
 }
 
 .state-card:hover .state-value {
-  color: #409EFF;
+  color: #d97932;
 }
 
 .state-detail {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
   margin-bottom: 3px;
 }
 
 /* 季节样式 */
 .season-autumn {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .season-winter {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 .season-spring {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .season-summer {
-  background-color: #F56C6C;
+  background-color: #c94f4f;
 }
 
 .season-unknown {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 /* 时间阶段样式 */
 .phase-day, .phase-unknown {
-  background-color: #409EFF;
+  background-color: #d97932;
 }
 
 .phase-dusk {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .phase-night {
-  background-color: #606266;
+  background-color: #536159;
 }
 
 /* 天气样式 */
 .weather-clear {
-  background-color: #409EFF;
+  background-color: #d97932;
 }
 
 .weather-rain {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .weather-snow {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 .weather-acid {
-  background-color: #F56C6C;
+  background-color: #c94f4f;
 }
 
 .weather-hail {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 /* 梦魇循环样式 */
 .nightmare-calm, .nightmare-unknown {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .nightmare-warn {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .nightmare-wild {
-  background-color: #F56C6C;
+  background-color: #c94f4f;
 }
 
 .nightmare-dawn {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 .nightmare-none {
-  background-color: #909399;
+  background-color: #758078;
 }
 
 /* 月相样式 */
 .moon-new, .moon-quarter, .moon-half, .moon-threequarter, .moon-full, .moon-unknown {
-  background-color: #606266;
+  background-color: #536159;
 }
 
 /* 季节进度条 */
@@ -1524,7 +1524,7 @@ export default {
 
 .season-days {
   float: right;
-  color: #909399;
+  color: #758078;
   font-size: 14px;
 }
 
@@ -1545,19 +1545,19 @@ export default {
 }
 
 .season-name.autumn {
-  color: #E6A23C;
+  color: #d99b32;
 }
 
 .season-name.winter {
-  color: #909399;
+  color: #758078;
 }
 
 .season-name.spring {
-  color: #67C23A;
+  color: #4f8a5b;
 }
 
 .season-name.summer {
-  color: #F56C6C;
+  color: #c94f4f;
 }
 
 /* 详细信息表格 */
@@ -1571,8 +1571,8 @@ export default {
 }
 
 .details-card .el-table th {
-  background-color: #f5f7fa;
-  color: #606266;
+  background-color: #f1f4ed;
+  color: #536159;
   font-weight: bold;
 }
 
@@ -1594,7 +1594,7 @@ export default {
 .raw-data {
   max-height: 300px;
   overflow-y: auto;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   padding: 15px;
   border-radius: 4px;
   transition: all 0.3s;
@@ -1609,7 +1609,7 @@ export default {
   white-space: pre-wrap;
   word-break: break-all;
   font-family: 'Courier New', Courier, monospace;
-  color: #606266;
+  color: #536159;
 }
 
 @media (max-width: 768px) {

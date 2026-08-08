@@ -179,7 +179,7 @@
               </el-select>
               <div class="form-help-text">
                 <p>当前任务会在所选依赖任务全部执行成功后才会执行</p>
-                <p style="color: #E6A23C;">注意：请避免循环依赖，否则任务将无法正常执行</p>
+                <p style="color: #d99b32;">注意：请避免循环依赖，否则任务将无法正常执行</p>
               </div>
             </el-form-item>
           </el-tab-pane>
@@ -854,7 +854,7 @@ export default {
 .param-help {
   margin-top: 5px;
   font-size: 12px;
-  color: #909399;
+  color: #758078;
 }
 
 .param-example {

@@ -3,49 +3,49 @@
     <div class="login-form-wrapper">
       <div class="login-header">
         <h1>饥荒服务器管理系统</h1>
-        <p>Don't Starve Together 管理后台</p>
+        <p>{{ setupRequired ? '首次使用，请创建管理员' : "Don't Starve Together 管理后台" }}</p>
       </div>
-      
+
       <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="login-form">
         <el-form-item prop="username">
-          <el-input 
-            v-model="loginForm.username" 
-            prefix-icon="el-icon-user" 
+          <el-input
+            v-model="loginForm.username"
+            prefix-icon="el-icon-user"
             placeholder="用户名">
           </el-input>
         </el-form-item>
-        
+
         <el-form-item prop="password">
-          <el-input 
-            v-model="loginForm.password" 
-            prefix-icon="el-icon-lock" 
-            type="password" 
+          <el-input
+            v-model="loginForm.password"
+            prefix-icon="el-icon-lock"
+            type="password"
             placeholder="密码"
-            @keyup.enter.native="handleLogin">
+            @keyup.enter="handleLogin">
           </el-input>
         </el-form-item>
-        
+
         <el-form-item>
           <el-checkbox v-model="loginForm.remember">记住我</el-checkbox>
           <el-link type="primary" class="forgot-password" :underline="false">忘记密码?</el-link>
         </el-form-item>
-        
+
         <el-form-item>
-          <el-button 
-            type="primary" 
-            class="login-button" 
-            :loading="loading" 
+          <el-button
+            type="primary"
+            class="login-button"
+            :loading="loading"
             @click="handleLogin">
-            登录
+            {{ setupRequired ? '创建管理员' : '登录' }}
           </el-button>
         </el-form-item>
       </el-form>
-      
+
       <div class="login-footer">
         <p>© 2023 饥荒管理系统 - Don't Starve Together Admin</p>
       </div>
     </div>
-    
+
     <div class="login-background">
       <div class="login-illustration"></div>
     </div>
@@ -53,6 +53,8 @@
 </template>
 
 <script>
+import { authAPI } from '@/api/v2'
+
 export default {
   name: 'Login',
   data() {
@@ -71,34 +73,39 @@ export default {
           { min: 6, message: '密码长度不少于6位', trigger: 'blur' }
         ]
       },
-      loading: false
+      loading: false,
+      setupRequired: false
     }
   },
+  mounted() {
+    this.loadSession()
+  },
   methods: {
-    handleLogin() {
-      this.$refs.loginForm.validate(valid => {
-        if (valid) {
-          this.loading = true
-          
-          // 模拟登录请求
-          setTimeout(() => {
-            this.loading = false
-            
-            // 保存登录状态
-            localStorage.setItem('isLoggedIn', 'true')
-            
-            // 登录成功，跳转到首页
-            this.$router.push('/')
-            
-            this.$message({
-              type: 'success',
-              message: '登录成功'
-            })
-          }, 1500)
-        } else {
-          return false
+    async loadSession() {
+      try {
+        const session = await authAPI.session()
+        this.setupRequired = session.setupRequired === true
+      } catch (error) {
+        if (this.$route.query.reason === 'backend-unavailable') {
+          this.$message.error(error.message)
         }
-      })
+      }
+    },
+    async handleLogin() {
+      const valid = await this.$refs.loginForm.validate().catch(() => false)
+      if (!valid) return
+
+      this.loading = true
+      try {
+        const action = this.setupRequired ? authAPI.setup : authAPI.login
+        await action(this.loginForm.username, this.loginForm.password)
+        await this.$router.push('/')
+        this.$message.success(this.setupRequired ? '管理员创建成功' : '登录成功')
+      } catch (error) {
+        this.$message.error(error.message || '登录失败')
+      } finally {
+        this.loading = false
+      }
     }
   }
 }
@@ -109,7 +116,7 @@ export default {
   display: flex;
   height: 100vh;
   width: 100%;
-  background-color: #f0f2f5;
+  background-color: var(--bg-color);
 }
 
 .login-form-wrapper {
@@ -128,13 +135,13 @@ export default {
 
 .login-header h1 {
   font-size: 24px;
-  color: #333;
+  color: var(--text-primary);
   margin-bottom: 10px;
 }
 
 .login-header p {
   font-size: 14px;
-  color: #999;
+  color: var(--text-secondary);
 }
 
 .login-form {
@@ -152,14 +159,14 @@ export default {
 
 .login-footer {
   text-align: center;
-  color: #999;
+  color: var(--text-secondary);
   font-size: 12px;
   margin-top: auto;
 }
 
 .login-background {
   flex: 1;
-  background-color: #304156;
+  background-color: var(--sidebar-color);
   position: relative;
   overflow: hidden;
 }
@@ -180,14 +187,14 @@ export default {
   .login-container {
     flex-direction: column-reverse;
   }
-  
+
   .login-form-wrapper {
     width: 100%;
     padding: 40px 20px;
   }
-  
+
   .login-background {
     height: 180px;
   }
 }
-</style> 
+</style>

@@ -27,7 +27,7 @@
       <!-- 存档管理内容 -->
       <div v-loading="loading">
         <div v-if="!selectedServer" class="empty-saves">
-          <i class="el-icon-folder"></i>
+          <component is="el-icon-folder" class="legacy-icon" />
           <p>请选择一个服务器来管理存档</p>
         </div>
         <div v-else>
@@ -49,7 +49,7 @@
             <el-table-column prop="name" label="存档名称" min-width="180">
               <template slot-scope="scope">
                 <div class="save-name">
-                  <i class="el-icon-document"></i>
+                  <component is="el-icon-document" class="legacy-icon" />
                   <span>{{ scope.row.name }}</span>
                   <el-tag size="mini" type="success" v-if="scope.row.isCurrent">当前存档</el-tag>
                 </div>
@@ -104,7 +104,7 @@
     </el-card>
 
     <!-- 上传存档对话框 -->
-    <el-dialog title="上传存档" :visible.sync="uploadDialogVisible" width="500px">
+    <el-dialog title="上传存档" v-model="uploadDialogVisible" width="500px">
       <el-form :model="uploadForm" ref="uploadForm" label-width="100px">
         <el-form-item label="存档名称" prop="name">
           <el-input v-model="uploadForm.name" placeholder="请输入存档名称"></el-input>
@@ -118,7 +118,7 @@
             :limit="1"
             :on-exceed="handleExceed"
             :file-list="uploadForm.fileList">
-            <i class="el-icon-upload"></i>
+            <component is="el-icon-upload" class="legacy-icon" />
             <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
             <div class="el-upload__tip" slot="tip">只能上传zip文件，且不超过100MB</div>
           </el-upload>
@@ -134,7 +134,7 @@
     </el-dialog>
 
     <!-- 重命名对话框 -->
-    <el-dialog title="重命名存档" :visible.sync="renameDialogVisible" width="400px">
+    <el-dialog title="重命名存档" v-model="renameDialogVisible" width="400px">
       <el-form :model="renameForm" ref="renameForm" label-width="100px">
         <el-form-item label="新名称" prop="newName">
           <el-input v-model="renameForm.newName" placeholder="请输入新的存档名称"></el-input>
@@ -637,7 +637,7 @@ export default {
 .server-select-wrapper {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .tool-bar {
@@ -647,7 +647,7 @@ export default {
 .empty-saves {
   text-align: center;
   padding: 50px 0;
-  color: #909399;
+  color: #758078;
 }
 
 .empty-saves i {
@@ -665,7 +665,7 @@ export default {
 }
 
 .save-name i {
-  color: #409EFF;
+  color: #d97932;
   margin-right: 8px;
   font-size: 18px;
 }
@@ -696,42 +696,42 @@ export default {
 }
 
 .el-upload__tip {
-  color: #909399;
+  color: #758078;
   font-size: 12px;
   margin-top: 5px;
 }
 
 /* 表格行效果 */
-::v-deep .el-table .el-table__row:hover {
-  background-color: #f5f7fa;
+:deep(.el-table .el-table__row:hover) {
+  background-color: #f1f4ed;
 }
 
-::v-deep .el-table .current-row {
+:deep(.el-table .current-row) {
   background-color: #f0f9eb;
 }
 
 /* 上传样式 */
-::v-deep .el-upload-dragger {
-  border: 2px dashed #409EFF;
+:deep(.el-upload-dragger) {
+  border: 2px dashed #d97932;
 }
 
-::v-deep .el-upload-dragger:hover {
-  border-color: #66b1ff;
+:deep(.el-upload-dragger:hover) {
+  border-color: #e59252;
 }
 
-::v-deep .el-upload-dragger .el-icon-upload {
+:deep(.el-upload-dragger .el-icon-upload) {
   font-size: 48px;
-  color: #409EFF;
+  color: #d97932;
   margin-bottom: 10px;
 }
 
-::v-deep .el-upload__text {
+:deep(.el-upload__text) {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
 }
 
-::v-deep .el-upload__text em {
-  color: #409EFF;
+:deep(.el-upload__text em) {
+  color: #d97932;
   font-style: normal;
 }
 </style>

@@ -148,7 +148,7 @@ export default {
 }
 
 .room-preview {
-  border: 1px solid #dcdfe6;
+  border: 1px solid #d4ddd3;
   border-radius: 4px;
   padding: 15px;
   background-color: #f9f9f9;
@@ -165,7 +165,7 @@ export default {
 
 .preview-content {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
 }
 
 /* 不同风格的房间预览 */
@@ -209,8 +209,8 @@ export default {
 }
 
 .room-style-winter {
-  background-color: #e3f2fd;
-  color: #0d47a1;
+  background-color: #edf6ee;
+  color: #326343;
 }
 
 .room-style-winter .preview-header {

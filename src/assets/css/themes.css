@@ -6,27 +6,27 @@
 /* 科技白主题（默认） */
 :root {
   /* 主要颜色 */
-  --primary-color: #409EFF;
-  --success-color: #67C23A;
-  --warning-color: #E6A23C;
-  --danger-color: #F56C6C;
-  --info-color: #909399;
+  --primary-color: #d97932;
+  --success-color: #4f8a5b;
+  --warning-color: #d99b32;
+  --danger-color: #c94f4f;
+  --info-color: #758078;
 
   /* 背景颜色 */
-  --bg-color: #f0f2f5;
+  --bg-color: #f6f3ea;
   --bg-color-light: #ffffff;
-  --bg-color-dark: #f5f7fa;
+  --bg-color-dark: #f1f4ed;
   
   /* 文本颜色 */
-  --text-color-primary: #303133;
-  --text-color-regular: #606266;
-  --text-color-secondary: #909399;
-  --text-color-placeholder: #c0c4cc;
+  --text-color-primary: #27352f;
+  --text-color-regular: #536159;
+  --text-color-secondary: #758078;
+  --text-color-placeholder: #9aa69e;
   
   /* 边框颜色 */
-  --border-color-base: #dcdfe6;
-  --border-color-light: #e4e7ed;
-  --border-color-lighter: #ebeef5;
+  --border-color-base: #d4ddd3;
+  --border-color-light: #dde4dc;
+  --border-color-lighter: #e8ece5;
   --border-color-extra-light: #f2f6fc;
   
   /* 阴影 */
@@ -34,24 +34,24 @@
   --box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   
   /* 侧边栏 */
-  --sidebar-bg: #304156;
-  --sidebar-text: #bfcbd9;
-  --sidebar-active-text: #409EFF;
-  --sidebar-hover-bg: #263445;
+  --sidebar-bg: #315a46;
+  --sidebar-text: #e2ede5;
+  --sidebar-active-text: #d97932;
+  --sidebar-hover-bg: #264736;
   
   /* 头部导航栏 */
   --header-bg: #ffffff;
-  --header-text: #606266;
-  --header-border: #dcdfe6;
+  --header-text: #536159;
+  --header-border: #d4ddd3;
   
   /* 卡片 */
   --card-bg: #ffffff;
-  --card-border: #ebeef5;
+  --card-border: #e8ece5;
   
   /* 表格 */
-  --table-header-bg: #f5f7fa;
-  --table-row-hover-bg: #f5f7fa;
-  --table-border: #ebeef5;
+  --table-header-bg: #f1f4ed;
+  --table-row-hover-bg: #f1f4ed;
+  --table-border: #e8ece5;
   
   /* 过渡动画 */
   --transition-time: 0.3s;
@@ -60,10 +60,10 @@
 /* 暗黑模式主题 */
 [data-theme="dark"] {
   /* 主要颜色 - 暗色模式下稍微调亮一些 */
-  --primary-color: #5caefd;
-  --success-color: #85ce61;
-  --warning-color: #e6a23c;
-  --danger-color: #f56c6c;
+  --primary-color: #e58d4b;
+  --success-color: #6aa876;
+  --warning-color: #d99b32;
+  --danger-color: #c94f4f;
   --info-color: #a6a9ad;
 
   /* 背景颜色 */
@@ -90,7 +90,7 @@
   /* 侧边栏 */
   --sidebar-bg: #1a1a1a;
   --sidebar-text: #a6a9ad;
-  --sidebar-active-text: #5caefd;
+  --sidebar-active-text: #e58d4b;
   --sidebar-hover-bg: #141414;
   
   /* 头部导航栏 */

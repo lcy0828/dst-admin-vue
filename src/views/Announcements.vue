@@ -59,7 +59,7 @@
     </el-card>
     
     <!-- 公告详情对话框 -->
-    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="50%">
+    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="50%">
       <template v-if="currentAnnouncement">
         <div class="announcement-detail">
           <div class="announcement-header">
@@ -85,7 +85,7 @@
     </el-dialog>
     
     <!-- 编辑/创建公告表单 -->
-    <el-dialog :title="formTitle" :visible.sync="formVisible" width="70%">
+    <el-dialog :title="formTitle" v-model="formVisible" width="70%">
       <el-form :model="announcementForm" :rules="rules" ref="announcementForm" label-width="100px">
         <el-form-item label="标题" prop="title">
           <el-input v-model="announcementForm.title" placeholder="请输入公告标题"></el-input>
@@ -341,7 +341,7 @@ export default {
 
 .announcement-header {
   margin-bottom: 20px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
   padding-bottom: 15px;
 }
 
@@ -353,7 +353,7 @@ export default {
 .announcement-meta {
   display: flex;
   justify-content: space-between;
-  color: #909399;
+  color: #758078;
   font-size: 14px;
 }
 

@@ -15,25 +15,25 @@
         <el-button type="primary" @click="createRoom" icon="el-icon-plus">创建房间</el-button>
       </div>
     </div>
-    
+
     <!-- 页面加载状态 -->
     <el-card v-if="loading" shadow="hover" class="settings-card">
       <div class="loading-page-content">
-        <i class="el-icon-loading loading-page-icon"></i>
+        <component is="el-icon-loading" class="legacy-icon loading-page-icon" />
         <p>正在加载页面内容...</p>
       </div>
     </el-card>
-    
+
     <!-- 无存档时的导引提示 -->
     <el-card v-if="!loading && filteredRooms.length === 0" shadow="hover" class="settings-card empty-save-card">
       <div class="empty-save-content">
-        <i class="el-icon-folder-add empty-save-icon"></i>
+        <component is="el-icon-folder-add" class="legacy-icon empty-save-icon" />
         <h4>暂无房间</h4>
         <p>您尚未创建任何房间，请点击下方按钮创建新房间</p>
         <el-button type="primary" @click="createRoom">创建新房间</el-button>
       </div>
     </el-card>
-    
+
     <!-- 房间列表卡片样式展示 -->
     <div v-if="!loading && filteredRooms.length > 0" class="save-list">
       <el-row :gutter="24" type="flex">
@@ -48,7 +48,7 @@
                 <div class="world-category forest" v-if="getWorldsByType(room.worlds, 'forest').length > 0">
                   <span class="world-category-title">主世界:</span>
                   <div class="world-tags">
-                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'forest')" :key="world.name" 
+                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'forest')" :key="world.name"
                       type="primary" class="world-tag">
                       {{ world.name }}
                     </el-tag>
@@ -57,7 +57,7 @@
                 <div class="world-category cave" v-if="getWorldsByType(room.worlds, 'cave').length > 0">
                   <span class="world-category-title">洞穴:</span>
                   <div class="world-tags">
-                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'cave')" :key="world.name" 
+                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'cave')" :key="world.name"
                       type="success" class="world-tag">
                       {{ world.name }}
                     </el-tag>
@@ -66,7 +66,7 @@
                 <div class="world-category unknown" v-if="getWorldsByType(room.worlds, 'unknown').length > 0">
                   <span class="world-category-title">其他:</span>
                   <div class="world-tags">
-                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'unknown')" :key="world.name" 
+                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'unknown')" :key="world.name"
                       type="info" class="world-tag">
                       {{ world.name }}
                     </el-tag>
@@ -75,32 +75,32 @@
               </div>
               <div class="save-info">
                 <span class="save-date" v-if="room.updateTime">
-                  <i class="el-icon-time"></i> {{ formatDate(room.updateTime) }}
+                  <component is="el-icon-time" class="legacy-icon" /> {{ formatDate(room.updateTime) }}
                 </span>
                 <span class="save-world-count" v-if="room.worlds">
-                  <i class="el-icon-s-grid"></i> {{ room.worlds ? room.worlds.length : 0 }} 个世界
+                  <component is="el-icon-s-grid" class="legacy-icon" /> {{ room.worlds ? room.worlds.length : 0 }} 个世界
                 </span>
               </div>
             </div>
             <div class="save-actions">
               <el-button-group>
-                <el-button 
-                  v-if="!room.isRunning" 
-                  type="success" 
-                  size="small" 
-                  @click="startRoom(room)" 
+                <el-button
+                  v-if="!room.isRunning"
+                  type="success"
+                  size="small"
+                  @click="startRoom(room)"
                   icon="el-icon-video-play">开启</el-button>
-                <el-button 
-                  v-else 
-                  type="danger" 
-                  size="small" 
-                  @click="stopRoom(room)" 
+                <el-button
+                  v-else
+                  type="danger"
+                  size="small"
+                  @click="stopRoom(room)"
                   icon="el-icon-video-pause">停止</el-button>
                 <el-button type="primary" size="small" @click="editRoom(room)" icon="el-icon-edit">编辑</el-button>
               </el-button-group>
               <el-dropdown trigger="click" @command="handleDropdownCommand($event, room)" style="margin-left: 10px;">
                 <el-button type="info" size="small">
-                  更多操作<i class="el-icon-arrow-down el-icon--right"></i>
+                  更多操作<component is="el-icon-arrow-down" class="legacy-icon el-icon--right" />
                 </el-button>
                 <el-dropdown-menu slot="dropdown">
                   <el-dropdown-item command="special-lists">特殊名单</el-dropdown-item>
@@ -108,7 +108,7 @@
                   <el-dropdown-item command="logs">查看日志</el-dropdown-item>
                   <el-dropdown-item command="backup">备份房间</el-dropdown-item>
                   <el-dropdown-item command="delete" divided>
-                    <span style="color: #F56C6C;">删除房间</span>
+                    <span style="color: #c94f4f;">删除房间</span>
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </el-dropdown>
@@ -117,44 +117,44 @@
         </el-col>
       </el-row>
     </div>
-    
+
     <!-- 特殊名单对话框 -->
-    <el-dialog 
-      title="特殊名单管理" 
-      :visible.sync="specialListsVisible" 
-      width="80%" 
+    <el-dialog
+      title="特殊名单管理"
+      v-model="specialListsVisible"
+      width="80%"
       :before-close="closeSpecialListsDialog"
       class="fullheight-dialog">
-      <SpecialLists 
-        v-if="specialListsVisible" 
+      <SpecialLists
+        v-if="specialListsVisible"
         :savename="selectedSavename"
         @close="specialListsVisible = false" />
     </el-dialog>
-    
+
     <!-- 服务器令牌对话框 -->
-    <el-dialog 
-      title="服务器令牌管理" 
-      :visible.sync="serverTokenVisible" 
-      width="60%" 
+    <el-dialog
+      title="服务器令牌管理"
+      v-model="serverTokenVisible"
+      width="60%"
       :before-close="closeServerTokenDialog">
-      <ServerToken 
-        v-if="serverTokenVisible" 
+      <ServerToken
+        v-if="serverTokenVisible"
         :savename="selectedSavename"
         @close="serverTokenVisible = false" />
     </el-dialog>
-    
+
     <!-- 服务器日志对话框 -->
-    <el-dialog 
-      title="服务器日志" 
-      :visible.sync="logViewerVisible" 
-      width="60%" 
+    <el-dialog
+      title="服务器日志"
+      v-model="logViewerVisible"
+      width="60%"
       :before-close="closeLogViewerDialog"
       :append-to-body="true"
       :modal="false"
       :destroy-on-close="true"
       class="fullheight-dialog">
-      <LogViewer 
-        v-if="logViewerVisible" 
+      <LogViewer
+        v-if="logViewerVisible"
         :archiveName="selectedSavename"
         :title="'服务器日志 - ' + selectedRoomName"
         :subtitle="selectedWorldDisplay"
@@ -162,16 +162,16 @@
         :defaultWorld="selectedRoomWorldName"
         @close="logViewerVisible = false" />
     </el-dialog>
-    
+
     <!-- 启动房间对话框 -->
-    <el-dialog 
-      title="启动房间" 
-      :visible.sync="startDialogVisible" 
-      width="60%" 
+    <el-dialog
+      title="启动房间"
+      v-model="startDialogVisible"
+      width="60%"
       :before-close="closeStartDialog"
       class="fullheight-dialog">
-      <StartRoomForm 
-        v-if="startDialogVisible" 
+      <StartRoomForm
+        v-if="startDialogVisible"
         :room="selectedRoom"
         :startForm="startForm"
         @confirm="confirmStartRoom"
@@ -225,15 +225,15 @@ export default {
   computed: {
     filteredRooms() {
       let result = this.rooms;
-      
+
       // 按搜索查询筛选
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
-        result = result.filter(room => 
+        result = result.filter(room =>
           room.name.toLowerCase().includes(query)
         );
       }
-      
+
       return result;
     }
   },
@@ -265,11 +265,11 @@ export default {
       if (this.isRefreshing || (now - this.lastRefreshTime < 2000)) {
         return;
       }
-      
+
       this.isRefreshing = true;
       this.lastRefreshTime = now;
       this.loading = true;
-      
+
       // 使用Promise.all同时请求两个接口
       Promise.all([
         axios.get(`${config.BASE_URL}/dstserver/list`),
@@ -289,21 +289,21 @@ export default {
               updateTime: item.updateTime || new Date().toISOString(),
               isRunning: false // 默认设置为未运行
             }));
-            
+
             // 处理服务器列表数据
             if (serversResponse && serversResponse.data && serversResponse.data.status === 200) {
               this.serverList = serversResponse.data.data || [];
-              
+
               // 合并数据 - 标记运行中的房间
               this.rooms.forEach(room => {
                 // 检查该房间的任何世界是否正在运行
-                const runningServer = this.serverList.find(server => 
+                const runningServer = this.serverList.find(server =>
                   server.cluster === room.name
                 );
                 room.isRunning = !!runningServer;
               });
             }
-            
+
             this.$message.success('房间列表已刷新');
             console.log('Refreshed rooms and server status at', new Date().toLocaleTimeString());
           } else {
@@ -337,7 +337,7 @@ export default {
       if (!this.selectedRoom) return;
       const archiveName = this.selectedRoom.id;
       const serverMode = this.startForm.serverMode;
-      
+
       this.startLoading = true;
       if (this.startForm.worldType === 'all') {
         // 获取所有世界列表，然后为每个世界发起请求
@@ -369,7 +369,7 @@ export default {
                 if (worldType === 'unknown') {
                   worldType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
                 }
-                
+
                 return roomApi.startRoom({
                   archive_name: archiveName,
                   world_name: world.worldName || world.name,
@@ -404,7 +404,7 @@ export default {
               this.startDialogVisible = false;
               return;
             }
-            
+
             // 为每个unknown世界启动，根据名称推断类型
             const startPromises = filteredWorlds.map(world => {
               const inferredType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
@@ -415,7 +415,7 @@ export default {
                 world_type: inferredType
               });
             });
-            
+
             return Promise.all(startPromises);
           })
           .then(responses => {
@@ -447,7 +447,7 @@ export default {
                 world_type: this.startForm.worldType
               });
             } else {
-              const startPromises = filteredWorlds.map(world => 
+              const startPromises = filteredWorlds.map(world =>
                 roomApi.startRoom({
                   archive_name: archiveName,
                   world_name: world.worldName || world.name,
@@ -514,7 +514,7 @@ export default {
       this.selectedRoomName = room.name;
       this.selectedRoomWorlds = room.worlds || [];
       this.selectedRoomWorldName = room.worlds && room.worlds.length > 0 ? room.worlds[0].name : '';
-      this.selectedWorldDisplay = room.worlds && room.worlds.length > 0 ? 
+      this.selectedWorldDisplay = room.worlds && room.worlds.length > 0 ?
         `${room.worlds[0].name} (${room.worlds[0].type === 'master' ? '森林' : '洞穴'})` : '';
       this.logViewerVisible = true;
     },
@@ -545,7 +545,7 @@ export default {
         this.$message({
           type: 'info',
           message: '已取消操作'
-        });          
+        });
       });
     },
     deleteRoom(room) {
@@ -580,7 +580,7 @@ export default {
         this.$message({
           type: 'info',
           message: '已取消操作'
-        });          
+        });
       });
     },
     // 按类型获取世界列表
@@ -640,24 +640,24 @@ export default {
 <style lang="scss" scoped>
 .world-settings-page {
   padding: 25px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   min-height: calc(100vh - 80px);
-  
+
   .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 30px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #ebeef5;
-    
+    border-bottom: 1px solid #e8ece5;
+
     h2 {
       margin: 0;
       font-size: 24px;
-      color: #303133;
+      color: #27352f;
       position: relative;
       padding-left: 15px;
-      
+
       &:before {
         content: '';
         position: absolute;
@@ -666,69 +666,69 @@ export default {
         transform: translateY(-50%);
         width: 4px;
         height: 20px;
-        background-color: #409EFF;
+        background-color: #d97932;
         border-radius: 2px;
       }
     }
-    
+
     .header-actions {
       display: flex;
       align-items: center;
-      
+
       .el-button {
         border-radius: 6px;
       }
     }
   }
-  
+
   .settings-card {
     margin-bottom: 20px;
   }
-  
+
   .loading-page-content,
   .empty-save-content,
   .loading-saves-content {
     text-align: center;
     padding: 60px 0;
-    
+
     .loading-page-icon,
     .empty-save-icon,
     .loading-saves-icon {
       font-size: 64px;
-      color: #409EFF;
+      color: #d97932;
       margin-bottom: 25px;
     }
-    
+
     h4 {
       font-size: 22px;
       margin-bottom: 15px;
-      color: #303133;
+      color: #27352f;
     }
-    
+
     p {
-      color: #606266;
+      color: #536159;
       margin-bottom: 25px;
       font-size: 15px;
     }
-    
+
     .el-button {
       padding: 12px 30px;
       border-radius: 6px;
       font-size: 16px;
     }
   }
-  
+
   .save-list {
     .el-row {
       display: flex;
       flex-wrap: wrap;
     }
-    
+
     .room-col {
       display: flex;
       margin-bottom: 24px;
     }
-    
+
     .save-item {
       width: 100%;
       height: 350px !important;
@@ -739,13 +739,13 @@ export default {
       overflow: hidden;
       transition: all 0.3s;
       border-radius: 8px;
-      
+
       &:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         border-color: #e6e6e6;
       }
-      
+
       &::before {
         content: '';
         position: absolute;
@@ -753,17 +753,17 @@ export default {
         left: 0;
         right: 0;
         height: 6px;
-        background: linear-gradient(to right, #409EFF, #67C23A);
+        background: linear-gradient(to right, #d97932, #4f8a5b);
         z-index: 2;
       }
-      
+
       .el-card__body {
         height: 100%;
         padding: 0;
         display: flex;
         flex-direction: column;
       }
-      
+
       .save-item-content {
         flex: 1;
         padding: 20px;
@@ -771,14 +771,14 @@ export default {
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        
+
         .save-name {
           height: 45px;
           margin-top: 5px;
           margin-bottom: 15px;
           font-size: 18px;
           font-weight: bold;
-          color: #303133;
+          color: #27352f;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -786,7 +786,7 @@ export default {
           border-bottom: 1px solid #f0f0f0;
           position: relative;
           padding-left: 30px;
-          
+
           &::before {
             content: '\e7a4';
             font-family: 'element-icons';
@@ -794,10 +794,10 @@ export default {
             left: 0;
             top: 0;
             font-size: 20px;
-            color: #409EFF;
+            color: #d97932;
           }
         }
-        
+
         .save-worlds {
           height: 150px;
           margin: 15px 0;
@@ -807,7 +807,7 @@ export default {
           flex-direction: column;
           border-radius: 4px;
           position: relative;
-          
+
           /* 添加渐变阴影提示滚动 */
           &::after {
             content: '';
@@ -821,48 +821,48 @@ export default {
             opacity: 0.7;
             display: none;
           }
-          
+
           &.scrollable::after {
             display: block;
           }
-          
+
           /* 自定义滚动条样式 */
           &::-webkit-scrollbar {
             width: 6px;
           }
-          
+
           &::-webkit-scrollbar-track {
             background: #f5f5f5;
             border-radius: 4px;
           }
-          
+
           &::-webkit-scrollbar-thumb {
-            background: #dcdfe6;
+            background: #d4ddd3;
             border-radius: 4px;
           }
-          
+
           &::-webkit-scrollbar-thumb:hover {
-            background: #c0c4cc;
+            background: #9aa69e;
           }
-          
+
           .world-category {
             margin-bottom: 12px;
-            
+
             &:last-child {
               margin-bottom: 0;
             }
-            
+
             .world-category-title {
               font-size: 14px;
               font-weight: 500;
-              color: #606266;
+              color: #536159;
               margin-right: 10px;
               display: block;
               min-width: 60px;
               position: relative;
               padding-left: 20px;
               margin-bottom: 6px;
-              
+
               &::before {
                 position: absolute;
                 left: 0;
@@ -871,12 +871,12 @@ export default {
                 font-size: 14px;
               }
             }
-            
+
             .world-tags {
               display: flex;
               flex-wrap: wrap;
               width: 100%;
-              
+
               .world-tag {
                 margin-right: 8px;
                 margin-bottom: 8px;
@@ -888,51 +888,51 @@ export default {
                 overflow: hidden;
               }
             }
-            
+
             &.forest .world-category-title {
-              color: #409EFF;
-              
+              color: #d97932;
+
               &::before {
                 content: '\e79b';
-                color: #409EFF;
+                color: #d97932;
               }
             }
-            
+
             &.cave .world-category-title {
-              color: #67C23A;
-              
+              color: #4f8a5b;
+
               &::before {
                 content: '\e790';
-                color: #67C23A;
+                color: #4f8a5b;
               }
             }
-            
+
             &.unknown .world-category-title {
-              color: #909399;
-              
+              color: #758078;
+
               &::before {
                 content: '\e6f6';
-                color: #909399;
+                color: #758078;
               }
             }
           }
         }
-        
+
         .save-info {
           height: 40px;
           margin-top: auto;
           display: flex;
           flex-wrap: wrap;
           font-size: 13px;
-          color: #909399;
+          color: #758078;
           background-color: #f9f9f9;
           padding: 8px 10px;
           border-radius: 6px;
-          
+
           .save-date, .save-world-count {
             margin-right: 15px;
             margin-bottom: 5px;
-            
+
             i {
               margin-right: 5px;
               font-size: 14px;
@@ -940,7 +940,7 @@ export default {
           }
         }
       }
-      
+
       .save-actions {
         padding: 15px 20px;
         height: 65px;
@@ -951,53 +951,53 @@ export default {
         position: relative;
         z-index: 1;
         margin-top: auto;
-        
+
         .el-button {
           border-radius: 20px;
           padding: 8px 15px;
           margin-right: 5px;
-          
+
           &.el-button--success {
-            background-color: #67C23A;
-            border-color: #67C23A;
-            
+            background-color: #4f8a5b;
+            border-color: #4f8a5b;
+
             &:hover, &:focus {
-              background-color: #85ce61;
-              border-color: #85ce61;
+              background-color: #6aa876;
+              border-color: #6aa876;
             }
           }
-          
+
           &.el-button--primary {
-            background-color: #409EFF;
-            border-color: #409EFF;
-            
+            background-color: #d97932;
+            border-color: #d97932;
+
             &:hover, &:focus {
-              background-color: #66b1ff;
-              border-color: #66b1ff;
+              background-color: #e59252;
+              border-color: #e59252;
             }
           }
-          
+
           &.el-button--danger {
-            background-color: #F56C6C;
-            border-color: #F56C6C;
-            
+            background-color: #c94f4f;
+            border-color: #c94f4f;
+
             &:hover, &:focus {
               background-color: #f78989;
               border-color: #f78989;
             }
           }
-          
+
           i {
             margin-right: 3px;
           }
         }
-        
+
         .el-dropdown {
           .el-button {
             background-color: #f4f4f5;
-            color: #606266;
+            color: #536159;
             border-color: #f4f4f5;
-            
+
             &:hover, &:focus {
               background-color: #e9e9eb;
               border-color: #e9e9eb;
@@ -1007,58 +1007,58 @@ export default {
       }
     }
   }
-  
+
   // 响应式调整
   @media (max-width: 767px) {
     padding: 15px;
-    
+
     .page-header {
       flex-direction: column;
       align-items: flex-start;
-      
+
       h2 {
         margin-bottom: 15px;
       }
-      
+
       .header-actions {
         width: 100%;
-        
+
         .search-input {
           margin-bottom: 10px;
           width: 100% !important;
           margin-right: 0;
         }
-        
+
         .el-button {
           margin-left: 0;
           margin-right: 10px;
         }
       }
     }
-    
+
     .save-item {
       height: auto;
       min-height: 280px;
     }
   }
-  
+
   .select-save-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
-  
+
   .empty-save-card {
     border-radius: 10px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
   }
-  
+
   .fullheight-dialog {
     :deep(.el-dialog) {
       border-radius: 8px;
       overflow: hidden;
     }
-    
+
     :deep(.el-dialog__body) {
       max-height: 80vh;
       overflow-y: auto;
@@ -1068,7 +1068,7 @@ export default {
 
 .el-card.save-item {
   height: 100% !important;
-  
+
   .el-card__body {
     height: 100%;
     padding: 0;
@@ -1088,14 +1088,14 @@ export default {
   font-size: 11px !important;
   height: 20px !important;
   line-height: 18px !important;
-  background-color: #67C23A !important;
-  border-color: #67C23A !important;
+  background-color: #4f8a5b !important;
+  border-color: #4f8a5b !important;
   color: #fff !important;
   padding: 0 7px !important;
   display: inline-flex !important;
   align-items: center !important;
   position: relative;
-  
+
   &::before {
     content: '•';
     display: inline-block;
@@ -1109,4 +1109,4 @@ export default {
   50% { opacity: 1; }
   100% { opacity: 0.2; }
 }
-</style> 
+</style>

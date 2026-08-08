@@ -3,13 +3,13 @@
     <el-card class="main-card" shadow="hover">
       <div slot="header" class="clearfix">
         <span class="card-title">
-          <i class="el-icon-connection"></i> Agent管理中心
+          <component is="el-icon-connection" class="legacy-icon" /> Agent管理中心
         </span>
         <el-button style="float: right; padding: 3px 0" type="text" @click="refreshData">
-          <i class="el-icon-refresh"></i> 刷新
+          <component is="el-icon-refresh" class="legacy-icon" /> 刷新
         </el-button>
       </div>
-      
+
       <div class="agent-list-header">
         <div class="stat-cards">
           <el-card class="stat-card" shadow="hover">
@@ -26,7 +26,7 @@
           </el-card>
         </div>
       </div>
-      
+
       <div v-loading="loading" class="agent-list-content">
         <template v-if="agentList.length > 0">
           <el-row :gutter="20">
@@ -45,23 +45,23 @@
                     <el-button type="danger" size="mini" icon="el-icon-delete">移除</el-button>
                   </div>
                 </div>
-                
+
                 <el-divider></el-divider>
-                
+
                 <div class="agent-info-grid">
                   <div class="info-item">
                     <div class="info-label">UUID</div>
                     <div class="info-value uuid-value">{{ agent.agent_uuid }}</div>
                   </div>
-                  
+
                   <div class="info-item">
                     <div class="info-label">系统</div>
                     <div class="info-value">
-                      <i class="system-icon" :class="getOsIcon(agent.os)"></i>
+                      <component :is="getOsIcon(agent.os)" class="legacy-icon system-icon" />
                       {{ agent.os }} ({{ agent.arch }})
                     </div>
                   </div>
-                  
+
                   <div class="info-item">
                     <div class="info-label">IP地址</div>
                     <div class="info-value">
@@ -71,47 +71,47 @@
                       </el-tooltip>
                     </div>
                   </div>
-                  
+
                   <div class="info-item">
                     <div class="info-label">CPU</div>
                     <div class="info-value">{{ agent.cpu_count }} 核心</div>
                   </div>
-                  
+
                   <div class="info-item">
                     <div class="info-label">内存</div>
                     <div class="info-value">
-                      {{ formatBytes(agent.memory ? agent.memory.allocated : 0) }} / 
+                      {{ formatBytes(agent.memory ? agent.memory.allocated : 0) }} /
                       {{ formatBytes(agent.memory ? agent.memory.system : 0) }}
                     </div>
                   </div>
-                  
+
                   <div class="info-item">
                     <div class="info-label">运行时间</div>
                     <div class="info-value">{{ formatUptime(agent.uptime_seconds) }}</div>
                   </div>
-                  
+
                   <div class="info-item">
                     <div class="info-label">用户</div>
                     <div class="info-value">{{ agent.user ? agent.user.name : 'N/A' }}</div>
                   </div>
-                  
+
                   <div class="info-item">
                     <div class="info-label">路径</div>
                     <div class="info-value dir-path">{{ agent.current_dir }}</div>
                   </div>
-                  
+
                   <div class="info-item">
                     <div class="info-label">最后心跳</div>
                     <div class="info-value">{{ formatTime(agent.last_heartbeat) }}</div>
                   </div>
                 </div>
-                
+
                 <div class="resource-monitor" v-if="agent.connected">
-                  <el-progress 
-                    :text-inside="true" 
-                    :stroke-width="16" 
-                    :percentage="calculateMemoryUsage(agent)" 
-                    :color="getProgressColor" 
+                  <el-progress
+                    :text-inside="true"
+                    :stroke-width="16"
+                    :percentage="calculateMemoryUsage(agent)"
+                    :color="getProgressColor"
                     class="progress-item">
                     内存使用
                   </el-progress>
@@ -120,9 +120,9 @@
             </el-col>
           </el-row>
         </template>
-        
+
         <div v-else-if="!loading" class="empty-agents">
-          <i class="el-icon-connection empty-icon"></i>
+          <component is="el-icon-connection" class="legacy-icon empty-icon" />
           <div class="empty-text">暂无Agent连接</div>
           <el-button type="primary" @click="navigateToSecurity">添加Agent</el-button>
         </div>
@@ -162,7 +162,7 @@ export default {
     fetchAgentList() {
       this.loading = true;
       console.log('开始获取Agent列表...');
-      
+
       agentApi.getAgentList()
         .then(response => {
           console.log('Agent列表原始响应:', response);
@@ -174,7 +174,7 @@ export default {
               'response.data 类型': typeof response.data,
               'response.data 是否存在': !!response.data,
             });
-            
+
             if (response.code === 200 && response.data) {
               this.agentData = response.data;
               console.log('提取的Agent数据:', this.agentData);
@@ -197,7 +197,7 @@ export default {
     processAgentData() {
       // 将对象转换为数组
       console.log('处理Agent数据，原始数据:', this.agentData);
-      
+
       // 检查数据结构
       if (typeof this.agentData === 'object' && !Array.isArray(this.agentData)) {
         this.agentList = Object.values(this.agentData);
@@ -222,30 +222,30 @@ export default {
     },
     getOsIcon(os) {
       if (!os) return 'el-icon-monitor';
-      
+
       const osLower = os.toLowerCase();
       if (osLower.includes('linux')) return 'fab fa-linux';
       if (osLower.includes('windows')) return 'fab fa-windows';
       if (osLower.includes('mac') || osLower.includes('darwin')) return 'fab fa-apple';
-      
+
       return 'el-icon-monitor';
     },
     formatBytes(bytes) {
       if (bytes === 0 || !bytes) return '0 B';
-      
+
       const k = 1024;
       const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
-      
+
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     },
     formatUptime(seconds) {
       if (!seconds) return 'N/A';
-      
+
       const days = Math.floor(seconds / 86400);
       const hours = Math.floor((seconds % 86400) / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
-      
+
       if (days > 0) {
         return `${days}天 ${hours}小时`;
       } else if (hours > 0) {
@@ -256,7 +256,7 @@ export default {
     },
     formatTime(timestamp) {
       if (!timestamp) return 'N/A';
-      
+
       // 将时间戳转换为本地时间
       const date = new Date(timestamp * 1000);
       return date.toLocaleString();
@@ -265,13 +265,13 @@ export default {
       if (!agent.memory || !agent.memory.allocated || !agent.memory.system) {
         return 0;
       }
-      
+
       return Math.round((agent.memory.allocated / agent.memory.system) * 100);
     },
     getProgressColor(percentage) {
-      if (percentage < 70) return '#67c23a';
-      if (percentage < 90) return '#e6a23c';
-      return '#f56c6c';
+      if (percentage < 70) return '#4f8a5b';
+      if (percentage < 90) return '#d99b32';
+      return '#c94f4f';
     }
   }
 };
@@ -295,7 +295,7 @@ export default {
 .card-title {
   font-size: 18px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
 }
 
 .agent-list-header {
@@ -311,7 +311,7 @@ export default {
   flex: 1;
   text-align: center;
   border-radius: 10px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%);
+  background: linear-gradient(135deg, #f1f4ed 0%, #eef2f7 100%);
   border: none;
   cursor: default;
   transition: transform 0.3s;
@@ -324,13 +324,13 @@ export default {
 .stat-value {
   font-size: 24px;
   font-weight: 600;
-  color: #409EFF;
+  color: #d97932;
   margin-bottom: 8px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #909399;
+  color: #758078;
 }
 
 .agent-card {
@@ -347,7 +347,7 @@ export default {
 }
 
 .agent-connected {
-  border-left: 4px solid #67c23a;
+  border-left: 4px solid #4f8a5b;
 }
 
 .agent-card-header {
@@ -366,7 +366,7 @@ export default {
 .hostname {
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: #27352f;
 }
 
 .agent-info-grid {
@@ -382,19 +382,19 @@ export default {
 
 .info-label {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   margin-bottom: 4px;
 }
 
 .info-value {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
   word-break: break-all;
 }
 
 .uuid-value {
   font-family: monospace;
-  color: #409EFF;
+  color: #d97932;
   font-size: 12px;
 }
 
@@ -421,13 +421,13 @@ export default {
 
 .empty-icon {
   font-size: 100px;
-  color: #909399;
+  color: #758078;
   margin-bottom: 20px;
   opacity: 0.7;
 }
 
 .empty-text {
-  color: #909399;
+  color: #758078;
   font-size: 16px;
   margin-bottom: 20px;
 }
@@ -443,18 +443,18 @@ export default {
   .stat-cards {
     flex-direction: column;
   }
-  
+
   .agent-info-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .agent-card-header {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .agent-actions {
     margin-top: 10px;
   }
 }
-</style> 
+</style>

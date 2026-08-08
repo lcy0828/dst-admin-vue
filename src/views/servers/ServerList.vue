@@ -3,7 +3,7 @@
     <!-- 标题及操作按钮 -->
     <div class="page-header">
       <div class="title-container">
-        <i class="el-icon-monitor"></i>
+        <component is="el-icon-monitor" class="legacy-icon" />
         <span>服务器状态监控</span>
       </div>
       <div class="action-buttons">
@@ -173,7 +173,7 @@
     <!-- 启动房间对话框 -->
     <el-dialog
       title="选择并启动房间"
-      :visible.sync="startRoomDialogVisible"
+      v-model="startRoomDialogVisible"
       width="500px">
       <div>
         <el-form label-width="120px" :model="startRoomForm" :rules="rules" ref="startRoomForm">
@@ -205,13 +205,13 @@
               <el-option label="LuaJit" value="luajit"></el-option>
             </el-select>
             <div class="mode-description" v-if="startRoomForm.serverMode === '64'">
-              <i class="el-icon-warning-outline"></i> 64位模式使用64位引擎，可能会更耗内存但性能更好
+              <component is="el-icon-warning-outline" class="legacy-icon" /> 64位模式使用64位引擎，可能会更耗内存但性能更好
             </div>
             <div class="mode-description" v-else-if="startRoomForm.serverMode === 'luajit'">
-              <i class="el-icon-star-on"></i> LuaJit模式使用JIT编译器，可能提供更好的性能
+              <component is="el-icon-star-on" class="legacy-icon" /> LuaJit模式使用JIT编译器，可能提供更好的性能
             </div>
             <div class="mode-description" v-else>
-              <i class="el-icon-info"></i> 32位模式使用32位引擎，适合大多数服务器
+              <component is="el-icon-info" class="legacy-icon" /> 32位模式使用32位引擎，适合大多数服务器
             </div>
           </el-form-item>
         </el-form>
@@ -550,15 +550,15 @@ export default {
 }
 
 .server-status.online {
-  background-color: #67C23A;
+  background-color: #4f8a5b;
 }
 
 .server-status.offline {
-  background-color: #F56C6C;
+  background-color: #c94f4f;
 }
 
 .server-status.restarting {
-  background-color: #E6A23C;
+  background-color: #d99b32;
 }
 
 .server-name {
@@ -574,7 +574,7 @@ export default {
 
 .server-room {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   margin-left: 4px;
 }
 
@@ -599,7 +599,7 @@ export default {
 
 .empty-description {
   margin-bottom: 15px;
-  color: #909399;
+  color: #758078;
 }
 
 .empty-description p {
@@ -634,20 +634,20 @@ export default {
 }
 
 .server-offline {
-  color: #909399;
+  color: #758078;
   font-style: italic;
 }
 
 .mode-description {
   font-size: 12px;
-  color: #909399;
+  color: #758078;
   margin-top: 5px;
   line-height: 1.4;
 }
 
 /* 禁用标签的样式 */
 .el-tabs__item.is-disabled {
-  color: #c0c4cc;
+  color: #9aa69e;
   cursor: not-allowed;
   position: relative;
 }

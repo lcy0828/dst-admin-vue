@@ -3,28 +3,28 @@
     <div class="page-header" v-if="!savename">
       <h2>服务器令牌管理</h2>
     </div>
-    
+
     <el-card shadow="hover" class="token-card" v-loading="loading">
       <div slot="header" class="card-header">
         <span>服务器令牌</span>
         <div v-if="serverToken">
-          <el-button 
-            size="small" 
-            type="primary" 
-            icon="el-icon-edit" 
+          <el-button
+            size="small"
+            type="primary"
+            icon="el-icon-edit"
             @click="showTokenDialog" >
             修改令牌
           </el-button>
-          <el-button 
-            size="small" 
-            type="success" 
-            icon="el-icon-refresh" 
+          <el-button
+            size="small"
+            type="success"
+            icon="el-icon-refresh"
             @click="fetchServerToken">
             刷新
           </el-button>
         </div>
       </div>
-      
+
       <div v-if="serverToken" class="token-info">
         <div class="token-display">
           <el-input
@@ -38,7 +38,7 @@
             </template>
           </el-input>
         </div>
-        
+
         <div class="token-help">
           <el-alert
             title="令牌用法说明"
@@ -68,11 +68,11 @@
         </div>
       </div>
     </el-card>
-    
+
     <!-- 修改令牌对话框 -->
-    <el-dialog title="修改服务器令牌" 
-               :visible.sync="dialogVisible" 
-               width="30%" 
+    <el-dialog title="修改服务器令牌"
+               v-model="dialogVisible"
+               width="30%"
                @closed="resetForm">
       <el-form :model="tokenForm" ref="tokenForm">
         <el-form-item prop="token">
@@ -112,7 +112,7 @@ export default {
       currentSave: '',
       serverToken: '',
       loading: false,
-      
+
       // 对话框相关
       dialogVisible: false,
       tokenForm: {
@@ -130,7 +130,7 @@ export default {
           { min: 3, max: 32, message: '长度在 3 到 32 个字符', trigger: 'blur' }
         ]
       }
-      
+
     };
   },
   watch: {
@@ -147,12 +147,12 @@ export default {
     handleInput() {
       this.$emit('input-token', this.ruleForm.token);
     },
-    
+
     // 获取服务器令牌
     fetchServerToken() {
       const saveToUse = this.savename || this.currentSave;
       if (!saveToUse) return;
-      
+
       this.loading = true;
       serverApi.getServerToken(saveToUse)
         .then(res => {
@@ -166,7 +166,7 @@ export default {
           this.loading = false;
         });
     },
-    
+
     // 复制令牌到剪贴板
     copyToken() {
       const input = this.$refs.tokenInput.$el.querySelector('input');
@@ -174,7 +174,7 @@ export default {
       document.execCommand('copy');
       this.$message.success('令牌已复制到剪贴板');
     },
-    
+
     // 显示修改令牌对话框
     showTokenDialog() {
       this.tokenForm = {
@@ -182,7 +182,7 @@ export default {
       };
       this.dialogVisible = true;
     },
-    
+
     // 重置表单
     resetForm() {
       if (this.$refs.tokenForm) {
@@ -192,7 +192,7 @@ export default {
         token: ''
       };
     },
-    
+
     // 提交表单
     submitTokenForm() {
       if (!this.tokenForm.token) {
@@ -216,10 +216,10 @@ export default {
           this.fetchServerToken();
         });
     },
-    
-    
+
+
     // 格式化时间
-  
+
     // 格式化时间
     formatTime(timestamp) {
       if (!timestamp) return '';
@@ -278,7 +278,7 @@ export default {
 
 .token-note {
   margin-top: 15px;
-  color: #909399;
+  color: #758078;
   display: flex;
   align-items: center;
   font-size: 14px;
@@ -291,7 +291,7 @@ export default {
 .empty-token {
   text-align: center;
   padding: 30px 0;
-  color: #909399;
+  color: #758078;
 }
 
 .empty-token i {
@@ -302,4 +302,4 @@ export default {
 .dialog-warning {
   margin-top: 20px;
 }
-</style> 
+</style>

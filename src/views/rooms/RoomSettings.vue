@@ -60,7 +60,7 @@
         <el-tab-pane label="游戏模式" name="gameplay">
           <div class="tab-content">
             <div class="tab-header">
-              <i class="el-icon-game"></i>
+              <component is="el-icon-game" class="legacy-icon" />
               <span>游戏模式配置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -104,7 +104,7 @@
         <el-tab-pane label="网络设置" name="network">
           <div class="tab-content">
             <div class="tab-header">
-              <i class="el-icon-network"></i>
+              <component is="el-icon-network" class="legacy-icon" />
               <span>网络配置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -172,7 +172,7 @@
         <el-tab-pane label="系统设置" name="system">
           <div class="tab-content">
             <div class="tab-header">
-              <i class="el-icon-system"></i>
+              <component is="el-icon-system" class="legacy-icon" />
               <span>系统设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -196,7 +196,7 @@
         <el-tab-pane label="分片设置" name="shard">
           <div class="tab-content">
             <div class="tab-header">
-              <i class="el-icon-shard"></i>
+              <component is="el-icon-shard" class="legacy-icon" />
               <span>分片设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -232,7 +232,7 @@
         <el-tab-pane label="Steam设置" name="steam">
           <div class="tab-content">
             <div class="tab-header">
-              <i class="el-icon-steam"></i>
+              <component is="el-icon-steam" class="legacy-icon" />
               <span>Steam设置</span>
             </div>
             <el-form ref="form" :model="form" :rules="rules" label-width="180px">
@@ -654,7 +654,7 @@ export default {
   }
 
   .page-header {
-    background: linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #f6f3ea 100%);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
@@ -698,7 +698,7 @@ export default {
             bottom: -6px;
             width: 40px;
             height: 3px;
-            background: linear-gradient(90deg, #409EFF, transparent);
+            background: linear-gradient(90deg, #d97932, transparent);
             border-radius: 3px;
           }
         }
@@ -739,7 +739,7 @@ export default {
         left: 0;
         right: 0;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #409EFF, transparent);
+        background: linear-gradient(90deg, transparent, #d97932, transparent);
         opacity: 0.7;
       }
 
@@ -771,7 +771,7 @@ export default {
       left: 0;
       width: 100%;
       height: 4px;
-      background: linear-gradient(90deg, #409EFF, #66b1ff);
+      background: linear-gradient(90deg, #d97932, #e59252);
     }
 
     .tab-content {
@@ -786,7 +786,7 @@ export default {
         width: 50px;
         height: 50px;
         background: 
-          radial-gradient(circle at center, rgba(64,158,255,0.1) 0%, rgba(64,158,255,0) 70%);
+          radial-gradient(circle at center, rgba(217, 121, 50,0.1) 0%, rgba(217, 121, 50,0) 70%);
         border-radius: 50%;
       }
 
@@ -801,8 +801,8 @@ export default {
 
         i {
           font-size: 24px;
-          color: #409EFF;
-          background: rgba(64, 158, 255, 0.1);
+          color: #d97932;
+          background: rgba(217, 121, 50, 0.1);
           width: 40px;
           height: 40px;
           border-radius: 50%;
@@ -815,7 +815,7 @@ export default {
 
     .form-section {
       background: #fff;
-      border: 1px solid #ebeef5;
+      border: 1px solid #e8ece5;
       border-radius: 12px;
       transition: all 0.3s ease;
       position: relative;
@@ -829,7 +829,7 @@ export default {
         width: 100%;
         height: 100%;
         background: 
-          linear-gradient(135deg, rgba(64,158,255,0.03) 0%, rgba(64,158,255,0) 50%);
+          linear-gradient(135deg, rgba(217, 121, 50,0.03) 0%, rgba(217, 121, 50,0) 50%);
         z-index: 0;
       }
 
@@ -850,18 +850,18 @@ export default {
 
     .form-item-desc {
       font-size: 12px;
-      color: #909399;
+      color: #758078;
       margin-top: 6px;
       line-height: 1.5;
       padding-left: 8px;
-      border-left: 2px solid #409EFF;
-      background: rgba(64, 158, 255, 0.03);
+      border-left: 2px solid #d97932;
+      background: rgba(217, 121, 50, 0.03);
       padding: 4px 8px;
       border-radius: 0 4px 4px 0;
       transition: all 0.3s ease;
       
       &:hover {
-        background: rgba(64, 158, 255, 0.08);
+        background: rgba(217, 121, 50, 0.08);
       }
     }
   }
@@ -869,7 +869,7 @@ export default {
   .empty-tip {
     text-align: center;
     padding: 60px 40px;
-    color: #909399;
+    color: #758078;
     
     i {
       font-size: 60px;
@@ -880,7 +880,7 @@ export default {
     
     p {
       font-size: 16px;
-      color: #606266;
+      color: #536159;
       max-width: 300px;
       margin: 0 auto;
     }
@@ -893,7 +893,7 @@ export default {
     overflow: hidden;
     position: relative;
     transition: all 0.3s ease;
-    background: linear-gradient(135deg, #ffffff 0%, #f0f2f5 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #f6f3ea 100%);
     
     &:hover {
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
@@ -907,7 +907,7 @@ export default {
       left: 0;
       width: 100%;
       height: 3px;
-      background: linear-gradient(90deg, #409EFF, #66b1ff);
+      background: linear-gradient(90deg, #d97932, #e59252);
     }
     
     .single-column {
@@ -930,9 +930,9 @@ export default {
 }
 
 @keyframes glow {
-  0% { box-shadow: 0 0 5px rgba(64, 158, 255, 0.3); }
-  50% { box-shadow: 0 0 15px rgba(64, 158, 255, 0.6); }
-  100% { box-shadow: 0 0 5px rgba(64, 158, 255, 0.3); }
+  0% { box-shadow: 0 0 5px rgba(217, 121, 50, 0.3); }
+  50% { box-shadow: 0 0 15px rgba(217, 121, 50, 0.6); }
+  100% { box-shadow: 0 0 5px rgba(217, 121, 50, 0.3); }
 }
 
 .tab-content {
@@ -942,30 +942,30 @@ export default {
 // 自定义Element-UI组件样式
 :deep(.el-tabs__nav-wrap)::after {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(64, 158, 255, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(217, 121, 50, 0.2), transparent);
 }
 
 :deep(.el-tabs__item) {
   transition: all 0.3s ease;
   
   &.is-active {
-    color: #409EFF;
+    color: #d97932;
     font-weight: 600;
   }
   
   &:hover {
-    color: #409EFF;
+    color: #d97932;
     transform: translateY(-2px);
   }
 }
 
 :deep(.el-input__inner):focus {
-  border-color: #409EFF;
+  border-color: #d97932;
   animation: glow 2s infinite;
 }
 
 :deep(.el-switch.is-checked .el-switch__core) {
-  border-color: #409EFF;
-  background-color: #409EFF;
+  border-color: #d97932;
+  background-color: #d97932;
 }
 </style> 

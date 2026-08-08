@@ -98,14 +98,14 @@
                   @click.stop="editWorld(scope.row)">编辑</el-button>
                 <el-dropdown trigger="click" @command="handleMoreCommands($event, scope.row)" @click.stop>
                   <el-button size="mini">
-                    更多<i class="el-icon-arrow-down el-icon--right"></i>
+                    更多<component is="el-icon-arrow-down" class="legacy-icon el-icon--right" />
                   </el-button>
                   <el-dropdown-menu slot="dropdown">
                     <el-dropdown-item command="viewState">查看状态</el-dropdown-item>
                     <el-dropdown-item command="regenerate">重新生成</el-dropdown-item>
                     <el-dropdown-item command="backup">备份世界</el-dropdown-item>
                     <el-dropdown-item command="delete" divided>
-                      <span style="color: #F56C6C;">删除世界</span>
+                      <span style="color: #c94f4f;">删除世界</span>
                     </el-dropdown-item>
                   </el-dropdown-menu>
                 </el-dropdown>
@@ -128,7 +128,7 @@
 
           <!-- 无世界时的提示 -->
           <div v-if="!loading && filteredWorlds.length === 0" class="empty-worlds">
-            <i class="el-icon-warning-outline"></i>
+            <component is="el-icon-warning-outline" class="legacy-icon" />
             <p>没有找到符合条件的世界</p>
           </div>
         </el-card>
@@ -138,7 +138,7 @@
     <!-- 添加房间选择对话框 -->
     <el-dialog
       title="选择房间"
-      :visible.sync="roomSelectDialogVisible"
+      v-model="roomSelectDialogVisible"
       width="500px"
       class="room-select-dialog">
       <div class="room-select-content">
@@ -170,7 +170,7 @@
           </el-radio-group>
 
           <div v-if="filteredDialogRooms.length === 0" class="no-rooms-tip">
-            <i class="el-icon-info"></i>
+            <component is="el-icon-info" class="legacy-icon" />
             <span>没有找到符合条件的房间</span>
           </div>
         </div>
@@ -642,7 +642,7 @@ export default {
 <style scoped lang="scss">
 .world-list-page {
   padding: 25px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
   min-height: calc(100vh - 80px);
 }
 
@@ -652,13 +652,13 @@ export default {
   align-items: center;
   margin-bottom: 25px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #e8ece5;
 }
 
 .page-header h2 {
   margin: 0;
   font-size: 24px;
-  color: #303133;
+  color: #27352f;
   position: relative;
   padding-left: 15px;
 }
@@ -671,7 +671,7 @@ export default {
   transform: translateY(-50%);
   width: 4px;
   height: 20px;
-  background-color: #409EFF;
+  background-color: #d97932;
   border-radius: 2px;
 }
 
@@ -696,7 +696,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
 }
 
 .header-left {
@@ -715,33 +715,33 @@ export default {
   overflow: hidden;
 }
 
-.el-table >>> th {
-  background-color: #f5f7fa !important;
-  color: #606266;
+.el-table :deep(th) {
+  background-color: #f1f4ed !important;
+  color: #536159;
   font-weight: bold;
   padding: 12px 0;
 }
 
 /* 表格行悬停样式 */
-.el-table >>> .el-table__row {
+.el-table :deep(.el-table__row) {
   cursor: pointer;
 }
 
-.el-table >>> .el-table__row:hover {
-  background-color: #ecf5ff;
+.el-table :deep(.el-table__row:hover) {
+  background-color: #fff3e6;
 }
 
 /* 空列表提示样式 */
 .empty-worlds {
   padding: 60px 0;
   text-align: center;
-  color: #909399;
+  color: #758078;
 }
 
 .empty-worlds i {
   font-size: 64px;
   margin-bottom: 15px;
-  color: #dcdfe6;
+  color: #d4ddd3;
 }
 
 .empty-worlds p {
@@ -778,7 +778,7 @@ export default {
 
 .dialog-tip {
   font-size: 14px;
-  color: #606266;
+  color: #536159;
   margin-bottom: 15px;
 }
 
@@ -803,7 +803,7 @@ export default {
   padding: 12px;
   margin-bottom: 10px;
   border-radius: 6px;
-  border: 1px solid #EBEEF5;
+  border: 1px solid #e8ece5;
   transition: all 0.3s;
   margin-right: 0;
 
@@ -813,7 +813,7 @@ export default {
 }
 
 .room-radio-item:hover {
-  background-color: #F5F7FA;
+  background-color: #f1f4ed;
 }
 
 .room-item-content {
@@ -825,21 +825,21 @@ export default {
 
 .room-name {
   font-weight: bold;
-  color: #303133;
+  color: #27352f;
 }
 
 .room-info {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #909399;
+  color: #758078;
   font-size: 12px;
 }
 
 .no-rooms-tip {
   text-align: center;
   padding: 20px;
-  color: #909399;
+  color: #758078;
 }
 
 .no-rooms-tip i {

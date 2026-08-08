@@ -46,14 +46,14 @@
     <div class="test-results">
       <h4>测试结果</h4>
       <div v-if="testResult.isValid === false" class="error-message">
-        <i class="el-icon-error"></i> 正则表达式无效: {{ testResult.error }}
+        <component is="el-icon-error" class="legacy-icon" /> 正则表达式无效: {{ testResult.error }}
       </div>
       <div v-else-if="testResult.isValid === true">
         <div v-if="testResult.matches.length > 0" class="success-message">
-          <i class="el-icon-success"></i> 匹配成功! 找到 {{ testResult.matches.length }} 个匹配项
+          <component is="el-icon-success" class="legacy-icon" /> 匹配成功! 找到 {{ testResult.matches.length }} 个匹配项
         </div>
         <div v-else class="warning-message">
-          <i class="el-icon-warning"></i> 未找到匹配项
+          <component is="el-icon-warning" class="legacy-icon" /> 未找到匹配项
         </div>
 
         <div v-if="testResult.matches.length > 0" class="matches-container">
@@ -434,23 +434,23 @@ export default {
 .test-results {
   margin-top: 20px;
   padding: 15px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #d4ddd3;
   border-radius: 4px;
-  background-color: #f5f7fa;
+  background-color: #f1f4ed;
 }
 
 .error-message {
-  color: #f56c6c;
+  color: #c94f4f;
   margin-bottom: 10px;
 }
 
 .success-message {
-  color: #67c23a;
+  color: #4f8a5b;
   margin-bottom: 10px;
 }
 
 .warning-message {
-  color: #e6a23c;
+  color: #d99b32;
   margin-bottom: 10px;
 }
 
@@ -461,7 +461,7 @@ export default {
 .match-item {
   margin-bottom: 10px;
   padding: 10px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #d4ddd3;
   border-radius: 4px;
   background-color: #fff;
 }
@@ -469,7 +469,7 @@ export default {
 .match-index {
   font-weight: bold;
   margin-bottom: 5px;
-  color: #409eff;
+  color: #d97932;
 }
 
 .match-content {
@@ -478,20 +478,20 @@ export default {
   background-color: #f8f8f8;
   padding: 8px;
   border-radius: 4px;
-  border-left: 3px solid #409eff;
+  border-left: 3px solid #d97932;
 }
 
 .highlighted-content {
   margin-top: 15px;
   padding: 10px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid #d4ddd3;
   border-radius: 4px;
   background-color: #fff;
   max-height: 300px;
   overflow-y: auto;
 }
 
-.highlighted-content >>> .highlight {
+.highlighted-content :deep(.highlight) {
   background-color: #ffeaa7;
   padding: 2px 0;
   border-radius: 2px;
