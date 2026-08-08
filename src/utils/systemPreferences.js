@@ -62,10 +62,6 @@ function applyThemeVariables(themeValue) {
   const success = darkMode ? '#55a878' : '#2f8a57'
   const warning = darkMode ? '#e5a436' : '#c97908'
   const danger = darkMode ? '#e26262' : '#d14343'
-  const borderLight = mix(palette.border, '#ffffff', darkMode ? 0.12 : 0.35)
-  const borderLighter = mix(palette.border, darkMode ? '#000000' : '#ffffff', darkMode ? 0.18 : 0.62)
-  const primaryLight = mix(preset.primary, '#ffffff', 0.9)
-  const primaryDark = mix(preset.primary, '#000000', 0.2)
   const secondary = palette.surfaceMuted
   const semanticAccent = mix(preset.primary, palette.surface, darkMode ? 0.82 : 0.9)
   const shadowColor = darkMode ? '#000000' : palette.text
@@ -85,8 +81,6 @@ function applyThemeVariables(themeValue) {
     '--text-secondary': palette.muted,
     '--border-color': palette.border,
     '--bg-color': palette.background,
-    '--bg-color-light': palette.surface,
-    '--bg-color-dark': palette.surfaceMuted,
     '--surface-color': palette.surface,
     '--surface-muted': palette.surfaceMuted,
     '--sidebar-color': palette.sidebar,
@@ -97,59 +91,6 @@ function applyThemeVariables(themeValue) {
     '--shadow-card': `0 1px 2px rgba(${shadowRgb}, 0.06)`,
     '--shadow-card-hover': `0 2px 6px rgba(${shadowRgb}, 0.08)`,
     '--shadow-overlay': `0 12px 32px rgba(${shadowRgb}, 0.16)`,
-    '--text-color-primary': palette.text,
-    '--text-color-regular': palette.regular,
-    '--text-color-secondary': palette.muted,
-    '--text-color-placeholder': mix(palette.muted, darkMode ? '#000000' : '#ffffff', 0.2),
-    '--border-color-base': palette.borderBase,
-    '--border-color-light': palette.border,
-    '--border-color-lighter': borderLight,
-    '--border-color-extra-light': borderLighter,
-    '--sidebar-bg': palette.sidebar,
-    '--sidebar-active-text': preset.sidebarActive,
-    '--sidebar-hover-bg': palette.sidebarDeep,
-    '--header-bg': palette.surface,
-    '--header-text': palette.regular,
-    '--header-border': palette.border,
-    '--card-bg': palette.surface,
-    '--card-border': borderLight,
-    '--table-header-bg': palette.surfaceMuted,
-    '--table-row-hover-bg': mix(palette.surfaceMuted, '#ffffff', darkMode ? 0.04 : 0.42),
-    '--table-border': borderLight,
-    '--tech-white-primary': palette.surface,
-    '--tech-white-secondary': palette.surfaceMuted,
-    '--tech-white-tertiary': mix(palette.surfaceMuted, '#ffffff', darkMode ? 0.05 : 0.5),
-    '--tech-accent-blue': preset.primary,
-    '--tech-accent-light-blue': primaryLight,
-    '--tech-accent-dark-blue': primaryDark,
-    '--tech-text-primary': palette.text,
-    '--tech-text-secondary': palette.regular,
-    '--tech-text-tertiary': palette.muted,
-    '--tech-border-light': palette.border,
-    '--tech-border-lighter': borderLight,
-    '--tech-border-extra-light': borderLighter,
-    '--tech-success': success,
-    '--tech-warning': warning,
-    '--tech-danger': danger,
-    '--tech-info': palette.muted,
-    '--el-color-primary': preset.primary,
-    '--el-color-success': success,
-    '--el-color-warning': warning,
-    '--el-color-danger': danger,
-    '--el-color-info': palette.muted,
-    '--el-text-color-primary': palette.text,
-    '--el-text-color-regular': palette.regular,
-    '--el-text-color-secondary': palette.muted,
-    '--el-border-color': palette.borderBase,
-    '--el-border-color-light': palette.border,
-    '--el-border-color-lighter': borderLight,
-    '--el-border-color-extra-light': borderLighter,
-    '--el-fill-color-light': palette.surfaceMuted,
-    '--el-fill-color-lighter': mix(palette.surfaceMuted, '#ffffff', darkMode ? 0.04 : 0.55),
-    '--el-fill-color-extra-light': mix(palette.surfaceMuted, '#ffffff', darkMode ? 0.07 : 0.72),
-    '--el-fill-color-blank': palette.surface,
-    '--el-bg-color': palette.surface,
-    '--el-bg-color-page': palette.background,
     '--background': palette.background,
     '--foreground': palette.text,
     '--card': palette.surface,
@@ -185,10 +126,6 @@ function applyThemeVariables(themeValue) {
   }
 
   for (const [name, value] of Object.entries(variables)) style.setProperty(name, value)
-  for (let index = 3; index <= 9; index += 1) {
-    style.setProperty(`--el-color-primary-light-${index}`, mix(preset.primary, '#ffffff', index / 10))
-  }
-  style.setProperty('--el-color-primary-dark-2', primaryDark)
   root.dataset.themePreset = preset.id
   return preset
 }

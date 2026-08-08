@@ -1,13 +1,9 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import ElementPlus, { ElSubMenu } from 'element-plus'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
-import 'element-plus/dist/index.css'
 import './assets/css/main.css'
 import api from './api'
 import { authAPI, systemV2API } from './api/v2'
-import { installLegacyIcons } from './compat/legacyIcons'
 import { applySystemPreferences, getSystemPreferences } from './utils/systemPreferences'
 import './utils/themeManager'
 import 'xterm/css/xterm.css'
@@ -36,12 +32,4 @@ const app = createApp(App)
 
 app.config.globalProperties.$api = api
 app.use(router)
-app.use(ElementPlus, {
-  size: 'default',
-  locale: zhCn
-})
-
-// Element UI used <el-submenu>; keep the old tag while Element Plus uses ElSubMenu.
-app.component('ElSubmenu', ElSubMenu)
-installLegacyIcons(app)
 app.mount('#app')
