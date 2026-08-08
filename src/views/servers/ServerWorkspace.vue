@@ -1002,13 +1002,13 @@ export default {
 }
 
 .world-symbol.forest {
-  color: #9b5a0b;
-  background: #fff0d8;
+  color: var(--warning-color);
+  background: color-mix(in srgb, var(--warning-color) 12%, var(--card));
 }
 
 .world-symbol.cave {
-  color: #5d665f;
-  background: #e5e9e6;
+  color: var(--muted-foreground);
+  background: var(--muted);
 }
 
 .world-identity {
@@ -1147,14 +1147,14 @@ export default {
 .command-result {
   margin-top: 12px;
   padding: 12px;
-  color: #245f3c;
-  background: #eef8f1;
+  color: var(--success-color);
+  background: color-mix(in srgb, var(--success-color) 9%, var(--card));
   border-left: 3px solid var(--success-color);
 }
 
 .command-result.failed {
-  color: #913434;
-  background: #fdf0f0;
+  color: var(--danger-color);
+  background: color-mix(in srgb, var(--danger-color) 9%, var(--card));
   border-left-color: var(--danger-color);
 }
 

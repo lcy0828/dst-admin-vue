@@ -84,7 +84,7 @@
                       </UiButton>
                       <UiButton variant="outline" size="sm" @click="editWorld(world)">编辑</UiButton>
                       <DropdownMenu>
-                        <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
+                        <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" aria-label="打开世界操作菜单" title="世界操作"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuGroup>
                             <DropdownMenuItem @select="viewWorldState(world)">查看状态</DropdownMenuItem>

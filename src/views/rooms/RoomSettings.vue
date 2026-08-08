@@ -7,7 +7,7 @@
       </div>
       <div class="header-actions">
         <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回</UiButton>
-        <UiButton @click="saveSettings" :disabled="loading">
+        <UiButton @click="saveSettings" :disabled="loading || Boolean(loadError)">
           <Spinner v-if="loading" data-icon="inline-start" />
           <Save v-else data-icon="inline-start" />
           保存
@@ -21,6 +21,18 @@
       <Spinner />
       <span>{{ isEdit ? '正在处理房间配置' : '正在创建房间' }}</span>
     </div>
+
+    <Alert v-if="loadError" variant="destructive" class="error-alert">
+      <TriangleAlert />
+      <AlertTitle>房间配置加载失败</AlertTitle>
+      <AlertDescription class="load-error-description">
+        <span>{{ loadError }}</span>
+        <UiButton variant="outline" size="sm" @click="loadRoomSettings(roomId)">
+          <RefreshCw data-icon="inline-start" />
+          重新加载
+        </UiButton>
+      </AlertDescription>
+    </Alert>
 
     <Alert v-if="formErrors.length > 0" variant="destructive" class="error-alert">
       <TriangleAlert />
@@ -54,7 +66,7 @@
       </CardContent>
     </Card>
 
-    <Tabs v-model="activeTab" class="settings-tabs">
+    <Tabs v-if="!loadError" v-model="activeTab" class="settings-tabs">
       <TabsList class="settings-tab-list">
         <TabsTrigger v-for="section in settingsSections" :key="section.key" :value="section.key">
           {{ section.tabLabel }}
@@ -143,7 +155,7 @@
 </template>
 
 <script>
-import { ArrowLeft, Gamepad2, GitBranch, Network, Save, Settings2, TriangleAlert } from '@lucide/vue';
+import { ArrowLeft, Gamepad2, GitBranch, Network, RefreshCw, Save, Settings2, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomConfigApi, serverApi } from '../../api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -258,6 +270,7 @@ export default {
     FieldError,
     FieldGroup,
     FieldLabel,
+    RefreshCw,
     Save,
     SelectContent,
     SelectGroup,
@@ -337,6 +350,7 @@ export default {
       },
       validationErrors: {},
       loading: false,
+      loadError: '',
       formErrors: [],
       unsavedChanges: false
     }
@@ -404,6 +418,7 @@ export default {
     async loadRoomSettings(roomId) {
       try {
         this.loading = true;
+        this.loadError = '';
         this.formErrors = [];
         const response = await roomConfigApi.getRoomConfig(roomId);
         
@@ -465,7 +480,7 @@ export default {
         }
       } catch (error) {
         console.error('加载配置失败:', error);
-        this.handleError(error, '加载配置失败');
+        this.loadError = this.handleError(error, '加载配置失败');
       } finally {
         this.loading = false;
       }
@@ -618,6 +633,7 @@ export default {
       }
       
       toast.error(errorMessage);
+      return errorMessage;
     }
   },
   watch: {
@@ -689,6 +705,13 @@ export default {
   padding-left: 18px;
 }
 
+.load-error-description {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .settings-tabs {
   min-width: 0;
 }
@@ -715,6 +738,10 @@ export default {
 }
 
 @media (max-width: 760px) {
+  .load-error-description {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .page-header {
     align-items: stretch;
     flex-direction: column;

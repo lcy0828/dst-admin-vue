@@ -16,6 +16,18 @@
       </div>
     </div>
 
+    <Alert v-if="loadError && !loading" variant="destructive" class="settings-card">
+      <CircleAlert />
+      <AlertTitle>房间列表加载失败</AlertTitle>
+      <AlertDescription class="error-description">
+        <span>{{ loadError }}</span>
+        <UiButton variant="outline" size="sm" @click="refreshRooms(true)">
+          <RefreshCw data-icon="inline-start" />
+          重新加载
+        </UiButton>
+      </AlertDescription>
+    </Alert>
+
     <Card v-if="loading" class="settings-card">
       <CardContent class="loading-page-content">
         <Spinner />
@@ -23,18 +35,18 @@
       </CardContent>
     </Card>
 
-    <Empty v-else-if="filteredRooms.length === 0" class="settings-card">
+    <Empty v-else-if="!loadError && filteredRooms.length === 0" class="settings-card">
       <EmptyHeader>
         <EmptyMedia variant="icon"><FolderPlus /></EmptyMedia>
-        <EmptyTitle>暂无房间</EmptyTitle>
-        <EmptyDescription>您尚未创建任何房间。</EmptyDescription>
+        <EmptyTitle>{{ searchQuery ? '未找到匹配房间' : '暂无房间' }}</EmptyTitle>
+        <EmptyDescription>{{ searchQuery ? '请调整搜索关键词后重试。' : '您尚未创建任何房间。' }}</EmptyDescription>
       </EmptyHeader>
-      <EmptyContent>
+      <EmptyContent v-if="!searchQuery">
         <UiButton @click="createRoom"><Plus data-icon="inline-start" />创建新房间</UiButton>
       </EmptyContent>
     </Empty>
 
-    <div v-else class="save-list">
+    <div v-else-if="!loadError" class="save-list">
       <Card v-for="room in filteredRooms" :key="room.id" class="save-item">
         <CardHeader>
           <div class="room-title-row">
@@ -124,7 +136,7 @@
     <UiDialog v-model:open="startDialogVisible">
       <DialogContent class="max-w-3xl">
         <DialogHeader><DialogTitle>启动房间</DialogTitle><DialogDescription>选择本次要启动的世界类型。</DialogDescription></DialogHeader>
-        <StartRoomForm v-if="startDialogVisible" :room="selectedRoom" :startForm="startForm" @confirm="confirmStartRoom" @close="closeStartDialog" />
+        <StartRoomForm v-if="startDialogVisible" :room="selectedRoom" :startForm="startForm" :loading="startLoading" @confirm="confirmStartRoom" @close="closeStartDialog" />
       </DialogContent>
     </UiDialog>
   </div>
@@ -133,6 +145,7 @@
 <script>
 import {
   ChevronDown,
+  CircleAlert,
   Clock,
   FolderPlus,
   LayoutGrid,
@@ -145,6 +158,7 @@ import {
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '../../api/index';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -162,6 +176,9 @@ import StartRoomForm from './StartRoomForm.vue';
 export default {
   name: 'RoomList',
   components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
     Badge,
     Card,
     CardContent,
@@ -170,6 +187,7 @@ export default {
     CardHeader,
     CardTitle,
     ChevronDown,
+    CircleAlert,
     Clock,
     DialogContent,
     DialogDescription,
@@ -210,6 +228,7 @@ export default {
   data() {
     return {
       loading: false,
+      loadError: '',
       searchQuery: '',
       rooms: [],
       serverList: [],
@@ -279,6 +298,7 @@ export default {
       this.isRefreshing = true;
       this.lastRefreshTime = now;
       this.loading = true;
+      this.loadError = '';
 
       // 同时读取 v2 房间目录和真实运行状态。
       return Promise.all([
@@ -320,7 +340,8 @@ export default {
         })
         .catch(error => {
           console.error("获取数据失败:", error);
-          toast.error('获取数据失败: ' + (error.message || '未知错误'));
+          this.loadError = error.message || '无法连接管理服务，请检查服务状态后重试';
+          toast.error('获取数据失败: ' + this.loadError);
         })
         .finally(() => {
           this.loading = false;
@@ -543,6 +564,13 @@ export default {
   margin-bottom: 20px;
 }
 
+.error-description {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .loading-page-content {
   min-height: 180px;
   justify-content: center;
@@ -618,6 +646,10 @@ export default {
 }
 
 @media (max-width: 640px) {
+  .error-description {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .page-header {
     align-items: stretch;
     flex-direction: column;

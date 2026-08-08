@@ -7,15 +7,23 @@
         <UiButton variant="outline" :disabled="loading" @click="refreshBackups"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCwIcon v-else data-icon="inline-start" />刷新</UiButton>
       </div>
     </div>
-    <Card class="backups-card">
+    <Alert v-if="loadError" variant="destructive" class="load-error-alert">
+      <TriangleAlertIcon />
+      <AlertTitle>备份列表加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton variant="outline" size="sm" @click="refreshBackups">
+        <RefreshCwIcon data-icon="inline-start" />重新加载
+      </UiButton></AlertAction>
+    </Alert>
+    <Card v-if="!loadError || backupsList.length" class="backups-card">
       <CardHeader class="card-header"><div><CardTitle>备份列表</CardTitle><CardDescription>下载、恢复或删除现有世界存档备份。</CardDescription></div>
         <UiSelect v-model="selectedFilter"><SelectTrigger class="archive-filter"><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="__all__">全部</SelectItem><SelectItem v-for="archive in archiveOptions" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect>
       </CardHeader>
-      <CardContent><ShadcnTable><TableHeader><TableRow><TableHead>备份名称</TableHead><TableHead>存档名称</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
+      <CardContent><div class="table-wrap"><ShadcnTable><TableHeader><TableRow><TableHead>备份名称</TableHead><TableHead>存档名称</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
         <TableRow v-for="backup in filteredBackups" :key="`${backup.archive_name}-${backup.name}`"><TableCell><div class="backup-name"><FileArchiveIcon />{{ backup.name }}</div></TableCell><TableCell>{{ backup.archive_name }}</TableCell><TableCell>{{ backup.size_formatted }}</TableCell><TableCell>{{ backup.create_time }}</TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><DownloadIcon data-icon="inline-start" />下载</UiButton><UiButton size="sm" @click="showRestoreDialog(backup)">恢复</UiButton><UiButton variant="destructive" size="sm" @click="confirmDeleteBackup(backup)">删除</UiButton></div></TableCell></TableRow>
         <TableEmpty v-if="loading" :colspan="5"><Spinner />正在加载备份</TableEmpty>
-        <TableEmpty v-else-if="filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>暂无备份</EmptyTitle><EmptyDescription>当前存档还没有可用备份。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
-      </TableBody></ShadcnTable></CardContent>
+        <TableEmpty v-else-if="!loadError && filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>暂无备份</EmptyTitle><EmptyDescription>当前存档还没有可用备份。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
+      </TableBody></ShadcnTable></div></CardContent>
     </Card>
 
     <UiDialog v-model:open="createDialogVisible"><DialogContent><DialogHeader><DialogTitle>创建存档备份</DialogTitle><DialogDescription>选择需要立即备份的房间存档。</DialogDescription></DialogHeader><Field><FieldLabel>存档</FieldLabel><UiSelect v-model="selectedArchive"><SelectTrigger><SelectValue placeholder="请选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archivesList" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><DialogFooter><UiButton variant="outline" @click="createDialogVisible = false">取消</UiButton><UiButton :disabled="createLoading" @click="createBackup"><Spinner v-if="createLoading" data-icon="inline-start" />创建</UiButton></DialogFooter></DialogContent></UiDialog>
@@ -51,7 +59,7 @@
 
 <script>
 import { DownloadIcon, FileArchiveIcon, PlusIcon, RefreshCwIcon, TriangleAlertIcon } from '@lucide/vue'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -71,6 +79,7 @@ export default {
   name: 'BackupsView',
   components: {
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     Card,
@@ -119,6 +128,7 @@ export default {
   data() {
     return {
       loading: false,
+      loadError: '',
       createLoading: false,
       restoreLoading: false,
       createDialogVisible: false,
@@ -149,6 +159,7 @@ export default {
   methods: {
     refreshBackups() {
       this.loading = true;
+      this.loadError = '';
       return this.$api.backupApi.getBackupList()
         .then(res => {
           if (res.status === 200) {
@@ -167,11 +178,13 @@ export default {
             }
             this.backupsList = allBackups;
           } else {
-            toast.error('获取备份列表失败：' + res.msg);
+            this.loadError = res.msg || '服务未返回可用的备份列表';
+            toast.error('获取备份列表失败：' + this.loadError);
           }
         })
         .catch(err => {
-          toast.error('获取备份列表失败：' + err.message);
+          this.loadError = err.message || '无法连接备份服务';
+          toast.error('获取备份列表失败：' + this.loadError);
         })
         .finally(() => {
           this.loading = false;

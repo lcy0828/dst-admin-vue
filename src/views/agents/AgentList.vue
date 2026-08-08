@@ -483,7 +483,7 @@ export default {
 }
 
 .agent-connected {
-  border-left: 4px solid #4f8a5b;
+  border-left: 4px solid var(--success-color);
 }
 
 .agent-card-header {

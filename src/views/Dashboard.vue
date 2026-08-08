@@ -1467,12 +1467,12 @@ export default {
 }
 
 .server-offline {
-  background-color: #f9f9f9;
+  background-color: var(--muted);
   color: var(--text-secondary);
 }
 
 .server-restarting {
-  background-color: #fff9ed;
+  background-color: var(--accent);
 }
 
 .season-badge {
@@ -1484,15 +1484,15 @@ export default {
 }
 
 .season-spring {
-  background-color: #4f8a5b;
+  background-color: var(--success-color);
 }
 
 .season-summer {
-  background-color: #d99b32;
+  background-color: var(--warning-color);
 }
 
 .season-autumn {
-  background-color: #c94f4f;
+  background-color: var(--danger-color);
 }
 
 .season-winter {
@@ -1521,12 +1521,12 @@ export default {
 .metric-unavailable {
   height: 16px;
   line-height: 16px;
-  color: #909399;
+  color: var(--muted-foreground);
 }
 
 .mode-hint {
   margin-left: 12px;
-  color: #909399;
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 
@@ -1810,7 +1810,7 @@ export default {
   width: 22px;
   height: 22px;
   margin: 0 0 10px;
-  color: #9aa69e;
+  color: var(--muted-foreground);
 }
 
 .empty-server strong,
@@ -1991,7 +1991,7 @@ export default {
 
 .version-warning-icon {
   margin-left: 5px;
-  color: #c94f4f;
+  color: var(--destructive);
   font-size: 16px;
 }
 
@@ -2096,16 +2096,16 @@ export default {
 
 .output-content {
   padding: 5px;
-  background-color: #f0f9eb;
+  background-color: var(--muted);
   border-radius: 3px;
   word-break: break-all;
 }
 
 .error-content {
   padding: 5px;
-  background-color: #fef0f0;
+  background-color: var(--accent);
   border-radius: 3px;
-  color: #c94f4f;
+  color: var(--destructive);
   word-break: break-all;
 }
 

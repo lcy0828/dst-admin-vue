@@ -59,10 +59,10 @@
       </div>
       
       <div class="log-actions-bottom">
-        <label class="auto-scroll-control">
-          <UiCheckbox v-model="autoScroll" />
-          <span>自动滚动到最新日志</span>
-        </label>
+        <Field orientation="horizontal" class="auto-scroll-control">
+          <UiCheckbox id="log-auto-scroll" v-model="autoScroll" />
+          <FieldLabel for="log-auto-scroll">自动滚动到最新日志</FieldLabel>
+        </Field>
         <UiButton size="sm" variant="ghost" @click="clearLogs">清空日志</UiButton>
       </div>
     </div>
@@ -75,6 +75,7 @@ import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
 import { Button as UiButton } from '@/components/ui/button';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
@@ -82,7 +83,7 @@ import { Spinner } from '@/components/ui/spinner';
 export default {
   name: 'LogViewer',
   components: {
-    UiButton, UiCheckbox, Download, Info, UiInput, RefreshCw, Search, UiSelect, SelectContent,
+    UiButton, UiCheckbox, Download, Field, FieldLabel, Info, UiInput, RefreshCw, Search, UiSelect, SelectContent,
     SelectGroup, SelectItem, SelectTrigger, SelectValue, Spinner, X
   },
   props: {

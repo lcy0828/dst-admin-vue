@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
-    <header class="settings-page-header">
-      <div>
+    <header class="page-header settings-page-header">
+      <div class="settings-page-heading">
         <h1>系统设置</h1>
         <p>管理界面、安全、备份、通知和当前主机运行状态。</p>
       </div>
@@ -49,9 +49,9 @@
               </Field>
 
               <Field orientation="responsive">
-                <FieldContent><FieldLabel>系统语言</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="system-language">系统语言</FieldLabel></FieldContent>
                 <UiSelect v-model="settings.language">
-                  <SelectTrigger class="setting-control"><SelectValue placeholder="请选择系统语言" /></SelectTrigger>
+                  <SelectTrigger id="system-language" class="setting-control"><SelectValue placeholder="请选择系统语言" /></SelectTrigger>
                   <SelectContent><SelectGroup>
                     <SelectItem value="zh-CN">简体中文</SelectItem>
                     <SelectItem value="en-US" disabled>English</SelectItem>
@@ -61,9 +61,9 @@
               </Field>
 
               <Field orientation="responsive">
-                <FieldContent><FieldLabel>时区设置</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="system-timezone">时区设置</FieldLabel></FieldContent>
                 <UiSelect v-model="settings.timezone">
-                  <SelectTrigger class="setting-control"><SelectValue placeholder="请选择时区" /></SelectTrigger>
+                  <SelectTrigger id="system-timezone" class="setting-control"><SelectValue placeholder="请选择时区" /></SelectTrigger>
                   <SelectContent><SelectGroup>
                     <SelectItem value="Asia/Shanghai">(GMT+08:00) 北京时间</SelectItem>
                     <SelectItem value="UTC">(GMT+00:00) 协调世界时</SelectItem>
@@ -76,9 +76,9 @@
               </Field>
 
               <Field orientation="responsive">
-                <FieldContent><FieldLabel>日期格式</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="date-format">日期格式</FieldLabel></FieldContent>
                 <UiSelect v-model="settings.dateFormat">
-                  <SelectTrigger class="setting-control"><SelectValue placeholder="请选择日期格式" /></SelectTrigger>
+                  <SelectTrigger id="date-format" class="setting-control"><SelectValue placeholder="请选择日期格式" /></SelectTrigger>
                   <SelectContent><SelectGroup>
                     <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
                     <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
@@ -90,10 +90,10 @@
 
               <Field>
                 <FieldContent>
-                  <FieldLabel>界面主题</FieldLabel>
+                  <FieldTitle id="theme-options-label">界面主题</FieldTitle>
                   <FieldDescription>默认使用石墨朱橙，也可以切换预设或选择自定义主色。</FieldDescription>
                 </FieldContent>
-                <ToggleGroup :model-value="selectedThemeId" type="single" class="theme-options" @update:model-value="selectThemeById">
+                <ToggleGroup :model-value="selectedThemeId" type="single" class="theme-options" aria-labelledby="theme-options-label" @update:model-value="selectThemeById">
                   <ToggleGroupItem v-for="preset in themePresets" :key="preset.id" :value="preset.id" class="theme-option" :style="themeOptionStyle(preset)">
                     <span class="theme-option-head">
                       <span class="theme-option-name">{{ preset.name }}</span>
@@ -119,6 +119,10 @@
               </Field>
             </FieldGroup>
           </CardContent>
+          <CardFooter class="settings-card-footer">
+            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />重置</UiButton>
+            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+          </CardFooter>
         </Card>
       </TabsContent>
 
@@ -154,6 +158,10 @@
               </Field>
             </FieldGroup>
           </CardContent>
+          <CardFooter class="settings-card-footer">
+            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />重置</UiButton>
+            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+          </CardFooter>
         </Card>
       </TabsContent>
 
@@ -167,9 +175,9 @@
                 <UiSwitch id="auto-backup" v-model="settings.autoBackup" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel>备份频率</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="backup-frequency">备份频率</FieldLabel></FieldContent>
                 <UiSelect v-model="settings.backupFrequency" :disabled="!settings.autoBackup">
-                  <SelectTrigger class="setting-control"><SelectValue placeholder="请选择备份频率" /></SelectTrigger>
+                  <SelectTrigger id="backup-frequency" class="setting-control"><SelectValue placeholder="请选择备份频率" /></SelectTrigger>
                   <SelectContent><SelectGroup><SelectItem value="daily">每天</SelectItem><SelectItem value="weekly">每周</SelectItem><SelectItem value="monthly">每月</SelectItem></SelectGroup></SelectContent>
                 </UiSelect>
               </Field>
@@ -186,7 +194,7 @@
                 <UiInput id="backup-location" v-model="settings.backupLocation" class="setting-control" :disabled="!settings.autoBackup" placeholder="请输入备份存储路径" />
               </Field>
               <FieldSeparator>手动备份</FieldSeparator>
-              <Field orientation="horizontal">
+              <Field orientation="responsive">
                 <FieldContent><FieldTitle>立即执行</FieldTitle><FieldDescription>对当前所有已接管房间创建备份，或查看真实备份历史。</FieldDescription></FieldContent>
                 <div class="field-actions">
                   <UiButton :disabled="loading" @click="handleBackupNow"><DatabaseBackup data-icon="inline-start" />立即备份</UiButton>
@@ -195,6 +203,10 @@
               </Field>
             </FieldGroup>
           </CardContent>
+          <CardFooter class="settings-card-footer">
+            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />重置</UiButton>
+            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+          </CardFooter>
         </Card>
       </TabsContent>
 
@@ -227,7 +239,7 @@
                 <FieldContent><FieldLabel for="sender-email">发件人邮箱</FieldLabel><FieldError v-if="formErrors.senderEmail">{{ formErrors.senderEmail }}</FieldError></FieldContent>
                 <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.senderEmail)" placeholder="系统发送邮件的邮箱地址" @input="formErrors.senderEmail = ''" />
               </Field>
-              <Field orientation="horizontal">
+              <Field orientation="responsive" :data-disabled="!settings.emailNotification">
                 <FieldContent><FieldTitle>连接检查</FieldTitle><FieldDescription>使用当前 SMTP 参数执行一次真实连接与认证测试。</FieldDescription></FieldContent>
                 <UiButton variant="outline" :disabled="loading || !settings.emailNotification" @click="testEmailConnection"><Send data-icon="inline-start" />测试邮件连接</UiButton>
               </Field>
@@ -240,6 +252,10 @@
               </FieldGroup>
             </FieldGroup>
           </CardContent>
+          <CardFooter class="settings-card-footer">
+            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />重置</UiButton>
+            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+          </CardFooter>
         </Card>
       </TabsContent>
 
@@ -255,11 +271,11 @@
             <CardHeader><CardTitle class="status-card-title"><Cpu />CPU 状态</CardTitle><CardDescription>{{ systemStatus.cpu_model }}</CardDescription></CardHeader>
             <CardContent class="status-card-content">
               <dl class="status-list"><div><dt>频率</dt><dd>{{ systemStatus.cpu_mhz }} MHz</dd></div><div><dt>物理核心</dt><dd>{{ systemStatus.cpu_cores }}</dd></div><div><dt>逻辑核心</dt><dd>{{ systemStatus.cpu_threads }}</dd></div></dl>
-              <div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.cpu_usage)" /></div>
+              <div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.cpu_usage)" aria-label="CPU 使用率" /></div>
               <div v-if="(systemStatus.cpu_core_usage || []).length" class="core-usage-container">
                 <div v-for="(usage, index) in (systemStatus.cpu_core_usage || [])" :key="index" class="core-usage-item">
                   <div class="core-usage-label"><span>核心 {{ index }}</span><Badge v-if="isCoreOverloaded(usage)" variant="destructive">高负载</Badge><span>{{ Number(usage).toFixed(2) }}%</span></div>
-                  <UiProgress :model-value="clampPercent(usage)" />
+                  <UiProgress :model-value="clampPercent(usage)" :aria-label="`CPU 核心 ${index} 使用率`" />
                 </div>
               </div>
             </CardContent>
@@ -272,12 +288,12 @@
 
           <Card>
             <CardHeader><CardTitle class="status-card-title"><MemoryStick />内存状态</CardTitle><CardDescription>物理内存占用</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>总内存</dt><dd>{{ formatMemory(systemStatus.total_memory) }}</dd></div><div><dt>已用内存</dt><dd>{{ formatMemory(systemStatus.used_memory) }}</dd></div><div><dt>空闲内存</dt><dd>{{ formatMemory(systemStatus.free_memory) }}</dd></div></dl><div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.memory_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.memory_usage)" /></div></CardContent>
+            <CardContent><dl class="status-list"><div><dt>总内存</dt><dd>{{ formatMemory(systemStatus.total_memory) }}</dd></div><div><dt>已用内存</dt><dd>{{ formatMemory(systemStatus.used_memory) }}</dd></div><div><dt>空闲内存</dt><dd>{{ formatMemory(systemStatus.free_memory) }}</dd></div></dl><div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.memory_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.memory_usage)" aria-label="内存使用率" /></div></CardContent>
           </Card>
 
           <Card>
             <CardHeader><CardTitle class="status-card-title"><HardDrive />磁盘状态</CardTitle><CardDescription>管理后端所在磁盘</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>总空间</dt><dd>{{ systemStatus.total_disk }} GB</dd></div><div><dt>已用空间</dt><dd>{{ systemStatus.used_disk }} GB</dd></div><div><dt>空闲空间</dt><dd>{{ systemStatus.free_disk }} GB</dd></div></dl><div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.disk_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.disk_usage)" /></div></CardContent>
+            <CardContent><dl class="status-list"><div><dt>总空间</dt><dd>{{ systemStatus.total_disk }} GB</dd></div><div><dt>已用空间</dt><dd>{{ systemStatus.used_disk }} GB</dd></div><div><dt>空闲空间</dt><dd>{{ systemStatus.free_disk }} GB</dd></div></dl><div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.disk_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.disk_usage)" aria-label="磁盘使用率" /></div></CardContent>
           </Card>
         </div>
 
@@ -285,7 +301,7 @@
         <div class="status-grid process-status-grid">
           <Card>
             <CardHeader><CardTitle class="status-card-title"><ChartNoAxesCombined />进程信息</CardTitle><CardDescription>当前管理后端进程</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>进程 ID</dt><dd>{{ systemStatus.process_id }}</dd></div><div><dt>运行时间</dt><dd>{{ systemStatus.process_uptime_fmt }}</dd></div><div><dt>物理内存</dt><dd>{{ systemStatus.process_memory_rss }} MB</dd></div><div><dt>虚拟内存</dt><dd>{{ systemStatus.process_memory_vms }} MB</dd></div><div><dt>线程数</dt><dd>{{ systemStatus.process_threads }}</dd></div></dl><div class="usage-block"><div><span>CPU 使用率</span><strong>{{ clampPercent(systemStatus.process_cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.process_cpu_usage)" /></div></CardContent>
+            <CardContent><dl class="status-list"><div><dt>进程 ID</dt><dd>{{ systemStatus.process_id }}</dd></div><div><dt>运行时间</dt><dd>{{ systemStatus.process_uptime_fmt }}</dd></div><div><dt>物理内存</dt><dd>{{ systemStatus.process_memory_rss }} MB</dd></div><div><dt>虚拟内存</dt><dd>{{ systemStatus.process_memory_vms }} MB</dd></div><div><dt>线程数</dt><dd>{{ systemStatus.process_threads }}</dd></div></dl><div class="usage-block"><div><span>CPU 使用率</span><strong>{{ clampPercent(systemStatus.process_cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.process_cpu_usage)" aria-label="管理后端进程 CPU 使用率" /></div></CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle class="status-card-title"><CodeXml />Go 运行时</CardTitle><CardDescription>{{ systemStatus.go_version }}</CardDescription></CardHeader>
@@ -301,11 +317,6 @@
       </TabsContent>
     </Tabs>
 
-    <div v-if="activeTab !== 'systemStatus'" class="form-actions">
-      <UiButton variant="outline" :disabled="loading" @click="resetSettings">重置</UiButton>
-      <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
-    </div>
-
     <UiDialog v-model:open="backupHistoryVisible">
       <DialogContent class="sm:max-w-4xl">
         <DialogHeader><DialogTitle>备份历史记录</DialogTitle><DialogDescription>所有已接管房间的真实备份文件。</DialogDescription></DialogHeader>
@@ -314,7 +325,14 @@
             <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>房间</TableHead><TableHead>文件名</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead>状态</TableHead><TableHead class="table-actions-head">操作</TableHead></TableRow></TableHeader>
             <TableBody>
               <TableRow v-for="backup in backupHistory" :key="backup.id"><TableCell>{{ backup.id }}</TableCell><TableCell>{{ backup.roomName }}</TableCell><TableCell>{{ backup.filename }}</TableCell><TableCell>{{ backup.size }}</TableCell><TableCell>{{ backup.createTime }}</TableCell><TableCell><Badge :variant="backup.status === 'success' ? 'secondary' : 'destructive'">{{ backup.status === 'success' ? '成功' : '失败' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><Download data-icon="inline-start" />下载</UiButton><UiButton variant="destructive" size="sm" @click="deleteBackup(backup)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow>
-              <TableEmpty v-if="backupHistory.length === 0" :colspan="7">暂无备份记录</TableEmpty>
+              <TableEmpty v-if="backupHistory.length === 0" :colspan="7">
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyTitle>暂无备份记录</EmptyTitle>
+                    <EmptyDescription>当前已接管房间还没有可下载的备份。</EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </TableEmpty>
             </TableBody>
           </ShadcnTable>
         </div>
@@ -337,6 +355,7 @@ import {
   History,
   MemoryStick,
   RefreshCw,
+  RotateCcw,
   Save,
   Send,
   Trash2
@@ -345,8 +364,9 @@ import { systemApi } from '@/api';
 import { backupsV2API, jobsV2API, roomsV2API, systemV2API } from '@/api/v2';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldSeparator, FieldTitle } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Progress as UiProgress } from '@/components/ui/progress';
@@ -374,6 +394,7 @@ export default {
     Card,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
     ChartNoAxesCombined,
@@ -387,6 +408,10 @@ export default {
     DialogHeader,
     DialogTitle,
     Download,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
     Field,
     FieldContent,
     FieldDescription,
@@ -400,6 +425,7 @@ export default {
     MemoryStick,
     UiProgress,
     RefreshCw,
+    RotateCcw,
     Save,
     SelectContent,
     SelectGroup,
@@ -920,15 +946,10 @@ export default {
   width: 100%;
 }
 
-.settings-page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+.settings-page-heading {
+  min-width: 0;
 }
 
-.settings-page-header h1,
 .status-header h2 {
   margin: 0;
   color: var(--foreground);
@@ -981,11 +1002,10 @@ export default {
   gap: 8px;
 }
 
-.form-actions {
+.settings-card-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 16px;
 }
 
 .theme-options {
@@ -1225,12 +1245,10 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .settings-page-header,
   .status-header {
     align-items: flex-start;
   }
 
-  .settings-page-header > div,
   .status-header > div {
     min-width: 0;
   }
@@ -1259,7 +1277,6 @@ export default {
 }
 
 @media (max-width: 520px) {
-  .settings-page-header,
   .status-header {
     flex-direction: column;
   }
@@ -1269,12 +1286,12 @@ export default {
     width: 100%;
   }
 
-  .form-actions {
+  .settings-card-footer {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .form-actions > button,
+  .settings-card-footer > button,
   .field-actions > button {
     min-width: 0;
     flex: 1;

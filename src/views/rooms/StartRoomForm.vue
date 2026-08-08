@@ -1,18 +1,17 @@
 <template>
   <div class="start-room-form">
     <div v-if="room" class="form-container">
-      <h3>启动房间: {{ room.name }}</h3>
-      
       <FieldGroup>
-        <Field>
-          <FieldLabel>启动模式</FieldLabel>
+        <FieldSet>
+          <FieldLegend variant="label">启动 {{ room.name }}</FieldLegend>
+          <FieldDescription>选择需要启动的世界分片。</FieldDescription>
           <RadioGroup v-model="formData.worldType" class="option-grid">
             <Field v-for="option in worldTypeOptions" :key="option.value" orientation="horizontal">
               <RadioGroupItem :id="`world-type-${option.value}`" :value="option.value" />
               <FieldLabel :for="`world-type-${option.value}`" class="font-normal">{{ option.label }}</FieldLabel>
             </Field>
           </RadioGroup>
-        </Field>
+        </FieldSet>
         
         <Field data-disabled>
           <FieldLabel>服务器模式</FieldLabel>
@@ -31,57 +30,21 @@
         
         <Separator />
         
-        <!-- 世界列表预览 -->
-        <div class="world-preview" v-if="room.worlds && room.worlds.length > 0">
-          <h4>将启动以下世界:</h4>
-          <div class="world-list">
-            <template v-if="formData.worldType === 'all'">
-              <div v-for="world in room.worlds" :key="world.name" class="world-item">
-                <CheckCircle2 class="status-icon" />
-                <span>{{ world.name }}</span>
-                <Badge :variant="getWorldTagType(world.type)">
-                  {{ getWorldTypeName(world.type) }}
-                </Badge>
-              </div>
-            </template>
-            
-            <template v-else-if="formData.worldType === 'forest'">
-              <div v-for="world in forestWorlds" :key="world.name" class="world-item">
-                <CheckCircle2 class="status-icon" />
-                <span>{{ world.name }}</span>
-                <Badge variant="outline">森林</Badge>
-              </div>
-              <div v-if="forestWorlds.length === 0" class="no-worlds">
-                <TriangleAlert class="status-icon" />
-                <span>未找到森林世界</span>
-              </div>
-            </template>
-            
-            <template v-else-if="formData.worldType === 'cave'">
-              <div v-for="world in caveWorlds" :key="world.name" class="world-item">
-                <CheckCircle2 class="status-icon" />
-                <span>{{ world.name }}</span>
-                <Badge variant="secondary">洞穴</Badge>
-              </div>
-              <div v-if="caveWorlds.length === 0" class="no-worlds">
-                <TriangleAlert class="status-icon" />
-                <span>未找到洞穴世界</span>
-              </div>
-            </template>
-            
-            <template v-else-if="formData.worldType === 'unknown'">
-              <div v-for="world in unknownWorlds" :key="world.name" class="world-item">
-                <CheckCircle2 class="status-icon" />
-                <span>{{ world.name }}</span>
-                <Badge variant="outline">其他</Badge>
-              </div>
-              <div v-if="unknownWorlds.length === 0" class="no-worlds">
-                <TriangleAlert class="status-icon" />
-                <span>未找到其他类型世界</span>
-              </div>
-            </template>
+        <FieldSet class="world-preview">
+          <FieldLegend variant="label">将启动的世界</FieldLegend>
+          <div v-if="selectedWorlds.length" class="world-list" role="list">
+            <div v-for="world in selectedWorlds" :key="world.name" class="world-item" role="listitem">
+              <CheckCircle2 class="status-icon" />
+              <span>{{ world.name }}</span>
+              <Badge :variant="getWorldTagType(world.type)">{{ getWorldTypeName(world.type) }}</Badge>
+            </div>
           </div>
-        </div>
+          <Alert v-else>
+            <TriangleAlert />
+            <AlertTitle>没有匹配的世界</AlertTitle>
+            <AlertDescription>请切换启动模式，或先为房间创建对应类型的世界。</AlertDescription>
+          </Alert>
+        </FieldSet>
       </FieldGroup>
       
       <div class="form-actions">
@@ -93,18 +56,20 @@
       </div>
     </div>
     
-    <div v-else class="error-message">
-      <TriangleAlert class="error-icon" />
-      <p>无法加载房间信息</p>
-    </div>
+    <Alert v-else variant="destructive">
+      <TriangleAlert />
+      <AlertTitle>无法加载房间信息</AlertTitle>
+      <AlertDescription>关闭窗口后重新选择房间。</AlertDescription>
+    </Alert>
   </div>
 </template>
 
 <script>
 import { CheckCircle2, TriangleAlert } from '@lucide/vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
@@ -112,6 +77,9 @@ import { Spinner } from '@/components/ui/spinner';
 export default {
   name: 'StartRoomForm',
   components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
     Badge,
     UiButton,
     CheckCircle2,
@@ -119,6 +87,8 @@ export default {
     FieldDescription,
     FieldGroup,
     FieldLabel,
+    FieldLegend,
+    FieldSet,
     RadioGroup,
     RadioGroupItem,
     Separator,
@@ -136,6 +106,10 @@ export default {
         worldType: 'all',
         serverMode: '64'
       })
+    },
+    loading: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -149,8 +123,7 @@ export default {
         { value: 'forest', label: '仅森林世界' },
         { value: 'cave', label: '仅洞穴世界' },
         { value: 'unknown', label: '仅其他世界' }
-      ],
-      loading: false
+      ]
     }
   },
   computed: {
@@ -165,6 +138,11 @@ export default {
     unknownWorlds() {
       if (!this.room || !this.room.worlds) return [];
       return this.room.worlds.filter(world => world.type === 'unknown');
+    },
+    selectedWorlds() {
+      if (!this.room || !Array.isArray(this.room.worlds)) return [];
+      if (this.formData.worldType === 'all') return this.room.worlds;
+      return this.room.worlds.filter(world => world.type === this.formData.worldType);
     }
   },
   watch: {
@@ -199,51 +177,27 @@ export default {
 .start-room-form {
   .form-container {
     padding: 10px 0;
-    
-    h3 {
-      margin-top: 0;
-      margin-bottom: 20px;
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-primary);
-      text-align: left;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border-color);
-      
-      &:after {
-        display: none;
-      }
-    }
   }
   
   .world-preview {
     margin-top: 20px;
     
-    h4 {
-      font-size: 16px;
-      margin-bottom: 12px;
-      color: var(--text-regular);
-    }
-    
     .world-list {
       display: flex;
-      gap: 8px;
-      padding: 12px;
-      background-color: var(--surface-muted);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      box-shadow: none;
+      gap: 0;
       flex-direction: column;
       
       .world-item {
         margin: 0;
         display: flex;
         align-items: center;
-        background-color: var(--surface-color);
-        padding: 8px 12px;
-        border: 1px solid var(--border-color);
-        border-radius: 3px;
-        box-shadow: none;
+        gap: 10px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+
+        &:last-child {
+          border-bottom: 0;
+        }
         
         .status-icon {
           color: var(--primary);
@@ -256,18 +210,6 @@ export default {
         }
       }
       
-      .no-worlds {
-        display: flex;
-        align-items: center;
-        color: var(--muted-foreground);
-        background-color: var(--muted);
-        padding: 10px 15px;
-        border-radius: 6px;
-        
-        .status-icon {
-          flex: none;
-        }
-      }
     }
   }
 
@@ -284,20 +226,5 @@ export default {
     
   }
   
-  .error-message {
-    text-align: center;
-    padding: 30px 0;
-    color: var(--destructive);
-    
-    .error-icon {
-      width: 36px;
-      height: 36px;
-      margin-bottom: 10px;
-    }
-    
-    p {
-      margin: 0;
-    }
-  }
 }
 </style>

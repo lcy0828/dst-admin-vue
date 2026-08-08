@@ -6,8 +6,11 @@
 
     <Card class="token-card">
       <CardHeader class="card-header">
-        <CardTitle>服务器令牌</CardTitle>
-        <div v-if="savename || serverToken">
+        <div class="token-heading">
+          <CardTitle>服务器令牌</CardTitle>
+          <CardDescription>安全地查看或更新当前房间的集群令牌。</CardDescription>
+        </div>
+        <div v-if="savename || serverToken" class="token-actions">
           <UiButton
             v-if="tokenConfigured && !tokenRevealed"
             size="sm"
@@ -38,6 +41,17 @@
           <Spinner />
           <span>正在加载令牌状态</span>
         </div>
+        <Alert v-else-if="loadError" variant="destructive">
+          <CircleAlert />
+          <AlertTitle>服务器令牌加载失败</AlertTitle>
+          <AlertDescription class="error-description">
+            <span>{{ loadError }}</span>
+            <UiButton variant="outline" size="sm" @click="fetchServerToken">
+              <RefreshCw data-icon="inline-start" />
+              重新加载
+            </UiButton>
+          </AlertDescription>
+        </Alert>
         <div v-else-if="savename || serverToken" class="token-info">
           <InputGroup>
             <InputGroupInput :model-value="serverToken || '--'" readonly />
@@ -122,12 +136,12 @@
 </template>
 
 <script>
-import { Copy, Eye, Info, Pencil, RefreshCw, TriangleAlert } from '@lucide/vue';
+import { CircleAlert, Copy, Eye, Info, Pencil, RefreshCw, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -144,8 +158,10 @@ export default {
     UiButton,
     Card,
     CardContent,
+    CardDescription,
     CardHeader,
     CardTitle,
+    CircleAlert,
     Copy,
     UiDialog,
     DialogContent,
@@ -183,6 +199,7 @@ export default {
       tokenRevealed: false,
       roomName: '',
       loading: false,
+      loadError: '',
 
       // 对话框相关
       dialogVisible: false,
@@ -230,6 +247,7 @@ export default {
       if (!saveToUse) return;
 
       this.loading = true;
+      this.loadError = '';
       return serverApi.getServerTokenStatus(saveToUse)
         .then(res => {
           this.serverToken = res.data.maskedValue || '';
@@ -238,7 +256,8 @@ export default {
           this.roomName = res.data.roomName || '';
         })
         .catch(err => {
-          toast.error('获取服务器令牌失败: ' + (err.message || '未知错误'));
+          this.loadError = err.message || '无法读取服务器令牌状态';
+          toast.error('获取服务器令牌失败: ' + this.loadError);
         })
         .finally(() => {
           this.loading = false;
@@ -381,10 +400,24 @@ export default {
   gap: 12px;
 }
 
-.card-header > div {
+.token-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.token-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-description {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .token-info {
@@ -440,8 +473,18 @@ export default {
     flex-direction: column;
   }
 
-  .card-header > div {
+  .token-actions {
     width: 100%;
+  }
+
+  .token-actions > *,
+  .error-description > button {
+    flex: 1;
+  }
+
+  .error-description {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

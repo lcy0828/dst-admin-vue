@@ -11,7 +11,15 @@
         </UiButton>
       </div>
     </div>
-    <Card class="announcements-card">
+    <Alert v-if="loadError" variant="destructive">
+      <CircleAlertIcon />
+      <AlertTitle>公告列表加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton variant="outline" size="sm" @click="refreshAnnouncements">
+        <RefreshCwIcon data-icon="inline-start" />重新加载
+      </UiButton></AlertAction>
+    </Alert>
+    <Card v-if="!loadError || announcements.length" class="announcements-card">
       <CardHeader class="card-header">
         <div>
           <CardTitle>公告列表</CardTitle>
@@ -27,7 +35,7 @@
         </UiSelect>
       </CardHeader>
       <CardContent>
-        <ShadcnTable>
+        <div class="table-wrap"><ShadcnTable>
           <TableHeader><TableRow>
             <TableHead>标题</TableHead><TableHead>发布时间</TableHead><TableHead>过期时间</TableHead><TableHead>状态</TableHead><TableHead class="actions-column">操作</TableHead>
           </TableRow></TableHeader>
@@ -43,12 +51,12 @@
                 <UiButton variant="destructive" size="sm" @click="deleteAnnouncement(announcement)">删除</UiButton>
               </div></TableCell>
             </TableRow>
-            <TableEmpty v-if="!loading && filteredAnnouncements.length === 0" :colspan="5">
+            <TableEmpty v-if="!loading && !loadError && filteredAnnouncements.length === 0" :colspan="5">
               <Empty><EmptyHeader><EmptyTitle>暂无公告</EmptyTitle><EmptyDescription>当前筛选条件下没有公告记录。</EmptyDescription></EmptyHeader></Empty>
             </TableEmpty>
             <TableEmpty v-if="loading" :colspan="5"><Spinner />正在加载公告</TableEmpty>
           </TableBody>
-        </ShadcnTable>
+        </ShadcnTable></div>
       </CardContent>
     </Card>
 
@@ -88,7 +96,7 @@
           <Field :data-invalid="Boolean(formErrors.content)"><FieldLabel for="announcement-content">内容</FieldLabel><UiTextarea id="announcement-content" v-model="announcementForm.content" :aria-invalid="Boolean(formErrors.content)" rows="8" placeholder="请输入公告内容" /><FieldError v-if="formErrors.content">{{ formErrors.content }}</FieldError></Field>
           <Field :data-invalid="Boolean(formErrors.expireTime)"><FieldLabel for="announcement-expire">过期时间</FieldLabel><UiInput id="announcement-expire" type="datetime-local" :model-value="toDateTimeLocal(announcementForm.expireTime)" :aria-invalid="Boolean(formErrors.expireTime)" @update:model-value="setExpireTime" /><FieldError v-if="formErrors.expireTime">{{ formErrors.expireTime }}</FieldError></Field>
           <FieldSet><FieldLegend variant="label">发送对象</FieldLegend><RadioGroup v-model="announcementForm.target"><Field v-for="target in targetOptions" :key="target.value" orientation="horizontal"><RadioGroupItem :id="`target-${target.value}`" :value="target.value" /><FieldLabel :for="`target-${target.value}`">{{ target.label }}</FieldLabel></Field></RadioGroup></FieldSet>
-          <Field orientation="horizontal"><div><FieldLabel for="announcement-important">重要公告</FieldLabel><FieldDescription>重要公告将在列表中突出显示。</FieldDescription></div><UiSwitch id="announcement-important" v-model="announcementForm.important" /></Field>
+          <Field orientation="horizontal"><FieldContent><FieldLabel for="announcement-important">重要公告</FieldLabel><FieldDescription>重要公告将在列表中突出显示。</FieldDescription></FieldContent><UiSwitch id="announcement-important" v-model="announcementForm.important" /></Field>
         </FieldGroup>
         <DialogFooter><UiButton variant="outline" @click="formVisible = false">取消</UiButton><UiButton :disabled="loading" @click="submitAnnouncementForm"><Spinner v-if="loading" data-icon="inline-start" />确定</UiButton></DialogFooter>
       </DialogContent>
@@ -97,13 +105,14 @@
 </template>
 
 <script>
-import { PlusIcon, RefreshCwIcon } from '@lucide/vue'
+import { CircleAlertIcon, PlusIcon, RefreshCwIcon } from '@lucide/vue'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -117,12 +126,17 @@ import { toast } from 'vue-sonner'
 export default {
   name: 'AnnouncementsView',
   components: {
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
     Badge,
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
+    CircleAlertIcon,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -133,6 +147,7 @@ export default {
     EmptyHeader,
     EmptyTitle,
     Field,
+    FieldContent,
     FieldDescription,
     FieldError,
     FieldGroup,
@@ -166,6 +181,7 @@ export default {
   data() {
     return {
       loading: false,
+      loadError: '',
       statusFilter: 'all',
       announcements: [],
       dialogVisible: false,
@@ -201,6 +217,7 @@ export default {
   methods: {
     refreshAnnouncements() {
       this.loading = true;
+      this.loadError = '';
       return this.$api.systemApi.getAnnouncements()
         .then(res => {
           this.announcements = res.map(announcement => ({
@@ -210,7 +227,8 @@ export default {
           }));
         })
         .catch(err => {
-          toast.error('获取公告列表失败：' + err.message);
+          this.loadError = err.message || '无法连接公告服务';
+          toast.error('获取公告列表失败：' + this.loadError);
         })
         .finally(() => {
           this.loading = false;

@@ -27,27 +27,40 @@
               <Spinner />
               <span>正在加载名单</span>
             </div>
-            <UiTable v-else-if="getList(list.type).length > 0">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>玩家名称</TableHead>
-                  <TableHead>KU ID</TableHead>
-                  <TableHead class="action-column">操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="(user, index) in getList(list.type)" :key="`${user.id}-${index}`">
-                  <TableCell>{{ user.name || '--' }}</TableCell>
-                  <TableCell class="id-cell">{{ user.id || '--' }}</TableCell>
-                  <TableCell class="action-column">
-                    <UiButton variant="destructive" size="sm" @click="removeUser(list.type, index, user)">
-                      <Trash2 data-icon="inline-start" />
-                      移除
-                    </UiButton>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </UiTable>
+            <Alert v-else-if="errors[list.type]" variant="destructive">
+              <CircleAlert />
+              <AlertTitle>{{ list.title }}加载失败</AlertTitle>
+              <AlertDescription class="error-description">
+                <span>{{ errors[list.type] }}</span>
+                <UiButton variant="outline" size="sm" @click="fetchList(list.type)">
+                  <RefreshCw data-icon="inline-start" />
+                  重新加载
+                </UiButton>
+              </AlertDescription>
+            </Alert>
+            <div v-else-if="getList(list.type).length > 0" class="table-wrap">
+              <UiTable>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>玩家名称</TableHead>
+                    <TableHead>KU ID</TableHead>
+                    <TableHead class="action-column">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="(user, index) in getList(list.type)" :key="`${user.id}-${index}`">
+                    <TableCell>{{ user.name || '--' }}</TableCell>
+                    <TableCell class="id-cell">{{ user.id || '--' }}</TableCell>
+                    <TableCell class="action-column">
+                      <UiButton variant="destructive" size="sm" @click="removeUser(list.type, index, user)">
+                        <Trash2 data-icon="inline-start" />
+                        移除
+                      </UiButton>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </UiTable>
+            </div>
             <Empty v-else>
               <EmptyHeader>
                 <EmptyMedia variant="icon"><Users /></EmptyMedia>
@@ -93,9 +106,10 @@
 </template>
 
 <script>
-import { Trash2, UserPlus, Users } from '@lucide/vue';
+import { CircleAlert, RefreshCw, Trash2, UserPlus, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -110,12 +124,16 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'SpecialLists',
   components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
     UiButton,
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
+    CircleAlert,
     UiDialog,
     DialogContent,
     DialogDescription,
@@ -143,6 +161,7 @@ export default {
     TabsContent,
     TabsList,
     TabsTrigger,
+    RefreshCw,
     Trash2,
     UserPlus,
     Users
@@ -173,6 +192,11 @@ export default {
         admin: false,
         block: false,
         white: false
+      },
+      errors: {
+        admin: '',
+        block: '',
+        white: ''
       },
       
       // 对话框
@@ -207,10 +231,17 @@ export default {
       this.fetchBlockList();
       this.fetchWhiteList();
     },
+
+    fetchList(type) {
+      if (type === 'admin') return this.fetchAdminList();
+      if (type === 'block') return this.fetchBlockList();
+      return this.fetchWhiteList();
+    },
     
     // 获取管理员列表
     fetchAdminList() {
       this.loading.admin = true;
+      this.errors.admin = '';
       
       serverApi.getAdminList(this.savename)
         .then(res => {
@@ -220,7 +251,8 @@ export default {
           });
         })
         .catch(err => {
-          toast.error('获取管理员列表失败: ' + (err.message || '未知错误'));
+          this.errors.admin = err.message || '无法读取管理员名单';
+          toast.error('获取管理员列表失败: ' + this.errors.admin);
         })
         .finally(() => {
           this.loading.admin = false;
@@ -230,6 +262,7 @@ export default {
     // 获取黑名单
     fetchBlockList() {
       this.loading.block = true;
+      this.errors.block = '';
       serverApi.getBlockList(this.savename)
         .then(res => {
           this.blockList = res.data;
@@ -238,7 +271,8 @@ export default {
           });
         })
         .catch(err => {
-          toast.error('获取黑名单失败: ' + (err.message || '未知错误'));
+          this.errors.block = err.message || '无法读取黑名单';
+          toast.error('获取黑名单失败: ' + this.errors.block);
         })
         .finally(() => {
           this.loading.block = false;
@@ -248,6 +282,7 @@ export default {
     // 获取白名单
     fetchWhiteList() {
       this.loading.white = true;
+      this.errors.white = '';
       serverApi.getWhiteList(this.savename)
         .then(res => {
           this.whiteList = res.data;
@@ -256,7 +291,8 @@ export default {
           });
         })
         .catch(err => {
-          toast.error('获取白名单失败: ' + (err.message || '未知错误'));
+          this.errors.white = err.message || '无法读取白名单';
+          toast.error('获取白名单失败: ' + this.errors.white);
         })
         .finally(() => {
           this.loading.white = false;
@@ -494,6 +530,19 @@ export default {
 
 .id-cell {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.error-description {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .loading-state {
@@ -509,5 +558,17 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+@media (max-width: 640px) {
+  .list-header,
+  .error-description {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .list-header > button {
+    width: 100%;
+  }
 }
 </style>
