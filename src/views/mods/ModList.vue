@@ -1,18 +1,51 @@
 <template>
   <div class="page-container">
     <el-card class="main-card">
-      <div slot="header" class="clearfix">
-        <span>已下载模组</span>
-        <div class="header-actions">
-          <el-button size="small" type="primary" @click="refreshModList">刷新</el-button>
-          <el-button size="small" type="success" @click="goToSearch">添加模组</el-button>
-          <el-button size="small" type="info" @click="getModConfigFile">获取配置文件</el-button>
+      <template #header>
+        <div class="clearfix">
+          <span>已下载模组</span>
+          <div class="header-actions">
+            <el-button size="small" type="primary" @click="refreshModList">刷新</el-button>
+            <el-button size="small" type="success" @click="goToSearch">添加模组</el-button>
+            <el-button size="small" type="info" @click="getModConfigFile">获取配置文件</el-button>
+          </div>
         </div>
-      </div>
+      </template>
 
       <!-- 过滤和排序区域 -->
       <div class="filter-container">
         <el-form :inline="true" :model="filterForm" size="small">
+          <el-form-item label="房间">
+            <el-select
+              v-model="selectedRoomId"
+              placeholder="请选择房间"
+              filterable
+              :loading="loadingRooms"
+              @change="handleRoomChange">
+              <el-option
+                v-for="room in roomOptions"
+                :key="room.id"
+                :label="room.name"
+                :value="room.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="世界">
+            <el-select
+              v-model="selectedWorldId"
+              placeholder="配置与文件查看目标"
+              filterable
+              clearable
+              :disabled="!selectedRoomId"
+              @change="handleWorldChange">
+              <el-option
+                v-for="world in selectedRoomWorlds"
+                :key="world.id"
+                :label="world.name"
+                :value="world.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
           <el-form-item label="状态">
             <el-select v-model="filterForm.status" placeholder="全部">
               <el-option label="全部" value=""></el-option>
@@ -65,32 +98,34 @@
                       :src="mod.image || defaultIcon" 
                       fit="cover"
                       lazy>
-                      <div slot="error" class="image-slot">
-                        <component is="el-icon-picture-outline" class="legacy-icon" />
-                      </div>
+                      <template #error>
+                        <div class="image-slot">
+                          <component :is="'el-icon-picture-outline'" class="legacy-icon" />
+                        </div>
+                      </template>
                     </el-image>
                   </div>
                   
                   <div class="mod-card-info">
                     <div class="mod-card-author">
-                      <component is="el-icon-user" class="legacy-icon" />
+                      <component :is="'el-icon-user'" class="legacy-icon" />
                       <span>{{ mod.author }}</span>
                     </div>
-                    <div class="mod-card-version">
-                      <component is="el-icon-info" class="legacy-icon" />
+                    <div class="mod-card-version" v-if="mod.version">
+                      <component :is="'el-icon-info'" class="legacy-icon" />
                       <span>{{ mod.version }}</span>
                     </div>
                     <div class="mod-card-update" v-if="mod.update_time">
-                      <component is="el-icon-time" class="legacy-icon" />
+                      <component :is="'el-icon-time'" class="legacy-icon" />
                       <span>{{ mod.update_time }}</span>
                     </div>
                     <div class="mod-card-subscribers" v-if="mod.subscribers">
-                      <component is="el-icon-user-solid" class="legacy-icon" />
+                      <component :is="'el-icon-user-solid'" class="legacy-icon" />
                       <span>{{ mod.subscribers }} 订阅</span>
                     </div>
-                    <div class="mod-card-rating" v-if="mod.rating">
-                      <component is="el-icon-star-on" class="legacy-icon" />
-                      <span>{{ mod.rating }} 星</span>
+                    <div class="mod-card-rating" v-if="mod.rating !== null">
+                      <component :is="'el-icon-star-on'" class="legacy-icon" />
+                      <span>{{ mod.rating }} 评分</span>
                     </div>
                     <div class="mod-card-tags" v-if="mod.tags && mod.tags.length">
                       <el-tag size="mini" v-for="tag in mod.tags" :key="tag" class="mod-tag">{{ tag }}</el-tag>
@@ -102,18 +137,21 @@
                   <el-button 
                     size="small" 
                     type="primary"
+                    :disabled="!selectedWorldId"
                     @click="openConfigDialog(mod)">
                     配置
                   </el-button>
                   <el-dropdown trigger="click" @command="handleCommand" size="small">
                     <el-button size="small" type="text">
-                      更多<component is="el-icon-arrow-down" class="legacy-icon el-icon--right" />
+                      更多<component :is="'el-icon-arrow-down'" class="legacy-icon el-icon--right" />
                     </el-button>
-                    <el-dropdown-menu slot="dropdown">
-                      <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
-                      <el-dropdown-item :command="{type: 'update', mod: mod}" v-if="mod.updateAvailable">更新模组</el-dropdown-item>
-                      <el-dropdown-item :command="{type: 'uninstall', mod: mod}">卸载模组</el-dropdown-item>
-                    </el-dropdown-menu>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
+                        <el-dropdown-item :command="{type: 'update', mod: mod}" v-if="mod.updateAvailable">更新模组</el-dropdown-item>
+                        <el-dropdown-item :command="{type: 'uninstall', mod: mod}">卸载模组</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
                   </el-dropdown>
                 </div>
               </el-card>
@@ -139,6 +177,8 @@
       v-model="configDialogVisible"
       :mod-id="currentModId"
       :mod-info="currentModInfo"
+      :room-id="selectedRoomId"
+      :world-id="selectedWorldId"
       :is-new-mod="false"
       @config-updated="handleConfigUpdated">
     </mod-config-dialog>
@@ -158,28 +198,30 @@
             :src="currentModInfo.image || defaultIcon" 
             fit="cover"
             class="mod-details-image">
-            <div slot="error" class="image-slot">
-              <component is="el-icon-picture-outline" class="legacy-icon" />
-            </div>
+            <template #error>
+              <div class="image-slot">
+                <component :is="'el-icon-picture-outline'" class="legacy-icon" />
+              </div>
+            </template>
           </el-image>
           
           <div class="mod-details-info">
             <h2 class="mod-details-name">{{ currentModInfo.name }}</h2>
             <div class="mod-details-meta">
               <span class="mod-details-author">
-                <component is="el-icon-user" class="legacy-icon" /> {{ currentModInfo.author }}
+                <component :is="'el-icon-user'" class="legacy-icon" /> {{ currentModInfo.author }}
               </span>
-              <span class="mod-details-version">
-                <component is="el-icon-info" class="legacy-icon" /> v{{ currentModInfo.version }}
+              <span class="mod-details-version" v-if="currentModInfo.version">
+                <component :is="'el-icon-info'" class="legacy-icon" /> v{{ currentModInfo.version }}
               </span>
               <span class="mod-details-update" v-if="currentModInfo.update_time">
-                <component is="el-icon-time" class="legacy-icon" /> {{ currentModInfo.update_time }}
+                <component :is="'el-icon-time'" class="legacy-icon" /> {{ currentModInfo.update_time }}
               </span>
               <span class="mod-details-subscribers" v-if="currentModInfo.subscribers">
-                <component is="el-icon-user-solid" class="legacy-icon" /> {{ currentModInfo.subscribers }} 订阅
+                <component :is="'el-icon-user-solid'" class="legacy-icon" /> {{ currentModInfo.subscribers }} 订阅
               </span>
-              <span class="mod-details-rating" v-if="currentModInfo.rating">
-                <component is="el-icon-star-on" class="legacy-icon" /> {{ currentModInfo.rating }} 星
+              <span class="mod-details-rating" v-if="currentModInfo.rating !== null">
+                <component :is="'el-icon-star-on'" class="legacy-icon" /> {{ currentModInfo.rating }} 评分
               </span>
             </div>
             <div class="mod-details-status">
@@ -244,10 +286,12 @@
         </div>
       </div>
       
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="detailsDialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo">配置模组</el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailsDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo || !selectedWorldId">配置模组</el-button>
+        </span>
+      </template>
     </el-dialog>
 
     <!-- 卸载确认对话框 -->
@@ -260,12 +304,18 @@
       <div class="uninstall-content">
         <p>您确定要卸载模组 <strong>{{ currentModInfo ? currentModInfo.name : '' }}</strong> 吗？</p>
         <p class="warning-text">此操作将永久删除该模组的所有文件和配置，且不可恢复。</p>
+        <el-input
+          v-model="uninstallConfirmation"
+          :placeholder="currentRoom ? `请输入完整房间名：${currentRoom.name}` : '请输入完整房间名'">
+        </el-input>
       </div>
       
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="uninstallDialogVisible = false">取消</el-button>
-        <el-button type="danger" @click="confirmUninstall" :loading="uninstalling">确认卸载</el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="uninstallDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="confirmUninstall" :loading="uninstalling">确认卸载</el-button>
+        </span>
+      </template>
     </el-dialog>
 
     <!-- 模组配置文件查看对话框 -->
@@ -278,10 +328,12 @@
       <div v-loading="loadingConfig" class="config-file-content">
         <pre class="lua-code">{{ configFileContent }}</pre>
       </div>
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="configFileDialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="downloadConfigFile">下载配置文件</el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="configFileDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="downloadConfigFile">下载配置文件</el-button>
+        </span>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -301,6 +353,11 @@ export default {
       modsList: [],
       // 加载状态
       loading: false,
+      loadingRooms: false,
+      roomOptions: [],
+      selectedRoomId: '',
+      selectedRoomWorlds: [],
+      selectedWorldId: '',
       // 筛选
       filterForm: {
         status: '',
@@ -316,8 +373,9 @@ export default {
       // 卸载对话框
       uninstallDialogVisible: false,
       uninstalling: false,
+      uninstallConfirmation: '',
       // 默认图标
-      defaultIcon: 'https://placehold.co/200x200/409EFF/white?text=MOD',
+      defaultIcon: '',
       // 配置文件查看相关
       configFileDialogVisible: false,
       configFileContent: '',
@@ -325,6 +383,9 @@ export default {
     };
   },
   computed: {
+    currentRoom() {
+      return this.roomOptions.find(room => room.id === this.selectedRoomId) || null;
+    },
     // 筛选后的模组列表
     filteredMods() {
       let result = [...this.modsList];
@@ -335,32 +396,35 @@ export default {
       if (this.filterForm.keyword) {
         const keyword = this.filterForm.keyword.toLowerCase();
         result = result.filter(mod => 
-          mod.name.toLowerCase().includes(keyword) || 
-          mod.author.toLowerCase().includes(keyword) ||
+          (mod.name || '').toLowerCase().includes(keyword) ||
+          (mod.author || '').toLowerCase().includes(keyword) ||
           (mod.description && mod.description.toLowerCase().includes(keyword))
         );
       }
       result.sort((a, b) => {
         switch (this.filterForm.sortBy) {
           case 'name':
-            return a.name.localeCompare(b.name);
+            return (a.name || '').localeCompare(b.name || '');
           case 'author':
-            return a.author.localeCompare(b.author);
-          case 'update_time':
+            return (a.author || '').localeCompare(b.author || '');
+          case 'update_time': {
             // 处理各种可能的日期格式
             const timeA = a.update_time || a.updatedAt || '';
             const timeB = b.update_time || b.updatedAt || '';
             return timeB.localeCompare(timeA); // 简单字符串比较，新的日期通常字符串比较结果更大
-          case 'subscribers':
+          }
+          case 'subscribers': {
             // 移除逗号并转为数字
             const subsA = parseInt((a.subscribers || '0').replace(/,/g, '')) || 0;
             const subsB = parseInt((b.subscribers || '0').replace(/,/g, '')) || 0;
             return subsB - subsA;
-          case 'rating':
+          }
+          case 'rating': {
             // 确保评分是数字
             const ratingA = parseFloat(a.rating || 0);
             const ratingB = parseFloat(b.rating || 0);
             return ratingB - ratingA;
+          }
           default:
             return 0;
         }
@@ -368,20 +432,71 @@ export default {
       return result;
     }
   },
-  created() {
-    this.fetchModsList();
+  async created() {
+    await this.initializeContext();
   },
   methods: {
-    // 获取模组列表
-    fetchModsList() {
-      this.loading = true;
-      modApi.getServerList().then(res => {
-        this.modsList = res || [];
-      }).catch(err => {
-        console.error(err);
-      }).finally(() => {
-        this.loading = false;
+    async initializeContext() {
+      this.loadingRooms = true;
+      try {
+        const context = await modApi.getContext({
+          roomId: this.$route.query.roomId || '',
+          worldId: this.$route.query.worldId || ''
+        });
+        this.roomOptions = context.rooms;
+        this.selectedRoomId = context.room?.id || '';
+        this.selectedRoomWorlds = context.worlds;
+        this.selectedWorldId = context.world?.id || '';
+        if (this.selectedRoomId) await this.fetchModsList();
+      } catch (error) {
+        this.$message.error(error.message || '加载模组上下文失败');
+      } finally {
+        this.loadingRooms = false;
+      }
+    },
+
+    async handleRoomChange(roomId) {
+      try {
+        const context = await modApi.getContext({ roomId });
+        this.selectedRoomWorlds = context.worlds;
+        this.selectedWorldId = context.world?.id || '';
+        await this.syncRouteContext();
+        await this.fetchModsList();
+      } catch (error) {
+        this.$message.error(error.message || '切换房间失败');
+      }
+    },
+
+    async handleWorldChange() {
+      await this.syncRouteContext();
+    },
+
+    async syncRouteContext() {
+      await this.$router.replace({
+        path: this.$route.path,
+        query: {
+          ...this.$route.query,
+          roomId: this.selectedRoomId || undefined,
+          worldId: this.selectedWorldId || undefined
+        }
       });
+    },
+
+    // 获取模组列表
+    async fetchModsList() {
+      if (!this.selectedRoomId) {
+        this.modsList = [];
+        return;
+      }
+      this.loading = true;
+      try {
+        this.modsList = await modApi.getServerList({ roomId: this.selectedRoomId });
+      } catch (error) {
+        this.modsList = [];
+        this.$message.error(`获取模组列表失败：${error.message || '未知错误'}`);
+      } finally {
+        this.loading = false;
+      }
     },
     
     // 应用筛选
@@ -405,12 +520,21 @@ export default {
     
     // 打开配置对话框
     openConfigDialog(mod) {
+      if (!this.selectedWorldId) {
+        this.$message.warning('请先选择要配置的世界');
+        return;
+      }
       // 先重置当前模组信息
       this.currentModInfo = null;
       this.loading = true;
       
       // 先获取模组配置数据
-      modApi.getModConfig({modid: mod.modid}).then(res => {
+      modApi.getModConfig({
+        roomId: this.selectedRoomId,
+        worldId: this.selectedWorldId,
+        modid: mod.modid,
+        mod
+      }).then(res => {
         this.currentModId = mod.modid;
         this.currentModInfo = res.modinfo;
         // 获取数据成功后再显示对话框
@@ -419,7 +543,7 @@ export default {
         });
       }).catch(err => {
         console.error(err);
-        this.$message.error('获取模组配置失败');
+        this.$message.error(`获取模组配置失败：${err.message || '未知错误'}`);
       }).finally(() => {
         this.loading = false;
       });
@@ -431,6 +555,7 @@ export default {
         type: 'success',
         message: `模组 ${data.modId} 配置已更新！`
       });
+      this.fetchModsList();
     },
     
     // 切换模组状态
@@ -439,9 +564,13 @@ export default {
       const action = status ? '启用' : '禁用';
       
       modApi.toggleMod({
+        roomId: this.selectedRoomId,
         modid: mod.modid,
+        worldIds: mod.configuredWorlds.length > 0
+          ? mod.configuredWorlds
+          : this.selectedRoomWorlds.map(world => world.id),
         enabled: status
-      }).then(res => {
+      }).then(() => {
         // 更新成功后,更新本地状态
         mod.enabled = status;
         this.$message({
@@ -454,7 +583,7 @@ export default {
         mod.enabled = !status;
         this.$message({
           type: 'error',
-          message: `${action}模组失败`
+          message: `${action}模组失败：${err.message || '未知错误'}`
         });
       }).finally(() => {
         this.loading = false;
@@ -483,27 +612,44 @@ export default {
     },
     
     // 更新模组
-    updateMod(mod) {
-      this.$message({
-        type: 'info',
-        message: `正在更新模组 ${mod.name}，此功能尚未实现`
-      });
+    async updateMod(mod) {
+      this.loading = true;
+      try {
+        await modApi.updateMod({ roomId: this.selectedRoomId, modid: mod.modid });
+        await this.fetchModsList();
+        this.$message.success(`模组 ${mod.name} 已更新`);
+      } catch (error) {
+        this.$message.error(`更新模组失败：${error.message || '未知错误'}`);
+      } finally {
+        this.loading = false;
+      }
     },
     
     // 卸载模组
     uninstallMod(mod) {
       this.currentModInfo = mod;
+      this.uninstallConfirmation = '';
       this.uninstallDialogVisible = true;
     },
     
     // 确认卸载
     confirmUninstall() {
       if (!this.currentModInfo) return;
+      if (!this.currentRoom || this.uninstallConfirmation !== this.currentRoom.name) {
+        this.$message.warning('请输入完整房间名确认卸载');
+        return;
+      }
       
       this.uninstalling = true;
       
       // 使用新的接口卸载模组
-      modApi.deleteMod(this.currentModInfo.modid)
+      modApi.deleteMod({
+        roomId: this.selectedRoomId,
+        modid: this.currentModInfo.modid,
+        worldIds: this.selectedRoomWorlds.map(world => world.id),
+        confirmation: this.uninstallConfirmation,
+        removeFiles: true
+      })
         .then(() => {
           // 从列表中移除
           const index = this.modsList.findIndex(mod => mod.modid === this.currentModInfo.modid);
@@ -526,31 +672,39 @@ export default {
         .finally(() => {
           this.uninstalling = false;
           this.uninstallDialogVisible = false;
+          this.uninstallConfirmation = '';
           this.currentModInfo = null;
         });
     },
     
     // 导航到搜索页面
     goToSearch() {
-      this.$router.push('/mods/search');
+      this.$router.push({ path: '/mods/search', query: { roomId: this.selectedRoomId || undefined } });
     },
 
     // 获取配置文件
     getModConfigFile() {
+      if (!this.selectedWorldId) {
+        this.$message.warning('请先选择要查看的世界');
+        return;
+      }
       this.loadingConfig = true;
-      modApi.getAllModConfigFile()
+      modApi.getAllModConfigFile({
+        roomId: this.selectedRoomId,
+        worldId: this.selectedWorldId
+      })
         .then(res => {
-          if (res && res.modinfo) {
+          if (res && res.file?.exists) {
             // 保存配置文件内容并显示对话框
             this.configFileContent = res.modinfo;
             this.configFileDialogVisible = true;
           } else {
-            this.$message.error('没有可用的配置文件');
+            this.$message.warning('该世界还没有 modoverrides.lua 文件');
           }
         })
         .catch(err => {
           console.error('获取配置文件失败:', err);
-          this.$message.error('获取配置文件失败');
+          this.$message.error(`获取配置文件失败：${err.message || '未知错误'}`);
         })
         .finally(() => {
           this.loadingConfig = false;
@@ -948,4 +1102,4 @@ export default {
 .config-file-dialog :deep(.el-dialog__body) {
   padding: 15px 20px;
 }
-</style> 
+</style>

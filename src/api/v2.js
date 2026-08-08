@@ -140,6 +140,49 @@ export const playersV2API = {
   )
 }
 
+export const modsV2API = {
+  search: (query, page = 1, pageSize = 20) => client.get('/mods/search', {
+    params: { query, page, pageSize }
+  }),
+  details: modId => client.get(`/mods/${encode(modId)}`),
+  list: roomId => client.get(`/rooms/${encode(roomId)}/mods`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  install: (roomId, input) => client.post(`/rooms/${encode(roomId)}/mods/actions/install`, input),
+  checkUpdates: roomId => client.post(`/rooms/${encode(roomId)}/mods/actions/check-updates`),
+  update: (roomId, modId) => client.post(
+    `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/update`
+  ),
+  enable: (roomId, modId, input) => client.post(
+    `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/enable`,
+    input
+  ),
+  repair: (roomId, modId, input) => client.post(
+    `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/repair`,
+    input
+  ),
+  uninstall: (roomId, modId, input) => client.post(
+    `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/uninstall`,
+    input
+  ),
+  configurationFile: (roomId, worldId) => client.get(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/configuration-file`,
+    { headers: { 'Cache-Control': 'no-store' } }
+  ),
+  configuration: (roomId, worldId, modId) => client.get(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/${encode(modId)}/configuration`,
+    { headers: { 'Cache-Control': 'no-store' } }
+  ),
+  previewConfiguration: (roomId, worldId, modId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/${encode(modId)}/configuration/preview`,
+    input
+  ),
+  applyConfiguration: (roomId, worldId, modId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/${encode(modId)}/configuration/actions/apply`,
+    input
+  )
+}
+
 export const automationV2API = {
   groups: roomId => client.get(`/rooms/${encode(roomId)}/automation/groups`),
   createGroup: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/groups`, input),

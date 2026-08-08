@@ -1,27 +1,44 @@
 <template>
   <div class="page-container">
     <el-card class="main-card">
-      <div slot="header" class="clearfix">
-        <span>搜索模组</span>
-        <div class="header-actions">
-          <el-button size="small" type="primary" @click="goToModList">返回已下载模组</el-button>
+      <template #header>
+        <div class="clearfix">
+          <span>搜索模组</span>
+          <div class="header-actions">
+            <el-button size="small" type="primary" @click="goToModList">返回已下载模组</el-button>
+          </div>
         </div>
-      </div>
+      </template>
       
       <!-- 搜索表单 -->
       <div class="search-form-container">
         <el-form :inline="true" :model="searchForm" size="small">
+          <el-form-item label="房间">
+            <el-select
+              v-model="selectedRoomId"
+              placeholder="请选择房间"
+              filterable
+              :loading="loadingRooms"
+              @change="handleRoomChange">
+              <el-option
+                v-for="room in roomOptions"
+                :key="room.id"
+                :label="room.name"
+                :value="room.id">
+              </el-option>
+            </el-select>
+          </el-form-item>
           <el-form-item>
             <el-input 
               v-model="searchForm.keyword" 
               placeholder="输入模组名称搜索..." 
               prefix-icon="el-icon-search" 
               clearable
-              @keyup.enter="searchMods">
+              @keyup.enter="startSearch">
             </el-input>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="searchMods" :loading="searching">搜索</el-button>
+            <el-button type="primary" @click="startSearch" :loading="searching">搜索</el-button>
             <el-button @click="resetSearch">重置</el-button>
           </el-form-item>
         </el-form>
@@ -76,32 +93,34 @@
                       :src="mod.img || defaultImage" 
                       fit="cover"
                       lazy>
-                      <div slot="error" class="image-slot">
-                        <component is="el-icon-picture-outline" class="legacy-icon" />
-                      </div>
+                      <template #error>
+                        <div class="image-slot">
+                          <component :is="'el-icon-picture-outline'" class="legacy-icon" />
+                        </div>
+                      </template>
                     </el-image>
                   </div>
                   
                   <div class="mod-card-info">
                     <div class="mod-card-author">
-                      <component is="el-icon-user" class="legacy-icon" />
+                      <component :is="'el-icon-user'" class="legacy-icon" />
                       <span>{{ mod.auth }}</span>
                     </div>
-                    <div class="mod-card-version">
-                      <component is="el-icon-info" class="legacy-icon" />
+                    <div class="mod-card-version" v-if="mod.version">
+                      <component :is="'el-icon-info'" class="legacy-icon" />
                       <span>{{ mod.version }}</span>
                     </div>
                     <div class="mod-card-update">
-                      <component is="el-icon-time" class="legacy-icon" />
+                      <component :is="'el-icon-time'" class="legacy-icon" />
                       <span>{{ mod.time }}</span>
                     </div>
                     <div class="mod-card-subscribers">
-                      <component is="el-icon-user-solid" class="legacy-icon" />
+                      <component :is="'el-icon-user-solid'" class="legacy-icon" />
                       <span>{{ mod.sub }} 订阅</span>
                     </div>
-                    <div class="mod-card-rating" v-if="mod.rating_img">
-                      <component is="el-icon-star-on" class="legacy-icon" />
-                      <span>{{ extractRating(mod.rating_img) }} 星</span>
+                    <div class="mod-card-rating" v-if="mod.rating !== null">
+                      <component :is="'el-icon-star-on'" class="legacy-icon" />
+                      <span>{{ formatRating(mod.rating) }} 评分</span>
                     </div>
                   </div>
                 </div>
@@ -110,11 +129,11 @@
                   <el-button 
                     size="small" 
                     :type="mod.isInstalled ? 'success' : 'primary'" 
-                    :disabled="downloadingMods[mod.id]" 
+                    :disabled="!selectedRoomId || downloadingMods[mod.id]"
                     :loading="downloadingMods[mod.id]"
                     @click="handleDownloadMod(mod)">
                     <span v-if="mod.isInstalled">
-                      <component is="el-icon-refresh" class="legacy-icon" /> 更新
+                      <component :is="'el-icon-refresh'" class="legacy-icon" /> 更新
                     </span>
                     <span v-else>
                       {{ downloadingMods[mod.id] ? '下载中...' : '下载' }}
@@ -122,11 +141,13 @@
                   </el-button>
                   <el-dropdown trigger="click" @command="handleCommand" size="small">
                     <el-button size="small" type="text">
-                      更多<component is="el-icon-arrow-down" class="legacy-icon el-icon--right" />
+                      更多<component :is="'el-icon-arrow-down'" class="legacy-icon el-icon--right" />
                     </el-button>
-                    <el-dropdown-menu slot="dropdown">
-                      <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
-                    </el-dropdown-menu>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
                   </el-dropdown>
                 </div>
               </el-card>
@@ -140,7 +161,7 @@
               layout="prev, pager, next"
               :total="totalResults"
               :page-size="pageSize"
-              :current-page.sync="currentPage"
+              v-model:current-page="currentPage"
               @current-change="handlePageChange">
             </el-pagination>
           </div>
@@ -173,28 +194,30 @@
             :src="currentModInfo.img || defaultImage" 
             fit="cover"
             class="mod-details-image">
-            <div slot="error" class="image-slot">
-              <component is="el-icon-picture-outline" class="legacy-icon" />
-            </div>
+            <template #error>
+              <div class="image-slot">
+                <component :is="'el-icon-picture-outline'" class="legacy-icon" />
+              </div>
+            </template>
           </el-image>
           
           <div class="mod-details-info">
             <h2 class="mod-details-name">{{ currentModInfo.name }}</h2>
             <div class="mod-details-meta">
               <span class="mod-details-author">
-                <component is="el-icon-user" class="legacy-icon" /> {{ currentModInfo.auth }}
+                <component :is="'el-icon-user'" class="legacy-icon" /> {{ currentModInfo.auth }}
               </span>
-              <span class="mod-details-version">
-                <component is="el-icon-info" class="legacy-icon" /> v{{ currentModInfo.version }}
+              <span class="mod-details-version" v-if="currentModInfo.version">
+                <component :is="'el-icon-info'" class="legacy-icon" /> v{{ currentModInfo.version }}
               </span>
               <span class="mod-details-update">
-                <component is="el-icon-time" class="legacy-icon" /> {{ currentModInfo.time }}
+                <component :is="'el-icon-time'" class="legacy-icon" /> {{ currentModInfo.time }}
               </span>
               <span class="mod-details-subscribers" v-if="currentModInfo.sub">
-                <component is="el-icon-user-solid" class="legacy-icon" /> {{ currentModInfo.sub }} 订阅
+                <component :is="'el-icon-user-solid'" class="legacy-icon" /> {{ currentModInfo.sub }} 订阅
               </span>
-              <span class="mod-details-rating" v-if="currentModInfo.rating_img">
-                <component is="el-icon-star-on" class="legacy-icon" /> {{ extractRating(currentModInfo.rating_img) }} 星
+              <span class="mod-details-rating" v-if="currentModInfo.rating !== null">
+                <component :is="'el-icon-star-on'" class="legacy-icon" /> {{ formatRating(currentModInfo.rating) }} 评分
               </span>
             </div>
             <div class="mod-details-status" v-if="currentModInfo.isInstalled">
@@ -212,22 +235,24 @@
         </div>
       </div>
       
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="detailsDialogVisible = false">关闭</el-button>
-        <el-button 
-          type="primary" 
-          :disabled="downloadingMods[currentModInfo?.id]"
-          :loading="downloadingMods[currentModInfo?.id]"
-          @click="handleDownloadMod(currentModInfo)">
-          {{ currentModInfo?.isInstalled ? '更新模组' : '下载模组' }}
-        </el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailsDialogVisible = false">关闭</el-button>
+          <el-button
+            type="primary"
+            :disabled="!selectedRoomId || downloadingMods[currentModInfo?.id]"
+            :loading="downloadingMods[currentModInfo?.id]"
+            @click="handleDownloadMod(currentModInfo)">
+            {{ currentModInfo?.isInstalled ? '更新模组' : '下载模组' }}
+          </el-button>
+        </span>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { itemApi, modApi } from '@/api';
+import { modApi } from '@/api';
 
 export default {
   name: 'ModSearch',
@@ -242,40 +267,75 @@ export default {
       totalResults: 0,
       pageSize: 20,
       currentPage: 1,
-      defaultImage: 'https://placehold.co/200x200/409EFF/white?text=MOD',
+      defaultImage: '',
       downloadingMods: {}, // 跟踪正在下载的模组
       installedMods: [], // 存储已安装的模组信息
       loadingInstalledMods: false, // 加载已安装模组的状态
+      loadingRooms: false,
+      roomOptions: [],
+      selectedRoomId: '',
+      selectedRoomWorlds: [],
       detailsDialogVisible: false, // 详情对话框可见性
       currentModInfo: null // 当前查看的模组
     };
   },
-  created() {
-    // 获取已安装模组列表
-    this.getInstalledMods();
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const keyword = urlParams.get('keyword');
-    
-    if (keyword) {
+  async created() {
+    await this.initializeContext();
+    const keyword = this.$route.query.keyword;
+    if (typeof keyword === 'string' && keyword.trim()) {
       this.searchForm.keyword = keyword;
-      this.searchMods();
+      await this.searchMods();
     }
   },
   methods: {
-    // 获取已安装模组列表
-    getInstalledMods() {
-      this.loadingInstalledMods = true;
-      modApi.getServerList()
-        .then(res => {
-          this.installedMods = res || [];
-        })
-        .catch(err => {
-          console.error('获取已安装模组失败:', err);
-        })
-        .finally(() => {
-          this.loadingInstalledMods = false;
+    async initializeContext() {
+      this.loadingRooms = true;
+      try {
+        const context = await modApi.getContext({ roomId: this.$route.query.roomId || '' });
+        this.roomOptions = context.rooms;
+        this.selectedRoomId = context.room?.id || '';
+        this.selectedRoomWorlds = context.worlds;
+        if (this.selectedRoomId) await this.getInstalledMods();
+      } catch (error) {
+        this.$message.error(error.message || '加载房间失败');
+      } finally {
+        this.loadingRooms = false;
+      }
+    },
+
+    async handleRoomChange(roomId) {
+      try {
+        const context = await modApi.getContext({ roomId });
+        this.selectedRoomWorlds = context.worlds;
+        await this.$router.replace({
+          path: this.$route.path,
+          query: { ...this.$route.query, roomId }
         });
+        await this.getInstalledMods();
+        this.searchResults = this.searchResults.map(mod => ({
+          ...mod,
+          isInstalled: this.isModInstalled(mod.id)
+        }));
+      } catch (error) {
+        this.$message.error(error.message || '切换房间失败');
+      }
+    },
+
+    // 获取已安装模组列表
+    async getInstalledMods() {
+      if (!this.selectedRoomId) {
+        this.installedMods = [];
+        return;
+      }
+      this.loadingInstalledMods = true;
+      try {
+        this.installedMods = await modApi.getServerList({ roomId: this.selectedRoomId });
+      } catch (error) {
+        this.installedMods = [];
+        this.$message.error(`获取已安装模组失败：${error.message || '未知错误'}`);
+      } finally {
+        this.loadingInstalledMods = false;
+      }
     },
     
     // 检查模组是否已安装
@@ -283,7 +343,12 @@ export default {
       return this.installedMods.some(mod => mod.modid === modId);
     },
     
-    searchMods() {
+    startSearch() {
+      this.currentPage = 1;
+      this.searchMods();
+    },
+
+    async searchMods() {
       if (!this.searchForm.keyword.trim()) {
         this.$message.warning('请输入搜索关键词');
         return;
@@ -296,32 +361,27 @@ export default {
       this.hasSearched = true;
       this.searchResults = [];
       
-      const encodedKeyword = encodeURIComponent(this.searchForm.keyword);
-      
-      itemApi.searchItems({modname: encodedKeyword})
-        .then(data => {
-          if (Array.isArray(data)) {
-            // 标记已安装的模组
-            this.searchResults = data.map(mod => ({
-              ...mod,
-              isInstalled: this.isModInstalled(mod.id)
-            }));
-            this.totalResults = data.length;
-          } else {
-            this.searchResults = [];
-            this.totalResults = 0;
-          }
-        })
-        .catch(error => {
-          this.$message.error('搜索模组失败');
-          this.searchResults = [];
-        })
-        .finally(() => {
-          this.searching = false;
+      try {
+        const data = await modApi.searchMods({
+          keyword: this.searchForm.keyword,
+          page: this.currentPage,
+          pageSize: this.pageSize
         });
+        this.searchResults = (data.items || []).map(mod => ({
+          ...mod,
+          isInstalled: this.isModInstalled(mod.id)
+        }));
+        this.totalResults = data.total || 0;
+      } catch (error) {
+        this.$message.error(`搜索模组失败：${error.message || '未知错误'}`);
+        this.searchResults = [];
+        this.totalResults = 0;
+      } finally {
+        this.searching = false;
+      }
     },
     handleDownloadMod(mod) {
-      let {id, img, name, time, version, sub, rating_img, auth} = mod;
+      const { name } = mod;
       
       // 如果模组已安装，询问是否要更新
       if (mod.isInstalled) {
@@ -341,18 +401,13 @@ export default {
     },
     
     // 实际执行下载的方法
-    downloadMod(mod) {
-      let {id, img, name, time, version, sub, rating_img, auth} = mod;
-      let params = {
-        auth,
-        id,
-        img,
-        name,
-        time,
-        version,
-        sub,
-        rating: rating_img.split('https://community.fastly.steamstatic.com/public/images/sharedfiles/')[1].split('-')[0]
+    async downloadMod(mod) {
+      if (!this.selectedRoomId) {
+        this.$message.warning('请先选择房间');
+        return;
       }
+      const id = mod.id;
+      const wasInstalled = mod.isInstalled;
       
       // 显示下载中消息
       const loadingMessage = this.$message({
@@ -364,26 +419,24 @@ export default {
       
       this.downloadingMods[id] = true;
       
-      modApi.downloadMod(params)  
-        .then(() => {
-          // 关闭下载中消息
-          loadingMessage.close();
-          
-          // 更新模组状态
-          this.$set(mod, 'isInstalled', true);
-          
-          // 刷新已安装模组列表
-          this.getInstalledMods();
-          
-          this.$message.success(mod.isInstalled ? '更新成功' : '下载成功');
-          this.downloadingMods[id] = false;
-        })
-        .catch(error => {
-          // 关闭下载中消息
-          loadingMessage.close();
-          this.$message.error('下载失败：' + (error.message || '未知错误'));
-          this.downloadingMods[id] = false;
+      try {
+        await modApi.downloadMod({
+          roomId: this.selectedRoomId,
+          worldIds: this.selectedRoomWorlds.map(world => world.id),
+          id,
+          installed: wasInstalled,
+          enabled: true,
+          includeDependencies: true
         });
+        mod.isInstalled = true;
+        await this.getInstalledMods();
+        this.$message.success(wasInstalled ? '更新成功' : '下载成功');
+      } catch (error) {
+        this.$message.error(`${wasInstalled ? '更新' : '下载'}失败：${error.message || '未知错误'}`);
+      } finally {
+        loadingMessage.close();
+        this.downloadingMods[id] = false;
+      }
     },
     
     resetSearch() {
@@ -391,14 +444,17 @@ export default {
       this.hasSearched = false;
       this.searchResults = [];
       this.searching = false;
+      this.totalResults = 0;
+      this.currentPage = 1;
     },
     
     handlePageChange(page) {
       this.currentPage = page;
+      this.searchMods();
     },
 
     goToModList() {
-      this.$router.push('/mods');
+      this.$router.push({ path: '/mods/list', query: { roomId: this.selectedRoomId || undefined } });
     },
 
     showModDetails(mod) {
@@ -407,18 +463,8 @@ export default {
     },
 
     // 提取星级评分
-    extractRating(ratingImg) {
-      if (!ratingImg) return '';
-      try {
-        // 从形如"https://community.fastly.steamstatic.com/public/images/sharedfiles/5-star.png"的图片URL提取星级
-        const match = ratingImg.match(/(\d+)-star/);
-        if (match && match[1]) {
-          return match[1];
-        }
-        return '';
-      } catch (error) {
-        return '';
-      }
+    formatRating(rating) {
+      return Number.isFinite(Number(rating)) ? Number(rating).toFixed(2) : '';
     },
     
     // 处理下拉菜单命令
@@ -837,4 +883,4 @@ export default {
 .mod-card.is-installed:hover {
   box-shadow: 0 8px 16px rgba(103, 194, 58, 0.3);
 }
-</style> 
+</style>

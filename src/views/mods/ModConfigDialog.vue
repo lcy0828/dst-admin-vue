@@ -14,7 +14,7 @@
     <div class="config-container">
       <!-- 加载指示器 -->
       <div v-if="loading" class="loading-container">
-        <component is="el-icon-loading" class="legacy-icon" />
+        <component :is="'el-icon-loading'" class="legacy-icon" />
         <p>加载模组配置中...</p>
       </div>
       
@@ -23,7 +23,7 @@
         <!-- 重置按钮 -->
         <div class="reset-button-container" v-if="hasOptions">
           <el-button size="small" type="text" @click="resetToDefault" class="reset-button">
-            <component is="el-icon-refresh-left" class="legacy-icon" /> 重置为默认配置
+            <component :is="'el-icon-refresh-left'" class="legacy-icon" /> 重置为默认配置
           </el-button>
         </div>
         
@@ -32,7 +32,7 @@
           <!-- 模组描述 -->
           <div class="mod-description" v-if="modInfo.description">
             <div class="description-header">
-              <component is="el-icon-info-circle" class="legacy-icon" />
+              <component :is="'el-icon-info-circle'" class="legacy-icon" />
               <span>模组描述</span>
             </div>
             <div class="description-content">
@@ -66,7 +66,7 @@
                     effect="dark" 
                     :content="option.hover" 
                     placement="top">
-                    <component is="el-icon-question" class="legacy-icon option-tooltip" />
+                    <component :is="'el-icon-question'" class="legacy-icon option-tooltip" />
                   </el-tooltip>
                 </div>
               </template>
@@ -93,7 +93,7 @@
                     effect="dark" 
                     :content="option.hover" 
                     placement="top">
-                    <component is="el-icon-question" class="legacy-icon option-tooltip" />
+                    <component :is="'el-icon-question'" class="legacy-icon option-tooltip" />
                   </el-tooltip>
                 </div>
               </template>
@@ -101,8 +101,9 @@
               <!-- 普通输入框 -->
               <template v-else>
                 <div class="option-control-wrapper">
-                  <el-input 
-                    v-model="configForm[option.name]" 
+                  <el-input
+                    :model-value="configForm[option.name]"
+                    @update:model-value="value => updateTextOption(option, value)"
                     @change="handleConfigChange(option.name)"
                     class="option-input" />
                   
@@ -113,7 +114,7 @@
                     effect="dark" 
                     :content="option.hover" 
                     placement="top">
-                    <component is="el-icon-question" class="legacy-icon option-tooltip" />
+                    <component :is="'el-icon-question'" class="legacy-icon option-tooltip" />
                   </el-tooltip>
                 </div>
               </template>
@@ -134,10 +135,12 @@
     </div>
     
     <!-- 底部按钮 -->
-    <span slot="footer" class="dialog-footer">
-      <el-button @click="handleClose">取消</el-button>
-      <el-button type="primary" @click="saveConfig" :loading="saving">保存配置</el-button>
-    </span>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="handleClose">取消</el-button>
+        <el-button type="primary" @click="saveConfig" :loading="saving">保存配置</el-button>
+      </span>
+    </template>
   </el-dialog>
 </template>
 
@@ -147,7 +150,7 @@ import { modApi } from '@/api';
 export default {
   name: 'ModConfigDialog',
   props: {
-    visible: {
+    modelValue: {
       type: Boolean,
       default: false
     },
@@ -162,6 +165,14 @@ export default {
     isNewMod: {
       type: Boolean,
       default: false
+    },
+    roomId: {
+      type: String,
+      default: ''
+    },
+    worldId: {
+      type: String,
+      default: ''
     }
   },
   data() {
@@ -173,7 +184,8 @@ export default {
       originalConfig: {},
       defaultConfig: {},
       userCustomConfig: {},
-      defaultIcon: 'https://placehold.co/200x200/409EFF/white?text=MOD',
+      configRevision: '',
+      configuredEnabled: true,
       isInitialized: false,
       keepAliveInterval: null
     };
@@ -195,7 +207,7 @@ export default {
     }
   },
   watch: {
-    visible(newVal) {
+    modelValue(newVal) {
       this.dialogVisible = newVal;
       if (newVal) {
         // 确保在打开对话框时重置状态
@@ -213,7 +225,7 @@ export default {
     },
     dialogVisible(newVal) {
       if (!newVal) {
-        this.$emit('update:visible', false);
+        this.$emit('update:modelValue', false);
         this.clearKeepAliveTimer();
       } else {
         this.setupKeepAliveTimer();
@@ -240,6 +252,8 @@ export default {
       this.originalConfig = {};
       this.defaultConfig = {};
       this.userCustomConfig = {};
+      this.configRevision = '';
+      this.configuredEnabled = true;
       // 清除定时器
       this.clearKeepAliveTimer();
     },
@@ -263,7 +277,7 @@ export default {
     },
     
     // 初始化配置
-    initializeConfig() {
+    async initializeConfig() {
       if (this.isInitialized) return;
       if (!this.modInfo) return;
       
@@ -275,22 +289,16 @@ export default {
       this.defaultConfig = {};
       this.userCustomConfig = {};
       
-      // 先获取用户自定义配置
-      this.getUserCustomConfig()
-        .then(() => {
-          try {
-            if (this.modInfo.configuration_options) {
-              this.initializeConfigFromData(this.modInfo.configuration_options);
-            }
-          } catch (error) {
-            console.error('模组配置初始化失败', error);
-            this.$message.error('模组配置初始化失败');
-            this.isInitialized = false;
-          }
-        })
-        .finally(() => {
-          this.loading = false;
-        });
+      try {
+        await this.getUserCustomConfig();
+        if (this.modInfo.configuration_options) {
+          this.initializeConfigFromData(this.modInfo.configuration_options);
+        }
+      } catch (error) {
+        this.isInitialized = false;
+      } finally {
+        this.loading = false;
+      }
     },
     
     // 获取用户自定义配置
@@ -299,16 +307,22 @@ export default {
         return Promise.resolve();
       }
       
-      return modApi.getModCustomConfig({ modid: this.modId })
+      return modApi.getModCustomConfig({
+        roomId: this.roomId,
+        worldId: this.worldId,
+        modid: this.modId
+      })
         .then(res => {
           if (res && res.modinfo && res.modinfo.configuration_options) {
             this.userCustomConfig = res.modinfo.configuration_options;
-            console.log('加载用户自定义配置成功', this.userCustomConfig);
+            this.configRevision = res.modinfo.revision;
+            this.configuredEnabled = res.modinfo.enabled;
           }
         })
         .catch(err => {
           console.error('获取用户自定义配置失败', err);
-          // 获取失败不阻止后续流程
+          this.$message.error(`获取用户自定义配置失败：${err.message || '未知错误'}`);
+          throw err;
         });
     },
     
@@ -323,7 +337,7 @@ export default {
           const parsedValue = this.parseOptionValue(option.default);
           
           // 检查是否有用户自定义配置
-          const hasUserConfig = this.userCustomConfig.hasOwnProperty(option.name);
+          const hasUserConfig = Object.prototype.hasOwnProperty.call(this.userCustomConfig, option.name);
           const userValue = hasUserConfig ? this.userCustomConfig[option.name] : undefined;
           
           if (userValue !== undefined) {
@@ -380,12 +394,22 @@ export default {
     
     // 判断是否是布尔选项
     isBooleanOption(option) {
+      if (option.type === 'boolean') return true;
       if (!option.options || !Array.isArray(option.options) || option.options.length !== 2) {
         return false;
       }
       
       const values = option.options.map(opt => String(opt.data).toLowerCase());
       return values.includes('true') && values.includes('false');
+    },
+
+    updateTextOption(option, value) {
+      if (option.type === 'number' && value !== '') {
+        const numeric = Number(value);
+        this.configForm[option.name] = Number.isFinite(numeric) ? numeric : value;
+      } else {
+        this.configForm[option.name] = value;
+      }
     },
     
     // 重置为默认配置
@@ -406,14 +430,26 @@ export default {
     // 保存配置
     saveConfig() {
       if (this.saving) return;
-      
+      const prepared = this.prepareConfigForSubmit(this.configForm);
+      const changedConfig = Object.fromEntries(
+        Object.entries(prepared).filter(([key, value]) =>
+          JSON.stringify(value) !== JSON.stringify(this.originalConfig[key])
+        )
+      );
+      const enabled = this.modInfo?.configuration?.enabled ?? this.configuredEnabled;
+      if (Object.keys(changedConfig).length === 0 && enabled === this.configuredEnabled) {
+        this.$message.info('没有需要保存的配置变更');
+        return;
+      }
+
       this.saving = true;
-      
-      // 准备提交数据
       const customConfigData = {
+        roomId: this.roomId,
+        worldId: this.worldId,
         modid: this.modId,
-        configuration_options: this.prepareConfigForSubmit(this.configForm),
-        enabled: this.modInfo?.enabled || true
+        expectedRevision: this.configRevision,
+        configuration_options: changedConfig,
+        enabled
       };
       
       // 只使用新接口保存用户自定义配置
@@ -433,10 +469,10 @@ export default {
             message: '配置已保存'
           });
         })
-        .catch(() => {
+        .catch(error => {
           this.$message({
             type: 'error',
-            message: '保存模组配置失败'
+            message: `保存模组配置失败：${error.message || '未知错误'}`
           });
         })
         .finally(() => {
@@ -471,7 +507,7 @@ export default {
     
     // 处理配置变更
     handleConfigChange(optionName) {
-      console.log(`配置项变更: ${optionName} => ${JSON.stringify(this.configForm[optionName])}`);
+      return this.configForm[optionName];
     },
     
     // 关闭对话框
@@ -500,7 +536,7 @@ export default {
       }
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.resetComponentState();
   }
 };
@@ -676,4 +712,4 @@ export default {
     max-width: 100%;
   }
 }
-</style> 
+</style>

@@ -4,6 +4,7 @@ import apiConfig from './config';
 import axios from 'axios';
 import commandManager, { commandApi, COMMAND_TYPES } from './commandManager';
 import { playerApi as realPlayerApi } from './playerApi';
+import { realModApi } from './modApi';
 import { legacyBackupApi, legacyRoomApi, legacySystemApi, legacyWorldApi } from './v2LegacyAdapters';
 import { legacyAccessApi, legacyRoomConfigApi, legacyWorldConfigurationApi } from './v2ConfigurationAdapters';
 
@@ -128,7 +129,11 @@ export const itemApi = {
   },
   // 搜索物品
   searchItems(params) {
-    return request.get(`/mod/search`, params);
+    return realModApi.searchMods({
+      keyword: params.modname,
+      page: params.page,
+      pageSize: params.pageSize
+    });
   },
 
   saveModConfig(params) {
@@ -137,53 +142,7 @@ export const itemApi = {
 };
 
 // 模组相关API
-export const modApi = {
-  getServerList() {
-    return request.get('/mod/server/list');
-  },
-  // 获取模组配置
-  getModConfig(params) {
-    return request.get("/mod/config", params);
-  },
-  // 获取用户自定义模组配置
-  getModCustomConfig(params) {
-    return request.get("/mod/custom-config", params);
-  },
-  // 保存用户自定义模组配置
-  saveModCustomConfig(data) {
-    return request.post("/mod/custom-config", data);
-  },
-  // 获取所有已开启模组配置文件
-  getAllModConfigFile() {
-    return request.get("/mod/config-file");
-  },
-  // 更新模组配置（已废弃，请使用saveModCustomConfig）
-  updateModConfig(id, data) {
-    console.warn('updateModConfig方法已废弃，请使用saveModCustomConfig方法');
-    if (data && data.modid) {
-      // 兼容以前的调用方式，转换为新格式
-      return this.saveModCustomConfig({
-        modid: data.modid,
-        configuration_options: data.config || {},
-        enabled: true
-      });
-    }
-    // 保留后向兼容性，但实际不会被调用
-    return request.put(`/mods/${id}/config`, data);
-  },
-  // 下载模组到服务器（替换原收藏模组功能）
-  downloadMod(data) {
-    return request.post("/mod/server/add", data, { timeout: apiConfig.DOWNLOAD_TIMEOUT });
-  },
-  // 卸载模组
-  deleteMod(modid) {
-    return request.post("/mod/server/delete", { modid });
-  },
-  // 切换模组启用/禁用状态
-  toggleMod(data) {
-    return request.post("/mod/toggle", data);
-  }
-};
+export const modApi = realModApi;
 
 // 系统相关API
 export const systemApi = legacySystemApi;
