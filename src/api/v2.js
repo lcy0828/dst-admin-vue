@@ -1,5 +1,6 @@
 import axios from 'axios'
 import apiConfig from './config'
+import { getActiveRuntimeTarget } from '@/utils/runtimeTarget'
 
 const baseURL = `${apiConfig.BASE_URL.replace(/\/$/, '')}/v2`
 let csrfToken = ''
@@ -25,6 +26,7 @@ const client = axios.create({
 
 client.interceptors.request.use(config => {
   const method = (config.method || 'get').toUpperCase()
+  config.headers['X-DST-Runtime-Target'] = getActiveRuntimeTarget().id
   if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     config.headers['X-CSRF-Token'] = csrfToken
     if (!config.headers['Idempotency-Key']) config.headers['Idempotency-Key'] = crypto.randomUUID()
@@ -234,6 +236,13 @@ export const agentsV2API = {
 	runCommand: (agentId, input) => client.post(`/agents/${encode(agentId)}/commands`, input),
 	security: () => client.get('/agents/security', { headers: { 'Cache-Control': 'no-store' } }),
 	rotateKey: confirmation => client.post('/agents/security/actions/rotate', { confirmation })
+}
+
+export const runtimeTargetsV2API = {
+	list: () => client.get('/runtime-targets', { headers: { 'Cache-Control': 'no-store' } }),
+	get: agentId => client.get(`/runtime-targets/agents/${encode(agentId)}`, { headers: { 'Cache-Control': 'no-store' } }),
+	save: (agentId, input) => client.put(`/runtime-targets/agents/${encode(agentId)}`, input),
+	remove: agentId => client.delete(`/runtime-targets/agents/${encode(agentId)}`)
 }
 
 export const consoleV2API = {

@@ -172,6 +172,7 @@
           </el-breadcrumb>
         </div>
         <div class="right-menu">
+          <RuntimeTargetSwitch @change="handleRuntimeTargetChange" />
           <a
             href="https://github.com/lcy0828/dst-admin-go"
             target="_blank"
@@ -200,7 +201,47 @@
 
       <!-- 内容区域 -->
       <main id="main-content" class="content-container" tabindex="-1">
-        <router-view></router-view>
+        <section v-if="remoteContextBlocked" class="remote-context-state">
+          <div class="remote-state-header">
+            <div>
+              <p class="remote-state-label">当前管理目标</p>
+              <h2>{{ runtimeTarget.name }}</h2>
+            </div>
+            <el-tag :type="runtimeTarget.online ? 'success' : 'danger'" effect="plain">
+              {{ runtimeTarget.online ? 'Agent 在线' : 'Agent 离线' }}
+            </el-tag>
+          </div>
+          <el-alert
+            type="warning"
+            :closable="false"
+            show-icon
+            title="远程领域操作尚未启用"
+            description="当前节点的路径配置保持独立。房间、世界、模组和备份操作已锁定，防止请求误落到本机。"
+          />
+          <dl class="remote-runtime-summary">
+            <div>
+              <dt>主机</dt>
+              <dd>{{ runtimeTarget.hostname || '-' }}</dd>
+            </div>
+            <div>
+              <dt>系统</dt>
+              <dd>{{ runtimeTarget.os || '-' }} {{ runtimeTarget.arch || '' }}</dd>
+            </div>
+            <div>
+              <dt>存档路径</dt>
+              <dd>{{ runtimeTarget.config?.savePath || '未配置' }}</dd>
+            </div>
+            <div>
+              <dt>服务端路径</dt>
+              <dd>{{ runtimeTarget.config?.serverPath || '未配置' }}</dd>
+            </div>
+          </dl>
+          <div class="remote-state-actions">
+            <el-button type="primary" @click="$router.push('/agents/list')">远程运行时配置</el-button>
+            <el-button @click="switchToLocalRuntime">切换到本机</el-button>
+          </div>
+        </section>
+        <router-view v-else></router-view>
       </main>
     </div>
 
@@ -233,10 +274,18 @@
 
 <script>
 import { authAPI } from '@/api/v2'
+import RuntimeTargetSwitch from '@/components/RuntimeTargetSwitch.vue'
+import {
+  getActiveRuntimeTarget,
+  LOCAL_RUNTIME_TARGET_ID,
+  RUNTIME_TARGET_CHANGED_EVENT,
+  setActiveRuntimeTarget
+} from '@/utils/runtimeTarget'
 import { getSystemPreferences } from '@/utils/systemPreferences'
 
 export default {
   name: 'MainLayout',
+  components: { RuntimeTargetSwitch },
   data() {
     return {
       systemName: getSystemPreferences().systemName,
@@ -245,6 +294,7 @@ export default {
       mobileSidebarOpen: false,
       breadcrumbs: [],
       currentUser: {},
+      runtimeTarget: getActiveRuntimeTarget(),
       profileVisible: false,
       passwordVisible: false,
       passwordSaving: false,
@@ -266,6 +316,9 @@ export default {
   computed: {
     activeMenu() {
       return this.$route.path
+    },
+    remoteContextBlocked() {
+      return this.runtimeTarget.id !== LOCAL_RUNTIME_TARGET_ID && !this.$route.path.startsWith('/agents')
     }
   },
   watch: {
@@ -278,6 +331,7 @@ export default {
     window.addEventListener('system-preferences-updated', this.updateSystemName)
     window.addEventListener('resize', this.updateViewportMode)
     window.addEventListener('keydown', this.handleGlobalKeydown)
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetEvent)
     this.updateViewportMode()
     this.updateBreadcrumbs()
     this.loadCurrentUser()
@@ -286,6 +340,7 @@ export default {
     window.removeEventListener('system-preferences-updated', this.updateSystemName)
     window.removeEventListener('resize', this.updateViewportMode)
     window.removeEventListener('keydown', this.handleGlobalKeydown)
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetEvent)
   },
   methods: {
     updateViewportMode() {
@@ -298,6 +353,15 @@ export default {
     },
     closeMobileSidebar() {
       this.mobileSidebarOpen = false
+    },
+    handleRuntimeTargetChange(target) {
+      this.runtimeTarget = target
+    },
+    handleRuntimeTargetEvent(event) {
+      this.runtimeTarget = event.detail || getActiveRuntimeTarget()
+    },
+    switchToLocalRuntime() {
+      setActiveRuntimeTarget()
     },
     handleMenuSelect() {
       if (this.isCompactViewport) this.closeMobileSidebar()
@@ -759,6 +823,68 @@ export default {
   outline: none;
 }
 
+.remote-context-state {
+  width: min(760px, 100%);
+  margin: 28px auto 0;
+}
+
+.remote-state-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.remote-state-label {
+  margin: 0 0 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.remote-state-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.remote-runtime-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 22px 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.remote-runtime-summary > div {
+  min-width: 0;
+  padding: 14px 0;
+}
+
+.remote-runtime-summary > div:nth-child(odd) {
+  padding-right: 18px;
+}
+
+.remote-runtime-summary dt {
+  margin-bottom: 5px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.remote-runtime-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.remote-state-actions {
+  display: flex;
+  gap: 8px;
+}
+
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -869,9 +995,33 @@ export default {
     scroll-behavior: auto;
   }
 
+  .remote-context-state {
+    margin-top: 12px;
+  }
+
+  .remote-runtime-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .remote-runtime-summary > div,
+  .remote-runtime-summary > div:nth-child(odd) {
+    padding-right: 0;
+  }
+
   :deep(.el-dialog) {
     width: calc(100vw - 24px) !important;
     max-width: 520px;
+  }
+}
+
+@media (max-width: 600px) {
+  .left-menu :deep(.el-breadcrumb) {
+    display: none;
+  }
+
+  .remote-state-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

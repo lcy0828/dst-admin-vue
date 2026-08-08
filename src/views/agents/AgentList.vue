@@ -41,7 +41,15 @@
                   </div>
                   <div class="agent-actions">
                     <el-button size="small" icon="el-icon-view" @click="showAgentDetails(agent)">详情</el-button>
-                    <el-button type="primary" size="small" icon="el-icon-edit" @click="navigateToCommand(agent.id)">执行命令</el-button>
+                    <el-button
+                      :type="runtimeFor(agent).configured ? '' : 'primary'"
+                      size="small"
+                      icon="el-icon-setting"
+                      @click="openRuntimeConfig(agent)"
+                    >
+                      {{ runtimeFor(agent).configured ? '运行时配置' : '配置远程运行时' }}
+                    </el-button>
+                    <el-button size="small" icon="el-icon-edit" @click="navigateToCommand(agent.id)">执行命令</el-button>
                     <el-button type="danger" size="small" icon="el-icon-delete" :disabled="agent.connected" @click="forgetAgent(agent)">移除</el-button>
                   </div>
                 </div>
@@ -144,11 +152,101 @@
         <el-descriptions-item label="能力" :span="2">{{ (selectedAgent.capabilities || []).join(', ') || 'N/A' }}</el-descriptions-item>
       </el-descriptions>
     </el-dialog>
+
+    <el-dialog v-model="runtimeVisible" title="远程运行时配置" width="720px" :close-on-click-modal="false">
+      <div v-if="runtimeAgent" class="runtime-scope">
+        <div>
+          <strong>{{ runtimeAgent.hostname }}</strong>
+          <span>{{ runtimeAgent.os }} {{ runtimeAgent.arch }}</span>
+        </div>
+        <el-tag effect="plain">配置作用域：仅此 Agent</el-tag>
+      </div>
+      <el-form
+        ref="runtimeForm"
+        :model="runtimeForm"
+        :rules="runtimeRules"
+        label-position="top"
+        class="runtime-form"
+      >
+        <div class="runtime-form-grid">
+          <el-form-item label="显示名称" prop="displayName">
+            <el-input v-model="runtimeForm.displayName" maxlength="100" />
+          </el-form-item>
+          <el-form-item label="服务端模式" prop="serverMode">
+            <el-radio-group v-model="runtimeForm.serverMode">
+              <el-radio-button label="64">64 位</el-radio-button>
+              <el-radio-button label="32">32 位</el-radio-button>
+              <el-radio-button label="luajit">LuaJIT</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
+        </div>
+        <el-form-item label="DST 存档路径" prop="savePath">
+          <el-input v-model="runtimeForm.savePath" :placeholder="pathPlaceholder('save')" />
+        </el-form-item>
+        <el-form-item label="DST 服务端路径" prop="serverPath">
+          <el-input v-model="runtimeForm.serverPath" :placeholder="pathPlaceholder('server')" />
+        </el-form-item>
+        <el-form-item label="备份路径" prop="backupPath">
+          <el-input v-model="runtimeForm.backupPath" :placeholder="pathPlaceholder('backup')" />
+        </el-form-item>
+        <el-collapse v-model="runtimeAdvanced" class="runtime-advanced">
+          <el-collapse-item title="模组与兼容运行时" name="advanced">
+            <el-form-item label="UGC 路径" prop="ugcPath">
+              <el-input v-model="runtimeForm.ugcPath" />
+            </el-form-item>
+            <el-form-item label="SteamCMD 路径" prop="steamcmdPath">
+              <el-input v-model="runtimeForm.steamcmdPath" />
+            </el-form-item>
+            <el-form-item label="Workshop 内容路径" prop="workshopContentPath">
+              <el-input v-model="runtimeForm.workshopContentPath" />
+            </el-form-item>
+            <div class="runtime-form-grid">
+              <el-form-item label="Lua 命令" prop="luaBinary">
+                <el-input v-model="runtimeForm.luaBinary" placeholder="lua" />
+              </el-form-item>
+              <el-form-item label="Lua fallback 路径" prop="luaFallbackPath">
+                <el-input v-model="runtimeForm.luaFallbackPath" />
+              </el-form-item>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
+      </el-form>
+      <template #footer>
+        <div class="runtime-dialog-footer">
+          <el-button v-if="runtimeConfigured" type="danger" plain @click="removeRuntimeConfig">移除配置</el-button>
+          <span class="runtime-footer-spacer"></span>
+          <el-button @click="runtimeVisible = false">取消</el-button>
+          <el-button type="primary" :loading="runtimeSaving" @click="saveRuntimeConfig">保存配置</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { agentApi } from '@/api/index';
+import { runtimeTargetsV2API } from '@/api/v2';
+import { announceRuntimeTargetsUpdated } from '@/utils/runtimeTarget';
+
+const emptyRuntimeConfig = agent => ({
+  displayName: agent?.hostname || '',
+  savePath: '',
+  backupPath: '',
+  serverPath: '',
+  ugcPath: '',
+  steamcmdPath: '',
+  workshopContentPath: '',
+  luaBinary: 'lua',
+  luaFallbackPath: '',
+  serverMode: '64'
+});
+
+const editableRuntimeConfig = (agent, config = {}) => {
+  const defaults = emptyRuntimeConfig(agent);
+  return Object.fromEntries(
+    Object.keys(defaults).map(key => [key, config[key] ?? defaults[key]])
+  );
+};
 
 export default {
   name: 'AgentList',
@@ -158,7 +256,19 @@ export default {
       agentData: {},
       agentList: [],
       detailVisible: false,
-      selectedAgent: null
+      selectedAgent: null,
+      runtimeByAgent: {},
+      runtimeVisible: false,
+      runtimeSaving: false,
+      runtimeConfigured: false,
+      runtimeAgent: null,
+      runtimeAdvanced: [],
+      runtimeForm: emptyRuntimeConfig(),
+      runtimeRules: {
+        displayName: [{ required: true, message: '请输入显示名称', trigger: 'blur' }],
+        savePath: [{ required: true, message: '请输入远程存档路径', trigger: 'blur' }],
+        serverPath: [{ required: true, message: '请输入远程服务端路径', trigger: 'blur' }]
+      }
     };
   },
   computed: {
@@ -183,6 +293,7 @@ export default {
         const response = await agentApi.getAgentList();
         this.agentData = response.data || [];
         this.agentList = Array.isArray(this.agentData) ? this.agentData : Object.values(this.agentData);
+        await this.fetchRuntimeTargets();
       } catch (error) {
         this.agentList = [];
         this.$message.error('获取Agent列表失败: ' + (error.message || '未知错误'));
@@ -192,6 +303,78 @@ export default {
     },
     refreshData() {
       this.fetchAgentList();
+    },
+    async fetchRuntimeTargets() {
+      try {
+        const value = await runtimeTargetsV2API.list();
+        this.runtimeByAgent = Object.fromEntries(
+          (value.items || []).filter(item => item.kind === 'agent').map(item => [item.agentId, item])
+        );
+      } catch {
+        this.runtimeByAgent = {};
+      }
+    },
+    runtimeFor(agent) {
+      return this.runtimeByAgent[agent.id] || { configured: false, status: 'configuration_required', config: {} };
+    },
+    openRuntimeConfig(agent) {
+      const target = this.runtimeFor(agent);
+      this.runtimeAgent = agent;
+      this.runtimeConfigured = target.configured;
+      this.runtimeAdvanced = [];
+      this.runtimeForm = editableRuntimeConfig(agent, target.config);
+      this.runtimeVisible = true;
+      this.$nextTick(() => this.$refs.runtimeForm?.clearValidate());
+    },
+    async saveRuntimeConfig() {
+      const valid = await this.$refs.runtimeForm.validate().catch(() => false);
+      if (!valid || !this.runtimeAgent) return;
+      this.runtimeSaving = true;
+      try {
+        await runtimeTargetsV2API.save(this.runtimeAgent.id, this.runtimeForm);
+        this.$message.success('远程运行时配置已保存');
+        this.runtimeVisible = false;
+        await this.fetchRuntimeTargets();
+        announceRuntimeTargetsUpdated();
+      } catch (error) {
+        this.$message.error(error.message || '保存远程运行时配置失败');
+      } finally {
+        this.runtimeSaving = false;
+      }
+    },
+    async removeRuntimeConfig() {
+      if (!this.runtimeAgent) return;
+      try {
+        await this.$confirm(`确定移除 “${this.runtimeAgent.hostname}” 的远程运行时配置吗？`, '移除运行时配置', {
+          confirmButtonText: '移除',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+        await runtimeTargetsV2API.remove(this.runtimeAgent.id);
+        this.runtimeVisible = false;
+        await this.fetchRuntimeTargets();
+        announceRuntimeTargetsUpdated();
+        this.$message.success('远程运行时配置已移除');
+      } catch (error) {
+        if (error !== 'cancel' && error !== 'close') {
+          this.$message.error(error.message || '移除远程运行时配置失败');
+        }
+      }
+    },
+    pathPlaceholder(kind) {
+      const windows = String(this.runtimeAgent?.os || '').toLowerCase() === 'windows';
+      if (windows) {
+        return {
+          save: 'C:\\Users\\Administrator\\Klei\\DoNotStarveTogether',
+          server: 'C:\\dst-server',
+          backup: 'D:\\dst-backups'
+        }[kind];
+      }
+      return {
+        save: '/srv/dst/DoNotStarveTogether',
+        server: '/srv/dst/server',
+        backup: '/srv/dst/backups'
+      }[kind];
     },
     navigateToSecurity() {
       this.$router.push('/agents/security');
@@ -426,6 +609,61 @@ export default {
   margin-bottom: 20px;
 }
 
+.runtime-scope {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.runtime-scope > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.runtime-scope strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime-scope span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.runtime-form {
+  margin-top: 16px;
+}
+
+.runtime-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.runtime-advanced {
+  margin-top: 4px;
+  border-top-color: var(--border-color);
+  border-bottom-color: var(--border-color);
+}
+
+.runtime-dialog-footer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+.runtime-footer-spacer {
+  flex: 1;
+}
+
 /* 响应式调整 */
 @media (max-width: 1200px) {
   .agent-info-grid {
@@ -476,6 +714,24 @@ export default {
 
   :deep(.el-descriptions__body) {
     overflow-x: auto;
+  }
+
+  .runtime-scope {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .runtime-form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .runtime-dialog-footer {
+    flex-wrap: wrap;
+  }
+
+  .runtime-footer-spacer {
+    display: none;
   }
 }
 </style>
