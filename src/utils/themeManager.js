@@ -3,6 +3,8 @@
  * 提供主题切换和存储功能
  */
 
+import { refreshSystemTheme } from '@/utils/systemPreferences'
+
 // 主题类型
 export const THEMES = {
   LIGHT: 'light', // 科技白
@@ -47,8 +49,10 @@ class ThemeManager {
     this.currentTheme = theme;
     localStorage.setItem(THEME_STORAGE_KEY, theme);
     
-    // 更新文档根元素的主题类
+    // shadcn-vue 使用 .dark，旧页面继续通过 data-theme 读取模式。
     document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.classList.toggle('dark', theme === THEMES.DARK);
+    refreshSystemTheme();
     
     // 通知所有监听器
     this.notifyListeners();

@@ -9,6 +9,7 @@ import api from './api'
 import { authAPI, systemV2API } from './api/v2'
 import { installLegacyIcons } from './compat/legacyIcons'
 import { applySystemPreferences, getSystemPreferences } from './utils/systemPreferences'
+import './utils/themeManager'
 import 'xterm/css/xterm.css'
 
 // 路由守卫
