@@ -3,186 +3,157 @@
     <div class="page-header">
       <h2>房间列表</h2>
       <div class="header-actions">
-        <el-input
-          placeholder="搜索房间"
-          v-model="searchQuery"
-          class="search-input"
-          prefix-icon="el-icon-search"
-          clearable>
-        </el-input>
-        <el-button @click="refreshRooms" icon="el-icon-refresh">刷新</el-button>
-        <el-button type="primary" @click="createRoom" icon="el-icon-plus">创建房间</el-button>
+        <InputGroup class="search-input">
+          <InputGroupAddon><Search /></InputGroupAddon>
+          <InputGroupInput v-model="searchQuery" placeholder="搜索房间" />
+        </InputGroup>
+        <UiButton variant="outline" @click="refreshRooms" :disabled="isRefreshing">
+          <Spinner v-if="isRefreshing" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          刷新
+        </UiButton>
+        <UiButton @click="createRoom"><Plus data-icon="inline-start" />创建房间</UiButton>
       </div>
     </div>
 
-    <!-- 页面加载状态 -->
-    <el-card v-if="loading" shadow="hover" class="settings-card">
-      <div class="loading-page-content">
-        <component :is="'el-icon-loading'" class="legacy-icon loading-page-icon" />
+    <Card v-if="loading" class="settings-card">
+      <CardContent class="loading-page-content">
+        <Spinner />
         <p>正在加载页面内容...</p>
-      </div>
-    </el-card>
+      </CardContent>
+    </Card>
 
-    <!-- 无存档时的导引提示 -->
-    <el-card v-if="!loading && filteredRooms.length === 0" shadow="hover" class="settings-card empty-save-card">
-      <div class="empty-save-content">
-        <component :is="'el-icon-folder-add'" class="legacy-icon empty-save-icon" />
-        <h4>暂无房间</h4>
-        <p>您尚未创建任何房间，请点击下方按钮创建新房间</p>
-        <el-button type="primary" @click="createRoom">创建新房间</el-button>
-      </div>
-    </el-card>
+    <Empty v-else-if="filteredRooms.length === 0" class="settings-card">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><FolderPlus /></EmptyMedia>
+        <EmptyTitle>暂无房间</EmptyTitle>
+        <EmptyDescription>您尚未创建任何房间。</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <UiButton @click="createRoom"><Plus data-icon="inline-start" />创建新房间</UiButton>
+      </EmptyContent>
+    </Empty>
 
-    <!-- 房间列表卡片样式展示 -->
-    <div v-if="!loading && filteredRooms.length > 0" class="save-list">
-      <el-row :gutter="24" type="flex">
-        <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="6" v-for="room in filteredRooms" :key="room.id" class="room-col">
-          <el-card shadow="hover" class="save-item" body-style="padding: 0; height: 100%; display: flex; flex-direction: column;">
-            <div class="save-item-content">
-              <h4 class="save-name">
-                {{ room.name }}
-                <el-tag size="mini" type="success" v-if="room.isRunning" class="running-tag">运行中</el-tag>
-              </h4>
+    <div v-else class="save-list">
+      <Card v-for="room in filteredRooms" :key="room.id" class="save-item">
+        <CardHeader>
+          <div class="room-title-row">
+            <CardTitle>{{ room.name }}</CardTitle>
+            <Badge v-if="room.isRunning">运行中</Badge>
+          </div>
+          <CardDescription class="save-info">
+            <span v-if="room.updateTime"><Clock />{{ formatDate(room.updateTime) }}</span>
+            <span v-if="room.worlds"><LayoutGrid />{{ room.worlds.length }} 个世界</span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="save-item-content">
               <div class="save-worlds" v-if="room.worlds && room.worlds.length">
                 <div class="world-category forest" v-if="getWorldsByType(room.worlds, 'forest').length > 0">
                   <span class="world-category-title">主世界:</span>
                   <div class="world-tags">
-                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'forest')" :key="world.name"
-                      type="primary" class="world-tag">
-                      {{ world.name }}
-                    </el-tag>
+                    <Badge v-for="world in getWorldsByType(room.worlds, 'forest')" :key="world.name" variant="outline">{{ world.name }}</Badge>
                   </div>
                 </div>
                 <div class="world-category cave" v-if="getWorldsByType(room.worlds, 'cave').length > 0">
                   <span class="world-category-title">洞穴:</span>
                   <div class="world-tags">
-                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'cave')" :key="world.name"
-                      type="success" class="world-tag">
-                      {{ world.name }}
-                    </el-tag>
+                    <Badge v-for="world in getWorldsByType(room.worlds, 'cave')" :key="world.name" variant="secondary">{{ world.name }}</Badge>
                   </div>
                 </div>
                 <div class="world-category unknown" v-if="getWorldsByType(room.worlds, 'unknown').length > 0">
                   <span class="world-category-title">其他:</span>
                   <div class="world-tags">
-                    <el-tag size="small" v-for="world in getWorldsByType(room.worlds, 'unknown')" :key="world.name"
-                      type="info" class="world-tag">
-                      {{ world.name }}
-                    </el-tag>
+                    <Badge v-for="world in getWorldsByType(room.worlds, 'unknown')" :key="world.name" variant="outline">{{ world.name }}</Badge>
                   </div>
                 </div>
               </div>
-              <div class="save-info">
-                <span class="save-date" v-if="room.updateTime">
-                  <component :is="'el-icon-time'" class="legacy-icon" /> {{ formatDate(room.updateTime) }}
-                </span>
-                <span class="save-world-count" v-if="room.worlds">
-                  <component :is="'el-icon-s-grid'" class="legacy-icon" /> {{ room.worlds ? room.worlds.length : 0 }} 个世界
-                </span>
-              </div>
-            </div>
-            <div class="save-actions">
-              <el-button-group>
-                <el-button
+        </CardContent>
+        <CardFooter class="save-actions">
+                <UiButton
                   v-if="!room.isRunning"
-                  type="success"
-                  size="small"
-                  @click="startRoom(room)"
-                  icon="el-icon-video-play">开启</el-button>
-                <el-button
+                  size="sm"
+                  @click="startRoom(room)"><Play data-icon="inline-start" />开启</UiButton>
+                <UiButton
                   v-else
-                  type="danger"
-                  size="small"
-                  @click="stopRoom(room)"
-                  icon="el-icon-video-pause">停止</el-button>
-                <el-button type="primary" size="small" @click="editRoom(room)" icon="el-icon-edit">编辑</el-button>
-              </el-button-group>
-              <el-dropdown trigger="click" @command="handleDropdownCommand($event, room)" style="margin-left: 10px;">
-                <el-button type="info" size="small">
-                  更多操作<component :is="'el-icon-arrow-down'" class="legacy-icon el-icon--right" />
-                </el-button>
-                <template v-slot:dropdown>
-<el-dropdown-menu >
-                  <el-dropdown-item command="special-lists">特殊名单</el-dropdown-item>
-                  <el-dropdown-item command="token">服务器令牌</el-dropdown-item>
-                  <el-dropdown-item command="logs">查看日志</el-dropdown-item>
-                  <el-dropdown-item command="backup">备份房间</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>
-                    <span style="color: #c94f4f;">删除房间</span>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-</template>
-              </el-dropdown>
-            </div>
-          </el-card>
-        </el-col>
-      </el-row>
+                  variant="destructive"
+                  size="sm"
+                  @click="stopRoom(room)"><Square data-icon="inline-start" />停止</UiButton>
+                <UiButton variant="outline" size="sm" @click="editRoom(room)"><Pencil data-icon="inline-start" />编辑</UiButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <UiButton variant="outline" size="sm">更多操作<ChevronDown data-icon="inline-end" /></UiButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
+                <DropdownMenuItem @select="handleSpecialLists(room)">特殊名单</DropdownMenuItem>
+                <DropdownMenuItem @select="handleServerToken(room)">服务器令牌</DropdownMenuItem>
+                <DropdownMenuItem @select="handleViewLogs(room)">查看日志</DropdownMenuItem>
+                <DropdownMenuItem @select="backupRoom(room)">备份房间</DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem variant="destructive" @select="deleteRoom(room)">删除房间</DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardFooter>
+      </Card>
     </div>
 
-    <!-- 特殊名单对话框 -->
-    <el-dialog
-      title="特殊名单管理"
-      v-model="specialListsVisible"
-      width="80%"
-      :before-close="closeSpecialListsDialog"
-      class="fullheight-dialog">
-      <SpecialLists
-        v-if="specialListsVisible"
-        :savename="selectedSavename"
-        @close="specialListsVisible = false" />
-    </el-dialog>
+    <UiDialog v-model:open="specialListsVisible">
+      <DialogScrollContent class="max-w-5xl">
+        <DialogHeader><DialogTitle>特殊名单管理</DialogTitle><DialogDescription>维护房间管理员、黑名单和白名单。</DialogDescription></DialogHeader>
+        <SpecialLists v-if="specialListsVisible" :savename="selectedSavename" @close="specialListsVisible = false" />
+      </DialogScrollContent>
+    </UiDialog>
 
-    <!-- 服务器令牌对话框 -->
-    <el-dialog
-      title="服务器令牌管理"
-      v-model="serverTokenVisible"
-      width="60%"
-      :before-close="closeServerTokenDialog">
-      <ServerToken
-        v-if="serverTokenVisible"
-        :savename="selectedSavename"
-        @close="serverTokenVisible = false" />
-    </el-dialog>
+    <UiDialog v-model:open="serverTokenVisible">
+      <DialogContent class="max-w-3xl">
+        <DialogHeader><DialogTitle>服务器令牌管理</DialogTitle><DialogDescription>查看或更新当前房间的服务器令牌。</DialogDescription></DialogHeader>
+        <ServerToken v-if="serverTokenVisible" :savename="selectedSavename" @close="serverTokenVisible = false" />
+      </DialogContent>
+    </UiDialog>
 
-    <!-- 服务器日志对话框 -->
-    <el-dialog
-      title="服务器日志"
-      v-model="logViewerVisible"
-      width="60%"
-      :before-close="closeLogViewerDialog"
-      :append-to-body="true"
-      :modal="false"
-      :destroy-on-close="true"
-      class="fullheight-dialog">
-      <LogViewer
-        v-if="logViewerVisible"
-        :archiveName="selectedSavename"
-        :title="'服务器日志 - ' + selectedRoomName"
-        :subtitle="selectedWorldDisplay"
-        :worlds="selectedRoomWorlds"
-        :defaultWorld="selectedRoomWorldName"
-        @close="logViewerVisible = false" />
-    </el-dialog>
+    <UiDialog v-model:open="logViewerVisible">
+      <DialogScrollContent class="max-w-5xl">
+        <DialogHeader><DialogTitle>服务器日志</DialogTitle><DialogDescription>{{ selectedRoomName }} 的实时与历史日志。</DialogDescription></DialogHeader>
+        <LogViewer v-if="logViewerVisible" :archiveName="selectedSavename" :title="'服务器日志 - ' + selectedRoomName" :subtitle="selectedWorldDisplay" :worlds="selectedRoomWorlds" :defaultWorld="selectedRoomWorldName" @close="logViewerVisible = false" />
+      </DialogScrollContent>
+    </UiDialog>
 
-    <!-- 启动房间对话框 -->
-    <el-dialog
-      title="启动房间"
-      v-model="startDialogVisible"
-      width="60%"
-      :before-close="closeStartDialog"
-      class="fullheight-dialog">
-      <StartRoomForm
-        v-if="startDialogVisible"
-        :room="selectedRoom"
-        :startForm="startForm"
-        @confirm="confirmStartRoom"
-        @close="closeStartDialog" />
-    </el-dialog>
+    <UiDialog v-model:open="startDialogVisible">
+      <DialogContent class="max-w-3xl">
+        <DialogHeader><DialogTitle>启动房间</DialogTitle><DialogDescription>选择本次要启动的世界类型。</DialogDescription></DialogHeader>
+        <StartRoomForm v-if="startDialogVisible" :room="selectedRoom" :startForm="startForm" @confirm="confirmStartRoom" @close="closeStartDialog" />
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import {
+  ChevronDown,
+  Clock,
+  FolderPlus,
+  LayoutGrid,
+  Pencil,
+  Play,
+  Plus,
+  RefreshCw,
+  Search,
+  Square
+} from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '../../api/index';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Spinner } from '@/components/ui/spinner';
+import { confirmAction } from '@/lib/feedback';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 import LogViewer from '../servers/LogViewer.vue';
@@ -191,10 +162,50 @@ import StartRoomForm from './StartRoomForm.vue';
 export default {
   name: 'RoomList',
   components: {
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+    ChevronDown,
+    Clock,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogScrollContent,
+    DialogTitle,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    FolderPlus,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    LayoutGrid,
     SpecialLists,
     ServerToken,
     LogViewer,
-    StartRoomForm
+    StartRoomForm,
+    Pencil,
+    Play,
+    Plus,
+    RefreshCw,
+    Search,
+    Spinner,
+    Square,
+    UiButton,
+    UiDialog
   },
   data() {
     return {
@@ -301,7 +312,7 @@ export default {
               });
             }
 
-            this.$message.success('房间列表已刷新');
+            toast.success('房间列表已刷新');
             console.log('Refreshed rooms and server status at', new Date().toLocaleTimeString());
           } else {
             throw new Error('获取房间列表失败');
@@ -309,7 +320,7 @@ export default {
         })
         .catch(error => {
           console.error("获取数据失败:", error);
-          this.$message.error('获取数据失败: ' + (error.message || '未知错误'));
+          toast.error('获取数据失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.loading = false;
@@ -350,10 +361,10 @@ export default {
         .then(async response => {
           this.startDialogVisible = false;
           await this.refreshRooms(true);
-          this.$message.success(response.msg || `房间 ${this.selectedRoom.name} 已启动`);
+          toast.success(response.msg || `房间 ${this.selectedRoom.name} 已启动`);
         })
         .catch(error => {
-          this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
+          toast.error(`启动房间失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.startLoading = false;
@@ -408,45 +419,39 @@ export default {
       this.logViewerVisible = false;
     },
     backupRoom(room) {
-      this.$confirm(`确定要备份房间 "${room.name}" 吗?`, '提示', {
+      confirmAction(`确定要备份房间 "${room.name}" 吗?`, '备份房间', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'info'
       }).then(() => {
         roomApi.backupRoom(room.roomId || room.id)
           .then(response => {
-            this.$message.success(response.msg || `房间 ${room.name} 的备份已创建`);
+            toast.success(response.msg || `房间 ${room.name} 的备份已创建`);
           })
           .catch(error => {
-            this.$message.error('备份房间失败: ' + (error.message || '未知错误'));
+            toast.error('备份房间失败: ' + (error.message || '未知错误'));
           });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     deleteRoom(room) {
-      this.$confirm(`确定要删除房间 "${room.name}" 吗? 此操作不可恢复!`, '警告', {
+      confirmAction(`确定要删除房间 "${room.name}" 吗? 此操作不可恢复!`, '删除房间', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
         roomApi.deleteRoom(room.roomId || room.id)
           .then(response => {
-            this.$message.success(response.msg || `已删除房间 ${room.name}`);
+            toast.success(response.msg || `已删除房间 ${room.name}`);
             this.refreshRooms();
           })
           .catch(error => {
-            this.$message.error('删除房间失败: ' + (error.message || '未知错误'));
+            toast.error('删除房间失败: ' + (error.message || '未知错误'));
             this.refreshRooms();
           });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     },
     // 按类型获取世界列表
@@ -472,7 +477,7 @@ export default {
     },
     // 停止房间
     stopRoom(room) {
-      this.$confirm(`确定要停止房间 "${room.name}" 吗?`, '提示', {
+      confirmAction(`确定要停止房间 "${room.name}" 吗?`, '停止房间', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -481,19 +486,16 @@ export default {
         roomApi.stopRoom(room.roomId || room.id)
           .then(async response => {
             await this.refreshRooms(true);
-            this.$message.success(response.msg || `房间 ${room.name} 已停止`);
+            toast.success(response.msg || `房间 ${room.name} 已停止`);
           })
           .catch(error => {
-            this.$message.error('停止房间失败: ' + (error.message || '未知错误'));
+            toast.error('停止房间失败: ' + (error.message || '未知错误'));
           })
           .finally(() => {
             this.loading = false;
           });
       }).catch(() => {
-        this.$message({
-          type: 'info',
-          message: '已取消操作'
-        });
+        toast.info('已取消操作');
       });
     }
   }
@@ -504,654 +506,133 @@ export default {
 .world-settings-page {
   width: 100%;
   min-height: 100%;
-
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-
-    h2 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      line-height: 28px;
-      color: var(--text-primary);
-      position: relative;
-      padding-left: 0;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 8px;
-      flex-wrap: wrap;
-
-      .search-input {
-        width: 250px;
-        margin: 0;
-      }
-
-      .el-button {
-        border-radius: 6px;
-      }
-    }
-  }
-
-  .settings-card {
-    margin-bottom: 20px;
-  }
-
-  .loading-page-content,
-  .empty-save-content,
-  .loading-saves-content {
-    text-align: center;
-    padding: 32px 0;
-
-    .loading-page-icon,
-    .empty-save-icon,
-    .loading-saves-icon {
-      font-size: 48px;
-      color: var(--primary-color);
-      margin-bottom: 16px;
-    }
-
-    h4 {
-      font-size: 18px;
-      margin-bottom: 10px;
-      color: var(--text-primary);
-    }
-
-    p {
-      color: var(--text-regular);
-      margin-bottom: 16px;
-      font-size: 14px;
-    }
-
-    .el-button {
-      padding: 8px 16px;
-      font-size: 14px;
-    }
-  }
-
-  .save-list {
-    .el-row {
-      display: flex;
-      flex-wrap: wrap;
-    }
-
-    .room-col {
-      display: flex;
-      margin-bottom: 24px;
-    }
-
-    .save-item {
-      width: 100%;
-      min-height: 320px;
-      height: 100% !important;
-      margin-bottom: 0;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      overflow: hidden;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-      border-radius: 6px;
-
-      &:hover {
-        box-shadow: var(--shadow-card-hover);
-        border-color: var(--el-color-primary-light-7);
-      }
-
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: var(--primary-color);
-        z-index: 2;
-      }
-
-      .el-card__body {
-        height: 100%;
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .save-item-content {
-        flex: 1;
-        padding: 16px;
-        padding-bottom: 10px;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-
-        .save-name {
-          height: 45px;
-          margin-top: 5px;
-          margin-bottom: 15px;
-          font-size: 18px;
-          font-weight: bold;
-          color: var(--text-primary);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          padding-bottom: 10px;
-          border-bottom: 1px solid #f0f0f0;
-          position: relative;
-          padding-left: 30px;
-
-          &::before {
-            content: '\e7a4';
-            font-family: 'element-icons';
-            position: absolute;
-            left: 0;
-            top: 0;
-            font-size: 20px;
-            color: var(--primary-color);
-          }
-        }
-
-        .save-worlds {
-          height: 150px;
-          margin: 15px 0;
-          flex: 1;
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          border-radius: 4px;
-          position: relative;
-
-          /* 添加渐变阴影提示滚动 */
-          &::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 15px;
-            background: linear-gradient(to top, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
-            pointer-events: none;
-            opacity: 0.7;
-            display: none;
-          }
-
-          &.scrollable::after {
-            display: block;
-          }
-
-          /* 自定义滚动条样式 */
-          &::-webkit-scrollbar {
-            width: 6px;
-          }
-
-          &::-webkit-scrollbar-track {
-            background: #f5f5f5;
-            border-radius: 4px;
-          }
-
-          &::-webkit-scrollbar-thumb {
-            background: var(--el-border-color);
-            border-radius: 4px;
-          }
-
-          &::-webkit-scrollbar-thumb:hover {
-            background: #9aa69e;
-          }
-
-          .world-category {
-            margin-bottom: 12px;
-
-            &:last-child {
-              margin-bottom: 0;
-            }
-
-            .world-category-title {
-              font-size: 14px;
-              font-weight: 500;
-              color: var(--text-regular);
-              margin-right: 10px;
-              display: block;
-              min-width: 60px;
-              position: relative;
-              padding-left: 20px;
-              margin-bottom: 6px;
-
-              &::before {
-                position: absolute;
-                left: 0;
-                top: 2px;
-                font-family: 'element-icons';
-                font-size: 14px;
-              }
-            }
-
-            .world-tags {
-              display: flex;
-              flex-wrap: wrap;
-              width: 100%;
-
-              .world-tag {
-                margin-right: 8px;
-                margin-bottom: 8px;
-                border-radius: 12px;
-                padding: 2px 10px;
-                max-width: 100%;
-                white-space: nowrap;
-                text-overflow: ellipsis;
-                overflow: hidden;
-              }
-            }
-
-            &.forest .world-category-title {
-              color: var(--primary-color);
-
-              &::before {
-                content: '\e79b';
-                color: var(--primary-color);
-              }
-            }
-
-            &.cave .world-category-title {
-              color: #4f8a5b;
-
-              &::before {
-                content: '\e790';
-                color: #4f8a5b;
-              }
-            }
-
-            &.unknown .world-category-title {
-              color: var(--text-secondary);
-
-              &::before {
-                content: '\e6f6';
-                color: var(--text-secondary);
-              }
-            }
-          }
-        }
-
-        .save-info {
-          height: 40px;
-          margin-top: auto;
-          display: flex;
-          flex-wrap: wrap;
-          font-size: 13px;
-          color: var(--text-secondary);
-          background-color: #f9f9f9;
-          padding: 8px 10px;
-          border-radius: 6px;
-
-          .save-date, .save-world-count {
-            margin-right: 15px;
-            margin-bottom: 5px;
-
-            i {
-              margin-right: 5px;
-              font-size: 14px;
-            }
-          }
-        }
-      }
-
-      .save-actions {
-        gap: 8px;
-        padding: 12px 16px;
-        min-height: 60px;
-        height: auto;
-        display: flex;
-        justify-content: space-between;
-        border-top: 1px solid #f0f0f0;
-        background-color: #fafafa;
-        position: relative;
-        z-index: 1;
-        margin-top: auto;
-
-        .el-button {
-          border-radius: 6px;
-          margin-right: 0;
-
-          &.el-button--success {
-            background-color: #4f8a5b;
-            border-color: #4f8a5b;
-
-            &:hover, &:focus {
-              background-color: #6aa876;
-              border-color: #6aa876;
-            }
-          }
-
-          &.el-button--primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-
-            &:hover, &:focus {
-              background-color: var(--el-color-primary-light-3);
-              border-color: var(--el-color-primary-light-3);
-            }
-          }
-
-          &.el-button--danger {
-            background-color: #c94f4f;
-            border-color: #c94f4f;
-
-            &:hover, &:focus {
-              background-color: #f78989;
-              border-color: #f78989;
-            }
-          }
-
-          i {
-            margin-right: 3px;
-          }
-        }
-
-        .el-dropdown {
-          .el-button {
-            background-color: #f4f4f5;
-            color: var(--text-regular);
-            border-color: #f4f4f5;
-
-            &:hover, &:focus {
-              background-color: #e9e9eb;
-              border-color: #e9e9eb;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // 响应式调整
-  @media (max-width: 767px) {
-    .page-header {
-      flex-direction: column;
-      align-items: flex-start;
-
-      h2 {
-        margin-bottom: 0;
-      }
-
-      .header-actions {
-        width: 100%;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-
-        .search-input {
-          margin-bottom: 10px;
-          grid-column: 1 / -1;
-          width: 100% !important;
-          margin-right: 0;
-        }
-
-        .el-button {
-          width: 100%;
-          margin: 0;
-        }
-      }
-    }
-
-    .save-item {
-      height: auto;
-      min-height: 300px;
-    }
-
-    .save-actions {
-      align-items: center;
-      flex-wrap: wrap;
-
-      .el-button-group {
-        flex: 1 1 auto;
-      }
-
-      .el-dropdown {
-        margin-left: 0 !important;
-      }
-    }
-  }
-
-  .select-save-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-.empty-save-card {
-    border-radius: 6px;
-    box-shadow: var(--shadow-card);
-  }
-
-  .fullheight-dialog {
-    :deep(.el-dialog) {
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    :deep(.el-dialog__body) {
-      max-height: 80vh;
-      overflow-y: auto;
-    }
+}
+
+.page-header,
+.header-actions,
+.room-title-row,
+.save-info,
+.save-actions {
+  display: flex;
+  align-items: center;
+}
+
+.page-header {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
   }
 }
 
-.el-card.save-item {
-  height: 100% !important;
+.header-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
-  .el-card__body {
-    height: 100%;
-    padding: 0;
-    display: flex;
+.search-input {
+  width: min(250px, 100%);
+}
+
+.settings-card {
+  margin-bottom: 20px;
+}
+
+.loading-page-content {
+  min-height: 180px;
+  justify-content: center;
+  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+}
+
+.save-item {
+  min-width: 0;
+}
+
+.room-title-row,
+.save-actions {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.save-info {
+  flex-wrap: wrap;
+  gap: 12px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.save-item-content {
+  flex: 1;
+}
+
+.save-worlds {
+  display: flex;
+  max-height: 190px;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.world-category {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.world-category-title {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.world-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.save-actions {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .page-header {
+    align-items: stretch;
     flex-direction: column;
   }
-}
 
-.room-col {
-  margin-bottom: 24px;
-}
-
-/* 运行状态样式 */
-.running-tag {
-  margin-left: 8px !important;
-  border-radius: 10px !important;
-  font-size: 11px !important;
-  height: 20px !important;
-  line-height: 18px !important;
-  background-color: #4f8a5b !important;
-  border-color: #4f8a5b !important;
-  color: #fff !important;
-  padding: 0 7px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  position: relative;
-
-  &::before {
-    content: '•';
-    display: inline-block;
-    margin-right: 4px;
-    animation: blink 1.5s infinite;
-  }
-}
-
-@keyframes blink {
-  0% { opacity: 0.2; }
-  50% { opacity: 1; }
-  100% { opacity: 0.2; }
-}
-
-/* 房间是高频入口，卡片只承担对象分组，不使用装饰性悬浮和渐变。 */
-.world-settings-page {
-  width: 100%;
-  min-width: 0;
-
-  .page-header {
-    margin-bottom: 16px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--border-color);
-
-    h2 {
-      font-size: 18px;
-      font-weight: 600;
-      line-height: 28px;
-    }
+  .header-actions {
+    justify-content: stretch;
   }
 
-  .settings-card,
-  .empty-save-card {
-    margin-bottom: 16px;
-    border-radius: 4px;
-    box-shadow: none;
+  .search-input {
+    width: 100%;
   }
 
-  .loading-page-content,
-  .empty-save-content,
-  .loading-saves-content {
-    padding: 40px 16px;
-
-    .loading-page-icon,
-    .empty-save-icon,
-    .loading-saves-icon {
-      margin-bottom: 10px;
-      font-size: 30px;
-    }
-
-    h4 {
-      margin: 0 0 6px;
-      font-size: 16px;
-    }
-
-    p {
-      margin: 0 0 16px;
-    }
-  }
-
-  .save-list {
-    .room-col {
-      margin-bottom: 16px;
-    }
-
-    .save-item {
-      min-height: 286px;
-      border-radius: 4px;
-      box-shadow: none;
-      transition: border-color 0.15s ease, background-color 0.15s ease;
-
-      &:hover {
-        border-color: var(--el-color-primary-light-5);
-        box-shadow: none;
-      }
-
-      &::before {
-        display: none;
-      }
-
-      .save-item-content {
-        padding: 16px;
-
-        .save-name {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          height: auto;
-          min-height: 32px;
-          margin: 0 0 12px;
-          padding: 0 0 12px;
-          border-bottom-color: var(--border-color);
-          font-size: 16px;
-          font-weight: 600;
-
-          &::before {
-            display: none;
-          }
-        }
-
-        .save-worlds {
-          height: 132px;
-          margin: 0 0 12px;
-
-          &::after {
-            display: none !important;
-          }
-
-          .world-category {
-            margin-bottom: 10px;
-
-            .world-category-title {
-              margin: 0 0 5px;
-              padding: 0;
-              font-size: 12px;
-              color: var(--text-secondary);
-
-              &::before {
-                display: none;
-              }
-            }
-
-            .world-tags {
-              gap: 6px;
-
-              .world-tag {
-                margin: 0;
-                padding: 0 7px;
-                border-radius: 3px;
-              }
-            }
-          }
-        }
-
-        .save-info {
-          gap: 12px;
-          height: auto;
-          min-height: 34px;
-          margin-top: auto;
-          padding: 7px 9px;
-          background: var(--surface-muted);
-          border-radius: 3px;
-
-          .save-date,
-          .save-world-count {
-            margin: 0;
-          }
-        }
-      }
-
-      .save-actions {
-        min-height: 52px;
-        padding: 10px 16px;
-        background: var(--surface-muted);
-        border-top-color: var(--border-color);
-
-        .el-button,
-        .el-dropdown .el-button {
-          border-radius: 4px;
-        }
-      }
-    }
-  }
-
-  .fullheight-dialog :deep(.el-dialog) {
-    border-radius: 4px;
-  }
-}
-
-.running-tag {
-  height: 22px !important;
-  padding: 0 7px !important;
-  border-radius: 3px !important;
-  line-height: 20px !important;
-
-  &::before {
-    animation: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .running-tag::before {
-    animation: none;
+  .header-actions > * {
+    flex: 1;
   }
 }
 </style>

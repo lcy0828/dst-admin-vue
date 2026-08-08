@@ -1,297 +1,294 @@
 <template>
   <div class="room-settings-page">
     <div class="page-header">
-      <div class="header-content">
-        <div class="title-section">
-          <h2>{{ isEdit ? '编辑房间' : '创建房间' }}</h2>
-          <div class="subtitle">{{ isEdit ? '修改现有房间配置' : '创建全新的游戏房间' }}</div>
-        </div>
-        <div class="header-actions">
-          <el-button @click="goBack" icon="el-icon-back">返回</el-button>
-          <el-button type="success" @click="saveSettings" :loading="loading" icon="el-icon-check">保存</el-button>
-        </div>
+      <div class="title-section">
+        <h2>{{ isEdit ? '编辑房间' : '创建房间' }}</h2>
+        <p>{{ isEdit ? '修改现有房间配置' : '创建全新的游戏房间' }}</p>
+      </div>
+      <div class="header-actions">
+        <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回</UiButton>
+        <UiButton @click="saveSettings" :disabled="loading">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <Save v-else data-icon="inline-start" />
+          保存
+        </UiButton>
       </div>
     </div>
 
-    <!-- 隐藏的文件输入框 -->
-    <input
-      ref="fileInput"
-      type="file"
-      accept=".ini"
-      style="display: none"
-      @change="handleFileChange"
-    />
+    <input ref="fileInput" type="file" accept=".ini" class="sr-only" @change="handleFileChange" />
 
-    <!-- 全局加载状态 -->
-    <div v-loading="loading" class="page-content">
-      <!-- 表单验证提示 -->
-      <el-alert
-        v-if="formErrors.length > 0"
-        title="表单验证失败"
-        type="error"
-        :closable="false"
-        show-icon
-        class="error-alert">
+    <div v-if="loading" class="loading-state">
+      <Spinner />
+      <span>{{ isEdit ? '正在处理房间配置' : '正在创建房间' }}</span>
+    </div>
+
+    <Alert v-if="formErrors.length > 0" variant="destructive" class="error-alert">
+      <TriangleAlert />
+      <AlertTitle>表单验证失败</AlertTitle>
+      <AlertDescription>
         <ul class="error-list">
           <li v-for="(error, index) in formErrors" :key="index">{{ error }}</li>
         </ul>
-      </el-alert>
+      </AlertDescription>
+    </Alert>
 
-      <!-- 房间名称输入 -->
-      <el-card class="save-name-card" v-if="!isEdit">
-        <div class="form-grid single-column">
-          <el-form ref="saveNameForm" :model="saveNameForm" :rules="saveNameRules" label-width="180px">
-            <el-form-item label="房间存档名称" prop="savename" required>
-              <el-input v-model="saveNameForm.savename" placeholder="请输入房间存档名称,如:room1"></el-input>
-              <div class="form-item-desc">
-                这是您房间的唯一标识,用于存档管理,创建后不可修改
-              </div>
-            </el-form-item>
-          </el-form>
-        </div>
-      </el-card>
+    <Card v-if="!isEdit" class="save-name-card">
+      <CardHeader>
+        <CardTitle>房间标识</CardTitle>
+        <CardDescription>房间存档名称创建后不可修改。</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(saveNameError)">
+            <FieldLabel for="room-savename">房间存档名称</FieldLabel>
+            <UiInput
+              id="room-savename"
+              v-model.trim="saveNameForm.savename"
+              placeholder="请输入房间存档名称，如 room1"
+              :aria-invalid="Boolean(saveNameError)"
+            />
+            <FieldDescription>仅支持字母、数字和下划线。</FieldDescription>
+            <FieldError v-if="saveNameError">{{ saveNameError }}</FieldError>
+          </Field>
+        </FieldGroup>
+      </CardContent>
+    </Card>
 
-      <el-tabs v-model="activeTab" type="border-card" class="settings-tabs">
-        <!-- 游戏模式配置 -->
-        <el-tab-pane label="游戏模式" name="gameplay">
-          <div class="tab-content">
-            <div class="tab-header">
-              <component :is="'el-icon-game'" class="legacy-icon" />
-              <span>游戏模式配置</span>
-            </div>
-            <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <div class="form-section">
-                <div class="form-grid">
-                  <el-form-item label="游戏模式" prop="game_mode">
-                    <el-select v-model="form.game_mode" placeholder="请选择游戏模式">
-                      <el-option label="生存模式" value="survival"></el-option>
-                      <el-option label="无尽模式" value="endless"></el-option>
-                      <el-option label="荒野模式" value="wilderness"></el-option>
-                    </el-select>
-                    <div class="form-item-desc">选择游戏模式，影响游戏难度和玩法</div>
-                  </el-form-item>
-                  <el-form-item label="最大玩家数" prop="max_players">
-                    <el-input-number v-model="form.max_players" :min="1" :max="64"></el-input-number>
-                    <div class="form-item-desc">服务器最大容纳玩家数量，上限64人</div>
-                  </el-form-item>
-                  <el-form-item label="开启玩家对战" prop="pvp">
-                    <el-switch v-model="form.pvp"></el-switch>
-                    <div class="form-item-desc">是否允许玩家之间互相攻击</div>
-                  </el-form-item>
-                  <el-form-item label="无人时暂停" prop="pause_when_empty">
-                    <el-switch v-model="form.pause_when_empty"></el-switch>
-                    <div class="form-item-desc">当服务器没有玩家时自动暂停游戏</div>
-                  </el-form-item>
-                  <el-form-item label="投票重启" prop="vote_enabled">
-                    <el-switch v-model="form.vote_enabled"></el-switch>
-                    <div class="form-item-desc">是否允许玩家投票重启世界</div>
-                  </el-form-item>
-                  <el-form-item label="投票踢人" prop="vote_kick_enabled">
-                    <el-switch v-model="form.vote_kick_enabled"></el-switch>
-                    <div class="form-item-desc">是否允许玩家投票踢出其他玩家</div>
-                  </el-form-item>
-                </div>
-              </div>
-            </el-form>
-          </div>
-        </el-tab-pane>
+    <Tabs v-model="activeTab" class="settings-tabs">
+      <TabsList class="settings-tab-list">
+        <TabsTrigger v-for="section in settingsSections" :key="section.key" :value="section.key">
+          {{ section.tabLabel }}
+        </TabsTrigger>
+        <TabsTrigger value="special-lists">特殊名单</TabsTrigger>
+        <TabsTrigger value="token">服务器令牌</TabsTrigger>
+      </TabsList>
 
-        <!-- 网络配置 -->
-        <el-tab-pane label="网络设置" name="network">
-          <div class="tab-content">
-            <div class="tab-header">
-              <component :is="'el-icon-network'" class="legacy-icon" />
-              <span>网络配置</span>
-            </div>
-            <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <div class="form-section">
-                <div class="form-grid">
-                  <el-form-item label="局域网游戏" prop="lan_only_cluster">
-                    <el-switch v-model="form.lan_only_cluster"></el-switch>
-                    <div class="form-item-desc">仅允许局域网内的玩家加入</div>
-                  </el-form-item>
-                  <el-form-item label="游戏偏好" prop="cluster_intention">
-                    <el-select v-model="form.cluster_intention" placeholder="请选择游戏偏好">
-                      <el-option label="合作" value="cooperative"></el-option>
-                      <el-option label="竞争" value="competitive"></el-option>
-                      <el-option label="社交" value="social"></el-option>
-                      <el-option label="疯狂" value="madness"></el-option>
-                    </el-select>
-                    <div class="form-item-desc">设置服务器的游戏风格和氛围</div>
-                  </el-form-item>
-                  <el-form-item label="服务器密码" prop="cluster_password">
-                    <el-input v-model="form.cluster_password" placeholder="可为空"></el-input>
-                    <div class="form-item-desc">设置加入服务器需要的密码</div>
-                  </el-form-item>
-                  <el-form-item label="服务器描述" prop="cluster_description">
-                    <el-input type="textarea" v-model="form.cluster_description" rows="3"></el-input>
-                    <div class="form-item-desc">服务器的描述信息，会显示在服务器列表中</div>
-                  </el-form-item>
-                  <el-form-item label="服务器名称" prop="cluster_name">
-                    <el-input v-model="form.cluster_name"></el-input>
-                    <div class="form-item-desc">服务器的名称，会显示在服务器列表中</div>
-                  </el-form-item>
-                  <el-form-item label="离线服务器" prop="offline_cluster">
-                    <el-switch v-model="form.offline_cluster"></el-switch>
-                    <div class="form-item-desc">离线模式，不依赖Steam功能</div>
-                  </el-form-item>
-                  <el-form-item label="服务器语言" prop="cluster_language">
-                    <el-select v-model="form.cluster_language">
-                      <el-option label="中文" value="zh"></el-option>
-                      <el-option label="英文" value="en"></el-option>
-                    </el-select>
-                    <div class="form-item-desc">设置服务器的语言</div>
-                  </el-form-item>
-                  <el-form-item label="预留位" prop="whitelist_slots">
-                    <el-input-number v-model="form.whitelist_slots" :min="0"></el-input-number>
-                    <div class="form-item-desc">为白名单玩家预留的服务器位置数量</div>
-                  </el-form-item>
-                  <el-form-item label="通信频率" prop="tick_rate">
-                    <el-input-number v-model="form.tick_rate" :min="15" :max="60"></el-input-number>
-                    <div class="form-item-desc">服务器每秒通信次数，越高体验越好，但会增加服务器负担</div>
-                  </el-form-item>
-                  <el-form-item label="自动保存" prop="autosaver_enabled">
-                    <el-switch v-model="form.autosaver_enabled"></el-switch>
-                    <div class="form-item-desc">是否启用自动保存功能</div>
-                  </el-form-item>
-                  <el-form-item label="挂机超时时间" prop="idle_timeout">
-                    <el-input-number v-model="form.idle_timeout" :min="0"></el-input-number>
-                    <div class="form-item-desc">玩家挂机超过此时间后自动踢出，0表示不启用</div>
-                  </el-form-item>
-                </div>
-              </div>
-            </el-form>
-          </div>
-        </el-tab-pane>
+      <TabsContent v-for="section in settingsSections" :key="section.key" :value="section.key">
+        <Card>
+          <CardHeader>
+            <CardTitle class="section-title">
+              <component :is="section.icon" />
+              {{ section.title }}
+            </CardTitle>
+            <CardDescription>{{ section.description }}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup class="settings-grid">
+              <Field
+                v-for="field in section.fields"
+                :key="field.key"
+                :orientation="field.type === 'switch' ? 'horizontal' : 'vertical'"
+                :data-invalid="isFieldInvalid(field.key)"
+              >
+                <FieldContent>
+                  <FieldLabel :for="`room-setting-${field.key}`">{{ field.label }}</FieldLabel>
+                  <FieldDescription>{{ field.description }}</FieldDescription>
+                  <FieldError v-if="isFieldInvalid(field.key)">{{ getFieldError(field.key) }}</FieldError>
+                </FieldContent>
 
-        <!-- 系统配置 -->
-        <el-tab-pane label="系统设置" name="system">
-          <div class="tab-content">
-            <div class="tab-header">
-              <component :is="'el-icon-system'" class="legacy-icon" />
-              <span>系统设置</span>
-            </div>
-            <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <div class="form-section">
-                <div class="form-grid">
-                  <el-form-item label="开启控制台" prop="console_enabled">
-                    <el-switch v-model="form.console_enabled"></el-switch>
-                    <div class="form-item-desc">是否允许使用控制台命令</div>
-                  </el-form-item>
-                  <el-form-item label="最大快照数" prop="max_snapshots">
-                    <el-input-number v-model="form.max_snapshots" :min="1"></el-input-number>
-                    <div class="form-item-desc">保存的最大存档快照数量</div>
-                  </el-form-item>
-                </div>
-              </div>
-            </el-form>
-          </div>
-        </el-tab-pane>
+                <UiSelect v-if="field.type === 'select'" v-model="form[field.key]">
+                  <SelectTrigger :id="`room-setting-${field.key}`" :aria-invalid="isFieldInvalid(field.key)">
+                    <SelectValue :placeholder="field.placeholder || '请选择'" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem v-for="option in field.options" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </UiSelect>
 
-        <!-- 分片配置 -->
-        <el-tab-pane label="分片设置" name="shard">
-          <div class="tab-content">
-            <div class="tab-header">
-              <component :is="'el-icon-shard'" class="legacy-icon" />
-              <span>分片设置</span>
-            </div>
-            <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <div class="form-section">
-                <div class="form-grid">
-                  <el-form-item label="开启服务器共享" prop="shard_enabled">
-                    <el-switch v-model="form.shard_enabled"></el-switch>
-                    <div class="form-item-desc">是否启用服务器分片功能，开启洞穴必须启用此选项</div>
-                  </el-form-item>
-                  <el-form-item label="监听地址" prop="bind_ip">
-                    <el-input v-model="form.bind_ip"></el-input>
-                    <div class="form-item-desc">服务器监听的IP地址，同一机器上运行可填写127.0.0.1</div>
-                  </el-form-item>
-                  <el-form-item label="主服务器IP" prop="master_ip">
-                    <el-input v-model="form.master_ip"></el-input>
-                    <div class="form-item-desc">主服务器的IP地址，同一机器上运行可填写127.0.0.1</div>
-                  </el-form-item>
-                  <el-form-item label="主服务器端口" prop="master_port">
-                    <el-input-number v-model="form.master_port" :min="1" :max="65535"></el-input-number>
-                    <div class="form-item-desc">主服务器的UDP端口，所有连接主服务器的非主服务器必须相同</div>
-                  </el-form-item>
-                  <el-form-item label="连接密码" prop="cluster_key">
-                    <el-input v-model="form.cluster_key"></el-input>
-                    <div class="form-item-desc">服务器之间的连接密码，所有服务器必须相同</div>
-                  </el-form-item>
-                </div>
-              </div>
-            </el-form>
-          </div>
-        </el-tab-pane>
+                <UiTextarea
+                  v-else-if="field.type === 'textarea'"
+                  :id="`room-setting-${field.key}`"
+                  v-model="form[field.key]"
+                  :rows="field.rows || 3"
+                  :aria-invalid="isFieldInvalid(field.key)"
+                />
 
-        <!-- Steam配置 -->
-        <el-tab-pane label="Steam设置" name="steam">
-          <div class="tab-content">
-            <div class="tab-header">
-              <component :is="'el-icon-steam'" class="legacy-icon" />
-              <span>Steam设置</span>
-            </div>
-            <el-form ref="form" :model="form" :rules="rules" label-width="180px">
-              <div class="form-section">
-                <div class="form-grid">
-                  <el-form-item label="仅Steam组" prop="steam_group_only">
-                    <el-switch v-model="form.steam_group_only"></el-switch>
-                    <div class="form-item-desc">是否只允许Steam组内成员加入</div>
-                  </el-form-item>
-                  <el-form-item label="Steam组ID" prop="steam_group_id">
-                    <el-input-number v-model="form.steam_group_id" :min="0"></el-input-number>
-                    <div class="form-item-desc">指定Steam组的ID，仅当启用仅Steam组时有效</div>
-                  </el-form-item>
-                  <el-form-item label="组管理员权限" prop="steam_group_admins">
-                    <el-switch v-model="form.steam_group_admins"></el-switch>
-                    <div class="form-item-desc">是否给予Steam组管理员服务器管理权限</div>
-                  </el-form-item>
-                </div>
-              </div>
-            </el-form>
-          </div>
-        </el-tab-pane>
+                <UiSwitch
+                  v-else-if="field.type === 'switch'"
+                  :id="`room-setting-${field.key}`"
+                  v-model="form[field.key]"
+                  :aria-invalid="isFieldInvalid(field.key)"
+                />
 
-        <!-- 特殊名单 -->
-        <el-tab-pane label="特殊名单" name="special-lists">
-          <SpecialLists :savename="roomId" @add-user="handleAddUser"></SpecialLists>
-        </el-tab-pane>
+                <UiInput
+                  v-else
+                  :id="`room-setting-${field.key}`"
+                  v-model="form[field.key]"
+                  :type="field.type === 'number' ? 'number' : 'text'"
+                  :min="field.min"
+                  :max="field.max"
+                  :placeholder="field.placeholder"
+                  :aria-invalid="isFieldInvalid(field.key)"
+                  @change="normalizeNumberField(field)"
+                />
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-        <!-- 服务器令牌 -->
-        <el-tab-pane label="服务器令牌" name="token">
-          <ServerToken :savename="roomId" @input-token="handleInputToken"></ServerToken>
-        </el-tab-pane>
-      </el-tabs>
-    </div>
+      <TabsContent value="special-lists">
+        <SpecialLists :savename="roomId" @add-user="handleAddUser" />
+      </TabsContent>
+
+      <TabsContent value="token">
+        <ServerToken :savename="roomId" @input-token="handleInputToken" />
+      </TabsContent>
+    </Tabs>
   </div>
 </template>
 
 <script>
+import { ArrowLeft, Gamepad2, GitBranch, Network, Save, Settings2, TriangleAlert } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { roomConfigApi, serverApi } from '../../api/index';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
+
+const SETTINGS_SECTIONS = [
+  {
+    key: 'gameplay',
+    tabLabel: '游戏模式',
+    title: '游戏模式配置',
+    description: '控制玩家容量、战斗规则和世界暂停策略。',
+    icon: Gamepad2,
+    fields: [
+      { key: 'game_mode', label: '游戏模式', type: 'select', description: '影响游戏难度和玩法。', options: [
+        { label: '生存模式', value: 'survival' }, { label: '无尽模式', value: 'endless' }, { label: '荒野模式', value: 'wilderness' }
+      ] },
+      { key: 'max_players', label: '最大玩家数', type: 'number', min: 1, max: 64, description: '服务器最大容纳玩家数量，上限 64 人。' },
+      { key: 'pvp', label: '开启玩家对战', type: 'switch', description: '允许玩家之间互相攻击。' },
+      { key: 'pause_when_empty', label: '无人时暂停', type: 'switch', description: '服务器无人时自动暂停游戏。' },
+      { key: 'vote_enabled', label: '投票重启', type: 'switch', description: '允许玩家投票重启世界。' },
+      { key: 'vote_kick_enabled', label: '投票踢人', type: 'switch', description: '允许玩家投票踢出其他玩家。' }
+    ]
+  },
+  {
+    key: 'network',
+    tabLabel: '网络设置',
+    title: '网络配置',
+    description: '配置服务器发现、访问限制和网络通信参数。',
+    icon: Network,
+    fields: [
+      { key: 'lan_only_cluster', label: '局域网游戏', type: 'switch', description: '仅允许局域网内的玩家加入。' },
+      { key: 'cluster_intention', label: '游戏偏好', type: 'select', description: '设置服务器的游戏风格和氛围。', options: [
+        { label: '合作', value: 'cooperative' }, { label: '竞争', value: 'competitive' }, { label: '社交', value: 'social' }, { label: '疯狂', value: 'madness' }
+      ] },
+      { key: 'cluster_password', label: '服务器密码', type: 'text', placeholder: '可为空', description: '加入服务器时使用的密码。' },
+      { key: 'cluster_description', label: '服务器描述', type: 'textarea', rows: 3, description: '显示在服务器列表中的介绍。' },
+      { key: 'cluster_name', label: '服务器名称', type: 'text', description: '显示在服务器列表中的名称。' },
+      { key: 'offline_cluster', label: '离线服务器', type: 'switch', description: '离线模式，不依赖 Steam 功能。' },
+      { key: 'cluster_language', label: '服务器语言', type: 'select', description: '设置服务器语言。', options: [
+        { label: '中文', value: 'zh' }, { label: '英文', value: 'en' }
+      ] },
+      { key: 'whitelist_slots', label: '预留位', type: 'number', min: 0, description: '为白名单玩家预留的位置数量。' },
+      { key: 'tick_rate', label: '通信频率', type: 'number', min: 15, max: 60, description: '服务器每秒通信次数。' },
+      { key: 'autosaver_enabled', label: '自动保存', type: 'switch', description: '启用游戏自动保存。' },
+      { key: 'idle_timeout', label: '挂机超时时间', type: 'number', min: 0, description: '超过此时间自动踢出，0 表示不启用。' }
+    ]
+  },
+  {
+    key: 'system',
+    tabLabel: '系统设置',
+    title: '系统设置',
+    description: '配置控制台与存档快照。',
+    icon: Settings2,
+    fields: [
+      { key: 'console_enabled', label: '开启控制台', type: 'switch', description: '允许使用控制台命令。' },
+      { key: 'max_snapshots', label: '最大快照数', type: 'number', min: 1, description: '保留的最大存档快照数量。' }
+    ]
+  },
+  {
+    key: 'shard',
+    tabLabel: '分片设置',
+    title: '分片设置',
+    description: '配置森林、洞穴等分片之间的通信。',
+    icon: GitBranch,
+    fields: [
+      { key: 'shard_enabled', label: '开启服务器共享', type: 'switch', description: '洞穴分片需要开启此选项。' },
+      { key: 'bind_ip', label: '监听地址', type: 'text', description: '服务器监听的 IP 地址。' },
+      { key: 'master_ip', label: '主服务器 IP', type: 'text', description: '主服务器的 IP 地址。' },
+      { key: 'master_port', label: '主服务器端口', type: 'number', min: 1, max: 65535, description: '分片连接主服务器使用的 UDP 端口。' },
+      { key: 'cluster_key', label: '连接密码', type: 'text', description: '所有分片必须使用相同密码。' }
+    ]
+  },
+  {
+    key: 'steam',
+    tabLabel: 'Steam 设置',
+    title: 'Steam 设置',
+    description: '配置 Steam 组访问和管理员权限。',
+    icon: Settings2,
+    fields: [
+      { key: 'steam_group_only', label: '仅 Steam 组', type: 'switch', description: '只允许 Steam 组内成员加入。' },
+      { key: 'steam_group_id', label: 'Steam 组 ID', type: 'number', min: 0, description: '启用组限制时使用的 Steam 组 ID。' },
+      { key: 'steam_group_admins', label: '组管理员权限', type: 'switch', description: '授予 Steam 组管理员服务器管理权限。' }
+    ]
+  }
+];
 
 export default {
   name: 'RoomSettings',
   components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    ArrowLeft,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    Save,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Spinner,
     SpecialLists,
-    ServerToken
+    ServerToken,
+    UiSwitch,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    TriangleAlert,
+    UiButton,
+    UiInput,
+    UiSelect,
+    UiTextarea
   },
   data() {
     return {
       activeTab: 'gameplay',
+      settingsSections: SETTINGS_SECTIONS,
       isEdit: false,
       roomId: '',
       savename: '',
       saveNameForm: {
         savename: ''
       },
-      saveNameRules: {
-        savename: [
-          { required: true, message: '请输入房间存档名称', trigger: 'blur' },
-          { pattern: /^[a-zA-Z0-9_]+$/, message: '存档名称只能包含字母、数字和下划线', trigger: 'blur' }
-        ]
-      },
+      saveNameError: '',
       form: {
         // 游戏模式配置
         game_mode: 'endless',
@@ -338,23 +335,7 @@ export default {
         // 服务器令牌
         serverToken: ''
       },
-      rules: {
-        cluster_name: [
-          { required: true, message: '请输入服务器名称', trigger: 'blur' }
-        ],
-        cluster_description: [
-          { required: true, message: '请输入服务器描述', trigger: 'blur' }
-        ],
-        cluster_password: [
-          { required: true, message: '请输入服务器密码', trigger: 'blur' }
-        ],
-        master_port: [
-          { required: true, message: '请输入主服务器端口', trigger: 'blur' }
-        ],
-        cluster_key: [
-          { required: true, message: '请输入连接密码', trigger: 'blur' }
-        ]
-      },
+      validationErrors: {},
       loading: false,
       formErrors: [],
       unsavedChanges: false
@@ -370,6 +351,45 @@ export default {
     }
   },
   methods: {
+    getFieldError(key) {
+      return this.validationErrors[key] || '';
+    },
+    isFieldInvalid(key) {
+      return Boolean(this.validationErrors[key]);
+    },
+    normalizeNumberField(field) {
+      if (field.type !== 'number') return;
+      const value = Number(this.form[field.key]);
+      if (Number.isNaN(value)) return;
+      const min = field.min ?? Number.NEGATIVE_INFINITY;
+      const max = field.max ?? Number.POSITIVE_INFINITY;
+      this.form[field.key] = Math.min(max, Math.max(min, value));
+    },
+    validateSettings() {
+      const errors = {};
+      const requiredFields = {
+        cluster_name: '请输入服务器名称',
+        cluster_description: '请输入服务器描述',
+        cluster_password: '请输入服务器密码',
+        master_port: '请输入主服务器端口',
+        cluster_key: '请输入连接密码'
+      };
+      Object.entries(requiredFields).forEach(([key, message]) => {
+        if (this.form[key] === '' || this.form[key] === null || this.form[key] === undefined) errors[key] = message;
+      });
+      this.validationErrors = errors;
+
+      this.saveNameError = '';
+      if (!this.isEdit) {
+        if (!this.saveNameForm.savename) this.saveNameError = '请输入房间存档名称';
+        else if (!/^[a-zA-Z0-9_]+$/.test(this.saveNameForm.savename)) this.saveNameError = '存档名称只能包含字母、数字和下划线';
+      }
+
+      const validationMessages = [...Object.values(errors)];
+      if (this.saveNameError) validationMessages.unshift(this.saveNameError);
+      this.formErrors = validationMessages;
+      return validationMessages.length === 0;
+    },
     goBack() {
       this.$router.push('/rooms/list');
     },
@@ -438,10 +458,7 @@ export default {
             this.form.steam_group_admins = configData.STEAM.steam_group_admins === 'true';
           }
           
-          this.$message({
-            type: 'success',
-            message: '配置加载成功'
-          });
+          toast.success('配置加载成功');
           this.unsavedChanges = false;
         } else {
           throw new Error('获取房间配置失败');
@@ -457,25 +474,13 @@ export default {
       try {
         this.formErrors = [];
         
-        // 验证基础表单
-        const formValid = await this.$refs.form.validate().catch(() => false);
-        
-        // 如果是创建模式,还需要验证存档名称
-        let saveNameValid = true;
-        if (!this.isEdit) {
-          saveNameValid = await this.$refs.saveNameForm.validate().catch(() => false);
-          
-          if (saveNameValid) {
-            this.savename = this.saveNameForm.savename;
-          }
-        }
-        
-        if (!formValid || (!this.isEdit && !saveNameValid)) {
-          this.$message.error('请完善表单信息');
+        if (!this.validateSettings()) {
+          toast.error('请完善表单信息');
           return;
         }
+        if (!this.isEdit) this.savename = this.saveNameForm.savename;
         if (!this.isEdit && !this.form.serverToken) {
-          this.$message.error('请输入服务器令牌');
+          toast.error('请输入服务器令牌');
           this.activeTab = 'token';
           return;
         }
@@ -544,10 +549,7 @@ export default {
           this.isEdit = true;
         }
         
-        this.$message({
-          type: 'success',
-          message: '保存成功'
-        });
+        toast.success('保存成功');
         this.unsavedChanges = false;
       } catch (error) {
         console.error('保存配置失败:', error);
@@ -565,10 +567,7 @@ export default {
         this.formErrors = [];
         await roomConfigApi.importRoomConfig(this.roomId, file);
         
-        this.$message({
-          type: 'success',
-          message: '配置导入成功'
-        });
+        toast.success('配置导入成功');
         
         await this.loadRoomSettings(this.roomId);
       } catch (error) {
@@ -618,7 +617,7 @@ export default {
         errorMessage = '网络请求失败，请检查网络连接';
       }
       
-      this.$message.error(errorMessage);
+      toast.error(errorMessage);
     }
   },
   watch: {
@@ -634,512 +633,99 @@ export default {
 
 <style lang="scss" scoped>
 .room-settings-page {
-  padding: 20px;
-  background: #f8f9fa;
-  min-height: 100vh;
-  position: relative;
-  z-index: 0;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px),
-      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px);
-    background-size: 20px 20px;
-    z-index: -1;
-  }
-
-  .page-header {
-    background: linear-gradient(135deg, #ffffff 0%, var(--bg-color) 100%);
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.8);
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
-      opacity: 0.7;
-      animation: pulse 10s infinite linear;
-    }
-
-    .header-content {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: relative;
-      z-index: 1;
-
-      .title-section {
-        h2 {
-          margin: 0;
-          font-size: 26px;
-          color: #1a1a1a;
-          font-weight: 600;
-          position: relative;
-          display: inline-block;
-          
-          &::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            bottom: -6px;
-            width: 40px;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary-color), transparent);
-            border-radius: 3px;
-          }
-        }
-
-        .subtitle {
-          color: #666;
-          margin-top: 12px;
-          font-size: 14px;
-        }
-      }
-
-      .header-actions {
-        display: flex;
-        gap: 12px;
-        
-        .el-button {
-          transition: all 0.3s ease;
-          
-          &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          }
-        }
-      }
-    }
-
-    .tech-decoration {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      pointer-events: none;
-
-      .tech-line {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
-        opacity: 0.7;
-      }
-
-      .tech-dots {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-image: radial-gradient(circle at 1px 1px, #e0e0e0 1px, transparent 0);
-        background-size: 20px 20px;
-        opacity: 0.4;
-      }
-    }
-  }
-
-  .settings-tabs {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(235,238,245,0.8);
-    
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 4px;
-      background: linear-gradient(90deg, var(--primary-color), var(--el-color-primary-light-3));
-    }
-
-    .tab-content {
-      padding: 30px;
-      position: relative;
-      
-      &::before {
-        content: '';
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        width: 50px;
-        height: 50px;
-        background: 
-          radial-gradient(circle at center, rgba(217, 121, 50,0.1) 0%, rgba(217, 121, 50,0) 70%);
-        border-radius: 50%;
-      }
-
-      .tab-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 30px;
-        color: #1a1a1a;
-        font-size: 18px;
-        font-weight: 500;
-
-        i {
-          font-size: 24px;
-          color: var(--primary-color);
-          background: rgba(217, 121, 50, 0.1);
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-      }
-    }
-
-    .form-section {
-      background: #fff;
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-
-      &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: 
-          linear-gradient(135deg, rgba(217, 121, 50,0.03) 0%, rgba(217, 121, 50,0) 50%);
-        z-index: 0;
-      }
-
-      &:hover {
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-        transform: translateY(-2px);
-      }
-
-      .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        gap: 30px;
-        padding: 25px;
-        position: relative;
-        z-index: 1;
-      }
-    }
-
-    .form-item-desc {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 6px;
-      line-height: 1.5;
-      padding-left: 8px;
-      border-left: 2px solid var(--primary-color);
-      background: rgba(217, 121, 50, 0.03);
-      padding: 4px 8px;
-      border-radius: 0 4px 4px 0;
-      transition: all 0.3s ease;
-      
-      &:hover {
-        background: rgba(217, 121, 50, 0.08);
-      }
-    }
-  }
-
-  .empty-tip {
-    text-align: center;
-    padding: 60px 40px;
-    color: var(--text-secondary);
-    
-    i {
-      font-size: 60px;
-      margin-bottom: 20px;
-      color: #e0e0e0;
-      animation: pulse 3s infinite ease-in-out;
-    }
-    
-    p {
-      font-size: 16px;
-      color: var(--text-regular);
-      max-width: 300px;
-      margin: 0 auto;
-    }
-  }
-
-  .save-name-card {
-    margin-bottom: 24px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-    position: relative;
-    transition: all 0.3s ease;
-    background: linear-gradient(135deg, #ffffff 0%, var(--bg-color) 100%);
-    
-    &:hover {
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-      transform: translateY(-2px);
-    }
-    
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 3px;
-      background: linear-gradient(90deg, var(--primary-color), var(--el-color-primary-light-3));
-    }
-    
-    .single-column {
-      grid-template-columns: 1fr;
-      padding: 20px;
-    }
-  }
+  width: 100%;
+  min-width: 0;
 }
 
-// 添加动画效果
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.page-header,
+.header-actions,
+.section-title,
+.loading-state {
+  display: flex;
+  align-items: center;
 }
 
-@keyframes pulse {
-  0% { opacity: 0.5; transform: scale(0.98); }
-  50% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0.5; transform: scale(0.98); }
+.page-header {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
 }
 
-@keyframes glow {
-  0% { box-shadow: 0 0 5px rgba(217, 121, 50, 0.3); }
-  50% { box-shadow: 0 0 15px rgba(217, 121, 50, 0.6); }
-  100% { box-shadow: 0 0 5px rgba(217, 121, 50, 0.3); }
-}
-
-.tab-content {
-  animation: fadeIn 0.4s ease-out;
-}
-
-// 自定义Element-UI组件样式
-:deep(.el-tabs__nav-wrap)::after {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(217, 121, 50, 0.2), transparent);
-}
-
-:deep(.el-tabs__item) {
-  transition: all 0.3s ease;
-  
-  &.is-active {
-    color: var(--primary-color);
+.title-section {
+  h2 {
+    margin: 0;
+    font-size: 18px;
     font-weight: 600;
   }
-  
-  &:hover {
-    color: var(--primary-color);
-    transform: translateY(-2px);
+
+  p {
+    margin: 4px 0 0;
+    color: var(--muted-foreground);
+    font-size: 13px;
   }
 }
 
-:deep(.el-input__inner):focus {
-  border-color: var(--primary-color);
-  animation: glow 2s infinite;
-}
-
-:deep(.el-switch.is-checked .el-switch__core) {
-  border-color: var(--primary-color);
-  background-color: var(--primary-color);
-}
-
-/* 传统设置页：保留原有表单分组，移除装饰背景、悬浮和卡片嵌套感。 */
-.room-settings-page {
-  min-height: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.room-settings-page::before,
-.room-settings-page .page-header::before,
-.room-settings-page .settings-tabs::after,
-.room-settings-page .settings-tabs .tab-content::before,
-.room-settings-page .form-section::before,
-.room-settings-page .save-name-card::before {
-  display: none;
-}
-
-.room-settings-page .page-header {
-  padding: 0 0 14px;
-  margin-bottom: 16px;
-  overflow: visible;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.room-settings-page .page-header .header-content {
-  gap: 16px;
-}
-
-.room-settings-page .page-header .header-content .title-section h2 {
-  font-size: 18px;
-  line-height: 28px;
-  color: var(--text-primary);
-}
-
-.room-settings-page .page-header .header-content .title-section h2::after {
-  display: none;
-}
-
-.room-settings-page .page-header .header-content .title-section .subtitle {
-  margin-top: 2px;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.room-settings-page .page-header .header-content .header-actions {
+.header-actions {
   gap: 8px;
 }
 
-.room-settings-page .page-header .header-content .header-actions .el-button,
-.room-settings-page .page-header .header-content .header-actions .el-button:hover {
-  box-shadow: none;
-  transform: none;
-}
-
-.room-settings-page .save-name-card {
+.loading-state {
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
   margin-bottom: 16px;
-  background: var(--surface-color);
-  border-radius: 4px;
-  box-shadow: var(--shadow-card);
-  transition: border-color 0.15s ease;
+  color: var(--muted-foreground);
 }
 
-.room-settings-page .save-name-card:hover {
-  box-shadow: var(--shadow-card);
-  transform: none;
+.error-alert,
+.save-name-card {
+  margin-bottom: 16px;
 }
 
-.room-settings-page .save-name-card .single-column {
-  padding: 0;
+.error-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
 }
 
-.room-settings-page .settings-tabs {
-  overflow: hidden;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: none;
+.settings-tabs {
+  min-width: 0;
 }
 
-.room-settings-page .settings-tabs .tab-content {
-  padding: 16px;
-  animation: none;
+.settings-tab-list {
+  max-width: 100%;
+  justify-content: flex-start;
+  overflow-x: auto;
 }
 
-.room-settings-page .settings-tabs .tab-content .tab-header {
-  gap: 7px;
-  padding-bottom: 10px;
-  margin-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.room-settings-page .settings-tabs .tab-content .tab-header .legacy-icon {
-  width: 16px;
-  height: 16px;
-  margin-right: 0;
-  color: var(--primary-color);
-}
-
-.room-settings-page .settings-tabs .form-section {
-  overflow: visible;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  transition: none;
-}
-
-.room-settings-page .settings-tabs .form-section:hover {
-  box-shadow: none;
-  transform: none;
-}
-
-.room-settings-page .settings-tabs .form-section .form-grid {
+.settings-grid {
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px 24px;
-  padding: 0;
+  gap: 20px 24px;
 }
 
-.room-settings-page .settings-tabs .form-item-desc {
-  padding: 0;
-  margin-top: 4px;
-  background: transparent;
-  border-left: 0;
-  border-radius: 0;
-  line-height: 18px;
-}
+.section-title {
+  gap: 8px;
 
-.room-settings-page .settings-tabs .form-item-desc:hover {
-  background: transparent;
-}
-
-.tab-content,
-:deep(.el-input__inner):focus {
-  animation: none;
-}
-
-:deep(.el-tabs__nav-wrap)::after {
-  background: var(--border-color);
-}
-
-:deep(.el-tabs__item),
-:deep(.el-tabs__item:hover) {
-  transform: none;
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
-
-@media (max-width: 900px) {
-  .room-settings-page .settings-tabs .form-section .form-grid {
-    grid-template-columns: 1fr;
+  svg {
+    width: 18px;
+    height: 18px;
   }
 }
 
-@media (max-width: 600px) {
-  .room-settings-page .page-header .header-content {
-    align-items: flex-start;
+@media (max-width: 760px) {
+  .page-header {
+    align-items: stretch;
     flex-direction: column;
   }
 
-  .room-settings-page .page-header .header-content .header-actions {
-    width: 100%;
+  .header-actions > * {
+    flex: 1;
   }
 
-  .room-settings-page .settings-tabs .tab-content {
-    padding: 12px;
+  .settings-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

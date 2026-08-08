@@ -4,119 +4,171 @@
       <h2>服务器令牌管理</h2>
     </div>
 
-    <el-card shadow="hover" class="token-card" v-loading="loading">
-      <template v-slot:header>
-<div  class="card-header">
-        <span>服务器令牌</span>
+    <Card class="token-card">
+      <CardHeader class="card-header">
+        <CardTitle>服务器令牌</CardTitle>
         <div v-if="savename || serverToken">
-          <el-button
+          <UiButton
             v-if="tokenConfigured && !tokenRevealed"
-            size="small"
+            size="sm"
+            variant="outline"
             @click="revealToken">
+            <Eye data-icon="inline-start" />
             显示令牌
-          </el-button>
-          <el-button
-            size="small"
-            type="primary"
-            icon="el-icon-edit"
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
             @click="showTokenDialog" >
+            <Pencil data-icon="inline-start" />
             修改令牌
-          </el-button>
-          <el-button
-            size="small"
-            type="success"
-            icon="el-icon-refresh"
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
             @click="fetchServerToken">
+            <RefreshCw data-icon="inline-start" />
             刷新
-          </el-button>
+          </UiButton>
         </div>
-      </div>
-</template>
+      </CardHeader>
 
-      <div v-if="savename || serverToken" class="token-info">
-        <div class="token-display">
-          <el-input
-            ref="tokenInput"
-            :value="serverToken || '--'"
-            readonly
-            style="width: 100%;"
-            size="medium">
-            <template v-slot:append>
-              <el-button :disabled="!tokenRevealed" @click="copyToken">复制</el-button>
-            </template>
-          </el-input>
+      <CardContent>
+        <div v-if="loading" class="loading-state">
+          <Spinner />
+          <span>正在加载令牌状态</span>
+        </div>
+        <div v-else-if="savename || serverToken" class="token-info">
+          <InputGroup>
+            <InputGroupInput :model-value="serverToken || '--'" readonly />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton :disabled="!tokenRevealed" @click="copyToken">
+                <Copy data-icon="inline-start" />
+                复制
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+
+          <Alert class="token-help">
+            <Info />
+            <AlertTitle>令牌用法说明</AlertTitle>
+            <AlertDescription>服务器令牌用于在您的服务器中标识饥荒服务器。更改令牌将导致您的服务器在玩家列表中显示为新服务器。若无特殊需求，建议保持默认令牌。</AlertDescription>
+          </Alert>
         </div>
 
-        <div class="token-help">
-          <el-alert
-            title="令牌用法说明"
-            type="info"
-            description="服务器令牌用于在您的服务器中标识饥荒服务器。更改令牌将导致您的服务器在玩家列表中显示为新服务器。若无特殊需求，建议保持默认令牌。"
-            show-icon
-            :closable="false">
-          </el-alert>
-        </div>
-      </div>
+        <div v-else>
+          <FieldGroup>
+            <Field :data-invalid="Boolean(ruleFormError)">
+              <FieldLabel for="server-token">服务器令牌</FieldLabel>
+              <UiInput
+                id="server-token"
+                v-model="ruleForm.token"
+                placeholder="请输入服务器令牌"
+                :aria-invalid="Boolean(ruleFormError)"
+                @input="handleInput"
+              />
+              <FieldError v-if="ruleFormError">{{ ruleFormError }}</FieldError>
+            </Field>
+          </FieldGroup>
 
-      <div v-else>
-        <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="100px">
-          <el-form-item label="服务器令牌" prop="token">
-            <el-input v-model="ruleForm.token" placeholder="请输入服务器令牌" @input="handleInput"/>
-          </el-form-item>
-        </el-form>
-
-        <div class="token-help">
-          <el-alert
-            title="令牌用法说明"
-            type="info"
-            description="服务器令牌用于在您的服务器中标识饥荒服务器。示例: pds-g^KU_HQpffVs^dasdadadawqwqfrdgth5435gf="
-            show-icon
-            :closable="false">
-          </el-alert>
+          <Alert class="token-help">
+            <Info />
+            <AlertTitle>令牌用法说明</AlertTitle>
+            <AlertDescription>服务器令牌用于在您的服务器中标识饥荒服务器。示例: pds-g^KU_HQpffVs^dasdadadawqwqfrdgth5435gf=</AlertDescription>
+          </Alert>
         </div>
-      </div>
-    </el-card>
+      </CardContent>
+    </Card>
 
     <!-- 修改令牌对话框 -->
-    <el-dialog title="修改服务器令牌"
-               v-model="dialogVisible"
-               width="30%"
-               @closed="resetForm">
-      <el-form :model="tokenForm" ref="tokenForm">
-        <el-form-item prop="token">
-          <el-input v-model="tokenForm.token" placeholder="请输入新令牌"></el-input>
-        </el-form-item>
-        <el-form-item label="确认房间名" prop="confirmation">
-          <el-input
-            v-model="tokenForm.confirmation"
-            :placeholder="roomName ? `请输入 ${roomName}` : '请输入完整房间名'">
-          </el-input>
-        </el-form-item>
-        <div class="dialog-warning">
-          <el-alert
-            title="警告"
-            type="warning"
-            description="修改服务器令牌会导致您的服务器在玩家列表中显示为新服务器。确定要继续吗？"
-            show-icon
-            :closable="false">
-          </el-alert>
-        </div>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitTokenForm" :loading="submitting">确定</el-button>
-      </span>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="dialogVisible" @update:open="handleDialogOpenChange">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>修改服务器令牌</DialogTitle>
+          <DialogDescription>更新令牌前需要输入完整房间名进行确认。</DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(tokenErrors.token)">
+            <FieldLabel for="new-server-token">新令牌</FieldLabel>
+            <UiInput id="new-server-token" v-model="tokenForm.token" placeholder="请输入新令牌" :aria-invalid="Boolean(tokenErrors.token)" />
+            <FieldError v-if="tokenErrors.token">{{ tokenErrors.token }}</FieldError>
+          </Field>
+          <Field :data-invalid="Boolean(tokenErrors.confirmation)">
+            <FieldLabel for="token-confirmation">确认房间名</FieldLabel>
+            <UiInput
+              id="token-confirmation"
+              v-model="tokenForm.confirmation"
+              :placeholder="roomName ? `请输入 ${roomName}` : '请输入完整房间名'"
+              :aria-invalid="Boolean(tokenErrors.confirmation)"
+            />
+            <FieldError v-if="tokenErrors.confirmation">{{ tokenErrors.confirmation }}</FieldError>
+          </Field>
+          <Alert variant="destructive">
+            <TriangleAlert />
+            <AlertTitle>警告</AlertTitle>
+            <AlertDescription>修改服务器令牌会导致您的服务器在玩家列表中显示为新服务器。确定要继续吗？</AlertDescription>
+          </Alert>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" @click="dialogVisible = false">取消</UiButton>
+          <UiButton @click="submitTokenForm" :disabled="submitting">
+            <Spinner v-if="submitting" data-icon="inline-start" />
+            确定
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { Copy, Eye, Info, Pencil, RefreshCw, TriangleAlert } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
+import { Spinner } from '@/components/ui/spinner';
+import { promptText } from '@/lib/feedback';
 
 export default {
   name: 'ServerToken',
+  components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    UiButton,
+    Card,
+    CardContent,
+    CardHeader,
+    CardTitle,
+    Copy,
+    UiDialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Eye,
+    Field,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    Info,
+    UiInput,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupButton,
+    InputGroupInput,
+    Pencil,
+    RefreshCw,
+    Spinner,
+    TriangleAlert
+  },
   props: {
     savename: {
       type: String,
@@ -144,12 +196,8 @@ export default {
       ruleForm: {
         token: ''
       },
-      rules: {
-        token: [
-          { required: true, message: '请输入服务器令牌', trigger: 'blur' },
-          { max: 4096, message: '长度不能超过 4096 个字符', trigger: 'blur' }
-        ]
-      }
+      ruleFormError: '',
+      tokenErrors: { token: '', confirmation: '' }
 
     };
   },
@@ -166,7 +214,14 @@ export default {
   },
   methods: {
     handleInput() {
+      this.ruleFormError = this.validateToken(this.ruleForm.token);
       this.$emit('input-token', this.ruleForm.token);
+    },
+
+    validateToken(token) {
+      if (!token) return '请输入服务器令牌';
+      if (token.length > 4096) return '长度不能超过 4096 个字符';
+      return '';
     },
 
     // 获取服务器令牌
@@ -183,7 +238,7 @@ export default {
           this.roomName = res.data.roomName || '';
         })
         .catch(err => {
-          this.$message.error('获取服务器令牌失败: ' + (err.message || '未知错误'));
+          toast.error('获取服务器令牌失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading = false;
@@ -191,20 +246,22 @@ export default {
     },
 
     // 复制令牌到剪贴板
-    copyToken() {
+    async copyToken() {
       if (!this.tokenRevealed) {
-        this.$message.warning('请先显示真实令牌，脱敏值不能复制');
+        toast.warning('请先显示真实令牌，脱敏值不能复制');
         return;
       }
-      const input = this.$refs.tokenInput.$el.querySelector('input');
-      input.select();
-      document.execCommand('copy');
-      this.$message.success('令牌已复制到剪贴板');
+      try {
+        await navigator.clipboard.writeText(this.serverToken);
+        toast.success('令牌已复制到剪贴板');
+      } catch (error) {
+        toast.error('复制失败: ' + (error.message || '请检查浏览器权限'));
+      }
     },
 
     async revealToken() {
       try {
-        const result = await this.$prompt(
+        const result = await promptText(
           `请输入完整房间名“${this.roomName}”以显示真实令牌`,
           '显示服务器令牌',
           {
@@ -222,7 +279,7 @@ export default {
         this.tokenRevealed = true;
       } catch (error) {
         if (error !== 'cancel' && error !== 'close' && error?.action !== 'cancel' && error?.action !== 'close') {
-          this.$message.error('显示令牌失败: ' + (error.message || '确认房间名不正确'));
+          toast.error('显示令牌失败: ' + (error.message || '确认房间名不正确'));
         }
       } finally {
         this.loading = false;
@@ -240,36 +297,35 @@ export default {
 
     // 重置表单
     resetForm() {
-      if (this.$refs.tokenForm) {
-        this.$refs.tokenForm.resetFields();
-      }
       this.tokenForm = {
         token: '',
         confirmation: ''
       };
+      this.tokenErrors = { token: '', confirmation: '' };
+    },
+
+    handleDialogOpenChange(open) {
+      if (!open) this.resetForm();
     },
 
     // 提交表单
     submitTokenForm() {
-      if (!this.tokenForm.token) {
-        this.$message.error('请输入服务器令牌');
-        return;
-      }
-      if (!this.tokenForm.confirmation) {
-        this.$message.error('请输入完整房间名确认修改');
-        return;
-      }
+      this.tokenErrors = {
+        token: this.validateToken(this.tokenForm.token),
+        confirmation: this.tokenForm.confirmation ? '' : '请输入完整房间名确认修改'
+      };
+      if (this.tokenErrors.token || this.tokenErrors.confirmation) return;
       this.submitting = true;
       const saveToUse = this.savename || this.currentSave;
       const newToken = this.tokenForm.token;
       serverApi.updateServerToken(saveToUse, newToken, this.tokenForm.confirmation)
         .then(() => {
           this.dialogVisible = false;
-          this.$message.success('服务器令牌已更新');
+          toast.success('服务器令牌已更新');
           this.fetchServerToken();
         })
         .catch(err => {
-          this.$message.error('更新令牌失败: ' + (err.message || '未知错误'));
+          toast.error('更新令牌失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.submitting = false;
@@ -331,18 +387,10 @@ export default {
   flex-wrap: wrap;
 }
 
-.card-header :deep(.el-button) {
-  margin: 0;
-}
-
 .token-info {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.token-display {
-  margin-bottom: 15px;
 }
 
 .token-help {
@@ -372,8 +420,13 @@ export default {
   margin-bottom: 10px;
 }
 
-.dialog-warning {
-  margin-top: 20px;
+.loading-state {
+  display: flex;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-foreground);
 }
 
 .token-card {

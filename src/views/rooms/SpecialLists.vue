@@ -4,132 +4,149 @@
       <h2>特殊名单管理</h2>
     </div>
     
-    <el-tabs v-model="activeTab" type="card">
-      <el-tab-pane label="管理员名单" name="admin">
-        <el-card shadow="hover" v-loading="loading.admin">
-          <template v-slot:header>
-<div  class="list-header">
-            <span>管理员列表</span>
+    <Tabs v-model="activeTab">
+      <TabsList>
+        <TabsTrigger v-for="list in listDefinitions" :key="list.type" :value="list.type">
+          {{ list.tabLabel }}
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent v-for="list in listDefinitions" :key="list.type" :value="list.type">
+        <Card>
+          <CardHeader class="list-header">
             <div>
-              <el-button size="small" type="primary" @click="addUser('admin')">添加管理员</el-button>
+              <CardTitle>{{ list.title }}</CardTitle>
+              <CardDescription>维护 {{ list.tabLabel }} 中的玩家 KU ID。</CardDescription>
             </div>
-          </div>
-</template>
-          
-          <div v-if="adminList.length > 0">
-            <el-table :data="adminList" style="width: 100%">
-              <el-table-column prop="name" label="玩家名称"></el-table-column>
-              <el-table-column prop="id" label="KU ID"></el-table-column>
-              <el-table-column fixed="right" label="操作" width="120">
-                <template v-slot="scope">
-                  <el-button
-                    @click.prevent="removeUser('admin', scope.$index, scope.row)"
-                    type="danger"
-                    size="small">
-                    移除
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-          <div v-else class="empty-list">
-            <component :is="'el-icon-info'" class="legacy-icon" />
-            <p>暂无管理员</p>
-          </div>
-        </el-card>
-      </el-tab-pane>
-      
-      <el-tab-pane label="黑名单" name="block">
-        <el-card shadow="hover" v-loading="loading.block">
-          <template v-slot:header>
-<div  class="list-header">
-            <span>黑名单列表</span>
-            <div>
-              <el-button size="small" type="primary" @click="addUser('block')">添加黑名单</el-button>
+            <UiButton size="sm" @click="addUser(list.type)">
+              <UserPlus data-icon="inline-start" />
+              添加{{ list.actionLabel }}
+            </UiButton>
+          </CardHeader>
+          <CardContent>
+            <div v-if="loading[list.type]" class="loading-state">
+              <Spinner />
+              <span>正在加载名单</span>
             </div>
-          </div>
-</template>
-          
-          <div v-if="blockList.length > 0">
-            <el-table :data="blockList" style="width: 100%">
-              <el-table-column prop="name" label="玩家名称"></el-table-column>
-              <el-table-column prop="id" label="KU ID"></el-table-column>
-              <el-table-column fixed="right" label="操作" width="120">
-                <template v-slot="scope">
-                  <el-button
-                    @click.prevent="removeUser('block', scope.$index, scope.row)"
-                    type="danger"
-                    size="small">
-                    移除
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-          <div v-else class="empty-list">
-            <component :is="'el-icon-info'" class="legacy-icon" />
-            <p>暂无黑名单用户</p>
-          </div>
-        </el-card>
-      </el-tab-pane>
-      
-      <el-tab-pane label="白名单" name="white">
-        <el-card shadow="hover" v-loading="loading.white">
-          <template v-slot:header>
-<div  class="list-header">
-            <span>白名单列表</span>
-            <div>
-              <el-button size="small" type="primary" @click="addUser('white')">添加白名单</el-button>
-            </div>
-          </div>
-</template>
-          
-          <div v-if="whiteList.length > 0">
-            <el-table :data="whiteList" style="width: 100%">
-              <el-table-column prop="name" label="玩家名称"></el-table-column>
-              <el-table-column prop="id" label="KU ID"></el-table-column>
-              <el-table-column fixed="right" label="操作" width="120">
-                <template v-slot="scope">
-                  <el-button
-                    @click.prevent="removeUser('white', scope.$index, scope.row)"
-                    type="danger"
-                    size="small">
-                    移除
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-          <div v-else class="empty-list">
-            <component :is="'el-icon-info'" class="legacy-icon" />
-            <p>暂无白名单用户</p>
-          </div>
-        </el-card>
-      </el-tab-pane>
-    </el-tabs>
+            <UiTable v-else-if="getList(list.type).length > 0">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>玩家名称</TableHead>
+                  <TableHead>KU ID</TableHead>
+                  <TableHead class="action-column">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-for="(user, index) in getList(list.type)" :key="`${user.id}-${index}`">
+                  <TableCell>{{ user.name || '--' }}</TableCell>
+                  <TableCell class="id-cell">{{ user.id || '--' }}</TableCell>
+                  <TableCell class="action-column">
+                    <UiButton variant="destructive" size="sm" @click="removeUser(list.type, index, user)">
+                      <Trash2 data-icon="inline-start" />
+                      移除
+                    </UiButton>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </UiTable>
+            <Empty v-else>
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><Users /></EmptyMedia>
+                <EmptyTitle>{{ list.emptyText }}</EmptyTitle>
+                <EmptyDescription>添加 KU ID 后会显示在这里。</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
     
     <!-- 添加用户对话框 -->
-    <el-dialog :title="dialogTitle" v-model="dialogVisible" width="30%">
-      <el-form :model="userForm" ref="userForm" :rules="userRules" label-width="100px">
-        <el-form-item label="KU ID" prop="id">
-          <el-input v-model="userForm.id" placeholder="格式: KU_XXXXX"></el-input>
-        </el-form-item>
-      </el-form>
-      <template v-slot:footer>
-<span  class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitUserForm" :loading="submitting">确定</el-button>
-      </span>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="dialogVisible" @update:open="handleDialogOpenChange">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ dialogTitle }}</DialogTitle>
+          <DialogDescription>输入玩家的 KU ID，例如 KU_XXXXX。</DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(userFormError)">
+            <FieldLabel for="special-list-ku-id">KU ID</FieldLabel>
+            <UiInput
+              id="special-list-ku-id"
+              v-model.trim="userForm.id"
+              placeholder="格式: KU_XXXXX"
+              :aria-invalid="Boolean(userFormError)"
+              @keyup.enter="submitUserForm"
+            />
+            <FieldError v-if="userFormError">{{ userFormError }}</FieldError>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" @click="dialogVisible = false">取消</UiButton>
+          <UiButton @click="submitUserForm" :disabled="submitting">
+            <Spinner v-if="submitting" data-icon="inline-start" />
+            确定
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { Trash2, UserPlus, Users } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Spinner } from '@/components/ui/spinner';
+import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'SpecialLists',
+  components: {
+    UiButton,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    UiDialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    Field,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    UiInput,
+    Spinner,
+    UiTable,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    Trash2,
+    UserPlus,
+    Users
+  },
   props: {
     savename: {
       type: String,
@@ -140,6 +157,11 @@ export default {
     return {      
       // 标签页
       activeTab: 'admin',
+      listDefinitions: [
+        { type: 'admin', tabLabel: '管理员名单', title: '管理员列表', actionLabel: '管理员', emptyText: '暂无管理员' },
+        { type: 'block', tabLabel: '黑名单', title: '黑名单列表', actionLabel: '黑名单', emptyText: '暂无黑名单用户' },
+        { type: 'white', tabLabel: '白名单', title: '白名单列表', actionLabel: '白名单', emptyText: '暂无白名单用户' }
+      ],
       
       // 数据
       adminList: [],
@@ -160,20 +182,18 @@ export default {
       userForm: {
         id: ''
       },
-      userRules: {
-        id: [
-          { required: true, message: '请输入KU ID', trigger: 'blur' },
-          { 
-            pattern: /^KU_[A-Za-z0-9]+$/, 
-            message: 'KU ID格式必须为KU_开头加字母或数字', 
-            trigger: 'blur' 
-          }
-        ]
-      },
+      userFormError: '',
       submitting: false
     }
   },
   methods: {
+    getList(type) {
+      return type === 'admin' ? this.adminList : type === 'block' ? this.blockList : this.whiteList;
+    },
+
+    handleDialogOpenChange(open) {
+      if (!open) this.userFormError = '';
+    },
     // 关闭对话框
     close() {
       this.$emit('close');
@@ -200,7 +220,7 @@ export default {
           });
         })
         .catch(err => {
-          this.$message.error('获取管理员列表失败: ' + (err.message || '未知错误'));
+          toast.error('获取管理员列表失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading.admin = false;
@@ -218,7 +238,7 @@ export default {
           });
         })
         .catch(err => {
-          this.$message.error('获取黑名单失败: ' + (err.message || '未知错误'));
+          toast.error('获取黑名单失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading.block = false;
@@ -236,7 +256,7 @@ export default {
           });
         })
         .catch(err => {
-          this.$message.error('获取白名单失败: ' + (err.message || '未知错误'));
+          toast.error('获取白名单失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading.white = false;
@@ -289,17 +309,15 @@ export default {
       this.userForm = {
         id: ''
       };
+      this.userFormError = '';
       this.dialogVisible = true;
     },
     
     // 移除用户
-    removeUser(type, index, row) {
+    async removeUser(type, index, row) {
       const idToRemove = row.id || row;
-      this.$confirm(`确定要从${type === 'admin' ? '管理员列表' : type === 'block' ? '黑名单' : '白名单'}中移除 ${idToRemove} 吗?`, '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
+      try {
+        await confirmAction(`确定要从${type === 'admin' ? '管理员列表' : type === 'block' ? '黑名单' : '白名单'}中移除 ${idToRemove} 吗?`, '移除名单用户', { destructive: true });
         if (!this.savename) {
           switch(type) {
             case 'admin':
@@ -313,15 +331,10 @@ export default {
               break;
           }
           this.emitPendingLists();
-          this.$message.info('已从待保存名单移除，创建房间时才会写入服务器');
+          toast.info('已从待保存名单移除，创建房间时才会写入服务器');
           return;
         }
-        const loading = this.$loading({
-          lock: true,
-          text: '正在移除...',
-          spinner: 'el-icon-loading',
-          background: 'rgba(0, 0, 0, 0.7)'
-        });
+        this.loading[type] = true;
         let listData;
         // 发送API请求
         let apiPromise;
@@ -346,27 +359,34 @@ export default {
             apiPromise = serverApi.updateWhiteList(this.savename, listData, true);
             break;
         }
-        apiPromise
+        await apiPromise
           .then(() => {
-            loading.close();
-            this.$message.success('移除成功');
+            toast.success('移除成功');
             this.fetchAllLists();
           })
           .catch(err => {
-            loading.close();
             console.error('移除失败:', err);
-            this.$message.error('移除失败: ' + (err.message || '未知错误'));
+            toast.error('移除失败: ' + (err.message || '未知错误'));
+          })
+          .finally(() => {
+            this.loading[type] = false;
           });
-      }).catch(() => {
-        // 取消移除
-      });
+      } catch {
+        // 用户取消移除。
+      }
     },
     
     // 提交表单
     submitUserForm() {
-      this.$refs.userForm.validate(valid => {
-        if (!valid) return;
-        
+      if (!this.userForm.id) {
+        this.userFormError = '请输入KU ID';
+        return;
+      }
+      if (!/^KU_[A-Za-z0-9]+$/.test(this.userForm.id)) {
+        this.userFormError = 'KU ID格式必须为KU_开头加字母或数字';
+        return;
+      }
+      this.userFormError = '';
         this.submitting = true;
         // 准备要添加的用户
         const newUser = this.userForm.id;
@@ -385,7 +405,7 @@ export default {
           this.submitting = false;
           this.dialogVisible = false;
           this.emitPendingLists();
-          this.$message.info('已加入待保存名单，创建房间时才会写入服务器');
+          toast.info('已加入待保存名单，创建房间时才会写入服务器');
           return;
         }
         let listData;
@@ -409,16 +429,15 @@ export default {
           .then(() => {
             this.submitting = false;
             this.dialogVisible = false;
-            this.$message.success('添加成功');
+            toast.success('添加成功');
             
             // 重新获取列表数据
             this.fetchAllLists();
           })
           .catch(err => {
-            this.$message.error('添加失败: ' + (err.message || '未知错误'));
+            toast.error('添加失败: ' + (err.message || '未知错误'));
             this.submitting = false;
           });
-      });
     },
     emitPendingLists() {
       const admin = this.adminList.map(item => item.id);
@@ -468,23 +487,27 @@ export default {
   align-items: center;
 }
 
-.empty-list {
-  text-align: center;
-  padding: 30px 0;
-  color: var(--text-secondary);
+.action-column {
+  width: 120px;
+  text-align: right;
 }
 
-.empty-list .legacy-icon {
-  font-size: 30px;
-  margin-bottom: 10px;
+.id-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.el-tabs {
-  margin-bottom: 16px;
+.loading-state {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-foreground);
 }
 
-:deep(.el-card) {
-  border-radius: 4px;
-  box-shadow: none;
+.list-header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 </style>

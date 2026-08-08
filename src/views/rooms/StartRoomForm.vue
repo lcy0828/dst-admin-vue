@@ -3,25 +3,33 @@
     <div v-if="room" class="form-container">
       <h3>启动房间: {{ room.name }}</h3>
       
-      <el-form :model="formData" label-width="120px">
-        <el-form-item label="启动模式">
-          <el-radio-group v-model="formData.worldType">
-            <el-radio label="all">所有世界</el-radio>
-            <el-radio label="forest">仅森林世界</el-radio>
-            <el-radio label="cave">仅洞穴世界</el-radio>
-            <el-radio label="unknown">仅其他世界</el-radio>
-          </el-radio-group>
-        </el-form-item>
+      <FieldGroup>
+        <Field>
+          <FieldLabel>启动模式</FieldLabel>
+          <RadioGroup v-model="formData.worldType" class="option-grid">
+            <Field v-for="option in worldTypeOptions" :key="option.value" orientation="horizontal">
+              <RadioGroupItem :id="`world-type-${option.value}`" :value="option.value" />
+              <FieldLabel :for="`world-type-${option.value}`" class="font-normal">{{ option.label }}</FieldLabel>
+            </Field>
+          </RadioGroup>
+        </Field>
         
-        <el-form-item label="服务器模式">
-          <el-radio-group v-model="formData.serverMode">
-            <el-radio label="32" disabled>32位</el-radio>
-            <el-radio label="64" disabled>64位</el-radio>
-          </el-radio-group>
-          <span class="mode-hint">v2 使用系统设置中的服务端位数</span>
-        </el-form-item>
+        <Field data-disabled>
+          <FieldLabel>服务器模式</FieldLabel>
+          <RadioGroup v-model="formData.serverMode" class="option-grid" disabled>
+            <Field orientation="horizontal" data-disabled>
+              <RadioGroupItem id="server-mode-32" value="32" disabled />
+              <FieldLabel for="server-mode-32" class="font-normal">32位</FieldLabel>
+            </Field>
+            <Field orientation="horizontal" data-disabled>
+              <RadioGroupItem id="server-mode-64" value="64" disabled />
+              <FieldLabel for="server-mode-64" class="font-normal">64位</FieldLabel>
+            </Field>
+          </RadioGroup>
+          <FieldDescription>v2 使用系统设置中的服务端位数</FieldDescription>
+        </Field>
         
-        <el-divider></el-divider>
+        <Separator />
         
         <!-- 世界列表预览 -->
         <div class="world-preview" v-if="room.worlds && room.worlds.length > 0">
@@ -29,69 +37,94 @@
           <div class="world-list">
             <template v-if="formData.worldType === 'all'">
               <div v-for="world in room.worlds" :key="world.name" class="world-item">
-                <component :is="'el-icon-check'" class="legacy-icon" />
+                <CheckCircle2 class="status-icon" />
                 <span>{{ world.name }}</span>
-                <el-tag size="mini" :type="getWorldTagType(world.type)">
+                <Badge :variant="getWorldTagType(world.type)">
                   {{ getWorldTypeName(world.type) }}
-                </el-tag>
+                </Badge>
               </div>
             </template>
             
             <template v-else-if="formData.worldType === 'forest'">
               <div v-for="world in forestWorlds" :key="world.name" class="world-item">
-                <component :is="'el-icon-check'" class="legacy-icon" />
+                <CheckCircle2 class="status-icon" />
                 <span>{{ world.name }}</span>
-                <el-tag size="mini" type="primary">森林</el-tag>
+                <Badge variant="outline">森林</Badge>
               </div>
               <div v-if="forestWorlds.length === 0" class="no-worlds">
-                <component :is="'el-icon-warning-outline'" class="legacy-icon" />
+                <TriangleAlert class="status-icon" />
                 <span>未找到森林世界</span>
               </div>
             </template>
             
             <template v-else-if="formData.worldType === 'cave'">
               <div v-for="world in caveWorlds" :key="world.name" class="world-item">
-                <component :is="'el-icon-check'" class="legacy-icon" />
+                <CheckCircle2 class="status-icon" />
                 <span>{{ world.name }}</span>
-                <el-tag size="mini" type="success">洞穴</el-tag>
+                <Badge variant="secondary">洞穴</Badge>
               </div>
               <div v-if="caveWorlds.length === 0" class="no-worlds">
-                <component :is="'el-icon-warning-outline'" class="legacy-icon" />
+                <TriangleAlert class="status-icon" />
                 <span>未找到洞穴世界</span>
               </div>
             </template>
             
             <template v-else-if="formData.worldType === 'unknown'">
               <div v-for="world in unknownWorlds" :key="world.name" class="world-item">
-                <component :is="'el-icon-check'" class="legacy-icon" />
+                <CheckCircle2 class="status-icon" />
                 <span>{{ world.name }}</span>
-                <el-tag size="mini" type="info">其他</el-tag>
+                <Badge variant="outline">其他</Badge>
               </div>
               <div v-if="unknownWorlds.length === 0" class="no-worlds">
-                <component :is="'el-icon-warning-outline'" class="legacy-icon" />
+                <TriangleAlert class="status-icon" />
                 <span>未找到其他类型世界</span>
               </div>
             </template>
           </div>
         </div>
-      </el-form>
+      </FieldGroup>
       
       <div class="form-actions">
-        <el-button @click="$emit('close')">取消</el-button>
-        <el-button type="primary" @click="handleConfirm" :loading="loading">启动</el-button>
+        <UiButton variant="outline" @click="$emit('close')">取消</UiButton>
+        <UiButton @click="handleConfirm" :disabled="loading">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          启动
+        </UiButton>
       </div>
     </div>
     
     <div v-else class="error-message">
-      <component :is="'el-icon-warning-outline'" class="legacy-icon" />
+      <TriangleAlert class="error-icon" />
       <p>无法加载房间信息</p>
     </div>
   </div>
 </template>
 
 <script>
+import { CheckCircle2, TriangleAlert } from '@lucide/vue';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+
 export default {
   name: 'StartRoomForm',
+  components: {
+    Badge,
+    UiButton,
+    CheckCircle2,
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    RadioGroup,
+    RadioGroupItem,
+    Separator,
+    Spinner,
+    TriangleAlert
+  },
   props: {
     room: {
       type: Object,
@@ -111,6 +144,12 @@ export default {
         worldType: this.startForm.worldType,
         serverMode: this.startForm.serverMode
       },
+      worldTypeOptions: [
+        { value: 'all', label: '所有世界' },
+        { value: 'forest', label: '仅森林世界' },
+        { value: 'cave', label: '仅洞穴世界' },
+        { value: 'unknown', label: '仅其他世界' }
+      ],
       loading: false
     }
   },
@@ -144,9 +183,8 @@ export default {
       this.$emit('confirm');
     },
     getWorldTagType(type) {
-      if (type === 'forest') return 'primary';
-      if (type === 'cave') return 'success';
-      return '';
+      if (type === 'cave') return 'secondary';
+      return 'outline';
     },
     getWorldTypeName(type) {
       if (type === 'forest') return '森林';
@@ -207,9 +245,9 @@ export default {
         border-radius: 3px;
         box-shadow: none;
         
-        i {
-          color: #4f8a5b;
-          margin-right: 8px;
+        .status-icon {
+          color: var(--primary);
+          flex: none;
         }
         
         span {
@@ -221,23 +259,20 @@ export default {
       .no-worlds {
         display: flex;
         align-items: center;
-        color: #d99b32;
-        background-color: #fdf6ec;
+        color: var(--muted-foreground);
+        background-color: var(--muted);
         padding: 10px 15px;
         border-radius: 6px;
         
-        i {
-          margin-right: 8px;
-          font-size: 18px;
+        .status-icon {
+          flex: none;
         }
       }
     }
   }
 
-  .mode-hint {
-    margin-left: 12px;
-    color: #909399;
-    font-size: 12px;
+  .option-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   }
   
   .form-actions {
@@ -247,20 +282,16 @@ export default {
     margin-top: 20px;
     text-align: right;
     
-    .el-button {
-      padding: 10px 25px;
-      border-radius: 4px;
-      margin: 0;
-    }
   }
   
   .error-message {
     text-align: center;
     padding: 30px 0;
-    color: #c94f4f;
+    color: var(--destructive);
     
-    i {
-      font-size: 36px;
+    .error-icon {
+      width: 36px;
+      height: 36px;
       margin-bottom: 10px;
     }
     
