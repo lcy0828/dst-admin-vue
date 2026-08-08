@@ -422,6 +422,7 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu as MenuIcon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -468,7 +469,9 @@ const NAVIGATION_SECTIONS = [
         icon: House,
         children: [
           { label: '房间列表', to: '/rooms/list' },
-          { label: '房间设置', to: '/rooms/settings' }
+          { label: '房间设置', to: '/rooms/settings' },
+          { label: '特殊名单', to: '/rooms/special-lists' },
+          { label: '服务器令牌', to: '/rooms/token' }
         ]
       },
       {
@@ -518,6 +521,7 @@ const NAVIGATION_SECTIONS = [
           { label: '日志解析器', to: '/logs/parser' }
         ]
       },
+      { key: 'announcements', label: '公告管理', to: '/announcements', icon: Megaphone },
       { key: 'backups', label: '备份管理', to: '/backups', icon: ArchiveRestore },
       {
         key: 'scheduled',
@@ -525,7 +529,11 @@ const NAVIGATION_SECTIONS = [
         icon: CalendarClock,
         children: [
           { label: '任务列表', to: '/scheduled/tasks' },
-          { label: '创建任务', to: '/scheduled/create' }
+          { label: '创建任务', to: '/scheduled/create' },
+          { label: '任务组', to: '/cron/groups' },
+          { label: '执行日志', to: '/cron/logs' },
+          { label: '运行统计', to: '/cron/charts' },
+          { label: '导入导出', to: '/cron/import-export' }
         ]
       }
     ]

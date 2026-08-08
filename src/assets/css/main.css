@@ -646,6 +646,155 @@ a,
   border-color: var(--el-border-color);
 }
 
+/* Routed page framework: keeps legacy views aligned with the shared application shell. */
+.content-container > * {
+  width: 100%;
+  max-width: 1680px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.content-container > * > .page-header,
+.content-container > * > header.page-header {
+  display: flex !important;
+  min-height: 46px;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px;
+  margin: 0 0 16px !important;
+  padding: 0 0 12px !important;
+  color: var(--text-primary) !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.content-container > * > .page-header :is(h1, h2),
+.content-container > * > h1,
+.content-container > * > h2 {
+  margin: 0;
+  color: var(--text-primary) !important;
+  font-size: 20px !important;
+  font-weight: 650 !important;
+  line-height: 28px !important;
+  letter-spacing: 0 !important;
+}
+
+.content-container > * > .page-header :is(.header-actions, .title-actions),
+.content-container .card-header :is(.header-actions, .title-actions),
+.content-container .tab-header :is(.header-actions, .title-actions) {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.content-container > * > :is(.filter-container, .filter-section, .search-form-container, .toolbar) {
+  margin: 0 0 16px !important;
+  padding: 12px 14px !important;
+  background: var(--surface-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+}
+
+.content-container :is(.filter-form, .search-form, .toolbar, .action-bar) {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.content-container :is(.filter-form, .search-form) .el-form-item {
+  margin-right: 0;
+  margin-bottom: 0;
+}
+
+.content-container :is(.card-header, .list-header, .rule-header, .agent-list-header) {
+  min-height: 46px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.content-container :is(.table-container, .table-wrapper, [class$='-table-container']) {
+  max-width: 100%;
+  overflow-x: auto;
+  background: var(--surface-color);
+  border-radius: 5px;
+}
+
+.content-container :is(.el-empty, [class^='empty-'], [class*=' empty-']) {
+  color: var(--text-secondary);
+}
+
+.content-container :is([class^='empty-'], [class*=' empty-']):not(.empty-text) {
+  background: var(--surface-muted);
+  border-color: var(--border-color) !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
+}
+
+.content-container :is(.el-card, [class$='-card'], [class*='-card ']) {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.content-container :is(.el-card, [class$='-card'], [class*='-card ']):hover {
+  transform: none !important;
+}
+
+.content-container :is(.el-dialog, .el-drawer) :is(h1, h2, h3) {
+  letter-spacing: 0;
+}
+
+.content-container pre,
+.el-dialog pre {
+  max-width: 100%;
+  overflow: auto;
+  color: var(--text-regular);
+  background: var(--surface-muted) !important;
+  border: 1px solid var(--border-color);
+  border-radius: 5px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+@media (max-width: 768px) {
+  .content-container > * > .page-header,
+  .content-container > * > header.page-header {
+    min-height: 0;
+    align-items: flex-start !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .content-container > * > .page-header :is(.header-actions, .title-actions) {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .content-container > * > :is(.filter-container, .filter-section, .search-form-container, .toolbar) {
+    padding: 10px !important;
+  }
+
+  .content-container :is(.filter-form, .search-form, .toolbar, .action-bar) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .content-container :is(.filter-form, .search-form) .el-form-item,
+  .content-container :is(.filter-form, .search-form) .el-form-item__content,
+  .content-container :is(.filter-form, .search-form) :is(.el-input, .el-select, .el-date-editor) {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
 .legacy-icon {
   width: 1em;
   height: 1em;
