@@ -2,168 +2,116 @@
   <div class="rule-management-container">
     <h1>规则管理</h1>
 
-    <div class="rule-section">
-      <div class="rule-header">
-        <h3>日志解析规则</h3>
+    <Card class="rule-section">
+      <CardHeader class="rule-header">
+        <div><CardTitle>日志解析规则</CardTitle><CardDescription>为选定房间配置日志识别和解析优先级。</CardDescription></div>
         <div class="rule-header-actions">
-          <el-select
+          <UiSelect
             v-model="selectedRoomId"
-            placeholder="请选择存档"
-            size="small"
-            filterable
-            @change="getParserRulesList"
+            @update:model-value="getParserRulesList"
           >
-            <el-option v-for="room in rooms" :key="room.id" :label="room.name" :value="room.id"></el-option>
-          </el-select>
-          <el-button type="primary" size="small" @click="addParserRule">添加解析规则</el-button>
+            <SelectTrigger class="room-select"><SelectValue placeholder="请选择存档" /></SelectTrigger>
+            <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
+          </UiSelect>
+          <UiButton size="sm" @click="addParserRule"><PlusIcon data-icon="inline-start" />添加解析规则</UiButton>
         </div>
-      </div>
+      </CardHeader>
+      <CardContent><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>规则名称</TableHead><TableHead>描述</TableHead><TableHead>日志类型</TableHead><TableHead>匹配模式</TableHead><TableHead>模式类型</TableHead><TableHead><UiButton variant="ghost" size="xs" @click="togglePrioritySort">优先级<ArrowUpDownIcon data-icon="inline-end" /></UiButton></TableHead><TableHead>状态</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
+        <TableRow v-for="rule in displayedParserRules" :key="rule.id"><TableCell>{{ rule.id }}</TableCell><TableCell>{{ rule.name }}</TableCell><TableCell class="description-cell">{{ rule.description }}</TableCell><TableCell><Badge :variant="getLogTypeTag(rule.log_type)">{{ rule.log_type }}</Badge></TableCell><TableCell><div class="pattern-container"><span class="pattern-text">{{ rule.pattern }}</span><Tooltip><TooltipTrigger as-child><UiButton class="copy-btn" variant="ghost" size="icon-xs" aria-label="复制匹配模式" @click.stop="copyPattern(rule.pattern)"><CopyIcon /></UiButton></TooltipTrigger><TooltipContent>复制匹配模式</TooltipContent></Tooltip></div></TableCell><TableCell><Badge :variant="getMatchModeTag(rule.match_mode)">{{ getMatchModeText(rule.match_mode) }}</Badge></TableCell><TableCell>{{ rule.priority }}</TableCell><TableCell><UiSwitch v-model="rule.is_enabled" :aria-label="`切换规则 ${rule.name}`" @update:model-value="toggleRuleStatus(rule)" /></TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="editParserRule(rule)">编辑</UiButton><UiButton variant="destructive" size="sm" :disabled="rule.built_in" :title="rule.built_in ? '内建规则不能删除' : '删除规则'" @click="removeParserRule(rule)">删除</UiButton></div></TableCell></TableRow>
+        <TableEmpty v-if="loading.parser" :colspan="9"><Spinner />正在加载规则</TableEmpty>
+        <TableEmpty v-else-if="displayedParserRules.length === 0" :colspan="9"><Empty><EmptyHeader><EmptyTitle>暂无解析规则</EmptyTitle><EmptyDescription>选择存档后添加第一条日志解析规则。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
+      </TableBody></ShadcnTable></CardContent>
+    </Card>
 
-      <el-table
-        v-loading="loading.parser"
-        :data="parserRulesList"
-        style="width: 100%"
-        border
-      >
-        <el-table-column prop="id" label="ID" width="60"></el-table-column>
-        <el-table-column prop="name" label="规则名称"></el-table-column>
-        <el-table-column prop="description" label="描述" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="log_type" label="日志类型" width="100">
-          <template #default="scope">
-            <el-tag :type="getLogTypeTag(scope.row.log_type)">{{ scope.row.log_type }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="pattern" label="匹配模式" show-overflow-tooltip>
-          <template #default="scope">
-            <div class="pattern-container">
-              <span class="pattern-text">{{ scope.row.pattern }}</span>
-              <el-button
-                type="text"
-                icon="el-icon-document-copy"
-                class="copy-btn"
-                @click.stop="copyPattern(scope.row.pattern)"
-                title="复制匹配模式">
-              </el-button>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="match_mode" label="匹配模式" width="100">
-          <template #default="scope">
-            <el-tag :type="getMatchModeTag(scope.row.match_mode)" size="small">
-              {{ getMatchModeText(scope.row.match_mode) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="priority" label="优先级" width="80" sortable></el-table-column>
-        <el-table-column prop="is_enabled" label="状态" width="80">
-          <template #default="scope">
-            <el-switch
-              v-model="scope.row.is_enabled"
-              @change="toggleRuleStatus(scope.row)"
-            ></el-switch>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160">
-          <template #default="scope">
-            <el-button
-              type="primary"
-              size="mini"
-              @click="editParserRule(scope.row)"
-            >编辑</el-button>
-            <el-button
-              type="danger"
-              size="mini"
-              :disabled="scope.row.built_in"
-              :title="scope.row.built_in ? '内建规则不能删除' : '删除规则'"
-              @click="removeParserRule(scope.$index, scope.row)"
-            >删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
-    <!-- 添加/编辑解析规则对话框 -->
-    <el-dialog
-      :title="ruleForm.id ? '编辑解析规则' : '添加解析规则'"
-      v-model="dialogVisible.parser"
-      width="50%"
-      :close-on-click-modal="false"
-      :before-close="handleDialogClose"
-    >
-      <el-form :model="ruleForm" :rules="ruleFormRules" ref="ruleForm" label-width="120px">
-        <el-form-item label="规则名称" prop="name">
-          <el-input v-model="ruleForm.name"></el-input>
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="ruleForm.description" type="textarea"></el-input>
-        </el-form-item>
-        <el-form-item label="日志类型" prop="log_type">
-          <el-select
-            v-model="ruleForm.log_type"
-            placeholder="选择或输入日志类型"
-            allow-create
-            filterable
-            @change="handleLogTypeChange"
-            @visible-change="handleSelectVisibleChange"
-            @keyup.enter="handleEnterKey"
-            @blur="handleSelectBlur">
-            <el-option
-              v-for="type in uniqueLogTypes"
-              :key="type"
-              :label="type"
-              :value="type">
-            </el-option>
-          </el-select>
-          <div class="tip">可以选择已有类型或输入自定义类型</div>
-        </el-form-item>
-        <el-form-item label="匹配模式" prop="pattern">
-          <el-input v-model="ruleForm.pattern" type="textarea" rows="3"></el-input>
-          <div class="tip">使用正则表达式，如: \[\d{2}:\d{2}:\d{2}\]: Player .* joined the game</div>
-        </el-form-item>
-        <el-form-item label="是否使用正则" prop="is_regex">
-          <el-switch v-model="ruleForm.is_regex"></el-switch>
-        </el-form-item>
-        <el-form-item label="是否启用" prop="is_enabled">
-          <el-switch v-model="ruleForm.is_enabled"></el-switch>
-        </el-form-item>
-        <el-form-item label="匹配模式类型" prop="match_mode">
-          <el-select v-model="ruleForm.match_mode" placeholder="选择匹配模式类型" @change="handleMatchModeChange">
-            <el-option label="单行匹配" value="single"></el-option>
-            <el-option label="多行匹配" value="multi_line"></el-option>
-            <el-option label="首尾行匹配" value="head_tail"></el-option>
-          </el-select>
-          <div class="tip">
+    <UiDialog :open="dialogVisible.parser" @update:open="handleDialogOpenChange"><DialogContent class="sm:max-w-3xl"><DialogHeader><DialogTitle>{{ ruleForm.id ? '编辑解析规则' : '添加解析规则' }}</DialogTitle><DialogDescription>配置日志匹配表达式、模式和执行优先级。</DialogDescription></DialogHeader>
+      <FieldGroup>
+        <Field :data-invalid="Boolean(formErrors.name)"><FieldLabel for="rule-name">规则名称</FieldLabel><UiInput id="rule-name" v-model="ruleForm.name" :aria-invalid="Boolean(formErrors.name)" /><FieldError v-if="formErrors.name">{{ formErrors.name }}</FieldError></Field>
+        <Field :data-invalid="Boolean(formErrors.description)"><FieldLabel for="rule-description">描述</FieldLabel><UiTextarea id="rule-description" v-model="ruleForm.description" :aria-invalid="Boolean(formErrors.description)" /><FieldError v-if="formErrors.description">{{ formErrors.description }}</FieldError></Field>
+        <Field :data-invalid="Boolean(formErrors.log_type)"><FieldLabel for="rule-log-type">日志类型</FieldLabel><UiInput id="rule-log-type" v-model="ruleForm.log_type" list="known-log-types" :aria-invalid="Boolean(formErrors.log_type)" placeholder="选择或输入日志类型" @change="handleLogTypeChange(ruleForm.log_type)" /><datalist id="known-log-types"><option v-for="type in uniqueLogTypes" :key="type" :value="type" /></datalist><FieldDescription>可以选择已有类型或输入自定义类型。</FieldDescription><FieldError v-if="formErrors.log_type">{{ formErrors.log_type }}</FieldError></Field>
+        <Field :data-invalid="Boolean(formErrors.pattern)"><FieldLabel for="rule-pattern">匹配模式</FieldLabel><UiTextarea id="rule-pattern" v-model="ruleForm.pattern" rows="3" :aria-invalid="Boolean(formErrors.pattern)" /><FieldDescription>使用正则表达式，如: \[\d{2}:\d{2}:\d{2}\]: Player .* joined the game</FieldDescription><FieldError v-if="formErrors.pattern">{{ formErrors.pattern }}</FieldError></Field>
+        <Field orientation="horizontal"><div><FieldLabel for="rule-regex">使用正则表达式</FieldLabel><FieldDescription>关闭后按普通字符串匹配。</FieldDescription></div><UiSwitch id="rule-regex" v-model="ruleForm.is_regex" /></Field>
+        <Field orientation="horizontal"><div><FieldLabel for="rule-enabled">启用规则</FieldLabel><FieldDescription>关闭后规则将保留但不参与解析。</FieldDescription></div><UiSwitch id="rule-enabled" v-model="ruleForm.is_enabled" /></Field>
+        <Field :data-invalid="Boolean(formErrors.match_mode)"><FieldLabel>匹配模式类型</FieldLabel><UiSelect v-model="ruleForm.match_mode" @update:model-value="handleMatchModeChange"><SelectTrigger :aria-invalid="Boolean(formErrors.match_mode)"><SelectValue placeholder="选择匹配模式类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="single">单行匹配</SelectItem><SelectItem value="multi_line">多行匹配</SelectItem><SelectItem value="head_tail">首尾行匹配</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>
             <span v-if="ruleForm.match_mode === 'single'">单行匹配：每行日志单独匹配和处理</span>
             <span v-else-if="ruleForm.match_mode === 'multi_line'">多行匹配：匹配到一条日志后，继续向下匹配相同类型的日志</span>
             <span v-else-if="ruleForm.match_mode === 'head_tail'">首尾行匹配：需要提供首行和尾行的匹配规则</span>
-          </div>
-        </el-form-item>
-
-        <el-form-item label="尾行匹配模式" prop="tail_pattern" v-if="ruleForm.match_mode === 'head_tail'">
-          <el-input v-model="ruleForm.tail_pattern" type="textarea" rows="3"></el-input>
-          <div class="tip">尾行匹配模式，仅当匹配模式为首尾行匹配时有效</div>
-        </el-form-item>
-
-        <el-form-item label="优先级" prop="priority">
-          <el-input-number v-model="ruleForm.priority" :min="1" controls-position="right"></el-input-number>
-          <div class="tip">数值越大优先级越高</div>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="handleCancelClick">取消</el-button>
-          <el-button type="primary" @click="confirmRuleAction">确认</el-button>
-        </span>
-      </template>
-    </el-dialog>
+          </FieldDescription><FieldError v-if="formErrors.match_mode">{{ formErrors.match_mode }}</FieldError></Field>
+        <Field v-if="ruleForm.match_mode === 'head_tail'" :data-invalid="Boolean(formErrors.tail_pattern)"><FieldLabel for="rule-tail-pattern">尾行匹配模式</FieldLabel><UiTextarea id="rule-tail-pattern" v-model="ruleForm.tail_pattern" rows="3" :aria-invalid="Boolean(formErrors.tail_pattern)" /><FieldDescription>仅当匹配模式为首尾行匹配时有效。</FieldDescription><FieldError v-if="formErrors.tail_pattern">{{ formErrors.tail_pattern }}</FieldError></Field>
+        <Field :data-invalid="Boolean(formErrors.priority)"><FieldLabel for="rule-priority">优先级</FieldLabel><UiInput id="rule-priority" v-model="ruleForm.priority" type="number" min="1" :aria-invalid="Boolean(formErrors.priority)" /><FieldDescription>数值越大优先级越高。</FieldDescription><FieldError v-if="formErrors.priority">{{ formErrors.priority }}</FieldError></Field>
+      </FieldGroup>
+      <DialogFooter><UiButton variant="outline" @click="handleCancelClick">取消</UiButton><UiButton @click="confirmRuleAction">确认</UiButton></DialogFooter>
+    </DialogContent></UiDialog>
   </div>
 </template>
 
 <script>
+import { ArrowUpDownIcon, CopyIcon, PlusIcon } from '@lucide/vue'
 import { logApi, ruleManagementApi } from '@/api';
+import { Badge } from '@/components/ui/badge'
+import { Button as UiButton } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input as UiInput } from '@/components/ui/input'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Spinner } from '@/components/ui/spinner'
+import { Switch as UiSwitch } from '@/components/ui/switch'
+import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Textarea as UiTextarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { confirmAction } from '@/lib/feedback'
+import { toast } from 'vue-sonner'
 
 export default {
   name: 'RuleManagementView',
+  components: {
+    ArrowUpDownIcon,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    CopyIcon,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+    Field,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    PlusIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    ShadcnTable,
+    Spinner,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+    UiButton,
+    UiDialog,
+    UiInput,
+    UiSelect,
+    UiSwitch,
+    UiTextarea
+  },
   data() {
     return {
       // 加载状态
@@ -187,41 +135,8 @@ export default {
         match_mode: 'single',  // 默认单行匹配模式
         tail_pattern: ''       // 尾行匹配模式
       },
-      // 解析规则表单验证规则
-      ruleFormRules: {
-        name: [
-          { required: true, message: '请输入规则名称', trigger: 'blur' },
-          { min: 2, max: 50, message: '规则名称长度应在2-50个字符之间', trigger: 'blur' }
-        ],
-        description: [
-          { required: true, message: '请输入规则描述', trigger: 'blur' },
-          { min: 2, max: 200, message: '规则描述长度应在2-200个字符之间', trigger: 'blur' }
-        ],
-        log_type: [
-          { required: true, message: '请选择日志类型', trigger: 'change' }
-        ],
-        pattern: [
-          { required: true, message: '请输入匹配模式', trigger: 'blur' },
-          { min: 2, max: 200, message: '匹配模式长度应在2-200个字符之间', trigger: 'blur' }
-        ],
-        match_mode: [
-          { required: true, message: '请选择匹配模式类型', trigger: 'change' }
-        ],
-        tail_pattern: [
-          { required: false, message: '首尾行匹配模式下需要提供尾行匹配模式', trigger: 'blur' },
-          { validator: (rule, value, callback) => {
-            if (this.ruleForm.match_mode === 'head_tail' && (!value || value.trim() === '')) {
-              callback(new Error('首尾行匹配模式下需要提供尾行匹配模式'));
-            } else {
-              callback();
-            }
-          }, trigger: 'blur' }
-        ],
-        priority: [
-          { required: true, message: '请设置优先级', trigger: 'change' },
-          { type: 'number', min: 1, message: '优先级应大于等于1', trigger: 'change' }
-        ]
-      },
+      formErrors: { name: '', description: '', log_type: '', pattern: '', match_mode: '', tail_pattern: '', priority: '' },
+      prioritySort: 'none',
       // 解析规则列表
       parserRulesList: [],
       // 唯一的日志类型列表
@@ -229,6 +144,13 @@ export default {
       rooms: [],
       selectedRoomId: ''
     };
+  },
+  computed: {
+    displayedParserRules() {
+      if (this.prioritySort === 'none') return this.parserRulesList
+      const direction = this.prioritySort === 'asc' ? 1 : -1
+      return [...this.parserRulesList].sort((left, right) => (Number(left.priority) - Number(right.priority)) * direction)
+    }
   },
   mounted() {
     this.loadRooms();
@@ -243,7 +165,7 @@ export default {
         }
       } catch (error) {
         this.rooms = [];
-        this.$message.error('获取存档列表失败: ' + (error.message || '未知错误'));
+        toast.error('获取存档列表失败: ' + (error.message || '未知错误'));
       }
     },
 
@@ -272,7 +194,7 @@ export default {
         this.extractUniqueLogTypes();
       } catch (error) {
         console.error('获取解析规则列表失败:', error);
-        this.$message.error('获取解析规则列表失败');
+        toast.error('获取解析规则列表失败');
         this.parserRulesList = [];
         this.uniqueLogTypes = [];
       } finally {
@@ -300,7 +222,7 @@ export default {
     // 添加解析规则对话框
     addParserRule() {
       if (!this.selectedRoomId) {
-        this.$message.warning('请先选择存档');
+        toast.warning('请先选择存档');
         return;
       }
       this.ruleForm = {
@@ -315,6 +237,7 @@ export default {
         match_mode: 'single',
         tail_pattern: ''
       };
+      this.resetFormErrors()
       this.dialogVisible.parser = true;
     },
 
@@ -332,17 +255,32 @@ export default {
         match_mode: rule.match_mode || 'single',
         tail_pattern: rule.tail_pattern || ''
       };
+      this.resetFormErrors()
       this.dialogVisible.parser = true;
     },
 
     // 确认解析规则操作
+    validateRuleForm() {
+      const validateLength = (value, min, max, emptyMessage, lengthMessage) => {
+        const length = String(value || '').trim().length
+        if (length === 0) return emptyMessage
+        return length < min || length > max ? lengthMessage : ''
+      }
+      this.formErrors.name = validateLength(this.ruleForm.name, 2, 50, '请输入规则名称', '规则名称长度应在2-50个字符之间')
+      this.formErrors.description = validateLength(this.ruleForm.description, 2, 200, '请输入规则描述', '规则描述长度应在2-200个字符之间')
+      this.formErrors.log_type = this.ruleForm.log_type.trim() ? '' : '请选择日志类型'
+      this.formErrors.pattern = validateLength(this.ruleForm.pattern, 2, 200, '请输入匹配模式', '匹配模式长度应在2-200个字符之间')
+      this.formErrors.match_mode = this.ruleForm.match_mode ? '' : '请选择匹配模式类型'
+      this.formErrors.tail_pattern = this.ruleForm.match_mode === 'head_tail' && !this.ruleForm.tail_pattern.trim() ? '首尾行匹配模式下需要提供尾行匹配模式' : ''
+      this.formErrors.priority = Number(this.ruleForm.priority) >= 1 ? '' : '优先级应大于等于1'
+      return !Object.values(this.formErrors).some(Boolean)
+    },
+    resetFormErrors() {
+      Object.keys(this.formErrors).forEach(key => { this.formErrors[key] = '' })
+    },
     async confirmRuleAction() {
-      this.$refs.ruleForm.validate(async (valid) => {
-        if (!valid) {
-          return;
-        }
-
-        try {
+      if (!this.validateRuleForm()) return
+      try {
           // 创建一个新的数据对象
           const formData = { ...this.ruleForm };
           // 确保优先级是数字类型
@@ -354,12 +292,12 @@ export default {
             // 编辑解析规则
             const response = await ruleManagementApi.updateRule(this.selectedRoomId, this.ruleForm.id, formData);
             console.log('更新规则响应:', response);
-            this.$message.success('编辑解析规则成功');
+            toast.success('编辑解析规则成功');
           } else {
             // 添加解析规则
             const response = await ruleManagementApi.addRule(this.selectedRoomId, formData);
             console.log('添加规则响应:', response);
-            this.$message.success('添加解析规则成功');
+            toast.success('添加解析规则成功');
 
             // 如果是新的日志类型，直接添加到唯一日志类型列表中
             if (this.ruleForm.log_type && !this.uniqueLogTypes.includes(this.ruleForm.log_type)) {
@@ -370,29 +308,29 @@ export default {
           this.getParserRulesList(); // 刷新列表
         } catch (error) {
           console.error('解析规则操作失败:', error);
-          this.$message.error('解析规则操作失败: ' + (error.message || '未知错误'));
-        }
-      });
+          toast.error('解析规则操作失败: ' + (error.message || '未知错误'));
+      }
     },
 
     // 移除解析规则
-    async removeParserRule(index, row) {
+    async removeParserRule(row) {
       try {
-        this.$confirm('确定要删除该解析规则吗?', '提示', {
+        await confirmAction('确定要删除该解析规则吗？', '删除规则', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
-        }).then(async () => {
-          const response = await ruleManagementApi.deleteRule(this.selectedRoomId, row.id);
-          console.log('删除规则响应:', response);
-          this.$message.success('删除解析规则成功');
-          this.getParserRulesList(); // 刷新列表
-        }).catch(() => {
-          this.$message.info('已取消删除');
-        });
+        })
+        const response = await ruleManagementApi.deleteRule(this.selectedRoomId, row.id);
+        console.log('删除规则响应:', response);
+        toast.success('删除解析规则成功');
+        this.getParserRulesList();
       } catch (error) {
+        if (error === 'cancel') {
+          toast.info('已取消删除')
+          return
+        }
         console.error('删除解析规则失败:', error);
-        this.$message.error('删除解析规则失败: ' + (error.message || '未知错误'));
+        toast.error('删除解析规则失败: ' + (error.message || '未知错误'));
       }
     },
 
@@ -403,38 +341,38 @@ export default {
         const updatedRule = { ...rule };
         const response = await ruleManagementApi.updateRule(this.selectedRoomId, rule.id, updatedRule);
         console.log('更新规则状态响应:', response);
-        this.$message.success('规则状态更新成功');
+        toast.success('规则状态更新成功');
         this.getParserRulesList(); // 刷新列表
       } catch (error) {
         console.error('规则状态更新失败:', error);
         rule.is_enabled = !rule.is_enabled; // 恢复原状态
-        this.$message.error('规则状态更新失败: ' + (error.message || '未知错误'));
+        toast.error('规则状态更新失败: ' + (error.message || '未知错误'));
       }
     },
 
     // 获取日志类型标签
     getLogTypeTag(log_type) {
       const logTypeMap = {
-        system: 'info',
-        chat: 'success',
-        player: 'warning',
-        error: 'danger',
-        warning: 'warning',
-        version: 'info',
-        remoteexcute: 'info',
-        connection: 'info'
+        system: 'secondary',
+        chat: 'default',
+        player: 'outline',
+        error: 'destructive',
+        warning: 'outline',
+        version: 'secondary',
+        remoteexcute: 'secondary',
+        connection: 'secondary'
       };
-      return logTypeMap[log_type] || 'info';
+      return logTypeMap[log_type] || 'secondary';
     },
 
     // 获取匹配模式标签类型
     getMatchModeTag(match_mode) {
       const matchModeMap = {
-        single: 'info',
-        multi_line: 'success',
-        head_tail: 'warning'
+        single: 'secondary',
+        multi_line: 'default',
+        head_tail: 'outline'
       };
-      return matchModeMap[match_mode] || 'info';
+      return matchModeMap[match_mode] || 'secondary';
     },
 
     // 获取匹配模式显示文本
@@ -527,18 +465,18 @@ export default {
     // 复制匹配模式
     copyPattern(pattern) {
       if (!pattern) {
-        this.$message.warning('匹配模式为空，无法复制');
+        toast.warning('匹配模式为空，无法复制');
         return;
       }
 
       // 使用浏览器的剪贴板 API 复制文本
       navigator.clipboard.writeText(pattern)
         .then(() => {
-          this.$message.success('匹配模式已复制到剪贴板');
+          toast.success('匹配模式已复制到剪贴板');
         })
         .catch(err => {
           console.error('复制失败:', err);
-          this.$message.error('复制失败，请手动复制');
+          toast.error('复制失败，请手动复制');
 
           // 备用方案：创建一个临时文本区域并复制
           this.fallbackCopy(pattern);
@@ -560,13 +498,13 @@ export default {
         // 尝试使用文档的复制命令
         const successful = document.execCommand('copy');
         if (successful) {
-          this.$message.success('匹配模式已复制到剪贴板');
+          toast.success('匹配模式已复制到剪贴板');
         } else {
-          this.$message.warning('复制失败，请手动复制');
+          toast.warning('复制失败，请手动复制');
         }
       } catch (err) {
         console.error('复制失败:', err);
-        this.$message.error('复制失败，请手动复制');
+        toast.error('复制失败，请手动复制');
       }
 
       // 移除临时文本区域
@@ -574,7 +512,7 @@ export default {
     },
 
     // 处理对话框关闭
-    handleDialogClose(done) {
+    async handleDialogClose(done) {
       // 检查表单是否有修改
       const hasChanges = this.ruleForm.name ||
                         this.ruleForm.description ||
@@ -588,17 +526,16 @@ export default {
 
       if (hasChanges) {
         // 如果有修改，弹出确认对话框
-        this.$confirm('关闭将丢失未保存的内容，是否确认关闭？', '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          // 用户确认关闭
-          done();
-        }).catch(() => {
-          // 用户取消关闭
-          // 不做任何操作，对话框保持打开状态
-        });
+        try {
+          await confirmAction('关闭将丢失未保存的内容，是否确认关闭？', '放弃更改', {
+            confirmButtonText: '确认关闭',
+            cancelButtonText: '继续编辑',
+            type: 'warning'
+          })
+          done()
+        } catch {
+          // 保持对话框打开。
+        }
       } else {
         // 如果没有修改，直接关闭
         done();
@@ -611,6 +548,16 @@ export default {
       this.handleDialogClose(() => {
         this.dialogVisible.parser = false;
       });
+    },
+    handleDialogOpenChange(open) {
+      if (open) {
+        this.dialogVisible.parser = true
+        return
+      }
+      this.handleCancelClick()
+    },
+    togglePrioritySort() {
+      this.prioritySort = this.prioritySort === 'none' ? 'desc' : (this.prioritySort === 'desc' ? 'asc' : 'none')
     }
   }
 };
@@ -651,7 +598,7 @@ export default {
   gap: 8px;
 }
 
-.rule-header-actions .el-select {
+.room-select {
   width: 220px;
 }
 
@@ -689,9 +636,22 @@ export default {
   opacity: 1;
 }
 
-/* 确保复制按钮不会被截断 */
-.el-table .cell {
-  overflow: visible !important;
+.description-cell {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions-column {
+  width: 150px;
+  text-align: right;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 @media (max-width: 640px) {
@@ -709,10 +669,14 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .rule-header-actions .el-select,
-  .rule-header-actions :deep(.el-button) {
+  .room-select,
+  .rule-header-actions button {
     width: 100%;
     margin: 0;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
   }
 }
 </style>

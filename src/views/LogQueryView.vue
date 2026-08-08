@@ -5,128 +5,37 @@
     </div>
 
     <div class="filter-section">
-      <el-form :inline="true" :model="queryParams" class="demo-form-inline">
-        <el-form-item label="存档">
-          <el-select v-model="queryParams.archive" placeholder="选择存档" @change="handleArchiveChange">
-            <el-option
-              v-for="item in archives"
-              :key="item.name"
-              :label="item.name"
-              :value="item.name"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="世界">
-          <el-select v-model="queryParams.world" placeholder="选择世界">
-            <el-option
-              v-for="world in worlds"
-              :key="world.name"
-              :label="world.name"
-              :value="world.name"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="日志类型">
-          <el-select v-model="queryParams.type" placeholder="选择日志类型">
-            <el-option
-              v-for="type in logTypes"
-              :key="type.type"
-              :label="type.name"
-              :value="type.type"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="queryLogs">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-          <el-button type="danger" @click="showCleanupLogDialog">清空日志</el-button>
-        </el-form-item>
-      </el-form>
+      <FieldGroup class="filter-grid">
+        <Field><FieldLabel>存档</FieldLabel><UiSelect v-model="queryParams.archive" @update:model-value="handleArchiveChange"><SelectTrigger><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.name" :value="item.name">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <Field><FieldLabel>世界</FieldLabel><UiSelect v-model="queryParams.world"><SelectTrigger><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.name" :value="world.name">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <Field><FieldLabel>日志类型</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger><SelectValue placeholder="选择日志类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in logTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <div class="filter-actions"><UiButton :disabled="loading" @click="queryLogs"><SearchIcon data-icon="inline-start" />查询</UiButton><UiButton variant="outline" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />重置</UiButton><UiButton variant="destructive" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />清空日志</UiButton></div>
+      </FieldGroup>
     </div>
 
     <div class="result-section">
-      <el-table
-        v-loading="loading"
-        :data="logData"
-        style="width: 100%"
-        border
-      >
-        <el-table-column prop="timestamp" label="时间" width="180">
-          <template #default="scope">
-            {{ formatDate(scope.row.timestamp) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="log_type" label="类型" width="120">
-          <template #default="scope">
-            <el-tag :type="getLogTypeTag(scope.row.log_type)">{{ scope.row.log_type }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="content" label="内容">
-          <template #default="scope">
-            <div class="log-content">{{ scope.row.content }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="world_name" label="世界" width="120"></el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
-          <template #default="scope">
-            <el-button type="text" size="small" @click="createRuleFromLog(scope.row)">创建规则</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <ShadcnTable><TableHeader><TableRow><TableHead>时间</TableHead><TableHead>类型</TableHead><TableHead>内容</TableHead><TableHead>世界</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody>
+        <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)">{{ log.log_type }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">创建规则</UiButton></TableCell></TableRow>
+        <TableEmpty v-if="loading" :colspan="5"><Spinner />正在查询日志</TableEmpty><TableEmpty v-else-if="logData.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>暂无日志</EmptyTitle><EmptyDescription>调整筛选条件后重新查询。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
+      </TableBody></ShadcnTable>
 
       <div class="pagination-container">
-        <el-pagination
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-          :current-page="queryParams.page"
+        <AppPagination
+          :page="queryParams.page"
+          :limit="queryParams.page_size"
           :page-sizes="[10, 20, 50, 100]"
-          :page-size="queryParams.page_size"
-          layout="total, sizes, prev, pager, next, jumper"
           :total="total"
-        >
-        </el-pagination>
+          @update:page="handleCurrentChange"
+          @update:limit="handleSizeChange"
+        />
       </div>
     </div>
 
-    <!-- 创建规则对话框 -->
-    <el-dialog
-      title="基于日志创建解析规则"
-      v-model="ruleDialogVisible"
-      width="80%"
-      :close-on-click-modal="false"
-      :before-close="handleRuleDialogClose"
-      class="rule-dialog"
-      top="5vh"
-    >
+    <UiDialog :open="ruleDialogVisible" @update:open="handleRuleDialogOpenChange"><DialogContent class="rule-dialog sm:max-w-4xl"><DialogHeader><DialogTitle>基于日志创建解析规则</DialogTitle><DialogDescription>完善规则信息并验证匹配表达式。</DialogDescription></DialogHeader>
       <div v-if="selectedLog" class="rule-dialog-content">
-        <el-card class="rule-form-card">
-          <template #header>
-            <div class="clearfix">
-              <span>规则基本信息</span>
-            </div>
-          </template>
-          <el-form :model="ruleForm" :rules="ruleFormRules" ref="ruleForm" label-width="120px">
-            <el-form-item label="规则名称" prop="name">
-              <el-input v-model="ruleForm.name"></el-input>
-            </el-form-item>
-            <el-form-item label="描述" prop="description">
-              <el-input v-model="ruleForm.description" type="textarea" :rows="2"></el-input>
-            </el-form-item>
-            <el-form-item label="日志类型" prop="log_type">
-              <el-input v-model="ruleForm.log_type"></el-input>
-            </el-form-item>
-          </el-form>
-        </el-card>
-
-        <el-card class="regex-tester-card">
-          <template #header>
-            <div class="clearfix">
-              <span>正则表达式测试</span>
-            </div>
-          </template>
+        <section class="rule-form-section"><h3>规则基本信息</h3><FieldGroup><Field :data-invalid="Boolean(ruleFormErrors.name)"><FieldLabel for="log-rule-name">规则名称</FieldLabel><UiInput id="log-rule-name" v-model="ruleForm.name" :aria-invalid="Boolean(ruleFormErrors.name)" /><FieldError v-if="ruleFormErrors.name">{{ ruleFormErrors.name }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.description)"><FieldLabel for="log-rule-description">描述</FieldLabel><UiTextarea id="log-rule-description" v-model="ruleForm.description" rows="2" :aria-invalid="Boolean(ruleFormErrors.description)" /><FieldError v-if="ruleFormErrors.description">{{ ruleFormErrors.description }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.log_type)"><FieldLabel for="log-rule-type">日志类型</FieldLabel><UiInput id="log-rule-type" v-model="ruleForm.log_type" :aria-invalid="Boolean(ruleFormErrors.log_type)" /><FieldError v-if="ruleFormErrors.log_type">{{ ruleFormErrors.log_type }}</FieldError></Field></FieldGroup></section>
+        <Separator />
+        <section class="regex-tester-card"><h3>正则表达式测试</h3>
           <regex-tester
             :initial-content="selectedLog.raw_content || selectedLog.content"
             :initial-pattern="initialPattern"
@@ -134,53 +43,85 @@
             :initial-match-mode="'single'"
             @apply="applyRegexToRule"
             ref="regexTester"
-          ></regex-tester>
-        </el-card>
+          />
+        </section>
       </div>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="cancelRule">取消</el-button>
-          <el-button type="primary" @click="saveRule">保存规则</el-button>
-        </span>
-      </template>
-    </el-dialog>
+      <DialogFooter><UiButton variant="outline" @click="cancelRule">取消</UiButton><UiButton @click="saveRule">保存规则</UiButton></DialogFooter></DialogContent></UiDialog>
 
-    <!-- 清空日志对话框 -->
-    <el-dialog
-      title="清空日志"
-      v-model="cleanupDialogVisible"
-      width="30%"
-      :close-on-click-modal="false"
-    >
+    <UiDialog v-model:open="cleanupDialogVisible"><DialogContent><DialogHeader><DialogTitle>清空日志</DialogTitle><DialogDescription>清理已解析记录并重置解析位置。</DialogDescription></DialogHeader>
       <div class="cleanup-dialog-content">
-        <p class="warning-text">警告：此操作将清空所选存档和世界的解析日志记录，并重置解析位置。原始服务器日志不会删除，可重新解析恢复。</p>
-        <el-form :model="cleanupForm" label-width="80px">
-          <el-form-item label="存档" required>
-            <el-input v-model="cleanupForm.archive_name" disabled></el-input>
-          </el-form-item>
-          <el-form-item label="世界" required>
-            <el-input v-model="cleanupForm.world_name" disabled></el-input>
-          </el-form-item>
-        </el-form>
+        <Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>确认清空解析日志</AlertTitle><AlertDescription>原始服务器日志不会删除，可重新解析恢复。</AlertDescription></Alert>
+        <FieldGroup><Field data-disabled><FieldLabel for="cleanup-archive">存档</FieldLabel><UiInput id="cleanup-archive" v-model="cleanupForm.archive_name" disabled /></Field><Field data-disabled><FieldLabel for="cleanup-world">世界</FieldLabel><UiInput id="cleanup-world" v-model="cleanupForm.world_name" disabled /></Field></FieldGroup>
       </div>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="cleanupDialogVisible = false">取消</el-button>
-          <el-button type="danger" @click="cleanupLog" :loading="cleanupLoading">确认清空</el-button>
-        </span>
-      </template>
-    </el-dialog>
+      <DialogFooter><UiButton variant="outline" @click="cleanupDialogVisible = false">取消</UiButton><UiButton variant="destructive" :disabled="cleanupLoading" @click="cleanupLog"><Spinner v-if="cleanupLoading" data-icon="inline-start" />确认清空</UiButton></DialogFooter></DialogContent></UiDialog>
   </div>
 </template>
 
 <script>
+import { RotateCcwIcon, SearchIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import { logApi, ruleManagementApi } from '@/api';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button as UiButton } from '@/components/ui/button'
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input as UiInput } from '@/components/ui/input'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { Spinner } from '@/components/ui/spinner'
+import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Textarea as UiTextarea } from '@/components/ui/textarea'
+import AppPagination from '@/components/Pagination.vue'
 import RegexTester from '@/components/RegexTester.vue';
+import { confirmAction } from '@/lib/feedback'
+import { toast } from 'vue-sonner'
 
 export default {
   name: 'LogQueryView',
   components: {
-    RegexTester
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    AppPagination,
+    Badge,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+    Field,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    RegexTester,
+    RotateCcwIcon,
+    SearchIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Separator,
+    ShadcnTable,
+    Spinner,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+    Trash2Icon,
+    TriangleAlertIcon,
+    UiButton,
+    UiDialog,
+    UiInput,
+    UiSelect,
+    UiTextarea
   },
   data() {
     return {
@@ -234,20 +175,7 @@ export default {
         tail_pattern: ''
       },
 
-      // 规则表单验证规则
-      ruleFormRules: {
-        name: [
-          { required: true, message: '请输入规则名称', trigger: 'blur' },
-          { min: 2, max: 50, message: '规则名称长度应在2-50个字符之间', trigger: 'blur' }
-        ],
-        description: [
-          { required: true, message: '请输入规则描述', trigger: 'blur' },
-          { min: 2, max: 200, message: '规则描述长度应在2-200个字符之间', trigger: 'blur' }
-        ],
-        log_type: [
-          { required: true, message: '请选择日志类型', trigger: 'change' }
-        ]
-      },
+      ruleFormErrors: { name: '', description: '', log_type: '' },
 
       // 清空日志相关
       cleanupDialogVisible: false,
@@ -257,6 +185,16 @@ export default {
         world_name: ''
       }
     };
+  },
+  computed: {
+    queryTypeModel: {
+      get() {
+        return this.queryParams.type || '__all__'
+      },
+      set(value) {
+        this.queryParams.type = value === '__all__' ? '' : value
+      }
+    }
   },
   mounted() {
     this.getArchives();
@@ -315,7 +253,7 @@ export default {
           }
         } else {
           console.error('获取存档列表格式错误:', response);
-          this.$message.warning('获取存档列表格式错误，尝试使用旧接口');
+          toast.warning('获取存档列表格式错误，尝试使用旧接口');
           // 尝试使用旧接口
           const oldResponse = await logApi.getArchiveList();
           if (oldResponse && oldResponse.status === 200 && Array.isArray(oldResponse.data)) {
@@ -344,7 +282,7 @@ export default {
           console.error('请求配置错误:', error.message);
         }
         console.error('完整错误对象:', error);
-        this.$message.error('获取存档列表失败');
+        toast.error('获取存档列表失败');
 
         // 尝试使用旧接口
         try {
@@ -462,7 +400,7 @@ export default {
         }
       } catch (error) {
         console.error('获取世界列表失败:', error);
-        this.$message.error('获取世界列表失败');
+        toast.error('获取世界列表失败');
         this.worlds = [];
         this.queryParams.world = '';
       }
@@ -527,7 +465,7 @@ export default {
         }
       } catch (error) {
         console.error('查询日志失败:', error);
-        this.$message.error('查询日志失败: ' + (error.message || '未知错误'));
+        toast.error('查询日志失败: ' + (error.message || '未知错误'));
         this.logData = [];
         this.total = 0;
       } finally {
@@ -570,23 +508,23 @@ export default {
     getLogTypeTag(type) {
       switch (type) {
         case 'system':
-          return 'info';
+          return 'secondary';
         case 'chat':
-          return 'success';
+          return 'default';
         case 'connection':
-          return 'warning';
+          return 'outline';
         case 'player':
-          return 'primary';
+          return 'default';
         case 'entity':
-          return 'warning';
+          return 'outline';
         case 'world':
-          return 'success';
+          return 'default';
         case 'error':
-          return 'danger';
+          return 'destructive';
         case 'warning':
-          return 'warning';
+          return 'outline';
         default:
-          return '';
+          return 'secondary';
       }
     },
 
@@ -630,7 +568,7 @@ export default {
 
       // 确保有日志内容
       if (!log || (!log.raw_content && !log.content)) {
-        this.$message.error('日志内容为空，无法创建规则');
+        toast.error('日志内容为空，无法创建规则');
         return;
       }
 
@@ -656,6 +594,7 @@ export default {
         match_mode: 'single',
         tail_pattern: ''
       };
+      this.ruleFormErrors = { name: '', description: '', log_type: '' }
 
       // 尝试生成初始正则表达式
       this.generateInitialPattern(logContent);
@@ -765,13 +704,20 @@ export default {
     },
 
     // 保存规则
-    saveRule() {
-      this.$refs.ruleForm.validate(async (valid) => {
-        if (!valid) {
-          return;
-        }
-
-        try {
+    validateRuleForm() {
+      const validateLength = (value, min, max, emptyMessage, lengthMessage) => {
+        const length = String(value || '').trim().length
+        if (!length) return emptyMessage
+        return length < min || length > max ? lengthMessage : ''
+      }
+      this.ruleFormErrors.name = validateLength(this.ruleForm.name, 2, 50, '请输入规则名称', '规则名称长度应在2-50个字符之间')
+      this.ruleFormErrors.description = validateLength(this.ruleForm.description, 2, 200, '请输入规则描述', '规则描述长度应在2-200个字符之间')
+      this.ruleFormErrors.log_type = this.ruleForm.log_type.trim() ? '' : '请选择日志类型'
+      return !Object.values(this.ruleFormErrors).some(Boolean)
+    },
+    async saveRule() {
+      if (!this.validateRuleForm()) return
+      try {
           // 先获取正则测试器的最新数据
           if (this.$refs.regexTester) {
             // 手动运行一次测试，确保数据是最新的
@@ -791,13 +737,13 @@ export default {
 
           // 确保有模式
           if (!this.ruleForm.pattern) {
-            this.$message.error('请先设置匹配模式');
+            toast.error('请先设置匹配模式');
             return;
           }
 
           // 如果是首尾行模式，需要尾行模式
           if (this.ruleForm.match_mode === 'head_tail' && !this.ruleForm.tail_pattern) {
-            this.$message.error('首尾行匹配模式需要提供尾行匹配模式');
+            toast.error('首尾行匹配模式需要提供尾行匹配模式');
             return;
           }
 
@@ -812,7 +758,7 @@ export default {
           // 添加解析规则
           const response = await ruleManagementApi.addRule(formData);
           console.log('添加规则响应:', response);
-          this.$message.success('添加解析规则成功');
+          toast.success('添加解析规则成功');
 
           // 关闭对话框
           this.ruleDialogVisible = false;
@@ -821,9 +767,8 @@ export default {
           this.initialPattern = '';
         } catch (error) {
           console.error('解析规则操作失败:', error);
-          this.$message.error('解析规则操作失败: ' + (error.message || '未知错误'));
-        }
-      });
+          toast.error('解析规则操作失败: ' + (error.message || '未知错误'));
+      }
     },
 
     // 取消规则创建
@@ -836,7 +781,7 @@ export default {
     },
 
     // 处理规则对话框关闭
-    handleRuleDialogClose(done) {
+    async handleRuleDialogClose(done) {
       // 检查表单是否有修改
       const hasChanges = this.ruleForm.name !== `自动生成的规则 - ${this.selectedLog?.log_type || '未知类型'}` ||
                         this.ruleForm.description !== `基于日志内容自动生成的解析规则` ||
@@ -854,33 +799,39 @@ export default {
 
       if (hasChanges) {
         // 如果有修改，弹出确认对话框
-        this.$confirm('关闭将丢失未保存的内容，是否确认关闭？', '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          // 用户确认关闭
-          closeDialog();
-        }).catch(() => {
-          // 用户取消关闭
-          // 不做任何操作，对话框保持打开状态
-        });
+        try {
+          await confirmAction('关闭将丢失未保存的内容，是否确认关闭？', '放弃更改', {
+            confirmButtonText: '确认关闭',
+            cancelButtonText: '继续编辑',
+            type: 'warning'
+          })
+          closeDialog()
+        } catch {
+          // 保持对话框打开。
+        }
       } else {
         // 如果没有修改，直接关闭
         closeDialog();
       }
+    },
+    handleRuleDialogOpenChange(open) {
+      if (open) {
+        this.ruleDialogVisible = true
+        return
+      }
+      this.handleRuleDialogClose(() => { this.ruleDialogVisible = false })
     },
 
     // 显示清空日志对话框
     showCleanupLogDialog() {
       // 检查是否选择了存档和世界
       if (!this.queryParams.archive) {
-        this.$message.warning('请先选择存档');
+        toast.warning('请先选择存档');
         return;
       }
 
       if (!this.queryParams.world) {
-        this.$message.warning('请先选择世界');
+        toast.warning('请先选择世界');
         return;
       }
 
@@ -896,11 +847,10 @@ export default {
     async cleanupLog() {
       // 再次确认
       try {
-        await this.$confirm('此操作将清空所选存档和世界的解析日志记录，并重置解析位置。原始服务器日志不会删除，可重新解析恢复。是否确认继续？', '警告', {
+        await confirmAction('此操作将清空所选存档和世界的解析日志记录，并重置解析位置。原始服务器日志不会删除，可重新解析恢复。是否确认继续？', '清空日志', {
           confirmButtonText: '确认清空',
           cancelButtonText: '取消',
-          type: 'warning',
-          distinguishCancelAndClose: true
+          type: 'warning'
         });
       } catch (e) {
         return; // 用户取消操作
@@ -912,17 +862,17 @@ export default {
         console.log('清空日志响应:', response);
 
         if (response && response.status === 200) {
-          this.$message.success(response.msg || '成功清空日志记录');
+          toast.success(response.msg || '成功清空日志记录');
           // 关闭对话框
           this.cleanupDialogVisible = false;
           // 重新查询日志，刷新列表
           this.queryLogs();
         } else {
-          this.$message.error(response?.msg || '清空日志失败');
+          toast.error(response?.msg || '清空日志失败');
         }
       } catch (error) {
         console.error('清空日志失败:', error);
-        this.$message.error('清空日志失败: ' + (error.message || '未知错误'));
+        toast.error('清空日志失败: ' + (error.message || '未知错误'));
       } finally {
         this.cleanupLoading = false;
       }
@@ -938,11 +888,24 @@ export default {
 
 .filter-section {
   margin-bottom: 16px;
-  padding: 16px 16px 6px;
+  padding: 16px;
   border: 1px solid var(--border-color);
   background: var(--surface-color);
   border-radius: 4px;
   box-shadow: none;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .result-section {
@@ -974,27 +937,16 @@ export default {
   gap: 20px;
 }
 
-.rule-form-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
+.rule-form-section h3,
+.regex-tester-card h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.regex-tester-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-/* 确保对话框内容可以滚动 */
-.rule-dialog .el-dialog__body {
-  max-height: calc(90vh - 150px);
+.rule-dialog {
+  max-height: calc(100dvh - 32px);
   overflow-y: auto;
-}
-
-/* 确保对话框不会太高 */
-.rule-dialog :deep(.el-dialog) {
-  margin-bottom: 5vh;
 }
 
 /* 清空日志对话框样式 */
@@ -1018,29 +970,20 @@ export default {
     padding: 12px;
   }
 
-  .filter-section :deep(.el-form) {
-    display: block;
+  .filter-grid {
+    grid-template-columns: 1fr;
   }
 
-  .filter-section :deep(.el-form-item),
-  .filter-section :deep(.el-form-item__content),
-  .filter-section :deep(.el-select) {
-    width: 100%;
-    margin-right: 0;
-  }
-
-  .filter-section :deep(.el-form-item:last-child .el-form-item__content) {
+  .filter-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
   }
 
-  .filter-section :deep(.el-form-item:last-child .el-button) {
+  .filter-actions button {
     width: 100%;
-    margin: 0;
   }
 
-  .filter-section :deep(.el-form-item:last-child .el-button--danger) {
+  .filter-actions button:last-child {
     grid-column: 1 / -1;
   }
 
