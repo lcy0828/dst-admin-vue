@@ -1,8 +1,7 @@
 <template>
   <div class="world-settings-container">
-    <el-card class="settings-card" shadow="hover">
-      <template v-slot:header>
-<div  class="card-header">
+    <section class="settings-surface">
+      <div class="card-header">
         <div class="header-title">
           <component :is="'el-icon-earth'" class="legacy-icon" />
           <h2>世界设置{{ roomName ? ` - ${roomName}` : '' }}</h2>
@@ -19,7 +18,6 @@
           >刷新设置</el-button>
         </div>
       </div>
-</template>
 
       <el-tabs v-model="activeTab" type="border-card" class="custom-tabs">
         <!-- 动态生成世界标签页 -->
@@ -165,8 +163,13 @@
             </el-tab-pane>
             
             <el-tab-pane label="模组配置">
-              <div class="empty-state">
-                <el-empty description="模组配置功能即将上线"></el-empty>
+              <div class="context-action-state">
+                <component :is="'el-icon-s-operation'" class="legacy-icon" />
+                <div>
+                  <strong>{{ roomName }} / {{ world.name }}</strong>
+                  <span>当前世界的模组启用状态与配置</span>
+                </div>
+                <el-button type="primary" @click="openWorldMods(world)">打开模组配置</el-button>
               </div>
             </el-tab-pane>
           </el-tabs>
@@ -238,7 +241,7 @@
 
       <!-- 为固定底栏预留空间 -->
       <div class="footer-spacer" aria-hidden="true"></div>
-    </el-card>
+    </section>
 
     <!-- 底部工具栏 - 使用内联样式确保直接生效 -->
     <div id="settings-fixed-footer" :style="footerStyle">
@@ -681,6 +684,15 @@ export default {
     }
   },
   methods: {
+    openWorldMods(world) {
+      this.$router.push({
+        path: '/mods/list',
+        query: {
+          roomId: this.roomId || this.$route.query.roomId || undefined,
+          worldId: world?.id || undefined
+        }
+      });
+    },
     // 获取左侧菜单宽度
     getMenuWidth() {
       try {
@@ -1847,16 +1859,19 @@ export default {
   padding-bottom: 88px;
 }
 
-.settings-card {
-  margin-bottom: 0;
-  border-radius: 6px;
-  box-shadow: var(--shadow-card) !important;
+.settings-surface {
+  display: block;
+  min-width: 0;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .header-title {
@@ -1888,18 +1903,20 @@ export default {
 }
 
 .custom-tabs {
-  margin-top: 12px;
-  border-radius: 6px;
+  margin-top: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: none;
   overflow: hidden;
 }
 
 .tab-header-content {
   display: flex;
   margin-bottom: 16px;
-  padding: 12px;
-  border: 1px solid var(--el-color-primary-light-8);
-  background-color: var(--el-color-primary-light-9);
-  border-radius: 6px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+  border-radius: 0;
   align-items: center;
 }
 
@@ -1907,7 +1924,7 @@ export default {
   width: 40px;
   height: 40px;
   flex: 0 0 40px;
-  border-radius: 6px;
+  border-radius: 4px;
   margin-right: 12px;
   display: flex;
   align-items: center;
@@ -1969,7 +1986,7 @@ export default {
   padding: 16px;
   background-color: #fff;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 4px;
   box-shadow: none;
 }
 
@@ -1987,6 +2004,39 @@ export default {
 
 .settings-tabs {
   margin-bottom: 16px;
+}
+
+.context-action-state {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 86px;
+  padding: 14px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.context-action-state > .legacy-icon {
+  justify-self: center;
+  color: var(--primary-color);
+  font-size: 24px;
+}
+
+.context-action-state strong,
+.context-action-state span {
+  display: block;
+}
+
+.context-action-state strong {
+  color: var(--text-primary);
+}
+
+.context-action-state span {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .footer-spacer {
@@ -2030,6 +2080,16 @@ export default {
 
   .server-ini-form {
     padding: 12px;
+  }
+
+  .context-action-state {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .context-action-state :deep(.el-button) {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin: 0;
   }
 
   .server-ini-form :deep(.el-form-item) {

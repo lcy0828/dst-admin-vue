@@ -234,25 +234,19 @@ export default {
 .setting-item {
   display: flex;
   align-items: center;
-  padding: 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  transition: all 0.3s;
-  background-color: #f9fafc;
+  min-height: 74px;
+  padding: 10px;
   position: relative;
   overflow: hidden;
-  will-change: transform;
-  transform: translateZ(0);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  transition: background-color 180ms ease, border-color 180ms ease;
 }
 
 .setting-item:hover {
-  border-color: var(--primary-color);
-  background-color: #fff3e6;
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  border-color: var(--el-color-primary-light-5);
+  background-color: var(--el-color-primary-light-9);
 }
 
 .setting-item:hover .setting-hover-tips {
@@ -265,24 +259,18 @@ export default {
   right: 5px;
   font-size: 16px;
   color: var(--text-secondary);
-  opacity: 0;
-  transition: all 0.3s;
+  opacity: 0.55;
+  transition: color 180ms ease, opacity 180ms ease;
   z-index: 2;
   cursor: help;
 }
 
 .item-image {
-  width: 64px;
-  height: 64px;
-  border-radius: 6px;
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
   background-size: 1600% !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
-}
-
-.setting-item:hover .item-image {
-  box-shadow: 0 4px 12px rgba(217, 121, 50, 0.2);
-  transform: scale(1.05);
+  background-color: var(--surface-muted);
 }
 
 .setting-image {
@@ -291,21 +279,24 @@ export default {
 
 .setting-info {
   flex: 1;
+  min-width: 0;
 }
 
 .setting-name {
-  margin: 0 0 8px;
+  margin: 0 20px 6px 0;
   font-weight: 500;
+  font-size: 13px;
   color: var(--text-primary);
 }
 
-.setting-item-changed {
-  border: 1px solid #d99b32 !important;
-  background-color: rgba(230, 162, 60, 0.1) !important;
+.setting-info :deep(.el-select) {
+  width: 100%;
 }
 
-.setting-item-changed:hover {
-  box-shadow: 0 5px 15px rgba(230, 162, 60, 0.2) !important;
+.setting-item-changed {
+  border-color: var(--warning-color) !important;
+  box-shadow: inset 3px 0 0 var(--warning-color) !important;
+  background-color: #fff8eb !important;
 }
 
 .default-tag {
@@ -322,4 +313,11 @@ export default {
 .default-option {
   background-color: rgba(103, 194, 58, 0.1);
 }
-</style> 
+
+@media (prefers-reduced-motion: reduce) {
+  .setting-item,
+  .setting-hover-tips {
+    transition: none;
+  }
+}
+</style>

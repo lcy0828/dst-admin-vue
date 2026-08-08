@@ -208,13 +208,12 @@ export default {
 
 <style scoped>
 .settings-wrapper {
-  padding: 0 10px;
-  will-change: transform;
-  transform: translateZ(0);
+  padding: 0;
 }
 
 .search-box {
-  margin-bottom: 20px;
+  width: min(420px, 100%);
+  margin-bottom: 14px;
 }
 
 .settings-tabs {
@@ -222,7 +221,7 @@ export default {
 }
 
 .settings-tabs :deep(.el-tabs__header) {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .settings-tabs :deep(.el-tabs__nav) {
@@ -232,41 +231,42 @@ export default {
 }
 
 .settings-tabs :deep(.el-tabs__item) {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .settings-category {
-  margin-bottom: 30px;
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 15px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
+  padding: 0 0 18px;
+  background: transparent;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .category-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border-color);
   user-select: none;
 }
 
 .category-header:hover h4 {
-  color: var(--el-color-primary-light-3);
+  color: var(--text-primary);
 }
 
 .category-header h4 {
   margin: 0;
-  color: var(--primary-color);
-  font-size: 16px;
+  color: var(--text-primary);
+  font-size: 14px;
 }
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
 }
 
 @media (max-width: 768px) {
@@ -274,4 +274,4 @@ export default {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>
