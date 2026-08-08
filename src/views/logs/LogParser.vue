@@ -200,18 +200,19 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
 .header-title {
   display: flex;
   align-items: center;
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
 }
 
-.header-title i {
+.header-title .legacy-icon {
   margin-right: 8px;
-  font-size: 22px;
+  font-size: 18px;
   color: var(--primary-color);
 }
 
@@ -221,31 +222,33 @@ export default {
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  padding: 80px 0;
-  font-size: 16px;
+  padding: 48px 16px;
+  font-size: 14px;
 }
 
-.empty-data i {
-  font-size: 50px;
-  margin-bottom: 15px;
-  color: #9aa69e;
+.empty-data .legacy-icon {
+  font-size: 30px;
+  margin-bottom: 10px;
+  color: var(--text-secondary);
 }
 
 .parsers-container {
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .parser-card {
-  margin-bottom: 20px;
-  border-radius: 12px;
-  transition: all 0.3s;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: none;
+  transition: border-color 0.15s ease;
   overflow: hidden;
-  border: none;
 }
 
 .parser-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  transform: none;
+  border-color: var(--el-color-primary-light-5);
+  box-shadow: none;
 }
 
 .forest-card {
@@ -260,21 +263,23 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .parser-title {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
 }
 
 .type-indicator {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -289,13 +294,13 @@ export default {
   background-color: #d99b32;
 }
 
-.type-indicator i {
-  font-size: 22px;
+.type-indicator .legacy-icon {
+  font-size: 18px;
 }
 
 .parser-title h3 {
-  margin: 0 0 8px 0;
-  font-size: 18px;
+  margin: 0 0 5px;
+  font-size: 15px;
   color: var(--text-primary);
 }
 
@@ -310,7 +315,7 @@ export default {
 }
 
 .parser-info {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .info-item {
@@ -328,7 +333,7 @@ export default {
 
 .info-item .label {
   width: 90px;
-  font-weight: bold;
+  font-weight: 500;
 }
 
 .info-item .value {
@@ -347,11 +352,12 @@ export default {
 
 .info-statistics {
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-start;
   background-color: var(--surface-muted);
-  border-radius: 8px;
-  padding: 15px;
-  margin-top: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-top: 10px;
 }
 
 .stat-item {
@@ -359,8 +365,8 @@ export default {
 }
 
 .stat-value {
-  font-size: 22px;
-  font-weight: bold;
+  font-size: 18px;
+  font-weight: 600;
   color: var(--primary-color);
 }
 
@@ -377,5 +383,22 @@ export default {
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 640px) {
+  .header-container,
+  .parser-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-container :deep(.el-button),
+  .parser-actions :deep(.el-button) {
+    margin: 0;
+  }
+
+  .parser-actions {
+    width: 100%;
+  }
 }
 </style>

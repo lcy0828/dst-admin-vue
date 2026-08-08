@@ -384,23 +384,36 @@ export default {
 
 <style scoped>
 .backups-page {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .header-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .backups-card {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .card-header {
@@ -412,11 +425,11 @@ export default {
 .backup-name {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
-.backup-name i {
-  margin-right: 10px;
-  font-size: 18px;
+.backup-name .legacy-icon {
+  font-size: 16px;
   color: var(--primary-color);
 }
 
@@ -426,7 +439,7 @@ export default {
 
 /* 恢复对话框样式 */
 .restore-dialog-content {
-  padding: 10px;
+  padding: 0;
 }
 
 .info-row {
@@ -435,7 +448,7 @@ export default {
 }
 
 .info-row .label {
-  font-weight: bold;
+  font-weight: 500;
   width: 100px;
 }
 
@@ -444,7 +457,7 @@ export default {
 }
 
 .option-title {
-  font-weight: bold;
+  font-weight: 600;
   margin-bottom: 10px;
 }
 
@@ -461,7 +474,7 @@ export default {
 .original-archive-option {
   margin-top: 15px;
   padding: 15px;
-  background-color: #ffebeb;
+  background-color: var(--surface-muted);
   border-radius: 4px;
   border: 1px solid #ffb3b3;
 }
@@ -497,5 +510,17 @@ export default {
   padding: 15px;
   background-color: var(--surface-muted);
   border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+  .page-header,
+  .card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .card-header :deep(.el-select) {
+    width: 100% !important;
+  }
 }
 </style>

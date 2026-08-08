@@ -481,22 +481,26 @@ export default {
 
 <style scoped>
 .page-container {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .main-card {
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 0;
+  box-shadow: none;
   border-radius: 4px;
 }
 
 .header-actions {
-  float: right;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .search-form-container {
-  margin-bottom: 20px;
-  padding-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -511,12 +515,12 @@ export default {
 .mod-flex-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 16px;
 }
 
 .mod-flex-item {
-  flex: 0 0 calc(25% - 15px);
-  margin-bottom: 20px;
+  flex: 0 0 calc(25% - 12px);
+  margin-bottom: 0;
   min-width: 0;
 }
 
@@ -539,19 +543,22 @@ export default {
 }
 
 .mod-card-col {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .mod-card {
   height: 100%;
-  transition: all 0.3s;
+  border-radius: 4px;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
   display: flex;
   flex-direction: column;
 }
 
 .mod-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  transform: none;
+  border-color: var(--el-color-primary-light-5);
+  box-shadow: none;
 }
 
 .mod-card-header {
@@ -564,7 +571,7 @@ export default {
 }
 
 .mod-card-title {
-  font-weight: bold;
+  font-weight: 600;
   font-size: 16px;
   white-space: nowrap;
   overflow: hidden;
@@ -645,8 +652,9 @@ export default {
 }
 
 .pagination-container {
-  text-align: center;
-  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
 }
 
 .empty-results,
@@ -661,13 +669,13 @@ export default {
 }
 
 .prompt-icon {
-  font-size: 48px;
+  font-size: 30px;
   color: var(--primary-color);
-  margin-bottom: 20px;
+  margin-bottom: 10px;
 }
 
 .url-import {
-  margin-top: 30px;
+  margin-top: 20px;
   max-width: 400px;
   margin-left: auto;
   margin-right: auto;
@@ -704,7 +712,7 @@ export default {
 
 .mod-details-name {
   margin: 0 0 15px 0;
-  font-size: 24px;
+  font-size: 20px;
   color: var(--text-primary);
   line-height: 1.2;
 }
@@ -746,8 +754,9 @@ export default {
 }
 
 .description-content {
-  padding: 15px;
-  background-color: #f8f8f8;
+  padding: 12px;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   color: var(--text-regular);
   line-height: 1.6;
@@ -756,7 +765,7 @@ export default {
 
 .loading-container {
   min-height: 300px;
-  padding: 20px;
+  padding: 0;
 }
 
 .loading-container .el-skeleton {
@@ -766,16 +775,16 @@ export default {
 .loading-card {
   height: 300px;
   background-color: var(--surface-muted);
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: none;
   overflow: hidden;
 }
 
 .loading-image {
   height: 150px;
-  background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 50%, #f2f2f2 75%);
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
+  background: var(--border-color);
+  animation: loading 1.2s ease-in-out infinite;
 }
 
 .loading-content {
@@ -785,9 +794,8 @@ export default {
 .loading-title, .loading-meta, .loading-description {
   height: 16px;
   margin-bottom: 15px;
-  background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 50%, #f2f2f2 75%);
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
+  background: var(--border-color);
+  animation: loading 1.2s ease-in-out infinite;
   border-radius: 3px;
 }
 
@@ -806,12 +814,8 @@ export default {
 }
 
 @keyframes loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 .loading-actions {
@@ -826,9 +830,8 @@ export default {
   width: 45%;
   height: 28px;
   border-radius: 4px;
-  background: linear-gradient(90deg, #f2f2f2 25%, #e6e6e6 50%, #f2f2f2 75%);
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
+  background: var(--border-color);
+  animation: loading 1.2s ease-in-out infinite;
 }
 
 /* 响应式调整 */
@@ -841,6 +844,12 @@ export default {
   .search-form-container .el-form-item {
     margin-right: 0;
     margin-bottom: 10px;
+  }
+
+  .search-form-container :deep(.el-form-item__content),
+  .search-form-container :deep(.el-select),
+  .search-form-container :deep(.el-input) {
+    width: 100%;
   }
   
   .mod-details-header {
@@ -859,28 +868,22 @@ export default {
   }
 }
 
-/* 禁用蒙版和对话框覆盖样式 */
-:deep(.el-dialog__wrapper) {
-  background-color: transparent !important;
-  pointer-events: auto !important;
-}
-
-:deep(.el-dialog) {
-  pointer-events: auto !important;
-}
-
-:deep(.v-modal) {
-  display: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-}
-
 .mod-card.is-installed {
-  border: 2px solid #4f8a5b;
-  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.2);
+  border-color: var(--success-color);
+  box-shadow: inset 3px 0 0 var(--success-color);
 }
 
 .mod-card.is-installed:hover {
-  box-shadow: 0 8px 16px rgba(103, 194, 58, 0.3);
+  box-shadow: inset 3px 0 0 var(--success-color);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-image,
+  .loading-title,
+  .loading-meta,
+  .loading-description,
+  .loading-button {
+    animation: none;
+  }
 }
 </style>

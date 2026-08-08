@@ -748,6 +748,8 @@ export default {
 
 .main-card {
   margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .card-heading {
@@ -823,14 +825,16 @@ export default {
 .mod-card {
   height: 100%;
   border-color: var(--border-color);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  border-radius: 4px;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
   display: flex;
   flex-direction: column;
 }
 
 .mod-card:hover {
-  border-color: var(--el-color-primary-light-7);
-  box-shadow: var(--shadow-card-hover);
+  border-color: var(--el-color-primary-light-5);
+  box-shadow: none;
 }
 
 .mod-card.is-disabled {
@@ -848,7 +852,7 @@ export default {
 }
 
 .mod-card-title {
-  font-weight: bold;
+  font-weight: 600;
   font-size: 16px;
   white-space: nowrap;
   overflow: hidden;
@@ -944,6 +948,8 @@ export default {
   display: flex;
   justify-content: space-between;
   margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
 }
 
 .empty-mods {
@@ -982,7 +988,7 @@ export default {
 
 .mod-details-name {
   margin: 0 0 15px 0;
-  font-size: 24px;
+  font-size: 20px;
   color: var(--text-primary);
   line-height: 1.2;
 }
@@ -1141,6 +1147,7 @@ export default {
   padding: 10px;
   background-color: var(--surface-muted);
   border-radius: 4px;
+  border: 1px solid var(--border-color);
 }
 
 .lua-code {

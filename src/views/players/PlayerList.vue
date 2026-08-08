@@ -1510,6 +1510,8 @@ export default {
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .title-container {
@@ -1522,13 +1524,16 @@ export default {
   white-space: nowrap;
 }
 
-.title-container i {
+.title-container .legacy-icon {
   margin-right: 8px;
-  font-size: 20px;
+  color: var(--primary-color);
+  font-size: 18px;
 }
 
 .filter-card {
   margin-bottom: 16px;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .filter-form {
@@ -1545,6 +1550,8 @@ export default {
 
 .table-card {
   margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .table-operations {
@@ -1675,9 +1682,9 @@ export default {
 
 .cron-help {
   margin-top: 5px;
-  color: #666;
+  color: var(--text-regular);
   font-size: 12px;
-  background-color: #f8f8f8;
+  background-color: var(--surface-muted);
   padding: 10px;
   border-radius: 4px;
 }
@@ -1692,7 +1699,7 @@ export default {
 }
 
 .cron-help code {
-  background-color: #eee;
+  background-color: var(--surface-color);
   padding: 2px 4px;
   border-radius: 3px;
   font-family: monospace;
@@ -1708,9 +1715,9 @@ export default {
 
 .world-help {
   margin-top: 5px;
-  color: #666;
+  color: var(--text-regular);
   font-size: 12px;
-  background-color: #f8f8f8;
+  background-color: var(--surface-muted);
   padding: 10px;
   border-radius: 4px;
 }

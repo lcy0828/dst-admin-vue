@@ -307,23 +307,36 @@ export default {
 
 <style scoped>
 .announcements-page {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .header-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .announcements-card {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .card-header {
@@ -335,14 +348,15 @@ export default {
 .announcement-title {
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .important-badge {
-  margin-right: 10px;
+  margin-right: 0;
 }
 
 .announcement-detail {
-  padding: 0 20px;
+  padding: 0;
 }
 
 .announcement-header {
@@ -358,7 +372,9 @@ export default {
 
 .announcement-meta {
   display: flex;
-  justify-content: space-between;
+  gap: 8px 16px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
   color: var(--text-secondary);
   font-size: 14px;
 }
@@ -366,5 +382,21 @@ export default {
 .announcement-content {
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+@media (max-width: 640px) {
+  .page-header,
+  .card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .card-header :deep(.el-select) {
+    width: 100%;
+  }
 }
 </style>

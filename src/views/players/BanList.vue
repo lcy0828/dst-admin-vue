@@ -13,6 +13,7 @@ export default {
 
 <style scoped>
 .ban-list-page {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
-</style> 
+</style>

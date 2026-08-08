@@ -56,12 +56,15 @@ export default {
   justify-content: center;
   align-items: center;
   height: 100%;
-  padding: 20px;
+  min-height: 360px;
+  padding: 16px;
 }
 
 .box-card {
   width: 500px;
   max-width: 100%;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .content {
@@ -69,10 +72,10 @@ export default {
 }
 
 .button-container {
-  margin: 20px 0;
+  margin: 16px 0;
   display: flex;
   justify-content: center;
-  gap: 20px;
+  gap: 8px;
 }
 
 .tip {
@@ -80,4 +83,11 @@ export default {
   color: var(--text-secondary);
   margin-top: 20px;
 }
-</style> 
+
+@media (max-width: 480px) {
+  .button-container {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+</style>

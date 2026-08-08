@@ -941,19 +941,21 @@ export default {
   padding: 16px 16px 6px;
   border: 1px solid var(--border-color);
   background: var(--surface-color);
-  border-radius: 6px;
-  box-shadow: var(--shadow-card);
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .result-section {
   padding: 16px;
   border: 1px solid var(--border-color);
   background: var(--surface-color);
-  border-radius: 6px;
-  box-shadow: var(--shadow-card);
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .pagination-container {
+  display: flex;
+  justify-content: flex-end;
   margin-top: 14px;
 }
 
@@ -974,10 +976,14 @@ export default {
 
 .rule-form-card {
   margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .regex-tester-card {
   margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 /* 确保对话框内容可以滚动 */
@@ -1001,7 +1007,7 @@ export default {
   font-weight: 500;
   margin-bottom: 20px;
   padding: 10px;
-  background-color: #fdf6ec;
+  background-color: var(--surface-muted);
   border-radius: 4px;
   border-left: 4px solid var(--warning-color);
 }

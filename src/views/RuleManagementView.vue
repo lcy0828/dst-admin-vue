@@ -618,32 +618,37 @@ export default {
 
 <style scoped>
 .rule-management-container {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .rule-section {
-  background: #fff;
-  padding: 20px;
+  margin-bottom: 0;
+  padding: 16px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  box-shadow: none;
 }
 
 .rule-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .rule-header h3 {
   margin: 0;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .rule-header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .rule-header-actions .el-select {
@@ -652,7 +657,7 @@ export default {
 
 .tip {
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
   margin-top: 5px;
 }
 
@@ -677,7 +682,7 @@ export default {
   padding: 2px;
   margin-left: 5px;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.15s ease;
 }
 
 .pattern-container:hover .copy-btn {
@@ -687,5 +692,27 @@ export default {
 /* 确保复制按钮不会被截断 */
 .el-table .cell {
   overflow: visible !important;
+}
+
+@media (max-width: 640px) {
+  .rule-section {
+    padding: 12px;
+  }
+
+  .rule-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .rule-header-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .rule-header-actions .el-select,
+  .rule-header-actions :deep(.el-button) {
+    width: 100%;
+    margin: 0;
+  }
 }
 </style>

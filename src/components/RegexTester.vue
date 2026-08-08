@@ -428,7 +428,7 @@ export default {
 
 <style scoped>
 .regex-tester {
-  padding: 20px;
+  padding: 16px;
 }
 
 .test-results {
@@ -463,11 +463,11 @@ export default {
   padding: 10px;
   border: 1px solid var(--el-border-color);
   border-radius: 4px;
-  background-color: #fff;
+  background-color: var(--surface-color);
 }
 
 .match-index {
-  font-weight: bold;
+  font-weight: 600;
   margin-bottom: 5px;
   color: var(--primary-color);
 }
@@ -475,7 +475,7 @@ export default {
 .match-content {
   white-space: pre-wrap;
   font-family: monospace;
-  background-color: #f8f8f8;
+  background-color: var(--surface-muted);
   padding: 8px;
   border-radius: 4px;
   border-left: 3px solid var(--primary-color);
@@ -486,7 +486,7 @@ export default {
   padding: 10px;
   border: 1px solid var(--el-border-color);
   border-radius: 4px;
-  background-color: #fff;
+  background-color: var(--surface-color);
   max-height: 300px;
   overflow-y: auto;
 }
