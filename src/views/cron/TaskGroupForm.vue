@@ -158,11 +158,13 @@ export default {
 
 <style scoped>
 .box-card {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 .form-help-text {
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
   margin-left: 10px;
 }
 .form-help-text p {

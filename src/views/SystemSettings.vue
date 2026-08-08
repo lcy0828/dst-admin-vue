@@ -1067,6 +1067,8 @@ export default {
 
 .main-card {
   margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .settings-card-header {
@@ -1318,6 +1320,8 @@ export default {
 .status-card {
   margin-bottom: 20px;
   height: 100%;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .status-card-header {

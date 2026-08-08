@@ -337,25 +337,31 @@ export default {
 
 <style scoped>
 .scheduled-tasks-container {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .page-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .task-list-card {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .task-name {
@@ -379,12 +385,13 @@ export default {
 }
 
 .pagination-container {
-  margin-top: 20px;
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 .task-paused {
-  background-color: #f9f9f9;
+  background-color: var(--surface-muted);
   color: var(--text-secondary);
 }
 

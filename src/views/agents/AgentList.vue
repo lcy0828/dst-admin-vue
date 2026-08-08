@@ -493,7 +493,7 @@ export default {
   padding: 14px 16px;
   text-align: left;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--surface-color);
   cursor: default;
 }
@@ -512,15 +512,15 @@ export default {
 
 .agent-card {
   margin-bottom: 12px;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-card);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .agent-card:hover {
-  border-color: var(--el-color-primary-light-7);
-  box-shadow: var(--shadow-card-hover);
+  border-color: var(--el-color-primary-light-5);
+  box-shadow: none;
 }
 
 .agent-connected {
@@ -597,16 +597,15 @@ export default {
 }
 
 .empty-icon {
-  font-size: 64px;
+  font-size: 30px;
   color: var(--text-secondary);
-  margin-bottom: 20px;
-  opacity: 0.7;
+  margin-bottom: 10px;
 }
 
 .empty-text {
   color: var(--text-secondary);
-  font-size: 16px;
-  margin-bottom: 20px;
+  font-size: 14px;
+  margin-bottom: 16px;
 }
 
 .runtime-scope {

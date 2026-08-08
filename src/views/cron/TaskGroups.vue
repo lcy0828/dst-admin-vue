@@ -408,18 +408,20 @@ export default {
   text-decoration: underline;
 }
 .stats-overview {
-  display: flex;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
 }
 .stats-card {
-  flex: 1;
-  min-width: 180px;
-  margin: 0 10px 10px 0;
-  padding: 15px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  text-align: center;
+  box-shadow: none;
+  text-align: left;
 }
 .stats-title {
   font-size: 14px;
@@ -427,8 +429,8 @@ export default {
   margin-bottom: 10px;
 }
 .stats-value {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 .total-tasks {
@@ -445,5 +447,11 @@ export default {
 }
 .stats-charts {
   margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+  .stats-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

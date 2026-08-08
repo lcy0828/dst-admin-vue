@@ -13,7 +13,7 @@
 
       <el-skeleton :loading="loading" animated>
         <template v-slot:template>
-          <div style="padding: 20px;">
+          <div class="skeleton-content">
             <el-skeleton-item variant="text" style="width: 30%; height: 40px;"></el-skeleton-item>
             <el-skeleton-item variant="text" style="margin-top: 20px; width: 100%; height: 300px;"></el-skeleton-item>
           </div>
@@ -233,6 +233,9 @@ export default {
 .log-content {
   padding: 0;
 }
+.skeleton-content {
+  padding: 16px;
+}
 .execution-section {
   margin-top: 20px;
 }
@@ -243,7 +246,8 @@ export default {
   border-left: 3px solid var(--primary-color);
 }
 .code-block {
-  background-color: #f5f5f5;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   padding: 15px;
   border-radius: 4px;
   font-family: Monaco, Menlo, Consolas, "Courier New", monospace;

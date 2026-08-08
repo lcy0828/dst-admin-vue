@@ -825,29 +825,36 @@ export default {
 
 <style lang="scss" scoped>
 .agent-command-container {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 
   .main-card {
+    border-radius: 4px;
+    box-shadow: none;
+
     .card-title {
       font-size: 18px;
-      font-weight: bold;
+      font-weight: 600;
       i {
         margin-right: 8px;
       }
     }
     
     .header-actions {
-      float: right;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
     }
   }
 
   .section {
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 
     .section-title {
       font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 20px;
+      font-weight: 600;
+      margin-bottom: 14px;
       color: var(--primary-color);
       display: flex;
       align-items: center;
@@ -860,6 +867,8 @@ export default {
         margin-left: auto;
         display: flex;
         align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
       }
       
       .batch-mode-switch {
@@ -939,6 +948,30 @@ export default {
   .template-container {
     max-height: 500px;
     overflow-y: auto;
+  }
+
+  @media (max-width: 768px) {
+    .main-card .header-actions,
+    .section .section-title,
+    .section .section-title .history-filter {
+      width: 100%;
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .section .section-title {
+      gap: 8px;
+    }
+
+    .section .section-title .history-filter {
+      margin-left: 0;
+    }
+
+    .section .section-title .history-filter :deep(.el-select),
+    .section .section-title .history-filter :deep(.el-input),
+    .section .section-title .history-filter :deep(.el-date-editor) {
+      width: 100% !important;
+    }
   }
 }
 </style>

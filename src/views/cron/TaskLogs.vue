@@ -466,7 +466,7 @@ export default {
 
 <style scoped>
 .filter-container {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .filter-form {
   margin-top: 15px;
@@ -478,7 +478,8 @@ export default {
 .empty-logs {
   padding: 50px 0;
   text-align: center;
-  background-color: #fafafa;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   margin-bottom: 20px;
 }
@@ -486,11 +487,12 @@ export default {
   margin-bottom: 20px;
 }
 .log-title {
-  font-weight: bold;
+  font-weight: 600;
   margin: 15px 0 5px 0;
 }
 .log-content {
-  background-color: #f5f5f5;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   padding: 10px;
   border-radius: 4px;
   max-height: 300px;

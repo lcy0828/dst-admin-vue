@@ -599,21 +599,23 @@ export default {
 
 <style scoped>
 .filter-form {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .stats-cards {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
   margin-bottom: 20px;
 }
 .stat-card {
-  flex: 1;
-  min-width: 200px;
-  margin: 0 10px 10px 0;
-  padding: 20px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  text-align: center;
+  box-shadow: none;
+  text-align: left;
 }
 .stat-title {
   font-size: 14px;
@@ -621,23 +623,33 @@ export default {
   margin-bottom: 10px;
 }
 .stat-value {
-  font-size: 28px;
-  font-weight: bold;
+  font-size: 22px;
+  font-weight: 600;
   color: var(--primary-color);
 }
 .chart-container {
-  margin-top: 30px;
-  margin-bottom: 30px;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }
 .chart-title {
   font-size: 16px;
   margin-bottom: 15px;
-  padding-left: 10px;
-  border-left: 4px solid var(--primary-color);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
 }
 .chart-box {
   width: 100%;
   height: 400px;
   margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .stats-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chart-box {
+    height: 320px;
+  }
 }
 </style>

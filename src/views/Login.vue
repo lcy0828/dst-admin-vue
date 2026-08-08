@@ -27,7 +27,7 @@
 
         <el-form-item>
           <el-checkbox v-model="loginForm.remember">记住我</el-checkbox>
-          <el-link type="primary" class="forgot-password" :underline="false">忘记密码?</el-link>
+          <span v-if="setupRequired" class="password-hint">密码至少 6 位</span>
         </el-form-item>
 
         <el-form-item>
@@ -42,7 +42,7 @@
       </el-form>
 
       <div class="login-footer">
-        <p>© 2023 饥荒管理系统 - Don't Starve Together Admin</p>
+        <p>DST Admin · Don't Starve Together Server Console</p>
       </div>
     </div>
 
@@ -114,14 +114,14 @@ export default {
 <style scoped>
 .login-container {
   display: flex;
-  height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   background-color: var(--bg-color);
 }
 
 .login-form-wrapper {
-  width: 400px;
-  padding: 60px 40px;
+  width: 440px;
+  padding: 48px;
   background-color: var(--surface-color);
   display: flex;
   flex-direction: column;
@@ -129,23 +129,26 @@ export default {
 }
 
 .login-header {
-  text-align: center;
-  margin-bottom: 40px;
+  text-align: left;
+  margin-bottom: 32px;
 }
 
 .login-header h1 {
-  font-size: 24px;
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 32px;
   color: var(--text-primary);
-  margin-bottom: 10px;
 }
 
 .login-header p {
+  margin: 0;
   font-size: 14px;
   color: var(--text-secondary);
 }
 
 .login-form {
-  margin-bottom: 40px;
+  margin-bottom: 24px;
 }
 
 .login-button {
@@ -153,12 +156,15 @@ export default {
   border-radius: 4px;
 }
 
-.forgot-password {
+.password-hint {
   float: right;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 32px;
 }
 
 .login-footer {
-  text-align: center;
+  text-align: left;
   color: var(--text-secondary);
   font-size: 12px;
   margin-top: auto;
@@ -173,16 +179,15 @@ export default {
 
 .login-illustration {
   position: absolute;
-  top: 50%;
+  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
-  aspect-ratio: 10 / 3;
-  transform: translateY(-50%);
   background-image: url('/static/misc/worldgen_customization.webp');
-  background-size: 100% auto;
-  background-position: top center;
+  background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.68;
+  opacity: 0.74;
 }
 
 @media (max-width: 768px) {
@@ -192,11 +197,12 @@ export default {
 
   .login-form-wrapper {
     width: 100%;
-    padding: 40px 20px;
+    min-height: calc(100dvh - 132px);
+    padding: 32px 20px;
   }
 
   .login-background {
-    height: 180px;
+    flex: 0 0 132px;
   }
 }
 </style>

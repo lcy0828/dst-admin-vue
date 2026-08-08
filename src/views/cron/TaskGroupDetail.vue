@@ -304,7 +304,8 @@ export default {
   margin-top: 10px;
 }
 .result-output pre {
-  background-color: #f5f5f5;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-color);
   padding: 10px;
   border-radius: 4px;
   max-height: 300px;

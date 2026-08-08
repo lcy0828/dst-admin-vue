@@ -13,6 +13,7 @@ export default {
 
 <style scoped>
 .system-page {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 </style>

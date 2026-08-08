@@ -864,13 +864,15 @@ export default {
   font-style: italic;
 }
 .box-card {
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 .cron-help {
   margin-top: 5px;
-  color: #666;
+  color: var(--text-regular);
   font-size: 12px;
-  background-color: #f8f8f8;
+  background-color: var(--surface-muted);
   padding: 10px;
   border-radius: 4px;
 }
@@ -886,7 +888,7 @@ export default {
 }
 .form-help-text {
   font-size: 12px;
-  color: #666;
+  color: var(--text-secondary);
   margin-left: 10px;
 }
 </style>

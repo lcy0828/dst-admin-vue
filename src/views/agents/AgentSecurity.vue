@@ -274,17 +274,16 @@ export default {
 
 <style scoped>
 .agent-security-container {
-  padding: 20px;
-  background-color: #f8f9fc;
-  min-height: calc(100vh - 120px);
+  width: 100%;
+  min-width: 0;
 }
 
 .main-card {
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  background-color: #fff;
-  margin-bottom: 20px;
+  margin-bottom: 0;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .card-title {
@@ -294,24 +293,24 @@ export default {
 }
 
 .security-content {
-  padding: 10px;
+  padding: 0;
 }
 
 .section-title {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .section-subtitle {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 20px 0 15px;
+  margin: 20px 0 10px;
   display: flex;
   align-items: center;
 }
@@ -321,16 +320,18 @@ export default {
   color: white;
   font-size: 11px;
   padding: 2px 6px;
-  border-radius: 10px;
+  border-radius: 3px;
   margin-left: 8px;
 }
 
 .api-key-box {
-  background: linear-gradient(135deg, var(--surface-muted) 0%, #eef2f7 100%);
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-shadow: none;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -352,7 +353,7 @@ export default {
 .key-value-wrapper {
   display: flex;
   align-items: center;
-  background-color: #fff;
+  background-color: var(--surface-color);
   border-radius: 4px;
   border: 1px solid var(--el-border-color);
   padding: 8px 12px;
@@ -379,14 +380,14 @@ export default {
 
 .key-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 0;
 }
 
 .code-block {
   background-color: #282c34;
-  border-radius: 6px;
-  padding: 15px;
+  border-radius: 4px;
+  padding: 14px;
   position: relative;
   margin: 15px 0;
   overflow-x: auto;
@@ -423,7 +424,7 @@ export default {
 
 .manual-steps li {
   counter-increment: step-counter;
-  margin-bottom: 25px;
+  margin-bottom: 18px;
   position: relative;
   padding-left: 35px;
 }
@@ -435,11 +436,11 @@ export default {
   top: 0;
   background-color: var(--primary-color);
   color: white;
-  font-weight: bold;
-  border-radius: 50%;
-  width: 25px;
-  height: 25px;
-  line-height: 25px;
+  font-weight: 600;
+  border-radius: 3px;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
   text-align: center;
 }
 
@@ -460,12 +461,18 @@ export default {
 @media (max-width: 768px) {
   .api-key-box {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .key-display {
+    width: 100%;
+    min-width: 0;
   }
   
   .key-actions {
-    margin-top: 15px;
+    margin-top: 0;
     width: 100%;
-    justify-content: center;
+    justify-content: flex-end;
   }
 }
 </style>

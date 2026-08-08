@@ -1268,6 +1268,8 @@ export default {
 
 .box-card {
   margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .task-header,
@@ -1316,7 +1318,7 @@ export default {
 
 /* 表格行样式 */
 .task-table :deep(.disabled-row) {
-  background-color: #f9f9f9;
+  background-color: var(--surface-muted);
   color: var(--text-secondary);
 }
 
@@ -1499,7 +1501,7 @@ export default {
 .result-message {
   margin: 15px 0;
   padding: 10px;
-  background-color: #f8f8f8;
+  background-color: var(--surface-muted);
   border-radius: 4px;
 }
 .result-message p {
@@ -1510,7 +1512,7 @@ export default {
   margin-top: 15px;
 }
 .result-output pre {
-  background-color: #f5f5f5;
+  background-color: var(--surface-muted);
   padding: 10px;
   border-radius: 4px;
   max-height: 300px;
@@ -1525,18 +1527,20 @@ export default {
   margin: 15px 0;
 }
 .stats-overview {
-  display: flex;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
 }
 .stats-card {
-  flex: 1;
-  min-width: 180px;
-  margin: 0 10px 10px 0;
-  padding: 15px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  text-align: center;
+  box-shadow: none;
+  text-align: left;
 }
 .stats-title {
   font-size: 14px;
@@ -1544,8 +1548,8 @@ export default {
   margin-bottom: 10px;
 }
 .stats-value {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 20px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -1571,7 +1575,7 @@ export default {
 .stats-detail {
   margin: 20px 0;
   padding: 15px;
-  background-color: #f8f8f8;
+  background-color: var(--surface-muted);
   border-radius: 4px;
 }
 .detail-item {
@@ -1652,6 +1656,10 @@ export default {
 
   .pagination-container {
     justify-content: center;
+  }
+
+  .stats-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>
