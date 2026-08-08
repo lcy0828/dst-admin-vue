@@ -1,7 +1,8 @@
 <template>
   <div class="app-container">
     <el-card class="box-card" shadow="never">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span v-if="group">{{ group.name }} - 任务组详情</span>
         <span v-else>任务组详情</span>
         <el-button-group style="float: right">
@@ -9,7 +10,9 @@
           <el-button type="success" icon="el-icon-edit" @click="handleEditGroup" v-if="group">编辑任务组</el-button>
           <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/groups')">返回列表</el-button>
         </el-button-group>
+        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
       </div>
+</template>
       
       <div v-loading="loading">
         <div class="group-info" v-if="group">
@@ -33,7 +36,7 @@
           <el-table :data="taskList" style="width: 100%;" border>
             <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
             <el-table-column prop="name" label="任务名称" min-width="120">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tooltip v-if="scope.row.description" :content="scope.row.description" placement="top" effect="light">
                   <span>{{ scope.row.name }}</span>
                 </el-tooltip>
@@ -42,28 +45,28 @@
             </el-table-column>
             <el-table-column prop="spec" label="Cron表达式" min-width="120"></el-table-column>
             <el-table-column prop="type" label="类型" width="100">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tag :type="scope.row.type === 'function' ? 'primary' : 'success'">
                   {{ scope.row.type === 'function' ? '函数' : 'Shell命令' }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="target" label="目标" min-width="150">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tooltip :content="scope.row.target" placement="top" effect="light">
-                  <span>{{ scope.row.target | truncate(30) }}</span>
+                  <span>{{ truncate(scope.row.target, 30) }}</span>
                 </el-tooltip>
               </template>
             </el-table-column>
             <el-table-column prop="status" label="状态" width="80">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
                   {{ scope.row.status === 1 ? '启用' : '禁用' }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="220" align="center">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-button 
                   size="mini" 
                   type="success"
@@ -114,26 +117,23 @@
           <pre>{{ taskResult.output }}</pre>
         </div>
       </div>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
         <el-button type="primary" @click="viewTaskLogs(currentTaskId)">查看完整日志</el-button>
       </div>
+</template>
     </el-dialog>
   </div>
 </template>
 
 <script>
 import { cronTaskApi } from '@/api/index';
+import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 
 export default {
   name: 'TaskGroupDetail',
-  filters: {
-    truncate(value, length) {
-      if (!value) return '';
-      if (value.length <= length) return value;
-      return value.substring(0, length) + '...';
-    }
-  },
+  components: { AutomationRoomSelect },
   data() {
     return {
       loading: false,
@@ -149,11 +149,19 @@ export default {
     const { id } = this.$route.params;
     if (id) {
       this.groupId = id;
-      this.fetchGroupDetail();
-      this.fetchGroupTasks();
     }
   },
   methods: {
+    truncate(value, length) {
+      if (!value) return '';
+      if (value.length <= length) return value;
+      return value.substring(0, length) + '...';
+    },
+    handleAutomationRoom() {
+      if (!this.groupId) return;
+      this.fetchGroupDetail();
+      this.fetchGroupTasks();
+    },
     fetchGroupDetail() {
       this.loading = true;
       cronTaskApi.getGroupDetail(this.groupId)
@@ -304,4 +312,4 @@ export default {
   white-space: pre-wrap;
   word-break: break-all;
 }
-</style> 
+</style>

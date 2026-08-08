@@ -1,7 +1,8 @@
 <template>
   <div class="app-container">
     <el-card class="box-card" shadow="never">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>定时任务管理</span>
         <el-button-group style="float: right">
           <el-button type="primary" icon="el-icon-plus" @click="handleAddTask">添加任务</el-button>
@@ -9,7 +10,9 @@
           <!-- 统计图表按钮已隐藏 -->
           <!-- 导入导出按钮已隐藏 -->
         </el-button-group>
+        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
       </div>
+</template>
 
 
 
@@ -53,7 +56,7 @@
         class="task-table">
         <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
         <el-table-column prop="name" label="任务名称" min-width="150">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="task-name-cell">
               <div class="task-name">
                 <span class="task-name-text">{{ scope.row.name }}</span>
@@ -66,26 +69,26 @@
         <!-- 所属任务组列已隐藏 -->
         <el-table-column prop="spec" label="Cron表达式" min-width="120"></el-table-column>
         <el-table-column prop="type" label="类型" width="120">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag :type="getTaskTypeTag(scope.row.type)">
               {{ getTaskTypeName(scope.row.type) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="target" label="目标" min-width="150">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="target-cell">
               <el-tooltip :content="getFormattedTarget(scope.row)" placement="top" effect="light">
                 <div class="target-content">
                   <component :is="getTargetIcon(scope.row.type)" class="legacy-icon target-icon" />
-                  <span>{{ getFormattedTarget(scope.row) | truncate(40) }}</span>
+                  <span>{{ truncate(getFormattedTarget(scope.row), 40) }}</span>
                 </div>
               </el-tooltip>
             </div>
           </template>
         </el-table-column>
         <el-table-column prop="dependencies" label="依赖任务" min-width="120">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="dependencies-cell">
               <span v-if="!scope.row.dependencies || scope.row.dependencies.length === 0" class="no-deps">无依赖</span>
               <div v-else class="deps-list">
@@ -103,17 +106,17 @@
           </template>
         </el-table-column>
         <el-table-column label="超时/重试" width="120" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="timeout-retry-cell">
               <el-tooltip content="任务超时时间(秒)" placement="top" effect="light">
                 <div class="timeout-value">
-                  <component is="el-icon-time" class="legacy-icon" />
+                  <component :is="'el-icon-time'" class="legacy-icon" />
                   <span>{{ scope.row.timeout || '无限' }}</span>
                 </div>
               </el-tooltip>
               <el-tooltip content="重试次数" placement="top" effect="light">
                 <div class="retry-value">
-                  <component is="el-icon-refresh" class="legacy-icon" />
+                  <component :is="'el-icon-refresh'" class="legacy-icon" />
                   <span>{{ scope.row.retry_times || '0' }}</span>
                 </div>
               </el-tooltip>
@@ -121,10 +124,10 @@
           </template>
         </el-table-column>
         <el-table-column prop="last_run_time" label="上次执行" min-width="160">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="last-run-cell">
               <div class="last-run-time">
-                <component is="el-icon-date" class="legacy-icon" />
+                <component :is="'el-icon-date'" class="legacy-icon" />
                 <span v-if="scope.row.last_run_time && scope.row.last_run_time !== '0001-01-01T00:00:00Z'" class="time-text">{{ formatDateTime(scope.row.last_run_time) }}</span>
                 <span v-else class="no-run">未执行</span>
               </div>
@@ -137,14 +140,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="status" label="任务状态" width="80">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
               {{ scope.row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <div class="action-buttons">
               <!-- 主要操作按钮组 -->
               <el-tooltip content="立即执行" placement="top">
@@ -180,11 +183,13 @@
               <!-- 更多操作下拉菜单 -->
               <el-dropdown trigger="click" @command="handleCommand($event, scope.row)" size="mini">
                 <el-button size="mini" type="info" circle icon="el-icon-more"></el-button>
-                <el-dropdown-menu slot="dropdown">
+                <template v-slot:dropdown>
+<el-dropdown-menu >
                   <el-dropdown-item command="viewLogs" icon="el-icon-document">查看日志</el-dropdown-item>
                   <el-dropdown-item command="viewStats" icon="el-icon-data-line">查看统计</el-dropdown-item>
                   <el-dropdown-item divided command="delete" icon="el-icon-delete" class="danger-item">删除任务</el-dropdown-item>
                 </el-dropdown-menu>
+</template>
               </el-dropdown>
             </div>
           </template>
@@ -238,10 +243,12 @@
           show-icon>
         </el-alert>
       </div>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="dialogVisible = false">关闭</el-button>
         <el-button type="primary" @click="viewTaskLogs(currentTaskId)">查看任务日志</el-button>
       </div>
+</template>
     </el-dialog>
 
     <el-dialog title="任务统计" v-model="statsDialogVisible" width="70%">
@@ -298,10 +305,12 @@
           <div id="durationChart" style="width: 100%; height: 300px;"></div>
         </div>
       </div>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="statsDialogVisible = false">关闭</el-button>
         <!-- 查看更多图表按钮已隐藏 -->
       </div>
+</template>
     </el-dialog>
   </div>
 </template>
@@ -309,18 +318,11 @@
 <script>
 import { cronTaskApi } from '@/api/index';
 import * as echarts from 'echarts';
-import axios from 'axios';
-import config from '@/api/config';
+import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 
 export default {
   name: 'TaskList',
-  filters: {
-    truncate(value, length) {
-      if (!value) return '';
-      if (value.length <= length) return value;
-      return value.substring(0, length) + '...';
-    }
-  },
+  components: { AutomationRoomSelect },
   data() {
     return {
       loading: false,
@@ -347,21 +349,21 @@ export default {
       fetchError: false
     };
   },
-  created() {
-    // 先获取任务组，然后再获取任务列表
-    this.fetchGroups();
-
-    // 获取TMUX命令列表
-    this.fetchTmuxCommands();
-
-    // 延迟一点点时间再获取任务列表，确保已经获取到了任务组数据
-    setTimeout(() => {
-      this.fetchData();
-    }, 100);
-  },
   methods: {
+    truncate(value, length) {
+      if (!value) return '';
+      if (value.length <= length) return value;
+      return value.substring(0, length) + '...';
+    },
+    handleAutomationRoom() {
+      this.taskList = [];
+      this.groupList = [];
+      this.total = 0;
+      Promise.all([this.fetchGroups(), this.fetchTmuxCommands()])
+        .finally(() => this.fetchData());
+    },
     // 表格行样式
-    tableRowClassName({row, rowIndex}) {
+    tableRowClassName({row}) {
       if (row.status === 0) {
         return 'disabled-row';
       }
@@ -489,29 +491,18 @@ export default {
 
     // 获取TMUX命令列表
     fetchTmuxCommands() {
-      // 调用API获取TMUX命令列表
-      axios.get(`${config.BASE_URL}/cron/tmux/commands`)
+      return cronTaskApi.getTmuxCommands()
         .then(response => {
-          if (response.data.code === 200) {
+          if (response.data && response.data.code === 200) {
             this.tmuxCommands = response.data.data || [];
             console.log('获取TMUX命令列表成功:', this.tmuxCommands);
           } else {
-            console.warn('获取TMUX命令列表失败:', response.data.msg);
+            console.warn('获取TMUX命令列表失败:', response.data?.msg);
           }
         })
         .catch(error => {
           console.error('获取TMUX命令列表失败:', error);
-          // 尝试使用备用API
-          axios.get(`${config.BASE_URL}/tmux/commands`)
-            .then(fallbackResponse => {
-              if (fallbackResponse.data.status === 200) {
-                this.tmuxCommands = fallbackResponse.data.data || [];
-                console.log('使用备用API获取TMUX命令列表成功:', this.tmuxCommands);
-              }
-            })
-            .catch(fallbackError => {
-              console.error('备用API获取TMUX命令列表失败:', fallbackError);
-            });
+          this.tmuxCommands = [];
         });
     },
 
@@ -1256,7 +1247,7 @@ export default {
       }
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.executionChart) {
       this.executionChart.dispose();
     }

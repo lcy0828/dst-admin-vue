@@ -3,9 +3,12 @@
     <el-row :gutter="20">
       <el-col :span="12">
         <el-card class="box-card">
-          <div slot="header" class="clearfix">
+          <template v-slot:header>
+<div  class="clearfix">
             <span>导出任务配置</span>
+            <automation-room-select @ready="getExportFiles" @change="getExportFiles" />
           </div>
+</template>
           <el-form ref="exportForm" :model="exportForm" label-width="100px">
             <el-form-item label="导出描述" prop="description">
               <el-input 
@@ -43,9 +46,11 @@
       
       <el-col :span="12">
         <el-card class="box-card">
-          <div slot="header" class="clearfix">
+          <template v-slot:header>
+<div  class="clearfix">
             <span>导入任务配置</span>
           </div>
+</template>
           <el-form ref="importForm" :model="importForm" label-width="100px">
             <el-form-item label="选择文件" prop="file">
               <el-upload
@@ -55,8 +60,12 @@
                 :on-change="handleFileChange"
                 :limit="1"
                 ref="upload">
-                <el-button slot="trigger" size="small" type="primary">选择文件</el-button>
-                <div slot="tip" class="el-upload__tip">只能上传 .json 文件</div>
+                <template v-slot:trigger>
+<el-button  size="small" type="primary">选择文件</el-button>
+</template>
+                <template v-slot:tip>
+<div  class="el-upload__tip">只能上传 .json 文件</div>
+</template>
               </el-upload>
             </el-form-item>
             
@@ -82,21 +91,23 @@
     </el-row>
     
     <el-card class="box-card" style="margin-top: 20px;">
-      <div slot="header" class="clearfix">
-        <span>导出文件列表</span>
+      <template v-slot:header>
+<div  class="clearfix">
+        <span>本次浏览器导出记录</span>
         <el-button style="float: right" type="success" icon="el-icon-refresh" size="small" @click="getExportFiles">刷新</el-button>
       </div>
+</template>
       <el-table :data="exportFiles" border style="width: 100%">
         <el-table-column prop="filename" label="文件名" width="200"></el-table-column>
         <el-table-column prop="description" label="描述" min-width="200"></el-table-column>
         <el-table-column prop="size" label="大小" width="100">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             {{ formatFileSize(scope.row.size) }}
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
         <el-table-column label="操作" width="200" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-button 
               size="mini" 
               type="primary" 
@@ -120,9 +131,11 @@
 
 <script>
 import { cronTaskApi } from '@/api/index';
+import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 
 export default {
   name: 'TaskImportExport',
+  components: { AutomationRoomSelect },
   data() {
     return {
       exporting: false,
@@ -138,9 +151,6 @@ export default {
       },
       exportFiles: []
     };
-  },
-  created() {
-    this.getExportFiles();
   },
   methods: {
     getExportFiles() {
@@ -180,7 +190,7 @@ export default {
         })
         .catch(error => {
           console.error('导出任务配置失败:', error);
-          this.$message.error('导出任务配置失败');
+          this.$message.error(error.message || '导出任务配置失败');
         })
         .finally(() => {
           this.exporting = false;
@@ -223,7 +233,7 @@ export default {
         })
         .catch(error => {
           console.error('导入任务配置失败:', error);
-          this.$message.error('导入任务配置失败');
+          this.$message.error(error.message || '导入任务配置失败');
         })
         .finally(() => {
           this.importing = false;
@@ -245,7 +255,7 @@ export default {
         });
     },
     deleteFile(file) {
-      this.$confirm('确定要删除该导出文件吗？', '确认删除', {
+      this.$confirm('确定要移除这条浏览器导出记录吗？已下载到磁盘的文件不会被删除', '确认移除', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'

@@ -1,12 +1,15 @@
 <template>
   <div class="app-container">
     <el-card class="box-card">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>{{ isEdit ? '编辑任务组' : '添加任务组' }}</span>
         <el-button-group style="float: right">
           <el-button type="primary" icon="el-icon-back" @click="$router.push('/cron/groups')">返回列表</el-button>
         </el-button-group>
+        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
       </div>
+</template>
       <el-form :model="groupForm" :rules="rules" ref="groupForm" label-width="120px">
         <el-form-item label="组名称" prop="name">
           <el-input v-model="groupForm.name" placeholder="请输入任务组名称"></el-input>
@@ -51,9 +54,11 @@
 
 <script>
 import { cronTaskApi } from '@/api/index';
+import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 
 export default {
   name: 'TaskGroupForm',
+  components: { AutomationRoomSelect },
   data() {
     return {
       isEdit: false,
@@ -85,10 +90,12 @@ export default {
     if (id) {
       this.isEdit = true;
       this.groupId = id;
-      this.getGroupDetail(id);
     }
   },
   methods: {
+    handleAutomationRoom() {
+      if (this.isEdit && this.groupId) this.getGroupDetail(this.groupId);
+    },
     getGroupDetail(id) {
       cronTaskApi.getGroupDetail(id)
         .then(response => {
@@ -131,7 +138,7 @@ export default {
             })
             .catch(error => {
               console.error(this.isEdit ? '更新任务组失败:' : '添加任务组失败:', error);
-              this.$message.error(this.isEdit ? '更新任务组失败' : '添加任务组失败');
+              this.$message.error(error.message || (this.isEdit ? '更新任务组失败' : '添加任务组失败'));
             })
             .finally(() => {
               this.submitting = false;
@@ -161,4 +168,4 @@ export default {
 .form-help-text p {
   margin: 3px 0;
 }
-</style> 
+</style>

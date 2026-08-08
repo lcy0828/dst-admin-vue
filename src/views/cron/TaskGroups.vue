@@ -1,38 +1,41 @@
 <template>
   <div class="app-container">
     <el-card class="box-card" shadow="never">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>任务组管理</span>
         <el-button-group style="float: right">
           <el-button type="primary" icon="el-icon-plus" @click="$router.push('/cron/group/add')">添加任务组</el-button>
           <el-button type="success" icon="el-icon-refresh" @click="fetchData">刷新</el-button>
           <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回任务列表</el-button>
         </el-button-group>
+        <automation-room-select @ready="fetchData" @change="fetchData" />
       </div>
+</template>
       
       <el-table v-loading="loading" :data="groupList" style="width: 100%;" border>
         <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
         <el-table-column prop="name" label="组名称" min-width="150">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <router-link :to="`/cron/group/${scope.row.id}`" class="link-type">
               {{ scope.row.name }}
             </router-link>
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="200">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <span>{{ scope.row.description || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="type" label="类型" width="100">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag :type="getTypeTag(scope.row.type)">
               {{ getTypeLabel(scope.row.type) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="任务数量" width="120" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tooltip :content="`点击查看${scope.row.name}下的任务`" placement="top" effect="light">
               <router-link :to="`/cron/group/${scope.row.id}`" class="link-type">
                 <el-badge :value="scope.row.task_count || 0" class="task-count-badge" :hidden="!scope.row.task_count">
@@ -43,14 +46,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
               {{ scope.row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="300" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-button-group>
               <el-button 
                 size="mini" 
@@ -120,10 +123,12 @@
           <div id="groupExecutionChart" style="width: 100%; height: 300px;"></div>
         </div>
       </div>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="statsDialogVisible = false">关闭</el-button>
         <el-button type="primary" @click="$router.push('/cron/charts')">查看更多图表</el-button>
       </div>
+</template>
     </el-dialog>
   </div>
 </template>
@@ -131,9 +136,11 @@
 <script>
 import { cronTaskApi } from '@/api/index';
 import * as echarts from 'echarts';
+import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 
 export default {
   name: 'TaskGroups',
+  components: { AutomationRoomSelect },
   data() {
     return {
       loading: false,
@@ -144,9 +151,6 @@ export default {
       executionChart: null,
       currentGroupId: null
     };
-  },
-  created() {
-    this.fetchData();
   },
   methods: {
     fetchData() {
@@ -381,7 +385,7 @@ export default {
       this.executionChart.setOption(option);
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.executionChart) {
       this.executionChart.dispose();
     }

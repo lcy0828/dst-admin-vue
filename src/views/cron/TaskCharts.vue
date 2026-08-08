@@ -1,13 +1,16 @@
 <template>
   <div class="app-container">
     <el-card class="box-card" shadow="never">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>任务统计图表</span>
         <el-button-group style="float: right">
           <el-button type="primary" icon="el-icon-refresh" @click="loadAllCharts">刷新数据</el-button>
           <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回任务列表</el-button>
         </el-button-group>
+        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
       </div>
+</template>
       
       <el-form :inline="true" class="filter-form">
         <el-form-item label="时间范围">
@@ -85,9 +88,11 @@
 <script>
 import { cronTaskApi } from '@/api/index';
 import * as echarts from 'echarts';
+import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 
 export default {
   name: 'TaskCharts',
+  components: { AutomationRoomSelect },
   data() {
     return {
       loading: false,
@@ -106,16 +111,11 @@ export default {
       }
     };
   },
-  created() {
-    this.fetchGroups();
-  },
   mounted() {
-    this.loadAllCharts();
-    
     // 处理窗口调整大小时重新渲染图表
     window.addEventListener('resize', this.resizeCharts);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // 销毁图表实例
     Object.keys(this.charts).forEach(key => {
       if (this.charts[key]) {
@@ -127,6 +127,12 @@ export default {
     window.removeEventListener('resize', this.resizeCharts);
   },
   methods: {
+    handleAutomationRoom() {
+      this.groups = [];
+      this.tasks = [];
+      this.fetchGroups();
+      this.loadAllCharts();
+    },
     fetchGroups() {
       cronTaskApi.getGroups()
         .then(response => {
@@ -633,4 +639,4 @@ export default {
   height: 400px;
   margin-bottom: 20px;
 }
-</style> 
+</style>

@@ -200,10 +200,28 @@ export const modsV2API = {
 }
 
 export const automationV2API = {
+  actions: roomId => client.get(`/rooms/${encode(roomId)}/automation/actions`),
   groups: roomId => client.get(`/rooms/${encode(roomId)}/automation/groups`),
   createGroup: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/groups`, input),
+  updateGroup: (roomId, groupId, input) => client.put(`/rooms/${encode(roomId)}/automation/groups/${encode(groupId)}`, input),
+  deleteGroup: (roomId, groupId) => client.delete(`/rooms/${encode(roomId)}/automation/groups/${encode(groupId)}`),
   tasks: roomId => client.get(`/rooms/${encode(roomId)}/automation/tasks`),
-  createTask: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/tasks`, input)
+	createTask: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/tasks`, input),
+	task: (roomId, taskId) => client.get(`/rooms/${encode(roomId)}/automation/tasks/${encode(taskId)}`),
+	updateTask: (roomId, taskId, input) => client.put(`/rooms/${encode(roomId)}/automation/tasks/${encode(taskId)}`, input),
+	deleteTask: (roomId, taskId) => client.delete(`/rooms/${encode(roomId)}/automation/tasks/${encode(taskId)}`),
+	runTask: (roomId, taskId) => client.post(`/rooms/${encode(roomId)}/automation/tasks/${encode(taskId)}/actions/run`),
+	runs: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/automation/runs`, { params }),
+	run: (roomId, runId) => client.get(`/rooms/${encode(roomId)}/automation/runs/${encode(runId)}`),
+	clearRuns: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/runs/actions/clear`, input),
+	stats: (roomId, days = 7) => client.get(`/rooms/${encode(roomId)}/automation/stats`, { params: { days } }),
+	export: roomId => client.get(`/rooms/${encode(roomId)}/automation/export`),
+	previewImport: (roomId, document) => client.post(`/rooms/${encode(roomId)}/automation/imports/preview`, document),
+	import: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/imports`, input)
+}
+
+export const consoleV2API = {
+	definitions: roomId => client.get(`/rooms/${encode(roomId)}/commands`)
 }
 
 export const worldStatesV2API = {

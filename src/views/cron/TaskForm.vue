@@ -1,12 +1,15 @@
 <template>
   <div class="app-container">
     <el-card class="box-card">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>{{ isEdit ? '编辑任务' : '添加任务' }}</span>
         <el-button-group style="float: right">
           <el-button type="primary" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回列表</el-button>
         </el-button-group>
+        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
       </div>
+</template>
       <el-form :model="taskForm" :rules="rules" ref="taskForm" label-width="120px">
         <el-tabs v-model="activeTab">
           <el-tab-pane label="基本信息" name="basic">
@@ -51,6 +54,14 @@
                 <el-radio label="tmux_command">TMUX命令</el-radio>
                 <el-radio label="tmux_raw_command">TMUX原始命令</el-radio>
               </el-radio-group>
+              <el-alert
+                v-if="taskForm.type === 'shell' || taskForm.type === 'tmux_raw_command'"
+                title="当前 v2 后端禁止定时执行任意命令，请改用受控函数或内建 TMUX 命令"
+                type="warning"
+                :closable="false"
+                show-icon
+                style="margin-top: 10px;"
+              />
             </el-form-item>
 
             <el-form-item v-if="taskForm.type === 'function'" label="选择函数" prop="target">
@@ -93,8 +104,9 @@
                     <el-option
                       v-for="command in group.commands"
                       :key="command.id"
-                      :label="command.name"
-                      :value="command.id">
+                      :label="command.name + (command.risk === 'high' || command.risk === 'critical' ? '（不可用于定时任务）' : '')"
+                      :value="command.id"
+                      :disabled="command.risk === 'high' || command.risk === 'critical'">
                     </el-option>
                   </el-option-group>
                 </el-select>
@@ -107,8 +119,10 @@
               <el-form-item label="命令参数" v-if="currentTmuxCommand && currentTmuxCommand.needs_params">
                 <div v-for="(param, index) in tmuxParams" :key="index" class="arg-item">
                   <el-input v-model="tmuxParams[index]" :placeholder="currentTmuxCommand.param_desc || '参数值'">
-                    <template slot="prepend">参数 {{index + 1}}</template>
-                    <el-button slot="append" icon="el-icon-delete" @click="removeTmuxParam(index)"></el-button>
+                    <template v-slot:prepend>参数 {{index + 1}}</template>
+                    <template v-slot:append>
+<el-button  icon="el-icon-delete" @click="removeTmuxParam(index)"></el-button>
+</template>
                   </el-input>
                   <div class="param-help" v-if="currentTmuxCommand.example">
                     <span class="param-example">示例: {{ currentTmuxCommand.example }}</span>
@@ -138,8 +152,10 @@
             <el-form-item v-if="taskForm.type === 'function'" label="函数参数">
               <div v-for="(arg, index) in taskForm.args" :key="index" class="arg-item">
                 <el-input v-model="taskForm.args[index]" placeholder="参数值">
-                  <template slot="prepend">参数 {{index + 1}}</template>
-                  <el-button slot="append" icon="el-icon-delete" @click="removeArg(index)"></el-button>
+                  <template v-slot:prepend>参数 {{index + 1}}</template>
+                  <template v-slot:append>
+<el-button  icon="el-icon-delete" @click="removeArg(index)"></el-button>
+</template>
                 </el-input>
               </div>
               <el-button type="primary" icon="el-icon-plus" @click="addArg" size="small" plain>添加参数</el-button>
@@ -208,11 +224,11 @@
 
 <script>
 import { cronTaskApi } from '@/api/index';
-import axios from 'axios';
-import config from '@/api/config';
+import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 
 export default {
   name: 'TaskForm',
+  components: { AutomationRoomSelect },
   data() {
     return {
       isEdit: false,
@@ -282,32 +298,33 @@ export default {
     };
   },
   created() {
-    // 获取内置函数列表
-    this.getFunctions();
-
-    // 获取任务组列表
-    this.getGroups();
-
-    // 获取可用任务列表
-    this.getAvailableTasks();
-
-    // 获取TMUX会话列表
-    this.getTmuxSessions();
-
-    // 获取TMUX命令列表
-    this.getTmuxCommands();
-
     // 判断是否是编辑模式
     const { id } = this.$route.params;
     if (id) {
       this.isEdit = true;
       this.taskId = id;
-      this.getTaskDetail(id);
     }
+    if (this.$route.query.group_id) this.taskForm.group_id = this.$route.query.group_id;
   },
   methods: {
+    handleAutomationRoom() {
+      this.functionList = [];
+      this.groupList = [];
+      this.availableTasks = [];
+      this.tmuxSessions = [];
+      this.tmuxCommands = [];
+      Promise.all([
+        this.getFunctions(),
+        this.getGroups(),
+        this.getAvailableTasks(),
+        this.getTmuxSessions(),
+        this.getTmuxCommands()
+      ]).then(() => {
+        if (this.isEdit && this.taskId) this.getTaskDetail(this.taskId);
+      });
+    },
     getFunctions() {
-      cronTaskApi.getFunctions()
+      return cronTaskApi.getFunctions()
         .then(response => {
           console.log('函数列表响应:', response);
 
@@ -319,7 +336,7 @@ export default {
 
             // 遍历函数对象，转换为数组格式
             for (const key in functionsData) {
-              if (functionsData.hasOwnProperty(key)) {
+              if (Object.prototype.hasOwnProperty.call(functionsData, key)) {
                 const func = functionsData[key];
                 functionsList.push({
                   name: func.name,
@@ -344,7 +361,7 @@ export default {
             // 如果是对象，转换为数组
             if (functionsData && typeof functionsData === 'object' && !Array.isArray(functionsData)) {
               for (const key in functionsData) {
-                if (functionsData.hasOwnProperty(key)) {
+                if (Object.prototype.hasOwnProperty.call(functionsData, key)) {
                   const func = functionsData[key];
                   functionsList.push({
                     name: func.name,
@@ -370,7 +387,7 @@ export default {
         });
     },
     getGroups() {
-      cronTaskApi.getGroups()
+      return cronTaskApi.getGroups()
         .then(response => {
           console.log('获取任务组列表响应:', response);
 
@@ -405,7 +422,7 @@ export default {
         });
     },
     getAvailableTasks() {
-      cronTaskApi.getTasks()
+      return cronTaskApi.getTasks()
         .then(response => {
           console.log('获取可用任务列表响应:', response);
 
@@ -659,24 +676,13 @@ export default {
     },
     // TMUX相关方法
     getTmuxSessions() {
-      // 调用API获取TMUX会话列表
-      axios.get(`${config.BASE_URL}/cron/tmux/sessions`)
+      return cronTaskApi.getTmuxSessions()
         .then(response => {
-          // 检查code而不是status
-          if (response.data.code === 200) {
+          if (response.data && response.data.code === 200) {
             this.tmuxSessions = response.data.data || [];
             console.log('获取TMUX会话列表成功:', this.tmuxSessions);
-
-            // 处理会话数据格式
-            this.tmuxSessions = this.tmuxSessions.map(session => ({
-              session_name: session.name,
-              archive_name: session.name.split('_')[1] || session.name,
-              world_name: session.name.split('_')[2] || '',
-              state: session.state
-            }));
           } else {
-            // 只有当状态不是200时才显示警告
-            this.$message.warning('获取TMUX会话列表失败: ' + response.data.msg);
+            this.$message.warning('获取TMUX会话列表失败: ' + response.data?.msg);
           }
         })
         .catch(error => {
@@ -686,17 +692,14 @@ export default {
     },
 
     getTmuxCommands() {
-      // 调用API获取TMUX命令列表
-      axios.get(`${config.BASE_URL}/cron/tmux/commands`)
+      return cronTaskApi.getTmuxCommands()
         .then(response => {
-          // 检查code而不是status
-          if (response.data.code === 200) {
+          if (response.data && response.data.code === 200) {
             this.tmuxCommands = response.data.data || [];
             this.processTmuxCommands();
             console.log('获取TMUX命令列表成功:', this.tmuxCommands);
           } else {
-            // 只有当状态不是200时才显示警告
-            this.$message.warning('获取TMUX命令列表失败: ' + response.data.msg);
+            this.$message.warning('获取TMUX命令列表失败: ' + response.data?.msg);
           }
         })
         .catch(error => {
@@ -832,7 +835,7 @@ export default {
             })
             .catch(error => {
               console.error(this.isEdit ? '更新任务失败:' : '添加任务失败:', error);
-              this.$message.error(this.isEdit ? '更新任务失败' : '添加任务失败');
+              this.$message.error(error.message || (this.isEdit ? '更新任务失败' : '添加任务失败'));
             })
             .finally(() => {
               this.submitting = false;

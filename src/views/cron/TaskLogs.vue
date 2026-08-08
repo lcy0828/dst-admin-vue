@@ -1,14 +1,17 @@
 <template>
   <div class="app-container">
     <el-card class="box-card" shadow="never">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <span>任务执行日志</span>
         <el-button-group style="float: right">
           <el-button type="danger" icon="el-icon-delete" @click="handleClearLogs">清理旧日志</el-button>
           <el-button type="primary" icon="el-icon-refresh" @click="fetchData">刷新</el-button>
           <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回任务列表</el-button>
         </el-button-group>
+        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
       </div>
+</template>
 
       <div class="filter-container">
         <el-form :inline="true" :model="listQuery" class="filter-form">
@@ -55,7 +58,7 @@
       <el-table v-else v-loading="loading" :data="logList" style="width: 100%;" border>
         <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
         <el-table-column prop="task_name" label="任务名称" min-width="120">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <router-link
               :to="`/cron/edit/${scope.row.task_id}`"
               class="link-type"
@@ -66,31 +69,31 @@
           </template>
         </el-table-column>
         <el-table-column label="开始时间" width="170" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             {{ scope.row.start_time || scope.row.created_at }}
           </template>
         </el-table-column>
         <el-table-column prop="duration" label="执行耗时" width="100" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             {{ scope.row.duration ? scope.row.duration + ' 毫秒' : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
-          <template slot-scope="scope">
-            <el-tag :type="scope.row.status === 'success' || scope.row.status === 1 ? 'success' : 'danger'">
-              {{ scope.row.status === 'success' || scope.row.status === 1 ? '成功' : '失败' }}
+          <template v-slot="scope">
+            <el-tag :type="getRunStatusTag(scope.row.status)">
+              {{ getRunStatusText(scope.row.status) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="触发方式" width="100" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-tag :type="getTriggerTypeTag(scope.row.trigger_type)">
               {{ getTriggerTypeText(scope.row.trigger_type) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="120" align="center">
-          <template slot-scope="scope">
+          <template v-slot="scope">
             <el-button
               size="mini"
               type="primary"
@@ -121,8 +124,8 @@
           <el-descriptions-item label="任务ID">{{ currentLog.task_id }}</el-descriptions-item>
           <el-descriptions-item label="任务名称">{{ currentLog.task_name }}</el-descriptions-item>
           <el-descriptions-item label="执行状态">
-            <el-tag :type="currentLog.status === 'success' || currentLog.status === 1 ? 'success' : 'danger'">
-              {{ currentLog.status === 'success' || currentLog.status === 1 ? '成功' : '失败' }}
+            <el-tag :type="getRunStatusTag(currentLog.status)">
+              {{ getRunStatusText(currentLog.status) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="触发方式">
@@ -182,19 +185,23 @@
           </el-select>
         </el-form-item>
       </el-form>
-      <div slot="footer" class="dialog-footer">
+      <template v-slot:footer>
+<div  class="dialog-footer">
         <el-button @click="clearDialogVisible = false">取消</el-button>
         <el-button type="danger" @click="confirmClearLogs" :loading="clearLoading">确认清理</el-button>
       </div>
+</template>
     </el-dialog>
   </div>
 </template>
 
 <script>
 import { cronTaskApi } from '@/api/index';
+import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 
 export default {
   name: 'TaskLogs',
+  components: { AutomationRoomSelect },
   data() {
     return {
       loading: false,
@@ -228,8 +235,6 @@ export default {
       this.listQuery.task_id = task_id;
     }
 
-    this.fetchTasks();
-    this.fetchData();
   },
   watch: {
     dateRange(val) {
@@ -243,6 +248,13 @@ export default {
     }
   },
   methods: {
+    handleAutomationRoom() {
+      this.logList = [];
+      this.taskOptions = [];
+      this.total = 0;
+      this.fetchTasks();
+      this.fetchData();
+    },
     fetchTasks() {
       cronTaskApi.getTasks()
         .then(response => {
@@ -319,7 +331,7 @@ export default {
         })
         .catch(error => {
           console.error('获取日志列表失败:', error);
-          this.$message.error('获取日志列表失败');
+          this.$message.error(error.message || '获取日志列表失败');
         })
         .finally(() => {
           this.loading = false;
@@ -375,9 +387,9 @@ export default {
               this.$message.error(response.data.msg || response.data.message || '清理日志失败');
             }
           })
-          .catch(error => {
-            console.error('清理日志失败:', error);
-            this.$message.error('清理日志失败');
+        .catch(error => {
+          console.error('清理日志失败:', error);
+          this.$message.error(error.message || '清理日志失败');
           })
           .finally(() => {
             this.clearLoading = false;
@@ -385,6 +397,26 @@ export default {
       }).catch(() => {
         this.$message.info('已取消清理');
       });
+    },
+
+    getRunStatusText(status) {
+      const labels = {
+        success: '成功',
+        succeeded: '成功',
+        failed: '失败',
+        canceled: '已取消',
+        skipped: '已跳过',
+        queued: '排队中',
+        running: '执行中'
+      };
+      return labels[status] || (status === 1 ? '成功' : '失败');
+    },
+
+    getRunStatusTag(status) {
+      if (status === 'success' || status === 'succeeded' || status === 1) return 'success';
+      if (status === 'queued' || status === 'running') return 'warning';
+      if (status === 'canceled' || status === 'skipped') return 'info';
+      return 'danger';
     },
 
     // 根据trigger_type获取触发方式的文本描述
