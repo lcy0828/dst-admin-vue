@@ -118,19 +118,7 @@ export default {
         name: '',
         icon: 'el-icon-folder'
       },
-      customCategories: [
-        // 示例自定义分类
-        {
-          id: 1,
-          name: '生存服务器',
-          icon: 'el-icon-star-off'
-        },
-        {
-          id: 2,
-          name: '创造服务器',
-          icon: 'el-icon-heart'
-        }
-      ],
+      customCategories: [],
       isRefreshing: false,
       lastRefreshTime: 0,
       submenuOpen: {
@@ -145,7 +133,7 @@ export default {
       this.$emit('category-change', index);
     },
     toggleSubmenu(menu) {
-      this.$set(this.submenuOpen, menu, !this.submenuOpen[menu]);
+      this.submenuOpen[menu] = !this.submenuOpen[menu];
     },
     refreshCategories() {
       // 如果正在刷新或者距离上次刷新不足2秒，则不进行刷新
@@ -165,12 +153,12 @@ export default {
         this.isRefreshing = false;
       }, 2000);
     },
-    getCountByCategory(category, customId = null) {
+    getCountByCategory(category) {
       switch(category) {
         case 'active':
           return this.rooms.filter(room => room.status === 'running').length;
         case 'inactive':
-          return this.rooms.filter(room => room.status !== 'running').length;
+          return this.rooms.filter(room => room.status === 'stopped').length;
         case 'forest':
           return this.rooms.filter(room => {
             if (!room.worlds) return false;
@@ -190,9 +178,7 @@ export default {
                   room.worlds.some(world => world.type === 'cave');
           }).length;
         case 'custom':
-          // 自定义分类的计数逻辑，这里需要根据实际情况实现
-          // 目前只是返回一个示例数字
-          return 2;
+          return 0;
         default:
           return this.rooms.length;
       }
@@ -210,18 +196,7 @@ export default {
         return;
       }
 
-      const newId = this.customCategories.length > 0
-        ? Math.max(...this.customCategories.map(c => c.id)) + 1
-        : 1;
-
-      this.customCategories.push({
-        id: newId,
-        name: this.newCategory.name,
-        icon: this.newCategory.icon
-      });
-
-      this.$message.success(`分类 "${this.newCategory.name}" 已添加`);
-      this.addCategoryDialogVisible = false;
+      this.$message.error('真实 v2 后端暂未提供自定义分类持久化接口，未保存任何数据');
     }
   }
 }

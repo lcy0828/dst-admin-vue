@@ -181,12 +181,10 @@
 </template>
 
 <script>
-import { roomApi } from '../../api/index';
-import config from '../../api/config';
+import { roomApi, systemApi } from '../../api/index';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 import LogViewer from '../servers/LogViewer.vue';
-import axios from 'axios';
 import StartRoomForm from './StartRoomForm.vue';
 
 export default {
@@ -215,7 +213,7 @@ export default {
       selectedRoom: null,
       startForm: {
         worldType: 'all',
-        serverMode: '32'
+        serverMode: '64'
       },
       startLoading: false,
       isRefreshing: false,
@@ -249,7 +247,7 @@ export default {
     // 窗口大小变化时重新检查滚动
     window.addEventListener('resize', this.checkScrollable);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // 移除事件监听器
     window.removeEventListener('resize', this.checkScrollable);
   },
@@ -270,35 +268,33 @@ export default {
       this.lastRefreshTime = now;
       this.loading = true;
 
-      // 使用Promise.all同时请求两个接口
+      // 同时读取 v2 房间目录和真实运行状态。
       Promise.all([
-        axios.get(`${config.BASE_URL}/dstserver/list`),
-        axios.get(`${config.BASE_URL}/tmux/list`)
+        roomApi.getRoomList(),
+        systemApi.getTmuxServers()
       ])
         .then(([roomsResponse, serversResponse]) => {
-          // 处理房间列表数据
-          if (roomsResponse && roomsResponse.data && roomsResponse.data.status === 200 && Array.isArray(roomsResponse.data.data)) {
-            this.rooms = roomsResponse.data.data.map(item => ({
+          if (roomsResponse?.status === 200 && Array.isArray(roomsResponse.data)) {
+            this.rooms = roomsResponse.data.map(item => ({
               id: item.name,
+              roomId: item.id,
               name: item.name,
               savepath: item.savepath || '',
               worlds: (item.worlds || []).map(world => ({
+                id: world.id,
                 name: world.name,
                 type: world.type
               })),
-              updateTime: item.updateTime || new Date().toISOString(),
-              isRunning: false // 默认设置为未运行
+              updateTime: item.updateTime,
+              isRunning: item.isRunning === true
             }));
 
-            // 处理服务器列表数据
-            if (serversResponse && serversResponse.data && serversResponse.data.status === 200) {
-              this.serverList = serversResponse.data.data || [];
+            if (serversResponse?.status === 200) {
+              this.serverList = serversResponse.data || [];
 
-              // 合并数据 - 标记运行中的房间
               this.rooms.forEach(room => {
-                // 检查该房间的任何世界是否正在运行
                 const runningServer = this.serverList.find(server =>
-                  server.cluster === room.name
+                  server.archive_name === room.name && server.status === 'running'
                 );
                 room.isRunning = !!runningServer;
               });
@@ -335,143 +331,31 @@ export default {
     },
     confirmStartRoom() {
       if (!this.selectedRoom) return;
-      const archiveName = this.selectedRoom.id;
-      const serverMode = this.startForm.serverMode;
-
       this.startLoading = true;
-      if (this.startForm.worldType === 'all') {
-        // 获取所有世界列表，然后为每个世界发起请求
-        roomApi.getRoomWorlds(archiveName)
-          .then(worlds => {
-            if (!worlds || worlds.length === 0) {
-              // 如果没有找到世界，则默认启动Forest1和Caves1
-              const startPromises = [
-                roomApi.startRoom({
-                  archive_name: archiveName,
-                  world_name: "Forest1",
-                  server_mode: serverMode,
-                  world_type: "forest"
-                }),
-                roomApi.startRoom({
-                  archive_name: archiveName,
-                  world_name: "Caves2",
-                  server_mode: serverMode,
-                  world_type: "cave"
-                })
-              ];
-              return Promise.all(startPromises);
-            } else {
-              // 为每个世界单独发起请求
-              const startPromises = worlds.map(world => {
-                // 使用API返回的type字段，对于unknown类型的世界，根据名称推断类型
-                let worldType = world.type;
-                // 对于unknown类型，如果需要启动，需要推断一个有效的type(forest或cave)
-                if (worldType === 'unknown') {
-                  worldType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
-                }
-
-                return roomApi.startRoom({
-                  archive_name: archiveName,
-                  world_name: world.worldName || world.name,
-                  server_mode: serverMode,
-                  world_type: worldType
-                });
-              });
-              return Promise.all(startPromises);
-            }
-          })
-          .then(responses => {
-            this.$message.success(`房间 ${this.selectedRoom.name} 的所有世界已启动`);
-            // 直接更新房间状态，而不是重新请求
-            this.selectedRoom.isRunning = true;
-          })
-          .catch(error => {
-            this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
-          })
-          .finally(() => {
-            this.startLoading = false;
-            this.startDialogVisible = false;
+      const roomId = this.selectedRoom.roomId || this.selectedRoom.id;
+      roomApi.getRoomWorlds(roomId)
+        .then(worlds => {
+          const selectedWorlds = this.startForm.worldType === 'all'
+            ? worlds
+            : worlds.filter(world => world.type === this.startForm.worldType);
+          if (selectedWorlds.length === 0) {
+            throw new Error('没有找到符合条件的真实世界');
+          }
+          return roomApi.startRoom({
+            room_id: roomId,
+            world_ids: selectedWorlds.map(world => world.id)
           });
-      } else if (this.startForm.worldType === 'unknown') {
-        // 处理特殊情况：用户选择启动unknown类型的世界
-        roomApi.getRoomWorlds(archiveName)
-          .then(worlds => {
-            // 过滤出unknown类型的世界
-            const filteredWorlds = worlds.filter(world => world.type === 'unknown');
-            if (filteredWorlds.length === 0) {
-              this.$message.warning('没有找到其他类型的世界');
-              this.startLoading = false;
-              this.startDialogVisible = false;
-              return;
-            }
-
-            // 为每个unknown世界启动，根据名称推断类型
-            const startPromises = filteredWorlds.map(world => {
-              const inferredType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
-              return roomApi.startRoom({
-                archive_name: archiveName,
-                world_name: world.worldName || world.name,
-                server_mode: serverMode,
-                world_type: inferredType
-              });
-            });
-
-            return Promise.all(startPromises);
-          })
-          .then(responses => {
-            if (responses) {
-              this.$message.success(`房间 ${this.selectedRoom.name} 的其他世界已启动`);
-              // 直接更新房间状态，而不是重新请求
-              this.selectedRoom.isRunning = true;
-            }
-          })
-          .catch(error => {
-            this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
-          })
-          .finally(() => {
-            this.startLoading = false;
-            this.startDialogVisible = false;
-          });
-      } else {
-        // 获取特定类型的世界列表
-        roomApi.getRoomWorlds(archiveName)
-          .then(worlds => {
-            // 根据类型过滤世界，严格使用API返回的type字段
-            const filteredWorlds = worlds.filter(world => world.type === this.startForm.worldType);
-            if (filteredWorlds.length === 0) {
-              const defaultWorld = this.startForm.worldType === 'forest' ? 'Forest1' : 'Caves1';
-              return roomApi.startRoom({
-                archive_name: archiveName,
-                world_name: defaultWorld,
-                server_mode: serverMode,
-                world_type: this.startForm.worldType
-              });
-            } else {
-              const startPromises = filteredWorlds.map(world =>
-                roomApi.startRoom({
-                  archive_name: archiveName,
-                  world_name: world.worldName || world.name,
-                  server_mode: serverMode,
-                  world_type: world.type
-                })
-              );
-              return Promise.all(startPromises);
-            }
-          })
-          .then(responses => {
-            const worldType = this.startForm.worldType === 'forest' ? '森林' : '洞穴';
-            this.$message.success(`房间 ${this.selectedRoom.name} 的${worldType}世界已启动`);
-            // 直接更新房间状态，而不是重新请求
-            this.selectedRoom.isRunning = true;
-          })
-          .catch(error => {
-            this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
-          })
-          .finally(() => {
-            this.startLoading = false;
-            this.startDialogVisible = false;
-          });
-      }
+        })
+        .then(response => {
+          this.$message.success(response.msg || `房间 ${this.selectedRoom.name} 的启动任务已提交`);
+          this.startDialogVisible = false;
+        })
+        .catch(error => {
+          this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
+        })
+        .finally(() => {
+          this.startLoading = false;
+        });
     },
     closeStartDialog() {
       this.startDialogVisible = false;
@@ -515,7 +399,7 @@ export default {
       this.selectedRoomWorlds = room.worlds || [];
       this.selectedRoomWorldName = room.worlds && room.worlds.length > 0 ? room.worlds[0].name : '';
       this.selectedWorldDisplay = room.worlds && room.worlds.length > 0 ?
-        `${room.worlds[0].name} (${room.worlds[0].type === 'master' ? '森林' : '洞穴'})` : '';
+        `${room.worlds[0].name} (${room.worlds[0].type === 'forest' ? '森林' : (room.worlds[0].type === 'cave' ? '洞穴' : '其他')})` : '';
       this.logViewerVisible = true;
     },
     closeLogViewerDialog() {
@@ -527,16 +411,9 @@ export default {
         cancelButtonText: '取消',
         type: 'info'
       }).then(() => {
-        // 调用备份房间API
-        axios.post(`${config.BASE_URL}/dstserver/backup`, {
-          name: room.name
-        })
+        roomApi.backupRoom(room.roomId || room.id)
           .then(response => {
-            if (response.data && response.data.status === 200) {
-              this.$message.success(`已备份房间 ${room.name}`);
-            } else {
-              this.$message.error(response.data.msg || '备份房间失败');
-            }
+            this.$message.success(response.msg || `房间 ${room.name} 的备份任务已提交`);
           })
           .catch(error => {
             this.$message.error('备份房间失败: ' + (error.message || '未知错误'));
@@ -554,23 +431,10 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        // 调用删除房间API
-        axios.post(`${config.BASE_URL}/dstserver/delete`, {
-          name: room.name
-        })
+        roomApi.deleteRoom(room.roomId || room.id)
           .then(response => {
-            if (response.data && response.data.status === 200) {
-              this.$message.success(`已删除房间 ${room.name}`);
-              // 直接从当前列表中移除该房间
-              const index = this.rooms.findIndex(item => item.id === room.id);
-              if (index !== -1) {
-                this.rooms.splice(index, 1);
-              }
-            } else {
-              this.$message.error(response.data.msg || '删除房间失败');
-              // 如果删除失败，则刷新房间列表
-              this.refreshRooms();
-            }
+            this.$message.success(response.msg || `已删除房间 ${room.name}`);
+            this.refreshRooms();
           })
           .catch(error => {
             this.$message.error('删除房间失败: ' + (error.message || '未知错误'));
@@ -611,17 +475,9 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        axios.post(`${config.BASE_URL}/tmux/stop`, {
-          cluster: room.name
-        })
+        roomApi.stopRoom(room.roomId || room.id)
           .then(response => {
-            if (response.data && response.data.status === 200) {
-              this.$message.success(`房间 ${room.name} 已停止`);
-              // 更新房间状态
-              room.isRunning = false;
-            } else {
-              this.$message.error(response.data.msg || '停止房间失败');
-            }
+            this.$message.success(response.msg || `房间 ${room.name} 的停止任务已提交`);
           })
           .catch(error => {
             this.$message.error('停止房间失败: ' + (error.message || '未知错误'));

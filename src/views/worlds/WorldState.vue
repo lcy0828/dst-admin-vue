@@ -59,7 +59,7 @@
                   <div class="state-title">季节</div>
                   <div class="state-value">{{ getSeasonName() }}</div>
                   <div class="state-detail">{{ getSeasonDetail() }}</div>
-                  <div class="state-detail">世界天数: {{ worldState.cycles }}</div>
+                  <div class="state-detail">世界天数: {{ displayValue(worldState.cycles) }}</div>
                 </div>
               </div>
             </el-card>
@@ -74,7 +74,7 @@
                   <div class="state-title">地表时间</div>
                   <div class="state-value">{{ getPhaseName() }}</div>
                   <div class="state-detail">{{ getPhaseDetail() }}</div>
-                  <div class="state-detail">全天进度: {{ (worldState.time * 100).toFixed(1) }}%</div>
+                  <div class="state-detail">全天进度: {{ formatPercent(worldState.time) }}</div>
                 </div>
               </div>
             </el-card>
@@ -88,7 +88,7 @@
                 <div class="state-info">
                   <div class="state-title">地表天气</div>
                   <div class="state-value">{{ getWeatherName() }}</div>
-                  <div class="state-detail">温度: {{ worldState.temperature.toFixed(1) }}°C</div>
+                  <div class="state-detail">温度: {{ formatNumber(worldState.temperature, 1, '°C') }}</div>
                   <div class="state-detail">{{ getWeatherDetail() }}</div>
                 </div>
               </div>
@@ -165,33 +165,35 @@
           <div slot="header" class="clearfix">
             <span>地表季节进度</span>
             <span class="season-days">
-              已过 {{ worldState.elapsed_days_in_season }} 天 / 剩余 {{ worldState.remaining_days_in_season }} 天
+              已过 {{ displayValue(worldState.elapsed_days_in_season) }} 天 / 剩余 {{ displayValue(worldState.remaining_days_in_season) }} 天
             </span>
           </div>
           <div class="season-progress">
             <el-progress
+              v-if="isFiniteNumber(worldState.season_progress)"
               :percentage="(worldState.season_progress * 100).toFixed(1)"
               :color="getSeasonColor()"
               :stroke-width="20"
               :format="format => `${format}%`">
             </el-progress>
+            <span v-else>--</span>
           </div>
           <div class="season-lengths">
             <div class="season-length">
               <span class="season-name autumn">秋季:</span>
-              <span class="season-days">{{ worldState.autumn_length }} 天</span>
+              <span class="season-days">{{ displayValue(worldState.autumn_length) }} 天</span>
             </div>
             <div class="season-length">
               <span class="season-name winter">冬季:</span>
-              <span class="season-days">{{ worldState.winter_length }} 天</span>
+              <span class="season-days">{{ displayValue(worldState.winter_length) }} 天</span>
             </div>
             <div class="season-length">
               <span class="season-name spring">春季:</span>
-              <span class="season-days">{{ worldState.spring_length }} 天</span>
+              <span class="season-days">{{ displayValue(worldState.spring_length) }} 天</span>
             </div>
             <div class="season-length">
               <span class="season-name summer">夏季:</span>
-              <span class="season-days">{{ worldState.summer_length }} 天</span>
+              <span class="season-days">{{ displayValue(worldState.summer_length) }} 天</span>
             </div>
           </div>
         </el-card>
@@ -351,7 +353,7 @@ export default {
   created() {
     this.fetchArchives();
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.clearRefreshInterval();
   },
   methods: {
@@ -360,33 +362,19 @@ export default {
       this.loading = true;
       api.worldApi.getWorldList()
         .then(response => {
-          console.log('存档列表响应:', response);
-          // 检查响应结构，处理可能的嵌套数据
-          let archivesList = [];
-          if (response && response.status === 200) {
-            if (Array.isArray(response.data)) {
-              archivesList = response.data;
-            } else if (response.data && response.data.code === 200 && Array.isArray(response.data.data)) {
-              archivesList = response.data.data;
-            }
+          this.archives = Array.isArray(response.data) ? response.data : [];
 
-            this.archives = archivesList;
-            console.log('处理后的存档列表:', this.archives);
-
-            // 如果URL中有参数，自动选择
-            const query = this.$route.query;
-            if (query.archive && query.world) {
-              this.selectedArchive = query.archive;
-              this.$nextTick(() => {
-                this.selectedWorld = query.world;
-                this.fetchWorldState();
-              });
-            }
+          const query = this.$route.query;
+          if (query.archive && query.world) {
+            this.selectedArchive = query.archive;
+            this.$nextTick(() => {
+              this.selectedWorld = query.world;
+              this.fetchWorldState();
+            });
           }
         })
         .catch(error => {
-          console.error('获取存档列表失败:', error);
-          this.$message.error('获取存档列表失败');
+          this.$message.error(`获取存档列表失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.loading = false;
@@ -405,148 +393,27 @@ export default {
         return;
       }
 
-      console.log('开始获取世界状态，参数:', {
-        archive_name: this.selectedArchive,
-        world_name: this.selectedWorld
-      });
-
       this.loading = true;
       api.worldApi.getWorldState({
         archive_name: this.selectedArchive,
         world_name: this.selectedWorld
       })
         .then(response => {
-          console.log('世界状态API响应:', response);
+          this.worldState = response.data;
+          this.prepareDetailsTableData();
 
-          // 直接检查响应数据结构，不依赖response.status
-          if (response && response.data) {
-            console.log('完整响应数据:', JSON.stringify(response.data));
-            console.log('响应数据的code类型:', typeof response.data.code, '值:', response.data.code);
-
-            // 检查是否有data属性，如果有，则认为是成功的响应
-            // 如果没有code属性，或者code属性等于200，则认为是成功的响应
-            if (!response.data.hasOwnProperty('code') || response.data.code == 200) {
-              // 检查是否是直接返回的数据（没有data属性，但有其他属性）
-              if (!response.data.hasOwnProperty('data') && response.data.hasOwnProperty('season') && response.data.hasOwnProperty('phase')) {
-                // 直接使用响应数据
-                this.worldState = response.data;
-                console.log('直接使用响应数据作为世界状态数据:', this.worldState);
-
-                try {
-                  this.prepareDetailsTableData();
-                  console.log('详细信息表格数据准备完成:', this.detailsTableData);
-                } catch (err) {
-                  console.error('准备详细信息表格数据时出错:', err);
-                  this.$message.error('处理世界状态数据时出错');
-                }
-
-                // 更新URL参数，方便分享
-                // 只有当URL参数与当前选择的存档和世界不同时才更新
-                const currentQuery = this.$route.query;
-                if (currentQuery.archive !== this.selectedArchive || currentQuery.world !== this.selectedWorld) {
-                  this.$router.replace({
-                    query: {
-                      archive: this.selectedArchive,
-                      world: this.selectedWorld
-                    }
-                  }).catch(err => {
-                    // 忽略导航重复错误
-                    if (err.name !== 'NavigationDuplicated') {
-                      console.error('更新URL参数时出错:', err);
-                    }
-                  });
-                }
-
-                this.$message.success('获取世界状态信息成功');
-              }
-              // 如果有data属性，则使用它
-              else if (response.data.hasOwnProperty('data')) {
-                // 如果data属性不为空，则使用它
-                if (response.data.data && Object.keys(response.data.data).length > 0) {
-                  this.worldState = response.data.data;
-                  console.log('获取到世界状态数据:', this.worldState);
-
-                  try {
-                    this.prepareDetailsTableData();
-                    console.log('详细信息表格数据准备完成:', this.detailsTableData);
-                  } catch (err) {
-                    console.error('准备详细信息表格数据时出错:', err);
-                    this.$message.error('处理世界状态数据时出错');
-                  }
-
-                  // 更新URL参数，方便分享
-                  // 只有当URL参数与当前选择的存档和世界不同时才更新
-                  const currentQuery = this.$route.query;
-                  if (currentQuery.archive !== this.selectedArchive || currentQuery.world !== this.selectedWorld) {
-                    this.$router.replace({
-                      query: {
-                        archive: this.selectedArchive,
-                        world: this.selectedWorld
-                      }
-                    }).catch(err => {
-                      // 忽略导航重复错误
-                      if (err.name !== 'NavigationDuplicated') {
-                        console.error('更新URL参数时出错:', err);
-                      }
-                    });
-                  }
-
-                  this.$message.success(response.data.msg || '获取世界状态信息成功');
-                } else {
-                  // 如果data属性为空，但响应成功，显示成功消息
-                  console.log('响应成功，但数据为空:', response.data);
-                  this.$message.info(response.data.msg || '获取世界状态信息成功，但数据为空');
-                  // 清空当前世界状态
-                  this.worldState = null;
-
-                  // 在空状态下显示更友好的提示
-                  this.$nextTick(() => {
-                    const emptyState = document.querySelector('.empty-state');
-                    if (emptyState) {
-                      const p = emptyState.querySelector('p');
-                      if (p) {
-                        p.textContent = '没有找到世界状态数据，请确认所选世界是否正在运行';
-                      }
-                    }
-                  });
-                }
-              }
-            } else {
-              // 响应中的code不是200，显示错误消息
-              console.error('响应中的code不是200:', response.data);
-              // 如果有错误消息，显示错误消息，否则显示通用错误消息
-              this.$message.error(response.data.msg || '响应数据结构不符合预期');
-              // 清空当前世界状态
-              this.worldState = null;
-            }
-          } else {
-            // 响应中没有data属性
-            console.error('响应中没有data属性:', response);
-            this.$message.error('响应数据结构不符合预期');
-            // 清空当前世界状态
-            this.worldState = null;
+          const currentQuery = this.$route.query;
+          if (currentQuery.archive !== this.selectedArchive || currentQuery.world !== this.selectedWorld) {
+            this.$router.replace({
+              query: { archive: this.selectedArchive, world: this.selectedWorld }
+            });
           }
+          this.$message.success(response.msg || '获取世界状态信息成功');
         })
         .catch(error => {
-          console.error('获取世界状态失败:', error);
-
-          // 尝试从错误对象中提取更详细的错误信息
-          let errorMsg = '未知错误';
-          if (error.message) {
-            errorMsg = error.message;
-          } else if (error.response && error.response.data) {
-            // 如果是Axios错误并且有响应数据
-            if (error.response.data.msg) {
-              errorMsg = error.response.data.msg;
-            } else if (typeof error.response.data === 'string') {
-              errorMsg = error.response.data;
-            }
-          }
-
-          this.$message.error(`获取世界状态失败: ${errorMsg}`);
-
-          // 清空当前世界状态
+          this.$message.error(`获取世界状态失败: ${error.message || '未知错误'}`);
           this.worldState = null;
+          this.detailsTableData = [];
         })
         .finally(() => {
           this.loading = false;
@@ -571,6 +438,22 @@ export default {
     // 处理搜索清除
     handleSearchClear() {
       this.searchQuery = '';
+    },
+
+    isFiniteNumber(value) {
+      return typeof value === 'number' && Number.isFinite(value);
+    },
+
+    displayValue(value) {
+      return value === undefined || value === null || value === '' ? '--' : value;
+    },
+
+    formatNumber(value, digits = 1, suffix = '') {
+      return this.isFiniteNumber(value) ? `${value.toFixed(digits)}${suffix}` : '--';
+    },
+
+    formatPercent(value) {
+      return this.isFiniteNumber(value) ? `${(value * 100).toFixed(1)}%` : '--';
     },
 
     // 设置自动刷新
@@ -602,11 +485,12 @@ export default {
 
       try {
         // 创建一个安全的获取属性的函数
-        const safeGet = (obj, path, defaultValue = '') => {
+        const safeGet = (obj, path, defaultValue = '--') => {
           try {
             if (!obj) return defaultValue;
             if (typeof path === 'string') {
-              return obj[path] !== undefined ? obj[path] : defaultValue;
+              const value = obj[path];
+              return value !== undefined && value !== null && value !== '' ? value : defaultValue;
             }
             return defaultValue;
           } catch (err) {
@@ -618,14 +502,26 @@ export default {
         // 安全的格式化数字
         const safeToFixed = (num, digits = 2) => {
           try {
-            if (typeof num === 'number') {
+            if (typeof num === 'number' && Number.isFinite(num)) {
               return num.toFixed(digits);
             }
-            return String(num || '0');
+            return '--';
           } catch (err) {
             console.error(`格式化数字 ${num} 失败:`, err);
-            return '0';
+            return '--';
           }
+        };
+
+        const safePercent = value => {
+          return typeof value === 'number' && Number.isFinite(value)
+            ? `${safeToFixed(value * 100, 1)}%`
+            : '--';
+        };
+
+        const booleanValue = value => {
+          if (value === true) return '是';
+          if (value === false) return '否';
+          return '--';
         };
 
         // 基本信息
@@ -640,11 +536,11 @@ export default {
           { name: '地表季节', value: this.getSeasonName(), description: '地表的当前季节' },
           { name: '当前季节已过天数', value: safeGet(this.worldState, 'elapsed_days_in_season'), description: '当前季节已经过去的天数' },
           { name: '当前季节剩余天数', value: safeGet(this.worldState, 'remaining_days_in_season'), description: '当前季节还剩余的天数' },
-          { name: '季节进度', value: `${safeToFixed(safeGet(this.worldState, 'season_progress', 0) * 100, 1)}%`, description: '当前季节的进度 (0-100%)' },
-          { name: '是否秋季', value: safeGet(this.worldState, 'is_autumn') ? '是' : '否', description: '当前是否是秋季' },
-          { name: '是否冬季', value: safeGet(this.worldState, 'is_winter') ? '是' : '否', description: '当前是否是冬季' },
-          { name: '是否春季', value: safeGet(this.worldState, 'is_spring') ? '是' : '否', description: '当前是否是春季' },
-          { name: '是否夏季', value: safeGet(this.worldState, 'is_summer') ? '是' : '否', description: '当前是否是夏季' },
+          { name: '季节进度', value: safePercent(this.worldState.season_progress), description: '当前季节的进度 (0-100%)' },
+          { name: '是否秋季', value: booleanValue(this.worldState.is_autumn), description: '当前是否是秋季' },
+          { name: '是否冬季', value: booleanValue(this.worldState.is_winter), description: '当前是否是冬季' },
+          { name: '是否春季', value: booleanValue(this.worldState.is_spring), description: '当前是否是春季' },
+          { name: '是否夏季', value: booleanValue(this.worldState.is_summer), description: '当前是否是夏季' },
           { name: '秋季长度', value: safeGet(this.worldState, 'autumn_length'), description: '秋季设定持续的总天数' },
           { name: '冬季长度', value: safeGet(this.worldState, 'winter_length'), description: '冬季设定持续的总天数' },
           { name: '春季长度', value: safeGet(this.worldState, 'spring_length'), description: '春季设定持续的总天数' },
@@ -654,64 +550,64 @@ export default {
         // 地表时间信息
         const timeInfo = [
           { name: '地表时间阶段', value: this.getPhaseName(), description: '地表的当前时间阶段(白天/黄昏/夜晚)' },
-          { name: '是否白天', value: safeGet(this.worldState, 'is_day') ? '是' : '否', description: '地表当前是否是白天' },
-          { name: '是否黄昏', value: safeGet(this.worldState, 'is_dusk') ? '是' : '否', description: '地表当前是否是黄昏' },
-          { name: '是否夜晚', value: safeGet(this.worldState, 'is_night') ? '是' : '否', description: '地表当前是否是夜晚' },
-          { name: '当前阶段进度', value: `${safeToFixed(safeGet(this.worldState, 'time_in_phase', 0) * 100, 1)}%`, description: '当前在当前时间阶段内的进度 (0-100%)' },
-          { name: '全天进度', value: `${safeToFixed(safeGet(this.worldState, 'time', 0) * 100, 1)}%`, description: '当前在整个昔夜循环中的进度 (0-100%)' }
+          { name: '是否白天', value: booleanValue(this.worldState.is_day), description: '地表当前是否是白天' },
+          { name: '是否黄昏', value: booleanValue(this.worldState.is_dusk), description: '地表当前是否是黄昏' },
+          { name: '是否夜晚', value: booleanValue(this.worldState.is_night), description: '地表当前是否是夜晚' },
+          { name: '当前阶段进度', value: safePercent(this.worldState.time_in_phase), description: '当前在当前时间阶段内的进度 (0-100%)' },
+          { name: '全天进度', value: safePercent(this.worldState.time), description: '当前在整个昔夜循环中的进度 (0-100%)' }
         ];
 
         // 地表月相信息
         const moonInfo = [
           { name: '地表月相', value: this.getMoonPhaseName(), description: '地表的当前月相' },
-          { name: '是否满月', value: safeGet(this.worldState, 'is_full_moon') ? '是' : '否', description: '地表当前是否是满月' },
-          { name: '是否新月', value: safeGet(this.worldState, 'is_new_moon') ? '是' : '否', description: '地表当前是否是新月' },
-          { name: '是否渐盈期', value: safeGet(this.worldState, 'is_waxing_moon') ? '是' : '否', description: '地表的月亮当前是否处于渐盈状态' }
+          { name: '是否满月', value: booleanValue(this.worldState.is_full_moon), description: '地表当前是否是满月' },
+          { name: '是否新月', value: booleanValue(this.worldState.is_new_moon), description: '地表当前是否是新月' },
+          { name: '是否渐盈期', value: booleanValue(this.worldState.is_waxing_moon), description: '地表的月亮当前是否处于渐盈状态' }
         ];
 
         // 地表天气信息
         const weatherInfo = [
-          { name: '地表温度', value: `${safeToFixed(safeGet(this.worldState, 'temperature', 0), 1)}°C`, description: '当前世界的环境温度' },
+          { name: '地表温度', value: this.isFiniteNumber(this.worldState.temperature) ? `${safeToFixed(this.worldState.temperature, 1)}°C` : '--', description: '当前世界的环境温度' },
           { name: '降水类型', value: this.getPrecipitationName(), description: '当前的降水类型' },
-          { name: '降水概率', value: `${safeToFixed(safeGet(this.worldState, 'pop', 0) * 100, 1)}%`, description: '降水概率' },
-          { name: '是否下雨', value: safeGet(this.worldState, 'is_raining') ? '是' : '否', description: '当前是否正在下雨' },
-          { name: '是否下雪', value: safeGet(this.worldState, 'is_snowing') ? '是' : '否', description: '当前是否正在下雪' },
-          { name: '是否下酸雨', value: safeGet(this.worldState, 'is_acid_raining') ? '是' : '否', description: '当前是否正在下酸雨' },
-          { name: '是否下月石雹', value: safeGet(this.worldState, 'is_lunar_hailing') ? '是' : '否', description: '当前是否正在下月石雹' },
+          { name: '降水概率', value: safePercent(this.worldState.pop), description: '降水概率' },
+          { name: '是否下雨', value: booleanValue(this.worldState.is_raining), description: '当前是否正在下雨' },
+          { name: '是否下雪', value: booleanValue(this.worldState.is_snowing), description: '当前是否正在下雪' },
+          { name: '是否下酸雨', value: booleanValue(this.worldState.is_acid_raining), description: '当前是否正在下酸雨' },
+          { name: '是否下月石雹', value: booleanValue(this.worldState.is_lunar_hailing), description: '当前是否正在下月石雹' },
           { name: '月石雹等级', value: safeGet(this.worldState, 'lunar_hail_level'), description: '月石雹的强度等级' },
-          { name: '湿度', value: safeToFixed(safeGet(this.worldState, 'wetness', 0), 1), description: '影响玩家角色的潮湿度等级' },
-          { name: '是否潮湿', value: safeGet(this.worldState, 'is_wet') ? '是' : '否', description: '世界环境当前是否普遍潮湿' },
-          { name: '水分', value: `${safeToFixed(safeGet(this.worldState, 'moisture', 0), 1)} / ${safeToFixed(safeGet(this.worldState, 'moisture_ceil', 0), 1)}`, description: '当前世界的水分值/上限' },
-          { name: '雪量', value: safeToFixed(safeGet(this.worldState, 'snow_level', 0), 1), description: '当前地面积雪的程度' },
-          { name: '是否被雪覆盖', value: safeGet(this.worldState, 'is_snow_covered') ? '是' : '否', description: '地表是否被雪覆盖' }
+          { name: '湿度', value: safeToFixed(this.worldState.wetness, 1), description: '影响玩家角色的潮湿度等级' },
+          { name: '是否潮湿', value: booleanValue(this.worldState.is_wet), description: '世界环境当前是否普遍潮湿' },
+          { name: '水分', value: this.isFiniteNumber(this.worldState.moisture) || this.isFiniteNumber(this.worldState.moisture_ceil) ? `${safeToFixed(this.worldState.moisture, 1)} / ${safeToFixed(this.worldState.moisture_ceil, 1)}` : '--', description: '当前世界的水分值/上限' },
+          { name: '雪量', value: safeToFixed(this.worldState.snow_level, 1), description: '当前地面积雪的程度' },
+          { name: '是否被雪覆盖', value: booleanValue(this.worldState.is_snow_covered), description: '地表是否被雪覆盖' }
         ];
 
         // 洞穴信息
         const caveInfo = [
           { name: '洞穴时间阶段', value: safeGet(this.worldState, 'cavephase'), description: '洞穴中的当前时间阶段' },
-          { name: '洞穴是否白天', value: safeGet(this.worldState, 'iscaveday') ? '是' : '否', description: '洞穴中当前是否是白天' },
-          { name: '洞穴是否黄昏', value: safeGet(this.worldState, 'iscavedusk') ? '是' : '否', description: '洞穴中当前是否是黄昏' },
-          { name: '洞穴是否夜晚', value: safeGet(this.worldState, 'iscavenight') ? '是' : '否', description: '洞穴中当前是否是夜晚' },
+          { name: '洞穴是否白天', value: booleanValue(this.worldState.iscaveday), description: '洞穴中当前是否是白天' },
+          { name: '洞穴是否黄昏', value: booleanValue(this.worldState.iscavedusk), description: '洞穴中当前是否是黄昏' },
+          { name: '洞穴是否夜晚', value: booleanValue(this.worldState.iscavenight), description: '洞穴中当前是否是夜晚' },
           { name: '洞穴月相', value: safeGet(this.worldState, 'cavemoonphase'), description: '洞穴中的当前月相' },
-          { name: '洞穴是否满月', value: safeGet(this.worldState, 'iscavefullmoon') ? '是' : '否', description: '洞穴中当前是否是满月' },
-          { name: '洞穴是否新月', value: safeGet(this.worldState, 'iscavenewmoon') ? '是' : '否', description: '洞穴中当前是否是新月' },
-          { name: '洞穴是否渐盈期', value: safeGet(this.worldState, 'iscavewaxingmoon') ? '是' : '否', description: '洞穴中的月亮当前是否处于渐盈状态' }
+          { name: '洞穴是否满月', value: booleanValue(this.worldState.iscavefullmoon), description: '洞穴中当前是否是满月' },
+          { name: '洞穴是否新月', value: booleanValue(this.worldState.iscavenewmoon), description: '洞穴中当前是否是新月' },
+          { name: '洞穴是否渐盈期', value: booleanValue(this.worldState.iscavewaxingmoon), description: '洞穴中的月亮当前是否处于渐盈状态' }
         ];
 
         // 梦魇循环信息
         const nightmareInfo = [
           { name: '梦魇循环阶段', value: safeGet(this.worldState, 'nightmarephase'), description: '当前梦魇循环的阶段' },
-          { name: '是否梦魇平静期', value: safeGet(this.worldState, 'isnightmarecalm') ? '是' : '否', description: '梦魇循环当前是否处于平静阶段' },
-          { name: '是否梦魇黑暗期', value: safeGet(this.worldState, 'isnightmarewild') ? '是' : '否', description: '梦魇循环当前是否处于黑暗阶段' },
-          { name: '是否梦魇警告期', value: safeGet(this.worldState, 'isnightmarewarn') ? '是' : '否', description: '梦魇循环当前是否处于警告阶段' },
-          { name: '是否梦魇黄昏期', value: safeGet(this.worldState, 'isnightmaredawn') ? '是' : '否', description: '梦魇循环当前是否处于黄昏阶段' },
+          { name: '是否梦魇平静期', value: booleanValue(this.worldState.isnightmarecalm), description: '梦魇循环当前是否处于平静阶段' },
+          { name: '是否梦魇黑暗期', value: booleanValue(this.worldState.isnightmarewild), description: '梦魇循环当前是否处于黑暗阶段' },
+          { name: '是否梦魇警告期', value: booleanValue(this.worldState.isnightmarewarn), description: '梦魇循环当前是否处于警告阶段' },
+          { name: '是否梦魇黄昏期', value: booleanValue(this.worldState.isnightmaredawn), description: '梦魇循环当前是否处于黄昏阶段' },
           { name: '梦魇循环时间', value: safeGet(this.worldState, 'nightmaretime'), description: '在当前梦魇循环状态下经过的总时间' },
           { name: '梦魇循环阶段时间', value: safeGet(this.worldState, 'nightmaretimeinphase'), description: '在当前梦魇循环的单个阶段内经过的时间' }
         ];
 
         // 其他信息
         const otherInfo = [
-          { name: '月亮祈坛是否激活', value: safeGet(this.worldState, 'is_alter_awake') ? '是' : '否', description: '月亮祈坛/天体英雄是否处于激活状态' }
+          { name: '月亮祈坛是否激活', value: booleanValue(this.worldState.is_alter_awake), description: '月亮祈坛/天体英雄是否处于激活状态' }
         ];
 
         // 合并所有信息
@@ -760,12 +656,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const elapsed = this.worldState.elapsed_days_in_season || 0;
-        const remaining = this.worldState.remaining_days_in_season || 0;
-        const total = elapsed + remaining;
-        const progress = this.worldState.season_progress || 0;
+        const elapsed = this.displayValue(this.worldState.elapsed_days_in_season);
+        const remaining = this.displayValue(this.worldState.remaining_days_in_season);
+        const progress = this.formatPercent(this.worldState.season_progress);
 
-        return `已过 ${elapsed} 天 / 剩余 ${remaining} 天 (进度: ${(progress * 100).toFixed(1)}%)`;
+        return `已过 ${elapsed} 天 / 剩余 ${remaining} 天 (进度: ${progress})`;
       } catch (err) {
         console.error('获取季节详细信息时出错:', err);
         return '';
@@ -849,10 +744,7 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const timeInPhase = this.worldState.time_in_phase || 0;
-        const time = this.worldState.time || 0;
-
-        return `当前阶段进度: ${(timeInPhase * 100).toFixed(1)}%`;
+        return `当前阶段进度: ${this.formatPercent(this.worldState.time_in_phase)}`;
       } catch (err) {
         console.error('获取时间详细信息时出错:', err);
         return '';
@@ -884,12 +776,13 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        if (this.worldState.is_snowing) return '下雪';
-        if (this.worldState.is_raining) return '下雨';
-        if (this.worldState.is_acid_raining) return '酸雨';
-        if (this.worldState.is_lunar_hailing) return '月石雹';
-
-        return '晴朗';
+        const precipitationMap = {
+          none: '无降水',
+          rain: '下雨',
+          snow: '下雪'
+        };
+        const precipitation = this.worldState.precipitation;
+        return precipitation ? (precipitationMap[precipitation] || precipitation) : '--';
       } catch (err) {
         console.error('获取天气名称时出错:', err);
         return '未知';
@@ -913,17 +806,17 @@ export default {
         }
 
         // 添加降水概率
-        if (this.worldState.hasOwnProperty('pop')) {
+        if (this.isFiniteNumber(this.worldState.pop)) {
           details.push(`降水概率: ${(this.worldState.pop * 100).toFixed(1)}%`);
         }
 
         // 添加湿度信息
-        if (this.worldState.hasOwnProperty('wetness')) {
+        if (this.isFiniteNumber(this.worldState.wetness)) {
           details.push(`湿度: ${this.worldState.wetness.toFixed(1)}`);
         }
 
         // 添加雪量信息
-        if (this.worldState.hasOwnProperty('snow_level') && this.worldState.snow_level > 0) {
+        if (this.isFiniteNumber(this.worldState.snow_level) && this.worldState.snow_level > 0) {
           details.push(`雪量: ${this.worldState.snow_level.toFixed(1)}`);
         }
 
@@ -932,7 +825,8 @@ export default {
           details.push('地面被雪覆盖');
         }
 
-        return details.join(', ') || '无特殊天气状况';
+        if (details.length) return details.join(', ');
+        return this.worldState.precipitation === 'none' ? '无降水' : '--';
       } catch (err) {
         console.error('获取天气详细信息时出错:', err);
         return '';
@@ -943,24 +837,20 @@ export default {
     getWeatherIcon() {
       if (!this.worldState) return 'el-icon-question';
 
-      if (this.worldState.is_snowing) return 'el-icon-heavy-rain';
-      if (this.worldState.is_raining) return 'el-icon-umbrella';
-      if (this.worldState.is_acid_raining) return 'el-icon-lightning';
-      if (this.worldState.is_lunar_hailing) return 'el-icon-lightning';
-
-      return 'el-icon-sunny';
+      if (this.worldState.precipitation === 'snow') return 'el-icon-heavy-rain';
+      if (this.worldState.precipitation === 'rain') return 'el-icon-umbrella';
+      if (this.worldState.precipitation === 'none') return 'el-icon-sunny';
+      return 'el-icon-question';
     },
 
     // 获取天气样式类
     getWeatherClass() {
       if (!this.worldState) return '';
 
-      if (this.worldState.is_snowing) return 'weather-snow';
-      if (this.worldState.is_raining) return 'weather-rain';
-      if (this.worldState.is_acid_raining) return 'weather-acid';
-      if (this.worldState.is_lunar_hailing) return 'weather-hail';
-
-      return 'weather-clear';
+      if (this.worldState.precipitation === 'snow') return 'weather-snow';
+      if (this.worldState.precipitation === 'rain') return 'weather-rain';
+      if (this.worldState.precipitation === 'none') return 'weather-clear';
+      return 'weather-unknown';
     },
 
     // 获取降水类型名称
@@ -973,7 +863,7 @@ export default {
         snow: '雪'
       };
 
-      return precipitationMap[this.worldState.precipitation] || this.worldState.precipitation;
+      return precipitationMap[this.worldState.precipitation] || this.worldState.precipitation || '--';
     },
 
     // 获取月相名称
@@ -1003,14 +893,6 @@ export default {
     getMoonIcon() {
       if (!this.worldState) return 'el-icon-question';
 
-      const iconMap = {
-        new: 'el-icon-moon-night',
-        quarter: 'el-icon-moon',
-        half: 'el-icon-moon',
-        threequarter: 'el-icon-moon',
-        full: 'el-icon-full-moon'
-      };
-
       // 使用默认图标，因为Element UI没有所有月相的图标
       return 'el-icon-moon';
     },
@@ -1027,14 +909,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        let details = [];
-
-        if (this.worldState.is_full_moon) details.push('满月');
-        if (this.worldState.is_new_moon) details.push('新月');
-        if (this.worldState.is_waxing_moon) details.push('渐盈期');
-        else details.push('渐亡期');
-
-        return details.join(', ');
+        if (this.worldState.is_full_moon === true) return '满月';
+        if (this.worldState.is_new_moon === true) return '新月';
+        if (this.worldState.is_waxing_moon === true) return '渐盈期';
+        if (this.worldState.is_waxing_moon === false) return '渐亏期';
+        return '--';
       } catch (err) {
         console.error('获取月相详细信息时出错:', err);
         return '';
@@ -1048,11 +927,11 @@ export default {
       try {
         // 检查是否有洞穴相关属性
         return (
-          this.worldState.hasOwnProperty('cavephase') ||
-          this.worldState.hasOwnProperty('iscaveday') ||
-          this.worldState.hasOwnProperty('iscavedusk') ||
-          this.worldState.hasOwnProperty('iscavenight') ||
-          this.worldState.hasOwnProperty('cavemoonphase')
+          Object.hasOwn(this.worldState, 'cavephase') ||
+          Object.hasOwn(this.worldState, 'iscaveday') ||
+          Object.hasOwn(this.worldState, 'iscavedusk') ||
+          Object.hasOwn(this.worldState, 'iscavenight') ||
+          Object.hasOwn(this.worldState, 'cavemoonphase')
         );
       } catch (err) {
         console.error('检查洞穴信息时出错:', err);
@@ -1143,14 +1022,7 @@ export default {
     // 获取洞穴月相图标
     getCaveMoonIcon() {
       if (!this.worldState) return 'el-icon-question';
-
-      try {
-        // 使用默认图标，因为Element UI没有所有月相的图标
-        return 'el-icon-moon';
-      } catch (err) {
-        console.error('获取洞穴月相图标时出错:', err);
-        return 'el-icon-question';
-      }
+      return 'el-icon-moon';
     },
 
     // 获取洞穴月相样式类
@@ -1173,14 +1045,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        let details = [];
-
-        if (this.worldState.iscavefullmoon) details.push('满月');
-        if (this.worldState.iscavenewmoon) details.push('新月');
-        if (this.worldState.iscavewaxingmoon) details.push('渐盈期');
-        else details.push('渐亡期');
-
-        return details.join(', ');
+        if (this.worldState.iscavefullmoon === true) return '满月';
+        if (this.worldState.iscavenewmoon === true) return '新月';
+        if (this.worldState.iscavewaxingmoon === true) return '渐盈期';
+        if (this.worldState.iscavewaxingmoon === false) return '渐亏期';
+        return '--';
       } catch (err) {
         console.error('获取洞穴月相详细信息时出错:', err);
         return '';
@@ -1194,11 +1063,11 @@ export default {
       try {
         // 检查是否有梦魇循环相关属性
         return (
-          this.worldState.hasOwnProperty('nightmarephase') ||
-          this.worldState.hasOwnProperty('isnightmarecalm') ||
-          this.worldState.hasOwnProperty('isnightmarewild') ||
-          this.worldState.hasOwnProperty('isnightmarewarn') ||
-          this.worldState.hasOwnProperty('isnightmaredawn')
+          Object.hasOwn(this.worldState, 'nightmarephase') ||
+          Object.hasOwn(this.worldState, 'isnightmarecalm') ||
+          Object.hasOwn(this.worldState, 'isnightmarewild') ||
+          Object.hasOwn(this.worldState, 'isnightmarewarn') ||
+          Object.hasOwn(this.worldState, 'isnightmaredawn')
         );
       } catch (err) {
         console.error('检查梦魇循环信息时出错:', err);

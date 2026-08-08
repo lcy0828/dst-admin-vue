@@ -77,4 +77,60 @@ export const authAPI = {
   })
 }
 
+const encode = value => encodeURIComponent(String(value))
+
+export const systemV2API = {
+  capabilities: () => client.get('/system/capabilities'),
+  status: () => client.get('/system/status'),
+  settings: () => client.get('/system/settings', { headers: { 'Cache-Control': 'no-store' } })
+}
+
+export const roomsV2API = {
+  list: () => client.get('/rooms'),
+  get: roomId => client.get(`/rooms/${encode(roomId)}`),
+  worlds: roomId => client.get(`/rooms/${encode(roomId)}/worlds`),
+  create: input => client.post('/rooms', input),
+  action: (roomId, action, worldIds = []) => client.post(`/rooms/${encode(roomId)}/actions/${encode(action)}`, {
+    worldIds
+  })
+}
+
+export const worldStatesV2API = {
+  list: roomId => client.get(`/rooms/${encode(roomId)}/world-states`)
+}
+
+export const gameV2API = {
+  version: () => client.get('/game/version'),
+  update: input => client.post('/game/actions/update', input),
+  updateRun: jobId => client.get(`/game/update-runs/${encode(jobId)}`)
+}
+
+export const containersV2API = {
+  list: () => client.get('/containers'),
+  action: (containerId, action, confirmation = '') => client.post(
+    `/containers/${encode(containerId)}/actions/${encode(action)}`,
+    { confirmation }
+  )
+}
+
+export const backupsV2API = {
+  list: roomId => client.get(`/rooms/${encode(roomId)}/backups`),
+  create: (roomId, name = '') => client.post(`/rooms/${encode(roomId)}/backups`, { name }),
+  upload: (roomId, file, name = '') => {
+    const body = new FormData()
+    body.set('file', file)
+    if (name) body.set('name', name)
+    return client.post(`/rooms/${encode(roomId)}/backups/upload`, body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: apiConfig.DOWNLOAD_TIMEOUT
+    })
+  },
+  rename: (backupId, name) => client.patch(`/backups/${encode(backupId)}`, { name }),
+  delete: (backupId, confirmation) => client.delete(`/backups/${encode(backupId)}`, {
+    data: { confirmation }
+  }),
+  restore: (backupId, confirmation) => client.post(`/backups/${encode(backupId)}/actions/restore`, { confirmation }),
+  downloadURL: backupId => `${baseURL}/backups/${encode(backupId)}/download`
+}
+
 export default client

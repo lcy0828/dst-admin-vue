@@ -15,9 +15,10 @@
         
         <el-form-item label="服务器模式">
           <el-radio-group v-model="formData.serverMode">
-            <el-radio label="32">普通模式</el-radio>
-            <el-radio label="64">专家模式</el-radio>
+            <el-radio label="32" disabled>32位</el-radio>
+            <el-radio label="64" disabled>64位</el-radio>
           </el-radio-group>
+          <span class="mode-hint">v2 使用系统设置中的服务端位数</span>
         </el-form-item>
         
         <el-divider></el-divider>
@@ -34,10 +35,6 @@
                   {{ getWorldTypeName(world.type) }}
                 </el-tag>
               </div>
-              <div v-if="room.worlds.length === 0" class="no-worlds">
-                <component is="el-icon-warning-outline" class="legacy-icon" />
-                <span>未找到世界，将使用默认世界 (Forest1 和 Caves1)</span>
-              </div>
             </template>
             
             <template v-else-if="formData.worldType === 'forest'">
@@ -48,7 +45,7 @@
               </div>
               <div v-if="forestWorlds.length === 0" class="no-worlds">
                 <component is="el-icon-warning-outline" class="legacy-icon" />
-                <span>未找到森林世界，将使用默认世界 (Forest1)</span>
+                <span>未找到森林世界</span>
               </div>
             </template>
             
@@ -60,7 +57,7 @@
               </div>
               <div v-if="caveWorlds.length === 0" class="no-worlds">
                 <component is="el-icon-warning-outline" class="legacy-icon" />
-                <span>未找到洞穴世界，将使用默认世界 (Caves1)</span>
+                <span>未找到洞穴世界</span>
               </div>
             </template>
             
@@ -104,7 +101,7 @@ export default {
       type: Object,
       default: () => ({
         worldType: 'all',
-        serverMode: '32'
+        serverMode: '64'
       })
     }
   },
@@ -238,6 +235,12 @@ export default {
       }
     }
   }
+
+  .mode-hint {
+    margin-left: 12px;
+    color: #909399;
+    font-size: 12px;
+  }
   
   .form-actions {
     margin-top: 30px;
@@ -264,4 +267,4 @@ export default {
     }
   }
 }
-</style> 
+</style>

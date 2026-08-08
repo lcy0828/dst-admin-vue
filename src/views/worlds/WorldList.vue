@@ -70,17 +70,21 @@
             <el-table-column prop="roomName" label="所属房间" min-width="100"></el-table-column>
             <el-table-column prop="type" label="世界类型" width="100">
               <template slot-scope="scope">
-                <el-tag size="small" :type="scope.row.type === 'master' || scope.row.type === 'forest' ? 'primary' : 'success'">
-                  {{ scope.row.type === 'master' || scope.row.type === 'forest' ? '主世界' : '洞穴' }}
+                <el-tag size="small" :type="getWorldTypeTag(scope.row.type)">
+                  {{ getWorldTypeName(scope.row.type) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="season" label="季节" width="90"></el-table-column>
-            <el-table-column prop="day" label="天数" width="70" align="center"></el-table-column>
+            <el-table-column prop="season" label="季节" width="90">
+              <template slot-scope="scope">{{ scope.row.season ?? '--' }}</template>
+            </el-table-column>
+            <el-table-column prop="day" label="天数" width="70" align="center">
+              <template slot-scope="scope">{{ scope.row.day ?? '--' }}</template>
+            </el-table-column>
             <el-table-column prop="status" label="状态" width="90" align="center">
               <template slot-scope="scope">
-                <el-tag :type="scope.row.status === 'running' ? 'success' : 'info'" size="small">
-                  {{ scope.row.status === 'running' ? '运行中' : '已停止' }}
+                <el-tag :type="getWorldStatusTag(scope.row.status)" size="small">
+                  {{ getWorldStatusName(scope.row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -89,6 +93,7 @@
                 <el-button
                   :type="scope.row.status === 'running' ? 'danger' : 'success'"
                   size="mini"
+                  :disabled="scope.row.controlAvailable === false"
                   @click.stop="toggleWorldStatus(scope.row)">
                   {{ scope.row.status === 'running' ? '停止' : '启动' }}
                 </el-button>
@@ -184,10 +189,8 @@
 </template>
 
 <script>
-import { roomApi } from '../../api/index';
+import { roomApi, systemApi } from '../../api/index';
 import RoomCategories from '../../components/worlds/RoomCategories.vue';
-import axios from 'axios';
-import config from '../../api/config';
 
 export default {
   name: 'WorldList',
@@ -223,10 +226,14 @@ export default {
           result = result.filter(world => world.type === 'master' || world.type === 'forest');
         } else if (this.currentCategory === 'cave') {
           result = result.filter(world => world.type === 'cave');
+        } else if (this.currentCategory === 'both') {
+          const mixedRooms = new Set(this.rooms
+            .filter(room => room.worlds.some(world => world.type === 'forest') &&
+              room.worlds.some(world => world.type === 'cave'))
+            .map(room => room.id));
+          result = result.filter(world => mixedRooms.has(world.roomId));
         } else if (this.currentCategory.startsWith('custom_')) {
-          // 自定义分类的筛选逻辑，这里需要根据实际情况实现
-          // 可以通过解析 currentCategory 来获取自定义分类的ID
-          // 示例: const customId = parseInt(this.currentCategory.split('_')[1]);
+          result = [];
         }
       }
 
@@ -234,8 +241,8 @@ export default {
       if (this.searchQuery) {
         const query = this.searchQuery.toLowerCase();
         result = result.filter(world =>
-          world.name.toLowerCase().includes(query) ||
-          world.description.toLowerCase().includes(query) ||
+          String(world.name || '').toLowerCase().includes(query) ||
+          String(world.description || '').toLowerCase().includes(query) ||
           (world.roomName && world.roomName.toLowerCase().includes(query))
         );
       }
@@ -282,8 +289,6 @@ export default {
           break;
         default:
           if (this.currentCategory.startsWith('custom_')) {
-            const customId = parseInt(this.currentCategory.split('_')[1]);
-            // 这里应该根据customId从自定义分类列表中找到对应的分类名称
             title = '自定义分类';
           } else {
             title = '所有世界';
@@ -297,39 +302,57 @@ export default {
 
       return title;
     },
+    getWorldTypeName(type) {
+      if (type === 'forest' || type === 'master') return '主世界';
+      if (type === 'cave') return '洞穴';
+      return '其他';
+    },
+    getWorldTypeTag(type) {
+      if (type === 'forest' || type === 'master') return 'primary';
+      if (type === 'cave') return 'success';
+      return 'info';
+    },
+    getWorldStatusName(status) {
+      if (status === 'running') return '运行中';
+      if (status === 'stopped') return '已停止';
+      return '未知';
+    },
+    getWorldStatusTag(status) {
+      if (status === 'running') return 'success';
+      if (status === 'stopped') return 'info';
+      return 'warning';
+    },
     handleCategoryChange(category) {
       this.currentCategory = category;
       this.refreshWorlds();
     },
     getServerStatus() {
-      return axios.get(`${config.BASE_URL}/tmux/list`)
+      return systemApi.getTmuxServers()
         .then(response => {
-          if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
-            const servers = response.data.data;
-            console.log("服务器状态数据:", servers);
+          if (response?.status === 200 && Array.isArray(response.data)) {
+            const servers = response.data;
 
-            // 更新世界状态
             this.worlds.forEach(world => {
-              // 正确匹配：通过archive_name(房间名)和world_name(世界名)来匹配
               const runningServer = servers.find(server =>
                 server.archive_name === world.roomName &&
                 server.world_name === world.name
               );
 
-              if (runningServer) {
-                console.log(`世界 ${world.name} 运行状态: ${runningServer.status}`);
-                world.status = runningServer.status; // 使用实际状态
-              }
+              world.status = runningServer?.status || 'unknown';
             });
 
-            // 更新房间状态
             this.rooms.forEach(room => {
-              // 如果该房间下有任何世界在运行，则认为房间正在运行
               const runningServer = servers.find(server =>
                 server.archive_name === room.name &&
                 server.status === "running"
               );
-              room.status = runningServer ? 'running' : 'stopped';
+              if (runningServer) {
+                room.status = 'running';
+              } else if (servers.some(server => server.archive_name === room.name && server.status === 'unknown')) {
+                room.status = 'unknown';
+              } else {
+                room.status = 'stopped';
+              }
             });
           }
         })
@@ -360,7 +383,7 @@ export default {
             this.rooms = roomsData.map(room => ({
               id: room.id || room.name,
               name: room.name,
-              status: '',
+              status: room.isRunning ? 'running' : 'unknown',
               worlds: room.worlds || []
             }));
 
@@ -369,15 +392,16 @@ export default {
             this.rooms.forEach(room => {
               if (room.worlds && Array.isArray(room.worlds)) {
                 const worldsData = room.worlds.map(world => ({
-                  id: `${room.id}_${world.name || world.worldName}`,
+                  ...world,
+                  id: world.id,
                   name: world.name || world.worldName,
                   roomId: room.id,
                   roomName: room.name,
                   type: world.type || 'unknown',
-                  season: '未知',
-                  day: 0,
-                  status: 'stopped',
-                  description: `${room.name}的${(world.type === 'forest' || world.type === 'master') ? '主世界' : '洞穴'}`
+                  season: world.season ?? null,
+                  day: world.day ?? null,
+                  status: world.status || 'unknown',
+                  description: world.description || ''
                 }));
                 allWorlds = [...allWorlds, ...worldsData];
               }
@@ -428,7 +452,7 @@ export default {
     editWorld(world) {
       this.$router.push({
         path: '/worlds/settings',
-        query: { id: world.id }
+        query: { id: world.id, roomId: world.roomId, worldId: world.id }
       });
     },
     toggleWorldStatus(world) {
@@ -439,52 +463,23 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-
-        if (world.status === 'running') {
-          // 停止世界
-          axios.post(`${config.BASE_URL}/tmux/stop`, {
-            archive_name: world.roomName,
-            world_name: world.name
+        const request = {
+          room_id: world.roomId,
+          world_id: world.id
+        };
+        const operation = world.status === 'running'
+          ? roomApi.stopRoom(request)
+          : roomApi.startRoom(request);
+        operation
+          .then(response => {
+            this.$message.success(response.msg || `${action}任务已提交`);
           })
-            .then(response => {
-              if (response.data && response.data.status === 200) {
-                this.$message.success(`世界 ${world.name} 已停止`);
-                // 更新状态
-                world.status = 'stopped';
-              } else {
-                this.$message.error(response.data.msg || `停止世界失败`);
-              }
-            })
-            .catch(error => {
-              this.$message.error(`停止世界失败: ${error.message || '未知错误'}`);
-            })
-            .finally(() => {
-              this.loading = false;
-            });
-        } else {
-          // 启动世界
-          axios.post(`${config.BASE_URL}/tmux/start`, {
-            archive_name: world.roomName,
-            world_name: world.name,
-            world_type: world.type === 'cave' ? 'cave' : 'forest',
-            server_mode: '64' // 默认使用64位服务器模式
+          .catch(error => {
+            this.$message.error(`${action}世界失败: ${error.message || '未知错误'}`);
           })
-            .then(response => {
-              if (response.data && response.data.status === 200) {
-                this.$message.success(`世界 ${world.name} 已启动`);
-                // 更新状态
-                world.status = 'running';
-              } else {
-                this.$message.error(response.data.msg || `启动世界失败`);
-              }
-            })
-            .catch(error => {
-              this.$message.error(`启动世界失败: ${error.message || '未知错误'}`);
-            })
-            .finally(() => {
-              this.loading = false;
-            });
-        }
+          .finally(() => {
+            this.loading = false;
+          });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -496,7 +491,7 @@ export default {
       // 点击行跳转到详情页
       this.$router.push({
         path: '/worlds/details',
-        query: { id: row.id }
+        query: { id: row.id, roomId: row.roomId, worldId: row.id }
       });
     },
     handleMoreCommands(command, world) {
@@ -528,15 +523,10 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-
-        // 模拟API调用
-        setTimeout(() => {
-          this.loading = false;
-          this.$message({
-            type: 'success',
-            message: `世界 ${world.name} 正在重新生成...`
-          });
-        }, 1000);
+        roomApi.regenerateWorld({ room_id: world.roomId, world_id: world.id })
+          .then(response => this.$message.success(response.msg))
+          .catch(error => this.$message.error(error.message))
+          .finally(() => { this.loading = false; });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -545,21 +535,16 @@ export default {
       });
     },
     backupWorld(world) {
-      this.$confirm(`确定要备份世界 "${world.name}" 吗?`, '提示', {
+      this.$confirm(`v2 后端将备份世界 "${world.name}" 所属的整个房间 "${world.roomName}"，确定继续吗?`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'info'
       }).then(() => {
         this.loading = true;
-
-        // 模拟API调用
-        setTimeout(() => {
-          this.loading = false;
-          this.$message({
-            type: 'success',
-            message: `世界 ${world.name} 备份已创建`
-          });
-        }, 1000);
+        roomApi.backupRoom(world.roomId, `世界 ${world.name}`)
+          .then(response => this.$message.success(response.msg || '房间备份任务已提交'))
+          .catch(error => this.$message.error(`备份失败：${error.message}`))
+          .finally(() => { this.loading = false; });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -574,18 +559,13 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-
-        // 模拟API调用
-        setTimeout(() => {
-          // 从本地列表中移除
-          this.worlds = this.worlds.filter(w => w.id !== world.id);
-
-          this.loading = false;
-          this.$message({
-            type: 'success',
-            message: `世界 ${world.name} 已删除`
-          });
-        }, 1000);
+        roomApi.deleteWorld({ room_id: world.roomId, world_id: world.id })
+          .then(response => {
+            this.$message.success(response.msg);
+            this.refreshWorlds();
+          })
+          .catch(error => this.$message.error(error.message))
+          .finally(() => { this.loading = false; });
       }).catch(() => {
         this.$message({
           type: 'info',

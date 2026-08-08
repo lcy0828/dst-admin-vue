@@ -36,7 +36,7 @@
                 <div class="version-boxes">
                   <div class="version-box">
                     <div class="version-box-label">当前版本</div>
-                    <div class="version-box-value">{{ versionInfo.local.version }}</div>
+                    <div class="version-box-value">{{ versionInfo.local.version || '--' }}</div>
                   </div>
                   <div class="version-arrow">
                     <component is="el-icon-arrow-right" class="legacy-icon" />
@@ -44,13 +44,15 @@
                   <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
                     <div class="version-box-label">最新版本</div>
                     <a
+                      v-if="versionInfo.latest.update_url"
                       :href="versionInfo.latest.update_url"
                       target="_blank"
                       class="version-box-value version-link">
                       {{ versionInfo.latest.version }}
                       <component v-if="isVersionOutdated" is="el-icon-warning" class="legacy-icon version-warning-icon" />
                     </a>
-                    <div class="version-box-date">{{ versionInfo.latest.release_date }} / R{{ versionInfo.latest.build_number }}</div>
+                    <span v-else class="version-box-value">{{ versionInfo.latest.version || '--' }}</span>
+                    <div class="version-box-date">{{ versionInfo.latest.release_date || '--' }} / R{{ versionInfo.latest.build_number || '--' }}</div>
                   </div>
                 </div>
                 <div v-if="isVersionOutdated" class="version-update-notice">
@@ -64,10 +66,11 @@
                     <span>更新状态: {{ updateStatus.is_completed ? '已完成' : (updateStatus.is_running ? '进行中' : '尚未开始') }}</span>
                   </div>
                   <el-progress
-                    v-if="updateStatus.is_running || updateStatus.is_completed"
-                    :percentage="parseFloat(updateStatus.progress) || 0"
+                    v-if="updateStatus.is_completed || hasMetric(updateStatus.progress)"
+                    :percentage="Number(updateStatus.progress)"
                     :status="updateStatus.is_completed ? 'success' : ''"
                   ></el-progress>
+                  <div v-else-if="updateStatus.is_running" class="metric-unavailable">进度：--</div>
                   <div v-if="updateStatus.last_output" class="update-output">
                     <div class="output-label">最新输出:</div>
                     <div class="output-content">{{ updateStatus.last_output }}</div>
@@ -120,10 +123,10 @@
             <el-table-column prop="status" label="状态" width="90" align="center">
               <template slot-scope="scope">
                 <el-tag
-                  :type="scope.row.status === 'running' ? 'success' : 'info'"
+                  :type="getServerStatusTag(scope.row.status)"
                   size="medium"
                   effect="dark">
-                  {{ scope.row.status === 'running' ? '在线' : '离线' }}
+                  {{ getServerStatusName(scope.row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -137,7 +140,7 @@
             <el-table-column prop="world_name" label="世界名称" min-width="120">
               <template slot-scope="scope">
                 <el-tag
-                  :type="scope.row.world_name.includes('Forest') ? 'warning' : 'primary'"
+                  :type="scope.row.world_type === 'forest' ? 'warning' : (scope.row.world_type === 'cave' ? 'primary' : 'info')"
                   size="medium"
                   effect="plain">
                   {{ scope.row.world_name }}
@@ -147,14 +150,14 @@
             <el-table-column label="启动时间" width="170" align="center">
               <template slot-scope="scope">
                 <div class="time-info">
-                  <span>{{ scope.row.start_time }}</span>
+                  <span>{{ scope.row.start_time || '--' }}</span>
                 </div>
               </template>
             </el-table-column>
             <el-table-column label="运行时间" width="90" align="center">
               <template slot-scope="scope">
                 <div class="time-info">
-                  <span>{{ formatTimeDiff(Date.now() - new Date(scope.row.start_time).getTime()) }}</span>
+                  <span>{{ formatServerUptime(scope.row.start_time) }}</span>
                 </div>
               </template>
             </el-table-column>
@@ -239,10 +242,11 @@
               </el-form-item>
               <el-form-item label="服务器模式">
                 <el-radio-group v-model="startRoomForm.serverMode">
-                  <el-radio label="32">32位</el-radio>
-                  <el-radio label="64">64位</el-radio>
-                  <el-radio label="luajit">LuaJit</el-radio>
+                  <el-radio label="32" disabled>32位</el-radio>
+                  <el-radio label="64" disabled>64位</el-radio>
+                  <el-radio label="luajit" disabled>LuaJit</el-radio>
                 </el-radio-group>
+                <span class="mode-hint">v2 使用系统设置中的服务端位数</span>
               </el-form-item>
             </el-form>
             </div>
@@ -266,10 +270,11 @@
               <div class="resource-label">
                 <span>CPU使用率</span>
               </div>
-              <el-progress :percentage="systemStatus.cpu_usage && !isNaN(systemStatus.cpu_usage) ? parseFloat(systemStatus.cpu_usage.toFixed(2)) : 0" :color="customColors"></el-progress>
+              <el-progress v-if="hasMetric(systemStatus.cpu_usage)" :percentage="metricPercentage(systemStatus.cpu_usage)" :color="customColors"></el-progress>
+              <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
-                <span>{{ systemStatus.cpu_model || '未知CPU' }} {{ systemStatus.cpu_mhz ? '(' + systemStatus.cpu_mhz + 'MHz)' : '' }}</span>
-                <span>{{ systemStatus.cpu_cores || 0 }}核心 / {{ systemStatus.cpu_threads || 0 }}线程</span>
+                <span>{{ systemStatus.cpu_model || '--' }} {{ systemStatus.cpu_mhz ? '(' + systemStatus.cpu_mhz + 'MHz)' : '' }}</span>
+                <span>{{ displayMetric(systemStatus.cpu_cores) }}核心 / {{ displayMetric(systemStatus.cpu_threads) }}线程</span>
               </div>
             </div>
             <div class="resource-item">
@@ -277,7 +282,8 @@
                 <span>内存使用率</span>
                 <!-- <span class="resource-value">{{ systemStatus.memory_usage ? systemStatus.memory_usage.toFixed(2) + '%' : '0%' }}</span> -->
               </div>
-              <el-progress :percentage="systemStatus.memory_usage && !isNaN(systemStatus.memory_usage) ? parseFloat(systemStatus.memory_usage.toFixed(2)) : 0" :color="customColors"></el-progress>
+              <el-progress v-if="hasMetric(systemStatus.memory_usage)" :percentage="metricPercentage(systemStatus.memory_usage)" :color="customColors"></el-progress>
+              <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
                 <span>总内存: {{ formatMemory(systemStatus.total_memory) }}</span>
                 <span>已用: {{ formatMemory(systemStatus.used_memory) }}</span>
@@ -289,11 +295,12 @@
                 <span>磁盘使用率</span>
                 <!-- <span class="resource-value">{{ systemStatus.disk_usage ? systemStatus.disk_usage.toFixed(2) + '%' : '0%' }}</span> -->
               </div>
-              <el-progress :percentage="systemStatus.disk_usage && !isNaN(systemStatus.disk_usage) ? parseFloat(systemStatus.disk_usage.toFixed(2)) : 0" :color="customColors"></el-progress>
+              <el-progress v-if="hasMetric(systemStatus.disk_usage)" :percentage="metricPercentage(systemStatus.disk_usage)" :color="customColors"></el-progress>
+              <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
-                <span>总容量: {{ systemStatus.total_disk ? systemStatus.total_disk.toFixed(2) : 0 }}GB</span>
-                <span>已用: {{ systemStatus.used_disk ? systemStatus.used_disk.toFixed(2) : 0 }}GB</span>
-                <span>空闲: {{ systemStatus.free_disk ? systemStatus.free_disk.toFixed(2) : 0 }}GB</span>
+                <span>总容量: {{ formatDisk(systemStatus.total_disk) }}</span>
+                <span>已用: {{ formatDisk(systemStatus.used_disk) }}</span>
+                <span>空闲: {{ formatDisk(systemStatus.free_disk) }}</span>
               </div>
             </div>
             <div class="resource-item">
@@ -301,26 +308,27 @@
                 <span>系统负载</span>
                 <!-- <span class="resource-value">{{ systemStatus.cpu_load1 ? systemStatus.cpu_load1.toFixed(2) : '0.00' }}</span> -->
               </div>
-              <el-progress :percentage="systemStatus.cpu_load1 && !isNaN(systemStatus.cpu_load1) ? parseFloat(systemStatus.cpu_load1.toFixed(2)) : 0"></el-progress>
+              <el-progress v-if="hasMetric(systemStatus.cpu_load1)" :percentage="metricPercentage(systemStatus.cpu_load1)"></el-progress>
+              <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
-                <span>1分钟: {{ systemStatus.cpu_load1 ? systemStatus.cpu_load1.toFixed(2) : '0.00' }}</span>
-                <span>5分钟: {{ systemStatus.cpu_load5 ? systemStatus.cpu_load5.toFixed(2) : '0.00' }}</span>
-                <span>15分钟: {{ systemStatus.cpu_load15 ? systemStatus.cpu_load15.toFixed(2) : '0.00' }}</span>
+                <span>1分钟: {{ formatDecimal(systemStatus.cpu_load1) }}</span>
+                <span>5分钟: {{ formatDecimal(systemStatus.cpu_load5) }}</span>
+                <span>15分钟: {{ formatDecimal(systemStatus.cpu_load15) }}</span>
               </div>
             </div>
           </div>
           <div class="system-info-footer">
             <div class="system-info-item">
               <component is="el-icon-monitor" class="legacy-icon" />
-              <span>{{ systemStatus.os_info || '未知系统' }}</span>
+              <span>{{ systemStatus.os_info || '--' }}</span>
             </div>
             <div class="system-info-item">
               <component is="el-icon-time" class="legacy-icon" />
-              <span>运行时间: {{ systemStatus.uptime_formatted || '未知' }}</span>
+              <span>运行时间: {{ systemStatus.uptime_formatted || '--' }}</span>
             </div>
             <div class="system-info-item">
               <component is="el-icon-refresh" class="legacy-icon" />
-              <span>更新时间: {{ systemStatus.current_time || '未知' }}</span>
+              <span>更新时间: {{ systemStatus.current_time || '--' }}</span>
             </div>
           </div>
         </el-card>
@@ -369,19 +377,19 @@
           <div class="player-stats-details">
             <div class="stats-item">
               <div class="stats-label">新增玩家</div>
-              <div class="stats-value">42</div>
+              <div class="stats-value">--</div>
             </div>
             <div class="stats-item">
               <div class="stats-label">活跃玩家</div>
-              <div class="stats-value">157</div>
+              <div class="stats-value">--</div>
             </div>
             <div class="stats-item">
               <div class="stats-label">平均游戏时长</div>
-              <div class="stats-value">2.4小时</div>
+              <div class="stats-value">--</div>
             </div>
             <div class="stats-item">
               <div class="stats-label">总游戏时长</div>
-              <div class="stats-value">489小时</div>
+              <div class="stats-value">--</div>
             </div>
           </div>
         </el-card>
@@ -394,6 +402,12 @@
             <el-button style="float: right; padding: 3px 0" type="text" @click="gotoAnnouncement">更多</el-button>
           </div>
           <div class="announcement-list">
+            <el-alert
+              v-if="announcementsError"
+              :title="announcementsError"
+              type="warning"
+              :closable="false"
+              show-icon />
             <div class="announcement-item" v-for="(item, index) in announcements" :key="index">
               <div class="announcement-title">
                 <el-tag size="mini" :type="getAnnouncementTagType(item.type)">{{ item.type }}</el-tag>
@@ -436,26 +450,8 @@ export default {
         {color: '#c94f4f', percentage: 90}
       ],
       timeRange: 'week',
-      announcements: [
-        {
-          title: '服务器维护通知',
-          content: '我们将于本周六凌晨2点进行服务器维护，预计需要2小时，请各位玩家合理安排游戏时间。',
-          time: '1小时前',
-          type: '通知'
-        },
-        {
-          title: '新版本更新内容',
-          content: '新版本已发布，更新了大量内容，包括新的生物、武器和建筑，欢迎体验。',
-          time: '1天前',
-          type: '更新'
-        },
-        {
-          title: '周末活动预告',
-          content: '本周末将举办首届饥荒生存挑战赛，优胜者将获得丰厚奖励。',
-          time: '2天前',
-          type: '活动'
-        }
-      ],
+      announcements: [],
+      announcementsError: '',
       systemLoading: false,
       systemStatus: {},
 
@@ -473,7 +469,7 @@ export default {
       startRoomForm: {
         roomId: '',
         selectedWorlds: [], // 选中的世界列表
-        serverMode: '32'
+        serverMode: '64'
       },
       currentRoomWorlds: [], // 当前房间的世界列表
       startRoomRules: {
@@ -496,31 +492,40 @@ export default {
     this.fetchRooms(); // 获取房间列表
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     // 清除定时器
     this.stopUpdateStatusPolling();
   },
   methods: {
     getServerList() {
-      systemApi.getTmuxServers().then(res => {
-        this.serverList = res.data;
+      return systemApi.getTmuxServers().then(res => {
+        this.serverList = Array.isArray(res.data) ? res.data : [];
       }).catch(err => {
+        this.serverList = [];
         console.error(err);
+        this.$message.error(`获取服务器状态失败：${err.message || '未知错误'}`);
       })
     },
     refreshData() {
       this.loading = true;
-
-      // 模拟数据加载
-      setTimeout(() => {
-        this.loading = false;
-      }, 800);
+      systemApi.getAnnouncements()
+        .then(response => {
+          this.announcements = Array.isArray(response.data) ? response.data : [];
+          this.announcementsError = '';
+        })
+        .catch(error => {
+          this.announcements = [];
+          this.announcementsError = error.message;
+        })
+        .finally(() => {
+          this.loading = false;
+        });
     },
 
     tableRowClassName({row}) {
-      if (row.status === '离线') {
+      if (row.status === 'stopped') {
         return 'server-offline';
-      } else if (row.status === '重启中') {
+      } else if (row.status === 'restarting') {
         return 'server-restarting';
       }
       return '';
@@ -537,27 +542,26 @@ export default {
     },
 
     handleServerAction(server) {
-      if (server.status === 'running') {
-        this.$confirm(`确定要停止 "${server.archive_name}" 吗？`, '提示', {
+      const isRunning = server.status === 'running';
+      const action = isRunning ? '停止' : '启动';
+      this.$confirm(`确定要${action} "${server.archive_name} / ${server.world_name}" 吗？`, '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         }).then(() => {
-          systemApi.stopTmuxServer({session_name: server.session_name}).then(res => {
-            this.$message.success(res.msg);
-            setTimeout(() => {
-              this.getServerList();
-            }, 10000);
+          const request = { room_id: server.room_id, world_id: server.world_id };
+          const operation = isRunning ? roomApi.stopRoom(request) : roomApi.startRoom(request);
+          operation.then(res => {
+            this.$message.success(res.msg || `${action}任务已提交`);
           }).catch(err => {
-            this.$message.error('停止失败!');
+            this.$message.error(`${action}失败：${err.message || '未知错误'}`);
           });
         }).catch(() => {
           this.$message({
             type: 'info',
-            message: '取消停止'
+            message: `已取消${action}`
           });
         });
-      }
     },
 
     handleConfigure(server) {
@@ -567,7 +571,9 @@ export default {
         query: {
           roomName: server.archive_name,
           worldName: server.world_name,
-          worldType: server.world_name.toLowerCase().includes('forest') ? 'forest' : 'cave'
+          roomId: server.room_id,
+          worldId: server.world_id,
+          worldType: server.world_type
         }
       });
     },
@@ -582,14 +588,13 @@ export default {
     },
 
     editAnnouncement(announcement) {
-      // 编辑公告逻辑
+      this.$router.push({ path: '/announcements', query: { id: announcement.id } });
     },
 
     publishAnnouncement(announcement) {
-      this.$message({
-        type: 'success',
-        message: `公告"${announcement.title}"已发布到所有服务器`
-      });
+      systemApi.updateAnnouncement(announcement.id, { ...announcement, published: true })
+        .then(() => this.$message.success(`公告"${announcement.title}"已发布`))
+        .catch(error => this.$message.error(error.message));
     },
 
     gotoAnnouncement() {
@@ -659,12 +664,43 @@ export default {
     },
 
     formatMemory(memory) {
-      if (!memory) return '0 MB';
+      if (!this.hasMetric(memory)) return '--';
       if (memory < 1024) {
         return memory.toFixed(2) + ' MB';
       } else {
         return (memory / 1024).toFixed(2) + ' GB';
       }
+    },
+    formatDisk(value) {
+      return this.hasMetric(value) ? `${Number(value).toFixed(2)}GB` : '--';
+    },
+    formatDecimal(value) {
+      return this.hasMetric(value) ? Number(value).toFixed(2) : '--';
+    },
+    hasMetric(value) {
+      return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+    },
+    metricPercentage(value) {
+      return Math.min(100, Math.max(0, Number(value)));
+    },
+    displayMetric(value) {
+      return this.hasMetric(value) ? value : '--';
+    },
+    formatServerUptime(startTime) {
+      if (!startTime) return '--';
+      const timestamp = new Date(startTime).getTime();
+      if (!Number.isFinite(timestamp)) return '--';
+      return formatTimeDiff(Date.now() - timestamp);
+    },
+    getServerStatusName(status) {
+      if (status === 'running') return '在线';
+      if (status === 'stopped') return '离线';
+      return '未知';
+    },
+    getServerStatusTag(status) {
+      if (status === 'running') return 'success';
+      if (status === 'stopped') return 'info';
+      return 'warning';
     },
 
 
@@ -680,7 +716,7 @@ export default {
       systemApi.getLocalVersion().then(localRes => {
         this.$message.info(localRes.msg);
         if (localRes.data && localRes.status === 200) {
-          this.$set(this.versionInfo, 'local', localRes.data);
+          this.versionInfo.local = localRes.data;
           this.checkVersionOutdated();
         }
       }).catch(err => {
@@ -691,8 +727,7 @@ export default {
       // 获取最新版本
       systemApi.getLatestVersion().then(latestRes => {
         if (latestRes.data && latestRes.status === 200) {
-          // 使用Vue.set或对象整体赋值确保响应式更新
-          this.$set(this.versionInfo, 'latest', latestRes.data);
+          this.versionInfo.latest = latestRes.data;
           this.checkVersionOutdated();
         }
       }).catch(err => {
@@ -704,11 +739,14 @@ export default {
     checkVersionOutdated() {
       if (this.versionInfo.local && this.versionInfo.latest) {
         try {
-          // 比较版本号
-          const localVersion = parseInt(this.versionInfo.local.version) || 0;
-          const latestVersion = parseInt(this.versionInfo.latest.version) || 0;
-
-          this.isVersionOutdated = localVersion < latestVersion;
+          if (typeof this.versionInfo.latest.up_to_date === 'boolean') {
+            this.isVersionOutdated = !this.versionInfo.latest.up_to_date;
+            return;
+          }
+          const localVersion = Number(this.versionInfo.local.version);
+          const latestVersion = Number(this.versionInfo.latest.version);
+          this.isVersionOutdated = Number.isFinite(localVersion) &&
+            Number.isFinite(latestVersion) && localVersion < latestVersion;
         } catch (err) {
           console.error('比较版本号时出错:', err);
           this.isVersionOutdated = false;
@@ -851,7 +889,7 @@ export default {
       this.startRoomForm = {
         roomId: '',
         selectedWorlds: [],
-        serverMode: '32'
+        serverMode: '64'
       };
       this.currentRoomWorlds = [];
 
@@ -901,9 +939,7 @@ export default {
       // 直接使用房间对象中的世界列表
       if (selectedRoom.worlds && Array.isArray(selectedRoom.worlds)) {
         this.currentRoomWorlds = selectedRoom.worlds;
-        // 默认选中非 unknown 类型的世界
         this.startRoomForm.selectedWorlds = this.currentRoomWorlds
-          .filter(world => world.type !== 'unknown')
           .map(world => world.name);
         this.startRoomLoading = false;
       } else {
@@ -911,9 +947,7 @@ export default {
         roomApi.getRoomWorlds(selectedRoom.name)
           .then(worlds => {
             this.currentRoomWorlds = worlds || [];
-            // 默认选中非 unknown 类型的世界
             this.startRoomForm.selectedWorlds = this.currentRoomWorlds
-              .filter(world => world.type !== 'unknown')
               .map(world => world.name);
           })
           .catch(error => {
@@ -931,7 +965,6 @@ export default {
     // 选择所有世界
     selectAllWorlds() {
       this.startRoomForm.selectedWorlds = this.currentRoomWorlds
-        .filter(world => world.type !== 'unknown')
         .map(world => world.name);
     },
 
@@ -981,8 +1014,7 @@ export default {
             return;
           }
 
-          const archiveName = selectedRoom.name;
-          const { selectedWorlds, serverMode } = this.startRoomForm;
+          const { selectedWorlds } = this.startRoomForm;
 
           // 获取选中世界的详细信息
           const worldsToStart = this.currentRoomWorlds.filter(world =>
@@ -995,27 +1027,13 @@ export default {
             return;
           }
 
-          // 为每个选中的世界发起启动请求
-          const startPromises = worldsToStart.map(world => {
-            // 使用世界的原始类型，包括 unknown
-            let worldType = world.type;
-
-            return roomApi.startRoom({
-              archive_name: archiveName,
-              world_name: world.name,
-              server_mode: serverMode,
-              world_type: worldType
-            });
-          });
-
-          Promise.all(startPromises)
+          roomApi.startRoom({
+            room_id: selectedRoom.id,
+            world_ids: worldsToStart.map(world => world.id)
+          })
             .then(() => {
-              this.$message.success(`房间 ${selectedRoom.name} 的选中世界已启动`);
+              this.$message.success(`房间 ${selectedRoom.name} 的启动任务已提交`);
               this.startRoomDialogVisible = false;
-              // 刷新服务器列表
-              setTimeout(() => {
-                this.getServerList();
-              }, 3000);
             })
             .catch(error => {
               this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
@@ -1119,6 +1137,18 @@ export default {
 
 .resource-item {
   margin-bottom: 15px;
+}
+
+.metric-unavailable {
+  height: 16px;
+  line-height: 16px;
+  color: #909399;
+}
+
+.mode-hint {
+  margin-left: 12px;
+  color: #909399;
+  font-size: 12px;
 }
 
 :deep(.el-progress) {

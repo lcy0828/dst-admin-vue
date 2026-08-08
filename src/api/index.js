@@ -3,6 +3,7 @@ import config from './config';
 import apiConfig from './config';
 import axios from 'axios';
 import commandManager, { commandApi, COMMAND_TYPES } from './commandManager';
+import { legacyBackupApi, legacyRoomApi, legacySystemApi, legacyWorldApi } from './v2LegacyAdapters';
 
 // 服务器相关API
 export const serverApi = {
@@ -95,122 +96,7 @@ export const serverApi = {
   }
 };
 
-export const roomApi = {
-  getRoomList(params) {
-    return request.get('/dstserver/list', { params })
-  },
-  getRoomDetail(id) {
-    return request.get(`/rooms/${id}`);
-  },
-  createRoom(data) {
-    return request.post(`/rooms`, data);
-  },
-  updateRoom(id, data) {
-    return request.put(`/rooms/${id}`, data);
-  },
-  deleteRoom(id) {
-    return request.delete(`/rooms/${id}`);
-  },
-  getRoomWorlds(archiveName) {
-    return request.get("/dstserver/list")
-      .then(response => {
-        let worlds = [];
-        if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
-          const room = response.data.data.find(room => room.name === archiveName);
-          if (room && room.worlds && Array.isArray(room.worlds)) {
-            worlds = room.worlds.map(world => ({
-              worldName: world.name,
-              sessionName: `${archiveName}_${world.name}`,
-              // 根据type确定世界类型，如果没有明确type或type为unknown，则通过名称判断
-              type: world.type === 'forest' ? 'forest' :
-                   world.type === 'cave' ? 'cave' :
-                   world.name.includes('Forest') ? 'forest' : 'cave'
-            }));
-            return worlds;
-          }
-        }
-
-        // 如果新API没有返回数据，尝试旧的API
-        return axios.get(`${config.BASE_URL}/tmux/list`)
-          .then(oldResponse => {
-            if (oldResponse && oldResponse.data && oldResponse.data.status === 200 && Array.isArray(oldResponse.data.data)) {
-              // 筛选指定存档的世界
-              worlds = oldResponse.data.data
-                .filter(item => item.ArchiveName === archiveName)
-                .map(item => ({
-                  worldName: item.WorldName,
-                  sessionName: item.SessionName,
-                  type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
-                }));
-            } else if (oldResponse && oldResponse.data && Array.isArray(oldResponse.data)) {
-              // 备用数据格式
-              worlds = oldResponse.data
-                .filter(item => item.ArchiveName === archiveName)
-                .map(item => ({
-                  worldName: item.WorldName,
-                  sessionName: item.SessionName,
-                  type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
-                }));
-            }
-
-            return worlds;
-          })
-          .catch(error => {
-            console.error('获取旧API世界列表失败:', error);
-            return []; // 失败时返回空数组
-          });
-      })
-      .catch(error => {
-        console.error('获取新API世界列表失败, 尝试旧API:', error);
-
-        // 尝试旧API
-        return axios.get(`${config.BASE_URL}/tmux/list`)
-          .then(oldResponse => {
-            console.log('旧API服务器列表响应:', oldResponse);
-            let worlds = [];
-
-            if (oldResponse && oldResponse.data && oldResponse.data.status === 200 && Array.isArray(oldResponse.data.data)) {
-              // 筛选指定存档的世界
-              worlds = oldResponse.data.data
-                .filter(item => item.ArchiveName === archiveName)
-                .map(item => ({
-                  worldName: item.WorldName,
-                  sessionName: item.SessionName,
-                  type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
-                }));
-            } else if (oldResponse && oldResponse.data && Array.isArray(oldResponse.data)) {
-              // 备用数据格式
-              worlds = oldResponse.data
-                .filter(item => item.ArchiveName === archiveName)
-                .map(item => ({
-                  worldName: item.WorldName,
-                  sessionName: item.SessionName,
-                  type: item.WorldName.includes('Forest') ? 'forest' : 'cave'
-                }));
-            }
-
-            console.log('存档的世界列表:', worlds);
-            return worlds;
-          })
-          .catch(error => {
-            console.error('获取房间世界列表失败:', error);
-            return []; // 失败时返回空数组
-          });
-      });
-  },
-  startRoom(params) {
-    return request.post(`/tmux/start`, params);
-  },
-  stopRoom(id) {
-    return request.post(`/rooms/${id}/stop`);
-  },
-  backupRoom(id) {
-    return request.post(`/rooms/${id}/backup`);
-  },
-  saveWorldSettings(worldType, settings) {
-    return request.post(`/world/settings/${worldType}`, settings);
-  }
-};
+export const roomApi = legacyRoomApi;
 
 // 玩家相关API
 export const playerApi = {
@@ -334,135 +220,10 @@ export const modApi = {
 };
 
 // 系统相关API
-export const systemApi = {
-  // 获取仪表盘状态
-  getDashboardStatus() {
-    return request.get(`/dashboard/status`);
-  },
-  // 创建系统备份
-  createBackup(data) {
-    return request.post(`/system/backup`, data);
-  },
-  // 获取备份列表
-  getBackupList() {
-    return request.get(`/system/backups`);
-  },
-  // 从备份恢复
-  restoreFromBackup(id) {
-    return request.post(`/system/backup/${id}/restore`);
-  },
-  // 删除备份
-  deleteBackup(id) {
-    return request.delete(`/system/backup/${id}`);
-  },
-  // 获取系统状态
-  getSystemStatus() {
-    return request.get(`/system/status`);
-  },
-  // 更新系统配置
-  updateSystemConfig(data) {
-    return request.put(`/system/config`, data);
-  },
-  // 获取公告列表
-  getAnnouncements() {
-    return request.get(`/system/announcements`);
-  },
-  // 创建公告
-  createAnnouncement(data) {
-    return request.post(`/system/announcements`, data);
-  },
-  // 更新公告
-  updateAnnouncement(id, data) {
-    return request.put(`/system/announcements/${id}`, data);
-  },
-  // 删除公告
-  deleteAnnouncement(id) {
-    return request.delete(`/system/announcements/${id}`);
-  },
-  // 获取公告详情
-  getAnnouncementDetail(id) {
-    return request.get(`/system/announcements/${id}`);
-  },
-  // 获取Docker容器列表
-  getDockerContainers() {
-    return request.get("/dashboard/docker/containers");
-  },
-  // 启动Docker容器
-  startDockerContainer(containerId) {
-    return request.post(`/dashboard/docker/containers/${containerId}/start`);
-  },
-  // 停止Docker容器
-  stopDockerContainer(containerId) {
-    return request.post(`/dashboard/docker/containers/${containerId}/stop`);
-  },
-  // 删除Docker容器
-  deleteDockerContainer(containerId) {
-    return request.delete(`/dashboard/docker/containers/${containerId}`);
-  },
-  // 获取TMUX服务器列表
-  getTmuxServers() {
-    return request.get('/tmux/list');
-  },
-
-  // 停止TMUX服务器
-  stopTmuxServer(data) {
-    return request.post("/tmux/stop", data);
-  },
-
-  // 重启TMUX服务器
-  restartTmuxServer(data) {
-    return request.post("/tmux/restart", data);
-  },
-
-  // 获取本地版本信息
-  getLocalVersion() {
-    return request.get('/dstserver/localversion');
-  },
-
-  // 获取最新版本信息
-  getLatestVersion() {
-    return request.get('/dstserver/version');
-  },
-
-  // 更新饥荒服务器
-  updateDstServer(data) {
-    return request.post('/dstserver/update', data);
-  },
-
-  // 获取饥荒服务器更新状态
-  getDstUpdateStatus(session_name) {
-    return request.get('/dstserver/update/status', { params: { session_name } });
-  }
-};
+export const systemApi = legacySystemApi;
 
 // 备份管理相关API
-export const backupApi = {
-  // 获取备份列表
-  getBackupList() {
-    return request.get(`/backup/list`);
-  },
-  // 下载备份
-  downloadBackup(archive, backup) {
-    return request.get(`/backup/download`, { params: { archive, backup } });
-  },
-  // 创建备份
-  createBackup(archive) {
-    return request.post(`/backup/create`, { archive });
-  },
-  // 恢复备份
-  restoreBackup(archive, backup, target_name = null, overwrite_target = false) {
-    return request.post(`/backup/restore`, {
-      archive,
-      backup,
-      target_name,
-      overwrite_target
-    });
-  },
-  // 删除备份
-  deleteBackup(archive, backup) {
-    return request.post(`/backup/delete`, { archive, backup });
-  }
-};
+export const backupApi = legacyBackupApi;
 
 // 认证相关API
 export const authApi = {
@@ -565,36 +326,7 @@ export const roomConfigApi = {
   }
 };
 
-const worldApi = {
-  getWorldList() {
-    return request.get('/dstserver/list');
-  },
-
-  forestWorld(params) {
-    return request.post('/dstserver/forestworld', params);
-  },
-
-  caveWorld(params) {
-    return request.post('/dstserver/caveworld', params);
-  },
-
-  getServerIni(savename, worldname) {
-    return request.get(`/dstserver/serverini?savename=${savename}&worldname=${worldname}`);
-  },
-
-  saveServerIni(params) {
-    return request.post('/dstserver/serverini', params);
-  },
-
-  deleteWorld(params) {
-    return request.post('/dstserver/deleteworld', params);
-  },
-
-  // 获取世界状态信息
-  getWorldState(params) {
-    return request.post('/world/state', params);
-  }
-}
+const worldApi = legacyWorldApi;
 
 // 导出命令相关模块
 export { commandManager, commandApi, COMMAND_TYPES };

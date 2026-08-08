@@ -13,35 +13,35 @@
         <el-card shadow="hover" class="details-card">
           <div slot="header" class="card-header">
             <span>世界信息</span>
-            <el-tag :type="world.status === 'running' ? 'success' : 'info'">
-              {{ world.status === 'running' ? '运行中' : '已停止' }}
+            <el-tag :type="getStatusTag(world.status)">
+              {{ getStatusName(world.status) }}
             </el-tag>
           </div>
           
           <div class="world-info">
             <div class="info-item">
               <div class="info-label">世界名称</div>
-              <div class="info-value">{{ world.name }}</div>
+              <div class="info-value">{{ world.name || '--' }}</div>
             </div>
             <div class="info-item">
               <div class="info-label">世界类型</div>
               <div class="info-value">
-                <el-tag :type="world.type === 'master' ? 'primary' : 'success'">
-                  {{ world.type === 'master' ? '主世界' : '洞穴' }}
+                <el-tag :type="getTypeTag(world.type)">
+                  {{ getTypeName(world.type) }}
                 </el-tag>
               </div>
             </div>
             <div class="info-item">
               <div class="info-label">当前季节</div>
-              <div class="info-value">{{ world.season }}</div>
+              <div class="info-value">{{ world.season || '--' }}</div>
             </div>
             <div class="info-item">
               <div class="info-label">当前天数</div>
-              <div class="info-value">{{ world.day }}</div>
+              <div class="info-value">{{ world.day ?? '--' }}</div>
             </div>
             <div class="info-item">
               <div class="info-label">描述</div>
-              <div class="info-value description">{{ world.description }}</div>
+              <div class="info-value description">{{ world.description || '--' }}</div>
             </div>
           </div>
         </el-card>
@@ -54,19 +54,19 @@
           <el-row :gutter="20">
             <el-col :span="8">
               <div class="stat-item">
-                <div class="stat-value">12</div>
+                <div class="stat-value">--</div>
                 <div class="stat-label">玩家访问次数</div>
               </div>
             </el-col>
             <el-col :span="8">
               <div class="stat-item">
-                <div class="stat-value">35</div>
+                <div class="stat-value">{{ world.day ?? '--' }}</div>
                 <div class="stat-label">总游戏天数</div>
               </div>
             </el-col>
             <el-col :span="8">
               <div class="stat-item">
-                <div class="stat-value">5</div>
+                <div class="stat-value">--</div>
                 <div class="stat-label">死亡次数</div>
               </div>
             </el-col>
@@ -85,6 +85,7 @@
               :type="world.status === 'running' ? 'danger' : 'success'" 
               icon="el-icon-video-play"
               class="action-button"
+              :disabled="world.controlAvailable === false"
               @click="toggleWorldStatus">
               {{ world.status === 'running' ? '停止世界' : '启动世界' }}
             </el-button>
@@ -121,22 +122,7 @@
           </div>
           
           <div class="activity-list">
-            <div class="activity-item">
-              <div class="activity-time">10分钟前</div>
-              <div class="activity-content">玩家 <b>Steve</b> 加入了世界</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-time">30分钟前</div>
-              <div class="activity-content">进入了 <b>冬季</b></div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-time">1小时前</div>
-              <div class="activity-content">玩家 <b>Alex</b> 死亡</div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-time">2小时前</div>
-              <div class="activity-content">世界启动</div>
-            </div>
+            <el-empty description="暂无真实活动数据" :image-size="60" />
           </div>
         </el-card>
       </el-col>
@@ -145,20 +131,24 @@
 </template>
 
 <script>
+import { roomApi } from '../../api/index';
+
 export default {
   name: 'WorldDetails',
   data() {
     return {
       loading: false,
+      roomId: null,
       worldId: null,
       world: {
-        id: 1,
-        name: '生存世界',
-        type: 'master',
-        season: '秋季',
-        day: 21,
-        status: 'running',
-        description: '基础生存世界，适合新手玩家体验。这个世界资源丰富，怪物刷新率较低，是学习游戏机制的理想环境。'
+        id: null,
+        name: '',
+        type: 'unknown',
+        season: null,
+        day: null,
+        status: 'unknown',
+        description: '',
+        controlAvailable: false
       }
     }
   },
@@ -169,8 +159,28 @@ export default {
     editWorld() {
       this.$router.push({
         path: '/worlds/settings',
-        query: { id: this.worldId }
+        query: { id: this.worldId, roomId: this.roomId, worldId: this.worldId }
       });
+    },
+    getStatusName(status) {
+      if (status === 'running') return '运行中';
+      if (status === 'stopped') return '已停止';
+      return '未知';
+    },
+    getStatusTag(status) {
+      if (status === 'running') return 'success';
+      if (status === 'stopped') return 'info';
+      return 'warning';
+    },
+    getTypeName(type) {
+      if (type === 'forest' || type === 'master') return '主世界';
+      if (type === 'cave') return '洞穴';
+      return '其他';
+    },
+    getTypeTag(type) {
+      if (type === 'forest' || type === 'master') return 'primary';
+      if (type === 'cave') return 'success';
+      return 'info';
     },
     toggleWorldStatus() {
       const action = this.world.status === 'running' ? '停止' : '启动';
@@ -180,17 +190,14 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-        
-        // 模拟API调用
-        setTimeout(() => {
-          this.world.status = this.world.status === 'running' ? 'stopped' : 'running';
-          
-          this.loading = false;
-          this.$message({
-            message: `世界 ${this.world.name} 已${action}`,
-            type: 'success'
-          });
-        }, 1000);
+        const request = { room_id: this.roomId, world_id: this.worldId };
+        const operation = this.world.status === 'running'
+          ? roomApi.stopRoom(request)
+          : roomApi.startRoom(request);
+        operation
+          .then(response => this.$message.success(response.msg || `${action}任务已提交`))
+          .catch(error => this.$message.error(`${action}失败：${error.message}`))
+          .finally(() => { this.loading = false; });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -205,16 +212,10 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-        
-        // 模拟API调用
-        setTimeout(() => {
-          this.loading = false;
-          this.$message({
-            type: 'success',
-            message: `世界 ${this.world.name} 正在重新生成...`
-          });
-          this.goBack();
-        }, 1000);
+        roomApi.regenerateWorld({ room_id: this.roomId, world_id: this.worldId })
+          .then(response => this.$message.success(response.msg))
+          .catch(error => this.$message.error(error.message))
+          .finally(() => { this.loading = false; });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -223,21 +224,16 @@ export default {
       });
     },
     backupWorld() {
-      this.$confirm(`确定要备份世界 "${this.world.name}" 吗?`, '提示', {
+      this.$confirm(`v2 后端将备份世界 "${this.world.name}" 所属的整个房间 "${this.world.roomName}"，确定继续吗?`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'info'
       }).then(() => {
         this.loading = true;
-        
-        // 模拟API调用
-        setTimeout(() => {
-          this.loading = false;
-          this.$message({
-            type: 'success',
-            message: `世界 ${this.world.name} 备份已创建`
-          });
-        }, 1000);
+        roomApi.backupRoom(this.roomId, `世界 ${this.world.name}`)
+          .then(response => this.$message.success(response.msg || '房间备份任务已提交'))
+          .catch(error => this.$message.error(`备份失败：${error.message}`))
+          .finally(() => { this.loading = false; });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -252,16 +248,13 @@ export default {
         type: 'warning'
       }).then(() => {
         this.loading = true;
-        
-        // 模拟API调用
-        setTimeout(() => {
-          this.loading = false;
-          this.$message({
-            type: 'success',
-            message: `世界 ${this.world.name} 已删除`
-          });
-          this.goBack();
-        }, 1000);
+        roomApi.deleteWorld({ room_id: this.roomId, world_id: this.worldId })
+          .then(response => {
+            this.$message.success(response.msg);
+            this.goBack();
+          })
+          .catch(error => this.$message.error(error.message))
+          .finally(() => { this.loading = false; });
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -270,23 +263,32 @@ export default {
       });
     },
     loadWorldData() {
-      if (!this.worldId) return;
-      
+      if (!this.roomId || !this.worldId) return;
       this.loading = true;
-      
-      // 模拟API调用，获取世界详情
-      setTimeout(() => {
-        // 在实际项目中，这里会从API获取数据
-        // 这里假设已经获取到了数据并存储在this.world中
-        
-        this.loading = false;
-      }, 1000);
+      Promise.all([
+        roomApi.getRoomDetail(this.roomId),
+        roomApi.getRoomWorlds(this.roomId)
+      ])
+        .then(([roomResponse, worlds]) => {
+          const world = worlds.find(item => item.id === this.worldId);
+          if (!world) throw new Error('未找到指定世界');
+          this.world = {
+            ...world,
+            roomName: roomResponse.data.name,
+            description: world.description || ''
+          };
+        })
+        .catch(error => {
+          this.$message.error(`获取世界详情失败：${error.message}`);
+        })
+        .finally(() => { this.loading = false; });
     }
   },
   created() {
-    const { id } = this.$route.query;
-    if (id) {
-      this.worldId = parseInt(id);
+    const { id, roomId, worldId } = this.$route.query;
+    if (roomId && (worldId || id)) {
+      this.roomId = roomId;
+      this.worldId = worldId || id;
       this.loadWorldData();
     } else {
       this.$message.error('未指定世界ID');
@@ -400,4 +402,4 @@ export default {
 .activity-content {
   color: #536159;
 }
-</style> 
+</style>

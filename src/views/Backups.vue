@@ -125,8 +125,6 @@
 </template>
 
 <script>
-import apiConfig from '@/api/config';
-
 export default {
   name: 'Backups',
   data() {
@@ -240,24 +238,18 @@ export default {
     },
     downloadBackup(backup) {
       const { archive_name, name } = backup;
-      
-      // 创建一个临时的a标签用于下载
-      const link = document.createElement('a');
-      
-      // 获取API基础地址
-      const baseUrl = apiConfig.BASE_URL;
-      // 确保链接正确构建
-      link.href = `${baseUrl}/backup/download?archive=${archive_name}&backup=${name}`;
-      
-      link.setAttribute('download', name);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      this.$message({
-        message: `正在下载备份：${name}`,
-        type: 'success'
-      });
+
+      this.$api.backupApi.downloadBackup(archive_name, name)
+        .then(url => {
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', name);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          this.$message.success(`正在下载备份：${name}`);
+        })
+        .catch(error => this.$message.error(`下载备份失败：${error.message}`));
     },
     
     // 显示恢复备份对话框
@@ -500,4 +492,4 @@ export default {
   background-color: #f1f4ed;
   border-radius: 4px;
 }
-</style> 
+</style>
