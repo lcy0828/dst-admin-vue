@@ -5,17 +5,18 @@
           <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
           <div class="task-header-actions"><UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/logs')"><FileText data-icon="inline-start" />执行日志</UiButton></div></div></div></CardHeader>
       <CardContent>
-        <FieldGroup class="filter-grid"><Field><FieldLabel>任务类型</FieldLabel><UiSelect v-model="listQuery.type"><SelectTrigger><SelectValue placeholder="选择类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="function">函数</SelectItem><SelectItem value="shell">Shell 命令</SelectItem><SelectItem value="tmux_command">TMUX 命令</SelectItem><SelectItem value="tmux_raw_command">TMUX 原始命令</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel>状态</FieldLabel><UiSelect :model-value="String(listQuery.status)" @update:model-value="listQuery.status = $event"><SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="1">启用</SelectItem><SelectItem value="0">禁用</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-keyword">关键词</FieldLabel><UiInput id="task-keyword" v-model="listQuery.keyword" placeholder="搜索任务名称或描述" @keyup.enter="fetchData" /></Field><div class="flex items-end gap-2"><UiButton @click="fetchData"><Search data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
+        <FieldGroup class="filter-grid"><Field><FieldLabel for="task-type-filter">任务类型</FieldLabel><UiSelect v-model="listQuery.type"><SelectTrigger id="task-type-filter"><SelectValue placeholder="选择类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="function">函数</SelectItem><SelectItem value="shell">Shell 命令</SelectItem><SelectItem value="tmux_command">TMUX 命令</SelectItem><SelectItem value="tmux_raw_command">TMUX 原始命令</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-status-filter">状态</FieldLabel><UiSelect :model-value="String(listQuery.status)" @update:model-value="listQuery.status = $event"><SelectTrigger id="task-status-filter"><SelectValue placeholder="选择状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="1">启用</SelectItem><SelectItem value="0">禁用</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-keyword">关键词</FieldLabel><UiInput id="task-keyword" v-model="listQuery.keyword" placeholder="搜索任务名称或描述" @keyup.enter="fetchData" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
+        <Alert v-if="fetchError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>任务列表加载失败</AlertTitle><AlertDescription>无法读取当前房间的任务数据，请检查连接后重试。</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="retryFetch">重新加载</UiButton></AlertAction></Alert>
         <div v-if="loading && taskList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 6" :key="index" class="h-14 w-full" /></div>
         <Empty v-else-if="taskList.length === 0"><EmptyHeader><EmptyTitle>暂无定时任务</EmptyTitle><EmptyDescription>当前筛选条件下没有任务。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton></EmptyContent></Empty>
         <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>任务名称</TableHead><TableHead>Cron 表达式</TableHead><TableHead>类型</TableHead><TableHead>目标</TableHead><TableHead>依赖任务</TableHead><TableHead>超时/重试</TableHead><TableHead>上次执行</TableHead><TableHead>状态</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
-          <TableRow v-for="task in taskList" :key="task.id" :class="task.status === 0 ? 'opacity-60' : ''"><TableCell>{{ task.id }}</TableCell><TableCell><div class="min-w-40"><div class="flex items-center gap-2"><span class="font-medium">{{ task.name }}</span><Badge v-if="isNewTask(task)" variant="destructive">NEW</Badge></div><p v-if="task.description" class="mt-1 max-w-56 truncate text-xs text-muted-foreground">{{ task.description }}</p></div></TableCell><TableCell class="font-mono text-xs">{{ task.spec }}</TableCell><TableCell><Badge variant="outline">{{ getTaskTypeName(task.type) }}</Badge></TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="block max-w-48 truncate">{{ truncate(getFormattedTarget(task), 40) }}</span></TooltipTrigger><TooltipContent>{{ getFormattedTarget(task) }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell><span v-if="!task.dependencies || task.dependencies.length === 0" class="text-muted-foreground">无依赖</span><div v-else class="flex max-w-48 flex-wrap gap-1"><Badge v-for="dep in task.dependencies" :key="dep.id || dep" variant="secondary">{{ dep.name || dep.id || dep }}</Badge></div></TableCell><TableCell><div class="flex min-w-24 flex-col gap-1 text-xs"><span><Clock class="inline size-3" /> {{ task.timeout || '无限' }}</span><span><RefreshCw class="inline size-3" /> {{ task.retry_times || 0 }}</span></div></TableCell><TableCell><div class="min-w-36"><span v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'">{{ formatDateTime(task.last_run_time) }}</span><span v-else class="text-muted-foreground">未执行</span><Badge v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'" class="mt-1" :variant="task.last_status === 1 ? 'default' : 'destructive'">{{ task.last_status === 1 ? '成功' : '失败' }}</Badge></div></TableCell><TableCell><Badge :variant="task.status === 1 ? 'default' : 'secondary'">{{ task.status === 1 ? '启用' : '禁用' }}</Badge></TableCell><TableCell><div class="flex min-w-max justify-end gap-1"><UiButton size="icon-sm" variant="outline" title="立即执行" @click="handleRunNow(task)"><Play /></UiButton><UiButton size="icon-sm" variant="ghost" :title="task.status === 1 ? '禁用任务' : '启用任务'" @click="handleToggleStatus(task)"><CircleOff v-if="task.status === 1" /><CircleCheck v-else /></UiButton><UiButton size="icon-sm" variant="ghost" title="编辑任务" @click="handleEdit(task)"><Pencil /></UiButton><DropdownMenu><DropdownMenuTrigger as-child><UiButton size="icon-sm" variant="ghost" title="更多操作"><Ellipsis /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuGroup><DropdownMenuItem @select="viewTaskLogs(task.id)"><FileText />查看日志</DropdownMenuItem><DropdownMenuItem @select="viewTaskStats(task.id)"><ChartNoAxesColumn />查看统计</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" @select="handleDelete(task)"><Trash2 />删除任务</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent></DropdownMenu></div></TableCell></TableRow>
+          <TableRow v-for="task in taskList" :key="task.id" :class="task.status === 0 ? 'opacity-60' : ''"><TableCell>{{ task.id }}</TableCell><TableCell><div class="min-w-40"><div class="flex items-center gap-2"><span class="font-medium">{{ task.name }}</span><Badge v-if="isNewTask(task)" variant="destructive">NEW</Badge></div><p v-if="task.description" class="mt-1 max-w-56 truncate text-xs text-muted-foreground">{{ task.description }}</p></div></TableCell><TableCell class="font-mono text-xs">{{ task.spec }}</TableCell><TableCell><Badge variant="outline">{{ getTaskTypeName(task.type) }}</Badge></TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="block max-w-48 truncate">{{ truncate(getFormattedTarget(task), 40) }}</span></TooltipTrigger><TooltipContent>{{ getFormattedTarget(task) }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell><span v-if="!task.dependencies || task.dependencies.length === 0" class="text-muted-foreground">无依赖</span><div v-else class="flex max-w-48 flex-wrap gap-1"><Badge v-for="dep in task.dependencies" :key="dep.id || dep" variant="secondary">{{ dep.name || dep.id || dep }}</Badge></div></TableCell><TableCell><div class="flex min-w-24 flex-col gap-1 text-xs"><span><Clock class="inline size-3" /> {{ task.timeout || '无限' }}</span><span><RefreshCw class="inline size-3" /> {{ task.retry_times || 0 }}</span></div></TableCell><TableCell><div class="min-w-36"><span v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'">{{ formatDateTime(task.last_run_time) }}</span><span v-else class="text-muted-foreground">未执行</span><Badge v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'" class="mt-1" :variant="task.last_status === 1 ? 'default' : 'destructive'">{{ task.last_status === 1 ? '成功' : '失败' }}</Badge></div></TableCell><TableCell><Badge :variant="task.status === 1 ? 'default' : 'secondary'">{{ task.status === 1 ? '启用' : '禁用' }}</Badge></TableCell><TableCell><div class="flex min-w-max justify-end gap-1"><UiButton size="icon-sm" variant="outline" title="立即执行" :aria-label="`立即执行任务 ${task.name}`" @click="handleRunNow(task)"><Play /></UiButton><UiButton size="icon-sm" variant="ghost" :title="task.status === 1 ? '禁用任务' : '启用任务'" :aria-label="task.status === 1 ? `禁用任务 ${task.name}` : `启用任务 ${task.name}`" @click="handleToggleStatus(task)"><CircleOff v-if="task.status === 1" /><CircleCheck v-else /></UiButton><UiButton size="icon-sm" variant="ghost" title="编辑任务" :aria-label="`编辑任务 ${task.name}`" @click="handleEdit(task)"><Pencil /></UiButton><DropdownMenu><DropdownMenuTrigger as-child><UiButton size="icon-sm" variant="ghost" title="更多操作" :aria-label="`打开任务 ${task.name} 的更多操作`"><Ellipsis /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuGroup><DropdownMenuItem @select="viewTaskLogs(task.id)"><FileText />查看日志</DropdownMenuItem><DropdownMenuItem @select="viewTaskStats(task.id)"><ChartNoAxesColumn />查看统计</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" @select="handleDelete(task)"><Trash2 />删除任务</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent></DropdownMenu></div></TableCell></TableRow>
         </TableBody></ShadcnTable></div>
-        <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>每页</span><UiSelect :model-value="String(listQuery.limit)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10,20,50,100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>共 {{ total }} 条</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.limit" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
+        <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>每页</span><UiSelect :model-value="String(listQuery.limit)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24" aria-label="每页显示条数"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10,20,50,100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>共 {{ total }} 条</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.limit" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
       </CardContent>
     </Card>
 
-    <UiDialog v-model:open="dialogVisible"><DialogContent class="max-w-3xl"><DialogHeader><DialogTitle>执行结果</DialogTitle><DialogDescription>任务本次手动执行的返回信息</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="dialogVisible"><DialogScrollContent class="max-w-3xl"><DialogHeader><DialogTitle>执行结果</DialogTitle><DialogDescription>任务本次手动执行的返回信息</DialogDescription></DialogHeader>
       <div v-if="taskResult" class="task-result">
         <div v-if="taskResult.success !== undefined">
           <p><strong>执行状态：</strong> <Badge :variant="taskResult.success ? 'default' : 'destructive'">{{ taskResult.success ? '成功' : '失败' }}</Badge></p>
@@ -23,47 +24,28 @@
           <p v-if="taskResult.duration != null"><strong>执行耗时：</strong> {{ formatDuration(taskResult.duration) }}</p>
         </div>
 
-        <div v-if="taskResult.message" class="result-message">
-          <strong>消息：</strong>
-          <p>{{ taskResult.message }}</p>
-        </div>
+        <Alert v-if="taskResult.message"><Info /><AlertTitle>执行消息</AlertTitle><AlertDescription>{{ taskResult.message }}</AlertDescription></Alert>
 
         <div v-if="taskResult.output" class="result-output">
           <strong>输出结果：</strong>
           <pre>{{ taskResult.output }}</pre>
         </div>
 
-        <div v-if="!taskResult.success && !taskResult.output && !taskResult.message" class="result-empty">
-          <Alert><Info /><AlertTitle>任务已开始异步执行</AlertTitle><AlertDescription>任务正在后台执行，请查看任务日志获取执行结果。</AlertDescription></Alert>
-        </div>
+        <Alert v-if="!taskResult.success && !taskResult.output && !taskResult.message" class="my-4"><Info /><AlertTitle>任务已开始异步执行</AlertTitle><AlertDescription>任务正在后台执行，请查看任务日志获取执行结果。</AlertDescription></Alert>
       </div>
-      <div v-else class="task-result-empty">
-        <Alert><Info /><AlertTitle>任务已开始异步执行</AlertTitle><AlertDescription>任务正在后台执行，请查看任务日志获取执行结果。</AlertDescription></Alert>
-      </div>
-      <DialogFooter><UiButton variant="outline" @click="dialogVisible = false">关闭</UiButton><UiButton @click="viewTaskLogs(currentTaskId)">查看任务日志</UiButton></DialogFooter></DialogContent></UiDialog>
+      <Alert v-else><Info /><AlertTitle>任务已开始异步执行</AlertTitle><AlertDescription>任务正在后台执行，请查看任务日志获取执行结果。</AlertDescription></Alert>
+      <DialogFooter><UiButton variant="outline" @click="dialogVisible = false">关闭</UiButton><UiButton @click="viewTaskLogs(currentTaskId)">查看任务日志</UiButton></DialogFooter></DialogScrollContent></UiDialog>
 
-    <UiDialog v-model:open="statsDialogVisible"><DialogContent class="max-w-4xl"><DialogHeader><DialogTitle>任务统计</DialogTitle><DialogDescription>任务历史执行表现和耗时趋势</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="statsDialogVisible"><DialogScrollContent class="max-w-4xl"><DialogHeader><DialogTitle>任务统计</DialogTitle><DialogDescription>任务历史执行表现和耗时趋势</DialogDescription></DialogHeader>
       <div v-if="statsLoading" class="flex flex-col gap-3"><Skeleton class="h-24 w-full" /><Skeleton class="h-72 w-full" /></div><div v-else class="task-stats">
         <div v-if="taskStats" class="stats-overview">
-          <div class="stats-card success-rate">
-            <div class="stats-title">成功率</div>
-            <div class="stats-value">{{ taskStats.success_rate }}%</div>
-          </div>
-          <div class="stats-card avg-duration">
-            <div class="stats-title">平均耗时</div>
-            <div class="stats-value">
+          <Card size="sm"><CardHeader><CardDescription>成功率</CardDescription><CardTitle>{{ taskStats.success_rate }}%</CardTitle></CardHeader></Card>
+          <Card size="sm"><CardHeader><CardDescription>平均耗时</CardDescription><CardTitle>
               {{ taskStats.avg_duration }} {{ taskStats.duration_unit === 's' ? '秒' : '毫秒' }}
               <span v-if="taskStats.duration_unit === 'ms'" class="unit-note">(约 {{ (taskStats.avg_duration / 1000).toFixed(2) }} 秒)</span>
-            </div>
-          </div>
-          <div class="stats-card total-runs">
-            <div class="stats-title">总执行次数</div>
-            <div class="stats-value">{{ taskStats.total_runs }}</div>
-          </div>
-          <div class="stats-card last-run">
-            <div class="stats-title">最近执行</div>
-            <div class="stats-value">{{ taskStats.last_run || '无' }}</div>
-          </div>
+            </CardTitle></CardHeader></Card>
+          <Card size="sm"><CardHeader><CardDescription>总执行次数</CardDescription><CardTitle>{{ taskStats.total_runs }}</CardTitle></CardHeader></Card>
+          <Card size="sm"><CardHeader><CardDescription>最近执行</CardDescription><CardTitle>{{ taskStats.last_run || '无' }}</CardTitle></CardHeader></Card>
         </div>
         <div v-if="taskStats && (taskStats.success_count > 0 || taskStats.fail_count > 0)" class="stats-detail">
           <div class="grid gap-4 sm:grid-cols-2">
@@ -90,22 +72,22 @@
           <div id="durationChart" class="h-72 w-full"></div>
         </div>
       </div>
-      <DialogFooter><UiButton variant="outline" @click="statsDialogVisible = false">关闭</UiButton></DialogFooter></DialogContent></UiDialog>
+      <DialogFooter><UiButton variant="outline" @click="statsDialogVisible = false">关闭</UiButton></DialogFooter></DialogScrollContent></UiDialog>
   </div>
 </template>
 
 <script>
-import { ChartNoAxesColumn, CircleCheck, CircleOff, Clock, Ellipsis, FileText, Info, Pencil, Play, Plus, RefreshCw, Search, Trash2 } from '@lucide/vue';
+import { ChartNoAxesColumn, CircleAlert, CircleCheck, CircleOff, Clock, Ellipsis, FileText, Info, Pencil, Play, Plus, RefreshCw, Search, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { getSystemPreferences } from '@/utils/systemPreferences';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -113,6 +95,7 @@ import { Input as UiInput } from '@/components/ui/input';
 import { Pagination as ShadcnPagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { confirmAction } from '@/lib/feedback';
@@ -120,14 +103,14 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'TaskList',
   components: {
-    Alert, AlertDescription, AlertTitle, AutomationRoomSelect, Badge, Card, CardContent,
-    CardDescription, CardHeader, CardTitle, ChartNoAxesColumn, CircleCheck, CircleOff, Clock,
-    DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    Alert, AlertAction, AlertDescription, AlertTitle, AutomationRoomSelect, Badge, Card, CardContent,
+    CardDescription, CardHeader, CardTitle, ChartNoAxesColumn, CircleAlert, CircleCheck, CircleOff, Clock,
+    DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle,
     DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator,
     DropdownMenuTrigger, Ellipsis, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle,
     Field, FieldGroup, FieldLabel, FileText, Info, PaginationContent, PaginationEllipsis,
     PaginationItem, PaginationNext, PaginationPrevious, Pencil, Play, Plus, RefreshCw, Search,
-    ShadcnPagination, ShadcnTable, Skeleton, TableBody, TableCell, TableHead, TableHeader,
+    ShadcnPagination, ShadcnTable, Skeleton, Spinner, TableBody, TableCell, TableHead, TableHeader,
     SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, TableRow, Tooltip,
     TooltipContent, TooltipProvider, TooltipTrigger, Trash2, UiButton, UiDialog, UiInput, UiSelect
   },
@@ -158,6 +141,30 @@ export default {
     };
   },
   methods: {
+    chartColor(variable) {
+      return getComputedStyle(document.documentElement).getPropertyValue(variable).trim() || getSystemPreferences().theme;
+    },
+    themedChartOption(option) {
+      const foreground = this.chartColor('--foreground');
+      const muted = this.chartColor('--muted-foreground');
+      const border = this.chartColor('--border');
+      const themeAxis = axis => ({
+        ...axis,
+        nameTextStyle: { color: muted, ...axis?.nameTextStyle },
+        axisLabel: { color: muted, ...axis?.axisLabel },
+        axisLine: { ...axis?.axisLine, lineStyle: { color: border, ...axis?.axisLine?.lineStyle } },
+        splitLine: { ...axis?.splitLine, lineStyle: { color: border, ...axis?.splitLine?.lineStyle } }
+      });
+      return {
+        ...option,
+        backgroundColor: 'transparent',
+        textStyle: { color: foreground, ...option.textStyle },
+        title: { ...option.title, textStyle: { color: foreground, ...option.title?.textStyle } },
+        legend: option.legend ? { ...option.legend, textStyle: { color: muted, ...option.legend.textStyle } } : option.legend,
+        xAxis: themeAxis(option.xAxis),
+        yAxis: themeAxis(option.yAxis)
+      };
+    },
     truncate(value, length) {
       if (!value) return '';
       if (value.length <= length) return value;
@@ -349,6 +356,7 @@ export default {
 
     fetchData() {
       this.loading = true;
+      this.fetchError = false;
       const query = {
         ...this.listQuery,
         type: this.listQuery.type === 'all' ? '' : this.listQuery.type,
@@ -933,7 +941,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#4f8a5b'
+              color: this.chartColor('--primary')
             },
             data: data.success || []
           },
@@ -942,14 +950,14 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#c94f4f'
+              color: this.chartColor('--destructive')
             },
             data: data.failed || []
           }
         ]
       };
 
-      this.executionChart.setOption(option);
+      this.executionChart.setOption(this.themedChartOption(option));
     },
     initDurationChart(data) {
       const chartDom = document.getElementById('durationChart');
@@ -994,7 +1002,7 @@ export default {
         ]
       };
 
-      this.durationChart.setOption(option);
+      this.durationChart.setOption(this.themedChartOption(option));
     },
     retryFetch() {
       this.fetchError = false;
@@ -1226,26 +1234,6 @@ export default {
   margin-top: 3px;
 }
 
-/* 操作按钮 */
-.action-buttons {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-.action-buttons > * {
-  margin: 0 3px;
-}
-
-.action-buttons > * {
-  margin: 0 3px;
-}
-
-:deep(.danger-item) {
-  color: var(--destructive);
-}
-
 /* 统计对话框样式 */
 .task-result {
   padding: 10px;
@@ -1253,19 +1241,6 @@ export default {
 .task-result p {
   margin: 10px 0;
   line-height: 1.5;
-}
-.task-result-empty {
-  padding: 20px 0;
-}
-.result-message {
-  margin: 15px 0;
-  padding: 10px;
-  background-color: var(--muted);
-  border-radius: 4px;
-}
-.result-message p {
-  margin: 5px 0;
-  color: var(--muted-foreground);
 }
 .result-output {
   margin-top: 15px;
@@ -1282,54 +1257,18 @@ export default {
   font-size: 13px;
   color: var(--foreground);
 }
-.result-empty {
-  margin: 15px 0;
-}
 .stats-overview {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 16px;
 }
-.stats-card {
-  min-width: 0;
-  margin: 0;
-  padding: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: none;
-  text-align: left;
-}
-.stats-title {
-  font-size: 14px;
-  color: var(--muted-foreground);
-  margin-bottom: 10px;
-}
-.stats-value {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--foreground);
-}
-
 .unit-note {
   font-size: 12px;
   font-weight: normal;
   color: var(--muted-foreground);
   display: block;
   margin-top: 5px;
-}
-.success-rate {
-  border-left: 4px solid var(--primary);
-}
-.avg-duration {
-  border-left: 4px solid var(--primary);
-}
-.total-runs {
-  border-left: 4px solid var(--primary);
-}
-.last-run {
-  border-left: 4px solid var(--muted-foreground);
 }
 .stats-detail {
   margin: 20px 0;

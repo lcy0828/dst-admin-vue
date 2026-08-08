@@ -6,7 +6,7 @@
           <div><CardTitle>任务组管理</CardTitle><CardDescription>按用途组织任务并统一控制启用状态</CardDescription></div>
           <div class="flex flex-wrap gap-2">
             <UiButton size="sm" @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton>
-            <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><RefreshCw data-icon="inline-start" />刷新</UiButton>
+            <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton>
             <UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton>
           </div>
         </div>
@@ -27,11 +27,11 @@
                 <TableCell><router-link :to="`/cron/group/${group.id}`"><Badge variant="secondary">{{ group.task_count || 0 }} 个任务</Badge></router-link></TableCell>
                 <TableCell><Badge :variant="group.status === 1 ? 'default' : 'secondary'">{{ group.status === 1 ? '启用' : '禁用' }}</Badge></TableCell>
                 <TableCell><div class="flex min-w-max justify-end gap-1">
-                  <UiButton size="icon-sm" variant="outline" :title="group.status === 1 ? '禁用' : '启用'" @click="handleToggleStatus(group)"><CircleOff v-if="group.status === 1" /><CircleCheck v-else /></UiButton>
-                  <UiButton size="icon-sm" variant="ghost" title="编辑" @click="handleEdit(group)"><Pencil /></UiButton>
-                  <UiButton size="icon-sm" variant="ghost" title="查看详情" @click="$router.push(`/cron/group/${group.id}`)"><Eye /></UiButton>
-                  <UiButton size="icon-sm" variant="ghost" title="统计数据" @click="viewGroupStats(group.id)"><ChartNoAxesColumn /></UiButton>
-                  <UiButton size="icon-sm" variant="destructive" title="删除" :disabled="group.task_count > 0" @click="handleDelete(group)"><Trash2 /></UiButton>
+                  <UiButton size="icon-sm" variant="outline" :title="group.status === 1 ? '禁用' : '启用'" :aria-label="group.status === 1 ? `禁用任务组 ${group.name}` : `启用任务组 ${group.name}`" @click="handleToggleStatus(group)"><CircleOff v-if="group.status === 1" /><CircleCheck v-else /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" title="编辑" :aria-label="`编辑任务组 ${group.name}`" @click="handleEdit(group)"><Pencil /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" title="查看详情" :aria-label="`查看任务组 ${group.name}`" @click="$router.push(`/cron/group/${group.id}`)"><Eye /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" title="统计数据" :aria-label="`查看任务组 ${group.name} 的统计数据`" @click="viewGroupStats(group.id)"><ChartNoAxesColumn /></UiButton>
+                  <UiButton size="icon-sm" variant="destructive" title="删除" :aria-label="`删除任务组 ${group.name}`" :disabled="group.task_count > 0" @click="handleDelete(group)"><Trash2 /></UiButton>
                 </div></TableCell>
               </TableRow>
             </TableBody>
@@ -41,27 +41,15 @@
     </Card>
 
     <UiDialog v-model:open="statsDialogVisible">
-      <DialogContent class="max-w-4xl">
+      <DialogScrollContent class="max-w-4xl">
         <DialogHeader><DialogTitle>任务组统计</DialogTitle><DialogDescription>近 30 天任务执行情况</DialogDescription></DialogHeader>
         <div v-if="statsLoading" class="flex flex-col gap-3"><Skeleton class="h-20 w-full" /><Skeleton class="h-72 w-full" /></div>
         <div v-else class="group-stats">
         <div v-if="groupStats" class="stats-overview">
-          <div class="stats-card total-tasks">
-            <div class="stats-title">总任务数</div>
-            <div class="stats-value">{{ groupStats.total_tasks }}</div>
-          </div>
-          <div class="stats-card enabled-tasks">
-            <div class="stats-title">启用任务数</div>
-            <div class="stats-value">{{ groupStats.enabled_tasks }}</div>
-          </div>
-          <div class="stats-card success-rate">
-            <div class="stats-title">成功率</div>
-            <div class="stats-value">{{ groupStats.success_rate }}%</div>
-          </div>
-          <div class="stats-card avg-duration">
-            <div class="stats-title">平均耗时</div>
-            <div class="stats-value">{{ groupStats.avg_duration }}秒</div>
-          </div>
+          <Card size="sm"><CardHeader><CardDescription>总任务数</CardDescription><CardTitle>{{ groupStats.total_tasks }}</CardTitle></CardHeader></Card>
+          <Card size="sm"><CardHeader><CardDescription>启用任务数</CardDescription><CardTitle>{{ groupStats.enabled_tasks }}</CardTitle></CardHeader></Card>
+          <Card size="sm"><CardHeader><CardDescription>成功率</CardDescription><CardTitle>{{ groupStats.success_rate }}%</CardTitle></CardHeader></Card>
+          <Card size="sm"><CardHeader><CardDescription>平均耗时</CardDescription><CardTitle>{{ groupStats.avg_duration }} 秒</CardTitle></CardHeader></Card>
         </div>
         <div class="stats-charts" v-if="groupStats">
           <div id="groupExecutionChart" class="h-72 w-full"></div>
@@ -69,7 +57,7 @@
         <Empty v-else><EmptyHeader><EmptyTitle>暂无统计数据</EmptyTitle></EmptyHeader></Empty>
         </div>
         <DialogFooter><UiButton variant="outline" @click="statsDialogVisible = false">关闭</UiButton><UiButton @click="$router.push('/cron/charts')">查看更多图表</UiButton></DialogFooter>
-      </DialogContent>
+      </DialogScrollContent>
     </UiDialog>
   </div>
 </template>
@@ -83,20 +71,23 @@ import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
+import { getSystemPreferences } from '@/utils/systemPreferences';
 
 export default {
   name: 'TaskGroups',
   components: {
     ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription,
-    CardHeader, CardTitle, ChartNoAxesColumn, CircleCheck, CircleOff, DialogContent,
+    CardHeader, CardTitle, ChartNoAxesColumn, CircleCheck, CircleOff,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
     EmptyDescription, EmptyHeader, EmptyTitle, Eye, Pencil, Plus, RefreshCw, Skeleton,
-    ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow, Trash2, UiButton, UiDialog
+    ShadcnTable, Spinner, TableBody, TableCell, TableHead, TableHeader, TableRow, Trash2,
+    UiButton, UiDialog, DialogScrollContent
   },
   data() {
     return {
@@ -110,6 +101,29 @@ export default {
     };
   },
   methods: {
+    chartColor(variable) {
+      return getComputedStyle(document.documentElement).getPropertyValue(variable).trim() || getSystemPreferences().theme;
+    },
+    themedChartOption(option) {
+      const foreground = this.chartColor('--foreground');
+      const muted = this.chartColor('--muted-foreground');
+      const border = this.chartColor('--border');
+      const themeAxis = axis => ({
+        ...axis,
+        axisLabel: { color: muted, ...axis?.axisLabel },
+        axisLine: { ...axis?.axisLine, lineStyle: { color: border, ...axis?.axisLine?.lineStyle } },
+        splitLine: { ...axis?.splitLine, lineStyle: { color: border, ...axis?.splitLine?.lineStyle } }
+      });
+      return {
+        ...option,
+        backgroundColor: 'transparent',
+        textStyle: { color: foreground, ...option.textStyle },
+        title: { ...option.title, textStyle: { color: foreground, ...option.title?.textStyle } },
+        legend: { ...option.legend, textStyle: { color: muted, ...option.legend?.textStyle } },
+        xAxis: themeAxis(option.xAxis),
+        yAxis: themeAxis(option.yAxis)
+      };
+    },
     fetchData() {
       this.loading = true;
       console.log('开始获取任务组列表');
@@ -315,7 +329,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#4f8a5b'
+              color: this.chartColor('--primary')
             },
             data: data.success || []
           },
@@ -324,14 +338,14 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#c94f4f'
+              color: this.chartColor('--destructive')
             },
             data: data.failed || []
           }
         ]
       };
       
-      this.executionChart.setOption(option);
+      this.executionChart.setOption(this.themedChartOption(option));
     }
   },
   beforeUnmount() {
@@ -361,26 +375,6 @@ export default {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 16px;
-}
-.stats-card {
-  min-width: 0;
-  margin: 0;
-  padding: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: none;
-  text-align: left;
-}
-.stats-title {
-  font-size: 14px;
-  color: var(--muted-foreground);
-  margin-bottom: 10px;
-}
-.stats-value {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--foreground);
 }
 .stats-charts {
   margin-top: 20px;

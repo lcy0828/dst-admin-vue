@@ -2,22 +2,23 @@
   <div class="app-container">
     <Card>
       <CardHeader>
-        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>任务执行日志</CardTitle><CardDescription>查询任务运行结果并清理历史记录</CardDescription></div><div class="flex flex-wrap gap-2"><UiButton size="sm" variant="destructive" @click="handleClearLogs"><Trash2 data-icon="inline-start" />清理旧日志</UiButton><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><RefreshCw data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div></div>
+        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>任务执行日志</CardTitle><CardDescription>查询任务运行结果并清理历史记录</CardDescription></div><div class="flex flex-wrap gap-2"><UiButton size="sm" variant="destructive" @click="handleClearLogs"><Trash2 data-icon="inline-start" />清理旧日志</UiButton><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div></div>
         <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
       </CardHeader>
       <CardContent>
-        <FieldGroup class="filter-grid"><Field><FieldLabel>任务</FieldLabel><UiSelect v-model="listQuery.task_id"><SelectTrigger><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel>状态</FieldLabel><UiSelect v-model="listQuery.status"><SelectTrigger><SelectValue placeholder="执行状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="success">成功</SelectItem><SelectItem value="failed">失败</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-start-date">开始日期</FieldLabel><UiInput id="log-start-date" v-model="listQuery.start_date" type="date" /></Field><Field><FieldLabel for="log-end-date">结束日期</FieldLabel><UiInput id="log-end-date" v-model="listQuery.end_date" type="date" /></Field><div class="flex items-end gap-2"><UiButton @click="handleSearch"><Search data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
+        <FieldGroup class="filter-grid"><Field><FieldLabel for="log-task-filter">任务</FieldLabel><UiSelect v-model="listQuery.task_id"><SelectTrigger id="log-task-filter"><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-status-filter">状态</FieldLabel><UiSelect v-model="listQuery.status"><SelectTrigger id="log-status-filter"><SelectValue placeholder="执行状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="success">成功</SelectItem><SelectItem value="failed">失败</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-start-date">开始日期</FieldLabel><UiInput id="log-start-date" v-model="listQuery.start_date" type="date" /></Field><Field><FieldLabel for="log-end-date">结束日期</FieldLabel><UiInput id="log-end-date" v-model="listQuery.end_date" type="date" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="handleSearch"><Spinner v-if="loading" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
 
+        <Alert v-if="loadError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>日志加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
         <div v-if="loading && logList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 6" :key="index" class="h-12 w-full" /></div>
         <Empty v-else-if="logList.length === 0"><EmptyHeader><EmptyTitle>暂无日志记录</EmptyTitle><EmptyDescription>当前筛选条件下没有执行日志。</EmptyDescription></EmptyHeader></Empty>
         <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>任务名称</TableHead><TableHead>开始时间</TableHead><TableHead>执行耗时</TableHead><TableHead>状态</TableHead><TableHead>触发方式</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
           <TableRow v-for="log in logList" :key="log.id"><TableCell>{{ log.id }}</TableCell><TableCell><router-link v-if="log.task_id" :to="`/cron/edit/${log.task_id}`" class="link-type">{{ log.task_name }}</router-link><span v-else>{{ log.task_name || '未知任务' }}</span></TableCell><TableCell class="whitespace-nowrap">{{ log.start_time || log.created_at }}</TableCell><TableCell>{{ log.duration ? `${log.duration} 毫秒` : '-' }}</TableCell><TableCell><Badge :variant="getRunStatusVariant(log.status)">{{ getRunStatusText(log.status) }}</Badge></TableCell><TableCell><Badge variant="secondary">{{ getTriggerTypeText(log.trigger_type) }}</Badge></TableCell><TableCell class="text-right"><UiButton size="sm" variant="outline" @click="viewLogDetail(log)"><Eye data-icon="inline-start" />查看详情</UiButton></TableCell></TableRow>
         </TableBody></ShadcnTable></div>
-        <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>每页</span><UiSelect :model-value="String(listQuery.page_size)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>共 {{ total }} 条</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.page_size" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
+        <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>每页</span><UiSelect :model-value="String(listQuery.page_size)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24" aria-label="每页显示条数"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>共 {{ total }} 条</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.page_size" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
       </CardContent>
     </Card>
 
-    <UiDialog v-model:open="dialogVisible"><DialogContent class="max-w-3xl"><DialogHeader><DialogTitle>日志详情</DialogTitle><DialogDescription>本次任务执行的完整信息</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="dialogVisible"><DialogScrollContent class="max-w-3xl"><DialogHeader><DialogTitle>日志详情</DialogTitle><DialogDescription>本次任务执行的完整信息</DialogDescription></DialogHeader>
       <div v-if="currentLog" class="log-detail">
         <dl class="detail-grid"><div class="detail-item"><dt>日志 ID</dt><dd>{{ currentLog.id }}</dd></div><div class="detail-item"><dt>任务 ID</dt><dd>{{ currentLog.task_id }}</dd></div><div class="detail-item"><dt>任务名称</dt><dd>{{ currentLog.task_name }}</dd></div><div class="detail-item"><dt>执行状态</dt><dd><Badge :variant="getRunStatusVariant(currentLog.status)">{{ getRunStatusText(currentLog.status) }}</Badge></dd></div><div class="detail-item"><dt>触发方式</dt><dd><Badge variant="secondary">{{ getTriggerTypeText(currentLog.trigger_type) }}</Badge></dd></div><div class="detail-item"><dt>开始时间</dt><dd>{{ currentLog.start_time || currentLog.created_at }}</dd></div><div class="detail-item"><dt>结束时间</dt><dd>{{ currentLog.end_time || currentLog.updated_at || '-' }}</dd></div><div class="detail-item"><dt>执行耗时</dt><dd>{{ currentLog.duration ? `${currentLog.duration} 毫秒` : '-' }}</dd></div><div class="detail-item"><dt>执行者</dt><dd>{{ currentLog.executor || '系统' }}</dd></div><div class="detail-item"><dt>重试次数</dt><dd>{{ currentLog.retry_count || 0 }}</dd></div></dl>
 
@@ -26,27 +27,25 @@
           <pre class="log-content">{{ currentLog.output || '无输出' }}</pre>
         </div>
 
-        <div v-if="currentLog.error" class="log-error">
-          <div class="log-title">错误信息：</div>
-          <pre class="log-content error">{{ currentLog.error }}</pre>
-        </div>
+        <Alert v-if="currentLog.error" variant="destructive" class="mt-4"><CircleAlert /><AlertTitle>错误信息</AlertTitle><AlertDescription><pre class="log-content error">{{ currentLog.error }}</pre></AlertDescription></Alert>
       </div>
       <Empty v-else><EmptyHeader><EmptyTitle>未找到日志详情</EmptyTitle></EmptyHeader></Empty>
-    </DialogContent></UiDialog>
+    </DialogScrollContent></UiDialog>
 
-    <UiDialog v-model:open="clearDialogVisible"><DialogContent><DialogHeader><DialogTitle>清理日志</DialogTitle><DialogDescription>按保留时间和任务范围删除历史日志</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel>保留时间</FieldLabel><UiSelect :model-value="String(clearForm.keep_days)" @update:model-value="clearForm.keep_days = Number($event)"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="days in [7, 30, 90, 180, 365]" :key="days" :value="String(days)">保留最近 {{ days }} 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel>任务筛选</FieldLabel><UiSelect v-model="clearForm.task_id"><SelectTrigger><SelectValue placeholder="选择要清理的任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部任务</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel>状态筛选</FieldLabel><UiSelect v-model="clearForm.status"><SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="success">成功</SelectItem><SelectItem value="failed">失败</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup><DialogFooter><UiButton variant="outline" @click="clearDialogVisible = false">取消</UiButton><UiButton variant="destructive" :disabled="clearLoading" @click="confirmClearLogs"><Spinner v-if="clearLoading" data-icon="inline-start" />确认清理</UiButton></DialogFooter></DialogContent></UiDialog>
+    <UiDialog v-model:open="clearDialogVisible"><DialogContent><DialogHeader><DialogTitle>清理日志</DialogTitle><DialogDescription>按保留时间和任务范围删除历史日志</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel for="clear-keep-days">保留时间</FieldLabel><UiSelect :model-value="String(clearForm.keep_days)" @update:model-value="clearForm.keep_days = Number($event)"><SelectTrigger id="clear-keep-days"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="days in [7, 30, 90, 180, 365]" :key="days" :value="String(days)">保留最近 {{ days }} 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="clear-task-filter">任务筛选</FieldLabel><UiSelect v-model="clearForm.task_id"><SelectTrigger id="clear-task-filter"><SelectValue placeholder="选择要清理的任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部任务</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="clear-status-filter">状态筛选</FieldLabel><UiSelect v-model="clearForm.status"><SelectTrigger id="clear-status-filter"><SelectValue placeholder="选择状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="success">成功</SelectItem><SelectItem value="failed">失败</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup><DialogFooter><UiButton variant="outline" @click="clearDialogVisible = false">取消</UiButton><UiButton variant="destructive" :disabled="clearLoading" @click="confirmClearLogs"><Spinner v-if="clearLoading" data-icon="inline-start" />确认清理</UiButton></DialogFooter></DialogContent></UiDialog>
   </div>
 </template>
 
 <script>
-import { ArrowLeft, Eye, RefreshCw, Search, Trash2 } from '@lucide/vue';
+import { ArrowLeft, CircleAlert, Eye, RefreshCw, Search, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -60,8 +59,9 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'TaskLogs',
   components: {
-    ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription, CardHeader,
-    CardTitle, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card,
+    CardContent, CardDescription, CardHeader, CardTitle, CircleAlert, DialogContent,
+    DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle,
     Empty, EmptyDescription, EmptyHeader, EmptyTitle, Eye, Field, FieldGroup, FieldLabel,
     PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious,
     RefreshCw, Search, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
@@ -71,6 +71,7 @@ export default {
   data() {
     return {
       loading: false,
+      loadError: '',
       logList: [],
       taskOptions: [],
       total: 0,
@@ -146,6 +147,7 @@ export default {
     },
     fetchData() {
       this.loading = true;
+      this.loadError = '';
       const query = {
         ...this.listQuery,
         task_id: this.listQuery.task_id === 'all' ? '' : this.listQuery.task_id,
@@ -197,12 +199,14 @@ export default {
             }
 
             console.error('响应格式不符合预期:', response);
-            toast.error('获取日志列表失败：响应格式不符合预期');
+            this.loadError = '获取日志列表失败：响应格式不符合预期';
+            toast.error(this.loadError);
           }
         })
         .catch(error => {
           console.error('获取日志列表失败:', error);
-          toast.error(error.message || '获取日志列表失败');
+          this.loadError = error.message || '获取日志列表失败';
+          toast.error(this.loadError);
         })
         .finally(() => {
           this.loading = false;

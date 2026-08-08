@@ -35,9 +35,10 @@
     </div>
 
     <Card>
-      <CardHeader class="flex-row items-center justify-between gap-4"><div><CardTitle>本次浏览器导出记录</CardTitle><CardDescription>刷新页面后记录可能被清空</CardDescription></div><UiButton size="sm" variant="outline" @click="getExportFiles"><RefreshCw data-icon="inline-start" />刷新</UiButton></CardHeader>
+      <CardHeader class="flex-row items-center justify-between gap-4"><div><CardTitle>本次浏览器导出记录</CardTitle><CardDescription>刷新页面后记录可能被清空</CardDescription></div><UiButton size="sm" variant="outline" :disabled="filesLoading" @click="getExportFiles"><Spinner v-if="filesLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton></CardHeader>
       <CardContent>
-        <Empty v-if="exportFiles.length === 0"><EmptyHeader><EmptyTitle>暂无导出记录</EmptyTitle><EmptyDescription>完成一次导出后，文件会显示在这里。</EmptyDescription></EmptyHeader></Empty>
+        <div v-if="filesLoading" class="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground" role="status"><Spinner /><span>正在读取导出记录</span></div>
+        <Empty v-else-if="exportFiles.length === 0"><EmptyHeader><EmptyTitle>暂无导出记录</EmptyTitle><EmptyDescription>完成一次导出后，文件会显示在这里。</EmptyDescription></EmptyHeader></Empty>
         <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>文件名</TableHead><TableHead>描述</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
           <TableRow v-for="file in exportFiles" :key="file.filename"><TableCell class="font-mono text-xs">{{ file.filename }}</TableCell><TableCell>{{ file.description || '-' }}</TableCell><TableCell>{{ formatFileSize(file.size) }}</TableCell><TableCell class="whitespace-nowrap">{{ file.created_at }}</TableCell><TableCell><div class="flex justify-end gap-1"><UiButton size="sm" variant="outline" @click="downloadFile(file)"><Download data-icon="inline-start" />下载</UiButton><UiButton size="sm" variant="destructive" @click="deleteFile(file)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow>
         </TableBody></ShadcnTable></div>
@@ -78,6 +79,7 @@ export default {
     return {
       exporting: false,
       importing: false,
+      filesLoading: false,
       exportForm: {
         description: '',
         filename: 'task_config_' + new Date().toISOString().slice(0, 10),
@@ -97,6 +99,7 @@ export default {
   },
   methods: {
     getExportFiles() {
+      this.filesLoading = true;
       cronTaskApi.getExportFiles()
         .then(response => {
           if (response.data && response.data.status === 200) {
@@ -108,6 +111,9 @@ export default {
         .catch(error => {
           console.error('获取导出文件列表失败:', error);
           toast.error('获取导出文件列表失败');
+        })
+        .finally(() => {
+          this.filesLoading = false;
         });
     },
     toggleExportOption(value, checked) {

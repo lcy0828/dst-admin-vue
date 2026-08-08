@@ -1,21 +1,20 @@
 <template>
   <div class="app-container">
     <Card>
-      <CardHeader class="flex-row items-start justify-between gap-4">
-        <div>
-          <CardTitle>日志详情</CardTitle>
-          <CardDescription>查看任务运行参数、输出及执行信息</CardDescription>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <UiButton size="sm" @click="fetchLogDetail">
-            <RefreshCw data-icon="inline-start" />
+      <CardHeader>
+        <CardTitle>日志详情</CardTitle>
+        <CardDescription>查看任务运行参数、输出及执行信息</CardDescription>
+        <CardAction class="flex flex-wrap gap-2">
+          <UiButton size="sm" :disabled="loading" @click="fetchLogDetail">
+            <Spinner v-if="loading" data-icon="inline-start" />
+            <RefreshCw v-else data-icon="inline-start" />
             刷新
           </UiButton>
           <UiButton size="sm" variant="outline" @click="goBack">
             <ArrowLeft data-icon="inline-start" />
             返回
           </UiButton>
-        </div>
+        </CardAction>
       </CardHeader>
       <CardContent>
         <div v-if="loading" class="flex flex-col gap-4">
@@ -70,10 +69,7 @@
             <Empty v-else><EmptyHeader><EmptyTitle>无输出</EmptyTitle></EmptyHeader></Empty>
           </section>
 
-          <section v-if="logData.error">
-            <h3 class="section-title">错误信息</h3>
-            <pre class="code-block error">{{ logData.error }}</pre>
-          </section>
+          <Alert v-if="logData.error" variant="destructive"><CircleAlert /><AlertTitle>错误信息</AlertTitle><AlertDescription><pre class="code-block error">{{ logData.error }}</pre></AlertDescription></Alert>
         </div>
 
         <Empty v-else>
@@ -88,20 +84,23 @@
 </template>
 
 <script>
-import { ArrowLeft, RefreshCw } from '@lucide/vue';
+import { ArrowLeft, CircleAlert, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 
 export default {
   name: 'TaskLogDetail',
   components: {
-    ArrowLeft, Badge, Card, CardContent, CardDescription, CardHeader, CardTitle,
-    Empty, EmptyDescription, EmptyHeader, EmptyTitle, RefreshCw, Skeleton, UiButton
+    Alert, AlertDescription, AlertTitle, ArrowLeft, Badge, Card, CardAction, CardContent,
+    CardDescription, CardHeader, CardTitle, CircleAlert, Empty, EmptyDescription, EmptyHeader,
+    EmptyTitle, RefreshCw, Skeleton, Spinner, UiButton
   },
   data() {
     return {

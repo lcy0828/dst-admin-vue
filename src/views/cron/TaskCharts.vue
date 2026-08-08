@@ -2,35 +2,36 @@
   <div class="app-container">
     <Card>
       <CardHeader>
-        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>任务统计图表</CardTitle><CardDescription>分析执行次数、成功率和耗时趋势</CardDescription></div><div class="flex gap-2"><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><RefreshCw data-icon="inline-start" />刷新数据</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div></div>
+        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>任务统计图表</CardTitle><CardDescription>分析执行次数、成功率和耗时趋势</CardDescription></div><div class="flex gap-2"><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新数据</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div></div>
         <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
       </CardHeader>
       <CardContent>
       <FieldGroup class="filter-grid">
-        <Field><FieldLabel>时间范围</FieldLabel><UiSelect v-model="dateRange" @update:model-value="loadAllCharts"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="7">最近 7 天</SelectItem><SelectItem value="30">最近 30 天</SelectItem><SelectItem value="90">最近 90 天</SelectItem><SelectItem value="180">最近 180 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-        <Field><FieldLabel>任务组</FieldLabel><UiSelect v-model="groupId" @update:model-value="handleGroupChange"><SelectTrigger><SelectValue placeholder="选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-        <Field v-if="groupId && groupId !== 'all'"><FieldLabel>任务</FieldLabel><UiSelect v-model="taskId" @update:model-value="loadTaskCharts"><SelectTrigger><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in tasks" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <Field><FieldLabel for="chart-date-range">时间范围</FieldLabel><UiSelect v-model="dateRange" @update:model-value="loadAllCharts"><SelectTrigger id="chart-date-range"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="7">最近 7 天</SelectItem><SelectItem value="30">最近 30 天</SelectItem><SelectItem value="90">最近 90 天</SelectItem><SelectItem value="180">最近 180 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <Field><FieldLabel for="chart-group">任务组</FieldLabel><UiSelect v-model="groupId" @update:model-value="handleGroupChange"><SelectTrigger id="chart-group"><SelectValue placeholder="选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <Field v-if="groupId && groupId !== 'all'"><FieldLabel for="chart-task">任务</FieldLabel><UiSelect v-model="taskId" @update:model-value="loadTaskCharts"><SelectTrigger id="chart-task"><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in tasks" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
       </FieldGroup>
+      <Alert v-if="loadError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>统计数据加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
       <div v-if="loading" class="flex flex-col gap-4"><Skeleton class="h-24 w-full" /><Skeleton class="h-96 w-full" /></div>
       <div v-else>
-        <div class="stats-cards">
-          <div class="stat-card">
-            <div class="stat-title">总任务数</div>
-            <div class="stat-value">{{ overview.total_tasks || 0 }}</div>
+        <dl class="stats-cards">
+          <div class="stat-item">
+            <dt>总任务数</dt>
+            <dd>{{ overview.total_tasks || 0 }}</dd>
           </div>
-          <div class="stat-card">
-            <div class="stat-title">总执行次数</div>
-            <div class="stat-value">{{ overview.total_executions || 0 }}</div>
+          <div class="stat-item">
+            <dt>总执行次数</dt>
+            <dd>{{ overview.total_executions || 0 }}</dd>
           </div>
-          <div class="stat-card">
-            <div class="stat-title">成功率</div>
-            <div class="stat-value">{{ overview.success_rate || 0 }}%</div>
+          <div class="stat-item">
+            <dt>成功率</dt>
+            <dd>{{ overview.success_rate || 0 }}%</dd>
           </div>
-          <div class="stat-card">
-            <div class="stat-title">平均执行时长</div>
-            <div class="stat-value">{{ overview.avg_duration || 0 }}秒</div>
+          <div class="stat-item">
+            <dt>平均执行时长</dt>
+            <dd>{{ overview.avg_duration || 0 }} 秒</dd>
           </div>
-        </div>
+        </dl>
         
         <div class="chart-container">
           <div id="overviewChart" class="chart-box"></div>
@@ -54,28 +55,32 @@
 </template>
 
 <script>
-import { ArrowLeft, RefreshCw } from '@lucide/vue';
+import { ArrowLeft, CircleAlert, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
 import { getSystemPreferences } from '@/utils/systemPreferences';
 
 export default {
   name: 'TaskCharts',
   components: {
-    ArrowLeft, AutomationRoomSelect, Card, CardContent, CardDescription, CardHeader, CardTitle,
-    Field, FieldGroup, FieldLabel, RefreshCw, SelectContent, SelectGroup, SelectItem, SelectTrigger,
-    SelectValue, Skeleton, UiButton, UiSelect
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardContent,
+    CardDescription, CardHeader, CardTitle, CircleAlert, Field, FieldGroup, FieldLabel,
+    RefreshCw, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, Skeleton,
+    Spinner, UiButton, UiSelect
   },
   data() {
     return {
       loading: false,
+      loadError: '',
       dateRange: '30',
       groupId: '',
       taskId: '',
@@ -107,6 +112,35 @@ export default {
     window.removeEventListener('resize', this.resizeCharts);
   },
   methods: {
+    chartColor(variable) {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+      return value || getSystemPreferences().theme;
+    },
+    themedChartOption(option) {
+      const foreground = this.chartColor('--foreground');
+      const muted = this.chartColor('--muted-foreground');
+      const border = this.chartColor('--border');
+      const themeAxis = axis => {
+        if (Array.isArray(axis)) return axis.map(themeAxis);
+        if (!axis) return axis;
+        return {
+          ...axis,
+          nameTextStyle: { color: muted, ...axis.nameTextStyle },
+          axisLabel: { color: muted, ...axis.axisLabel },
+          axisLine: { ...axis.axisLine, lineStyle: { color: border, ...axis.axisLine?.lineStyle } },
+          splitLine: { ...axis.splitLine, lineStyle: { color: border, ...axis.splitLine?.lineStyle } }
+        };
+      };
+      return {
+        ...option,
+        backgroundColor: 'transparent',
+        textStyle: { color: foreground, ...option.textStyle },
+        title: option.title ? { ...option.title, textStyle: { color: foreground, ...option.title.textStyle } } : option.title,
+        legend: option.legend ? { ...option.legend, textStyle: { color: muted, ...option.legend.textStyle } } : option.legend,
+        xAxis: themeAxis(option.xAxis),
+        yAxis: themeAxis(option.yAxis)
+      };
+    },
     handleAutomationRoom() {
       this.groups = [];
       this.tasks = [];
@@ -200,6 +234,7 @@ export default {
     },
     loadAllCharts() {
       this.loading = true;
+      this.loadError = '';
       
       // 先清除任务特定图表
       this.taskId = '';
@@ -217,12 +252,14 @@ export default {
               this.initDurationChart(response.data.data);
             });
           } else {
-            toast.error(response.data?.msg || response.data?.message || '获取概览数据失败');
+            this.loadError = response.data?.msg || response.data?.message || '获取概览数据失败';
+            toast.error(this.loadError);
           }
         })
         .catch(error => {
           console.error('获取概览数据失败:', error);
-          toast.error('获取概览数据失败');
+          this.loadError = error.message || '获取概览数据失败';
+          toast.error(this.loadError);
         })
         .finally(() => {
           this.loading = false;
@@ -232,6 +269,7 @@ export default {
       if (!this.groupId) return;
       
       this.loading = true;
+      this.loadError = '';
       
       cronTaskApi.getGroupChart(this.groupId, { days: this.dateRange })
         .then(response => {
@@ -241,12 +279,14 @@ export default {
               this.initGroupTasksChart(response.data.data);
             });
           } else {
-            toast.error(response.data?.msg || response.data?.message || '获取任务组图表失败');
+            this.loadError = response.data?.msg || response.data?.message || '获取任务组图表失败';
+            toast.error(this.loadError);
           }
         })
         .catch(error => {
           console.error('获取任务组图表失败:', error);
-          toast.error('获取任务组图表失败');
+          this.loadError = error.message || '获取任务组图表失败';
+          toast.error(this.loadError);
         })
         .finally(() => {
           this.loading = false;
@@ -256,6 +296,7 @@ export default {
       if (!this.taskId || this.taskId === 'all') return;
       
       this.loading = true;
+      this.loadError = '';
       
       // 获取任务执行图表
       cronTaskApi.getTaskChart(this.taskId, { days: this.dateRange })
@@ -266,12 +307,14 @@ export default {
               this.initTaskExecutionChart(response.data.data);
             });
           } else {
-            toast.error(response.data?.msg || response.data?.message || '获取任务执行图表失败');
+            this.loadError = response.data?.msg || response.data?.message || '获取任务执行图表失败';
+            toast.error(this.loadError);
           }
         })
         .catch(error => {
           console.error('获取任务执行图表失败:', error);
-          toast.error('获取任务执行图表失败');
+          this.loadError = error.message || '获取任务执行图表失败';
+          toast.error(this.loadError);
         });
       
       // 获取任务执行时长图表
@@ -283,12 +326,14 @@ export default {
               this.initTaskDurationChart(response.data.data);
             });
           } else {
-            toast.error(response.data?.msg || response.data?.message || '获取任务执行时长图表失败');
+            this.loadError = response.data?.msg || response.data?.message || '获取任务执行时长图表失败';
+            toast.error(this.loadError);
           }
         })
         .catch(error => {
           console.error('获取任务执行时长图表失败:', error);
-          toast.error('获取任务执行时长图表失败');
+          this.loadError = error.message || '获取任务执行时长图表失败';
+          toast.error(this.loadError);
         })
         .finally(() => {
           this.loading = false;
@@ -339,7 +384,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#4f8a5b'
+              color: this.chartColor('--primary')
             },
             data: data.success || []
           },
@@ -348,14 +393,14 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#c94f4f'
+              color: this.chartColor('--destructive')
             },
             data: data.failed || []
           }
         ]
       };
       
-      this.charts.overviewChart.setOption(option);
+      this.charts.overviewChart.setOption(this.themedChartOption(option));
     },
     initDurationChart(data) {
       const chartDom = document.getElementById('durationChart');
@@ -404,7 +449,7 @@ export default {
         ]
       };
       
-      this.charts.durationChart.setOption(option);
+      this.charts.durationChart.setOption(this.themedChartOption(option));
     },
     initGroupTasksChart(data) {
       const chartDom = document.getElementById('groupTasksChart');
@@ -451,7 +496,7 @@ export default {
         ]
       };
       
-      this.charts.groupTasksChart.setOption(option);
+      this.charts.groupTasksChart.setOption(this.themedChartOption(option));
     },
     initTaskExecutionChart(data) {
       const chartDom = document.getElementById('taskExecutionChart');
@@ -498,7 +543,7 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#4f8a5b'
+              color: this.chartColor('--primary')
             },
             data: data.success || []
           },
@@ -507,14 +552,14 @@ export default {
             type: 'bar',
             stack: 'total',
             itemStyle: {
-              color: '#c94f4f'
+              color: this.chartColor('--destructive')
             },
             data: data.failed || []
           }
         ]
       };
       
-      this.charts.taskExecutionChart.setOption(option);
+      this.charts.taskExecutionChart.setOption(this.themedChartOption(option));
     },
     initTaskDurationChart(data) {
       const chartDom = document.getElementById('taskDurationChart');
@@ -563,7 +608,7 @@ export default {
         ]
       };
       
-      this.charts.taskDurationChart.setOption(option);
+      this.charts.taskDurationChart.setOption(this.themedChartOption(option));
     },
     resizeCharts() {
       Object.keys(this.charts).forEach(key => {
@@ -581,25 +626,27 @@ export default {
 .stats-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  overflow: hidden;
   margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
-.stat-card {
+.stat-item {
   min-width: 0;
   margin: 0;
   padding: 12px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: none;
-  text-align: left;
+  border-right: 1px solid var(--border);
 }
-.stat-title {
+.stat-item:last-child {
+  border-right: 0;
+}
+.stat-item dt {
   font-size: 14px;
   color: var(--muted-foreground);
   margin-bottom: 10px;
 }
-.stat-value {
+.stat-item dd {
+  margin: 0;
   font-size: 22px;
   font-weight: 600;
   color: var(--foreground);
@@ -624,6 +671,14 @@ export default {
   .filter-grid { grid-template-columns: 1fr; }
   .stats-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-item:nth-child(2) {
+    border-right: 0;
+  }
+
+  .stat-item:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--border);
   }
 
   .chart-box {
