@@ -77,7 +77,9 @@
         <div class="status-item">
           <span class="status-label">在线玩家</span>
           <strong>{{ playerStats ? playerStats.online_count : '--' }}</strong>
-          <span class="status-meta">共 {{ playerStats ? playerStats.total_count : '--' }} 人</span>
+          <span class="status-meta">
+            {{ contextErrors.players ? '读取失败' : `共 ${playerStats ? playerStats.total_count : '--'} 人` }}
+          </span>
         </div>
         <div class="status-item">
           <span class="status-label">磁盘使用</span>
@@ -87,7 +89,7 @@
         <div class="status-item">
           <span class="status-label">最近备份</span>
           <strong class="status-time">{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</strong>
-          <span class="status-meta">{{ latestBackup?.size_formatted || '暂无记录' }}</span>
+          <span class="status-meta">{{ contextErrors.backups ? '读取失败' : (latestBackup?.size_formatted || '暂无记录') }}</span>
         </div>
       </section>
 
@@ -205,7 +207,7 @@
               <template #label>
                 <span class="tab-label"><component :is="'el-icon-monitor'" />控制台</span>
               </template>
-              <div class="console-panel">
+              <div v-loading="contextLoading" class="console-panel">
                 <div class="console-toolbar">
                   <el-select v-model="consoleServer" placeholder="选择目标世界" aria-label="选择控制台目标世界">
                     <el-option
@@ -227,6 +229,14 @@
                   </el-dropdown>
                   <el-button text icon="el-icon-setting" @click="$router.push('/servers/commands')">命令管理</el-button>
                 </div>
+                <el-alert
+                  v-if="contextErrors.console"
+                  class="context-error"
+                  type="error"
+                  :closable="false"
+                  show-icon
+                  :title="contextErrors.console"
+                />
                 <el-input
                   v-model="rawCommand"
                   type="textarea"
@@ -259,12 +269,12 @@
           </el-tabs>
         </section>
 
-        <aside class="context-rail">
+        <aside v-loading="contextLoading" class="context-rail" :aria-busy="contextLoading">
           <section class="rail-section">
             <div class="rail-heading">
               <div>
                 <h2>玩家</h2>
-                <span>{{ playerStats ? `${playerStats.online_count} 人在线` : '状态不可用' }}</span>
+                <span>{{ contextErrors.players ? '数据读取失败' : (playerStats ? `${playerStats.online_count} 人在线` : '状态不可用') }}</span>
               </div>
               <el-button text icon="el-icon-arrow-right" @click="openPlayers">全部</el-button>
             </div>
@@ -286,14 +296,14 @@
                 </span>
               </button>
             </div>
-            <div v-else class="rail-empty">暂无玩家记录</div>
+            <div v-else class="rail-empty">{{ contextErrors.players ? '玩家数据读取失败' : '暂无玩家记录' }}</div>
           </section>
 
           <section class="rail-section">
             <div class="rail-heading">
               <div>
                 <h2>最近备份</h2>
-                <span>{{ backups.length }} 个记录</span>
+                <span>{{ contextErrors.backups ? '列表读取失败' : `${backups.length} 个记录` }}</span>
               </div>
               <el-button text icon="el-icon-arrow-right" @click="$router.push('/backups')">全部</el-button>
             </div>
@@ -306,7 +316,7 @@
                 </span>
               </div>
             </div>
-            <div v-else class="rail-empty">暂无备份记录</div>
+            <div v-else class="rail-empty">{{ contextErrors.backups ? '备份列表读取失败' : '暂无备份记录' }}</div>
           </section>
 
           <nav class="quick-nav" aria-label="服务器快捷入口">
@@ -373,6 +383,11 @@ export default {
       playerStats: null,
       backups: [],
       consoleServers: [],
+      contextErrors: {
+        players: '',
+        backups: '',
+        console: ''
+      },
       worldActionId: '',
       backupCreating: false,
       activeOperation: 'logs',
@@ -475,35 +490,56 @@ export default {
     },
     async refreshRoomContext() {
       if (!this.selectedRoom) return
+      const roomId = this.selectedRoomId
+      const roomName = this.selectedRoom.name
       this.contextLoading = true
+      this.playerStats = null
+      this.backups = []
+      this.consoleServers = []
+      this.consoleServer = ''
+      this.contextErrors = { players: '', backups: '', console: '' }
       const [playersResult, backupsResult, consoleResult] = await Promise.allSettled([
-        playerApi.getPlayerStats(this.selectedRoom.name),
+        playerApi.getPlayerStats(roomName),
         backupApi.getBackupList(),
         commandApi.getServers()
       ])
 
+      if (this.selectedRoomId !== roomId) return
       this.playerStats = playersResult.status === 'fulfilled'
         ? playersResult.value?.data || null
         : null
+      this.contextErrors.players = playersResult.status === 'rejected'
+        ? (playersResult.reason?.message || '玩家数据读取失败')
+        : ''
       this.backups = backupsResult.status === 'fulfilled'
-        ? [...(backupsResult.value?.data?.[this.selectedRoom.name] || [])].sort((left, right) => {
+        ? [...(backupsResult.value?.data?.[roomName] || [])].sort((left, right) => {
           const leftTime = new Date(left.createdAt || left.create_time || 0).getTime()
           const rightTime = new Date(right.createdAt || right.create_time || 0).getTime()
           return rightTime - leftTime
         })
         : []
+      this.contextErrors.backups = backupsResult.status === 'rejected'
+        ? (backupsResult.reason?.message || '备份列表读取失败')
+        : ''
       this.consoleServers = consoleResult.status === 'fulfilled' ? consoleResult.value : []
+      this.contextErrors.console = consoleResult.status === 'rejected'
+        ? (consoleResult.reason?.message || '控制台目标读取失败')
+        : ''
       this.syncConsoleTarget()
       this.contextLoading = false
     },
     async refreshPlayerStats() {
       if (!this.selectedRoom) return
       const roomId = this.selectedRoomId
+      this.contextErrors.players = ''
       try {
         const response = await playerApi.getPlayerStats(this.selectedRoom.name)
         if (this.selectedRoomId === roomId) this.playerStats = response?.data || null
-      } catch {
-        if (this.selectedRoomId === roomId) this.playerStats = null
+      } catch (error) {
+        if (this.selectedRoomId === roomId) {
+          this.playerStats = null
+          this.contextErrors.players = error.message || '玩家数据读取失败'
+        }
       }
     },
     selectWorld(world) {
@@ -1034,6 +1070,10 @@ export default {
 
 .console-toolbar :deep(.el-select) {
   width: min(320px, 100%);
+}
+
+.context-error {
+  margin-bottom: 10px;
 }
 
 .button-tail-icon {
