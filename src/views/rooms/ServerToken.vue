@@ -7,7 +7,13 @@
     <el-card shadow="hover" class="token-card" v-loading="loading">
       <div slot="header" class="card-header">
         <span>服务器令牌</span>
-        <div v-if="serverToken">
+        <div v-if="savename || serverToken">
+          <el-button
+            v-if="tokenConfigured && !tokenRevealed"
+            size="small"
+            @click="revealToken">
+            显示令牌
+          </el-button>
           <el-button
             size="small"
             type="primary"
@@ -25,16 +31,16 @@
         </div>
       </div>
 
-      <div v-if="serverToken" class="token-info">
+      <div v-if="savename || serverToken" class="token-info">
         <div class="token-display">
           <el-input
             ref="tokenInput"
-            :value="serverToken"
+            :value="serverToken || '--'"
             readonly
             style="width: 100%;"
             size="medium">
             <template slot="append">
-              <el-button @click="copyToken">复制</el-button>
+              <el-button :disabled="!tokenRevealed" @click="copyToken">复制</el-button>
             </template>
           </el-input>
         </div>
@@ -78,6 +84,12 @@
         <el-form-item prop="token">
           <el-input v-model="tokenForm.token" placeholder="请输入新令牌"></el-input>
         </el-form-item>
+        <el-form-item label="确认房间名" prop="confirmation">
+          <el-input
+            v-model="tokenForm.confirmation"
+            :placeholder="roomName ? `请输入 ${roomName}` : '请输入完整房间名'">
+          </el-input>
+        </el-form-item>
         <div class="dialog-warning">
           <el-alert
             title="警告"
@@ -111,12 +123,16 @@ export default {
     return {
       currentSave: '',
       serverToken: '',
+      tokenConfigured: false,
+      tokenRevealed: false,
+      roomName: '',
       loading: false,
 
       // 对话框相关
       dialogVisible: false,
       tokenForm: {
-        token: ''
+        token: '',
+        confirmation: ''
       },
       submitting: false,
 
@@ -127,7 +143,7 @@ export default {
       rules: {
         token: [
           { required: true, message: '请输入服务器令牌', trigger: 'blur' },
-          { min: 3, max: 32, message: '长度在 3 到 32 个字符', trigger: 'blur' }
+          { max: 4096, message: '长度不能超过 4096 个字符', trigger: 'blur' }
         ]
       }
 
@@ -139,6 +155,7 @@ export default {
       handler(newVal) {
         if (newVal) {
           this.currentSave = newVal;
+          this.$nextTick(() => this.fetchServerToken());
         }
       }
     }
@@ -154,13 +171,15 @@ export default {
       if (!saveToUse) return;
 
       this.loading = true;
-      serverApi.getServerToken(saveToUse)
-        .then(res => {
-          this.serverToken = res.data;
-          this.$emit('input-token', this.serverToken);
+      return serverApi.getServerTokenStatus(saveToUse)
+        .then(() => {
+          this.serverToken = res.data.maskedValue || '';
+          this.tokenConfigured = Boolean(res.data.configured);
+          this.tokenRevealed = false;
+          this.roomName = res.data.roomName || '';
         })
         .catch(err => {
-          this.$message.error('获取服务器令牌失败');
+          this.$message.error('获取服务器令牌失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading = false;
@@ -169,16 +188,48 @@ export default {
 
     // 复制令牌到剪贴板
     copyToken() {
+      if (!this.tokenRevealed) {
+        this.$message.warning('请先显示真实令牌，脱敏值不能复制');
+        return;
+      }
       const input = this.$refs.tokenInput.$el.querySelector('input');
       input.select();
       document.execCommand('copy');
       this.$message.success('令牌已复制到剪贴板');
     },
 
+    async revealToken() {
+      try {
+        const result = await this.$prompt(
+          `请输入完整房间名“${this.roomName}”以显示真实令牌`,
+          '显示服务器令牌',
+          {
+            confirmButtonText: '显示',
+            cancelButtonText: '取消',
+            inputPlaceholder: this.roomName
+          }
+        );
+        this.loading = true;
+        const response = await serverApi.revealServerToken(
+          this.savename || this.currentSave,
+          result.value
+        );
+        this.serverToken = response.data;
+        this.tokenRevealed = true;
+      } catch (error) {
+        if (error !== 'cancel' && error !== 'close' && error?.action !== 'cancel' && error?.action !== 'close') {
+          this.$message.error('显示令牌失败: ' + (error.message || '确认房间名不正确'));
+        }
+      } finally {
+        this.loading = false;
+      }
+    },
+
     // 显示修改令牌对话框
     showTokenDialog() {
       this.tokenForm = {
-        token: ''
+        token: '',
+        confirmation: ''
       };
       this.dialogVisible = true;
     },
@@ -189,7 +240,8 @@ export default {
         this.$refs.tokenForm.resetFields();
       }
       this.tokenForm = {
-        token: ''
+        token: '',
+        confirmation: ''
       };
     },
 
@@ -199,21 +251,24 @@ export default {
         this.$message.error('请输入服务器令牌');
         return;
       }
+      if (!this.tokenForm.confirmation) {
+        this.$message.error('请输入完整房间名确认修改');
+        return;
+      }
       this.submitting = true;
       const saveToUse = this.savename || this.currentSave;
       const newToken = this.tokenForm.token;
-      serverApi.updateServerToken(saveToUse, newToken)
-        .then(res => {
+      serverApi.updateServerToken(saveToUse, newToken, this.tokenForm.confirmation)
+        .then(() => {
           this.dialogVisible = false;
           this.$message.success('服务器令牌已更新');
+          this.fetchServerToken();
         })
         .catch(err => {
           this.$message.error('更新令牌失败: ' + (err.message || '未知错误'));
-          this.dialogVisible = false;
         })
         .finally(() => {
           this.submitting = false;
-          this.fetchServerToken();
         });
     },
 
@@ -232,12 +287,6 @@ export default {
         minute: '2-digit',
         second: '2-digit'
       });
-    }
-  },
-  mounted() {
-    if (this.savename) {
-      this.currentSave = this.savename;
-      this.fetchServerToken();
     }
   }
 }

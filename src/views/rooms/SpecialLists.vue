@@ -192,6 +192,7 @@ export default {
           });
         })
         .catch(err => {
+          this.$message.error('获取管理员列表失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading.admin = false;
@@ -209,7 +210,7 @@ export default {
           });
         })
         .catch(err => {
-          this.$message.error('获取黑名单失败');
+          this.$message.error('获取黑名单失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading.block = false;
@@ -227,7 +228,7 @@ export default {
           });
         })
         .catch(err => {
-          this.$message.error('获取白名单失败');
+          this.$message.error('获取白名单失败: ' + (err.message || '未知错误'));
         })
         .finally(() => {
           this.loading.white = false;
@@ -303,6 +304,8 @@ export default {
               this.whiteList.splice(index, 1);
               break;
           }
+          this.emitPendingLists();
+          this.$message.info('已从待保存名单移除，创建房间时才会写入服务器');
           return;
         }
         const loading = this.$loading({
@@ -320,23 +323,23 @@ export default {
             listData = this.adminList
               .filter((item, idx) => idx !== index)
               .map(item => item.id || item);
-            apiPromise = serverApi.updateAdminList(this.savename, listData);
+            apiPromise = serverApi.updateAdminList(this.savename, listData, true);
             break;
           case 'block':
             listData = this.blockList
               .filter((item, idx) => idx !== index)
               .map(item => item.id || item);
-            apiPromise = serverApi.updateBlockList(this.savename, listData);
+            apiPromise = serverApi.updateBlockList(this.savename, listData, true);
             break;
           case 'white':
             listData = this.whiteList
               .filter((item, idx) => idx !== index)
               .map(item => item.id || item);
-            apiPromise = serverApi.updateWhiteList(this.savename, listData);
+            apiPromise = serverApi.updateWhiteList(this.savename, listData, true);
             break;
         }
         apiPromise
-          .then(res => {
+          .then(() => {
             loading.close();
             this.$message.success('移除成功');
             this.fetchAllLists();
@@ -373,11 +376,8 @@ export default {
           }
           this.submitting = false;
           this.dialogVisible = false;
-          let admin = this.adminList.map(item => item.id);
-          let block = this.blockList.map(item => item.id);
-          let white = this.whiteList.map(item => item.id);
-          this.$emit('add-user', {admin, block, white});
-          this.$message.success('添加成功');
+          this.emitPendingLists();
+          this.$message.info('已加入待保存名单，创建房间时才会写入服务器');
           return;
         }
         let listData;
@@ -398,7 +398,7 @@ export default {
         }        
         // 处理响应
         apiPromise
-          .then(res => {
+          .then(() => {
             this.submitting = false;
             this.dialogVisible = false;
             this.$message.success('添加成功');
@@ -411,11 +411,22 @@ export default {
             this.submitting = false;
           });
       });
+    },
+    emitPendingLists() {
+      const admin = this.adminList.map(item => item.id);
+      const block = this.blockList.map(item => item.id);
+      const white = this.whiteList.map(item => item.id);
+      this.$emit('add-user', { admin, block, white });
     }
   },
-  mounted() {
-    if (this.savename) {
-      this.fetchAllLists();
+  watch: {
+    savename: {
+      immediate: true,
+      handler(value) {
+        if (value) {
+          this.$nextTick(() => this.fetchAllLists());
+        }
+      }
     }
   }
 }
@@ -454,4 +465,4 @@ export default {
 .el-tabs {
   margin-bottom: 20px;
 }
-</style> 
+</style>

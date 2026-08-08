@@ -397,8 +397,8 @@ export default {
           
           // 处理GAMEPLAY部分
           if (configData.GAMEPLAY) {
-            this.form.game_mode = configData.GAMEPLAY.game_mode || this.form.game_mode;
-            this.form.max_players = parseInt(configData.GAMEPLAY.max_players || this.form.max_players);
+            this.form.game_mode = configData.GAMEPLAY.game_mode ?? this.form.game_mode;
+            this.form.max_players = parseInt(configData.GAMEPLAY.max_players ?? this.form.max_players, 10);
             this.form.pvp = configData.GAMEPLAY.pvp === 'true';
             this.form.pause_when_empty = configData.GAMEPLAY.pause_when_empty === 'yes' || configData.GAMEPLAY.pause_when_empty === 'true';
             this.form.vote_enabled = configData.GAMEPLAY.vote_enabled === 'true';
@@ -408,37 +408,37 @@ export default {
           // 处理NETWORK部分
           if (configData.NETWORK) {
             this.form.lan_only_cluster = configData.NETWORK.lan_only_cluster === 'true';
-            this.form.cluster_intention = configData.NETWORK.cluster_intention || this.form.cluster_intention;
-            this.form.cluster_password = configData.NETWORK.cluster_password || '';
-            this.form.cluster_description = configData.NETWORK.cluster_description || this.form.cluster_description;
-            this.form.cluster_name = configData.NETWORK.cluster_name || this.form.cluster_name;
+            this.form.cluster_intention = configData.NETWORK.cluster_intention ?? this.form.cluster_intention;
+            this.form.cluster_password = configData.NETWORK.cluster_password ?? '';
+            this.form.cluster_description = configData.NETWORK.cluster_description ?? '';
+            this.form.cluster_name = configData.NETWORK.cluster_name ?? '';
             this.form.offline_cluster = configData.NETWORK.offline_cluster === 'true';
-            this.form.cluster_language = configData.NETWORK.cluster_language || this.form.cluster_language;
-            this.form.whitelist_slots = parseInt(configData.NETWORK.whitelist_slots || this.form.whitelist_slots);
-            this.form.tick_rate = parseInt(configData.NETWORK.tick_rate || this.form.tick_rate);
+            this.form.cluster_language = configData.NETWORK.cluster_language ?? this.form.cluster_language;
+            this.form.whitelist_slots = parseInt(configData.NETWORK.whitelist_slots ?? this.form.whitelist_slots, 10);
+            this.form.tick_rate = parseInt(configData.NETWORK.tick_rate ?? this.form.tick_rate, 10);
             this.form.autosaver_enabled = configData.NETWORK.autosaver_enabled === 'true';
-            this.form.idle_timeout = parseInt(configData.NETWORK.idle_timeout || this.form.idle_timeout);
+            this.form.idle_timeout = parseInt(configData.NETWORK.idle_timeout ?? this.form.idle_timeout, 10);
           }
           
           // 处理MISC部分
           if (configData.MISC) {
             this.form.console_enabled = configData.MISC.console_enabled === 'true';
-            this.form.max_snapshots = parseInt(configData.MISC.max_snapshots || this.form.max_snapshots);
+            this.form.max_snapshots = parseInt(configData.MISC.max_snapshots ?? this.form.max_snapshots, 10);
           }
           
           // 处理SHARD部分
           if (configData.SHARD) {
             this.form.shard_enabled = configData.SHARD.shard_enabled === 'true';
-            this.form.bind_ip = configData.SHARD.bind_ip || this.form.bind_ip;
-            this.form.master_ip = configData.SHARD.master_ip || this.form.master_ip;
-            this.form.master_port = parseInt(configData.SHARD.master_port || this.form.master_port);
-            this.form.cluster_key = configData.SHARD.cluster_key || this.form.cluster_key;
+            this.form.bind_ip = configData.SHARD.bind_ip ?? '';
+            this.form.master_ip = configData.SHARD.master_ip ?? '';
+            this.form.master_port = parseInt(configData.SHARD.master_port ?? this.form.master_port, 10);
+            this.form.cluster_key = configData.SHARD.cluster_key ?? '';
           }
           
           // 处理STEAM部分
           if (configData.STEAM) {
             this.form.steam_group_only = configData.STEAM.steam_group_only === 'true';
-            this.form.steam_group_id = parseInt(configData.STEAM.steam_group_id || this.form.steam_group_id);
+            this.form.steam_group_id = parseInt(configData.STEAM.steam_group_id ?? this.form.steam_group_id, 10);
             this.form.steam_group_admins = configData.STEAM.steam_group_admins === 'true';
           }
           
@@ -478,7 +478,7 @@ export default {
           this.$message.error('请完善表单信息');
           return;
         }
-        if (!this.form.serverToken) {
+        if (!this.isEdit && !this.form.serverToken) {
           this.$message.error('请输入服务器令牌');
           this.activeTab = 'token';
           return;
@@ -530,19 +530,22 @@ export default {
           // 编辑模式: 使用已有的roomId
           await roomConfigApi.saveRoomConfig(this.roomId, convertedData);
         } else {
-          // 创建模式: 使用用户输入的savename
-          await roomConfigApi.saveRoomConfig(this.savename, convertedData);
-          this.roomId = this.savename;
+          // 创建模式: v2 会先真实创建房间，再应用完整 cluster.ini 配置。
+          const created = await roomConfigApi.createRoom(
+            this.savename,
+            convertedData,
+            this.form.serverToken
+          );
+          const createdRoom = created.data;
+          const roomValue = createdRoom.id || this.savename;
+          const listTasks = [];
+          const { adminList, blockList, whiteList } = this.form;
+          if (adminList.length) listTasks.push(serverApi.updateAdminList(roomValue, adminList));
+          if (blockList.length) listTasks.push(serverApi.updateBlockList(roomValue, blockList));
+          if (whiteList.length) listTasks.push(serverApi.updateWhiteList(roomValue, whiteList));
+          await Promise.all(listTasks);
+          this.roomId = roomValue;
           this.isEdit = true;
-          let userlist = [];
-          let {adminList, blockList, whiteList} = this.form;
-          adminList.length && userlist.push(serverApi.updateAdminList(this.savename, adminList));
-          blockList.length && userlist.push(serverApi.updateBlockList(this.savename, blockList));
-          whiteList.length && userlist.push(serverApi.updateWhiteList(this.savename, whiteList));
-          Promise.all(userlist).then(() => {
-          }).catch(() => {
-          });
-          serverApi.updateServerToken(this.savename, this.form.serverToken);
         }
         
         this.$message({
@@ -581,7 +584,11 @@ export default {
       }
     },
     handleError(error, defaultMessage) {
-      let errorMessage = defaultMessage;
+      let errorMessage = error.message || defaultMessage;
+
+      if (error.details && error.details.fields) {
+        this.formErrors = Object.values(error.details.fields);
+      }
       
       if (error.response) {
         // 处理HTTP错误
@@ -613,8 +620,6 @@ export default {
         }
       } else if (error.request) {
         errorMessage = '网络请求失败，请检查网络连接';
-      } else {
-        errorMessage = error.message || defaultMessage;
       }
       
       this.$message.error(errorMessage);
@@ -968,4 +973,4 @@ export default {
   border-color: #d97932;
   background-color: #d97932;
 }
-</style> 
+</style>

@@ -90,9 +90,44 @@ export const roomsV2API = {
   get: roomId => client.get(`/rooms/${encode(roomId)}`),
   worlds: roomId => client.get(`/rooms/${encode(roomId)}/worlds`),
   create: input => client.post('/rooms', input),
+  createWorld: (roomId, input) => client.post(`/rooms/${encode(roomId)}/worlds`, input),
+  deleteWorld: (roomId, worldId, confirmation) => client.delete(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}`,
+    { data: { confirmation } }
+  ),
   action: (roomId, action, worldIds = []) => client.post(`/rooms/${encode(roomId)}/actions/${encode(action)}`, {
     worldIds
   })
+}
+
+export const configurationV2API = {
+  room: roomId => client.get(`/rooms/${encode(roomId)}/configuration`, { headers: { 'Cache-Control': 'no-store' } }),
+  previewRoom: (roomId, input) => client.post(`/rooms/${encode(roomId)}/configuration/preview`, input),
+  applyRoom: (roomId, input) => client.post(`/rooms/${encode(roomId)}/configuration/actions/apply`, input),
+  access: roomId => client.get(`/rooms/${encode(roomId)}/access`, { headers: { 'Cache-Control': 'no-store' } }),
+  previewAccess: (roomId, input) => client.post(`/rooms/${encode(roomId)}/access/preview`, input),
+  applyAccess: (roomId, input) => client.post(`/rooms/${encode(roomId)}/access/actions/apply`, input),
+  tokenStatus: roomId => client.get(`/rooms/${encode(roomId)}/cluster-token`, { headers: { 'Cache-Control': 'no-store' } }),
+  revealToken: (roomId, confirmation) => client.post(`/rooms/${encode(roomId)}/cluster-token/reveal`, { confirmation }),
+  previewToken: (roomId, input) => client.post(`/rooms/${encode(roomId)}/cluster-token/preview`, input),
+  applyToken: (roomId, input) => client.post(`/rooms/${encode(roomId)}/cluster-token/actions/apply`, input),
+  world: (roomId, worldId) => client.get(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/configuration`,
+    { headers: { 'Cache-Control': 'no-store' } }
+  ),
+  previewWorld: (roomId, worldId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/configuration/preview`,
+    input
+  ),
+  applyWorld: (roomId, worldId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/configuration/actions/apply`,
+    input
+  )
+}
+
+export const jobsV2API = {
+  get: jobId => client.get(`/jobs/${encode(jobId)}`),
+  cancel: jobId => client.post(`/jobs/${encode(jobId)}/cancel`)
 }
 
 export const worldStatesV2API = {

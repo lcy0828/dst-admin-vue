@@ -4,6 +4,7 @@ import apiConfig from './config';
 import axios from 'axios';
 import commandManager, { commandApi, COMMAND_TYPES } from './commandManager';
 import { legacyBackupApi, legacyRoomApi, legacySystemApi, legacyWorldApi } from './v2LegacyAdapters';
+import { legacyAccessApi, legacyRoomConfigApi, legacyWorldConfigurationApi } from './v2ConfigurationAdapters';
 
 // 服务器相关API
 export const serverApi = {
@@ -64,35 +65,41 @@ export const serverApi = {
   },
   // 获取管理员列表
   getAdminList(savename) {
-    return request.get('/dstserver/adminlist', { params: { savename } });
+    return legacyAccessApi.getAdminList(savename);
   },
   // 获取黑名单
   getBlockList(savename) {
-    return request.get('/dstserver/blocklist', { params: { savename } });
+    return legacyAccessApi.getBlockList(savename);
   },
   // 获取白名单
   getWhiteList(savename) {
-    return request.get('/dstserver/whitelist', { params: { savename } });
+    return legacyAccessApi.getWhiteList(savename);
   },
   // 获取服务器令牌
   getServerToken(savename) {
-    return request.get('/dstserver/token', { savename });
+    return legacyAccessApi.getServerToken(savename);
+  },
+  getServerTokenStatus(savename) {
+    return legacyAccessApi.getServerTokenStatus(savename);
+  },
+  revealServerToken(savename, confirmation) {
+    return legacyAccessApi.revealServerToken(savename, confirmation);
   },
   // 更新管理员列表
-  updateAdminList(savename, list) {
-    return request.post('/dstserver/adminlist', { savename, list });
+  updateAdminList(savename, list, confirmed = false) {
+    return legacyAccessApi.updateAdminList(savename, list, confirmed);
   },
   // 更新黑名单
-  updateBlockList(savename, list) {
-    return request.post('/dstserver/blocklist', { savename, list });
+  updateBlockList(savename, list, confirmed = false) {
+    return legacyAccessApi.updateBlockList(savename, list, confirmed);
   },
   // 更新白名单
-  updateWhiteList(savename, list) {
-    return request.post('/dstserver/whitelist', { savename, list });
+  updateWhiteList(savename, list, confirmed = false) {
+    return legacyAccessApi.updateWhiteList(savename, list, confirmed);
   },
   // 更新服务器令牌
-  updateServerToken(savename, token) {
-    return request.post('/dstserver/token', { savename, token });
+  updateServerToken(savename, token, confirmation) {
+    return legacyAccessApi.updateServerToken(savename, token, confirmation);
   }
 };
 
@@ -291,42 +298,10 @@ export const agentApi = {
   }
 };
 
-// 房间配置相关API
-export const roomConfigApi = {
-  // 获取房间配置
-  getRoomConfig(savename) {
-    // 使用新的API路径
-    return request.get(`/dstserver/clusterconfig?savename=${encodeURIComponent(savename)}`);
-  },
+// 房间配置相关API（保留旧页面调用形状，实际只访问 /api/v2）
+export const roomConfigApi = legacyRoomConfigApi;
 
-  // 保存房间配置
-  saveRoomConfig(savename, config) {
-    return request.post(`/dstserver/clusterconfig`, {
-      savename,
-      config
-    });
-  },
-
-  // 导入房间配置
-  importRoomConfig(savename, configFile) {
-    const formData = new FormData();
-    formData.append('config', configFile);
-    return request.post(`/dstserver/clusterconfig/${savename}/import`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-  },
-
-  // 导出房间配置
-  exportRoomConfig(savename) {
-    return request.get(`/dstserver/clusterconfig/${savename}/export`, {
-      responseType: 'blob'
-    });
-  }
-};
-
-const worldApi = legacyWorldApi;
+const worldApi = { ...legacyWorldApi, ...legacyWorldConfigurationApi };
 
 // 导出命令相关模块
 export { commandManager, commandApi, COMMAND_TYPES };

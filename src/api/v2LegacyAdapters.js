@@ -47,17 +47,17 @@ function base32(value) {
   return output
 }
 
-function worldType(role) {
+function worldType(role, directoryName = '') {
   if (role === 'master') return 'forest'
   if (role === 'caves') return 'cave'
-  return 'unknown'
+  return directoryName.toLowerCase().includes('cave') ? 'cave' : 'forest'
 }
 
 function mapWorld(world, state) {
   return {
     ...world,
     worldName: world.name,
-    type: worldType(world.role),
+    type: worldType(world.role, world.directoryName),
     updateTime: world.updatedAt,
     season: state?.season || null,
     day: state?.cycles ?? null,
