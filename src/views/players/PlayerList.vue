@@ -1521,21 +1521,25 @@ export default {
 
 <style scoped>
 .player-list-page {
-  padding: 20px;
+  width: 100%;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .title-container {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
+  line-height: 28px;
+  white-space: nowrap;
 }
 
 .title-container i {
@@ -1544,16 +1548,23 @@ export default {
 }
 
 .filter-card {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .filter-form {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0 10px;
+}
+
+.filter-form :deep(.el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
 }
 
 .table-card {
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .table-operations {
@@ -1563,7 +1574,7 @@ export default {
 }
 
 .pagination-container {
-  margin-top: 20px;
+  margin-top: 14px;
   display: flex;
   justify-content: flex-end;
 }
@@ -1610,7 +1621,9 @@ export default {
 .action-buttons {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .action-buttons .el-tag {
@@ -1904,5 +1917,59 @@ export default {
   color: var(--text-secondary);
   margin-top: 5px;
   line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .title-container {
+    width: 100%;
+  }
+
+  .action-buttons {
+    justify-content: flex-start;
+  }
+
+  .action-buttons :deep(.el-button) {
+    flex: 1 1 calc(50% - 4px);
+    margin: 0;
+  }
+
+  .action-buttons :deep(.el-tag) {
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 5px 8px;
+    white-space: normal;
+  }
+
+  .filter-form {
+    display: block;
+  }
+
+  .filter-form :deep(.el-form-item),
+  .filter-form :deep(.el-form-item__content),
+  .filter-form :deep(.el-select),
+  .filter-form :deep(.el-input) {
+    width: 100%;
+  }
+
+  .filter-form :deep(.el-form-item:last-child .el-form-item__content) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .table-operations {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .pagination-container {
+    justify-content: center;
+  }
 }
 </style>

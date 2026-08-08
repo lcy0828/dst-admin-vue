@@ -2,19 +2,19 @@
   <div class="page-container">
     <el-card class="main-card">
       <template #header>
-        <div class="clearfix">
+        <div class="card-heading">
           <span>已下载模组</span>
           <div class="header-actions">
-            <el-button size="small" type="primary" @click="refreshModList">刷新</el-button>
-            <el-button size="small" type="success" @click="goToSearch">添加模组</el-button>
-            <el-button size="small" type="info" @click="getModConfigFile">获取配置文件</el-button>
+            <el-button size="small" icon="el-icon-refresh" @click="refreshModList">刷新</el-button>
+            <el-button size="small" type="primary" icon="el-icon-plus" @click="goToSearch">添加模组</el-button>
+            <el-button size="small" icon="el-icon-document" @click="getModConfigFile">获取配置文件</el-button>
           </div>
         </div>
       </template>
 
       <!-- 过滤和排序区域 -->
       <div class="filter-container">
-        <el-form :inline="true" :model="filterForm" size="small">
+        <el-form :inline="true" :model="filterForm" size="small" class="filter-form">
           <el-form-item label="房间">
             <el-select
               v-model="selectedRoomId"
@@ -86,8 +86,8 @@
                   <el-switch
                     v-model="mod.enabled"
                     @change="(val) => toggleModStatus(mod, val)"
-                    active-color="#13ce66"
-                    inactive-color="#ff4949"
+                    active-color="var(--success-color)"
+                    inactive-color="var(--danger-color)"
                     class="status-switch">
                   </el-switch>
                 </div>
@@ -742,23 +742,43 @@ export default {
 
 <style scoped>
 .page-container {
-  padding: 20px;
+  width: 100%;
 }
 
 .main-card {
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  margin-bottom: 0;
+}
+
+.card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 
 .header-actions {
-  float: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .filter-container {
-  margin-bottom: 20px;
-  padding-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-color);
+}
+
+.filter-form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0 10px;
+}
+
+.filter-form :deep(.el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
 }
 
 .mod-list-container {
@@ -772,12 +792,12 @@ export default {
 .mod-flex-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 16px;
 }
 
 .mod-flex-item {
-  flex: 0 0 calc(25% - 15px);
-  margin-bottom: 20px;
+  flex: 0 0 calc(25% - 12px);
+  margin-bottom: 0;
   min-width: 0;
 }
 
@@ -801,19 +821,20 @@ export default {
 
 .mod-card {
   height: 100%;
-  transition: all 0.3s;
+  border-color: var(--border-color);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
   display: flex;
   flex-direction: column;
 }
 
 .mod-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  border-color: var(--el-color-primary-light-7);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .mod-card.is-disabled {
-  opacity: 0.7;
-  background-color: #f8f8f8;
+  opacity: 0.76;
+  background-color: var(--surface-muted);
 }
 
 .mod-card-header {
@@ -1058,6 +1079,21 @@ export default {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
+  .card-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .header-actions :deep(.el-button) {
+    flex: 1 1 calc(50% - 4px);
+    margin: 0;
+  }
+
   .mod-details-header {
     flex-direction: column;
   }
@@ -1070,13 +1106,30 @@ export default {
   }
   
   .filter-container .el-form {
-    display: flex;
-    flex-direction: column;
+    display: block;
   }
   
   .filter-container .el-form-item {
+    width: 100%;
     margin-right: 0;
     margin-bottom: 10px;
+  }
+
+  .filter-container :deep(.el-form-item__content),
+  .filter-container :deep(.el-select),
+  .filter-container :deep(.el-input) {
+    width: 100%;
+  }
+
+  .filter-container :deep(.el-form-item:last-child .el-form-item__content) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .filter-container :deep(.el-form-item:last-child .el-button) {
+    width: 100%;
+    margin: 0;
   }
 }
 

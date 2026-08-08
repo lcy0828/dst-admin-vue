@@ -1,31 +1,29 @@
 <template>
   <div class="agent-list-container">
-    <el-card class="main-card" shadow="hover">
-      <template #header>
-        <div class="clearfix">
+    <section class="main-panel">
+        <div class="page-header agent-page-header">
         <span class="card-title">
           <component :is="'el-icon-connection'" class="legacy-icon" /> Agent管理中心
         </span>
-        <el-button style="float: right; padding: 3px 0" type="text" @click="refreshData">
-          <component :is="'el-icon-refresh'" class="legacy-icon" /> 刷新
+        <el-button icon="el-icon-refresh" @click="refreshData">
+          刷新
         </el-button>
         </div>
-      </template>
 
       <div class="agent-list-header">
         <div class="stat-cards">
-          <el-card class="stat-card" shadow="hover">
+          <div class="stat-card">
             <div class="stat-value">{{ connectedAgents }}</div>
             <div class="stat-label">在线Agent</div>
-          </el-card>
-          <el-card class="stat-card" shadow="hover">
+          </div>
+          <div class="stat-card">
             <div class="stat-value">{{ totalAgents }}</div>
             <div class="stat-label">总Agent数</div>
-          </el-card>
-          <el-card class="stat-card" shadow="hover">
+          </div>
+          <div class="stat-card">
             <div class="stat-value">{{ uniqueOsCount }}</div>
             <div class="stat-label">操作系统</div>
-          </el-card>
+          </div>
         </div>
       </div>
 
@@ -42,9 +40,9 @@
                     <span class="hostname">{{ agent.hostname }}</span>
                   </div>
                   <div class="agent-actions">
-                    <el-button type="primary" size="mini" icon="el-icon-view" @click="showAgentDetails(agent)">详情</el-button>
-                    <el-button type="success" size="mini" icon="el-icon-edit" @click="navigateToCommand(agent.id)">执行命令</el-button>
-                    <el-button type="danger" size="mini" icon="el-icon-delete" :disabled="agent.connected" @click="forgetAgent(agent)">移除</el-button>
+                    <el-button size="small" icon="el-icon-view" @click="showAgentDetails(agent)">详情</el-button>
+                    <el-button type="primary" size="small" icon="el-icon-edit" @click="navigateToCommand(agent.id)">执行命令</el-button>
+                    <el-button type="danger" size="small" icon="el-icon-delete" :disabled="agent.connected" @click="forgetAgent(agent)">移除</el-button>
                   </div>
                 </div>
 
@@ -131,7 +129,7 @@
           <el-button type="primary" @click="navigateToSecurity">添加Agent</el-button>
         </div>
       </div>
-    </el-card>
+    </section>
 
     <el-dialog v-model="detailVisible" title="Agent详情" width="680px">
       <el-descriptions v-if="selectedAgent" :column="2" border>
@@ -280,17 +278,16 @@ export default {
 
 <style scoped>
 .agent-list-container {
-  padding: 20px;
-  background-color: #f8f9fc;
-  min-height: calc(100vh - 120px);
+  width: 100%;
+  min-height: 100%;
 }
 
-.main-card {
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  background-color: #fff;
-  margin-bottom: 20px;
+.main-panel {
+  width: 100%;
+}
+
+.agent-page-header {
+  align-items: center;
 }
 
 .card-title {
@@ -300,33 +297,29 @@ export default {
 }
 
 .agent-list-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .stat-cards {
-  display: flex;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .stat-card {
-  flex: 1;
-  text-align: center;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--surface-muted) 0%, #eef2f7 100%);
-  border: none;
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--surface-color);
   cursor: default;
-  transition: transform 0.3s;
-}
-
-.stat-card:hover {
-  transform: translateY(-3px);
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--primary-color);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .stat-label {
@@ -335,16 +328,16 @@ export default {
 }
 
 .agent-card {
-  margin-bottom: 20px;
-  border-radius: 10px;
-  border: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .agent-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.09);
+  border-color: var(--el-color-primary-light-7);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .agent-connected {
@@ -373,7 +366,7 @@ export default {
 .agent-info-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  gap: 14px 20px;
 }
 
 .info-item {
@@ -417,11 +410,11 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 0;
+  padding: 32px 0;
 }
 
 .empty-icon {
-  font-size: 100px;
+  font-size: 64px;
   color: var(--text-secondary);
   margin-bottom: 20px;
   opacity: 0.7;
@@ -442,7 +435,21 @@ export default {
 
 @media (max-width: 768px) {
   .stat-cards {
-    flex-direction: column;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 10px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 19px;
+  }
+
+  .stat-label {
+    font-size: 12px;
   }
 
   .agent-info-grid {
@@ -455,7 +462,20 @@ export default {
   }
 
   .agent-actions {
-    margin-top: 10px;
+    display: flex;
+    width: 100%;
+    margin-top: 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .agent-actions :deep(.el-button) {
+    flex: 1 1 auto;
+    margin: 0;
+  }
+
+  :deep(.el-descriptions__body) {
+    overflow-x: auto;
   }
 }
 </style>

@@ -4,9 +4,9 @@
       <el-col :span="24">
         <el-card class="main-card">
           <template v-slot:header>
-<div  class="clearfix">
+<div class="settings-card-header">
             <span>系统设置</span>
-            <el-button style="float: right; padding: 3px 0" type="text" @click="loadSettings">刷新</el-button>
+            <el-button size="small" icon="el-icon-refresh" @click="loadSettings">刷新</el-button>
           </div>
 </template>
 
@@ -1014,28 +1014,40 @@ export default {
 
 <style scoped>
 .page-container {
-  padding: 20px;
+  width: 100%;
 }
 
 .main-card {
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  margin-bottom: 0;
+}
+
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.main-card > :deep(.el-card__body > .el-form) {
+  max-width: 960px;
 }
 
 .form-actions {
-  margin-top: 30px;
-  text-align: center;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
 }
 
 .setting-desc {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-left: 10px;
+  margin-left: 8px;
+  line-height: 20px;
 }
 
 :deep(.el-tabs__header) {
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
 :deep(.el-tabs__item) {
@@ -1076,6 +1088,10 @@ export default {
 
 /* 响应式调整 */
 @media (max-width: 768px) {
+  .settings-card-header {
+    min-height: 32px;
+  }
+
   :deep(.el-form-item) {
     display: flex;
     flex-direction: column;
@@ -1097,6 +1113,21 @@ export default {
     display: block;
     margin-left: 0;
     margin-top: 5px;
+  }
+
+  .form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 16px;
+  }
+
+  .form-actions :deep(.el-button) {
+    width: 100%;
+    margin: 0;
+  }
+
+  :deep(.el-tabs__nav-wrap) {
+    padding: 0 4px;
   }
 }
 

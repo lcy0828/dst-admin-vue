@@ -30,7 +30,7 @@
           aria-label="关闭导航菜单"
           @click="closeMobileSidebar"
         >
-          <component :is="'el-icon-close'" />
+          <component :is="'el-icon-close'" class="header-icon" />
         </el-button>
       </div>
       <el-menu
@@ -162,7 +162,7 @@
             :aria-expanded="mobileSidebarOpen"
             @click="openMobileSidebar"
           >
-            <component :is="'el-icon-s-fold'" />
+            <component :is="'el-icon-s-fold'" class="header-icon" />
           </el-button>
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
@@ -352,88 +352,10 @@ export default {
       if (!this.isCompactViewport) this.isCollapse = !this.isCollapse
     },
     updateBreadcrumbs() {
-      this.breadcrumbs = []
-      const path = this.$route.path
-      const pathParts = path.split('/').filter(Boolean)
-
-      // 路径映射对象
-      const pathMap = {
-        dashboard: '仪表盘',
-        servers: '服务器管理',
-        logs: '日志管理器',
-        players: '玩家管理',
-        items: '物品管理',
-        mods: '模组管理',
-        rooms: '房间管理',
-        backups: '备份管理',
-        scheduled: '定时任务',
-        system: '系统设置',
-        ban: '封禁管理',
-
-        search: '模组搜索',
-        agents: 'Agent管理',
-        security: '安全设置',
-        parser: '日志解析器'
-      }
-
-      // 子页面映射
-      const subPageMap = {
-        list: {
-          servers: '服务器列表',
-          players: '玩家列表',
-
-          mods: '已下载模组',
-          rooms: '房间列表',
-          agents: 'Agent列表',
-          logs: '日志和规则管理'
-        },
-        settings: {
-          servers: '服务器设置',
-          mods: '模组配置',
-          rooms: '房间设置',
-          default: '设置'
-        },
-        tasks: {
-          scheduled: '任务列表'
-        },
-        create: {
-          scheduled: '创建任务'
-        },
-        saves: {
-          servers: '存档管理'
-        },
-        commands: {
-          servers: '命令设置'
-        },
-        query: {
-          logs: '日志查询'
-        },
-        rules: {
-          logs: '规则管理'
-        }
-      }
-
-      // 处理面包屑
-      pathParts.forEach((part, index) => {
-        // 直接映射
-        if (pathMap[part]) {
-          this.breadcrumbs.push(pathMap[part])
-        }
-        // 处理列表页面
-        else if (part === 'list' && index > 0) {
-          const parentPath = pathParts[index - 1]
-          this.breadcrumbs.push(subPageMap.list[parentPath] || part)
-        }
-        // 处理设置页面
-        else if (part === 'settings' && index > 0) {
-          const parentPath = pathParts[index - 1]
-          this.breadcrumbs.push(subPageMap.settings[parentPath] || subPageMap.settings.default)
-        }
-        // 默认处理
-        else if (!['list', 'settings'].includes(part)) {
-          this.breadcrumbs.push(part)
-        }
-      })
+      const titles = this.$route.matched
+        .map(record => record.meta?.title)
+        .filter(Boolean)
+      this.breadcrumbs = [...new Set(titles)]
     }
   }
 }
@@ -687,6 +609,11 @@ export default {
 .mobile-close-btn,
 .mobile-menu-btn {
   display: none;
+}
+
+.header-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .el-menu-vertical {

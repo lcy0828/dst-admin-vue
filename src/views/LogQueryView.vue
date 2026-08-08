@@ -1,6 +1,8 @@
 <template>
   <div class="log-query-container">
-    <h1>日志查询</h1>
+    <div class="page-header">
+      <h1 class="page-title">日志查询</h1>
+    </div>
 
     <div class="filter-section">
       <el-form :inline="true" :model="queryParams" class="demo-form-inline">
@@ -931,27 +933,28 @@ export default {
 
 <style scoped>
 .log-query-container {
-  padding: 20px;
+  width: 100%;
 }
 
 .filter-section {
-  margin-bottom: 20px;
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  padding: 16px 16px 6px;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  border-radius: 6px;
+  box-shadow: var(--shadow-card);
 }
 
 .result-section {
-  background: #fff;
-  padding: 20px;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  border-radius: 6px;
+  box-shadow: var(--shadow-card);
 }
 
 .pagination-container {
-  margin-top: 20px;
-  text-align: right;
+  margin-top: 14px;
 }
 
 .log-content {
@@ -994,12 +997,49 @@ export default {
 }
 
 .warning-text {
-  color: #d99b32;
-  font-weight: bold;
+  color: var(--warning-color);
+  font-weight: 500;
   margin-bottom: 20px;
   padding: 10px;
-  background-color: #FDF6EC;
+  background-color: #fdf6ec;
   border-radius: 4px;
-  border-left: 4px solid #d99b32;
+  border-left: 4px solid var(--warning-color);
+}
+
+@media (max-width: 768px) {
+  .filter-section,
+  .result-section {
+    padding: 12px;
+  }
+
+  .filter-section :deep(.el-form) {
+    display: block;
+  }
+
+  .filter-section :deep(.el-form-item),
+  .filter-section :deep(.el-form-item__content),
+  .filter-section :deep(.el-select) {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .filter-section :deep(.el-form-item:last-child .el-form-item__content) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .filter-section :deep(.el-form-item:last-child .el-button) {
+    width: 100%;
+    margin: 0;
+  }
+
+  .filter-section :deep(.el-form-item:last-child .el-button--danger) {
+    grid-column: 1 / -1;
+  }
+
+  .pagination-container {
+    justify-content: center;
+  }
 }
 </style>

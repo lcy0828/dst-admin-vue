@@ -1061,7 +1061,7 @@ export default {
 
 <style scoped>
 .dashboard-content {
-  padding: 20px;
+  width: 100%;
 }
 
 
@@ -1070,12 +1070,15 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 30px 0 20px;
+  min-height: 40px;
+  margin: 20px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .section-title {
-  font-size: 18px;
-  font-weight: bold;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -1093,8 +1096,8 @@ export default {
 
 .server-monitor, .system-info, .player-stats, .announcement-card {
   height: 100%;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  box-shadow: var(--shadow-card);
+  border-radius: 6px;
 }
 
 .server-name {
@@ -1351,7 +1354,8 @@ export default {
   height: 400px;
   border-radius: 4px;
   overflow: hidden;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-card);
 }
 
 .system-info-footer {
@@ -1530,8 +1534,8 @@ export default {
 
 .version-card {
   height: 100%;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  box-shadow: var(--shadow-card);
+  border-radius: 6px;
 }
 
 .version-content {
@@ -1726,11 +1730,11 @@ export default {
 
 @media (max-width: 768px) {
   .dashboard-content {
-    padding: 4px 0 12px;
+    padding: 0 0 12px;
   }
 
   .section-divider {
-    margin: 24px 0 14px;
+    margin: 18px 0 12px;
   }
 
   .version-content {
@@ -1778,6 +1782,20 @@ export default {
   .resource-detail {
     flex-wrap: wrap;
     gap: 4px 12px;
+  }
+
+  .server-monitor :deep(.el-card__body) {
+    overflow-x: auto;
+  }
+
+  .version-update-notice {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .version-update-notice button {
+    margin-left: 0;
   }
 }
 </style>

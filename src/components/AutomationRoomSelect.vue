@@ -59,12 +59,11 @@ export default {
 
 <style scoped>
 .automation-room-select {
-  float: right;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   width: 250px;
-  margin-right: 12px;
+  margin: 0;
 }
 
 .automation-room-label {

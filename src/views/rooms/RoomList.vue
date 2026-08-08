@@ -8,8 +8,7 @@
           v-model="searchQuery"
           class="search-input"
           prefix-icon="el-icon-search"
-          clearable
-          style="width: 250px; margin-right: 10px;">
+          clearable>
         </el-input>
         <el-button @click="refreshRooms" icon="el-icon-refresh">刷新</el-button>
         <el-button type="primary" @click="createRoom" icon="el-icon-plus">创建房间</el-button>
@@ -497,41 +496,37 @@ export default {
 
 <style lang="scss" scoped>
 .world-settings-page {
-  padding: 25px;
-  background-color: var(--surface-muted);
-  min-height: calc(100vh - 80px);
+  width: 100%;
+  min-height: 100%;
 
   .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--border-color);
+    gap: 12px;
+    margin-bottom: 16px;
 
     h2 {
       margin: 0;
-      font-size: 24px;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 28px;
       color: var(--text-primary);
       position: relative;
-      padding-left: 15px;
-
-      &:before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 4px;
-        height: 20px;
-        background-color: var(--primary-color);
-        border-radius: 2px;
-      }
+      padding-left: 0;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+
+      .search-input {
+        width: 250px;
+        margin: 0;
+      }
 
       .el-button {
         border-radius: 6px;
@@ -547,32 +542,31 @@ export default {
   .empty-save-content,
   .loading-saves-content {
     text-align: center;
-    padding: 60px 0;
+    padding: 32px 0;
 
     .loading-page-icon,
     .empty-save-icon,
     .loading-saves-icon {
-      font-size: 64px;
+      font-size: 48px;
       color: var(--primary-color);
-      margin-bottom: 25px;
+      margin-bottom: 16px;
     }
 
     h4 {
-      font-size: 22px;
-      margin-bottom: 15px;
+      font-size: 18px;
+      margin-bottom: 10px;
       color: var(--text-primary);
     }
 
     p {
       color: var(--text-regular);
-      margin-bottom: 25px;
-      font-size: 15px;
+      margin-bottom: 16px;
+      font-size: 14px;
     }
 
     .el-button {
-      padding: 12px 30px;
-      border-radius: 6px;
-      font-size: 16px;
+      padding: 8px 16px;
+      font-size: 14px;
     }
   }
 
@@ -589,19 +583,19 @@ export default {
 
     .save-item {
       width: 100%;
-      height: 350px !important;
+      min-height: 320px;
+      height: 100% !important;
       margin-bottom: 0;
       display: flex;
       flex-direction: column;
       position: relative;
       overflow: hidden;
-      transition: all 0.3s;
-      border-radius: 8px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      border-radius: 6px;
 
       &:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        border-color: #e6e6e6;
+        box-shadow: var(--shadow-card-hover);
+        border-color: var(--el-color-primary-light-7);
       }
 
       &::before {
@@ -610,8 +604,8 @@ export default {
         top: 0;
         left: 0;
         right: 0;
-        height: 6px;
-        background: linear-gradient(to right, var(--primary-color), #4f8a5b);
+        height: 3px;
+        background: var(--primary-color);
         z-index: 2;
       }
 
@@ -624,7 +618,7 @@ export default {
 
       .save-item-content {
         flex: 1;
-        padding: 20px;
+        padding: 16px;
         padding-bottom: 10px;
         display: flex;
         flex-direction: column;
@@ -800,8 +794,10 @@ export default {
       }
 
       .save-actions {
-        padding: 15px 20px;
-        height: 65px;
+        gap: 8px;
+        padding: 12px 16px;
+        min-height: 60px;
+        height: auto;
         display: flex;
         justify-content: space-between;
         border-top: 1px solid #f0f0f0;
@@ -811,9 +807,8 @@ export default {
         margin-top: auto;
 
         .el-button {
-          border-radius: 20px;
-          padding: 8px 15px;
-          margin-right: 5px;
+          border-radius: 6px;
+          margin-right: 0;
 
           &.el-button--success {
             background-color: #4f8a5b;
@@ -868,35 +863,49 @@ export default {
 
   // 响应式调整
   @media (max-width: 767px) {
-    padding: 15px;
-
     .page-header {
       flex-direction: column;
       align-items: flex-start;
 
       h2 {
-        margin-bottom: 15px;
+        margin-bottom: 0;
       }
 
       .header-actions {
         width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
 
         .search-input {
           margin-bottom: 10px;
+          grid-column: 1 / -1;
           width: 100% !important;
           margin-right: 0;
         }
 
         .el-button {
-          margin-left: 0;
-          margin-right: 10px;
+          width: 100%;
+          margin: 0;
         }
       }
     }
 
     .save-item {
       height: auto;
-      min-height: 280px;
+      min-height: 300px;
+    }
+
+    .save-actions {
+      align-items: center;
+      flex-wrap: wrap;
+
+      .el-button-group {
+        flex: 1 1 auto;
+      }
+
+      .el-dropdown {
+        margin-left: 0 !important;
+      }
     }
   }
 
@@ -906,9 +915,9 @@ export default {
     align-items: center;
   }
 
-  .empty-save-card {
-    border-radius: 10px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+.empty-save-card {
+    border-radius: 6px;
+    box-shadow: var(--shadow-card);
   }
 
   .fullheight-dialog {

@@ -82,11 +82,14 @@ export default {
   align-items: center;
   width: 100%;
   box-sizing: border-box;
+  gap: 12px;
 }
 
 .settings-status {
   display: flex;
+  min-width: 0;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .action-buttons {
@@ -96,11 +99,6 @@ export default {
 
 .action-buttons .el-button {
   min-width: 90px;
-  transition: box-shadow 0.2s;
-}
-
-.action-buttons .el-button:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .action-buttons .el-button--primary {
@@ -109,7 +107,7 @@ export default {
 
 .view-changes-btn {
   margin-left: 15px;
-  color: #d99b32;
+  color: var(--warning-color);
   transition: color 0.3s;
 }
 
@@ -196,16 +194,25 @@ export default {
 @media (max-width: 768px) {
   .actions-footer {
     flex-direction: column;
-    gap: 15px;
+    align-items: stretch;
+    gap: 8px;
   }
   
   .settings-status {
-    justify-content: center;
+    justify-content: space-between;
   }
   
   .action-buttons {
     width: 100%;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .action-buttons .el-button {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
   }
 }
-</style> 
+</style>

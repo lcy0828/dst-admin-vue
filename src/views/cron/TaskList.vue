@@ -2,15 +2,17 @@
   <div class="app-container">
     <el-card class="box-card" shadow="never">
       <template v-slot:header>
-<div  class="clearfix">
-        <span>定时任务管理</span>
-        <el-button-group style="float: right">
-          <el-button type="primary" icon="el-icon-plus" @click="handleAddTask">添加任务</el-button>
-          <el-button type="warning" icon="el-icon-document" @click="$router.push('/cron/logs')">执行日志</el-button>
-          <!-- 统计图表按钮已隐藏 -->
-          <!-- 导入导出按钮已隐藏 -->
-        </el-button-group>
-        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+<div class="task-header">
+        <span class="task-header-title">定时任务管理</span>
+        <div class="task-header-controls">
+          <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+          <el-button-group class="task-header-actions">
+            <el-button type="primary" icon="el-icon-plus" @click="handleAddTask">添加任务</el-button>
+            <el-button icon="el-icon-document" @click="$router.push('/cron/logs')">执行日志</el-button>
+            <!-- 统计图表按钮已隐藏 -->
+            <!-- 导入导出按钮已隐藏 -->
+          </el-button-group>
+        </div>
       </div>
 </template>
 
@@ -197,14 +199,14 @@
       </el-table>
 
       <el-pagination
+        class="pagination-container"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
         :current-page="listQuery.page"
         :page-sizes="[10, 20, 50, 100]"
         :page-size="listQuery.limit"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        style="margin-top: 15px; text-align: right;">
+        :total="total">
       </el-pagination>
     </el-card>
 
@@ -1259,16 +1261,54 @@ export default {
 </script>
 
 <style scoped>
+.app-container {
+  width: 100%;
+}
+
+.box-card {
+  margin-bottom: 0;
+}
+
+.task-header,
+.task-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task-header {
+  justify-content: space-between;
+}
+
+.task-header-title {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.task-header-controls {
+  min-width: 0;
+  justify-content: flex-end;
+}
+
 .filter-container {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .filter-form {
-  margin-top: 15px;
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  margin-top: 12px;
+}
+
+.filter-form :deep(.el-form-item) {
+  margin-right: 0;
+  margin-bottom: 10px;
 }
 
 /* 表格样式 */
 .task-table {
-  margin-bottom: 20px;
+  margin-bottom: 0;
   border-radius: 4px;
   overflow: hidden;
 }
@@ -1556,5 +1596,61 @@ export default {
 }
 .stats-charts {
   margin-top: 20px;
+}
+
+.pagination-container {
+  margin-top: 14px;
+}
+
+@media (max-width: 768px) {
+  .task-header,
+  .task-header-controls {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .task-header-controls :deep(.automation-room-select) {
+    width: 100%;
+    margin: 0;
+  }
+
+  .task-header-actions {
+    display: flex;
+    width: 100%;
+  }
+
+  .task-header-actions :deep(.el-button) {
+    flex: 1 1 50%;
+    width: auto;
+    margin-left: 0 !important;
+  }
+
+  .filter-form {
+    display: block;
+  }
+
+  .filter-form :deep(.el-form-item),
+  .filter-form :deep(.el-form-item__content),
+  .filter-form :deep(.el-select),
+  .filter-form :deep(.el-input) {
+    width: 100% !important;
+    margin-right: 0;
+  }
+
+  .filter-form :deep(.el-form-item:last-child .el-form-item__content) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .filter-form :deep(.el-form-item:last-child .el-button) {
+    width: 100%;
+    margin: 0;
+  }
+
+  .pagination-container {
+    justify-content: center;
+  }
 }
 </style>

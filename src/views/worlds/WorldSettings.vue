@@ -33,7 +33,9 @@
             <component :is="'el-icon-close'" class="legacy-icon world-delete-icon" @click.stop="confirmDeleteWorld(world)" />
           </template>
           <div class="tab-header-content">
-            <div class="world-icon" :class="world.type === 'forest' ? 'forest-icon' : 'cave-icon'"></div>
+            <div class="world-icon" :class="world.type === 'forest' ? 'forest-icon' : 'cave-icon'">
+              <component :is="world.type === 'forest' ? 'el-icon-sunny' : 'el-icon-moon-night'" />
+            </div>
             <div class="world-description">
               <h3>{{ world.name }} {{ world.type === 'forest' ? '森林世界' : '洞穴世界' }}</h3>
               <p>配置游戏的{{ world.type === 'forest' ? '主' : '地下' }}世界设置，包括地形、资源、危险等各种生成规则</p>
@@ -183,7 +185,7 @@
         <!-- 如果没有世界，显示默认的标签页 -->
         <el-tab-pane label="森林" name="forest" v-if="roomWorlds.length === 0 && hasForestWorld">
           <div class="tab-header-content">
-            <div class="world-icon forest-icon"></div>
+            <div class="world-icon forest-icon"><component :is="'el-icon-sunny'" /></div>
             <div class="world-description">
               <h3>森林世界</h3>
               <p>配置游戏的主世界设置，包括地形、资源、危险等各种生成规则</p>
@@ -209,7 +211,7 @@
 
         <el-tab-pane label="洞穴" name="cave" v-if="roomWorlds.length === 0 && hasCaveWorld">
           <div class="tab-header-content">
-            <div class="world-icon cave-icon"></div>
+            <div class="world-icon cave-icon"><component :is="'el-icon-moon-night'" /></div>
             <div class="world-description">
               <h3>洞穴世界</h3>
               <p>配置游戏的地下世界设置，包括地形、资源、危险等各种生成规则</p>
@@ -235,7 +237,7 @@
       </el-tabs>
 
       <!-- 为固定底栏预留空间 -->
-      <div style="height: 85px; width: 100%;"></div>
+      <div class="footer-spacer" aria-hidden="true"></div>
     </el-card>
 
     <!-- 底部工具栏 - 使用内联样式确保直接生效 -->
@@ -614,43 +616,24 @@ export default {
       return this.activeTab === 'forest' ? this.filteredForestSettings : this.filteredCaveSettings;
     },
     
-    // 根据屏幕宽度和状态计算底栏样式
+    // 固定底栏跟随主内容区宽度，移动端侧栏为抽屉，不占页面宽度。
     footerStyle() {
-      if (this.windowSize.width > 1200) {
-        // 宽屏设备样式
-        return {
-          position: 'fixed',
-          bottom: '0',
-          left: this.menuWidth,
-          width: `calc(100% - ${this.menuWidth})`,
-          zIndex: 9999,
-          backgroundColor: 'var(--el-bg-color)',
-          boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)',
-          borderTop: '1px solid var(--el-border-color-light)',
-          transition: 'all 0.3s ease-in-out',
-          padding: '8px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end'
-        };
-      } else {
-        // 适合移动设备的样式
-        return {
-          position: 'fixed',
-          bottom: '0',
-          left: this.menuWidth,
-          width: `calc(100% - ${this.menuWidth})`,
-          zIndex: 9999,
-          backgroundColor: 'var(--el-bg-color)',
-          boxShadow: '0 -2px 8px rgba(0, 0, 0, 0.1)',
-          borderTop: '1px solid var(--el-border-color-light)',
-          transition: 'all 0.3s ease-in-out',
-          padding: '8px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        };
-      }
+      const compact = this.windowSize.width <= 768;
+      return {
+        position: 'fixed',
+        right: '0',
+        bottom: '0',
+        left: compact ? '0' : this.menuWidth,
+        width: 'auto',
+        zIndex: 900,
+        backgroundColor: 'var(--surface-color)',
+        boxShadow: '0 -3px 14px rgba(38, 53, 46, 0.1)',
+        borderTop: '1px solid var(--border-color)',
+        transition: 'left 0.2s ease',
+        padding: compact ? '8px 12px' : '8px 20px',
+        display: 'flex',
+        alignItems: 'center'
+      };
     },
     
     // 底栏内容样式
@@ -701,6 +684,11 @@ export default {
     // 获取左侧菜单宽度
     getMenuWidth() {
       try {
+        if (window.innerWidth <= 768) {
+          this.menuWidth = '0px';
+          return;
+        }
+
         // 尝试获取左侧菜单元素，查找多种可能的选择器
         const sidebarSelectors = [
           '.el-aside',
@@ -722,14 +710,12 @@ export default {
         }
         
         if (sidebar) {
-          // 获取实际宽度并考虑一些边距
+          // 固定底栏左边缘与实际侧栏右边缘对齐。
           const sidebarWidth = sidebar.offsetWidth;
-          // 如果宽度过小，可能不是主侧边栏，使用默认值
           if (sidebarWidth < 50) {
-            this.menuWidth = '200px';
+            this.menuWidth = '64px';
           } else {
-            // 为了防止底栏与菜单紧贴，添加一些边距
-            this.menuWidth = (sidebarWidth + 5) + 'px';
+            this.menuWidth = sidebarWidth + 'px';
           }
         } else {
           // 如果找不到菜单，则使用默认宽度
@@ -739,11 +725,11 @@ export default {
             this.menuWidth = '64px';
           } else {
             // 默认宽度
-            this.menuWidth = '200px';
+            this.menuWidth = '216px';
           }
         }
       } catch (error) {
-        this.menuWidth = '200px';
+        this.menuWidth = '216px';
       }
     },
     
@@ -1856,16 +1842,15 @@ export default {
 
 <style scoped>
 .world-settings-container {
-  padding: 20px;
-  padding-bottom: 100px; /* 为固定底栏留出空间 */
-  background-color: #f8f9fc;
-  min-height: calc(100vh - 120px);
+  width: 100%;
+  min-height: 100%;
+  padding-bottom: 88px;
 }
 
 .settings-card {
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
-  border: none;
+  margin-bottom: 0;
+  border-radius: 6px;
+  box-shadow: var(--shadow-card) !important;
 }
 
 .card-header {
@@ -1876,6 +1861,7 @@ export default {
 
 .header-title {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 10px;
 }
@@ -1887,7 +1873,12 @@ export default {
 
 .header-title h2 {
   margin: 0;
-  font-size: 20px;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-primary);
 }
 
@@ -1897,58 +1888,45 @@ export default {
 }
 
 .custom-tabs {
-  margin-top: 20px;
-  border-radius: 8px;
+  margin-top: 12px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .tab-header-content {
   display: flex;
-  margin-bottom: 20px;
-  padding: 15px;
-  background-color: rgba(217, 121, 50, 0.1);
-  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--el-color-primary-light-8);
+  background-color: var(--el-color-primary-light-9);
+  border-radius: 6px;
   align-items: center;
 }
 
 .world-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  margin-right: 15px;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 6px;
+  margin-right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
+  font-size: 22px;
 }
 
 .forest-icon {
   background-color: #4f8a5b;
 }
 
-.forest-icon::before {
-  content: "\e93d";
-  font-family: element-icons !important;
-  font-size: 30px;
-  color: #fff;
-}
-
 .cave-icon {
   background-color: var(--text-secondary);
 }
 
-.cave-icon::before {
-  content: "\e904";
-  font-family: element-icons !important;
-  font-size: 30px;
-  color: #fff;
-}
-
 .world-description h3 {
   margin: 0 0 5px 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .world-description p {
@@ -1958,7 +1936,7 @@ export default {
 }
 
 .loading-container, .empty-state {
-  padding: 30px;
+  padding: 24px;
   text-align: center;
 }
 
@@ -1987,10 +1965,12 @@ export default {
 }
 
 .server-ini-form {
-  padding: 20px;
+  max-width: 760px;
+  padding: 16px;
   background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: none;
 }
 
 .server-ini-form h3 {
@@ -2006,6 +1986,65 @@ export default {
 }
 
 .settings-tabs {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+.footer-spacer {
+  width: 100%;
+  height: 72px;
+}
+
+@media (max-width: 768px) {
+  .world-settings-container {
+    padding-bottom: 116px;
+  }
+
+  .card-header {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .header-title h2 {
+    white-space: normal;
+  }
+
+  .header-actions {
+    flex: 0 0 auto;
+  }
+
+  .custom-tabs {
+    margin-top: 8px;
+  }
+
+  .tab-header-content {
+    align-items: flex-start;
+  }
+
+  .world-description {
+    min-width: 0;
+  }
+
+  .world-description p {
+    line-height: 20px;
+  }
+
+  .server-ini-form {
+    padding: 12px;
+  }
+
+  .server-ini-form :deep(.el-form-item) {
+    display: block;
+  }
+
+  .server-ini-form :deep(.el-form-item__label),
+  .server-ini-form :deep(.el-form-item__content) {
+    width: 100% !important;
+    margin-left: 0 !important;
+    text-align: left;
+  }
+
+  .footer-spacer {
+    height: 104px;
+  }
 }
 </style>
