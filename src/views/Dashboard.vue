@@ -14,7 +14,7 @@
                 <span class="version-title">饥荒服务器版本信息</span>
                 <div class="version-actions">
                   <el-button
-                    v-if="versionInfo.update_supported"
+                    v-if="canUpdateGame"
                     type="primary"
                     size="small"
                     @click="updateDstServer"
@@ -72,7 +72,11 @@
                   <span v-if="versionInfo.app_id">App ID：{{ versionInfo.app_id }}</span>
                   <span v-if="versionInfo.checked_at">检查时间：{{ formatCheckedAt(versionInfo.checked_at) }}</span>
                 </div>
-                <div v-if="versionInfo.update_method === 'steam-client'" class="version-managed-notice">
+                <div v-if="!versionInfo.installed" class="version-check-warning" role="status">
+                  <component :is="'el-icon-warning-outline'" class="legacy-icon" />
+                  <span>未检测到有效的 DST 安装，请检查系统设置中的服务端目录。</span>
+                </div>
+                <div v-else-if="versionInfo.update_method === 'steam-client'" class="version-managed-notice">
                   <component :is="'el-icon-info'" class="legacy-icon" />
                   <span>当前为 macOS Steam 客户端安装，请在 Steam 中更新游戏。</span>
                 </div>
@@ -122,11 +126,12 @@
           <template v-slot:header>
 <div  class="clearfix server-header">
             <span><component :is="'el-icon-monitor'" class="legacy-icon" /> 服务器状态监控</span>
-            <el-button type="text" icon="el-icon-refresh" @click="getServerList">刷新</el-button>
+            <el-button type="text" icon="el-icon-refresh" @click="refreshServerData">刷新</el-button>
           </div>
 </template>
-
+          <div v-loading="serverLoading" class="server-monitor-body">
           <el-table
+            v-if="serverList.length > 0 && !serverDataError"
             :data="serverList"
             style="width: 100%"
             size="medium"
@@ -196,14 +201,25 @@
             </el-table-column>
           </el-table>
 
-          <div class="server-footer" v-if="serverList.length > 0">
+          <div class="server-footer" v-if="serverList.length > 0 && !serverDataError">
             <span class="server-stats">共 {{ serverList.length }} 个服务器实例，{{ serverList.filter(s => s.status === 'running').length }} 个运行中</span>
           </div>
 
-          <div class="empty-server" v-if="serverList.length === 0">
+          <div class="server-error-state" v-else-if="serverDataError" role="status">
             <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-            <span>暂无服务器实例运行</span>
+            <strong>{{ serverErrorTitle }}</strong>
+            <span>{{ serverDataError }}</span>
+            <div class="server-state-actions">
+              <el-button size="small" @click="goToSystemSettings">系统设置</el-button>
+              <el-button type="primary" size="small" plain @click="refreshServerData">重试</el-button>
+            </div>
+          </div>
+
+          <div class="empty-server" v-else>
+            <component :is="'el-icon-warning-outline'" class="legacy-icon" />
+            <span>暂无可管理的服务器实例</span>
             <el-button type="primary" size="small" plain @click="openStartRoomDialog">启动现有房间</el-button>
+          </div>
           </div>
 
           <!-- 启动房间对话框 -->
@@ -325,7 +341,7 @@
                 <span>系统负载</span>
                 <!-- <span class="resource-value">{{ systemStatus.cpu_load1 ? systemStatus.cpu_load1.toFixed(2) : '0.00' }}</span> -->
               </div>
-              <el-progress v-if="hasMetric(systemStatus.cpu_load1)" :percentage="metricPercentage(systemStatus.cpu_load1)"></el-progress>
+              <el-progress v-if="hasMetric(systemStatus.cpu_load1)" :percentage="loadPercentage(systemStatus.cpu_load1)" :color="customColors"></el-progress>
               <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
                 <span>1分钟: {{ formatDecimal(systemStatus.cpu_load1) }}</span>
@@ -345,7 +361,7 @@
             </div>
             <div class="system-info-item">
               <component :is="'el-icon-refresh'" class="legacy-icon" />
-              <span>更新时间: {{ systemStatus.current_time || '--' }}</span>
+              <span>更新时间: {{ formatCheckedAt(systemStatus.current_time) }}</span>
             </div>
           </div>
         </el-card>
@@ -464,7 +480,10 @@ export default {
     return {
       formatTimeDiff,
       loading: false,
+      serverLoading: false,
       serverList: [],
+      serverListError: '',
+      roomListError: '',
       customColors: [
         {color: '#4f8a5b', percentage: 40},
         {color: '#d99b32', percentage: 70},
@@ -514,13 +533,29 @@ export default {
       startRoomLoading: false,
     }
   },
+  computed: {
+    canUpdateGame() {
+      return Boolean(
+        this.versionInfo.installed &&
+        this.versionInfo.update_supported &&
+        this.versionInfo.local?.version
+      );
+    },
+    serverDataError() {
+      return this.serverListError || this.roomListError;
+    },
+    serverErrorTitle() {
+      return this.serverDataError.includes('DST 存档目录不存在')
+        ? 'DST 存档目录不可用'
+        : '服务器数据加载失败';
+    }
+  },
   created() {
     this.refreshData();
     this.refreshSystemStatus();
-    this.getServerList();
+    this.refreshServerData();
     this.getVersionInfo();
     this.checkOngoingUpdate();
-    this.fetchRooms(); // 获取房间列表
   },
 
   beforeUnmount() {
@@ -531,11 +566,24 @@ export default {
     getServerList() {
       return systemApi.getTmuxServers().then(res => {
         this.serverList = Array.isArray(res.data) ? res.data : [];
+        this.serverListError = '';
       }).catch(err => {
         this.serverList = [];
         console.error(err);
-        this.$message.error(`获取服务器状态失败：${err.message || '未知错误'}`);
+        this.serverListError = err.message || '获取服务器状态失败';
       })
+    },
+    refreshServerData() {
+      this.serverLoading = true;
+      return Promise.allSettled([
+        this.getServerList(),
+        this.fetchRooms()
+      ]).finally(() => {
+        this.serverLoading = false;
+      });
+    },
+    goToSystemSettings() {
+      this.$router.push('/system');
     },
     refreshData() {
       this.loading = true;
@@ -714,6 +762,12 @@ export default {
     metricPercentage(value) {
       return Number(Math.min(100, Math.max(0, Number(value))).toFixed(1));
     },
+    loadPercentage(value) {
+      if (!this.hasMetric(value)) return 0;
+      const capacity = Number(this.systemStatus.cpu_threads || this.systemStatus.cpu_cores);
+      if (!Number.isFinite(capacity) || capacity <= 0) return 0;
+      return this.metricPercentage((Number(value) / capacity) * 100);
+    },
     displayMetric(value) {
       return this.hasMetric(value) ? value : '--';
     },
@@ -755,23 +809,22 @@ export default {
     },
 
     checkVersionOutdated() {
-      if (this.versionInfo.local && this.versionInfo.latest) {
-        try {
-          if (typeof this.versionInfo.latest.up_to_date === 'boolean') {
-            this.isVersionOutdated = !this.versionInfo.latest.up_to_date;
-            return;
-          }
-          const localVersion = Number(this.versionInfo.local.version);
-          const latestVersion = Number(this.versionInfo.latest.version);
-          this.isVersionOutdated = Number.isFinite(localVersion) &&
-            Number.isFinite(latestVersion) && localVersion < latestVersion;
-        } catch (err) {
-          console.error('比较版本号时出错:', err);
-          this.isVersionOutdated = false;
-        }
-      } else {
+      const localValue = String(this.versionInfo.local?.version || '').trim();
+      const latestValue = String(this.versionInfo.latest?.version || '').trim();
+      if (!this.versionInfo.installed || !localValue || !latestValue) {
         this.isVersionOutdated = false;
+        return;
       }
+
+      if (typeof this.versionInfo.latest.up_to_date === 'boolean') {
+        this.isVersionOutdated = !this.versionInfo.latest.up_to_date;
+        return;
+      }
+
+      const localVersion = Number(localValue);
+      const latestVersion = Number(latestValue);
+      this.isVersionOutdated = Number.isFinite(localVersion) &&
+        Number.isFinite(latestVersion) && localVersion < latestVersion;
     },
 
     openUpdateLink() {
@@ -788,6 +841,10 @@ export default {
 
     // 更新饥荒服务器
     updateDstServer() {
+      if (!this.versionInfo.installed) {
+        this.$message.warning('未检测到有效的 DST 安装，请先检查服务端目录。');
+        return;
+      }
       if (!this.versionInfo.update_supported) {
         const message = this.versionInfo.update_method === 'steam-client'
           ? '当前游戏由 Steam 客户端管理，请在 Steam 中更新。'
@@ -897,20 +954,20 @@ export default {
 
     // 获取房间列表
     fetchRooms() {
-      roomApi.getRoomList()
+      return roomApi.getRoomList()
         .then(response => {
-          console.log('房间列表响应:', response);
           if (response && response.status === 200) {
-            // 直接使用 response.data 而不是 response.data.data
             this.roomList = response.data || [];
-            console.log('处理后的房间列表:', this.roomList);
+            this.roomListError = '';
           } else {
-            console.warn('房间列表响应不符合预期:', response);
+            throw new Error(response?.msg || '服务器返回了无效的房间列表');
           }
         })
         .catch(error => {
+          this.roomList = [];
+          this.roomListError = error.message || '获取房间列表失败';
           console.error('获取房间列表失败:', error);
-          this.$message.error('获取房间列表失败');
+          throw error;
         });
     },
 
@@ -928,22 +985,12 @@ export default {
       this.startRoomDialogVisible = true;
       this.startRoomLoading = true;
 
-      // 获取房间列表
-      roomApi.getRoomList()
-        .then(response => {
-          console.log('打开对话框时获取房间列表:', response);
-          if (response && response.status === 200) {
-            this.roomList = response.data || [];
-            if (this.roomList.length === 0) {
-              this.$message.warning('没有找到可用的房间');
-            }
-          } else {
-            this.$message.error('获取房间列表失败');
-          }
+      this.fetchRooms()
+        .then(() => {
+          if (this.roomList.length === 0) this.$message.warning('没有找到可用的房间');
         })
         .catch(error => {
-          console.error('获取房间列表失败:', error);
-          this.$message.error('获取房间列表失败');
+          this.$message.error(error.message || '获取房间列表失败');
         })
         .finally(() => {
           this.startRoomLoading = false;
@@ -1478,11 +1525,16 @@ export default {
   font-size: 13px;
 }
 
+.server-monitor-body {
+  min-height: 132px;
+}
+
 .server-stats {
   color: var(--text-secondary);
 }
 
-.empty-server {
+.empty-server,
+.server-error-state {
   min-height: 132px;
   padding: 24px 0;
   text-align: center;
@@ -1493,15 +1545,45 @@ export default {
   justify-content: center;
 }
 
-.empty-server .legacy-icon {
+.empty-server .legacy-icon,
+.server-error-state .legacy-icon {
   width: 22px;
   height: 22px;
   margin: 0 0 10px;
   color: #9aa69e;
 }
 
-.empty-server span {
+.empty-server span,
+.server-error-state span {
   margin-bottom: 12px;
+}
+
+.server-error-state {
+  padding-right: 20px;
+  padding-left: 20px;
+}
+
+.server-error-state .legacy-icon {
+  color: var(--warning-color);
+}
+
+.server-error-state strong {
+  margin-bottom: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.server-error-state span {
+  max-width: 720px;
+  color: var(--text-secondary);
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.server-state-actions {
+  display: flex;
+  gap: 8px;
 }
 
 /* 启动房间对话框相关样式 */
