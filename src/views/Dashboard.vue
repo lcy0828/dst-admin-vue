@@ -1,5 +1,5 @@
 <template>
-  <div class="dashboard-content" v-loading="loading" element-loading-text="加载中..." element-loading-spinner="el-icon-loading">
+  <div class="dashboard-content">
     <header class="dashboard-header">
       <div class="dashboard-heading">
         <h1>服务总览</h1>
@@ -124,11 +124,10 @@
             <CircleAlert v-else />
             <span>更新状态：{{ updateStatus.is_completed ? '已完成' : (updateStatus.is_running ? '进行中' : '尚未开始') }}</span>
           </div>
-          <el-progress
+          <UiProgress
             v-if="updateStatus.is_completed || hasMetric(updateStatus.progress)"
-            :percentage="Number(updateStatus.progress)"
-            :status="updateStatus.is_completed ? 'success' : ''"
-          ></el-progress>
+            :model-value="Number(updateStatus.progress)"
+          />
           <div v-else-if="updateStatus.is_running" class="metric-unavailable">进度：--</div>
           <div v-if="updateStatus.last_output" class="update-output">
             <div class="output-label">最新输出</div>
@@ -159,177 +158,182 @@
             刷新
           </UiButton>
         </div>
-          <div v-loading="serverLoading" class="server-monitor-body">
-          <el-table
-            v-if="serverList.length > 0 && !serverDataError"
-            :data="serverList"
-            style="width: 100%"
-            size="medium"
-            :row-class-name="tableRowClassName"
-            highlight-current-row
-            border>
-            <el-table-column prop="status" label="状态" width="90" align="center">
-              <template v-slot="scope">
-                <Badge :variant="scope.row.status === 'running' ? 'secondary' : 'outline'">
-                  {{ getServerStatusName(scope.row.status) }}
-                </Badge>
-              </template>
-            </el-table-column>
-            <el-table-column prop="archive_name" label="房间名称" min-width="120">
-              <template v-slot="scope">
-                <div class="server-name-info">
-                  <span class="server-name-text">{{ scope.row.archive_name }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="world_name" label="世界名称" min-width="120">
-              <template v-slot="scope">
-                <el-tag
-                  :type="scope.row.world_type === 'forest' ? 'warning' : (scope.row.world_type === 'cave' ? 'primary' : 'info')"
-                  size="medium"
-                  effect="plain">
-                  {{ scope.row.world_name }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="启动时间" width="170" align="center">
-              <template v-slot="scope">
-                <div class="time-info">
-                  <span>{{ scope.row.start_time || '--' }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="运行时间" width="90" align="center">
-              <template v-slot="scope">
-                <div class="time-info">
-                  <span>{{ formatServerUptime(scope.row.start_time) }}</span>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="180" align="center">
-              <template v-slot="scope">
+        <div class="server-monitor-body">
+          <ShadcnTable v-if="serverList.length > 0 && !serverDataError">
+            <TableHeader>
+              <TableRow>
+                <TableHead>状态</TableHead>
+                <TableHead>房间名称</TableHead>
+                <TableHead>世界名称</TableHead>
+                <TableHead>启动时间</TableHead>
+                <TableHead>运行时间</TableHead>
+                <TableHead>操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow
+                v-for="server in serverList"
+                :key="`${server.room_id}-${server.world_id}`"
+                :class="{ 'server-offline': server.status === 'stopped' }"
+              >
+                <TableCell>
+                  <Badge :variant="server.status === 'running' ? 'secondary' : 'outline'">
+                    {{ getServerStatusName(server.status) }}
+                  </Badge>
+                </TableCell>
+                <TableCell><span class="server-name-text">{{ server.archive_name }}</span></TableCell>
+                <TableCell><Badge variant="outline">{{ server.world_name }}</Badge></TableCell>
+                <TableCell>{{ server.start_time || '--' }}</TableCell>
+                <TableCell>{{ formatServerUptime(server.start_time) }}</TableCell>
+                <TableCell>
                 <div class="server-row-actions">
                   <UiButton
                     size="sm"
-                    :variant="scope.row.status === 'running' ? 'destructive' : 'secondary'"
+                    :variant="server.status === 'running' ? 'destructive' : 'secondary'"
                     :disabled="serverLoading"
-                    @click="handleServerAction(scope.row)"
+                    @click="handleServerAction(server)"
                   >
-                    <Square v-if="scope.row.status === 'running'" data-icon="inline-start" />
+                    <Square v-if="server.status === 'running'" data-icon="inline-start" />
                     <Play v-else data-icon="inline-start" />
-                    {{ scope.row.status === 'running' ? '停止' : '启动' }}
+                    {{ server.status === 'running' ? '停止' : '启动' }}
                   </UiButton>
                   <UiButton
                     size="sm"
                     variant="outline"
                     :disabled="serverLoading"
-                    @click="handleConfigure(scope.row)"
+                    @click="handleConfigure(server)"
                   >
                     <Settings data-icon="inline-start" />
                     配置
                   </UiButton>
                 </div>
-              </template>
-            </el-table-column>
-          </el-table>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </ShadcnTable>
 
           <div class="server-footer" v-if="serverList.length > 0 && !serverDataError">
             <span class="server-stats">共 {{ serverList.length }} 个服务器实例，{{ serverList.filter(s => s.status === 'running').length }} 个运行中</span>
           </div>
 
-          <div class="server-error-state" v-else-if="serverDataError" role="status">
-            <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-            <strong>{{ serverErrorTitle }}</strong>
-            <span>{{ serverDataError }}</span>
-            <div class="server-state-actions">
-              <el-button size="small" @click="goToSystemSettings">系统设置</el-button>
-              <el-button type="primary" size="small" plain @click="refreshServerData">重试</el-button>
-            </div>
-          </div>
+          <Alert v-else-if="serverDataError" class="server-error-state">
+            <CircleAlert />
+            <AlertTitle>{{ serverErrorTitle }}</AlertTitle>
+            <AlertDescription>{{ serverDataError }}</AlertDescription>
+            <AlertAction>
+              <UiButton variant="outline" size="sm" @click="goToSystemSettings">系统设置</UiButton>
+              <UiButton size="sm" @click="refreshServerData">重试</UiButton>
+            </AlertAction>
+          </Alert>
 
-          <div class="empty-server" v-else-if="roomList.length === 0">
-            <component :is="'el-icon-folder-add'" class="legacy-icon" />
-            <strong>当前目标还没有房间</strong>
-            <span>创建房间并配置至少一个世界后，即可启动专服。</span>
-            <div class="server-state-actions">
-              <el-button size="small" @click="refreshServerData">重新检查</el-button>
-              <el-button type="primary" size="small" @click="createRoom">创建房间</el-button>
-            </div>
-          </div>
+          <Empty v-else-if="roomList.length === 0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><FolderPlus /></EmptyMedia>
+              <EmptyTitle>当前目标还没有房间</EmptyTitle>
+              <EmptyDescription>创建房间并配置至少一个世界后，即可启动专服。</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <div class="server-state-actions">
+                <UiButton variant="outline" size="sm" @click="refreshServerData">重新检查</UiButton>
+                <UiButton size="sm" @click="createRoom">创建房间</UiButton>
+              </div>
+            </EmptyContent>
+          </Empty>
 
-          <div class="empty-server" v-else>
-            <component :is="'el-icon-video-play'" class="legacy-icon" />
-            <strong>服务器尚未启动</strong>
-            <span>已识别 {{ roomList.length }} 个房间，可选择房间和世界启动专服。</span>
-            <el-button type="primary" size="small" @click="openStartRoomDialog">启动房间</el-button>
-          </div>
-          </div>
+          <Empty v-else>
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><CirclePlay /></EmptyMedia>
+              <EmptyTitle>服务器尚未启动</EmptyTitle>
+              <EmptyDescription>已识别 {{ roomList.length }} 个房间，可选择房间和世界启动专服。</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent><UiButton size="sm" @click="openStartRoomDialog">启动房间</UiButton></EmptyContent>
+          </Empty>
+        </div>
 
-          <!-- 启动房间对话框 -->
-          <el-dialog
-            title="启动房间"
-            v-model="startRoomDialogVisible"
-            width="500px"
-            :close-on-click-modal="false"
-            :close-on-press-escape="true">
-            <div v-loading="startRoomLoading" class="dialog-content">
-              <el-form :model="startRoomForm" label-width="100px" :rules="startRoomRules" ref="startRoomForm">
-                <el-form-item label="选择房间" prop="roomId">
-                  <el-select
-                    v-model="startRoomForm.roomId"
-                    placeholder="请选择房间"
-                    style="width: 100%"
-                    @change="fetchRoomWorlds"
+        <UiDialog v-model:open="startRoomDialogVisible">
+          <DialogContent class="sm:max-w-lg" :close-on-escape-key-down="!startRoomLoading">
+            <DialogHeader>
+              <DialogTitle>启动房间</DialogTitle>
+              <DialogDescription>选择需要启动的房间和世界分片。</DialogDescription>
+            </DialogHeader>
+            <FieldGroup>
+              <Field>
+                <FieldLabel for="dashboard-room">选择房间</FieldLabel>
+                <UiSelect
+                  :model-value="startRoomForm.roomId"
+                  :disabled="startRoomLoading"
+                  @update:model-value="handleStartRoomSelection"
+                >
+                  <SelectTrigger id="dashboard-room">
+                    <SelectValue placeholder="请选择房间" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem
+                        v-for="(room, index) in roomList"
+                        :key="room.id || index"
+                        :value="String(index)"
+                      >
+                        {{ room.name }}
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </UiSelect>
+              </Field>
+
+              <FieldSet>
+                <FieldLegend variant="label">选择世界</FieldLegend>
+                <FieldGroup v-if="currentRoomWorlds.length > 0" class="gap-3">
+                  <Field
+                    v-for="world in currentRoomWorlds"
+                    :key="world.name"
+                    orientation="horizontal"
                   >
-                    <el-option
-                      v-for="(room, index) in roomList"
-                      :key="room.id || index"
-                      :label="room.name"
-                      :value="index">
-                    </el-option>
-                  </el-select>
-                </el-form-item>
-              <el-form-item label="选择世界" prop="selectedWorlds">
-                <div v-if="currentRoomWorlds.length > 0" class="world-selection">
-                  <el-checkbox-group v-model="startRoomForm.selectedWorlds">
-                    <el-checkbox
-                      v-for="world in currentRoomWorlds"
-                      :key="world.name"
-                      :label="world.name">
-                      {{ world.name }}
-                      <el-tag size="mini" :type="getWorldTagType(world.type)">
-                        {{ getWorldTypeName(world.type) }}
-                      </el-tag>
-                    </el-checkbox>
-                  </el-checkbox-group>
+                    <Checkbox
+                      :id="`dashboard-world-${world.id || world.name}`"
+                      :model-value="startRoomForm.selectedWorlds.includes(world.name)"
+                      :disabled="startRoomLoading"
+                      @update:model-value="toggleSelectedWorld(world.name, $event)"
+                    />
+                    <FieldLabel :for="`dashboard-world-${world.id || world.name}`" class="world-option-label">
+                      <span>{{ world.name }}</span>
+                      <Badge variant="outline">{{ getWorldTypeName(world.type) }}</Badge>
+                    </FieldLabel>
+                  </Field>
                   <div class="world-selection-actions">
-                    <el-button type="text" size="small" @click="selectAllWorlds">全选</el-button>
-                    <el-button type="text" size="small" @click="unselectAllWorlds">取消全选</el-button>
+                    <UiButton variant="ghost" size="sm" :disabled="startRoomLoading" @click="selectAllWorlds">全选</UiButton>
+                    <UiButton variant="ghost" size="sm" :disabled="startRoomLoading" @click="unselectAllWorlds">取消全选</UiButton>
                   </div>
+                </FieldGroup>
+                <Alert v-else-if="startRoomForm.roomId !== '' && !startRoomLoading">
+                  <CircleAlert />
+                  <AlertTitle>该房间还没有可用世界</AlertTitle>
+                  <AlertDescription>请先到房间管理中完成世界配置。</AlertDescription>
+                </Alert>
+                <div v-else-if="startRoomLoading" class="dialog-loading" aria-busy="true">
+                  <Spinner />
+                  <span>正在读取世界配置...</span>
                 </div>
-                <div v-else-if="startRoomForm.roomId !== '' && !startRoomLoading" class="no-worlds-tip">
-                  <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-                  <div>
-                    <strong>该房间还没有可用世界</strong>
-                    <span>请先到房间管理中完成世界配置。</span>
-                  </div>
-                </div>
-              </el-form-item>
-              <el-form-item label="服务器模式">
-                <div class="mode-summary">
-                  <span>跟随系统设置</span>
-                  <el-button type="text" size="small" @click="goToSystemSettings">查看设置</el-button>
-                </div>
-              </el-form-item>
-            </el-form>
-            </div>
-            <template v-slot:footer>
-<div  class="dialog-footer">
-              <el-button @click="startRoomDialogVisible = false" :disabled="startRoomLoading">取消</el-button>
-              <el-button type="primary" @click="startRoom" :loading="startRoomLoading" :disabled="!canStartSelectedRoom">启动所选世界</el-button>
-            </div>
-</template>
-          </el-dialog>
+              </FieldSet>
+
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldTitle>服务器模式</FieldTitle>
+                  <FieldDescription>跟随系统设置中的运行模式。</FieldDescription>
+                </FieldContent>
+                <UiButton variant="outline" size="sm" @click="goToSystemSettings">查看设置</UiButton>
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <UiButton variant="outline" :disabled="startRoomLoading" @click="startRoomDialogVisible = false">取消</UiButton>
+              <UiButton :disabled="!canStartSelectedRoom" @click="startRoom">
+                <Spinner v-if="startRoomLoading" data-icon="inline-start" />
+                <Play v-else data-icon="inline-start" />
+                启动所选世界
+              </UiButton>
+            </DialogFooter>
+          </DialogContent>
+        </UiDialog>
 
       </section>
 
@@ -358,12 +362,21 @@
             <TooltipContent>刷新系统资源</TooltipContent>
           </Tooltip>
         </div>
-          <div v-loading="systemLoading" class="resource-usage">
+        <div class="resource-usage">
+          <template v-if="systemLoading">
+            <div v-for="metric in 4" :key="metric" class="resource-item" aria-busy="true">
+              <Skeleton class="h-4 w-28" />
+              <Skeleton class="mt-3 h-2 w-full" />
+              <Skeleton class="mt-3 h-3 w-3/4" />
+            </div>
+          </template>
+          <template v-else>
             <div class="resource-item">
               <div class="resource-label">
                 <span>CPU使用率</span>
+                <strong>{{ hasMetric(systemStatus.cpu_usage) ? metricPercentage(systemStatus.cpu_usage) + '%' : '--' }}</strong>
               </div>
-              <el-progress v-if="hasMetric(systemStatus.cpu_usage)" :percentage="metricPercentage(systemStatus.cpu_usage)" :color="customColors"></el-progress>
+              <UiProgress v-if="hasMetric(systemStatus.cpu_usage)" :model-value="metricPercentage(systemStatus.cpu_usage)" />
               <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
                 <span>{{ systemStatus.cpu_model || '--' }} {{ systemStatus.cpu_mhz ? '(' + systemStatus.cpu_mhz + 'MHz)' : '' }}</span>
@@ -373,9 +386,9 @@
             <div class="resource-item">
               <div class="resource-label">
                 <span>内存使用率</span>
-                <!-- <span class="resource-value">{{ systemStatus.memory_usage ? systemStatus.memory_usage.toFixed(2) + '%' : '0%' }}</span> -->
+                <strong>{{ hasMetric(systemStatus.memory_usage) ? metricPercentage(systemStatus.memory_usage) + '%' : '--' }}</strong>
               </div>
-              <el-progress v-if="hasMetric(systemStatus.memory_usage)" :percentage="metricPercentage(systemStatus.memory_usage)" :color="customColors"></el-progress>
+              <UiProgress v-if="hasMetric(systemStatus.memory_usage)" :model-value="metricPercentage(systemStatus.memory_usage)" />
               <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
                 <span>总内存: {{ formatMemory(systemStatus.total_memory) }}</span>
@@ -386,9 +399,9 @@
             <div class="resource-item">
               <div class="resource-label">
                 <span>磁盘使用率</span>
-                <!-- <span class="resource-value">{{ systemStatus.disk_usage ? systemStatus.disk_usage.toFixed(2) + '%' : '0%' }}</span> -->
+                <strong>{{ hasMetric(systemStatus.disk_usage) ? metricPercentage(systemStatus.disk_usage) + '%' : '--' }}</strong>
               </div>
-              <el-progress v-if="hasMetric(systemStatus.disk_usage)" :percentage="metricPercentage(systemStatus.disk_usage)" :color="customColors"></el-progress>
+              <UiProgress v-if="hasMetric(systemStatus.disk_usage)" :model-value="metricPercentage(systemStatus.disk_usage)" />
               <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
                 <span>总容量: {{ formatDisk(systemStatus.total_disk) }}</span>
@@ -399,9 +412,9 @@
             <div class="resource-item">
               <div class="resource-label">
                 <span>系统负载</span>
-                <!-- <span class="resource-value">{{ systemStatus.cpu_load1 ? systemStatus.cpu_load1.toFixed(2) : '0.00' }}</span> -->
+                <strong>{{ hasMetric(systemStatus.cpu_load1) ? loadPercentage(systemStatus.cpu_load1) + '%' : '--' }}</strong>
               </div>
-              <el-progress v-if="hasMetric(systemStatus.cpu_load1)" :percentage="loadPercentage(systemStatus.cpu_load1)" :color="customColors"></el-progress>
+              <UiProgress v-if="hasMetric(systemStatus.cpu_load1)" :model-value="loadPercentage(systemStatus.cpu_load1)" />
               <div v-else class="metric-unavailable">--</div>
               <div class="resource-detail">
                 <span>1分钟: {{ formatDecimal(systemStatus.cpu_load1) }}</span>
@@ -409,7 +422,8 @@
                 <span>15分钟: {{ formatDecimal(systemStatus.cpu_load15) }}</span>
               </div>
             </div>
-          </div>
+          </template>
+        </div>
           <div class="system-info-footer">
             <div class="system-info-item">
               <Cpu aria-hidden="true" />
@@ -429,32 +443,28 @@
 
     <div class="section-divider">
       <div class="section-title">
-        <component :is="'el-icon-document'" class="legacy-icon" />
+        <ScrollText />
         <span>世界日志</span>
       </div>
     </div>
 
-    <el-row :gutter="20" class="log-section">
-      <el-col :span="24">
-        <div class="world-log-wrapper">
-          <world-log ref="worldLog" style="height: 400px;"></world-log>
-        </div>
-      </el-col>
-    </el-row>
+    <div class="world-log-wrapper log-section">
+      <WorldLog ref="worldLog" class="world-log" />
+    </div>
 
     <div class="section-divider">
       <div class="section-title">
-        <component :is="'el-icon-s-data'" class="legacy-icon" />
+        <ChartNoAxesCombined />
         <span>最近游戏数据</span>
       </div>
     </div>
 
-    <el-row :gutter="20" class="data-section">
-      <el-col :xs="24" :sm="24" :md="12" :span="12">
-        <el-card shadow="never" class="player-stats">
-          <template v-slot:header>
-<div class="panel-header">
-            <span>玩家实时概况</span>
+    <div class="data-section">
+      <Card class="player-stats">
+        <CardHeader>
+          <CardTitle>玩家实时概况</CardTitle>
+          <CardDescription>汇总当前运行目标中的玩家与世界信息。</CardDescription>
+          <CardAction>
             <UiButton
               variant="ghost"
               size="sm"
@@ -465,8 +475,9 @@
               <RefreshCw v-else data-icon="inline-start" />
               刷新
             </UiButton>
-          </div>
-</template>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <div v-if="playerSummaryLoading" class="player-summary-grid" aria-busy="true">
             <Skeleton v-for="index in 4" :key="index" class="h-16 w-full" />
           </div>
@@ -498,65 +509,130 @@
               已读取 {{ playerSummary.loadedRooms }} / {{ roomList.length }} 个房间的实时玩家记录
             </p>
           </template>
-        </el-card>
-      </el-col>
+        </CardContent>
+      </Card>
 
-      <el-col :xs="24" :sm="24" :md="12" :span="12">
-        <el-card shadow="never" class="announcement-card">
-          <template v-slot:header>
-<div  class="clearfix">
-            <span>公告管理</span>
-            <el-button style="float: right; padding: 3px 0" type="text" @click="gotoAnnouncement">更多</el-button>
-          </div>
-</template>
+      <Card class="announcement-card">
+        <CardHeader>
+          <CardTitle>公告管理</CardTitle>
+          <CardDescription>查看并发布面向玩家的运营公告。</CardDescription>
+          <CardAction>
+            <UiButton variant="ghost" size="sm" @click="gotoAnnouncement">
+              更多
+              <ArrowRight data-icon="inline-end" />
+            </UiButton>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
           <div class="announcement-list">
-            <el-alert
-              v-if="announcementsError"
-              :title="announcementsError"
-              type="warning"
-              :closable="false"
-              show-icon />
+            <Alert v-if="announcementsError">
+              <CircleAlert />
+              <AlertTitle>公告读取失败</AlertTitle>
+              <AlertDescription>{{ announcementsError }}</AlertDescription>
+            </Alert>
+            <Empty v-else-if="announcements.length === 0">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><Megaphone /></EmptyMedia>
+                <EmptyTitle>暂无公告</EmptyTitle>
+                <EmptyDescription>创建公告后会显示在这里。</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent><UiButton size="sm" @click="gotoAnnouncement">管理公告</UiButton></EmptyContent>
+            </Empty>
             <div class="announcement-item" v-for="(item, index) in announcements" :key="index">
               <div class="announcement-title">
-                <el-tag size="mini" :type="getAnnouncementTagType(item.type)">{{ item.type }}</el-tag>
+                <Badge variant="outline">{{ item.type }}</Badge>
                 <span>{{ item.title }}</span>
               </div>
               <div class="announcement-body">{{ item.content }}</div>
               <div class="announcement-footer">
                 <span class="announcement-time">{{ item.time }}</span>
                 <div class="announcement-actions">
-                  <el-button type="text" size="mini" @click="editAnnouncement(item)">编辑</el-button>
-                  <el-button type="text" size="mini" @click="publishAnnouncement(item)">发布</el-button>
+                  <UiButton variant="ghost" size="sm" @click="editAnnouncement(item)">
+                    <Pencil data-icon="inline-start" />
+                    编辑
+                  </UiButton>
+                  <UiButton variant="ghost" size="sm" @click="publishAnnouncement(item)">
+                    <Send data-icon="inline-start" />
+                    发布
+                  </UiButton>
                 </div>
               </div>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </CardContent>
+      </Card>
+    </div>
   </div>
 </template>
 
 <script>
 import WorldLog from '@/components/WorldLog.vue';
 import { playerApi, roomApi, systemApi } from '@/api/index';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog as UiDialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldTitle
+} from '@/components/ui/field';
+import { Progress as UiProgress } from '@/components/ui/progress';
+import {
+  Select as UiSelect,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  Table as ShadcnTable,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { confirmAction } from '@/lib/feedback';
+import { toast } from 'vue-sonner';
 import {
   Activity,
+  ArrowRight,
+  ChartNoAxesCombined,
   ChevronRight,
+  CirclePlay,
   CircleAlert,
   Clock3,
   Cpu,
   Download,
+  FolderPlus,
   Gauge,
+  Megaphone,
   PackageCheck,
+  Pencil,
   Play,
   RefreshCw,
+  ScrollText,
+  Send,
   Settings,
   Square,
   UsersRound
@@ -568,26 +644,75 @@ export default {
   components: {
     Activity,
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
+    ArrowRight,
     Badge,
+    Card,
+    CardAction,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+    ChartNoAxesCombined,
     ChevronRight,
+    Checkbox,
+    CirclePlay,
     CircleAlert,
     Clock3,
     Cpu,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
     Download,
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    FieldLegend,
+    FieldSet,
+    FieldTitle,
+    FolderPlus,
     Gauge,
+    Megaphone,
     PackageCheck,
+    Pencil,
     Play,
     RefreshCw,
+    ScrollText,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Send,
     Settings,
+    ShadcnTable,
     Skeleton,
     Spinner,
     Square,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
     Tooltip,
     TooltipContent,
     TooltipTrigger,
     UiButton,
+    UiDialog,
+    UiProgress,
+    UiSelect,
     UsersRound,
     WorldLog
   },
@@ -599,11 +724,6 @@ export default {
       serverList: [],
       serverListError: '',
       roomListError: '',
-      customColors: [
-        {color: '#4f8a5b', percentage: 40},
-        {color: '#d99b32', percentage: 70},
-        {color: '#c94f4f', percentage: 90}
-      ],
       announcements: [],
       announcementsError: '',
       systemLoading: false,
@@ -645,14 +765,6 @@ export default {
         serverMode: '64'
       },
       currentRoomWorlds: [], // 当前房间的世界列表
-      startRoomRules: {
-        roomId: [
-          { required: true, message: '请选择要启动的房间', trigger: 'change' }
-        ],
-        selectedWorlds: [
-          { type: 'array', required: true, message: '请至少选择一个世界', trigger: 'change' }
-        ]
-      },
       startRoomLoading: false,
     }
   },
@@ -777,50 +889,30 @@ export default {
         });
     },
 
-    tableRowClassName({row}) {
-      if (row.status === 'stopped') {
-        return 'server-offline';
-      } else if (row.status === 'restarting') {
-        return 'server-restarting';
-      }
-      return '';
-    },
-
-    getSeasonClass(season) {
-      switch (season) {
-        case '春季': return 'season-spring';
-        case '夏季': return 'season-summer';
-        case '秋季': return 'season-autumn';
-        case '冬季': return 'season-winter';
-        default: return '';
-      }
-    },
-
-    handleServerAction(server) {
+    async handleServerAction(server) {
       const isRunning = server.status === 'running';
       const action = isRunning ? '停止' : '启动';
-      this.$confirm(`确定要${action} "${server.archive_name} / ${server.world_name}" 吗？`, '提示', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }).then(() => {
-          const request = { room_id: server.room_id, world_id: server.world_id };
-          const operation = isRunning ? roomApi.stopRoom(request) : roomApi.startRoom(request);
-          this.serverLoading = true;
-          operation.then(async res => {
-            await this.refreshServerData();
-            this.$message.success(res.msg || `${action}完成`);
-          }).catch(err => {
-            this.$message.error(`${action}失败：${err.message || '未知错误'}`);
-          }).finally(() => {
-            this.serverLoading = false;
-          });
-        }).catch(() => {
-          this.$message({
-            type: 'info',
-            message: `已取消${action}`
-          });
+      try {
+        await confirmAction(`确定要${action} "${server.archive_name} / ${server.world_name}" 吗？`, '服务器操作确认', {
+          confirmText: `确认${action}`
         });
+      } catch {
+        toast.info(`已取消${action}`);
+        return;
+      }
+
+      const request = { room_id: server.room_id, world_id: server.world_id };
+      const operation = isRunning ? roomApi.stopRoom(request) : roomApi.startRoom(request);
+      this.serverLoading = true;
+      try {
+        const response = await operation;
+        await this.refreshServerData();
+        toast.success(response.msg || `${action}完成`);
+      } catch (error) {
+        toast.error(`${action}失败：${error.message || '未知错误'}`);
+      } finally {
+        this.serverLoading = false;
+      }
     },
 
     handleConfigure(server) {
@@ -837,23 +929,14 @@ export default {
       });
     },
 
-    getAnnouncementTagType(type) {
-      switch (type) {
-        case '通知': return 'info';
-        case '更新': return 'success';
-        case '活动': return 'warning';
-        default: return '';
-      }
-    },
-
     editAnnouncement(announcement) {
       this.$router.push({ path: '/announcements', query: { id: announcement.id } });
     },
 
     publishAnnouncement(announcement) {
       systemApi.updateAnnouncement(announcement.id, { ...announcement, published: true })
-        .then(() => this.$message.success(`公告"${announcement.title}"已发布`))
-        .catch(error => this.$message.error(error.message));
+        .then(() => toast.success(`公告"${announcement.title}"已发布`))
+        .catch(error => toast.error(error.message));
     },
 
     gotoAnnouncement() {
@@ -911,11 +994,11 @@ export default {
               this.systemStatus.free_memory = parseFloat(this.systemStatus.free_memory);
             }
           } else {
-            this.$message.error('获取系统状态数据失败');
+            toast.error('获取系统状态数据失败');
           }
         })
         .catch(error => {
-          this.$message.error('获取系统状态数据失败: ' + (error.message || '未知错误'));
+          toast.error('获取系统状态数据失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
           this.systemLoading = false;
@@ -970,14 +1053,6 @@ export default {
       if (status === 'stopped') return '离线';
       return '未知';
     },
-    getServerStatusTag(status) {
-      if (status === 'running') return 'success';
-      if (status === 'stopped') return 'info';
-      return 'warning';
-    },
-
-
-
     async getVersionInfo() {
       this.versionLoading = true;
       this.versionError = '';
@@ -1028,46 +1103,43 @@ export default {
     },
 
     // 更新饥荒服务器
-    updateDstServer() {
+    async updateDstServer() {
       if (!this.versionInfo.installed) {
-        this.$message.warning('未检测到有效的 DST 安装，请先检查服务端目录。');
+        toast.warning('未检测到有效的 DST 安装，请先检查服务端目录。');
         return;
       }
       if (!this.versionInfo.update_supported) {
         const message = this.versionInfo.update_method === 'steam-client'
           ? '当前游戏由 Steam 客户端管理，请在 Steam 中更新。'
           : '当前环境不支持面板更新，请检查 SteamCMD 配置。';
-        this.$message.warning(message);
+        toast.warning(message);
         return;
       }
-      this.$confirm('确定要更新饥荒服务器吗？更新过程中服务器将无法使用。', '更新确认', {
-        confirmButtonText: '确定更新',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        // 发起更新请求
-        this.updateStarting = true;
-        systemApi.updateDstServer({ force: true }).then(res => {
-          if (res.status === 200 && res.data) {
-            this.$message.success(res.msg || '更新已开始');
-            // 保存会话名称用于查询状态
-            this.updateSessionName = res.data.session_name;
-            // 将会话名称保存到本地存储，以便页面刷新后仍能继续查询状态
-            sessionStorage.setItem('dstUpdateSessionName', this.updateSessionName);
-            // 开始轮询更新状态
-            this.startUpdateStatusPolling();
-          } else {
-            this.$message.error(res.msg || '更新失败');
-          }
-        }).catch(err => {
-          console.error('更新饥荒服务器失败:', err);
-          this.$message.error('更新饥荒服务器失败: ' + (err.message || '未知错误'));
-        }).finally(() => {
-          this.updateStarting = false;
+      try {
+        await confirmAction('确定要更新饥荒服务器吗？更新过程中服务器将无法使用。', '更新确认', {
+          confirmText: '确定更新'
         });
-      }).catch(() => {
-        this.$message.info('已取消更新');
-      });
+      } catch {
+        toast.info('已取消更新');
+        return;
+      }
+
+      this.updateStarting = true;
+      try {
+        const response = await systemApi.updateDstServer({ force: true });
+        if (response.status !== 200 || !response.data) {
+          throw new Error(response.msg || '更新失败');
+        }
+        toast.success(response.msg || '更新已开始');
+        this.updateSessionName = response.data.session_name;
+        sessionStorage.setItem('dstUpdateSessionName', this.updateSessionName);
+        this.startUpdateStatusPolling();
+      } catch (error) {
+        console.error('更新饥荒服务器失败:', error);
+        toast.error('更新饥荒服务器失败: ' + (error.message || '未知错误'));
+      } finally {
+        this.updateStarting = false;
+      }
     },
 
     // 开始轮询更新状态
@@ -1163,7 +1235,7 @@ export default {
     },
 
     // 打开启动房间对话框
-    openStartRoomDialog() {
+    async openStartRoomDialog() {
       // 重置表单
       this.startRoomForm = {
         roomId: '',
@@ -1174,23 +1246,26 @@ export default {
 
       this.startRoomLoading = true;
 
-      this.fetchRooms()
-        .then(() => {
-          if (this.roomList.length === 0) {
-            this.$message.warning('当前目标还没有房间，请先创建房间');
-            return;
-          }
+      try {
+        await this.fetchRooms();
+        if (this.roomList.length === 0) {
+          toast.warning('当前目标还没有房间，请先创建房间');
+          return;
+        }
 
-          this.startRoomDialogVisible = true;
-          this.startRoomForm.roomId = 0;
-          return this.fetchRoomWorlds(0);
-        })
-        .catch(error => {
-          this.$message.error(error.message || '获取房间列表失败');
-        })
-        .finally(() => {
-          this.startRoomLoading = false;
-        });
+        this.startRoomDialogVisible = true;
+        this.startRoomForm.roomId = '0';
+        await this.fetchRoomWorlds(0);
+      } catch (error) {
+        toast.error(error.message || '获取房间列表失败');
+      } finally {
+        this.startRoomLoading = false;
+      }
+    },
+
+    handleStartRoomSelection(value) {
+      this.startRoomForm.roomId = value;
+      return this.fetchRoomWorlds(Number(value));
     },
 
     // 当选择房间变化时获取该房间的世界列表
@@ -1227,7 +1302,7 @@ export default {
           })
           .catch(error => {
             console.error('获取房间世界列表失败:', error);
-            this.$message.error('获取房间世界列表失败');
+            toast.error('获取房间世界列表失败');
             this.currentRoomWorlds = [];
             this.startRoomForm.selectedWorlds = [];
           })
@@ -1248,14 +1323,15 @@ export default {
       this.startRoomForm.selectedWorlds = [];
     },
 
-    // 获取世界类型的标签类型
-    getWorldTagType(type) {
-      switch(type) {
-        case 'forest': return 'success';
-        case 'cave': return 'warning';
-        case 'unknown': return 'info';
-        default: return 'info';
+    toggleSelectedWorld(worldName, selected) {
+      if (selected === true) {
+        if (!this.startRoomForm.selectedWorlds.includes(worldName)) {
+          this.startRoomForm.selectedWorlds.push(worldName);
+        }
+        return;
       }
+      this.startRoomForm.selectedWorlds = this.startRoomForm.selectedWorlds
+        .filter(name => name !== worldName);
     },
 
     // 获取世界类型的名称
@@ -1269,56 +1345,40 @@ export default {
     },
 
     // 启动房间
-    startRoom() {
-      this.$refs.startRoomForm.validate((valid) => {
-        if (valid) {
-          this.startRoomLoading = true;
-          const selectedRoom = this.roomList[this.startRoomForm.roomId];
-          console.log('选中的房间:', selectedRoom);
-          console.log('选中的世界:', this.startRoomForm.selectedWorlds);
+    async startRoom() {
+      const selectedRoom = this.roomList[Number(this.startRoomForm.roomId)];
+      if (!selectedRoom) {
+        toast.error('无法获取房间信息，请重新选择');
+        return;
+      }
 
-          if (!selectedRoom) {
-            this.$message.error('无法获取房间信息，请重新选择');
-            this.startRoomLoading = false;
-            return;
-          }
+      if (this.startRoomForm.selectedWorlds.length === 0) {
+        toast.error('请至少选择一个世界');
+        return;
+      }
 
-          if (this.startRoomForm.selectedWorlds.length === 0) {
-            this.$message.error('请至少选择一个世界');
-            this.startRoomLoading = false;
-            return;
-          }
+      const worldsToStart = this.currentRoomWorlds.filter(world =>
+        this.startRoomForm.selectedWorlds.includes(world.name)
+      );
+      if (worldsToStart.length === 0) {
+        toast.error('无法获取选中世界的信息');
+        return;
+      }
 
-          const { selectedWorlds } = this.startRoomForm;
-
-          // 获取选中世界的详细信息
-          const worldsToStart = this.currentRoomWorlds.filter(world =>
-            selectedWorlds.includes(world.name)
-          );
-
-          if (worldsToStart.length === 0) {
-            this.$message.error('无法获取选中世界的信息');
-            this.startRoomLoading = false;
-            return;
-          }
-
-          roomApi.startRoom({
-            room_id: selectedRoom.id,
-            world_ids: worldsToStart.map(world => world.id)
-          })
-            .then(async response => {
-              await this.refreshServerData();
-              this.$message.success(response.msg || `房间 ${selectedRoom.name} 已启动`);
-              this.startRoomDialogVisible = false;
-            })
-            .catch(error => {
-              this.$message.error(`启动房间失败: ${error.message || '未知错误'}`);
-            })
-            .finally(() => {
-              this.startRoomLoading = false;
-            });
-        }
-      });
+      this.startRoomLoading = true;
+      try {
+        const response = await roomApi.startRoom({
+          room_id: selectedRoom.id,
+          world_ids: worldsToStart.map(world => world.id)
+        });
+        await this.refreshServerData();
+        toast.success(response.msg || `房间 ${selectedRoom.name} 已启动`);
+        this.startRoomDialogVisible = false;
+      } catch (error) {
+        toast.error(`启动房间失败: ${error.message || '未知错误'}`);
+      } finally {
+        this.startRoomLoading = false;
+      }
     }
 
   },
@@ -1364,7 +1424,18 @@ export default {
   color: var(--primary-color);
 }
 
+.section-title > svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  color: var(--primary-color);
+}
+
 .data-section {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
   margin-bottom: 20px;
 }
 
@@ -1457,11 +1528,6 @@ export default {
   margin-left: 12px;
   color: #909399;
   font-size: 12px;
-}
-
-:deep(.el-progress) {
-  display: flex;
-  align-items: center;
 }
 
 .resource-label {
@@ -1578,11 +1644,8 @@ export default {
 .announcement-title {
   display: flex;
   align-items: center;
+  gap: 10px;
   margin-bottom: 10px;
-}
-
-.announcement-title .el-tag {
-  margin-right: 10px;
 }
 
 .announcement-title span {
@@ -1626,6 +1689,10 @@ export default {
   box-shadow: var(--shadow-card);
 }
 
+.world-log {
+  height: 100%;
+}
+
 .system-info-footer {
   display: flex;
   flex-direction: column;
@@ -1643,6 +1710,14 @@ export default {
 }
 
 .system-info-item i {
+  margin-right: 8px;
+  color: var(--primary-color);
+}
+
+.system-info-item > svg {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
   margin-right: 8px;
   color: var(--primary-color);
 }
@@ -1772,34 +1847,6 @@ export default {
   gap: 8px;
 }
 
-/* 启动房间对话框相关样式 */
-.el-dialog__body {
-  padding: 20px 30px;
-}
-
-.dialog-content {
-  min-height: 200px;
-}
-
-.dialog-footer {
-  text-align: right;
-  margin-top: 20px;
-}
-
-.world-selection {
-  margin-bottom: 10px;
-}
-
-.world-selection .el-checkbox {
-  display: block;
-  margin-left: 0;
-  margin-bottom: 10px;
-}
-
-.world-selection .el-tag {
-  margin-left: 5px;
-}
-
 .world-selection-actions {
   margin-top: 10px;
   display: flex;
@@ -1807,64 +1854,21 @@ export default {
   gap: 10px;
 }
 
-.no-worlds-tip {
+.dialog-loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  gap: 8px;
+  min-height: 80px;
   color: var(--text-secondary);
-  background-color: var(--surface-muted);
-  border-radius: 4px;
 }
 
-.no-worlds-tip .legacy-icon {
-  flex: 0 0 auto;
-  margin-right: 8px;
-  font-size: 18px;
-  color: #d99b32;
-}
-
-.no-worlds-tip div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.no-worlds-tip strong {
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.no-worlds-tip span {
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.mode-summary {
+.world-option-label {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  min-height: 32px;
-  color: var(--text-regular);
-}
-
-/* 修改表格样式 */
-:deep(.el-table--border) {
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-:deep(.el-table__row:hover) {
-  background-color: var(--surface-muted)!important;
-}
-
-:deep(.el-table__row.server-offline) {
-  background-color: #fafafa;
-}
-
-:deep(.el-table__row.server-offline:hover) {
-  background-color: #f5f5f5!important;
+  width: 100%;
 }
 
 .version-info-row {
@@ -1875,10 +1879,6 @@ export default {
   height: auto;
   box-shadow: var(--shadow-card);
   border-radius: 4px;
-}
-
-.version-card :deep(.el-card__body) {
-  padding: 0 !important;
 }
 
 .version-content {
@@ -2027,7 +2027,7 @@ export default {
   gap: 6px;
   margin-top: 8px;
   padding: 7px 9px;
-  border-left: 2px solid var(--el-color-info);
+  border-left: 2px solid var(--border-color);
   background: var(--surface-muted);
   color: var(--text-regular);
   font-size: 13px;
@@ -2037,10 +2037,10 @@ export default {
 .version-check-warning,
 .version-error {
   border-left-color: var(--warning-color);
-  background: var(--el-color-warning-light-9);
+  background: var(--surface-muted);
 }
 
-.version-error .el-button {
+.version-error button {
   margin-left: auto;
 }
 
@@ -2052,7 +2052,7 @@ export default {
   margin-top: 8px;
   padding: 7px 9px;
   border-left: 2px solid var(--danger-color);
-  background-color: var(--el-color-danger-light-9);
+  background-color: var(--surface-muted);
   color: var(--danger-color);
 }
 
@@ -2109,13 +2109,6 @@ export default {
   word-break: break-all;
 }
 
-@media (max-width: 991px) {
-  .monitor-section > :deep(.el-col:first-child),
-  .data-section > :deep(.el-col:first-child) {
-    margin-bottom: 20px;
-  }
-}
-
 @media (max-width: 768px) {
   .dashboard-content {
     padding: 0 0 12px;
@@ -2170,10 +2163,6 @@ export default {
   .resource-detail {
     flex-wrap: wrap;
     gap: 4px 12px;
-  }
-
-  .server-monitor :deep(.el-card__body) {
-    overflow-x: auto;
   }
 
   .version-update-notice {
@@ -2556,25 +2545,6 @@ export default {
   min-height: 236px;
   padding: 0 14px 12px;
   overflow-x: auto;
-}
-
-.server-monitor :deep(.el-table) {
-  margin-top: 0;
-}
-
-.server-monitor :deep(.el-table--border) {
-  border: 0;
-  border-radius: 0;
-}
-
-.server-monitor :deep(.el-table th.el-table__cell) {
-  height: 38px;
-  background: var(--surface-color) !important;
-  border-top: 0;
-}
-
-.server-monitor :deep(.el-table td.el-table__cell) {
-  height: 42px;
 }
 
 .server-footer {
