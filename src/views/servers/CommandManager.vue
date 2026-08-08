@@ -1,13 +1,15 @@
 <template>
   <div>
     <el-card class="box-card command-execute-card">
-      <div slot="header" class="clearfix">
+      <template #header>
+        <div class="clearfix">
         <span>执行命令</span>
         <el-radio-group v-model="commandMode" size="small" style="float: right;">
           <el-radio-button label="structured">结构化命令</el-radio-button>
           <el-radio-button label="raw">原始命令</el-radio-button>
         </el-radio-group>
-      </div>
+        </div>
+      </template>
 
       <!-- 结构化命令模式 -->
       <el-form v-if="commandMode === 'structured'" :model="executeForm" label-width="120px">
@@ -55,10 +57,9 @@
             <!-- 根据参数类型显示不同的输入控件 -->
             <el-input
               v-if="param.type === 'string' || !param.type"
-              :value="executeForm.params[param.name]"
-              @input="val => $set(executeForm.params, param.name, val)"
+              v-model="executeForm.params[param.name]"
               :placeholder="currentCommand.example ? '示例: ' + currentCommand.example : '请输入' + (param.label || param.name)">
-              <template v-if="currentCommand.example" slot="append">
+              <template v-if="currentCommand.example" #append>
                 <el-button
                   size="mini"
                   type="primary"
@@ -69,17 +70,25 @@
             </el-input>
 
             <el-input-number
-              v-else-if="param.type === 'number'"
-              :value="executeForm.params[param.name]"
-              @input="val => $set(executeForm.params, param.name, val)"
+              v-else-if="param.type === 'number' || param.type === 'integer'"
+              v-model="executeForm.params[param.name]"
+              :min="param.minimum"
+              :max="param.maximum"
               :placeholder="currentCommand.example ? '示例: ' + currentCommand.example : '请输入' + (param.label || param.name)">
             </el-input-number>
 
             <el-switch
               v-else-if="param.type === 'boolean'"
-              :value="executeForm.params[param.name]"
-              @input="val => $set(executeForm.params, param.name, val)">
+              v-model="executeForm.params[param.name]">
             </el-switch>
+
+            <el-select
+              v-else-if="param.type === 'enum'"
+              v-model="executeForm.params[param.name]"
+              :placeholder="'请选择' + (param.label || param.name)"
+              style="width: 100%">
+              <el-option v-for="option in param.options" :key="option" :label="option" :value="option" />
+            </el-select>
 
             <!-- 显示参数描述和示例 -->
             <div class="param-help" v-if="param.description || currentCommand.example">
@@ -146,7 +155,7 @@
                 <el-table-column prop="name" label="名称" width="100" />
                 <el-table-column prop="description" label="描述" show-overflow-tooltip />
                 <el-table-column label="操作" width="80" align="center">
-                  <template slot-scope="scope">
+                  <template #default="scope">
                     <el-button
                       type="text"
                       size="mini"
@@ -157,7 +166,9 @@
                 </el-table-column>
               </el-table>
             </div>
-            <el-button slot="reference" type="primary" plain size="small">常用命令</el-button>
+            <template #reference>
+              <el-button type="primary" plain size="small">常用命令</el-button>
+            </template>
           </el-popover>
           <el-button type="warning" plain size="small" @click="showBatchCommandDialog">批量命令</el-button>
         </el-form-item>
@@ -189,19 +200,19 @@
           <el-table-column prop="time" label="执行时间" width="180" />
           <el-table-column prop="serverName" label="服务器" width="150" />
           <el-table-column label="命令" show-overflow-tooltip>
-            <template slot-scope="scope">
+            <template #default="scope">
               <span v-if="scope.row.mode === 'structured'">{{ scope.row.commandName }}</span>
               <code v-else>{{ scope.row.command }}</code>
             </template>
           </el-table-column>
           <el-table-column prop="status" label="状态" width="80" align="center">
-            <template slot-scope="scope">
+            <template #default="scope">
               <el-tag type="success" size="mini" v-if="scope.row.status === 200">成功</el-tag>
               <el-tag type="danger" size="mini" v-else>失败</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="150" align="center">
-            <template slot-scope="scope">
+            <template #default="scope">
               <el-button type="text" size="mini" @click="rerunCommand(scope.row)">重新执行</el-button>
               <el-button type="text" size="mini" @click="copyCommand(scope.row)">复制命令</el-button>
             </template>
@@ -215,7 +226,8 @@
     </el-card>
 
     <el-card class="box-card" style="margin-top: 20px;">
-      <div slot="header" class="clearfix">
+      <template #header>
+        <div class="clearfix">
         <span>服务器命令管理</span>
         <el-button
           style="float: right; margin-left: 10px"
@@ -241,7 +253,8 @@
         >
           导出命令
         </el-button>
-      </div>
+        </div>
+      </template>
 
       <!-- 命令类型过滤 -->
       <el-row :gutter="20" style="margin-bottom: 20px">
@@ -280,7 +293,7 @@
           width="100"
           align="center"
         >
-          <template slot-scope="scope">
+          <template #default="scope">
             <el-tag v-if="scope.row.isBuiltin || scope.row.is_builtin" type="success">是</el-tag>
             <el-tag v-else type="info">否</el-tag>
           </template>
@@ -290,7 +303,7 @@
           width="200"
           align="center"
         >
-          <template slot-scope="scope">
+          <template #default="scope">
             <el-button
               size="mini"
               type="primary"
@@ -414,10 +427,12 @@
         </template>
       </el-form>
 
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitForm">确定</el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitForm">确定</el-button>
+        </span>
+      </template>
     </el-dialog>
 
     <!-- 导入命令对话框(隐藏) -->
@@ -479,20 +494,20 @@ print('命令执行完成')"
         </div>
       </div>
 
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="batchCommandDialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="executeBatchCommands" :loading="executingBatch" :disabled="!batchCommandForm.server || !batchCommandForm.commands">
-          开始执行
-        </el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="batchCommandDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="executeBatchCommands" :loading="executingBatch" :disabled="!batchCommandForm.server || !batchCommandForm.commands">
+            开始执行
+          </el-button>
+        </span>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { commandManager, COMMAND_TYPES, systemApi } from '@/api';
-import config from '@/api/config';
-import axios from 'axios';
+import { commandManager, commandApi, COMMAND_TYPES } from '@/api';
 
 export default {
   name: 'CommandManager',
@@ -502,7 +517,6 @@ export default {
       commands: [],
       displayCommands: [],
       currentType: '',
-      commandTypes: Object.values(COMMAND_TYPES),
 
       // 命令执行相关
       executeForm: {
@@ -635,6 +649,12 @@ export default {
     };
   },
   computed: {
+    commandTypes() {
+      return [...new Set([
+        ...Object.values(COMMAND_TYPES),
+        ...this.commands.map(command => command.type || command.category).filter(Boolean)
+      ])];
+    },
     commandGroups() {
       // 按类型分组命令，用于下拉选择
       const groups = {};
@@ -669,87 +689,40 @@ export default {
   },
   watch: {
     // 监听命令模式变化
-    commandMode(newMode) {
+    commandMode() {
       // 当模式变化时重置执行结果
       this.executionResult = null;
     }
   },
-  created() {
-    this.fetchCommands();
-    this.fetchServers();
-    this.loadCommandHistory();
+  async created() {
+    await Promise.all([this.fetchCommands(), this.fetchServers()]);
+    await this.loadCommandHistory();
   },
   methods: {
-    fetchCommands() {
+    async fetchCommands() {
       this.loading = true;
-      // 使用API获取命令列表
-      axios.get(`${config.BASE_URL}/tmux/commands`, {
-        params: {
-          category: this.currentType || undefined
-        }
-      })
-        .then(response => {
-          if (response.data.status === 200) {
-            this.commands = response.data.data;
-            this.displayCommands = [...this.commands];
-          } else {
-            this.$message.error('获取命令列表失败: ' + response.data.msg);
-          }
-        })
-        .catch(error => {
-          console.error('获取命令列表失败:', error);
-          this.$message.error('获取命令列表失败: ' + error.message);
-
-          // 回退到使用本地命令管理器获取
-          try {
-            this.commands = commandManager.getAllCommands();
-            this.displayCommands = [...this.commands];
-          } catch (fallbackError) {
-            console.error('本地获取命令失败:', fallbackError);
-          }
-        })
-        .finally(() => {
-          this.loading = false;
-        });
+      try {
+        const response = await commandApi.getAllCommands();
+        this.commands = response.items;
+        this.localFilterCommandsByType(this.currentType);
+      } catch (error) {
+        this.commands = [];
+        this.displayCommands = [];
+        this.$message.error('获取命令列表失败: ' + error.message);
+      } finally {
+        this.loading = false;
+      }
     },
 
     filterCommandsByType(type) {
       this.currentType = type;
-      this.loading = true;
-
-      // 使用API按类型获取命令
-      axios.get(`${config.BASE_URL}/tmux/commands`, {
-        params: {
-          category: type || undefined
-        }
-      })
-        .then(response => {
-          if (response.data.status === 200) {
-            this.commands = response.data.data;
-            this.displayCommands = [...this.commands];
-          } else {
-            this.$message.error('获取命令列表失败: ' + response.data.msg);
-            // 回退到本地过滤
-            this.localFilterCommandsByType(type);
-          }
-        })
-        .catch(error => {
-          console.error('按类型获取命令列表失败:', error);
-          // 回退到本地过滤
-          this.localFilterCommandsByType(type);
-        })
-        .finally(() => {
-          this.loading = false;
-        });
+      this.localFilterCommandsByType(type);
     },
 
-    // 本地过滤命令的备用方法
     localFilterCommandsByType(type) {
       if (!type) {
-        // 如果未选择类型，显示所有命令
         this.displayCommands = [...this.commands];
       } else {
-        // 根据类型过滤命令
         this.displayCommands = this.commands.filter(cmd =>
           cmd.type === type || cmd.category === type
         );
@@ -823,84 +796,30 @@ export default {
 
     submitForm() {
       this.$refs.commandForm.validate(async (valid) => {
-        if (!valid) {
-          return false;
-        }
+        if (!valid) return;
 
         try {
-          // 准备请求数据
           const requestData = {
             name: this.commandForm.name,
+            type: this.commandForm.type,
             description: this.commandForm.description,
-            category: this.commandForm.type,
-            is_builtin: false,
-            script: this.commandForm.command,
-            needs_params: this.commandForm.parameterized,
-            param_desc: this.commandForm.parameterized ? JSON.stringify(this.commandForm.parameters) : "",
-            example: ""
+            command: this.commandForm.command,
+            parameterized: this.commandForm.parameterized,
+            parameters: this.commandForm.parameterized ? this.commandForm.parameters : []
           };
 
           if (this.dialogType === 'add') {
-            // 添加新命令 - 使用新API
-            const response = await axios.post(`${config.BASE_URL}/tmux/commands`, requestData);
-
-            if (response.data.status === 200) {
-              this.$message.success('添加命令成功');
-            } else {
-              throw new Error(response.data.msg || '添加命令失败');
-            }
+            await commandManager.addCommand(requestData);
+            this.$message.success('添加命令成功');
           } else {
-            // 更新现有命令 - 使用新API
-            requestData.id = this.currentCommandId;
-            const response = await axios.post(`${config.BASE_URL}/tmux/commands/update`, requestData);
-
-            if (response.data.status === 200) {
-              this.$message.success('更新命令成功');
-            } else {
-              throw new Error(response.data.msg || '更新命令失败');
-            }
+            await commandManager.updateCommand(this.currentCommandId, requestData);
+            this.$message.success('更新命令成功');
           }
 
-          // 重新获取命令列表
-          this.fetchCommands();
-          // 关闭对话框
+          await this.fetchCommands();
           this.dialogVisible = false;
         } catch (error) {
           this.$message.error(error.message || '操作失败');
-          console.error('命令操作失败:', error);
-
-          // 如果API调用失败，尝试使用本地命令管理器
-          try {
-            if (this.dialogType === 'add') {
-              await commandManager.addCommand({
-                name: this.commandForm.name,
-                type: this.commandForm.type,
-                description: this.commandForm.description,
-                command: this.commandForm.command,
-                parameterized: this.commandForm.parameterized,
-                parameters: this.commandForm.parameterized ? this.commandForm.parameters : []
-              });
-
-              this.$message.success('添加命令成功(本地)');
-              this.fetchCommands();
-              this.dialogVisible = false;
-            } else {
-              await commandManager.updateCommand(this.currentCommandId, {
-                name: this.commandForm.name,
-                type: this.commandForm.type,
-                description: this.commandForm.description,
-                command: this.commandForm.command,
-                parameterized: this.commandForm.parameterized,
-                parameters: this.commandForm.parameterized ? this.commandForm.parameters : []
-              });
-
-              this.$message.success('更新命令成功(本地)');
-              this.fetchCommands();
-              this.dialogVisible = false;
-            }
-          } catch (fallbackError) {
-            console.error('本地操作命令失败:', fallbackError);
-          }
         }
       });
     },
@@ -912,33 +831,13 @@ export default {
         type: 'warning'
       }).then(async () => {
         try {
-          // 使用新API删除命令
-          const response = await axios.post(`${config.BASE_URL}/tmux/commands/delete`, { id: command.id });
-
-          if (response.data.status === 200) {
-            this.$message.success('删除命令成功');
-            // 重新获取命令列表
-            this.fetchCommands();
-          } else {
-            throw new Error(response.data.msg || '删除命令失败');
-          }
+          await commandManager.deleteCommand(command.id);
+          this.$message.success('删除命令成功');
+          await this.fetchCommands();
         } catch (error) {
           this.$message.error(error.message || '删除命令失败');
-          console.error('删除命令失败:', error);
-
-          // 如果API调用失败，尝试使用本地命令管理器
-          try {
-            await commandManager.deleteCommand(command.id);
-            this.$message.success('删除命令成功(本地)');
-            // 重新获取命令列表
-            this.fetchCommands();
-          } catch (fallbackError) {
-            console.error('本地删除命令失败:', fallbackError);
-          }
         }
-      }).catch(() => {
-        // 取消删除，不执行任何操作
-      });
+      }).catch(() => {});
     },
 
     importCommands() {
@@ -953,17 +852,11 @@ export default {
       }
 
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
-          const jsonContent = e.target.result;
-
-          // 导入命令
-          const importedCommands = commandManager.importCommands(jsonContent);
-
+          const importedCommands = await commandManager.importCommands(e.target.result);
           this.$message.success(`成功导入 ${importedCommands.length} 个命令`);
-
-          // 重新获取命令列表
-          this.fetchCommands();
+          await this.fetchCommands();
         } catch (error) {
           this.$message.error('导入命令失败: ' + error.message);
         }
@@ -989,7 +882,6 @@ export default {
         link.href = url;
         link.download = 'dstadmin_commands.json';
 
-        // 模拟点击链接进行下载
         document.body.appendChild(link);
         link.click();
 
@@ -1003,166 +895,46 @@ export default {
       }
     },
 
-    // 获取所有服务器
-    fetchServers() {
-      // 调用API获取服务器列表
-      systemApi.getTmuxServers().then(response => {
-          if (response && response.status === 200) {
-            this.servers = response.data || [];
-            // 处理服务器数据，添加显示名称
-            this.servers.forEach(server => {
-              // 添加name属性用于显示
-              server.name = `${server.archive_name} - ${server.world_name}`;
-            });
-          } else {
-            this.$message.error('获取服务器列表失败: ' + (response ? response.msg : '未知错误'));
-          }
-        })
-        .catch(error => {
-          console.error('获取服务器列表失败:', error);
-          this.$message.error('获取服务器列表失败: ' + (error.message || '未知错误'));
-        });
-    },
-
-    // 选择命令时的处理函数
-    handleCommandChange(commandId) {
-      this.executing = true;
-
-      // 使用API获取命令详情
-      axios.post(`${config.BASE_URL}/tmux/commands/detail`, { id: commandId })
-        .then(response => {
-          if (response.data.status === 200) {
-            // 保存当前命令
-            this.currentCommand = response.data.data;
-
-            // 重置参数
-            this.$set(this, 'executeForm', {
-              server: this.executeForm.server,
-              commandId: this.executeForm.commandId,
-              params: {}
-            });
-
-            // 解析参数描述
-            if (this.currentCommand.needs_params) {
-              try {
-                // 尝试解析param_desc为JSON
-                if (this.currentCommand.param_desc) {
-                  try {
-                    // 尝试作为JSON解析
-                    const parameters = JSON.parse(this.currentCommand.param_desc);
-                    this.currentCommand.parameters = parameters;
-
-                    // 初始化参数默认值
-                    parameters.forEach(param => {
-                      this.$set(this.executeForm.params, param.name, param.default || '');
-                    });
-                  } catch (jsonError) {
-                    // 如果不是JSON，则创建一个简单的参数对象
-                    console.log('param_desc不是JSON格式，使用简单参数对象');
-                    this.currentCommand.parameters = [{
-                      name: 'param',
-                      label: this.currentCommand.param_desc,
-                      type: 'string',
-                      required: true,
-                      default: ''
-                    }];
-
-                    // 设置默认值为空，让用户输入
-                    this.$set(this.executeForm.params, 'param', '');
-                  }
-                } else {
-                  // 如果没有param_desc但需要参数，创建一个通用参数
-                  this.currentCommand.parameters = [{
-                    name: 'param',
-                    label: '参数',
-                    type: 'string',
-                    required: true,
-                    default: ''
-                  }];
-                }
-              } catch (error) {
-                console.error('处理参数描述失败:', error);
-              }
-            }
-          } else {
-            this.$message.warning('获取命令详情失败: ' + response.data.msg);
-            this.localHandleCommandChange(commandId);
-          }
-        })
-        .catch(error => {
-          console.error('获取命令详情失败:', error);
-          // 回退到本地方法
-          this.localHandleCommandChange(commandId);
-        })
-        .finally(() => {
-          this.executing = false;
-        });
-    },
-
-    // 本地处理命令选择的备用方法
-    localHandleCommandChange(commandId) {
-      // 找到对应的命令
-      this.currentCommand = this.commands.find(cmd => cmd.id === commandId);
-
-      // 重置参数
-      this.$set(this, 'executeForm', {
-        server: this.executeForm.server,
-        commandId: this.executeForm.commandId,
-        params: {}
-      });
-
-      // 如果命令有参数，初始化参数默认值
-      if (this.currentCommand && (this.currentCommand.parameterized || this.currentCommand.needs_params)) {
-        if (this.currentCommand.parameters) {
-          // 如果已经有解析好的参数
-          this.currentCommand.parameters.forEach(param => {
-            this.$set(this.executeForm.params, param.name, param.default || '');
-          });
-        } else if (this.currentCommand.param_desc) {
-          // 尝试处理param_desc
-          try {
-            // 尝试作为JSON解析
-            const parameters = JSON.parse(this.currentCommand.param_desc);
-            this.currentCommand.parameters = parameters;
-            parameters.forEach(param => {
-              this.executeForm.params[param.name] = param.default || '';
-            });
-          } catch (jsonError) {
-            // 如果不是JSON，则创建一个简单的参数对象
-            this.currentCommand.parameters = [{
-              name: 'param',
-              label: this.currentCommand.param_desc,
-              type: 'string',
-              required: true,
-              default: ''
-            }];
-
-            // 设置默认值为空，让用户输入
-            this.$set(this.executeForm.params, 'param', '');
-          }
-        } else {
-          // 如果没有参数描述但需要参数，创建一个通用参数
-          this.currentCommand.parameters = [{
-            name: 'param',
-            label: '参数',
-            type: 'string',
-            required: true,
-            default: ''
-          }];
-        }
+    async fetchServers() {
+      try {
+        this.servers = await commandApi.getServers();
+      } catch (error) {
+        this.servers = [];
+        this.$message.error('获取服务器列表失败: ' + error.message);
       }
     },
 
-    // 应用示例值
+    async handleCommandChange(commandId) {
+      this.executing = true;
+      try {
+        this.currentCommand = await commandApi.getCommand(commandId);
+        const params = {};
+        (this.currentCommand.parameters || []).forEach(param => {
+          if (param.default !== undefined) params[param.name] = param.default;
+          else if (param.type === 'boolean') params[param.name] = false;
+          else params[param.name] = '';
+        });
+        this.executeForm = {
+          server: this.executeForm.server,
+          commandId,
+          params
+        };
+      } catch (error) {
+        this.currentCommand = null;
+        this.$message.error('获取命令详情失败: ' + error.message);
+      } finally {
+        this.executing = false;
+      }
+    },
+
     applyExample(paramName) {
       if (this.currentCommand && this.currentCommand.example) {
-        this.$set(this.executeForm.params, paramName, this.currentCommand.example);
+        this.executeForm.params[paramName] = this.currentCommand.example;
         this.$message.success('已应用示例值');
       }
     },
 
-    // 执行命令
-    executeCommand() {
+    async executeCommand() {
       if (!this.executeForm.server) {
         this.$message.warning('请选择服务器');
         return;
@@ -1173,66 +945,34 @@ export default {
         return;
       }
 
-      // 调试输出
-      console.log('执行命令前的参数:', JSON.stringify(this.executeForm.params));
-
-      this.executing = true;
-
-      // 准备请求参数
-      const requestData = {
-        session_name: this.executeForm.server,
-        command_id: this.executeForm.commandId,
-        params: []
-      };
-
-      // 如果命令有参数，添加参数
-      if (this.currentCommand && (this.currentCommand.parameterized || this.currentCommand.needs_params) && this.currentCommand.parameters) {
-        // 将参数对象转换为数组
-        this.currentCommand.parameters.forEach(param => {
-          const paramValue = this.executeForm.params[param.name] || '';
-          console.log(`参数 ${param.name} 的值:`, paramValue);
-          requestData.params.push(paramValue);
-        });
+      let confirmation = '';
+      if (['high', 'critical'].includes(this.currentCommand?.risk)) {
+        try {
+          confirmation = await this.requestRoomConfirmation(this.executeForm.server);
+        } catch {
+          return;
+        }
       }
 
-      // 调用API执行命令
-      axios.post(`${config.BASE_URL}/tmux/command`, requestData)
-        .then(response => {
-          this.executionResult = response.data;
-          if (response.data.status === 200) {
-            this.$message.success('命令执行成功');
-
-            // 添加到命令历史记录
-            this.addToHistory({
-              mode: 'structured',
-              time: new Date().toLocaleString(),
-              serverName: this.getServerNameById(this.executeForm.server),
-              server: this.executeForm.server,
-              commandId: this.executeForm.commandId,
-              commandName: this.currentCommand.name,
-              params: {...this.executeForm.params},
-              status: response.data.status
-            });
-          } else {
-            this.$message.error('命令执行失败: ' + response.data.msg);
-          }
-        })
-        .catch(error => {
-          console.error('命令执行出错:', error);
-          this.executionResult = {
-            status: 500,
-            msg: error.message || '执行命令时发生错误',
-            data: {}
-          };
-          this.$message.error('命令执行出错: ' + error.message);
-        })
-        .finally(() => {
-          this.executing = false;
-        });
+      this.executing = true;
+      try {
+        const run = await commandApi.executeCommand(
+          this.executeForm.server,
+          this.executeForm.commandId,
+          this.executeForm.params,
+          confirmation
+        );
+        this.showRunResult(run);
+        this.$message.success('命令已发送');
+        await this.loadCommandHistory();
+      } catch (error) {
+        this.showExecutionError(error);
+      } finally {
+        this.executing = false;
+      }
     },
 
-    // 执行原始命令
-    executeRawCommand() {
+    async executeRawCommand() {
       if (!this.rawCommandForm.server) {
         this.$message.warning('请选择服务器');
         return;
@@ -1243,46 +983,61 @@ export default {
         return;
       }
 
+      let confirmation;
+      try {
+        confirmation = await this.requestRoomConfirmation(this.rawCommandForm.server);
+      } catch {
+        return;
+      }
+
       this.executing = true;
+      try {
+        const run = await commandApi.executeRawCommand(
+          this.rawCommandForm.server,
+          this.rawCommandForm.command,
+          confirmation
+        );
+        this.showRunResult(run);
+        this.$message.success('命令已发送');
+        await this.loadCommandHistory();
+      } catch (error) {
+        this.showExecutionError(error);
+      } finally {
+        this.executing = false;
+      }
+    },
 
-      // 准备请求参数
-      const requestData = {
-        session_name: this.rawCommandForm.server,
-        command: this.rawCommandForm.command
+    async requestRoomConfirmation(serverKey) {
+      const server = this.servers.find(item => item.session_name === serverKey);
+      if (!server) throw new Error('未找到目标服务器');
+      const response = await this.$prompt(
+        `该操作会向游戏控制台发送 Lua 命令，请输入房间名“${server.room_name}”确认`,
+        '执行确认',
+        {
+          confirmButtonText: '确认执行',
+          cancelButtonText: '取消',
+          inputValidator: value => value === server.room_name || '房间名不匹配'
+        }
+      );
+      return response.value;
+    },
+
+    showRunResult(run) {
+      const success = run.status === 'sent';
+      this.executionResult = {
+        status: success ? 200 : 500,
+        msg: run.message || run.errorMessage || (success ? '命令已发送到分片控制台' : '命令发送失败'),
+        data: { elapsed_time: 'N/A', run_id: run.id }
       };
+    },
 
-      // 调用API执行命令
-      axios.post(`${config.BASE_URL}/tmux/raw-command`, requestData)
-        .then(response => {
-          this.executionResult = response.data;
-          if (response.data.status === 200) {
-            this.$message.success('命令执行成功');
-
-            // 添加到命令历史记录
-            this.addToHistory({
-              mode: 'raw',
-              time: new Date().toLocaleString(),
-              serverName: this.getServerNameById(this.rawCommandForm.server),
-              server: this.rawCommandForm.server,
-              command: this.rawCommandForm.command,
-              status: response.data.status
-            });
-          } else {
-            this.$message.error('命令执行失败: ' + response.data.msg);
-          }
-        })
-        .catch(error => {
-          console.error('命令执行出错:', error);
-          this.executionResult = {
-            status: 500,
-            msg: error.message || '执行命令时发生错误',
-            data: {}
-          };
-          this.$message.error('命令执行出错: ' + error.message);
-        })
-        .finally(() => {
-          this.executing = false;
-        });
+    showExecutionError(error) {
+      this.executionResult = {
+        status: 500,
+        msg: error.message || '执行命令时发生错误',
+        data: {}
+      };
+      this.$message.error('命令执行出错: ' + (error.message || '未知错误'));
     },
 
     // 根据服务器ID获取服务器名称
@@ -1291,48 +1046,47 @@ export default {
       return server ? server.name : sessionName;
     },
 
-    // 添加命令到历史记录
-    addToHistory(historyItem) {
-      // 最多保存50条记录
-      if (this.commandHistory.length >= 50) {
-        this.commandHistory.pop();
-      }
-
-      // 添加到历史记录开头
-      this.commandHistory.unshift(historyItem);
-
-      // 保存到本地存储
-      this.saveCommandHistory();
-    },
-
-    // 保存命令历史记录到本地存储
-    saveCommandHistory() {
-      localStorage.setItem('command_history', JSON.stringify(this.commandHistory));
-    },
-
-    // 从本地存储加载命令历史记录
-    loadCommandHistory() {
+    async loadCommandHistory() {
       try {
-        const history = localStorage.getItem('command_history');
-        if (history) {
-          this.commandHistory = JSON.parse(history);
-        }
+        const runs = await commandApi.getCommandHistory();
+        this.commandHistory = runs.map(run => this.mapHistoryRun(run));
       } catch (error) {
-        console.error('加载命令历史记录失败:', error);
+        this.commandHistory = [];
+        this.$message.error('加载命令历史记录失败: ' + error.message);
       }
+    },
+
+    mapHistoryRun(run) {
+      const server = this.servers.find(item => item.room_id === run.roomId && item.world_id === run.worldId);
+      return {
+        id: run.id,
+        mode: run.mode === 'raw' ? 'raw' : 'structured',
+        time: new Date(run.createdAt).toLocaleString(),
+        serverName: server?.name || `${run.roomId} - ${run.worldId}`,
+        server: server?.session_name || `${run.roomId}::${run.worldId}`,
+        commandId: run.commandId,
+        commandName: run.name,
+        params: run.arguments || {},
+        command: run.rawCommand || '',
+        status: run.status === 'sent' ? 200 : 500
+      };
     },
 
     // 清空历史记录
-    clearHistory() {
-      this.$confirm('确定要清空所有命令历史记录吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.commandHistory = [];
-        localStorage.removeItem('command_history');
-        this.$message.success('历史记录已清空');
-      }).catch(() => {});
+    async clearHistory() {
+      try {
+        await this.$confirm('确定要清空所有命令历史记录吗？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+        const deleted = await commandApi.clearCommandHistory();
+        await this.loadCommandHistory();
+        this.$message.success(`已清空 ${deleted} 条历史记录`);
+      } catch (error) {
+        if (error === 'cancel' || error === 'close') return;
+        this.$message.error('清空历史记录失败: ' + (error.message || '未知错误'));
+      }
     },
 
     // 保存历史记录到文件
@@ -1350,12 +1104,12 @@ export default {
     },
 
     // 重新执行历史命令
-    rerunCommand(historyItem) {
+    async rerunCommand(historyItem) {
       if (historyItem.mode === 'structured') {
         this.commandMode = 'structured';
         this.executeForm.server = historyItem.server;
         this.executeForm.commandId = historyItem.commandId;
-        this.handleCommandChange(historyItem.commandId);
+        await this.handleCommandChange(historyItem.commandId);
 
         // 如果有参数，填充参数
         if (historyItem.params) {
@@ -1431,7 +1185,6 @@ export default {
       this.batchStatus = '';
 
       try {
-        // 拆分命令行
         const commandLines = this.batchCommandForm.commands
           .split('\n')
           .filter(line => line.trim() && !line.trim().startsWith('#'));
@@ -1444,29 +1197,24 @@ export default {
 
         const totalCommands = commandLines.length;
         let executedCount = 0;
+        const confirmation = await this.requestRoomConfirmation(this.batchCommandForm.server);
 
         for (const command of commandLines) {
-          // 准备请求参数
-          const requestData = {
-            session_name: this.batchCommandForm.server,
-            command: command.trim()
-          };
-
           try {
-            // 调用API执行命令
-            const response = await axios.post(`${config.BASE_URL}/tmux/raw-command`, requestData);
-
-            // 添加到结果列表
+            const run = await commandApi.executeRawCommand(
+              this.batchCommandForm.server,
+              command.trim(),
+              confirmation
+            );
             this.batchResults.push({
               command: command.trim(),
-              success: response.data.status === 200,
-              message: response.data.msg
+              success: run.status === 'sent',
+              message: run.message || run.errorMessage
             });
 
             executedCount++;
             this.batchProgress = Math.floor((executedCount / totalCommands) * 100);
 
-            // 如果不是最后一个命令，等待指定的间隔时间
             if (executedCount < totalCommands) {
               await new Promise(resolve => setTimeout(resolve, this.batchCommandForm.interval));
             }
@@ -1481,31 +1229,20 @@ export default {
             executedCount++;
             this.batchProgress = Math.floor((executedCount / totalCommands) * 100);
 
-            // 如果不是最后一个命令，等待指定的间隔时间
             if (executedCount < totalCommands) {
               await new Promise(resolve => setTimeout(resolve, this.batchCommandForm.interval));
             }
           }
         }
 
-        // 所有命令执行完毕
-        this.batchStatus = 'success';
         const successCount = this.batchResults.filter(r => r.success).length;
+        this.batchStatus = successCount === totalCommands ? 'success' : 'exception';
         this.$message.success(`批量命令执行完成：共 ${totalCommands} 条命令，成功 ${successCount} 条，失败 ${totalCommands - successCount} 条`);
-
-        // 添加到历史记录
-        this.addToHistory({
-          mode: 'batch',
-          time: new Date().toLocaleString(),
-          serverName: this.getServerNameById(this.batchCommandForm.server),
-          server: this.batchCommandForm.server,
-          command: `批量命令(${totalCommands}条)`,
-          status: successCount === totalCommands ? 200 : (successCount > 0 ? 206 : 500)
-        });
+        await this.loadCommandHistory();
       } catch (error) {
-        console.error('批量命令执行失败:', error);
+        if (error === 'cancel' || error === 'close') return;
         this.batchStatus = 'exception';
-        this.$message.error('批量命令执行失败: ' + error.message);
+        this.$message.error('批量命令执行失败: ' + (error.message || '未知错误'));
       } finally {
         this.executingBatch = false;
       }

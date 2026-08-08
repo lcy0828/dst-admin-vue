@@ -234,7 +234,24 @@ export const agentsV2API = {
 }
 
 export const consoleV2API = {
-	definitions: roomId => client.get(`/rooms/${encode(roomId)}/commands`)
+	definitions: () => client.get('/commands', { headers: { 'Cache-Control': 'no-store' } }),
+	definition: commandId => client.get(`/commands/${encode(commandId)}`, { headers: { 'Cache-Control': 'no-store' } }),
+	createDefinition: input => client.post('/commands', input),
+	updateDefinition: (commandId, input) => client.put(`/commands/${encode(commandId)}`, input),
+	deleteDefinition: commandId => client.delete(`/commands/${encode(commandId)}`),
+	execute: (roomId, worldId, input) => client.post(
+		`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/commands`,
+		input
+	),
+	executeRaw: (roomId, worldId, input) => client.post(
+		`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/raw-commands`,
+		input
+	),
+	runs: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/command-runs`, { params }),
+	run: (roomId, runId) => client.get(`/rooms/${encode(roomId)}/command-runs/${encode(runId)}`),
+	clearRuns: (roomId, worldId = '') => client.delete(`/rooms/${encode(roomId)}/command-runs`, {
+		params: worldId ? { worldId } : {}
+	})
 }
 
 export const worldStatesV2API = {
