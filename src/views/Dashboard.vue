@@ -13,35 +13,36 @@
               <div class="version-header">
                 <span class="version-title">饥荒服务器版本信息</span>
                 <div class="version-actions">
-                  <el-button
+                  <UiButton
                     v-if="canUpdateGame"
-                    type="primary"
-                    size="small"
+                    size="sm"
                     @click="updateDstServer"
-                    :disabled="versionLoading || (updateStatus && updateStatus.is_running)"
-                    :loading="updateStatus && updateStatus.is_running"
+                    :disabled="versionLoading || gameUpdateBusy"
                   >
-                    <component v-if="!(updateStatus && updateStatus.is_running)" :is="'el-icon-upload2'" class="legacy-icon" />
-                    {{ updateStatus && updateStatus.is_running ? '更新中...' : '更新游戏' }}
-                  </el-button>
-                  <el-button
-                    type="text"
-                    size="small"
-                    icon="el-icon-refresh"
+                    <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
+                    <Download v-else data-icon="inline-start" />
+                    {{ gameUpdateBusy ? '更新中' : '更新游戏' }}
+                  </UiButton>
+                  <UiButton
+                    variant="ghost"
+                    size="sm"
                     @click="getVersionInfo"
-                    :loading="versionLoading"
-                    :disabled="updateStatus && updateStatus.is_running"
-                  >刷新</el-button>
+                    :disabled="versionLoading || gameUpdateBusy"
+                  >
+                    <Spinner v-if="versionLoading" data-icon="inline-start" />
+                    <RefreshCw v-else data-icon="inline-start" />
+                    刷新
+                  </UiButton>
                 </div>
               </div>
               <div v-if="versionLoading" class="version-loading">
-                <component :is="'el-icon-loading'" class="legacy-icon" />
+                <Spinner />
                 <span>正在获取版本信息...</span>
               </div>
               <div v-else-if="versionError && !versionInfo.local" class="version-error" role="status">
                 <component :is="'el-icon-warning-outline'" class="legacy-icon" />
                 <span>{{ versionError }}</span>
-                <el-button type="text" size="small" @click="getVersionInfo">重试</el-button>
+                <UiButton variant="ghost" size="sm" @click="getVersionInfo">重试</UiButton>
               </div>
               <div v-else class="version-info">
                 <div class="version-boxes">
@@ -91,7 +92,7 @@
                 <div v-if="isVersionOutdated" class="version-update-notice">
                   <component :is="'el-icon-warning'" class="legacy-icon" />
                   <span>检测到新版本可用，请及时更新游戏服务端!</span>
-                  <el-button v-if="versionInfo.latest?.update_url" type="primary" size="small" @click="openUpdateLink">查看更新内容</el-button>
+                  <UiButton v-if="versionInfo.latest?.update_url" size="sm" @click="openUpdateLink">查看更新内容</UiButton>
                 </div>
                 <div v-if="updateStatus" class="version-update-status">
                   <div class="update-status-header">
@@ -126,7 +127,11 @@
           <template v-slot:header>
 <div  class="clearfix server-header">
             <span><component :is="'el-icon-monitor'" class="legacy-icon" /> 服务器状态监控</span>
-            <el-button type="text" icon="el-icon-refresh" @click="refreshServerData">刷新</el-button>
+            <UiButton variant="ghost" size="sm" :disabled="serverLoading" @click="refreshServerData">
+              <Spinner v-if="serverLoading" data-icon="inline-start" />
+              <RefreshCw v-else data-icon="inline-start" />
+              刷新
+            </UiButton>
           </div>
 </template>
           <div v-loading="serverLoading" class="server-monitor-body">
@@ -140,12 +145,9 @@
             border>
             <el-table-column prop="status" label="状态" width="90" align="center">
               <template v-slot="scope">
-                <el-tag
-                  :type="getServerStatusTag(scope.row.status)"
-                  size="medium"
-                  effect="dark">
+                <Badge :variant="scope.row.status === 'running' ? 'secondary' : 'outline'">
                   {{ getServerStatusName(scope.row.status) }}
-                </el-tag>
+                </Badge>
               </template>
             </el-table-column>
             <el-table-column prop="archive_name" label="房间名称" min-width="120">
@@ -181,22 +183,27 @@
             </el-table-column>
             <el-table-column label="操作" width="180" align="center">
               <template v-slot="scope">
-                <el-button-group>
-                  <el-button
-                    size="mini"
-                    :type="scope.row.status === 'running' ? 'danger' : 'success'"
-                    :icon="scope.row.status === 'running' ? 'el-icon-video-pause' : 'el-icon-video-play'"
-                    @click="handleServerAction(scope.row)">
+                <div class="server-row-actions">
+                  <UiButton
+                    size="sm"
+                    :variant="scope.row.status === 'running' ? 'destructive' : 'secondary'"
+                    :disabled="serverLoading"
+                    @click="handleServerAction(scope.row)"
+                  >
+                    <Square v-if="scope.row.status === 'running'" data-icon="inline-start" />
+                    <Play v-else data-icon="inline-start" />
                     {{ scope.row.status === 'running' ? '停止' : '启动' }}
-                  </el-button>
-                  <el-button
-                    size="mini"
-                    type="primary"
-                    icon="el-icon-setting"
-                    @click="handleConfigure(scope.row)">
+                  </UiButton>
+                  <UiButton
+                    size="sm"
+                    variant="outline"
+                    :disabled="serverLoading"
+                    @click="handleConfigure(scope.row)"
+                  >
+                    <Settings data-icon="inline-start" />
                     配置
-                  </el-button>
-                </el-button-group>
+                  </UiButton>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -305,9 +312,23 @@
       <el-col :xs="24" :sm="24" :md="8" :span="8">
         <el-card shadow="never" class="system-info">
           <template v-slot:header>
-<div  class="clearfix">
+<div class="panel-header">
             <span>系统资源</span>
-            <el-button style="float: right; padding: 3px 0" type="text" @click="refreshSystemStatus">刷新</el-button>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <UiButton
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="刷新系统资源"
+                  :disabled="systemLoading"
+                  @click="refreshSystemStatus"
+                >
+                  <Spinner v-if="systemLoading" />
+                  <RefreshCw v-else />
+                </UiButton>
+              </TooltipTrigger>
+              <TooltipContent>刷新系统资源</TooltipContent>
+            </Tooltip>
           </div>
 </template>
           <div v-loading="systemLoading" class="resource-usage">
@@ -406,39 +427,51 @@
       <el-col :xs="24" :sm="24" :md="12" :span="12">
         <el-card shadow="never" class="player-stats">
           <template v-slot:header>
-<div  class="clearfix">
-            <span>玩家数据统计</span>
-            <el-radio-group v-model="timeRange" size="mini" style="float: right;">
-              <el-radio-button label="week">周</el-radio-button>
-              <el-radio-button label="month">月</el-radio-button>
-              <el-radio-button label="year">年</el-radio-button>
-            </el-radio-group>
+<div class="panel-header">
+            <span>玩家实时概况</span>
+            <UiButton
+              variant="ghost"
+              size="sm"
+              :disabled="playerSummaryLoading || serverLoading"
+              @click="refreshPlayerSummary"
+            >
+              <Spinner v-if="playerSummaryLoading" data-icon="inline-start" />
+              <RefreshCw v-else data-icon="inline-start" />
+              刷新
+            </UiButton>
           </div>
 </template>
-          <div class="chart-container">
-            <div class="placeholder-chart">
-              <div class="chart-title">玩家活跃度</div>
-              <div class="chart-placeholder"></div>
-            </div>
+          <div v-if="playerSummaryLoading" class="player-summary-grid" aria-busy="true">
+            <Skeleton v-for="index in 4" :key="index" class="h-16 w-full" />
           </div>
-          <div class="player-stats-details">
-            <div class="stats-item">
-              <div class="stats-label">新增玩家</div>
-              <div class="stats-value">--</div>
+          <template v-else>
+            <Alert v-if="playerSummaryError" class="player-summary-alert">
+              <CircleAlert />
+              <AlertTitle>{{ playerSummary.loadedRooms ? '部分玩家数据不可用' : '玩家数据不可用' }}</AlertTitle>
+              <AlertDescription>{{ playerSummaryError }}</AlertDescription>
+            </Alert>
+            <div class="player-summary-grid">
+              <div class="player-summary-item">
+                <span>在线玩家</span>
+                <strong>{{ playerSummary.online }}</strong>
+              </div>
+              <div class="player-summary-item">
+                <span>玩家记录</span>
+                <strong>{{ playerSummary.total }}</strong>
+              </div>
+              <div class="player-summary-item">
+                <span>已接管房间</span>
+                <strong>{{ roomList.length }}</strong>
+              </div>
+              <div class="player-summary-item">
+                <span>世界分片</span>
+                <strong>{{ totalWorldCount }}</strong>
+              </div>
             </div>
-            <div class="stats-item">
-              <div class="stats-label">活跃玩家</div>
-              <div class="stats-value">--</div>
-            </div>
-            <div class="stats-item">
-              <div class="stats-label">平均游戏时长</div>
-              <div class="stats-value">--</div>
-            </div>
-            <div class="stats-item">
-              <div class="stats-label">总游戏时长</div>
-              <div class="stats-value">--</div>
-            </div>
-          </div>
+            <p class="player-summary-footnote">
+              已读取 {{ playerSummary.loadedRooms }} / {{ roomList.length }} 个房间的实时玩家记录
+            </p>
+          </template>
         </el-card>
       </el-col>
 
@@ -480,12 +513,35 @@
 
 <script>
 import WorldLog from '@/components/WorldLog.vue';
-import { systemApi, roomApi } from '@/api/index';
+import { playerApi, roomApi, systemApi } from '@/api/index';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { CircleAlert, Download, Play, RefreshCw, Settings, Square } from '@lucide/vue';
 import { formatTimeDiff } from '@/utils/dateUtils';
 
 export default {
   name: 'DashboardView',
   components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    Badge,
+    CircleAlert,
+    Download,
+    Play,
+    RefreshCw,
+    Settings,
+    Skeleton,
+    Spinner,
+    Square,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+    UiButton,
     WorldLog
   },
   data() {
@@ -501,7 +557,6 @@ export default {
         {color: '#d99b32', percentage: 70},
         {color: '#c94f4f', percentage: 90}
       ],
-      timeRange: 'week',
       announcements: [],
       announcementsError: '',
       systemLoading: false,
@@ -525,6 +580,15 @@ export default {
       updateStatus: null,
       updateStatusTimer: null,
       updateSessionName: null,
+      updateStarting: false,
+      playerSummaryLoading: false,
+      playerSummaryError: '',
+      playerSummary: {
+        total: 0,
+        online: 0,
+        loadedRooms: 0,
+        failedRooms: 0
+      },
       // 启动房间相关
       roomList: [],
       startRoomDialogVisible: false,
@@ -552,6 +616,12 @@ export default {
         this.versionInfo.update_supported &&
         this.versionInfo.local?.version
       );
+    },
+    gameUpdateBusy() {
+      return this.updateStarting || Boolean(this.updateStatus?.is_running);
+    },
+    totalWorldCount() {
+      return this.roomList.reduce((total, room) => total + (Array.isArray(room.worlds) ? room.worlds.length : 0), 0);
     },
     serverDataError() {
       return this.serverListError || this.roomListError;
@@ -596,9 +666,40 @@ export default {
       return Promise.allSettled([
         this.getServerList(),
         this.fetchRooms()
-      ]).finally(() => {
+      ]).then(() => this.refreshPlayerSummary()).finally(() => {
         this.serverLoading = false;
       });
+    },
+    async refreshPlayerSummary() {
+      this.playerSummaryLoading = true;
+      this.playerSummaryError = '';
+      this.playerSummary = { total: 0, online: 0, loadedRooms: 0, failedRooms: 0 };
+      try {
+        if (this.roomListError) {
+          this.playerSummaryError = '房间列表读取失败，无法汇总玩家数据';
+          return;
+        }
+        if (this.roomList.length === 0) return;
+
+        const results = await Promise.allSettled(
+          this.roomList.map(room => playerApi.getPlayerStats(room.name))
+        );
+        for (const result of results) {
+          if (result.status === 'rejected') {
+            this.playerSummary.failedRooms += 1;
+            continue;
+          }
+          const value = result.value?.data || {};
+          this.playerSummary.total += Number(value.total_count) || 0;
+          this.playerSummary.online += Number(value.online_count) || 0;
+          this.playerSummary.loadedRooms += 1;
+        }
+        if (this.playerSummary.failedRooms > 0) {
+          this.playerSummaryError = `${this.playerSummary.failedRooms} 个房间的玩家数据读取失败，当前为部分汇总`;
+        }
+      } finally {
+        this.playerSummaryLoading = false;
+      }
     },
     goToSystemSettings() {
       this.startRoomDialogVisible = false;
@@ -884,6 +985,7 @@ export default {
         type: 'warning'
       }).then(() => {
         // 发起更新请求
+        this.updateStarting = true;
         systemApi.updateDstServer({ force: true }).then(res => {
           if (res.status === 200 && res.data) {
             this.$message.success(res.msg || '更新已开始');
@@ -899,6 +1001,8 @@ export default {
         }).catch(err => {
           console.error('更新饥荒服务器失败:', err);
           this.$message.error('更新饥荒服务器失败: ' + (err.message || '未知错误'));
+        }).finally(() => {
+          this.updateStarting = false;
         });
       }).catch(() => {
         this.$message.info('已取消更新');
@@ -1165,6 +1269,14 @@ export default {
   width: 100%;
 }
 
+.panel-header {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 
 
 .section-divider {
@@ -1348,72 +1460,44 @@ export default {
   color: var(--text-regular);
 }
 
-.chart-container {
-  height: 200px;
-  margin-bottom: 20px;
+.player-summary-alert {
+  margin-bottom: 12px;
 }
 
-.placeholder-chart {
-  height: 100%;
+.player-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.player-summary-item {
   display: flex;
+  min-width: 0;
+  min-height: 64px;
   flex-direction: column;
-}
-
-.chart-title {
-  font-size: 14px;
-  margin-bottom: 10px;
-  color: var(--text-primary);
-}
-
-.chart-placeholder {
-  flex: 1;
-  background: linear-gradient(to right, #e8f1ff, #f0f0f0);
+  justify-content: center;
+  padding: 10px 12px;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  position: relative;
-  overflow: hidden;
 }
 
-.chart-placeholder::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to right,
-    transparent 0%, rgba(255, 255, 255, 0.5) 50%, transparent 100%);
-  animation: shimmer 2s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.player-stats-details {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.stats-item {
-  width: 50%;
-  margin-bottom: 15px;
-}
-
-.stats-label {
-  font-size: 13px;
+.player-summary-item span {
   color: var(--text-secondary);
-  margin-bottom: 5px;
+  font-size: 12px;
 }
 
-.stats-value {
-  font-size: 18px;
-  font-weight: bold;
+.player-summary-item strong {
+  margin-top: 3px;
   color: var(--text-primary);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-summary-footnote {
+  margin: 10px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .announcement-list {
@@ -1519,6 +1603,13 @@ export default {
 .server-header i {
   margin-right: 8px;
   color: var(--primary-color);
+}
+
+.server-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .server-name-info {
