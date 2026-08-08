@@ -9,6 +9,13 @@
       <ScrollArea class="config-scroll-area">
         <div v-if="loading" class="loading-container"><Spinner /><p>加载模组配置中...</p></div>
 
+        <Alert v-else-if="loadError" variant="destructive">
+          <TriangleAlert />
+          <AlertTitle>模组配置加载失败</AlertTitle>
+          <AlertDescription>{{ loadError }}</AlertDescription>
+          <AlertAction><UiButton size="sm" variant="outline" @click="initializeConfig">重试</UiButton></AlertAction>
+        </Alert>
+
         <template v-else-if="modInfo">
           <div v-if="hasOptions" class="reset-button-container">
             <UiButton size="sm" variant="outline" @click="resetToDefault">
@@ -80,7 +87,7 @@
 
       <SheetFooter>
         <UiButton variant="outline" @click="handleClose">取消</UiButton>
-        <UiButton @click="saveConfig" :disabled="saving">
+        <UiButton @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !modInfo">
           <Spinner v-if="saving" data-icon="inline-start" />保存配置
         </UiButton>
       </SheetFooter>
@@ -89,10 +96,10 @@
 </template>
 
 <script>
-import { CircleHelp, Info, RotateCcw } from '@lucide/vue';
+import { CircleHelp, Info, RotateCcw, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { modApi } from '@/api';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -109,6 +116,7 @@ export default {
   name: 'ModConfigDialog',
   components: {
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     CircleHelp,
@@ -139,6 +147,7 @@ export default {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
+    TriangleAlert,
     UiButton,
     UiInput,
     UiSelect,
@@ -174,6 +183,7 @@ export default {
     return {
       dialogVisible: false,
       loading: false,
+      loadError: '',
       saving: false,
       configForm: {},
       originalConfig: {},
@@ -249,6 +259,7 @@ export default {
     resetComponentState() {
       this.isInitialized = false;
       this.loading = false;
+      this.loadError = '';
       this.saving = false;
       this.configForm = {};
       this.originalConfig = {};
@@ -285,6 +296,7 @@ export default {
       
       this.isInitialized = true;
       this.loading = true;
+      this.loadError = '';
       
       this.configForm = {};
       this.originalConfig = {};
@@ -298,6 +310,7 @@ export default {
         }
       } catch (error) {
         this.isInitialized = false;
+        this.loadError = error.message || '未知错误';
       } finally {
         this.loading = false;
       }

@@ -1,42 +1,42 @@
 <template>
   <div class="page-container">
-    <Card class="main-card">
-      <CardHeader class="card-heading">
-        <div><CardTitle>已下载模组</CardTitle><CardDescription>管理房间内已安装模组及各世界配置。</CardDescription></div>
-        <div class="header-actions">
-          <UiButton size="sm" variant="outline" @click="refreshModList" :disabled="loading"><RefreshCw data-icon="inline-start" />刷新</UiButton>
-          <UiButton size="sm" @click="goToSearch"><Plus data-icon="inline-start" />添加模组</UiButton>
-          <UiButton size="sm" variant="outline" @click="getModConfigFile" :disabled="loadingConfig"><FileCode2 data-icon="inline-start" />获取配置文件</UiButton>
-        </div>
-      </CardHeader>
+    <header class="page-heading">
+      <div><h1>已下载模组</h1><p>管理房间内已安装模组及各世界配置。</p></div>
+      <div class="header-actions">
+        <UiButton size="sm" variant="outline" @click="refreshModList" :disabled="loading || !selectedRoomId"><RefreshCw data-icon="inline-start" />刷新</UiButton>
+        <UiButton size="sm" @click="goToSearch"><Plus data-icon="inline-start" />添加模组</UiButton>
+        <UiButton size="sm" variant="outline" @click="getModConfigFile" :disabled="loadingConfig || !selectedWorldId"><FileCode2 data-icon="inline-start" />获取配置文件</UiButton>
+      </div>
+    </header>
 
+    <Card size="sm" class="filter-panel">
       <CardContent>
         <FieldGroup class="filter-form">
           <Field>
-            <FieldLabel>房间</FieldLabel>
+            <FieldLabel for="installed-mod-room">房间</FieldLabel>
             <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
-              <SelectTrigger><SelectValue placeholder="请选择房间" /></SelectTrigger>
+              <SelectTrigger id="installed-mod-room"><SelectValue placeholder="请选择房间" /></SelectTrigger>
               <SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel>世界</FieldLabel>
+            <FieldLabel for="installed-mod-world">世界</FieldLabel>
             <UiSelect v-model="selectedWorldId" :disabled="!selectedRoomId" @update:model-value="handleWorldChange">
-              <SelectTrigger><SelectValue placeholder="配置与文件查看目标" /></SelectTrigger>
+              <SelectTrigger id="installed-mod-world"><SelectValue placeholder="配置与文件查看目标" /></SelectTrigger>
               <SelectContent><SelectGroup><SelectItem v-for="world in selectedRoomWorlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent>
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel>状态</FieldLabel>
+            <FieldLabel for="installed-mod-status">状态</FieldLabel>
             <UiSelect v-model="filterForm.status">
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="installed-mod-status"><SelectValue /></SelectTrigger>
               <SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="enabled">已启用</SelectItem><SelectItem value="disabled">已禁用</SelectItem></SelectGroup></SelectContent>
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel>排序方式</FieldLabel>
+            <FieldLabel for="installed-mod-sort">排序方式</FieldLabel>
             <UiSelect v-model="filterForm.sortBy">
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger id="installed-mod-sort"><SelectValue /></SelectTrigger>
               <SelectContent><SelectGroup>
                 <SelectItem value="name">名称</SelectItem><SelectItem value="author">作者</SelectItem><SelectItem value="update_time">更新时间</SelectItem><SelectItem value="subscribers">订阅数</SelectItem><SelectItem value="rating">评分</SelectItem>
               </SelectGroup></SelectContent>
@@ -48,10 +48,19 @@
           </Field>
           <div class="filter-actions"><UiButton @click="applyFilter">筛选</UiButton><UiButton variant="outline" @click="resetFilter">重置</UiButton></div>
         </FieldGroup>
+      </CardContent>
+    </Card>
 
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在加载模组列表</span></div>
+    <Alert v-if="loadError" variant="destructive">
+      <TriangleAlert />
+      <AlertTitle>模组列表加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">重试</UiButton></AlertAction>
+    </Alert>
 
-        <div v-else-if="filteredMods.length > 0" class="mod-grid">
+    <div v-if="loading" class="loading-state"><Spinner /><span>正在加载模组列表</span></div>
+
+    <div v-else-if="!loadError && filteredMods.length > 0" class="mod-grid">
           <Card v-for="mod in filteredMods" :key="mod.id" class="mod-card">
             <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultIcon" :src="mod.image || defaultIcon" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
             <CardHeader>
@@ -70,7 +79,7 @@
             <CardFooter class="mod-actions">
               <UiButton size="sm" :disabled="!selectedWorldId" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />配置</UiButton>
               <DropdownMenu>
-                <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
+                <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" :aria-label="`打开 ${mod.name} 操作菜单`" title="模组操作"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuGroup>
                     <DropdownMenuItem @select="showModDetails(mod)">查看详情</DropdownMenuItem>
@@ -82,14 +91,12 @@
               </DropdownMenu>
             </CardFooter>
           </Card>
-        </div>
+    </div>
 
-        <Empty v-else>
-          <EmptyHeader><EmptyMedia variant="icon"><PackageOpen /></EmptyMedia><EmptyTitle>还没有安装任何模组</EmptyTitle><EmptyDescription>从创意工坊搜索并添加模组。</EmptyDescription></EmptyHeader>
-          <EmptyContent><UiButton @click="goToSearch"><Plus data-icon="inline-start" />添加模组</UiButton></EmptyContent>
-        </Empty>
-      </CardContent>
-    </Card>
+    <Empty v-else-if="!loadError">
+      <EmptyHeader><EmptyMedia variant="icon"><PackageOpen /></EmptyMedia><EmptyTitle>{{ selectedRoomId ? '还没有安装任何模组' : '没有可管理的房间' }}</EmptyTitle><EmptyDescription>{{ selectedRoomId ? '从创意工坊搜索并添加模组。' : '先创建或接管一个房间，再管理模组。' }}</EmptyDescription></EmptyHeader>
+      <EmptyContent v-if="selectedRoomId"><UiButton @click="goToSearch"><Plus data-icon="inline-start" />添加模组</UiButton></EmptyContent>
+    </Empty>
 
     <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :is-new-mod="false" @config-updated="handleConfigUpdated" />
 
@@ -141,7 +148,7 @@ import { Clock, Download, FileCode2, ImageIcon, MoreHorizontal, PackageOpen, Plu
 import { toast } from 'vue-sonner';
 import ModConfigDialog from './ModConfigDialog.vue';
 import { modApi } from '@/api';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -162,6 +169,7 @@ export default {
   name: 'ModList',
   components: {
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     Badge,
@@ -235,6 +243,7 @@ export default {
       modsList: [],
       // 加载状态
       loading: false,
+      loadError: '',
       loadingRooms: false,
       roomOptions: [],
       selectedRoomId: '',
@@ -323,6 +332,7 @@ export default {
     },
     async initializeContext() {
       this.loadingRooms = true;
+      this.loadError = '';
       try {
         const context = await modApi.getContext({
           roomId: this.$route.query.roomId || '',
@@ -334,13 +344,15 @@ export default {
         this.selectedWorldId = context.world?.id || '';
         if (this.selectedRoomId) await this.fetchModsList();
       } catch (error) {
-        toast.error(error.message || '加载模组上下文失败');
+        this.loadError = error.message || '加载模组上下文失败';
+        toast.error(this.loadError);
       } finally {
         this.loadingRooms = false;
       }
     },
 
     async handleRoomChange(roomId) {
+      this.loadError = '';
       try {
         const context = await modApi.getContext({ roomId });
         this.selectedRoomWorlds = context.worlds;
@@ -348,7 +360,8 @@ export default {
         await this.syncRouteContext();
         await this.fetchModsList();
       } catch (error) {
-        toast.error(error.message || '切换房间失败');
+        this.loadError = error.message || '切换房间失败';
+        toast.error(this.loadError);
       }
     },
 
@@ -374,11 +387,13 @@ export default {
         return;
       }
       this.loading = true;
+      this.loadError = '';
       try {
         this.modsList = await modApi.getServerList({ roomId: this.selectedRoomId });
       } catch (error) {
         this.modsList = [];
-        toast.error(`获取模组列表失败：${error.message || '未知错误'}`);
+        this.loadError = error.message || '未知错误';
+        toast.error(`获取模组列表失败：${this.loadError}`);
       } finally {
         this.loading = false;
       }
@@ -401,6 +416,11 @@ export default {
     // 刷新模组列表
     refreshModList() {
       this.fetchModsList();
+    },
+
+    retryLoad() {
+      if (this.selectedRoomId) this.fetchModsList();
+      else this.initializeContext();
     },
     
     // 打开配置对话框
@@ -611,13 +631,15 @@ export default {
 </script>
 
 <style scoped>
-.page-container,
-.main-card {
+.page-container {
   width: 100%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.card-heading,
+.page-heading,
 .header-actions,
 .mod-title-row,
 .mod-actions,
@@ -629,9 +651,24 @@ export default {
   align-items: center;
 }
 
-.card-heading {
+.page-heading {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.page-heading h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 28px;
+}
+
+.page-heading p {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .header-actions,
@@ -649,7 +686,6 @@ export default {
   grid-template-columns: repeat(5, minmax(150px, 1fr)) auto;
   align-items: end;
   gap: 12px;
-  margin-bottom: 20px;
 }
 
 .loading-state {
@@ -823,7 +859,7 @@ export default {
 }
 
 @media (max-width: 760px) {
-  .card-heading {
+  .page-heading {
     align-items: stretch;
     flex-direction: column;
   }

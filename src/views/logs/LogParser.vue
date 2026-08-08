@@ -1,33 +1,33 @@
 <template>
   <div class="app-container">
-    <Card>
-      <CardHeader class="header-container">
-        <div>
-          <CardTitle class="header-title">
-            <Monitor />
-            活跃日志解析器
-          </CardTitle>
-          <CardDescription>查看当前房间日志流和解析器状态。</CardDescription>
-        </div>
-        <UiButton size="sm" :disabled="loading" @click="getActiveParsers">
-          <Spinner v-if="loading" data-icon="inline-start" />
-          <RefreshCw v-else data-icon="inline-start" />
-          刷新
-        </UiButton>
-      </CardHeader>
-      <CardContent>
-        <div v-if="loading && activeParsers.length === 0" class="loading-state">
-          <Spinner />
-          <span>正在读取解析器状态...</span>
-        </div>
-        <Empty v-else-if="activeParsers.length === 0">
-          <EmptyHeader>
-            <EmptyMedia variant="icon"><FileWarning /></EmptyMedia>
-            <EmptyTitle>暂无运行中的日志解析器</EmptyTitle>
-            <EmptyDescription>启动房间后，可在这里查看对应的日志解析器。</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-        <div v-else class="parsers-container">
+    <header class="page-heading">
+      <div><h1>活跃日志解析器</h1><p>查看当前房间日志流和解析器状态。</p></div>
+      <UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers">
+        <Spinner v-if="loading" data-icon="inline-start" />
+        <RefreshCw v-else data-icon="inline-start" />
+        刷新
+      </UiButton>
+    </header>
+
+    <Alert v-if="loadError" variant="destructive">
+      <FileWarning />
+      <AlertTitle>解析器状态加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="getActiveParsers">重试</UiButton></AlertAction>
+    </Alert>
+
+    <div v-if="loading && activeParsers.length === 0" class="loading-state">
+      <Spinner />
+      <span>正在读取解析器状态...</span>
+    </div>
+    <Empty v-else-if="!loadError && activeParsers.length === 0">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><FileWarning /></EmptyMedia>
+        <EmptyTitle>暂无运行中的日志解析器</EmptyTitle>
+        <EmptyDescription>启动房间后，可在这里查看对应的日志解析器。</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+    <div v-else-if="!loadError" class="parsers-container">
           <Card v-for="parser in activeParsers" :key="parser.id" class="parser-card">
             <CardHeader class="parser-header">
               <div class="parser-title">
@@ -80,20 +80,19 @@
               </UiButton>
             </CardFooter>
           </Card>
-        </div>
-      </CardContent>
-    </Card>
+    </div>
   </div>
 </template>
 
 <script>
-import { Clock, Eye, FileText, FileWarning, Monitor, Moon, RefreshCw, RotateCw, Sun } from '@lucide/vue';
+import { Clock, Eye, FileText, FileWarning, Moon, RefreshCw, RotateCw, Sun } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { logApi } from '@/api/index';
 import { jobsV2API, roomsV2API } from '@/api/v2';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -102,14 +101,15 @@ const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled']);
 export default {
   name: 'LogParser',
   components: {
-    Badge, UiButton, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, UiButton, Card, CardContent, CardFooter, CardHeader, CardTitle,
     Clock, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Eye, FileText,
-    FileWarning, Monitor, Moon, RefreshCw, RotateCw, Spinner, Sun
+    FileWarning, Moon, RefreshCw, RotateCw, Spinner, Sun
   },
   data() {
     return {
       activeParsers: [],
       loading: false,
+      loadError: '',
       restartingParserId: ''
     };
   },
@@ -119,19 +119,25 @@ export default {
   methods: {
     async getActiveParsers() {
       this.loading = true;
+      this.loadError = '';
       try {
         const response = await logApi.getActiveLogParsers();
         if (response && response.data) {
           if (Array.isArray(response.data)) this.activeParsers = response.data;
           else if (response.data.status === 200 && Array.isArray(response.data.data)) this.activeParsers = response.data.data;
-          else this.activeParsers = [];
+          else {
+            this.activeParsers = [];
+            this.loadError = response.data.message || '后端没有返回有效的解析器列表';
+          }
           if (response.data.msg) toast.success(response.data.msg);
         } else {
-          toast.error('获取活跃解析器列表失败: 无数据');
+          this.loadError = '后端没有返回解析器数据';
+          toast.error(`获取活跃解析器列表失败：${this.loadError}`);
           this.activeParsers = [];
         }
       } catch (error) {
-        toast.error('获取活跃解析器列表失败: ' + (error.message || '未知错误'));
+        this.loadError = error.message || '未知错误';
+        toast.error(`获取活跃解析器列表失败：${this.loadError}`);
         this.activeParsers = [];
       } finally {
         this.loading = false;
@@ -188,7 +194,14 @@ export default {
 </script>
 
 <style scoped>
-.header-container,
+.app-container {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-heading,
 .parser-header,
 .parser-title,
 .info-item,
@@ -198,20 +211,36 @@ export default {
   align-items: center;
 }
 
-.header-container,
+.page-heading,
 .parser-header {
   justify-content: space-between;
   flex-direction: row;
   gap: 12px;
 }
 
-.header-title,
 .parser-title,
 .parser-subtitle,
 .info-item,
 .parser-actions,
 .loading-state {
   gap: 8px;
+}
+
+.page-heading {
+  align-items: flex-start;
+}
+
+.page-heading h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 28px;
+}
+
+.page-heading p {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .parsers-container {
@@ -311,7 +340,7 @@ export default {
 }
 
 @media (max-width: 640px) {
-  .header-container,
+  .page-heading,
   .parser-header {
     align-items: flex-start;
     flex-direction: column;

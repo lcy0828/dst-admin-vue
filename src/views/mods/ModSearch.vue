@@ -1,20 +1,17 @@
 <template>
   <div class="page-container">
-    <Card class="main-card">
-      <CardHeader class="card-heading">
-        <div>
-          <CardTitle>搜索模组</CardTitle>
-          <CardDescription>从创意工坊检索并安装到指定房间。</CardDescription>
-        </div>
-        <UiButton variant="outline" size="sm" @click="goToModList"><ArrowLeft data-icon="inline-start" />返回已下载模组</UiButton>
-      </CardHeader>
+    <header class="page-heading">
+      <div><h1>搜索模组</h1><p>从创意工坊检索并安装到指定房间。</p></div>
+      <UiButton variant="outline" size="sm" @click="goToModList"><ArrowLeft data-icon="inline-start" />返回已下载模组</UiButton>
+    </header>
 
+    <Card size="sm" class="search-panel">
       <CardContent>
         <FieldGroup class="search-form">
           <Field>
-            <FieldLabel>房间</FieldLabel>
+            <FieldLabel for="workshop-room">房间</FieldLabel>
             <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
-              <SelectTrigger><SelectValue :placeholder="loadingRooms ? '正在加载房间' : '请选择房间'" /></SelectTrigger>
+              <SelectTrigger id="workshop-room"><SelectValue :placeholder="loadingRooms ? '正在加载房间' : '请选择房间'" /></SelectTrigger>
               <SelectContent>
                 <SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup>
               </SelectContent>
@@ -28,23 +25,32 @@
             </InputGroup>
           </Field>
           <div class="search-actions">
-            <UiButton @click="startSearch" :disabled="searching">
+            <UiButton @click="startSearch" :disabled="searching || !searchForm.keyword.trim()">
               <Spinner v-if="searching" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索
             </UiButton>
             <UiButton variant="outline" @click="resetSearch">重置</UiButton>
           </div>
         </FieldGroup>
+      </CardContent>
+    </Card>
 
-        <div v-if="searching" class="mod-grid">
+    <Alert v-if="loadError" variant="destructive">
+      <TriangleAlert />
+      <AlertTitle>模组数据加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">重试</UiButton></AlertAction>
+    </Alert>
+
+    <div v-if="searching" class="mod-grid">
           <Card v-for="index in 8" :key="index" class="mod-card">
             <Skeleton class="mod-image" />
             <CardHeader><Skeleton class="skeleton-title" /><Skeleton class="skeleton-meta" /></CardHeader>
             <CardContent><Skeleton class="skeleton-description" /></CardContent>
             <CardFooter><Skeleton class="skeleton-button" /></CardFooter>
           </Card>
-        </div>
+    </div>
 
-        <div v-else-if="searchResults.length > 0">
+    <div v-else-if="!loadError && searchResults.length > 0">
           <div class="mod-grid">
             <Card v-for="mod in searchResults" :key="mod.id" class="mod-card">
               <div class="mod-image">
@@ -88,16 +94,17 @@
               <PaginationNext />
             </PaginationContent>
           </Pagination>
-        </div>
+    </div>
 
-        <Empty v-else-if="hasSearched">
-          <EmptyHeader><EmptyMedia variant="icon"><SearchX /></EmptyMedia><EmptyTitle>没有找到匹配的模组</EmptyTitle><EmptyDescription>尝试使用其他关键词。</EmptyDescription></EmptyHeader>
-        </Empty>
-      </CardContent>
-    </Card>
+    <Empty v-else-if="!loadError && hasSearched">
+      <EmptyHeader><EmptyMedia variant="icon"><SearchX /></EmptyMedia><EmptyTitle>没有找到匹配的模组</EmptyTitle><EmptyDescription>尝试使用其他关键词。</EmptyDescription></EmptyHeader>
+    </Empty>
+    <Empty v-else-if="!loadError">
+      <EmptyHeader><EmptyMedia variant="icon"><Search /></EmptyMedia><EmptyTitle>尚未搜索模组</EmptyTitle></EmptyHeader>
+    </Empty>
 
     <UiDialog v-model:open="detailsDialogVisible">
-      <DialogContent class="max-w-3xl">
+      <DialogContent class="max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto">
         <DialogHeader><DialogTitle>模组详情</DialogTitle><DialogDescription>创意工坊模组信息。</DialogDescription></DialogHeader>
         <div v-if="currentModInfo" class="mod-details">
           <div class="mod-details-header">
@@ -130,9 +137,10 @@
 </template>
 
 <script>
-import { ArrowLeft, Clock, Download, ImageIcon, RefreshCw, Search, SearchX, Star, Tag, User, Users } from '@lucide/vue';
+import { ArrowLeft, Clock, Download, ImageIcon, RefreshCw, Search, SearchX, Star, Tag, TriangleAlert, User, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { modApi } from '@/api';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -151,6 +159,10 @@ export default {
   name: 'ModSearch',
   components: {
     ArrowLeft,
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
     Badge,
     Card,
     CardContent,
@@ -196,6 +208,7 @@ export default {
     Spinner,
     Star,
     Tag,
+    TriangleAlert,
     UiButton,
     UiDialog,
     UiSelect,
@@ -208,6 +221,7 @@ export default {
         keyword: '',
       },
       searching: false,
+      loadError: '',
       hasSearched: false,
       searchResults: [],
       totalResults: 0,
@@ -239,6 +253,7 @@ export default {
     },
     async initializeContext() {
       this.loadingRooms = true;
+      this.loadError = '';
       try {
         const context = await modApi.getContext({ roomId: this.$route.query.roomId || '' });
         this.roomOptions = context.rooms;
@@ -246,13 +261,15 @@ export default {
         this.selectedRoomWorlds = context.worlds;
         if (this.selectedRoomId) await this.getInstalledMods();
       } catch (error) {
-        toast.error(error.message || '加载房间失败');
+        this.loadError = error.message || '加载房间失败';
+        toast.error(this.loadError);
       } finally {
         this.loadingRooms = false;
       }
     },
 
     async handleRoomChange(roomId) {
+      this.loadError = '';
       try {
         const context = await modApi.getContext({ roomId });
         this.selectedRoomWorlds = context.worlds;
@@ -266,7 +283,8 @@ export default {
           isInstalled: this.isModInstalled(mod.id)
         }));
       } catch (error) {
-        toast.error(error.message || '切换房间失败');
+        this.loadError = error.message || '切换房间失败';
+        toast.error(this.loadError);
       }
     },
 
@@ -277,11 +295,13 @@ export default {
         return;
       }
       this.loadingInstalledMods = true;
+      this.loadError = '';
       try {
         this.installedMods = await modApi.getServerList({ roomId: this.selectedRoomId });
       } catch (error) {
         this.installedMods = [];
-        toast.error(`获取已安装模组失败：${error.message || '未知错误'}`);
+        this.loadError = error.message || '未知错误';
+        toast.error(`获取已安装模组失败：${this.loadError}`);
       } finally {
         this.loadingInstalledMods = false;
       }
@@ -307,6 +327,7 @@ export default {
       }
       
       this.searching = true;
+      this.loadError = '';
       this.hasSearched = true;
       this.searchResults = [];
       
@@ -322,7 +343,8 @@ export default {
         }));
         this.totalResults = data.total || 0;
       } catch (error) {
-        toast.error(`搜索模组失败：${error.message || '未知错误'}`);
+        this.loadError = error.message || '未知错误';
+        toast.error(`搜索模组失败：${this.loadError}`);
         this.searchResults = [];
         this.totalResults = 0;
       } finally {
@@ -390,6 +412,13 @@ export default {
       this.searching = false;
       this.totalResults = 0;
       this.currentPage = 1;
+      this.loadError = '';
+    },
+
+    retryLoad() {
+      if (!this.roomOptions.length) return this.initializeContext();
+      if (this.hasSearched) return this.searchMods();
+      return this.getInstalledMods();
     },
     
     handlePageChange(page) {
@@ -424,13 +453,15 @@ export default {
 </script>
 
 <style scoped>
-.page-container,
-.main-card {
+.page-container {
   width: 100%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.card-heading,
+.page-heading,
 .mod-title-row,
 .mod-actions,
 .search-actions,
@@ -441,9 +472,24 @@ export default {
   align-items: center;
 }
 
-.card-heading {
+.page-heading {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.page-heading h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 28px;
+}
+
+.page-heading p {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .search-form {
@@ -451,7 +497,6 @@ export default {
   grid-template-columns: 220px minmax(240px, 1fr) auto;
   align-items: end;
   gap: 12px;
-  margin-bottom: 20px;
 }
 
 .search-actions,
@@ -594,7 +639,7 @@ export default {
 }
 
 @media (max-width: 760px) {
-  .card-heading {
+  .page-heading {
     align-items: stretch;
     flex-direction: column;
   }
