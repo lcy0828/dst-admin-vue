@@ -7,7 +7,7 @@
         <el-card shadow="hover" class="version-card">
           <div class="version-content">
             <div class="version-icon">
-              <component is="el-icon-info" class="legacy-icon" />
+              <component :is="'el-icon-info'" class="legacy-icon" />
             </div>
             <div class="version-details">
               <div class="version-header">
@@ -20,7 +20,7 @@
                     :disabled="updateStatus && updateStatus.is_running"
                     :loading="updateStatus && updateStatus.is_running"
                   >
-                    <component v-if="!(updateStatus && updateStatus.is_running)" is="el-icon-upload2" class="legacy-icon" />
+                    <component v-if="!(updateStatus && updateStatus.is_running)" :is="'el-icon-upload2'" class="legacy-icon" />
                     {{ updateStatus && updateStatus.is_running ? '更新中...' : '更新游戏' }}
                   </el-button>
                   <el-button
@@ -39,7 +39,7 @@
                     <div class="version-box-value">{{ versionInfo.local.version || '--' }}</div>
                   </div>
                   <div class="version-arrow">
-                    <component is="el-icon-arrow-right" class="legacy-icon" />
+                    <component :is="'el-icon-arrow-right'" class="legacy-icon" />
                   </div>
                   <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
                     <div class="version-box-label">最新版本</div>
@@ -49,14 +49,14 @@
                       target="_blank"
                       class="version-box-value version-link">
                       {{ versionInfo.latest.version }}
-                      <component v-if="isVersionOutdated" is="el-icon-warning" class="legacy-icon version-warning-icon" />
+                      <component v-if="isVersionOutdated" :is="'el-icon-warning'" class="legacy-icon version-warning-icon" />
                     </a>
                     <span v-else class="version-box-value">{{ versionInfo.latest.version || '--' }}</span>
                     <div class="version-box-date">{{ versionInfo.latest.release_date || '--' }} / R{{ versionInfo.latest.build_number || '--' }}</div>
                   </div>
                 </div>
                 <div v-if="isVersionOutdated" class="version-update-notice">
-                  <component is="el-icon-warning" class="legacy-icon" />
+                  <component :is="'el-icon-warning'" class="legacy-icon" />
                   <span>检测到新版本可用，请及时更新游戏服务端!</span>
                   <el-button type="primary" size="small" @click="openUpdateLink">查看更新内容</el-button>
                 </div>
@@ -82,7 +82,7 @@
                 </div>
               </div>
               <div v-else class="version-loading">
-                <component is="el-icon-loading" class="legacy-icon" />
+                <component :is="'el-icon-loading'" class="legacy-icon" />
                 <span>正在获取版本信息...</span>
               </div>
             </div>
@@ -96,7 +96,7 @@
     <!-- 标题分割线 -->
     <div class="section-divider">
       <div class="section-title">
-        <component is="el-icon-data-analysis" class="legacy-icon" />
+        <component :is="'el-icon-data-analysis'" class="legacy-icon" />
         <span>服务器状态监控</span>
       </div>
       <div class="refresh-btn">
@@ -108,10 +108,12 @@
     <el-row :gutter="20" class="monitor-section">
       <el-col :span="16">
         <el-card shadow="hover" class="server-monitor">
-          <div slot="header" class="clearfix server-header">
-            <span><component is="el-icon-monitor" class="legacy-icon" /> 服务器状态监控</span>
+          <template v-slot:header>
+<div  class="clearfix server-header">
+            <span><component :is="'el-icon-monitor'" class="legacy-icon" /> 服务器状态监控</span>
             <el-button type="text" icon="el-icon-refresh" @click="getServerList">刷新</el-button>
           </div>
+</template>
 
           <el-table
             :data="serverList"
@@ -121,7 +123,7 @@
             highlight-current-row
             border>
             <el-table-column prop="status" label="状态" width="90" align="center">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tag
                   :type="getServerStatusTag(scope.row.status)"
                   size="medium"
@@ -131,14 +133,14 @@
               </template>
             </el-table-column>
             <el-table-column prop="archive_name" label="房间名称" min-width="120">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <div class="server-name-info">
                   <span class="server-name-text">{{ scope.row.archive_name }}</span>
                 </div>
               </template>
             </el-table-column>
             <el-table-column prop="world_name" label="世界名称" min-width="120">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-tag
                   :type="scope.row.world_type === 'forest' ? 'warning' : (scope.row.world_type === 'cave' ? 'primary' : 'info')"
                   size="medium"
@@ -148,21 +150,21 @@
               </template>
             </el-table-column>
             <el-table-column label="启动时间" width="170" align="center">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <div class="time-info">
                   <span>{{ scope.row.start_time || '--' }}</span>
                 </div>
               </template>
             </el-table-column>
             <el-table-column label="运行时间" width="90" align="center">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <div class="time-info">
                   <span>{{ formatServerUptime(scope.row.start_time) }}</span>
                 </div>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="180" align="center">
-              <template slot-scope="scope">
+              <template v-slot="scope">
                 <el-button-group>
                   <el-button
                     size="mini"
@@ -188,7 +190,7 @@
           </div>
 
           <div class="empty-server" v-if="serverList.length === 0">
-            <component is="el-icon-warning-outline" class="legacy-icon" />
+            <component :is="'el-icon-warning-outline'" class="legacy-icon" />
             <span>暂无服务器实例运行</span>
             <el-button type="primary" size="small" plain @click="openStartRoomDialog">启动现有房间</el-button>
           </div>
@@ -236,7 +238,7 @@
                   </div>
                 </div>
                 <div v-else class="no-worlds-tip">
-                  <component is="el-icon-warning-outline" class="legacy-icon" />
+                  <component :is="'el-icon-warning-outline'" class="legacy-icon" />
                   <span>该房间没有可用的世界</span>
                 </div>
               </el-form-item>
@@ -250,10 +252,12 @@
               </el-form-item>
             </el-form>
             </div>
-            <div slot="footer" class="dialog-footer">
+            <template v-slot:footer>
+<div  class="dialog-footer">
               <el-button @click="startRoomDialogVisible = false" :disabled="startRoomLoading">取消</el-button>
               <el-button type="primary" @click="startRoom" :loading="startRoomLoading" :disabled="roomList.length === 0">启动</el-button>
             </div>
+</template>
           </el-dialog>
 
         </el-card>
@@ -261,10 +265,12 @@
 
       <el-col :span="8">
         <el-card shadow="hover" class="system-info">
-          <div slot="header" class="clearfix">
+          <template v-slot:header>
+<div  class="clearfix">
             <span>系统资源</span>
             <el-button style="float: right; padding: 3px 0" type="text" @click="refreshSystemStatus">刷新</el-button>
           </div>
+</template>
           <div v-loading="systemLoading" class="resource-usage">
             <div class="resource-item">
               <div class="resource-label">
@@ -319,15 +325,15 @@
           </div>
           <div class="system-info-footer">
             <div class="system-info-item">
-              <component is="el-icon-monitor" class="legacy-icon" />
+              <component :is="'el-icon-monitor'" class="legacy-icon" />
               <span>{{ systemStatus.os_info || '--' }}</span>
             </div>
             <div class="system-info-item">
-              <component is="el-icon-time" class="legacy-icon" />
+              <component :is="'el-icon-time'" class="legacy-icon" />
               <span>运行时间: {{ systemStatus.uptime_formatted || '--' }}</span>
             </div>
             <div class="system-info-item">
-              <component is="el-icon-refresh" class="legacy-icon" />
+              <component :is="'el-icon-refresh'" class="legacy-icon" />
               <span>更新时间: {{ systemStatus.current_time || '--' }}</span>
             </div>
           </div>
@@ -337,7 +343,7 @@
 
     <div class="section-divider">
       <div class="section-title">
-        <component is="el-icon-document" class="legacy-icon" />
+        <component :is="'el-icon-document'" class="legacy-icon" />
         <span>世界日志</span>
       </div>
     </div>
@@ -352,7 +358,7 @@
 
     <div class="section-divider">
       <div class="section-title">
-        <component is="el-icon-s-data" class="legacy-icon" />
+        <component :is="'el-icon-s-data'" class="legacy-icon" />
         <span>最近游戏数据</span>
       </div>
     </div>
@@ -360,7 +366,8 @@
     <el-row :gutter="20" class="data-section">
       <el-col :span="12">
         <el-card shadow="hover" class="player-stats">
-          <div slot="header" class="clearfix">
+          <template v-slot:header>
+<div  class="clearfix">
             <span>玩家数据统计</span>
             <el-radio-group v-model="timeRange" size="mini" style="float: right;">
               <el-radio-button label="week">周</el-radio-button>
@@ -368,6 +375,7 @@
               <el-radio-button label="year">年</el-radio-button>
             </el-radio-group>
           </div>
+</template>
           <div class="chart-container">
             <div class="placeholder-chart">
               <div class="chart-title">玩家活跃度</div>
@@ -397,10 +405,12 @@
 
       <el-col :span="12">
         <el-card shadow="hover" class="announcement-card">
-          <div slot="header" class="clearfix">
+          <template v-slot:header>
+<div  class="clearfix">
             <span>公告管理</span>
             <el-button style="float: right; padding: 3px 0" type="text" @click="gotoAnnouncement">更多</el-button>
           </div>
+</template>
           <div class="announcement-list">
             <el-alert
               v-if="announcementsError"
@@ -435,7 +445,7 @@ import { systemApi, roomApi } from '@/api/index';
 import { formatTimeDiff } from '@/utils/dateUtils';
 
 export default {
-  name: 'Dashboard',
+  name: 'DashboardView',
   components: {
     WorldLog
   },
@@ -776,7 +786,7 @@ export default {
             // 保存会话名称用于查询状态
             this.updateSessionName = res.data.session_name;
             // 将会话名称保存到本地存储，以便页面刷新后仍能继续查询状态
-            localStorage.setItem('dstUpdateSessionName', this.updateSessionName);
+            sessionStorage.setItem('dstUpdateSessionName', this.updateSessionName);
             // 开始轮询更新状态
             this.startUpdateStatusPolling();
           } else {
@@ -818,7 +828,7 @@ export default {
     checkOngoingUpdate() {
       // 尝试从本地存储中获取上次更新的会话名称
       try {
-        const savedSession = localStorage.getItem('dstUpdateSessionName');
+        const savedSession = sessionStorage.getItem('dstUpdateSessionName');
         if (savedSession) {
           this.updateSessionName = savedSession;
           // 获取更新状态
@@ -848,7 +858,7 @@ export default {
           if (this.updateStatus && (this.updateStatus.is_completed || this.updateStatus.error)) {
             this.stopUpdateStatusPolling();
             // 清除存储的会话名称
-            localStorage.removeItem('dstUpdateSessionName');
+            sessionStorage.removeItem('dstUpdateSessionName');
 
             // 如果更新完成，刷新版本信息
             if (this.updateStatus.is_completed && !this.updateStatus.error) {

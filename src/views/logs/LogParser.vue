@@ -1,19 +1,21 @@
 <template>
   <div class="app-container">
     <el-card class="box-card">
-      <div slot="header" class="clearfix">
+      <template v-slot:header>
+<div  class="clearfix">
         <div class="header-container">
           <div class="header-title">
-            <component is="el-icon-monitor" class="legacy-icon" />
+            <component :is="'el-icon-monitor'" class="legacy-icon" />
             <span>活跃日志解析器</span>
           </div>
           <el-button type="primary" size="small" icon="el-icon-refresh" @click="getActiveParsers">刷新</el-button>
         </div>
       </div>
+</template>
 
       <div v-loading="loading">
         <div v-if="!activeParsers || activeParsers.length === 0" class="empty-data">
-          <component is="el-icon-warning-outline" class="legacy-icon" />
+          <component :is="'el-icon-warning-outline'" class="legacy-icon" />
           <p>暂无运行中的日志解析器</p>
         </div>
         <div v-else class="parsers-container">
@@ -38,26 +40,32 @@
 
                 <div class="parser-info">
                   <div class="info-item">
-                    <component is="el-icon-refresh" class="legacy-icon" />
+                    <component :is="'el-icon-refresh'" class="legacy-icon" />
                     <span class="label">最近活动:</span>
                     <span class="value">{{ formatTime(parser.last_activity) }}</span>
                   </div>
                   <div class="info-item">
-                    <component is="el-icon-document" class="legacy-icon" />
+                    <component :is="'el-icon-document'" class="legacy-icon" />
                     <span class="label">日志文件:</span>
                     <span class="value path-value">{{ parser.log_file }}</span>
                   </div>
                   <div class="info-statistics">
                     <div class="stat-item">
-                      <div class="stat-value">{{ parser.client_count }}</div>
+                      <div class="stat-value">{{ parser.client_count == null ? '未提供' : parser.client_count }}</div>
                       <div class="stat-label">客户端数量</div>
                     </div>
                   </div>
                 </div>
 
                 <div class="parser-actions">
-                  <el-button type="primary" size="small" icon="el-icon-view">查看日志</el-button>
-                  <el-button type="info" size="small" icon="el-icon-refresh">重新启动</el-button>
+                  <el-button type="primary" size="small" icon="el-icon-view" @click="viewLogs(parser)">查看日志</el-button>
+                  <el-button
+                    type="info"
+                    size="small"
+                    icon="el-icon-refresh"
+                    :loading="restartingParserId === parser.id"
+                    @click="restartParser(parser)"
+                  >重新启动</el-button>
                 </div>
               </el-card>
             </el-col>
@@ -70,24 +78,27 @@
 
 <script>
 import { logApi } from '@/api/index';
-import { formatDate } from '@/utils/date';
+import { jobsV2API, roomsV2API } from '@/api/v2';
+
+const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled']);
 
 export default {
   name: 'LogParser',
   data() {
     return {
       activeParsers: [],
-      loading: false
+      loading: false,
+      restartingParserId: ''
     };
   },
   created() {
     this.getActiveParsers();
   },
   methods: {
-    getActiveParsers() {
+    async getActiveParsers() {
       this.loading = true;
-      logApi.getActiveLogParsers().then(response => {
-        console.log('获取解析器响应:', response);
+      try {
+        const response = await logApi.getActiveLogParsers();
         if (response && response.data) {
           if (Array.isArray(response.data)) {
             this.activeParsers = response.data;
@@ -105,16 +116,48 @@ export default {
           this.$message.error('获取活跃解析器列表失败: 无数据');
           this.activeParsers = [];
         }
-        this.loading = false;
-      }).catch(error => {
-        console.error('获取活跃解析器列表失败:', error);
+      } catch (error) {
         this.$message.error('获取活跃解析器列表失败: ' + (error.message || '未知错误'));
         this.activeParsers = [];
+      } finally {
         this.loading = false;
+      }
+    },
+    viewLogs(parser) {
+      this.$router.push({
+        name: 'LogQuery',
+        query: { archive: parser.archive_name, world: parser.world_name }
       });
     },
+    async waitForJob(job) {
+      let current = job;
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        current = await jobsV2API.get(current.id);
+        if (TERMINAL_JOB_STATES.has(current.status)) break;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      if (!TERMINAL_JOB_STATES.has(current.status)) throw new Error('重启任务仍在执行，请稍后刷新状态');
+      if (current.status !== 'succeeded') {
+        const failed = (current.targets || []).find(item => item.status === 'failed');
+        throw new Error(failed?.error?.message || current.error?.message || '世界重启失败');
+      }
+      return current;
+    },
+    async restartParser(parser) {
+      this.restartingParserId = parser.id;
+      try {
+        const job = await roomsV2API.action(parser.room_id, 'restart', [parser.world_id]);
+        await this.waitForJob(job);
+        await this.getActiveParsers();
+        this.$message.success(`${parser.archive_name} / ${parser.world_name} 已重新启动`);
+      } catch (error) {
+        this.$message.error(error.message || '重新启动失败');
+      } finally {
+        this.restartingParserId = '';
+      }
+    },
     formatTime(timestamp) {
-      if (!timestamp) return '';
+      if (!timestamp) return '后端未提供';
       const date = new Date(timestamp);
       return date.toLocaleString('zh-CN', {
         year: 'numeric',

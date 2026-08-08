@@ -82,7 +82,10 @@ const encode = value => encodeURIComponent(String(value))
 export const systemV2API = {
   capabilities: () => client.get('/system/capabilities'),
   status: () => client.get('/system/status'),
-  settings: () => client.get('/system/settings', { headers: { 'Cache-Control': 'no-store' } })
+  settings: () => client.get('/system/settings', { headers: { 'Cache-Control': 'no-store' } }),
+  previewSettings: input => client.post('/system/settings/preview', input),
+  applySettings: input => client.post('/system/settings/actions/apply', input),
+  testEmail: input => client.post('/system/settings/actions/test-email', input)
 }
 
 export const roomsV2API = {
@@ -289,7 +292,9 @@ export const backupsV2API = {
     data: { confirmation }
   }),
   restore: (backupId, confirmation) => client.post(`/backups/${encode(backupId)}/actions/restore`, { confirmation }),
-  downloadURL: backupId => `${baseURL}/backups/${encode(backupId)}/download`
+  downloadURL: backupId => `${baseURL}/backups/${encode(backupId)}/download`,
+  policy: roomId => client.get(`/rooms/${encode(roomId)}/backup-policy`),
+  savePolicy: (roomId, input) => client.put(`/rooms/${encode(roomId)}/backup-policy`, input)
 }
 
 export default client

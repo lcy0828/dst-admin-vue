@@ -79,6 +79,30 @@ function ruleInput(rule) {
 }
 
 export const realLogApi = {
+  async getActiveLogParsers() {
+    const response = await roomsV2API.list()
+    const rooms = (response.items || []).filter(room => room.managed)
+    const worldsByRoom = await Promise.all(rooms.map(async room => ({
+      room,
+      worlds: (await roomsV2API.worlds(room.id)).items || []
+    })))
+    const parsers = worldsByRoom.flatMap(({ room, worlds }) => worlds
+      .filter(world => world.status === 'running')
+      .map(world => ({
+        id: `${room.id}_${world.id}`,
+        room_id: room.id,
+        world_id: world.id,
+        archive_name: room.name,
+        world_name: world.name,
+        server_type: world.role === 'master' ? 'Forest' : world.role === 'caves' ? 'Caves' : 'Custom',
+        log_file: `${room.directoryName}/${world.directoryName}/server_log.txt`,
+        status: world.status,
+        last_activity: null,
+        client_count: null
+      })))
+    return success(parsers, '活跃日志解析器已刷新')
+  },
+
   async getArchivesWithLogs() {
     const response = await roomsV2API.list()
     const rooms = (response.items || []).filter(room => room.managed)
