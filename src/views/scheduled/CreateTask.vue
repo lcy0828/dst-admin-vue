@@ -1,260 +1,66 @@
 <template>
   <div class="create-task-container">
     <div class="page-header">
-      <h2 class="page-title">{{ isEdit ? '编辑任务' : '创建新任务' }}</h2>
-      <div class="page-actions">
-        <el-button @click="goBack">
-          <component :is="'el-icon-back'" class="legacy-icon" /> 返回列表
-        </el-button>
-      </div>
+      <div><h2 class="page-title">{{ isEdit ? '编辑任务' : '创建新任务' }}</h2><p class="page-description">设置执行范围、调度计划和任务操作</p></div>
+      <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回列表</UiButton>
     </div>
-    
-    <el-card shadow="hover" class="task-form-card">
-      <el-form ref="taskForm" :model="taskForm" :rules="rules" label-width="120px" label-position="right">
-        <el-divider content-position="left">基本信息</el-divider>
-        
-        <!-- 基本任务信息 -->
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="任务名称" prop="name">
-              <el-input v-model="taskForm.name" placeholder="请输入任务名称"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="任务类型" prop="type">
-              <el-select v-model="taskForm.type" placeholder="请选择任务类型" style="width: 100%">
-                <el-option
-                  v-for="item in taskTypes"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value">
-                </el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="任务描述" prop="description">
-          <el-input
-            type="textarea"
-            v-model="taskForm.description"
-            placeholder="请输入任务描述"
-            :rows="3">
-          </el-input>
-        </el-form-item>
-        
-        <el-divider content-position="left">执行设置</el-divider>
-        
-        <!-- 执行设置 -->
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="目标服务器" prop="targets">
-              <el-select
-                v-model="taskForm.targets"
-                multiple
-                placeholder="请选择目标服务器"
-                style="width: 100%">
-                <el-option
-                  v-for="server in serverList"
-                  :key="server.id"
-                  :label="server.name"
-                  :value="server.id">
-                </el-option>
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="任务优先级" prop="priority">
-              <el-radio-group v-model="taskForm.priority">
-                <el-radio :label="'low'">低</el-radio>
-                <el-radio :label="'normal'">中</el-radio>
-                <el-radio :label="'high'">高</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <!-- 计划任务设置 -->
-        <el-form-item label="调度类型" prop="scheduleType">
-          <el-radio-group v-model="taskForm.scheduleType" @change="onScheduleTypeChange">
-            <el-radio :label="'once'">单次任务</el-radio>
-            <el-radio :label="'daily'">每日任务</el-radio>
-            <el-radio :label="'weekly'">每周任务</el-radio>
-            <el-radio :label="'custom'">自定义定时</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        
-        <!-- 单次任务设置 -->
-        <el-form-item v-if="taskForm.scheduleType === 'once'" label="执行时间" prop="schedule.once.dateTime">
-          <el-date-picker
-            v-model="taskForm.schedule.once.dateTime"
-            type="datetime"
-            placeholder="选择执行日期和时间"
-            format="yyyy-MM-dd HH:mm"
-            value-format="yyyy-MM-dd HH:mm"
-            :picker-options="{
-              disabledDate(time) {
-                return time.getTime() < Date.now() - 8.64e7; // 不能选择过去的日期
-              }
-            }"
-            style="width: 100%">
-          </el-date-picker>
-        </el-form-item>
-        
-        <!-- 每日任务设置 -->
-        <template v-if="taskForm.scheduleType === 'daily'">
-          <el-form-item label="执行时间" prop="schedule.daily.time">
-            <el-time-picker
-              v-model="taskForm.schedule.daily.time"
-              placeholder="选择每日执行时间"
-              format="HH:mm"
-              value-format="HH:mm"
-              style="width: 100%">
-            </el-time-picker>
-          </el-form-item>
-          
-          <el-form-item label="重复间隔" prop="schedule.daily.repeatDays">
-            <el-input-number
-              v-model="taskForm.schedule.daily.repeatDays"
-              :min="1"
-              :max="30"
-              style="width: 200px">
-            </el-input-number>
-            <span class="form-item-hint">天</span>
-          </el-form-item>
-        </template>
-        
-        <!-- 每周任务设置 -->
-        <template v-if="taskForm.scheduleType === 'weekly'">
-          <el-form-item label="执行时间" prop="schedule.weekly.time">
-            <el-time-picker
-              v-model="taskForm.schedule.weekly.time"
-              placeholder="选择每周执行时间"
-              format="HH:mm"
-              value-format="HH:mm"
-              style="width: 100%">
-            </el-time-picker>
-          </el-form-item>
-          
-          <el-form-item label="执行日" prop="schedule.weekly.days">
-            <el-checkbox-group v-model="taskForm.schedule.weekly.days">
-              <el-checkbox :label="1">周一</el-checkbox>
-              <el-checkbox :label="2">周二</el-checkbox>
-              <el-checkbox :label="3">周三</el-checkbox>
-              <el-checkbox :label="4">周四</el-checkbox>
-              <el-checkbox :label="5">周五</el-checkbox>
-              <el-checkbox :label="6">周六</el-checkbox>
-              <el-checkbox :label="0">周日</el-checkbox>
-            </el-checkbox-group>
-          </el-form-item>
-        </template>
-        
-        <!-- 自定义定时设置 -->
-        <template v-if="taskForm.scheduleType === 'custom'">
-          <el-form-item label="Cron 表达式" prop="schedule.custom.expression">
-            <el-input
-              v-model="taskForm.schedule.custom.expression"
-              placeholder="输入Cron表达式，例如: 0 0 * * *"
-              style="width: 100%">
-            </el-input>
-            <div class="form-item-hint">
-              <a href="javascript:;" @click="showCronHelp">查看Cron表达式帮助</a>
-            </div>
-          </el-form-item>
-          
-          <el-form-item label="表达式说明">
-            <el-input
-              v-model="cronDescription"
-              type="textarea"
-              :rows="2"
-              readonly
-              placeholder="Cron表达式解析将在这里显示">
-            </el-input>
-          </el-form-item>
-        </template>
-        
-        <el-divider content-position="left">任务操作</el-divider>
-        
-        <!-- 操作设置 -->
-        <el-form-item label="操作类型" prop="action.type">
-          <el-select v-model="taskForm.action.type" placeholder="请选择操作类型" style="width: 100%" @change="onActionTypeChange">
-            <el-option
-              v-for="action in actionTypes"
-              :key="action.value"
-              :label="action.label"
-              :value="action.value">
-            </el-option>
-          </el-select>
-        </el-form-item>
-        
-        <!-- 根据操作类型显示不同参数设置 -->
-        <template v-if="taskForm.action.type === 'server_restart'">
-          <el-form-item label="重启模式">
-            <el-radio-group v-model="taskForm.action.params.restartMode">
-              <el-radio :label="'graceful'">优雅重启（等待玩家保存）</el-radio>
-              <el-radio :label="'force'">强制重启</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          
-          <el-form-item label="通知玩家">
-            <el-switch v-model="taskForm.action.params.notifyPlayers"></el-switch>
-            <span class="form-item-hint" v-if="taskForm.action.params.notifyPlayers">将提前通知玩家服务器即将重启</span>
-          </el-form-item>
-          
-          <el-form-item label="通知时间" v-if="taskForm.action.params.notifyPlayers">
-            <el-select v-model="taskForm.action.params.notifyTime" placeholder="选择通知时间" style="width: 200px">
-              <el-option label="1分钟前" value="1"></el-option>
-              <el-option label="3分钟前" value="3"></el-option>
-              <el-option label="5分钟前" value="5"></el-option>
-              <el-option label="10分钟前" value="10"></el-option>
-              <el-option label="15分钟前" value="15"></el-option>
-              <el-option label="30分钟前" value="30"></el-option>
-            </el-select>
-          </el-form-item>
-        </template>
-        
-        <template v-if="taskForm.action.type === 'game_event'">
-          <el-form-item label="事件类型">
-            <el-select v-model="taskForm.action.params.eventType" placeholder="选择事件类型" style="width: 100%">
-              <el-option label="资源刷新" value="resource_refresh"></el-option>
-              <el-option label="怪物攻击" value="monster_attack"></el-option>
-              <el-option label="物品掉落提升" value="drop_boost"></el-option>
-              <el-option label="季节性活动" value="seasonal_event"></el-option>
-              <el-option label="自定义活动" value="custom_event"></el-option>
-            </el-select>
-          </el-form-item>
-          
-          <el-form-item label="活动持续时间">
-            <el-input-number
-              v-model="taskForm.action.params.duration"
-              :min="1"
-              :max="72"
-              style="width: 200px">
-            </el-input-number>
-            <span class="form-item-hint">小时</span>
-          </el-form-item>
-        </template>
-        
-        <el-form-item>
-          <el-button type="primary" @click="submitForm" :loading="loading">{{ isEdit ? '保存修改' : '创建任务' }}</el-button>
-          <el-button @click="goBack">取消</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <Card><CardContent class="pt-6"><form @submit.prevent="submitForm"><div class="flex flex-col gap-8">
+      <FieldSet><FieldLegend>基本信息</FieldLegend><FieldGroup><div class="grid gap-4 md:grid-cols-2"><Field :data-invalid="Boolean(formErrors.name)"><FieldLabel for="scheduled-name">任务名称</FieldLabel><UiInput id="scheduled-name" v-model="taskForm.name" :aria-invalid="Boolean(formErrors.name)" placeholder="请输入任务名称" /><FieldError v-if="formErrors.name">{{ formErrors.name }}</FieldError></Field><Field :data-invalid="Boolean(formErrors.type)"><FieldLabel>任务类型</FieldLabel><UiSelect v-model="taskForm.type"><SelectTrigger :aria-invalid="Boolean(formErrors.type)"><SelectValue placeholder="请选择任务类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in taskTypes" :key="item.value" :value="item.value">{{ item.label }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="formErrors.type">{{ formErrors.type }}</FieldError></Field></div><Field><FieldLabel for="scheduled-description">任务描述</FieldLabel><UiTextarea id="scheduled-description" v-model="taskForm.description" rows="3" placeholder="请输入任务描述" /></Field></FieldGroup></FieldSet>
+      <Separator />
+      <FieldSet><FieldLegend>执行设置</FieldLegend><FieldGroup><FieldSet :data-invalid="Boolean(formErrors.targets)"><FieldLegend variant="label">目标服务器</FieldLegend><FieldDescription>至少选择一个执行目标。</FieldDescription><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"><Field v-for="server in serverList" :key="server.id" orientation="horizontal"><Checkbox :id="`target-${server.id}`" :model-value="taskForm.targets.map(String).includes(String(server.id))" @update:model-value="toggleTarget(server.id, $event)" /><FieldLabel :for="`target-${server.id}`" class="font-normal">{{ server.name }}</FieldLabel></Field></div><FieldError v-if="formErrors.targets">{{ formErrors.targets }}</FieldError></FieldSet><FieldSet><FieldLegend variant="label">任务优先级</FieldLegend><RadioGroup v-model="taskForm.priority" class="flex flex-wrap gap-4"><Field v-for="priority in priorityOptions" :key="priority.value" orientation="horizontal"><RadioGroupItem :id="`priority-${priority.value}`" :value="priority.value" /><FieldLabel :for="`priority-${priority.value}`">{{ priority.label }}</FieldLabel></Field></RadioGroup></FieldSet><FieldSet><FieldLegend variant="label">调度类型</FieldLegend><RadioGroup v-model="taskForm.scheduleType" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" @update:model-value="onScheduleTypeChange"><Field v-for="schedule in scheduleOptions" :key="schedule.value" orientation="horizontal"><RadioGroupItem :id="`schedule-${schedule.value}`" :value="schedule.value" /><FieldLabel :for="`schedule-${schedule.value}`">{{ schedule.label }}</FieldLabel></Field></RadioGroup></FieldSet>
+        <Field v-if="taskForm.scheduleType === 'once'" :data-invalid="Boolean(formErrors.schedule)"><FieldLabel for="once-time">执行时间</FieldLabel><UiInput id="once-time" v-model="taskForm.schedule.once.dateTime" type="datetime-local" :min="minimumDateTime" :aria-invalid="Boolean(formErrors.schedule)" /><FieldError v-if="formErrors.schedule">{{ formErrors.schedule }}</FieldError></Field>
+        <div v-if="taskForm.scheduleType === 'daily'" class="grid gap-4 md:grid-cols-2"><Field :data-invalid="Boolean(formErrors.schedule)"><FieldLabel for="daily-time">执行时间</FieldLabel><UiInput id="daily-time" v-model="taskForm.schedule.daily.time" type="time" :aria-invalid="Boolean(formErrors.schedule)" /><FieldError v-if="formErrors.schedule">{{ formErrors.schedule }}</FieldError></Field><Field><FieldLabel for="daily-repeat">重复间隔（天）</FieldLabel><UiInput id="daily-repeat" v-model.number="taskForm.schedule.daily.repeatDays" type="number" min="1" max="30" /></Field></div>
+        <div v-if="taskForm.scheduleType === 'weekly'" class="flex flex-col gap-4"><Field :data-invalid="Boolean(formErrors.schedule)"><FieldLabel for="weekly-time">执行时间</FieldLabel><UiInput id="weekly-time" v-model="taskForm.schedule.weekly.time" type="time" :aria-invalid="Boolean(formErrors.schedule)" /></Field><FieldSet><FieldLegend variant="label">执行日</FieldLegend><div class="flex flex-wrap gap-4"><Field v-for="day in weekDays" :key="day.value" orientation="horizontal"><Checkbox :id="`weekday-${day.value}`" :model-value="taskForm.schedule.weekly.days.includes(day.value)" @update:model-value="toggleWeekDay(day.value, $event)" /><FieldLabel :for="`weekday-${day.value}`">{{ day.label }}</FieldLabel></Field></div><FieldError v-if="formErrors.schedule">{{ formErrors.schedule }}</FieldError></FieldSet></div>
+        <div v-if="taskForm.scheduleType === 'custom'" class="grid gap-4 md:grid-cols-2"><Field :data-invalid="Boolean(formErrors.schedule)"><FieldLabel for="custom-cron">Cron 表达式</FieldLabel><UiInput id="custom-cron" v-model="taskForm.schedule.custom.expression" class="font-mono" :aria-invalid="Boolean(formErrors.schedule)" placeholder="例如：0 0 * * *" @input="parseCronExpression" /><FieldError v-if="formErrors.schedule">{{ formErrors.schedule }}</FieldError><UiButton type="button" variant="link" class="w-fit px-0" @click="showCronHelp">查看 Cron 表达式帮助</UiButton></Field><Field><FieldLabel>表达式说明</FieldLabel><UiTextarea v-model="cronDescription" rows="3" readonly placeholder="Cron 表达式解析将在这里显示" /></Field></div>
+      </FieldGroup></FieldSet>
+      <Separator />
+      <FieldSet><FieldLegend>任务操作</FieldLegend><FieldGroup><Field :data-invalid="Boolean(formErrors.action)"><FieldLabel>操作类型</FieldLabel><UiSelect v-model="taskForm.action.type" @update:model-value="onActionTypeChange"><SelectTrigger :aria-invalid="Boolean(formErrors.action)"><SelectValue placeholder="请选择操作类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="action in actionTypes" :key="action.value" :value="action.value">{{ action.label }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="formErrors.action">{{ formErrors.action }}</FieldError></Field>
+        <template v-if="taskForm.action.type === 'server_restart'"><FieldSet><FieldLegend variant="label">重启模式</FieldLegend><RadioGroup v-model="taskForm.action.params.restartMode" class="flex flex-wrap gap-4"><Field orientation="horizontal"><RadioGroupItem id="restart-graceful" value="graceful" /><FieldLabel for="restart-graceful">优雅重启（等待玩家保存）</FieldLabel></Field><Field orientation="horizontal"><RadioGroupItem id="restart-force" value="force" /><FieldLabel for="restart-force">强制重启</FieldLabel></Field></RadioGroup></FieldSet><Field orientation="horizontal"><FieldContent><FieldLabel for="notify-players">通知玩家</FieldLabel><FieldDescription>提前通知玩家服务器即将重启。</FieldDescription></FieldContent><UiSwitch id="notify-players" v-model="taskForm.action.params.notifyPlayers" /></Field><Field v-if="taskForm.action.params.notifyPlayers"><FieldLabel>通知时间</FieldLabel><UiSelect v-model="taskForm.action.params.notifyTime"><SelectTrigger><SelectValue placeholder="选择通知时间" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="minutes in [1, 3, 5, 10, 15, 30]" :key="minutes" :value="String(minutes)">{{ minutes }} 分钟前</SelectItem></SelectGroup></SelectContent></UiSelect></Field></template>
+        <template v-if="taskForm.action.type === 'game_event'"><div class="grid gap-4 md:grid-cols-2"><Field><FieldLabel>事件类型</FieldLabel><UiSelect v-model="taskForm.action.params.eventType"><SelectTrigger><SelectValue placeholder="选择事件类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="event in eventOptions" :key="event.value" :value="event.value">{{ event.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="event-duration">活动持续时间（小时）</FieldLabel><UiInput id="event-duration" v-model.number="taskForm.action.params.duration" type="number" min="1" max="72" /></Field></div></template>
+      </FieldGroup></FieldSet>
+      <div class="flex justify-end gap-2"><UiButton type="button" variant="outline" @click="goBack">取消</UiButton><UiButton type="submit" :disabled="submitting || loading"><Spinner v-if="submitting" data-icon="inline-start" />{{ isEdit ? '保存修改' : '创建任务' }}</UiButton></div>
+    </div></form></CardContent></Card>
+
+    <UiDialog v-model:open="cronHelpOpen"><DialogContent><DialogHeader><DialogTitle>Cron 表达式帮助</DialogTitle><DialogDescription>标准五段式 Cron：分钟、小时、日期、月份、星期</DialogDescription></DialogHeader><div class="flex flex-col gap-3 text-sm"><code>* * * * *</code><p>常用示例：</p><ul class="list-disc pl-5"><li>0 4 * * *：每天凌晨 4 点</li><li>0 18 * * 5：每周五 18 点</li><li>0 */6 * * *：每 6 小时</li><li>0 12,18 * * *：每天 12 点和 18 点</li></ul></div><DialogFooter><UiButton @click="cronHelpOpen = false">我知道了</UiButton></DialogFooter></DialogContent></UiDialog>
   </div>
 </template>
 
 <script>
+import { ArrowLeft } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import cronstrue from 'cronstrue/i18n';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
 
 export default {
   name: 'CreateTask',
+  components: {
+    ArrowLeft, Card, CardContent, Checkbox, DialogContent, DialogDescription,
+    DialogFooter, DialogHeader, DialogTitle, Field, FieldContent, FieldDescription, FieldError,
+    FieldGroup, FieldLabel, FieldLegend, FieldSet, RadioGroup, RadioGroupItem, SelectContent,
+    SelectGroup, SelectItem, SelectTrigger, SelectValue, Separator, Spinner, UiButton, UiInput,
+    UiDialog, UiSelect, UiSwitch, UiTextarea
+  },
   data() {
     return {
       isEdit: false,
       taskId: null,
       loading: false,
+      submitting: false,
+      cronHelpOpen: false,
+      formErrors: {},
+      minimumDateTime: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
       taskForm: {
         name: '',
         type: '',
@@ -303,22 +109,10 @@ export default {
       ],
       cronDescription: '',
       serverList: [],
-      rules: {
-        name: [
-          { required: true, message: '请输入任务名称', trigger: 'blur' },
-          { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-        ],
-        type: [
-          { required: true, message: '请选择任务类型', trigger: 'change' }
-        ],
-        targets: [
-          { required: true, message: '请选择目标服务器', trigger: 'change' },
-          { type: 'array', min: 1, message: '至少选择一个服务器', trigger: 'change' }
-        ],
-        scheduleType: [
-          { required: true, message: '请选择调度类型', trigger: 'change' }
-        ]
-      }
+      priorityOptions: [{ value: 'low', label: '低' }, { value: 'normal', label: '中' }, { value: 'high', label: '高' }],
+      scheduleOptions: [{ value: 'once', label: '单次任务' }, { value: 'daily', label: '每日任务' }, { value: 'weekly', label: '每周任务' }, { value: 'custom', label: '自定义定时' }],
+      weekDays: [{ value: 1, label: '周一' }, { value: 2, label: '周二' }, { value: 3, label: '周三' }, { value: 4, label: '周四' }, { value: 5, label: '周五' }, { value: 6, label: '周六' }, { value: 0, label: '周日' }],
+      eventOptions: [{ value: 'resource_refresh', label: '资源刷新' }, { value: 'monster_attack', label: '怪物攻击' }, { value: 'drop_boost', label: '物品掉落提升' }, { value: 'seasonal_event', label: '季节性活动' }, { value: 'custom_event', label: '自定义活动' }]
     };
   },
   async created() {
@@ -338,7 +132,7 @@ export default {
         this.serverList = scope.rooms;
       } catch (error) {
         this.serverList = [];
-        this.$message.error(error.message || '读取真实房间列表失败');
+        toast.error(error.message || '读取真实房间列表失败');
       }
     },
     goBack() {
@@ -348,6 +142,18 @@ export default {
     onScheduleTypeChange(type) {
       // 根据类型重置表单验证规则
       this.taskForm.scheduleType = type;
+    },
+
+    toggleTarget(serverId, checked) {
+      const targets = this.taskForm.targets.filter(id => String(id) !== String(serverId));
+      if (checked) targets.push(serverId);
+      this.taskForm.targets = targets;
+    },
+
+    toggleWeekDay(day, checked) {
+      const days = this.taskForm.schedule.weekly.days.filter(value => value !== day);
+      if (checked) days.push(day);
+      this.taskForm.schedule.weekly.days = days;
     },
     
     onActionTypeChange(actionType) {
@@ -391,31 +197,7 @@ export default {
     },
     
     showCronHelp() {
-      this.$alert(`
-        <div class="cron-help">
-          <h3>Cron表达式格式：</h3>
-          <p><code>* * * * *</code></p>
-          <ul>
-            <li>第1位：分钟 (0-59)</li>
-            <li>第2位：小时 (0-23)</li>
-            <li>第3位：日期 (1-31)</li>
-            <li>第4位：月份 (1-12)</li>
-            <li>第5位：星期 (0-6, 0=星期日)</li>
-          </ul>
-          <h3>常用表达式示例：</h3>
-          <ul>
-            <li><code>0 4 * * *</code> - 每天凌晨4点执行</li>
-            <li><code>0 18 * * 5</code> - 每周五晚上6点执行</li>
-            <li><code>0 */6 * * *</code> - 每6小时执行一次</li>
-            <li><code>0 3 * * 1</code> - 每周一凌晨3点执行</li>
-            <li><code>0 12,18 * * *</code> - 每天中午12点和晚上6点执行</li>
-            <li><code>0 2 * * *</code> - 每天凌晨2点执行</li>
-          </ul>
-        </div>
-      `, 'Cron表达式帮助', {
-        dangerouslyUseHTMLString: true,
-        confirmButtonText: '我知道了'
-      });
+      this.cronHelpOpen = true;
     },
     
     parseCronExpression() {
@@ -501,9 +283,24 @@ export default {
       }
     },
     
+    validateForm() {
+      const errors = {};
+      const name = (this.taskForm.name || '').trim();
+      if (!name) errors.name = '请输入任务名称';
+      else if (name.length < 2 || name.length > 50) errors.name = '长度应在 2 到 50 个字符之间';
+      if (!this.taskForm.type) errors.type = '请选择任务类型';
+      if (this.taskForm.targets.length === 0) errors.targets = '至少选择一个服务器';
+      if (!this.taskForm.action.type) errors.action = '请选择操作类型';
+      if (this.taskForm.scheduleType === 'once' && !this.taskForm.schedule.once.dateTime) errors.schedule = '请选择执行时间';
+      if (this.taskForm.scheduleType === 'daily' && !this.taskForm.schedule.daily.time) errors.schedule = '请选择每日执行时间';
+      if (this.taskForm.scheduleType === 'weekly' && (!this.taskForm.schedule.weekly.time || this.taskForm.schedule.weekly.days.length === 0)) errors.schedule = '请选择每周执行时间和执行日';
+      if (this.taskForm.scheduleType === 'custom' && !this.taskForm.schedule.custom.expression.trim()) errors.schedule = '请输入 Cron 表达式';
+      this.formErrors = errors;
+      return Object.keys(errors).length === 0;
+    },
+
     submitForm() {
-      this.$refs.taskForm.validate((valid) => {
-        if (valid) {
+      if (this.validateForm()) {
           // 从表单数据构建API所需的任务对象
           const apiTaskData = this.buildApiTaskData();
           
@@ -517,29 +314,24 @@ export default {
           apiPromise
             .then(response => {
               if (response.data && response.data.status === 200) {
-                this.$message({
-                  type: 'success',
-                  message: this.isEdit ? '任务更新成功' : '任务创建成功'
-                });
+                toast.success(this.isEdit ? '任务更新成功' : '任务创建成功');
                 
                 // 跳转回任务列表
                 this.goBack();
               } else {
-                this.$message.error(response.data.message || (this.isEdit ? '更新任务失败' : '创建任务失败'));
+                toast.error(response.data.message || (this.isEdit ? '更新任务失败' : '创建任务失败'));
               }
             })
             .catch(error => {
               console.error(this.isEdit ? '更新任务失败:' : '创建任务失败:', error);
-              this.$message.error(this.isEdit ? '更新任务失败' : '创建任务失败');
+              toast.error(this.isEdit ? '更新任务失败' : '创建任务失败');
             })
             .finally(() => {
               this.submitting = false;
             });
-        } else {
-          this.$message.error('请正确填写表单');
-          return false;
-        }
-      });
+      } else {
+        toast.error('请正确填写表单');
+      }
     },
     
     // 从表单数据构建API所需的任务对象
@@ -663,12 +455,12 @@ export default {
               // 解析命令，设置操作类型
               this.parseActionFromCommand(task.type, task.target, task.args);
             } else {
-              this.$message.error(response.data.message || '加载任务详情失败');
+              toast.error(response.data.message || '加载任务详情失败');
             }
           })
           .catch(error => {
             console.error('加载任务详情失败:', error);
-            this.$message.error('加载任务详情失败');
+            toast.error('加载任务详情失败');
           })
           .finally(() => {
             this.loading = false;
@@ -897,76 +689,18 @@ export default {
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .page-title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
-
-.task-form-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-.el-divider {
-  margin: 20px 0;
-}
-
-.el-divider__text {
-  font-weight: 600;
-  color: var(--primary-color);
-}
-
-.form-item-hint {
-  margin-left: 10px;
-  color: var(--text-secondary);
+.page-description {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
   font-size: 13px;
-}
-
-.el-checkbox-group {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.el-checkbox {
-  margin-right: 20px;
-  margin-bottom: 10px;
-}
-
-:deep(.cron-help) {
-  text-align: left;
-}
-
-:deep(.cron-help h3) {
-  margin-top: 16px;
-  margin-bottom: 8px;
-  font-size: 16px;
-  color: var(--text-primary);
-}
-
-:deep(.cron-help p) {
-  margin: 8px 0;
-}
-
-:deep(.cron-help ul) {
-  padding-left: 20px;
-  margin: 8px 0;
-}
-
-:deep(.cron-help li) {
-  margin-bottom: 4px;
-}
-
-:deep(.cron-help code) {
-  background-color: var(--surface-muted);
-  border-radius: 4px;
-  padding: 2px 6px;
-  color: var(--primary-color);
-  font-family: Consolas, Monaco, monospace;
 }
 </style>

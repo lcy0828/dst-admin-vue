@@ -1,234 +1,83 @@
 <template>
   <div class="app-container">
-    <el-card class="box-card">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>{{ isEdit ? '编辑任务' : '添加任务' }}</span>
-        <el-button-group style="float: right">
-          <el-button type="primary" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回列表</el-button>
-        </el-button-group>
+    <Card>
+      <CardHeader>
+        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>{{ isEdit ? '编辑任务' : '添加任务' }}</CardTitle><CardDescription>配置调度、执行目标和失败重试策略</CardDescription></div><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></div>
         <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
-      </div>
-</template>
-      <el-form :model="taskForm" :rules="rules" ref="taskForm" label-width="120px">
-        <el-tabs v-model="activeTab">
-          <el-tab-pane label="基本信息" name="basic">
-            <el-form-item label="任务名称" prop="name">
-              <el-input v-model="taskForm.name" placeholder="请输入任务名称"></el-input>
-            </el-form-item>
+      </CardHeader>
+      <CardContent>
+        <form @submit.prevent="submitForm">
+          <Tabs v-model="activeTab"><TabsList><TabsTrigger value="basic">基本信息</TabsTrigger><TabsTrigger value="advanced">高级选项</TabsTrigger></TabsList>
+            <TabsContent value="basic"><FieldGroup class="mt-4">
+              <Field :data-invalid="Boolean(formErrors.name)"><FieldLabel for="task-name">任务名称</FieldLabel><UiInput id="task-name" v-model="taskForm.name" :aria-invalid="Boolean(formErrors.name)" placeholder="请输入任务名称" /><FieldError v-if="formErrors.name">{{ formErrors.name }}</FieldError></Field>
+              <Field :data-invalid="Boolean(formErrors.description)"><FieldLabel for="task-description">任务描述</FieldLabel><UiTextarea id="task-description" v-model="taskForm.description" rows="3" :aria-invalid="Boolean(formErrors.description)" placeholder="请输入任务描述" /><FieldError v-if="formErrors.description">{{ formErrors.description }}</FieldError></Field>
+              <Field><FieldLabel>所属任务组</FieldLabel><UiSelect :model-value="String(taskForm.group_id)" @update:model-value="taskForm.group_id = Number($event)"><SelectTrigger><SelectValue placeholder="请选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="0">无分组</SelectItem><SelectItem v-for="group in groupList" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+              <Field :data-invalid="Boolean(formErrors.spec)"><FieldLabel for="task-spec">Cron 表达式</FieldLabel><UiInput id="task-spec" v-model="taskForm.spec" class="font-mono" :aria-invalid="Boolean(formErrors.spec)" placeholder="例如：0 0 * * * *" /><FieldError v-if="formErrors.spec">{{ formErrors.spec }}</FieldError><FieldDescription>格式：秒 分 时 日 月 星期 [年]。示例：每 5 分钟执行一次为 0 */5 * * * *</FieldDescription></Field>
+              <FieldSet><FieldLegend variant="label">任务类型</FieldLegend><RadioGroup v-model="taskForm.type" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Field v-for="option in typeOptions" :key="option.value" orientation="horizontal"><RadioGroupItem :id="`task-type-${option.value}`" :value="option.value" /><FieldLabel :for="`task-type-${option.value}`">{{ option.label }}</FieldLabel></Field></RadioGroup></FieldSet>
+              <Alert v-if="taskForm.type === 'shell' || taskForm.type === 'tmux_raw_command'"><TriangleAlert /><AlertTitle>任意命令已受限</AlertTitle><AlertDescription>当前 v2 后端禁止定时执行任意命令，请改用受控函数或内建 TMUX 命令。</AlertDescription></Alert>
 
-            <el-form-item label="任务描述" prop="description">
-              <el-input type="textarea" :rows="2" v-model="taskForm.description" placeholder="请输入任务描述"></el-input>
-            </el-form-item>
+              <Field v-if="taskForm.type === 'function'" :data-invalid="Boolean(formErrors.target)"><FieldLabel>选择函数</FieldLabel><UiSelect v-model="taskForm.target"><SelectTrigger :aria-invalid="Boolean(formErrors.target)"><SelectValue placeholder="请选择函数" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="func in functionList" :key="func.name" :value="func.name">{{ func.name }} - {{ func.description }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="formErrors.target">{{ formErrors.target }}</FieldError></Field>
+              <Field v-else-if="taskForm.type === 'shell'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="shell-target">Shell 命令</FieldLabel><UiTextarea id="shell-target" v-model="taskForm.target" rows="3" :aria-invalid="Boolean(formErrors.target)" placeholder="请输入 Shell 命令" /><FieldError v-if="formErrors.target">{{ formErrors.target }}</FieldError></Field>
 
-            <el-form-item label="所属任务组" prop="group_id">
-              <el-select v-model="taskForm.group_id" placeholder="请选择任务组" filterable style="width: 100%;">
-                <el-option label="无分组" :value="0"></el-option>
-                <el-option
-                  v-for="group in groupList"
-                  :key="group.id"
-                  :label="group.name"
-                  :value="group.id">
-                </el-option>
-              </el-select>
-            </el-form-item>
+              <FieldSet v-else-if="taskForm.type === 'tmux_command'"><FieldLegend>TMUX 命令</FieldLegend><FieldGroup>
+                <Field><FieldLabel>选择服务器</FieldLabel><UiSelect v-model="tmuxSession" @update:model-value="updateTmuxTarget"><SelectTrigger><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in tmuxSessions" :key="session.session_name" :value="session.session_name">{{ session.archive_name }} - {{ session.world_name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+                <Field><FieldLabel>选择命令</FieldLabel><UiSelect v-model="tmuxCommandId" @update:model-value="updateTmuxTarget"><SelectTrigger><SelectValue placeholder="请选择命令" /></SelectTrigger><SelectContent><SelectGroup v-for="group in tmuxCommandGroups" :key="group.type"><SelectLabel>{{ group.type }}</SelectLabel><SelectItem v-for="command in group.commands" :key="command.id" :value="String(command.id)" :disabled="command.risk === 'high' || command.risk === 'critical'">{{ command.name }}{{ command.risk === 'high' || command.risk === 'critical' ? '（不可用于定时任务）' : '' }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+                <Field v-if="currentTmuxCommand"><FieldLabel>命令内容</FieldLabel><UiTextarea :model-value="currentTmuxCommand.script || currentTmuxCommand.command" rows="2" readonly /></Field>
+                <Field v-if="currentTmuxCommand && currentTmuxCommand.needs_params"><FieldLabel>命令参数</FieldLabel><div class="flex flex-col gap-2"><div v-for="(param, index) in tmuxParams" :key="index"><InputGroup><InputGroupAddon>参数 {{ index + 1 }}</InputGroupAddon><InputGroupInput v-model="tmuxParams[index]" :placeholder="currentTmuxCommand.param_desc || '参数值'" /><InputGroupAddon align="inline-end"><UiButton size="icon-xs" variant="ghost" type="button" @click="removeTmuxParam(index)"><Trash2 /></UiButton></InputGroupAddon></InputGroup><FieldDescription v-if="currentTmuxCommand.example">示例：{{ currentTmuxCommand.example }}</FieldDescription></div></div><UiButton size="sm" variant="outline" type="button" @click="addTmuxParam"><Plus data-icon="inline-start" />添加参数</UiButton></Field>
+              </FieldGroup></FieldSet>
 
-            <el-form-item label="Cron表达式" prop="spec">
-              <el-input v-model="taskForm.spec" placeholder="请输入Cron表达式，例如：0 0 * * * *"></el-input>
-              <div class="cron-help">
-                <p>Cron表达式格式：秒 分 时 日 月 星期 [年]</p>
-                <p>示例：</p>
-                <ul>
-                  <li>每小时执行一次：0 0 * * * *</li>
-                  <li>每5分钟执行一次：0 */5 * * * *</li>
-                  <li>每天凌晨2点执行：0 0 2 * * *</li>
-                  <li>每周日凌晨1点执行：0 0 1 * * 0</li>
-                </ul>
-              </div>
-            </el-form-item>
+              <FieldSet v-else-if="taskForm.type === 'tmux_raw_command'"><FieldLegend>TMUX 原始命令</FieldLegend><FieldGroup><Field><FieldLabel>选择服务器</FieldLabel><UiSelect v-model="tmuxSession" @update:model-value="updateTmuxRawTarget"><SelectTrigger><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in tmuxSessions" :key="session.session_name" :value="session.session_name">{{ session.archive_name }} - {{ session.world_name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="tmux-raw-command">原始命令</FieldLabel><UiTextarea id="tmux-raw-command" v-model="tmuxRawCommand" rows="3" placeholder="例如：c_announce('欢迎来到服务器')" @update:model-value="updateTmuxRawTarget" /></Field></FieldGroup></FieldSet>
 
-            <el-form-item label="任务类型" prop="type">
-              <el-radio-group v-model="taskForm.type">
-                <el-radio label="function">函数</el-radio>
-                <el-radio label="shell">Shell命令</el-radio>
-                <el-radio label="tmux_command">TMUX命令</el-radio>
-                <el-radio label="tmux_raw_command">TMUX原始命令</el-radio>
-              </el-radio-group>
-              <el-alert
-                v-if="taskForm.type === 'shell' || taskForm.type === 'tmux_raw_command'"
-                title="当前 v2 后端禁止定时执行任意命令，请改用受控函数或内建 TMUX 命令"
-                type="warning"
-                :closable="false"
-                show-icon
-                style="margin-top: 10px;"
-              />
-            </el-form-item>
+              <Field v-if="taskForm.type === 'function'"><FieldLabel>函数参数</FieldLabel><div class="flex flex-col gap-2"><InputGroup v-for="(arg, index) in taskForm.args" :key="index"><InputGroupAddon>参数 {{ index + 1 }}</InputGroupAddon><InputGroupInput v-model="taskForm.args[index]" placeholder="参数值" /><InputGroupAddon align="inline-end"><UiButton size="icon-xs" variant="ghost" type="button" @click="removeArg(index)"><Trash2 /></UiButton></InputGroupAddon></InputGroup></div><UiButton size="sm" variant="outline" type="button" @click="addArg"><Plus data-icon="inline-start" />添加参数</UiButton></Field>
+            </FieldGroup></TabsContent>
 
-            <el-form-item v-if="taskForm.type === 'function'" label="选择函数" prop="target">
-              <el-select
-                v-model="taskForm.target"
-                placeholder="请选择函数"
-                filterable
-                style="width: 100%;">
-                <el-option
-                  v-for="func in functionList"
-                  :key="func.name"
-                  :label="func.name + ' - ' + func.description"
-                  :value="func.name">
-                </el-option>
-              </el-select>
-            </el-form-item>
-
-            <el-form-item v-else-if="taskForm.type === 'shell'" label="Shell命令" prop="target">
-              <el-input type="textarea" :rows="3" v-model="taskForm.target" placeholder="请输入Shell命令"></el-input>
-            </el-form-item>
-
-            <el-form-item v-else-if="taskForm.type === 'tmux_command'" label="TMUX命令" prop="target">
-              <el-form-item label="选择服务器" prop="tmux_session">
-                <el-select v-model="tmuxSession" placeholder="请选择服务器" filterable style="width: 100%;" @change="updateTmuxTarget">
-                  <el-option
-                    v-for="session in tmuxSessions"
-                    :key="session.session_name"
-                    :label="session.archive_name + ' - ' + session.world_name"
-                    :value="session.session_name">
-                  </el-option>
-                </el-select>
-              </el-form-item>
-
-              <el-form-item label="选择命令" prop="tmux_command_id">
-                <el-select v-model="tmuxCommandId" placeholder="请选择命令" filterable style="width: 100%;" @change="updateTmuxTarget">
-                  <el-option-group
-                    v-for="group in tmuxCommandGroups"
-                    :key="group.type"
-                    :label="group.type">
-                    <el-option
-                      v-for="command in group.commands"
-                      :key="command.id"
-                      :label="command.name + (command.risk === 'high' || command.risk === 'critical' ? '（不可用于定时任务）' : '')"
-                      :value="command.id"
-                      :disabled="command.risk === 'high' || command.risk === 'critical'">
-                    </el-option>
-                  </el-option-group>
-                </el-select>
-              </el-form-item>
-
-              <el-form-item label="命令内容" v-if="currentTmuxCommand">
-                <el-input type="textarea" :rows="2" :value="currentTmuxCommand.script || currentTmuxCommand.command" readonly></el-input>
-              </el-form-item>
-
-              <el-form-item label="命令参数" v-if="currentTmuxCommand && currentTmuxCommand.needs_params">
-                <div v-for="(param, index) in tmuxParams" :key="index" class="arg-item">
-                  <el-input v-model="tmuxParams[index]" :placeholder="currentTmuxCommand.param_desc || '参数值'">
-                    <template v-slot:prepend>参数 {{index + 1}}</template>
-                    <template v-slot:append>
-<el-button  icon="el-icon-delete" @click="removeTmuxParam(index)"></el-button>
-</template>
-                  </el-input>
-                  <div class="param-help" v-if="currentTmuxCommand.example">
-                    <span class="param-example">示例: {{ currentTmuxCommand.example }}</span>
-                  </div>
-                </div>
-                <el-button type="primary" icon="el-icon-plus" @click="addTmuxParam" size="small" plain>添加参数</el-button>
-              </el-form-item>
-            </el-form-item>
-
-            <el-form-item v-else-if="taskForm.type === 'tmux_raw_command'" label="TMUX原始命令" prop="target">
-              <el-form-item label="选择服务器" prop="tmux_session">
-                <el-select v-model="tmuxSession" placeholder="请选择服务器" filterable style="width: 100%;" @change="updateTmuxRawTarget">
-                  <el-option
-                    v-for="session in tmuxSessions"
-                    :key="session.session_name"
-                    :label="session.archive_name + ' - ' + session.world_name"
-                    :value="session.session_name">
-                  </el-option>
-                </el-select>
-              </el-form-item>
-
-              <el-form-item label="原始命令" prop="tmux_raw_command">
-                <el-input type="textarea" :rows="3" v-model="tmuxRawCommand" placeholder="请输入原始命令，例如：c_announce('欢迎来到服务器')" @input="updateTmuxRawTarget"></el-input>
-              </el-form-item>
-            </el-form-item>
-
-            <el-form-item v-if="taskForm.type === 'function'" label="函数参数">
-              <div v-for="(arg, index) in taskForm.args" :key="index" class="arg-item">
-                <el-input v-model="taskForm.args[index]" placeholder="参数值">
-                  <template v-slot:prepend>参数 {{index + 1}}</template>
-                  <template v-slot:append>
-<el-button  icon="el-icon-delete" @click="removeArg(index)"></el-button>
-</template>
-                </el-input>
-              </div>
-              <el-button type="primary" icon="el-icon-plus" @click="addArg" size="small" plain>添加参数</el-button>
-            </el-form-item>
-          </el-tab-pane>
-
-          <el-tab-pane label="高级选项" name="advanced">
-            <el-form-item label="超时设置(秒)" prop="timeout">
-              <el-input-number v-model="taskForm.timeout" :min="0" placeholder="任务最大执行时间，0表示不限制"></el-input-number>
-              <span class="form-help-text">任务最大执行时间(秒)，超时后将被强制终止，0表示不限制</span>
-            </el-form-item>
-
-            <el-form-item label="重试次数" prop="retry_times">
-              <el-input-number v-model="taskForm.retry_times" :min="0" :max="10"></el-input-number>
-              <span class="form-help-text">任务失败后自动重试的次数，0表示不重试</span>
-            </el-form-item>
-
-            <el-form-item label="重试间隔(秒)" prop="retry_interval" v-if="taskForm.retry_times > 0">
-              <el-input-number v-model="taskForm.retry_interval" :min="1" :max="3600"></el-input-number>
-              <span class="form-help-text">任务重试的间隔时间</span>
-            </el-form-item>
-
-            <el-form-item label="依赖任务" prop="dependencies">
-              <el-select
-                v-model="taskForm.dependencies"
-                multiple
-                filterable
-                placeholder="选择依赖任务（可多选）"
-                style="width: 100%">
-                <el-option
-                  v-for="task in availableTasks"
-                  :key="task.id"
-                  :label="task.name"
-                  :value="task.id"
-                  :disabled="task.id === taskId">
-                </el-option>
-              </el-select>
-              <div class="form-help-text">
-                <p>当前任务会在所选依赖任务全部执行成功后才会执行</p>
-                <p style="color: #d99b32;">注意：请避免循环依赖，否则任务将无法正常执行</p>
-              </div>
-            </el-form-item>
-          </el-tab-pane>
-        </el-tabs>
-
-        <el-divider></el-divider>
-
-        <el-form-item label="任务状态" prop="status">
-          <el-switch
-            v-model="taskForm.status"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="启用"
-            inactive-text="禁用">
-          </el-switch>
-        </el-form-item>
-
-        <el-form-item>
-          <el-button type="primary" @click="submitForm" :loading="submitting">保存</el-button>
-          <el-button @click="cancel">取消</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+            <TabsContent value="advanced"><FieldGroup class="mt-4">
+              <Field><FieldLabel for="task-timeout">超时设置（秒）</FieldLabel><UiInput id="task-timeout" v-model.number="taskForm.timeout" type="number" min="0" /><FieldDescription>任务最大执行时间，0 表示不限制。</FieldDescription></Field>
+              <Field><FieldLabel for="task-retry-times">重试次数</FieldLabel><UiInput id="task-retry-times" v-model.number="taskForm.retry_times" type="number" min="0" max="10" /><FieldDescription>任务失败后自动重试的次数，0 表示不重试。</FieldDescription></Field>
+              <Field v-if="taskForm.retry_times > 0"><FieldLabel for="task-retry-interval">重试间隔（秒）</FieldLabel><UiInput id="task-retry-interval" v-model.number="taskForm.retry_interval" type="number" min="1" max="3600" /></Field>
+              <FieldSet><FieldLegend variant="label">依赖任务</FieldLegend><FieldDescription>当前任务会在所选依赖任务全部成功后执行，请避免循环依赖。</FieldDescription><ScrollArea class="max-h-64 rounded-md border p-3"><FieldGroup class="gap-3"><Field v-for="task in availableTasks" :key="task.id" orientation="horizontal" :data-disabled="String(task.id) === String(taskId)"><Checkbox :id="`dependency-${task.id}`" :model-value="taskForm.dependencies.map(String).includes(String(task.id))" :disabled="String(task.id) === String(taskId)" @update:model-value="toggleDependency(task.id, $event)" /><FieldLabel :for="`dependency-${task.id}`" class="font-normal">{{ task.name }}</FieldLabel></Field></FieldGroup></ScrollArea></FieldSet>
+            </FieldGroup></TabsContent>
+          </Tabs>
+          <Separator class="my-6" />
+          <Field orientation="horizontal"><FieldContent><FieldLabel for="task-status">启用任务</FieldLabel><FieldDescription>禁用后调度器不会自动执行此任务。</FieldDescription></FieldContent><UiSwitch id="task-status" :model-value="taskForm.status === 1" @update:model-value="taskForm.status = $event ? 1 : 0" /></Field>
+          <div class="mt-6 flex justify-end gap-2"><UiButton type="button" variant="outline" @click="cancel">取消</UiButton><UiButton type="submit" :disabled="submitting"><Spinner v-if="submitting" data-icon="inline-start" />保存</UiButton></div>
+        </form>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { ArrowLeft, Plus, Trash2, TriangleAlert } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
 
 export default {
   name: 'TaskForm',
-  components: { AutomationRoomSelect },
+  components: {
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardContent,
+    CardDescription, CardHeader, CardTitle, Checkbox, Field, FieldContent, FieldDescription,
+    FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, InputGroup, InputGroupAddon,
+    InputGroupInput, Plus, RadioGroup, RadioGroupItem, ScrollArea, SelectContent, SelectGroup,
+    SelectItem, SelectLabel, SelectTrigger, SelectValue, Separator, Spinner, Tabs, TabsContent,
+    TabsList, TabsTrigger, Trash2, TriangleAlert, UiButton, UiInput, UiSelect, UiSwitch, UiTextarea
+  },
   data() {
     return {
       isEdit: false,
@@ -268,33 +117,13 @@ export default {
         dependencies: [],
         status: 1
       },
-      rules: {
-        name: [
-          { required: true, message: '请输入任务名称', trigger: 'blur' },
-          { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-        ],
-        description: [
-          { max: 200, message: '描述不能超过200个字符', trigger: 'blur' }
-        ],
-        spec: [
-          { required: true, message: '请输入Cron表达式', trigger: 'blur' }
-        ],
-        type: [
-          { required: true, message: '请选择任务类型', trigger: 'change' }
-        ],
-        target: [
-          { required: true, message: '请输入目标', trigger: 'blur' }
-        ],
-        timeout: [
-          { type: 'number', min: 0, message: '超时时间不能小于0', trigger: 'blur' }
-        ],
-        retry_times: [
-          { type: 'number', min: 0, max: 10, message: '重试次数需在0-10之间', trigger: 'blur' }
-        ],
-        retry_interval: [
-          { type: 'number', min: 1, message: '重试间隔不能小于1秒', trigger: 'blur' }
-        ]
-      }
+      formErrors: {},
+      typeOptions: [
+        { value: 'function', label: '函数' },
+        { value: 'shell', label: 'Shell 命令' },
+        { value: 'tmux_command', label: 'TMUX 命令' },
+        { value: 'tmux_raw_command', label: 'TMUX 原始命令' }
+      ]
     };
   },
   created() {
@@ -374,16 +203,16 @@ export default {
             } else if (Array.isArray(functionsData)) {
               this.functionList = functionsData;
             } else {
-              this.$message.error('获取函数列表失败: 响应格式不符合预期');
+              toast.error('获取函数列表失败：响应格式不符合预期');
             }
           } else {
             console.error('响应格式不符合预期:', response);
-            this.$message.error('获取函数列表失败: 响应格式不符合预期');
+            toast.error('获取函数列表失败：响应格式不符合预期');
           }
         })
         .catch(error => {
           console.error('获取函数列表失败:', error);
-          this.$message.error('获取函数列表失败: ' + (error.message || '未知错误'));
+          toast.error('获取函数列表失败：' + (error.message || '未知错误'));
         });
     },
     getGroups() {
@@ -418,7 +247,7 @@ export default {
         })
         .catch(error => {
           console.error('获取任务组列表失败:', error);
-          this.$message.error('获取任务组列表失败');
+          toast.error('获取任务组列表失败');
         });
     },
     getAvailableTasks() {
@@ -460,7 +289,7 @@ export default {
         })
         .catch(error => {
           console.error('获取可用任务列表失败:', error);
-          this.$message.error('获取可用任务列表失败');
+          toast.error('获取可用任务列表失败');
         });
     },
     getTaskDetail(id) {
@@ -529,7 +358,7 @@ export default {
               // 优先使用新的直接字段
               if (taskData.session_name && taskData.command_id) {
                 this.tmuxSession = taskData.session_name;
-                this.tmuxCommandId = taskData.command_id;
+                this.tmuxCommandId = String(taskData.command_id);
                 this.tmuxParams = taskData.command_params || [];
 
                 // 更新tmuxTaskData
@@ -550,7 +379,7 @@ export default {
               // 其次使用tmux_task字段
               else if (taskData.tmux_task) {
                 this.tmuxSession = taskData.tmux_task.session_name;
-                this.tmuxCommandId = taskData.tmux_task.command_id;
+                this.tmuxCommandId = String(taskData.tmux_task.command_id);
                 this.tmuxParams = taskData.tmux_task.command_params || [];
 
                 // 更新tmuxTaskData
@@ -574,7 +403,7 @@ export default {
                   const targetArray = JSON.parse(taskData.target);
                   if (Array.isArray(targetArray) && targetArray.length >= 2) {
                     this.tmuxSession = targetArray[0];
-                    this.tmuxCommandId = targetArray[1];
+                    this.tmuxCommandId = String(targetArray[1]);
                     this.tmuxParams = targetArray.slice(2);
 
                     // 更新tmuxTaskData
@@ -660,12 +489,12 @@ export default {
               status: taskData.status
             };
           } else {
-            this.$message.error(response.data?.msg || response.data?.message || '获取任务详情失败: 无效的响应格式');
+            toast.error(response.data?.msg || response.data?.message || '获取任务详情失败：无效的响应格式');
           }
         })
         .catch(error => {
           console.error('获取任务详情失败:', error);
-          this.$message.error('获取任务详情失败');
+          toast.error('获取任务详情失败');
         });
     },
     addArg() {
@@ -682,12 +511,12 @@ export default {
             this.tmuxSessions = response.data.data || [];
             console.log('获取TMUX会话列表成功:', this.tmuxSessions);
           } else {
-            this.$message.warning('获取TMUX会话列表失败: ' + response.data?.msg);
+            toast.warning('获取 TMUX 会话列表失败：' + response.data?.msg);
           }
         })
         .catch(error => {
           console.error('获取TMUX会话列表失败:', error);
-          this.$message.error('获取TMUX会话列表失败');
+          toast.error('获取 TMUX 会话列表失败');
         });
     },
 
@@ -699,12 +528,12 @@ export default {
             this.processTmuxCommands();
             console.log('获取TMUX命令列表成功:', this.tmuxCommands);
           } else {
-            this.$message.warning('获取TMUX命令列表失败: ' + response.data?.msg);
+            toast.warning('获取 TMUX 命令列表失败：' + response.data?.msg);
           }
         })
         .catch(error => {
           console.error('获取TMUX命令列表失败:', error);
-          this.$message.error('获取TMUX命令列表失败');
+          toast.error('获取 TMUX 命令列表失败');
         });
     },
 
@@ -729,7 +558,7 @@ export default {
     updateTmuxTarget() {
       if (this.tmuxSession && this.tmuxCommandId) {
         // 查找当前选中的命令
-        this.currentTmuxCommand = this.tmuxCommands.find(cmd => cmd.id === this.tmuxCommandId);
+        this.currentTmuxCommand = this.tmuxCommands.find(cmd => String(cmd.id) === String(this.tmuxCommandId));
 
         // 如果命令需要参数但当前没有参数，自动添加一个空参数
         if (this.currentTmuxCommand && this.currentTmuxCommand.needs_params && this.tmuxParams.length === 0) {
@@ -773,10 +602,34 @@ export default {
       this.updateTmuxTarget();
     },
 
+    toggleDependency(taskId, checked) {
+      const dependencies = this.taskForm.dependencies.filter(id => String(id) !== String(taskId));
+      if (checked) dependencies.push(taskId);
+      this.taskForm.dependencies = dependencies;
+    },
+
+    validateForm() {
+      const errors = {};
+      const name = (this.taskForm.name || '').trim();
+      const description = (this.taskForm.description || '').trim();
+      if (!name) errors.name = '请输入任务名称';
+      else if (name.length < 2 || name.length > 50) errors.name = '长度应在 2 到 50 个字符之间';
+      if (description.length > 200) errors.description = '描述不能超过 200 个字符';
+      if (!(this.taskForm.spec || '').trim()) errors.spec = '请输入 Cron 表达式';
+      if (!(this.taskForm.target || '').trim() && ['function', 'shell'].includes(this.taskForm.type)) errors.target = '请输入或选择执行目标';
+      if (this.taskForm.type === 'tmux_command' && (!this.tmuxSession || !this.tmuxCommandId)) errors.target = '请选择服务器和 TMUX 命令';
+      if (this.taskForm.type === 'tmux_raw_command' && (!this.tmuxSession || !this.tmuxRawCommand.trim())) errors.target = '请选择服务器并输入原始命令';
+      this.formErrors = errors;
+      if (Object.keys(errors).length > 0) this.activeTab = 'basic';
+      return Object.keys(errors).length === 0;
+    },
+
     submitForm() {
-      this.$refs.taskForm.validate(valid => {
-        if (valid) {
-          this.submitting = true;
+      if (!this.validateForm()) {
+        toast.warning('请完善表单信息');
+        return;
+      }
+      this.submitting = true;
 
           // 过滤空参数
           this.taskForm.args = this.taskForm.args.filter(arg => arg.trim() !== '');
@@ -822,7 +675,7 @@ export default {
                 (response.status === 200) || // 旧格式 {status: 200, ...}
                 (response.data && response.data.status === 200) // 嵌套旧格式
               ) {
-                this.$message.success(this.isEdit ? '更新成功' : '添加成功');
+                toast.success(this.isEdit ? '更新成功' : '添加成功');
                 this.$router.push('/cron/tasks');
               } else {
                 const errorMsg =
@@ -830,21 +683,16 @@ export default {
                   response.message ||
                   (response.data && (response.data.msg || response.data.message)) ||
                   (this.isEdit ? '更新失败' : '添加失败');
-                this.$message.error(errorMsg);
+                toast.error(errorMsg);
               }
             })
             .catch(error => {
               console.error(this.isEdit ? '更新任务失败:' : '添加任务失败:', error);
-              this.$message.error(error.message || (this.isEdit ? '更新任务失败' : '添加任务失败'));
+              toast.error(error.message || (this.isEdit ? '更新任务失败' : '添加任务失败'));
             })
             .finally(() => {
               this.submitting = false;
             });
-        } else {
-          this.$message.warning('请完善表单信息');
-          return false;
-        }
-      });
     },
     cancel() {
       this.$router.push('/cron/tasks');
@@ -857,7 +705,7 @@ export default {
 .param-help {
   margin-top: 5px;
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
 }
 
 .param-example {
@@ -870,9 +718,9 @@ export default {
 }
 .cron-help {
   margin-top: 5px;
-  color: var(--text-regular);
+  color: var(--muted-foreground);
   font-size: 12px;
-  background-color: var(--surface-muted);
+  background-color: var(--muted);
   padding: 10px;
   border-radius: 4px;
 }
@@ -888,7 +736,7 @@ export default {
 }
 .form-help-text {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   margin-left: 10px;
 }
 </style>

@@ -1,106 +1,50 @@
 <template>
   <div class="app-container">
-    <el-card class="box-card" shadow="never">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>任务组管理</span>
-        <el-button-group style="float: right">
-          <el-button type="primary" icon="el-icon-plus" @click="$router.push('/cron/group/add')">添加任务组</el-button>
-          <el-button type="success" icon="el-icon-refresh" @click="fetchData">刷新</el-button>
-          <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回任务列表</el-button>
-        </el-button-group>
+    <Card>
+      <CardHeader>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div><CardTitle>任务组管理</CardTitle><CardDescription>按用途组织任务并统一控制启用状态</CardDescription></div>
+          <div class="flex flex-wrap gap-2">
+            <UiButton size="sm" @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton>
+            <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><RefreshCw data-icon="inline-start" />刷新</UiButton>
+            <UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton>
+          </div>
+        </div>
         <automation-room-select @ready="fetchData" @change="fetchData" />
-      </div>
-</template>
-      
-      <el-table v-loading="loading" :data="groupList" style="width: 100%;" border>
-        <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
-        <el-table-column prop="name" label="组名称" min-width="150">
-          <template v-slot="scope">
-            <router-link :to="`/cron/group/${scope.row.id}`" class="link-type">
-              {{ scope.row.name }}
-            </router-link>
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="200">
-          <template v-slot="scope">
-            <span>{{ scope.row.description || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="type" label="类型" width="100">
-          <template v-slot="scope">
-            <el-tag :type="getTypeTag(scope.row.type)">
-              {{ getTypeLabel(scope.row.type) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="任务数量" width="120" align="center">
-          <template v-slot="scope">
-            <el-tooltip :content="`点击查看${scope.row.name}下的任务`" placement="top" effect="light">
-              <router-link :to="`/cron/group/${scope.row.id}`" class="link-type">
-                <el-badge :value="scope.row.task_count || 0" class="task-count-badge" :hidden="!scope.row.task_count">
-                  <span class="task-count">{{ scope.row.task_count || 0 }} 个任务</span>
-                </el-badge>
-              </router-link>
-            </el-tooltip>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template v-slot="scope">
-            <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
-              {{ scope.row.status === 1 ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="300" align="center">
-          <template v-slot="scope">
-            <el-button-group>
-              <el-button 
-                size="mini" 
-                :type="scope.row.status === 1 ? 'warning' : 'success'"
-                @click="handleToggleStatus(scope.row)"
-                :icon="scope.row.status === 1 ? 'el-icon-close' : 'el-icon-check'">
-                {{ scope.row.status === 1 ? '禁用' : '启用' }}
-              </el-button>
-              <el-button 
-                size="mini" 
-                type="primary"
-                @click="handleEdit(scope.row)"
-                icon="el-icon-edit">
-                编辑
-              </el-button>
-              <el-button 
-                size="mini" 
-                type="danger"
-                @click="handleDelete(scope.row)"
-                icon="el-icon-delete"
-                :disabled="scope.row.task_count > 0">
-                删除
-              </el-button>
-            </el-button-group>
-            <div style="margin-top: 5px;">
-              <el-button 
-                size="mini" 
-                type="info"
-                @click="$router.push(`/cron/group/${scope.row.id}`)"
-                icon="el-icon-view">
-                查看详情
-              </el-button>
-              <el-button 
-                size="mini" 
-                type="warning"
-                @click="viewGroupStats(scope.row.id)"
-                icon="el-icon-data-line">
-                统计数据
-              </el-button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-    
-    <el-dialog title="任务组统计" v-model="statsDialogVisible" width="70%">
-      <div v-loading="statsLoading" class="group-stats">
+      </CardHeader>
+      <CardContent>
+        <div v-if="loading && groupList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 5" :key="index" class="h-12 w-full" /></div>
+        <Empty v-else-if="groupList.length === 0"><EmptyHeader><EmptyTitle>暂无任务组</EmptyTitle><EmptyDescription>创建任务组以分类管理自动化任务。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton></EmptyContent></Empty>
+        <div v-else class="overflow-x-auto">
+          <ShadcnTable>
+            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>组名称</TableHead><TableHead>描述</TableHead><TableHead>类型</TableHead><TableHead>任务数量</TableHead><TableHead>状态</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader>
+            <TableBody>
+              <TableRow v-for="group in groupList" :key="group.id">
+                <TableCell>{{ group.id }}</TableCell>
+                <TableCell><router-link :to="`/cron/group/${group.id}`" class="link-type">{{ group.name }}</router-link></TableCell>
+                <TableCell class="max-w-64 truncate">{{ group.description || '-' }}</TableCell>
+                <TableCell><Badge variant="outline">{{ getTypeLabel(group.type) }}</Badge></TableCell>
+                <TableCell><router-link :to="`/cron/group/${group.id}`"><Badge variant="secondary">{{ group.task_count || 0 }} 个任务</Badge></router-link></TableCell>
+                <TableCell><Badge :variant="group.status === 1 ? 'default' : 'secondary'">{{ group.status === 1 ? '启用' : '禁用' }}</Badge></TableCell>
+                <TableCell><div class="flex min-w-max justify-end gap-1">
+                  <UiButton size="icon-sm" variant="outline" :title="group.status === 1 ? '禁用' : '启用'" @click="handleToggleStatus(group)"><CircleOff v-if="group.status === 1" /><CircleCheck v-else /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" title="编辑" @click="handleEdit(group)"><Pencil /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" title="查看详情" @click="$router.push(`/cron/group/${group.id}`)"><Eye /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" title="统计数据" @click="viewGroupStats(group.id)"><ChartNoAxesColumn /></UiButton>
+                  <UiButton size="icon-sm" variant="destructive" title="删除" :disabled="group.task_count > 0" @click="handleDelete(group)"><Trash2 /></UiButton>
+                </div></TableCell>
+              </TableRow>
+            </TableBody>
+          </ShadcnTable>
+        </div>
+      </CardContent>
+    </Card>
+
+    <UiDialog v-model:open="statsDialogVisible">
+      <DialogContent class="max-w-4xl">
+        <DialogHeader><DialogTitle>任务组统计</DialogTitle><DialogDescription>近 30 天任务执行情况</DialogDescription></DialogHeader>
+        <div v-if="statsLoading" class="flex flex-col gap-3"><Skeleton class="h-20 w-full" /><Skeleton class="h-72 w-full" /></div>
+        <div v-else class="group-stats">
         <div v-if="groupStats" class="stats-overview">
           <div class="stats-card total-tasks">
             <div class="stats-title">总任务数</div>
@@ -120,27 +64,40 @@
           </div>
         </div>
         <div class="stats-charts" v-if="groupStats">
-          <div id="groupExecutionChart" style="width: 100%; height: 300px;"></div>
+          <div id="groupExecutionChart" class="h-72 w-full"></div>
         </div>
-      </div>
-      <template v-slot:footer>
-<div  class="dialog-footer">
-        <el-button @click="statsDialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="$router.push('/cron/charts')">查看更多图表</el-button>
-      </div>
-</template>
-    </el-dialog>
+        <Empty v-else><EmptyHeader><EmptyTitle>暂无统计数据</EmptyTitle></EmptyHeader></Empty>
+        </div>
+        <DialogFooter><UiButton variant="outline" @click="statsDialogVisible = false">关闭</UiButton><UiButton @click="$router.push('/cron/charts')">查看更多图表</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { ArrowLeft, ChartNoAxesColumn, CircleCheck, CircleOff, Eye, Pencil, Plus, RefreshCw, Trash2 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'TaskGroups',
-  components: { AutomationRoomSelect },
+  components: {
+    ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription,
+    CardHeader, CardTitle, ChartNoAxesColumn, CircleCheck, CircleOff, DialogContent,
+    DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
+    EmptyDescription, EmptyHeader, EmptyTitle, Eye, Pencil, Plus, RefreshCw, Skeleton,
+    ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow, Trash2, UiButton, UiDialog
+  },
   data() {
     return {
       loading: false,
@@ -204,13 +161,13 @@ export default {
             this.groupList = groupsData;
           } else {
             console.error('无法识别的响应格式:', response);
-            this.$message.error(response.data?.msg || response.data?.message || '获取任务组列表失败: 无法识别的响应格式');
+            toast.error(response.data?.msg || response.data?.message || '获取任务组列表失败：无法识别的响应格式');
             this.groupList = [];
           }
         })
         .catch(error => {
           console.error('获取任务组列表失败:', error);
-          this.$message.error('获取任务组列表失败');
+          toast.error('获取任务组列表失败');
         })
         .finally(() => {
           this.loading = false;
@@ -221,11 +178,11 @@ export default {
     },
     handleDelete(row) {
       if (row.task_count > 0) {
-        this.$message.warning('该任务组下还有任务，无法删除');
+        toast.warning('该任务组下还有任务，无法删除');
         return;
       }
       
-      this.$confirm('确定要删除此任务组吗？删除后不可恢复', '确认删除', {
+      confirmAction('确定要删除此任务组吗？删除后不可恢复。', '确认删除', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -234,25 +191,25 @@ export default {
           .then(response => {
             console.log('删除任务组响应:', response);
             if (response.data && (response.data.code === 200 || response.data.status === 200)) {
-              this.$message.success('删除成功');
+              toast.success('删除成功');
               this.fetchData();
             } else {
-              this.$message.error(response.data?.msg || response.data?.message || '删除失败');
+              toast.error(response.data?.msg || response.data?.message || '删除失败');
             }
           })
           .catch(error => {
             console.error('删除任务组失败:', error);
-            this.$message.error('删除任务组失败');
+            toast.error('删除任务组失败');
           });
       }).catch(() => {
-        this.$message.info('已取消删除');
+        toast.info('已取消删除');
       });
     },
     handleToggleStatus(row) {
       const action = row.status === 1 ? '禁用' : '启用';
       const actionApi = row.status === 1 ? cronTaskApi.disableGroup : cronTaskApi.enableGroup;
       
-      this.$confirm(`确定要${action}此任务组吗？${action}后组内所有任务将被${action}`, `确认${action}`, {
+      confirmAction(`确定要${action}此任务组吗？${action}后组内所有任务将被${action}。`, `确认${action}`, {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -261,18 +218,18 @@ export default {
           .then(response => {
             console.log(`${action}任务组响应:`, response);
             if (response.data && (response.data.code === 200 || response.data.status === 200)) {
-              this.$message.success(`${action}成功`);
+              toast.success(`${action}成功`);
               this.fetchData();
             } else {
-              this.$message.error(response.data?.msg || response.data?.message || `${action}失败`);
+              toast.error(response.data?.msg || response.data?.message || `${action}失败`);
             }
           })
           .catch(error => {
             console.error(`${action}任务组失败:`, error);
-            this.$message.error(`${action}任务组失败`);
+            toast.error(`${action}任务组失败`);
           });
       }).catch(() => {
-        this.$message.info(`已取消${action}`);
+        toast.info(`已取消${action}`);
       });
     },
     getTypeLabel(type) {
@@ -282,14 +239,6 @@ export default {
         'custom': '自定义'
       };
       return types[type] || '未知';
-    },
-    getTypeTag(type) {
-      const tags = {
-        'system': 'danger',
-        'world': 'primary',
-        'custom': 'success'
-      };
-      return tags[type] || 'info';
     },
     viewGroupStats(groupId) {
       this.statsDialogVisible = true;
@@ -314,12 +263,12 @@ export default {
                 }
               });
           } else {
-            this.$message.error(response.data?.msg || response.data?.message || '获取任务组统计失败');
+            toast.error(response.data?.msg || response.data?.message || '获取任务组统计失败');
           }
         })
         .catch(error => {
           console.error('获取任务组统计失败:', error);
-          this.$message.error('获取任务组统计失败');
+          toast.error('获取任务组统计失败');
         })
         .finally(() => {
           this.statsLoading = false;
@@ -401,7 +350,7 @@ export default {
   margin-top: 10px;
 }
 .link-type {
-  color: var(--primary-color);
+  color: var(--primary);
   text-decoration: none;
 }
 .link-type:hover {
@@ -417,33 +366,21 @@ export default {
   min-width: 0;
   margin: 0;
   padding: 12px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   box-shadow: none;
   text-align: left;
 }
 .stats-title {
   font-size: 14px;
-  color: var(--text-regular);
+  color: var(--muted-foreground);
   margin-bottom: 10px;
 }
 .stats-value {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
-}
-.total-tasks {
-  border-left: 4px solid var(--primary-color);
-}
-.enabled-tasks {
-  border-left: 4px solid #4f8a5b;
-}
-.success-rate {
-  border-left: 4px solid #d99b32;
-}
-.avg-duration {
-  border-left: 4px solid var(--text-secondary);
+  color: var(--foreground);
 }
 .stats-charts {
   margin-top: 20px;

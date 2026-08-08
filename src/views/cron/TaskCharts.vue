@@ -1,51 +1,18 @@
 <template>
   <div class="app-container">
-    <el-card class="box-card" shadow="never">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>任务统计图表</span>
-        <el-button-group style="float: right">
-          <el-button type="primary" icon="el-icon-refresh" @click="loadAllCharts">刷新数据</el-button>
-          <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回任务列表</el-button>
-        </el-button-group>
+    <Card>
+      <CardHeader>
+        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>任务统计图表</CardTitle><CardDescription>分析执行次数、成功率和耗时趋势</CardDescription></div><div class="flex gap-2"><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><RefreshCw data-icon="inline-start" />刷新数据</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div></div>
         <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
-      </div>
-</template>
-      
-      <el-form :inline="true" class="filter-form">
-        <el-form-item label="时间范围">
-          <el-select v-model="dateRange" @change="loadAllCharts">
-            <el-option label="最近7天" value="7"></el-option>
-            <el-option label="最近30天" value="30"></el-option>
-            <el-option label="最近90天" value="90"></el-option>
-            <el-option label="最近180天" value="180"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="任务组">
-          <el-select v-model="groupId" placeholder="选择任务组" clearable @change="handleGroupChange">
-            <el-option label="全部" value=""></el-option>
-            <el-option
-              v-for="group in groups"
-              :key="group.id"
-              :label="group.name"
-              :value="group.id">
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="任务" v-if="groupId">
-          <el-select v-model="taskId" placeholder="选择任务" clearable @change="loadTaskCharts">
-            <el-option label="全部" value=""></el-option>
-            <el-option
-              v-for="task in tasks"
-              :key="task.id"
-              :label="task.name"
-              :value="task.id">
-            </el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      
-      <div v-loading="loading">
+      </CardHeader>
+      <CardContent>
+      <FieldGroup class="filter-grid">
+        <Field><FieldLabel>时间范围</FieldLabel><UiSelect v-model="dateRange" @update:model-value="loadAllCharts"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="7">最近 7 天</SelectItem><SelectItem value="30">最近 30 天</SelectItem><SelectItem value="90">最近 90 天</SelectItem><SelectItem value="180">最近 180 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <Field><FieldLabel>任务组</FieldLabel><UiSelect v-model="groupId" @update:model-value="handleGroupChange"><SelectTrigger><SelectValue placeholder="选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <Field v-if="groupId && groupId !== 'all'"><FieldLabel>任务</FieldLabel><UiSelect v-model="taskId" @update:model-value="loadTaskCharts"><SelectTrigger><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in tasks" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+      </FieldGroup>
+      <div v-if="loading" class="flex flex-col gap-4"><Skeleton class="h-24 w-full" /><Skeleton class="h-96 w-full" /></div>
+      <div v-else>
         <div class="stats-cards">
           <div class="stat-card">
             <div class="stat-title">总任务数</div>
@@ -70,30 +37,42 @@
           <div id="durationChart" class="chart-box"></div>
         </div>
         
-        <div v-if="groupId && !taskId" class="chart-container">
+        <div v-if="groupId && groupId !== 'all' && (!taskId || taskId === 'all')" class="chart-container">
           <h3 class="chart-title">任务组执行统计</h3>
           <div id="groupTasksChart" class="chart-box"></div>
         </div>
         
-        <div v-if="taskId" class="chart-container">
+        <div v-if="taskId && taskId !== 'all'" class="chart-container">
           <h3 class="chart-title">任务执行统计</h3>
           <div id="taskExecutionChart" class="chart-box"></div>
           <div id="taskDurationChart" class="chart-box"></div>
         </div>
       </div>
-    </el-card>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { ArrowLeft, RefreshCw } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { getSystemPreferences } from '@/utils/systemPreferences';
 
 export default {
   name: 'TaskCharts',
-  components: { AutomationRoomSelect },
+  components: {
+    ArrowLeft, AutomationRoomSelect, Card, CardContent, CardDescription, CardHeader, CardTitle,
+    Field, FieldGroup, FieldLabel, RefreshCw, SelectContent, SelectGroup, SelectItem, SelectTrigger,
+    SelectValue, Skeleton, UiButton, UiSelect
+  },
   data() {
     return {
       loading: false,
@@ -166,7 +145,7 @@ export default {
         })
         .catch(error => {
           console.error('获取任务组列表失败:', error);
-          this.$message.error('获取任务组列表失败');
+          toast.error('获取任务组列表失败');
         });
     },
     fetchTasks(groupId) {
@@ -206,12 +185,12 @@ export default {
         })
         .catch(error => {
           console.error('获取任务列表失败:', error);
-          this.$message.error('获取任务列表失败');
+          toast.error('获取任务列表失败');
         });
     },
     handleGroupChange(value) {
       this.taskId = '';
-      if (value) {
+      if (value && value !== 'all') {
         this.fetchTasks(value);
         this.loadGroupCharts();
       } else {
@@ -238,12 +217,12 @@ export default {
               this.initDurationChart(response.data.data);
             });
           } else {
-            this.$message.error(response.data?.msg || response.data?.message || '获取概览数据失败');
+            toast.error(response.data?.msg || response.data?.message || '获取概览数据失败');
           }
         })
         .catch(error => {
           console.error('获取概览数据失败:', error);
-          this.$message.error('获取概览数据失败');
+          toast.error('获取概览数据失败');
         })
         .finally(() => {
           this.loading = false;
@@ -262,19 +241,19 @@ export default {
               this.initGroupTasksChart(response.data.data);
             });
           } else {
-            this.$message.error(response.data?.msg || response.data?.message || '获取任务组图表失败');
+            toast.error(response.data?.msg || response.data?.message || '获取任务组图表失败');
           }
         })
         .catch(error => {
           console.error('获取任务组图表失败:', error);
-          this.$message.error('获取任务组图表失败');
+          toast.error('获取任务组图表失败');
         })
         .finally(() => {
           this.loading = false;
         });
     },
     loadTaskCharts() {
-      if (!this.taskId) return;
+      if (!this.taskId || this.taskId === 'all') return;
       
       this.loading = true;
       
@@ -287,12 +266,12 @@ export default {
               this.initTaskExecutionChart(response.data.data);
             });
           } else {
-            this.$message.error(response.data?.msg || response.data?.message || '获取任务执行图表失败');
+            toast.error(response.data?.msg || response.data?.message || '获取任务执行图表失败');
           }
         })
         .catch(error => {
           console.error('获取任务执行图表失败:', error);
-          this.$message.error('获取任务执行图表失败');
+          toast.error('获取任务执行图表失败');
         });
       
       // 获取任务执行时长图表
@@ -304,12 +283,12 @@ export default {
               this.initTaskDurationChart(response.data.data);
             });
           } else {
-            this.$message.error(response.data?.msg || response.data?.message || '获取任务执行时长图表失败');
+            toast.error(response.data?.msg || response.data?.message || '获取任务执行时长图表失败');
           }
         })
         .catch(error => {
           console.error('获取任务执行时长图表失败:', error);
-          this.$message.error('获取任务执行时长图表失败');
+          toast.error('获取任务执行时长图表失败');
         })
         .finally(() => {
           this.loading = false;
@@ -598,9 +577,7 @@ export default {
 </script>
 
 <style scoped>
-.filter-form {
-  margin-bottom: 16px;
-}
+.filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; }
 .stats-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -611,21 +588,21 @@ export default {
   min-width: 0;
   margin: 0;
   padding: 12px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
   box-shadow: none;
   text-align: left;
 }
 .stat-title {
   font-size: 14px;
-  color: var(--text-regular);
+  color: var(--muted-foreground);
   margin-bottom: 10px;
 }
 .stat-value {
   font-size: 22px;
   font-weight: 600;
-  color: var(--primary-color);
+  color: var(--foreground);
 }
 .chart-container {
   margin-top: 20px;
@@ -635,7 +612,7 @@ export default {
   font-size: 16px;
   margin-bottom: 15px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 .chart-box {
   width: 100%;
@@ -644,6 +621,7 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .filter-grid { grid-template-columns: 1fr; }
   .stats-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -1,141 +1,79 @@
 <template>
-  <div class="app-container">
-    <el-row :gutter="20">
-      <el-col :span="12">
-        <el-card class="box-card">
-          <template v-slot:header>
-<div  class="clearfix">
-            <span>导出任务配置</span>
-            <automation-room-select @ready="getExportFiles" @change="getExportFiles" />
-          </div>
-</template>
-          <el-form ref="exportForm" :model="exportForm" label-width="100px">
-            <el-form-item label="导出描述" prop="description">
-              <el-input 
-                v-model="exportForm.description" 
-                placeholder="为本次导出添加描述信息"
-                type="textarea" 
-                :rows="2"
-              ></el-input>
-            </el-form-item>
-            
-            <el-form-item label="文件名" prop="filename">
-              <el-input 
-                v-model="exportForm.filename" 
-                placeholder="导出文件名（不含扩展名）"
-              ></el-input>
-              <span class="form-help-text">文件将以 .json 格式保存</span>
-            </el-form-item>
-            
-            <el-form-item label="导出选项">
-              <el-checkbox-group v-model="exportForm.options">
-                <el-checkbox label="tasks">包含任务数据</el-checkbox>
-                <el-checkbox label="groups">包含任务组数据</el-checkbox>
-                <el-checkbox label="dependencies">包含任务依赖关系</el-checkbox>
-              </el-checkbox-group>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-button type="primary" @click="handleExport" :loading="exporting">
-                导出配置
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="12">
-        <el-card class="box-card">
-          <template v-slot:header>
-<div  class="clearfix">
-            <span>导入任务配置</span>
-          </div>
-</template>
-          <el-form ref="importForm" :model="importForm" label-width="100px">
-            <el-form-item label="选择文件" prop="file">
-              <el-upload
-                class="upload-demo"
-                action="#"
-                :auto-upload="false"
-                :on-change="handleFileChange"
-                :limit="1"
-                ref="upload">
-                <template v-slot:trigger>
-<el-button  size="small" type="primary">选择文件</el-button>
-</template>
-                <template v-slot:tip>
-<div  class="el-upload__tip">只能上传 .json 文件</div>
-</template>
-              </el-upload>
-            </el-form-item>
-            
-            <el-form-item label="导入模式">
-              <el-radio-group v-model="importForm.mode">
-                <el-radio label="merge">合并</el-radio>
-                <el-radio label="override">覆盖</el-radio>
-              </el-radio-group>
-              <div class="form-help-text">
-                <p>合并: 添加文件中不存在的任务和任务组，已存在的不会修改</p>
-                <p>覆盖: 完全按照文件内容更新，可能会覆盖现有配置</p>
-              </div>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-button type="primary" @click="handleImport" :loading="importing" :disabled="!importForm.file">
-                导入配置
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
-      </el-col>
-    </el-row>
-    
-    <el-card class="box-card" style="margin-top: 20px;">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>本次浏览器导出记录</span>
-        <el-button style="float: right" type="success" icon="el-icon-refresh" size="small" @click="getExportFiles">刷新</el-button>
-      </div>
-</template>
-      <el-table :data="exportFiles" border style="width: 100%">
-        <el-table-column prop="filename" label="文件名" width="200"></el-table-column>
-        <el-table-column prop="description" label="描述" min-width="200"></el-table-column>
-        <el-table-column prop="size" label="大小" width="100">
-          <template v-slot="scope">
-            {{ formatFileSize(scope.row.size) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="180"></el-table-column>
-        <el-table-column label="操作" width="200" align="center">
-          <template v-slot="scope">
-            <el-button 
-              size="mini" 
-              type="primary" 
-              @click="downloadFile(scope.row)" 
-              icon="el-icon-download">
-              下载
-            </el-button>
-            <el-button 
-              size="mini" 
-              type="danger" 
-              @click="deleteFile(scope.row)" 
-              icon="el-icon-delete">
-              删除
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+  <div class="app-container flex flex-col gap-4">
+    <div class="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader><CardTitle>导出任务配置</CardTitle><CardDescription>将当前房间的任务配置保存为 JSON 文件</CardDescription><automation-room-select @ready="getExportFiles" @change="getExportFiles" /></CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field><FieldLabel for="export-description">导出描述</FieldLabel><UiTextarea id="export-description" v-model="exportForm.description" rows="3" placeholder="为本次导出添加描述信息" /></Field>
+            <Field><FieldLabel for="export-filename">文件名</FieldLabel><UiInput id="export-filename" v-model="exportForm.filename" placeholder="导出文件名（不含扩展名）" /><FieldDescription>文件将以 .json 格式保存</FieldDescription></Field>
+            <FieldSet><FieldLegend variant="label">导出选项</FieldLegend><FieldGroup class="gap-3">
+              <Field v-for="option in exportOptions" :key="option.value" orientation="horizontal">
+                <Checkbox :id="`export-${option.value}`" :model-value="exportForm.options.includes(option.value)" @update:model-value="toggleExportOption(option.value, $event)" />
+                <FieldLabel :for="`export-${option.value}`" class="font-normal">{{ option.label }}</FieldLabel>
+              </Field>
+            </FieldGroup></FieldSet>
+            <UiButton :disabled="exporting" @click="handleExport"><Spinner v-if="exporting" data-icon="inline-start" /><Download v-else data-icon="inline-start" />导出配置</UiButton>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>导入任务配置</CardTitle><CardDescription>从 JSON 文件合并或覆盖当前配置</CardDescription></CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field><FieldLabel for="import-file">选择文件</FieldLabel><UiInput id="import-file" ref="importFileInput" type="file" accept="application/json,.json" @change="handleFileChange" /><FieldDescription>{{ importForm.file ? importForm.file.name : '只能选择 .json 文件' }}</FieldDescription></Field>
+            <FieldSet><FieldLegend variant="label">导入模式</FieldLegend><RadioGroup v-model="importForm.mode" class="grid gap-3 sm:grid-cols-2">
+              <Field orientation="horizontal"><RadioGroupItem id="import-merge" value="merge" /><FieldContent><FieldLabel for="import-merge">合并</FieldLabel><FieldDescription>仅添加不存在的任务和任务组</FieldDescription></FieldContent></Field>
+              <Field orientation="horizontal"><RadioGroupItem id="import-override" value="override" /><FieldContent><FieldLabel for="import-override">覆盖</FieldLabel><FieldDescription>按照文件内容更新现有配置</FieldDescription></FieldContent></Field>
+            </RadioGroup></FieldSet>
+            <Alert v-if="importForm.mode === 'override'" variant="destructive"><TriangleAlert /><AlertTitle>覆盖模式</AlertTitle><AlertDescription>现有任务配置可能被覆盖，请确认文件来源可靠。</AlertDescription></Alert>
+            <UiButton :disabled="importing || !importForm.file" @click="handleImport"><Spinner v-if="importing" data-icon="inline-start" /><Upload v-else data-icon="inline-start" />导入配置</UiButton>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+    </div>
+
+    <Card>
+      <CardHeader class="flex-row items-center justify-between gap-4"><div><CardTitle>本次浏览器导出记录</CardTitle><CardDescription>刷新页面后记录可能被清空</CardDescription></div><UiButton size="sm" variant="outline" @click="getExportFiles"><RefreshCw data-icon="inline-start" />刷新</UiButton></CardHeader>
+      <CardContent>
+        <Empty v-if="exportFiles.length === 0"><EmptyHeader><EmptyTitle>暂无导出记录</EmptyTitle><EmptyDescription>完成一次导出后，文件会显示在这里。</EmptyDescription></EmptyHeader></Empty>
+        <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>文件名</TableHead><TableHead>描述</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
+          <TableRow v-for="file in exportFiles" :key="file.filename"><TableCell class="font-mono text-xs">{{ file.filename }}</TableCell><TableCell>{{ file.description || '-' }}</TableCell><TableCell>{{ formatFileSize(file.size) }}</TableCell><TableCell class="whitespace-nowrap">{{ file.created_at }}</TableCell><TableCell><div class="flex justify-end gap-1"><UiButton size="sm" variant="outline" @click="downloadFile(file)"><Download data-icon="inline-start" />下载</UiButton><UiButton size="sm" variant="destructive" @click="deleteFile(file)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow>
+        </TableBody></ShadcnTable></div>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { Download, RefreshCw, Trash2, TriangleAlert, Upload } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Spinner } from '@/components/ui/spinner';
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'TaskImportExport',
-  components: { AutomationRoomSelect },
+  components: {
+    Alert, AlertDescription, AlertTitle, AutomationRoomSelect, Card, CardContent,
+    CardDescription, CardHeader, CardTitle, Checkbox, Download, Empty, EmptyDescription,
+    EmptyHeader, EmptyTitle, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel,
+    FieldLegend, FieldSet, RadioGroup, RadioGroupItem, RefreshCw, ShadcnTable, Spinner,
+    TableBody, TableCell, TableHead, TableHeader, TableRow, Trash2, TriangleAlert, UiButton,
+    UiInput, UiTextarea, Upload
+  },
   data() {
     return {
       exporting: false,
@@ -149,7 +87,12 @@ export default {
         file: null,
         mode: 'merge'
       },
-      exportFiles: []
+      exportFiles: [],
+      exportOptions: [
+        { value: 'tasks', label: '包含任务数据' },
+        { value: 'groups', label: '包含任务组数据' },
+        { value: 'dependencies', label: '包含任务依赖关系' }
+      ]
     };
   },
   methods: {
@@ -159,22 +102,27 @@ export default {
           if (response.data && response.data.status === 200) {
             this.exportFiles = response.data.data || [];
           } else {
-            this.$message.error(response.data.message || '获取导出文件列表失败');
+            toast.error(response.data.message || '获取导出文件列表失败');
           }
         })
         .catch(error => {
           console.error('获取导出文件列表失败:', error);
-          this.$message.error('获取导出文件列表失败');
+          toast.error('获取导出文件列表失败');
         });
+    },
+    toggleExportOption(value, checked) {
+      const options = this.exportForm.options.filter(option => option !== value);
+      if (checked) options.push(value);
+      this.exportForm.options = options;
     },
     handleExport() {
       if (!this.exportForm.filename) {
-        this.$message.warning('请输入文件名');
+        toast.warning('请输入文件名');
         return;
       }
       
       if (this.exportForm.options.length === 0) {
-        this.$message.warning('请至少选择一项导出选项');
+        toast.warning('请至少选择一项导出选项');
         return;
       }
       
@@ -182,36 +130,37 @@ export default {
       cronTaskApi.exportTasks(this.exportForm)
         .then(response => {
           if (response.data && response.data.status === 200) {
-            this.$message.success('导出成功');
+            toast.success('导出成功');
             this.getExportFiles();
           } else {
-            this.$message.error(response.data.message || '导出失败');
+            toast.error(response.data.message || '导出失败');
           }
         })
         .catch(error => {
           console.error('导出任务配置失败:', error);
-          this.$message.error(error.message || '导出任务配置失败');
+          toast.error(error.message || '导出任务配置失败');
         })
         .finally(() => {
           this.exporting = false;
         });
     },
-    handleFileChange(file) {
-      if (file && file.raw) {
-        if (file.raw.type !== 'application/json' && !file.raw.name.endsWith('.json')) {
-          this.$message.error('只能上传 JSON 文件!');
-          this.$refs.upload.clearFiles();
+    handleFileChange(event) {
+      const file = event.target.files?.[0];
+      if (file) {
+        if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+          toast.error('只能选择 JSON 文件');
+          event.target.value = '';
           this.importForm.file = null;
           return;
         }
-        this.importForm.file = file.raw;
+        this.importForm.file = file;
       } else {
         this.importForm.file = null;
       }
     },
     handleImport() {
       if (!this.importForm.file) {
-        this.$message.warning('请选择要导入的文件');
+        toast.warning('请选择要导入的文件');
         return;
       }
       
@@ -224,16 +173,16 @@ export default {
       cronTaskApi.importTasks(formData)
         .then(response => {
           if (response.data && response.data.status === 200) {
-            this.$message.success('导入成功');
-            this.$refs.upload.clearFiles();
+            toast.success('导入成功');
             this.importForm.file = null;
+            if (this.$refs.importFileInput?.$el) this.$refs.importFileInput.$el.value = '';
           } else {
-            this.$message.error(response.data.message || '导入失败');
+            toast.error(response.data.message || '导入失败');
           }
         })
         .catch(error => {
           console.error('导入任务配置失败:', error);
-          this.$message.error(error.message || '导入任务配置失败');
+          toast.error(error.message || '导入任务配置失败');
         })
         .finally(() => {
           this.importing = false;
@@ -251,11 +200,11 @@ export default {
         })
         .catch(error => {
           console.error('下载文件失败:', error);
-          this.$message.error('下载文件失败');
+          toast.error('下载文件失败');
         });
     },
     deleteFile(file) {
-      this.$confirm('确定要移除这条浏览器导出记录吗？已下载到磁盘的文件不会被删除', '确认移除', {
+      confirmAction('确定要移除这条浏览器导出记录吗？已下载到磁盘的文件不会被删除。', '确认移除', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -263,18 +212,18 @@ export default {
         cronTaskApi.deleteExportFile(file.filename)
           .then(response => {
             if (response.data && response.data.status === 200) {
-              this.$message.success('删除成功');
+              toast.success('删除成功');
               this.getExportFiles();
             } else {
-              this.$message.error(response.data.message || '删除失败');
+              toast.error(response.data.message || '删除失败');
             }
           })
           .catch(error => {
             console.error('删除文件失败:', error);
-            this.$message.error('删除文件失败');
+            toast.error('删除文件失败');
           });
       }).catch(() => {
-        this.$message.info('已取消删除');
+        toast.info('已取消删除');
       });
     },
     formatFileSize(size) {
@@ -290,21 +239,4 @@ export default {
 };
 </script>
 
-<style scoped>
-.box-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
-}
-.form-help-text {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 5px;
-}
-.form-help-text p {
-  margin: 3px 0;
-}
-.upload-demo {
-  margin-bottom: 10px;
-}
-</style>
+<style scoped></style>

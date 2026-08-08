@@ -1,144 +1,25 @@
 <template>
   <div class="app-container">
-    <el-card class="box-card" shadow="never">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>任务执行日志</span>
-        <el-button-group style="float: right">
-          <el-button type="danger" icon="el-icon-delete" @click="handleClearLogs">清理旧日志</el-button>
-          <el-button type="primary" icon="el-icon-refresh" @click="fetchData">刷新</el-button>
-          <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/tasks')">返回任务列表</el-button>
-        </el-button-group>
+    <Card>
+      <CardHeader>
+        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>任务执行日志</CardTitle><CardDescription>查询任务运行结果并清理历史记录</CardDescription></div><div class="flex flex-wrap gap-2"><UiButton size="sm" variant="destructive" @click="handleClearLogs"><Trash2 data-icon="inline-start" />清理旧日志</UiButton><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><RefreshCw data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div></div>
         <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
-      </div>
-</template>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup class="filter-grid"><Field><FieldLabel>任务</FieldLabel><UiSelect v-model="listQuery.task_id"><SelectTrigger><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel>状态</FieldLabel><UiSelect v-model="listQuery.status"><SelectTrigger><SelectValue placeholder="执行状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="success">成功</SelectItem><SelectItem value="failed">失败</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-start-date">开始日期</FieldLabel><UiInput id="log-start-date" v-model="listQuery.start_date" type="date" /></Field><Field><FieldLabel for="log-end-date">结束日期</FieldLabel><UiInput id="log-end-date" v-model="listQuery.end_date" type="date" /></Field><div class="flex items-end gap-2"><UiButton @click="handleSearch"><Search data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
 
-      <div class="filter-container">
-        <el-form :inline="true" :model="listQuery" class="filter-form">
-          <el-form-item label="任务">
-            <el-select v-model="listQuery.task_id" placeholder="选择任务" clearable filterable style="width: 200px">
-              <el-option label="全部" value=""></el-option>
-              <el-option
-                v-for="task in taskOptions"
-                :key="task.id"
-                :label="task.name"
-                :value="task.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="listQuery.status" placeholder="执行状态" clearable style="width: 150px">
-              <el-option label="全部" value=""></el-option>
-              <el-option label="成功" value="success"></el-option>
-              <el-option label="失败" value="failed"></el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="时间范围">
-            <el-date-picker
-              v-model="dateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="yyyy-MM-dd"
-              style="width: 300px;">
-            </el-date-picker>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" icon="el-icon-search" @click="handleSearch">搜索</el-button>
-            <el-button type="info" icon="el-icon-refresh" @click="resetQuery">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
+        <div v-if="loading && logList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 6" :key="index" class="h-12 w-full" /></div>
+        <Empty v-else-if="logList.length === 0"><EmptyHeader><EmptyTitle>暂无日志记录</EmptyTitle><EmptyDescription>当前筛选条件下没有执行日志。</EmptyDescription></EmptyHeader></Empty>
+        <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>任务名称</TableHead><TableHead>开始时间</TableHead><TableHead>执行耗时</TableHead><TableHead>状态</TableHead><TableHead>触发方式</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
+          <TableRow v-for="log in logList" :key="log.id"><TableCell>{{ log.id }}</TableCell><TableCell><router-link v-if="log.task_id" :to="`/cron/edit/${log.task_id}`" class="link-type">{{ log.task_name }}</router-link><span v-else>{{ log.task_name || '未知任务' }}</span></TableCell><TableCell class="whitespace-nowrap">{{ log.start_time || log.created_at }}</TableCell><TableCell>{{ log.duration ? `${log.duration} 毫秒` : '-' }}</TableCell><TableCell><Badge :variant="getRunStatusVariant(log.status)">{{ getRunStatusText(log.status) }}</Badge></TableCell><TableCell><Badge variant="secondary">{{ getTriggerTypeText(log.trigger_type) }}</Badge></TableCell><TableCell class="text-right"><UiButton size="sm" variant="outline" @click="viewLogDetail(log)"><Eye data-icon="inline-start" />查看详情</UiButton></TableCell></TableRow>
+        </TableBody></ShadcnTable></div>
+        <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>每页</span><UiSelect :model-value="String(listQuery.page_size)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>共 {{ total }} 条</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.page_size" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
+      </CardContent>
+    </Card>
 
-      <div v-if="logList.length === 0 && !loading" class="empty-logs">
-        <el-empty description="暂无日志记录" :image-size="200"></el-empty>
-      </div>
-
-      <el-table v-else v-loading="loading" :data="logList" style="width: 100%;" border>
-        <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
-        <el-table-column prop="task_name" label="任务名称" min-width="120">
-          <template v-slot="scope">
-            <router-link
-              :to="`/cron/edit/${scope.row.task_id}`"
-              class="link-type"
-              v-if="scope.row.task_id">
-              {{ scope.row.task_name }}
-            </router-link>
-            <span v-else>{{ scope.row.task_name || '未知任务' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="开始时间" width="170" align="center">
-          <template v-slot="scope">
-            {{ scope.row.start_time || scope.row.created_at }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="duration" label="执行耗时" width="100" align="center">
-          <template v-slot="scope">
-            {{ scope.row.duration ? scope.row.duration + ' 毫秒' : '-' }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100" align="center">
-          <template v-slot="scope">
-            <el-tag :type="getRunStatusTag(scope.row.status)">
-              {{ getRunStatusText(scope.row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="触发方式" width="100" align="center">
-          <template v-slot="scope">
-            <el-tag :type="getTriggerTypeTag(scope.row.trigger_type)">
-              {{ getTriggerTypeText(scope.row.trigger_type) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" align="center">
-          <template v-slot="scope">
-            <el-button
-              size="mini"
-              type="primary"
-              @click="viewLogDetail(scope.row)"
-              icon="el-icon-view">
-              查看详情
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <el-pagination
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-        :current-page="listQuery.page"
-        :page-sizes="[10, 20, 50, 100]"
-        :page-size="listQuery.page_size"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        style="margin-top: 15px; text-align: right;">
-      </el-pagination>
-    </el-card>
-
-    <el-dialog title="日志详情" v-model="dialogVisible" width="70%">
+    <UiDialog v-model:open="dialogVisible"><DialogContent class="max-w-3xl"><DialogHeader><DialogTitle>日志详情</DialogTitle><DialogDescription>本次任务执行的完整信息</DialogDescription></DialogHeader>
       <div v-if="currentLog" class="log-detail">
-        <el-descriptions border :column="2">
-          <el-descriptions-item label="日志ID">{{ currentLog.id }}</el-descriptions-item>
-          <el-descriptions-item label="任务ID">{{ currentLog.task_id }}</el-descriptions-item>
-          <el-descriptions-item label="任务名称">{{ currentLog.task_name }}</el-descriptions-item>
-          <el-descriptions-item label="执行状态">
-            <el-tag :type="getRunStatusTag(currentLog.status)">
-              {{ getRunStatusText(currentLog.status) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="触发方式">
-            <el-tag :type="getTriggerTypeTag(currentLog.trigger_type)">
-              {{ getTriggerTypeText(currentLog.trigger_type) }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="开始时间">{{ currentLog.start_time || currentLog.created_at }}</el-descriptions-item>
-          <el-descriptions-item label="结束时间">{{ currentLog.end_time || currentLog.updated_at || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="执行耗时">{{ currentLog.duration ? currentLog.duration + ' 毫秒' : '-' }}</el-descriptions-item>
-          <el-descriptions-item label="执行者">{{ currentLog.executor || '系统' }}</el-descriptions-item>
-          <el-descriptions-item label="重试次数">{{ currentLog.retry_count || 0 }}</el-descriptions-item>
-        </el-descriptions>
+        <dl class="detail-grid"><div class="detail-item"><dt>日志 ID</dt><dd>{{ currentLog.id }}</dd></div><div class="detail-item"><dt>任务 ID</dt><dd>{{ currentLog.task_id }}</dd></div><div class="detail-item"><dt>任务名称</dt><dd>{{ currentLog.task_name }}</dd></div><div class="detail-item"><dt>执行状态</dt><dd><Badge :variant="getRunStatusVariant(currentLog.status)">{{ getRunStatusText(currentLog.status) }}</Badge></dd></div><div class="detail-item"><dt>触发方式</dt><dd><Badge variant="secondary">{{ getTriggerTypeText(currentLog.trigger_type) }}</Badge></dd></div><div class="detail-item"><dt>开始时间</dt><dd>{{ currentLog.start_time || currentLog.created_at }}</dd></div><div class="detail-item"><dt>结束时间</dt><dd>{{ currentLog.end_time || currentLog.updated_at || '-' }}</dd></div><div class="detail-item"><dt>执行耗时</dt><dd>{{ currentLog.duration ? `${currentLog.duration} 毫秒` : '-' }}</dd></div><div class="detail-item"><dt>执行者</dt><dd>{{ currentLog.executor || '系统' }}</dd></div><div class="detail-item"><dt>重试次数</dt><dd>{{ currentLog.retry_count || 0 }}</dd></div></dl>
 
         <div class="log-output">
           <div class="log-title">执行输出：</div>
@@ -150,58 +31,43 @@
           <pre class="log-content error">{{ currentLog.error }}</pre>
         </div>
       </div>
-      <div v-else class="empty-data">
-        <el-empty description="未找到日志详情"></el-empty>
-      </div>
-    </el-dialog>
+      <Empty v-else><EmptyHeader><EmptyTitle>未找到日志详情</EmptyTitle></EmptyHeader></Empty>
+    </DialogContent></UiDialog>
 
-    <el-dialog title="清理日志" v-model="clearDialogVisible" width="500px">
-      <el-form :model="clearForm" label-width="120px">
-        <el-form-item label="保留时间">
-          <el-select v-model="clearForm.keep_days" style="width: 100%">
-            <el-option label="保留最近7天" :value="7"></el-option>
-            <el-option label="保留最近30天" :value="30"></el-option>
-            <el-option label="保留最近90天" :value="90"></el-option>
-            <el-option label="保留最近180天" :value="180"></el-option>
-            <el-option label="保留最近365天" :value="365"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="任务筛选">
-          <el-select v-model="clearForm.task_id" placeholder="选择要清理的任务" clearable style="width: 100%">
-            <el-option label="全部任务" value=""></el-option>
-            <el-option
-              v-for="task in taskOptions"
-              :key="task.id"
-              :label="task.name"
-              :value="task.id">
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态筛选">
-          <el-select v-model="clearForm.status" placeholder="选择状态" clearable style="width: 100%">
-            <el-option label="全部" value=""></el-option>
-            <el-option label="成功" value="success"></el-option>
-            <el-option label="失败" value="failed"></el-option>
-          </el-select>
-        </el-form-item>
-      </el-form>
-      <template v-slot:footer>
-<div  class="dialog-footer">
-        <el-button @click="clearDialogVisible = false">取消</el-button>
-        <el-button type="danger" @click="confirmClearLogs" :loading="clearLoading">确认清理</el-button>
-      </div>
-</template>
-    </el-dialog>
+    <UiDialog v-model:open="clearDialogVisible"><DialogContent><DialogHeader><DialogTitle>清理日志</DialogTitle><DialogDescription>按保留时间和任务范围删除历史日志</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel>保留时间</FieldLabel><UiSelect :model-value="String(clearForm.keep_days)" @update:model-value="clearForm.keep_days = Number($event)"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="days in [7, 30, 90, 180, 365]" :key="days" :value="String(days)">保留最近 {{ days }} 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel>任务筛选</FieldLabel><UiSelect v-model="clearForm.task_id"><SelectTrigger><SelectValue placeholder="选择要清理的任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部任务</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel>状态筛选</FieldLabel><UiSelect v-model="clearForm.status"><SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="success">成功</SelectItem><SelectItem value="failed">失败</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup><DialogFooter><UiButton variant="outline" @click="clearDialogVisible = false">取消</UiButton><UiButton variant="destructive" :disabled="clearLoading" @click="confirmClearLogs"><Spinner v-if="clearLoading" data-icon="inline-start" />确认清理</UiButton></DialogFooter></DialogContent></UiDialog>
   </div>
 </template>
 
 <script>
+import { ArrowLeft, Eye, RefreshCw, Search, Trash2 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { Pagination as ShadcnPagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'TaskLogs',
-  components: { AutomationRoomSelect },
+  components: {
+    ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription, CardHeader,
+    CardTitle, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    Empty, EmptyDescription, EmptyHeader, EmptyTitle, Eye, Field, FieldGroup, FieldLabel,
+    PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious,
+    RefreshCw, Search, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
+    ShadcnPagination, ShadcnTable, Skeleton, Spinner, TableBody, TableCell, TableHead,
+    TableHeader, TableRow, Trash2, UiButton, UiDialog, UiInput, UiSelect
+  },
   data() {
     return {
       loading: false,
@@ -280,8 +146,13 @@ export default {
     },
     fetchData() {
       this.loading = true;
-      console.log('发送日志查询参数:', this.listQuery);
-      cronTaskApi.getLogs(this.listQuery)
+      const query = {
+        ...this.listQuery,
+        task_id: this.listQuery.task_id === 'all' ? '' : this.listQuery.task_id,
+        status: this.listQuery.status === 'all' ? '' : this.listQuery.status
+      };
+      console.log('发送日志查询参数:', query);
+      cronTaskApi.getLogs(query)
         .then(response => {
           console.log('日志列表原始响应:', response);
 
@@ -326,12 +197,12 @@ export default {
             }
 
             console.error('响应格式不符合预期:', response);
-            this.$message.error('获取日志列表失败: 响应格式不符合预期');
+            toast.error('获取日志列表失败：响应格式不符合预期');
           }
         })
         .catch(error => {
           console.error('获取日志列表失败:', error);
-          this.$message.error(error.message || '获取日志列表失败');
+          toast.error(error.message || '获取日志列表失败');
         })
         .finally(() => {
           this.loading = false;
@@ -369,33 +240,37 @@ export default {
       this.clearDialogVisible = true;
     },
     confirmClearLogs() {
-      this.$confirm(`确定要清理${this.clearForm.keep_days}天之前的日志吗？此操作不可恢复`, '确认清理', {
+      confirmAction(`确定要清理 ${this.clearForm.keep_days} 天之前的日志吗？此操作不可恢复。`, '确认清理', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
         this.clearLoading = true;
-        cronTaskApi.clearLogs(this.clearForm)
+        cronTaskApi.clearLogs({
+          ...this.clearForm,
+          task_id: this.clearForm.task_id === 'all' ? '' : this.clearForm.task_id,
+          status: this.clearForm.status === 'all' ? '' : this.clearForm.status
+        })
           .then(response => {
             console.log('清理日志响应:', response);
             if (response.data && (response.data.code === 200 || response.data.status === 200)) {
               const deletedCount = response.data.data.deleted_count || response.data.data.count || 0;
-              this.$message.success(`成功清理了 ${deletedCount} 条日志`);
+              toast.success(`成功清理了 ${deletedCount} 条日志`);
               this.clearDialogVisible = false;
               this.fetchData();
             } else {
-              this.$message.error(response.data.msg || response.data.message || '清理日志失败');
+              toast.error(response.data.msg || response.data.message || '清理日志失败');
             }
           })
         .catch(error => {
           console.error('清理日志失败:', error);
-          this.$message.error(error.message || '清理日志失败');
+          toast.error(error.message || '清理日志失败');
           })
           .finally(() => {
             this.clearLoading = false;
           });
       }).catch(() => {
-        this.$message.info('已取消清理');
+        toast.info('已取消清理');
       });
     },
 
@@ -412,11 +287,10 @@ export default {
       return labels[status] || (status === 1 ? '成功' : '失败');
     },
 
-    getRunStatusTag(status) {
-      if (status === 'success' || status === 'succeeded' || status === 1) return 'success';
-      if (status === 'queued' || status === 'running') return 'warning';
-      if (status === 'canceled' || status === 'skipped') return 'info';
-      return 'danger';
+    getRunStatusVariant(status) {
+      if (status === 'success' || status === 'succeeded' || status === 1) return 'default';
+      if (status === 'canceled' || status === 'skipped' || status === 'queued' || status === 'running') return 'secondary';
+      return 'destructive';
     },
 
     // 根据trigger_type获取触发方式的文本描述
@@ -438,61 +312,28 @@ export default {
       }
 
       return triggerTypeMap[triggerType] || '未知触发';
-    },
-
-    // 根据trigger_type获取标签类型
-    getTriggerTypeTag(triggerType) {
-      // 根据实际情况调整标签类型
-      const triggerTypeTagMap = {
-        0: 'primary',  // 0 定时触发 - 蓝色主要
-        1: 'warning',  // 1 手动触发 - 黄色警告
-        2: 'success',  // 2 事件触发 - 绿色成功
-        3: 'info',     // 3 依赖触发 - 灰色信息
-        4: 'danger'    // 4 API触发 - 红色危险
-      };
-
-      // 兼容旧版的is_manual字段
-      if (triggerType === undefined) {
-        // 如果没有trigger_type字段，则使用is_manual字段
-        // 注意：is_manual为1时表示手动执行，对应trigger_type为1
-        return this.is_manual === 1 ? 'warning' : 'primary';
-      }
-
-      return triggerTypeTagMap[triggerType] || 'info';
     }
   }
 };
 </script>
 
 <style scoped>
-.filter-container {
-  margin-bottom: 16px;
-}
-.filter-form {
-  margin-top: 15px;
-}
-.empty-data {
-  padding: 40px 0;
-  text-align: center;
-}
-.empty-logs {
-  padding: 50px 0;
-  text-align: center;
-  background-color: var(--surface-muted);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  margin-bottom: 20px;
-}
+.filter-grid { display: grid; grid-template-columns: 1.25fr .8fr 1fr 1fr auto; margin-bottom: 20px; }
 .log-detail {
   margin-bottom: 20px;
 }
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.detail-item { display: grid; grid-template-columns: 104px minmax(0, 1fr); min-height: 44px; border-bottom: 1px solid var(--border); }
+.detail-item:nth-child(odd) { border-right: 1px solid var(--border); }
+.detail-item dt, .detail-item dd { display: flex; align-items: center; margin: 0; padding: 10px 12px; }
+.detail-item dt { background: var(--muted); color: var(--muted-foreground); font-size: 12px; }
 .log-title {
   font-weight: 600;
   margin: 15px 0 5px 0;
 }
 .log-content {
-  background-color: var(--surface-muted);
-  border: 1px solid var(--border-color);
+  background-color: var(--muted);
+  border: 1px solid var(--border);
   padding: 10px;
   border-radius: 4px;
   max-height: 300px;
@@ -502,14 +343,15 @@ export default {
   font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
 }
 .log-content.error {
-  background-color: #fee;
-  color: #d33;
+  color: var(--destructive);
 }
 .link-type {
-  color: var(--primary-color);
+  color: var(--primary);
   text-decoration: none;
 }
 .link-type:hover {
   text-decoration: underline;
 }
+@media (max-width: 1024px) { .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 768px) { .filter-grid, .detail-grid { grid-template-columns: 1fr; } .detail-item:nth-child(odd) { border-right: 0; } }
 </style>

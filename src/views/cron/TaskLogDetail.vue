@@ -1,30 +1,37 @@
 <template>
   <div class="app-container">
-    <el-card class="box-card" shadow="never">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>日志详情</span>
-        <el-button-group style="float: right">
-          <el-button type="primary" icon="el-icon-refresh" @click="fetchLogDetail">刷新</el-button>
-          <el-button type="info" icon="el-icon-back" @click="goBack">返回</el-button>
-        </el-button-group>
-      </div>
-</template>
+    <Card>
+      <CardHeader class="flex-row items-start justify-between gap-4">
+        <div>
+          <CardTitle>日志详情</CardTitle>
+          <CardDescription>查看任务运行参数、输出及执行信息</CardDescription>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <UiButton size="sm" @click="fetchLogDetail">
+            <RefreshCw data-icon="inline-start" />
+            刷新
+          </UiButton>
+          <UiButton size="sm" variant="outline" @click="goBack">
+            <ArrowLeft data-icon="inline-start" />
+            返回
+          </UiButton>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div v-if="loading" class="flex flex-col gap-4">
+          <Skeleton class="h-10 w-1/3" />
+          <Skeleton class="h-72 w-full" />
+        </div>
 
-      <el-skeleton :loading="loading" animated>
-        <template v-slot:template>
-          <div class="skeleton-content">
-            <el-skeleton-item variant="text" style="width: 30%; height: 40px;"></el-skeleton-item>
-            <el-skeleton-item variant="text" style="margin-top: 20px; width: 100%; height: 300px;"></el-skeleton-item>
-          </div>
-        </template>
-
-        <template>
-          <div v-if="logData" class="log-content">
-            <el-descriptions title="基本信息" border :column="2">
-              <el-descriptions-item label="日志ID">{{ logData.id }}</el-descriptions-item>
-              <el-descriptions-item label="任务ID">{{ logData.task_id }}</el-descriptions-item>
-              <el-descriptions-item label="任务名称">
+        <div v-else-if="logData" class="flex flex-col gap-6">
+          <section>
+            <h3 class="section-title">基本信息</h3>
+            <dl class="detail-grid">
+              <div class="detail-item"><dt>日志 ID</dt><dd>{{ logData.id }}</dd></div>
+              <div class="detail-item"><dt>任务 ID</dt><dd>{{ logData.task_id }}</dd></div>
+              <div class="detail-item">
+                <dt>任务名称</dt>
+                <dd>
                 <router-link
                   :to="`/cron/edit/${logData.task_id}`"
                   class="link-type"
@@ -32,56 +39,70 @@
                   {{ logData.task_name }}
                 </router-link>
                 <span v-else>{{ logData.task_name || '未知任务' }}</span>
-              </el-descriptions-item>
-              <el-descriptions-item label="任务类型">{{ getTaskTypeText(logData.task_type) }}</el-descriptions-item>
-              <el-descriptions-item label="执行状态">
-                <el-tag :type="logData.status === 'success' || logData.status === 1 ? 'success' : 'danger'">
+                </dd>
+              </div>
+              <div class="detail-item"><dt>任务类型</dt><dd>{{ getTaskTypeText(logData.task_type) }}</dd></div>
+              <div class="detail-item">
+                <dt>执行状态</dt>
+                <dd><Badge :variant="logData.status === 'success' || logData.status === 1 ? 'default' : 'destructive'">
                   {{ logData.status === 'success' || logData.status === 1 ? '成功' : '失败' }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="触发方式">
-                <el-tag :type="getTriggerTypeTag(logData.trigger_type)">
-                  {{ getTriggerTypeText(logData.trigger_type) }}
-                </el-tag>
-              </el-descriptions-item>
-              <el-descriptions-item label="开始时间">{{ logData.start_time || logData.created_at }}</el-descriptions-item>
-              <el-descriptions-item label="结束时间">{{ logData.end_time || logData.updated_at }}</el-descriptions-item>
-              <el-descriptions-item label="执行耗时">{{ logData.duration ? logData.duration + ' 秒' : '-' }}</el-descriptions-item>
-              <el-descriptions-item label="执行者">{{ logData.executor || '系统' }}</el-descriptions-item>
-              <el-descriptions-item label="重试次数">{{ logData.retry_count || 0 }}</el-descriptions-item>
-              <el-descriptions-item label="IP地址">{{ logData.ip || '-' }}</el-descriptions-item>
-            </el-descriptions>
+                </Badge></dd>
+              </div>
+              <div class="detail-item"><dt>触发方式</dt><dd><Badge variant="secondary">{{ getTriggerTypeText(logData.trigger_type) }}</Badge></dd></div>
+              <div class="detail-item"><dt>开始时间</dt><dd>{{ logData.start_time || logData.created_at }}</dd></div>
+              <div class="detail-item"><dt>结束时间</dt><dd>{{ logData.end_time || logData.updated_at }}</dd></div>
+              <div class="detail-item"><dt>执行耗时</dt><dd>{{ logData.duration ? logData.duration + ' 秒' : '-' }}</dd></div>
+              <div class="detail-item"><dt>执行者</dt><dd>{{ logData.executor || '系统' }}</dd></div>
+              <div class="detail-item"><dt>重试次数</dt><dd>{{ logData.retry_count || 0 }}</dd></div>
+              <div class="detail-item"><dt>IP 地址</dt><dd>{{ logData.ip || '-' }}</dd></div>
+            </dl>
+          </section>
 
-            <div class="execution-section">
-              <h3>执行参数</h3>
-              <pre v-if="logData.params" class="code-block params">{{ formatParams(logData.params) }}</pre>
-              <el-empty v-else description="无参数" :image-size="100"></el-empty>
-            </div>
+          <section>
+            <h3 class="section-title">执行参数</h3>
+            <pre v-if="logData.params" class="code-block">{{ formatParams(logData.params) }}</pre>
+            <Empty v-else><EmptyHeader><EmptyTitle>无参数</EmptyTitle></EmptyHeader></Empty>
+          </section>
 
-            <div class="execution-section">
-              <h3>执行输出</h3>
-              <pre v-if="logData.output" class="code-block output">{{ logData.output }}</pre>
-              <el-empty v-else description="无输出" :image-size="100"></el-empty>
-            </div>
+          <section>
+            <h3 class="section-title">执行输出</h3>
+            <pre v-if="logData.output" class="code-block">{{ logData.output }}</pre>
+            <Empty v-else><EmptyHeader><EmptyTitle>无输出</EmptyTitle></EmptyHeader></Empty>
+          </section>
 
-            <div v-if="logData.error" class="execution-section">
-              <h3>错误信息</h3>
-              <pre class="code-block error">{{ logData.error }}</pre>
-            </div>
-          </div>
+          <section v-if="logData.error">
+            <h3 class="section-title">错误信息</h3>
+            <pre class="code-block error">{{ logData.error }}</pre>
+          </section>
+        </div>
 
-          <el-empty v-else description="未找到日志详情" :image-size="200"></el-empty>
-        </template>
-      </el-skeleton>
-    </el-card>
+        <Empty v-else>
+          <EmptyHeader>
+            <EmptyTitle>未找到日志详情</EmptyTitle>
+            <EmptyDescription>日志可能已被清理或链接无效。</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { ArrowLeft, RefreshCw } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default {
   name: 'TaskLogDetail',
+  components: {
+    ArrowLeft, Badge, Card, CardContent, CardDescription, CardHeader, CardTitle,
+    Empty, EmptyDescription, EmptyHeader, EmptyTitle, RefreshCw, Skeleton, UiButton
+  },
   data() {
     return {
       loading: false,
@@ -92,7 +113,7 @@ export default {
   created() {
     this.logId = this.$route.params.id;
     if (!this.logId) {
-      this.$message.error('缺少日志ID参数');
+      toast.error('缺少日志 ID 参数');
       this.goBack();
       return;
     }
@@ -140,12 +161,12 @@ export default {
             }
 
             console.error('响应格式不符合预期:', response);
-            this.$message.error('获取日志详情失败: 响应格式不符合预期');
+            toast.error('获取日志详情失败：响应格式不符合预期');
           }
         })
         .catch(error => {
           console.error('获取日志详情失败:', error);
-          this.$message.error('获取日志详情失败');
+          toast.error('获取日志详情失败');
         })
         .finally(() => {
           this.loading = false;
@@ -204,52 +225,52 @@ export default {
       }
 
       return triggerTypeMap[triggerType] || '未知触发';
-    },
-
-    // 根据trigger_type获取标签类型
-    getTriggerTypeTag(triggerType) {
-      // 根据实际情况调整标签类型
-      const triggerTypeTagMap = {
-        0: 'primary',  // 0 定时触发 - 蓝色主要
-        1: 'warning',  // 1 手动触发 - 黄色警告
-        2: 'success',  // 2 事件触发 - 绿色成功
-        3: 'info',     // 3 依赖触发 - 灰色信息
-        4: 'danger'    // 4 API触发 - 红色危险
-      };
-
-      // 兼容旧版的is_manual字段
-      if (triggerType === undefined && this.logData) {
-        // 注意：is_manual为1时表示手动执行，对应trigger_type为1
-        return this.logData.is_manual === 1 ? 'warning' : 'primary';
-      }
-
-      return triggerTypeTagMap[triggerType] || 'info';
     }
   }
 };
 </script>
 
 <style scoped>
-.log-content {
-  padding: 0;
+.section-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
-.skeleton-content {
-  padding: 16px;
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
 }
-.execution-section {
-  margin-top: 20px;
+.detail-item {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  min-height: 44px;
+  border-bottom: 1px solid var(--border);
 }
-.execution-section h3 {
-  font-size: 16px;
-  margin-bottom: 10px;
-  padding-left: 5px;
-  border-left: 3px solid var(--primary-color);
+.detail-item:nth-child(odd) {
+  border-right: 1px solid var(--border);
+}
+.detail-item dt,
+.detail-item dd {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 10px 12px;
+}
+.detail-item dt {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
 }
 .code-block {
-  background-color: var(--surface-muted);
-  border: 1px solid var(--border-color);
+  background-color: var(--muted);
+  border: 1px solid var(--border);
   padding: 15px;
-  border-radius: 4px;
+  border-radius: 6px;
   font-family: Monaco, Menlo, Consolas, "Courier New", monospace;
   white-space: pre-wrap;
   word-break: break-all;
@@ -257,18 +278,18 @@ export default {
   overflow-y: auto;
   margin: 0;
 }
-.code-block.params {
-  background-color: #f0f9eb;
-}
 .code-block.error {
-  background-color: #fee;
-  color: #d33;
+  color: var(--destructive);
 }
 .link-type {
-  color: var(--primary-color);
+  color: var(--primary);
   text-decoration: none;
 }
 .link-type:hover {
   text-decoration: underline;
+}
+@media (max-width: 768px) {
+  .detail-grid { grid-template-columns: 1fr; }
+  .detail-item:nth-child(odd) { border-right: 0; }
 }
 </style>

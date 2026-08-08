@@ -1,113 +1,31 @@
 <template>
   <div class="app-container">
-    <el-card class="box-card" shadow="never">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span v-if="group">{{ group.name }} - 任务组详情</span>
-        <span v-else>任务组详情</span>
-        <el-button-group style="float: right">
-          <el-button type="primary" icon="el-icon-plus" @click="handleAddTask">添加任务</el-button>
-          <el-button type="success" icon="el-icon-edit" @click="handleEditGroup" v-if="group">编辑任务组</el-button>
-          <el-button type="info" icon="el-icon-back" @click="$router.push('/cron/groups')">返回列表</el-button>
-        </el-button-group>
+    <Card>
+      <CardHeader>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div><CardTitle>{{ group ? `${group.name} - 任务组详情` : '任务组详情' }}</CardTitle><CardDescription>查看任务组配置和组内任务</CardDescription></div>
+          <div class="flex flex-wrap gap-2"><UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton><UiButton v-if="group" size="sm" variant="outline" @click="handleEditGroup"><Pencil data-icon="inline-start" />编辑任务组</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/groups')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></div>
+        </div>
         <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
-      </div>
-</template>
-      
-      <div v-loading="loading">
-        <div class="group-info" v-if="group">
-          <el-descriptions border :column="2">
-            <el-descriptions-item label="组ID">{{ group.id }}</el-descriptions-item>
-            <el-descriptions-item label="组名称">{{ group.name }}</el-descriptions-item>
-            <el-descriptions-item label="描述">{{ group.description || '无描述' }}</el-descriptions-item>
-            <el-descriptions-item label="类型">
-              <el-tag :type="getTypeTag(group.type)">{{ getTypeLabel(group.type) }}</el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="状态">
-              <el-tag :type="group.status === 1 ? 'success' : 'info'">
-                {{ group.status === 1 ? '启用' : '禁用' }}
-              </el-tag>
-            </el-descriptions-item>
-            <el-descriptions-item label="任务数量">{{ group.task_count || 0 }} 个任务</el-descriptions-item>
-          </el-descriptions>
-          
-          <el-divider content-position="left">任务列表</el-divider>
-          
-          <el-table :data="taskList" style="width: 100%;" border>
-            <el-table-column prop="id" label="ID" width="60" align="center"></el-table-column>
-            <el-table-column prop="name" label="任务名称" min-width="120">
-              <template v-slot="scope">
-                <el-tooltip v-if="scope.row.description" :content="scope.row.description" placement="top" effect="light">
-                  <span>{{ scope.row.name }}</span>
-                </el-tooltip>
-                <span v-else>{{ scope.row.name }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="spec" label="Cron表达式" min-width="120"></el-table-column>
-            <el-table-column prop="type" label="类型" width="100">
-              <template v-slot="scope">
-                <el-tag :type="scope.row.type === 'function' ? 'primary' : 'success'">
-                  {{ scope.row.type === 'function' ? '函数' : 'Shell命令' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="target" label="目标" min-width="150">
-              <template v-slot="scope">
-                <el-tooltip :content="scope.row.target" placement="top" effect="light">
-                  <span>{{ truncate(scope.row.target, 30) }}</span>
-                </el-tooltip>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="80">
-              <template v-slot="scope">
-                <el-tag :type="scope.row.status === 1 ? 'success' : 'info'">
-                  {{ scope.row.status === 1 ? '启用' : '禁用' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="220" align="center">
-              <template v-slot="scope">
-                <el-button 
-                  size="mini" 
-                  type="success"
-                  @click="handleRunNow(scope.row)"
-                  icon="el-icon-video-play">
-                  执行
-                </el-button>
-                <el-button 
-                  size="mini" 
-                  type="primary"
-                  @click="handleEdit(scope.row)"
-                  icon="el-icon-edit">
-                  编辑
-                </el-button>
-                <el-button 
-                  size="mini" 
-                  type="danger"
-                  @click="handleDelete(scope.row)"
-                  icon="el-icon-delete">
-                  删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          
-          <div v-if="taskList.length === 0" class="empty-data">
-            <el-empty description="该任务组下暂无任务">
-              <el-button type="primary" @click="handleAddTask">添加任务</el-button>
-            </el-empty>
+      </CardHeader>
+      <CardContent>
+        <div v-if="loading && !group" class="flex flex-col gap-3"><Skeleton class="h-36 w-full" /><Skeleton class="h-64 w-full" /></div>
+        <div v-else-if="group" class="flex flex-col gap-6">
+          <dl class="detail-grid"><div class="detail-item"><dt>组 ID</dt><dd>{{ group.id }}</dd></div><div class="detail-item"><dt>组名称</dt><dd>{{ group.name }}</dd></div><div class="detail-item"><dt>描述</dt><dd>{{ group.description || '无描述' }}</dd></div><div class="detail-item"><dt>类型</dt><dd><Badge variant="outline">{{ getTypeLabel(group.type) }}</Badge></dd></div><div class="detail-item"><dt>状态</dt><dd><Badge :variant="group.status === 1 ? 'default' : 'secondary'">{{ group.status === 1 ? '启用' : '禁用' }}</Badge></dd></div><div class="detail-item"><dt>任务数量</dt><dd>{{ group.task_count || 0 }} 个任务</dd></div></dl>
+          <Separator />
+          <div><h3 class="mb-3 text-sm font-semibold">任务列表</h3>
+            <Empty v-if="taskList.length === 0"><EmptyHeader><EmptyTitle>该任务组下暂无任务</EmptyTitle></EmptyHeader><EmptyContent><UiButton @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton></EmptyContent></Empty>
+            <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>任务名称</TableHead><TableHead>Cron 表达式</TableHead><TableHead>类型</TableHead><TableHead>目标</TableHead><TableHead>状态</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
+              <TableRow v-for="task in taskList" :key="task.id"><TableCell>{{ task.id }}</TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="font-medium">{{ task.name }}</span></TooltipTrigger><TooltipContent v-if="task.description">{{ task.description }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell class="font-mono text-xs">{{ task.spec }}</TableCell><TableCell><Badge variant="outline">{{ task.type === 'function' ? '函数' : 'Shell 命令' }}</Badge></TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="block max-w-48 truncate">{{ truncate(task.target, 30) }}</span></TooltipTrigger><TooltipContent>{{ task.target }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell><Badge :variant="task.status === 1 ? 'default' : 'secondary'">{{ task.status === 1 ? '启用' : '禁用' }}</Badge></TableCell><TableCell><div class="flex justify-end gap-1"><UiButton size="sm" variant="outline" @click="handleRunNow(task)"><Play data-icon="inline-start" />执行</UiButton><UiButton size="icon-sm" variant="ghost" title="编辑" @click="handleEdit(task)"><Pencil /></UiButton><UiButton size="icon-sm" variant="destructive" title="删除" @click="handleDelete(task)"><Trash2 /></UiButton></div></TableCell></TableRow>
+            </TableBody></ShadcnTable></div>
           </div>
         </div>
-        
-        <div v-else class="empty-data">
-          <el-empty description="未找到任务组">
-            <el-button type="primary" @click="$router.push('/cron/groups')">返回列表</el-button>
-          </el-empty>
-        </div>
-      </div>
-    </el-card>
-    
-    <el-dialog title="执行结果" v-model="dialogVisible" width="60%">
+        <Empty v-else><EmptyHeader><EmptyTitle>未找到任务组</EmptyTitle><EmptyDescription>任务组可能已被删除。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="$router.push('/cron/groups')">返回列表</UiButton></EmptyContent></Empty>
+      </CardContent>
+    </Card>
+
+    <UiDialog v-model:open="dialogVisible">
+      <DialogContent class="max-w-3xl"><DialogHeader><DialogTitle>执行结果</DialogTitle><DialogDescription>任务本次手动执行的返回结果</DialogDescription></DialogHeader>
       <div v-if="taskResult" class="task-result">
         <p><strong>执行状态：</strong> {{ taskResult.success ? '成功' : '失败' }}</p>
         <p><strong>执行时间：</strong> {{ taskResult.timestamp }}</p>
@@ -117,23 +35,36 @@
           <pre>{{ taskResult.output }}</pre>
         </div>
       </div>
-      <template v-slot:footer>
-<div  class="dialog-footer">
-        <el-button @click="dialogVisible = false">关闭</el-button>
-        <el-button type="primary" @click="viewTaskLogs(currentTaskId)">查看完整日志</el-button>
-      </div>
-</template>
-    </el-dialog>
+      <DialogFooter><UiButton variant="outline" @click="dialogVisible = false">关闭</UiButton><UiButton @click="viewTaskLogs(currentTaskId)">查看完整日志</UiButton></DialogFooter></DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { ArrowLeft, Pencil, Play, Plus, Trash2 } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'TaskGroupDetail',
-  components: { AutomationRoomSelect },
+  components: {
+    ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription, CardHeader,
+    CardTitle, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+    Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle, Pencil, Play, Plus, Separator,
+    ShadcnTable, Skeleton, TableBody, TableCell, TableHead, TableHeader, TableRow, Tooltip,
+    TooltipContent, TooltipProvider, TooltipTrigger, Trash2, UiButton, UiDialog
+  },
   data() {
     return {
       loading: false,
@@ -169,12 +100,12 @@ export default {
           if (response.data && response.data.status === 200) {
             this.group = response.data.data;
           } else {
-            this.$message.error(response.data.message || '获取任务组详情失败');
+            toast.error(response.data.message || '获取任务组详情失败');
           }
         })
         .catch(error => {
           console.error('获取任务组详情失败:', error);
-          this.$message.error('获取任务组详情失败');
+          toast.error('获取任务组详情失败');
         })
         .finally(() => {
           this.loading = false;
@@ -187,12 +118,12 @@ export default {
           if (response.data && response.data.status === 200) {
             this.taskList = response.data.data || [];
           } else {
-            this.$message.error(response.data.message || '获取任务组下的任务失败');
+            toast.error(response.data.message || '获取任务组下的任务失败');
           }
         })
         .catch(error => {
           console.error('获取任务组下的任务失败:', error);
-          this.$message.error('获取任务组下的任务失败');
+          toast.error('获取任务组下的任务失败');
         })
         .finally(() => {
           this.loading = false;
@@ -212,7 +143,7 @@ export default {
       this.$router.push(`/cron/edit/${row.id}`);
     },
     handleDelete(row) {
-      this.$confirm('确定要删除此任务吗？删除后不可恢复', '确认删除', {
+      confirmAction('确定要删除此任务吗？删除后不可恢复。', '确认删除', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
@@ -220,22 +151,22 @@ export default {
         cronTaskApi.deleteTask(row.id)
           .then(response => {
             if (response.data && response.data.status === 200) {
-              this.$message.success('删除成功');
+              toast.success('删除成功');
               this.fetchGroupTasks();
             } else {
-              this.$message.error(response.data.message || '删除失败');
+              toast.error(response.data.message || '删除失败');
             }
           })
           .catch(error => {
             console.error('删除任务失败:', error);
-            this.$message.error('删除任务失败');
+            toast.error('删除任务失败');
           });
       }).catch(() => {
-        this.$message.info('已取消删除');
+        toast.info('已取消删除');
       });
     },
     handleRunNow(row) {
-      this.$confirm('确定要立即执行此任务吗？', '确认执行', {
+      confirmAction('确定要立即执行此任务吗？', '确认执行', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'info'
@@ -245,22 +176,22 @@ export default {
         cronTaskApi.runTask(row.id)
           .then(response => {
             if (response.data && response.data.status === 200) {
-              this.$message.success('任务执行成功');
+              toast.success('任务执行成功');
               this.taskResult = response.data.data;
               this.dialogVisible = true;
             } else {
-              this.$message.error(response.data.message || '任务执行失败');
+              toast.error(response.data.message || '任务执行失败');
             }
           })
           .catch(error => {
             console.error('执行任务失败:', error);
-            this.$message.error('执行任务失败');
+            toast.error('执行任务失败');
           })
           .finally(() => {
             this.loading = false;
           });
       }).catch(() => {
-        this.$message.info('已取消执行');
+        toast.info('已取消执行');
       });
     },
     viewTaskLogs(taskId) {
@@ -276,27 +207,17 @@ export default {
         'custom': '自定义'
       };
       return types[type] || '未知';
-    },
-    getTypeTag(type) {
-      const tags = {
-        'system': 'danger',
-        'world': 'primary',
-        'custom': 'success'
-      };
-      return tags[type] || 'info';
     }
   }
 };
 </script>
 
 <style scoped>
-.group-info {
-  margin-bottom: 20px;
-}
-.empty-data {
-  padding: 40px 0;
-  text-align: center;
-}
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.detail-item { display: grid; grid-template-columns: 112px minmax(0, 1fr); min-height: 44px; border-bottom: 1px solid var(--border); }
+.detail-item:nth-child(odd) { border-right: 1px solid var(--border); }
+.detail-item dt, .detail-item dd { display: flex; align-items: center; margin: 0; padding: 10px 12px; }
+.detail-item dt { background: var(--muted); color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
 .task-result {
   padding: 10px;
 }
@@ -304,8 +225,8 @@ export default {
   margin-top: 10px;
 }
 .result-output pre {
-  background-color: var(--surface-muted);
-  border: 1px solid var(--border-color);
+  background-color: var(--muted);
+  border: 1px solid var(--border);
   padding: 10px;
   border-radius: 4px;
   max-height: 300px;
@@ -313,4 +234,5 @@ export default {
   white-space: pre-wrap;
   word-break: break-all;
 }
+@media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } .detail-item:nth-child(odd) { border-right: 0; } }
 </style>

@@ -1,64 +1,90 @@
 <template>
   <div class="app-container">
-    <el-card class="box-card">
-      <template v-slot:header>
-<div  class="clearfix">
-        <span>{{ isEdit ? '编辑任务组' : '添加任务组' }}</span>
-        <el-button-group style="float: right">
-          <el-button type="primary" icon="el-icon-back" @click="$router.push('/cron/groups')">返回列表</el-button>
-        </el-button-group>
-        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
-      </div>
-</template>
-      <el-form :model="groupForm" :rules="rules" ref="groupForm" label-width="120px">
-        <el-form-item label="组名称" prop="name">
-          <el-input v-model="groupForm.name" placeholder="请输入任务组名称"></el-input>
-        </el-form-item>
-        
-        <el-form-item label="组描述" prop="description">
-          <el-input type="textarea" :rows="2" v-model="groupForm.description" placeholder="请输入任务组描述"></el-input>
-        </el-form-item>
-        
-        <el-form-item label="组类型" prop="type">
-          <el-radio-group v-model="groupForm.type">
-            <el-radio label="system">系统</el-radio>
-            <el-radio label="world">世界</el-radio>
-            <el-radio label="custom">自定义</el-radio>
-          </el-radio-group>
-          <div class="form-help-text">
-            <p>系统：用于系统维护相关任务</p>
-            <p>世界：用于游戏世界相关任务</p>
-            <p>自定义：用户自定义任务</p>
+    <Card>
+      <CardHeader>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <CardTitle>{{ isEdit ? '编辑任务组' : '添加任务组' }}</CardTitle>
+            <CardDescription>组织并统一控制一组关联的自动化任务</CardDescription>
           </div>
-        </el-form-item>
-        
-        <el-form-item label="组状态" prop="status">
-          <el-switch
-            v-model="groupForm.status"
-            :active-value="1"
-            :inactive-value="0"
-            active-text="启用"
-            inactive-text="禁用">
-          </el-switch>
-          <span class="form-help-text">禁用任务组会同时禁用组内所有任务</span>
-        </el-form-item>
-        
-        <el-form-item>
-          <el-button type="primary" @click="submitForm" :loading="submitting">保存</el-button>
-          <el-button @click="cancel">取消</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          <UiButton variant="outline" size="sm" @click="$router.push('/cron/groups')">
+            <ArrowLeft data-icon="inline-start" />
+            返回列表
+          </UiButton>
+        </div>
+        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+      </CardHeader>
+      <CardContent>
+        <form @submit.prevent="submitForm">
+          <FieldGroup>
+            <Field :data-invalid="Boolean(formErrors.name)">
+              <FieldLabel for="group-name">组名称</FieldLabel>
+              <UiInput id="group-name" v-model="groupForm.name" :aria-invalid="Boolean(formErrors.name)" placeholder="请输入任务组名称" />
+              <FieldError v-if="formErrors.name">{{ formErrors.name }}</FieldError>
+            </Field>
+
+            <Field :data-invalid="Boolean(formErrors.description)">
+              <FieldLabel for="group-description">组描述</FieldLabel>
+              <UiTextarea id="group-description" v-model="groupForm.description" :aria-invalid="Boolean(formErrors.description)" rows="3" placeholder="请输入任务组描述" />
+              <FieldError v-if="formErrors.description">{{ formErrors.description }}</FieldError>
+            </Field>
+
+            <FieldSet>
+              <FieldLegend variant="label">组类型</FieldLegend>
+              <RadioGroup v-model="groupForm.type" class="grid gap-3 sm:grid-cols-3">
+                <Field v-for="option in typeOptions" :key="option.value" orientation="horizontal">
+                  <RadioGroupItem :id="`group-type-${option.value}`" :value="option.value" />
+                  <FieldContent>
+                    <FieldLabel :for="`group-type-${option.value}`">{{ option.label }}</FieldLabel>
+                    <FieldDescription>{{ option.description }}</FieldDescription>
+                  </FieldContent>
+                </Field>
+              </RadioGroup>
+            </FieldSet>
+
+            <Field orientation="horizontal">
+              <FieldContent>
+                <FieldLabel for="group-status">启用任务组</FieldLabel>
+                <FieldDescription>禁用任务组会同时禁用组内所有任务。</FieldDescription>
+              </FieldContent>
+              <UiSwitch id="group-status" :model-value="groupForm.status === 1" @update:model-value="groupForm.status = $event ? 1 : 0" />
+            </Field>
+
+            <div class="flex flex-wrap justify-end gap-2">
+              <UiButton type="button" variant="outline" @click="cancel">取消</UiButton>
+              <UiButton type="submit" :disabled="submitting">
+                <Spinner v-if="submitting" data-icon="inline-start" />
+                保存
+              </UiButton>
+            </div>
+          </FieldGroup>
+        </form>
+      </CardContent>
+    </Card>
   </div>
 </template>
 
 <script>
+import { ArrowLeft } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Textarea as UiTextarea } from '@/components/ui/textarea';
 
 export default {
   name: 'TaskGroupForm',
-  components: { AutomationRoomSelect },
+  components: {
+    ArrowLeft, AutomationRoomSelect, Card, CardContent, CardDescription, CardHeader,
+    CardTitle, Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel,
+    FieldLegend, FieldSet, RadioGroup, RadioGroupItem, Spinner, UiButton, UiInput, UiSwitch, UiTextarea
+  },
   data() {
     return {
       isEdit: false,
@@ -70,18 +96,12 @@ export default {
         type: 'custom',
         status: 1
       },
-      rules: {
-        name: [
-          { required: true, message: '请输入任务组名称', trigger: 'blur' },
-          { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-        ],
-        description: [
-          { max: 200, message: '描述不能超过200个字符', trigger: 'blur' }
-        ],
-        type: [
-          { required: true, message: '请选择任务组类型', trigger: 'change' }
-        ]
-      }
+      formErrors: {},
+      typeOptions: [
+        { value: 'system', label: '系统', description: '系统维护相关任务' },
+        { value: 'world', label: '世界', description: '游戏世界相关任务' },
+        { value: 'custom', label: '自定义', description: '用户自定义任务' }
+      ]
     };
   },
   created() {
@@ -110,18 +130,30 @@ export default {
               };
             }
           } else {
-            this.$message.error(response.data.message || '获取任务组详情失败');
+            toast.error(response.data.message || '获取任务组详情失败');
           }
         })
         .catch(error => {
           console.error('获取任务组详情失败:', error);
-          this.$message.error('获取任务组详情失败');
+          toast.error('获取任务组详情失败');
         });
     },
+    validateForm() {
+      const errors = {};
+      const name = this.groupForm.name.trim();
+      const description = (this.groupForm.description || '').trim();
+      if (!name) errors.name = '请输入任务组名称';
+      else if (name.length < 2 || name.length > 50) errors.name = '长度应在 2 到 50 个字符之间';
+      if (description.length > 200) errors.description = '描述不能超过 200 个字符';
+      this.formErrors = errors;
+      return Object.keys(errors).length === 0;
+    },
     submitForm() {
-      this.$refs.groupForm.validate(valid => {
-        if (valid) {
-          this.submitting = true;
+      if (!this.validateForm()) {
+        toast.warning('请完善表单信息');
+        return;
+      }
+      this.submitting = true;
           
           const apiMethod = this.isEdit
             ? cronTaskApi.updateGroup(this.groupId, this.groupForm)
@@ -130,24 +162,19 @@ export default {
           apiMethod
             .then(response => {
               if (response.data && response.data.status === 200) {
-                this.$message.success(this.isEdit ? '更新成功' : '添加成功');
+                toast.success(this.isEdit ? '更新成功' : '添加成功');
                 this.$router.push('/cron/groups');
               } else {
-                this.$message.error(response.data.message || (this.isEdit ? '更新失败' : '添加失败'));
+                toast.error(response.data.message || (this.isEdit ? '更新失败' : '添加失败'));
               }
             })
             .catch(error => {
               console.error(this.isEdit ? '更新任务组失败:' : '添加任务组失败:', error);
-              this.$message.error(error.message || (this.isEdit ? '更新任务组失败' : '添加任务组失败'));
+              toast.error(error.message || (this.isEdit ? '更新任务组失败' : '添加任务组失败'));
             })
             .finally(() => {
               this.submitting = false;
             });
-        } else {
-          this.$message.warning('请完善表单信息');
-          return false;
-        }
-      });
     },
     cancel() {
       this.$router.push('/cron/groups');
@@ -157,17 +184,4 @@ export default {
 </script>
 
 <style scoped>
-.box-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
-}
-.form-help-text {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-left: 10px;
-}
-.form-help-text p {
-  margin: 3px 0;
-}
 </style>
