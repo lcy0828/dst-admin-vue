@@ -32,6 +32,8 @@ html, body {
 }
 
 .el-dialog {
+  display: flex;
+  flex-direction: column;
   margin-top: 5vh !important;
   max-height: 90vh !important;
 }
@@ -51,10 +53,12 @@ html, body {
 
 
 .el-dialog__body {
+  flex: 0 1 auto;
+  min-height: 0;
   overflow-y: auto !important;
   padding: 15px 20px !important;
-  height: 70vh !important;
-  max-height: 70vh !important;
+  height: auto !important;
+  max-height: calc(90vh - 124px) !important;
 }
 
 /* 公共样式 */

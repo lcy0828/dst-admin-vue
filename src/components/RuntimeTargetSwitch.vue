@@ -94,7 +94,8 @@ export default {
       this.$emit('change', active)
     },
     optionLabel(target) {
-      const suffix = target.kind === 'local' ? '本机' : (target.configured ? '远程' : '未配置')
+      if (target.kind === 'local') return target.name || '本机'
+      const suffix = target.configured ? '远程' : '未配置'
       return `${target.name} · ${suffix}`
     },
     optionMeta(target) {

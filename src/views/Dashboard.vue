@@ -215,10 +215,21 @@
             </div>
           </div>
 
+          <div class="empty-server" v-else-if="roomList.length === 0">
+            <component :is="'el-icon-folder-add'" class="legacy-icon" />
+            <strong>当前目标还没有房间</strong>
+            <span>创建房间并配置至少一个世界后，即可启动专服。</span>
+            <div class="server-state-actions">
+              <el-button size="small" @click="refreshServerData">重新检查</el-button>
+              <el-button type="primary" size="small" @click="createRoom">创建房间</el-button>
+            </div>
+          </div>
+
           <div class="empty-server" v-else>
-            <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-            <span>暂无可管理的服务器实例</span>
-            <el-button type="primary" size="small" plain @click="openStartRoomDialog">启动现有房间</el-button>
+            <component :is="'el-icon-video-play'" class="legacy-icon" />
+            <strong>服务器尚未启动</strong>
+            <span>已识别 {{ roomList.length }} 个房间，可选择房间和世界启动专服。</span>
+            <el-button type="primary" size="small" @click="openStartRoomDialog">启动房间</el-button>
           </div>
           </div>
 
@@ -228,7 +239,7 @@
             v-model="startRoomDialogVisible"
             width="500px"
             :close-on-click-modal="false"
-            :close-on-press-escape="false">
+            :close-on-press-escape="true">
             <div v-loading="startRoomLoading" class="dialog-content">
               <el-form :model="startRoomForm" label-width="100px" :rules="startRoomRules" ref="startRoomForm">
                 <el-form-item label="选择房间" prop="roomId">
@@ -264,25 +275,26 @@
                     <el-button type="text" size="small" @click="unselectAllWorlds">取消全选</el-button>
                   </div>
                 </div>
-                <div v-else class="no-worlds-tip">
+                <div v-else-if="startRoomForm.roomId !== '' && !startRoomLoading" class="no-worlds-tip">
                   <component :is="'el-icon-warning-outline'" class="legacy-icon" />
-                  <span>该房间没有可用的世界</span>
+                  <div>
+                    <strong>该房间还没有可用世界</strong>
+                    <span>请先到房间管理中完成世界配置。</span>
+                  </div>
                 </div>
               </el-form-item>
               <el-form-item label="服务器模式">
-                <el-radio-group v-model="startRoomForm.serverMode">
-                  <el-radio label="32" disabled>32位</el-radio>
-                  <el-radio label="64" disabled>64位</el-radio>
-                  <el-radio label="luajit" disabled>LuaJit</el-radio>
-                </el-radio-group>
-                <span class="mode-hint">v2 使用系统设置中的服务端位数</span>
+                <div class="mode-summary">
+                  <span>跟随系统设置</span>
+                  <el-button type="text" size="small" @click="goToSystemSettings">查看设置</el-button>
+                </div>
               </el-form-item>
             </el-form>
             </div>
             <template v-slot:footer>
 <div  class="dialog-footer">
               <el-button @click="startRoomDialogVisible = false" :disabled="startRoomLoading">取消</el-button>
-              <el-button type="primary" @click="startRoom" :loading="startRoomLoading" :disabled="roomList.length === 0">启动</el-button>
+              <el-button type="primary" @click="startRoom" :loading="startRoomLoading" :disabled="!canStartSelectedRoom">启动所选世界</el-button>
             </div>
 </template>
           </el-dialog>
@@ -548,6 +560,12 @@ export default {
       return this.serverDataError.includes('DST 存档目录不存在')
         ? 'DST 存档目录不可用'
         : '服务器数据加载失败';
+    },
+    canStartSelectedRoom() {
+      return !this.startRoomLoading &&
+        this.startRoomForm.roomId !== '' &&
+        this.currentRoomWorlds.length > 0 &&
+        this.startRoomForm.selectedWorlds.length > 0;
     }
   },
   created() {
@@ -583,7 +601,11 @@ export default {
       });
     },
     goToSystemSettings() {
+      this.startRoomDialogVisible = false;
       this.$router.push('/system');
+    },
+    createRoom() {
+      this.$router.push('/rooms/settings');
     },
     refreshData() {
       this.loading = true;
@@ -981,13 +1003,18 @@ export default {
       };
       this.currentRoomWorlds = [];
 
-      // 打开对话框并显示加载状态
-      this.startRoomDialogVisible = true;
       this.startRoomLoading = true;
 
       this.fetchRooms()
         .then(() => {
-          if (this.roomList.length === 0) this.$message.warning('没有找到可用的房间');
+          if (this.roomList.length === 0) {
+            this.$message.warning('当前目标还没有房间，请先创建房间');
+            return;
+          }
+
+          this.startRoomDialogVisible = true;
+          this.startRoomForm.roomId = 0;
+          return this.fetchRoomWorlds(0);
         })
         .catch(error => {
           this.$message.error(error.message || '获取房间列表失败');
@@ -1002,14 +1029,14 @@ export default {
       if (roomIndex === '' || roomIndex === null || roomIndex === undefined) {
         this.currentRoomWorlds = [];
         this.startRoomForm.selectedWorlds = [];
-        return;
+        return Promise.resolve();
       }
 
       const selectedRoom = this.roomList[roomIndex];
       if (!selectedRoom) {
         this.currentRoomWorlds = [];
         this.startRoomForm.selectedWorlds = [];
-        return;
+        return Promise.resolve();
       }
 
       this.startRoomLoading = true;
@@ -1020,9 +1047,10 @@ export default {
         this.startRoomForm.selectedWorlds = this.currentRoomWorlds
           .map(world => world.name);
         this.startRoomLoading = false;
+        return Promise.resolve();
       } else {
         // 如果房间对象中没有世界列表，则调用API获取
-        roomApi.getRoomWorlds(selectedRoom.name)
+        return roomApi.getRoomWorlds(selectedRoom.id || selectedRoom.name)
           .then(worlds => {
             this.currentRoomWorlds = worlds || [];
             this.startRoomForm.selectedWorlds = this.currentRoomWorlds
@@ -1553,7 +1581,15 @@ export default {
   color: #9aa69e;
 }
 
-.empty-server span,
+.empty-server strong,
+.server-error-state strong {
+  margin-bottom: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty-server > span,
 .server-error-state span {
   margin-bottom: 12px;
 }
@@ -1565,13 +1601,6 @@ export default {
 
 .server-error-state .legacy-icon {
   color: var(--warning-color);
-}
-
-.server-error-state strong {
-  margin-bottom: 6px;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
 }
 
 .server-error-state span {
@@ -1631,10 +1660,36 @@ export default {
   border-radius: 4px;
 }
 
-.no-worlds-tip i {
+.no-worlds-tip .legacy-icon {
+  flex: 0 0 auto;
   margin-right: 8px;
   font-size: 18px;
   color: #d99b32;
+}
+
+.no-worlds-tip div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.no-worlds-tip strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.no-worlds-tip span {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.mode-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  color: var(--text-regular);
 }
 
 /* 修改表格样式 */
@@ -1800,6 +1855,11 @@ export default {
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 20px;
+}
+
+.version-meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .version-managed-notice,
