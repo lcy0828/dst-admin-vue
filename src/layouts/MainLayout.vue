@@ -1,12 +1,37 @@
 <template>
   <div class="app-layout">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+    <button
+      class="sidebar-overlay"
+      :class="{ visible: mobileSidebarOpen }"
+      type="button"
+      aria-label="关闭导航菜单"
+      :tabindex="mobileSidebarOpen ? 0 : -1"
+      @click="closeMobileSidebar"
+    ></button>
+
     <!-- 侧边导航栏 -->
-    <div class="sidebar" :class="{ collapsed: isCollapse }">
+    <aside
+      id="primary-navigation"
+      class="sidebar"
+      :class="{ collapsed: isCollapse && !isCompactViewport, 'mobile-open': mobileSidebarOpen }"
+      :aria-hidden="isCompactViewport && !mobileSidebarOpen"
+    >
       <div class="logo-container">
         <h1 class="logo">
           <span class="logo-full">{{ systemName }}</span>
           <span class="logo-compact">饥</span>
         </h1>
+        <el-button
+          class="mobile-close-btn"
+          text
+          circle
+          aria-label="关闭导航菜单"
+          @click="closeMobileSidebar"
+        >
+          <component :is="'el-icon-close'" />
+        </el-button>
       </div>
       <el-menu
         :default-active="activeMenu"
@@ -14,9 +39,10 @@
         background-color="var(--sidebar-color)"
         text-color="var(--sidebar-text)"
         active-text-color="var(--sidebar-active)"
-        :collapse="isCollapse"
+        :collapse="isCollapse && !isCompactViewport"
         :unique-opened="true"
-        router>
+        router
+        @select="handleMenuSelect">
 
         <el-menu-item index="/dashboard">
           <component :is="'el-icon-s-home'" class="legacy-icon" />
@@ -120,13 +146,24 @@
           </el-button>
         </el-tooltip>
       </div>
-    </div>
+    </aside>
 
     <!-- 主内容区 -->
     <div class="main-container" :class="{'is-collapsed': isCollapse}">
       <!-- 顶部导航栏 -->
       <header class="header-container">
         <div class="left-menu">
+          <el-button
+            class="mobile-menu-btn"
+            text
+            circle
+            aria-label="打开导航菜单"
+            aria-controls="primary-navigation"
+            :aria-expanded="mobileSidebarOpen"
+            @click="openMobileSidebar"
+          >
+            <component :is="'el-icon-s-fold'" />
+          </el-button>
           <el-breadcrumb separator="/">
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="index">
@@ -135,13 +172,21 @@
           </el-breadcrumb>
         </div>
         <div class="right-menu">
-          <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" class="github-link">
+          <a
+            href="https://github.com/lcy0828/dst-admin-go"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="github-link"
+            aria-label="打开 GitHub 项目"
+          >
             <i class="fab fa-github"></i>
           </a>
           <el-dropdown trigger="click" @command="handleUserCommand">
-            <span class="user-dropdown">
-              管理员 <component :is="'el-icon-arrow-down'" class="legacy-icon" />
-            </span>
+            <button type="button" class="user-dropdown" aria-label="打开用户菜单">
+              <component :is="'el-icon-user-solid'" class="user-icon" />
+              <span class="user-name">{{ currentUser.username || '管理员' }}</span>
+              <component :is="'el-icon-arrow-down'" class="dropdown-arrow" />
+            </button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">个人资料</el-dropdown-item>
@@ -154,7 +199,7 @@
       </header>
 
       <!-- 内容区域 -->
-      <main class="content-container">
+      <main id="main-content" class="content-container" tabindex="-1">
         <router-view></router-view>
       </main>
     </div>
@@ -197,6 +242,7 @@ export default {
       systemName: getSystemPreferences().systemName,
       isCollapse: false,
       isCompactViewport: false,
+      mobileSidebarOpen: false,
       breadcrumbs: [],
       currentUser: {},
       profileVisible: false,
@@ -225,11 +271,13 @@ export default {
   watch: {
     '$route'() {
       this.updateBreadcrumbs()
+      this.closeMobileSidebar()
     }
   },
   mounted() {
     window.addEventListener('system-preferences-updated', this.updateSystemName)
     window.addEventListener('resize', this.updateViewportMode)
+    window.addEventListener('keydown', this.handleGlobalKeydown)
     this.updateViewportMode()
     this.updateBreadcrumbs()
     this.loadCurrentUser()
@@ -237,13 +285,25 @@ export default {
   beforeUnmount() {
     window.removeEventListener('system-preferences-updated', this.updateSystemName)
     window.removeEventListener('resize', this.updateViewportMode)
+    window.removeEventListener('keydown', this.handleGlobalKeydown)
   },
   methods: {
     updateViewportMode() {
       const compact = window.innerWidth <= 768
-      if (compact === this.isCompactViewport) return
       this.isCompactViewport = compact
-      this.isCollapse = compact
+      if (!compact) this.mobileSidebarOpen = false
+    },
+    openMobileSidebar() {
+      if (this.isCompactViewport) this.mobileSidebarOpen = true
+    },
+    closeMobileSidebar() {
+      this.mobileSidebarOpen = false
+    },
+    handleMenuSelect() {
+      if (this.isCompactViewport) this.closeMobileSidebar()
+    },
+    handleGlobalKeydown(event) {
+      if (event.key === 'Escape') this.closeMobileSidebar()
     },
     updateSystemName(event) {
       this.systemName = event.detail?.systemName || getSystemPreferences().systemName
@@ -289,7 +349,7 @@ export default {
       }
     },
     toggleCollapse() {
-      this.isCollapse = !this.isCollapse
+      if (!this.isCompactViewport) this.isCollapse = !this.isCollapse
     },
     updateBreadcrumbs() {
       this.breadcrumbs = []
@@ -548,6 +608,333 @@ export default {
 
   :deep(.el-dialog) {
     max-width: calc(100vw - 24px);
+  }
+}
+
+/* Responsive application shell */
+.app-layout {
+  position: relative;
+  min-width: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  z-index: 3000;
+  padding: 8px 14px;
+  color: #fff;
+  background: var(--primary-color);
+  border-radius: 6px;
+  transform: translate(-50%, -160%);
+  transition: transform 0.2s ease;
+}
+
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: rgba(22, 31, 26, 0.46);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 216px;
+  width: 216px;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.06);
+  transition: width 0.2s ease, flex-basis 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar.collapsed {
+  flex-basis: 64px;
+}
+
+.logo-container {
+  position: relative;
+  display: flex;
+  flex: 0 0 60px;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+}
+
+.logo {
+  width: 100%;
+  padding: 0 16px;
+  font-size: 17px;
+  line-height: 24px;
+  letter-spacing: 0;
+}
+
+.mobile-close-btn,
+.mobile-menu-btn {
+  display: none;
+}
+
+.el-menu-vertical {
+  padding: 8px 0;
+}
+
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  width: calc(100% - 16px);
+  height: 44px;
+  margin: 2px 8px;
+  border-radius: 4px;
+  line-height: 44px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+:deep(.el-menu-item.is-active) {
+  position: relative;
+  background-color: rgba(255, 189, 120, 0.13) !important;
+  font-weight: 600;
+}
+
+:deep(.el-menu-item.is-active::before) {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  width: 3px;
+  height: 26px;
+  background: var(--sidebar-active);
+  border-radius: 0 2px 2px 0;
+  content: '';
+}
+
+.sidebar.collapsed :deep(.el-menu-item),
+.sidebar.collapsed :deep(.el-sub-menu__title) {
+  width: calc(100% - 12px);
+  margin-right: 6px;
+  margin-left: 6px;
+}
+
+.sidebar-footer {
+  flex: 0 0 52px;
+  height: 52px;
+  padding: 0 12px;
+  align-items: center;
+  line-height: normal;
+}
+
+.collapse-btn:hover,
+.collapse-btn:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.main-container {
+  min-width: 0;
+  transition: none;
+}
+
+.header-container {
+  position: relative;
+  z-index: 10;
+  flex: 0 0 60px;
+  gap: 16px;
+  padding: 0 18px;
+}
+
+.left-menu {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.right-menu {
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.user-dropdown {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.user-dropdown:hover,
+.user-dropdown:focus-visible {
+  color: var(--primary-color);
+  background: var(--el-color-primary-light-9);
+}
+
+.user-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.dropdown-arrow {
+  width: 12px;
+  height: 12px;
+}
+
+.github-link {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.github-link:hover,
+.github-link:focus-visible {
+  background: var(--el-color-primary-light-9);
+}
+
+.content-container {
+  min-width: 0;
+  padding: 16px;
+  scroll-behavior: smooth;
+}
+
+.content-container:focus {
+  outline: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1010;
+    width: 240px;
+    max-width: calc(100vw - 48px);
+    flex-basis: 240px;
+    box-shadow: 8px 0 28px rgba(22, 31, 26, 0.2);
+    transform: translateX(-100%);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .logo-container {
+    justify-content: flex-start;
+    padding-right: 52px;
+  }
+
+  .logo {
+    text-align: left;
+  }
+
+  .mobile-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: inline-flex;
+    color: var(--sidebar-text);
+  }
+
+  .mobile-close-btn:hover,
+  .mobile-close-btn:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .sidebar-footer {
+    display: none;
+  }
+
+  .header-container {
+    height: 56px;
+    flex-basis: 56px;
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .left-menu {
+    flex: 1;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+    flex: 0 0 40px;
+    width: 40px;
+    margin-right: 4px;
+    color: var(--text-primary);
+  }
+
+  .mobile-menu-btn:hover,
+  .mobile-menu-btn:focus-visible {
+    color: var(--primary-color);
+    background: var(--el-color-primary-light-9);
+  }
+
+  :deep(.el-breadcrumb) {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  :deep(.el-breadcrumb__item:not(:last-child)) {
+    display: none;
+  }
+
+  :deep(.el-breadcrumb__item:last-child .el-breadcrumb__inner) {
+    display: block;
+    max-width: 150px;
+    overflow: hidden;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-overflow: ellipsis;
+  }
+
+  .github-link {
+    display: none;
+  }
+
+  .user-dropdown {
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .user-name,
+  .dropdown-arrow {
+    display: none;
+  }
+
+  .content-container {
+    padding: 12px;
+    scroll-behavior: auto;
+  }
+
+  :deep(.el-dialog) {
+    width: calc(100vw - 24px) !important;
+    max-width: 520px;
   }
 }
 </style>
