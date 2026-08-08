@@ -16,10 +16,10 @@ This file is the visual migration contract for the Vue 3 upgrade.
 - Product: DST server operations dashboard
 - Pattern: data-dense dashboard with drill-down pages
 - Default density: compact
-- Card radius: 4px
-- Page padding: keep the legacy 10px content padding
+- Card radius: 6px; dialogs may use 8px
+- Page padding: 16px on desktop, 12px on compact screens
 - Controls: keep filters and commands adjacent to the data they affect
-- Navigation: keep the legacy left sidebar, header, and breadcrumb hierarchy
+- Navigation: keep the legacy left sidebar, header, and breadcrumb hierarchy; use an overlay drawer on compact screens
 
 ## Palette
 
@@ -47,7 +47,9 @@ Primary green owns controls, links, focus and active content states. Warm orange
 
 - Keep the existing Chinese system font stack to avoid network font dependencies and layout shifts.
 - Body text remains 14px. Compact panels must not use display-sized headings.
-- Preserve existing page and component spacing unless a Vue 3 component requires a compatibility correction.
+- Use a 4px spacing grid. Default page gap is 16px, section gap is 12px, and compact-screen card padding is 12px.
+- Default controls are 36px high, small controls are 32px, and compact-screen primary controls are 40px where space allows.
+- Page titles are 18px/28px and card headings are 16px/24px. Large display text is not used inside admin panels.
 - Do not turn page sections into decorative cards or place cards inside cards.
 
 ## Interaction
@@ -55,6 +57,9 @@ Primary green owns controls, links, focus and active content states. Warm orange
 - Keep every legacy action in its existing location.
 - Use Element Plus SVG icons through the legacy icon compatibility map.
 - Clickable controls must have visible hover and keyboard focus states.
+- Button color follows semantics: primary for the page's main action, danger only for destructive actions, warning for risky or attention-required actions, and neutral for secondary actions.
+- Toolbars and filters wrap as groups; table containers scroll horizontally rather than compressing columns into unreadable widths.
+- Pagination must wrap and remain fully reachable at 375px.
 - Honor `prefers-reduced-motion`.
 - Dialog visibility uses Vue 3 `v-model`; pagination keeps controlled current page and page size behavior.
 
