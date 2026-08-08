@@ -2,7 +2,7 @@
   <div class="room-menu-page">
     <div class="page-header">
       <h2>房间管理</h2>
-      <p>管理游戏房间的所有设置选项</p>
+      <p>管理房间、世界、权限和模组配置</p>
     </div>
 
     <div class="menu-grid">
@@ -13,6 +13,7 @@
         tabindex="0"
         @click="navigateTo(section.path)"
         @keydown.enter="navigateTo(section.path)"
+        @keydown.space.prevent="navigateTo(section.path)"
       >
         <CardHeader class="menu-card-header">
           <div class="card-icon"><component :is="section.icon" /></div>
@@ -30,42 +31,94 @@
     <Card class="active-rooms-card">
       <CardHeader class="active-rooms-header">
         <div>
-          <CardTitle>当前激活房间</CardTitle>
-          <CardDescription>查看房间状态并执行常用操作。</CardDescription>
+          <CardTitle>房间运行状态</CardTitle>
+          <CardDescription>数据来自当前运行目标，切换本机或远程 Agent 后会自动刷新。</CardDescription>
         </div>
-        <UiButton size="sm" variant="outline" @click="refreshRooms">
-          <RefreshCw data-icon="inline-start" />
+        <UiButton size="sm" variant="outline" :disabled="loading" @click="refreshRooms({ notify: true })">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
           刷新列表
         </UiButton>
       </CardHeader>
       <CardContent>
-        <ShadcnTable>
-          <TableHeader>
-            <TableRow>
-              <TableHead>房间名称</TableHead><TableHead>玩家数</TableHead><TableHead>游戏模式</TableHead>
-              <TableHead>风格</TableHead><TableHead>状态</TableHead><TableHead>操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="room in activeRooms" :key="room.id">
-              <TableCell class="font-medium">{{ room.name }}</TableCell>
-              <TableCell>{{ room.players }}</TableCell>
-              <TableCell>{{ room.mode }}</TableCell>
-              <TableCell><Badge variant="outline">{{ room.styleName }}</Badge></TableCell>
-              <TableCell><Badge :variant="room.status === '开放' ? 'default' : 'secondary'">{{ room.status }}</Badge></TableCell>
-              <TableCell>
-                <div class="table-actions">
-                  <UiButton size="xs" variant="ghost" @click="editRoom(room)">编辑</UiButton>
-                  <UiButton size="xs" variant="ghost" @click="startRoom(room)">启动</UiButton>
-                  <UiButton size="xs" variant="ghost" @click="duplicateRoom(room)">复制</UiButton>
-                  <UiButton size="xs" variant="destructive" @click="deleteRoom(room)">删除</UiButton>
-                </div>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </ShadcnTable>
+        <Alert v-if="loadError" variant="destructive" class="rooms-feedback">
+          <CircleAlert />
+          <AlertTitle>房间数据读取失败</AlertTitle>
+          <AlertDescription>{{ loadError }}</AlertDescription>
+        </Alert>
+
+        <div v-if="loading && !activeRooms.length" class="loading-state" aria-busy="true">
+          <Spinner />
+          <span>正在读取房间和分片状态...</span>
+        </div>
+
+        <div v-else-if="activeRooms.length" class="table-scroll">
+          <ShadcnTable>
+            <TableHeader>
+              <TableRow>
+                <TableHead>房间名称</TableHead>
+                <TableHead>世界分片</TableHead>
+                <TableHead>运行中</TableHead>
+                <TableHead>更新时间</TableHead>
+                <TableHead>状态</TableHead>
+                <TableHead>操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="room in activeRooms" :key="room.id">
+                <TableCell class="font-medium">{{ room.name }}</TableCell>
+                <TableCell>{{ room.worlds.length }}</TableCell>
+                <TableCell>{{ runningWorlds(room).length }} / {{ room.worlds.length }}</TableCell>
+                <TableCell>{{ formatUpdatedAt(room) }}</TableCell>
+                <TableCell>
+                  <Badge :variant="runningWorlds(room).length ? 'default' : 'secondary'">
+                    {{ runningWorlds(room).length ? '运行中' : '已停止' }}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div class="table-actions">
+                    <UiButton size="xs" variant="outline" @click="editRoom(room)">
+                      <Pencil data-icon="inline-start" />编辑
+                    </UiButton>
+                    <UiButton
+                      size="xs"
+                      :disabled="!startableWorlds(room).length || roomActionId === room.id"
+                      @click="startRoom(room)"
+                    >
+                      <Spinner v-if="roomActionId === room.id" data-icon="inline-start" />
+                      <Play v-else data-icon="inline-start" />
+                      启动分片
+                    </UiButton>
+                    <UiButton
+                      v-if="runningWorlds(room).length"
+                      size="xs"
+                      variant="destructive"
+                      :disabled="!stoppableWorlds(room).length || roomActionId === room.id"
+                      @click="stopRoom(room)"
+                    >
+                      <Spinner v-if="roomActionId === room.id" data-icon="inline-start" />
+                      <Square v-else data-icon="inline-start" />
+                      停止
+                    </UiButton>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </ShadcnTable>
+        </div>
+
+        <Empty v-else-if="!loadError">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><FolderPlus /></EmptyMedia>
+            <EmptyTitle>暂无真实房间数据</EmptyTitle>
+            <EmptyDescription>在当前运行目标中创建房间后，房间和世界分片会显示在这里。</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <UiButton @click="createNewRoom"><Plus data-icon="inline-start" />创建新房间</UiButton>
+          </EmptyContent>
+        </Empty>
       </CardContent>
-      <CardFooter class="add-room-button">
+      <CardFooter v-if="activeRooms.length" class="add-room-button">
         <UiButton @click="createNewRoom"><Plus data-icon="inline-start" />创建新房间</UiButton>
       </CardFooter>
     </Card>
@@ -73,36 +126,39 @@
     <UiDialog v-model:open="startRoomDialogVisible">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>启动房间服务器</DialogTitle>
-          <DialogDescription v-if="currentRoom">配置“{{ currentRoom.name }}”的启动范围和服务端模式。</DialogDescription>
+          <DialogTitle>启动房间分片</DialogTitle>
+          <DialogDescription v-if="currentRoom">选择“{{ currentRoom.name }}”中本次要启动的真实世界分片。</DialogDescription>
         </DialogHeader>
-        <FieldGroup v-if="currentRoom">
-          <FieldSet>
-            <FieldLegend variant="label">启动模式</FieldLegend>
-            <RadioGroup v-model="startForm.worldType" class="radio-list">
-              <Field v-for="option in worldTypeOptions" :key="option.value" orientation="horizontal">
-                <RadioGroupItem :id="`world-${option.value}`" :value="option.value" />
-                <FieldLabel :for="`world-${option.value}`" class="font-normal">{{ option.label }}</FieldLabel>
-              </Field>
-            </RadioGroup>
-          </FieldSet>
-          <Field>
-            <FieldLabel>服务器模式</FieldLabel>
-            <UiSelect v-model="startForm.serverMode">
-              <SelectTrigger class="w-full"><SelectValue placeholder="选择服务器模式" /></SelectTrigger>
-              <SelectContent><SelectGroup>
-                <SelectItem value="32">普通模式</SelectItem>
-                <SelectItem value="64">专家模式</SelectItem>
-              </SelectGroup></SelectContent>
-            </UiSelect>
-          </Field>
-        </FieldGroup>
+        <FieldSet v-if="currentRoom">
+          <FieldLegend variant="label">世界分片</FieldLegend>
+          <FieldDescription>已运行或当前目标不可控制的分片不会重复启动。</FieldDescription>
+          <FieldGroup>
+            <Field
+              v-for="world in currentRoom.worlds"
+              :key="world.id"
+              orientation="horizontal"
+              :data-disabled="!canStartWorld(world) || undefined"
+            >
+              <UiCheckbox
+                :id="`room-world-${world.id}`"
+                :model-value="startForm.worldIds.includes(world.id)"
+                :disabled="!canStartWorld(world) || startLoading"
+                @update:model-value="toggleWorld(world.id, $event)"
+              />
+              <FieldLabel :for="`room-world-${world.id}`" class="font-normal">
+                {{ world.name }}
+                <Badge variant="outline">{{ worldTypeLabel(world.type) }}</Badge>
+                <Badge v-if="world.status === 'running'" variant="secondary">已运行</Badge>
+              </FieldLabel>
+            </Field>
+          </FieldGroup>
+        </FieldSet>
         <DialogFooter>
-          <UiButton variant="outline" @click="startRoomDialogVisible = false">取消</UiButton>
-          <UiButton :disabled="startLoading" @click="confirmStartRoom">
+          <UiButton variant="outline" :disabled="startLoading" @click="startRoomDialogVisible = false">取消</UiButton>
+          <UiButton :disabled="startLoading || !startForm.worldIds.length" @click="confirmStartRoom">
             <Spinner v-if="startLoading" data-icon="inline-start" />
             <Play v-else data-icon="inline-start" />
-            启动
+            启动所选分片
           </UiButton>
         </DialogFooter>
       </DialogContent>
@@ -111,268 +167,229 @@
 </template>
 
 <script>
-import { Gamepad2, Globe2, Lock, PackageOpen, Play, Plus, RefreshCw, Settings, Sun } from '@lucide/vue';
+import {
+  CircleAlert,
+  FolderPlus,
+  Gamepad2,
+  Globe2,
+  Lock,
+  PackageOpen,
+  Pencil,
+  Play,
+  Plus,
+  RefreshCw,
+  Settings,
+  Square,
+  Sun
+} from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { roomApi } from '@/api/index';
+import { roomApi, systemApi } from '@/api/index';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
+import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
 
 const ROOM_SECTIONS = [
-  { path: '/servers/room', title: '基本设置', description: '配置房间的基本信息和样式', icon: Settings, features: ['房间名称', '房间描述', '房间风格'] },
-  { path: '/servers/room/permissions', title: '权限设置', description: '管理房间的访问权限和玩家权限', icon: Lock, features: ['访问控制', '玩家权限', '白名单管理'] },
-  { path: '/servers/room/gameplay', title: '游戏设置', description: '调整房间的游戏规则和难度设置', icon: Gamepad2, features: ['游戏模式', '难度设置', '资源设置'] },
-  { path: '/servers/room/mods', title: '模组设置', description: '管理房间使用的模组和配置', icon: PackageOpen, features: ['模组选择', '模组配置', '模组兼容性'] },
-  { path: '/servers/room/seasons', title: '季节设置', description: '调整房间的季节时长和天气设置', icon: Sun, features: ['季节长度', '天气效果', '特殊事件'] },
-  { path: '/servers/room/world', title: '世界设置', description: '配置世界生成和资源分布', icon: Globe2, features: ['地图大小', '资源分布', '地形设置'] }
+  { path: '/rooms/settings', title: '基本设置', description: '配置房间信息和启动参数', icon: Settings, features: ['房间名称', '存档目录', '启动配置'] },
+  { path: '/rooms/special-lists', title: '权限设置', description: '管理管理员、黑名单和白名单', icon: Lock, features: ['管理员', '黑名单', '白名单'] },
+  { path: '/worlds/settings', title: '游戏设置', description: '调整世界规则和生成选项', icon: Gamepad2, features: ['游戏模式', '世界规则', '生成参数'] },
+  { path: '/mods/list', title: '模组设置', description: '管理已下载模组和房间配置', icon: PackageOpen, features: ['模组列表', '配置项', '兼容信息'] },
+  { path: '/worlds/state', title: '世界状态', description: '查看季节、天数和世界运行状态', icon: Sun, features: ['季节', '天数', '状态快照'] },
+  { path: '/worlds/list', title: '世界管理', description: '查看并控制真实世界分片', icon: Globe2, features: ['地表', '洞穴', '自定义分片'] }
 ];
 
 export default {
   name: 'RoomMenu',
   components: {
-    Badge, UiButton, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
-    UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Field,
-    FieldGroup, FieldLabel, FieldLegend, FieldSet, Play, Plus, RadioGroup, RadioGroupItem,
-    RefreshCw, UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
-    Spinner, ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow
+    Alert, AlertDescription, AlertTitle, Badge, Card, CardContent, CardDescription, CardFooter,
+    CardHeader, CardTitle, CircleAlert, DialogContent, DialogDescription, DialogFooter,
+    DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia,
+    EmptyTitle, Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet,
+    FolderPlus, Pencil, Play, Plus, RefreshCw, ShadcnTable, Spinner, Square, TableBody,
+    TableCell, TableHead, TableHeader, TableRow, UiButton, UiCheckbox, UiDialog
   },
   data() {
     return {
       roomSections: ROOM_SECTIONS,
-      worldTypeOptions: [
-        { value: 'both', label: '完整房间（主世界 + 洞穴）' },
-        { value: 'forest', label: '仅主世界' },
-        { value: 'cave', label: '仅洞穴' },
-        { value: 'unknown', label: '仅其他世界' }
-      ],
-      activeRooms: [
-        {
-          id: 1,
-          name: '饥荒联机版主世界',
-          players: '12/20',
-          mode: '生存模式',
-          style: 'default',
-          styleName: '默认风格',
-          status: '开放'
-        },
-        {
-          id: 2,
-          name: '洞穴探险',
-          players: '8/16',
-          mode: '冒险模式',
-          style: 'cave',
-          styleName: '洞穴风格',
-          status: '开放'
-        },
-        {
-          id: 3,
-          name: '永冬世界',
-          players: '5/10',
-          mode: '困难模式',
-          style: 'winter',
-          styleName: '冬季风格',
-          status: '开放'
-        },
-        {
-          id: 4,
-          name: '测试房间',
-          players: '1/8',
-          mode: '创造模式',
-          style: 'desert',
-          styleName: '沙漠风格',
-          status: '关闭'
-        }
-      ],
-      startRoomDialogVisible: false,
-      startForm: {
-        worldType: 'both',
-        serverMode: '32'
-      },
+      activeRooms: [],
+      loading: false,
+      loadError: '',
       currentRoom: null,
-      startLoading: false
-    }
+      startRoomDialogVisible: false,
+      startForm: { worldIds: [] },
+      startLoading: false,
+      roomActionId: '',
+      refreshSequence: 0
+    };
+  },
+  created() {
+    this.refreshRooms();
+  },
+  mounted() {
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+  },
+  beforeUnmount() {
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
   },
   methods: {
     navigateTo(path) {
       this.$router.push(path);
     },
-    refreshRooms() {
-      toast.success('房间列表已刷新');
+    handleRuntimeTargetChange() {
+      this.refreshRooms();
     },
-    editRoom() {
-      this.$router.push('/servers/room');
-      // 可以传递房间ID作为参数，以便加载特定房间的设置
-      // this.$router.push({ path: '/servers/room', query: { id: room.id } });
-    },
-    async duplicateRoom(room) {
+    async refreshRooms({ notify = false } = {}) {
+      const requestSequence = ++this.refreshSequence;
+      this.loading = true;
+      this.loadError = '';
       try {
-        await confirmAction(`确定要复制房间 "${room.name}" 吗?`, '复制房间');
-        toast.success(`已复制房间 ${room.name}`);
-      } catch {
-        toast.info('已取消操作');
+        const [roomsResponse, serversResponse] = await Promise.all([
+          roomApi.getRoomList(),
+          systemApi.getTmuxServers()
+        ]);
+        const servers = Array.isArray(serversResponse?.data) ? serversResponse.data : [];
+        const serverByWorld = new Map(
+          servers.map(server => [`${server.room_id}:${server.world_id}`, server])
+        );
+        if (requestSequence !== this.refreshSequence) return;
+        this.activeRooms = (Array.isArray(roomsResponse?.data) ? roomsResponse.data : []).map(room => ({
+          ...room,
+          worlds: (room.worlds || []).map(world => {
+            const server = serverByWorld.get(`${room.id}:${world.id}`);
+            return {
+              ...world,
+              status: server?.status || world.status || 'stopped',
+              controlAvailable: server?.control_available ?? world.controlAvailable,
+              updatedAt: server?.update_time || world.updatedAt || world.updateTime
+            };
+          })
+        }));
+        if (notify) toast.success(roomsResponse?.msg || '房间列表已刷新');
+      } catch (error) {
+        if (requestSequence !== this.refreshSequence) return;
+        this.activeRooms = [];
+        this.loadError = error.message || '无法读取当前运行目标的房间数据';
+        if (notify) toast.error(this.loadError);
+      } finally {
+        if (requestSequence === this.refreshSequence) this.loading = false;
       }
     },
-    async deleteRoom(room) {
-      try {
-        await confirmAction(`确定要删除房间 "${room.name}" 吗? 此操作不可恢复!`, '删除房间', { destructive: true });
-        toast.success(`已删除房间 ${room.name}`);
-      } catch {
-        toast.info('已取消操作');
-      }
+    editRoom(room) {
+      this.$router.push({ path: '/rooms/settings', query: { id: room.id } });
     },
     createNewRoom() {
-      this.$router.push('/servers/room');
+      this.$router.push('/rooms/settings');
+    },
+    runningWorlds(room) {
+      return (room.worlds || []).filter(world => world.status === 'running');
+    },
+    stoppableWorlds(room) {
+      return this.runningWorlds(room).filter(world => world.controlAvailable !== false);
+    },
+    startableWorlds(room) {
+      return (room.worlds || []).filter(world => this.canStartWorld(world));
+    },
+    canStartWorld(world) {
+      return world.status !== 'running' && world.controlAvailable !== false;
     },
     startRoom(room) {
-      this.currentRoom = room;
-      this.startRoomDialogVisible = true;
-    },
-    confirmStartRoom() {
-      if (!this.currentRoom || !this.currentRoom.id) {
-        toast.error('无法获取房间信息');
+      const worlds = this.startableWorlds(room);
+      if (!worlds.length) {
+        toast.info('当前没有可启动的世界分片');
         return;
       }
-      this.startLoading = true;
-      const archiveName = this.currentRoom.id.toString();
-      const { worldType, serverMode } = this.startForm;
-      
-      if (worldType === 'both') {
-        // 获取所有世界列表，然后为每个世界发起请求
-        roomApi.getRoomWorlds(archiveName)
-          .then(worlds => {
-            if (!worlds || worlds.length === 0) {
-              // 如果没有找到世界，则默认启动Forest1和Caves1
-              const startPromises = [
-                roomApi.startRoom({
-                  archive_name: archiveName,
-                  world_name: "Forest1",
-                  server_mode: serverMode,
-                  world_type: "forest"
-                }),
-                roomApi.startRoom({
-                  archive_name: archiveName,
-                  world_name: "Caves2",
-                  server_mode: serverMode,
-                  world_type: "cave"
-                })
-              ];
-              return Promise.all(startPromises);
-            } else {
-              // 为每个世界单独发起请求
-              const startPromises = worlds.map(world => {
-                // 使用API返回的type字段，对于unknown类型的世界，根据名称推断类型
-                let worldType = world.type;
-                // 对于unknown类型，如果需要启动，需要推断一个有效的type(forest或cave)
-                if (worldType === 'unknown') {
-                  worldType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
-                }
-                
-                return roomApi.startRoom({
-                  archive_name: archiveName,
-                  world_name: world.worldName || world.name,
-                  server_mode: serverMode,
-                  world_type: worldType
-                });
-              });
-              return Promise.all(startPromises);
-            }
-          })
-          .then(() => {
-            toast.success('房间启动成功');
-          })
-          .catch(error => {
-            toast.error('启动房间失败: ' + (error.message || '未知错误'));
-          })
-          .finally(() => {
-            this.startRoomDialogVisible = false;
-            this.startLoading = false;
-          });
-      } else if (worldType === 'unknown') {
-        // 处理特殊情况：用户选择启动unknown类型的世界
-        roomApi.getRoomWorlds(archiveName)
-          .then(worlds => {
-            // 过滤出unknown类型的世界
-            const filteredWorlds = worlds.filter(world => world.type === 'unknown');
-            if (filteredWorlds.length === 0) {
-              toast.warning('没有找到其他类型的世界');
-              this.startLoading = false;
-              this.startRoomDialogVisible = false;
-              return;
-            }
-            
-            // 为每个unknown世界启动，根据名称推断类型
-            const startPromises = filteredWorlds.map(world => {
-              const inferredType = world.name.toLowerCase().includes('forest') ? 'forest' : 'cave';
-              return roomApi.startRoom({
-                archive_name: archiveName,
-                world_name: world.worldName || world.name,
-                server_mode: serverMode,
-                world_type: inferredType
-              });
-            });
-            
-            return Promise.all(startPromises);
-          })
-          .then(responses => {
-            if (responses) {
-              toast.success('其他类型世界启动成功');
-            }
-          })
-          .catch(error => {
-            toast.error('启动世界失败: ' + (error.message || '未知错误'));
-          })
-          .finally(() => {
-            this.startRoomDialogVisible = false;
-            this.startLoading = false;
-          });
-      } else {
-        roomApi.getRoomWorlds(archiveName)
-          .then(worlds => {
-            // 严格使用API返回的type字段进行过滤
-            const filteredWorlds = worlds.filter(world => world.type === worldType);
-            if (filteredWorlds.length === 0) {
-              const defaultWorldName = worldType === 'forest' ? 'Forest1' : 'Caves1';
-              return roomApi.startRoom({
-                archive_name: archiveName,
-                world_name: defaultWorldName,
-                server_mode: serverMode,
-                world_type: worldType
-              });
-            } else {
-              const worldToStart = filteredWorlds[0];
-              return roomApi.startRoom({
-                archive_name: archiveName,
-                world_name: worldToStart.worldName || worldToStart.name,
-                server_mode: serverMode,
-                world_type: worldToStart.type
-              });
-            }
-          })
-          .then(response => {
-            if (response && (response.status === 200 || (response.data && response.data.status === 200))) {
-              toast.success(`${worldType === 'forest' ? '主世界' : '洞穴世界'}启动成功`);
-            } else {
-              toast.error(response && response.msg ? response.msg : '启动世界失败');
-            }
-          })
-          .catch(error => {
-            toast.error('启动世界失败: ' + (error.message || '未知错误'));
-          })
-          .finally(() => {
-            this.startRoomDialogVisible = false;
-            this.startLoading = false;
-          });
+      this.currentRoom = room;
+      this.startForm.worldIds = worlds.map(world => world.id);
+      this.startRoomDialogVisible = true;
+    },
+    toggleWorld(worldId, checked) {
+      if (checked) {
+        if (!this.startForm.worldIds.includes(worldId)) this.startForm.worldIds.push(worldId);
+        return;
       }
+      this.startForm.worldIds = this.startForm.worldIds.filter(id => id !== worldId);
+    },
+    async confirmStartRoom() {
+      if (!this.currentRoom || !this.startForm.worldIds.length) {
+        toast.warning('请至少选择一个可启动的世界分片');
+        return;
+      }
+      const worldIds = this.startableWorlds(this.currentRoom)
+        .filter(world => this.startForm.worldIds.includes(world.id))
+        .map(world => world.id);
+      if (!worldIds.length) {
+        toast.warning('所选世界已运行或当前目标不可控制');
+        return;
+      }
+
+      this.startLoading = true;
+      this.roomActionId = this.currentRoom.id;
+      try {
+        const response = await roomApi.startRoom({
+          room_id: this.currentRoom.id,
+          world_ids: worldIds
+        });
+        await this.refreshRooms();
+        this.startRoomDialogVisible = false;
+        toast.success(response?.msg || '所选世界分片已启动');
+      } catch (error) {
+        toast.error(`启动失败：${error.message || '未知错误'}`);
+      } finally {
+        this.startLoading = false;
+        this.roomActionId = '';
+      }
+    },
+    async stopRoom(room) {
+      const worldIds = this.stoppableWorlds(room).map(world => world.id);
+      if (!worldIds.length) {
+        toast.warning('当前没有可停止的运行中分片');
+        return;
+      }
+      try {
+        await confirmAction(`确定要停止“${room.name}”中正在运行的 ${worldIds.length} 个分片吗？`, '停止房间', {
+          confirmButtonText: '确认停止',
+          type: 'warning'
+        });
+      } catch {
+        toast.info('已取消停止');
+        return;
+      }
+
+      this.roomActionId = room.id;
+      try {
+        const response = await roomApi.stopRoom({ room_id: room.id, world_ids: worldIds });
+        await this.refreshRooms();
+        toast.success(response?.msg || '房间已停止');
+      } catch (error) {
+        toast.error(`停止失败：${error.message || '未知错误'}`);
+      } finally {
+        this.roomActionId = '';
+      }
+    },
+    worldTypeLabel(type) {
+      if (type === 'forest') return '地表';
+      if (type === 'cave') return '洞穴';
+      return '自定义';
+    },
+    formatUpdatedAt(room) {
+      const timestamps = [room.updatedAt, room.updateTime, ...room.worlds.map(world => world.updatedAt)]
+        .filter(Boolean)
+        .map(value => new Date(value))
+        .filter(value => Number.isFinite(value.getTime()));
+      if (!timestamps.length) return '-';
+      const latest = new Date(Math.max(...timestamps.map(value => value.getTime())));
+      return latest.toLocaleString();
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -412,9 +429,11 @@ export default {
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.menu-card:hover {
+.menu-card:hover,
+.menu-card:focus-visible {
   border-color: var(--ring);
   background: var(--muted);
+  outline: none;
 }
 
 .menu-card-header {
@@ -436,10 +455,10 @@ export default {
   color: var(--foreground);
 }
 
-.card-features {
+.card-features,
+.table-actions {
   display: flex;
   gap: 6px;
-  align-items: flex-start;
   flex-wrap: wrap;
 }
 
@@ -455,22 +474,26 @@ export default {
   gap: 12px;
 }
 
+.rooms-feedback {
+  margin-bottom: 12px;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 220px;
+  color: var(--muted-foreground);
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .add-room-button {
   justify-content: flex-end;
-}
-
-.table-actions,
-.radio-list {
-  display: flex;
-  gap: 6px;
-}
-
-.table-actions {
-  flex-wrap: wrap;
-}
-
-.radio-list {
-  flex-direction: column;
 }
 
 @media (max-width: 1000px) {
