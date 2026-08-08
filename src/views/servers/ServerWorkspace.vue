@@ -5,10 +5,9 @@
         <span class="workspace-kicker">当前管理目标</span>
         <div class="workspace-title-row">
           <h1>服务器工作台</h1>
-          <span v-if="selectedRoom" class="room-state" :class="{ running: runningWorlds.length > 0 }">
-            <span class="state-dot"></span>
+          <Badge v-if="selectedRoom" :variant="runningWorlds.length > 0 ? 'secondary' : 'outline'">
             {{ runningWorlds.length > 0 ? '运行中' : '已停止' }}
-          </span>
+          </Badge>
         </div>
         <p>{{ selectedRoom ? `${selectedRoom.name} · ${worlds.length} 个世界` : '尚未选择房间' }}</p>
       </div>
@@ -29,39 +28,40 @@
             :value="room.id"
           />
         </el-select>
-        <el-tooltip content="刷新工作台" placement="bottom">
-          <el-button
-            icon="el-icon-refresh"
-            circle
-            aria-label="刷新工作台"
-            :loading="loading"
-            @click="refreshWorkspace"
-          />
-        </el-tooltip>
-        <el-button
-          type="primary"
-          icon="el-icon-document-add"
-          :loading="backupCreating"
-          :disabled="!selectedRoom"
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <UiButton
+              variant="outline"
+              size="icon"
+              aria-label="刷新工作台"
+              :disabled="loading"
+              @click="refreshWorkspace()"
+            >
+              <Spinner v-if="loading" />
+              <RefreshCw v-else />
+            </UiButton>
+          </TooltipTrigger>
+          <TooltipContent>刷新工作台</TooltipContent>
+        </Tooltip>
+        <UiButton
+          :disabled="!selectedRoom || backupCreating"
           @click="createBackup"
         >
-          创建备份
-        </el-button>
+          <Spinner v-if="backupCreating" data-icon="inline-start" />
+          <DatabaseBackup v-else data-icon="inline-start" />
+          {{ backupCreating ? '正在创建' : '创建备份' }}
+        </UiButton>
       </div>
     </header>
 
-    <el-alert
-      v-if="loadError"
-      class="workspace-alert"
-      type="error"
-      :closable="false"
-      show-icon
-      :title="loadError"
-    >
-      <template #default>
-        <el-button size="small" @click="refreshWorkspace">重新加载</el-button>
-      </template>
-    </el-alert>
+    <Alert v-if="loadError" class="workspace-alert" variant="destructive">
+      <CircleAlert />
+      <AlertTitle>工作台加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction>
+        <UiButton size="sm" variant="outline" @click="refreshWorkspace()">重新加载</UiButton>
+      </AlertAction>
+    </Alert>
 
     <el-empty v-else-if="!loading && rooms.length === 0" description="当前目标没有已接管的房间">
       <el-button type="primary" @click="$router.push('/rooms/list')">前往房间管理</el-button>
@@ -122,9 +122,9 @@
               <div class="world-identity">
                 <div class="world-name-row">
                   <strong>{{ world.name }}</strong>
-                  <el-tag size="small" effect="plain" :type="world.status === 'running' ? 'success' : 'info'">
+                  <Badge :variant="world.status === 'running' ? 'secondary' : 'outline'">
                     {{ worldStatusLabel(world.status) }}
-                  </el-tag>
+                  </Badge>
                 </div>
                 <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || '未设置目录' }}</span>
               </div>
@@ -146,37 +146,49 @@
             </dl>
 
             <div class="world-actions" @click.stop>
-              <el-tooltip :content="world.status === 'running' ? '停止世界' : '启动世界'" placement="top">
-                <el-button
-                  circle
-                  size="small"
-                  :type="world.status === 'running' ? 'danger' : 'success'"
-                  :icon="world.status === 'running' ? 'el-icon-video-pause' : 'el-icon-video-play'"
-                  :aria-label="world.status === 'running' ? '停止世界' : '启动世界'"
-                  :loading="worldActionId === world.id"
-                  :disabled="world.controlAvailable === false"
-                  @click="handleWorldAction(world, world.status === 'running' ? 'stop' : 'start')"
-                />
-              </el-tooltip>
-              <el-tooltip content="重启世界" placement="top">
-                <el-button
-                  circle
-                  size="small"
-                  icon="el-icon-refresh-right"
-                  aria-label="重启世界"
-                  :disabled="world.status !== 'running' || world.controlAvailable === false"
-                  @click="handleWorldAction(world, 'restart')"
-                />
-              </el-tooltip>
-              <el-tooltip content="世界配置" placement="top">
-                <el-button
-                  circle
-                  size="small"
-                  icon="el-icon-setting"
-                  aria-label="世界配置"
-                  @click="openWorldSettings(world)"
-                />
-              </el-tooltip>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <UiButton
+                    size="icon-sm"
+                    :variant="world.status === 'running' ? 'destructive' : 'secondary'"
+                    :aria-label="world.status === 'running' ? '停止世界' : '启动世界'"
+                    :disabled="world.controlAvailable === false || Boolean(worldActionId)"
+                    @click="handleWorldAction(world, world.status === 'running' ? 'stop' : 'start')"
+                  >
+                    <Spinner v-if="worldActionId === world.id" />
+                    <Square v-else-if="world.status === 'running'" />
+                    <Play v-else />
+                  </UiButton>
+                </TooltipTrigger>
+                <TooltipContent>{{ world.status === 'running' ? '停止世界' : '启动世界' }}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <UiButton
+                    size="icon-sm"
+                    variant="outline"
+                    aria-label="重启世界"
+                    :disabled="world.status !== 'running' || world.controlAvailable === false || Boolean(worldActionId)"
+                    @click="handleWorldAction(world, 'restart')"
+                  >
+                    <RotateCw />
+                  </UiButton>
+                </TooltipTrigger>
+                <TooltipContent>重启世界</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <UiButton
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label="世界配置"
+                    @click="openWorldSettings(world)"
+                  >
+                    <Settings />
+                  </UiButton>
+                </TooltipTrigger>
+                <TooltipContent>世界配置</TooltipContent>
+              </Tooltip>
             </div>
           </article>
         </div>
@@ -346,6 +358,12 @@
 <script>
 import WorldLog from '@/components/WorldLog.vue'
 import { backupApi, commandApi, playerApi, roomApi, systemApi } from '@/api'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button as UiButton } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { CircleAlert, DatabaseBackup, Play, RefreshCw, RotateCw, Settings, Square } from '@lucide/vue'
 
 const CHARACTER_NAMES = {
   wilson: '威尔逊',
@@ -370,7 +388,26 @@ const CHARACTER_NAMES = {
 
 export default {
   name: 'ServerWorkspace',
-  components: { WorldLog },
+  components: {
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
+    Badge,
+    CircleAlert,
+    DatabaseBackup,
+    Play,
+    RefreshCw,
+    RotateCw,
+    Settings,
+    Spinner,
+    Square,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+    UiButton,
+    WorldLog
+  },
   data() {
     return {
       loading: false,
@@ -785,25 +822,6 @@ export default {
   margin: 3px 0 0;
   color: var(--text-secondary);
   line-height: 20px;
-}
-
-.room-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.room-state .state-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--info-color);
-}
-
-.room-state.running .state-dot {
-  background: var(--success-color);
 }
 
 .workspace-toolbar {
