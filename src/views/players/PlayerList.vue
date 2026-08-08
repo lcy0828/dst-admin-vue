@@ -11,7 +11,7 @@
         <el-button size="small" type="primary" icon="el-icon-upload2" @click="showUpdateDialog">手动更新玩家列表</el-button>
         <el-button size="small" type="success" icon="el-icon-s-operation" @click="showSessionSelect">选择游戏世界</el-button>
         <el-button size="small" type="warning" icon="el-icon-alarm-clock" @click="showScheduleDialog">添加定时更新任务</el-button>
-        <el-tag v-if="activeSessionName" type="success" effect="dark">当前世界: {{ activeSessionName }}</el-tag>
+        <el-tag v-if="activeSessionName" type="success" effect="dark">当前世界: {{ activeSessionLabel }}</el-tag>
       </div>
     </div>
 
@@ -448,9 +448,9 @@
           <el-select v-model="selectedSessionName" placeholder="选择世界" style="width: 100%">
             <el-option
               v-for="session in sessionList"
-              :key="session.name"
+              :key="session.key"
               :label="session.name"
-              :value="session.name">
+              :value="session.key">
               <span style="float: left">
                 {{ session.name }}
               </span>
@@ -547,9 +547,9 @@
           <el-select v-model="scheduleForm.session_name" placeholder="选择游戏世界" style="width: 100%">
             <el-option
               v-for="session in sessionList"
-              :key="session.name"
+              :key="session.key"
               :label="session.name"
-              :value="session.name">
+              :value="session.key">
               <span style="float: left">
                 {{ session.name }}
               </span>
@@ -592,7 +592,6 @@
 
 <script>
 import { playerApi } from '@/api/playerApi';
-import { cronTaskApi } from '@/api/index';
 
 export default {
   name: 'PlayerList',
@@ -733,17 +732,17 @@ export default {
           session.name.includes('Forest') && session.name.endsWith('1'));
 
         if (forestSession) {
-          return forestSession.name;
+          return forestSession.key;
         }
 
         // 如果没有找到Forest1，则使用第一个包含Forest的会话
         const anyForestSession = this.sessionList.find(session => session.name.includes('Forest'));
         if (anyForestSession) {
-          return anyForestSession.name;
+          return anyForestSession.key;
         }
 
         // 如果没有包含Forest的会话，使用第一个会话
-        return this.sessionList[0].name;
+        return this.sessionList[0].key;
       }
       return '';
     },
@@ -751,6 +750,11 @@ export default {
     // 当前选中的会话名称
     activeSessionName() {
       return this.selectedSessionName || this.defaultSessionName;
+    },
+
+    activeSessionLabel() {
+      const session = this.sessionList.find(item => item.key === this.activeSessionName);
+      return session ? session.name : '';
     }
   },
   methods: {
@@ -777,7 +781,9 @@ export default {
         })
         .catch(error => {
           console.error('获取玩家列表失败:', error);
-          this.$message.error('获取玩家列表失败，请稍后重试');
+          this.playerList = [];
+          this.pagination.total = 0;
+          this.$message.error(`获取玩家列表失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.loading = false;
@@ -846,7 +852,7 @@ export default {
           background: 'rgba(0, 0, 0, 0.7)'
         });
 
-        playerApi.kickPlayer(player.id, this.activeSessionName)
+        playerApi.kickPlayer(player, this.activeSessionName)
           .then(() => {
             this.$message.success(`已踢出玩家 ${player.player_name}`);
             this.refreshData();
@@ -888,7 +894,7 @@ export default {
         archive_name: this.activeSessionName
       };
 
-      playerApi.banPlayer(this.currentPlayer.id, banData)
+      playerApi.banPlayer(this.currentPlayer, banData)
         .then(() => {
           this.$message.success(`已封禁玩家 ${this.currentPlayer.player_name}`);
           this.banDialogVisible = false;
@@ -920,7 +926,7 @@ export default {
       }).then(() => {
         this.changingCharacter = true;
 
-        playerApi.changeCharacter(this.currentPlayer.user_id, this.activeSessionName)
+        playerApi.changeCharacter(this.currentPlayer, this.activeSessionName)
           .then(response => {
             if (response && response.status === 200) {
               this.$message.success(`已重置玩家 ${this.currentPlayer.player_name}，玩家可以重新选择角色`);
@@ -944,12 +950,16 @@ export default {
 
     // 显示定时更新对话框
     showScheduleDialog() {
-      // 默认选择当前世界
-      const sessionName = this.activeSessionName || 'dstserver_lcytest_Forest1';
+      const sessionKey = this.activeSessionName;
+      if (!sessionKey) {
+        this.$message.warning('没有可用于定时更新的游戏世界');
+        return;
+      }
+      const sessionName = this.activeSessionLabel;
       this.scheduleForm = {
         name: `自动更新玩家列表_${sessionName}`,
         description: `定时更新${sessionName}的玩家列表`,
-        session_name: sessionName,
+        session_name: sessionKey,
         spec: '0 */3 * * * *' // 默认每3分钟执行一次
       };
       this.scheduleDialogVisible = true;
@@ -966,15 +976,12 @@ export default {
             name: this.scheduleForm.name,
             description: this.scheduleForm.description,
             spec: this.scheduleForm.spec,
-            type: 'function',
-            status: 1, // 启用状态
-            target: 'update_player_info',
-            args: [this.scheduleForm.session_name || 'dstserver_lcytest_Forest1']
+            session_name: this.scheduleForm.session_name
           };
 
-          cronTaskApi.addTask(taskData)
+          playerApi.addRefreshSchedule(taskData)
             .then(response => {
-              if (response && (response.code === 200 || (response.data && response.data.code === 200))) {
+              if (response && response.status === 200) {
                 this.$message.success('定时更新任务添加成功');
                 this.scheduleDialogVisible = false;
               } else {
@@ -996,7 +1003,56 @@ export default {
 
     // 导出玩家数据
     exportPlayerData() {
-      this.$message.info('导出功能开发中...');
+      const loading = this.$loading({
+        lock: true,
+        text: '正在导出真实玩家数据...',
+        spinner: 'el-icon-loading',
+        background: 'rgba(0, 0, 0, 0.7)'
+      });
+      const params = {
+        ...this.filterForm,
+        sort_by: this.sortParams.prop,
+        sort_order: this.sortParams.order === 'ascending' ? 'asc' : 'desc'
+      };
+      playerApi.exportPlayers(params)
+        .then(players => {
+          const columns = [
+            ['存档名称', 'archive_name'],
+            ['世界名称', 'world_name'],
+            ['KU ID', 'user_id'],
+            ['玩家名称', 'player_name'],
+            ['角色', 'prefab'],
+            ['天数', 'player_age'],
+            ['状态', 'status'],
+            ['Steam ID', 'net_id'],
+            ['首次登录', 'first_seen'],
+            ['最后登录', 'last_seen']
+          ];
+          const escapeCell = value => {
+            let text = value === null || value === undefined ? '' : String(value);
+            if (/^[=+\-@]/.test(text)) text = `'${text}`;
+            return `"${text.replace(/"/g, '""')}"`;
+          };
+          const rows = [
+            columns.map(column => escapeCell(column[0])).join(','),
+            ...players.map(player => columns.map(column => escapeCell(player[column[1]])).join(','))
+          ];
+          const blob = new Blob([`\ufeff${rows.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `玩家数据_${new Date().toISOString().slice(0, 10)}.csv`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+          this.$message.success(`已导出 ${players.length} 条真实玩家数据`);
+        })
+        .catch(error => {
+          console.error('导出玩家数据失败:', error);
+          this.$message.error(`导出玩家数据失败: ${error.message || '未知错误'}`);
+        })
+        .finally(() => loading.close());
     },
 
     // 格式化日期
@@ -1088,25 +1144,15 @@ export default {
 
     // 生成世界名称选项
     generateWorldOptions() {
-      const worldOptions = [];
-
-      if (this.sessionList && this.sessionList.length > 0) {
-        this.sessionList.forEach(session => {
-          const worldName = this.extractWorldName(session.name);
-          if (worldName) {
-            // 检查是否已经存在相同的世界名称
-            const exists = worldOptions.some(option => option.value === worldName);
-            if (!exists) {
-              worldOptions.push({
-                label: worldName,
-                value: worldName
-              });
-            }
-          }
-        });
+      if (!this.sessionList || this.sessionList.length === 0 || !this.updateForm.archive_name) {
+        return [];
       }
-
-      return worldOptions;
+      return this.sessionList
+        .filter(session => session.room_id === this.updateForm.archive_name)
+        .map(session => ({
+          label: session.world_name,
+          value: session.world_id
+        }));
     },
 
     // 格式化 Steam ID
@@ -1177,17 +1223,14 @@ export default {
           if (response.data && Array.isArray(response.data)) {
             this.archiveOptions = response.data.map(archive => ({
               label: archive.name || archive.archive_name || archive,
-              value: archive.name || archive.archive_name || archive
+              value: archive.id || archive.name || archive.archive_name || archive
             }));
           }
         })
         .catch(error => {
           console.error('获取存档列表失败:', error);
-          // 设置默认存档选项
-          this.archiveOptions = [
-            { label: 'MyCluster', value: 'MyCluster' },
-            { label: 'TestWorld', value: 'TestWorld' }
-          ];
+          this.archiveOptions = [];
+          this.$message.error(`获取存档列表失败: ${error.message || '未知错误'}`);
         });
     },
 
@@ -1208,6 +1251,7 @@ export default {
         .catch(error => {
           console.error('获取会话列表失败:', error);
           this.sessionList = [];
+          this.$message.error(`获取游戏世界失败: ${error.message || '未知错误'}`);
         });
     },
 
@@ -1227,7 +1271,7 @@ export default {
         return;
       }
 
-      this.$message.success(`已选择游戏世界: ${this.selectedSessionName}`);
+      this.$message.success(`已选择游戏世界: ${this.activeSessionLabel}`);
       this.sessionSelectDialogVisible = false;
     },
 
@@ -1276,7 +1320,7 @@ export default {
         });
 
         // 使用KU ID杀死玩家
-        playerApi.killPlayer(player.user_id, this.activeSessionName)
+        playerApi.killPlayer(player, this.activeSessionName)
           .then(response => {
             if (response && response.status === 200) {
               this.$message.success(`已杀死玩家 ${player.player_name}`);
@@ -1309,7 +1353,7 @@ export default {
       this.settingGodMode = true;
 
       playerApi.setGodMode(
-        this.currentPlayer.user_id,
+        this.currentPlayer,
         this.godModeForm.enabled,
         this.activeSessionName
       )
@@ -1343,7 +1387,7 @@ export default {
       this.settingCreativeMode = true;
 
       playerApi.setCreativeMode(
-        this.currentPlayer.user_id,
+        this.currentPlayer,
         this.creativeModeForm.enabled,
         this.activeSessionName
       )
@@ -1379,7 +1423,7 @@ export default {
           background: 'rgba(0, 0, 0, 0.7)'
         });
 
-        playerApi.resurrectPlayer(player.user_id, this.activeSessionName)
+        playerApi.resurrectPlayer(player, this.activeSessionName)
           .then(response => {
             if (response && response.status === 200) {
               this.$message.success(`已复活玩家 ${player.player_name}`);

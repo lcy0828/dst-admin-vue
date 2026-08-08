@@ -130,6 +130,23 @@ export const jobsV2API = {
   cancel: jobId => client.post(`/jobs/${encode(jobId)}/cancel`)
 }
 
+export const playersV2API = {
+  list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/players`, { params }),
+  get: (roomId, playerId) => client.get(`/rooms/${encode(roomId)}/players/${encode(playerId)}`),
+  refresh: (roomId, worldIds = []) => client.post(`/rooms/${encode(roomId)}/players/actions/refresh`, { worldIds }),
+  action: (roomId, playerId, action, input = {}) => client.post(
+    `/rooms/${encode(roomId)}/players/${encode(playerId)}/actions/${encode(action)}`,
+    input
+  )
+}
+
+export const automationV2API = {
+  groups: roomId => client.get(`/rooms/${encode(roomId)}/automation/groups`),
+  createGroup: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/groups`, input),
+  tasks: roomId => client.get(`/rooms/${encode(roomId)}/automation/tasks`),
+  createTask: (roomId, input) => client.post(`/rooms/${encode(roomId)}/automation/tasks`, input)
+}
+
 export const worldStatesV2API = {
   list: roomId => client.get(`/rooms/${encode(roomId)}/world-states`)
 }

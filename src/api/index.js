@@ -3,6 +3,7 @@ import config from './config';
 import apiConfig from './config';
 import axios from 'axios';
 import commandManager, { commandApi, COMMAND_TYPES } from './commandManager';
+import { playerApi as realPlayerApi } from './playerApi';
 import { legacyBackupApi, legacyRoomApi, legacySystemApi, legacyWorldApi } from './v2LegacyAdapters';
 import { legacyAccessApi, legacyRoomConfigApi, legacyWorldConfigurationApi } from './v2ConfigurationAdapters';
 
@@ -105,49 +106,7 @@ export const serverApi = {
 
 export const roomApi = legacyRoomApi;
 
-// 玩家相关API
-export const playerApi = {
-  // 获取玩家列表
-  getPlayerList(params) {
-    return request.get(`/players`, { params });
-  },
-  // 获取玩家详情
-  getPlayerDetail(id) {
-    return request.get(`/players/${id}`);
-  },
-  // 获取在线玩家
-  getOnlinePlayers() {
-    return request.get(`/players/online`);
-  },
-  // 踢出玩家
-  kickPlayer(id) {
-    return request.post(`/players/${id}/kick`);
-  },
-  // 封禁玩家
-  banPlayer(id, data) {
-    return request.post(`/players/${id}/ban`, data);
-  },
-  // 解除封禁
-  unbanPlayer(id) {
-    return request.post(`/players/${id}/unban`);
-  },
-  // 发送消息给玩家
-  sendMessage(id, data) {
-    return request.post(`/players/${id}/message`, data);
-  },
-  // 获取玩家历史记录
-  getPlayerHistory(id, params) {
-    return request.get(`/players/${id}/history`, params);
-  },
-  // 获取封禁列表
-  getBanList() {
-    return request.get(`/players/banlist`);
-  },
-  // 更新玩家信息
-  updatePlayer(id, data) {
-    return request.put(`/players/${id}`, data);
-  }
-};
+export const playerApi = realPlayerApi;
 
 // 物品相关API
 export const itemApi = {
