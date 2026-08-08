@@ -130,6 +130,22 @@ export const jobsV2API = {
   cancel: jobId => client.post(`/jobs/${encode(jobId)}/cancel`)
 }
 
+export const structuredLogsV2API = {
+  list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/structured-logs`, { params }),
+  refresh: roomId => client.post(`/rooms/${encode(roomId)}/structured-logs/actions/refresh`),
+  clear: (roomId, worldId) => client.post(`/rooms/${encode(roomId)}/structured-logs/actions/clear`, { worldId })
+}
+
+export const logRulesV2API = {
+  list: roomId => client.get(`/rooms/${encode(roomId)}/log-rules`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  create: (roomId, input) => client.post(`/rooms/${encode(roomId)}/log-rules`, input),
+  update: (roomId, ruleId, input) => client.put(`/rooms/${encode(roomId)}/log-rules/${encode(ruleId)}`, input),
+  delete: (roomId, ruleId) => client.delete(`/rooms/${encode(roomId)}/log-rules/${encode(ruleId)}`),
+  test: (roomId, input) => client.post(`/rooms/${encode(roomId)}/log-rules/actions/test`, input)
+}
+
 export const playersV2API = {
   list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/players`, { params }),
   get: (roomId, playerId) => client.get(`/rooms/${encode(roomId)}/players/${encode(playerId)}`),

@@ -53,23 +53,23 @@
         border
       >
         <el-table-column prop="timestamp" label="时间" width="180">
-          <template slot-scope="scope">
+          <template #default="scope">
             {{ formatDate(scope.row.timestamp) }}
           </template>
         </el-table-column>
         <el-table-column prop="log_type" label="类型" width="120">
-          <template slot-scope="scope">
+          <template #default="scope">
             <el-tag :type="getLogTypeTag(scope.row.log_type)">{{ scope.row.log_type }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="content" label="内容">
-          <template slot-scope="scope">
+          <template #default="scope">
             <div class="log-content">{{ scope.row.content }}</div>
           </template>
         </el-table-column>
         <el-table-column prop="world_name" label="世界" width="120"></el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
-          <template slot-scope="scope">
+          <template #default="scope">
             <el-button type="text" size="small" @click="createRuleFromLog(scope.row)">创建规则</el-button>
           </template>
         </el-table-column>
@@ -101,9 +101,11 @@
     >
       <div v-if="selectedLog" class="rule-dialog-content">
         <el-card class="rule-form-card">
-          <div slot="header" class="clearfix">
-            <span>规则基本信息</span>
-          </div>
+          <template #header>
+            <div class="clearfix">
+              <span>规则基本信息</span>
+            </div>
+          </template>
           <el-form :model="ruleForm" :rules="ruleFormRules" ref="ruleForm" label-width="120px">
             <el-form-item label="规则名称" prop="name">
               <el-input v-model="ruleForm.name"></el-input>
@@ -118,9 +120,11 @@
         </el-card>
 
         <el-card class="regex-tester-card">
-          <div slot="header" class="clearfix">
-            <span>正则表达式测试</span>
-          </div>
+          <template #header>
+            <div class="clearfix">
+              <span>正则表达式测试</span>
+            </div>
+          </template>
           <regex-tester
             :initial-content="selectedLog.raw_content || selectedLog.content"
             :initial-pattern="initialPattern"
@@ -131,10 +135,12 @@
           ></regex-tester>
         </el-card>
       </div>
-    <span slot="footer" class="dialog-footer">
-      <el-button @click="cancelRule">取消</el-button>
-      <el-button type="primary" @click="saveRule">保存规则</el-button>
-    </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cancelRule">取消</el-button>
+          <el-button type="primary" @click="saveRule">保存规则</el-button>
+        </span>
+      </template>
     </el-dialog>
 
     <!-- 清空日志对话框 -->
@@ -145,7 +151,7 @@
       :close-on-click-modal="false"
     >
       <div class="cleanup-dialog-content">
-        <p class="warning-text">警告：此操作将清空所选存档和世界的所有日志记录，并重置日志解析器的位置。此操作不可恢复！</p>
+        <p class="warning-text">警告：此操作将清空所选存档和世界的解析日志记录，并重置解析位置。原始服务器日志不会删除，可重新解析恢复。</p>
         <el-form :model="cleanupForm" label-width="80px">
           <el-form-item label="存档" required>
             <el-input v-model="cleanupForm.archive_name" disabled></el-input>
@@ -155,10 +161,12 @@
           </el-form-item>
         </el-form>
       </div>
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="cleanupDialogVisible = false">取消</el-button>
-        <el-button type="danger" @click="cleanupLog" :loading="cleanupLoading">确认清空</el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="cleanupDialogVisible = false">取消</el-button>
+          <el-button type="danger" @click="cleanupLog" :loading="cleanupLoading">确认清空</el-button>
+        </span>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -192,7 +200,12 @@ export default {
         { type: 'system', name: '系统' },
         { type: 'chat', name: '聊天' },
         { type: 'connection', name: '连接' },
-        { type: 'player', name: '玩家' }
+        { type: 'player', name: '玩家' },
+        { type: 'entity', name: '实体' },
+        { type: 'world', name: '世界' },
+        { type: 'error', name: '错误' },
+        { type: 'warning', name: '警告' },
+        { type: 'unknown', name: '未知' }
       ],
       // 日志数据
       logData: [],
@@ -451,7 +464,10 @@ export default {
     async getLogTypes() {
       try {
         const response = await logApi.getLogTypes(this.queryParams);
-        // 如果有返回的日志类型，可以添加到logTypes中
+        const existing = new Set(this.logTypes.map(item => item.type));
+        for (const type of response.data || []) {
+          if (!existing.has(type)) this.logTypes.push({ type, name: type });
+        }
       } catch (error) {
         console.error('获取日志类型统计失败:', error);
       }
@@ -466,6 +482,7 @@ export default {
     async queryLogs() {
       this.loading = true;
       try {
+        await this.getLogTypes();
         console.log('查询参数:', this.queryParams);
         const response = await logApi.getLogsData(this.queryParams);
         console.log('日志查询响应:', response);
@@ -552,6 +569,14 @@ export default {
           return 'warning';
         case 'player':
           return 'primary';
+        case 'entity':
+          return 'warning';
+        case 'world':
+          return 'success';
+        case 'error':
+          return 'danger';
+        case 'warning':
+          return 'warning';
         default:
           return '';
       }
@@ -770,6 +795,7 @@ export default {
 
           // 创建一个新的数据对象
           const formData = { ...this.ruleForm };
+          formData.archive_name = this.queryParams.archive;
           // 确保优先级是数字类型
           formData.priority = parseInt(formData.priority, 10);
 
@@ -862,7 +888,7 @@ export default {
     async cleanupLog() {
       // 再次确认
       try {
-        await this.$confirm('此操作将清空所选存档和世界的所有日志记录，并重置日志解析器的位置。此操作不可恢复！是否确认继续？', '警告', {
+        await this.$confirm('此操作将清空所选存档和世界的解析日志记录，并重置解析位置。原始服务器日志不会删除，可重新解析恢复。是否确认继续？', '警告', {
           confirmButtonText: '确认清空',
           cancelButtonText: '取消',
           type: 'warning',

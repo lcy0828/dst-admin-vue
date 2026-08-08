@@ -5,7 +5,18 @@
     <div class="rule-section">
       <div class="rule-header">
         <h3>日志解析规则</h3>
-        <el-button type="primary" size="small" @click="addParserRule">添加解析规则</el-button>
+        <div class="rule-header-actions">
+          <el-select
+            v-model="selectedRoomId"
+            placeholder="请选择存档"
+            size="small"
+            filterable
+            @change="getParserRulesList"
+          >
+            <el-option v-for="room in rooms" :key="room.id" :label="room.name" :value="room.id"></el-option>
+          </el-select>
+          <el-button type="primary" size="small" @click="addParserRule">添加解析规则</el-button>
+        </div>
       </div>
 
       <el-table
@@ -18,12 +29,12 @@
         <el-table-column prop="name" label="规则名称"></el-table-column>
         <el-table-column prop="description" label="描述" show-overflow-tooltip></el-table-column>
         <el-table-column prop="log_type" label="日志类型" width="100">
-          <template slot-scope="scope">
+          <template #default="scope">
             <el-tag :type="getLogTypeTag(scope.row.log_type)">{{ scope.row.log_type }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="pattern" label="匹配模式" show-overflow-tooltip>
-          <template slot-scope="scope">
+          <template #default="scope">
             <div class="pattern-container">
               <span class="pattern-text">{{ scope.row.pattern }}</span>
               <el-button
@@ -37,7 +48,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="match_mode" label="匹配模式" width="100">
-          <template slot-scope="scope">
+          <template #default="scope">
             <el-tag :type="getMatchModeTag(scope.row.match_mode)" size="small">
               {{ getMatchModeText(scope.row.match_mode) }}
             </el-tag>
@@ -45,7 +56,7 @@
         </el-table-column>
         <el-table-column prop="priority" label="优先级" width="80" sortable></el-table-column>
         <el-table-column prop="is_enabled" label="状态" width="80">
-          <template slot-scope="scope">
+          <template #default="scope">
             <el-switch
               v-model="scope.row.is_enabled"
               @change="toggleRuleStatus(scope.row)"
@@ -53,7 +64,7 @@
           </template>
         </el-table-column>
         <el-table-column label="操作" width="160">
-          <template slot-scope="scope">
+          <template #default="scope">
             <el-button
               type="primary"
               size="mini"
@@ -62,6 +73,8 @@
             <el-button
               type="danger"
               size="mini"
+              :disabled="scope.row.built_in"
+              :title="scope.row.built_in ? '内建规则不能删除' : '删除规则'"
               @click="removeParserRule(scope.$index, scope.row)"
             >删除</el-button>
           </template>
@@ -136,16 +149,18 @@
           <div class="tip">数值越大优先级越高</div>
         </el-form-item>
       </el-form>
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="handleCancelClick">取消</el-button>
-        <el-button type="primary" @click="confirmRuleAction">确认</el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="handleCancelClick">取消</el-button>
+          <el-button type="primary" @click="confirmRuleAction">确认</el-button>
+        </span>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { ruleManagementApi } from '@/api';
+import { logApi, ruleManagementApi } from '@/api';
 
 export default {
   name: 'RuleManagementView',
@@ -210,18 +225,38 @@ export default {
       // 解析规则列表
       parserRulesList: [],
       // 唯一的日志类型列表
-      uniqueLogTypes: []
+      uniqueLogTypes: [],
+      rooms: [],
+      selectedRoomId: ''
     };
   },
   mounted() {
-    this.getParserRulesList(); // 获取解析规则列表
+    this.loadRooms();
   },
   methods: {
+    async loadRooms() {
+      try {
+        this.rooms = await logApi.getRoomOptions();
+        if (this.rooms.length === 1) {
+          this.selectedRoomId = this.rooms[0].id;
+          await this.getParserRulesList();
+        }
+      } catch (error) {
+        this.rooms = [];
+        this.$message.error('获取存档列表失败: ' + (error.message || '未知错误'));
+      }
+    },
+
     // 获取解析规则列表
     async getParserRulesList() {
+      if (!this.selectedRoomId) {
+        this.parserRulesList = [];
+        this.uniqueLogTypes = [];
+        return;
+      }
       this.loading.parser = true;
       try {
-        const response = await ruleManagementApi.getRulesList();
+        const response = await ruleManagementApi.getRulesList(this.selectedRoomId);
         console.log('获取解析规则列表响应:', response);
         let rulesList = [];
 
@@ -264,6 +299,10 @@ export default {
 
     // 添加解析规则对话框
     addParserRule() {
+      if (!this.selectedRoomId) {
+        this.$message.warning('请先选择存档');
+        return;
+      }
       this.ruleForm = {
         id: '',
         name: '',
@@ -313,12 +352,12 @@ export default {
 
           if (this.ruleForm.id) {
             // 编辑解析规则
-            const response = await ruleManagementApi.updateRule(this.ruleForm.id, formData);
+            const response = await ruleManagementApi.updateRule(this.selectedRoomId, this.ruleForm.id, formData);
             console.log('更新规则响应:', response);
             this.$message.success('编辑解析规则成功');
           } else {
             // 添加解析规则
-            const response = await ruleManagementApi.addRule(formData);
+            const response = await ruleManagementApi.addRule(this.selectedRoomId, formData);
             console.log('添加规则响应:', response);
             this.$message.success('添加解析规则成功');
 
@@ -344,7 +383,7 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         }).then(async () => {
-          const response = await ruleManagementApi.deleteRule(row.id);
+          const response = await ruleManagementApi.deleteRule(this.selectedRoomId, row.id);
           console.log('删除规则响应:', response);
           this.$message.success('删除解析规则成功');
           this.getParserRulesList(); // 刷新列表
@@ -362,7 +401,7 @@ export default {
       try {
         // 创建一个新的规则对象，避免修改原始数据
         const updatedRule = { ...rule };
-        const response = await ruleManagementApi.updateRule(rule.id, updatedRule);
+        const response = await ruleManagementApi.updateRule(this.selectedRoomId, rule.id, updatedRule);
         console.log('更新规则状态响应:', response);
         this.$message.success('规则状态更新成功');
         this.getParserRulesList(); // 刷新列表
@@ -599,6 +638,16 @@ export default {
 
 .rule-header h3 {
   margin: 0;
+}
+
+.rule-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rule-header-actions .el-select {
+  width: 220px;
 }
 
 .tip {

@@ -5,6 +5,7 @@ import axios from 'axios';
 import commandManager, { commandApi, COMMAND_TYPES } from './commandManager';
 import { playerApi as realPlayerApi } from './playerApi';
 import { realModApi } from './modApi';
+import { realLogApi, realRuleManagementApi } from './logApi';
 import { legacyBackupApi, legacyRoomApi, legacySystemApi, legacyWorldApi } from './v2LegacyAdapters';
 import { legacyAccessApi, legacyRoomConfigApi, legacyWorldConfigurationApi } from './v2ConfigurationAdapters';
 
@@ -225,7 +226,7 @@ const worldApi = { ...legacyWorldApi, ...legacyWorldConfigurationApi };
 export { commandManager, commandApi, COMMAND_TYPES };
 
 // 日志管理API
-export const logApi = {
+const legacyLogApi = {
   // 获取解析后的日志
   getLogsData(params) {
     // 去除params[]问题，直接构建正确的参数
@@ -320,7 +321,7 @@ export const logApi = {
 };
 
 // 规则管理API
-export const ruleManagementApi = {
+const legacyRuleManagementApi = {
   // 获取日志解析规则列表
   getRulesList() {
     return request.get('/v1/parser/rules');
@@ -377,6 +378,11 @@ export const ruleManagementApi = {
     return request.delete(`/v1/parser/rules/${ruleId}`);
   }
 };
+
+void legacyLogApi;
+void legacyRuleManagementApi;
+export const logApi = realLogApi;
+export const ruleManagementApi = realRuleManagementApi;
 
 // 定时任务相关API
 export const cronTaskApi = {
@@ -476,10 +482,6 @@ export const cronTaskApi = {
   getGroupStats(id) {
     return request.get(`/cron/groups/${id}/stats`);
   },
-  getGroupChart(id, params) {
-    return request.get(`/cron/groups/${id}/chart`, { params });
-  },
-
   // 任务日志相关API
   getLogs(params) {
     console.log('cronTaskApi.getLogs 原始参数:', params);
