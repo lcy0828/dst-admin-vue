@@ -586,7 +586,6 @@ export default {
           { required: true, message: '请输入系统名称', trigger: 'blur' }
         ],
         adminEmail: [
-          { required: true, message: '请输入管理员邮箱', trigger: 'blur' },
           { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
         ],
         smtpServer: [
