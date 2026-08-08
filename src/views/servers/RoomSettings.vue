@@ -120,15 +120,20 @@ export default {
 
 <style scoped>
 .room-settings-page {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .settings-card {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .card-header {
@@ -152,8 +157,8 @@ export default {
 .room-preview {
   border: 1px solid var(--el-border-color);
   border-radius: 4px;
-  padding: 15px;
-  background-color: #f9f9f9;
+  padding: 14px;
+  background-color: var(--surface-muted);
   min-height: 150px;
 }
 
@@ -235,4 +240,4 @@ export default {
 .room-style-cave .preview-content {
   color: #bdbdbd;
 }
-</style> 
+</style>

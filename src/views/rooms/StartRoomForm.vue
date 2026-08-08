@@ -165,28 +165,21 @@ export default {
     h3 {
       margin-top: 0;
       margin-bottom: 20px;
-      font-size: 20px;
+      font-size: 16px;
+      font-weight: 600;
       color: var(--text-primary);
-      text-align: center;
-      position: relative;
-      padding-bottom: 15px;
+      text-align: left;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-color);
       
       &:after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 60px;
-        height: 3px;
-        background-color: var(--primary-color);
-        border-radius: 1.5px;
+        display: none;
       }
     }
   }
   
   .world-preview {
-    margin-top: 25px;
+    margin-top: 20px;
     
     h4 {
       font-size: 16px;
@@ -195,19 +188,24 @@ export default {
     }
     
     .world-list {
-      background-color: #f8f8f8;
-      border-radius: 8px;
-      padding: 15px;
-      box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      background-color: var(--surface-muted);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      box-shadow: none;
+      flex-direction: column;
       
       .world-item {
-        margin-bottom: 10px;
+        margin: 0;
         display: flex;
         align-items: center;
-        background-color: #fff;
+        background-color: var(--surface-color);
         padding: 8px 12px;
-        border-radius: 6px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 3px;
+        box-shadow: none;
         
         i {
           color: #4f8a5b;
@@ -243,12 +241,16 @@ export default {
   }
   
   .form-actions {
-    margin-top: 30px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 20px;
     text-align: right;
     
     .el-button {
       padding: 10px 25px;
-      border-radius: 6px;
+      border-radius: 4px;
+      margin: 0;
     }
   }
   

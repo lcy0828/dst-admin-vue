@@ -428,23 +428,31 @@ export default {
 
 <style scoped>
 .page-container {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .main-card {
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  margin-bottom: 0;
+  box-shadow: none;
   border-radius: 4px;
 }
 
 .server-select-wrapper {
-  margin-bottom: 20px;
-  padding-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .tool-bar {
-  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.tool-bar :deep(.el-button) {
+  margin: 0;
 }
 
 .empty-saves {
@@ -453,13 +461,14 @@ export default {
   color: var(--text-secondary);
 }
 
-.empty-saves i {
-  font-size: 64px;
-  margin-bottom: 20px;
+.empty-saves .legacy-icon {
+  font-size: 30px;
+  margin-bottom: 10px;
 }
 
 .empty-saves p {
-  font-size: 16px;
+  margin: 0;
+  font-size: 14px;
 }
 
 .save-name {
@@ -515,7 +524,8 @@ export default {
 
 /* 上传样式 */
 :deep(.el-upload-dragger) {
-  border: 2px dashed var(--primary-color);
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
 }
 
 :deep(.el-upload-dragger:hover) {
@@ -523,7 +533,7 @@ export default {
 }
 
 :deep(.el-upload-dragger .el-icon-upload) {
-  font-size: 48px;
+  font-size: 30px;
   color: var(--primary-color);
   margin-bottom: 10px;
 }
@@ -536,5 +546,20 @@ export default {
 :deep(.el-upload__text em) {
   color: var(--primary-color);
   font-style: normal;
+}
+
+@media (max-width: 640px) {
+  .server-select-wrapper :deep(.el-select) {
+    width: 100% !important;
+  }
+
+  .tool-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tool-bar :deep(.el-button) {
+    width: 100%;
+  }
 }
 </style>

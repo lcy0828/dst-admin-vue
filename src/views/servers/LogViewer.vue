@@ -275,7 +275,9 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #f9f9f9;
+  min-width: 0;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
@@ -283,9 +285,10 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 15px;
-  background-color: #eef1f6;
-  border-bottom: 1px solid #e6ebf5;
+  gap: 12px;
+  padding: 12px 14px;
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .log-title {
@@ -308,12 +311,13 @@ export default {
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 10px 15px 15px;
+  padding: 12px 14px 14px;
   overflow: hidden;
 }
 
 .log-filter {
   display: flex;
+  gap: 8px;
   margin-bottom: 10px;
 }
 
@@ -385,16 +389,39 @@ export default {
 }
 
 .no-logs-message i {
-  font-size: 48px;
+  font-size: 30px;
   margin-bottom: 10px;
 }
 
 .log-info-row {
   padding: 5px;
-  background-color: #2c3e50;
+  background-color: #2b2b2b;
   color: #ffffff;
   font-size: 12px;
   border-radius: 3px 3px 0 0;
   text-align: center;
+}
+
+@media (max-width: 640px) {
+  .log-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .log-actions,
+  .log-filter {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .log-filter :deep(.el-select),
+  .log-filter :deep(.el-input) {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  .log-content {
+    max-height: 60vh;
+  }
 }
 </style>

@@ -448,96 +448,109 @@ export default {
 
 <style scoped>
 .room-menu-page {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.page-header p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .menu-card {
-  height: 200px;
+  height: 164px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .menu-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  transform: none;
+  border-color: var(--el-color-primary-light-5);
+  box-shadow: none;
 }
 
 .card-icon {
-  width: 70px;
-  height: 70px;
-  border-radius: 35px;
-  background-color: var(--primary-color);
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 4px;
+  background-color: var(--el-color-primary-light-9);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
-  color: white;
-  margin-bottom: 15px;
+  font-size: 18px;
+  color: var(--primary-color);
+  margin-right: 12px;
 }
 
-.permission-icon {
-  background-color: #4f8a5b;
-}
-
-.gameplay-icon {
-  background-color: #d99b32;
-}
-
-.mods-icon {
-  background-color: #c94f4f;
-}
-
-.seasons-icon {
-  background-color: var(--text-secondary);
-}
-
+.permission-icon,
+.gameplay-icon,
+.mods-icon,
+.seasons-icon,
 .world-icon {
-  background-color: #9C27B0;
+  background-color: var(--surface-muted);
+  color: var(--text-regular);
 }
 
 .card-content {
-  text-align: center;
+  min-width: 0;
+  text-align: left;
 }
 
 .card-content h3 {
-  margin: 0 0 10px 0;
-  font-size: 18px;
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .card-content p {
   color: var(--text-regular);
-  font-size: 14px;
-  margin-bottom: 15px;
+  font-size: 13px;
+  margin: 0 0 10px;
 }
 
 .card-features {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  gap: 5px 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
   font-size: 12px;
   color: var(--text-secondary);
 }
 
 .card-features span {
-  margin-bottom: 5px;
+  margin: 0;
 }
 
 .active-rooms-card {
-  margin-top: 20px;
+  margin-top: 16px;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .style-tag {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: 3px;
   font-size: 12px;
 }
 
@@ -581,27 +594,32 @@ export default {
 }
 
 .add-room-button {
-  margin-top: 20px;
+  margin-top: 16px;
   display: flex;
   justify-content: center;
 }
 
 /* 响应式调整 */
 @media (max-width: 1200px) {
-  .el-col {
+  .room-menu-page > .el-row > .el-col {
     width: 50% !important;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 }
 
 @media (max-width: 768px) {
-  .el-col {
+  .room-menu-page > .el-row > .el-col {
     width: 100% !important;
+  }
+
+  .menu-card {
+    height: auto;
+    min-height: 136px;
   }
 }
 
 .start-room-dialog {
-  border-radius: 8px;
+  border-radius: 4px;
   overflow: hidden;
   
   .start-room-dialog-content {

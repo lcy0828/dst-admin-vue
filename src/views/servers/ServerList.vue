@@ -488,69 +488,76 @@ export default {
 
 <style scoped>
 .server-list-page {
-  padding: 15px;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .title-container {
   display: flex;
   align-items: center;
+  gap: 8px;
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
+  line-height: 28px;
+  color: var(--text-primary);
 }
 
-.title-container i {
-  margin-right: 8px;
-  font-size: 22px;
+.title-container .legacy-icon {
+  color: var(--primary-color);
+  font-size: 18px;
 }
 
 .filter-container {
-  margin-bottom: 15px;
-  background-color: #fff;
+  margin-bottom: 16px;
+  padding: 0 14px 14px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  padding: 12px;
 }
 
 .filter-options {
   display: flex;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 10px;
   flex-wrap: wrap;
 }
 
 .filter-options .el-select {
-  margin-right: 12px;
-  margin-bottom: 8px;
-  width: 140px;
+  width: 160px;
 }
 
 .server-table-container {
-  background-color: #fff;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  padding: 12px;
 }
 
 .server-name-container {
   display: flex;
   align-items: center;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .server-status {
-  min-width: 8px;
-  min-height: 8px;
   width: 8px;
   height: 8px;
+  flex: 0 0 8px;
   border-radius: 50%;
-  margin-right: 6px;
-  flex-shrink: 0;
+  box-shadow: 0 0 0 3px var(--surface-muted);
 }
 
 .server-status.online {
@@ -572,25 +579,23 @@ export default {
 }
 
 .server-type-tag {
-  margin-left: 4px;
-  margin-bottom: 2px;
+  margin: 0;
 }
 
 .server-room {
   font-size: 12px;
   color: var(--text-secondary);
-  margin-left: 4px;
 }
 
 .operation-buttons {
   display: flex;
+  gap: 6px;
   justify-content: flex-start;
   flex-wrap: wrap;
 }
 
 .operation-buttons .el-button {
-  margin-right: 5px;
-  margin-bottom: 5px;
+  margin: 0;
 }
 
 .operation-dropdown {
@@ -598,7 +603,7 @@ export default {
 }
 
 .empty-block {
-  padding: 30px 0;
+  padding: 36px 16px;
 }
 
 .empty-description {
@@ -611,29 +616,29 @@ export default {
 }
 
 .empty-actions {
-  margin-top: 15px;
-}
-
-/* 响应式调整 */
-@media (max-width: 1200px) {
-  .operation-buttons {
-  flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .operation-buttons .el-button {
-    margin-bottom: 5px;
-  }
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 @media (max-width: 768px) {
+  .page-header {
+    align-items: flex-start;
+  }
+
   .filter-options {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .filter-options .el-select {
     width: 100%;
-    margin-right: 0;
+  }
+
+  .empty-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
@@ -643,25 +648,17 @@ export default {
 }
 
 .mode-description {
-  font-size: 12px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--surface-muted);
+  border-left: 2px solid var(--primary-color);
   color: var(--text-secondary);
-  margin-top: 5px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
-/* 禁用标签的样式 */
-.el-tabs__item.is-disabled {
-  color: #9aa69e;
+:deep(.el-tabs__item.is-disabled) {
+  color: var(--text-secondary);
   cursor: not-allowed;
-  position: relative;
-}
-
-.el-tabs__item.is-disabled::after {
-  content: '\1F512'; /* 锁定图标 Unicode */
-  font-size: 12px;
-  margin-left: 4px;
-  position: absolute;
-  top: 0;
-  right: -15px;
 }
 </style>

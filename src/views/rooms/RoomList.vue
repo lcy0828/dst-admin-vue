@@ -982,4 +982,176 @@ export default {
   50% { opacity: 1; }
   100% { opacity: 0.2; }
 }
+
+/* 房间是高频入口，卡片只承担对象分组，不使用装饰性悬浮和渐变。 */
+.world-settings-page {
+  width: 100%;
+  min-width: 0;
+
+  .page-header {
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-color);
+
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 28px;
+    }
+  }
+
+  .settings-card,
+  .empty-save-card {
+    margin-bottom: 16px;
+    border-radius: 4px;
+    box-shadow: none;
+  }
+
+  .loading-page-content,
+  .empty-save-content,
+  .loading-saves-content {
+    padding: 40px 16px;
+
+    .loading-page-icon,
+    .empty-save-icon,
+    .loading-saves-icon {
+      margin-bottom: 10px;
+      font-size: 30px;
+    }
+
+    h4 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+
+    p {
+      margin: 0 0 16px;
+    }
+  }
+
+  .save-list {
+    .room-col {
+      margin-bottom: 16px;
+    }
+
+    .save-item {
+      min-height: 286px;
+      border-radius: 4px;
+      box-shadow: none;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+
+      &:hover {
+        border-color: var(--el-color-primary-light-5);
+        box-shadow: none;
+      }
+
+      &::before {
+        display: none;
+      }
+
+      .save-item-content {
+        padding: 16px;
+
+        .save-name {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          height: auto;
+          min-height: 32px;
+          margin: 0 0 12px;
+          padding: 0 0 12px;
+          border-bottom-color: var(--border-color);
+          font-size: 16px;
+          font-weight: 600;
+
+          &::before {
+            display: none;
+          }
+        }
+
+        .save-worlds {
+          height: 132px;
+          margin: 0 0 12px;
+
+          &::after {
+            display: none !important;
+          }
+
+          .world-category {
+            margin-bottom: 10px;
+
+            .world-category-title {
+              margin: 0 0 5px;
+              padding: 0;
+              font-size: 12px;
+              color: var(--text-secondary);
+
+              &::before {
+                display: none;
+              }
+            }
+
+            .world-tags {
+              gap: 6px;
+
+              .world-tag {
+                margin: 0;
+                padding: 0 7px;
+                border-radius: 3px;
+              }
+            }
+          }
+        }
+
+        .save-info {
+          gap: 12px;
+          height: auto;
+          min-height: 34px;
+          margin-top: auto;
+          padding: 7px 9px;
+          background: var(--surface-muted);
+          border-radius: 3px;
+
+          .save-date,
+          .save-world-count {
+            margin: 0;
+          }
+        }
+      }
+
+      .save-actions {
+        min-height: 52px;
+        padding: 10px 16px;
+        background: var(--surface-muted);
+        border-top-color: var(--border-color);
+
+        .el-button,
+        .el-dropdown .el-button {
+          border-radius: 4px;
+        }
+      }
+    }
+  }
+
+  .fullheight-dialog :deep(.el-dialog) {
+    border-radius: 4px;
+  }
+}
+
+.running-tag {
+  height: 22px !important;
+  padding: 0 7px !important;
+  border-radius: 3px !important;
+  line-height: 20px !important;
+
+  &::before {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .running-tag::before {
+    animation: none;
+  }
+}
 </style>

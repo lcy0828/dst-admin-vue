@@ -298,11 +298,20 @@ export default {
 
 <style scoped>
 .server-token-page {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .save-selector {
@@ -313,6 +322,17 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+}
+
+.card-header > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.card-header :deep(.el-button) {
+  margin: 0;
 }
 
 .token-info {
@@ -347,12 +367,28 @@ export default {
   color: var(--text-secondary);
 }
 
-.empty-token i {
-  font-size: 40px;
+.empty-token .legacy-icon {
+  font-size: 30px;
   margin-bottom: 10px;
 }
 
 .dialog-warning {
   margin-top: 20px;
+}
+
+.token-card {
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .card-header > div {
+    width: 100%;
+  }
 }
 </style>

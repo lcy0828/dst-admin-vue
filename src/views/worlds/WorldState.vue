@@ -1177,35 +1177,35 @@ export default {
 
 <style scoped>
 .world-state-page {
-  padding: 20px;
-  background-color: var(--surface-muted);
-  min-height: calc(100vh - 84px);
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .page-header h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .filter-card {
-  margin-bottom: 20px;
-  transition: all 0.3s;
+  margin-bottom: 16px;
+  box-shadow: none;
 }
 
 .filter-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transform: none;
+  box-shadow: none;
 }
 
 .filter-container {
@@ -1222,32 +1222,38 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 300px;
+  min-height: 260px;
   color: var(--text-secondary);
 }
 
-.empty-state i {
-  font-size: 64px;
-  margin-bottom: 20px;
+.empty-state .legacy-icon {
+  font-size: 30px;
+  margin-bottom: 10px;
 }
 
 .empty-state p {
-  font-size: 16px;
+  max-width: 520px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
 }
 
 .state-cards {
-  margin-bottom: 20px;
+  margin-bottom: 4px;
 }
 
 .state-card {
-  height: 140px;
-  margin-bottom: 20px;
-  transition: all 0.3s;
+  height: 122px;
+  margin-bottom: 16px;
+  box-shadow: none;
+  transition: border-color 0.15s ease;
 }
 
 .state-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-color: var(--el-color-primary-light-5);
+  transform: none;
+  box-shadow: none;
 }
 
 .state-card-content {
@@ -1257,24 +1263,25 @@ export default {
 }
 
 .state-icon-container {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 15px;
   color: white;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
+  box-shadow: none;
+  transition: none;
 }
 
 .state-card:hover .state-icon-container {
-  transform: scale(1.1);
+  transform: none;
 }
 
-.state-icon-container i {
-  font-size: 36px;
+.state-icon-container .legacy-icon {
+  font-size: 20px;
 }
 
 .state-info {
@@ -1282,24 +1289,24 @@ export default {
 }
 
 .state-title {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
   margin-bottom: 5px;
 }
 
 .state-value {
-  font-size: 24px;
-  font-weight: bold;
+  font-size: 20px;
+  font-weight: 600;
   margin-bottom: 5px;
   transition: all 0.3s;
 }
 
 .state-card:hover .state-value {
-  color: var(--primary-color);
+  color: var(--text-primary);
 }
 
 .state-detail {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-regular);
   margin-bottom: 3px;
 }
@@ -1387,13 +1394,14 @@ export default {
 
 /* 季节进度条 */
 .season-progress-card {
-  margin-bottom: 20px;
-  transition: all 0.3s;
+  margin-bottom: 16px;
+  box-shadow: none;
+  transition: border-color 0.15s ease;
 }
 
 .season-progress-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transform: none;
+  box-shadow: none;
 }
 
 .season-progress {
@@ -1440,7 +1448,8 @@ export default {
 
 /* 详细信息表格 */
 .details-card {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  box-shadow: none;
 }
 
 .details-card .el-table {
@@ -1460,13 +1469,14 @@ export default {
 
 /* 原始数据 */
 .raw-data-card {
-  margin-bottom: 20px;
-  transition: all 0.3s;
+  margin-bottom: 16px;
+  box-shadow: none;
+  transition: border-color 0.15s ease;
 }
 
 .raw-data-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transform: none;
+  box-shadow: none;
 }
 
 .raw-data {
@@ -1474,12 +1484,13 @@ export default {
   overflow-y: auto;
   background-color: var(--surface-muted);
   padding: 15px;
-  border-radius: 4px;
-  transition: all 0.3s;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  transition: background-color 0.15s ease;
 }
 
 .raw-data:hover {
-  background-color: #eef1f6;
+  background-color: var(--surface-muted);
 }
 
 .raw-data pre {
@@ -1491,12 +1502,37 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .page-header {
+    align-items: flex-start;
+  }
+
+  .filter-form :deep(.el-form-item) {
+    display: block;
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .filter-form :deep(.el-select) {
+    width: 100%;
+  }
+
   .state-card {
     height: auto;
   }
 
   .season-lengths {
     flex-direction: column;
+  }
+
+  .details-card :deep(.clearfix) {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .details-card :deep(.clearfix .el-input) {
+    width: 100% !important;
   }
 }
 </style>

@@ -628,54 +628,43 @@ export default {
 
 <style scoped lang="scss">
 .world-list-page {
-  padding: 25px;
-  background-color: var(--surface-muted);
-  min-height: calc(100vh - 80px);
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 25px;
-  padding-bottom: 15px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .page-header h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 28px;
   color: var(--text-primary);
-  position: relative;
-  padding-left: 15px;
-}
-
-.page-header h2:before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 20px;
-  background-color: var(--primary-color);
-  border-radius: 2px;
 }
 
 .header-actions {
   display: flex;
+  gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .search-input {
   width: 250px;
-  margin-right: 15px;
 }
 
 .world-list-card {
-  margin-bottom: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  margin-bottom: 0;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
 .card-header {
@@ -688,25 +677,26 @@ export default {
 
 .header-left {
   display: flex;
+  gap: 10px;
   align-items: center;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .header-left span {
   font-size: 16px;
-  margin-right: 10px;
+  font-weight: 600;
 }
 
-/* 表格样式 */
 .el-table {
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 
 .el-table :deep(th) {
   background-color: var(--surface-muted) !important;
   color: var(--text-regular);
-  font-weight: bold;
-  padding: 12px 0;
+  font-weight: 600;
 }
 
 /* 表格行悬停样式 */
@@ -714,25 +704,21 @@ export default {
   cursor: pointer;
 }
 
-.el-table :deep(.el-table__row:hover) {
-  background-color: #fff3e6;
-}
-
-/* 空列表提示样式 */
 .empty-worlds {
-  padding: 60px 0;
+  padding: 40px 16px;
   text-align: center;
   color: var(--text-secondary);
 }
 
-.empty-worlds i {
-  font-size: 64px;
-  margin-bottom: 15px;
+.empty-worlds .legacy-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
   color: var(--el-border-color);
 }
 
 .empty-worlds p {
-  font-size: 16px;
+  margin: 0;
+  font-size: 14px;
 }
 
 .sidebar-container {
@@ -751,11 +737,7 @@ export default {
 }
 
 .filter-info {
-  margin-top: 20px;
-  padding: 10px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+  margin-top: 12px;
 }
 
 /* 房间选择对话框样式 */
@@ -782,16 +764,17 @@ export default {
   width: 100%;
   display: flex;
   flex-direction: column;
+  gap: 8px;
 }
 
 .room-radio-item {
   display: flex;
   align-items: center;
   padding: 12px;
-  margin-bottom: 10px;
-  border-radius: 6px;
+  margin: 0;
+  border-radius: 4px;
   border: 1px solid var(--border-color);
-  transition: all 0.3s;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
   margin-right: 0;
 
   :deep(.el-radio__label) {
@@ -801,6 +784,7 @@ export default {
 
 .room-radio-item:hover {
   background-color: var(--surface-muted);
+  border-color: var(--el-color-primary-light-5);
 }
 
 .room-item-content {
@@ -831,5 +815,46 @@ export default {
 
 .no-rooms-tip i {
   margin-right: 5px;
+}
+
+@media (max-width: 900px) {
+  .world-list-page > .el-row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .world-list-page > .el-row > .el-col {
+    width: 100%;
+    max-width: none;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .header-actions,
+  .search-input {
+    width: 100%;
+  }
+
+  .header-actions :deep(.el-button) {
+    margin: 0;
+  }
+
+  .card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-left,
+  .header-left :deep(.el-select) {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
 }
 </style>

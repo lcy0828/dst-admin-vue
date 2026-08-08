@@ -442,11 +442,20 @@ export default {
 
 <style scoped>
 .special-lists-page {
-  padding: 20px;
+  width: 100%;
+  min-width: 0;
 }
 
 .page-header {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .save-selector {
@@ -465,12 +474,17 @@ export default {
   color: var(--text-secondary);
 }
 
-.empty-list i {
-  font-size: 40px;
+.empty-list .legacy-icon {
+  font-size: 30px;
   margin-bottom: 10px;
 }
 
 .el-tabs {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+
+:deep(.el-card) {
+  border-radius: 4px;
+  box-shadow: none;
 }
 </style>
