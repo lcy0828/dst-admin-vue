@@ -69,7 +69,7 @@ export default {
 
 .automation-room-label {
   flex: 0 0 auto;
-  color: #536159;
+  color: var(--text-regular);
   font-size: 13px;
 }
 

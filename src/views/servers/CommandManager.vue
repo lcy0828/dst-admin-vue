@@ -1255,7 +1255,7 @@ export default {
 .param-help {
   margin-top: 5px;
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .param-description {
@@ -1292,7 +1292,7 @@ export default {
 }
 
 .execution-result {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   padding: 15px;
   border-radius: 4px;
   margin-top: 15px;
@@ -1314,14 +1314,14 @@ export default {
 }
 
 .time {
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .result-message {
   background-color: #ffffff;
   padding: 10px;
   border-radius: 4px;
-  border: 1px solid #e8ece5;
+  border: 1px solid var(--border-color);
 }
 
 .result-message pre {
@@ -1350,7 +1350,7 @@ export default {
 }
 
 .command-examples a {
-  color: #d97932;
+  color: var(--primary-color);
   text-decoration: none;
 }
 
@@ -1359,11 +1359,11 @@ export default {
 }
 
 .result-container {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   border-radius: 4px;
   padding: 10px;
   margin-top: 15px;
-  border: 1px solid #e8ece5;
+  border: 1px solid var(--border-color);
 }
 
 /* 可选的暗色主题支持 */
@@ -1393,20 +1393,20 @@ export default {
 }
 
 .batch-instructions {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   padding: 10px 15px;
   border-radius: 4px;
   color: #666;
   font-size: 14px;
   margin-bottom: 20px;
-  border-left: 3px solid #d97932;
+  border-left: 3px solid var(--primary-color);
 }
 
 .batch-result-list {
   max-height: 200px;
   overflow-y: auto;
   margin-top: 15px;
-  border: 1px solid #e8ece5;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
 }
 
@@ -1415,7 +1415,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 8px 15px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .batch-result-item:last-child {

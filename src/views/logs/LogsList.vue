@@ -77,7 +77,7 @@ export default {
 
 .tip {
   font-size: 14px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-top: 20px;
 }
 </style> 

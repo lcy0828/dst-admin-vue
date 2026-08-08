@@ -351,7 +351,7 @@ export default {
   margin: 0;
   font-size: 22px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .task-list-card {
@@ -375,7 +375,7 @@ export default {
 
 .task-schedule i {
   margin-right: 5px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .pagination-container {
@@ -385,7 +385,7 @@ export default {
 
 .task-paused {
   background-color: #f9f9f9;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 :deep(.el-table .cell) {

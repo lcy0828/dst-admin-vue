@@ -45,7 +45,7 @@
         <el-tooltip content="自动滚动到最新日志" placement="top">
           <el-switch
             v-model="autoScroll"
-            active-color="#d97932"
+            active-color="var(--primary-color)"
             inactive-color="#758078">
           </el-switch>
         </el-tooltip>
@@ -437,7 +437,7 @@ export default {
   height: 100%;
   border-radius: 4px;
   overflow: hidden;
-  background: #f1f4ed;
+  background: var(--surface-muted);
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
@@ -447,7 +447,7 @@ export default {
   align-items: center;
   padding: 12px 15px;
   background: #ffffff;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .log-title {
@@ -455,12 +455,12 @@ export default {
   align-items: center;
   font-size: 16px;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .log-title i {
   margin-right: 8px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .log-actions {

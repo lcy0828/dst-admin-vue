@@ -3,8 +3,10 @@ const DEFAULTS = Object.freeze({
   language: 'zh-CN',
   timezone: 'Asia/Shanghai',
   dateFormat: 'YYYY-MM-DD',
-  theme: '#d97932'
+  theme: '#3f7656'
 })
+
+const LEGACY_DEFAULT_THEME = '#d97932'
 
 let current = { ...DEFAULTS }
 
@@ -15,7 +17,8 @@ function fieldValue(settings, id, fallback) {
 
 function normalizeHex(value) {
   const match = /^#([0-9a-f]{6})/i.exec(value || '')
-  return match ? `#${match[1].toLowerCase()}` : DEFAULTS.theme
+  const normalized = match ? `#${match[1].toLowerCase()}` : DEFAULTS.theme
+  return normalized === LEGACY_DEFAULT_THEME ? DEFAULTS.theme : normalized
 }
 
 function mix(hex, target, amount) {
@@ -36,6 +39,8 @@ export function applySystemPreferences(settings) {
 
   document.documentElement.lang = current.language
   const root = document.documentElement.style
+  root.setProperty('--primary-color', current.theme)
+  root.setProperty('--tech-accent-blue', current.theme)
   root.setProperty('--el-color-primary', current.theme)
   for (let index = 3; index <= 9; index += 1) {
     root.setProperty(`--el-color-primary-light-${index}`, mix(current.theme, '#ffffff', index / 10))

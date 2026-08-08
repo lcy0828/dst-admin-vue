@@ -900,7 +900,7 @@ export default {
   margin: 0;
   font-size: 22px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .task-form-card {
@@ -913,12 +913,12 @@ export default {
 
 .el-divider__text {
   font-weight: bold;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .form-item-hint {
   margin-left: 10px;
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -940,7 +940,7 @@ export default {
   margin-top: 16px;
   margin-bottom: 8px;
   font-size: 16px;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 :deep(.cron-help p) {
@@ -957,10 +957,10 @@ export default {
 }
 
 :deep(.cron-help code) {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   border-radius: 4px;
   padding: 2px 6px;
-  color: #d97932;
+  color: var(--primary-color);
   font-family: Consolas, Monaco, monospace;
 }
 </style>

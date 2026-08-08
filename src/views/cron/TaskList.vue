@@ -1212,7 +1212,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: '#d97932'
+              color: '#3f7656'
             }
           }
         ]
@@ -1276,7 +1276,7 @@ export default {
 /* 表格行样式 */
 .task-table :deep(.disabled-row) {
   background-color: #f9f9f9;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .task-table :deep(.success-row) {
@@ -1310,7 +1310,7 @@ export default {
 
 .task-description {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1331,7 +1331,7 @@ export default {
 .target-icon {
   margin-right: 5px;
   font-size: 16px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 /* 依赖任务单元格 */
@@ -1341,7 +1341,7 @@ export default {
 }
 
 .no-deps {
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 12px;
   font-style: italic;
 }
@@ -1371,7 +1371,7 @@ export default {
 
 .timeout-value i, .retry-value i {
   margin-right: 5px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 /* 下次执行单元格 */
@@ -1382,15 +1382,15 @@ export default {
 
 .next-run-cell i {
   margin-right: 5px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .next-run-time {
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .no-schedule {
-  color: #758078;
+  color: var(--text-secondary);
   font-style: italic;
 }
 
@@ -1408,15 +1408,15 @@ export default {
 
 .last-run-time i {
   margin-right: 5px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .time-text {
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .no-run {
-  color: #758078;
+  color: var(--text-secondary);
   font-style: italic;
 }
 
@@ -1463,7 +1463,7 @@ export default {
 }
 .result-message p {
   margin: 5px 0;
-  color: #536159;
+  color: var(--text-regular);
 }
 .result-output {
   margin-top: 15px;
@@ -1499,19 +1499,19 @@ export default {
 }
 .stats-title {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
   margin-bottom: 10px;
 }
 .stats-value {
   font-size: 24px;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .unit-note {
   font-size: 12px;
   font-weight: normal;
-  color: #758078;
+  color: var(--text-secondary);
   display: block;
   margin-top: 5px;
 }
@@ -1519,13 +1519,13 @@ export default {
   border-left: 4px solid #4f8a5b;
 }
 .avg-duration {
-  border-left: 4px solid #d97932;
+  border-left: 4px solid var(--primary-color);
 }
 .total-runs {
   border-left: 4px solid #d99b32;
 }
 .last-run {
-  border-left: 4px solid #758078;
+  border-left: 4px solid var(--text-secondary);
 }
 .stats-detail {
   margin: 20px 0;
@@ -1540,7 +1540,7 @@ export default {
 }
 .detail-label {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
   margin-right: 10px;
   min-width: 80px;
 }

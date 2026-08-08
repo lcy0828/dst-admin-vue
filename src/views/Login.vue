@@ -122,7 +122,7 @@ export default {
 .login-form-wrapper {
   width: 400px;
   padding: 60px 40px;
-  background-color: #fff;
+  background-color: var(--surface-color);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -173,14 +173,16 @@ export default {
 
 .login-illustration {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 0;
   right: 0;
-  bottom: 0;
-  background-image: url('https://cdn2.steamgriddb.com/file/sgdb-cdn/grid/76a4d2de4b17729ad86b2d4580a33059.png');
-  background-size: cover;
-  background-position: center;
-  opacity: 0.6;
+  aspect-ratio: 10 / 3;
+  transform: translateY(-50%);
+  background-image: url('/static/misc/worldgen_customization.webp');
+  background-size: 100% auto;
+  background-position: top center;
+  background-repeat: no-repeat;
+  opacity: 0.68;
 }
 
 @media (max-width: 768px) {

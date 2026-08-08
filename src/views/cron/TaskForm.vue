@@ -857,7 +857,7 @@ export default {
 .param-help {
   margin-top: 5px;
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .param-example {

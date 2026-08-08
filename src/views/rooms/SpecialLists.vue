@@ -462,7 +462,7 @@ export default {
 .empty-list {
   text-align: center;
   padding: 30px 0;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .empty-list i {

@@ -848,7 +848,7 @@ export default {
       font-size: 16px;
       font-weight: bold;
       margin-bottom: 20px;
-      color: #d97932;
+      color: var(--primary-color);
       display: flex;
       align-items: center;
       
@@ -887,14 +887,14 @@ export default {
 
       .agent-details {
         font-size: 12px;
-        color: #758078;
+        color: var(--text-secondary);
       }
     }
   }
 
   .command-detail {
     .command-content {
-      background: #f1f4ed;
+      background: var(--surface-muted);
       padding: 10px;
       border-radius: 4px;
       font-family: monospace;
@@ -918,7 +918,7 @@ export default {
     }
 
     .no-output {
-      color: #758078;
+      color: var(--text-secondary);
       text-align: center;
       padding: 20px;
     }

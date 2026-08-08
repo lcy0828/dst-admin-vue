@@ -1018,8 +1018,8 @@ export default {
   margin-top: 0;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e8ece5;
-  color: #27352f;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 /* 稀有度滑块样式 */
@@ -1037,14 +1037,14 @@ export default {
   width: 60px;
   text-align: right;
   padding-right: 10px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .rarity-value {
   width: 50px;
   text-align: left;
   padding-left: 10px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .distribution-total {
@@ -1080,12 +1080,12 @@ export default {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .result-header h3 {
   margin: 0;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .result-actions {
@@ -1099,7 +1099,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 300px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .empty-result i {
@@ -1138,15 +1138,15 @@ export default {
   left: 0;
   right: 0;
   height: 4px;
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 .rarity-common::before {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 .rarity-rare::before {
-  background-color: #d97932;
+  background-color: var(--primary-color);
 }
 
 .rarity-epic::before {
@@ -1168,7 +1168,7 @@ export default {
   height: 40px;
   border-radius: 4px;
   margin-right: 10px;
-  border: 1px solid #e8ece5;
+  border: 1px solid var(--border-color);
 }
 
 .item-card-title {
@@ -1178,7 +1178,7 @@ export default {
 .item-card-name {
   font-weight: bold;
   margin-bottom: 5px;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .item-card-tags {
@@ -1187,7 +1187,7 @@ export default {
 }
 
 .item-card-description {
-  color: #536159;
+  color: var(--text-regular);
   font-size: 13px;
   margin-bottom: 15px;
   min-height: 40px;
@@ -1211,7 +1211,7 @@ export default {
   justify-content: space-between;
   padding: 5px 0;
   font-size: 13px;
-  border-bottom: 1px dashed #e8ece5;
+  border-bottom: 1px dashed var(--border-color);
 }
 
 .item-stat-row:last-child {
@@ -1219,16 +1219,16 @@ export default {
 }
 
 .item-stat-label {
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .item-stat-value {
-  color: #27352f;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .item-special-stat {
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .item-card-actions {
@@ -1268,7 +1268,7 @@ export default {
 :deep(.el-divider__text) {
   background-color: #f9fafc;
   font-weight: 600;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 /* 特殊属性样式 */

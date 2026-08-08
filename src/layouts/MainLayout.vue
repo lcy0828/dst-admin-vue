@@ -11,9 +11,9 @@
       <el-menu
         :default-active="activeMenu"
         class="el-menu-vertical"
-        background-color="#315a46"
-        text-color="#e2ede5"
-        active-text-color="#ffb15e"
+        background-color="var(--sidebar-color)"
+        text-color="var(--sidebar-text)"
+        active-text-color="var(--sidebar-active)"
         :collapse="isCollapse"
         :unique-opened="true"
         router>
@@ -479,7 +479,8 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 1px 2px rgba(38, 53, 46, 0.04);
   background-color: var(--surface-color);
 }
 

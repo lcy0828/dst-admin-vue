@@ -576,7 +576,7 @@ export default {
 
 .server-room {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-left: 4px;
 }
 
@@ -601,7 +601,7 @@ export default {
 
 .empty-description {
   margin-bottom: 15px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .empty-description p {
@@ -636,13 +636,13 @@ export default {
 }
 
 .server-offline {
-  color: #758078;
+  color: var(--text-secondary);
   font-style: italic;
 }
 
 .mode-description {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-top: 5px;
   line-height: 1.4;
 }

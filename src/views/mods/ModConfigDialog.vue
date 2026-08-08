@@ -554,13 +554,13 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 40px 0;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .loading-container i {
   font-size: 32px;
   margin-bottom: 10px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .reset-button-container {
@@ -590,7 +590,7 @@ export default {
   background-color: #f8f9fa;
   border-radius: 6px;
   padding: 15px;
-  border-left: 4px solid #d97932;
+  border-left: 4px solid var(--primary-color);
 }
 
 .description-header {
@@ -598,7 +598,7 @@ export default {
   align-items: center;
   margin-bottom: 10px;
   font-weight: 500;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .description-header i {
@@ -607,7 +607,7 @@ export default {
 }
 
 .description-content {
-  color: #536159;
+  color: var(--text-regular);
   line-height: 1.6;
   font-size: 14px;
   white-space: pre-line;
@@ -618,7 +618,7 @@ export default {
 }
 
 .config-form-item {
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 20px;
   margin-bottom: 20px;
   position: relative;
@@ -631,18 +631,18 @@ export default {
 
 .config-form-item .el-form-item__label {
   font-weight: 500;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .option-tooltip {
   margin-left: 10px;
-  color: #758078;
+  color: var(--text-secondary);
   cursor: pointer;
   font-size: 14px;
 }
 
 .option-tooltip:hover {
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .option-control-wrapper {
@@ -653,7 +653,7 @@ export default {
 .option-value-text {
   margin-left: 10px;
   font-size: 13px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .option-select, .option-input {
@@ -673,7 +673,7 @@ export default {
 
 .mod-config-dialog :deep(.el-dialog__header) {
   padding: 15px 20px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
   background-color: #f9f9f9;
 }
 
@@ -684,7 +684,7 @@ export default {
 
 .mod-config-dialog :deep(.el-dialog__footer) {
   padding: 15px 20px;
-  border-top: 1px solid #e8ece5;
+  border-top: 1px solid var(--border-color);
   background-color: #f9f9f9;
 }
 

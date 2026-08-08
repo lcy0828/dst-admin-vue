@@ -1,43 +1,46 @@
 /* 全局CSS变量 */
 :root {
-  --primary-color: #d97932;
+  --primary-color: #3f7656;
+  --accent-color: #b85c1e;
   --success-color: #4f8a5b;
-  --warning-color: #d99b32;
+  --warning-color: #b85c1e;
   --danger-color: #c94f4f;
-  --info-color: #758078;
-  --text-primary: #27352f;
+  --info-color: #66756c;
+  --text-primary: #26352e;
   --text-regular: #536159;
-  --text-secondary: #758078;
-  --border-color: #dde4dc;
-  --bg-color: #f6f3ea;
+  --text-secondary: #66756c;
+  --border-color: #dce4dd;
+  --bg-color: #f5f6f2;
   --surface-color: #ffffff;
-  --surface-muted: #f1f4ed;
-  --sidebar-color: #315a46;
-  --sidebar-color-deep: #264736;
-  --sidebar-text: #e2ede5;
-  --sidebar-active: #ffb15e;
+  --surface-muted: #f0f3ee;
+  --sidebar-color: #2f5b43;
+  --sidebar-color-deep: #254936;
+  --sidebar-text: #eaf2ec;
+  --sidebar-active: #ffbd78;
+  --shadow-card: 0 1px 3px rgba(38, 53, 46, 0.08);
+  --shadow-card-hover: 0 6px 16px rgba(38, 53, 46, 0.1);
 
-  --el-color-primary: #d97932;
-  --el-color-primary-light-3: #e59b69;
-  --el-color-primary-light-5: #edb792;
-  --el-color-primary-light-7: #f5d3bc;
-  --el-color-primary-light-8: #f9e1d2;
-  --el-color-primary-light-9: #fcf0e8;
-  --el-color-primary-dark-2: #ad6128;
+  --el-color-primary: #3f7656;
+  --el-color-primary-light-3: #799f89;
+  --el-color-primary-light-5: #9fbbab;
+  --el-color-primary-light-7: #c5d6cc;
+  --el-color-primary-light-8: #d9e4dd;
+  --el-color-primary-light-9: #ecf1ee;
+  --el-color-primary-dark-2: #325e45;
   --el-color-success: #4f8a5b;
-  --el-color-warning: #d99b32;
+  --el-color-warning: #b85c1e;
   --el-color-danger: #c94f4f;
-  --el-color-info: #758078;
-  --el-text-color-primary: #27352f;
+  --el-color-info: #66756c;
+  --el-text-color-primary: #26352e;
   --el-text-color-regular: #536159;
-  --el-text-color-secondary: #758078;
-  --el-border-color: #d4ddd3;
-  --el-border-color-light: #dde4dc;
-  --el-border-color-lighter: #e8ece5;
-  --el-fill-color-light: #f1f4ed;
-  --el-fill-color-lighter: #f7f8f4;
+  --el-text-color-secondary: #66756c;
+  --el-border-color: #ced9d1;
+  --el-border-color-light: #dce4dd;
+  --el-border-color-lighter: #e8ede9;
+  --el-fill-color-light: #f0f3ee;
+  --el-fill-color-lighter: #f7f9f6;
   --el-fill-color-blank: #ffffff;
-  --el-bg-color-page: #f6f3ea;
+  --el-bg-color-page: #f5f6f2;
   --el-border-radius-base: 4px;
 }
 
@@ -65,17 +68,17 @@ html, body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #ebece5;
+  background: #edf0ec;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #aebcaf;
+  background: #b8c4ba;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #859889;
+  background: #8fa094;
 }
 
 /* 常用间距和布局类 */
@@ -102,9 +105,10 @@ html, body {
 
 /* 卡片样式 */
 .card {
-  background-color: #fff;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-card);
   padding: 20px;
   margin-bottom: 20px;
 }
@@ -169,12 +173,17 @@ html, body {
 
 /* ElementUI样式覆盖 */
 .el-card {
-  border: none;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-card) !important;
   margin-bottom: 20px;
 }
 
+.el-card.is-hover-shadow:hover {
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
 .el-table th {
-  background-color: #f1f4ed !important;
+  background-color: var(--surface-muted) !important;
   color: var(--text-primary);
 }
 

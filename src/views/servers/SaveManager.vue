@@ -440,7 +440,7 @@ export default {
 .server-select-wrapper {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .tool-bar {
@@ -450,7 +450,7 @@ export default {
 .empty-saves {
   text-align: center;
   padding: 50px 0;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .empty-saves i {
@@ -468,7 +468,7 @@ export default {
 }
 
 .save-name i {
-  color: #d97932;
+  color: var(--primary-color);
   margin-right: 8px;
   font-size: 18px;
 }
@@ -499,14 +499,14 @@ export default {
 }
 
 .el-upload__tip {
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 12px;
   margin-top: 5px;
 }
 
 /* 表格行效果 */
 :deep(.el-table .el-table__row:hover) {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
 }
 
 :deep(.el-table .current-row) {
@@ -515,26 +515,26 @@ export default {
 
 /* 上传样式 */
 :deep(.el-upload-dragger) {
-  border: 2px dashed #d97932;
+  border: 2px dashed var(--primary-color);
 }
 
 :deep(.el-upload-dragger:hover) {
-  border-color: #e59252;
+  border-color: var(--el-color-primary-light-3);
 }
 
 :deep(.el-upload-dragger .el-icon-upload) {
   font-size: 48px;
-  color: #d97932;
+  color: var(--primary-color);
   margin-bottom: 10px;
 }
 
 :deep(.el-upload__text) {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 :deep(.el-upload__text em) {
-  color: #d97932;
+  color: var(--primary-color);
   font-style: normal;
 }
 </style>

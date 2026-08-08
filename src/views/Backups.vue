@@ -417,7 +417,7 @@ export default {
 .backup-name i {
   margin-right: 10px;
   font-size: 18px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .el-table :deep(.el-table__row) {
@@ -495,7 +495,7 @@ export default {
 .new-archive-option {
   margin-top: 15px;
   padding: 15px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   border-radius: 4px;
 }
 </style>

@@ -341,13 +341,13 @@ export default {
 
 .info-item {
   display: flex;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
 }
 
 .info-label {
   width: 100px;
-  color: #758078;
+  color: var(--text-secondary);
   font-weight: bold;
 }
 
@@ -368,11 +368,11 @@ export default {
 .stat-value {
   font-size: 24px;
   font-weight: bold;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .stat-label {
-  color: #758078;
+  color: var(--text-secondary);
   margin-top: 5px;
 }
 
@@ -398,16 +398,16 @@ export default {
   display: flex;
   flex-direction: column;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .activity-time {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-bottom: 5px;
 }
 
 .activity-content {
-  color: #536159;
+  color: var(--text-regular);
 }
 </style>

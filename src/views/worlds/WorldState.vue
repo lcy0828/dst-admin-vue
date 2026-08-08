@@ -714,7 +714,7 @@ export default {
 
     // 获取季节颜色
     getSeasonColor() {
-      if (!this.worldState) return '#d97932';
+      if (!this.worldState) return '#3f7656';
 
       const colorMap = {
         autumn: '#d99b32',
@@ -723,7 +723,7 @@ export default {
         summer: '#c94f4f'
       };
 
-      return colorMap[this.worldState.season] || '#d97932';
+      return colorMap[this.worldState.season] || '#3f7656';
     },
 
     // 获取时间阶段名称
@@ -1177,7 +1177,7 @@ export default {
 <style scoped>
 .world-state-page {
   padding: 20px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   min-height: calc(100vh - 84px);
 }
 
@@ -1187,14 +1187,14 @@ export default {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .page-header h2 {
   margin: 0;
   font-size: 22px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .filter-card {
@@ -1222,7 +1222,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 300px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .empty-state i {
@@ -1282,7 +1282,7 @@ export default {
 
 .state-title {
   font-size: 14px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-bottom: 5px;
 }
 
@@ -1294,12 +1294,12 @@ export default {
 }
 
 .state-card:hover .state-value {
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .state-detail {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
   margin-bottom: 3px;
 }
 
@@ -1309,7 +1309,7 @@ export default {
 }
 
 .season-winter {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 .season-spring {
@@ -1321,12 +1321,12 @@ export default {
 }
 
 .season-unknown {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 /* 时间阶段样式 */
 .phase-day, .phase-unknown {
-  background-color: #d97932;
+  background-color: var(--primary-color);
 }
 
 .phase-dusk {
@@ -1334,12 +1334,12 @@ export default {
 }
 
 .phase-night {
-  background-color: #536159;
+  background-color: var(--text-regular);
 }
 
 /* 天气样式 */
 .weather-clear {
-  background-color: #d97932;
+  background-color: var(--primary-color);
 }
 
 .weather-rain {
@@ -1347,7 +1347,7 @@ export default {
 }
 
 .weather-snow {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 .weather-acid {
@@ -1372,16 +1372,16 @@ export default {
 }
 
 .nightmare-dawn {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 .nightmare-none {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 /* 月相样式 */
 .moon-new, .moon-quarter, .moon-half, .moon-threequarter, .moon-full, .moon-unknown {
-  background-color: #536159;
+  background-color: var(--text-regular);
 }
 
 /* 季节进度条 */
@@ -1401,7 +1401,7 @@ export default {
 
 .season-days {
   float: right;
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -1426,7 +1426,7 @@ export default {
 }
 
 .season-name.winter {
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .season-name.spring {
@@ -1448,8 +1448,8 @@ export default {
 }
 
 .details-card .el-table th {
-  background-color: #f1f4ed;
-  color: #536159;
+  background-color: var(--surface-muted);
+  color: var(--text-regular);
   font-weight: bold;
 }
 
@@ -1471,7 +1471,7 @@ export default {
 .raw-data {
   max-height: 300px;
   overflow-y: auto;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   padding: 15px;
   border-radius: 4px;
   transition: all 0.3s;
@@ -1486,7 +1486,7 @@ export default {
   white-space: pre-wrap;
   word-break: break-all;
   font-family: 'Courier New', Courier, monospace;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 @media (max-width: 768px) {

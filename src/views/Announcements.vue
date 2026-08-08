@@ -347,7 +347,7 @@ export default {
 
 .announcement-header {
   margin-bottom: 20px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 15px;
 }
 
@@ -359,7 +359,7 @@ export default {
 .announcement-meta {
   display: flex;
   justify-content: space-between;
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 

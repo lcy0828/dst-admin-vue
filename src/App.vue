@@ -23,7 +23,7 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   height: 100%;
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 #app,
@@ -100,7 +100,7 @@ html, body {
 
 /* 修改Element UI样式 */
 .el-table th {
-  background-color: #f1f4ed !important;
+  background-color: var(--surface-muted) !important;
 }
 
 .el-card__header {

@@ -331,7 +331,7 @@ export default {
 
 .token-note {
   margin-top: 15px;
-  color: #758078;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   font-size: 14px;
@@ -344,7 +344,7 @@ export default {
 .empty-token {
   text-align: center;
   padding: 30px 0;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .empty-token i {

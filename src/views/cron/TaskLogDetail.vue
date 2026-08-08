@@ -240,7 +240,7 @@ export default {
   font-size: 16px;
   margin-bottom: 10px;
   padding-left: 5px;
-  border-left: 3px solid #d97932;
+  border-left: 3px solid var(--primary-color);
 }
 .code-block {
   background-color: #f5f5f5;
@@ -261,7 +261,7 @@ export default {
   color: #d33;
 }
 .link-type {
-  color: #d97932;
+  color: var(--primary-color);
   text-decoration: none;
 }
 .link-type:hover {

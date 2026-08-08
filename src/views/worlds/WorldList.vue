@@ -628,7 +628,7 @@ export default {
 <style scoped lang="scss">
 .world-list-page {
   padding: 25px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   min-height: calc(100vh - 80px);
 }
 
@@ -638,13 +638,13 @@ export default {
   align-items: center;
   margin-bottom: 25px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .page-header h2 {
   margin: 0;
   font-size: 24px;
-  color: #27352f;
+  color: var(--text-primary);
   position: relative;
   padding-left: 15px;
 }
@@ -657,7 +657,7 @@ export default {
   transform: translateY(-50%);
   width: 4px;
   height: 20px;
-  background-color: #d97932;
+  background-color: var(--primary-color);
   border-radius: 2px;
 }
 
@@ -682,7 +682,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .header-left {
@@ -702,8 +702,8 @@ export default {
 }
 
 .el-table :deep(th) {
-  background-color: #f1f4ed !important;
-  color: #536159;
+  background-color: var(--surface-muted) !important;
+  color: var(--text-regular);
   font-weight: bold;
   padding: 12px 0;
 }
@@ -721,13 +721,13 @@ export default {
 .empty-worlds {
   padding: 60px 0;
   text-align: center;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .empty-worlds i {
   font-size: 64px;
   margin-bottom: 15px;
-  color: #d4ddd3;
+  color: var(--el-border-color);
 }
 
 .empty-worlds p {
@@ -764,7 +764,7 @@ export default {
 
 .dialog-tip {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
   margin-bottom: 15px;
 }
 
@@ -789,7 +789,7 @@ export default {
   padding: 12px;
   margin-bottom: 10px;
   border-radius: 6px;
-  border: 1px solid #e8ece5;
+  border: 1px solid var(--border-color);
   transition: all 0.3s;
   margin-right: 0;
 
@@ -799,7 +799,7 @@ export default {
 }
 
 .room-radio-item:hover {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
 }
 
 .room-item-content {
@@ -811,21 +811,21 @@ export default {
 
 .room-name {
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .room-info {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .no-rooms-tip {
   text-align: center;
   padding: 20px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .no-rooms-tip i {

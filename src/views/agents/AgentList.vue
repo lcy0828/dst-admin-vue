@@ -296,7 +296,7 @@ export default {
 .card-title {
   font-size: 18px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .agent-list-header {
@@ -312,7 +312,7 @@ export default {
   flex: 1;
   text-align: center;
   border-radius: 10px;
-  background: linear-gradient(135deg, #f1f4ed 0%, #eef2f7 100%);
+  background: linear-gradient(135deg, var(--surface-muted) 0%, #eef2f7 100%);
   border: none;
   cursor: default;
   transition: transform 0.3s;
@@ -325,13 +325,13 @@ export default {
 .stat-value {
   font-size: 24px;
   font-weight: 600;
-  color: #d97932;
+  color: var(--primary-color);
   margin-bottom: 8px;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .agent-card {
@@ -367,7 +367,7 @@ export default {
 .hostname {
   font-size: 16px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .agent-info-grid {
@@ -383,19 +383,19 @@ export default {
 
 .info-label {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .info-value {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
   word-break: break-all;
 }
 
 .uuid-value {
   font-family: monospace;
-  color: #d97932;
+  color: var(--primary-color);
   font-size: 12px;
 }
 
@@ -422,13 +422,13 @@ export default {
 
 .empty-icon {
   font-size: 100px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-bottom: 20px;
   opacity: 0.7;
 }
 
 .empty-text {
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 16px;
   margin-bottom: 20px;
 }

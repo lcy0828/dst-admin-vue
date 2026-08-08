@@ -497,7 +497,7 @@ export default {
 .search-form-container {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .mod-search-results {
@@ -555,7 +555,7 @@ export default {
 }
 
 .mod-card-header {
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
   margin-bottom: 15px;
   display: flex;
@@ -603,8 +603,8 @@ export default {
   align-items: center;
   width: 100%;
   height: 100%;
-  background-color: #f1f4ed;
-  color: #758078;
+  background-color: var(--surface-muted);
+  color: var(--text-secondary);
 }
 
 .mod-card-info {
@@ -633,7 +633,7 @@ export default {
   margin-right: 5px;
   width: 16px;
   text-align: center;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .mod-card-actions {
@@ -641,7 +641,7 @@ export default {
   justify-content: space-between;
   margin-top: auto;
   padding-top: 10px;
-  border-top: 1px solid #e8ece5;
+  border-top: 1px solid var(--border-color);
 }
 
 .pagination-container {
@@ -662,7 +662,7 @@ export default {
 
 .prompt-icon {
   font-size: 48px;
-  color: #d97932;
+  color: var(--primary-color);
   margin-bottom: 20px;
 }
 
@@ -686,7 +686,7 @@ export default {
   display: flex;
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .mod-details-image {
@@ -705,7 +705,7 @@ export default {
 .mod-details-name {
   margin: 0 0 15px 0;
   font-size: 24px;
-  color: #27352f;
+  color: var(--text-primary);
   line-height: 1.2;
 }
 
@@ -713,7 +713,7 @@ export default {
   display: flex;
   flex-wrap: wrap;
   margin-bottom: 15px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .mod-details-author,
@@ -742,14 +742,14 @@ export default {
 .mod-details-description h3 {
   font-size: 16px;
   margin: 0 0 10px 0;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .description-content {
   padding: 15px;
   background-color: #f8f8f8;
   border-radius: 4px;
-  color: #536159;
+  color: var(--text-regular);
   line-height: 1.6;
   font-size: 14px;
 }
@@ -765,7 +765,7 @@ export default {
 
 .loading-card {
   height: 300px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   overflow: hidden;
@@ -819,7 +819,7 @@ export default {
   justify-content: space-between;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #e8ece5;
+  border-top: 1px solid var(--border-color);
 }
 
 .loading-button {

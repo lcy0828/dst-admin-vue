@@ -401,7 +401,7 @@ export default {
   margin-top: 10px;
 }
 .link-type {
-  color: #d97932;
+  color: var(--primary-color);
   text-decoration: none;
 }
 .link-type:hover {
@@ -423,16 +423,16 @@ export default {
 }
 .stats-title {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
   margin-bottom: 10px;
 }
 .stats-value {
   font-size: 24px;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
 }
 .total-tasks {
-  border-left: 4px solid #d97932;
+  border-left: 4px solid var(--primary-color);
 }
 .enabled-tasks {
   border-left: 4px solid #4f8a5b;
@@ -441,7 +441,7 @@ export default {
   border-left: 4px solid #d99b32;
 }
 .avg-duration {
-  border-left: 4px solid #758078;
+  border-left: 4px solid var(--text-secondary);
 }
 .stats-charts {
   margin-top: 20px;

@@ -504,7 +504,7 @@ export default {
   color: #d33;
 }
 .link-type {
-  color: #d97932;
+  color: var(--primary-color);
   text-decoration: none;
 }
 .link-type:hover {

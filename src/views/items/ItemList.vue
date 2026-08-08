@@ -670,7 +670,7 @@ export default {
 .search-form {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .tool-bar {
@@ -696,7 +696,7 @@ export default {
   height: 40px;
   margin-right: 12px;
   border-radius: 4px;
-  border: 1px solid #e8ece5;
+  border: 1px solid var(--border-color);
 }
 
 .item-detail {
@@ -711,7 +711,7 @@ export default {
 
 .item-description {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -732,7 +732,7 @@ export default {
 }
 
 .avatar-uploader:hover {
-  border-color: #d97932;
+  border-color: var(--primary-color);
 }
 
 .avatar-uploader-icon {
@@ -752,7 +752,7 @@ export default {
 
 .upload-tip {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-top: 5px;
 }
 
@@ -778,7 +778,7 @@ export default {
   width: 64px;
   height: 64px;
   border-radius: 4px;
-  border: 1px solid #e8ece5;
+  border: 1px solid var(--border-color);
   margin-right: 15px;
 }
 
@@ -790,7 +790,7 @@ export default {
   margin-top: 0;
   margin-bottom: 10px;
   font-size: 20px;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .preview-tags {
@@ -799,13 +799,13 @@ export default {
 }
 
 .preview-description {
-  color: #536159;
+  color: var(--text-regular);
   line-height: 1.6;
   margin-bottom: 20px;
 }
 
 .preview-stats {
-  color: #536159;
+  color: var(--text-regular);
   font-size: 14px;
 }
 
@@ -813,7 +813,7 @@ export default {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px dashed #e8ece5;
+  border-bottom: 1px dashed var(--border-color);
 }
 
 .stat-row:last-child {
@@ -821,12 +821,12 @@ export default {
 }
 
 .stat-label {
-  color: #758078;
+  color: var(--text-secondary);
   flex: 1;
 }
 
 .stat-value {
-  color: #27352f;
+  color: var(--text-primary);
   font-weight: 500;
   flex: 2;
 }
@@ -837,11 +837,11 @@ export default {
 }
 
 :deep(.el-table th) {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
 }
 
 :deep(.el-table .el-table__row:hover) {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
 }
 
 /* 表单布局样式 */
@@ -869,8 +869,8 @@ export default {
 
 :deep(.el-dialog__header) {
   padding: 15px 20px;
-  background-color: #f1f4ed;
-  border-bottom: 1px solid #e8ece5;
+  background-color: var(--surface-muted);
+  border-bottom: 1px solid var(--border-color);
 }
 
 :deep(.el-dialog__title) {
@@ -880,14 +880,14 @@ export default {
 
 :deep(.el-dialog__footer) {
   padding: 15px 20px;
-  border-top: 1px solid #e8ece5;
+  border-top: 1px solid var(--border-color);
 }
 
 /* 分隔线样式 */
 :deep(.el-divider__text) {
   font-size: 14px;
   font-weight: 600;
-  color: #536159;
+  color: var(--text-regular);
   background-color: #f9fbfc;
 }
 

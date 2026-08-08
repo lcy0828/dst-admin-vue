@@ -106,7 +106,7 @@
 
     <!-- 服务器监控 -->
     <el-row :gutter="20" class="monitor-section">
-      <el-col :span="16">
+      <el-col :xs="24" :sm="24" :md="16" :span="16">
         <el-card shadow="hover" class="server-monitor">
           <template v-slot:header>
 <div  class="clearfix server-header">
@@ -263,7 +263,7 @@
         </el-card>
       </el-col>
 
-      <el-col :span="8">
+      <el-col :xs="24" :sm="24" :md="8" :span="8">
         <el-card shadow="hover" class="system-info">
           <template v-slot:header>
 <div  class="clearfix">
@@ -364,7 +364,7 @@
     </div>
 
     <el-row :gutter="20" class="data-section">
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12" :span="12">
         <el-card shadow="hover" class="player-stats">
           <template v-slot:header>
 <div  class="clearfix">
@@ -403,7 +403,7 @@
         </el-card>
       </el-col>
 
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12" :span="12">
         <el-card shadow="hover" class="announcement-card">
           <template v-slot:header>
 <div  class="clearfix">
@@ -1076,7 +1076,7 @@ export default {
 .section-title {
   font-size: 18px;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
 }
@@ -1084,7 +1084,7 @@ export default {
 .section-title i {
   margin-right: 8px;
   font-size: 20px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .monitor-section, .data-section {
@@ -1105,12 +1105,12 @@ export default {
 .server-title {
   margin-left: 10px;
   font-weight: 500;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .server-offline {
   background-color: #f9f9f9;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .server-restarting {
@@ -1138,7 +1138,7 @@ export default {
 }
 
 .season-winter {
-  background-color: #d97932;
+  background-color: var(--primary-color);
 }
 
 .resource-usage {
@@ -1171,12 +1171,12 @@ export default {
   justify-content: space-between;
   margin-bottom: 5px;
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .resource-value {
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .resource-detail {
@@ -1184,11 +1184,11 @@ export default {
   justify-content: space-between;
   margin-top: 5px;
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .system-events {
-  border-top: 1px solid #e8ece5;
+  border-top: 1px solid var(--border-color);
   padding-top: 15px;
   margin-top: 5px;
 }
@@ -1196,7 +1196,7 @@ export default {
 .event-header {
   font-size: 14px;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
   margin-bottom: 10px;
 }
 
@@ -1213,13 +1213,13 @@ export default {
 
 .event-time {
   width: 45px;
-  color: #758078;
+  color: var(--text-secondary);
   flex-shrink: 0;
 }
 
 .event-content {
   flex: 1;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .chart-container {
@@ -1236,7 +1236,7 @@ export default {
 .chart-title {
   font-size: 14px;
   margin-bottom: 10px;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .chart-placeholder {
@@ -1280,14 +1280,14 @@ export default {
 
 .stats-label {
   font-size: 13px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-bottom: 5px;
 }
 
 .stats-value {
   font-size: 18px;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .announcement-list {
@@ -1297,7 +1297,7 @@ export default {
 
 .announcement-item {
   padding: 15px 0;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .announcement-item:last-child {
@@ -1317,12 +1317,12 @@ export default {
 .announcement-title span {
   font-size: 14px;
   font-weight: 500;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .announcement-body {
   font-size: 13px;
-  color: #536159;
+  color: var(--text-regular);
   margin-bottom: 10px;
   line-height: 1.5;
 }
@@ -1335,7 +1335,7 @@ export default {
 }
 
 .announcement-time {
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .announcement-actions {
@@ -1359,7 +1359,7 @@ export default {
   flex-direction: column;
   padding-top: 15px;
   margin-top: 15px;
-  border-top: 1px solid #e8ece5;
+  border-top: 1px solid var(--border-color);
 }
 
 .system-info-item {
@@ -1367,12 +1367,12 @@ export default {
   align-items: center;
   margin-bottom: 8px;
   font-size: 13px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .system-info-item i {
   margin-right: 8px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 
@@ -1391,7 +1391,7 @@ export default {
 
 .server-header i {
   margin-right: 8px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .server-name-info {
@@ -1416,29 +1416,29 @@ export default {
 
 .time-info span:last-child {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-top: 3px;
 }
 
 .server-footer {
   margin-top: 15px;
   padding-top: 10px;
-  border-top: 1px solid #e8ece5;
+  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #536159;
+  color: var(--text-regular);
   font-size: 13px;
 }
 
 .server-stats {
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .empty-server {
   padding: 30px 0;
   text-align: center;
-  color: #758078;
+  color: var(--text-secondary);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1495,8 +1495,8 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  color: #758078;
-  background-color: #f1f4ed;
+  color: var(--text-secondary);
+  background-color: var(--surface-muted);
   border-radius: 4px;
 }
 
@@ -1513,7 +1513,7 @@ export default {
 }
 
 :deep(.el-table__row:hover) {
-  background-color: #f1f4ed!important;
+  background-color: var(--surface-muted)!important;
 }
 
 :deep(.el-table__row.server-offline) {
@@ -1550,7 +1550,7 @@ export default {
   margin-right: 15px;
   font-size: 24px;
   color: white;
-  background-color: #d97932;
+  background-color: var(--primary-color);
 }
 
 .version-details {
@@ -1573,7 +1573,7 @@ export default {
 .version-title {
   font-size: 16px;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .version-info {
@@ -1592,7 +1592,7 @@ export default {
   text-align: center;
   padding: 10px;
   border-radius: 4px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   transition: all 0.3s;
 }
 
@@ -1603,30 +1603,30 @@ export default {
 
 .version-box-label {
   font-size: 14px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-bottom: 5px;
 }
 
 .version-box-value {
   font-size: 20px;
   font-weight: bold;
-  color: #27352f;
+  color: var(--text-primary);
   margin-bottom: 5px;
 }
 
 .version-arrow {
   margin: 0 15px;
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 20px;
 }
 
 .version-box-date {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .version-link {
-  color: #d97932;
+  color: var(--primary-color);
   text-decoration: none;
   transition: all 0.3s;
 }
@@ -1646,7 +1646,7 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 20px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .version-loading i {
@@ -1676,7 +1676,7 @@ export default {
 .version-update-status {
   margin-top: 15px;
   padding: 10px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   border-radius: 4px;
 }
 
@@ -1715,5 +1715,69 @@ export default {
   border-radius: 3px;
   color: #c94f4f;
   word-break: break-all;
+}
+
+@media (max-width: 991px) {
+  .monitor-section > :deep(.el-col:first-child),
+  .data-section > :deep(.el-col:first-child) {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    padding: 4px 0 12px;
+  }
+
+  .section-divider {
+    margin: 24px 0 14px;
+  }
+
+  .version-content {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    padding: 4px;
+  }
+
+  .version-icon {
+    width: 36px;
+    height: 36px;
+    margin-right: 0;
+    font-size: 18px;
+  }
+
+  .version-details {
+    min-width: 0;
+  }
+
+  .version-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .version-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .version-boxes {
+    align-items: stretch;
+  }
+
+  .version-arrow {
+    margin: 0 6px;
+  }
+
+  .version-box-value {
+    font-size: 16px;
+  }
+
+  .resource-detail {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
 }
 </style>

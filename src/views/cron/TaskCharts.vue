@@ -418,7 +418,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: '#d97932'
+              color: '#3f7656'
             }
           }
         ]
@@ -577,7 +577,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: '#d97932'
+              color: '#3f7656'
             }
           }
         ]
@@ -616,13 +616,13 @@ export default {
 }
 .stat-title {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
   margin-bottom: 10px;
 }
 .stat-value {
   font-size: 28px;
   font-weight: bold;
-  color: #d97932;
+  color: var(--primary-color);
 }
 .chart-container {
   margin-top: 30px;
@@ -632,7 +632,7 @@ export default {
   font-size: 16px;
   margin-bottom: 15px;
   padding-left: 10px;
-  border-left: 4px solid #d97932;
+  border-left: 4px solid var(--primary-color);
 }
 .chart-box {
   width: 100%;

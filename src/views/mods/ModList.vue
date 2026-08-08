@@ -758,7 +758,7 @@ export default {
 .filter-container {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .mod-list-container {
@@ -817,7 +817,7 @@ export default {
 }
 
 .mod-card-header {
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
   margin-bottom: 15px;
   display: flex;
@@ -865,8 +865,8 @@ export default {
   align-items: center;
   width: 100%;
   height: 100%;
-  background-color: #f1f4ed;
-  color: #758078;
+  background-color: var(--surface-muted);
+  color: var(--text-secondary);
 }
 
 .mod-card-info {
@@ -891,7 +891,7 @@ export default {
   margin-right: 5px;
   width: 16px;
   text-align: center;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .mod-card-subscribers,
@@ -906,7 +906,7 @@ export default {
   margin-right: 5px;
   width: 16px;
   text-align: center;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .mod-card-tags {
@@ -942,7 +942,7 @@ export default {
   display: flex;
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .mod-details-image {
@@ -961,7 +961,7 @@ export default {
 .mod-details-name {
   margin: 0 0 15px 0;
   font-size: 24px;
-  color: #27352f;
+  color: var(--text-primary);
   line-height: 1.2;
 }
 
@@ -969,7 +969,7 @@ export default {
   display: flex;
   flex-wrap: wrap;
   margin-bottom: 15px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .mod-details-author,
@@ -1006,14 +1006,14 @@ export default {
 .mod-details-files h3 {
   font-size: 16px;
   margin: 0 0 10px 0;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .description-content {
   padding: 10px;
   background-color: #f8f8f8;
   border-radius: 4px;
-  color: #536159;
+  color: var(--text-regular);
   line-height: 1.6;
   font-size: 14px;
 }
@@ -1036,13 +1036,13 @@ export default {
 }
 
 .file-info-label {
-  color: #758078;
+  color: var(--text-secondary);
   width: 100px;
   flex-shrink: 0;
 }
 
 .file-info-value {
-  color: #536159;
+  color: var(--text-regular);
 }
 
 /* 卸载对话框 */
@@ -1085,7 +1085,7 @@ export default {
   max-height: 60vh;
   overflow-y: auto;
   padding: 10px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   border-radius: 4px;
 }
 

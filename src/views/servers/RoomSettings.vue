@@ -150,7 +150,7 @@ export default {
 }
 
 .room-preview {
-  border: 1px solid #d4ddd3;
+  border: 1px solid var(--el-border-color);
   border-radius: 4px;
   padding: 15px;
   background-color: #f9f9f9;
@@ -167,7 +167,7 @@ export default {
 
 .preview-content {
   font-size: 14px;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 /* 不同风格的房间预览 */

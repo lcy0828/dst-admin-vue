@@ -1689,7 +1689,7 @@ export default {
 .bar {
   width: 3px;
   margin-right: 1px;
-  background-color: #d4ddd3;
+  background-color: var(--el-border-color);
   border-radius: 1px;
 }
 
@@ -1714,7 +1714,7 @@ export default {
 }
 
 .signal-unknown .bar {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 /* 用户标识样式 */
@@ -1791,7 +1791,7 @@ export default {
 .p-bar {
   width: 3px;
   margin-right: 1px;
-  background-color: #d4ddd3;
+  background-color: var(--el-border-color);
   border-radius: 1px;
 }
 
@@ -1814,7 +1814,7 @@ export default {
 }
 
 .performance-unknown .p-bar {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 .detail-name-with-badges {
@@ -1845,13 +1845,13 @@ export default {
 
 .steam-id-text {
   font-family: monospace;
-  color: #536159;
+  color: var(--text-regular);
   cursor: pointer;
   transition: color 0.3s;
 }
 
 .steam-id-text:hover {
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .steam-icon-container {
@@ -1870,7 +1870,7 @@ export default {
 }
 
 .steam-svg-icon:hover {
-  fill: #d97932;
+  fill: var(--primary-color);
 }
 
 .detail-steam-id {
@@ -1882,13 +1882,13 @@ export default {
 
 .detail-steam-id-text {
   font-family: monospace;
-  color: #536159;
+  color: var(--text-regular);
   cursor: pointer;
   transition: color 0.3s;
 }
 
 .detail-steam-id-text:hover {
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .truncated-text {
@@ -1901,7 +1901,7 @@ export default {
 
 .form-help-text {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-top: 5px;
   line-height: 1.2;
 }

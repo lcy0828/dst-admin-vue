@@ -474,7 +474,7 @@ export default {
   width: 70px;
   height: 70px;
   border-radius: 35px;
-  background-color: #d97932;
+  background-color: var(--primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -496,7 +496,7 @@ export default {
 }
 
 .seasons-icon {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 .world-icon {
@@ -513,7 +513,7 @@ export default {
 }
 
 .card-content p {
-  color: #536159;
+  color: var(--text-regular);
   font-size: 14px;
   margin-bottom: 15px;
 }
@@ -523,7 +523,7 @@ export default {
   flex-direction: column;
   align-items: center;
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .card-features span {
@@ -544,7 +544,7 @@ export default {
 .style-default {
   background-color: #f9f9f9;
   color: #333333;
-  border: 1px solid #d4ddd3;
+  border: 1px solid var(--el-border-color);
 }
 
 .style-dark {
@@ -610,7 +610,7 @@ export default {
       align-items: center;
       margin-bottom: 20px;
       padding-bottom: 15px;
-      border-bottom: 1px dashed #e8ece5;
+      border-bottom: 1px dashed var(--border-color);
       
       i {
         font-size: 24px;
@@ -623,7 +623,7 @@ export default {
         font-size: 16px;
         
         strong {
-          color: #d97932;
+          color: var(--primary-color);
         }
       }
     }

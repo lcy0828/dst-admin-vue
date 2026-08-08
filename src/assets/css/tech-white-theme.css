@@ -2,34 +2,34 @@
 :root {
   /* 主色调 */
   --tech-white-primary: #ffffff;
-  --tech-white-secondary: #f1f4ed;
-  --tech-white-tertiary: #eef1f6;
+  --tech-white-secondary: #f0f3ee;
+  --tech-white-tertiary: #f5f7f4;
   
   /* 强调色 */
-  --tech-accent-blue: #d97932;
-  --tech-accent-light-blue: #fff3e6;
-  --tech-accent-dark-blue: #b95f23;
+  --tech-accent-blue: #3f7656;
+  --tech-accent-light-blue: #ecf1ee;
+  --tech-accent-dark-blue: #325e45;
   
   /* 文本颜色 */
-  --tech-text-primary: #27352f;
+  --tech-text-primary: #26352e;
   --tech-text-secondary: #536159;
-  --tech-text-tertiary: #758078;
+  --tech-text-tertiary: #66756c;
   
   /* 边框颜色 */
-  --tech-border-light: #dde4dc;
-  --tech-border-lighter: #e8ece5;
-  --tech-border-extra-light: #f2f6fc;
+  --tech-border-light: #dce4dd;
+  --tech-border-lighter: #e8ede9;
+  --tech-border-extra-light: #f2f5f2;
   
   /* 功能色 */
   --tech-success: #4f8a5b;
-  --tech-warning: #d99b32;
+  --tech-warning: #b85c1e;
   --tech-danger: #c94f4f;
-  --tech-info: #758078;
+  --tech-info: #66756c;
   
   /* 阴影 */
-  --tech-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
-  --tech-shadow-base: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
-  --tech-shadow-dark: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  --tech-shadow-light: 0 1px 3px rgba(38, 53, 46, 0.08);
+  --tech-shadow-base: 0 6px 16px rgba(38, 53, 46, 0.1);
+  --tech-shadow-dark: 0 10px 24px rgba(38, 53, 46, 0.14);
   
   /* 圆角 */
   --tech-radius-small: 2px;

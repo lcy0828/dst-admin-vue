@@ -216,14 +216,14 @@ export default {
   align-items: center;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .categories-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
   position: relative;
   padding-left: 12px;
   letter-spacing: 0.5px;
@@ -237,7 +237,7 @@ export default {
   transform: translateY(-50%);
   width: 4px;
   height: 16px;
-  background-color: #d97932;
+  background-color: var(--primary-color);
   border-radius: 2px;
 }
 
@@ -265,7 +265,7 @@ export default {
 .menu-item i {
   font-size: 16px;
   margin-right: 8px;
-  color: #758078;
+  color: var(--text-secondary);
   width: 24px;
   text-align: center;
 }
@@ -275,11 +275,11 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .menu-item:hover {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
 }
 
 .menu-item.active {
@@ -288,7 +288,7 @@ export default {
 
 .menu-item.active i,
 .menu-item.active span {
-  color: #d97932;
+  color: var(--primary-color);
   font-weight: 500;
 }
 
@@ -299,7 +299,7 @@ export default {
   min-width: 20px;
   line-height: 20px;
   text-align: center;
-  background-color: #d97932;
+  background-color: var(--primary-color);
   color: #fff;
   border-radius: 10px;
   font-size: 12px;
@@ -326,7 +326,7 @@ export default {
 .submenu-title i {
   font-size: 16px;
   margin-right: 8px;
-  color: #758078;
+  color: var(--text-secondary);
   width: 24px;
   text-align: center;
 }
@@ -336,11 +336,11 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .submenu-arrow {
-  color: #758078;
+  color: var(--text-secondary);
   transition: transform 0.3s;
   transform: rotate(0deg);
 }
@@ -350,7 +350,7 @@ export default {
 }
 
 .submenu-title:hover {
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
 }
 
 .submenu-content {
@@ -372,17 +372,17 @@ export default {
 .category-actions {
   padding: 12px;
   text-align: center;
-  background-color: #f1f4ed;
-  border-top: 1px solid #e8ece5;
+  background-color: var(--surface-muted);
+  border-top: 1px solid var(--border-color);
 }
 
 .category-actions .el-button {
-  color: #d97932;
+  color: var(--primary-color);
   font-size: 13px;
 }
 
 .category-actions .el-button:hover {
-  color: #e59252;
+  color: var(--el-color-primary-light-3);
   background-color: transparent;
 }
 </style>

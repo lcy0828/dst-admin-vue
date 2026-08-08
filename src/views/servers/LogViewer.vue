@@ -301,7 +301,7 @@ export default {
 
 .log-subtitle {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .log-content-wrapper {
@@ -381,7 +381,7 @@ export default {
   justify-content: center;
   align-items: center;
   height: 100%;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .no-logs-message i {

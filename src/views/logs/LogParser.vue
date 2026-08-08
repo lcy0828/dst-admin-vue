@@ -212,7 +212,7 @@ export default {
 .header-title i {
   margin-right: 8px;
   font-size: 22px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .empty-data {
@@ -220,7 +220,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #758078;
+  color: var(--text-secondary);
   padding: 80px 0;
   font-size: 16px;
 }
@@ -262,7 +262,7 @@ export default {
   align-items: flex-start;
   margin-bottom: 20px;
   padding-bottom: 15px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .parser-title {
@@ -296,7 +296,7 @@ export default {
 .parser-title h3 {
   margin: 0 0 8px 0;
   font-size: 18px;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .parser-subtitle {
@@ -305,7 +305,7 @@ export default {
 }
 
 .parser-id {
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -317,13 +317,13 @@ export default {
   display: flex;
   align-items: center;
   padding: 6px 0;
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .info-item i {
   margin-right: 8px;
   font-size: 16px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .info-item .label {
@@ -337,10 +337,10 @@ export default {
 }
 
 .path-value {
-  color: #536159;
+  color: var(--text-regular);
   font-family: monospace;
   font-size: 13px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   padding: 2px 6px;
   border-radius: 4px;
 }
@@ -348,7 +348,7 @@ export default {
 .info-statistics {
   display: flex;
   justify-content: space-around;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   border-radius: 8px;
   padding: 15px;
   margin-top: 15px;
@@ -361,12 +361,12 @@ export default {
 .stat-value {
   font-size: 22px;
   font-weight: bold;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .stat-label {
   font-size: 13px;
-  color: #536159;
+  color: var(--text-regular);
   margin-top: 5px;
 }
 
@@ -376,6 +376,6 @@ export default {
   gap: 10px;
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #e8ece5;
+  border-top: 1px solid var(--border-color);
 }
 </style>

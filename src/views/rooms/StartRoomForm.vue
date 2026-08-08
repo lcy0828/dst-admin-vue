@@ -166,7 +166,7 @@ export default {
       margin-top: 0;
       margin-bottom: 20px;
       font-size: 20px;
-      color: #27352f;
+      color: var(--text-primary);
       text-align: center;
       position: relative;
       padding-bottom: 15px;
@@ -179,7 +179,7 @@ export default {
         transform: translateX(-50%);
         width: 60px;
         height: 3px;
-        background-color: #d97932;
+        background-color: var(--primary-color);
         border-radius: 1.5px;
       }
     }
@@ -191,7 +191,7 @@ export default {
     h4 {
       font-size: 16px;
       margin-bottom: 12px;
-      color: #536159;
+      color: var(--text-regular);
     }
     
     .world-list {

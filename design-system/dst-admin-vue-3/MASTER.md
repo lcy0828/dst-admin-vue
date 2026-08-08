@@ -25,21 +25,23 @@ This file is the visual migration contract for the Vue 3 upgrade.
 
 | Role | Value | Token |
 | --- | --- | --- |
-| Primary action | `#d97932` | `--primary-color` |
-| Primary hover | `#e59252` | Element Plus primary light token |
+| Primary action | `#3f7656` | `--primary-color` |
+| Primary hover | `#799f89` | Element Plus primary light token |
+| Warm accent / warning | `#b85c1e` | `--accent-color`, `--warning-color` |
 | Success / online | `#4f8a5b` | `--success-color` |
-| Warning | `#d99b32` | `--warning-color` |
 | Danger | `#c94f4f` | `--danger-color` |
-| Page background | `#f6f3ea` | `--bg-color` |
+| Page background | `#f5f6f2` | `--bg-color` |
 | Surface | `#ffffff` | `--surface-color` |
-| Muted surface | `#f1f4ed` | `--surface-muted` |
-| Sidebar | `#315a46` | `--sidebar-color` |
-| Sidebar deep | `#264736` | `--sidebar-color-deep` |
-| Sidebar text | `#e2ede5` | `--sidebar-text` |
-| Sidebar active | `#ffb15e` | `--sidebar-active` |
-| Primary text | `#27352f` | `--text-primary` |
+| Muted surface | `#f0f3ee` | `--surface-muted` |
+| Sidebar | `#2f5b43` | `--sidebar-color` |
+| Sidebar deep | `#254936` | `--sidebar-color-deep` |
+| Sidebar text | `#eaf2ec` | `--sidebar-text` |
+| Sidebar active | `#ffbd78` | `--sidebar-active` |
+| Primary text | `#26352e` | `--text-primary` |
 | Regular text | `#536159` | `--text-regular` |
-| Border | `#dde4dc` | `--border-color` |
+| Border | `#dce4dd` | `--border-color` |
+
+Primary green owns controls, links, focus and active content states. Warm orange is limited to warnings and the active sidebar marker so the two hues do not compete across every component.
 
 ## Typography And Spacing
 

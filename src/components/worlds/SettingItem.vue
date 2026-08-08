@@ -235,7 +235,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 12px;
-  border: 1px solid #e8ece5;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   transition: all 0.3s;
   background-color: #f9fafc;
@@ -249,7 +249,7 @@ export default {
 }
 
 .setting-item:hover {
-  border-color: #d97932;
+  border-color: var(--primary-color);
   background-color: #fff3e6;
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
@@ -264,7 +264,7 @@ export default {
   top: 5px;
   right: 5px;
   font-size: 16px;
-  color: #758078;
+  color: var(--text-secondary);
   opacity: 0;
   transition: all 0.3s;
   z-index: 2;
@@ -296,7 +296,7 @@ export default {
 .setting-name {
   margin: 0 0 8px;
   font-weight: 500;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .setting-item-changed {

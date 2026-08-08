@@ -290,7 +290,7 @@ export default {
 .card-title {
   font-size: 18px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .security-content {
@@ -300,7 +300,7 @@ export default {
 .section-title {
   font-size: 18px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
   margin-bottom: 20px;
   display: flex;
   align-items: center;
@@ -310,14 +310,14 @@ export default {
 .section-subtitle {
   font-size: 16px;
   font-weight: 600;
-  color: #27352f;
+  color: var(--text-primary);
   margin: 20px 0 15px;
   display: flex;
   align-items: center;
 }
 
 .beta-badge {
-  background-color: #d97932;
+  background-color: var(--primary-color);
   color: white;
   font-size: 11px;
   padding: 2px 6px;
@@ -326,7 +326,7 @@ export default {
 }
 
 .api-key-box {
-  background: linear-gradient(135deg, #f1f4ed 0%, #eef2f7 100%);
+  background: linear-gradient(135deg, var(--surface-muted) 0%, #eef2f7 100%);
   border-radius: 10px;
   padding: 20px;
   margin-bottom: 20px;
@@ -345,7 +345,7 @@ export default {
 .key-label {
   display: block;
   font-size: 13px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
@@ -354,7 +354,7 @@ export default {
   align-items: center;
   background-color: #fff;
   border-radius: 4px;
-  border: 1px solid #d4ddd3;
+  border: 1px solid var(--el-border-color);
   padding: 8px 12px;
 }
 
@@ -365,11 +365,11 @@ export default {
 }
 
 .key-value {
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .key-value-masked {
-  color: #536159;
+  color: var(--text-regular);
   letter-spacing: 2px;
 }
 
@@ -433,7 +433,7 @@ export default {
   position: absolute;
   left: 0;
   top: 0;
-  background-color: #d97932;
+  background-color: var(--primary-color);
   color: white;
   font-weight: bold;
   border-radius: 50%;
@@ -446,11 +446,11 @@ export default {
 .step-title {
   font-weight: 600;
   margin-bottom: 5px;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .step-content {
-  color: #536159;
+  color: var(--text-regular);
 }
 
 .linux-cmd code {
@@ -478,12 +478,12 @@ export default {
 }
 
 .agent-security-container .el-tabs__item.is-active {
-  color: #d97932;
+  color: var(--primary-color);
   font-weight: 600;
 }
 
 .agent-security-container .el-tabs__nav-wrap::after {
   height: 1px;
-  background-color: #d4ddd3;
+  background-color: var(--el-border-color);
 }
 </style>

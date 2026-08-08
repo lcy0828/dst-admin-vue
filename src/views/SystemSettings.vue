@@ -55,7 +55,7 @@
                   <el-button
                     type="text"
                     style="margin-left: 10px;"
-                    @click="settings.theme = '#d97932'">
+                    @click="settings.theme = '#3f7656'">
                     重置为默认
                   </el-button>
                 </el-form-item>
@@ -551,7 +551,7 @@ export default {
         language: 'zh-CN',
         timezone: 'Asia/Shanghai',
         dateFormat: 'YYYY-MM-DD',
-        theme: '#d97932',
+        theme: '#3f7656',
 
         // 安全设置
         passwordComplexity: false,
@@ -701,6 +701,10 @@ export default {
     fieldBoolean(response, id, fallback = false) {
       return this.field(response, id, String(fallback)).value === 'true';
     },
+    themeValue(response) {
+      const value = this.field(response, 'ui.theme', '#3f7656').value;
+      return String(value).toLowerCase() === '#d97932' ? '#3f7656' : value;
+    },
     populateSettings(response) {
       this.settingsResponse = response;
       this.revision = response.revision;
@@ -711,7 +715,7 @@ export default {
         language: this.field(response, 'ui.language', 'zh-CN').value,
         timezone: this.field(response, 'ui.timezone', 'Asia/Shanghai').value,
         dateFormat: this.field(response, 'ui.dateFormat', 'YYYY-MM-DD').value,
-        theme: this.field(response, 'ui.theme', '#d97932').value,
+        theme: this.themeValue(response),
         passwordComplexity: this.fieldBoolean(response, 'security.passwordComplexity'),
         minPasswordLength: this.fieldNumber(response, 'security.minPasswordLength', 6),
         sessionTimeout: this.fieldNumber(response, 'security.sessionTimeout', 1440),
@@ -1026,7 +1030,7 @@ export default {
 
 .setting-desc {
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   margin-left: 10px;
 }
 
@@ -1040,7 +1044,7 @@ export default {
 }
 
 :deep(.el-tabs__item.is-active) {
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 :deep(.el-form-item) {
@@ -1062,7 +1066,7 @@ export default {
 :deep(.el-divider__text) {
   font-size: 14px;
   font-weight: 600;
-  color: #536159;
+  color: var(--text-regular);
   background-color: #fff;
 }
 
@@ -1141,13 +1145,13 @@ export default {
 
 .status-label {
   width: 90px;
-  color: #536159;
+  color: var(--text-regular);
   font-size: 14px;
 }
 
 .status-value {
   flex: 1;
-  color: #27352f;
+  color: var(--text-primary);
   font-size: 14px;
   word-break: break-all;
 }
@@ -1197,7 +1201,7 @@ export default {
 
 .core-usage-label {
   font-size: 12px;
-  color: #536159;
+  color: var(--text-regular);
   margin-bottom: 2px;
 }
 
@@ -1217,7 +1221,7 @@ export default {
 
 .core-usage-value {
   font-size: 11px;
-  color: #758078;
+  color: var(--text-secondary);
   text-align: right;
 }
 

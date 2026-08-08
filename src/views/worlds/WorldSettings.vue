@@ -1882,13 +1882,13 @@ export default {
 
 .header-title i {
   font-size: 24px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .header-title h2 {
   margin: 0;
   font-size: 20px;
-  color: #27352f;
+  color: var(--text-primary);
 }
 
 .header-actions {
@@ -1936,7 +1936,7 @@ export default {
 }
 
 .cave-icon {
-  background-color: #758078;
+  background-color: var(--text-secondary);
 }
 
 .cave-icon::before {
@@ -1953,7 +1953,7 @@ export default {
 
 .world-description p {
   margin: 0;
-  color: #536159;
+  color: var(--text-regular);
   font-size: 14px;
 }
 
@@ -1966,19 +1966,19 @@ export default {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #d97932;
+  color: var(--primary-color);
   cursor: pointer;
   padding: 0 10px;
 }
 
 .add-world-tab:hover {
-  color: #e59252;
+  color: var(--el-color-primary-light-3);
 }
 
 .world-delete-icon {
   margin-left: 8px;
   font-size: 12px;
-  color: #758078;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -1997,8 +1997,8 @@ export default {
   margin-top: 20px;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e8ece5;
-  color: #d97932;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--primary-color);
 }
 
 .server-ini-form h3:first-child {

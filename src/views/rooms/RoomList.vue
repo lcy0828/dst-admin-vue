@@ -498,7 +498,7 @@ export default {
 <style lang="scss" scoped>
 .world-settings-page {
   padding: 25px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   min-height: calc(100vh - 80px);
 
   .page-header {
@@ -507,12 +507,12 @@ export default {
     align-items: center;
     margin-bottom: 30px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #e8ece5;
+    border-bottom: 1px solid var(--border-color);
 
     h2 {
       margin: 0;
       font-size: 24px;
-      color: #27352f;
+      color: var(--text-primary);
       position: relative;
       padding-left: 15px;
 
@@ -524,7 +524,7 @@ export default {
         transform: translateY(-50%);
         width: 4px;
         height: 20px;
-        background-color: #d97932;
+        background-color: var(--primary-color);
         border-radius: 2px;
       }
     }
@@ -553,18 +553,18 @@ export default {
     .empty-save-icon,
     .loading-saves-icon {
       font-size: 64px;
-      color: #d97932;
+      color: var(--primary-color);
       margin-bottom: 25px;
     }
 
     h4 {
       font-size: 22px;
       margin-bottom: 15px;
-      color: #27352f;
+      color: var(--text-primary);
     }
 
     p {
-      color: #536159;
+      color: var(--text-regular);
       margin-bottom: 25px;
       font-size: 15px;
     }
@@ -611,7 +611,7 @@ export default {
         left: 0;
         right: 0;
         height: 6px;
-        background: linear-gradient(to right, #d97932, #4f8a5b);
+        background: linear-gradient(to right, var(--primary-color), #4f8a5b);
         z-index: 2;
       }
 
@@ -636,7 +636,7 @@ export default {
           margin-bottom: 15px;
           font-size: 18px;
           font-weight: bold;
-          color: #27352f;
+          color: var(--text-primary);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -652,7 +652,7 @@ export default {
             left: 0;
             top: 0;
             font-size: 20px;
-            color: #d97932;
+            color: var(--primary-color);
           }
         }
 
@@ -695,7 +695,7 @@ export default {
           }
 
           &::-webkit-scrollbar-thumb {
-            background: #d4ddd3;
+            background: var(--el-border-color);
             border-radius: 4px;
           }
 
@@ -713,7 +713,7 @@ export default {
             .world-category-title {
               font-size: 14px;
               font-weight: 500;
-              color: #536159;
+              color: var(--text-regular);
               margin-right: 10px;
               display: block;
               min-width: 60px;
@@ -748,11 +748,11 @@ export default {
             }
 
             &.forest .world-category-title {
-              color: #d97932;
+              color: var(--primary-color);
 
               &::before {
                 content: '\e79b';
-                color: #d97932;
+                color: var(--primary-color);
               }
             }
 
@@ -766,11 +766,11 @@ export default {
             }
 
             &.unknown .world-category-title {
-              color: #758078;
+              color: var(--text-secondary);
 
               &::before {
                 content: '\e6f6';
-                color: #758078;
+                color: var(--text-secondary);
               }
             }
           }
@@ -782,7 +782,7 @@ export default {
           display: flex;
           flex-wrap: wrap;
           font-size: 13px;
-          color: #758078;
+          color: var(--text-secondary);
           background-color: #f9f9f9;
           padding: 8px 10px;
           border-radius: 6px;
@@ -826,12 +826,12 @@ export default {
           }
 
           &.el-button--primary {
-            background-color: #d97932;
-            border-color: #d97932;
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
 
             &:hover, &:focus {
-              background-color: #e59252;
-              border-color: #e59252;
+              background-color: var(--el-color-primary-light-3);
+              border-color: var(--el-color-primary-light-3);
             }
           }
 
@@ -853,7 +853,7 @@ export default {
         .el-dropdown {
           .el-button {
             background-color: #f4f4f5;
-            color: #536159;
+            color: var(--text-regular);
             border-color: #f4f4f5;
 
             &:hover, &:focus {

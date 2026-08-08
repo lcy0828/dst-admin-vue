@@ -249,17 +249,17 @@ export default {
   align-items: center;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e8ece5;
+  border-bottom: 1px solid var(--border-color);
   user-select: none;
 }
 
 .category-header:hover h4 {
-  color: #e59252;
+  color: var(--el-color-primary-light-3);
 }
 
 .category-header h4 {
   margin: 0;
-  color: #d97932;
+  color: var(--primary-color);
   font-size: 16px;
 }
 

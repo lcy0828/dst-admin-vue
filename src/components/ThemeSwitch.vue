@@ -69,12 +69,12 @@ export default {
 .theme-switch-icon {
   cursor: pointer;
   font-size: 20px;
-  color: #536159;
+  color: var(--text-regular);
   transition: color 0.3s;
   padding: 5px;
 }
 
 .theme-switch-icon:hover {
-  color: #d97932;
+  color: var(--primary-color);
 }
 </style>

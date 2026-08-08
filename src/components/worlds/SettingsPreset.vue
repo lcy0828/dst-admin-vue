@@ -64,7 +64,7 @@ export default {
 <style scoped>
 .presets-section {
   margin-bottom: 20px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
   border-radius: 8px;
   padding: 15px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -81,7 +81,7 @@ export default {
 }
 
 .preset-title i {
-  color: #758078;
+  color: var(--text-secondary);
   font-size: 16px;
   cursor: help;
 }

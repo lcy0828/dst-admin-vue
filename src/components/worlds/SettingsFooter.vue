@@ -121,8 +121,8 @@ export default {
 .changes-list-title {
   font-weight: 500;
   margin-bottom: 10px;
-  color: #27352f;
-  border-bottom: 1px solid #e8ece5;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
   padding-bottom: 8px;
 }
 
@@ -133,7 +133,7 @@ export default {
 
 .change-item {
   padding: 8px 0;
-  border-bottom: 1px dashed #e8ece5;
+  border-bottom: 1px dashed var(--border-color);
 }
 
 .change-item:last-child {
@@ -152,13 +152,13 @@ export default {
 }
 
 .old-value {
-  color: #758078;
+  color: var(--text-secondary);
   text-decoration: line-through;
 }
 
 .el-icon-arrow-right {
   margin: 0 8px;
-  color: #758078;
+  color: var(--text-secondary);
 }
 
 .new-value {

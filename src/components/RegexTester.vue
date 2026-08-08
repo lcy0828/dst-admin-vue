@@ -434,9 +434,9 @@ export default {
 .test-results {
   margin-top: 20px;
   padding: 15px;
-  border: 1px solid #d4ddd3;
+  border: 1px solid var(--el-border-color);
   border-radius: 4px;
-  background-color: #f1f4ed;
+  background-color: var(--surface-muted);
 }
 
 .error-message {
@@ -461,7 +461,7 @@ export default {
 .match-item {
   margin-bottom: 10px;
   padding: 10px;
-  border: 1px solid #d4ddd3;
+  border: 1px solid var(--el-border-color);
   border-radius: 4px;
   background-color: #fff;
 }
@@ -469,7 +469,7 @@ export default {
 .match-index {
   font-weight: bold;
   margin-bottom: 5px;
-  color: #d97932;
+  color: var(--primary-color);
 }
 
 .match-content {
@@ -478,13 +478,13 @@ export default {
   background-color: #f8f8f8;
   padding: 8px;
   border-radius: 4px;
-  border-left: 3px solid #d97932;
+  border-left: 3px solid var(--primary-color);
 }
 
 .highlighted-content {
   margin-top: 15px;
   padding: 10px;
-  border: 1px solid #d4ddd3;
+  border: 1px solid var(--el-border-color);
   border-radius: 4px;
   background-color: #fff;
   max-height: 300px;

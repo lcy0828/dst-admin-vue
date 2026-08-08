@@ -659,7 +659,7 @@ export default {
   }
 
   .page-header {
-    background: linear-gradient(135deg, #ffffff 0%, #f6f3ea 100%);
+    background: linear-gradient(135deg, #ffffff 0%, var(--bg-color) 100%);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
@@ -703,7 +703,7 @@ export default {
             bottom: -6px;
             width: 40px;
             height: 3px;
-            background: linear-gradient(90deg, #d97932, transparent);
+            background: linear-gradient(90deg, var(--primary-color), transparent);
             border-radius: 3px;
           }
         }
@@ -744,7 +744,7 @@ export default {
         left: 0;
         right: 0;
         height: 2px;
-        background: linear-gradient(90deg, transparent, #d97932, transparent);
+        background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
         opacity: 0.7;
       }
 
@@ -776,7 +776,7 @@ export default {
       left: 0;
       width: 100%;
       height: 4px;
-      background: linear-gradient(90deg, #d97932, #e59252);
+      background: linear-gradient(90deg, var(--primary-color), var(--el-color-primary-light-3));
     }
 
     .tab-content {
@@ -806,7 +806,7 @@ export default {
 
         i {
           font-size: 24px;
-          color: #d97932;
+          color: var(--primary-color);
           background: rgba(217, 121, 50, 0.1);
           width: 40px;
           height: 40px;
@@ -820,7 +820,7 @@ export default {
 
     .form-section {
       background: #fff;
-      border: 1px solid #e8ece5;
+      border: 1px solid var(--border-color);
       border-radius: 12px;
       transition: all 0.3s ease;
       position: relative;
@@ -855,11 +855,11 @@ export default {
 
     .form-item-desc {
       font-size: 12px;
-      color: #758078;
+      color: var(--text-secondary);
       margin-top: 6px;
       line-height: 1.5;
       padding-left: 8px;
-      border-left: 2px solid #d97932;
+      border-left: 2px solid var(--primary-color);
       background: rgba(217, 121, 50, 0.03);
       padding: 4px 8px;
       border-radius: 0 4px 4px 0;
@@ -874,7 +874,7 @@ export default {
   .empty-tip {
     text-align: center;
     padding: 60px 40px;
-    color: #758078;
+    color: var(--text-secondary);
     
     i {
       font-size: 60px;
@@ -885,7 +885,7 @@ export default {
     
     p {
       font-size: 16px;
-      color: #536159;
+      color: var(--text-regular);
       max-width: 300px;
       margin: 0 auto;
     }
@@ -898,7 +898,7 @@ export default {
     overflow: hidden;
     position: relative;
     transition: all 0.3s ease;
-    background: linear-gradient(135deg, #ffffff 0%, #f6f3ea 100%);
+    background: linear-gradient(135deg, #ffffff 0%, var(--bg-color) 100%);
     
     &:hover {
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
@@ -912,7 +912,7 @@ export default {
       left: 0;
       width: 100%;
       height: 3px;
-      background: linear-gradient(90deg, #d97932, #e59252);
+      background: linear-gradient(90deg, var(--primary-color), var(--el-color-primary-light-3));
     }
     
     .single-column {
@@ -954,23 +954,23 @@ export default {
   transition: all 0.3s ease;
   
   &.is-active {
-    color: #d97932;
+    color: var(--primary-color);
     font-weight: 600;
   }
   
   &:hover {
-    color: #d97932;
+    color: var(--primary-color);
     transform: translateY(-2px);
   }
 }
 
 :deep(.el-input__inner):focus {
-  border-color: #d97932;
+  border-color: var(--primary-color);
   animation: glow 2s infinite;
 }
 
 :deep(.el-switch.is-checked .el-switch__core) {
-  border-color: #d97932;
-  background-color: #d97932;
+  border-color: var(--primary-color);
+  background-color: var(--primary-color);
 }
 </style>
