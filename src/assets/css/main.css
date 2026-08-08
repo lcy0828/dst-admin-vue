@@ -336,28 +336,28 @@ a,
 /* Element Plus 控件规范 */
 .el-card {
   border: 1px solid var(--border-color) !important;
-  border-radius: 4px !important;
-  box-shadow: var(--shadow-card) !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
   margin-bottom: var(--page-gap);
   overflow: hidden;
 }
 
 .el-card.is-hover-shadow:hover {
-  box-shadow: var(--shadow-card) !important;
-  border-color: var(--el-border-color) !important;
+  box-shadow: none !important;
+  border-color: var(--el-color-primary-light-5) !important;
   transform: none !important;
 }
 
 /* 旧页面统一为紧凑后台面板，避免卡片悬浮、夸张圆角和重阴影。 */
 .content-container [class$='-card'],
 .content-container [class*='-card '] {
-  border-radius: 4px !important;
-  box-shadow: var(--shadow-card) !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
 }
 
 .content-container [class$='-card']:hover,
 .content-container [class*='-card ']:hover {
-  box-shadow: var(--shadow-card-hover) !important;
+  box-shadow: none !important;
   transform: none !important;
 }
 
@@ -381,34 +381,46 @@ a,
   .filter-info,
   .world-list
 ) {
-  border-radius: 4px !important;
-  box-shadow: var(--shadow-card) !important;
+  border-radius: 5px !important;
+  box-shadow: none !important;
 }
 
 .el-card__header {
-  min-height: 48px;
-  padding: 12px 14px !important;
+  min-height: 50px;
+  padding: 12px 16px !important;
   border-bottom-color: var(--border-color) !important;
+  background: var(--surface-color);
   color: var(--text-primary);
   font-size: 15px;
   font-weight: 600;
 }
 
 .el-card__body {
-  padding: 14px !important;
+  padding: 16px !important;
 }
 
 .el-button {
   min-height: var(--control-height);
   padding: 8px 14px;
-  border-radius: 4px;
+  border-radius: 5px;
   font-weight: 500;
   letter-spacing: 0;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .el-button:hover,
 .el-button:focus-visible {
   box-shadow: none;
+}
+
+.el-button:not(.el-button--primary, .el-button--success, .el-button--warning, .el-button--danger, .el-button--info, .is-link, .is-text):hover {
+  color: var(--text-primary);
+  background: var(--accent);
+  border-color: var(--el-color-primary-light-5);
+}
+
+.el-button--primary:not(.is-plain, .is-link, .is-text) {
+  border-color: var(--primary-color);
 }
 
 .el-button--small {
@@ -450,12 +462,13 @@ a,
 .el-textarea__inner,
 .el-input-number,
 .el-date-editor.el-input__wrapper {
-  border-radius: 4px;
+  border-radius: 5px;
 }
 
 .el-input__wrapper,
 .el-select__wrapper {
   min-height: var(--control-height);
+  background: var(--surface-color);
   box-shadow: 0 0 0 1px var(--el-border-color) inset;
 }
 
@@ -486,19 +499,20 @@ a,
   --el-table-row-hover-bg-color: var(--el-color-primary-light-9);
   --el-table-border-color: var(--el-border-color-lighter);
   color: var(--text-regular);
+  border-radius: 5px;
 }
 
 .el-table th.el-table__cell {
   background-color: var(--surface-muted) !important;
-  height: 42px;
-  padding: 8px 0;
+  height: 40px;
+  padding: 7px 0;
   color: var(--text-primary) !important;
   font-weight: 600;
 }
 
 .el-table td.el-table__cell {
   height: 44px;
-  padding: 7px 0;
+  padding: 6px 0;
 }
 
 .el-table .cell {
@@ -527,13 +541,19 @@ a,
   min-width: 32px;
   height: 32px;
   line-height: 32px;
-  border-radius: 4px;
+  border-radius: 5px;
+}
+
+.el-pagination .el-pager li.is-active {
+  color: var(--primary-foreground);
+  background: var(--primary-color);
 }
 
 .el-tag {
   min-height: 24px;
-  border-radius: 4px;
+  border-radius: 3px;
   line-height: 22px;
+  font-weight: 500;
 }
 
 .el-dialog__header {
@@ -544,7 +564,8 @@ a,
 
 .el-dialog {
   max-width: calc(100vw - 32px);
-  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
   box-shadow: var(--shadow-overlay);
 }
 
@@ -584,13 +605,14 @@ a,
 }
 
 .el-alert {
-  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 5px;
 }
 
 .el-dropdown-menu,
 .el-select-dropdown,
 .el-picker-panel {
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .el-dropdown-menu__item {
@@ -600,6 +622,28 @@ a,
 .el-tabs__item {
   height: 42px;
   letter-spacing: 0;
+  font-weight: 500;
+}
+
+.el-tabs__item.is-active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.el-tabs__active-bar {
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+}
+
+.el-tabs__nav-wrap::after {
+  height: 1px;
+  background: var(--border-color);
+}
+
+.el-checkbox__inner,
+.el-radio__inner,
+.el-switch__core {
+  border-color: var(--el-border-color);
 }
 
 .legacy-icon {
