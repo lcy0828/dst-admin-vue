@@ -1,155 +1,149 @@
 <template>
-  <el-drawer
-    v-model="dialogVisible"
-    :title="`模组配置 - ${modInfo ? modInfo.name || '未命名模组' : '加载中...'}`"
-    class="mod-config-dialog"
-    direction="rtl"
-    size="min(680px, 96vw)"
-    :close-on-click-modal="false"
-    :close-on-press-escape="false"
-    :before-close="handleClose"
-    :append-to-body="true"
-    :destroy-on-close="true"
-  >
-    <!-- 简化的配置容器 -->
-    <div class="config-container">
-      <!-- 加载指示器 -->
-      <div v-if="loading" class="loading-container">
-        <component :is="'el-icon-loading'" class="legacy-icon" />
-        <p>加载模组配置中...</p>
-      </div>
-      
-      <!-- 配置选项列表 -->
-      <template v-else-if="modInfo">
-        <!-- 重置按钮 -->
-        <div class="reset-button-container" v-if="hasOptions">
-          <el-button size="small" type="text" @click="resetToDefault" class="reset-button">
-            <component :is="'el-icon-refresh-left'" class="legacy-icon" /> 重置为默认配置
-          </el-button>
-        </div>
-        
-        <!-- 配置内容区域（包含描述和选项，共享一个滚动条） -->
-        <div class="config-scroll-area">
-          <!-- 模组描述 -->
-          <div class="mod-description" v-if="modInfo.description">
-            <div class="description-header">
-              <component :is="'el-icon-info-circle'" class="legacy-icon" />
-              <span>模组描述</span>
-            </div>
-            <div class="description-content">
-              {{ modInfo.description || '该模组暂无描述' }}
-            </div>
+  <Sheet :open="dialogVisible" @update:open="handleSheetOpenChange">
+    <SheetContent side="right" class="mod-config-sheet">
+      <SheetHeader>
+        <SheetTitle>模组配置 - {{ modInfo ? modInfo.name || '未命名模组' : '加载中...' }}</SheetTitle>
+        <SheetDescription>修改当前世界的模组配置选项。</SheetDescription>
+      </SheetHeader>
+
+      <ScrollArea class="config-scroll-area">
+        <div v-if="loading" class="loading-container"><Spinner /><p>加载模组配置中...</p></div>
+
+        <template v-else-if="modInfo">
+          <div v-if="hasOptions" class="reset-button-container">
+            <UiButton size="sm" variant="outline" @click="resetToDefault">
+              <RotateCcw data-icon="inline-start" />重置为默认配置
+            </UiButton>
           </div>
-          
-          <!-- 配置表单 -->
-          <el-form v-if="hasOptions" :model="configForm" label-width="180px" size="small" class="config-form">
-            <el-form-item 
-              v-for="option in allOptions" 
-              :key="option.name" 
-              :label="option.label"
-              class="config-form-item">
-              
-              <!-- 开关类型 -->
-              <template v-if="isBooleanOption(option)">
-                <div class="option-control-wrapper">
-                  <el-switch
-                    v-model="configForm[option.name]"
-                    @change="handleConfigChange(option.name)"
-                    active-color="#13ce66"
-                    inactive-color="#ff4949">
-                  </el-switch>
-                  <span class="option-value-text">{{ configForm[option.name] ? '开启' : '关闭' }}</span>
-                  
-                  <!-- 配置提示 -->
-                  <el-tooltip 
-                    v-if="option.hover" 
-                    class="item" 
-                    effect="dark" 
-                    :content="option.hover" 
-                    placement="top">
-                    <component :is="'el-icon-question'" class="legacy-icon option-tooltip" />
-                  </el-tooltip>
+
+          <Alert v-if="modInfo.description">
+            <Info />
+            <AlertTitle>模组描述</AlertTitle>
+            <AlertDescription>{{ modInfo.description }}</AlertDescription>
+          </Alert>
+
+          <FieldGroup v-if="hasOptions" class="config-form">
+            <Field v-for="option in allOptions" :key="option.name" :orientation="isBooleanOption(option) ? 'horizontal' : 'vertical'">
+              <FieldContent>
+                <div class="field-label-row">
+                  <FieldLabel :for="`mod-option-${option.name}`">{{ option.label }}</FieldLabel>
+                  <Tooltip v-if="option.hover">
+                    <TooltipTrigger as-child>
+                      <UiButton type="button" variant="ghost" size="icon-xs" :aria-label="`查看 ${option.label} 说明`"><CircleHelp /></UiButton>
+                    </TooltipTrigger>
+                    <TooltipContent>{{ option.hover }}</TooltipContent>
+                  </Tooltip>
                 </div>
-              </template>
-              
-              <!-- 下拉选择类型 -->
-              <template v-else-if="option.options && option.options.length > 0">
-                <div class="option-control-wrapper">
-                  <el-select 
-                    v-model="configForm[option.name]" 
-                    @change="handleConfigChange(option.name)"
-                    class="option-select">
-                    <el-option
-                      v-for="(opt, idx) in option.options"
-                      :key="idx"
-                      :label="opt.description"
-                      :value="opt.data">
-                    </el-option>
-                  </el-select>
-                  
-                  <!-- 配置提示 -->
-                  <el-tooltip 
-                    v-if="option.hover" 
-                    class="item" 
-                    effect="dark" 
-                    :content="option.hover" 
-                    placement="top">
-                    <component :is="'el-icon-question'" class="legacy-icon option-tooltip" />
-                  </el-tooltip>
-                </div>
-              </template>
-              
-              <!-- 普通输入框 -->
-              <template v-else>
-                <div class="option-control-wrapper">
-                  <el-input
-                    :model-value="configForm[option.name]"
-                    @update:model-value="value => updateTextOption(option, value)"
-                    @change="handleConfigChange(option.name)"
-                    class="option-input" />
-                  
-                  <!-- 配置提示 -->
-                  <el-tooltip 
-                    v-if="option.hover" 
-                    class="item" 
-                    effect="dark" 
-                    :content="option.hover" 
-                    placement="top">
-                    <component :is="'el-icon-question'" class="legacy-icon option-tooltip" />
-                  </el-tooltip>
-                </div>
-              </template>
-            </el-form-item>
-          </el-form>
-          
-          <!-- 无配置选项提示 -->
-          <div v-if="!hasOptions" class="no-options">
-            <el-empty description="该模组没有配置选项" :image-size="100"></el-empty>
-          </div>
-        </div>
-      </template>
-      
-      <!-- 无模组信息提示 -->
-      <div v-else class="no-mod-info">
-        <el-empty description="无法加载模组信息" :image-size="100"></el-empty>
-      </div>
-    </div>
-    
-    <!-- 底部按钮 -->
-    <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="handleClose">取消</el-button>
-        <el-button type="primary" @click="saveConfig" :loading="saving">保存配置</el-button>
-      </span>
-    </template>
-  </el-drawer>
+                <FieldDescription v-if="isBooleanOption(option)">{{ configForm[option.name] ? '开启' : '关闭' }}</FieldDescription>
+              </FieldContent>
+
+              <UiSwitch
+                v-if="isBooleanOption(option)"
+                :id="`mod-option-${option.name}`"
+                v-model="configForm[option.name]"
+                @update:model-value="handleConfigChange(option.name)"
+              />
+
+              <UiSelect
+                v-else-if="option.options && option.options.length > 0"
+                v-model="configForm[option.name]"
+                @update:model-value="handleConfigChange(option.name)"
+              >
+                <SelectTrigger :id="`mod-option-${option.name}`"><SelectValue placeholder="请选择" /></SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem v-for="(opt, idx) in option.options" :key="idx" :value="opt.data">{{ opt.description }}</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </UiSelect>
+
+              <UiInput
+                v-else
+                :id="`mod-option-${option.name}`"
+                :model-value="configForm[option.name]"
+                :type="option.type === 'number' ? 'number' : 'text'"
+                @update:model-value="value => updateTextOption(option, value)"
+                @change="handleConfigChange(option.name)"
+              />
+            </Field>
+          </FieldGroup>
+
+          <Empty v-else>
+            <EmptyHeader><EmptyTitle>该模组没有配置选项</EmptyTitle><EmptyDescription>仍可直接启用或停用该模组。</EmptyDescription></EmptyHeader>
+          </Empty>
+        </template>
+
+        <Empty v-else>
+          <EmptyHeader><EmptyTitle>无法加载模组信息</EmptyTitle></EmptyHeader>
+        </Empty>
+      </ScrollArea>
+
+      <SheetFooter>
+        <UiButton variant="outline" @click="handleClose">取消</UiButton>
+        <UiButton @click="saveConfig" :disabled="saving">
+          <Spinner v-if="saving" data-icon="inline-start" />保存配置
+        </UiButton>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>
 
 <script>
+import { CircleHelp, Info, RotateCcw } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { modApi } from '@/api';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button as UiButton } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'ModConfigDialog',
+  components: {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    CircleHelp,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyTitle,
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    Info,
+    RotateCcw,
+    ScrollArea,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+    Spinner,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+    UiButton,
+    UiInput,
+    UiSelect,
+    UiSwitch
+  },
   props: {
     modelValue: {
       type: Boolean,
@@ -244,6 +238,13 @@ export default {
     }
   },
   methods: {
+    handleSheetOpenChange(open) {
+      if (open) {
+        this.dialogVisible = true;
+        return;
+      }
+      this.handleClose();
+    },
     // 重置组件状态
     resetComponentState() {
       this.isInitialized = false;
@@ -322,7 +323,7 @@ export default {
         })
         .catch(err => {
           console.error('获取用户自定义配置失败', err);
-          this.$message.error(`获取用户自定义配置失败：${err.message || '未知错误'}`);
+          toast.error(`获取用户自定义配置失败：${err.message || '未知错误'}`);
           throw err;
         });
     },
@@ -415,16 +416,13 @@ export default {
     
     // 重置为默认配置
     resetToDefault() {
-      this.$confirm('确定要重置所有配置为默认值吗？', '确认重置', {
+      confirmAction('确定要重置所有配置为默认值吗？', '确认重置', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
         this.configForm = JSON.parse(JSON.stringify(this.defaultConfig));
-        this.$message({
-          type: 'success',
-          message: '配置已重置为默认值'
-        });
+        toast.success('配置已重置为默认值');
       }).catch(() => {});
     },
     
@@ -439,7 +437,7 @@ export default {
       );
       const enabled = this.modInfo?.configuration?.enabled ?? this.configuredEnabled;
       if (Object.keys(changedConfig).length === 0 && enabled === this.configuredEnabled) {
-        this.$message.info('没有需要保存的配置变更');
+        toast.info('没有需要保存的配置变更');
         return;
       }
 
@@ -465,16 +463,10 @@ export default {
           
           this.dialogVisible = false;
           
-          this.$message({
-            type: 'success',
-            message: '配置已保存'
-          });
+          toast.success('配置已保存');
         })
         .catch(error => {
-          this.$message({
-            type: 'error',
-            message: `保存模组配置失败：${error.message || '未知错误'}`
-          });
+          toast.error(`保存模组配置失败：${error.message || '未知错误'}`);
         })
         .finally(() => {
           this.saving = false;
@@ -523,7 +515,7 @@ export default {
       }
       
       if (hasChanges) {
-        this.$confirm('您有未保存的配置更改，确定要关闭吗？', '提示', {
+        confirmAction('您有未保存的配置更改，确定要关闭吗？', '关闭模组配置', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
@@ -546,167 +538,46 @@ export default {
 </script>
 
 <style scoped>
-.config-container {
-  min-height: 200px;
-  padding: 0 4px;
+.mod-config-sheet {
+  width: min(680px, 96vw);
+  max-width: min(680px, 96vw);
+}
+
+.config-scroll-area {
+  height: calc(100vh - 150px);
+  padding: 0 18px 18px;
 }
 
 .loading-container {
   display: flex;
-  flex-direction: column;
+  min-height: 240px;
   align-items: center;
   justify-content: center;
-  padding: 40px 0;
-  color: var(--text-regular);
-}
-
-.loading-container i {
-  font-size: 32px;
-  margin-bottom: 10px;
-  color: var(--primary-color);
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted-foreground);
 }
 
 .reset-button-container {
-  text-align: right;
+  display: flex;
+  justify-content: flex-end;
   margin-bottom: 12px;
 }
 
-.reset-button {
-  font-size: 14px;
-  padding: 0;
-}
-
-.reset-button i {
-  margin-right: 4px;
-}
-
-/* 滚动区域 */
-.config-scroll-area {
-  padding-right: 4px;
-}
-
-/* 模组描述样式 */
-.mod-description {
-  margin-bottom: 18px;
-  padding: 13px;
-  background-color: var(--surface-muted);
-  border-left: 3px solid var(--primary-color);
-  border-radius: 4px;
-}
-
-.description-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-  font-weight: 500;
-  color: var(--primary-color);
-}
-
-.description-header i {
-  margin-right: 6px;
-  font-size: 16px;
-}
-
-.description-content {
-  color: var(--text-regular);
-  line-height: 1.6;
-  font-size: 14px;
-  white-space: pre-line;
-}
-
 .config-form {
-  margin-bottom: 10px;
+  margin-top: 16px;
 }
 
-.config-form-item {
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 20px;
-  margin-bottom: 20px;
-  position: relative;
-}
-
-.config-form-item:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.config-form-item .el-form-item__label {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.option-tooltip {
-  margin-left: 10px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.option-tooltip:hover {
-  color: var(--primary-color);
-}
-
-.option-control-wrapper {
+.field-label-row {
   display: flex;
   align-items: center;
+  gap: 4px;
 }
 
-.option-value-text {
-  margin-left: 10px;
-  font-size: 13px;
-  color: var(--text-regular);
-}
-
-.option-select, .option-input {
-  width: 100%;
-  max-width: 350px;
-}
-
-.no-options, .no-mod-info {
-  display: flex;
-  justify-content: center;
-  padding: 30px 0;
-}
-
-.mod-config-dialog :deep(.el-drawer__body) {
-  padding: 16px 18px;
-}
-
-.mod-config-dialog :deep(.el-drawer__header) {
-  margin-bottom: 0;
-  padding: 15px 18px;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--surface-color);
-}
-
-.mod-config-dialog :deep(.el-drawer__title) {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.mod-config-dialog :deep(.el-drawer__footer) {
-  padding: 12px 18px;
-  border-top: 1px solid var(--border-color);
-  background-color: var(--surface-color);
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .config-form-item .el-form-item__label {
-    float: none;
-    display: block;
-    text-align: left;
-    padding: 0 0 10px;
-    width: 100% !important;
-    line-height: 1.4;
-  }
-  
-  .config-form-item .el-form-item__content {
-    margin-left: 0 !important;
-  }
-  
-  .option-select, .option-input {
-    max-width: 100%;
+@media (max-width: 640px) {
+  .mod-config-sheet {
+    width: 100vw;
+    max-width: 100vw;
   }
 }
 </style>

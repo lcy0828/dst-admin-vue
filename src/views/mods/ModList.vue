@@ -1,352 +1,233 @@
 <template>
   <div class="page-container">
-    <el-card class="main-card">
-      <template #header>
-        <div class="card-heading">
-          <span>已下载模组</span>
-          <div class="header-actions">
-            <el-button size="small" icon="el-icon-refresh" @click="refreshModList">刷新</el-button>
-            <el-button size="small" type="primary" icon="el-icon-plus" @click="goToSearch">添加模组</el-button>
-            <el-button size="small" icon="el-icon-document" @click="getModConfigFile">获取配置文件</el-button>
-          </div>
+    <Card class="main-card">
+      <CardHeader class="card-heading">
+        <div><CardTitle>已下载模组</CardTitle><CardDescription>管理房间内已安装模组及各世界配置。</CardDescription></div>
+        <div class="header-actions">
+          <UiButton size="sm" variant="outline" @click="refreshModList" :disabled="loading"><RefreshCw data-icon="inline-start" />刷新</UiButton>
+          <UiButton size="sm" @click="goToSearch"><Plus data-icon="inline-start" />添加模组</UiButton>
+          <UiButton size="sm" variant="outline" @click="getModConfigFile" :disabled="loadingConfig"><FileCode2 data-icon="inline-start" />获取配置文件</UiButton>
         </div>
-      </template>
+      </CardHeader>
 
-      <!-- 过滤和排序区域 -->
-      <div class="filter-container">
-        <el-form :inline="true" :model="filterForm" size="small" class="filter-form">
-          <el-form-item label="房间">
-            <el-select
-              v-model="selectedRoomId"
-              placeholder="请选择房间"
-              filterable
-              :loading="loadingRooms"
-              @change="handleRoomChange">
-              <el-option
-                v-for="room in roomOptions"
-                :key="room.id"
-                :label="room.name"
-                :value="room.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="世界">
-            <el-select
-              v-model="selectedWorldId"
-              placeholder="配置与文件查看目标"
-              filterable
-              clearable
-              :disabled="!selectedRoomId"
-              @change="handleWorldChange">
-              <el-option
-                v-for="world in selectedRoomWorlds"
-                :key="world.id"
-                :label="world.name"
-                :value="world.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="filterForm.status" placeholder="全部">
-              <el-option label="全部" value=""></el-option>
-              <el-option label="已启用" value="enabled"></el-option>
-              <el-option label="已禁用" value="disabled"></el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item label="排序方式">
-            <el-select v-model="filterForm.sortBy">
-              <el-option label="名称" value="name"></el-option>
-              <el-option label="作者" value="author"></el-option>
-              <el-option label="更新时间" value="update_time"></el-option>
-              <el-option label="订阅数" value="subscribers"></el-option>
-              <el-option label="评分" value="rating"></el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-input v-model="filterForm.keyword" placeholder="搜索模组" prefix-icon="el-icon-search" clearable></el-input>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="applyFilter">筛选</el-button>
-            <el-button @click="resetFilter">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-      
-      <!-- 模组列表 -->
-      <div v-loading="loading" class="mod-list-container" element-loading-background="rgba(255, 255, 255, 0.7)">
-        <div v-if="modsList.length > 0" class="mod-grid">
-          <div class="mod-flex-container">
-            <div 
-              v-for="mod in filteredMods" 
-              :key="mod.id" 
-              class="mod-flex-item">
-              <el-card :class="['mod-card', {'is-disabled': !mod.enabled}]" shadow="hover">
-                <div class="mod-card-header">
-                  <div class="mod-card-title" :title="mod.name">{{ mod.name }}</div>
-                  <el-switch
-                    v-model="mod.enabled"
-                    @change="(val) => toggleModStatus(mod, val)"
-                    active-color="var(--success-color)"
-                    inactive-color="var(--danger-color)"
-                    class="status-switch">
-                  </el-switch>
-                </div>
-                
-                <div class="mod-card-content">
-                  <div class="mod-card-image">
-                    <el-image 
-                      :src="mod.image || defaultIcon" 
-                      fit="cover"
-                      lazy>
-                      <template #error>
-                        <div class="image-slot">
-                          <component :is="'el-icon-picture-outline'" class="legacy-icon" />
-                        </div>
-                      </template>
-                    </el-image>
-                  </div>
-                  
-                  <div class="mod-card-info">
-                    <div class="mod-card-author">
-                      <component :is="'el-icon-user'" class="legacy-icon" />
-                      <span>{{ mod.author }}</span>
-                    </div>
-                    <div class="mod-card-version" v-if="mod.version">
-                      <component :is="'el-icon-info'" class="legacy-icon" />
-                      <span>{{ mod.version }}</span>
-                    </div>
-                    <div class="mod-card-update" v-if="mod.update_time">
-                      <component :is="'el-icon-time'" class="legacy-icon" />
-                      <span>{{ mod.update_time }}</span>
-                    </div>
-                    <div class="mod-card-subscribers" v-if="mod.subscribers">
-                      <component :is="'el-icon-user-solid'" class="legacy-icon" />
-                      <span>{{ mod.subscribers }} 订阅</span>
-                    </div>
-                    <div class="mod-card-rating" v-if="mod.rating !== null">
-                      <component :is="'el-icon-star-on'" class="legacy-icon" />
-                      <span>{{ mod.rating }} 评分</span>
-                    </div>
-                    <div class="mod-card-tags" v-if="mod.tags && mod.tags.length">
-                      <el-tag size="mini" v-for="tag in mod.tags" :key="tag" class="mod-tag">{{ tag }}</el-tag>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="mod-card-actions">
-                  <el-button 
-                    size="small" 
-                    type="primary"
-                    :disabled="!selectedWorldId"
-                    @click="openConfigDialog(mod)">
-                    配置
-                  </el-button>
-                  <el-dropdown trigger="click" @command="handleCommand" size="small">
-                    <el-button size="small" type="text">
-                      更多<component :is="'el-icon-arrow-down'" class="legacy-icon el-icon--right" />
-                    </el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
-                        <el-dropdown-item :command="{type: 'update', mod: mod}" v-if="mod.updateAvailable">更新模组</el-dropdown-item>
-                        <el-dropdown-item :command="{type: 'uninstall', mod: mod}">卸载模组</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </el-card>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 无模组提示 -->
-        <div v-else-if="!loading" class="empty-mods">
-          <el-empty description="还没有安装任何模组" :image-size="200">
-            <template #description>
-              <p>您还没有安装任何模组</p>
-              <p>点击下方按钮开始添加模组</p>
-            </template>
-            <el-button type="primary" @click="goToSearch">添加模组</el-button>
-          </el-empty>
-        </div>
-      </div>
-    </el-card>
-    
-    <!-- 模组配置对话框 -->
-    <mod-config-dialog
-      v-model="configDialogVisible"
-      :mod-id="currentModId"
-      :mod-info="currentModInfo"
-      :room-id="selectedRoomId"
-      :world-id="selectedWorldId"
-      :is-new-mod="false"
-      @config-updated="handleConfigUpdated">
-    </mod-config-dialog>
+      <CardContent>
+        <FieldGroup class="filter-form">
+          <Field>
+            <FieldLabel>房间</FieldLabel>
+            <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
+              <SelectTrigger><SelectValue placeholder="请选择房间" /></SelectTrigger>
+              <SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+          <Field>
+            <FieldLabel>世界</FieldLabel>
+            <UiSelect v-model="selectedWorldId" :disabled="!selectedRoomId" @update:model-value="handleWorldChange">
+              <SelectTrigger><SelectValue placeholder="配置与文件查看目标" /></SelectTrigger>
+              <SelectContent><SelectGroup><SelectItem v-for="world in selectedRoomWorlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+          <Field>
+            <FieldLabel>状态</FieldLabel>
+            <UiSelect v-model="filterForm.status">
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="enabled">已启用</SelectItem><SelectItem value="disabled">已禁用</SelectItem></SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+          <Field>
+            <FieldLabel>排序方式</FieldLabel>
+            <UiSelect v-model="filterForm.sortBy">
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectGroup>
+                <SelectItem value="name">名称</SelectItem><SelectItem value="author">作者</SelectItem><SelectItem value="update_time">更新时间</SelectItem><SelectItem value="subscribers">订阅数</SelectItem><SelectItem value="rating">评分</SelectItem>
+              </SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+          <Field>
+            <FieldLabel for="installed-mod-search">关键词</FieldLabel>
+            <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="installed-mod-search" v-model="filterForm.keyword" placeholder="搜索模组" /></InputGroup>
+          </Field>
+          <div class="filter-actions"><UiButton @click="applyFilter">筛选</UiButton><UiButton variant="outline" @click="resetFilter">重置</UiButton></div>
+        </FieldGroup>
 
-    <!-- 模组详情抽屉 -->
-    <el-drawer
-      title="模组详情"
-      v-model="detailsDialogVisible"
-      direction="rtl"
-      size="min(680px, 96vw)"
-      class="mod-details-dialog"
-      destroy-on-close
-      :append-to-body="true">
-      <div v-if="currentModInfo" class="mod-details-content">
-        <!-- 模组基本信息 -->
-        <div class="mod-details-header">
-          <el-image 
-            :src="currentModInfo.image || defaultIcon" 
-            fit="cover"
-            class="mod-details-image">
-            <template #error>
-              <div class="image-slot">
-                <component :is="'el-icon-picture-outline'" class="legacy-icon" />
+        <div v-if="loading" class="loading-state"><Spinner /><span>正在加载模组列表</span></div>
+
+        <div v-else-if="filteredMods.length > 0" class="mod-grid">
+          <Card v-for="mod in filteredMods" :key="mod.id" class="mod-card">
+            <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultIcon" :src="mod.image || defaultIcon" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
+            <CardHeader>
+              <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><UiSwitch v-model="mod.enabled" :aria-label="`切换 ${mod.name}`" @update:model-value="value => toggleModStatus(mod, value)" /></div>
+              <CardDescription>{{ mod.author || '未知作者' }}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div class="mod-meta">
+                <span v-if="mod.version"><Tag />{{ mod.version }}</span>
+                <span v-if="mod.update_time"><Clock />{{ mod.update_time }}</span>
+                <span v-if="mod.subscribers"><Users />{{ mod.subscribers }} 订阅</span>
+                <span v-if="mod.rating !== null"><Star />{{ mod.rating }} 评分</span>
               </div>
-            </template>
-          </el-image>
-          
-          <div class="mod-details-info">
-            <h2 class="mod-details-name">{{ currentModInfo.name }}</h2>
-            <div class="mod-details-meta">
-              <span class="mod-details-author">
-                <component :is="'el-icon-user'" class="legacy-icon" /> {{ currentModInfo.author }}
-              </span>
-              <span class="mod-details-version" v-if="currentModInfo.version">
-                <component :is="'el-icon-info'" class="legacy-icon" /> v{{ currentModInfo.version }}
-              </span>
-              <span class="mod-details-update" v-if="currentModInfo.update_time">
-                <component :is="'el-icon-time'" class="legacy-icon" /> {{ currentModInfo.update_time }}
-              </span>
-              <span class="mod-details-subscribers" v-if="currentModInfo.subscribers">
-                <component :is="'el-icon-user-solid'" class="legacy-icon" /> {{ currentModInfo.subscribers }} 订阅
-              </span>
-              <span class="mod-details-rating" v-if="currentModInfo.rating !== null">
-                <component :is="'el-icon-star-on'" class="legacy-icon" /> {{ currentModInfo.rating }} 评分
-              </span>
-            </div>
-            <div class="mod-details-status">
-              <el-tag size="medium" :type="currentModInfo.enabled ? 'success' : 'danger'">
-                {{ currentModInfo.enabled ? '已启用' : '已禁用' }}
-              </el-tag>
-            </div>
-          </div>
+              <div v-if="mod.tags && mod.tags.length" class="mod-tags"><Badge v-for="tag in mod.tags" :key="tag" variant="secondary">{{ tag }}</Badge></div>
+            </CardContent>
+            <CardFooter class="mod-actions">
+              <UiButton size="sm" :disabled="!selectedWorldId" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />配置</UiButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem @select="showModDetails(mod)">查看详情</DropdownMenuItem>
+                    <DropdownMenuItem v-if="mod.updateAvailable" @select="updateMod(mod)">更新模组</DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup><DropdownMenuItem variant="destructive" @select="uninstallMod(mod)">卸载模组</DropdownMenuItem></DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </CardFooter>
+          </Card>
         </div>
-        
-        <!-- 模组描述 -->
-        <div class="mod-details-description">
-          <h3>模组描述</h3>
-          <div class="description-content">
-            {{ currentModInfo.description || '该模组暂无描述' }}
-          </div>
-        </div>
-        
-        <!-- 兼容性信息 -->
-        <div class="mod-details-compatibility" v-if="currentModInfo.compatibility">
-          <h3>兼容性</h3>
-          <div class="compatibility-tags">
-            <el-tag size="medium" type="success" v-if="currentModInfo.compatibility.dst">
-              饥荒联机版
-            </el-tag>
-            <el-tag size="medium" type="info" v-if="currentModInfo.compatibility.ds">
-              单机版饥荒
-            </el-tag>
-            <el-tag size="medium" type="warning" v-if="currentModInfo.compatibility.rog">
-              巨人国
-            </el-tag>
-            <el-tag size="medium" type="danger" v-if="currentModInfo.compatibility.sw">
-              海难
-            </el-tag>
-            <el-tag size="medium" v-if="currentModInfo.compatibility.hamlet">
-              哈姆雷特
-            </el-tag>
-          </div>
-        </div>
-        
-        <!-- 文件信息 -->
-        <div class="mod-details-files">
-          <h3>文件信息</h3>
-          <div class="file-info-list">
-            <div class="file-info-item">
-              <span class="file-info-label">模组ID:</span>
-              <span class="file-info-value">{{ currentModInfo.modid || '未知' }}</span>
-            </div>
-            <div class="file-info-item">
-              <span class="file-info-label">安装位置:</span>
-              <span class="file-info-value">{{ currentModInfo.path || '未知' }}</span>
-            </div>
-            <div class="file-info-item">
-              <span class="file-info-label">文件大小:</span>
-              <span class="file-info-value">{{ currentModInfo.size || '未知' }}</span>
-            </div>
-            <div class="file-info-item">
-              <span class="file-info-label">安装时间:</span>
-              <span class="file-info-value">{{ currentModInfo.time || currentModInfo.installedAt || '未知' }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="detailsDialogVisible = false">关闭</el-button>
-          <el-button type="primary" @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo || !selectedWorldId">配置模组</el-button>
-        </span>
-      </template>
-    </el-drawer>
 
-    <!-- 卸载确认对话框 -->
-    <el-dialog
-      title="卸载模组"
-      v-model="uninstallDialogVisible"
-      width="500px"
-      :modal="false"
-      :append-to-body="true">
-      <div class="uninstall-content">
-        <p>您确定要卸载模组 <strong>{{ currentModInfo ? currentModInfo.name : '' }}</strong> 吗？</p>
-        <p class="warning-text">此操作将永久删除该模组的所有文件和配置，且不可恢复。</p>
-        <el-input
-          v-model="uninstallConfirmation"
-          :placeholder="currentRoom ? `请输入完整房间名：${currentRoom.name}` : '请输入完整房间名'">
-        </el-input>
-      </div>
-      
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="uninstallDialogVisible = false">取消</el-button>
-          <el-button type="danger" @click="confirmUninstall" :loading="uninstalling">确认卸载</el-button>
-        </span>
-      </template>
-    </el-dialog>
+        <Empty v-else>
+          <EmptyHeader><EmptyMedia variant="icon"><PackageOpen /></EmptyMedia><EmptyTitle>还没有安装任何模组</EmptyTitle><EmptyDescription>从创意工坊搜索并添加模组。</EmptyDescription></EmptyHeader>
+          <EmptyContent><UiButton @click="goToSearch"><Plus data-icon="inline-start" />添加模组</UiButton></EmptyContent>
+        </Empty>
+      </CardContent>
+    </Card>
 
-    <!-- 模组配置文件查看对话框 -->
-    <el-dialog
-      title="模组配置文件 (modoverrides.lua)"
-      v-model="configFileDialogVisible"
-      width="60%"
-      :append-to-body="true"
-      class="config-file-dialog">
-      <div v-loading="loadingConfig" class="config-file-content">
-        <pre class="lua-code">{{ configFileContent }}</pre>
-      </div>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="configFileDialogVisible = false">关闭</el-button>
-          <el-button type="primary" @click="downloadConfigFile">下载配置文件</el-button>
-        </span>
-      </template>
-    </el-dialog>
+    <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :is-new-mod="false" @config-updated="handleConfigUpdated" />
+
+    <Sheet v-model:open="detailsDialogVisible">
+      <SheetContent side="right" class="mod-details-sheet">
+        <SheetHeader><SheetTitle>模组详情</SheetTitle><SheetDescription>已安装模组的版本、兼容性和文件信息。</SheetDescription></SheetHeader>
+        <ScrollArea class="mod-details-scroll">
+          <div v-if="currentModInfo" class="mod-details-content">
+            <div class="mod-details-header">
+              <div class="mod-details-image"><ImageIcon /><img v-if="currentModInfo.image || defaultIcon" :src="currentModInfo.image || defaultIcon" :alt="currentModInfo.name" @error="handleImageError" /></div>
+              <div><h3>{{ currentModInfo.name }}</h3><p>{{ currentModInfo.author || '未知作者' }}</p><Badge :variant="currentModInfo.enabled ? 'default' : 'secondary'">{{ currentModInfo.enabled ? '已启用' : '已禁用' }}</Badge></div>
+            </div>
+            <Separator />
+            <section><h4>模组描述</h4><p class="description-content">{{ currentModInfo.description || '该模组暂无描述' }}</p></section>
+            <section v-if="currentModInfo.compatibility"><h4>兼容性</h4><div class="compatibility-tags">
+              <Badge v-if="currentModInfo.compatibility.dst">饥荒联机版</Badge><Badge v-if="currentModInfo.compatibility.ds" variant="outline">单机版饥荒</Badge><Badge v-if="currentModInfo.compatibility.rog" variant="secondary">巨人国</Badge><Badge v-if="currentModInfo.compatibility.sw" variant="secondary">海难</Badge><Badge v-if="currentModInfo.compatibility.hamlet" variant="outline">哈姆雷特</Badge>
+            </div></section>
+            <section><h4>文件信息</h4><dl class="file-info-list">
+              <div><dt>模组 ID</dt><dd>{{ currentModInfo.modid || '未知' }}</dd></div><div><dt>安装位置</dt><dd>{{ currentModInfo.path || '未知' }}</dd></div><div><dt>文件大小</dt><dd>{{ currentModInfo.size || '未知' }}</dd></div><div><dt>安装时间</dt><dd>{{ currentModInfo.time || currentModInfo.installedAt || '未知' }}</dd></div>
+            </dl></section>
+          </div>
+        </ScrollArea>
+        <SheetFooter><UiButton variant="outline" @click="detailsDialogVisible = false">关闭</UiButton><UiButton @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo || !selectedWorldId">配置模组</UiButton></SheetFooter>
+      </SheetContent>
+    </Sheet>
+
+    <UiDialog v-model:open="uninstallDialogVisible">
+      <DialogContent>
+        <DialogHeader><DialogTitle>卸载模组</DialogTitle><DialogDescription>此操作会永久删除模组文件和配置。</DialogDescription></DialogHeader>
+        <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ currentModInfo ? currentModInfo.name : '' }}</AlertTitle><AlertDescription>输入完整房间名确认卸载。</AlertDescription></Alert>
+        <FieldGroup><Field><FieldLabel for="uninstall-confirmation">完整房间名</FieldLabel><UiInput id="uninstall-confirmation" v-model="uninstallConfirmation" :placeholder="currentRoom ? `请输入 ${currentRoom.name}` : '请输入完整房间名'" /></Field></FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="uninstallDialogVisible = false">取消</UiButton><UiButton variant="destructive" @click="confirmUninstall" :disabled="uninstalling"><Spinner v-if="uninstalling" data-icon="inline-start" />确认卸载</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
+    <UiDialog v-model:open="configFileDialogVisible">
+      <DialogContent class="max-w-4xl">
+        <DialogHeader><DialogTitle>模组配置文件</DialogTitle><DialogDescription>modoverrides.lua</DialogDescription></DialogHeader>
+        <div v-if="loadingConfig" class="loading-state"><Spinner /><span>正在读取配置文件</span></div>
+        <pre v-else class="lua-code">{{ configFileContent }}</pre>
+        <DialogFooter><UiButton variant="outline" @click="configFileDialogVisible = false">关闭</UiButton><UiButton @click="downloadConfigFile"><Download data-icon="inline-start" />下载配置文件</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { Clock, Download, FileCode2, ImageIcon, MoreHorizontal, PackageOpen, Plus, RefreshCw, Search, Settings2, Star, Tag, TriangleAlert, Users } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import ModConfigDialog from './ModConfigDialog.vue';
 import { modApi } from '@/api';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input as UiInput } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch as UiSwitch } from '@/components/ui/switch';
 
 export default {
   name: 'ModList',
   components: {
-    ModConfigDialog
+    Alert,
+    AlertDescription,
+    AlertTitle,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+    Clock,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Download,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    Field,
+    FieldGroup,
+    FieldLabel,
+    FileCode2,
+    ImageIcon,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    ModConfigDialog,
+    MoreHorizontal,
+    PackageOpen,
+    Plus,
+    RefreshCw,
+    ScrollArea,
+    Search,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Separator,
+    Settings2,
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetFooter,
+    SheetHeader,
+    SheetTitle,
+    Spinner,
+    Star,
+    Tag,
+    TriangleAlert,
+    UiButton,
+    UiDialog,
+    UiInput,
+    UiSelect,
+    UiSwitch,
+    Users
   },
   data() {
     return {
@@ -361,7 +242,7 @@ export default {
       selectedWorldId: '',
       // 筛选
       filterForm: {
-        status: '',
+        status: 'all',
         sortBy: 'name',
         keyword: ''
       },
@@ -390,7 +271,7 @@ export default {
     // 筛选后的模组列表
     filteredMods() {
       let result = [...this.modsList];
-      if (this.filterForm.status) {
+      if (this.filterForm.status && this.filterForm.status !== 'all') {
         const isEnabled = this.filterForm.status === 'enabled';
         result = result.filter(mod => mod.enabled === isEnabled);
       }
@@ -437,6 +318,9 @@ export default {
     await this.initializeContext();
   },
   methods: {
+    handleImageError(event) {
+      event.currentTarget.hidden = true;
+    },
     async initializeContext() {
       this.loadingRooms = true;
       try {
@@ -450,7 +334,7 @@ export default {
         this.selectedWorldId = context.world?.id || '';
         if (this.selectedRoomId) await this.fetchModsList();
       } catch (error) {
-        this.$message.error(error.message || '加载模组上下文失败');
+        toast.error(error.message || '加载模组上下文失败');
       } finally {
         this.loadingRooms = false;
       }
@@ -464,7 +348,7 @@ export default {
         await this.syncRouteContext();
         await this.fetchModsList();
       } catch (error) {
-        this.$message.error(error.message || '切换房间失败');
+        toast.error(error.message || '切换房间失败');
       }
     },
 
@@ -494,7 +378,7 @@ export default {
         this.modsList = await modApi.getServerList({ roomId: this.selectedRoomId });
       } catch (error) {
         this.modsList = [];
-        this.$message.error(`获取模组列表失败：${error.message || '未知错误'}`);
+        toast.error(`获取模组列表失败：${error.message || '未知错误'}`);
       } finally {
         this.loading = false;
       }
@@ -508,7 +392,7 @@ export default {
     // 重置筛选
     resetFilter() {
       this.filterForm = {
-        status: '',
+        status: 'all',
         sortBy: 'name',
         keyword: ''
       };
@@ -522,7 +406,7 @@ export default {
     // 打开配置对话框
     openConfigDialog(mod) {
       if (!this.selectedWorldId) {
-        this.$message.warning('请先选择要配置的世界');
+        toast.warning('请先选择要配置的世界');
         return;
       }
       // 先重置当前模组信息
@@ -544,7 +428,7 @@ export default {
         });
       }).catch(err => {
         console.error(err);
-        this.$message.error(`获取模组配置失败：${err.message || '未知错误'}`);
+        toast.error(`获取模组配置失败：${err.message || '未知错误'}`);
       }).finally(() => {
         this.loading = false;
       });
@@ -552,10 +436,7 @@ export default {
     
     // 配置更新回调
     handleConfigUpdated(data) {
-      this.$message({
-        type: 'success',
-        message: `模组 ${data.modId} 配置已更新！`
-      });
+      toast.success(`模组 ${data.modId} 配置已更新！`);
       this.fetchModsList();
     },
     
@@ -574,18 +455,12 @@ export default {
       }).then(() => {
         // 更新成功后,更新本地状态
         mod.enabled = status;
-        this.$message({
-          type: 'success',
-          message: `已${action}模组 ${mod.name}`
-        });
+        toast.success(`已${action}模组 ${mod.name}`);
       }).catch(err => {
         console.error(err);
         // 操作失败,恢复状态
         mod.enabled = !status;
-        this.$message({
-          type: 'error',
-          message: `${action}模组失败：${err.message || '未知错误'}`
-        });
+        toast.error(`${action}模组失败：${err.message || '未知错误'}`);
       }).finally(() => {
         this.loading = false;
       });
@@ -618,9 +493,9 @@ export default {
       try {
         await modApi.updateMod({ roomId: this.selectedRoomId, modid: mod.modid });
         await this.fetchModsList();
-        this.$message.success(`模组 ${mod.name} 已更新`);
+        toast.success(`模组 ${mod.name} 已更新`);
       } catch (error) {
-        this.$message.error(`更新模组失败：${error.message || '未知错误'}`);
+        toast.error(`更新模组失败：${error.message || '未知错误'}`);
       } finally {
         this.loading = false;
       }
@@ -637,7 +512,7 @@ export default {
     confirmUninstall() {
       if (!this.currentModInfo) return;
       if (!this.currentRoom || this.uninstallConfirmation !== this.currentRoom.name) {
-        this.$message.warning('请输入完整房间名确认卸载');
+        toast.warning('请输入完整房间名确认卸载');
         return;
       }
       
@@ -658,17 +533,11 @@ export default {
             this.modsList.splice(index, 1);
           }
           
-          this.$message({
-            type: 'success',
-            message: `模组 ${this.currentModInfo.name} 已成功卸载`
-          });
+          toast.success(`模组 ${this.currentModInfo.name} 已成功卸载`);
         })
         .catch(err => {
           console.error('卸载模组失败:', err);
-          this.$message({
-            type: 'error',
-            message: `卸载模组失败: ${err.message || '未知错误'}`
-          });
+          toast.error(`卸载模组失败: ${err.message || '未知错误'}`);
         })
         .finally(() => {
           this.uninstalling = false;
@@ -686,7 +555,7 @@ export default {
     // 获取配置文件
     getModConfigFile() {
       if (!this.selectedWorldId) {
-        this.$message.warning('请先选择要查看的世界');
+        toast.warning('请先选择要查看的世界');
         return;
       }
       this.loadingConfig = true;
@@ -700,12 +569,12 @@ export default {
             this.configFileContent = res.modinfo;
             this.configFileDialogVisible = true;
           } else {
-            this.$message.warning('该世界还没有 modoverrides.lua 文件');
+            toast.warning('该世界还没有 modoverrides.lua 文件');
           }
         })
         .catch(err => {
           console.error('获取配置文件失败:', err);
-          this.$message.error(`获取配置文件失败：${err.message || '未知错误'}`);
+          toast.error(`获取配置文件失败：${err.message || '未知错误'}`);
         })
         .finally(() => {
           this.loadingConfig = false;
@@ -715,7 +584,7 @@ export default {
     // 下载配置文件
     downloadConfigFile() {
       if (!this.configFileContent) {
-        this.$message.error('没有可下载的配置内容');
+        toast.error('没有可下载的配置内容');
         return;
       }
       
@@ -735,432 +604,241 @@ export default {
       window.URL.revokeObjectURL(link.href);
       document.body.removeChild(link);
       
-      this.$message.success('模组配置文件已成功下载');
+      toast.success('模组配置文件已成功下载');
     }
   }
 };
 </script>
 
 <style scoped>
-.page-container {
-  width: 100%;
-}
-
+.page-container,
 .main-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-.card-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.header-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.filter-container {
-  margin-bottom: 16px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.filter-form {
-  display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: 0 10px;
-}
-
-.filter-form :deep(.el-form-item) {
-  margin-right: 0;
-  margin-bottom: 10px;
-}
-
-.mod-list-container {
-  min-height: 400px;
-}
-
-.mod-grid {
-  margin-bottom: 20px;
-}
-
-.mod-flex-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.mod-flex-item {
-  flex: 0 0 calc(25% - 12px);
-  margin-bottom: 0;
+  width: 100%;
   min-width: 0;
 }
 
-@media (max-width: 1200px) {
-  .mod-flex-item {
-    flex: 0 0 calc(33.333% - 14px);
-  }
+.card-heading,
+.header-actions,
+.mod-title-row,
+.mod-actions,
+.filter-actions,
+.loading-state,
+.mod-meta span,
+.mod-details-header {
+  display: flex;
+  align-items: center;
 }
 
-@media (max-width: 992px) {
-  .mod-flex-item {
-    flex: 0 0 calc(50% - 10px);
-  }
+.card-heading {
+  justify-content: space-between;
+  gap: 16px;
 }
 
-@media (max-width: 768px) {
-  .mod-flex-item {
-    flex: 0 0 100%;
-  }
+.header-actions,
+.filter-actions,
+.mod-actions {
+  gap: 8px;
+}
+
+.header-actions {
+  flex-wrap: wrap;
+}
+
+.filter-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.loading-state {
+  min-height: 260px;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+
+.mod-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 16px;
 }
 
 .mod-card {
-  height: 100%;
-  border-color: var(--border-color);
-  border-radius: 4px;
-  box-shadow: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-.mod-card:hover {
-  border-color: var(--el-color-primary-light-5);
-  box-shadow: none;
-}
-
-.mod-card.is-disabled {
-  opacity: 0.76;
-  background-color: var(--surface-muted);
-}
-
-.mod-card-header {
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
-  margin-bottom: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.mod-card-title {
-  font-weight: 600;
-  font-size: 16px;
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  margin-right: 10px;
 }
 
-.status-switch {
-  flex-shrink: 0;
-}
-
-.mod-card-content {
-  display: flex;
-  margin-bottom: 15px;
-}
-
-.mod-card-image {
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
+.mod-image,
+.mod-details-image {
   position: relative;
-  margin-right: 15px;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.mod-card-image .el-image {
-  width: 100%;
-  height: 100%;
-}
-
-.image-slot {
   display: flex;
-  justify-content: center;
   align-items: center;
-  width: 100%;
-  height: 100%;
-  background-color: var(--surface-muted);
-  color: var(--text-secondary);
+  justify-content: center;
+  overflow: hidden;
+  background: var(--muted);
+  color: var(--muted-foreground);
 }
 
-.mod-card-info {
-  flex: 1;
+.mod-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-bottom: 1px solid var(--border);
+}
+
+.mod-image > svg,
+.mod-details-image > svg {
+  width: 28px;
+  height: 28px;
+}
+
+.mod-image img,
+.mod-details-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mod-title-row {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mod-meta {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  font-size: 13px;
+  gap: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
-.mod-card-author,
-.mod-card-version,
-.mod-card-update {
+.mod-meta span {
+  gap: 5px;
+}
+
+.mod-meta svg {
+  width: 14px;
+  height: 14px;
+}
+
+.mod-tags,
+.compatibility-tags {
   display: flex;
-  align-items: center;
-  margin-bottom: 5px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
 }
 
-.mod-card-author i,
-.mod-card-version i,
-.mod-card-update i {
-  margin-right: 5px;
-  width: 16px;
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-.mod-card-subscribers,
-.mod-card-rating {
-  display: flex;
-  align-items: center;
-  margin-bottom: 5px;
-}
-
-.mod-card-subscribers i,
-.mod-card-rating i {
-  margin-right: 5px;
-  width: 16px;
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-.mod-card-tags {
-  margin-top: 5px;
-}
-
-.mod-tag {
-  margin-right: 5px;
-  margin-bottom: 5px;
-}
-
-.mod-card-actions {
-  display: flex;
+.mod-actions {
   justify-content: space-between;
   margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-color);
 }
 
-.empty-mods {
-  padding: 40px 0;
-  text-align: center;
+.mod-details-sheet {
+  width: min(680px, 96vw);
+  max-width: min(680px, 96vw);
 }
 
-/* 详情对话框样式 */
-.mod-details-dialog {
-  max-width: 90%;
+.mod-details-scroll {
+  height: calc(100vh - 150px);
+  padding: 0 18px 18px;
 }
 
 .mod-details-content {
-  padding: 0 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .mod-details-header {
-  display: flex;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+  align-items: flex-start;
+  gap: 16px;
 }
 
 .mod-details-image {
   width: 120px;
-  height: 120px;
-  margin-right: 20px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  overflow: hidden;
+  aspect-ratio: 1;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
-.mod-details-info {
-  flex: 1;
+.mod-details-header h3 {
+  margin: 0;
+  font-size: 18px;
 }
 
-.mod-details-name {
-  margin: 0 0 15px 0;
-  font-size: 20px;
-  color: var(--text-primary);
-  line-height: 1.2;
-}
-
-.mod-details-meta {
-  display: flex;
-  flex-wrap: wrap;
-  margin-bottom: 15px;
-  color: var(--text-regular);
-}
-
-.mod-details-author,
-.mod-details-version,
-.mod-details-update,
-.mod-details-subscribers,
-.mod-details-rating {
-  margin-right: 15px;
-  margin-bottom: 5px;
-  display: flex;
-  align-items: center;
-}
-
-.mod-details-author i,
-.mod-details-version i,
-.mod-details-update i,
-.mod-details-subscribers i,
-.mod-details-rating i {
-  margin-right: 5px;
-}
-
-.mod-details-status {
-  margin-bottom: 10px;
-}
-
-.mod-details-description,
-.mod-details-compatibility,
-.mod-details-files {
-  margin-bottom: 20px;
-}
-
-.mod-details-description h3,
-.mod-details-compatibility h3,
-.mod-details-files h3 {
-  font-size: 16px;
-  margin: 0 0 10px 0;
-  color: var(--text-primary);
+.mod-details-header p {
+  margin: 4px 0 10px;
+  color: var(--muted-foreground);
 }
 
 .description-content {
-  padding: 10px;
-  background-color: var(--surface-muted);
-  border-radius: 4px;
-  color: var(--text-regular);
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-.compatibility-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  white-space: pre-line;
 }
 
 .file-info-list {
-  background-color: var(--surface-muted);
-  border-radius: 4px;
-  padding: 10px;
+  margin: 0;
 }
 
-.file-info-item {
-  margin-bottom: 8px;
-  display: flex;
+.file-info-list > div {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
 }
 
-.file-info-label {
-  color: var(--text-secondary);
-  width: 100px;
-  flex-shrink: 0;
+.file-info-list dt {
+  color: var(--muted-foreground);
 }
 
-.file-info-value {
-  color: var(--text-regular);
-}
-
-/* 卸载对话框 */
-.uninstall-content {
-  text-align: center;
-  padding: 20px 0;
-}
-
-.warning-text {
-  color: #c94f4f;
-  margin-top: 10px;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .card-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .header-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .header-actions :deep(.el-button) {
-    flex: 1 1 calc(50% - 4px);
-    margin: 0;
-  }
-
-  .mod-details-header {
-    flex-direction: column;
-  }
-  
-  .mod-details-image {
-    width: 100%;
-    max-width: 200px;
-    height: auto;
-    margin: 0 auto 15px;
-  }
-  
-  .filter-container .el-form {
-    display: block;
-  }
-  
-  .filter-container .el-form-item {
-    width: 100%;
-    margin-right: 0;
-    margin-bottom: 10px;
-  }
-
-  .filter-container :deep(.el-form-item__content),
-  .filter-container :deep(.el-select),
-  .filter-container :deep(.el-input) {
-    width: 100%;
-  }
-
-  .filter-container :deep(.el-form-item:last-child .el-form-item__content) {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-
-  .filter-container :deep(.el-form-item:last-child .el-button) {
-    width: 100%;
-    margin: 0;
-  }
-}
-
-/* 配置文件对话框样式 */
-.config-file-content {
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 10px;
-  background-color: var(--surface-muted);
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
+.file-info-list dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .lua-code {
-  font-family: 'Courier New', Courier, monospace;
-  white-space: pre-wrap;
-  word-break: break-all;
-  line-height: 1.5;
-  color: #333;
+  max-height: 60vh;
   margin: 0;
-  padding: 10px;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.config-file-dialog :deep(.el-dialog__body) {
-  padding: 15px 20px;
+@media (max-width: 1180px) {
+  .filter-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .card-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-form {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-actions > * {
+    flex: 1;
+  }
+
+  .mod-details-sheet {
+    width: 100vw;
+    max-width: 100vw;
+  }
 }
 </style>

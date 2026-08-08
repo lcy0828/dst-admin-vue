@@ -1,261 +1,207 @@
 <template>
   <div class="page-container">
-    <el-card class="main-card">
-      <template #header>
-        <div class="clearfix">
-          <span>搜索模组</span>
-          <div class="header-actions">
-            <el-button size="small" type="primary" @click="goToModList">返回已下载模组</el-button>
-          </div>
+    <Card class="main-card">
+      <CardHeader class="card-heading">
+        <div>
+          <CardTitle>搜索模组</CardTitle>
+          <CardDescription>从创意工坊检索并安装到指定房间。</CardDescription>
         </div>
-      </template>
-      
-      <!-- 搜索表单 -->
-      <div class="search-form-container">
-        <el-form :inline="true" :model="searchForm" size="small">
-          <el-form-item label="房间">
-            <el-select
-              v-model="selectedRoomId"
-              placeholder="请选择房间"
-              filterable
-              :loading="loadingRooms"
-              @change="handleRoomChange">
-              <el-option
-                v-for="room in roomOptions"
-                :key="room.id"
-                :label="room.name"
-                :value="room.id">
-              </el-option>
-            </el-select>
-          </el-form-item>
-          <el-form-item>
-            <el-input 
-              v-model="searchForm.keyword" 
-              placeholder="输入模组名称搜索..." 
-              prefix-icon="el-icon-search" 
-              clearable
-              @keyup.enter="startSearch">
-            </el-input>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="startSearch" :loading="searching">搜索</el-button>
-            <el-button @click="resetSearch">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-      
-      <!-- 模组列表 -->
-      <div class="mod-search-results">
-        <!-- 加载中提示 -->
-        <div v-if="searching" class="loading-container">
-          <div class="mod-flex-container">
-            <div 
-              v-for="index in 8" 
-              :key="'skeleton-' + index" 
-              class="mod-flex-item">
-              <div class="loading-card">
-                <div class="loading-image"></div>
-                <div class="loading-content">
-                  <div class="loading-title"></div>
-                  <div class="loading-meta"></div>
-                  <div class="loading-description"></div>
-                  <div class="loading-actions">
-                    <div class="loading-button"></div>
-                    <div class="loading-button"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- 搜索结果 -->
-        <div v-else-if="searchResults.length > 0" class="mod-grid">
-          <div class="mod-flex-container">
-            <div
-              v-for="mod in searchResults" 
-              :key="mod.id" 
-              class="mod-flex-item">
-              <el-card 
-                class="mod-card" 
-                :class="{'is-installed': mod.isInstalled}"
-                shadow="hover">
-                <div class="mod-card-header">
-                  <div class="mod-card-title" :title="mod.name">{{ mod.name }}</div>
-                  <div v-if="mod.isInstalled" class="status-switch">
-                    <el-tag size="small" type="success">已安装</el-tag>
-                  </div>
-                </div>
+        <UiButton variant="outline" size="sm" @click="goToModList"><ArrowLeft data-icon="inline-start" />返回已下载模组</UiButton>
+      </CardHeader>
 
-                <div class="mod-card-content">
-                  <div class="mod-card-image">
-                    <el-image 
-                      :src="mod.img || defaultImage" 
-                      fit="cover"
-                      lazy>
-                      <template #error>
-                        <div class="image-slot">
-                          <component :is="'el-icon-picture-outline'" class="legacy-icon" />
-                        </div>
-                      </template>
-                    </el-image>
-                  </div>
-                  
-                  <div class="mod-card-info">
-                    <div class="mod-card-author">
-                      <component :is="'el-icon-user'" class="legacy-icon" />
-                      <span>{{ mod.auth }}</span>
-                    </div>
-                    <div class="mod-card-version" v-if="mod.version">
-                      <component :is="'el-icon-info'" class="legacy-icon" />
-                      <span>{{ mod.version }}</span>
-                    </div>
-                    <div class="mod-card-update">
-                      <component :is="'el-icon-time'" class="legacy-icon" />
-                      <span>{{ mod.time }}</span>
-                    </div>
-                    <div class="mod-card-subscribers">
-                      <component :is="'el-icon-user-solid'" class="legacy-icon" />
-                      <span>{{ mod.sub }} 订阅</span>
-                    </div>
-                    <div class="mod-card-rating" v-if="mod.rating !== null">
-                      <component :is="'el-icon-star-on'" class="legacy-icon" />
-                      <span>{{ formatRating(mod.rating) }} 评分</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="mod-card-actions">
-                  <el-button 
-                    size="small" 
-                    :type="mod.isInstalled ? 'success' : 'primary'" 
-                    :disabled="!selectedRoomId || downloadingMods[mod.id]"
-                    :loading="downloadingMods[mod.id]"
-                    @click="handleDownloadMod(mod)">
-                    <span v-if="mod.isInstalled">
-                      <component :is="'el-icon-refresh'" class="legacy-icon" /> 更新
-                    </span>
-                    <span v-else>
-                      {{ downloadingMods[mod.id] ? '下载中...' : '下载' }}
-                    </span>
-                  </el-button>
-                  <el-dropdown trigger="click" @command="handleCommand" size="small">
-                    <el-button size="small" type="text">
-                      更多<component :is="'el-icon-arrow-down'" class="legacy-icon el-icon--right" />
-                    </el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item :command="{type: 'details', mod: mod}">查看详情</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
-                </div>
-              </el-card>
-            </div>
+      <CardContent>
+        <FieldGroup class="search-form">
+          <Field>
+            <FieldLabel>房间</FieldLabel>
+            <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
+              <SelectTrigger><SelectValue :placeholder="loadingRooms ? '正在加载房间' : '请选择房间'" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup>
+              </SelectContent>
+            </UiSelect>
+          </Field>
+          <Field>
+            <FieldLabel for="mod-search-keyword">模组名称</FieldLabel>
+            <InputGroup>
+              <InputGroupAddon><Search /></InputGroupAddon>
+              <InputGroupInput id="mod-search-keyword" v-model="searchForm.keyword" placeholder="输入模组名称搜索" @keyup.enter="startSearch" />
+            </InputGroup>
+          </Field>
+          <div class="search-actions">
+            <UiButton @click="startSearch" :disabled="searching">
+              <Spinner v-if="searching" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索
+            </UiButton>
+            <UiButton variant="outline" @click="resetSearch">重置</UiButton>
           </div>
-          
-          <!-- 分页 -->
-          <div class="pagination-container">
-            <el-pagination
-              background
-              layout="prev, pager, next"
-              :total="totalResults"
-              :page-size="pageSize"
-              v-model:current-page="currentPage"
-              @current-change="handlePageChange">
-            </el-pagination>
-          </div>
+        </FieldGroup>
+
+        <div v-if="searching" class="mod-grid">
+          <Card v-for="index in 8" :key="index" class="mod-card">
+            <Skeleton class="mod-image" />
+            <CardHeader><Skeleton class="skeleton-title" /><Skeleton class="skeleton-meta" /></CardHeader>
+            <CardContent><Skeleton class="skeleton-description" /></CardContent>
+            <CardFooter><Skeleton class="skeleton-button" /></CardFooter>
+          </Card>
         </div>
-        
-        <!-- 无结果提示 -->
-        <div v-else-if="hasSearched" class="empty-results">
-          <el-empty description="没有找到匹配的模组" :image-size="200">
-            <template #description>
-              <p>没有找到匹配的模组</p>
-              <p>尝试使用不同的关键词或者筛选条件</p>
-            </template>
-          </el-empty>
-        </div>
-      </div>
-    </el-card>
-    
-    <!-- 模组详情对话框 -->
-    <el-dialog
-      title="模组详情"
-      v-model="detailsDialogVisible"
-      width="700px"
-      class="mod-details-dialog"
-      :modal="false"
-      :append-to-body="true">
-      <div v-if="currentModInfo" class="mod-details-content">
-        <!-- 模组基本信息 -->
-        <div class="mod-details-header">
-          <el-image 
-            :src="currentModInfo.img || defaultImage" 
-            fit="cover"
-            class="mod-details-image">
-            <template #error>
-              <div class="image-slot">
-                <component :is="'el-icon-picture-outline'" class="legacy-icon" />
+
+        <div v-else-if="searchResults.length > 0">
+          <div class="mod-grid">
+            <Card v-for="mod in searchResults" :key="mod.id" class="mod-card">
+              <div class="mod-image">
+                <ImageIcon />
+                <img v-if="mod.img || defaultImage" :src="mod.img || defaultImage" :alt="mod.name" loading="lazy" @error="handleImageError" />
               </div>
-            </template>
-          </el-image>
-          
-          <div class="mod-details-info">
-            <h2 class="mod-details-name">{{ currentModInfo.name }}</h2>
-            <div class="mod-details-meta">
-              <span class="mod-details-author">
-                <component :is="'el-icon-user'" class="legacy-icon" /> {{ currentModInfo.auth }}
-              </span>
-              <span class="mod-details-version" v-if="currentModInfo.version">
-                <component :is="'el-icon-info'" class="legacy-icon" /> v{{ currentModInfo.version }}
-              </span>
-              <span class="mod-details-update">
-                <component :is="'el-icon-time'" class="legacy-icon" /> {{ currentModInfo.time }}
-              </span>
-              <span class="mod-details-subscribers" v-if="currentModInfo.sub">
-                <component :is="'el-icon-user-solid'" class="legacy-icon" /> {{ currentModInfo.sub }} 订阅
-              </span>
-              <span class="mod-details-rating" v-if="currentModInfo.rating !== null">
-                <component :is="'el-icon-star-on'" class="legacy-icon" /> {{ formatRating(currentModInfo.rating) }} 评分
-              </span>
-            </div>
-            <div class="mod-details-status" v-if="currentModInfo.isInstalled">
-              <el-tag size="medium" type="success">已安装</el-tag>
+              <CardHeader>
+                <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><Badge v-if="mod.isInstalled">已安装</Badge></div>
+                <CardDescription>{{ mod.auth || '未知作者' }}</CardDescription>
+              </CardHeader>
+              <CardContent class="mod-meta">
+                <span v-if="mod.version"><Tag />{{ mod.version }}</span>
+                <span><Clock />{{ mod.time || '--' }}</span>
+                <span><Users />{{ mod.sub || 0 }} 订阅</span>
+                <span v-if="mod.rating !== null"><Star />{{ formatRating(mod.rating) }} 评分</span>
+              </CardContent>
+              <CardFooter class="mod-actions">
+                <UiButton
+                  size="sm"
+                  :variant="mod.isInstalled ? 'outline' : 'default'"
+                  :disabled="!selectedRoomId || downloadingMods[mod.id]"
+                  @click="handleDownloadMod(mod)"
+                >
+                  <Spinner v-if="downloadingMods[mod.id]" data-icon="inline-start" />
+                  <RefreshCw v-else-if="mod.isInstalled" data-icon="inline-start" />
+                  <Download v-else data-icon="inline-start" />
+                  {{ downloadingMods[mod.id] ? '下载中' : mod.isInstalled ? '更新' : '下载' }}
+                </UiButton>
+                <UiButton variant="ghost" size="sm" @click="showModDetails(mod)">查看详情</UiButton>
+              </CardFooter>
+            </Card>
+          </div>
+
+          <Pagination :page="currentPage" :total="totalResults" :items-per-page="pageSize" show-edges @update:page="handlePageChange">
+            <PaginationContent v-slot="{ items }">
+              <PaginationPrevious />
+              <template v-for="(item, index) in items" :key="index">
+                <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === currentPage">{{ item.value }}</PaginationItem>
+                <PaginationEllipsis v-else :index="index" />
+              </template>
+              <PaginationNext />
+            </PaginationContent>
+          </Pagination>
+        </div>
+
+        <Empty v-else-if="hasSearched">
+          <EmptyHeader><EmptyMedia variant="icon"><SearchX /></EmptyMedia><EmptyTitle>没有找到匹配的模组</EmptyTitle><EmptyDescription>尝试使用其他关键词。</EmptyDescription></EmptyHeader>
+        </Empty>
+      </CardContent>
+    </Card>
+
+    <UiDialog v-model:open="detailsDialogVisible">
+      <DialogContent class="max-w-3xl">
+        <DialogHeader><DialogTitle>模组详情</DialogTitle><DialogDescription>创意工坊模组信息。</DialogDescription></DialogHeader>
+        <div v-if="currentModInfo" class="mod-details">
+          <div class="mod-details-header">
+            <div class="mod-details-image"><ImageIcon /><img v-if="currentModInfo.img || defaultImage" :src="currentModInfo.img || defaultImage" :alt="currentModInfo.name" @error="handleImageError" /></div>
+            <div>
+              <h3>{{ currentModInfo.name }}</h3>
+              <div class="mod-details-meta">
+                <span><User />{{ currentModInfo.auth || '未知作者' }}</span>
+                <span v-if="currentModInfo.version"><Tag />v{{ currentModInfo.version }}</span>
+                <span><Clock />{{ currentModInfo.time || '--' }}</span>
+                <span v-if="currentModInfo.sub"><Users />{{ currentModInfo.sub }} 订阅</span>
+                <span v-if="currentModInfo.rating !== null"><Star />{{ formatRating(currentModInfo.rating) }} 评分</span>
+              </div>
+              <Badge v-if="currentModInfo.isInstalled">已安装</Badge>
             </div>
           </div>
+          <Separator />
+          <div v-if="currentModInfo.describe"><h4>模组描述</h4><p class="description-content">{{ currentModInfo.describe }}</p></div>
         </div>
-        
-        <!-- 模组描述 -->
-        <div class="mod-details-description" v-if="currentModInfo.describe">
-          <h3>模组描述</h3>
-          <div class="description-content">
-            {{ currentModInfo.describe || '该模组暂无描述' }}
-          </div>
-        </div>
-      </div>
-      
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="detailsDialogVisible = false">关闭</el-button>
-          <el-button
-            type="primary"
-            :disabled="!selectedRoomId || downloadingMods[currentModInfo?.id]"
-            :loading="downloadingMods[currentModInfo?.id]"
-            @click="handleDownloadMod(currentModInfo)">
+        <DialogFooter>
+          <UiButton variant="outline" @click="detailsDialogVisible = false">关闭</UiButton>
+          <UiButton :disabled="!selectedRoomId || downloadingMods[currentModInfo?.id]" @click="handleDownloadMod(currentModInfo)">
+            <Spinner v-if="downloadingMods[currentModInfo?.id]" data-icon="inline-start" />
             {{ currentModInfo?.isInstalled ? '更新模组' : '下载模组' }}
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
+import { ArrowLeft, Clock, Download, ImageIcon, RefreshCw, Search, SearchX, Star, Tag, User, Users } from '@lucide/vue';
+import { toast } from 'vue-sonner';
 import { modApi } from '@/api';
+import { Badge } from '@/components/ui/badge';
+import { Button as UiButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'ModSearch',
+  components: {
+    ArrowLeft,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+    Clock,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    Download,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+    Field,
+    FieldGroup,
+    FieldLabel,
+    ImageIcon,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationNext,
+    PaginationPrevious,
+    RefreshCw,
+    Search,
+    SearchX,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    Separator,
+    Skeleton,
+    Spinner,
+    Star,
+    Tag,
+    UiButton,
+    UiDialog,
+    UiSelect,
+    User,
+    Users
+  },
   data() {
     return {
       searchForm: {
@@ -288,6 +234,9 @@ export default {
     }
   },
   methods: {
+    handleImageError(event) {
+      event.currentTarget.hidden = true;
+    },
     async initializeContext() {
       this.loadingRooms = true;
       try {
@@ -297,7 +246,7 @@ export default {
         this.selectedRoomWorlds = context.worlds;
         if (this.selectedRoomId) await this.getInstalledMods();
       } catch (error) {
-        this.$message.error(error.message || '加载房间失败');
+        toast.error(error.message || '加载房间失败');
       } finally {
         this.loadingRooms = false;
       }
@@ -317,7 +266,7 @@ export default {
           isInstalled: this.isModInstalled(mod.id)
         }));
       } catch (error) {
-        this.$message.error(error.message || '切换房间失败');
+        toast.error(error.message || '切换房间失败');
       }
     },
 
@@ -332,7 +281,7 @@ export default {
         this.installedMods = await modApi.getServerList({ roomId: this.selectedRoomId });
       } catch (error) {
         this.installedMods = [];
-        this.$message.error(`获取已安装模组失败：${error.message || '未知错误'}`);
+        toast.error(`获取已安装模组失败：${error.message || '未知错误'}`);
       } finally {
         this.loadingInstalledMods = false;
       }
@@ -350,7 +299,7 @@ export default {
 
     async searchMods() {
       if (!this.searchForm.keyword.trim()) {
-        this.$message.warning('请输入搜索关键词');
+        toast.warning('请输入搜索关键词');
         return;
       }
       if (this.searching) {
@@ -373,7 +322,7 @@ export default {
         }));
         this.totalResults = data.total || 0;
       } catch (error) {
-        this.$message.error(`搜索模组失败：${error.message || '未知错误'}`);
+        toast.error(`搜索模组失败：${error.message || '未知错误'}`);
         this.searchResults = [];
         this.totalResults = 0;
       } finally {
@@ -385,7 +334,7 @@ export default {
       
       // 如果模组已安装，询问是否要更新
       if (mod.isInstalled) {
-        this.$confirm(`模组 "${name}" 已安装，是否要更新？`, '提示', {
+        confirmAction(`模组 "${name}" 已安装，是否要更新？`, '更新模组', {
           confirmButtonText: '更新',
           cancelButtonText: '取消',
           type: 'warning'
@@ -403,19 +352,14 @@ export default {
     // 实际执行下载的方法
     async downloadMod(mod) {
       if (!this.selectedRoomId) {
-        this.$message.warning('请先选择房间');
+        toast.warning('请先选择房间');
         return;
       }
       const id = mod.id;
       const wasInstalled = mod.isInstalled;
       
       // 显示下载中消息
-      const loadingMessage = this.$message({
-        type: 'info',
-        message: '正在下载模组，请耐心等待...',
-        duration: 0,
-        showClose: true
-      });
+      const loadingMessage = toast.loading('正在下载模组，请耐心等待...');
       
       this.downloadingMods[id] = true;
       
@@ -430,11 +374,11 @@ export default {
         });
         mod.isInstalled = true;
         await this.getInstalledMods();
-        this.$message.success(wasInstalled ? '更新成功' : '下载成功');
+        toast.success(wasInstalled ? '更新成功' : '下载成功');
       } catch (error) {
-        this.$message.error(`${wasInstalled ? '更新' : '下载'}失败：${error.message || '未知错误'}`);
+        toast.error(`${wasInstalled ? '更新' : '下载'}失败：${error.message || '未知错误'}`);
       } finally {
-        loadingMessage.close();
+        toast.dismiss(loadingMessage);
         this.downloadingMods[id] = false;
       }
     },
@@ -480,410 +424,191 @@ export default {
 </script>
 
 <style scoped>
-.page-container {
+.page-container,
+.main-card {
   width: 100%;
   min-width: 0;
 }
 
-.main-card {
-  margin-bottom: 0;
-  box-shadow: none;
-  border-radius: 4px;
-}
-
-.header-actions {
+.card-heading,
+.mod-title-row,
+.mod-actions,
+.search-actions,
+.mod-details-header,
+.mod-details-meta,
+.mod-meta span {
   display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
-.search-form-container {
-  margin-bottom: 16px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.mod-search-results {
-  min-height: 400px;
-}
-
-.mod-grid {
-  margin-bottom: 20px;
-}
-
-.mod-flex-container {
-  display: flex;
-  flex-wrap: wrap;
+.card-heading {
+  justify-content: space-between;
   gap: 16px;
 }
 
-.mod-flex-item {
-  flex: 0 0 calc(25% - 12px);
-  margin-bottom: 0;
-  min-width: 0;
+.search-form {
+  display: grid;
+  grid-template-columns: 220px minmax(240px, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
-@media (max-width: 1200px) {
-  .mod-flex-item {
-    flex: 0 0 calc(33.333% - 14px);
-  }
+.search-actions,
+.mod-actions {
+  gap: 8px;
 }
 
-@media (max-width: 992px) {
-  .mod-flex-item {
-    flex: 0 0 calc(50% - 10px);
-  }
-}
-
-@media (max-width: 768px) {
-  .mod-flex-item {
-    flex: 0 0 100%;
-  }
-}
-
-.mod-card-col {
-  margin-bottom: 16px;
+.mod-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
 .mod-card {
-  height: 100%;
-  border-radius: 4px;
-  box-shadow: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-.mod-card:hover {
-  transform: none;
-  border-color: var(--el-color-primary-light-5);
-  box-shadow: none;
-}
-
-.mod-card-header {
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 10px;
-  margin-bottom: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.mod-card-title {
-  font-weight: 600;
-  font-size: 16px;
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  margin-right: 10px;
 }
 
-.status-switch {
-  flex-shrink: 0;
-}
-
-.mod-card-content {
-  display: flex;
-  margin-bottom: 15px;
-}
-
-.mod-card-image {
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
+.mod-image,
+.mod-details-image {
   position: relative;
-  margin-right: 15px;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.mod-card-image .el-image {
-  width: 100%;
-  height: 100%;
-}
-
-.image-slot {
   display: flex;
-  justify-content: center;
   align-items: center;
-  width: 100%;
-  height: 100%;
-  background-color: var(--surface-muted);
-  color: var(--text-secondary);
+  justify-content: center;
+  overflow: hidden;
+  background: var(--muted);
+  color: var(--muted-foreground);
 }
 
-.mod-card-info {
-  flex: 1;
+.mod-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-bottom: 1px solid var(--border);
+}
+
+.mod-image > svg,
+.mod-details-image > svg {
+  width: 28px;
+  height: 28px;
+}
+
+.mod-image img,
+.mod-details-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mod-title-row {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mod-meta {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  font-size: 13px;
+  gap: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
-.mod-card-author,
-.mod-card-version,
-.mod-card-update,
-.mod-card-subscribers,
-.mod-card-rating {
-  display: flex;
-  align-items: center;
-  margin-bottom: 5px;
+.mod-meta span,
+.mod-details-meta span {
+  gap: 5px;
 }
 
-.mod-card-author i,
-.mod-card-version i,
-.mod-card-update i,
-.mod-card-subscribers i,
-.mod-card-rating i {
-  margin-right: 5px;
-  width: 16px;
-  text-align: center;
-  color: var(--text-secondary);
+.mod-meta svg,
+.mod-details-meta svg {
+  width: 14px;
+  height: 14px;
 }
 
-.mod-card-actions {
-  display: flex;
+.mod-actions {
   justify-content: space-between;
   margin-top: auto;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-color);
 }
 
-.pagination-container {
+.skeleton-title {
+  width: 70%;
+  height: 18px;
+}
+
+.skeleton-meta {
+  width: 45%;
+  height: 12px;
+}
+
+.skeleton-description {
+  width: 100%;
+  height: 54px;
+}
+
+.skeleton-button {
+  width: 84px;
+  height: 30px;
+}
+
+.mod-details {
   display: flex;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-.empty-results,
-.initial-prompt {
-  padding: 40px 0;
-  text-align: center;
-}
-
-.prompt-content {
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.prompt-icon {
-  font-size: 30px;
-  color: var(--primary-color);
-  margin-bottom: 10px;
-}
-
-.url-import {
-  margin-top: 20px;
-  max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* 详情对话框样式 */
-.mod-details-dialog {
-  max-width: 90%;
-}
-
-.mod-details-content {
-  padding: 0 15px;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .mod-details-header {
-  display: flex;
-  margin-bottom: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+  align-items: flex-start;
+  gap: 16px;
 }
 
 .mod-details-image {
   width: 120px;
-  height: 120px;
-  margin-right: 20px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  overflow: hidden;
+  aspect-ratio: 1;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
-.mod-details-info {
-  flex: 1;
-}
-
-.mod-details-name {
-  margin: 0 0 15px 0;
-  font-size: 20px;
-  color: var(--text-primary);
-  line-height: 1.2;
+.mod-details-header h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
 }
 
 .mod-details-meta {
-  display: flex;
   flex-wrap: wrap;
-  margin-bottom: 15px;
-  color: var(--text-regular);
-}
-
-.mod-details-author,
-.mod-details-version,
-.mod-details-update,
-.mod-details-subscribers,
-.mod-details-rating {
-  margin-right: 15px;
-  margin-bottom: 5px;
-  display: flex;
-  align-items: center;
-}
-
-.mod-details-author i,
-.mod-details-version i,
-.mod-details-update i,
-.mod-details-subscribers i,
-.mod-details-rating i {
-  margin-right: 5px;
-}
-
-.mod-details-description {
-  margin-bottom: 20px;
-}
-
-.mod-details-description h3 {
-  font-size: 16px;
-  margin: 0 0 10px 0;
-  color: var(--text-primary);
+  gap: 8px 14px;
+  margin-bottom: 10px;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .description-content {
+  margin: 8px 0 0;
   padding: 12px;
-  background-color: var(--surface-muted);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  color: var(--text-regular);
-  line-height: 1.6;
-  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  white-space: pre-line;
 }
 
-.loading-container {
-  min-height: 300px;
-  padding: 0;
-}
-
-.loading-container .el-skeleton {
-  margin-bottom: 20px;
-}
-
-.loading-card {
-  height: 300px;
-  background-color: var(--surface-muted);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: none;
-  overflow: hidden;
-}
-
-.loading-image {
-  height: 150px;
-  background: var(--border-color);
-  animation: loading 1.2s ease-in-out infinite;
-}
-
-.loading-content {
-  padding: 15px;
-}
-
-.loading-title, .loading-meta, .loading-description {
-  height: 16px;
-  margin-bottom: 15px;
-  background: var(--border-color);
-  animation: loading 1.2s ease-in-out infinite;
-  border-radius: 3px;
-}
-
-.loading-title {
-  width: 70%;
-}
-
-.loading-meta {
-  width: 50%;
-  height: 12px;
-}
-
-.loading-description {
-  width: 100%;
-  height: 40px;
-}
-
-@keyframes loading {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-.loading-actions {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-color);
-}
-
-.loading-button {
-  width: 45%;
-  height: 28px;
-  border-radius: 4px;
-  background: var(--border-color);
-  animation: loading 1.2s ease-in-out infinite;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .search-form-container .el-form {
-    display: flex;
+@media (max-width: 760px) {
+  .card-heading {
+    align-items: stretch;
     flex-direction: column;
   }
-  
-  .search-form-container .el-form-item {
-    margin-right: 0;
-    margin-bottom: 10px;
+
+  .search-form {
+    grid-template-columns: 1fr;
   }
 
-  .search-form-container :deep(.el-form-item__content),
-  .search-form-container :deep(.el-select),
-  .search-form-container :deep(.el-input) {
-    width: 100%;
+  .search-actions > * {
+    flex: 1;
   }
-  
+
   .mod-details-header {
     flex-direction: column;
-  }
-  
-  .mod-details-preview {
-    width: 100%;
-    max-width: 300px;
-    height: auto;
-    margin: 0 auto 15px;
-  }
-  
-  .loading-container {
-    padding: 10px;
-  }
-}
-
-.mod-card.is-installed {
-  border-color: var(--success-color);
-  box-shadow: inset 3px 0 0 var(--success-color);
-}
-
-.mod-card.is-installed:hover {
-  box-shadow: inset 3px 0 0 var(--success-color);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .loading-image,
-  .loading-title,
-  .loading-meta,
-  .loading-description,
-  .loading-button {
-    animation: none;
   }
 }
 </style>
