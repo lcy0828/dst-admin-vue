@@ -2,6 +2,25 @@
 
 This file is the visual migration contract for the Vue 3 upgrade.
 
+## Open-source Product Positioning
+
+DST Admin is a self-hosted server management product for two overlapping audiences:
+
+- Individual players and small groups running one or a few local or remote DST rooms.
+- Community hosts and commercial operators managing multiple rooms and requiring reliable status, repeatable operations, and clear failure feedback.
+
+The interface must therefore support progressive use instead of assuming that every user is an experienced operator:
+
+- Daily tasks such as checking status, starting a world, viewing players, managing mods, and creating backups stay close to the selected room.
+- Advanced tools such as raw Lua, rule configuration, task orchestration, and remote agents remain discoverable but do not dominate the default workflow.
+- DST terms are preferred when they are familiar to players. Infrastructure terms require an immediately visible status or consequence when they affect an action.
+- Empty, loading, unavailable, and failed states are distinct. A failed request must never look like an empty player, mod, backup, or room list.
+- Multi-room users must always see which room and world an action targets. Responses from an earlier selection must not overwrite the current context.
+- Local management is the default. Remote targets are configured separately, and unsupported remote operations stay blocked rather than falling through to the local machine.
+- Hobbyist convenience must not weaken commercial safety: destructive and raw-console operations require explicit confirmation, while routine read operations remain fast.
+
+The product quality target is not maximum information per screen. It is the shortest safe path for common DST administration tasks while retaining the full legacy capability set for advanced users.
+
 ## Non-Negotiable Migration Rules
 
 - Preserve every Vue 2 page, route, menu level, table column, form field, dialog, and command entry.
