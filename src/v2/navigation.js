@@ -15,107 +15,107 @@ import {
 
 export const V2_NAVIGATION = [
   {
-    label: '总览',
+    labelKey: 'navigation.sections.overview',
     items: [
-      { label: '服务总览', to: '/dashboard', icon: LayoutDashboard }
+      { labelKey: 'navigation.dashboard', to: '/dashboard', icon: LayoutDashboard }
     ]
   },
   {
-    label: '服务与世界',
+    labelKey: 'navigation.sections.services',
     items: [
       {
-        label: '服务器管理',
+        labelKey: 'navigation.servers',
         icon: ServerCog,
         children: [
-          { label: '服务器工作台', to: '/servers/workspace' },
-          { label: '服务器列表', to: '/servers/list' },
-          { label: '命令设置', to: '/servers/commands' }
+          { labelKey: 'navigation.serverWorkspace', to: '/servers/workspace' },
+          { labelKey: 'navigation.serverList', to: '/servers/list' },
+          { labelKey: 'navigation.commandSettings', to: '/servers/commands' }
         ]
       },
       {
-        label: '房间管理',
+        labelKey: 'navigation.rooms',
         icon: House,
         children: [
-          { label: '房间列表', to: '/rooms/list' },
-          { label: '房间设置', to: '/rooms/settings' },
-          { label: '特殊名单', to: '/rooms/special-lists' },
-          { label: '服务器令牌', to: '/rooms/token' }
+          { labelKey: 'navigation.roomList', to: '/rooms/list' },
+          { labelKey: 'navigation.roomSettings', to: '/rooms/settings' },
+          { labelKey: 'navigation.specialLists', to: '/rooms/special-lists' },
+          { labelKey: 'navigation.serverToken', to: '/rooms/token' }
         ]
       },
       {
-        label: '世界管理',
+        labelKey: 'navigation.worlds',
         icon: Globe2,
         children: [
-          { label: '世界列表', to: '/worlds/list' },
-          { label: '世界设置', to: '/worlds/settings' },
-          { label: '世界状态', to: '/worlds/state' },
-          { label: '地图与 Session', to: '/worlds/maps' }
+          { labelKey: 'navigation.worldList', to: '/worlds/list' },
+          { labelKey: 'navigation.worldSettings', to: '/worlds/settings' },
+          { labelKey: 'navigation.worldState', to: '/worlds/state' },
+          { labelKey: 'navigation.worldMaps', to: '/worlds/maps' }
         ]
       }
     ]
   },
   {
-    label: '内容与玩家',
+    labelKey: 'navigation.sections.content',
     items: [
       {
-        label: '模组管理',
+        labelKey: 'navigation.mods',
         icon: Blocks,
         children: [
-          { label: '已下载模组', to: '/mods/list' },
-          { label: '模组搜索', to: '/mods/search' }
+          { labelKey: 'navigation.downloadedMods', to: '/mods/list' },
+          { labelKey: 'navigation.modSearch', to: '/mods/search' }
         ]
       },
       {
-        label: '玩家管理',
+        labelKey: 'navigation.players',
         icon: UsersRound,
         children: [
-          { label: '玩家列表', to: '/players/list' },
-          { label: '封禁管理', to: '/players/bans' }
+          { labelKey: 'navigation.playerList', to: '/players/list' },
+          { labelKey: 'navigation.bans', to: '/players/bans' }
         ]
       }
     ]
   },
   {
-    label: '运维工具',
+    labelKey: 'navigation.sections.operations',
     items: [
       {
-        label: '日志管理器',
+        labelKey: 'navigation.logs',
         icon: FileSearch,
         children: [
-          { label: '日志查询', to: '/logs/query' },
-          { label: '规则管理', to: '/logs/rules' },
-          { label: '日志解析器', to: '/logs/parser' }
+          { labelKey: 'navigation.logQuery', to: '/logs/query' },
+          { labelKey: 'navigation.logRules', to: '/logs/rules' },
+          { labelKey: 'navigation.logParser', to: '/logs/parser' }
         ]
       },
-      { label: '公告管理', to: '/announcements', icon: Megaphone },
-      { label: '备份管理', to: '/backups', icon: ArchiveRestore },
+      { labelKey: 'navigation.announcements', to: '/announcements', icon: Megaphone },
+      { labelKey: 'navigation.backups', to: '/backups', icon: ArchiveRestore },
       {
-        label: '定时任务',
+        labelKey: 'navigation.schedules',
         icon: CalendarClock,
         children: [
-          { label: '任务列表', to: '/cron/tasks' },
-          { label: '创建任务', to: '/cron/add' },
-          { label: '任务组', to: '/cron/groups' },
-          { label: '执行日志', to: '/cron/logs' },
-          { label: '运行统计', to: '/cron/charts' },
-          { label: '导入导出', to: '/cron/import-export' }
+          { labelKey: 'navigation.taskList', to: '/cron/tasks' },
+          { labelKey: 'navigation.createTask', to: '/cron/add' },
+          { labelKey: 'navigation.taskGroup', to: '/cron/groups' },
+          { labelKey: 'navigation.executionLogs', to: '/cron/logs' },
+          { labelKey: 'navigation.runtimeStatistics', to: '/cron/charts' },
+          { labelKey: 'navigation.importExport', to: '/cron/import-export' }
         ]
       }
     ]
   },
   {
-    label: '连接与设置',
+    labelKey: 'navigation.sections.settings',
     items: [
       {
-        label: 'Agent 管理',
+        labelKey: 'navigation.agents',
         icon: RadioTower,
         children: [
-          { label: 'Agent 列表', to: '/agents/list' },
-          { label: '命令管理', to: '/agents/command' },
-          { label: '安全设置', to: '/agents/security' }
+          { labelKey: 'navigation.agentList', to: '/agents/list' },
+          { labelKey: 'navigation.agentCommands', to: '/agents/command' },
+          { labelKey: 'navigation.agentSecurity', to: '/agents/security' }
         ]
       },
-      { label: '系统设置', to: '/system/settings', icon: Settings2 }
+      { labelKey: 'navigation.systemSettings', to: '/system/settings', icon: Settings2 }
     ]
   }
 ]

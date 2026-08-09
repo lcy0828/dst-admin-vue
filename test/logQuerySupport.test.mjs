@@ -117,14 +117,15 @@ test('log query page keeps the refresh job and requery lifecycle visible', async
 
   assert.match(source, /logApi\.refresh\(this\.queryParams\.archive\)/)
   assert.match(source, /await this\.queryLogs\(true\)/)
-  assert.match(source, /尚未解析日志/)
+  assert.match(source, /logs\.query\.empty\.uninitializedTitle/)
   assert.match(source, /InputGroupInput[^>]+queryParams\.query/)
   assert.match(source, /@update:model-value="handleWorldChange"/)
   assert.match(source, /Promise\.allSettled/)
   assert.match(source, /refreshLogs\(\{ bootstrapKey \}\)/)
-  assert.match(source, /\{ type: 'startup', name: '专服启动' \}/)
-  assert.match(source, /\{ type: 'worldgen', name: '世界生成' \}/)
-  assert.match(source, /\{ type: 'diagnostic', name: '引擎诊断' \}/)
+  assert.match(source, /\{ type: 'startup' \}/)
+  assert.match(source, /\{ type: 'worldgen' \}/)
+  assert.match(source, /\{ type: 'diagnostic' \}/)
+  assert.match(source, /getLogTypeText\(log\.log_type\)/)
 })
 
 test('an uninitialized world snapshot is bootstrapped only once', () => {

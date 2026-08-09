@@ -1,4 +1,5 @@
 import { DEFAULT_THEME_ID, normalizeThemeColor, resolveThemePreset } from '@/theme/themePresets'
+import { setLocale } from '@/i18n'
 
 const DEFAULTS = Object.freeze({
   systemName: '饥荒管理系统',
@@ -148,7 +149,7 @@ export function applySystemPreferences(settings) {
     themePreset: preset.id
   }
 
-  document.documentElement.lang = current.language
+  current.language = setLocale(current.language)
   applyThemeVariables(current.theme)
   notifyPreferencesUpdated()
   return { ...current }
@@ -158,6 +159,12 @@ export function previewSystemTheme(themeValue) {
   const theme = normalizeThemeColor(themeValue)
   const preset = applyThemeVariables(theme)
   current = { ...current, theme, themePreset: preset.id }
+  notifyPreferencesUpdated()
+  return { ...current }
+}
+
+export function previewSystemLanguage(locale) {
+  current = { ...current, language: setLocale(locale) }
   notifyPreferencesUpdated()
   return { ...current }
 }

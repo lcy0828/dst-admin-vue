@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   ChevronRight,
   Gamepad2,
@@ -44,8 +45,9 @@ const props = defineProps({
 
 const emit = defineEmits(['profile', 'password', 'logout'])
 const route = useRoute()
+const { t } = useI18n()
 
-const userInitial = computed(() => (props.user.username || '管').trim().slice(0, 1).toUpperCase())
+const userInitial = computed(() => (props.user.username || t('app.administrator')).trim().slice(0, 1).toUpperCase())
 
 function isActive(path) {
   if (path === '/dashboard') return route.path === path
@@ -65,14 +67,14 @@ function isGroupActive(item) {
     <SidebarHeader class="p-3">
       <SidebarMenu>
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" as-child tooltip="服务总览">
+          <SidebarMenuButton size="lg" as-child :tooltip="t('navigation.dashboard')">
             <RouterLink to="/dashboard">
               <span class="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
                 <Gamepad2 />
               </span>
               <span class="grid min-w-0 flex-1 text-left leading-tight">
                 <span class="truncate font-semibold">{{ systemName }}</span>
-                <span class="text-muted-foreground truncate text-xs">DST Admin Console</span>
+                <span class="text-muted-foreground truncate text-xs">{{ t('app.consoleName') }}</span>
               </span>
             </RouterLink>
           </SidebarMenuButton>
@@ -81,16 +83,16 @@ function isGroupActive(item) {
     </SidebarHeader>
 
     <SidebarContent>
-      <SidebarGroup v-for="section in V2_NAVIGATION" :key="section.label">
-        <SidebarGroupLabel>{{ section.label }}</SidebarGroupLabel>
+      <SidebarGroup v-for="section in V2_NAVIGATION" :key="section.labelKey">
+        <SidebarGroupLabel>{{ t(section.labelKey) }}</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
-            <template v-for="item in section.items" :key="item.label">
+            <template v-for="item in section.items" :key="item.labelKey">
               <SidebarMenuItem v-if="!item.children">
-                <SidebarMenuButton as-child :tooltip="item.label" :is-active="isActive(item.to)">
+                <SidebarMenuButton as-child :tooltip="t(item.labelKey)" :is-active="isActive(item.to)">
                   <RouterLink :to="item.to">
                     <component :is="item.icon" />
-                    <span>{{ item.label }}</span>
+                    <span>{{ t(item.labelKey) }}</span>
                   </RouterLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -98,9 +100,9 @@ function isGroupActive(item) {
               <Collapsible v-else as-child :default-open="isGroupActive(item)" class="group/collapsible">
                 <SidebarMenuItem>
                   <CollapsibleTrigger as-child>
-                    <SidebarMenuButton :tooltip="item.label" :is-active="isGroupActive(item)">
+                    <SidebarMenuButton :tooltip="t(item.labelKey)" :is-active="isGroupActive(item)">
                       <component :is="item.icon" />
-                      <span>{{ item.label }}</span>
+                      <span>{{ t(item.labelKey) }}</span>
                       <ChevronRight class="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
@@ -108,7 +110,7 @@ function isGroupActive(item) {
                     <SidebarMenuSub>
                       <SidebarMenuSubItem v-for="child in item.children" :key="child.to">
                         <SidebarMenuSubButton as-child :is-active="isActive(child.to)">
-                          <RouterLink :to="child.to"><span>{{ child.label }}</span></RouterLink>
+                          <RouterLink :to="child.to"><span>{{ t(child.labelKey) }}</span></RouterLink>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>
@@ -126,26 +128,26 @@ function isGroupActive(item) {
         <SidebarMenuItem>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <SidebarMenuButton size="lg" tooltip="账户菜单">
+              <SidebarMenuButton size="lg" :tooltip="t('app.accountMenu')">
                 <Avatar class="size-8 rounded-md">
                   <AvatarFallback class="rounded-md">{{ userInitial }}</AvatarFallback>
                 </Avatar>
                 <span class="grid min-w-0 flex-1 text-left leading-tight">
-                  <span class="truncate font-medium">{{ user.username || '管理员' }}</span>
-                  <span class="text-muted-foreground truncate text-xs">系统管理员</span>
+                  <span class="truncate font-medium">{{ user.username || t('app.administrator') }}</span>
+                  <span class="text-muted-foreground truncate text-xs">{{ t('app.systemAdministrator') }}</span>
                 </span>
               </SidebarMenuButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent side="right" align="end" class="w-56">
-              <DropdownMenuLabel>{{ user.username || '管理员' }}</DropdownMenuLabel>
+              <DropdownMenuLabel>{{ user.username || t('app.administrator') }}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem @select="emit('profile')"><UserRound />个人资料</DropdownMenuItem>
-                <DropdownMenuItem @select="emit('password')"><KeyRound />修改密码</DropdownMenuItem>
+                <DropdownMenuItem @select="emit('profile')"><UserRound />{{ t('app.profile') }}</DropdownMenuItem>
+                <DropdownMenuItem @select="emit('password')"><KeyRound />{{ t('app.changePassword') }}</DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem variant="destructive" @select="emit('logout')"><LogOut />退出登录</DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" @select="emit('logout')"><LogOut />{{ t('app.logout') }}</DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

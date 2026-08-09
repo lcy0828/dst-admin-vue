@@ -2,27 +2,27 @@
   <div class="log-query-container">
     <header class="page-heading">
       <div>
-        <h1>日志查询</h1>
-        <p>解析并检索真实的饥荒服务器日志快照。</p>
+        <h1>{{ $t('logs.title') }}</h1>
+        <p>{{ $t('logs.query.subtitle') }}</p>
       </div>
       <UiButton :disabled="refreshLoading || sourceLoading || !queryParams.archive" @click="refreshLogs">
         <Spinner v-if="refreshLoading" data-icon="inline-start" />
         <RefreshCwIcon v-else data-icon="inline-start" />
-        {{ refreshLoading ? '正在解析' : '解析最新日志' }}
+        {{ refreshLoading ? $t('logs.query.parsing') : $t('logs.query.parseLatest') }}
       </UiButton>
     </header>
 
     <Card>
       <CardHeader>
-        <div><CardTitle>查询条件</CardTitle><CardDescription>按房间、世界、类型或正文内容筛选解析结果。</CardDescription></div>
+        <div><CardTitle>{{ $t('logs.query.filters') }}</CardTitle><CardDescription>{{ $t('logs.query.filtersDescription') }}</CardDescription></div>
       </CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
-          <Field><FieldLabel for="log-archive-filter">存档</FieldLabel><UiSelect v-model="queryParams.archive" :disabled="sourceLoading || worldsLoading" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue :placeholder="sourceLoading ? '正在加载存档' : '选择存档'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.id" :value="item.id">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field><FieldLabel for="log-world-filter">世界</FieldLabel><UiSelect v-model="queryParams.world" :disabled="sourceLoading || worldsLoading || !queryParams.archive" @update:model-value="handleWorldChange"><SelectTrigger id="log-world-filter"><SelectValue :placeholder="worldsLoading ? '正在加载世界' : '选择世界'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field><FieldLabel for="log-type-filter">日志类型</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger id="log-type-filter"><SelectValue placeholder="选择日志类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in logTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field class="query-field"><FieldLabel for="log-query-input">正文检索</FieldLabel><InputGroup><InputGroupInput id="log-query-input" v-model="queryParams.query" maxlength="256" placeholder="日志正文或原始内容" @keyup.enter="queryLogs(true)" /><InputGroupAddon><SearchIcon /></InputGroupAddon></InputGroup></Field>
-          <div class="filter-actions"><UiButton :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="queryLogs(true)"><SearchIcon data-icon="inline-start" />查询</UiButton><UiButton variant="outline" :disabled="loading || sourceLoading || worldsLoading" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />重置</UiButton><UiButton variant="destructive" :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />清空日志</UiButton></div>
+          <Field><FieldLabel for="log-archive-filter">{{ $t('logs.query.archive') }}</FieldLabel><UiSelect v-model="queryParams.archive" :disabled="sourceLoading || worldsLoading" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue :placeholder="sourceLoading ? $t('logs.query.loadingArchive') : $t('logs.query.selectArchive')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.id" :value="item.id">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-world-filter">{{ $t('logs.query.world') }}</FieldLabel><UiSelect v-model="queryParams.world" :disabled="sourceLoading || worldsLoading || !queryParams.archive" @update:model-value="handleWorldChange"><SelectTrigger id="log-world-filter"><SelectValue :placeholder="worldsLoading ? $t('logs.query.loadingWorld') : $t('logs.query.selectWorld')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-type-filter">{{ $t('logs.type') }}</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger id="log-type-filter"><SelectValue :placeholder="$t('logs.query.selectType')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in localizedLogTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field class="query-field"><FieldLabel for="log-query-input">{{ $t('logs.query.contentSearch') }}</FieldLabel><InputGroup><InputGroupInput id="log-query-input" v-model="queryParams.query" maxlength="256" :placeholder="$t('logs.query.contentPlaceholder')" @keyup.enter="queryLogs(true)" /><InputGroupAddon><SearchIcon /></InputGroupAddon></InputGroup></Field>
+          <div class="filter-actions"><UiButton :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="queryLogs(true)"><SearchIcon data-icon="inline-start" />{{ $t('common.actions.search') }}</UiButton><UiButton variant="outline" :disabled="loading || sourceLoading || worldsLoading" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton><UiButton variant="destructive" :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />{{ $t('logs.query.clearLogs') }}</UiButton></div>
         </FieldGroup>
       </CardContent>
     </Card>
@@ -36,40 +36,40 @@
 
     <Alert v-if="sourceError" variant="destructive">
       <TriangleAlertIcon />
-      <AlertTitle>日志来源加载失败</AlertTitle>
+      <AlertTitle>{{ $t('logs.query.sourceFailed') }}</AlertTitle>
       <AlertDescription>{{ sourceError }}</AlertDescription>
-      <AlertAction><UiButton variant="outline" size="sm" :disabled="sourceLoading || worldsLoading" @click="retrySources">重试</UiButton></AlertAction>
+      <AlertAction><UiButton variant="outline" size="sm" :disabled="sourceLoading || worldsLoading" @click="retrySources">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
     <Alert v-if="queryError" variant="destructive">
       <TriangleAlertIcon />
-      <AlertTitle>日志查询失败</AlertTitle>
+      <AlertTitle>{{ $t('logs.query.queryFailed') }}</AlertTitle>
       <AlertDescription>{{ queryError }}</AlertDescription>
-      <AlertAction><UiButton variant="outline" size="sm" :disabled="loading" @click="queryLogs()">重试</UiButton></AlertAction>
+      <AlertAction><UiButton variant="outline" size="sm" :disabled="loading" @click="queryLogs()">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
     <Alert v-if="typeMetadataError">
       <TriangleAlertIcon />
-      <AlertTitle>日志类型未完全更新</AlertTitle>
-      <AlertDescription>日志仍可正常查询；自定义规则类型暂时无法加载：{{ typeMetadataError }}</AlertDescription>
+      <AlertTitle>{{ $t('logs.query.typeMetadataIncomplete') }}</AlertTitle>
+      <AlertDescription>{{ $t('logs.query.typeMetadataDescription', { error: typeMetadataError }) }}</AlertDescription>
     </Alert>
 
     <Card class="result-card">
       <CardHeader>
-        <div><CardTitle>查询结果</CardTitle><CardDescription>共 {{ total }} 条日志<span v-if="lastRefreshedAt">，解析于 {{ formatDate(lastRefreshedAt) }}</span><span v-else-if="snapshotState === 'cleared' && snapshotUpdatedAt">，清空于 {{ formatDate(snapshotUpdatedAt) }}</span></CardDescription></div>
-        <CardAction v-if="snapshotState !== 'uninitialized'"><Badge variant="outline">{{ snapshotState === 'cleared' ? '已清空' : '快照已就绪' }}</Badge></CardAction>
+        <div><CardTitle>{{ $t('logs.query.results') }}</CardTitle><CardDescription>{{ $t('logs.query.resultCount', { count: total }) }}<span v-if="lastRefreshedAt">{{ $t('logs.query.parsedAt', { time: formatDate(lastRefreshedAt) }) }}</span><span v-else-if="snapshotState === 'cleared' && snapshotUpdatedAt">{{ $t('logs.query.clearedAt', { time: formatDate(snapshotUpdatedAt) }) }}</span></CardDescription></div>
+        <CardAction v-if="snapshotState !== 'uninitialized'"><Badge variant="outline">{{ snapshotState === 'cleared' ? $t('logs.query.cleared') : $t('logs.query.ready') }}</Badge></CardAction>
       </CardHeader>
-      <div v-if="lastRefreshedAt" class="count-strip" aria-label="日志类型统计">
+      <div v-if="lastRefreshedAt" class="count-strip" :aria-label="$t('logs.query.typeStatistics')">
         <Badge v-for="type in populatedLogTypes" :key="type.type" variant="outline">{{ type.name }} {{ type.count }}</Badge>
       </div>
       <CardContent>
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在查询日志</span></div>
+        <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('logs.query.querying') }}</span></div>
         <div v-else-if="logData.length" class="table-wrap">
-          <ShadcnTable><TableHeader><TableRow><TableHead>时间</TableHead><TableHead>类型</TableHead><TableHead>内容</TableHead><TableHead>世界</TableHead><TableHead class="action-column">操作</TableHead></TableRow></TableHeader><TableBody>
-            <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)">{{ log.log_type }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell class="action-column"><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">创建规则</UiButton></TableCell></TableRow>
+          <ShadcnTable><TableHeader><TableRow><TableHead>{{ $t('logs.query.columns.time') }}</TableHead><TableHead>{{ $t('logs.query.columns.type') }}</TableHead><TableHead>{{ $t('logs.query.columns.content') }}</TableHead><TableHead>{{ $t('logs.query.columns.world') }}</TableHead><TableHead class="action-column">{{ $t('logs.query.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
+            <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)" :title="log.log_type">{{ getLogTypeText(log.log_type) }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell class="action-column"><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">{{ $t('logs.query.createRule') }}</UiButton></TableCell></TableRow>
           </TableBody></ShadcnTable>
         </div>
-        <Empty v-else-if="!queryError"><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>{{ emptyStateTitle }}</EmptyTitle><EmptyDescription>{{ emptyStateDescription }}</EmptyDescription></EmptyHeader><EmptyContent v-if="snapshotState !== 'ready'"><UiButton :disabled="refreshLoading || !queryParams.archive" @click="refreshLogs"><RefreshCwIcon data-icon="inline-start" />{{ snapshotState === 'cleared' ? '重新解析日志' : '解析最新日志' }}</UiButton></EmptyContent></Empty>
+        <Empty v-else-if="!queryError"><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>{{ emptyStateTitle }}</EmptyTitle><EmptyDescription>{{ emptyStateDescription }}</EmptyDescription></EmptyHeader><EmptyContent v-if="snapshotState !== 'ready'"><UiButton :disabled="refreshLoading || !queryParams.archive" @click="refreshLogs"><RefreshCwIcon data-icon="inline-start" />{{ snapshotState === 'cleared' ? $t('logs.query.parseAgain') : $t('logs.query.parseLatest') }}</UiButton></EmptyContent></Empty>
       </CardContent>
       <CardFooter v-if="!loading && total > 0" class="pagination-container">
         <AppPagination
@@ -83,9 +83,9 @@
       </CardFooter>
     </Card>
 
-    <UiDialog :open="ruleDialogVisible" @update:open="handleRuleDialogOpenChange"><DialogContent class="rule-dialog sm:max-w-4xl"><DialogHeader><DialogTitle>基于日志创建解析规则</DialogTitle><DialogDescription>完善规则信息并验证匹配表达式。</DialogDescription></DialogHeader>
+    <UiDialog :open="ruleDialogVisible" @update:open="handleRuleDialogOpenChange"><DialogContent class="rule-dialog sm:max-w-4xl"><DialogHeader><DialogTitle>{{ $t('logs.query.ruleDialog.title') }}</DialogTitle><DialogDescription>{{ $t('logs.query.ruleDialog.description') }}</DialogDescription></DialogHeader>
       <div v-if="selectedLog" class="rule-dialog-content">
-        <FieldSet><FieldLegend>规则基本信息</FieldLegend><FieldGroup><Field :data-invalid="Boolean(ruleFormErrors.name)"><FieldLabel for="log-rule-name">规则名称</FieldLabel><UiInput id="log-rule-name" v-model="ruleForm.name" :aria-invalid="Boolean(ruleFormErrors.name)" /><FieldError v-if="ruleFormErrors.name">{{ ruleFormErrors.name }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.description)"><FieldLabel for="log-rule-description">描述</FieldLabel><UiTextarea id="log-rule-description" v-model="ruleForm.description" rows="2" :aria-invalid="Boolean(ruleFormErrors.description)" /><FieldError v-if="ruleFormErrors.description">{{ ruleFormErrors.description }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.log_type)"><FieldLabel for="log-rule-type">日志类型</FieldLabel><UiInput id="log-rule-type" v-model="ruleForm.log_type" :aria-invalid="Boolean(ruleFormErrors.log_type)" /><FieldError v-if="ruleFormErrors.log_type">{{ ruleFormErrors.log_type }}</FieldError></Field></FieldGroup></FieldSet>
+        <FieldSet><FieldLegend>{{ $t('logs.query.ruleDialog.basic') }}</FieldLegend><FieldGroup><Field :data-invalid="Boolean(ruleFormErrors.name)"><FieldLabel for="log-rule-name">{{ $t('logs.query.ruleDialog.name') }}</FieldLabel><UiInput id="log-rule-name" v-model="ruleForm.name" :aria-invalid="Boolean(ruleFormErrors.name)" /><FieldError v-if="ruleFormErrors.name">{{ ruleFormErrors.name }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.description)"><FieldLabel for="log-rule-description">{{ $t('logs.query.ruleDialog.descriptionField') }}</FieldLabel><UiTextarea id="log-rule-description" v-model="ruleForm.description" rows="2" :aria-invalid="Boolean(ruleFormErrors.description)" /><FieldError v-if="ruleFormErrors.description">{{ ruleFormErrors.description }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.log_type)"><FieldLabel for="log-rule-type">{{ $t('logs.query.ruleDialog.type') }}</FieldLabel><UiInput id="log-rule-type" v-model="ruleForm.log_type" :aria-invalid="Boolean(ruleFormErrors.log_type)" /><FieldError v-if="ruleFormErrors.log_type">{{ ruleFormErrors.log_type }}</FieldError></Field></FieldGroup></FieldSet>
         <Separator />
         <regex-tester
           :initial-content="selectedLog.raw_content || selectedLog.content"
@@ -96,14 +96,14 @@
           ref="regexTester"
         />
       </div>
-      <DialogFooter><UiButton variant="outline" :disabled="ruleSaving" @click="cancelRule">取消</UiButton><UiButton :disabled="ruleSaving" @click="saveRule"><Spinner v-if="ruleSaving" data-icon="inline-start" />保存规则</UiButton></DialogFooter></DialogContent></UiDialog>
+      <DialogFooter><UiButton variant="outline" :disabled="ruleSaving" @click="cancelRule">{{ $t('common.actions.cancel') }}</UiButton><UiButton :disabled="ruleSaving" @click="saveRule"><Spinner v-if="ruleSaving" data-icon="inline-start" />{{ $t('logs.query.ruleDialog.save') }}</UiButton></DialogFooter></DialogContent></UiDialog>
 
-    <UiDialog v-model:open="cleanupDialogVisible"><DialogContent><DialogHeader><DialogTitle>清空日志</DialogTitle><DialogDescription>清理已解析记录并重置解析位置。</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="cleanupDialogVisible"><DialogContent><DialogHeader><DialogTitle>{{ $t('logs.query.cleanup.title') }}</DialogTitle><DialogDescription>{{ $t('logs.query.cleanup.description') }}</DialogDescription></DialogHeader>
       <div class="cleanup-dialog-content">
-        <Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>确认清空解析日志</AlertTitle><AlertDescription>原始服务器日志不会删除，可重新解析恢复。</AlertDescription></Alert>
-        <FieldGroup><Field data-disabled><FieldLabel for="cleanup-archive">存档</FieldLabel><UiInput id="cleanup-archive" v-model="cleanupForm.archive_name" disabled /></Field><Field data-disabled><FieldLabel for="cleanup-world">世界</FieldLabel><UiInput id="cleanup-world" v-model="cleanupForm.world_name" disabled /></Field></FieldGroup>
+        <Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>{{ $t('logs.query.cleanup.warningTitle') }}</AlertTitle><AlertDescription>{{ $t('logs.query.cleanup.warningDescription') }}</AlertDescription></Alert>
+        <FieldGroup><Field data-disabled><FieldLabel for="cleanup-archive">{{ $t('logs.query.archive') }}</FieldLabel><UiInput id="cleanup-archive" v-model="cleanupForm.archive_name" disabled /></Field><Field data-disabled><FieldLabel for="cleanup-world">{{ $t('logs.query.world') }}</FieldLabel><UiInput id="cleanup-world" v-model="cleanupForm.world_name" disabled /></Field></FieldGroup>
       </div>
-      <DialogFooter><UiButton variant="outline" @click="cleanupDialogVisible = false">取消</UiButton><UiButton variant="destructive" :disabled="cleanupLoading" @click="cleanupLog"><Spinner v-if="cleanupLoading" data-icon="inline-start" />确认清空</UiButton></DialogFooter></DialogContent></UiDialog>
+      <DialogFooter><UiButton variant="outline" @click="cleanupDialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton><UiButton variant="destructive" :disabled="cleanupLoading" @click="cleanupLog"><Spinner v-if="cleanupLoading" data-icon="inline-start" />{{ $t('logs.query.cleanup.confirm') }}</UiButton></DialogFooter></DialogContent></UiDialog>
   </div>
 </template>
 
@@ -127,6 +127,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import AppPagination from '@/components/Pagination.vue'
 import RegexTester from '@/components/RegexTester.vue';
 import { confirmAction } from '@/lib/feedback'
+import { logTypeLabel } from '@/i18n/logTypes'
 import { normalizeLogSources, shouldBootstrapStructuredLogs, structuredLogSnapshotKey } from '@/lib/logQuerySupport.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import { toast } from 'vue-sonner'
@@ -211,18 +212,18 @@ export default {
       worlds: [],
       // 日志类型
       logTypes: [
-        { type: '', name: '全部' },
-        { type: 'system', name: '系统' },
-        { type: 'chat', name: '聊天' },
-        { type: 'player', name: '玩家' },
-        { type: 'entity', name: '实体' },
-        { type: 'world', name: '世界' },
-        { type: 'error', name: '错误' },
-        { type: 'warning', name: '警告' },
-        { type: 'startup', name: '专服启动' },
-        { type: 'worldgen', name: '世界生成' },
-        { type: 'diagnostic', name: '引擎诊断' },
-        { type: 'unknown', name: '未知' }
+        { type: '' },
+        { type: 'system' },
+        { type: 'chat' },
+        { type: 'player' },
+        { type: 'entity' },
+        { type: 'world' },
+        { type: 'error' },
+        { type: 'warning' },
+        { type: 'startup' },
+        { type: 'worldgen' },
+        { type: 'diagnostic' },
+        { type: 'unknown' }
       ],
       // 日志数据
       logData: [],
@@ -288,17 +289,25 @@ export default {
     populatedLogTypes() {
       return this.logTypes
         .filter(item => item.type && Number(this.counts[item.type]) > 0)
-        .map(item => ({ ...item, count: Number(this.counts[item.type]) }))
+        .map(item => ({ ...item, name: this.getLogTypeText(item.type), count: Number(this.counts[item.type]) }))
+    },
+    localizedLogTypes() {
+      return this.logTypes.map(item => ({
+        ...item,
+        name: item.type ? this.getLogTypeText(item.type) : this.$t('logs.allTypes')
+      }))
     },
     emptyStateTitle() {
-      if (this.snapshotState === 'cleared') return '解析日志已清空'
-      return this.snapshotState === 'ready' ? '没有匹配的日志' : '尚未解析日志'
+      if (this.snapshotState === 'cleared') return this.$t('logs.query.empty.clearedTitle')
+      return this.snapshotState === 'ready'
+        ? this.$t('logs.query.empty.noMatchTitle')
+        : this.$t('logs.query.empty.uninitializedTitle')
     },
     emptyStateDescription() {
-      if (this.snapshotState === 'cleared') return '原始服务器日志仍保留，可随时重新解析。'
+      if (this.snapshotState === 'cleared') return this.$t('logs.query.empty.clearedDescription')
       return this.snapshotState === 'ready'
-        ? '调整筛选条件后重新查询。'
-        : '先解析当前存档的最新服务器日志，再进行检索。'
+        ? this.$t('logs.query.empty.noMatchDescription')
+        : this.$t('logs.query.empty.uninitializedDescription')
     },
     queryTypeModel: {
       get() {
@@ -349,7 +358,7 @@ export default {
         const response = await logApi.getArchivesWithLogs();
         if (requestSequence !== this.sourceRequestSequence) return;
         if (response?.status !== 200 || !Array.isArray(response.data)) {
-          throw new Error(response?.msg || '存档列表响应格式异常');
+          throw new Error(response?.msg || this.$t('logs.query.feedback.archiveResponseInvalid'));
         }
         this.archives = normalizeLogSources(response.data);
         const requestedArchive = this.$route.query.archive;
@@ -364,7 +373,7 @@ export default {
         this.worlds = [];
         this.queryParams.archive = '';
         this.queryParams.world = '';
-        this.sourceError = error.message || '获取存档列表失败';
+        this.sourceError = error.message || this.$t('logs.query.feedback.archiveLoadFailed');
         toast.error(this.sourceError);
       } finally {
         if (requestSequence === this.sourceRequestSequence) this.sourceLoading = false;
@@ -402,7 +411,7 @@ export default {
     async getLogTypes() {
       const response = await logApi.getLogTypes(this.queryParams);
       if (response?.status !== 200 || !Array.isArray(response.data)) {
-        throw new Error(response?.msg || '日志类型响应格式异常');
+        throw new Error(response?.msg || this.$t('logs.query.feedback.typeResponseInvalid'));
       }
       return response.data;
     },
@@ -410,7 +419,7 @@ export default {
     mergeLogTypes(types) {
       const existing = new Set(this.logTypes.map(item => item.type));
       for (const type of types) {
-        if (!existing.has(type)) this.logTypes.push({ type, name: type });
+        if (!existing.has(type)) this.logTypes.push({ type });
       }
     },
 
@@ -432,14 +441,14 @@ export default {
       const bootstrapKey = typeof options?.bootstrapKey === 'string' ? options.bootstrapKey : ''
       const bootstrapWorldId = this.queryParams.world
       const requestSequence = ++this.refreshRequestSequence
-      const archiveName = this.selectedArchive?.name || '当前存档'
+      const archiveName = this.selectedArchive?.name || this.$t('logs.query.feedback.currentArchive')
       this.refreshLoading = true
       this.refreshStatus = null
       try {
         const response = await logApi.refresh(this.queryParams.archive)
         if (requestSequence !== this.refreshRequestSequence) return
         if (response?.status !== 200 || !response.data) {
-          throw new Error(response?.msg || '日志刷新任务响应格式异常')
+          throw new Error(response?.msg || this.$t('logs.query.feedback.refreshResponseInvalid'))
         }
         const targets = Array.isArray(response.data.targets) ? response.data.targets : []
         const succeeded = targets.filter(target => target.status === 'succeeded')
@@ -448,17 +457,17 @@ export default {
           .filter(target => target.message)
           .map(target => `${target.name || target.targetId}：${target.message}`)
         const failureDetails = failed.map(target =>
-          `${target.name || target.targetId}：${target.error?.message || '解析失败'}`
+          `${target.name || target.targetId}: ${target.error?.message || this.$t('logs.query.feedback.parseFailed')}`
         )
         const partial = response.data.outcome === 'partial' || failed.length > 0
         this.refreshStatus = {
           variant: 'default',
           partial,
-          title: partial ? `${archiveName} 的日志部分解析完成` : `${archiveName} 的日志已解析`,
-          description: [...successDetails, ...failureDetails].join('；') || '所有世界的结构化日志快照已更新。'
+          title: this.$t(partial ? 'logs.query.feedback.partialTitle' : 'logs.query.feedback.completeTitle', { archive: archiveName }),
+          description: [...successDetails, ...failureDetails].join('; ') || this.$t('logs.query.feedback.snapshotUpdated')
         }
-        if (partial) toast.warning(`${archiveName} 仅部分世界解析完成`)
-        else toast.success(`${archiveName} 的日志解析完成`)
+        if (partial) toast.warning(this.$t('logs.query.feedback.partialToast', { archive: archiveName }))
+        else toast.success(this.$t('logs.query.feedback.completeToast', { archive: archiveName }))
         await this.queryLogs(true)
         if (partial && bootstrapKey && !succeeded.some(target => target.targetId === bootstrapWorldId)) {
           this.bootstrapAttemptedKeys = this.bootstrapAttemptedKeys.filter(key => key !== bootstrapKey)
@@ -471,10 +480,12 @@ export default {
         }
         this.refreshStatus = {
           variant: 'destructive',
-          title: '日志解析失败',
-          description: error.message || '无法解析服务器日志'
+          title: this.$t('logs.query.feedback.parseFailedTitle'),
+          description: error.message || this.$t('logs.query.feedback.cannotParse')
         }
-        toast.error(`日志解析失败：${error.message || '未知错误'}`)
+        toast.error(this.$t('logs.query.feedback.parseFailedToast', {
+          error: error.message || this.$t('common.errors.unknown')
+        }))
         return false
       } finally {
         if (requestSequence === this.refreshRequestSequence) this.refreshLoading = false
@@ -498,12 +509,12 @@ export default {
           this.mergeLogTypes(typesResult.value);
           this.typeMetadataError = '';
         } else {
-          this.typeMetadataError = typesResult.reason?.message || '未知错误';
+          this.typeMetadataError = typesResult.reason?.message || this.$t('common.errors.unknown');
         }
         if (logsResult.status === 'rejected') throw logsResult.reason;
         const response = logsResult.value;
         if (response?.status !== 200 || !Array.isArray(response.data?.logs)) {
-          throw new Error(response?.msg || '日志查询响应格式异常');
+          throw new Error(response?.msg || this.$t('logs.query.feedback.queryResponseInvalid'));
         }
         this.logData = response.data.logs;
         this.total = Number(response.data.total) || 0;
@@ -520,8 +531,8 @@ export default {
         });
       } catch (error) {
         if (requestSequence !== this.queryRequestSequence) return;
-        this.queryError = error.message || '未知错误';
-        toast.error('查询日志失败: ' + this.queryError);
+        this.queryError = error.message || this.$t('common.errors.unknown');
+        toast.error(this.$t('logs.query.feedback.queryFailedToast', { error: this.queryError }));
         this.logData = [];
         this.total = 0;
         this.counts = {};
@@ -602,6 +613,10 @@ export default {
       }
     },
 
+    getLogTypeText(type) {
+      return logTypeLabel(type, this.$t)
+    },
+
     // 对世界列表进行排序
     sortWorlds(worlds) {
       if (!worlds || !Array.isArray(worlds)) return [];
@@ -640,7 +655,7 @@ export default {
     createRuleFromLog(log) {
       // 确保有日志内容
       if (!log || (!log.raw_content && !log.content)) {
-        toast.error('日志内容为空，无法创建规则');
+        toast.error(this.$t('logs.query.feedback.emptyContent'));
         return;
       }
 
@@ -656,8 +671,10 @@ export default {
 
       // 初始化规则表单
       this.ruleForm = {
-        name: `自动生成的规则 - ${log.log_type || '未知类型'}`,
-        description: `基于日志内容自动生成的解析规则`,
+        name: this.$t('logs.query.ruleDialog.generatedName', {
+          type: this.getLogTypeText(log.log_type) || this.$t('logs.unknownType')
+        }),
+        description: this.$t('logs.query.ruleDialog.generatedDescription'),
         log_type: log.log_type || '',
         pattern: '',
         is_regex: true,
@@ -779,9 +796,9 @@ export default {
         if (!length) return emptyMessage
         return length < min || length > max ? lengthMessage : ''
       }
-      this.ruleFormErrors.name = validateLength(this.ruleForm.name, 1, 80, '请输入规则名称', '规则名称不能超过80个字符')
-      this.ruleFormErrors.description = String(this.ruleForm.description || '').trim().length > 300 ? '规则描述不能超过300个字符' : ''
-      this.ruleFormErrors.log_type = /^[A-Za-z0-9_.-]{1,48}$/.test(this.ruleForm.log_type.trim()) ? '' : '日志类型应为1-48个字母、数字、点、横线或下划线'
+      this.ruleFormErrors.name = validateLength(this.ruleForm.name, 1, 80, this.$t('logs.query.feedback.nameRequired'), this.$t('logs.query.feedback.nameTooLong'))
+      this.ruleFormErrors.description = String(this.ruleForm.description || '').trim().length > 300 ? this.$t('logs.query.feedback.descriptionTooLong') : ''
+      this.ruleFormErrors.log_type = /^[A-Za-z0-9_.-]{1,48}$/.test(this.ruleForm.log_type.trim()) ? '' : this.$t('logs.query.feedback.typeInvalid')
       return !Object.values(this.ruleFormErrors).some(Boolean)
     },
     async saveRule() {
@@ -806,13 +823,13 @@ export default {
 
           // 确保有模式
           if (!this.ruleForm.pattern) {
-            toast.error('请先设置匹配模式');
+            toast.error(this.$t('logs.query.feedback.patternRequired'));
             return;
           }
 
           // 如果是首尾行模式，需要尾行模式
           if (this.ruleForm.match_mode === 'head_tail' && !this.ruleForm.tail_pattern) {
-            toast.error('首尾行匹配模式需要提供尾行匹配模式');
+            toast.error(this.$t('logs.query.feedback.tailPatternRequired'));
             return;
           }
 
@@ -825,7 +842,7 @@ export default {
           // 添加解析规则
           this.ruleSaving = true;
           await ruleManagementApi.addRule(this.queryParams.archive, formData);
-          toast.success('添加解析规则成功');
+          toast.success(this.$t('logs.query.feedback.ruleAdded'));
 
           // 关闭对话框
           this.ruleDialogVisible = false;
@@ -833,7 +850,9 @@ export default {
           this.selectedLog = null;
           this.initialPattern = '';
         } catch (error) {
-          toast.error('解析规则操作失败: ' + (error.message || '未知错误'));
+          toast.error(this.$t('logs.query.feedback.ruleActionFailed', {
+            error: error.message || this.$t('common.errors.unknown')
+          }));
         } finally {
           this.ruleSaving = false;
       }
@@ -852,8 +871,11 @@ export default {
     // 处理规则对话框关闭
     async handleRuleDialogClose(done) {
       // 检查表单是否有修改
-      const hasChanges = this.ruleForm.name !== `自动生成的规则 - ${this.selectedLog?.log_type || '未知类型'}` ||
-                        this.ruleForm.description !== `基于日志内容自动生成的解析规则` ||
+      const generatedName = this.$t('logs.query.ruleDialog.generatedName', {
+        type: this.getLogTypeText(this.selectedLog?.log_type) || this.$t('logs.unknownType')
+      })
+      const hasChanges = this.ruleForm.name !== generatedName ||
+                        this.ruleForm.description !== this.$t('logs.query.ruleDialog.generatedDescription') ||
                         this.ruleForm.log_type !== (this.selectedLog?.log_type || '') ||
                         this.ruleForm.pattern !== '' ||
                         this.ruleForm.match_mode !== 'single' ||
@@ -869,9 +891,9 @@ export default {
       if (hasChanges) {
         // 如果有修改，弹出确认对话框
         try {
-          await confirmAction('关闭将丢失未保存的内容，是否确认关闭？', '放弃更改', {
-            confirmButtonText: '确认关闭',
-            cancelButtonText: '继续编辑',
+          await confirmAction(this.$t('logs.query.feedback.discardDescription'), this.$t('logs.query.feedback.discardTitle'), {
+            confirmButtonText: this.$t('logs.query.feedback.closeWithoutSaving'),
+            cancelButtonText: this.$t('logs.query.feedback.continueEditing'),
             type: 'warning'
           })
           closeDialog()
@@ -896,12 +918,12 @@ export default {
     showCleanupLogDialog() {
       // 检查是否选择了存档和世界
       if (!this.queryParams.archive) {
-        toast.warning('请先选择存档');
+        toast.warning(this.$t('logs.query.feedback.selectArchiveFirst'));
         return;
       }
 
       if (!this.queryParams.world) {
-        toast.warning('请先选择世界');
+        toast.warning(this.$t('logs.query.feedback.selectWorldFirst'));
         return;
       }
 
@@ -919,9 +941,9 @@ export default {
     async cleanupLog() {
       // 再次确认
       try {
-        await confirmAction('此操作将清空所选存档和世界的解析日志记录，并重置解析位置。原始服务器日志不会删除，可重新解析恢复。是否确认继续？', '清空日志', {
-          confirmButtonText: '确认清空',
-          cancelButtonText: '取消',
+        await confirmAction(this.$t('logs.query.feedback.cleanupConfirmation'), this.$t('logs.query.cleanup.title'), {
+          confirmButtonText: this.$t('logs.query.cleanup.confirm'),
+          cancelButtonText: this.$t('common.actions.cancel'),
           type: 'warning'
         });
       } catch (e) {
@@ -933,16 +955,16 @@ export default {
         const response = await logApi.cleanupLog(this.cleanupForm);
 
         if (response && response.status === 200) {
-          toast.success(response.msg || '成功清空日志记录');
+          toast.success(response.msg || this.$t('logs.query.feedback.cleanupSuccess'));
           // 关闭对话框
           this.cleanupDialogVisible = false;
           // 重新查询日志，刷新列表
           await this.queryLogs();
         } else {
-          toast.error(response?.msg || '清空日志失败');
+          toast.error(response?.msg || this.$t('logs.query.feedback.cleanupFailed'));
         }
       } catch (error) {
-        toast.error('清空日志失败: ' + (error.message || '未知错误'));
+        toast.error(`${this.$t('logs.query.feedback.cleanupFailed')}: ${error.message || this.$t('common.errors.unknown')}`);
       } finally {
         this.cleanupLoading = false;
       }

@@ -53,12 +53,12 @@
               </Field>
 
               <Field orientation="responsive">
-                <FieldContent><FieldLabel for="system-language">系统语言</FieldLabel></FieldContent>
-                <UiSelect v-model="settings.language" :disabled="!fieldEditable('ui.language')">
-                  <SelectTrigger id="system-language" class="setting-control"><SelectValue placeholder="请选择系统语言" /></SelectTrigger>
+                <FieldContent><FieldLabel for="system-language">{{ $t('settings.language.label') }}</FieldLabel></FieldContent>
+                <UiSelect v-model="settings.language" :disabled="!fieldEditable('ui.language')" @update:model-value="previewLanguage">
+                  <SelectTrigger id="system-language" class="setting-control"><SelectValue :placeholder="$t('settings.language.placeholder')" /></SelectTrigger>
                   <SelectContent><SelectGroup>
-                    <SelectItem value="zh-CN">简体中文</SelectItem>
-                    <SelectItem value="en-US" disabled>English</SelectItem>
+                    <SelectItem value="zh-CN">{{ $t('settings.language.zhCN') }}</SelectItem>
+                    <SelectItem value="en-US">{{ $t('settings.language.enUS') }}</SelectItem>
                     <SelectItem value="ja-JP" disabled>日本語</SelectItem>
                   </SelectGroup></SelectContent>
                 </UiSelect>
@@ -395,7 +395,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { confirmAction } from '@/lib/feedback';
 import { DEFAULT_THEME_ID, THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
-import { applySystemPreferences, previewSystemTheme } from '@/utils/systemPreferences';
+import { applySystemPreferences, previewSystemLanguage, previewSystemTheme } from '@/utils/systemPreferences';
 import { getActiveRuntimeTarget } from '@/utils/runtimeTarget';
 import { toast } from 'vue-sonner';
 
@@ -650,6 +650,11 @@ export default {
       if (!value) return;
       this.settings.theme = normalizeThemeColor(value);
       previewSystemTheme(this.settings.theme);
+    },
+    previewLanguage(value) {
+      if (!value) return;
+      this.settings.language = value;
+      previewSystemLanguage(value);
     },
     resetDefaultTheme() {
       this.selectTheme(themePresetById(DEFAULT_THEME_ID));
