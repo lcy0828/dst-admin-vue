@@ -1,4 +1,5 @@
 import { corePageMessages } from './corePages.js'
+import { serverMessages } from './serverMessages.js'
 import { systemSettingsMessages } from './systemSettingsMessages.js'
 import { roomsMessages } from './roomsMessages.js'
 import { worldsMessages } from './worldsMessages.js'
@@ -6,6 +7,7 @@ import { worldsMessages } from './worldsMessages.js'
 export const messages = {
   'zh-CN': {
     ...corePageMessages['zh-CN'],
+    ...serverMessages['zh-CN'],
     ...systemSettingsMessages['zh-CN'],
     ...roomsMessages['zh-CN'],
     ...worldsMessages['zh-CN'],
@@ -462,6 +464,7 @@ export const messages = {
   },
   'en-US': {
     ...corePageMessages['en-US'],
+    ...serverMessages['en-US'],
     ...systemSettingsMessages['en-US'],
     ...roomsMessages['en-US'],
     ...worldsMessages['en-US'],

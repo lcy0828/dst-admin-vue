@@ -2,37 +2,37 @@
   <div class="server-list-page">
     <header class="page-header">
       <div>
-        <h1>服务器状态</h1>
-        <p>监控当前运行目标中的世界分片，并执行启动或停止操作。</p>
+        <h1>{{ $t('servers.list.title') }}</h1>
+        <p>{{ $t('servers.list.subtitle') }}</p>
       </div>
       <UiButton size="sm" variant="outline" :disabled="loading" @click="refreshData">
         <Spinner v-if="loading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
-        刷新
+        {{ $t('common.actions.refresh') }}
       </UiButton>
     </header>
 
     <Card class="filter-container">
       <CardHeader>
-        <CardTitle>筛选范围</CardTitle>
-        <CardDescription>按运行状态、房间和世界类型缩小结果。</CardDescription>
+        <CardTitle>{{ $t('servers.list.filters.title') }}</CardTitle>
+        <CardDescription>{{ $t('servers.list.filters.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="filter-content">
         <Tabs v-model="activeTab">
           <TabsList>
-            <TabsTrigger value="all">全部分片</TabsTrigger>
-            <TabsTrigger value="running">运行中</TabsTrigger>
-            <TabsTrigger value="stopped">已停止</TabsTrigger>
-            <TabsTrigger value="failed">启动失败</TabsTrigger>
+            <TabsTrigger value="all">{{ $t('servers.list.filters.allShards') }}</TabsTrigger>
+            <TabsTrigger value="running">{{ $t('servers.list.filters.running') }}</TabsTrigger>
+            <TabsTrigger value="stopped">{{ $t('servers.list.filters.stopped') }}</TabsTrigger>
+            <TabsTrigger value="failed">{{ $t('servers.list.filters.failed') }}</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <div class="filter-options">
-          <UiSelect v-model="roomFilter"><SelectTrigger><SelectValue placeholder="按存档筛选" /></SelectTrigger><SelectContent><SelectGroup>
-            <SelectItem value="all">全部存档</SelectItem><SelectItem v-for="room in roomList" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
+          <UiSelect v-model="roomFilter"><SelectTrigger><SelectValue :placeholder="$t('servers.list.filters.roomPlaceholder')" /></SelectTrigger><SelectContent><SelectGroup>
+            <SelectItem value="all">{{ $t('servers.list.filters.allRooms') }}</SelectItem><SelectItem v-for="room in roomList" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
           </SelectGroup></SelectContent></UiSelect>
-          <UiSelect v-model="typeFilter"><SelectTrigger><SelectValue placeholder="按类型筛选" /></SelectTrigger><SelectContent><SelectGroup>
-            <SelectItem value="all">全部类型</SelectItem><SelectItem value="forest">森林服务器</SelectItem><SelectItem value="cave">洞穴服务器</SelectItem>
+          <UiSelect v-model="typeFilter"><SelectTrigger><SelectValue :placeholder="$t('servers.list.filters.typePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup>
+            <SelectItem value="all">{{ $t('servers.list.filters.allTypes') }}</SelectItem><SelectItem value="forest">{{ $t('servers.list.filters.forest') }}</SelectItem><SelectItem value="cave">{{ $t('servers.list.filters.cave') }}</SelectItem>
           </SelectGroup></SelectContent></UiSelect>
         </div>
       </CardContent>
@@ -40,24 +40,24 @@
 
     <Card class="server-table-container">
       <CardHeader>
-        <CardTitle>世界分片</CardTitle>
-        <CardDescription>状态来自当前选择的本机或远程运行目标。</CardDescription>
+        <CardTitle>{{ $t('servers.list.shards.title') }}</CardTitle>
+        <CardDescription>{{ $t('servers.list.shards.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="table-content">
         <Alert v-if="loadError" variant="destructive" class="server-feedback">
           <CircleAlert />
-          <AlertTitle>服务器状态读取失败</AlertTitle>
+          <AlertTitle>{{ $t('servers.list.shards.loadFailed') }}</AlertTitle>
           <AlertDescription>{{ loadError }}</AlertDescription>
-          <AlertAction><UiButton size="sm" variant="outline" @click="refreshData">重新加载</UiButton></AlertAction>
+          <AlertAction><UiButton size="sm" variant="outline" @click="refreshData">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
         </Alert>
-        <div v-if="loading && !serverList.length" class="table-skeleton" aria-busy="true" aria-label="正在读取服务器状态">
+        <div v-if="loading && !serverList.length" class="table-skeleton" aria-busy="true" :aria-label="$t('servers.list.shards.loadingAria')">
           <Skeleton v-for="row in 5" :key="row" class="h-12 w-full" />
         </div>
         <div v-else-if="filteredServerList.length" class="table-scroll">
         <ShadcnTable>
           <TableHeader><TableRow>
-            <TableHead>服务器名称</TableHead><TableHead>天数</TableHead><TableHead>季节</TableHead>
-            <TableHead>运行目标</TableHead><TableHead>操作</TableHead>
+            <TableHead>{{ $t('servers.list.shards.columns.name') }}</TableHead><TableHead>{{ $t('servers.list.shards.columns.day') }}</TableHead><TableHead>{{ $t('servers.list.shards.columns.season') }}</TableHead>
+            <TableHead>{{ $t('servers.list.shards.columns.target') }}</TableHead><TableHead>{{ $t('servers.list.shards.columns.actions') }}</TableHead>
           </TableRow></TableHeader>
           <TableBody><TableRow v-for="server in filteredServerList" :key="server.session_name">
             <TableCell>
@@ -74,14 +74,14 @@
             </div>
             </TableCell>
             <TableCell>{{ server.day ?? '-' }}</TableCell>
-            <TableCell><Badge v-if="server.season" variant="secondary">{{ server.season }}</Badge><span v-else>-</span></TableCell>
+            <TableCell><Badge v-if="server.season" variant="secondary">{{ seasonLabel(server.season) }}</Badge><span v-else>-</span></TableCell>
             <TableCell><Badge variant="secondary">{{ runtimeTargetLabel }}</Badge></TableCell>
             <TableCell><div class="operation-buttons">
               <UiButton
                 size="xs"
                 :variant="serverPrimaryAction(server).variant"
                 :disabled="!canControlServer(server) || serverActionId === serverKey(server)"
-                :title="!canControlServer(server) ? (serverStatusMessage(server) || '当前分片状态不可控制') : ''"
+                :title="!canControlServer(server) ? (serverStatusMessage(server) || $t('servers.list.shards.unavailable')) : ''"
                 @click="handleServerAction(server)"
               >
                 <Spinner v-if="serverActionId === serverKey(server) || isServerStarting(server)" data-icon="inline-start" />
@@ -89,29 +89,29 @@
                 <Play v-else-if="serverPrimaryAction(server).kind === 'start'" data-icon="inline-start" />
                 {{ serverPrimaryAction(server).label }}
               </UiButton>
-              <UiButton v-if="server.status === 'failed'" size="xs" variant="outline" :disabled="!canCleanFailedServer(server) || serverActionId === serverKey(server)" @click="handleCleanupFailedServer(server)"><Square data-icon="inline-start" />清理会话</UiButton>
-              <UiButton size="xs" variant="outline" :disabled="!canConfigureServer(server)" :title="!canConfigureServer(server) ? '请先停止或清理该分片' : ''" @click="handleConfigure(server)">配置</UiButton>
+              <UiButton v-if="server.status === 'failed'" size="xs" variant="outline" :disabled="!canCleanFailedServer(server) || serverActionId === serverKey(server)" @click="handleCleanupFailedServer(server)"><Square data-icon="inline-start" />{{ $t('servers.list.shards.cleanup') }}</UiButton>
+              <UiButton size="xs" variant="outline" :disabled="!canConfigureServer(server)" :title="!canConfigureServer(server) ? $t('servers.list.shards.configureDisabled') : ''" @click="handleConfigure(server)">{{ $t('servers.list.shards.configure') }}</UiButton>
             </div></TableCell>
           </TableRow></TableBody>
         </ShadcnTable>
         </div>
         <Empty v-else-if="!loadError">
-          <EmptyHeader><EmptyMedia variant="icon"><ServerOff /></EmptyMedia><EmptyTitle>暂无服务器数据</EmptyTitle><EmptyDescription>创建房间后，可以在这里启动和监控服务器。</EmptyDescription></EmptyHeader>
-          <EmptyContent class="empty-actions"><UiButton @click="navigateToRoomCreation">创建新房间</UiButton><UiButton variant="outline" @click="showStartRoomDialog">启动现有房间</UiButton></EmptyContent>
+          <EmptyHeader><EmptyMedia variant="icon"><ServerOff /></EmptyMedia><EmptyTitle>{{ $t('servers.list.shards.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.list.shards.emptyDescription') }}</EmptyDescription></EmptyHeader>
+          <EmptyContent class="empty-actions"><UiButton @click="navigateToRoomCreation">{{ $t('servers.list.shards.createRoom') }}</UiButton><UiButton variant="outline" @click="showStartRoomDialog">{{ $t('servers.list.shards.startRoom') }}</UiButton></EmptyContent>
         </Empty>
       </CardContent>
     </Card>
 
     <UiDialog v-model:open="startRoomDialogVisible">
       <DialogScrollContent>
-        <DialogHeader><DialogTitle>选择并启动房间</DialogTitle><DialogDescription>选择当前运行目标中的房间和真实世界分片。</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ $t('servers.list.startDialog.title') }}</DialogTitle><DialogDescription>{{ $t('servers.list.startDialog.description') }}</DialogDescription></DialogHeader>
         <FieldGroup>
-          <Field><FieldLabel>选择房间</FieldLabel><UiSelect :model-value="startRoomForm.roomIndex" @update:model-value="selectStartRoom"><SelectTrigger class="w-full"><SelectValue placeholder="请选择房间" /></SelectTrigger><SelectContent><SelectGroup>
+          <Field><FieldLabel>{{ $t('servers.list.startDialog.room') }}</FieldLabel><UiSelect :model-value="startRoomForm.roomIndex" @update:model-value="selectStartRoom"><SelectTrigger class="w-full"><SelectValue :placeholder="$t('servers.list.startDialog.roomPlaceholder')" /></SelectTrigger><SelectContent><SelectGroup>
             <SelectItem v-for="(room, index) in roomList" :key="room.id" :value="String(index)">{{ room.name }}</SelectItem>
           </SelectGroup></SelectContent></UiSelect></Field>
           <FieldSet v-if="startRoomForm.roomIndex !== ''">
-            <FieldLegend variant="label">选择世界</FieldLegend>
-            <FieldDescription>已运行或当前目标不可控制的分片不会重复启动。</FieldDescription>
+            <FieldLegend variant="label">{{ $t('servers.list.startDialog.worlds') }}</FieldLegend>
+            <FieldDescription>{{ $t('servers.list.startDialog.worldsDescription') }}</FieldDescription>
             <FieldGroup>
               <Field
                 v-for="world in selectedStartRoomWorlds"
@@ -135,7 +135,7 @@
             </FieldGroup>
           </FieldSet>
         </FieldGroup>
-        <DialogFooter><UiButton variant="outline" :disabled="startRoomLoading" @click="startRoomDialogVisible = false">取消</UiButton><UiButton :disabled="startRoomLoading || !startRoomForm.worldIds.length" @click="handleStartRoomFrom"><Spinner v-if="startRoomLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />启动所选分片</UiButton></DialogFooter>
+        <DialogFooter><UiButton variant="outline" :disabled="startRoomLoading" @click="startRoomDialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton><UiButton :disabled="startRoomLoading || !startRoomForm.worldIds.length" @click="handleStartRoomFrom"><Spinner v-if="startRoomLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{ $t('servers.list.startDialog.submit') }}</UiButton></DialogFooter>
       </DialogScrollContent>
     </UiDialog>
   </div>
@@ -231,8 +231,10 @@ export default {
       return this.selectedStartRoom?.worlds || [];
     },
     runtimeTargetLabel() {
-      const name = this.runtimeTarget?.name || '本机';
-      return this.runtimeTarget?.kind === 'local' ? `${name}（本机）` : `${name}（远程）`;
+      if (this.runtimeTarget?.kind === 'local') return this.$t('servers.list.targets.local');
+      return this.$t('servers.list.targets.remote', {
+        name: this.runtimeTarget?.name || this.runtimeTarget?.id || this.$t('common.states.unknown')
+      });
     }
   },
   created() {
@@ -257,12 +259,12 @@ export default {
         if (requestSequence !== this.refreshSequence) return;
         this.serverList = Array.isArray(serversResponse?.data) ? serversResponse.data : [];
         this.roomList = Array.isArray(roomsResponse?.data) ? roomsResponse.data : [];
-        if (notify) toast.success(serversResponse?.msg || '服务器状态已刷新');
+        if (notify) toast.success(this.$t('servers.list.feedback.refreshed'));
       } catch (error) {
         if (requestSequence !== this.refreshSequence) return;
         this.serverList = [];
         this.roomList = [];
-        this.loadError = error.message || '无法读取当前运行目标的服务器状态';
+        this.loadError = error.message || this.$t('servers.list.feedback.loadFailed');
         if (notify) toast.error(this.loadError);
       } finally {
         if (requestSequence === this.refreshSequence) this.loading = false;
@@ -281,12 +283,19 @@ export default {
       this.$router.push('/rooms/settings');
     },
     getWorldTypeName(worldType, worldName = '') {
-      if (worldType === 'forest') return '森林';
-      if (worldType === 'cave') return '洞穴';
+      if (worldType === 'forest') return this.$t('servers.list.worldTypes.forest');
+      if (worldType === 'cave') return this.$t('servers.list.worldTypes.cave');
       const lowerName = worldName.toLowerCase();
-      if (lowerName.includes('forest')) return '森林';
-      if (lowerName.includes('cave')) return '洞穴';
-      return '自定义';
+      if (lowerName.includes('forest')) return this.$t('servers.list.worldTypes.forest');
+      if (lowerName.includes('cave')) return this.$t('servers.list.worldTypes.cave');
+      return worldType || this.$t('servers.list.worldTypes.custom');
+    },
+    seasonLabel(season) {
+      const normalized = String(season || '').trim().toLowerCase();
+      const key = ['autumn', 'winter', 'spring', 'summer'].includes(normalized)
+        ? `servers.list.seasons.${normalized}`
+        : '';
+      return key ? this.$t(key) : season;
     },
     showStartRoomDialog() {
       this.startRoomForm = { roomIndex: '', worldIds: [] };
@@ -311,69 +320,83 @@ export default {
     },
     async handleStartRoomFrom() {
       if (!this.selectedStartRoom || this.startRoomForm.worldIds.length === 0) {
-        toast.warning(this.startRoomForm.roomIndex === '' ? '请选择房间' : '请至少选择一个世界');
+        toast.warning(this.$t(this.startRoomForm.roomIndex === ''
+          ? 'servers.list.feedback.selectRoom'
+          : 'servers.list.feedback.selectWorld'));
         return;
       }
       const worldIds = this.selectedStartRoomWorlds
         .filter(world => this.canStartWorld(world) && this.startRoomForm.worldIds.includes(world.id))
         .map(world => world.id);
       if (!worldIds.length) {
-        toast.warning('所选世界已运行或当前目标不可控制');
+        toast.warning(this.$t('servers.list.feedback.selectedWorldUnavailable'));
         return;
       }
 
       this.startRoomLoading = true;
       try {
-        const response = await roomApi.startRoom({
+        await roomApi.startRoom({
           room_id: this.selectedStartRoom.id,
           world_ids: worldIds
         });
         await this.fetchData();
         this.startRoomDialogVisible = false;
-        toast.success(response?.msg || '启动完成');
+        toast.success(this.$t('servers.list.feedback.roomStarted'));
       } catch (error) {
-        toast.error(`启动失败：${error.message || '未知错误'}`);
+        toast.error(this.$t('servers.list.feedback.roomStartFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       } finally {
         this.startRoomLoading = false;
       }
     },
     async handleServerAction(server) {
       if (!this.canControlServer(server)) {
-        toast.warning(this.serverStatusMessage(server) || '当前分片状态不可控制');
+        toast.warning(this.serverStatusMessage(server) || this.$t('servers.list.shards.unavailable'));
         return;
       }
       const isRunning = server.status === 'running';
-      const action = isRunning ? '停止' : '启动';
+      const action = this.$t(`worldRuntime.actions.${isRunning ? 'stop' : 'start'}`);
       try {
-        await confirmAction(`确定要${action}“${server.archive_name} / ${server.world_name}”吗？`, `${action}服务器`, {
-          confirmButtonText: `确认${action}`,
+        await confirmAction(this.$t('servers.list.feedback.actionConfirm', {
+          action,
+          room: server.archive_name,
+          world: server.world_name
+        }), this.$t('servers.list.feedback.actionTitle', { action }), {
+          confirmButtonText: this.$t('servers.list.feedback.actionButton', { action }),
           type: isRunning ? 'warning' : 'info'
         });
       } catch {
-        toast.info(`已取消${action}`);
+        toast.info(this.$t('servers.list.feedback.actionCanceled', { action }));
         return;
       }
 
       this.serverActionId = this.serverKey(server);
       try {
         const request = { room_id: server.room_id, world_id: server.world_id };
-        const response = await (isRunning ? roomApi.stopRoom(request) : roomApi.startRoom(request));
+        await (isRunning ? roomApi.stopRoom(request) : roomApi.startRoom(request));
         await this.fetchData();
-        toast.success(response?.msg || `${action}完成`);
+        toast.success(this.$t('servers.list.feedback.actionCompleted', { action }));
       } catch (error) {
-        toast.error(`${action}失败：${error.message || '未知错误'}`);
+        toast.error(this.$t('servers.list.feedback.actionFailed', {
+          action,
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       } finally {
         this.serverActionId = '';
       }
     },
     async handleCleanupFailedServer(server) {
       if (!canCleanFailedWorld(server)) {
-        toast.warning(this.serverStatusMessage(server) || '当前分片没有可清理的失败会话');
+        toast.warning(this.serverStatusMessage(server) || this.$t('servers.list.feedback.cleanupUnavailable'));
         return;
       }
       try {
-        await confirmAction(`确定要停止并清理“${server.archive_name} / ${server.world_name}”的失败会话吗？`, '清理失败会话', {
-          confirmButtonText: '确认清理',
+        await confirmAction(this.$t('servers.list.feedback.cleanupConfirm', {
+          room: server.archive_name,
+          world: server.world_name
+        }), this.$t('servers.list.feedback.cleanupTitle'), {
+          confirmButtonText: this.$t('servers.list.feedback.cleanupButton'),
           type: 'warning'
         });
       } catch {
@@ -382,11 +405,13 @@ export default {
 
       this.serverActionId = this.serverKey(server);
       try {
-        const response = await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id });
+        await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id });
         await this.fetchData();
-        toast.success(response?.msg || '失败会话已清理');
+        toast.success(this.$t('servers.list.feedback.cleanupSucceeded'));
       } catch (error) {
-        toast.error(`清理失败：${error.message || '未知错误'}`);
+        toast.error(this.$t('servers.list.feedback.cleanupFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       } finally {
         this.serverActionId = '';
       }
@@ -404,7 +429,7 @@ export default {
       return canConfigureWorld(server);
     },
     serverStatusLabel(status) {
-      return worldStatusLabel(status);
+      return worldStatusLabel(status, key => this.$t(key));
     },
     serverStatusVariant(server) {
       return worldStatusVariant(server);
@@ -413,7 +438,7 @@ export default {
       return worldStatusMessage(server);
     },
     serverPrimaryAction(server) {
-      return worldPrimaryAction(server);
+      return worldPrimaryAction(server, key => this.$t(key));
     },
     isServerStarting(server) {
       return isWorldStarting(server);
