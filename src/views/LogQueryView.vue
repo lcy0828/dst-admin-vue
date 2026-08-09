@@ -19,7 +19,7 @@
       <CardContent>
         <FieldGroup class="filter-grid">
           <Field><FieldLabel for="log-archive-filter">存档</FieldLabel><UiSelect v-model="queryParams.archive" :disabled="sourceLoading || worldsLoading" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue :placeholder="sourceLoading ? '正在加载存档' : '选择存档'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.id" :value="item.id">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field><FieldLabel for="log-world-filter">世界</FieldLabel><UiSelect v-model="queryParams.world" :disabled="sourceLoading || worldsLoading || !queryParams.archive"><SelectTrigger id="log-world-filter"><SelectValue :placeholder="worldsLoading ? '正在加载世界' : '选择世界'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-world-filter">世界</FieldLabel><UiSelect v-model="queryParams.world" :disabled="sourceLoading || worldsLoading || !queryParams.archive" @update:model-value="handleWorldChange"><SelectTrigger id="log-world-filter"><SelectValue :placeholder="worldsLoading ? '正在加载世界' : '选择世界'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           <Field><FieldLabel for="log-type-filter">日志类型</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger id="log-type-filter"><SelectValue placeholder="选择日志类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in logTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           <Field class="query-field"><FieldLabel for="log-query-input">正文检索</FieldLabel><InputGroup><InputGroupInput id="log-query-input" v-model="queryParams.query" maxlength="256" placeholder="日志正文或原始内容" @keyup.enter="queryLogs(true)" /><InputGroupAddon><SearchIcon /></InputGroupAddon></InputGroup></Field>
           <div class="filter-actions"><UiButton :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="queryLogs(true)"><SearchIcon data-icon="inline-start" />查询</UiButton><UiButton variant="outline" :disabled="loading || sourceLoading || worldsLoading" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />重置</UiButton><UiButton variant="destructive" :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />清空日志</UiButton></div>
@@ -48,10 +48,16 @@
       <AlertAction><UiButton variant="outline" size="sm" :disabled="loading" @click="queryLogs()">重试</UiButton></AlertAction>
     </Alert>
 
+    <Alert v-if="typeMetadataError">
+      <TriangleAlertIcon />
+      <AlertTitle>日志类型未完全更新</AlertTitle>
+      <AlertDescription>日志仍可正常查询；自定义规则类型暂时无法加载：{{ typeMetadataError }}</AlertDescription>
+    </Alert>
+
     <Card class="result-card">
       <CardHeader>
-        <div><CardTitle>查询结果</CardTitle><CardDescription>共 {{ total }} 条日志<span v-if="lastRefreshedAt">，解析于 {{ formatDate(lastRefreshedAt) }}</span></CardDescription></div>
-        <CardAction v-if="lastRefreshedAt"><Badge variant="outline">快照已就绪</Badge></CardAction>
+        <div><CardTitle>查询结果</CardTitle><CardDescription>共 {{ total }} 条日志<span v-if="lastRefreshedAt">，解析于 {{ formatDate(lastRefreshedAt) }}</span><span v-else-if="snapshotState === 'cleared' && snapshotUpdatedAt">，清空于 {{ formatDate(snapshotUpdatedAt) }}</span></CardDescription></div>
+        <CardAction v-if="snapshotState !== 'uninitialized'"><Badge variant="outline">{{ snapshotState === 'cleared' ? '已清空' : '快照已就绪' }}</Badge></CardAction>
       </CardHeader>
       <div v-if="lastRefreshedAt" class="count-strip" aria-label="日志类型统计">
         <Badge v-for="type in populatedLogTypes" :key="type.type" variant="outline">{{ type.name }} {{ type.count }}</Badge>
@@ -63,7 +69,7 @@
             <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)">{{ log.log_type }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell class="action-column"><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">创建规则</UiButton></TableCell></TableRow>
           </TableBody></ShadcnTable>
         </div>
-        <Empty v-else-if="!queryError"><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>{{ lastRefreshedAt ? '没有匹配的日志' : '尚未解析日志' }}</EmptyTitle><EmptyDescription>{{ lastRefreshedAt ? '调整筛选条件后重新查询。' : '先解析当前存档的最新服务器日志，再进行检索。' }}</EmptyDescription></EmptyHeader><EmptyContent v-if="!lastRefreshedAt"><UiButton :disabled="refreshLoading || !queryParams.archive" @click="refreshLogs"><RefreshCwIcon data-icon="inline-start" />解析最新日志</UiButton></EmptyContent></Empty>
+        <Empty v-else-if="!queryError"><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>{{ emptyStateTitle }}</EmptyTitle><EmptyDescription>{{ emptyStateDescription }}</EmptyDescription></EmptyHeader><EmptyContent v-if="snapshotState !== 'ready'"><UiButton :disabled="refreshLoading || !queryParams.archive" @click="refreshLogs"><RefreshCwIcon data-icon="inline-start" />{{ snapshotState === 'cleared' ? '重新解析日志' : '解析最新日志' }}</UiButton></EmptyContent></Empty>
       </CardContent>
       <CardFooter v-if="!loading && total > 0" class="pagination-container">
         <AppPagination
@@ -222,7 +228,10 @@ export default {
       // 加载状态
       loading: false,
       queryError: '',
+      typeMetadataError: '',
       counts: {},
+      snapshotState: 'uninitialized',
+      snapshotUpdatedAt: null,
       lastRefreshedAt: null,
       refreshLoading: false,
       refreshStatus: null,
@@ -278,6 +287,16 @@ export default {
         .filter(item => item.type && Number(this.counts[item.type]) > 0)
         .map(item => ({ ...item, count: Number(this.counts[item.type]) }))
     },
+    emptyStateTitle() {
+      if (this.snapshotState === 'cleared') return '解析日志已清空'
+      return this.snapshotState === 'ready' ? '没有匹配的日志' : '尚未解析日志'
+    },
+    emptyStateDescription() {
+      if (this.snapshotState === 'cleared') return '原始服务器日志仍保留，可随时重新解析。'
+      return this.snapshotState === 'ready'
+        ? '调整筛选条件后重新查询。'
+        : '先解析当前存档的最新服务器日志，再进行检索。'
+    },
     queryTypeModel: {
       get() {
         return this.queryParams.type || '__all__'
@@ -307,7 +326,10 @@ export default {
       this.logData = [];
       this.total = 0;
       this.counts = {};
+      this.snapshotState = 'uninitialized';
+      this.snapshotUpdatedAt = null;
       this.lastRefreshedAt = null;
+      this.typeMetadataError = '';
       this.refreshLoading = false;
       this.refreshStatus = null;
       this.bootstrapAttemptedKeys = [];
@@ -379,8 +401,12 @@ export default {
       if (response?.status !== 200 || !Array.isArray(response.data)) {
         throw new Error(response?.msg || '日志类型响应格式异常');
       }
+      return response.data;
+    },
+
+    mergeLogTypes(types) {
       const existing = new Set(this.logTypes.map(item => item.type));
-      for (const type of response.data) {
+      for (const type of types) {
         if (!existing.has(type)) this.logTypes.push({ type, name: type });
       }
     },
@@ -389,6 +415,13 @@ export default {
     handleArchiveChange(value) {
       this.queryParams.page = 1;
       this.getWorlds(value);
+    },
+
+    handleWorldChange(value) {
+      if (!value) return;
+      this.queryParams.world = value;
+      this.queryParams.page = 1;
+      this.queryLogs();
     },
 
     async refreshLogs() {
@@ -436,19 +469,32 @@ export default {
       this.loading = true;
       this.queryError = '';
       try {
-        await this.getLogTypes();
-        const response = await logApi.getLogsData(this.queryParams);
+        const [typesResult, logsResult] = await Promise.allSettled([
+          this.getLogTypes(),
+          logApi.getLogsData(this.queryParams)
+        ]);
         if (requestSequence !== this.queryRequestSequence) return;
+        if (typesResult.status === 'fulfilled') {
+          this.mergeLogTypes(typesResult.value);
+          this.typeMetadataError = '';
+        } else {
+          this.typeMetadataError = typesResult.reason?.message || '未知错误';
+        }
+        if (logsResult.status === 'rejected') throw logsResult.reason;
+        const response = logsResult.value;
         if (response?.status !== 200 || !Array.isArray(response.data?.logs)) {
           throw new Error(response?.msg || '日志查询响应格式异常');
         }
         this.logData = response.data.logs;
         this.total = Number(response.data.total) || 0;
         this.counts = response.data.counts || {};
+        this.snapshotState = response.data.snapshot_state || 'uninitialized';
+        this.snapshotUpdatedAt = response.data.snapshot_updated_at || null;
         this.lastRefreshedAt = response.data.last_refreshed_at || null;
         bootstrapSnapshot = shouldBootstrapStructuredLogs({
           roomId: this.queryParams.archive,
           worldId: this.queryParams.world,
+          snapshotState: this.snapshotState,
           lastRefreshedAt: this.lastRefreshedAt,
           attemptedKeys: this.bootstrapAttemptedKeys
         });
@@ -459,6 +505,8 @@ export default {
         this.logData = [];
         this.total = 0;
         this.counts = {};
+        this.snapshotState = 'uninitialized';
+        this.snapshotUpdatedAt = null;
         this.lastRefreshedAt = null;
       } finally {
         if (requestSequence === this.queryRequestSequence) this.loading = false;

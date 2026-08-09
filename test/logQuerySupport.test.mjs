@@ -61,6 +61,8 @@ test('structured log responses retain refresh metadata and raw source data', () 
     }],
     total: 1,
     counts: { system: 1 },
+    snapshotState: 'ready',
+    snapshotUpdatedAt: '2026-08-09T15:01:00Z',
     lastRefreshedAt: '2026-08-09T15:01:00Z'
   }), {
     logs: [{
@@ -77,6 +79,8 @@ test('structured log responses retain refresh metadata and raw source data', () 
     }],
     total: 1,
     counts: { system: 1 },
+    snapshot_state: 'ready',
+    snapshot_updated_at: '2026-08-09T15:01:00Z',
     last_refreshed_at: '2026-08-09T15:01:00Z'
   })
 })
@@ -88,6 +92,8 @@ test('log query page keeps the refresh job and requery lifecycle visible', async
   assert.match(source, /await this\.queryLogs\(true\)/)
   assert.match(source, /尚未解析日志/)
   assert.match(source, /InputGroupInput[^>]+queryParams\.query/)
+  assert.match(source, /@update:model-value="handleWorldChange"/)
+  assert.match(source, /Promise\.allSettled/)
 })
 
 test('an uninitialized world snapshot is bootstrapped only once', () => {
@@ -96,19 +102,44 @@ test('an uninitialized world snapshot is bootstrapped only once', () => {
   assert.equal(shouldBootstrapStructuredLogs({
     roomId: 'room-id',
     worldId: 'master-id',
+    snapshotState: 'uninitialized',
     lastRefreshedAt: null,
     attemptedKeys: []
   }), true)
   assert.equal(shouldBootstrapStructuredLogs({
     roomId: 'room-id',
     worldId: 'master-id',
+    snapshotState: 'uninitialized',
     lastRefreshedAt: null,
     attemptedKeys: [key]
   }), false)
   assert.equal(shouldBootstrapStructuredLogs({
     roomId: 'room-id',
     worldId: 'master-id',
+    snapshotState: 'ready',
     lastRefreshedAt: '2026-08-09T15:00:00Z',
     attemptedKeys: []
   }), false)
+  assert.equal(shouldBootstrapStructuredLogs({
+    roomId: 'room-id',
+    worldId: 'master-id',
+    snapshotState: 'cleared',
+    lastRefreshedAt: null,
+    attemptedKeys: []
+  }), false)
+})
+
+test('cleared snapshots remain distinct from worlds that were never parsed', () => {
+  assert.deepEqual(normalizeStructuredLogList({
+    items: [],
+    snapshotState: 'cleared',
+    snapshotUpdatedAt: '2026-08-09T16:00:00Z'
+  }), {
+    logs: [],
+    total: 0,
+    counts: {},
+    snapshot_state: 'cleared',
+    snapshot_updated_at: '2026-08-09T16:00:00Z',
+    last_refreshed_at: null
+  })
 })
