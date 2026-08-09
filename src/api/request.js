@@ -2,6 +2,8 @@ import axios from 'axios';
 import apiConfig from './config';
 import { toast } from 'vue-sonner';
 import router from '@/router';
+import { translate } from '@/i18n';
+import { localizedRequestError } from '@/i18n/globalFeedbackMessages.js';
 import qs from 'qs';
 
 const instance = axios.create({
@@ -23,6 +25,12 @@ instance.interceptors.request.use(config => {
   return config;
 });
 
+function handleExpiredSession() {
+  if (router.currentRoute.value.path === '/login') return;
+  toast.error(translate('globalFeedback.request.sessionExpired'));
+  void router.push('/login');
+}
+
 // 响应拦截器
 instance.interceptors.response.use(
   response => {
@@ -37,7 +45,7 @@ instance.interceptors.response.use(
       } else {
         // 处理错误状态码
         if (res.code === 401) {
-          router.push('/login');
+          handleExpiredSession();
         }
         return Promise.reject(res);
       }
@@ -60,10 +68,7 @@ instance.interceptors.response.use(
         case 400:
           break;
         case 401:
-          if (router.currentRoute.value.path !== '/login') {
-            toast.error('登录已过期，请重新登录');
-            void router.push('/login');
-          }
+          handleExpiredSession();
           break;
         case 403:
           break;
@@ -75,9 +80,9 @@ instance.interceptors.response.use(
           break;
       }
     } else if (error.request) {
-      toast.error('服务器无响应，请稍后重试');
+      toast.error(localizedRequestError(translate, 'globalFeedback.request.serverUnavailable', error));
     } else {
-      toast.error(`请求错误：${error.message || '未知错误'}`);
+      toast.error(localizedRequestError(translate, 'globalFeedback.request.failed', error));
     }
 
     return Promise.reject(error);
@@ -149,7 +154,7 @@ const request = {
         const blob = new Blob([response]);
         const link = document.createElement('a');
         link.href = window.URL.createObjectURL(blob);
-        link.download = filename || '下载文件';
+        link.download = filename || translate('globalFeedback.request.defaultDownloadFilename');
         link.click();
         window.URL.revokeObjectURL(link.href);
         return response;
@@ -164,7 +169,7 @@ const request = {
       const blob = new Blob([response]);
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
-      link.download = filename || '下载文件';
+      link.download = filename || translate('globalFeedback.request.defaultDownloadFilename');
       link.click();
       window.URL.revokeObjectURL(link.href);
       return response;

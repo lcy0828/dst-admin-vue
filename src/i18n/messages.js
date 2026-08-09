@@ -6,6 +6,7 @@ import { corePageMessages } from './corePages.js'
 import { cronGroupMessages } from './cronGroupMessages.js'
 import { cronLogMessages } from './cronLogMessages.js'
 import { cronTaskMessages } from './cronTaskMessages.js'
+import { globalFeedbackMessages } from './globalFeedbackMessages.js'
 import { logToolsMessages } from './logToolsMessages.js'
 import { modMessages } from './modMessages.js'
 import { playerMessages } from './playerMessages.js'
@@ -26,6 +27,7 @@ export const messages = {
     ...corePageMessages['zh-CN'],
     ...cronGroupMessages['zh-CN'],
     ...cronLogMessages['zh-CN'],
+    ...globalFeedbackMessages['zh-CN'],
     ...logToolsMessages['zh-CN'],
     ...modMessages['zh-CN'],
     ...playerMessages['zh-CN'],
@@ -512,6 +514,7 @@ export const messages = {
     ...corePageMessages['en-US'],
     ...cronGroupMessages['en-US'],
     ...cronLogMessages['en-US'],
+    ...globalFeedbackMessages['en-US'],
     ...logToolsMessages['en-US'],
     ...modMessages['en-US'],
     ...playerMessages['en-US'],

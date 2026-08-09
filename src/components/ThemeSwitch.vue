@@ -28,13 +28,10 @@ export default {
     };
   },
   computed: {
-    /**
-     * 根据当前主题返回提示文本
-     */
     tooltipText() {
-      return this.currentTheme === THEMES.LIGHT 
-        ? '切换到暗黑模式' 
-        : '切换到浅色模式';
+      return this.$t(this.currentTheme === THEMES.LIGHT
+        ? 'globalFeedback.theme.switchToDark'
+        : 'globalFeedback.theme.switchToLight');
     }
   },
   mounted() {

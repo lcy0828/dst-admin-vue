@@ -39,7 +39,7 @@ import {
 import { V2_NAVIGATION } from '@/v2/navigation'
 
 const props = defineProps({
-  systemName: { type: String, default: '饥荒管理系统' },
+  systemName: { type: String, default: '' },
   user: { type: Object, default: () => ({}) }
 })
 
@@ -47,6 +47,7 @@ const emit = defineEmits(['profile', 'password', 'logout'])
 const route = useRoute()
 const { t } = useI18n()
 
+const displaySystemName = computed(() => props.systemName?.trim() || t('app.defaultName'))
 const userInitial = computed(() => (props.user.username || t('app.administrator')).trim().slice(0, 1).toUpperCase())
 
 function isActive(path) {
@@ -73,7 +74,7 @@ function isGroupActive(item) {
                 <Gamepad2 />
               </span>
               <span class="grid min-w-0 flex-1 text-left leading-tight">
-                <span class="truncate font-semibold">{{ systemName }}</span>
+                <span class="truncate font-semibold">{{ displaySystemName }}</span>
                 <span class="text-muted-foreground truncate text-xs">{{ t('app.consoleName') }}</span>
               </span>
             </RouterLink>
