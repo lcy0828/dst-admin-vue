@@ -549,8 +549,7 @@ export default {
       return validationMessages.length === 0;
     },
     goBack() {
-      const listPath = this.$route.path.startsWith('/preview-v2') ? '/preview-v2/rooms/list' : '/rooms/list';
-      this.$router.push(listPath);
+      this.$router.push('/rooms/list');
     },
     handleAddUser(users) {
       this.form.adminList = users.admin;

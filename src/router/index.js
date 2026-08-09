@@ -1,54 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import MainLayout from '../layouts/MainLayout.vue'
 import MainLayoutV2 from '../layouts/MainLayoutV2.vue'
-
-function createV2Route(path, component, name, title, parentTitle) {
-  return {
-    path,
-    component,
-    name,
-    meta: { title, parentTitle }
-  }
-}
-
-const v2FeatureRoutes = [
-  createV2Route('servers/workspace', () => import('@/views/servers/ServerWorkspace.vue'), 'V2ServerWorkspace', '服务器工作台', '服务器管理'),
-  createV2Route('servers/list', () => import('@/views/servers/ServerList.vue'), 'V2ServerList', '服务器列表', '服务器管理'),
-  createV2Route('servers/commands', () => import('@/views/servers/CommandManager.vue'), 'V2CommandManager', '命令设置', '服务器管理'),
-  createV2Route('logs/query', () => import('@/views/LogQueryView.vue'), 'V2LogQuery', '日志查询', '日志管理器'),
-  createV2Route('logs/rules', () => import('@/views/RuleManagementView.vue'), 'V2RuleManagement', '规则管理', '日志管理器'),
-  createV2Route('logs/parser', () => import('@/views/logs/LogParser.vue'), 'V2LogParser', '运行中日志', '日志管理器'),
-  createV2Route('rooms/list', () => import('@/views/rooms/RoomList.vue'), 'V2RoomList', '房间列表', '房间管理'),
-  createV2Route('rooms/settings', () => import('@/views/rooms/RoomSettings.vue'), 'V2RoomSettings', '房间设置', '房间管理'),
-  createV2Route('rooms/special-lists', () => import('@/views/rooms/SpecialLists.vue'), 'V2SpecialLists', '特殊名单', '房间管理'),
-  createV2Route('rooms/token', () => import('@/views/rooms/ServerToken.vue'), 'V2ServerToken', '服务器令牌', '房间管理'),
-  createV2Route('agents/list', () => import('@/views/agents/AgentList.vue'), 'V2AgentList', 'Agent 列表', 'Agent 管理'),
-  createV2Route('agents/command', () => import('@/views/agents/AgentCommand.vue'), 'V2AgentCommand', '命令管理', 'Agent 管理'),
-  createV2Route('agents/security', () => import('@/views/agents/AgentSecurity.vue'), 'V2AgentSecurity', '安全配置', 'Agent 管理'),
-  createV2Route('players/list', () => import('@/views/players/PlayerList.vue'), 'V2PlayerList', '玩家列表', '玩家管理'),
-  createV2Route('players/bans', () => import('@/views/players/BanList.vue'), 'V2BanList', '封禁管理', '玩家管理'),
-  createV2Route('cron/tasks', () => import('@/views/cron/TaskList.vue'), 'V2TaskList', '任务列表', '定时任务'),
-  createV2Route('cron/add', () => import('@/views/cron/TaskForm.vue'), 'V2AddTask', '添加任务', '定时任务'),
-  createV2Route('cron/edit/:id', () => import('@/views/cron/TaskForm.vue'), 'V2EditTask', '编辑任务', '定时任务'),
-  createV2Route('cron/groups', () => import('@/views/cron/TaskGroups.vue'), 'V2TaskGroups', '任务组管理', '定时任务'),
-  createV2Route('cron/group/add', () => import('@/views/cron/TaskGroupForm.vue'), 'V2AddTaskGroup', '添加任务组', '定时任务'),
-  createV2Route('cron/group/edit/:id', () => import('@/views/cron/TaskGroupForm.vue'), 'V2EditTaskGroup', '编辑任务组', '定时任务'),
-  createV2Route('cron/group/:id', () => import('@/views/cron/TaskGroupDetail.vue'), 'V2TaskGroupDetail', '任务组详情', '定时任务'),
-  createV2Route('cron/logs', () => import('@/views/cron/TaskLogs.vue'), 'V2TaskLogs', '执行日志', '定时任务'),
-  createV2Route('cron/logs/:id', () => import('@/views/cron/TaskLogDetail.vue'), 'V2TaskLogDetail', '日志详情', '定时任务'),
-  createV2Route('cron/execution/:id', () => import('@/views/cron/TaskExecutionResult.vue'), 'V2TaskExecutionResult', '任务执行结果', '定时任务'),
-  createV2Route('cron/charts', () => import('@/views/cron/TaskCharts.vue'), 'V2TaskCharts', '统计图表', '定时任务'),
-  createV2Route('cron/import-export', () => import('@/views/cron/TaskImportExport.vue'), 'V2TaskImportExport', '导入导出', '定时任务'),
-  createV2Route('mods/list', () => import('@/views/mods/ModList.vue'), 'V2ModList', '已下载模组', '模组管理'),
-  createV2Route('mods/search', () => import('@/views/mods/ModSearch.vue'), 'V2ModSearch', '搜索模组', '模组管理'),
-  createV2Route('worlds/list', () => import('@/views/worlds/WorldList.vue'), 'V2WorldList', '世界列表', '世界管理'),
-  createV2Route('worlds/settings', () => import('@/views/worlds/WorldSettings.vue'), 'V2WorldSettings', '世界设置', '世界管理'),
-  createV2Route('worlds/details', () => import('@/views/worlds/WorldDetails.vue'), 'V2WorldDetails', '世界详情', '世界管理'),
-  createV2Route('worlds/state', () => import('@/views/worlds/WorldState.vue'), 'V2WorldState', '世界状态', '世界管理'),
-  createV2Route('system/settings', () => import('@/views/SystemSettings.vue'), 'V2SystemSettings', '系统设置', '连接与设置'),
-  createV2Route('backups', () => import('@/views/Backups.vue'), 'V2Backups', '备份管理', '运维工具'),
-  createV2Route('announcements', () => import('@/views/Announcements.vue'), 'V2Announcements', '公告管理', '运维工具')
-]
 
 // 公共路由
 export const constantRoutes = [
@@ -59,36 +10,26 @@ export const constantRoutes = [
   },
   {
     path: '/preview-v2',
-    component: MainLayoutV2,
-    children: [
-      {
-        path: '',
-        component: () => import('@/views/v2/DashboardV2.vue'),
-        name: 'DashboardV2',
-        meta: { title: '服务总览' }
-      },
-      { path: 'servers', redirect: '/preview-v2/servers/workspace' },
-      { path: 'logs', redirect: '/preview-v2/logs/query' },
-      { path: 'rooms', redirect: '/preview-v2/rooms/list' },
-      { path: 'agents', redirect: '/preview-v2/agents/list' },
-      { path: 'players', redirect: '/preview-v2/players/list' },
-      { path: 'cron', redirect: '/preview-v2/cron/tasks' },
-      { path: 'mods', redirect: '/preview-v2/mods/list' },
-      { path: 'worlds', redirect: '/preview-v2/worlds/list' },
-      { path: 'system', redirect: '/preview-v2/system/settings' },
-      ...v2FeatureRoutes
-    ]
+    redirect: '/dashboard'
+  },
+  {
+    path: '/preview-v2/:pathMatch(.*)*',
+    redirect: to => ({
+      path: `/${Array.isArray(to.params.pathMatch) ? to.params.pathMatch.join('/') : to.params.pathMatch}`,
+      query: to.query,
+      hash: to.hash
+    })
   },
   {
     path: '/',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/dashboard',
     children: [
       {
         path: 'dashboard',
-        component: () => import('@/views/Dashboard.vue'),
+        component: () => import('@/views/v2/DashboardV2.vue'),
         name: 'Dashboard',
-        meta: { title: '仪表盘', icon: 'dashboard', affix: true }
+        meta: { title: '服务总览', icon: 'dashboard', affix: true }
       },
       {
         path: 'system',
@@ -116,7 +57,7 @@ export const constantRoutes = [
   },
   {
     path: '/servers',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/servers/workspace',
     name: 'Servers',
     meta: { title: '服务器管理', icon: 'server' },
@@ -143,7 +84,7 @@ export const constantRoutes = [
   },
   {
     path: '/logs',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/logs/query',
     name: 'Logs',
     meta: { title: '日志管理器', icon: 'document' },
@@ -175,7 +116,7 @@ export const constantRoutes = [
   },
   {
     path: '/rooms',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/rooms/list',
     name: 'Rooms',
     meta: { title: '房间管理', icon: 'house' },
@@ -208,7 +149,7 @@ export const constantRoutes = [
   },
   {
     path: '/agents',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/agents/list',
     name: 'Agents',
     meta: { title: 'Agent管理', icon: 'connection' },
@@ -235,7 +176,7 @@ export const constantRoutes = [
   },
   {
     path: '/players',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/players/list',
     name: 'Players',
     meta: { title: '玩家管理', icon: 'user' },
@@ -257,7 +198,7 @@ export const constantRoutes = [
 
   {
     path: '/cron',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/cron/tasks',
     name: 'CronTasks',
     meta: { title: '定时任务', icon: 'timer' },
@@ -338,7 +279,7 @@ export const constantRoutes = [
   },
   {
     path: '/mods',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/mods/list',
     name: 'Mods',
     meta: { title: '模组管理', icon: 'component' },
@@ -359,7 +300,7 @@ export const constantRoutes = [
   },
   {
     path: '/worlds',
-    component: MainLayout,
+    component: MainLayoutV2,
     redirect: '/worlds/list',
     name: 'Worlds',
     meta: { title: '世界管理', icon: 'earth' },
@@ -408,35 +349,6 @@ const router = createRouter({
   history: createWebHistory(),
   scrollBehavior: () => ({ top: 0 }),
   routes: constantRoutes
-})
-
-const v2ManagedPaths = [
-  '/servers',
-  '/logs',
-  '/rooms',
-  '/agents',
-  '/players',
-  '/cron',
-  '/mods',
-  '/worlds',
-  '/system',
-  '/backups',
-  '/announcements'
-]
-
-router.beforeEach((to, from) => {
-  const leavingV2ForManagedPage = from.path.startsWith('/preview-v2')
-    && !to.path.startsWith('/preview-v2')
-    && v2ManagedPaths.some(path => to.path === path || to.path.startsWith(`${path}/`))
-
-  if (!leavingV2ForManagedPage) return true
-
-  return {
-    path: `/preview-v2${to.path}`,
-    query: to.query,
-    hash: to.hash,
-    replace: to.replace
-  }
 })
 
 export default router

@@ -56,14 +56,19 @@ const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPas
 const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 
 const remoteContextBlocked = computed(() => runtimeTarget.value.id !== LOCAL_RUNTIME_TARGET_ID
-  && !route.path.startsWith('/preview-v2/agents'))
+  && !route.path.startsWith('/agents'))
 const userInitial = computed(() => (currentUser.value.username || '管').trim().slice(0, 1).toUpperCase())
 const breadcrumbs = computed(() => {
-  if (route.path === '/preview-v2') return [{ label: '服务总览' }]
+  if (route.path === '/dashboard') return [{ label: '服务总览' }]
 
-  const items = [{ label: '服务总览', to: '/preview-v2' }]
-  if (route.meta.parentTitle) items.push({ label: route.meta.parentTitle })
-  items.push({ label: route.meta.title || '当前页面' })
+  const items = [{ label: '服务总览', to: '/dashboard' }]
+  const matchedTitles = route.matched
+    .map(record => record.meta?.title)
+    .filter(Boolean)
+  for (const label of matchedTitles) {
+    if (label !== items.at(-1)?.label) items.push({ label })
+  }
+  if (items.length === 1) items.push({ label: route.meta.title || '当前页面' })
   return items
 })
 
@@ -197,9 +202,6 @@ onBeforeUnmount(() => {
             </TooltipTrigger>
             <TooltipContent>GitHub 仓库</TooltipContent>
           </Tooltip>
-          <Button variant="outline" size="sm" class="hidden lg:inline-flex" as-child>
-            <a href="/dashboard">返回旧界面</a>
-          </Button>
         </div>
       </header>
 

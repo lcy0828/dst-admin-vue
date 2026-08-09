@@ -48,7 +48,7 @@ const route = useRoute()
 const userInitial = computed(() => (props.user.username || '管').trim().slice(0, 1).toUpperCase())
 
 function isActive(path) {
-  if (path === '/preview-v2') return route.path === path
+  if (path === '/dashboard') return route.path === path
   return route.path === path || route.path.startsWith(`${path}/`)
 }
 
@@ -66,7 +66,7 @@ function isGroupActive(item) {
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton size="lg" as-child tooltip="服务总览">
-            <RouterLink to="/preview-v2">
+            <RouterLink to="/dashboard">
               <span class="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
                 <Gamepad2 />
               </span>
