@@ -98,6 +98,148 @@ export const agentMessages = {
           errorWithDetail: '{message}：{detail}'
         }
       },
+      command: {
+        title: 'Agent 命令管理',
+        subtitle: '向已连接节点发送白名单动作并检查执行结果。',
+        guard: {
+          title: '仅执行受控动作',
+          description: '生产后端不提供任意 Shell 或 PowerShell 执行能力。可用动作由当前后端实时返回。'
+        },
+        actions: {
+          retry: '重试',
+          reset: '重置',
+          execute: '执行动作',
+          refresh: '刷新',
+          resetFilters: '重置筛选',
+          viewDetails: '查看详情',
+          refreshResult: '刷新结果',
+          copyOutput: '复制输出'
+        },
+        execute: {
+          title: '命令执行',
+          description: '选择一个或多个在线 Agent，并执行后端允许的动作。',
+          batchMode: '批量执行',
+          agentId: 'Agent ID',
+          selectAgent: '请选择 Agent',
+          selectOnlineAgents: '选择一个或多个在线 Agent。',
+          controlledAction: '受控动作',
+          loadingActions: '正在读取可用动作',
+          selectAction: '请选择受控动作',
+          selectActionDescription: '请选择后端允许的领域动作。',
+          timeout: '超时时间（秒）'
+        },
+        history: {
+          title: '命令历史',
+          description: '按节点、状态和时间范围检索历史结果。',
+          filters: {
+            agent: 'Agent',
+            selectAgent: '选择 Agent',
+            allAgents: '全部 Agent',
+            status: '状态',
+            commandStatus: '命令状态',
+            allStatuses: '全部状态',
+            keyword: '关键词',
+            searchPlaceholder: '搜索命令内容',
+            startDate: '开始日期',
+            endDate: '结束日期'
+          },
+          emptyTitle: '暂无命令历史',
+          emptyDescription: '当前筛选条件下没有执行记录。',
+          columns: {
+            commandId: '命令 ID',
+            agentId: 'Agent ID',
+            type: '类型',
+            content: '命令内容',
+            status: '状态',
+            result: '结果',
+            executedAt: '执行时间',
+            actions: '操作'
+          },
+          total: '共 {count} 条',
+          pageSizeAria: '每页显示条数',
+          perPage: '{count} 条/页',
+          previousPage: '上一页',
+          nextPage: '下一页'
+        },
+        details: {
+          title: '命令详情',
+          description: '查看命令参数、状态和节点返回内容。',
+          fields: {
+            commandId: '命令 ID',
+            agentId: 'Agent ID',
+            type: '命令类型',
+            status: '状态',
+            exitCode: '退出码',
+            result: '结果',
+            startedAt: '开始时间',
+            endedAt: '结束时间',
+            duration: '执行耗时'
+          },
+          output: '输出',
+          error: '错误',
+          noOutput: '无输出内容',
+          executionError: '命令执行错误'
+        },
+        statuses: {
+          pending: '待执行',
+          running: '执行中',
+          completed: '已完成',
+          failed: '失败',
+          canceled: '已取消'
+        },
+        results: {
+          success: '成功',
+          failed: '失败',
+          canceled: '已取消'
+        },
+        values: {
+          unknown: '未知',
+          unknownHost: '未知主机',
+          offline: '离线',
+          notAvailable: '不可用'
+        },
+        units: {
+          milliseconds: '{value} 毫秒',
+          seconds: '{value} 秒'
+        },
+        knownActions: {
+          systemRefresh: {
+            name: '刷新系统信息',
+            description: '请求节点重新上报主机、运行时间和内存信息'
+          },
+          diskInspect: {
+            name: '检查磁盘',
+            description: '以参数数组执行只读磁盘容量检查'
+          }
+        },
+        feedback: {
+          agentLoadFailedTitle: 'Agent 列表加载失败',
+          agentLoadFailed: '获取 Agent 列表失败',
+          agentInvalidResponse: 'Agent 列表响应格式错误',
+          actionLoadFailedTitle: '受控动作加载失败',
+          actionLoadFailed: '获取允许动作失败',
+          historyLoadFailedTitle: '命令历史加载失败',
+          historyLoadFailed: '获取命令历史失败',
+          selectOnlineAgent: '请选择在线 Agent',
+          selectActionAndTimeout: '请选择受控动作并填写超时时间',
+          selectedAgentOffline: '所选 Agent 已离线或不在当前列表中，请刷新后重试',
+          timeoutInvalid: 'Agent 命令超时时间必须是 5 至 300 秒的整数',
+          actionUnavailable: '所选动作已不在后端白名单中，请刷新页面后重试',
+          batchSent: '成功发送命令至 {count} 个 Agent',
+          batchFailed: '{count} 个 Agent 命令发送失败',
+          commandSent: '命令已发送',
+          executionFailed: '命令执行失败',
+          executionLong: '命令执行时间较长，请在历史记录中查看结果',
+          executionSucceeded: '命令执行成功',
+          resultRefreshed: '命令结果刷新成功',
+          resultRefreshFailed: '刷新命令结果失败',
+          outputCopied: '命令输出已复制到剪贴板',
+          outputCopyFailed: '复制命令输出失败',
+          noOutputToCopy: '没有可复制的命令输出',
+          clipboardDenied: '浏览器未允许写入剪贴板',
+          errorWithDetail: '{message}：{detail}'
+        }
+      },
       security: {
         title: 'Agent 安全设置',
         subtitle: '管理 Agent 连接密钥和安装配置。',
@@ -255,6 +397,148 @@ export const agentMessages = {
           errorWithDetail: '{message}: {detail}'
         }
       },
+      command: {
+        title: 'Agent commands',
+        subtitle: 'Send allowlisted actions to connected nodes and inspect their results.',
+        guard: {
+          title: 'Controlled actions only',
+          description: 'The production backend does not allow arbitrary Shell or PowerShell execution. Available actions are provided by the current backend.'
+        },
+        actions: {
+          retry: 'Retry',
+          reset: 'Reset',
+          execute: 'Run action',
+          refresh: 'Refresh',
+          resetFilters: 'Reset filters',
+          viewDetails: 'View details',
+          refreshResult: 'Refresh result',
+          copyOutput: 'Copy output'
+        },
+        execute: {
+          title: 'Run a command',
+          description: 'Select one or more online Agents and run an action allowed by the backend.',
+          batchMode: 'Batch mode',
+          agentId: 'Agent ID',
+          selectAgent: 'Select an Agent',
+          selectOnlineAgents: 'Select one or more online Agents.',
+          controlledAction: 'Controlled action',
+          loadingActions: 'Loading available actions',
+          selectAction: 'Select a controlled action',
+          selectActionDescription: 'Select a domain action allowed by the backend.',
+          timeout: 'Timeout (seconds)'
+        },
+        history: {
+          title: 'Command history',
+          description: 'Filter command results by node, status, and date range.',
+          filters: {
+            agent: 'Agent',
+            selectAgent: 'Select an Agent',
+            allAgents: 'All Agents',
+            status: 'Status',
+            commandStatus: 'Command status',
+            allStatuses: 'All statuses',
+            keyword: 'Keyword',
+            searchPlaceholder: 'Search command content',
+            startDate: 'Start date',
+            endDate: 'End date'
+          },
+          emptyTitle: 'No command history',
+          emptyDescription: 'No command runs match the current filters.',
+          columns: {
+            commandId: 'Command ID',
+            agentId: 'Agent ID',
+            type: 'Type',
+            content: 'Command content',
+            status: 'Status',
+            result: 'Result',
+            executedAt: 'Executed at',
+            actions: 'Actions'
+          },
+          total: '{count} total',
+          pageSizeAria: 'Rows per page',
+          perPage: '{count} per page',
+          previousPage: 'Previous page',
+          nextPage: 'Next page'
+        },
+        details: {
+          title: 'Command details',
+          description: 'Inspect command parameters, status, and node output.',
+          fields: {
+            commandId: 'Command ID',
+            agentId: 'Agent ID',
+            type: 'Command type',
+            status: 'Status',
+            exitCode: 'Exit code',
+            result: 'Result',
+            startedAt: 'Started at',
+            endedAt: 'Ended at',
+            duration: 'Duration'
+          },
+          output: 'Output',
+          error: 'Error',
+          noOutput: 'No output',
+          executionError: 'Command execution error'
+        },
+        statuses: {
+          pending: 'Pending',
+          running: 'Running',
+          completed: 'Completed',
+          failed: 'Failed',
+          canceled: 'Canceled'
+        },
+        results: {
+          success: 'Success',
+          failed: 'Failed',
+          canceled: 'Canceled'
+        },
+        values: {
+          unknown: 'Unknown',
+          unknownHost: 'Unknown host',
+          offline: 'Offline',
+          notAvailable: 'N/A'
+        },
+        units: {
+          milliseconds: '{value} ms',
+          seconds: '{value} s'
+        },
+        knownActions: {
+          systemRefresh: {
+            name: 'Refresh system information',
+            description: 'Request a fresh host, uptime, and memory report from the node'
+          },
+          diskInspect: {
+            name: 'Inspect disk usage',
+            description: 'Run a read-only disk capacity inspection with an argument array'
+          }
+        },
+        feedback: {
+          agentLoadFailedTitle: 'Failed to load Agents',
+          agentLoadFailed: 'Unable to load the Agent list',
+          agentInvalidResponse: 'The Agent list response is invalid',
+          actionLoadFailedTitle: 'Failed to load controlled actions',
+          actionLoadFailed: 'Unable to load allowed actions',
+          historyLoadFailedTitle: 'Failed to load command history',
+          historyLoadFailed: 'Unable to load command history',
+          selectOnlineAgent: 'Select an online Agent',
+          selectActionAndTimeout: 'Select a controlled action and enter a timeout',
+          selectedAgentOffline: 'A selected Agent is offline or no longer listed. Refresh and try again.',
+          timeoutInvalid: 'The Agent command timeout must be an integer from 5 to 300 seconds',
+          actionUnavailable: 'The selected action is no longer on the backend allowlist. Refresh and try again.',
+          batchSent: 'Command sent to {count} Agents',
+          batchFailed: 'Failed to send commands to {count} Agents',
+          commandSent: 'Command sent',
+          executionFailed: 'Command execution failed',
+          executionLong: 'The command is taking longer than expected. Check its result in command history.',
+          executionSucceeded: 'Command completed successfully',
+          resultRefreshed: 'Command result refreshed',
+          resultRefreshFailed: 'Failed to refresh the command result',
+          outputCopied: 'Command output copied to the clipboard',
+          outputCopyFailed: 'Failed to copy command output',
+          noOutputToCopy: 'There is no command output to copy',
+          clipboardDenied: 'The browser did not allow clipboard access',
+          errorWithDetail: '{message}: {detail}'
+        }
+      },
       security: {
         title: 'Agent security',
         subtitle: 'Manage Agent connection keys and installation settings.',
@@ -313,4 +597,67 @@ export const agentMessages = {
       }
     }
   }
+}
+
+const AGENT_COMMAND_STATUS_KEYS = Object.freeze({
+  pending: 'pending',
+  queued: 'pending',
+  running: 'running',
+  completed: 'completed',
+  succeeded: 'completed',
+  failed: 'failed',
+  canceled: 'canceled'
+})
+
+const AGENT_COMMAND_ACTION_KEYS = Object.freeze({
+  'system.refresh': 'systemRefresh',
+  'disk.inspect': 'diskInspect'
+})
+
+export function agentCommandStatusLabel(status, translate) {
+  const key = AGENT_COMMAND_STATUS_KEYS[status]
+  return key ? translate(`agents.command.statuses.${key}`) : status || translate('agents.command.values.unknown')
+}
+
+export function agentCommandActionName(action, translate) {
+  const key = AGENT_COMMAND_ACTION_KEYS[action?.id]
+  return key ? translate(`agents.command.knownActions.${key}.name`) : action?.name || action?.id || ''
+}
+
+export function agentCommandActionDescription(action, translate) {
+  const key = AGENT_COMMAND_ACTION_KEYS[action?.id]
+  return key ? translate(`agents.command.knownActions.${key}.description`) : action?.description || ''
+}
+
+export function createAgentCommandFailure(key, error) {
+  const detail = typeof error === 'string' ? error : error?.message
+  return { key, detail: String(detail || '').trim() }
+}
+
+export function agentCommandFailureText(failure, translate) {
+  if (!failure) return ''
+  const message = translate(failure.key)
+  return failure.detail
+    ? translate('agents.command.feedback.errorWithDetail', { message, detail: failure.detail })
+    : message
+}
+
+export function formatAgentCommandTime(timestamp, locale, translate) {
+  if (!timestamp) return translate('agents.command.values.notAvailable')
+  const numeric = typeof timestamp === 'string' && /^\d+$/.test(timestamp) ? Number(timestamp) : timestamp
+  const value = typeof numeric === 'number' && numeric < 1000000000000 ? numeric * 1000 : numeric
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? translate('agents.command.values.notAvailable')
+    : date.toLocaleString(locale)
+}
+
+export function formatAgentCommandDuration(durationMs, locale, translate) {
+  const duration = Number(durationMs)
+  if (!Number.isFinite(duration) || duration < 0) return translate('agents.command.values.notAvailable')
+  if (duration < 1000) {
+    return translate('agents.command.units.milliseconds', { value: Math.round(duration).toLocaleString(locale) })
+  }
+  const seconds = (duration / 1000).toLocaleString(locale, { maximumFractionDigits: 2 })
+  return translate('agents.command.units.seconds', { value: seconds })
 }

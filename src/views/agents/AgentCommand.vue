@@ -1,63 +1,63 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">Agent 命令管理</h1><p class="mt-1 text-sm text-muted-foreground">向已连接节点发送白名单动作并检查执行结果。</p></div>
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ $t('agents.command.title') }}</h1><p class="mt-1 text-sm text-muted-foreground">{{ $t('agents.command.subtitle') }}</p></div>
     </header>
 
-    <Alert v-if="agentLoadError" variant="destructive"><CircleAlert /><AlertTitle>Agent 列表加载失败</AlertTitle><AlertDescription>{{ agentLoadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchAgentList">重试</UiButton></AlertAction></Alert>
-    <Alert v-if="actionLoadError" variant="destructive"><CircleAlert /><AlertTitle>受控动作加载失败</AlertTitle><AlertDescription>{{ actionLoadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchActions">重试</UiButton></AlertAction></Alert>
-    <Alert><CircleAlert /><AlertTitle>仅执行受控动作</AlertTitle><AlertDescription>生产后端不提供任意 Shell 或 PowerShell 执行能力。可用动作由当前后端实时返回。</AlertDescription></Alert>
+    <Alert v-if="agentLoadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('agents.command.feedback.agentLoadFailedTitle') }}</AlertTitle><AlertDescription>{{ agentLoadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchAgentList">{{ $t('agents.command.actions.retry') }}</UiButton></AlertAction></Alert>
+    <Alert v-if="actionLoadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('agents.command.feedback.actionLoadFailedTitle') }}</AlertTitle><AlertDescription>{{ actionLoadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchActions">{{ $t('agents.command.actions.retry') }}</UiButton></AlertAction></Alert>
+    <Alert><CircleAlert /><AlertTitle>{{ $t('agents.command.guard.title') }}</AlertTitle><AlertDescription>{{ $t('agents.command.guard.description') }}</AlertDescription></Alert>
 
     <Card>
       <CardHeader>
-        <CardTitle class="flex items-center gap-2"><SquareTerminal />命令执行</CardTitle>
-        <CardDescription>选择一个或多个在线 Agent，并执行后端允许的动作。</CardDescription>
-        <CardAction><Field orientation="horizontal"><UiSwitch id="batch-mode" v-model="batchMode" @update:model-value="onBatchModeChange" /><FieldLabel for="batch-mode">批量执行</FieldLabel></Field></CardAction>
+        <CardTitle class="flex items-center gap-2"><SquareTerminal />{{ $t('agents.command.execute.title') }}</CardTitle>
+        <CardDescription>{{ $t('agents.command.execute.description') }}</CardDescription>
+        <CardAction><Field orientation="horizontal"><UiSwitch id="batch-mode" v-model="batchMode" @update:model-value="onBatchModeChange" /><FieldLabel for="batch-mode">{{ $t('agents.command.execute.batchMode') }}</FieldLabel></Field></CardAction>
       </CardHeader>
       <CardContent>
           <FieldGroup>
-            <Field v-if="!batchMode"><FieldLabel for="command-agent">Agent ID</FieldLabel><UiSelect v-model="commandForm.agent_id" @update:open="handleAgentSelectVisibleChange"><SelectTrigger id="command-agent" class="w-full"><SelectValue placeholder="请选择 Agent" /></SelectTrigger><SelectContent><SelectGroup>
-              <SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id" :disabled="agent.status !== 'online'">{{ agent.hostname || '未知' }} ({{ agent.id || '未知' }}){{ agent.status !== 'online' ? ' · 离线' : '' }}</SelectItem>
+            <Field v-if="!batchMode"><FieldLabel for="command-agent">{{ $t('agents.command.execute.agentId') }}</FieldLabel><UiSelect v-model="commandForm.agent_id" @update:open="handleAgentSelectVisibleChange"><SelectTrigger id="command-agent" class="w-full"><SelectValue :placeholder="$t('agents.command.execute.selectAgent')" /></SelectTrigger><SelectContent><SelectGroup>
+              <SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id" :disabled="agent.status !== 'online'">{{ agent.hostname || $t('agents.command.values.unknownHost') }} ({{ agent.id || $t('agents.command.values.unknown') }})<template v-if="agent.status !== 'online'"> · {{ $t('agents.command.values.offline') }}</template></SelectItem>
             </SelectGroup></SelectContent></UiSelect></Field>
-            <FieldSet v-else><FieldLegend variant="label">Agent ID</FieldLegend><FieldDescription>选择一个或多个在线 Agent。</FieldDescription><FieldGroup class="agent-checkboxes">
-              <Field v-for="agent in agentList" :key="agent.id" orientation="horizontal"><UiCheckbox :id="`command-agent-${agent.id}`" :disabled="agent.status !== 'online'" :model-value="isBatchAgentSelected(agent.id)" @update:model-value="toggleBatchAgent(agent.id, $event)" /><FieldLabel :for="`command-agent-${agent.id}`" class="font-normal">{{ agent.hostname || '未知' }} · {{ agent.id }}{{ agent.status !== 'online' ? ' · 离线' : '' }}</FieldLabel></Field>
+            <FieldSet v-else><FieldLegend variant="label">{{ $t('agents.command.execute.agentId') }}</FieldLegend><FieldDescription>{{ $t('agents.command.execute.selectOnlineAgents') }}</FieldDescription><FieldGroup class="agent-checkboxes">
+              <Field v-for="agent in agentList" :key="agent.id" orientation="horizontal"><UiCheckbox :id="`command-agent-${agent.id}`" :disabled="agent.status !== 'online'" :model-value="isBatchAgentSelected(agent.id)" @update:model-value="toggleBatchAgent(agent.id, $event)" /><FieldLabel :for="`command-agent-${agent.id}`" class="font-normal">{{ agent.hostname || $t('agents.command.values.unknownHost') }} · {{ agent.id || $t('agents.command.values.unknown') }}<template v-if="agent.status !== 'online'"> · {{ $t('agents.command.values.offline') }}</template></FieldLabel></Field>
             </FieldGroup></FieldSet>
-            <Field :data-invalid="Boolean(actionLoadError)"><FieldLabel for="agent-command-action">受控动作</FieldLabel><UiSelect v-model="commandForm.action" :disabled="actionLoading || allowedActions.length === 0"><SelectTrigger id="agent-command-action" class="w-full" :aria-invalid="Boolean(actionLoadError)"><SelectValue :placeholder="actionLoading ? '正在读取可用动作' : '请选择受控动作'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="action in allowedActions" :key="action.id" :value="action.id">{{ action.name }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>{{ selectedAction?.description || actionLoadError || '请选择后端允许的领域动作。' }}</FieldDescription></Field>
-            <Field><FieldLabel for="agent-command-timeout">超时时间（秒）</FieldLabel><UiInput id="agent-command-timeout" v-model.number="commandForm.timeout" type="number" min="5" max="300" step="5" /></Field>
+            <Field :data-invalid="Boolean(actionLoadError)"><FieldLabel for="agent-command-action">{{ $t('agents.command.execute.controlledAction') }}</FieldLabel><UiSelect v-model="commandForm.action" :disabled="actionLoading || allowedActions.length === 0"><SelectTrigger id="agent-command-action" class="w-full" :aria-invalid="Boolean(actionLoadError)"><SelectValue :placeholder="$t(actionLoading ? 'agents.command.execute.loadingActions' : 'agents.command.execute.selectAction')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="action in allowedActions" :key="action.id" :value="action.id">{{ actionName(action) }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>{{ selectedActionDescription }}</FieldDescription></Field>
+            <Field><FieldLabel for="agent-command-timeout">{{ $t('agents.command.execute.timeout') }}</FieldLabel><UiInput id="agent-command-timeout" v-model.number="commandForm.timeout" type="number" min="5" max="300" step="5" /></Field>
           </FieldGroup>
       </CardContent>
-      <CardFooter class="flex flex-wrap justify-end gap-2"><UiButton variant="outline" @click="resetCommand">重置</UiButton><UiButton :disabled="commandLoading || actionLoading || !commandForm.action" @click="executeCommand"><Spinner v-if="commandLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行动作</UiButton></CardFooter>
+      <CardFooter class="flex flex-wrap justify-end gap-2"><UiButton variant="outline" @click="resetCommand">{{ $t('agents.command.actions.reset') }}</UiButton><UiButton :disabled="commandLoading || actionLoading || !commandForm.action" @click="executeCommand"><Spinner v-if="commandLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{ $t('agents.command.actions.execute') }}</UiButton></CardFooter>
     </Card>
 
     <Card>
-      <CardHeader><CardTitle class="flex items-center gap-2"><History />命令历史</CardTitle><CardDescription>按节点、状态和时间范围检索历史结果。</CardDescription><CardAction class="flex flex-wrap gap-2"><UiButton size="sm" variant="outline" :disabled="historyLoading" @click="refreshHistory"><Spinner v-if="historyLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="ghost" @click="getAllHistory">重置筛选</UiButton></CardAction></CardHeader>
+      <CardHeader><CardTitle class="flex items-center gap-2"><History />{{ $t('agents.command.history.title') }}</CardTitle><CardDescription>{{ $t('agents.command.history.description') }}</CardDescription><CardAction class="flex flex-wrap gap-2"><UiButton size="sm" variant="outline" :disabled="historyLoading" @click="refreshHistory"><Spinner v-if="historyLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('agents.command.actions.refresh') }}</UiButton><UiButton size="sm" variant="ghost" @click="getAllHistory">{{ $t('agents.command.actions.resetFilters') }}</UiButton></CardAction></CardHeader>
       <CardContent class="flex flex-col gap-4">
           <FieldGroup class="history-filter">
-            <Field><FieldLabel for="history-agent">Agent</FieldLabel><UiSelect v-model="historyFilter.agent_id" @update:model-value="onAgentFilterChange"><SelectTrigger id="history-agent"><SelectValue placeholder="选择 Agent" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部 Agent</SelectItem><SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.hostname }} ({{ agent.id }})</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-            <Field><FieldLabel for="history-status">状态</FieldLabel><UiSelect v-model="historyFilter.status" @update:model-value="onStatusFilterChange"><SelectTrigger id="history-status"><SelectValue placeholder="命令状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部状态</SelectItem><SelectItem v-for="status in commandStatuses" :key="status.value" :value="status.value">{{ status.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-            <Field><FieldLabel for="history-search">关键词</FieldLabel><UiInput id="history-search" v-model="historyFilter.search" placeholder="搜索命令内容" @input="onSearchChange" /></Field>
-            <Field><FieldLabel for="history-start">开始日期</FieldLabel><UiInput id="history-start" v-model="historyFilter.date_range[0]" type="date" @change="onDateRangeChange" /></Field>
-            <Field><FieldLabel for="history-end">结束日期</FieldLabel><UiInput id="history-end" v-model="historyFilter.date_range[1]" type="date" @change="onDateRangeChange" /></Field>
+            <Field><FieldLabel for="history-agent">{{ $t('agents.command.history.filters.agent') }}</FieldLabel><UiSelect v-model="historyFilter.agent_id" @update:model-value="onAgentFilterChange"><SelectTrigger id="history-agent"><SelectValue :placeholder="$t('agents.command.history.filters.selectAgent')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('agents.command.history.filters.allAgents') }}</SelectItem><SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.hostname || $t('agents.command.values.unknownHost') }} ({{ agent.id }})</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field><FieldLabel for="history-status">{{ $t('agents.command.history.filters.status') }}</FieldLabel><UiSelect v-model="historyFilter.status" @update:model-value="onStatusFilterChange"><SelectTrigger id="history-status"><SelectValue :placeholder="$t('agents.command.history.filters.commandStatus')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('agents.command.history.filters.allStatuses') }}</SelectItem><SelectItem v-for="status in commandStatuses" :key="status.value" :value="status.value">{{ status.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field><FieldLabel for="history-search">{{ $t('agents.command.history.filters.keyword') }}</FieldLabel><UiInput id="history-search" v-model="historyFilter.search" :placeholder="$t('agents.command.history.filters.searchPlaceholder')" @input="onSearchChange" /></Field>
+            <Field><FieldLabel for="history-start">{{ $t('agents.command.history.filters.startDate') }}</FieldLabel><UiInput id="history-start" v-model="historyFilter.date_range[0]" type="date" @change="onDateRangeChange" /></Field>
+            <Field><FieldLabel for="history-end">{{ $t('agents.command.history.filters.endDate') }}</FieldLabel><UiInput id="history-end" v-model="historyFilter.date_range[1]" type="date" @change="onDateRangeChange" /></Field>
           </FieldGroup>
 
-          <Alert v-if="historyError" variant="destructive"><CircleAlert /><AlertTitle>命令历史加载失败</AlertTitle><AlertDescription>{{ historyError }}</AlertDescription></Alert>
+          <Alert v-if="historyError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('agents.command.feedback.historyLoadFailedTitle') }}</AlertTitle><AlertDescription>{{ historyError }}</AlertDescription></Alert>
           <div v-if="historyLoading" class="flex flex-col gap-2"><Skeleton v-for="index in 4" :key="index" class="h-10 w-full" /></div>
-          <Empty v-else-if="commandHistory.length === 0"><EmptyHeader><EmptyTitle>暂无命令历史</EmptyTitle><EmptyDescription>当前筛选条件下没有执行记录。</EmptyDescription></EmptyHeader></Empty>
-          <ShadcnTable v-else><TableHeader><TableRow><TableHead>命令 ID</TableHead><TableHead>Agent ID</TableHead><TableHead>类型</TableHead><TableHead>命令内容</TableHead><TableHead>状态</TableHead><TableHead>结果</TableHead><TableHead>执行时间</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
-            <TableRow v-for="command in commandHistory" :key="command.command_id"><TableCell>{{ command.command_id }}</TableCell><TableCell class="max-w-56 truncate">{{ command.agent_id }}</TableCell><TableCell><Badge variant="outline">{{ command.type }}</Badge></TableCell><TableCell class="max-w-56 truncate">{{ command.content }}</TableCell><TableCell><Badge :variant="getStatusVariant(command.status)">{{ command.status }}</Badge></TableCell><TableCell><Badge v-if="isCommandTerminal(command.status)" :variant="command.success ? 'default' : (command.status === 'canceled' ? 'outline' : 'destructive')">{{ command.success ? '成功' : (command.status === 'canceled' ? '已取消' : '失败') }}</Badge><span v-else>-</span></TableCell><TableCell>{{ formatTime(command.start_time) }}</TableCell><TableCell class="text-right"><UiButton size="xs" variant="ghost" @click="viewCommandDetail(command)">查看详情</UiButton></TableCell></TableRow>
+          <Empty v-else-if="commandHistory.length === 0"><EmptyHeader><EmptyTitle>{{ $t('agents.command.history.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ $t('agents.command.history.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
+          <ShadcnTable v-else><TableHeader><TableRow><TableHead>{{ $t('agents.command.history.columns.commandId') }}</TableHead><TableHead>{{ $t('agents.command.history.columns.agentId') }}</TableHead><TableHead>{{ $t('agents.command.history.columns.type') }}</TableHead><TableHead>{{ $t('agents.command.history.columns.content') }}</TableHead><TableHead>{{ $t('agents.command.history.columns.status') }}</TableHead><TableHead>{{ $t('agents.command.history.columns.result') }}</TableHead><TableHead>{{ $t('agents.command.history.columns.executedAt') }}</TableHead><TableHead class="text-right">{{ $t('agents.command.history.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
+            <TableRow v-for="command in commandHistory" :key="command.command_id"><TableCell>{{ command.command_id }}</TableCell><TableCell class="max-w-56 truncate">{{ command.agent_id }}</TableCell><TableCell><Badge variant="outline">{{ command.type }}</Badge></TableCell><TableCell class="max-w-56 truncate">{{ command.content }}</TableCell><TableCell><Badge :variant="getStatusVariant(command.status)">{{ statusLabel(command.status) }}</Badge></TableCell><TableCell><Badge v-if="isCommandTerminal(command.status)" :variant="command.success ? 'default' : (command.status === 'canceled' ? 'outline' : 'destructive')">{{ commandResultLabel(command) }}</Badge><span v-else>-</span></TableCell><TableCell>{{ formatTime(command.start_time) }}</TableCell><TableCell class="text-right"><UiButton size="xs" variant="ghost" @click="viewCommandDetail(command)">{{ $t('agents.command.actions.viewDetails') }}</UiButton></TableCell></TableRow>
           </TableBody></ShadcnTable>
       </CardContent>
-      <CardFooter v-if="total > 0" class="pagination-container"><span>共 {{ total }} 条</span><UiSelect :model-value="String(pageSize)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="page-size" aria-label="每页显示条数"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ size }} 条/页</SelectItem></SelectGroup></SelectContent></UiSelect><UiButton size="icon-sm" variant="outline" :disabled="currentPage <= 1" aria-label="上一页" @click="handleCurrentChange(currentPage - 1)"><ChevronLeft /></UiButton><span>{{ currentPage }} / {{ totalPages }}</span><UiButton size="icon-sm" variant="outline" :disabled="currentPage >= totalPages" aria-label="下一页" @click="handleCurrentChange(currentPage + 1)"><ChevronRight /></UiButton></CardFooter>
+      <CardFooter v-if="total > 0" class="pagination-container"><span>{{ $t('agents.command.history.total', { count: total }) }}</span><UiSelect :model-value="String(pageSize)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="page-size" :aria-label="$t('agents.command.history.pageSizeAria')"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ $t('agents.command.history.perPage', { count: size }) }}</SelectItem></SelectGroup></SelectContent></UiSelect><UiButton size="icon-sm" variant="outline" :disabled="currentPage <= 1" :aria-label="$t('agents.command.history.previousPage')" @click="handleCurrentChange(currentPage - 1)"><ChevronLeft /></UiButton><span>{{ currentPage }} / {{ totalPages }}</span><UiButton size="icon-sm" variant="outline" :disabled="currentPage >= totalPages" :aria-label="$t('agents.command.history.nextPage')" @click="handleCurrentChange(currentPage + 1)"><ChevronRight /></UiButton></CardFooter>
     </Card>
 
-        <UiDialog v-model:open="dialogVisible"><DialogScrollContent class="wide-dialog"><DialogHeader><DialogTitle>命令详情</DialogTitle><DialogDescription>查看命令参数、状态和节点返回内容。</DialogDescription></DialogHeader>
+        <UiDialog v-model:open="dialogVisible"><DialogScrollContent class="wide-dialog"><DialogHeader><DialogTitle>{{ $t('agents.command.details.title') }}</DialogTitle><DialogDescription>{{ $t('agents.command.details.description') }}</DialogDescription></DialogHeader>
           <div v-if="selectedCommand" class="command-detail">
-            <dl class="detail-grid"><div><dt>命令 ID</dt><dd>{{ selectedCommand.command_id }}</dd></div><div><dt>Agent ID</dt><dd>{{ selectedCommand.agent_id }}</dd></div><div><dt>命令类型</dt><dd>{{ selectedCommand.type }}</dd></div><div><dt>状态</dt><dd><Badge :variant="getStatusVariant(selectedCommand.status)">{{ selectedCommand.status }}</Badge></dd></div><div><dt>退出码</dt><dd>{{ isCommandTerminal(selectedCommand.status) ? (selectedCommand.exit_code ?? '-') : '-' }}</dd></div><div><dt>结果</dt><dd>{{ commandResultLabel(selectedCommand) }}</dd></div><div><dt>开始时间</dt><dd>{{ formatTime(selectedCommand.start_time) }}</dd></div><div><dt>结束时间</dt><dd>{{ formatTime(selectedCommand.end_time) }}</dd></div></dl>
+            <dl class="detail-grid"><div><dt>{{ $t('agents.command.details.fields.commandId') }}</dt><dd>{{ selectedCommand.command_id }}</dd></div><div><dt>{{ $t('agents.command.details.fields.agentId') }}</dt><dd>{{ selectedCommand.agent_id }}</dd></div><div><dt>{{ $t('agents.command.details.fields.type') }}</dt><dd>{{ selectedCommand.type }}</dd></div><div><dt>{{ $t('agents.command.details.fields.status') }}</dt><dd><Badge :variant="getStatusVariant(selectedCommand.status)">{{ statusLabel(selectedCommand.status) }}</Badge></dd></div><div><dt>{{ $t('agents.command.details.fields.exitCode') }}</dt><dd>{{ isCommandTerminal(selectedCommand.status) ? (selectedCommand.exit_code ?? '-') : '-' }}</dd></div><div><dt>{{ $t('agents.command.details.fields.result') }}</dt><dd>{{ commandResultLabel(selectedCommand) }}</dd></div><div><dt>{{ $t('agents.command.details.fields.startedAt') }}</dt><dd>{{ formatTime(selectedCommand.start_time) }}</dd></div><div><dt>{{ $t('agents.command.details.fields.endedAt') }}</dt><dd>{{ formatTime(selectedCommand.end_time) }}</dd></div><div><dt>{{ $t('agents.command.details.fields.duration') }}</dt><dd>{{ formatDuration(selectedCommand.duration_ms) }}</dd></div></dl>
             <pre class="command-content">{{ selectedCommand.content }}</pre>
-            <Tabs default-value="output"><TabsList><TabsTrigger value="output">输出</TabsTrigger><TabsTrigger v-if="selectedCommand.error_msg" value="error">错误</TabsTrigger></TabsList><TabsContent value="output"><pre v-if="selectedCommand.output" class="command-output">{{ selectedCommand.output }}</pre><Empty v-else><EmptyHeader><EmptyTitle>无输出内容</EmptyTitle></EmptyHeader></Empty></TabsContent><TabsContent v-if="selectedCommand.error_msg" value="error"><Alert variant="destructive"><CircleAlert /><AlertTitle>命令执行错误</AlertTitle><AlertDescription><pre class="command-error">{{ selectedCommand.error_msg }}</pre></AlertDescription></Alert></TabsContent></Tabs>
+            <Tabs default-value="output"><TabsList><TabsTrigger value="output">{{ $t('agents.command.details.output') }}</TabsTrigger><TabsTrigger v-if="selectedCommand.error_msg" value="error">{{ $t('agents.command.details.error') }}</TabsTrigger></TabsList><TabsContent value="output"><pre v-if="selectedCommand.output" class="command-output">{{ selectedCommand.output }}</pre><Empty v-else><EmptyHeader><EmptyTitle>{{ $t('agents.command.details.noOutput') }}</EmptyTitle></EmptyHeader></Empty></TabsContent><TabsContent v-if="selectedCommand.error_msg" value="error"><Alert variant="destructive"><CircleAlert /><AlertTitle>{{ $t('agents.command.details.executionError') }}</AlertTitle><AlertDescription><pre class="command-error">{{ selectedCommand.error_msg }}</pre></AlertDescription></Alert></TabsContent></Tabs>
             <div class="detail-actions">
-              <UiButton size="sm" :disabled="detailLoading" @click="refreshCommandDetail(selectedCommand.command_id)"><Spinner v-if="detailLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新结果</UiButton>
-              <UiButton variant="outline" size="sm" @click="copyCommandDetailOutput"><Copy data-icon="inline-start" />复制输出</UiButton>
+              <UiButton size="sm" :disabled="detailLoading" @click="refreshCommandDetail(selectedCommand.command_id)"><Spinner v-if="detailLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('agents.command.actions.refreshResult') }}</UiButton>
+              <UiButton variant="outline" size="sm" @click="copyCommandDetailOutput"><Copy data-icon="inline-start" />{{ $t('agents.command.actions.copyOutput') }}</UiButton>
             </div>
           </div>
         </DialogScrollContent></UiDialog>
@@ -85,6 +85,15 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  agentCommandActionDescription,
+  agentCommandActionName,
+  agentCommandFailureText,
+  agentCommandStatusLabel,
+  createAgentCommandFailure,
+  formatAgentCommandDuration,
+  formatAgentCommandTime
+} from '@/i18n/agentMessages';
 
 export default {
   name: 'AgentCommand',
@@ -104,9 +113,9 @@ export default {
       historyLoading: false,
       agentListLoading: false,
       actionLoading: false,
-      agentLoadError: '',
-      actionLoadError: '',
-      historyError: '',
+      agentLoadFailure: null,
+      actionLoadFailure: null,
+      historyFailure: null,
       dialogVisible: false,
       currentPage: 1,
       pageSize: 10,
@@ -125,22 +134,36 @@ export default {
         search: '',
         date_range: ['', '']
       },
-      commandStatuses: [
-        { value: 'pending', label: '待执行' }, { value: 'running', label: '执行中' },
-        { value: 'completed', label: '已完成' }, { value: 'failed', label: '失败' },
-        { value: 'canceled', label: '已取消' }
-      ],
       batchMode: false,
       allowedActions: [],
       detailLoading: false
     };
   },
   computed: {
+    agentLoadError() {
+      return agentCommandFailureText(this.agentLoadFailure, this.$t);
+    },
+    actionLoadError() {
+      return agentCommandFailureText(this.actionLoadFailure, this.$t);
+    },
+    historyError() {
+      return agentCommandFailureText(this.historyFailure, this.$t);
+    },
+    commandStatuses() {
+      return ['pending', 'running', 'completed', 'failed', 'canceled'].map(value => ({
+        value,
+        label: agentCommandStatusLabel(value, this.$t)
+      }));
+    },
     totalPages() {
       return Math.max(1, Math.ceil(this.total / this.pageSize));
     },
     selectedAction() {
       return this.allowedActions.find(action => action.id === this.commandForm.action) || null;
+    },
+    selectedActionDescription() {
+      if (this.selectedAction) return agentCommandActionDescription(this.selectedAction, this.$t);
+      return this.actionLoadError || this.$t('agents.command.execute.selectActionDescription');
     }
   },
   created() {
@@ -150,6 +173,19 @@ export default {
     this.fetchCommandHistory();
   },
   methods: {
+    localizedFailure(key, error) {
+      return agentCommandFailureText(createAgentCommandFailure(key, error), this.$t);
+    },
+    activeLocale() {
+      const localeState = this.$i18n?.locale;
+      return typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN');
+    },
+    actionName(action) {
+      return agentCommandActionName(action, this.$t);
+    },
+    statusLabel(status) {
+      return agentCommandStatusLabel(status, this.$t);
+    },
     // 处理查询参数
     processQueryParams() {
       const { id } = this.$route.query;
@@ -160,7 +196,7 @@ export default {
     // Agent列表相关方法
     async fetchAgentList() {
       this.agentListLoading = true;
-      this.agentLoadError = '';
+      this.agentLoadFailure = null;
       try {
         const response = await agentApi.getAgentList();
         if (response && response.code === 200) {
@@ -168,7 +204,7 @@ export default {
           if (typeof agentData === 'object' && !Array.isArray(agentData)) {
             this.agentList = Object.values(agentData).map(agent => ({
                 id: agent.agent_uuid,  // 使用agent_uuid作为id
-                hostname: agent.hostname || agent.name || '未知主机',  // 尝试多个可能的名称字段
+                hostname: agent.hostname || agent.name || '',  // 尝试多个可能的名称字段
                 ip: agent.ip_addresses ? agent.ip_addresses[0] : agent.ip || '',  // 尝试多种IP字段
                 os: agent.os || agent.system || '',  // 操作系统信息
                 status: agent.connected ? 'online' : 'offline'  // 连接状态
@@ -177,7 +213,7 @@ export default {
             // 数组格式，直接映射
             this.agentList = agentData.map(agent => ({
               id: agent.agent_uuid || agent.id,
-              hostname: agent.hostname || agent.name || '未知主机',
+              hostname: agent.hostname || agent.name || '',
               ip: agent.ip_addresses ? agent.ip_addresses[0] : agent.ip || '',
               os: agent.os || agent.system || '',
               status: agent.connected === true || agent.status === 'online' ? 'online' : 'offline'
@@ -186,13 +222,16 @@ export default {
           
         } else {
           console.error('Agent列表响应格式错误:', response);
-          this.agentLoadError = '响应格式错误';
-          toast.error('获取 Agent 列表响应格式错误');
+          this.agentLoadFailure = createAgentCommandFailure(
+            'agents.command.feedback.agentInvalidResponse',
+            response?.msg || response?.message || ''
+          );
+          toast.error(this.agentLoadError);
         }
       } catch (error) {
         console.error('获取Agent列表失败:', error);
-        this.agentLoadError = error.message || '未知错误';
-        toast.error('获取 Agent 列表失败：' + error.message);
+        this.agentLoadFailure = createAgentCommandFailure('agents.command.feedback.agentLoadFailed', error);
+        toast.error(this.agentLoadError);
       } finally {
         this.agentListLoading = false;
       }
@@ -204,7 +243,7 @@ export default {
     },
     async fetchActions() {
       this.actionLoading = true;
-      this.actionLoadError = '';
+      this.actionLoadFailure = null;
       try {
         const response = await agentApi.getActions();
         this.allowedActions = Array.isArray(response.data) ? response.data : [];
@@ -214,8 +253,8 @@ export default {
       } catch (error) {
         this.allowedActions = [];
         this.commandForm.action = '';
-        this.actionLoadError = error.message || '读取受控动作失败';
-        toast.error('获取允许动作失败：' + this.actionLoadError);
+        this.actionLoadFailure = createAgentCommandFailure('agents.command.feedback.actionLoadFailed', error);
+        toast.error(this.actionLoadError);
       } finally {
         this.actionLoading = false;
       }
@@ -227,17 +266,26 @@ export default {
           ? Array.isArray(this.commandForm.agent_id) && this.commandForm.agent_id.length > 0
           : Boolean(this.commandForm.agent_id);
         if (!agentSelected || !this.commandForm.action || !this.commandForm.timeout) {
-          toast.warning(!agentSelected ? '请选择在线 Agent' : '请选择受控动作并填写超时时间');
+          toast.warning(this.$t(
+            !agentSelected
+              ? 'agents.command.feedback.selectOnlineAgent'
+              : 'agents.command.feedback.selectActionAndTimeout'
+          ));
           return;
         }
         const selectedAgentIds = this.batchMode ? this.commandForm.agent_id : [this.commandForm.agent_id];
         if (selectedAgentIds.some(id => !this.agentList.some(agent => agent.id === id && agent.status === 'online'))) {
-          toast.warning('所选 Agent 已离线或不在当前列表中，请刷新后重试');
+          toast.warning(this.$t('agents.command.feedback.selectedAgentOffline'));
           return;
         }
-        normalizeAgentCommandTimeout(this.commandForm.timeout);
+        try {
+          normalizeAgentCommandTimeout(this.commandForm.timeout);
+        } catch {
+          toast.warning(this.$t('agents.command.feedback.timeoutInvalid'));
+          return;
+        }
         if (!this.allowedActions.some(action => action.id === this.commandForm.action)) {
-          toast.error('所选动作已不在后端白名单中，请刷新页面后重试');
+          toast.error(this.$t('agents.command.feedback.actionUnavailable'));
           return;
         }
         this.commandLoading = true;
@@ -271,7 +319,7 @@ export default {
                 results.push({
                   agentId,
                   success: false,
-                  error: response.msg || '命令执行失败'
+                  error: response.msg || this.$t('agents.command.feedback.executionFailed')
                 });
               }
             } catch (error) {
@@ -279,16 +327,16 @@ export default {
               results.push({
                 agentId,
                 success: false,
-                error: error.message || '命令执行出错'
+                error: error.message || this.$t('agents.command.feedback.executionFailed')
               });
             }
           }
           
           if (successCount > 0) {
-            toast.success(`成功发送命令至 ${successCount} 个 Agent`);
+            toast.success(this.$t('agents.command.feedback.batchSent', { count: successCount }));
           }
           if (failCount > 0) {
-            toast.warning(`${failCount} 个 Agent 命令发送失败`);
+            toast.warning(this.$t('agents.command.feedback.batchFailed', { count: failCount }));
           }
           
           await this.fetchCommandHistory();
@@ -307,7 +355,7 @@ export default {
           
           const response = await agentApi.executeCommand(commandData);
           if (response && response.code === 200) {
-            toast.success('命令已发送');
+            toast.success(this.$t('agents.command.feedback.commandSent'));
             
             // 获取命令ID
             const commandId = response.data.command_id;
@@ -321,11 +369,11 @@ export default {
             // 重置表单
             this.resetCommand();
           } else {
-            toast.error(response.msg || '命令执行失败');
+            toast.error(this.localizedFailure('agents.command.feedback.executionFailed', response?.msg || response?.message));
           }
         }
       } catch (error) {
-        toast.error('命令执行失败：' + (error.message || '未知错误'));
+        toast.error(this.localizedFailure('agents.command.feedback.executionFailed', error));
       } finally {
         this.commandLoading = false;
       }
@@ -335,7 +383,7 @@ export default {
     async pollCommandResult(commandId, attempts = 0) {
       if (attempts > 20) { // 最多尝试20次，约1分钟
         await this.fetchCommandHistory();
-        toast.warning('命令执行时间较长，请在历史记录中查看结果');
+        toast.warning(this.$t('agents.command.feedback.executionLong'));
         return;
       }
       
@@ -352,9 +400,9 @@ export default {
             
             // 根据结果显示不同的消息
             if (result.success) {
-              toast.success('命令执行成功');
+              toast.success(this.$t('agents.command.feedback.executionSucceeded'));
             } else {
-              toast.warning('命令执行失败: ' + (result.error_msg || '未知错误'));
+              toast.warning(this.localizedFailure('agents.command.feedback.executionFailed', result.error_msg));
             }
             
             await this.fetchCommandHistory();
@@ -386,7 +434,7 @@ export default {
     // 命令历史相关方法
     async fetchCommandHistory() {
       this.historyLoading = true;
-      this.historyError = '';
+      this.historyFailure = null;
       try {
         const params = this.commandHistoryParams();
         const agentId = this.historyFilter.agent_id === 'all' ? '' : (this.historyFilter.agent_id || '');
@@ -397,8 +445,8 @@ export default {
         this.commandHistory = items;
         this.total = response.data?.total || 0;
       } catch (error) {
-        this.historyError = error.message || '未知错误';
-        toast.error('获取命令历史失败：' + this.historyError);
+        this.historyFailure = createAgentCommandFailure('agents.command.feedback.historyLoadFailed', error);
+        toast.error(this.historyError);
         this.commandHistory = [];
         this.total = 0;
       } finally {
@@ -426,8 +474,8 @@ export default {
     },
     commandResultLabel(command) {
       if (!this.isCommandTerminal(command.status)) return '-';
-      if (command.status === 'canceled') return '已取消';
-      return command.success ? '成功' : '失败';
+      if (command.status === 'canceled') return this.$t('agents.command.results.canceled');
+      return this.$t(command.success ? 'agents.command.results.success' : 'agents.command.results.failed');
     },
     commandHistoryParams() {
       const params = {
@@ -453,34 +501,10 @@ export default {
       this.dialogVisible = true;
     },
     formatTime(timestamp) {
-      if (!timestamp) return 'N/A';
-      
-      // 处理不同格式的时间戳
-      let ts = timestamp;
-      
-      // 如果是秒级时间戳（10位数字），转换为毫秒级
-      if (typeof ts === 'number' && ts.toString().length === 10) {
-        ts = ts * 1000;
-      }
-      // 如果是字符串形式的时间戳，尝试转换为数值
-      else if (typeof ts === 'string' && !isNaN(Number(ts))) {
-        ts = Number(ts);
-        if (ts.toString().length === 10) {
-          ts = ts * 1000;
-        }
-      }
-      
-      try {
-        const date = new Date(ts);
-        // 检查日期是否有效
-        if (isNaN(date.getTime())) {
-          return 'N/A (无效时间戳)';
-        }
-        return date.toLocaleString();
-      } catch (e) {
-        console.error('时间格式化错误:', e);
-        return 'N/A (格式错误)';
-      }
+      return formatAgentCommandTime(timestamp, this.activeLocale(), this.$t);
+    },
+    formatDuration(durationMs) {
+      return formatAgentCommandDuration(durationMs, this.activeLocale(), this.$t);
     },
     onAgentFilterChange() {
       this.currentPage = 1;
@@ -520,12 +544,12 @@ export default {
         if (response && response.code === 200) {
           this.selectedCommand = response.data;
           this.dialogVisible = true;
-          toast.success('命令结果刷新成功');
+          toast.success(this.$t('agents.command.feedback.resultRefreshed'));
         } else {
-          toast.error(response.msg || '刷新命令结果失败');
+          toast.error(this.localizedFailure('agents.command.feedback.resultRefreshFailed', response?.msg || response?.message));
         }
       } catch (error) {
-        toast.error('刷新命令结果失败：' + (error.message || '未知错误'));
+        toast.error(this.localizedFailure('agents.command.feedback.resultRefreshFailed', error));
       } finally {
         this.detailLoading = false;
       }
@@ -534,12 +558,15 @@ export default {
       if (this.selectedCommand && this.selectedCommand.output) {
         try {
           await this.copyText(this.selectedCommand.output);
-          toast.success('命令输出已复制到剪贴板');
+          toast.success(this.$t('agents.command.feedback.outputCopied'));
         } catch (error) {
-          toast.error(error.message || '复制命令输出失败');
+          const message = error?.code === 'CLIPBOARD_DENIED'
+            ? this.$t('agents.command.feedback.clipboardDenied')
+            : this.localizedFailure('agents.command.feedback.outputCopyFailed', error);
+          toast.error(message);
         }
       } else {
-        toast.warning('没有可复制的命令输出');
+        toast.warning(this.$t('agents.command.feedback.noOutputToCopy'));
       }
     },
     async copyText(value) {
@@ -556,7 +583,11 @@ export default {
       textArea.select();
       const copied = document.execCommand('copy');
       document.body.removeChild(textArea);
-      if (!copied) throw new Error('浏览器未允许写入剪贴板');
+      if (!copied) {
+        const error = new Error('clipboard write was denied');
+        error.code = 'CLIPBOARD_DENIED';
+        throw error;
+      }
     },
     getAllHistory() {
       this.historyFilter = { agent_id: 'all', status: 'all', search: '', date_range: ['', ''] };
