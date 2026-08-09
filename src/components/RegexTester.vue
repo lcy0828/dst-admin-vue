@@ -2,35 +2,35 @@
   <Card class="regex-tester">
     <CardHeader>
       <div>
-        <CardTitle>匹配设置</CardTitle>
-        <CardDescription>日志样本、表达式与匹配结果。</CardDescription>
+        <CardTitle>{{ $t('logTools.regex.title') }}</CardTitle>
+        <CardDescription>{{ $t('logTools.regex.description') }}</CardDescription>
       </div>
     </CardHeader>
     <CardContent class="tester-content">
       <FieldGroup>
         <Field>
-          <FieldLabel for="regex-test-content">测试内容</FieldLabel>
+          <FieldLabel for="regex-test-content">{{ $t('logTools.regex.fields.testContent') }}</FieldLabel>
           <UiTextarea
             id="regex-test-content"
             v-model="regexForm.testContent"
             rows="5"
-            placeholder="输入要测试的日志内容"
+            :placeholder="$t('logTools.regex.fields.testContentPlaceholder')"
           />
         </Field>
 
         <Field :data-invalid="patternInvalid">
-          <FieldLabel for="regex-pattern">正则表达式</FieldLabel>
+          <FieldLabel for="regex-pattern">{{ $t('logTools.regex.fields.pattern') }}</FieldLabel>
           <InputGroup>
             <InputGroupInput
               id="regex-pattern"
               v-model="regexForm.pattern"
-              placeholder="输入正则表达式"
+              :placeholder="$t('logTools.regex.fields.patternPlaceholder')"
               :aria-invalid="patternInvalid"
             />
             <InputGroupAddon align="inline-end">
               <InputGroupButton variant="default" :disabled="!canTest" @click="testRegex">
                 <RefreshCwIcon data-icon="inline-start" />
-                测试
+                {{ $t('logTools.regex.actions.test') }}
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
@@ -38,36 +38,36 @@
 
         <Field orientation="horizontal">
           <FieldContent>
-            <FieldLabel for="regex-enabled">使用正则表达式</FieldLabel>
+            <FieldLabel for="regex-enabled">{{ $t('logTools.regex.fields.useRegex') }}</FieldLabel>
           </FieldContent>
           <UiSwitch id="regex-enabled" v-model="regexForm.isRegex" @update:model-value="testRegex" />
         </Field>
 
         <Field>
-          <FieldLabel for="regex-match-mode">匹配模式</FieldLabel>
+          <FieldLabel for="regex-match-mode">{{ $t('logTools.regex.fields.matchMode') }}</FieldLabel>
           <UiSelect v-model="regexForm.matchMode" @update:model-value="testRegex">
-            <SelectTrigger id="regex-match-mode"><SelectValue placeholder="选择匹配模式" /></SelectTrigger>
+            <SelectTrigger id="regex-match-mode"><SelectValue :placeholder="$t('logTools.regex.fields.matchModePlaceholder')" /></SelectTrigger>
             <SelectContent><SelectGroup>
-              <SelectItem value="single">单行匹配</SelectItem>
-              <SelectItem value="multi_line">多行匹配</SelectItem>
-              <SelectItem value="head_tail">首尾行匹配</SelectItem>
+              <SelectItem value="single">{{ $t('logTools.regex.modes.single') }}</SelectItem>
+              <SelectItem value="multi_line">{{ $t('logTools.regex.modes.multiLine') }}</SelectItem>
+              <SelectItem value="head_tail">{{ $t('logTools.regex.modes.headTail') }}</SelectItem>
             </SelectGroup></SelectContent>
           </UiSelect>
         </Field>
 
         <Field v-if="regexForm.matchMode === 'head_tail'" :data-invalid="tailPatternInvalid">
-          <FieldLabel for="regex-tail-pattern">尾行匹配模式</FieldLabel>
+          <FieldLabel for="regex-tail-pattern">{{ $t('logTools.regex.fields.tailPattern') }}</FieldLabel>
           <InputGroup>
             <InputGroupInput
               id="regex-tail-pattern"
               v-model="regexForm.tailPattern"
-              placeholder="输入尾行匹配模式"
+              :placeholder="$t('logTools.regex.fields.tailPatternPlaceholder')"
               :aria-invalid="tailPatternInvalid"
             />
             <InputGroupAddon align="inline-end">
               <InputGroupButton variant="default" :disabled="!canTest || !regexForm.tailPattern" @click="testRegex">
                 <RefreshCwIcon data-icon="inline-start" />
-                测试
+                {{ $t('logTools.regex.actions.test') }}
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
@@ -77,39 +77,39 @@
       <Separator />
 
       <section class="test-results" aria-live="polite">
-        <div class="section-heading"><h4>测试结果</h4><Badge v-if="testResult.isValid === true" variant="secondary">{{ testResult.matches.length }} 项</Badge></div>
+        <div class="section-heading"><h4>{{ $t('logTools.regex.results.title') }}</h4><Badge v-if="testResult.isValid === true" variant="secondary">{{ $t('logTools.regex.results.count', { count: testResult.matches.length }) }}</Badge></div>
         <Empty v-if="testResult.isValid === null" class="waiting-state">
-          <EmptyHeader><EmptyMedia variant="icon"><ScanSearchIcon /></EmptyMedia><EmptyTitle>等待测试</EmptyTitle><EmptyDescription>当前尚无测试结果。</EmptyDescription></EmptyHeader>
+          <EmptyHeader><EmptyMedia variant="icon"><ScanSearchIcon /></EmptyMedia><EmptyTitle>{{ $t('logTools.regex.results.waitingTitle') }}</EmptyTitle><EmptyDescription>{{ $t('logTools.regex.results.waitingDescription') }}</EmptyDescription></EmptyHeader>
         </Empty>
         <Alert v-else-if="testResult.isValid === false" variant="destructive">
           <CircleXIcon />
-          <AlertTitle>正则表达式无效</AlertTitle>
-          <AlertDescription>{{ testResult.error }}</AlertDescription>
+          <AlertTitle>{{ $t('logTools.regex.results.invalidTitle') }}</AlertTitle>
+          <AlertDescription>{{ testError }}</AlertDescription>
         </Alert>
         <template v-else>
           <Alert v-if="testResult.matches.length > 0">
             <CircleCheckIcon />
-            <AlertTitle>匹配成功</AlertTitle>
-            <AlertDescription>找到 {{ testResult.matches.length }} 个匹配项</AlertDescription>
+            <AlertTitle>{{ $t('logTools.regex.results.successTitle') }}</AlertTitle>
+            <AlertDescription>{{ $t('logTools.regex.results.successDescription', { count: testResult.matches.length }) }}</AlertDescription>
           </Alert>
           <Alert v-else>
             <TriangleAlertIcon />
-            <AlertTitle>未找到匹配项</AlertTitle>
-            <AlertDescription>当前日志内容与表达式没有产生匹配。</AlertDescription>
+            <AlertTitle>{{ $t('logTools.regex.results.emptyTitle') }}</AlertTitle>
+            <AlertDescription>{{ $t('logTools.regex.results.emptyDescription') }}</AlertDescription>
           </Alert>
 
           <section v-if="testResult.matches.length > 0" class="matches-container">
-            <h5>匹配结果</h5>
+            <h5>{{ $t('logTools.regex.results.matchesTitle') }}</h5>
             <ol class="match-list">
               <li v-for="(match, index) in testResult.matches" :key="index" class="match-item">
-                <span class="match-index">匹配 #{{ index + 1 }}</span>
+                <span class="match-index">{{ $t('logTools.regex.results.matchIndex', { index: index + 1 }) }}</span>
                 <pre class="match-content">{{ match }}</pre>
               </li>
             </ol>
           </section>
 
           <section v-if="testResult.highlightedContent" class="highlighted-section">
-            <h5>高亮显示</h5>
+            <h5>{{ $t('logTools.regex.results.highlightedTitle') }}</h5>
             <div class="highlighted-content" v-html="testResult.highlightedContent"></div>
           </section>
         </template>
@@ -117,8 +117,8 @@
     </CardContent>
 
     <CardFooter class="actions">
-      <UiButton variant="outline" @click="resetForm">重置</UiButton>
-      <UiButton :disabled="!regexForm.pattern" @click="applyRegex">应用到规则</UiButton>
+      <UiButton variant="outline" @click="resetForm">{{ $t('logTools.regex.actions.reset') }}</UiButton>
+      <UiButton :disabled="!regexForm.pattern" @click="applyRegex">{{ $t('logTools.regex.actions.apply') }}</UiButton>
     </CardFooter>
   </Card>
 </template>
@@ -136,6 +136,7 @@ import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigg
 import { Separator } from '@/components/ui/separator'
 import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
+import { regexTesterErrorLabel } from '@/i18n/logToolsMessages.js'
 
 export default {
   name: 'RegexTester',
@@ -213,7 +214,7 @@ export default {
       testResult: {
         isValid: null,
         matches: [],
-        error: '',
+        error: null,
         highlightedContent: ''
       }
     };
@@ -224,10 +225,13 @@ export default {
     },
     tailPatternInvalid() {
       return this.regexForm.matchMode === 'head_tail' && this.testResult.isValid === false &&
-        (!this.regexForm.tailPattern || this.testResult.error.includes('尾行'))
+        this.testResult.error?.field === 'tail'
     },
     patternInvalid() {
       return this.testResult.isValid === false && !this.tailPatternInvalid
+    },
+    testError() {
+      return regexTesterErrorLabel(this.testResult.error, this.$t)
     }
   },
   mounted() {
@@ -256,7 +260,7 @@ export default {
       this.testResult = {
         isValid: null,
         matches: [],
-        error: '',
+        error: null,
         highlightedContent: ''
       };
 
@@ -282,7 +286,7 @@ export default {
             // 首尾行匹配模式
             if (!this.regexForm.tailPattern) {
               this.testResult.isValid = false;
-              this.testResult.error = '首尾行匹配模式需要提供尾行匹配模式';
+              this.testResult.error = { key: 'tailRequired', detail: '', field: 'tail' };
               return;
             }
             this.testHeadTailMode(regex);
@@ -297,7 +301,7 @@ export default {
 
       } catch (error) {
         this.testResult.isValid = false;
-        this.testResult.error = error.message;
+        this.testResult.error = { key: 'patternInvalid', detail: error.message, field: 'pattern' };
       }
     },
 
@@ -404,7 +408,7 @@ export default {
 
       } catch (error) {
         this.testResult.isValid = false;
-        this.testResult.error = '尾行正则表达式错误: ' + error.message;
+        this.testResult.error = { key: 'tailInvalid', detail: error.message, field: 'tail' };
       }
     },
 
@@ -446,7 +450,7 @@ export default {
         // 首尾行匹配模式 - 对于字符串匹配，需要尾部模式
         if (!this.regexForm.tailPattern) {
           this.testResult.isValid = false;
-          this.testResult.error = '首尾行匹配模式需要提供尾行匹配模式';
+          this.testResult.error = { key: 'tailRequired', detail: '', field: 'tail' };
           return;
         }
 

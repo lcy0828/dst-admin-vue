@@ -1,30 +1,30 @@
 <template>
   <div class="app-container">
     <header class="page-heading">
-      <div><h1>运行中世界日志</h1><p>查看当前运行中的世界，并进入对应的实时日志。</p></div>
+      <div><h1>{{ $t('logTools.parser.title') }}</h1><p>{{ $t('logTools.parser.subtitle') }}</p></div>
       <UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers(true)">
         <Spinner v-if="loading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
-        刷新
+        {{ $t('logTools.parser.actions.refresh') }}
       </UiButton>
     </header>
 
     <Alert v-if="loadError" variant="destructive">
       <FileWarning />
-      <AlertTitle>世界状态加载失败</AlertTitle>
+      <AlertTitle>{{ $t('logTools.parser.loadFailedTitle') }}</AlertTitle>
       <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers(true)">重试</UiButton></AlertAction>
+      <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers(true)">{{ $t('logTools.parser.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
     <div v-if="loading && activeParsers.length === 0" class="loading-state">
       <Spinner />
-      <span>正在读取世界状态...</span>
+      <span>{{ $t('logTools.parser.loading') }}</span>
     </div>
     <Empty v-else-if="!loadError && activeParsers.length === 0">
       <EmptyHeader>
         <EmptyMedia variant="icon"><FileWarning /></EmptyMedia>
-        <EmptyTitle>暂无运行中的世界</EmptyTitle>
-        <EmptyDescription>启动房间世界后，可在这里查看对应的实时日志。</EmptyDescription>
+        <EmptyTitle>{{ $t('logTools.parser.emptyTitle') }}</EmptyTitle>
+        <EmptyDescription>{{ $t('logTools.parser.emptyDescription') }}</EmptyDescription>
       </EmptyHeader>
     </Empty>
     <div v-else-if="!loadError" class="parsers-container">
@@ -47,13 +47,13 @@
             </CardHeader>
             <CardContent>
               <dl class="parser-info">
-                <div class="info-item path-item"><dt>运行控制</dt><dd>{{ parser.control_available ? '可用' : (parser.status_message || '当前运行环境不可用') }}</dd></div>
+                <div class="info-item path-item"><dt>{{ $t('logTools.parser.runtimeControl') }}</dt><dd>{{ getControlLabel(parser) }}</dd></div>
               </dl>
             </CardContent>
             <CardFooter class="parser-actions">
               <UiButton size="sm" @click="viewLogs(parser)">
                 <Eye data-icon="inline-start" />
-                查看日志
+                {{ $t('logTools.parser.actions.viewLogs') }}
               </UiButton>
               <UiButton
                 variant="outline"
@@ -63,7 +63,7 @@
               >
                 <Spinner v-if="restartingParserId === parser.id" data-icon="inline-start" />
                 <RotateCw v-else data-icon="inline-start" />
-                重启世界
+                {{ $t('logTools.parser.actions.restartWorld') }}
               </UiButton>
             </CardFooter>
           </Card>
@@ -82,6 +82,11 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  logParserLoadFailure,
+  logParserServerTypeLabel,
+  logParserStatusMeta
+} from '@/i18n/logToolsMessages.js';
 import { confirmAction } from '@/lib/feedback';
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
 
@@ -98,7 +103,7 @@ export default {
     return {
       activeParsers: [],
       loading: false,
-      loadError: '',
+      loadFailure: null,
       restartingParserId: '',
       refreshSequence: 0
     };
@@ -112,6 +117,11 @@ export default {
   beforeUnmount() {
     window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
   },
+  computed: {
+    loadError() {
+      return logParserLoadFailure(this.loadFailure, this.$t);
+    }
+  },
   methods: {
     handleRuntimeTargetChange() {
       this.activeParsers = [];
@@ -120,22 +130,22 @@ export default {
     async getActiveParsers(notify = false) {
       const requestSequence = ++this.refreshSequence;
       this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         const response = await logApi.getActiveLogParsers();
         if (requestSequence !== this.refreshSequence) return;
         if (response?.status === 200 && Array.isArray(response.data)) {
           this.activeParsers = response.data;
-          if (notify) toast.success(response.msg || '运行中世界已刷新');
+          if (notify) toast.success(this.$t('logTools.parser.feedback.refreshed'));
         } else {
-          this.loadError = response?.msg || '后端没有返回有效的世界列表';
-          toast.error(`获取运行中世界失败：${this.loadError}`);
+          this.loadFailure = { kind: 'invalidResponse', detail: response?.msg || '' };
+          toast.error(this.loadError);
           this.activeParsers = [];
         }
       } catch (error) {
         if (requestSequence !== this.refreshSequence) return;
-        this.loadError = error.message || '未知错误';
-        toast.error(`获取运行中世界失败：${this.loadError}`);
+        this.loadFailure = { kind: 'request', detail: this.errorDetail(error) };
+        toast.error(this.loadError);
         this.activeParsers = [];
       } finally {
         if (requestSequence === this.refreshSequence) this.loading = false;
@@ -154,10 +164,10 @@ export default {
         if (TERMINAL_JOB_STATES.has(current.status)) break;
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      if (!TERMINAL_JOB_STATES.has(current.status)) throw new Error('重启任务仍在执行，请稍后刷新状态');
+      if (!TERMINAL_JOB_STATES.has(current.status)) throw new Error(this.$t('logTools.parser.feedback.restartTimeout'));
       if (current.status !== 'succeeded') {
         const failed = (current.targets || []).find(item => item.status === 'failed');
-        throw new Error(failed?.error?.message || current.error?.message || '世界重启失败');
+        throw new Error(failed?.error?.message || current.error?.message || this.$t('logTools.parser.feedback.restartJobFailed'));
       }
       return current;
     },
@@ -165,13 +175,17 @@ export default {
       if (parser.control_available === false) return;
       try {
         await confirmAction(
-          `确定要重启“${parser.archive_name} / ${parser.world_name}”吗？在线玩家会暂时断开连接。`,
-          '重启世界',
-          { confirmButtonText: '确认重启', cancelButtonText: '取消', type: 'warning' }
+          this.$t('logTools.parser.feedback.restartConfirm', { world: `${parser.archive_name} / ${parser.world_name}` }),
+          this.$t('logTools.parser.feedback.restartTitle'),
+          {
+            confirmButtonText: this.$t('logTools.parser.feedback.confirmRestart'),
+            cancelButtonText: this.$t('logTools.parser.feedback.cancel'),
+            type: 'warning'
+          }
         );
       } catch (error) {
         if (error === 'cancel' || error === 'close') return;
-        toast.error(error.message || '无法确认重启操作');
+        toast.error(this.$t('logTools.parser.feedback.confirmFailed', { error: this.errorDetail(error) }));
         return;
       }
       this.restartingParserId = parser.id;
@@ -179,23 +193,32 @@ export default {
         const job = await roomsV2API.action(parser.room_id, 'restart', [parser.world_id]);
         await this.waitForJob(job);
         await this.getActiveParsers();
-        toast.success(`${parser.archive_name} / ${parser.world_name} 已重新启动`);
+        toast.success(this.$t('logTools.parser.feedback.restartSucceeded', {
+          world: `${parser.archive_name} / ${parser.world_name}`
+        }));
       } catch (error) {
-        toast.error(error.message || '重新启动失败');
+        toast.error(this.$t('logTools.parser.feedback.restartFailed', { error: this.errorDetail(error) }));
       } finally {
         this.restartingParserId = '';
       }
     },
     getStatusVariant(status) {
-      if (status === 'running') return 'default';
-      if (status === 'stopped') return 'destructive';
-      return 'secondary';
+      return logParserStatusMeta(status, this.$t).variant;
     },
     getStatusLabel(status) {
-      return { running: '运行中', stopped: '已停止', starting: '启动中' }[status] || status || '未知状态';
+      return logParserStatusMeta(status, this.$t).label;
     },
     getServerTypeLabel(type) {
-      return { Forest: '森林世界', Caves: '洞穴世界', Cave: '洞穴世界' }[type] || type || '未知世界类型';
+      return logParserServerTypeLabel(type, this.$t);
+    },
+    getControlLabel(parser) {
+      if (parser.control_available) return this.$t('logTools.parser.controlAvailable');
+      return parser.status_message || this.$t('logTools.parser.controlUnavailable');
+    },
+    errorDetail(error) {
+      if (error?.message) return error.message;
+      if (typeof error === 'string' && error) return error;
+      return this.$t('logTools.values.unknownError');
     },
     formatParserId(id) {
       return String(id || '-').split('_').pop();
