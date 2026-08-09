@@ -156,14 +156,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-5">
-    <header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="min-w-0">
         <h1 class="text-2xl font-semibold tracking-normal">服务总览</h1>
         <p class="text-muted-foreground mt-1 text-sm">
-          专服状态、世界日志与主机资源
-          <span class="mx-1">·</span>
-          更新于 {{ formatDateTime(lastRefreshedAt) }}
+          专服、玩家和主机状态
+          <span class="mx-1.5">·</span>
+          最后更新 {{ formatDateTime(lastRefreshedAt) }}
         </p>
       </div>
       <Button variant="outline" size="sm" :disabled="dashboardLoading" @click="refreshDashboard">
@@ -173,52 +173,52 @@ onMounted(() => {
       </Button>
     </header>
 
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Card size="sm">
+    <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+      <Card>
         <CardHeader>
           <CardTitle>运行分片</CardTitle>
           <CardDescription>当前专服进程</CardDescription>
-          <CardAction><Activity class="text-muted-foreground size-4" /></CardAction>
+          <CardAction><span class="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md"><Activity /></span></CardAction>
         </CardHeader>
-        <CardContent class="flex items-end justify-between pt-0">
-          <Skeleton v-if="serverLoading" class="h-8 w-20" />
-          <strong v-else class="text-2xl font-semibold tabular-nums">{{ runningServerCount }}<span class="text-muted-foreground ml-1 text-sm font-normal">/ {{ serverList.length }}</span></strong>
+        <CardContent class="flex min-h-16 items-end justify-between gap-3 pt-1">
+          <Skeleton v-if="serverLoading" class="h-9 w-24" />
+          <strong v-else class="text-3xl font-semibold tabular-nums">{{ runningServerCount }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">/ {{ serverList.length }}</span></strong>
           <Badge :variant="runningServerCount ? 'secondary' : 'outline'">{{ runningServerCount ? '运行中' : '未运行' }}</Badge>
         </CardContent>
       </Card>
-      <Card size="sm">
+      <Card>
         <CardHeader>
           <CardTitle>在线玩家</CardTitle>
           <CardDescription>实时玩家汇总</CardDescription>
-          <CardAction><UsersRound class="text-muted-foreground size-4" /></CardAction>
+          <CardAction><span class="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md"><UsersRound /></span></CardAction>
         </CardHeader>
-        <CardContent class="flex items-end justify-between pt-0">
-          <Skeleton v-if="playerLoading" class="h-8 w-20" />
-          <strong v-else class="text-2xl font-semibold tabular-nums">{{ playerSummary.online }}<span class="text-muted-foreground ml-1 text-sm font-normal">人</span></strong>
+        <CardContent class="flex min-h-16 items-end justify-between gap-3 pt-1">
+          <Skeleton v-if="playerLoading" class="h-9 w-24" />
+          <strong v-else class="text-3xl font-semibold tabular-nums">{{ playerSummary.online }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">人</span></strong>
           <span class="text-muted-foreground text-xs">记录 {{ playerSummary.total }} 人</span>
         </CardContent>
       </Card>
-      <Card size="sm">
+      <Card>
         <CardHeader>
           <CardTitle>房间与世界</CardTitle>
           <CardDescription>当前管理目录</CardDescription>
-          <CardAction><House class="text-muted-foreground size-4" /></CardAction>
+          <CardAction><span class="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md"><House /></span></CardAction>
         </CardHeader>
-        <CardContent class="flex items-end justify-between pt-0">
-          <Skeleton v-if="serverLoading" class="h-8 w-20" />
-          <strong v-else class="text-2xl font-semibold tabular-nums">{{ roomList.length }}<span class="text-muted-foreground ml-1 text-sm font-normal">个房间</span></strong>
+        <CardContent class="flex min-h-16 items-end justify-between gap-3 pt-1">
+          <Skeleton v-if="serverLoading" class="h-9 w-24" />
+          <strong v-else class="text-3xl font-semibold tabular-nums">{{ roomList.length }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">个房间</span></strong>
           <span class="text-muted-foreground text-xs">{{ totalWorldCount }} 个世界</span>
         </CardContent>
       </Card>
-      <Card size="sm">
+      <Card>
         <CardHeader>
           <CardTitle>主机负载</CardTitle>
           <CardDescription>{{ systemStatus.os_info || '等待系统信息' }}</CardDescription>
-          <CardAction><Cpu class="text-muted-foreground size-4" /></CardAction>
+          <CardAction><span class="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md"><Cpu /></span></CardAction>
         </CardHeader>
-        <CardContent class="flex items-end justify-between pt-0">
-          <Skeleton v-if="systemLoading" class="h-8 w-20" />
-          <strong v-else class="text-2xl font-semibold tabular-nums">{{ hasMetric(systemStatus.cpu_usage) ? `${percentage(systemStatus.cpu_usage)}%` : '--' }}</strong>
+        <CardContent class="flex min-h-16 items-end justify-between gap-3 pt-1">
+          <Skeleton v-if="systemLoading" class="h-9 w-24" />
+          <strong v-else class="text-3xl font-semibold tabular-nums">{{ hasMetric(systemStatus.cpu_usage) ? `${percentage(systemStatus.cpu_usage)}%` : '--' }}</strong>
           <span class="text-muted-foreground text-xs">内存 {{ hasMetric(systemStatus.memory_usage) ? `${percentage(systemStatus.memory_usage)}%` : '--' }}</span>
         </CardContent>
       </Card>
@@ -230,9 +230,9 @@ onMounted(() => {
       <AlertDescription>{{ playerError }}</AlertDescription>
     </Alert>
 
-    <div class="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-      <div class="flex min-w-0 flex-col gap-5">
-        <Card size="sm">
+    <div class="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)]">
+      <div class="flex min-w-0 flex-col gap-6">
+        <Card>
           <CardHeader>
             <CardTitle class="flex items-center gap-2"><Activity />服务器状态</CardTitle>
             <CardDescription>{{ serverList.length }} 个分片，{{ runningServerCount }} 个运行中</CardDescription>
@@ -244,7 +244,7 @@ onMounted(() => {
               </Button>
             </CardAction>
           </CardHeader>
-          <CardContent class="pt-0">
+          <CardContent class="pt-1">
             <Table v-if="serverList.length && !serverError">
               <TableHeader>
                 <TableRow>
@@ -274,12 +274,12 @@ onMounted(() => {
               <AlertAction><Button size="sm" variant="outline" @click="refreshServers">重试</Button></AlertAction>
             </Alert>
 
-            <Empty v-else-if="!roomList.length" class="min-h-40 py-6">
+            <Empty v-else-if="!roomList.length" class="min-h-56 py-8">
               <EmptyHeader><EmptyMedia variant="icon"><FolderPlus /></EmptyMedia><EmptyTitle>还没有房间</EmptyTitle><EmptyDescription>创建房间并配置世界后即可启动专服。</EmptyDescription></EmptyHeader>
               <EmptyContent><Button size="sm" @click="router.push('/rooms/settings')">创建房间</Button></EmptyContent>
             </Empty>
 
-            <Empty v-else class="min-h-40 py-6">
+            <Empty v-else class="min-h-56 py-8">
               <EmptyHeader><EmptyMedia variant="icon"><CirclePlay /></EmptyMedia><EmptyTitle>服务器尚未启动</EmptyTitle><EmptyDescription>选择房间和世界分片开始运行。</EmptyDescription></EmptyHeader>
               <EmptyContent><Button size="sm" @click="openStartDialog">启动房间</Button></EmptyContent>
             </Empty>
@@ -287,17 +287,26 @@ onMounted(() => {
           <CardFooter v-if="serverList.length" class="text-muted-foreground text-xs">共 {{ serverList.length }} 个服务器实例</CardFooter>
         </Card>
 
-        <Card size="sm">
+        <Card>
           <CardHeader>
             <CardTitle class="flex items-center gap-2"><ScrollText />世界日志</CardTitle>
             <CardDescription>查看世界分片的实时输出与连接状态</CardDescription>
           </CardHeader>
-          <CardContent class="h-[420px] min-h-[360px] pt-0"><WorldLog /></CardContent>
+          <CardContent v-if="roomList.length" class="h-[460px] min-h-[380px] pt-1"><WorldLog /></CardContent>
+          <CardContent v-else class="pt-1">
+            <Empty class="min-h-48 py-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><ScrollText /></EmptyMedia>
+                <EmptyTitle>暂无世界日志</EmptyTitle>
+                <EmptyDescription>创建房间和世界后，这里会显示实时日志。</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </CardContent>
         </Card>
       </div>
 
-      <aside class="flex min-w-0 flex-col gap-5">
-        <Card size="sm">
+      <aside class="flex min-w-0 flex-col gap-6">
+        <Card>
           <CardHeader>
             <CardTitle class="flex items-center gap-2"><Gauge />系统资源</CardTitle>
             <CardDescription>{{ systemStatus.os_info || '等待系统信息' }}</CardDescription>
@@ -305,30 +314,30 @@ onMounted(() => {
               <Tooltip><TooltipTrigger as-child><Button variant="ghost" size="icon-sm" :disabled="systemLoading" aria-label="刷新系统资源" @click="refreshSystem"><Spinner v-if="systemLoading" /><RefreshCw v-else /></Button></TooltipTrigger><TooltipContent>刷新系统资源</TooltipContent></Tooltip>
             </CardAction>
           </CardHeader>
-          <CardContent class="flex flex-col gap-3 pt-0">
+          <CardContent class="flex flex-col gap-5 pt-1">
             <Alert v-if="systemError" variant="destructive"><CircleAlert /><AlertTitle>系统状态不可用</AlertTitle><AlertDescription>{{ systemError }}</AlertDescription></Alert>
             <template v-else>
               <div class="flex flex-col gap-2">
                 <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><Cpu class="text-muted-foreground size-4" />CPU</span><strong class="tabular-nums">{{ hasMetric(systemStatus.cpu_usage) ? `${percentage(systemStatus.cpu_usage)}%` : '--' }}</strong></div>
-                <Progress :model-value="percentage(systemStatus.cpu_usage)" />
+                <Progress :model-value="percentage(systemStatus.cpu_usage)" class="h-2" />
                 <span class="text-muted-foreground text-xs">{{ systemStatus.cpu_model || '--' }} · {{ systemStatus.cpu_cores || '--' }} 核 / {{ systemStatus.cpu_threads || '--' }} 线程</span>
               </div>
               <Separator />
               <div class="flex flex-col gap-2">
                 <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><MemoryStick class="text-muted-foreground size-4" />内存</span><strong class="tabular-nums">{{ hasMetric(systemStatus.memory_usage) ? `${percentage(systemStatus.memory_usage)}%` : '--' }}</strong></div>
-                <Progress :model-value="percentage(systemStatus.memory_usage)" />
+                <Progress :model-value="percentage(systemStatus.memory_usage)" class="h-2" />
                 <span class="text-muted-foreground text-xs">已用 {{ formatMemory(systemStatus.used_memory) }} / {{ formatMemory(systemStatus.total_memory) }}</span>
               </div>
               <Separator />
               <div class="flex flex-col gap-2">
                 <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><HardDrive class="text-muted-foreground size-4" />磁盘</span><strong class="tabular-nums">{{ hasMetric(systemStatus.disk_usage) ? `${percentage(systemStatus.disk_usage)}%` : '--' }}</strong></div>
-                <Progress :model-value="percentage(systemStatus.disk_usage)" />
+                <Progress :model-value="percentage(systemStatus.disk_usage)" class="h-2" />
                 <span class="text-muted-foreground text-xs">空闲 {{ formatDisk(systemStatus.free_disk) }} / {{ formatDisk(systemStatus.total_disk) }}</span>
               </div>
               <Separator />
               <div class="flex flex-col gap-2">
                 <div class="flex items-center justify-between"><span class="text-sm">系统负载</span><strong class="tabular-nums">{{ formatDecimal(systemStatus.cpu_load1) }}</strong></div>
-                <Progress :model-value="loadPercentage(systemStatus.cpu_load1, systemStatus.cpu_threads || systemStatus.cpu_cores)" />
+                <Progress :model-value="loadPercentage(systemStatus.cpu_load1, systemStatus.cpu_threads || systemStatus.cpu_cores)" class="h-2" />
                 <span class="text-muted-foreground text-xs">1 / 5 / 15 分钟 · {{ formatDecimal(systemStatus.cpu_load1) }} / {{ formatDecimal(systemStatus.cpu_load5) }} / {{ formatDecimal(systemStatus.cpu_load15) }}</span>
               </div>
             </template>
@@ -336,13 +345,13 @@ onMounted(() => {
           <CardFooter class="text-muted-foreground justify-between gap-2 text-xs"><span>运行 {{ systemStatus.uptime_formatted || '--' }}</span><span>{{ formatDateTime(systemStatus.current_time) }}</span></CardFooter>
         </Card>
 
-        <Card size="sm">
+        <Card>
           <CardHeader>
             <CardTitle class="flex items-center gap-2"><PackageCheck />版本与更新</CardTitle>
             <CardDescription>游戏服务端与 Steam 版本</CardDescription>
             <CardAction><Tooltip><TooltipTrigger as-child><Button variant="ghost" size="icon-sm" :disabled="versionLoading" aria-label="检查游戏版本" @click="refreshVersion"><Spinner v-if="versionLoading" /><RefreshCw v-else /></Button></TooltipTrigger><TooltipContent>检查游戏版本</TooltipContent></Tooltip></CardAction>
           </CardHeader>
-          <CardContent class="flex flex-col gap-3 pt-0">
+          <CardContent class="flex flex-col gap-4 pt-1">
             <Alert v-if="versionError" variant="destructive"><CircleAlert /><AlertTitle>版本读取失败</AlertTitle><AlertDescription>{{ versionError }}</AlertDescription></Alert>
             <template v-else>
               <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">

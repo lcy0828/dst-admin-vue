@@ -9,7 +9,6 @@ import {
   UserRound
 } from '@lucide/vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   DropdownMenu,
@@ -60,19 +59,18 @@ function isGroupActive(item) {
 
 <template>
   <Sidebar collapsible="icon">
-    <SidebarHeader>
+    <SidebarHeader class="p-3">
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton size="lg" as-child tooltip="服务总览">
             <RouterLink to="/preview-v2">
-              <span class="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-md">
+              <span class="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
                 <Gamepad2 />
               </span>
               <span class="grid min-w-0 flex-1 text-left leading-tight">
                 <span class="truncate font-semibold">{{ systemName }}</span>
-                <span class="text-muted-foreground truncate text-xs">DST Server Console</span>
+                <span class="text-muted-foreground truncate text-xs">DST Admin Console</span>
               </span>
-              <Badge variant="outline" class="group-data-[collapsible=icon]:hidden">V2</Badge>
             </RouterLink>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -120,7 +118,7 @@ function isGroupActive(item) {
       </SidebarGroup>
     </SidebarContent>
 
-    <SidebarFooter>
+    <SidebarFooter class="p-3">
       <SidebarMenu>
         <SidebarMenuItem>
           <DropdownMenu>

@@ -292,7 +292,8 @@ export function hasMetric(value) {
 
 export function percentage(value) {
   if (!hasMetric(value)) return 0
-  return Math.max(0, Math.min(100, Number(value)))
+  const normalized = Math.max(0, Math.min(100, Number(value)))
+  return Math.round(normalized * 10) / 10
 }
 
 export function loadPercentage(value, capacity) {

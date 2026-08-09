@@ -76,7 +76,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Select v-model="selectedId" :disabled="loading" @update:model-value="activateSelectedTarget">
-    <SelectTrigger size="sm" class="w-44 md:w-56" aria-label="选择管理目标">
+    <SelectTrigger size="sm" class="w-40 sm:w-52 md:w-60" aria-label="选择管理目标">
       <Spinner v-if="loading" />
       <ServerIcon v-else />
       <SelectValue placeholder="选择管理目标" />

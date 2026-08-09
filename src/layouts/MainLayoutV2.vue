@@ -13,8 +13,7 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator
+  BreadcrumbPage
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -158,13 +157,11 @@ onBeforeUnmount(() => {
       @logout="logout"
     />
     <SidebarInset class="min-w-0">
-      <header class="bg-background/95 sticky top-0 flex h-14 shrink-0 items-center gap-2 border-b px-3 backdrop-blur md:px-4">
+      <header class="bg-background/95 sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
         <SidebarTrigger />
         <Separator orientation="vertical" class="mr-1 h-4" />
-        <Breadcrumb class="hidden sm:block">
+        <Breadcrumb class="hidden md:block">
           <BreadcrumbList>
-            <BreadcrumbItem>新界面</BreadcrumbItem>
-            <BreadcrumbSeparator />
             <BreadcrumbItem><BreadcrumbPage>服务总览</BreadcrumbPage></BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -187,8 +184,8 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <div class="bg-muted/20 min-h-0 flex-1 overflow-auto">
-        <main id="main-content-v2" class="mx-auto w-full max-w-[1600px] p-4 md:p-6" tabindex="-1">
+      <div class="bg-muted/30 min-h-0 flex-1 overflow-auto">
+        <main id="main-content-v2" class="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-6 lg:px-8 lg:py-8" tabindex="-1">
           <Card v-if="remoteContextBlocked" class="mx-auto mt-8 max-w-3xl">
             <CardHeader>
               <CardTitle class="flex items-center gap-2"><Settings />{{ runtimeTarget.name }}</CardTitle>

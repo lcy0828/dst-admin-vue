@@ -80,7 +80,12 @@
 }
 
 /* V2 preview uses the unmodified shadcn zinc semantic palette. */
+html:has(body[data-ui-version='v2']) {
+  font-size: 16px;
+}
+
 body[data-ui-version='v2'] {
+  font-size: 1rem;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
