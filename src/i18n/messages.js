@@ -3,6 +3,7 @@ import { announcementMessages } from './announcementMessages.js'
 import { backupMessages } from './backupMessages.js'
 import { commandMessages } from './commandMessages.js'
 import { corePageMessages } from './corePages.js'
+import { cronGroupMessages } from './cronGroupMessages.js'
 import { cronLogMessages } from './cronLogMessages.js'
 import { logToolsMessages } from './logToolsMessages.js'
 import { modMessages } from './modMessages.js'
@@ -22,6 +23,7 @@ export const messages = {
     ...backupMessages['zh-CN'],
     ...commandMessages['zh-CN'],
     ...corePageMessages['zh-CN'],
+    ...cronGroupMessages['zh-CN'],
     ...cronLogMessages['zh-CN'],
     ...logToolsMessages['zh-CN'],
     ...modMessages['zh-CN'],
@@ -506,6 +508,7 @@ export const messages = {
     ...backupMessages['en-US'],
     ...commandMessages['en-US'],
     ...corePageMessages['en-US'],
+    ...cronGroupMessages['en-US'],
     ...cronLogMessages['en-US'],
     ...logToolsMessages['en-US'],
     ...modMessages['en-US'],

@@ -1,35 +1,35 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">任务组管理</h1><p class="mt-1 text-sm text-muted-foreground">按用途组织任务并统一控制启用状态。</p></div>
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ cg('cronGroups.list.title') }}</h1><p class="mt-1 text-sm text-muted-foreground">{{ cg('cronGroups.list.subtitle') }}</p></div>
       <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="fetchData" @change="fetchData" />
-        <UiButton size="sm" @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton>
-        <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton>
-        <UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton>
+        <UiButton size="sm" @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />{{ cg('cronGroups.actions.addGroup') }}</UiButton>
+        <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ cg('cronGroups.actions.refresh') }}</UiButton>
+        <UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />{{ cg('cronGroups.actions.backToTasks') }}</UiButton>
       </div>
     </header>
     <Card>
-      <CardHeader><CardTitle>任务组列表</CardTitle><CardDescription>查看任务数量、类型和当前启用状态。</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{{ cg('cronGroups.list.cardTitle') }}</CardTitle><CardDescription>{{ cg('cronGroups.list.cardDescription') }}</CardDescription></CardHeader>
       <CardContent>
         <div v-if="loading && groupList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 5" :key="index" class="h-12 w-full" /></div>
-        <Empty v-else-if="groupList.length === 0"><EmptyHeader><EmptyTitle>暂无任务组</EmptyTitle><EmptyDescription>创建任务组以分类管理自动化任务。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton></EmptyContent></Empty>
+        <Empty v-else-if="groupList.length === 0"><EmptyHeader><EmptyTitle>{{ cg('cronGroups.list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ cg('cronGroups.list.emptyDescription') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />{{ cg('cronGroups.actions.addGroup') }}</UiButton></EmptyContent></Empty>
         <div v-else class="overflow-x-auto">
           <ShadcnTable>
-            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>组名称</TableHead><TableHead>描述</TableHead><TableHead>类型</TableHead><TableHead>任务数量</TableHead><TableHead>状态</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>{{ cg('cronGroups.list.columns.id') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.name') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.description') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.type') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.taskCount') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.status') }}</TableHead><TableHead class="text-right">{{ cg('cronGroups.list.columns.actions') }}</TableHead></TableRow></TableHeader>
             <TableBody>
               <TableRow v-for="group in groupList" :key="group.id">
                 <TableCell>{{ group.id }}</TableCell>
-                <TableCell><router-link :to="`/cron/group/${group.id}`" class="link-type">{{ group.name }}</router-link></TableCell>
-                <TableCell class="max-w-64 truncate">{{ group.description || '-' }}</TableCell>
+                <TableCell><router-link :to="`/cron/group/${group.id}`" class="link-type">{{ groupName(group) }}</router-link></TableCell>
+                <TableCell class="max-w-64 truncate">{{ groupDescription(group) }}</TableCell>
                 <TableCell><Badge variant="outline">{{ getTypeLabel(group.type) }}</Badge></TableCell>
-                <TableCell><router-link :to="`/cron/group/${group.id}`"><Badge variant="secondary">{{ group.task_count || 0 }} 个任务</Badge></router-link></TableCell>
-                <TableCell><Badge :variant="group.status === 1 ? 'default' : 'secondary'">{{ group.status === 1 ? '启用' : '禁用' }}</Badge></TableCell>
+                <TableCell><router-link :to="`/cron/group/${group.id}`"><Badge variant="secondary">{{ taskCountLabel(group.task_count) }}</Badge></router-link></TableCell>
+                <TableCell><Badge :variant="statusMeta(group.status).variant">{{ statusMeta(group.status).label }}</Badge></TableCell>
                 <TableCell><div class="flex min-w-max justify-end gap-1">
-                  <UiButton size="icon-sm" variant="outline" :title="group.status === 1 ? '禁用' : '启用'" :aria-label="group.status === 1 ? `禁用任务组 ${group.name}` : `启用任务组 ${group.name}`" @click="handleToggleStatus(group)"><CircleOff v-if="group.status === 1" /><CircleCheck v-else /></UiButton>
-                  <UiButton size="icon-sm" variant="ghost" title="编辑" :aria-label="`编辑任务组 ${group.name}`" @click="handleEdit(group)"><Pencil /></UiButton>
-                  <UiButton size="icon-sm" variant="ghost" title="查看详情" :aria-label="`查看任务组 ${group.name}`" @click="$router.push(`/cron/group/${group.id}`)"><Eye /></UiButton>
-                  <UiButton size="icon-sm" variant="ghost" title="统计数据" :aria-label="`查看任务组 ${group.name} 的统计数据`" @click="viewGroupStats(group.id)"><ChartNoAxesColumn /></UiButton>
-                  <UiButton size="icon-sm" variant="destructive" title="删除" :aria-label="`删除任务组 ${group.name}`" :disabled="group.task_count > 0" @click="handleDelete(group)"><Trash2 /></UiButton>
+                  <UiButton size="icon-sm" variant="outline" :title="cg(group.status === 1 ? 'cronGroups.values.disabled' : 'cronGroups.values.enabled')" :aria-label="cg(group.status === 1 ? 'cronGroups.list.aria.disable' : 'cronGroups.list.aria.enable', { name: groupName(group) })" @click="handleToggleStatus(group)"><CircleOff v-if="group.status === 1" /><CircleCheck v-else /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" :title="cg('cronGroups.actions.edit')" :aria-label="cg('cronGroups.list.aria.edit', { name: groupName(group) })" @click="handleEdit(group)"><Pencil /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" :title="cg('cronGroups.actions.details')" :aria-label="cg('cronGroups.list.aria.details', { name: groupName(group) })" @click="$router.push(`/cron/group/${group.id}`)"><Eye /></UiButton>
+                  <UiButton size="icon-sm" variant="ghost" :title="cg('cronGroups.actions.statistics')" :aria-label="cg('cronGroups.list.aria.statistics', { name: groupName(group) })" @click="viewGroupStats(group.id)"><ChartNoAxesColumn /></UiButton>
+                  <UiButton size="icon-sm" variant="destructive" :title="cg('cronGroups.actions.delete')" :aria-label="cg('cronGroups.list.aria.delete', { name: groupName(group) })" :disabled="group.task_count > 0" @click="handleDelete(group)"><Trash2 /></UiButton>
                 </div></TableCell>
               </TableRow>
             </TableBody>
@@ -40,21 +40,21 @@
 
     <UiDialog v-model:open="statsDialogVisible">
       <DialogScrollContent class="max-w-4xl">
-        <DialogHeader><DialogTitle>任务组统计</DialogTitle><DialogDescription>近 30 天任务执行情况</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ cg('cronGroups.statistics.title') }}</DialogTitle><DialogDescription>{{ cg('cronGroups.statistics.description') }}</DialogDescription></DialogHeader>
         <div v-if="statsLoading" class="flex flex-col gap-3"><Skeleton class="h-20 w-full" /><Skeleton class="h-72 w-full" /></div>
         <div v-else class="group-stats">
         <div v-if="groupStats" class="stats-overview">
-          <Card><CardHeader><CardTitle>总任务数</CardTitle><CardDescription>组内全部任务</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ groupStats.total_tasks }}</strong></CardContent></Card>
-          <Card><CardHeader><CardTitle>启用任务数</CardTitle><CardDescription>当前参与调度</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ groupStats.enabled_tasks }}</strong></CardContent></Card>
-          <Card><CardHeader><CardTitle>成功率</CardTitle><CardDescription>近 30 天执行结果</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ groupStats.success_rate }}%</strong></CardContent></Card>
-          <Card><CardHeader><CardTitle>平均耗时</CardTitle><CardDescription>近 30 天已完成执行</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ groupStats.avg_duration }}<span class="ml-1 text-sm font-normal text-muted-foreground">秒</span></strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>{{ cg('cronGroups.statistics.totalTasks') }}</CardTitle><CardDescription>{{ cg('cronGroups.statistics.totalTasksDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ formatNumber(groupStats.total_tasks) }}</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>{{ cg('cronGroups.statistics.enabledTasks') }}</CardTitle><CardDescription>{{ cg('cronGroups.statistics.enabledTasksDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ formatNumber(groupStats.enabled_tasks) }}</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>{{ cg('cronGroups.statistics.successRate') }}</CardTitle><CardDescription>{{ cg('cronGroups.statistics.successRateDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ formatPercent(groupStats.success_rate) }}</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>{{ cg('cronGroups.statistics.averageDuration') }}</CardTitle><CardDescription>{{ cg('cronGroups.statistics.averageDurationDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ formatDuration(groupStats.avg_duration) }}</strong></CardContent></Card>
         </div>
         <div class="stats-charts" v-if="groupStats">
           <div id="groupExecutionChart" class="h-72 w-full"></div>
         </div>
-        <Empty v-else><EmptyHeader><EmptyTitle>暂无统计数据</EmptyTitle></EmptyHeader></Empty>
+        <Empty v-else><EmptyHeader><EmptyTitle>{{ cg('cronGroups.statistics.empty') }}</EmptyTitle></EmptyHeader></Empty>
         </div>
-        <DialogFooter><UiButton variant="outline" @click="statsDialogVisible = false">关闭</UiButton><UiButton @click="$router.push('/cron/charts')">查看更多图表</UiButton></DialogFooter>
+        <DialogFooter><UiButton variant="outline" @click="statsDialogVisible = false">{{ cg('cronGroups.actions.close') }}</UiButton><UiButton @click="$router.push('/cron/charts')">{{ cg('cronGroups.actions.moreCharts') }}</UiButton></DialogFooter>
       </DialogScrollContent>
     </UiDialog>
   </div>
@@ -74,6 +74,18 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  cronGroupDescriptionLabel,
+  cronGroupNameLabel,
+  cronGroupStatusMeta,
+  cronGroupText,
+  cronGroupTypeLabel,
+  formatCronGroupDate,
+  formatCronGroupDuration,
+  formatCronGroupError,
+  formatCronGroupNumber,
+  formatCronGroupPercent
+} from '@/i18n/cronGroupMessages';
 import { confirmAction } from '@/lib/feedback';
 import { getSystemPreferences } from '@/utils/systemPreferences';
 
@@ -94,11 +106,54 @@ export default {
       groupList: [],
       statsDialogVisible: false,
       groupStats: null,
+      chartData: null,
       executionChart: null,
       currentGroupId: null
     };
   },
+  watch: {
+    '$i18n.locale'() {
+      if (this.statsDialogVisible && this.chartData) {
+        this.$nextTick(() => this.initGroupExecutionChart(this.chartData));
+      }
+    },
+    statsDialogVisible(visible) {
+      if (!visible) this.disposeChart();
+    }
+  },
   methods: {
+    cg(key, parameters = {}) {
+      return cronGroupText(this.$i18n.locale, key, parameters);
+    },
+    groupName(group) {
+      return cronGroupNameLabel(group, this.cg);
+    },
+    groupDescription(group) {
+      return cronGroupDescriptionLabel(group, this.cg);
+    },
+    getTypeLabel(type) {
+      return cronGroupTypeLabel(type, this.cg);
+    },
+    statusMeta(status) {
+      return cronGroupStatusMeta(status, this.cg);
+    },
+    taskCountLabel(value) {
+      return this.cg('cronGroups.list.taskCount', { count: this.formatNumber(value || 0) });
+    },
+    formatNumber(value) {
+      return formatCronGroupNumber(value, this.$i18n.locale);
+    },
+    formatPercent(value) {
+      return formatCronGroupPercent(value, this.$i18n.locale);
+    },
+    formatDuration(value) {
+      return formatCronGroupDuration(value, this.$i18n.locale, this.cg);
+    },
+    disposeChart() {
+      if (!this.executionChart) return;
+      this.executionChart.dispose();
+      this.executionChart = null;
+    },
     chartColor(variable) {
       return getComputedStyle(document.documentElement).getPropertyValue(variable).trim() || getSystemPreferences().theme;
     },
@@ -124,62 +179,46 @@ export default {
     },
     fetchData() {
       this.loading = true;
-      console.log('开始获取任务组列表');
       cronTaskApi.getGroups()
         .then(response => {
-          console.log('获取任务组列表响应:', response);
-          
-          // 处理各种可能的响应格式
           let groupsData = [];
           let success = false;
-          
+
           if (response && response.data) {
-            // 处理标准格式 {code: 200, data: [...], msg: "success"}
             if (response.data.code === 200 && Array.isArray(response.data.data)) {
               groupsData = response.data.data;
               success = true;
-            } 
-            // 处理嵌套格式 {code: 200, data: {items: [...], total: 10}}
-            else if (response.data.code === 200 && response.data.data && Array.isArray(response.data.data.items)) {
+            } else if (response.data.code === 200 && response.data.data && Array.isArray(response.data.data.items)) {
               groupsData = response.data.data.items;
               success = true;
-            }
-            // 处理旧API格式 {status: 200, data: [...]}
-            else if (response.data.status === 200 && Array.isArray(response.data.data)) {
+            } else if (response.data.status === 200 && Array.isArray(response.data.data)) {
               groupsData = response.data.data;
               success = true;
-            }
-            // 直接返回数组的情况
-            else if (Array.isArray(response.data)) {
+            } else if (Array.isArray(response.data)) {
               groupsData = response.data;
               success = true;
             }
           }
-          
+
           if (success) {
-            console.log('原始任务组数据:', groupsData);
-            
-            // 遍历任务组并处理数据
             groupsData.forEach(group => {
-              // 确保task_count属性存在
               if (group.task_count === undefined && group.tasks !== undefined) {
                 group.task_count = Array.isArray(group.tasks) ? group.tasks.length : 0;
               } else if (group.task_count === undefined) {
                 group.task_count = 0;
               }
             });
-            
-            console.log('处理后的任务组数据:', groupsData);
             this.groupList = groupsData;
           } else {
-            console.error('无法识别的响应格式:', response);
-            toast.error(response.data?.msg || response.data?.message || '获取任务组列表失败：无法识别的响应格式');
+            toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.list', {
+              detail: response?.data?.msg || response?.data?.message || this.cg('cronGroups.errors.invalidResponse')
+            }));
             this.groupList = [];
           }
         })
         .catch(error => {
-          console.error('获取任务组列表失败:', error);
-          toast.error('获取任务组列表失败');
+          console.error('Could not load task groups:', error);
+          toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.list', error));
         })
         .finally(() => {
           this.loading = false;
@@ -190,111 +229,109 @@ export default {
     },
     handleDelete(row) {
       if (row.task_count > 0) {
-        toast.warning('该任务组下还有任务，无法删除');
+        toast.warning(this.cg('cronGroups.feedback.groupNotEmpty'));
         return;
       }
-      
-      confirmAction('确定要删除此任务组吗？删除后不可恢复。', '确认删除', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+
+      confirmAction(this.cg('cronGroups.confirmation.deleteGroup'), this.cg('cronGroups.confirmation.deleteGroupTitle'), {
+        confirmButtonText: this.cg('cronGroups.actions.confirm'),
+        cancelButtonText: this.cg('cronGroups.actions.cancel'),
         type: 'warning'
       }).then(() => {
         cronTaskApi.deleteGroup(row.id)
           .then(response => {
-            console.log('删除任务组响应:', response);
             if (response.data && (response.data.code === 200 || response.data.status === 200)) {
-              toast.success('删除成功');
+              toast.success(this.cg('cronGroups.feedback.groupDeleted'));
               this.fetchData();
             } else {
-              toast.error(response.data?.msg || response.data?.message || '删除失败');
+              toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.deleteGroup', response));
             }
           })
           .catch(error => {
-            console.error('删除任务组失败:', error);
-            toast.error('删除任务组失败');
+            console.error('Could not delete the task group:', error);
+            toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.deleteGroup', error));
           });
       }).catch(() => {
-        toast.info('已取消删除');
+        toast.info(this.cg('cronGroups.feedback.deleteCanceled'));
       });
     },
     handleToggleStatus(row) {
-      const action = row.status === 1 ? '禁用' : '启用';
-      const actionApi = row.status === 1 ? cronTaskApi.disableGroup : cronTaskApi.enableGroup;
-      
-      confirmAction(`确定要${action}此任务组吗？${action}后组内所有任务将被${action}。`, `确认${action}`, {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      const disabling = row.status === 1;
+      const actionApi = disabling ? cronTaskApi.disableGroup : cronTaskApi.enableGroup;
+      const confirmationKey = disabling ? 'disableGroup' : 'enableGroup';
+      const errorKey = disabling ? 'disableGroup' : 'enableGroup';
+
+      confirmAction(this.cg(`cronGroups.confirmation.${confirmationKey}`), this.cg(`cronGroups.confirmation.${confirmationKey}Title`), {
+        confirmButtonText: this.cg('cronGroups.actions.confirm'),
+        cancelButtonText: this.cg('cronGroups.actions.cancel'),
         type: 'warning'
       }).then(() => {
         actionApi(row.id)
           .then(response => {
-            console.log(`${action}任务组响应:`, response);
             if (response.data && (response.data.code === 200 || response.data.status === 200)) {
-              toast.success(`${action}成功`);
+              toast.success(this.cg(disabling ? 'cronGroups.feedback.groupDisabled' : 'cronGroups.feedback.groupEnabled'));
               this.fetchData();
             } else {
-              toast.error(response.data?.msg || response.data?.message || `${action}失败`);
+              toast.error(formatCronGroupError(this.cg, `cronGroups.errors.${errorKey}`, response));
             }
           })
           .catch(error => {
-            console.error(`${action}任务组失败:`, error);
-            toast.error(`${action}任务组失败`);
+            console.error(`Could not ${disabling ? 'disable' : 'enable'} the task group:`, error);
+            toast.error(formatCronGroupError(this.cg, `cronGroups.errors.${errorKey}`, error));
           });
       }).catch(() => {
-        toast.info(`已取消${action}`);
+        toast.info(this.cg(disabling ? 'cronGroups.feedback.disableCanceled' : 'cronGroups.feedback.enableCanceled'));
       });
     },
-    getTypeLabel(type) {
-      const types = {
-        'system': '系统',
-        'world': '世界',
-        'custom': '自定义'
-      };
-      return types[type] || '未知';
-    },
-    viewGroupStats(groupId) {
+    async viewGroupStats(groupId) {
       this.statsDialogVisible = true;
       this.statsLoading = true;
       this.currentGroupId = groupId;
-      
-      // 获取任务组统计数据
-      cronTaskApi.getGroupStats(groupId)
-        .then(response => {
-          console.log('获取任务组统计数据响应:', response);
-          if (response.data && (response.data.code === 200 || response.data.status === 200)) {
-            this.groupStats = response.data.data;
-            
-            // 获取任务组执行图表数据
-            cronTaskApi.getGroupChart(groupId, { days: 30 })
-              .then(chartResponse => {
-                console.log('获取任务组图表数据响应:', chartResponse);
-                if (chartResponse.data && (chartResponse.data.code === 200 || chartResponse.data.status === 200)) {
-                  this.$nextTick(() => {
-                    this.initGroupExecutionChart(chartResponse.data.data);
-                  });
-                }
-              });
-          } else {
-            toast.error(response.data?.msg || response.data?.message || '获取任务组统计失败');
+      this.groupStats = null;
+      this.chartData = null;
+      this.disposeChart();
+
+      try {
+        const response = await cronTaskApi.getGroupStats(groupId);
+        if (!response.data || (response.data.code !== 200 && response.data.status !== 200)) {
+          toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.statistics', response));
+          return;
+        }
+        this.groupStats = response.data.data;
+
+        try {
+          const chartResponse = await cronTaskApi.getGroupChart(groupId, { days: 30 });
+          if (!chartResponse.data || (chartResponse.data.code !== 200 && chartResponse.data.status !== 200)) {
+            toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.chart', chartResponse));
+            return;
           }
-        })
-        .catch(error => {
-          console.error('获取任务组统计失败:', error);
-          toast.error('获取任务组统计失败');
-        })
-        .finally(() => {
+          this.chartData = chartResponse.data.data || {};
           this.statsLoading = false;
-        });
+          await this.$nextTick();
+          this.initGroupExecutionChart(this.chartData);
+        } catch (error) {
+          console.error('Could not load the task group chart:', error);
+          toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.chart', error));
+        }
+      } catch (error) {
+        console.error('Could not load task group statistics:', error);
+        toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.statistics', error));
+      } finally {
+        this.statsLoading = false;
+      }
     },
     initGroupExecutionChart(data) {
       const chartDom = document.getElementById('groupExecutionChart');
       if (!chartDom) return;
-      
+
+      this.disposeChart();
       this.executionChart = echarts.init(chartDom);
-      
+
+      const successLabel = this.cg('cronGroups.statistics.success');
+      const failedLabel = this.cg('cronGroups.statistics.failed');
       const option = {
         title: {
-          text: '任务组执行情况统计（近30天）',
+          text: this.cg('cronGroups.statistics.chartTitle'),
           left: 'center'
         },
         tooltip: {
@@ -304,7 +341,7 @@ export default {
           }
         },
         legend: {
-          data: ['成功', '失败'],
+          data: [successLabel, failedLabel],
           bottom: 10
         },
         grid: {
@@ -316,14 +353,14 @@ export default {
         },
         xAxis: {
           type: 'category',
-          data: data.dates || []
+          data: (data.dates || []).map(value => formatCronGroupDate(value, this.$i18n.locale))
         },
         yAxis: {
           type: 'value'
         },
         series: [
           {
-            name: '成功',
+            name: successLabel,
             type: 'bar',
             stack: 'total',
             itemStyle: {
@@ -332,7 +369,7 @@ export default {
             data: data.success || []
           },
           {
-            name: '失败',
+            name: failedLabel,
             type: 'bar',
             stack: 'total',
             itemStyle: {
@@ -342,14 +379,12 @@ export default {
           }
         ]
       };
-      
+
       this.executionChart.setOption(this.themedChartOption(option));
     }
   },
   beforeUnmount() {
-    if (this.executionChart) {
-      this.executionChart.dispose();
-    }
+    this.disposeChart();
   }
 };
 </script>
