@@ -1,7 +1,7 @@
 <template>
   <div class="player-list-page">
     <div class="page-header">
-      <div class="title-container"><Users /><h1>玩家列表</h1></div>
+      <div class="title-container"><h1>玩家列表</h1><p>查询玩家记录、在线状态并执行世界内操作。</p></div>
       <div class="action-buttons">
         <UiButton size="sm" variant="outline" @click="refreshData" :disabled="loading"><RefreshCw data-icon="inline-start" />刷新</UiButton>
         <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />手动更新</UiButton>
@@ -11,7 +11,7 @@
       </div>
     </div>
 
-    <Card size="sm" class="filter-card">
+    <Card class="filter-card">
       <CardHeader><div><CardTitle>筛选玩家</CardTitle><CardDescription>按存档、在线状态、角色或关键词缩小范围。</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-form">
@@ -44,14 +44,20 @@
       </CardContent>
     </Card>
 
-    <Card size="sm" class="table-card">
+    <Card class="table-card">
       <CardHeader class="table-operations">
         <div><CardTitle>玩家列表</CardTitle><CardDescription>共 {{ pagination.total }} 名玩家</CardDescription></div>
-        <UiButton size="sm" @click="exportPlayerData"><Download data-icon="inline-start" />导出数据</UiButton>
+        <CardAction><UiButton size="sm" @click="exportPlayerData" :disabled="loading || Boolean(loadError)"><Download data-icon="inline-start" />导出数据</UiButton></CardAction>
       </CardHeader>
       <CardContent>
+        <Alert v-if="loadError" variant="destructive" class="mb-4">
+          <TriangleAlert />
+          <AlertTitle>玩家列表加载失败</AlertTitle>
+          <AlertDescription>{{ loadError }}</AlertDescription>
+          <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">重试</UiButton></AlertAction>
+        </Alert>
         <div v-if="loading" class="loading-state"><Spinner /><span>正在加载玩家列表</span></div>
-        <div v-else-if="playerList.length > 0" class="table-wrap">
+        <div v-else-if="!loadError && playerList.length > 0" class="table-wrap">
           <UiTable>
             <TableHeader>
               <TableRow>
@@ -114,10 +120,10 @@
             </TableBody>
           </UiTable>
         </div>
-        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>暂无玩家数据</EmptyTitle><EmptyDescription>选择存档或手动更新玩家列表。</EmptyDescription></EmptyHeader></Empty>
+        <Empty v-else-if="!loadError"><EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>暂无玩家数据</EmptyTitle><EmptyDescription>选择存档或手动更新玩家列表。</EmptyDescription></EmptyHeader></Empty>
 
       </CardContent>
-      <CardFooter v-if="!loading && pagination.total > 0" class="pagination-bar">
+      <CardFooter v-if="!loading && !loadError && pagination.total > 0" class="pagination-bar">
         <div class="page-size-control">
           <span>每页</span>
           <NativeSelect id="player-page-size" aria-label="每页显示数量" :model-value="String(pagination.page_size)" @update:model-value="value => handleSizeChange(Number(value))">
@@ -230,11 +236,11 @@
 import { Clock3, Crown, Download, ExternalLink, Globe2, MoreHorizontal, RefreshCw, Search, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { playerApi } from '@/api/playerApi';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -258,12 +264,14 @@ export default {
   name: 'PlayerList',
   components: {
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     Avatar,
     AvatarFallback,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardFooter,
@@ -346,6 +354,7 @@ export default {
       // 玩家列表数据
       playerList: [],
       loading: false,
+      loadError: '',
 
       // 分页参数
       pagination: {
@@ -520,6 +529,7 @@ export default {
     // 获取玩家列表
     fetchPlayerList() {
       this.loading = true;
+      this.loadError = '';
 
       const params = {
         page: this.pagination.page,
@@ -540,9 +550,10 @@ export default {
         })
         .catch(error => {
           console.error('获取玩家列表失败:', error);
+          this.loadError = error?.response?.data?.message || error.message || '未知错误';
           this.playerList = [];
           this.pagination.total = 0;
-          toast.error(`获取玩家列表失败: ${error.message || '未知错误'}`);
+          toast.error(`获取玩家列表失败: ${this.loadError}`);
         })
         .finally(() => {
           this.loading = false;
@@ -1216,8 +1227,11 @@ export default {
 
 <style scoped>
 .player-list-page {
+  display: flex;
   width: 100%;
   min-width: 0;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .page-header {
@@ -1225,24 +1239,25 @@ export default {
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 16px;
 }
 
 .title-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  min-width: 0;
   white-space: nowrap;
 }
 
 .title-container h1 {
-  font-size: 18px;
+  margin: 0;
+  font-size: 24px;
   font-weight: 600;
-  line-height: 28px;
+  line-height: 32px;
 }
 
-.filter-card {
-  margin-bottom: 16px;
+.title-container p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  white-space: normal;
 }
 
 .filter-form {

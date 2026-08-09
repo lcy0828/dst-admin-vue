@@ -1,8 +1,8 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
-    <header class="flex min-w-0 flex-col gap-1"><h1 class="text-xl font-semibold">规则管理</h1><p class="text-sm text-muted-foreground">配置房间日志的识别方式、优先级与启用状态。</p></header>
+    <header class="flex min-w-0 flex-col gap-1"><h1 class="text-2xl font-semibold tracking-normal">规则管理</h1><p class="text-sm text-muted-foreground">配置房间日志的识别方式、优先级与启用状态。</p></header>
 
-    <Alert v-if="loadError" variant="destructive"><CircleAlertIcon /><AlertTitle>解析规则加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="selectedRoomId ? getParserRulesList() : loadRooms()">重试</UiButton></AlertAction></Alert>
+    <Alert v-if="loadError" variant="destructive"><CircleAlertIcon /><AlertTitle>{{ loadErrorContext === 'rooms' ? '存档列表加载失败' : '解析规则加载失败' }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="loadErrorContext === 'rooms' ? loadRooms() : getParserRulesList()">重试</UiButton></AlertAction></Alert>
 
     <Card>
       <CardHeader>
@@ -11,19 +11,21 @@
           <Field><FieldLabel for="rule-room" class="sr-only">存档</FieldLabel>
           <UiSelect
             v-model="selectedRoomId"
+            :disabled="loading.rooms"
             @update:model-value="getParserRulesList"
           >
-            <SelectTrigger id="rule-room" class="room-select"><SelectValue placeholder="请选择存档" /></SelectTrigger>
+            <SelectTrigger id="rule-room" class="room-select"><SelectValue :placeholder="loading.rooms ? '正在加载存档' : '请选择存档'" /></SelectTrigger>
             <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
           </UiSelect></Field>
-          <UiButton size="sm" @click="addParserRule"><PlusIcon data-icon="inline-start" />添加解析规则</UiButton>
+          <UiButton size="sm" :disabled="loading.rooms || loading.parser || !selectedRoomId" @click="addParserRule"><PlusIcon data-icon="inline-start" />添加解析规则</UiButton>
         </CardAction>
       </CardHeader>
-      <CardContent><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>规则名称</TableHead><TableHead>描述</TableHead><TableHead>日志类型</TableHead><TableHead>匹配模式</TableHead><TableHead>模式类型</TableHead><TableHead><UiButton variant="ghost" size="xs" @click="togglePrioritySort">优先级<ArrowUpDownIcon data-icon="inline-end" /></UiButton></TableHead><TableHead>状态</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
-        <TableRow v-for="rule in displayedParserRules" :key="rule.id"><TableCell>{{ rule.id }}</TableCell><TableCell>{{ rule.name }}</TableCell><TableCell class="max-w-60 truncate">{{ rule.description }}</TableCell><TableCell><Badge :variant="getLogTypeTag(rule.log_type)">{{ rule.log_type }}</Badge></TableCell><TableCell><div class="pattern-container"><span class="max-w-64 truncate">{{ rule.pattern }}</span><Tooltip><TooltipTrigger as-child><UiButton variant="ghost" size="icon-xs" aria-label="复制匹配模式" @click.stop="copyPattern(rule.pattern)"><CopyIcon /></UiButton></TooltipTrigger><TooltipContent>复制匹配模式</TooltipContent></Tooltip></div></TableCell><TableCell><Badge :variant="getMatchModeTag(rule.match_mode)">{{ getMatchModeText(rule.match_mode) }}</Badge></TableCell><TableCell>{{ rule.priority }}</TableCell><TableCell><UiSwitch v-model="rule.is_enabled" :aria-label="`切换规则 ${rule.name}`" @update:model-value="toggleRuleStatus(rule)" /></TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="editParserRule(rule)">编辑</UiButton><UiButton variant="destructive" size="sm" :disabled="rule.built_in" :title="rule.built_in ? '内建规则不能删除' : '删除规则'" @click="removeParserRule(rule)">删除</UiButton></div></TableCell></TableRow>
-        <TableEmpty v-if="loading.parser" :colspan="9"><div class="flex flex-col gap-2 py-4"><Skeleton v-for="index in 4" :key="index" class="h-8 w-full" /></div></TableEmpty>
-        <TableEmpty v-else-if="displayedParserRules.length === 0" :colspan="9"><Empty><EmptyHeader><EmptyTitle>暂无解析规则</EmptyTitle><EmptyDescription>选择存档后添加第一条日志解析规则。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
+      <CardContent><ShadcnTable class="min-w-[1120px]"><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>规则名称</TableHead><TableHead>描述</TableHead><TableHead>日志类型</TableHead><TableHead>匹配模式</TableHead><TableHead>模式类型</TableHead><TableHead><UiButton variant="ghost" size="xs" @click="togglePrioritySort">优先级<ArrowUpDownIcon data-icon="inline-end" /></UiButton></TableHead><TableHead>状态</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
+        <template v-if="!loading.parser && !loading.rooms"><TableRow v-for="rule in displayedParserRules" :key="rule.id"><TableCell>{{ rule.id }}</TableCell><TableCell>{{ rule.name }}</TableCell><TableCell class="max-w-60 truncate">{{ rule.description }}</TableCell><TableCell><Badge :variant="getLogTypeTag(rule.log_type)">{{ rule.log_type }}</Badge></TableCell><TableCell><div class="pattern-container"><span class="max-w-64 truncate">{{ rule.pattern }}</span><Tooltip><TooltipTrigger as-child><UiButton variant="ghost" size="icon-xs" aria-label="复制匹配模式" @click.stop="copyPattern(rule.pattern)"><CopyIcon /></UiButton></TooltipTrigger><TooltipContent>复制匹配模式</TooltipContent></Tooltip></div></TableCell><TableCell><Badge :variant="getMatchModeTag(rule.match_mode)">{{ getMatchModeText(rule.match_mode) }}</Badge></TableCell><TableCell>{{ rule.priority }}</TableCell><TableCell><UiSwitch v-model="rule.is_enabled" :disabled="togglingRuleIds.includes(rule.id)" :aria-label="`切换规则 ${rule.name}`" @update:model-value="toggleRuleStatus(rule)" /></TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" :disabled="deletingRuleId === rule.id || togglingRuleIds.includes(rule.id)" @click="editParserRule(rule)">编辑</UiButton><UiButton variant="destructive" size="sm" :disabled="rule.built_in || deletingRuleId === rule.id || togglingRuleIds.includes(rule.id)" :title="rule.built_in ? '内建规则不能删除' : '删除规则'" @click="removeParserRule(rule)"><Spinner v-if="deletingRuleId === rule.id" data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow></template>
+        <TableEmpty v-if="loading.parser || loading.rooms" :colspan="9"><div class="flex flex-col gap-2 py-4"><Skeleton v-for="index in 4" :key="index" class="h-8 w-full" /></div></TableEmpty>
+        <TableEmpty v-else-if="!loadError && displayedParserRules.length === 0" :colspan="9"><Empty><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>{{ selectedRoomId ? '暂无解析规则' : '请选择存档' }}</EmptyTitle><EmptyDescription>{{ selectedRoomId ? '添加第一条日志解析规则，开始识别服务器日志。' : '选择一个存档后查看和管理解析规则。' }}</EmptyDescription></EmptyHeader></Empty></TableEmpty>
       </TableBody></ShadcnTable></CardContent>
+      <CardFooter v-if="!loading.parser && !loading.rooms && !loadError" class="text-sm text-muted-foreground">共 {{ displayedParserRules.length }} 条解析规则</CardFooter>
     </Card>
 
     <UiDialog :open="dialogVisible.parser" @update:open="handleDialogOpenChange"><DialogScrollContent class="sm:max-w-3xl"><DialogHeader><DialogTitle>{{ ruleForm.id ? '编辑解析规则' : '添加解析规则' }}</DialogTitle><DialogDescription>配置日志匹配表达式、模式和执行优先级。</DialogDescription></DialogHeader>
@@ -42,24 +44,25 @@
         <Field v-if="ruleForm.match_mode === 'head_tail'" :data-invalid="Boolean(formErrors.tail_pattern)"><FieldLabel for="rule-tail-pattern">尾行匹配模式</FieldLabel><UiTextarea id="rule-tail-pattern" v-model="ruleForm.tail_pattern" rows="3" :aria-invalid="Boolean(formErrors.tail_pattern)" /><FieldDescription>仅当匹配模式为首尾行匹配时有效。</FieldDescription><FieldError v-if="formErrors.tail_pattern">{{ formErrors.tail_pattern }}</FieldError></Field>
         <Field :data-invalid="Boolean(formErrors.priority)"><FieldLabel for="rule-priority">优先级</FieldLabel><UiInput id="rule-priority" v-model="ruleForm.priority" type="number" min="1" :aria-invalid="Boolean(formErrors.priority)" /><FieldDescription>数值越大优先级越高。</FieldDescription><FieldError v-if="formErrors.priority">{{ formErrors.priority }}</FieldError></Field>
       </FieldGroup>
-      <DialogFooter><UiButton variant="outline" @click="handleCancelClick">取消</UiButton><UiButton @click="confirmRuleAction">确认</UiButton></DialogFooter>
+      <DialogFooter><UiButton variant="outline" :disabled="savingRule" @click="handleCancelClick">取消</UiButton><UiButton :disabled="savingRule" @click="confirmRuleAction"><Spinner v-if="savingRule" data-icon="inline-start" />确认</UiButton></DialogFooter>
     </DialogScrollContent></UiDialog>
   </div>
 </template>
 
 <script>
-import { ArrowUpDownIcon, CircleAlertIcon, CopyIcon, PlusIcon } from '@lucide/vue'
+import { ArrowUpDownIcon, CircleAlertIcon, CopyIcon, PlusIcon, ScrollTextIcon } from '@lucide/vue'
 import { logApi, ruleManagementApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
 import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
@@ -80,6 +83,7 @@ export default {
     CardAction,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
     CircleAlertIcon,
@@ -92,6 +96,7 @@ export default {
     Empty,
     EmptyDescription,
     EmptyHeader,
+    EmptyMedia,
     EmptyTitle,
     Field,
     FieldDescription,
@@ -99,6 +104,7 @@ export default {
     FieldGroup,
     FieldLabel,
     PlusIcon,
+    ScrollTextIcon,
     SelectContent,
     SelectGroup,
     SelectItem,
@@ -106,6 +112,7 @@ export default {
     SelectValue,
     ShadcnTable,
     Skeleton,
+    Spinner,
     TableBody,
     TableCell,
     TableEmpty,
@@ -126,9 +133,14 @@ export default {
     return {
       // 加载状态
       loading: {
-        parser: false
+        parser: false,
+        rooms: false
       },
       loadError: '',
+      loadErrorContext: '',
+      savingRule: false,
+      deletingRuleId: null,
+      togglingRuleIds: [],
       // 对话框显示状态
       dialogVisible: {
         parser: false
@@ -169,6 +181,8 @@ export default {
   methods: {
     async loadRooms() {
       this.loadError = '';
+      this.loadErrorContext = '';
+      this.loading.rooms = true;
       try {
         this.rooms = await logApi.getRoomOptions();
         if (this.rooms.length === 1) {
@@ -178,7 +192,10 @@ export default {
       } catch (error) {
         this.rooms = [];
         this.loadError = error.message || '未知错误';
+        this.loadErrorContext = 'rooms';
         toast.error('获取存档列表失败: ' + this.loadError);
+      } finally {
+        this.loading.rooms = false;
       }
     },
 
@@ -191,6 +208,7 @@ export default {
       }
       this.loading.parser = true;
       this.loadError = '';
+      this.loadErrorContext = '';
       try {
         const response = await ruleManagementApi.getRulesList(this.selectedRoomId);
         console.log('获取解析规则列表响应:', response);
@@ -209,6 +227,7 @@ export default {
       } catch (error) {
         console.error('获取解析规则列表失败:', error);
         this.loadError = error.message || '获取解析规则列表失败';
+        this.loadErrorContext = 'rules';
         toast.error(this.loadError);
         this.parserRulesList = [];
         this.uniqueLogTypes = [];
@@ -294,7 +313,8 @@ export default {
       Object.keys(this.formErrors).forEach(key => { this.formErrors[key] = '' })
     },
     async confirmRuleAction() {
-      if (!this.validateRuleForm()) return
+      if (this.savingRule || !this.validateRuleForm()) return
+      this.savingRule = true
       try {
           // 创建一个新的数据对象
           const formData = { ...this.ruleForm };
@@ -320,25 +340,29 @@ export default {
             }
           }
           this.dialogVisible.parser = false;
-          this.getParserRulesList(); // 刷新列表
+          await this.getParserRulesList(); // 刷新列表
         } catch (error) {
           console.error('解析规则操作失败:', error);
           toast.error('解析规则操作失败: ' + (error.message || '未知错误'));
+        } finally {
+          this.savingRule = false
       }
     },
 
     // 移除解析规则
     async removeParserRule(row) {
+      if (this.deletingRuleId !== null) return
       try {
         await confirmAction('确定要删除该解析规则吗？', '删除规则', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         })
+        this.deletingRuleId = row.id
         const response = await ruleManagementApi.deleteRule(this.selectedRoomId, row.id);
         console.log('删除规则响应:', response);
         toast.success('删除解析规则成功');
-        this.getParserRulesList();
+        await this.getParserRulesList();
       } catch (error) {
         if (error === 'cancel') {
           toast.info('已取消删除')
@@ -346,22 +370,28 @@ export default {
         }
         console.error('删除解析规则失败:', error);
         toast.error('删除解析规则失败: ' + (error.message || '未知错误'));
+      } finally {
+        this.deletingRuleId = null
       }
     },
 
     // 切换解析规则状态
     async toggleRuleStatus(rule) {
+      if (this.togglingRuleIds.includes(rule.id)) return
+      this.togglingRuleIds.push(rule.id)
       try {
         // 创建一个新的规则对象，避免修改原始数据
         const updatedRule = { ...rule };
         const response = await ruleManagementApi.updateRule(this.selectedRoomId, rule.id, updatedRule);
         console.log('更新规则状态响应:', response);
         toast.success('规则状态更新成功');
-        this.getParserRulesList(); // 刷新列表
+        await this.getParserRulesList(); // 刷新列表
       } catch (error) {
         console.error('规则状态更新失败:', error);
         rule.is_enabled = !rule.is_enabled; // 恢复原状态
         toast.error('规则状态更新失败: ' + (error.message || '未知错误'));
+      } finally {
+        this.togglingRuleIds = this.togglingRuleIds.filter(id => id !== rule.id)
       }
     },
 
@@ -484,6 +514,11 @@ export default {
         return;
       }
 
+      if (!navigator.clipboard?.writeText) {
+        this.fallbackCopy(pattern);
+        return;
+      }
+
       // 使用浏览器的剪贴板 API 复制文本
       navigator.clipboard.writeText(pattern)
         .then(() => {
@@ -491,8 +526,6 @@ export default {
         })
         .catch(err => {
           console.error('复制失败:', err);
-          toast.error('复制失败，请手动复制');
-
           // 备用方案：创建一个临时文本区域并复制
           this.fallbackCopy(pattern);
         });

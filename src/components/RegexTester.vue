@@ -1,5 +1,5 @@
 <template>
-  <Card size="sm" class="regex-tester">
+  <Card class="regex-tester">
     <CardHeader>
       <div>
         <CardTitle>匹配设置</CardTitle>

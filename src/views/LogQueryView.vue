@@ -7,19 +7,26 @@
       </div>
     </header>
 
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <div><CardTitle>查询条件</CardTitle><CardDescription>选择日志来源后执行查询。</CardDescription></div>
       </CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
-          <Field><FieldLabel for="log-archive-filter">存档</FieldLabel><UiSelect v-model="queryParams.archive" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.name" :value="item.name">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field><FieldLabel for="log-world-filter">世界</FieldLabel><UiSelect v-model="queryParams.world"><SelectTrigger id="log-world-filter"><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.name" :value="world.name">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-archive-filter">存档</FieldLabel><UiSelect v-model="queryParams.archive" :disabled="sourceLoading || worldsLoading" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue :placeholder="sourceLoading ? '正在加载存档' : '选择存档'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.name" :value="item.name">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-world-filter">世界</FieldLabel><UiSelect v-model="queryParams.world" :disabled="sourceLoading || worldsLoading || !queryParams.archive"><SelectTrigger id="log-world-filter"><SelectValue :placeholder="worldsLoading ? '正在加载世界' : '选择世界'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.name" :value="world.name">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           <Field><FieldLabel for="log-type-filter">日志类型</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger id="log-type-filter"><SelectValue placeholder="选择日志类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in logTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <div class="filter-actions"><UiButton :disabled="loading || !queryParams.archive || !queryParams.world" @click="queryLogs(true)"><SearchIcon data-icon="inline-start" />查询</UiButton><UiButton variant="outline" :disabled="loading" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />重置</UiButton><UiButton variant="destructive" :disabled="loading || !queryParams.archive || !queryParams.world" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />清空日志</UiButton></div>
+          <div class="filter-actions"><UiButton :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="queryLogs(true)"><SearchIcon data-icon="inline-start" />查询</UiButton><UiButton variant="outline" :disabled="loading || sourceLoading || worldsLoading" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />重置</UiButton><UiButton variant="destructive" :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />清空日志</UiButton></div>
         </FieldGroup>
       </CardContent>
     </Card>
+
+    <Alert v-if="sourceError" variant="destructive">
+      <TriangleAlertIcon />
+      <AlertTitle>日志来源加载失败</AlertTitle>
+      <AlertDescription>{{ sourceError }}</AlertDescription>
+      <AlertAction><UiButton variant="outline" size="sm" :disabled="sourceLoading || worldsLoading" @click="retrySources">重试</UiButton></AlertAction>
+    </Alert>
 
     <Alert v-if="queryError" variant="destructive">
       <TriangleAlertIcon />
@@ -28,7 +35,7 @@
       <AlertAction><UiButton variant="outline" size="sm" :disabled="loading" @click="queryLogs()">重试</UiButton></AlertAction>
     </Alert>
 
-    <Card size="sm" class="result-card">
+    <Card class="result-card">
       <CardHeader>
         <div><CardTitle>查询结果</CardTitle><CardDescription>共 {{ total }} 条日志</CardDescription></div>
       </CardHeader>
@@ -39,7 +46,7 @@
             <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)">{{ log.log_type }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell class="action-column"><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">创建规则</UiButton></TableCell></TableRow>
           </TableBody></ShadcnTable>
         </div>
-        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>暂无日志</EmptyTitle><EmptyDescription>调整筛选条件后重新查询。</EmptyDescription></EmptyHeader></Empty>
+        <Empty v-else-if="!queryError"><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>暂无日志</EmptyTitle><EmptyDescription>调整筛选条件后重新查询。</EmptyDescription></EmptyHeader></Empty>
       </CardContent>
       <CardFooter v-if="!loading && total > 0" class="pagination-container">
         <AppPagination
@@ -55,20 +62,18 @@
 
     <UiDialog :open="ruleDialogVisible" @update:open="handleRuleDialogOpenChange"><DialogContent class="rule-dialog sm:max-w-4xl"><DialogHeader><DialogTitle>基于日志创建解析规则</DialogTitle><DialogDescription>完善规则信息并验证匹配表达式。</DialogDescription></DialogHeader>
       <div v-if="selectedLog" class="rule-dialog-content">
-        <section class="rule-form-section"><h3>规则基本信息</h3><FieldGroup><Field :data-invalid="Boolean(ruleFormErrors.name)"><FieldLabel for="log-rule-name">规则名称</FieldLabel><UiInput id="log-rule-name" v-model="ruleForm.name" :aria-invalid="Boolean(ruleFormErrors.name)" /><FieldError v-if="ruleFormErrors.name">{{ ruleFormErrors.name }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.description)"><FieldLabel for="log-rule-description">描述</FieldLabel><UiTextarea id="log-rule-description" v-model="ruleForm.description" rows="2" :aria-invalid="Boolean(ruleFormErrors.description)" /><FieldError v-if="ruleFormErrors.description">{{ ruleFormErrors.description }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.log_type)"><FieldLabel for="log-rule-type">日志类型</FieldLabel><UiInput id="log-rule-type" v-model="ruleForm.log_type" :aria-invalid="Boolean(ruleFormErrors.log_type)" /><FieldError v-if="ruleFormErrors.log_type">{{ ruleFormErrors.log_type }}</FieldError></Field></FieldGroup></section>
+        <FieldSet><FieldLegend>规则基本信息</FieldLegend><FieldGroup><Field :data-invalid="Boolean(ruleFormErrors.name)"><FieldLabel for="log-rule-name">规则名称</FieldLabel><UiInput id="log-rule-name" v-model="ruleForm.name" :aria-invalid="Boolean(ruleFormErrors.name)" /><FieldError v-if="ruleFormErrors.name">{{ ruleFormErrors.name }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.description)"><FieldLabel for="log-rule-description">描述</FieldLabel><UiTextarea id="log-rule-description" v-model="ruleForm.description" rows="2" :aria-invalid="Boolean(ruleFormErrors.description)" /><FieldError v-if="ruleFormErrors.description">{{ ruleFormErrors.description }}</FieldError></Field><Field :data-invalid="Boolean(ruleFormErrors.log_type)"><FieldLabel for="log-rule-type">日志类型</FieldLabel><UiInput id="log-rule-type" v-model="ruleForm.log_type" :aria-invalid="Boolean(ruleFormErrors.log_type)" /><FieldError v-if="ruleFormErrors.log_type">{{ ruleFormErrors.log_type }}</FieldError></Field></FieldGroup></FieldSet>
         <Separator />
-        <section class="regex-tester-card"><h3>正则表达式测试</h3>
-          <regex-tester
-            :initial-content="selectedLog.raw_content || selectedLog.content"
-            :initial-pattern="initialPattern"
-            :initial-is-regex="true"
-            :initial-match-mode="'single'"
-            @apply="applyRegexToRule"
-            ref="regexTester"
-          />
-        </section>
+        <regex-tester
+          :initial-content="selectedLog.raw_content || selectedLog.content"
+          :initial-pattern="initialPattern"
+          :initial-is-regex="true"
+          :initial-match-mode="'single'"
+          @apply="applyRegexToRule"
+          ref="regexTester"
+        />
       </div>
-      <DialogFooter><UiButton variant="outline" @click="cancelRule">取消</UiButton><UiButton @click="saveRule">保存规则</UiButton></DialogFooter></DialogContent></UiDialog>
+      <DialogFooter><UiButton variant="outline" :disabled="ruleSaving" @click="cancelRule">取消</UiButton><UiButton :disabled="ruleSaving" @click="saveRule"><Spinner v-if="ruleSaving" data-icon="inline-start" />保存规则</UiButton></DialogFooter></DialogContent></UiDialog>
 
     <UiDialog v-model:open="cleanupDialogVisible"><DialogContent><DialogHeader><DialogTitle>清空日志</DialogTitle><DialogDescription>清理已解析记录并重置解析位置。</DialogDescription></DialogHeader>
       <div class="cleanup-dialog-content">
@@ -88,7 +93,7 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
@@ -129,6 +134,8 @@ export default {
     FieldError,
     FieldGroup,
     FieldLabel,
+    FieldLegend,
+    FieldSet,
     RegexTester,
     RotateCcwIcon,
     ScrollTextIcon,
@@ -188,9 +195,13 @@ export default {
       // 加载状态
       loading: false,
       queryError: '',
+      sourceLoading: false,
+      worldsLoading: false,
+      sourceError: '',
 
       // 规则对话框相关
       ruleDialogVisible: false,
+      ruleSaving: false,
       selectedLog: null,
       initialPattern: '',
 
@@ -235,6 +246,8 @@ export default {
   methods: {
     // 获取存档列表
     async getArchives() {
+      this.sourceLoading = true;
+      this.sourceError = '';
       try {
         console.log('开始获取有日志的存档列表');
         const response = await logApi.getArchivesWithLogs();
@@ -300,6 +313,9 @@ export default {
               this.queryParams.archive = this.archives[0].name;
               this.getWorlds(this.queryParams.archive);
             }
+          } else {
+            this.sourceError = '存档列表响应格式异常';
+            toast.error(this.sourceError);
           }
         }
       } catch (error) {
@@ -314,8 +330,6 @@ export default {
           console.error('请求配置错误:', error.message);
         }
         console.error('完整错误对象:', error);
-        toast.error('获取存档列表失败');
-
         // 尝试使用旧接口
         try {
           console.log('尝试使用旧接口获取存档列表');
@@ -332,17 +346,32 @@ export default {
               this.queryParams.archive = this.archives[0].name;
               this.getWorlds(this.queryParams.archive);
             }
+          } else {
+            this.sourceError = error?.response?.data?.message || error?.message || '获取存档列表失败';
+            toast.error(this.sourceError);
           }
         } catch (oldError) {
           console.error('旧接口获取存档列表也失败:', oldError);
+          this.archives = [];
+          this.sourceError = oldError?.response?.data?.message || oldError?.message || error?.message || '获取存档列表失败';
+          toast.error(this.sourceError);
         }
+      } finally {
+        this.sourceLoading = false;
       }
     },
 
     // 根据存档获取世界列表
     async getWorlds(archiveName) {
-      if (!archiveName) return;
+      if (!archiveName) {
+        this.worlds = [];
+        this.queryParams.world = '';
+        return;
+      }
 
+      this.worldsLoading = true;
+      this.sourceError = '';
+      this.worlds = [];
       try {
         console.log('开始获取世界列表，存档名:', archiveName);
 
@@ -432,10 +461,21 @@ export default {
         }
       } catch (error) {
         console.error('获取世界列表失败:', error);
-        toast.error('获取世界列表失败');
+        this.sourceError = error?.response?.data?.message || error?.message || '获取世界列表失败';
+        toast.error(this.sourceError);
         this.worlds = [];
         this.queryParams.world = '';
+      } finally {
+        this.worldsLoading = false;
       }
+    },
+
+    retrySources() {
+      if (this.queryParams.archive) {
+        this.getWorlds(this.queryParams.archive);
+        return;
+      }
+      this.getArchives();
     },
 
     // 获取日志类型统计
@@ -753,7 +793,7 @@ export default {
       return !Object.values(this.ruleFormErrors).some(Boolean)
     },
     async saveRule() {
-      if (!this.validateRuleForm()) return
+      if (this.ruleSaving || !this.validateRuleForm()) return
       try {
           // 先获取正则测试器的最新数据
           if (this.$refs.regexTester) {
@@ -793,6 +833,7 @@ export default {
           console.log('提交的规则数据:', formData);
 
           // 添加解析规则
+          this.ruleSaving = true;
           const response = await ruleManagementApi.addRule(formData);
           console.log('添加规则响应:', response);
           toast.success('添加解析规则成功');
@@ -805,11 +846,14 @@ export default {
         } catch (error) {
           console.error('解析规则操作失败:', error);
           toast.error('解析规则操作失败: ' + (error.message || '未知错误'));
+        } finally {
+          this.ruleSaving = false;
       }
     },
 
     // 取消规则创建
     cancelRule() {
+      if (this.ruleSaving) return;
       // 关闭对话框
       this.ruleDialogVisible = false;
       // 清空选中的日志
@@ -856,6 +900,7 @@ export default {
         this.ruleDialogVisible = true
         return
       }
+      if (this.ruleSaving) return
       this.handleRuleDialogClose(() => { this.ruleDialogVisible = false })
     },
 
@@ -924,20 +969,20 @@ export default {
   width: 100%;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .page-heading h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 28px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
 }
 
 .page-heading p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .filter-grid {
@@ -1005,13 +1050,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.rule-form-section h3,
-.regex-tester-card h3 {
-  margin: 0 0 12px;
-  font-size: 14px;
-  font-weight: 600;
 }
 
 .rule-dialog {

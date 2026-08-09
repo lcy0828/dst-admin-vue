@@ -28,7 +28,7 @@
       </EmptyHeader>
     </Empty>
     <div v-else-if="!loadError" class="parsers-container">
-          <Card v-for="parser in activeParsers" :key="parser.id" size="sm" class="parser-card">
+          <Card v-for="parser in activeParsers" :key="parser.id" class="parser-card">
             <CardHeader class="parser-header">
               <div class="parser-title">
                 <div class="type-indicator" aria-hidden="true">
@@ -197,7 +197,7 @@ export default {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .page-heading,
@@ -229,15 +229,15 @@ export default {
 
 .page-heading h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 28px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
 }
 
 .page-heading p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .parsers-container {

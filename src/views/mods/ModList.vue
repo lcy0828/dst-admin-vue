@@ -9,7 +9,7 @@
       </div>
     </header>
 
-    <Card size="sm" class="filter-panel">
+    <Card class="filter-panel">
       <CardHeader><div><CardTitle>筛选模组</CardTitle><CardDescription>选择房间和世界后管理真实模组配置。</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-form">
@@ -637,7 +637,7 @@ export default {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .page-heading,
@@ -661,15 +661,15 @@ export default {
 
 .page-heading h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 28px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
 }
 
 .page-heading p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .header-actions,

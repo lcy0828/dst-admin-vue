@@ -5,7 +5,7 @@
       <UiButton variant="outline" size="sm" @click="goToModList"><ArrowLeft data-icon="inline-start" />返回已下载模组</UiButton>
     </header>
 
-    <Card size="sm" class="search-panel">
+    <Card class="search-panel">
       <CardHeader><div><CardTitle>搜索条件</CardTitle><CardDescription>选择目标房间并输入创意工坊模组名称。</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="search-form">
@@ -459,7 +459,7 @@ export default {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .page-heading,
@@ -482,15 +482,15 @@ export default {
 
 .page-heading h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 28px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
 }
 
 .page-heading p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .search-form {

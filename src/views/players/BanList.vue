@@ -11,7 +11,7 @@
       </UiButton>
     </header>
 
-    <Card size="sm">
+    <Card>
       <CardHeader><div><CardTitle>筛选记录</CardTitle><CardDescription>按房间或玩家关键词查询封禁记录。</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
@@ -51,7 +51,7 @@
       <AlertAction><UiButton variant="outline" size="sm" @click="loadBans">重试</UiButton></AlertAction>
     </Alert>
 
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <div>
           <CardTitle>封禁记录</CardTitle>
@@ -260,7 +260,7 @@ onMounted(() => {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .page-heading {
@@ -272,15 +272,15 @@ onMounted(() => {
 
 .page-heading h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 28px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
 }
 
 .page-heading p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   color: var(--muted-foreground);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .filter-grid {
