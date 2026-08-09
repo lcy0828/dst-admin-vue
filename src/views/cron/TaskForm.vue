@@ -14,26 +14,22 @@
               <Field :data-invalid="Boolean(formErrors.description)"><FieldLabel for="task-description">任务描述</FieldLabel><UiTextarea id="task-description" v-model="taskForm.description" rows="3" :aria-invalid="Boolean(formErrors.description)" placeholder="请输入任务描述" /><FieldError v-if="formErrors.description">{{ formErrors.description }}</FieldError></Field>
               <Field><FieldLabel for="task-group">所属任务组</FieldLabel><UiSelect :model-value="String(taskForm.group_id)" @update:model-value="taskForm.group_id = Number($event)"><SelectTrigger id="task-group"><SelectValue placeholder="请选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="0">无分组</SelectItem><SelectItem v-for="group in groupList" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
               <Field :data-invalid="Boolean(formErrors.spec)"><FieldLabel for="task-spec">Cron 表达式</FieldLabel><UiInput id="task-spec" v-model="taskForm.spec" class="font-mono" :aria-invalid="Boolean(formErrors.spec)" placeholder="例如：0 0 * * * *" /><FieldError v-if="formErrors.spec">{{ formErrors.spec }}</FieldError><FieldDescription>格式：秒 分 时 日 月 星期 [年]。示例：每 5 分钟执行一次为 0 */5 * * * *</FieldDescription></Field>
-              <FieldSet><FieldLegend variant="label">任务类型</FieldLegend><RadioGroup v-model="taskForm.type" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Field v-for="option in typeOptions" :key="option.value" orientation="horizontal"><RadioGroupItem :id="`task-type-${option.value}`" :value="option.value" /><FieldLabel :for="`task-type-${option.value}`">{{ option.label }}</FieldLabel></Field></RadioGroup></FieldSet>
-              <Alert v-if="taskForm.type === 'shell' || taskForm.type === 'tmux_raw_command'"><TriangleAlert /><AlertTitle>任意命令已受限</AlertTitle><AlertDescription>当前 v2 后端禁止定时执行任意命令，请改用受控函数或内建 TMUX 命令。</AlertDescription></Alert>
+              <FieldSet><FieldLegend variant="label">任务类型</FieldLegend><RadioGroup v-model="taskForm.type" class="grid gap-3 sm:grid-cols-2"><Field v-for="option in typeOptions" :key="option.value" orientation="horizontal"><RadioGroupItem :id="`task-type-${option.value}`" :value="option.value" /><FieldLabel :for="`task-type-${option.value}`">{{ option.label }}</FieldLabel></Field></RadioGroup></FieldSet>
 
-              <Field v-if="taskForm.type === 'function'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="task-function">选择函数</FieldLabel><UiSelect v-model="taskForm.target"><SelectTrigger id="task-function" :aria-invalid="Boolean(formErrors.target)"><SelectValue placeholder="请选择函数" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="func in functionList" :key="func.name" :value="func.name">{{ func.name }} - {{ func.description }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="formErrors.target">{{ formErrors.target }}</FieldError></Field>
-              <Field v-else-if="taskForm.type === 'shell'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="shell-target">Shell 命令</FieldLabel><UiTextarea id="shell-target" v-model="taskForm.target" rows="3" :aria-invalid="Boolean(formErrors.target)" placeholder="请输入 Shell 命令" /><FieldError v-if="formErrors.target">{{ formErrors.target }}</FieldError></Field>
+              <Field v-if="taskForm.type === 'function'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="task-function">选择函数</FieldLabel><UiSelect :model-value="taskForm.target" @update:model-value="handleFunctionChange"><SelectTrigger id="task-function" :aria-invalid="Boolean(formErrors.target)"><SelectValue placeholder="请选择函数" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="func in functionList" :key="func.name" :value="func.name">{{ func.name }} - {{ func.description }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="formErrors.target">{{ formErrors.target }}</FieldError></Field>
 
               <FieldSet v-else-if="taskForm.type === 'tmux_command'"><FieldLegend>TMUX 命令</FieldLegend><FieldGroup>
                 <Field><FieldLabel for="tmux-session">选择服务器</FieldLabel><UiSelect v-model="tmuxSession" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-session"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in tmuxSessions" :key="session.session_name" :value="session.session_name">{{ session.archive_name }} - {{ session.world_name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
                 <Field><FieldLabel for="tmux-command">选择命令</FieldLabel><UiSelect v-model="tmuxCommandId" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-command"><SelectValue placeholder="请选择命令" /></SelectTrigger><SelectContent><SelectGroup v-for="group in tmuxCommandGroups" :key="group.type"><SelectLabel>{{ group.type }}</SelectLabel><SelectItem v-for="command in group.commands" :key="command.id" :value="String(command.id)" :disabled="command.risk === 'high' || command.risk === 'critical'">{{ command.name }}{{ command.risk === 'high' || command.risk === 'critical' ? '（不可用于定时任务）' : '' }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
                 <Field v-if="currentTmuxCommand"><FieldLabel for="tmux-command-preview">命令内容</FieldLabel><UiTextarea id="tmux-command-preview" :model-value="currentTmuxCommand.script || currentTmuxCommand.command" rows="2" readonly /></Field>
-                <Field v-if="currentTmuxCommand && currentTmuxCommand.needs_params"><FieldTitle>命令参数</FieldTitle><div class="flex flex-col gap-2"><div v-for="(param, index) in tmuxParams" :key="index"><InputGroup><InputGroupAddon>参数 {{ index + 1 }}</InputGroupAddon><InputGroupInput v-model="tmuxParams[index]" :aria-label="`命令参数 ${index + 1}`" :placeholder="currentTmuxCommand.param_desc || '参数值'" /><InputGroupAddon align="inline-end"><UiButton size="icon-xs" variant="ghost" type="button" title="移除参数" :aria-label="`移除命令参数 ${index + 1}`" @click="removeTmuxParam(index)"><Trash2 /></UiButton></InputGroupAddon></InputGroup><FieldDescription v-if="currentTmuxCommand.example">示例：{{ currentTmuxCommand.example }}</FieldDescription></div></div><UiButton size="sm" variant="outline" type="button" @click="addTmuxParam"><Plus data-icon="inline-start" />添加参数</UiButton></Field>
+                <Field v-if="currentTmuxCommand && currentTmuxCommand.needs_params" :data-invalid="Boolean(formErrors.target)"><FieldTitle>命令参数</FieldTitle><div class="flex flex-col gap-2"><Field v-for="(parameter, index) in currentTmuxCommand.parameters" :key="parameter.name"><FieldLabel :for="`command-parameter-${parameter.name}`">{{ parameter.label || parameter.name }}</FieldLabel><UiSelect v-if="parameter.type === 'enum'" :model-value="String(tmuxParams[index] || '')" @update:model-value="updateCommandParameter(index, $event)"><SelectTrigger :id="`command-parameter-${parameter.name}`" :aria-invalid="Boolean(formErrors.target)"><SelectValue :placeholder="parameter.description || '请选择'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="option in parameter.options" :key="option" :value="option">{{ option }}</SelectItem></SelectGroup></SelectContent></UiSelect><UiInput v-else :id="`command-parameter-${parameter.name}`" v-model="tmuxParams[index]" :type="parameter.type === 'integer' ? 'number' : 'text'" :min="parameter.minimum" :max="parameter.maximum" :aria-invalid="Boolean(formErrors.target)" :placeholder="parameter.description || '参数值'" @input="updateTmuxTarget" /></Field></div><FieldError v-if="formErrors.target">{{ formErrors.target }}</FieldError><FieldDescription v-if="currentTmuxCommand.example">示例：{{ currentTmuxCommand.example }}</FieldDescription></Field>
               </FieldGroup></FieldSet>
 
-              <FieldSet v-else-if="taskForm.type === 'tmux_raw_command'"><FieldLegend>TMUX 原始命令</FieldLegend><FieldGroup><Field><FieldLabel for="tmux-raw-session">选择服务器</FieldLabel><UiSelect v-model="tmuxSession" @update:model-value="updateTmuxRawTarget"><SelectTrigger id="tmux-raw-session"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in tmuxSessions" :key="session.session_name" :value="session.session_name">{{ session.archive_name }} - {{ session.world_name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="tmux-raw-command">原始命令</FieldLabel><UiTextarea id="tmux-raw-command" v-model="tmuxRawCommand" rows="3" placeholder="例如：c_announce('欢迎来到服务器')" @update:model-value="updateTmuxRawTarget" /></Field></FieldGroup></FieldSet>
-
-              <Field v-if="taskForm.type === 'function'"><FieldTitle>函数参数</FieldTitle><div class="flex flex-col gap-2"><InputGroup v-for="(arg, index) in taskForm.args" :key="index"><InputGroupAddon>参数 {{ index + 1 }}</InputGroupAddon><InputGroupInput v-model="taskForm.args[index]" :aria-label="`函数参数 ${index + 1}`" placeholder="参数值" /><InputGroupAddon align="inline-end"><UiButton size="icon-xs" variant="ghost" type="button" title="移除参数" :aria-label="`移除函数参数 ${index + 1}`" @click="removeArg(index)"><Trash2 /></UiButton></InputGroupAddon></InputGroup></div><UiButton size="sm" variant="outline" type="button" @click="addArg"><Plus data-icon="inline-start" />添加参数</UiButton></Field>
+              <Field v-if="taskForm.type === 'function' && currentFunction?.param_types?.length"><FieldTitle>函数参数</FieldTitle><div class="flex flex-col gap-2"><InputGroup v-for="(parameter, index) in currentFunction.param_types" :key="parameter"><InputGroupAddon>{{ parameter }}</InputGroupAddon><InputGroupInput v-model="taskForm.args[index]" :type="parameter === 'keep' ? 'number' : 'text'" :min="parameter === 'keep' ? 1 : undefined" :max="parameter === 'keep' ? 100 : undefined" :aria-label="parameter" placeholder="参数值" /></InputGroup></div></Field>
             </FieldGroup></TabsContent>
 
             <TabsContent value="advanced"><FieldGroup class="mt-4">
-              <Field><FieldLabel for="task-timeout">超时设置（秒）</FieldLabel><UiInput id="task-timeout" v-model.number="taskForm.timeout" type="number" min="0" /><FieldDescription>任务最大执行时间，0 表示不限制。</FieldDescription></Field>
+              <Field :data-invalid="Boolean(formErrors.timeout)"><FieldLabel for="task-timeout">超时设置（秒）</FieldLabel><UiInput id="task-timeout" v-model.number="taskForm.timeout" type="number" min="5" max="3600" :aria-invalid="Boolean(formErrors.timeout)" /><FieldError v-if="formErrors.timeout">{{ formErrors.timeout }}</FieldError><FieldDescription>后端允许 5–3600 秒，默认 300 秒。</FieldDescription></Field>
               <Field><FieldLabel for="task-retry-times">重试次数</FieldLabel><UiInput id="task-retry-times" v-model.number="taskForm.retry_times" type="number" min="0" max="10" /><FieldDescription>任务失败后自动重试的次数，0 表示不重试。</FieldDescription></Field>
               <Field v-if="taskForm.retry_times > 0"><FieldLabel for="task-retry-interval">重试间隔（秒）</FieldLabel><UiInput id="task-retry-interval" v-model.number="taskForm.retry_interval" type="number" min="1" max="3600" /></Field>
               <FieldSet><FieldLegend variant="label">依赖任务</FieldLegend><FieldDescription>当前任务会在所选依赖任务全部成功后执行，请避免循环依赖。</FieldDescription><ScrollArea class="max-h-64 rounded-md border p-3"><FieldGroup class="gap-3"><Field v-for="task in availableTasks" :key="task.id" orientation="horizontal" :data-disabled="String(task.id) === String(taskId)"><Checkbox :id="`dependency-${task.id}`" :model-value="taskForm.dependencies.map(String).includes(String(task.id))" :disabled="String(task.id) === String(taskId)" @update:model-value="toggleDependency(task.id, $event)" /><FieldLabel :for="`dependency-${task.id}`" class="font-normal">{{ task.name }}</FieldLabel></Field></FieldGroup></ScrollArea></FieldSet>
@@ -49,11 +45,10 @@
 </template>
 
 <script>
-import { ArrowLeft, Plus, Trash2, TriangleAlert } from '@lucide/vue';
+import { ArrowLeft } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -72,12 +67,12 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 export default {
   name: 'TaskForm',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardContent,
+    ArrowLeft, AutomationRoomSelect, Card, CardContent,
     CardDescription, CardHeader, CardTitle, Checkbox, Field, FieldContent, FieldDescription,
     FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle, InputGroup, InputGroupAddon,
-    InputGroupInput, Plus, RadioGroup, RadioGroupItem, ScrollArea, SelectContent, SelectGroup,
+    InputGroupInput, RadioGroup, RadioGroupItem, ScrollArea, SelectContent, SelectGroup,
     SelectItem, SelectLabel, SelectTrigger, SelectValue, Separator, Spinner, Tabs, TabsContent,
-    TabsList, TabsTrigger, Trash2, TriangleAlert, UiButton, UiInput, UiSelect, UiSwitch, UiTextarea
+    TabsList, TabsTrigger, UiButton, UiInput, UiSelect, UiSwitch, UiTextarea
   },
   data() {
     return {
@@ -94,14 +89,12 @@ export default {
       tmuxCommandGroups: [],
       tmuxSession: '',
       tmuxCommandId: '',
-      tmuxRawCommand: '',
       tmuxParams: [],
       currentTmuxCommand: null,
       // 新的TMUX任务数据结构
       tmuxTaskData: {
         session_name: '',
         command_id: '',
-        raw_command: '',
         command_params: []
       },
       taskForm: {
@@ -112,7 +105,7 @@ export default {
         type: 'function',
         target: '',
         args: [],
-        timeout: 0,
+        timeout: 300,
         retry_times: 0,
         retry_interval: 60,
         dependencies: [],
@@ -120,10 +113,8 @@ export default {
       },
       formErrors: {},
       typeOptions: [
-        { value: 'function', label: '函数' },
-        { value: 'shell', label: 'Shell 命令' },
-        { value: 'tmux_command', label: 'TMUX 命令' },
-        { value: 'tmux_raw_command', label: 'TMUX 原始命令' }
+        { value: 'function', label: '受控函数' },
+        { value: 'tmux_command', label: '内建命令' }
       ]
     };
   },
@@ -135,6 +126,11 @@ export default {
       this.taskId = id;
     }
     if (this.$route.query.group_id) this.taskForm.group_id = this.$route.query.group_id;
+  },
+  computed: {
+    currentFunction() {
+      return this.functionList.find(item => item.name === this.taskForm.target) || null;
+    }
   },
   methods: {
     handleAutomationRoom() {
@@ -426,53 +422,6 @@ export default {
                   console.warn('解析TMUX命令参数失败:', e);
                 }
               }
-            } else if (taskData.type === 'tmux_raw_command') {
-              // 优先使用新的直接字段
-              if (taskData.session_name && taskData.raw_command) {
-                this.tmuxSession = taskData.session_name;
-                this.tmuxRawCommand = taskData.raw_command;
-
-                // 更新tmuxTaskData
-                this.tmuxTaskData = {
-                  session_name: this.tmuxSession,
-                  command_id: '',
-                  command_params: [],
-                  raw_command: this.tmuxRawCommand
-                };
-              }
-              // 其次使用tmux_task字段
-              else if (taskData.tmux_task) {
-                this.tmuxSession = taskData.tmux_task.session_name;
-                this.tmuxRawCommand = taskData.tmux_task.raw_command;
-
-                // 更新tmuxTaskData
-                this.tmuxTaskData = {
-                  session_name: this.tmuxSession,
-                  command_id: '',
-                  command_params: [],
-                  raw_command: this.tmuxRawCommand
-                };
-              }
-              // 兼容旧的target字段
-              else if (taskData.target) {
-                try {
-                  const targetArray = JSON.parse(taskData.target);
-                  if (Array.isArray(targetArray) && targetArray.length >= 2) {
-                    this.tmuxSession = targetArray[0];
-                    this.tmuxRawCommand = targetArray[1];
-
-                    // 更新tmuxTaskData
-                    this.tmuxTaskData = {
-                      session_name: this.tmuxSession,
-                      command_id: '',
-                      command_params: [],
-                      raw_command: this.tmuxRawCommand
-                    };
-                  }
-                } catch (e) {
-                  console.warn('解析TMUX原始命令参数失败:', e);
-                }
-              }
             }
 
             this.taskForm = {
@@ -498,11 +447,10 @@ export default {
           toast.error('获取任务详情失败');
         });
     },
-    addArg() {
-      this.taskForm.args.push('');
-    },
-    removeArg(index) {
-      this.taskForm.args.splice(index, 1);
+    handleFunctionChange(value) {
+      this.taskForm.target = value;
+      const definition = this.functionList.find(item => item.name === value);
+      this.taskForm.args = (definition?.param_types || []).map((_, index) => this.taskForm.args[index] || '');
     },
     // TMUX相关方法
     getTmuxSessions() {
@@ -561,10 +509,7 @@ export default {
         // 查找当前选中的命令
         this.currentTmuxCommand = this.tmuxCommands.find(cmd => String(cmd.id) === String(this.tmuxCommandId));
 
-        // 如果命令需要参数但当前没有参数，自动添加一个空参数
-        if (this.currentTmuxCommand && this.currentTmuxCommand.needs_params && this.tmuxParams.length === 0) {
-          this.tmuxParams.push('');
-        }
+        this.tmuxParams = (this.currentTmuxCommand?.parameters || []).map((_, index) => this.tmuxParams[index] || '');
 
         // 更新TMUX任务数据
         this.tmuxTaskData.session_name = this.tmuxSession;
@@ -579,27 +524,8 @@ export default {
       }
     },
 
-    updateTmuxRawTarget() {
-      if (this.tmuxSession && this.tmuxRawCommand) {
-        // 更新TMUX任务数据
-        this.tmuxTaskData.session_name = this.tmuxSession;
-        this.tmuxTaskData.raw_command = this.tmuxRawCommand;
-
-        // 为了兼容性，仍然保留target字段
-        const targetArray = [this.tmuxSession, this.tmuxRawCommand];
-        this.taskForm.target = JSON.stringify(targetArray);
-
-        console.log('更新TMUX原始命令目标:', this.tmuxTaskData);
-      }
-    },
-
-    addTmuxParam() {
-      this.tmuxParams.push('');
-      this.updateTmuxTarget();
-    },
-
-    removeTmuxParam(index) {
-      this.tmuxParams.splice(index, 1);
+    updateCommandParameter(index, value) {
+      this.tmuxParams[index] = value;
       this.updateTmuxTarget();
     },
 
@@ -617,9 +543,10 @@ export default {
       else if (name.length < 2 || name.length > 50) errors.name = '长度应在 2 到 50 个字符之间';
       if (description.length > 200) errors.description = '描述不能超过 200 个字符';
       if (!(this.taskForm.spec || '').trim()) errors.spec = '请输入 Cron 表达式';
-      if (!(this.taskForm.target || '').trim() && ['function', 'shell'].includes(this.taskForm.type)) errors.target = '请输入或选择执行目标';
+      if (!(this.taskForm.target || '').trim() && this.taskForm.type === 'function') errors.target = '请选择执行目标';
       if (this.taskForm.type === 'tmux_command' && (!this.tmuxSession || !this.tmuxCommandId)) errors.target = '请选择服务器和 TMUX 命令';
-      if (this.taskForm.type === 'tmux_raw_command' && (!this.tmuxSession || !this.tmuxRawCommand.trim())) errors.target = '请选择服务器并输入原始命令';
+      if (this.taskForm.type === 'tmux_command' && this.currentTmuxCommand?.parameters?.some((parameter, index) => parameter.required && (this.tmuxParams[index] === '' || this.tmuxParams[index] == null))) errors.target = '请填写全部必填命令参数';
+      if (this.taskForm.timeout < 5 || this.taskForm.timeout > 3600) errors.timeout = '超时必须在 5–3600 秒之间';
       this.formErrors = errors;
       if (Object.keys(errors).length > 0) this.activeTab = 'basic';
       return Object.keys(errors).length === 0;
@@ -648,17 +575,6 @@ export default {
               session_name: this.tmuxTaskData.session_name,
               command_id: this.tmuxTaskData.command_id,
               command_params: this.tmuxTaskData.command_params
-            };
-          } else if (this.taskForm.type === 'tmux_raw_command') {
-            this.updateTmuxRawTarget();
-            // 根据接口文档，直接在主请求中添加tmux相关字段
-            this.taskForm.session_name = this.tmuxTaskData.session_name;
-            this.taskForm.raw_command = this.tmuxTaskData.raw_command;
-
-            // 为了兼容性，仍然保留tmux_task字段
-            this.taskForm.tmux_task = {
-              session_name: this.tmuxTaskData.session_name,
-              raw_command: this.tmuxTaskData.raw_command
             };
           }
 

@@ -13,12 +13,13 @@
         </div>
 
         <div v-else-if="logData" class="flex flex-col gap-6">
-          <Alert :variant="logData.status === 1 ? 'default' : 'destructive'">
-            <CircleCheck v-if="logData.status === 1" />
-            <CircleX v-else />
-            <AlertTitle>{{ logData.status === 1 ? '任务执行成功' : '任务执行失败' }}</AlertTitle>
+          <Alert :variant="getRunStatusVariant(logData.status)">
+            <CircleCheck v-if="logData.status === 'success'" />
+            <CircleX v-else-if="isTerminalFailure(logData.status)" />
+            <RefreshCw v-else />
+            <AlertTitle>{{ getRunStatusTitle(logData.status) }}</AlertTitle>
             <AlertDescription>
-              {{ logData.status === 1 ? `任务已成功执行，耗时 ${logData.duration} 毫秒` : '任务执行失败，请查看错误信息' }}
+              {{ getRunStatusDescription(logData) }}
             </AlertDescription>
           </Alert>
 
@@ -41,8 +42,8 @@
               </div>
               <div class="detail-item">
                 <dt>执行状态</dt>
-                <dd><Badge :variant="logData.status === 1 ? 'default' : 'destructive'">
-                  {{ logData.status === 1 ? '成功' : '失败' }}
+                <dd><Badge :variant="getRunStatusVariant(logData.status)">
+                  {{ getRunStatusText(logData.status) }}
                 </Badge></dd>
               </div>
               <div class="detail-item"><dt>开始时间</dt><dd>{{ logData.start_time || logData.created_at }}</dd></div>
@@ -188,7 +189,7 @@ export default {
       }
     },
     formatDuration(duration) {
-      if (!duration) return '-';
+      if (duration == null) return '-';
 
       // 如果duration小于1000，认为是毫秒
       if (duration < 1000) {
@@ -205,6 +206,29 @@ export default {
       const minutes = Math.floor(seconds / 60);
       const remainingSeconds = (seconds % 60).toFixed(0);
       return `${minutes} 分 ${remainingSeconds} 秒`;
+    },
+
+    getRunStatusText(status) {
+      const labels = { queued: '等待执行', running: '执行中', success: '成功', failed: '失败', canceled: '已取消', skipped: '已跳过' };
+      return labels[status] || '未知';
+    },
+    isTerminalFailure(status) {
+      return ['failed', 'canceled', 'skipped'].includes(status);
+    },
+    getRunStatusVariant(status) {
+      if (status === 'success') return 'default';
+      if (this.isTerminalFailure(status)) return 'destructive';
+      return 'secondary';
+    },
+    getRunStatusTitle(status) {
+      if (status === 'success') return '任务执行成功';
+      if (this.isTerminalFailure(status)) return `任务${this.getRunStatusText(status)}`;
+      return status === 'running' ? '任务执行中' : '任务等待执行';
+    },
+    getRunStatusDescription(log) {
+      if (log.status === 'success') return `任务已成功执行，耗时 ${this.formatDuration(log.duration)}`;
+      if (this.isTerminalFailure(log.status)) return log.error || '任务未成功完成，请查看错误信息';
+      return '任务已进入执行队列，页面会自动刷新状态。';
     },
 
     // 根据trigger_type获取触发方式的文本描述

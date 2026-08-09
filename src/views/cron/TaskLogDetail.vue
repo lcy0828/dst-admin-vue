@@ -33,14 +33,14 @@
               <div class="detail-item"><dt>任务类型</dt><dd>{{ getTaskTypeText(logData.task_type) }}</dd></div>
               <div class="detail-item">
                 <dt>执行状态</dt>
-                <dd><Badge :variant="logData.status === 'success' || logData.status === 1 ? 'default' : 'destructive'">
-                  {{ logData.status === 'success' || logData.status === 1 ? '成功' : '失败' }}
+                <dd><Badge :variant="getRunStatusVariant(logData.status)">
+                  {{ getRunStatusText(logData.status) }}
                 </Badge></dd>
               </div>
               <div class="detail-item"><dt>触发方式</dt><dd><Badge variant="secondary">{{ getTriggerTypeText(logData.trigger_type) }}</Badge></dd></div>
               <div class="detail-item"><dt>开始时间</dt><dd>{{ logData.start_time || logData.created_at }}</dd></div>
               <div class="detail-item"><dt>结束时间</dt><dd>{{ logData.end_time || logData.updated_at }}</dd></div>
-              <div class="detail-item"><dt>执行耗时</dt><dd>{{ logData.duration ? logData.duration + ' 秒' : '-' }}</dd></div>
+              <div class="detail-item"><dt>执行耗时</dt><dd>{{ formatDuration(logData.duration) }}</dd></div>
               <div class="detail-item"><dt>执行者</dt><dd>{{ logData.executor || '系统' }}</dd></div>
               <div class="detail-item"><dt>重试次数</dt><dd>{{ logData.retry_count || 0 }}</dd></div>
               <div class="detail-item"><dt>IP 地址</dt><dd>{{ logData.ip || '-' }}</dd></div>
@@ -172,12 +172,24 @@ export default {
     },
     getTaskTypeText(type) {
       const typeMap = {
-        'shell': 'Shell命令',
-        'http': 'HTTP请求',
-        'script': '脚本执行',
-        'system': '系统命令'
+        'function': '受控函数',
+        'tmux_command': '内建命令'
       };
       return typeMap[type] || type || '未知类型';
+    },
+    getRunStatusText(status) {
+      const labels = { queued: '等待执行', running: '执行中', success: '成功', failed: '失败', canceled: '已取消', skipped: '已跳过' };
+      return labels[status] || '未知';
+    },
+    getRunStatusVariant(status) {
+      if (status === 'success') return 'default';
+      if (['failed', 'canceled', 'skipped'].includes(status)) return 'destructive';
+      return 'secondary';
+    },
+    formatDuration(duration) {
+      if (duration == null) return '-';
+      if (duration < 1000) return `${duration} 毫秒`;
+      return `${(duration / 1000).toFixed(2)} 秒`;
     },
     formatParams(params) {
       if (!params) return '';

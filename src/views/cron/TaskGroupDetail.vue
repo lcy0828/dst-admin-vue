@@ -14,7 +14,7 @@
           <div><h3 class="mb-3 text-sm font-semibold">任务列表</h3>
             <Empty v-if="taskList.length === 0"><EmptyHeader><EmptyTitle>该任务组下暂无任务</EmptyTitle></EmptyHeader><EmptyContent><UiButton @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton></EmptyContent></Empty>
             <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>任务名称</TableHead><TableHead>Cron 表达式</TableHead><TableHead>类型</TableHead><TableHead>目标</TableHead><TableHead>状态</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
-              <TableRow v-for="task in taskList" :key="task.id"><TableCell>{{ task.id }}</TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="font-medium">{{ task.name }}</span></TooltipTrigger><TooltipContent v-if="task.description">{{ task.description }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell class="font-mono text-xs">{{ task.spec }}</TableCell><TableCell><Badge variant="outline">{{ task.type === 'function' ? '函数' : 'Shell 命令' }}</Badge></TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="block max-w-48 truncate">{{ truncate(task.target, 30) }}</span></TooltipTrigger><TooltipContent>{{ task.target }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell><Badge :variant="task.status === 1 ? 'default' : 'secondary'">{{ task.status === 1 ? '启用' : '禁用' }}</Badge></TableCell><TableCell><div class="flex justify-end gap-1"><UiButton size="sm" variant="outline" :disabled="loading" @click="handleRunNow(task)"><Spinner v-if="loading && currentTaskId === task.id" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行</UiButton><UiButton size="icon-sm" variant="ghost" title="编辑" :aria-label="`编辑任务 ${task.name}`" @click="handleEdit(task)"><Pencil /></UiButton><UiButton size="icon-sm" variant="destructive" title="删除" :aria-label="`删除任务 ${task.name}`" @click="handleDelete(task)"><Trash2 /></UiButton></div></TableCell></TableRow>
+              <TableRow v-for="task in taskList" :key="task.id"><TableCell>{{ task.id }}</TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="font-medium">{{ task.name }}</span></TooltipTrigger><TooltipContent v-if="task.description">{{ task.description }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell class="font-mono text-xs">{{ task.spec }}</TableCell><TableCell><Badge variant="outline">{{ getTaskTypeLabel(task.type) }}</Badge></TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="block max-w-48 truncate">{{ truncate(task.target, 30) }}</span></TooltipTrigger><TooltipContent>{{ task.target }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell><Badge :variant="task.status === 1 ? 'default' : 'secondary'">{{ task.status === 1 ? '启用' : '禁用' }}</Badge></TableCell><TableCell><div class="flex justify-end gap-1"><UiButton size="sm" variant="outline" :disabled="loading" @click="handleRunNow(task)"><Spinner v-if="loading && currentTaskId === task.id" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行</UiButton><UiButton size="icon-sm" variant="ghost" title="编辑" :aria-label="`编辑任务 ${task.name}`" @click="handleEdit(task)"><Pencil /></UiButton><UiButton size="icon-sm" variant="destructive" title="删除" :aria-label="`删除任务 ${task.name}`" @click="handleDelete(task)"><Trash2 /></UiButton></div></TableCell></TableRow>
             </TableBody></ShadcnTable></div>
           </div>
         </div>
@@ -22,28 +22,17 @@
       </CardContent>
     </Card>
 
-    <UiDialog v-model:open="dialogVisible">
-      <DialogScrollContent class="max-w-3xl"><DialogHeader><DialogTitle>执行结果</DialogTitle><DialogDescription>任务本次手动执行的返回结果</DialogDescription></DialogHeader>
-      <div v-if="taskResult" class="flex flex-col gap-4">
-        <Alert :variant="taskResult.success ? 'default' : 'destructive'"><CircleCheck v-if="taskResult.success" /><CircleX v-else /><AlertTitle>{{ taskResult.success ? '执行成功' : '执行失败' }}</AlertTitle><AlertDescription>{{ taskResult.success ? '任务已执行完成。' : '任务执行失败，请查看输出或完整日志。' }}</AlertDescription></Alert>
-        <dl class="detail-grid"><div class="detail-item"><dt>执行时间</dt><dd>{{ taskResult.timestamp || '-' }}</dd></div><div class="detail-item"><dt>执行耗时</dt><dd>{{ taskResult.duration != null ? `${taskResult.duration} 秒` : '-' }}</dd></div></dl>
-        <section><h3 class="mb-2 text-sm font-semibold">输出结果</h3><pre v-if="taskResult.output" class="result-code">{{ taskResult.output }}</pre><Empty v-else><EmptyHeader><EmptyTitle>无输出</EmptyTitle></EmptyHeader></Empty></section>
-      </div>
-      <DialogFooter><UiButton variant="outline" @click="dialogVisible = false">关闭</UiButton><UiButton @click="viewTaskLogs(currentTaskId)">查看完整日志</UiButton></DialogFooter></DialogScrollContent>
-    </UiDialog>
   </div>
 </template>
 
 <script>
-import { ArrowLeft, CircleCheck, CircleX, Pencil, Play, Plus, Trash2 } from '@lucide/vue';
+import { ArrowLeft, Pencil, Play, Plus, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -55,12 +44,11 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'TaskGroupDetail',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent,
-    CardDescription, CardHeader, CardTitle, CircleCheck, CircleX, DialogDescription, DialogFooter,
-    DialogHeader, DialogScrollContent, DialogTitle, Empty, EmptyContent, EmptyDescription,
+    ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent,
+    CardDescription, CardHeader, CardTitle, Empty, EmptyContent, EmptyDescription,
     EmptyHeader, EmptyTitle, Pencil, Play, Plus, Separator, ShadcnTable, Skeleton, Spinner,
     TableBody, TableCell, TableHead, TableHeader, TableRow, Tooltip,
-    TooltipContent, TooltipProvider, TooltipTrigger, Trash2, UiButton, UiDialog
+    TooltipContent, TooltipProvider, TooltipTrigger, Trash2, UiButton
   },
   data() {
     return {
@@ -68,8 +56,6 @@ export default {
       groupId: null,
       group: null,
       taskList: [],
-      dialogVisible: false,
-      taskResult: null,
       currentTaskId: null
     };
   },
@@ -173,9 +159,8 @@ export default {
         cronTaskApi.runTask(row.id)
           .then(response => {
             if (response.data && response.data.status === 200) {
-              toast.success('任务执行成功');
-              this.taskResult = response.data.data;
-              this.dialogVisible = true;
+              toast.success('任务已进入执行队列，请在执行日志中查看结果');
+              this.fetchGroupTasks();
             } else {
               toast.error(response.data.message || '任务执行失败');
             }
@@ -204,6 +189,9 @@ export default {
         'custom': '自定义'
       };
       return types[type] || '未知';
+    },
+    getTaskTypeLabel(type) {
+      return type === 'tmux_command' ? '内建命令' : '受控函数';
     }
   }
 };
@@ -215,16 +203,5 @@ export default {
 .detail-item:nth-child(odd) { border-right: 1px solid var(--border); }
 .detail-item dt, .detail-item dd { display: flex; align-items: center; margin: 0; padding: 10px 12px; }
 .detail-item dt { background: var(--muted); color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
-.result-code {
-  margin: 0;
-  background-color: var(--muted);
-  border: 1px solid var(--border);
-  padding: 10px;
-  border-radius: 4px;
-  max-height: 300px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
 @media (max-width: 768px) { .detail-grid { grid-template-columns: 1fr; } .detail-item:nth-child(odd) { border-right: 0; } }
 </style>

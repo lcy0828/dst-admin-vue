@@ -459,11 +459,8 @@
                 <footer>
                   <span>{{ item.time }}</span>
                   <div>
-                    <UiButton variant="ghost" size="sm" @click="editAnnouncement(item)">
-                      <Pencil data-icon="inline-start" />编辑
-                    </UiButton>
-                    <UiButton variant="ghost" size="sm" @click="publishAnnouncement(item)">
-                      <Send data-icon="inline-start" />发布
+                    <UiButton variant="ghost" size="sm" @click="gotoAnnouncement">
+                      <ArrowRight data-icon="inline-start" />管理公告
                     </UiButton>
                   </div>
                 </footer>
@@ -613,11 +610,9 @@ import {
   Gauge,
   Megaphone,
   PackageCheck,
-  Pencil,
   Play,
   RefreshCw,
   ScrollText,
-  Send,
   Settings,
   Square,
   UsersRound
@@ -671,7 +666,6 @@ export default {
     Gauge,
     Megaphone,
     PackageCheck,
-    Pencil,
     Play,
     RefreshCw,
     ScrollText,
@@ -680,7 +674,6 @@ export default {
     SelectItem,
     SelectTrigger,
     SelectValue,
-    Send,
     Settings,
     ShadcnTable,
     Skeleton,
@@ -862,7 +855,7 @@ export default {
       this.loading = true;
       return systemApi.getAnnouncements()
         .then(response => {
-          this.announcements = Array.isArray(response.data) ? response.data : [];
+          this.announcements = Array.isArray(response) ? response : (Array.isArray(response.data) ? response.data : []);
           this.announcementsError = '';
         })
         .catch(error => {
@@ -912,16 +905,6 @@ export default {
           worldType: server.world_type
         }
       });
-    },
-
-    editAnnouncement(announcement) {
-      this.$router.push({ path: '/announcements', query: { id: announcement.id } });
-    },
-
-    publishAnnouncement(announcement) {
-      systemApi.updateAnnouncement(announcement.id, { ...announcement, published: true })
-        .then(() => toast.success(`公告"${announcement.title}"已发布`))
-        .catch(error => toast.error(error.message));
     },
 
     gotoAnnouncement() {

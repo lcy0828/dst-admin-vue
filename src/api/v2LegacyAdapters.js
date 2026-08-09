@@ -1,6 +1,8 @@
 import {
+  announcementsV2API,
   backupsV2API,
   containersV2API,
+  consoleV2API,
   gameV2API,
   roomsV2API,
   systemV2API,
@@ -18,6 +20,28 @@ let roomCatalog = []
 const success = (data, msg = '操作成功') => ({ status: 200, data, msg })
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+
+function announcementInput(input = {}) {
+  const rawExpireTime = String(input.expireTime || '').trim()
+  const expiresAt = new Date(rawExpireTime.includes('T') ? rawExpireTime : rawExpireTime.replace(' ', 'T'))
+  if (!rawExpireTime || Number.isNaN(expiresAt.getTime())) throw new Error('公告过期时间无效')
+  return {
+    title: String(input.title || '').trim(),
+    content: String(input.content || '').trim(),
+    expireTime: expiresAt.toISOString(),
+    target: input.target || 'all',
+    important: input.important === true
+  }
+}
+
+function legacyAnnouncement(value) {
+  const publishedAt = new Date(value.publishTime)
+  return {
+    ...value,
+    type: value.important ? '重要' : '通知',
+    time: Number.isNaN(publishedAt.getTime()) ? '' : publishedAt.toLocaleString('zh-CN')
+  }
+}
 
 function gameUpdateCapabilities(version = {}) {
   return {
@@ -314,14 +338,39 @@ export const legacyRoomApi = {
     const job = await waitForV2Job(await backupsV2API.create(room.id, name), BACKUP_JOB_TIMEOUT)
     return success(job, '备份已创建')
   },
-  async deleteRoom() {
-    throw new Error('真实 v2 后端暂未提供房间删除接口')
+  async deleteRoom(input = {}) {
+    const room = await resolveRoom(roomReference(input))
+    const confirmation = input && typeof input === 'object' ? input.confirmation : ''
+    const result = await roomsV2API.deleteRoom(room.id, confirmation)
+    roomCatalog = []
+    return success(result, '房间已移入可恢复目录')
   },
-  async regenerateWorld() {
-    throw new Error('真实 v2 后端暂未提供世界重新生成接口，未执行任何操作')
+  async regenerateWorld(input = {}) {
+    const room = await resolveRoom(roomReference(input))
+    const [worldId] = selectedWorldIDs(room, input)
+    let run = await consoleV2API.execute(room.id, worldId, {
+      commandId: 'regenerate',
+      arguments: {},
+      confirmation: input.confirmation || ''
+    })
+    const deadline = Date.now() + ROOM_JOB_TIMEOUT
+    while (run.status === 'sending') {
+      if (Date.now() >= deadline) throw new Error('等待重新生成命令完成超时，请到命令历史确认最终结果')
+      await new Promise(resolve => setTimeout(resolve, 300))
+      run = await consoleV2API.run(room.id, run.id)
+    }
+    if (run.status !== 'sent') {
+      throw new Error(run.errorMessage || run.message || '重新生成命令执行失败')
+    }
+    roomCatalog = []
+    return success(run, '重新生成命令已发送到世界进程')
   },
-  async deleteWorld() {
-    throw new Error('真实 v2 后端暂未提供世界删除接口，未执行任何操作')
+  async deleteWorld(input = {}) {
+    const room = await resolveRoom(roomReference(input))
+    const [worldId] = selectedWorldIDs(room, input)
+    const result = await roomsV2API.deleteWorld(room.id, worldId, input.confirmation || '')
+    roomCatalog = []
+    return success(result, '世界已移入可恢复目录')
   },
   async saveWorldSettings() {
     throw new Error('请使用 v2 房间配置预览与应用接口，旧世界设置接口未执行')
@@ -493,19 +542,20 @@ export const legacySystemApi = {
     })
   },
   async getAnnouncements() {
-    throw new Error('真实 v2 后端暂未提供公告查询接口')
+    const items = await announcementsV2API.list()
+    return (Array.isArray(items) ? items : []).map(legacyAnnouncement)
   },
-  async createAnnouncement() {
-    throw new Error('真实 v2 后端暂未提供公告接口')
+  async createAnnouncement(input) {
+    return legacyAnnouncement(await announcementsV2API.create(announcementInput(input)))
   },
-  async updateAnnouncement() {
-    throw new Error('真实 v2 后端暂未提供公告接口')
+  async updateAnnouncement(announcementId, input) {
+    return legacyAnnouncement(await announcementsV2API.update(announcementId, announcementInput(input)))
   },
-  async deleteAnnouncement() {
-    throw new Error('真实 v2 后端暂未提供公告接口')
+  async deleteAnnouncement(announcementId) {
+    return announcementsV2API.delete(announcementId)
   },
-  async getAnnouncementDetail() {
-    throw new Error('真实 v2 后端暂未提供公告接口')
+  async getAnnouncementDetail(announcementId) {
+    return legacyAnnouncement(await announcementsV2API.get(announcementId))
   },
   async getDockerContainers() {
     const list = await containersV2API.list()

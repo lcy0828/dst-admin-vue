@@ -13,6 +13,7 @@
     </header>
 
     <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>系统设置加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="loadSettings(false)">重试</UiButton></AlertAction></Alert>
+    <Alert v-if="lockedSettingCount > 0"><CircleAlert /><AlertTitle>部分设置由环境变量管理</AlertTitle><AlertDescription>{{ lockedSettingCount }} 个字段已锁定，页面不会提交或覆盖这些字段。</AlertDescription></Alert>
     <div v-if="initialLoading" class="flex flex-col gap-3"><Skeleton class="h-10 w-full" /><Skeleton class="h-72 w-full" /></div>
 
     <Tabs v-else v-model="activeTab" class="settings-tabs-root">
@@ -39,7 +40,7 @@
                   <FieldLabel for="system-name">管理系统名称</FieldLabel>
                   <FieldError v-if="formErrors.systemName">{{ formErrors.systemName }}</FieldError>
                 </FieldContent>
-                <UiInput id="system-name" v-model="settings.systemName" class="setting-control" :aria-invalid="Boolean(formErrors.systemName)" placeholder="请输入管理系统名称" @input="formErrors.systemName = ''" />
+                <UiInput id="system-name" v-model="settings.systemName" class="setting-control" :disabled="!fieldEditable('ui.systemName')" :aria-invalid="Boolean(formErrors.systemName)" placeholder="请输入管理系统名称" @input="formErrors.systemName = ''" />
               </Field>
 
               <Field orientation="responsive" :data-invalid="Boolean(formErrors.adminEmail)">
@@ -48,12 +49,12 @@
                   <FieldDescription>可留空；填写后用于接收管理通知。</FieldDescription>
                   <FieldError v-if="formErrors.adminEmail">{{ formErrors.adminEmail }}</FieldError>
                 </FieldContent>
-                <UiInput id="admin-email" v-model="settings.adminEmail" class="setting-control" type="email" :aria-invalid="Boolean(formErrors.adminEmail)" placeholder="请输入管理员联系邮箱" @input="formErrors.adminEmail = ''" />
+                <UiInput id="admin-email" v-model="settings.adminEmail" class="setting-control" type="email" :disabled="!fieldEditable('ui.adminEmail')" :aria-invalid="Boolean(formErrors.adminEmail)" placeholder="请输入管理员联系邮箱" @input="formErrors.adminEmail = ''" />
               </Field>
 
               <Field orientation="responsive">
                 <FieldContent><FieldLabel for="system-language">系统语言</FieldLabel></FieldContent>
-                <UiSelect v-model="settings.language">
+                <UiSelect v-model="settings.language" :disabled="!fieldEditable('ui.language')">
                   <SelectTrigger id="system-language" class="setting-control"><SelectValue placeholder="请选择系统语言" /></SelectTrigger>
                   <SelectContent><SelectGroup>
                     <SelectItem value="zh-CN">简体中文</SelectItem>
@@ -65,7 +66,7 @@
 
               <Field orientation="responsive">
                 <FieldContent><FieldLabel for="system-timezone">时区设置</FieldLabel></FieldContent>
-                <UiSelect v-model="settings.timezone">
+                <UiSelect v-model="settings.timezone" :disabled="!fieldEditable('ui.timezone')">
                   <SelectTrigger id="system-timezone" class="setting-control"><SelectValue placeholder="请选择时区" /></SelectTrigger>
                   <SelectContent><SelectGroup>
                     <SelectItem value="Asia/Shanghai">(GMT+08:00) 北京时间</SelectItem>
@@ -80,7 +81,7 @@
 
               <Field orientation="responsive">
                 <FieldContent><FieldLabel for="date-format">日期格式</FieldLabel></FieldContent>
-                <UiSelect v-model="settings.dateFormat">
+                <UiSelect v-model="settings.dateFormat" :disabled="!fieldEditable('ui.dateFormat')">
                   <SelectTrigger id="date-format" class="setting-control"><SelectValue placeholder="请选择日期格式" /></SelectTrigger>
                   <SelectContent><SelectGroup>
                     <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
@@ -96,7 +97,7 @@
                   <FieldTitle id="theme-options-label">界面主题</FieldTitle>
                   <FieldDescription>默认使用石墨朱橙，也可以切换预设或选择自定义主色。</FieldDescription>
                 </FieldContent>
-                <ToggleGroup :model-value="selectedThemeId" type="single" class="theme-options" aria-labelledby="theme-options-label" @update:model-value="selectThemeById">
+                <ToggleGroup :model-value="selectedThemeId" type="single" class="theme-options" aria-labelledby="theme-options-label" :disabled="!fieldEditable('ui.theme')" @update:model-value="selectThemeById">
                   <ToggleGroupItem v-for="preset in themePresets" :key="preset.id" :value="preset.id" class="theme-option" :style="themeOptionStyle(preset)">
                     <span class="theme-option-head">
                       <span class="theme-option-name">{{ preset.name }}</span>
@@ -115,9 +116,9 @@
                     <FieldLabel for="custom-theme-color">自定义主色</FieldLabel>
                     <FieldDescription>{{ selectedThemeId === 'custom' ? '当前使用自定义颜色。' : '选择颜色后立即预览。' }}</FieldDescription>
                   </div>
-                  <UiInput id="custom-theme-color" v-model="settings.theme" class="color-input" type="color" aria-label="自定义主题主色" @update:model-value="previewCustomTheme" />
+                  <UiInput id="custom-theme-color" v-model="settings.theme" class="color-input" type="color" aria-label="自定义主题主色" :disabled="!fieldEditable('ui.theme')" @update:model-value="previewCustomTheme" />
                   <Badge v-if="selectedThemeId === 'custom'" variant="secondary">已选择</Badge>
-                  <UiButton variant="ghost" size="sm" @click="resetDefaultTheme">恢复石墨默认</UiButton>
+                  <UiButton variant="ghost" size="sm" :disabled="!fieldEditable('ui.theme')" @click="resetDefaultTheme">恢复石墨默认</UiButton>
                 </div>
               </Field>
             </FieldGroup>
@@ -136,19 +137,19 @@
             <FieldGroup class="settings-form">
               <Field orientation="horizontal">
                 <FieldContent><FieldLabel for="password-complexity">启用密码复杂度检查</FieldLabel><FieldDescription>开启后，密码必须包含大小写字母、数字和特殊字符。</FieldDescription></FieldContent>
-                <UiSwitch id="password-complexity" v-model="settings.passwordComplexity" />
+                <UiSwitch id="password-complexity" v-model="settings.passwordComplexity" :disabled="!fieldEditable('security.passwordComplexity')" />
               </Field>
-              <Field orientation="responsive" :data-disabled="!settings.passwordComplexity">
-                <FieldContent><FieldLabel for="min-password-length">密码最小长度</FieldLabel><FieldDescription>允许设置 6 至 20 位。</FieldDescription></FieldContent>
-                <UiInput id="min-password-length" class="number-control" type="number" min="6" max="20" :disabled="!settings.passwordComplexity" :model-value="String(settings.minPasswordLength)" @update:model-value="settings.minPasswordLength = Number($event)" />
+              <Field orientation="responsive" :data-disabled="!fieldEditable('security.minPasswordLength')">
+                <FieldContent><FieldLabel for="min-password-length">密码最小长度</FieldLabel><FieldDescription>独立于复杂度检查，允许设置 6 至 20 位。</FieldDescription></FieldContent>
+                <UiInput id="min-password-length" class="number-control" type="number" min="6" max="20" :disabled="!fieldEditable('security.minPasswordLength')" :model-value="String(settings.minPasswordLength)" @update:model-value="settings.minPasswordLength = Number($event)" />
               </Field>
               <Field orientation="responsive">
                 <FieldContent><FieldLabel for="session-timeout">会话超时时间（分钟）</FieldLabel><FieldDescription>用户无操作后自动退出系统的时间。</FieldDescription></FieldContent>
-                <UiInput id="session-timeout" class="number-control" type="number" min="5" max="1440" :model-value="String(settings.sessionTimeout)" @update:model-value="settings.sessionTimeout = Number($event)" />
+                <UiInput id="session-timeout" class="number-control" type="number" min="5" max="1440" :disabled="!fieldEditable('security.sessionTimeout')" :model-value="String(settings.sessionTimeout)" @update:model-value="settings.sessionTimeout = Number($event)" />
               </Field>
               <Field orientation="responsive">
                 <FieldContent><FieldLabel for="max-login-attempts">最大登录尝试次数</FieldLabel><FieldDescription>超过次数后账户将被临时锁定。</FieldDescription></FieldContent>
-                <UiInput id="max-login-attempts" class="number-control" type="number" min="3" max="10" :model-value="String(settings.maxLoginAttempts)" @update:model-value="settings.maxLoginAttempts = Number($event)" />
+                <UiInput id="max-login-attempts" class="number-control" type="number" min="3" max="10" :disabled="!fieldEditable('security.maxLoginAttempts')" :model-value="String(settings.maxLoginAttempts)" @update:model-value="settings.maxLoginAttempts = Number($event)" />
               </Field>
               <Field orientation="horizontal" data-disabled>
                 <FieldContent><FieldLabel for="two-factor-auth">启用双因素认证</FieldLabel><FieldDescription>需要先完成身份验证器密钥绑定，当前版本尚未开放。</FieldDescription></FieldContent>
@@ -156,7 +157,7 @@
               </Field>
               <Field>
                 <FieldLabel for="ip-whitelist">IP 白名单</FieldLabel>
-                <UiTextarea id="ip-whitelist" v-model="settings.ipWhitelist" rows="3" placeholder="每行一个 IP 地址或网段，例如：192.168.1.1 或 192.168.1.0/24" />
+                <UiTextarea id="ip-whitelist" v-model="settings.ipWhitelist" rows="3" :disabled="!fieldEditable('security.ipWhitelist')" placeholder="每行一个 IP 地址或网段，例如：192.168.1.1 或 192.168.1.0/24" />
                 <FieldDescription>仅允许这些 IP 地址访问管理系统，留空表示不限制。</FieldDescription>
               </Field>
             </FieldGroup>
@@ -175,26 +176,26 @@
             <FieldGroup class="settings-form">
               <Field orientation="horizontal">
                 <FieldContent><FieldLabel for="auto-backup">启用自动备份</FieldLabel><FieldDescription>定期自动备份系统数据。</FieldDescription></FieldContent>
-                <UiSwitch id="auto-backup" v-model="settings.autoBackup" />
+                <UiSwitch id="auto-backup" v-model="settings.autoBackup" :disabled="!fieldEditable('backup.auto')" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
                 <FieldContent><FieldLabel for="backup-frequency">备份频率</FieldLabel></FieldContent>
-                <UiSelect v-model="settings.backupFrequency" :disabled="!settings.autoBackup">
+                <UiSelect v-model="settings.backupFrequency" :disabled="!settings.autoBackup || !fieldEditable('backup.frequency')">
                   <SelectTrigger id="backup-frequency" class="setting-control"><SelectValue placeholder="请选择备份频率" /></SelectTrigger>
                   <SelectContent><SelectGroup><SelectItem value="daily">每天</SelectItem><SelectItem value="weekly">每周</SelectItem><SelectItem value="monthly">每月</SelectItem></SelectGroup></SelectContent>
                 </UiSelect>
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
                 <FieldContent><FieldLabel for="backup-time">备份时间</FieldLabel></FieldContent>
-                <UiInput id="backup-time" v-model="settings.backupTime" class="setting-control" type="time" :disabled="!settings.autoBackup" />
+                <UiInput id="backup-time" v-model="settings.backupTime" class="setting-control" type="time" :disabled="!settings.autoBackup || !fieldEditable('backup.time')" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
                 <FieldContent><FieldLabel for="backup-retention">保留备份数量</FieldLabel><FieldDescription>系统将保留的最近备份数量。</FieldDescription></FieldContent>
-                <UiInput id="backup-retention" class="number-control" type="number" min="1" max="100" :disabled="!settings.autoBackup" :model-value="String(settings.backupRetention)" @update:model-value="settings.backupRetention = Number($event)" />
+                <UiInput id="backup-retention" class="number-control" type="number" min="1" max="100" :disabled="!settings.autoBackup || !fieldEditable('backup.retention')" :model-value="String(settings.backupRetention)" @update:model-value="settings.backupRetention = Number($event)" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
                 <FieldContent><FieldLabel for="backup-location">备份存储位置</FieldLabel><FieldDescription>真实本地备份路径，修改后重启服务生效。</FieldDescription></FieldContent>
-                <UiInput id="backup-location" v-model="settings.backupLocation" class="setting-control" :disabled="!settings.autoBackup" placeholder="请输入备份存储路径" />
+                <UiInput id="backup-location" v-model="settings.backupLocation" class="setting-control" :disabled="!settings.autoBackup || !fieldEditable('paths.backup')" placeholder="请输入备份存储路径" />
               </Field>
               <FieldSeparator>手动备份</FieldSeparator>
               <Field orientation="responsive">
@@ -220,27 +221,27 @@
             <FieldGroup class="settings-form">
               <Field orientation="horizontal">
                 <FieldContent><FieldLabel for="email-notification">启用邮件通知</FieldLabel><FieldDescription>启用系统邮件通知功能。</FieldDescription></FieldContent>
-                <UiSwitch id="email-notification" v-model="settings.emailNotification" />
+                <UiSwitch id="email-notification" v-model="settings.emailNotification" :disabled="!fieldEditable('notification.emailEnabled')" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpServer)">
                 <FieldContent><FieldLabel for="smtp-server">SMTP 服务器</FieldLabel><FieldError v-if="formErrors.smtpServer">{{ formErrors.smtpServer }}</FieldError></FieldContent>
-                <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.smtpServer)" placeholder="例如：smtp.example.com" @input="formErrors.smtpServer = ''" />
+                <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpServer')" :aria-invalid="Boolean(formErrors.smtpServer)" placeholder="例如：smtp.example.com" @input="formErrors.smtpServer = ''" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification">
                 <FieldContent><FieldLabel for="smtp-port">SMTP 端口</FieldLabel></FieldContent>
-                <UiInput id="smtp-port" class="number-control" type="number" min="1" max="65535" :disabled="!settings.emailNotification" :model-value="String(settings.smtpPort)" @update:model-value="settings.smtpPort = Number($event)" />
+                <UiInput id="smtp-port" class="number-control" type="number" min="1" max="65535" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpPort')" :model-value="String(settings.smtpPort)" @update:model-value="settings.smtpPort = Number($event)" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpUsername)">
                 <FieldContent><FieldLabel for="smtp-username">SMTP 用户名</FieldLabel><FieldError v-if="formErrors.smtpUsername">{{ formErrors.smtpUsername }}</FieldError></FieldContent>
-                <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.smtpUsername)" placeholder="邮箱账号" @input="formErrors.smtpUsername = ''" />
+                <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpUsername')" :aria-invalid="Boolean(formErrors.smtpUsername)" placeholder="邮箱账号" @input="formErrors.smtpUsername = ''" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpPassword)">
                 <FieldContent><FieldLabel for="smtp-password">SMTP 密码</FieldLabel><FieldError v-if="formErrors.smtpPassword">{{ formErrors.smtpPassword }}</FieldError></FieldContent>
-                <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="smtpPasswordConfigured ? '已配置，留空表示保持不变' : '邮箱密码或授权码'" @input="formErrors.smtpPassword = ''" />
+                <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpPassword')" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="smtpPasswordConfigured ? '已配置，留空表示保持不变' : '邮箱密码或授权码'" @input="formErrors.smtpPassword = ''" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.senderEmail)">
                 <FieldContent><FieldLabel for="sender-email">发件人邮箱</FieldLabel><FieldError v-if="formErrors.senderEmail">{{ formErrors.senderEmail }}</FieldError></FieldContent>
-                <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!settings.emailNotification" :aria-invalid="Boolean(formErrors.senderEmail)" placeholder="系统发送邮件的邮箱地址" @input="formErrors.senderEmail = ''" />
+                <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!settings.emailNotification || !fieldEditable('notification.senderEmail')" :aria-invalid="Boolean(formErrors.senderEmail)" placeholder="系统发送邮件的邮箱地址" @input="formErrors.senderEmail = ''" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification">
                 <FieldContent><FieldTitle>连接检查</FieldTitle><FieldDescription>使用当前 SMTP 参数执行一次真实连接与认证测试。</FieldDescription></FieldContent>
@@ -270,7 +271,7 @@
 
         <Alert v-if="statusError" variant="destructive" class="mt-4"><CircleAlert /><AlertTitle>系统状态加载失败</AlertTitle><AlertDescription>{{ statusError }}</AlertDescription></Alert>
         <div v-if="statusLoading" class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4"><Skeleton v-for="index in 4" :key="index" class="h-52 w-full" /></div>
-        <template v-else>
+        <template v-else-if="statusLoaded">
         <div class="status-section-heading"><h3>系统状态</h3><Separator /></div>
         <div class="status-grid system-status-grid">
           <Card>
@@ -331,7 +332,7 @@
           <ShadcnTable>
             <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>房间</TableHead><TableHead>文件名</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead>状态</TableHead><TableHead class="table-actions-head">操作</TableHead></TableRow></TableHeader>
             <TableBody>
-              <TableRow v-for="backup in backupHistory" :key="backup.id"><TableCell>{{ backup.id }}</TableCell><TableCell>{{ backup.roomName }}</TableCell><TableCell>{{ backup.filename }}</TableCell><TableCell>{{ backup.size }}</TableCell><TableCell>{{ backup.createTime }}</TableCell><TableCell><Badge :variant="backup.status === 'success' ? 'secondary' : 'destructive'">{{ backup.status === 'success' ? '成功' : '失败' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><Download data-icon="inline-start" />下载</UiButton><UiButton variant="destructive" size="sm" @click="deleteBackup(backup)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow>
+              <TableRow v-for="backup in backupHistory" :key="backup.id"><TableCell>{{ backup.id }}</TableCell><TableCell>{{ backup.roomName }}</TableCell><TableCell>{{ backup.filename }}</TableCell><TableCell>{{ backup.size }}</TableCell><TableCell>{{ backup.createTime }}</TableCell><TableCell><Badge :variant="backup.status === 'success' ? 'secondary' : 'destructive'">{{ backup.status === 'success' ? '成功' : '失败' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton variant="outline" size="sm" :disabled="loading" @click="downloadBackup(backup)"><Download data-icon="inline-start" />下载</UiButton><UiButton variant="destructive" size="sm" :disabled="loading" @click="deleteBackup(backup)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow>
               <TableEmpty v-if="backupHistory.length === 0" :colspan="7">
                 <Empty>
                   <EmptyHeader>
@@ -369,6 +370,7 @@ import {
   Trash2
 } from '@lucide/vue';
 import { systemApi } from '@/api';
+import { editableSystemSettingValues, TERMINAL_SYSTEM_JOB_STATES } from '@/api/systemSettingsSupport.mjs';
 import { backupsV2API, jobsV2API, roomsV2API, systemV2API } from '@/api/v2';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -391,11 +393,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { confirmAction } from '@/lib/feedback';
 import { THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
 import { applySystemPreferences, previewSystemTheme } from '@/utils/systemPreferences';
+import { getActiveRuntimeTarget } from '@/utils/runtimeTarget';
 import { toast } from 'vue-sonner';
 
 const APPLY_CONFIRMATION = 'APPLY SYSTEM SETTINGS';
-const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'cancelled']);
-
 export default {
   name: 'SystemSettings',
   components: {
@@ -478,6 +479,7 @@ export default {
       initialLoading: true,
       loadError: '',
       statusLoading: false,
+      statusLoaded: false,
       statusError: '',
       activeTab: 'basic',
       revision: '',
@@ -531,7 +533,7 @@ export default {
 
       // 系统状态信息
       systemStatus: {
-        cpu_model: '加载中...',
+        cpu_model: '',
         cpu_mhz: 0,
         cpu_cores: 0,
         cpu_threads: 0,
@@ -548,15 +550,15 @@ export default {
         used_disk: 0,
         free_disk: 0,
         disk_usage: 0,
-        os_info: '加载中...',
-        hostname: '加载中...',
+        os_info: '',
+        hostname: '',
         uptime: 0,
-        uptime_formatted: '加载中...',
-        go_version: '加载中...',
+        uptime_formatted: '',
+        go_version: '',
         go_routines: 0,
         process_id: 0,
         process_uptime: 0,
-        process_uptime_fmt: '加载中...',
+        process_uptime_fmt: '',
         process_memory_rss: 0,
         process_memory_vms: 0,
         process_cpu_usage: 0,
@@ -567,19 +569,21 @@ export default {
         go_memory_heap_objs: 0,
         go_gc_pause: 0,
         go_gc_runs: 0,
-        current_time: '加载中...',
-        start_time: '加载中...'
+        current_time: '',
+        start_time: ''
       },
 
       // 备份历史
       backupHistoryVisible: false,
-      backupHistory: [
-      ]
+      backupHistory: []
     };
   },
   computed: {
     selectedThemeId() {
       return resolveThemePreset(this.settings.theme).id;
+    },
+    lockedSettingCount() {
+      return (this.settingsResponse?.fields || []).filter(field => field.environment && !field.editable).length;
     }
   },
   created() {
@@ -590,6 +594,9 @@ export default {
     if (this.activeTab === 'systemStatus') {
       this.refreshSystemStatus();
     }
+  },
+  beforeUnmount() {
+    if (this.settingsResponse) applySystemPreferences(this.settingsResponse);
   },
   watch: {
     // 监听标签页切换，在切换到系统状态标签页时刷新数据
@@ -609,6 +616,10 @@ export default {
     },
     fieldBoolean(response, id, fallback = false) {
       return this.field(response, id, String(fallback)).value === 'true';
+    },
+    fieldEditable(id) {
+      const field = this.settingsResponse?.fields?.find(item => item.id === id);
+      return field?.editable === true;
     },
     themeValue(response) {
       return normalizeThemeColor(this.field(response, 'ui.theme', themePresetById('graphite').primary).value);
@@ -680,9 +691,11 @@ export default {
         this.populateSettings(response);
         applySystemPreferences(response);
         if (showMessage === true) toast.success('设置已刷新');
+        return true;
       } catch (error) {
         this.loadError = error.message || '读取系统设置失败';
         toast.error(this.loadError);
+        return false;
       } finally {
         this.loading = false;
         this.initialLoading = false;
@@ -718,6 +731,9 @@ export default {
       if (String(this.settings.adminEmail || '').trim() && !this.isValidEmail(this.settings.adminEmail)) {
         this.formErrors.adminEmail = '请输入正确的邮箱地址';
       }
+      if (this.settings.emailNotification && !String(this.settings.adminEmail || '').trim()) {
+        this.formErrors.adminEmail = '启用邮件通知时必须填写管理员联系邮箱';
+      }
       const emailValid = this.validateEmailFields(true);
       const basicValid = !this.formErrors.systemName && !this.formErrors.adminEmail;
       if (!basicValid) this.activeTab = 'basic';
@@ -726,7 +742,7 @@ export default {
       return basicValid && emailValid;
     },
     settingsInput() {
-      const values = {
+      const currentValues = {
         'ui.systemName': this.settings.systemName,
         'ui.adminEmail': this.settings.adminEmail,
         'ui.language': this.settings.language,
@@ -753,7 +769,10 @@ export default {
         'notification.backupResults': String(this.settings.notifyBackupResults),
         'notification.systemUpdates': String(this.settings.notifySystemUpdates)
       };
-      if (this.settings.smtpPassword) values['notification.smtpPassword'] = this.settings.smtpPassword;
+      const values = editableSystemSettingValues(this.settingsResponse?.fields, currentValues);
+      if (this.settings.smtpPassword && this.fieldEditable('notification.smtpPassword')) {
+        values['notification.smtpPassword'] = this.settings.smtpPassword;
+      }
       return { revision: this.revision, values, clearSecrets: [] };
     },
     async saveSettings() {
@@ -771,11 +790,25 @@ export default {
           return;
         }
         const result = await systemV2API.applySettings({ ...input, confirmation: APPLY_CONFIRMATION });
-        if (preview.changes.some(change => change.fieldId.startsWith('backup.'))) await this.syncBackupPolicies();
+        let backupPolicyError = null;
+        if (preview.changes.some(change => change.fieldId.startsWith('backup.'))) {
+          try {
+            await this.syncBackupPolicies();
+          } catch (error) {
+            backupPolicyError = error;
+          }
+        }
         this.populateSettings(result.settings);
         applySystemPreferences(result.settings);
+        const refreshed = await this.loadSettings(false);
         const suffix = result.settings.restartRequired ? '；路径或运行参数需要重启服务后生效' : '';
-        toast.success(`设置已保存并生效${suffix}`);
+        if (!refreshed) {
+          toast.warning('系统设置已保存，但刷新最新设置失败，请稍后手动刷新');
+        } else if (backupPolicyError) {
+          toast.warning(`系统设置已保存，但房间备份策略同步失败：${backupPolicyError.message || '未知错误'}`);
+        } else {
+          toast.success(`设置已保存并生效${suffix}`);
+        }
       } catch (error) {
         toast.error(error.message || '保存系统设置失败');
       } finally {
@@ -836,10 +869,10 @@ export default {
       let current = jobs;
       for (let attempt = 0; attempt < 120; attempt += 1) {
         current = await Promise.all(current.map(job => jobsV2API.get(job.id)));
-        if (current.every(job => TERMINAL_JOB_STATES.has(job.status))) break;
+        if (current.every(job => TERMINAL_SYSTEM_JOB_STATES.has(job.status))) break;
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      if (current.some(job => !TERMINAL_JOB_STATES.has(job.status))) throw new Error('备份任务仍在执行，请稍后查看历史记录');
+      if (current.some(job => !TERMINAL_SYSTEM_JOB_STATES.has(job.status))) throw new Error('备份任务仍在执行，请稍后查看历史记录');
       const failed = current.find(job => job.status !== 'succeeded');
       if (failed) throw new Error(failed.error?.message || '部分房间备份失败');
     },
@@ -868,22 +901,44 @@ export default {
         this.loading = false;
       }
     },
-    downloadBackup(backup) {
-      const link = document.createElement('a');
-      link.href = backupsV2API.downloadURL(backup.id);
-      link.download = backup.filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+    async downloadBackup(backup) {
+      this.loading = true;
+      try {
+        const response = await fetch(backupsV2API.downloadURL(backup.id), {
+          credentials: 'include',
+          headers: { 'X-DST-Runtime-Target': getActiveRuntimeTarget().id }
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.error?.message || `下载失败（HTTP ${response.status}）`);
+        }
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = backup.filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        toast.error(error.message || '下载备份失败');
+      } finally {
+        this.loading = false;
+      }
     },
     async deleteBackup(backup) {
       try {
         await confirmAction(`确定要删除备份：${backup.filename}吗？`, '删除备份', {
           confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning'
         });
-        await backupsV2API.delete(backup.id, backup.name);
-        await this.loadBackupHistory();
-        toast.success('备份已删除');
+        this.loading = true;
+        try {
+          await backupsV2API.delete(backup.id, backup.name);
+          await this.loadBackupHistory();
+          toast.success('备份已删除');
+        } finally {
+          this.loading = false;
+        }
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') toast.error(error.message || '删除备份失败');
       }
@@ -919,6 +974,7 @@ export default {
         .then(res => {
           if (res && res.data && res.status === 200) {
             this.systemStatus = res.data;
+            this.statusLoaded = true;
             toast.success('系统状态已刷新');
           } else {
             this.statusError = res?.msg || '未知错误';

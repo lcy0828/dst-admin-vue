@@ -1,6 +1,5 @@
 import { agentsV2API } from './v2'
-
-const terminalStatuses = new Set(['completed', 'failed', 'canceled'])
+import { isLegacyCommandTerminal, normalizeAgentCommandTimeout } from './agentApiSupport.mjs'
 
 const success = (data, msg = '获取成功') => ({
   code: 200,
@@ -66,8 +65,7 @@ function v2Status(status) {
     running: 'running',
     completed: 'succeeded',
     failed: 'failed',
-    canceled: 'canceled',
-    timeout: 'failed'
+    canceled: 'canceled'
   }[status] || status || undefined
 }
 
@@ -91,7 +89,7 @@ function legacyCommand(command = {}) {
     end_time: command.finishedAt,
     duration_ms: command.durationMs || 0,
     created_at: command.createdAt,
-    terminal: terminalStatuses.has(status)
+    terminal: isLegacyCommandTerminal(status)
   }
 }
 
@@ -121,9 +119,10 @@ async function submitCommand(input) {
     throw new Error('当前生产接口只允许“刷新系统信息”和“检查磁盘”两个领域动作')
   }
   const agentId = input.agent_id || input.agentId
+  if (!agentId) throw new Error('请选择 Agent')
   const job = await agentsV2API.runCommand(agentId, {
     action,
-    timeoutSeconds: Math.min(300, Math.max(5, Number(input.timeout || input.timeoutSeconds || 30)))
+    timeoutSeconds: normalizeAgentCommandTimeout(input.timeout ?? input.timeoutSeconds ?? 30)
   })
   const history = await agentsV2API.agentCommands(agentId, { limit: 25, offset: 0 })
   const command = (history.items || []).find(item => item.jobId === job.id)

@@ -43,8 +43,8 @@
           <TableBody>
             <TableRow v-for="announcement in filteredAnnouncements" :key="announcement.id">
               <TableCell><div class="announcement-title"><Badge v-if="announcement.important" variant="destructive">重要</Badge>{{ announcement.title }}</div></TableCell>
-              <TableCell>{{ announcement.publishTime }}</TableCell>
-              <TableCell>{{ announcement.expireTime }}</TableCell>
+              <TableCell>{{ formatDate(announcement.publishTime) }}</TableCell>
+              <TableCell>{{ formatDate(announcement.expireTime) }}</TableCell>
               <TableCell><Badge :variant="announcement.status === 'active' ? 'default' : 'secondary'">{{ announcement.status === 'active' ? '有效' : '已过期' }}</Badge></TableCell>
               <TableCell><div class="row-actions">
                 <UiButton variant="ghost" size="sm" @click="viewAnnouncement(announcement)">查看</UiButton>
@@ -69,12 +69,12 @@
           <div class="announcement-header">
             <h3>{{ currentAnnouncement.title }}</h3>
             <div class="announcement-meta">
-              <span>发布时间: {{ currentAnnouncement.publishTime }}</span>
-              <span>过期时间: {{ currentAnnouncement.expireTime }}</span>
+              <span>发布时间: {{ formatDate(currentAnnouncement.publishTime) }}</span>
+              <span>过期时间: {{ formatDate(currentAnnouncement.expireTime) }}</span>
               <Badge v-if="currentAnnouncement.important" variant="destructive">重要</Badge>
             </div>
           </div>
-          <div class="announcement-content" v-html="currentAnnouncement.content"></div>
+          <div class="announcement-content" v-text="currentAnnouncement.content"></div>
         </div>
         </template>
         <DialogFooter>
@@ -93,8 +93,8 @@
       <DialogScrollContent class="sm:max-w-3xl">
         <DialogHeader><DialogTitle>{{ formTitle }}</DialogTitle><DialogDescription>设置公告内容、接收对象和过期时间。</DialogDescription></DialogHeader>
         <FieldGroup>
-          <Field :data-invalid="Boolean(formErrors.title)"><FieldLabel for="announcement-title">标题</FieldLabel><UiInput id="announcement-title" v-model="announcementForm.title" :aria-invalid="Boolean(formErrors.title)" placeholder="请输入公告标题" /><FieldError v-if="formErrors.title">{{ formErrors.title }}</FieldError></Field>
-          <Field :data-invalid="Boolean(formErrors.content)"><FieldLabel for="announcement-content">内容</FieldLabel><UiTextarea id="announcement-content" v-model="announcementForm.content" :aria-invalid="Boolean(formErrors.content)" rows="8" placeholder="请输入公告内容" /><FieldError v-if="formErrors.content">{{ formErrors.content }}</FieldError></Field>
+          <Field :data-invalid="Boolean(formErrors.title)"><FieldLabel for="announcement-title">标题</FieldLabel><UiInput id="announcement-title" v-model="announcementForm.title" :aria-invalid="Boolean(formErrors.title)" maxlength="50" placeholder="请输入公告标题" /><FieldError v-if="formErrors.title">{{ formErrors.title }}</FieldError></Field>
+          <Field :data-invalid="Boolean(formErrors.content)"><FieldLabel for="announcement-content">内容</FieldLabel><UiTextarea id="announcement-content" v-model="announcementForm.content" :aria-invalid="Boolean(formErrors.content)" maxlength="10000" rows="8" placeholder="请输入公告内容" /><FieldError v-if="formErrors.content">{{ formErrors.content }}</FieldError></Field>
           <Field :data-invalid="Boolean(formErrors.expireTime)"><FieldLabel for="announcement-expire">过期时间</FieldLabel><UiInput id="announcement-expire" type="datetime-local" :model-value="toDateTimeLocal(announcementForm.expireTime)" :aria-invalid="Boolean(formErrors.expireTime)" @update:model-value="setExpireTime" /><FieldError v-if="formErrors.expireTime">{{ formErrors.expireTime }}</FieldError></Field>
           <FieldSet><FieldLegend variant="label">发送对象</FieldLegend><RadioGroup v-model="announcementForm.target"><Field v-for="target in targetOptions" :key="target.value" orientation="horizontal"><RadioGroupItem :id="`target-${target.value}`" :value="target.value" /><FieldLabel :for="`target-${target.value}`">{{ target.label }}</FieldLabel></Field></RadioGroup></FieldSet>
           <Field orientation="horizontal"><FieldContent><FieldLabel for="announcement-important">重要公告</FieldLabel><FieldDescription>重要公告将在列表中突出显示。</FieldDescription></FieldContent><UiSwitch id="announcement-important" v-model="announcementForm.important" /></Field>
@@ -224,11 +224,7 @@ export default {
       this.loadError = '';
       return this.$api.systemApi.getAnnouncements()
         .then(res => {
-          this.announcements = res.map(announcement => ({
-            ...announcement,
-            publishTime: this.formatDate(announcement.publishTime),
-            expireTime: this.formatDate(announcement.expireTime)
-          }));
+          this.announcements = Array.isArray(res) ? res : [];
         })
         .catch(err => {
           this.loadError = err.message || '无法连接公告服务';
@@ -279,7 +275,10 @@ export default {
         ? '请输入公告标题'
         : (titleLength < 2 || titleLength > 50 ? '长度在 2 到 50 个字符' : '')
       this.formErrors.content = this.announcementForm.content.trim() ? '' : '请输入公告内容'
-      this.formErrors.expireTime = this.announcementForm.expireTime ? '' : '请选择过期时间'
+      const expiresAt = new Date(this.announcementForm.expireTime)
+      this.formErrors.expireTime = !this.announcementForm.expireTime || Number.isNaN(expiresAt.getTime())
+        ? '请选择有效的过期时间'
+        : (expiresAt <= new Date() ? '过期时间必须晚于当前时间' : '')
       return !Object.values(this.formErrors).some(Boolean)
     },
     async submitAnnouncementForm() {
@@ -327,6 +326,7 @@ export default {
     },
     formatDate(dateString) {
       const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) return '-';
       return date.toLocaleString('zh-CN', {
         year: 'numeric',
         month: '2-digit',
@@ -339,13 +339,16 @@ export default {
     getDefaultExpireTime() {
       const date = new Date();
       date.setDate(date.getDate() + 7); // 默认7天后过期
-      return date.toISOString().substring(0, 19).replace('T', ' ');
+      return date.toISOString();
     },
     toDateTimeLocal(value) {
-      return value ? value.replace(' ', 'T').slice(0, 16) : ''
+      const date = new Date(value)
+      if (!value || Number.isNaN(date.getTime())) return ''
+      return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
     },
     setExpireTime(value) {
-      this.announcementForm.expireTime = value ? `${value.replace('T', ' ')}:00` : ''
+      const date = new Date(value)
+      this.announcementForm.expireTime = value && !Number.isNaN(date.getTime()) ? date.toISOString() : ''
     }
   },
   mounted() {

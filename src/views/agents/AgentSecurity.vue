@@ -12,7 +12,7 @@
       <CardContent>
         <Skeleton v-if="loading && !apiKey" class="h-16 w-full" />
         <FieldGroup v-else>
-          <Field><FieldLabel for="agent-api-key">当前密钥</FieldLabel><InputGroup><InputGroupInput id="agent-api-key" :model-value="showKey ? (apiKey || '未配置') : '••••••••••••••••••••••••••••••••'" readonly /><InputGroupAddon align="inline-end"><UiButton variant="ghost" size="sm" :disabled="!apiKey" @click="toggleKeyVisibility"><EyeOff v-if="showKey" data-icon="inline-start" /><Eye v-else data-icon="inline-start" />{{ showKey ? '隐藏' : '显示' }}</UiButton></InputGroupAddon></InputGroup><FieldDescription v-if="!keyRevealed">出于安全考虑，服务端仅返回现有密钥的掩码。</FieldDescription></Field>
+          <Field><FieldLabel for="agent-api-key">当前密钥</FieldLabel><InputGroup><InputGroupInput id="agent-api-key" :model-value="securityConfigured ? (showKey ? apiKey : '••••••••••••••••••••••••••••••••') : '未配置'" readonly /><InputGroupAddon align="inline-end"><UiButton variant="ghost" size="sm" :disabled="!securityConfigured" @click="toggleKeyVisibility"><EyeOff v-if="showKey" data-icon="inline-start" /><Eye v-else data-icon="inline-start" />{{ showKey ? '隐藏' : '显示' }}</UiButton></InputGroupAddon></InputGroup><FieldDescription v-if="securityConfigured && !keyRevealed">出于安全考虑，服务端仅返回现有密钥的掩码。</FieldDescription></Field>
           <Alert v-if="!securityAvailable"><CircleAlert /><AlertTitle>密钥管理不可用</AlertTitle><AlertDescription>当前后端未开放密钥轮换能力。</AlertDescription></Alert>
         </FieldGroup>
       </CardContent>
@@ -29,7 +29,7 @@
             <TabsContent value="linux">
               <div class="code-block">
                 <pre><code>go build -o dst-admin-agent ./agent/cmd/agent
-./dst-admin-agent -server "wss://your-domain/agent" -key "{{ apiKey }}"</code></pre>
+./dst-admin-agent -server "{{ installServerURL }}" -key "{{ apiKey }}"</code></pre>
                 <UiButton
                   variant="ghost"
                   size="sm"
@@ -44,7 +44,7 @@
             <TabsContent value="windows">
               <div class="code-block">
                 <pre><code>go build -o dst-admin-agent.exe ./agent/cmd/agent
-.\dst-admin-agent.exe -server "wss://your-domain/agent" -key "{{ apiKey }}"</code></pre>
+.\dst-admin-agent.exe -server "{{ installServerURL }}" -key "{{ apiKey }}"</code></pre>
                 <UiButton
                   variant="ghost"
                   size="sm"
@@ -87,7 +87,7 @@
                 <div class="code-block">
                   <pre><code>[agent]
 SECURITY_KEY = {{ apiKey }}
-SERVER_URL = wss://your-domain/agent</code></pre>
+SERVER_URL = {{ installServerURL }}</code></pre>
                   <UiButton
                     variant="ghost"
                     size="sm"
@@ -103,7 +103,7 @@ SERVER_URL = wss://your-domain/agent</code></pre>
             <li>
               <Badge variant="outline">3</Badge><div class="step-content"><div class="step-title">运行 Agent</div>
                 <div class="code-block linux-cmd">
-                  <pre><code>./dst-admin-agent -server "wss://your-domain/agent" -keyfile ./conf/app.conf</code></pre>
+                  <pre><code>./dst-admin-agent</code></pre>
                   <UiButton
                     variant="ghost"
                     size="sm"
@@ -159,6 +159,7 @@ export default {
       loadError: '',
       apiKey: '',
       keyRevealed: false,
+      securityConfigured: false,
       securityAvailable: false,
       showKey: false,
       activeInstallTab: 'linux'
@@ -166,6 +167,14 @@ export default {
   },
   created() {
     this.fetchApiKey();
+  },
+  computed: {
+    installServerURL() {
+      const configured = String(import.meta.env.VITE_AGENT_SERVER_URL || '').trim();
+      if (configured) return configured;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${protocol}//${window.location.hostname}:8081/agent`;
+    }
   },
   methods: {
     async fetchApiKey() {
@@ -175,11 +184,13 @@ export default {
         const response = await agentApi.getSecurityKey();
         this.apiKey = response.data?.key || '';
         this.keyRevealed = false;
+        this.securityConfigured = response.data?.configured === true;
         this.securityAvailable = response.data?.available === true;
         this.showKey = false;
       } catch (error) {
         this.apiKey = '';
         this.keyRevealed = false;
+        this.securityConfigured = false;
         this.securityAvailable = false;
         this.loadError = error.message || '未知错误';
         toast.error('获取API密钥失败: ' + this.loadError);
@@ -190,13 +201,17 @@ export default {
     toggleKeyVisibility() {
       this.showKey = !this.showKey;
     },
-    copyKey() {
+    async copyKey() {
       if (!this.keyRevealed) {
         toast.warning('现有密钥只提供掩码；轮换后可复制一次新密钥');
         return;
       }
-      this.copyToClipboard(this.apiKey);
-      toast.success('API密钥已复制到剪贴板');
+      try {
+        await this.copyToClipboard(this.apiKey);
+        toast.success('API密钥已复制到剪贴板');
+      } catch (error) {
+        toast.error(error.message || '复制 API 密钥失败');
+      }
     },
     async confirmGenerateNewKey() {
       try {
@@ -205,7 +220,7 @@ export default {
         cancelButtonText: '取消',
         type: 'warning'
         });
-        this.generateNewKey();
+        await this.generateNewKey();
       } catch {
         // 用户取消轮换。
       }
@@ -216,7 +231,15 @@ export default {
         const response = await agentApi.generateNewKey();
         this.apiKey = response.data.key;
         this.keyRevealed = true;
+        this.securityConfigured = true;
         this.showKey = true;
+        try {
+          const refreshed = await agentApi.getSecurityKey();
+          this.securityConfigured = refreshed.data?.configured === true;
+          this.securityAvailable = refreshed.data?.available === true;
+        } catch (error) {
+          toast.warning(error.message || '新密钥已生成，但安全状态刷新失败');
+        }
         toast.success(response.message || '新密钥已生成，请立即保存');
       } catch (error) {
         toast.error('生成新密钥失败: ' + (error.message || '未知错误'));
@@ -224,35 +247,50 @@ export default {
         this.loading = false;
       }
     },
-    copyInstallCommand(type) {
+    async copyInstallCommand(type) {
       if (!this.keyRevealed) return;
       let command = '';
       switch (type) {
         case 'linux':
-          command = `go build -o dst-admin-agent ./agent/cmd/agent\n./dst-admin-agent -server "wss://your-domain/agent" -key "${this.apiKey}"`;
+          command = `go build -o dst-admin-agent ./agent/cmd/agent\n./dst-admin-agent -server "${this.installServerURL}" -key "${this.apiKey}"`;
           break;
         case 'windows':
-          command = `go build -o dst-admin-agent.exe ./agent/cmd/agent\n.\\dst-admin-agent.exe -server "wss://your-domain/agent" -key "${this.apiKey}"`;
+          command = `go build -o dst-admin-agent.exe ./agent/cmd/agent\n.\\dst-admin-agent.exe -server "${this.installServerURL}" -key "${this.apiKey}"`;
           break;
         default:
           return;
       }
-      this.copyToClipboard(command);
-      toast.success('安装命令已复制到剪贴板');
+      try {
+        await this.copyToClipboard(command);
+        toast.success('安装命令已复制到剪贴板');
+      } catch (error) {
+        toast.error(error.message || '复制安装命令失败');
+      }
     },
-    copyConfigYaml() {
+    async copyConfigYaml() {
       if (!this.keyRevealed) return;
-      const config = `[agent]\nSECURITY_KEY = ${this.apiKey}\nSERVER_URL = wss://your-domain/agent`;
-      this.copyToClipboard(config);
-      toast.success('配置内容已复制到剪贴板');
+      const config = `[agent]\nSECURITY_KEY = ${this.apiKey}\nSERVER_URL = ${this.installServerURL}`;
+      try {
+        await this.copyToClipboard(config);
+        toast.success('配置内容已复制到剪贴板');
+      } catch (error) {
+        toast.error(error.message || '复制配置内容失败');
+      }
     },
-    copyRunCommand() {
+    async copyRunCommand() {
       if (!this.keyRevealed) return;
-      const command = './dst-admin-agent -server "wss://your-domain/agent" -keyfile ./conf/app.conf';
-      this.copyToClipboard(command);
-      toast.success('运行命令已复制到剪贴板');
+      try {
+        await this.copyToClipboard('./dst-admin-agent');
+        toast.success('运行命令已复制到剪贴板');
+      } catch (error) {
+        toast.error(error.message || '复制运行命令失败');
+      }
     },
-    copyToClipboard(text) {
+    async copyToClipboard(text) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
       const el = document.createElement('textarea');
       el.value = text;
       el.setAttribute('readonly', '');
@@ -260,8 +298,9 @@ export default {
       el.style.left = '-9999px';
       document.body.appendChild(el);
       el.select();
-      document.execCommand('copy');
+      const copied = document.execCommand('copy');
       document.body.removeChild(el);
+      if (!copied) throw new Error('浏览器未允许写入剪贴板');
     }
   }
 };

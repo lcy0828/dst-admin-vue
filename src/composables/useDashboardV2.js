@@ -243,11 +243,13 @@ export function useDashboardV2() {
     }
   }
 
-  function resumeUpdatePolling() {
+  async function resumeUpdatePolling() {
     const jobId = sessionStorage.getItem('dstUpdateSessionName')
     if (!jobId) return
-    pollUpdateStatus(jobId)
-    updateTimer = setInterval(() => pollUpdateStatus(jobId), 3000)
+    await pollUpdateStatus(jobId)
+    if (!updateStatus.value?.is_completed && !updateStatus.value?.error) {
+      updateTimer = setInterval(() => pollUpdateStatus(jobId), 3000)
+    }
   }
 
   onBeforeUnmount(stopUpdatePolling)

@@ -9,6 +9,7 @@
     </header>
 
     <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>Agent 列表加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="refreshData">重试</UiButton></AlertAction></Alert>
+    <Alert v-if="runtimeLoadError" variant="destructive"><CircleAlert /><AlertTitle>远程运行时配置加载失败</AlertTitle><AlertDescription>{{ runtimeLoadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchRuntimeTargets">重试</UiButton></AlertAction></Alert>
 
     <div class="grid gap-4 sm:grid-cols-3">
       <Card><CardHeader><CardTitle>在线 Agent</CardTitle><CardDescription>当前保持连接的节点</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Network /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ connectedAgents }}</strong></CardContent></Card>
@@ -26,10 +27,10 @@
                   <CardDescription class="break-all">{{ agent.agent_uuid }}</CardDescription>
                   <CardAction class="flex flex-wrap justify-end gap-2">
                     <UiButton size="sm" variant="outline" @click="showAgentDetails(agent)"><Eye data-icon="inline-start" />详情</UiButton>
-                    <UiButton :variant="runtimeFor(agent).configured ? 'outline' : 'default'" size="sm" @click="openRuntimeConfig(agent)"><Settings data-icon="inline-start" />
+                    <UiButton :variant="runtimeFor(agent).configured ? 'outline' : 'default'" size="sm" :disabled="Boolean(runtimeLoadError)" @click="openRuntimeConfig(agent)"><Settings data-icon="inline-start" />
                       {{ runtimeFor(agent).configured ? '运行时配置' : '配置远程运行时' }}
                     </UiButton>
-                    <UiButton size="sm" variant="outline" @click="navigateToCommand(agent.id)"><Terminal data-icon="inline-start" />执行命令</UiButton>
+                    <UiButton size="sm" variant="outline" :disabled="!agent.connected" @click="navigateToCommand(agent.id)"><Terminal data-icon="inline-start" />执行命令</UiButton>
                     <UiButton variant="destructive" size="sm" :disabled="agent.connected" @click="forgetAgent(agent)"><Trash2 data-icon="inline-start" />移除</UiButton>
                   </CardAction>
                 </CardHeader>
@@ -105,7 +106,7 @@
       </dl>
     </DialogContent></UiDialog>
 
-    <UiDialog v-model:open="runtimeVisible"><DialogContent class="runtime-dialog"><DialogHeader><DialogTitle>远程运行时配置</DialogTitle><DialogDescription>配置此 Agent 的 DST 路径和兼容运行时。</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="runtimeVisible"><DialogContent class="runtime-dialog"><DialogHeader><DialogTitle>远程运行时配置</DialogTitle><DialogDescription>保存此 Agent 的 DST 路径和兼容运行时。当前版本尚未开放房间、日志、备份等远程领域操作。</DialogDescription></DialogHeader>
       <div v-if="runtimeAgent" class="runtime-scope">
         <div>
           <strong>{{ runtimeAgent.hostname }}</strong>
@@ -197,6 +198,7 @@ export default {
     return {
       loading: false,
       loadError: '',
+      runtimeLoadError: '',
       agentData: {},
       agentList: [],
       detailVisible: false,
@@ -206,14 +208,8 @@ export default {
       runtimeSaving: false,
       runtimeConfigured: false,
       runtimeAgent: null,
-      runtimeAdvanced: [],
       runtimeForm: emptyRuntimeConfig(),
-      runtimeErrors: {},
-      runtimeRules: {
-        displayName: [{ required: true, message: '请输入显示名称', trigger: 'blur' }],
-        savePath: [{ required: true, message: '请输入远程存档路径', trigger: 'blur' }],
-        serverPath: [{ required: true, message: '请输入远程服务端路径', trigger: 'blur' }]
-      }
+      runtimeErrors: {}
     };
   },
   computed: {
@@ -224,7 +220,7 @@ export default {
       return this.agentList.filter(agent => agent.connected).length;
     },
     uniqueOsCount() {
-      const osSet = new Set(this.agentList.map(agent => agent.os));
+      const osSet = new Set(this.agentList.map(agent => agent.os).filter(Boolean));
       return osSet.size;
     }
   },
@@ -252,13 +248,17 @@ export default {
       this.fetchAgentList();
     },
     async fetchRuntimeTargets() {
+      this.runtimeLoadError = '';
       try {
         const value = await runtimeTargetsV2API.list();
         this.runtimeByAgent = Object.fromEntries(
           (value.items || []).filter(item => item.kind === 'agent').map(item => [item.agentId, item])
         );
-      } catch {
+        return true;
+      } catch (error) {
         this.runtimeByAgent = {};
+        this.runtimeLoadError = error.message || '无法读取远程运行时配置';
+        return false;
       }
     },
     runtimeFor(agent) {
@@ -268,7 +268,6 @@ export default {
       const target = this.runtimeFor(agent);
       this.runtimeAgent = agent;
       this.runtimeConfigured = target.configured;
-      this.runtimeAdvanced = [];
       this.runtimeErrors = {};
       this.runtimeForm = editableRuntimeConfig(agent, target.config);
       this.runtimeVisible = true;
@@ -286,10 +285,11 @@ export default {
       this.runtimeSaving = true;
       try {
         await runtimeTargetsV2API.save(this.runtimeAgent.id, this.runtimeForm);
-        toast.success('远程运行时配置已保存');
         this.runtimeVisible = false;
-        await this.fetchRuntimeTargets();
+        const refreshed = await this.fetchRuntimeTargets();
         announceRuntimeTargetsUpdated();
+        if (refreshed) toast.success('远程路径配置已保存；远程领域操作尚未开放');
+        else toast.warning('远程路径配置已保存，但刷新配置状态失败');
       } catch (error) {
         toast.error(error.message || '保存远程运行时配置失败');
       } finally {
@@ -306,9 +306,10 @@ export default {
         });
         await runtimeTargetsV2API.remove(this.runtimeAgent.id);
         this.runtimeVisible = false;
-        await this.fetchRuntimeTargets();
+        const refreshed = await this.fetchRuntimeTargets();
         announceRuntimeTargetsUpdated();
-        toast.success('远程运行时配置已移除');
+        if (refreshed) toast.success('远程运行时配置已移除');
+        else toast.warning('远程运行时配置已移除，但刷新配置状态失败');
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
           toast.error(error.message || '移除远程运行时配置失败');
@@ -316,12 +317,20 @@ export default {
       }
     },
     pathPlaceholder(kind) {
-      const windows = String(this.runtimeAgent?.os || '').toLowerCase() === 'windows';
+      const platform = String(this.runtimeAgent?.os || '').toLowerCase();
+      const windows = platform === 'windows';
       if (windows) {
         return {
           save: 'C:\\Users\\Administrator\\Klei\\DoNotStarveTogether',
           server: 'C:\\dst-server',
           backup: 'D:\\dst-backups'
+        }[kind];
+      }
+      if (platform === 'darwin' || platform === 'macos') {
+        return {
+          save: '/Users/yourname/Documents/Klei/DoNotStarveTogether',
+          server: "/Users/yourname/Library/Application Support/Steam/steamapps/common/Don't Starve Together Dedicated Server",
+          backup: '/Users/yourname/dst-backups'
         }[kind];
       }
       return {

@@ -94,11 +94,24 @@ export const systemV2API = {
   testEmail: input => client.post('/system/settings/actions/test-email', input)
 }
 
+export const announcementsV2API = {
+  list: () => client.get('/announcements', { headers: { 'Cache-Control': 'no-store' } }),
+  get: announcementId => client.get(`/announcements/${encode(announcementId)}`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  create: input => client.post('/announcements', input),
+  update: (announcementId, input) => client.put(`/announcements/${encode(announcementId)}`, input),
+  delete: announcementId => client.delete(`/announcements/${encode(announcementId)}`)
+}
+
 export const roomsV2API = {
   list: () => client.get('/rooms'),
   get: roomId => client.get(`/rooms/${encode(roomId)}`),
   worlds: roomId => client.get(`/rooms/${encode(roomId)}/worlds`),
   create: input => client.post('/rooms', input),
+  deleteRoom: (roomId, confirmation) => client.delete(`/rooms/${encode(roomId)}`, {
+    data: { confirmation }
+  }),
   createWorld: (roomId, input) => client.post(`/rooms/${encode(roomId)}/worlds`, input),
   deleteWorld: (roomId, worldId, confirmation) => client.delete(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}`,

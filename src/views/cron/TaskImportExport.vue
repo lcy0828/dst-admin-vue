@@ -11,12 +11,7 @@
           <FieldGroup>
             <Field><FieldLabel for="export-description">导出描述</FieldLabel><UiTextarea id="export-description" v-model="exportForm.description" rows="3" placeholder="为本次导出添加描述信息" /></Field>
             <Field><FieldLabel for="export-filename">文件名</FieldLabel><UiInput id="export-filename" v-model="exportForm.filename" placeholder="导出文件名（不含扩展名）" /><FieldDescription>文件将以 .json 格式保存</FieldDescription></Field>
-            <FieldSet><FieldLegend variant="label">导出选项</FieldLegend><FieldGroup class="gap-3">
-              <Field v-for="option in exportOptions" :key="option.value" orientation="horizontal">
-                <Checkbox :id="`export-${option.value}`" :model-value="exportForm.options.includes(option.value)" @update:model-value="toggleExportOption(option.value, $event)" />
-                <FieldLabel :for="`export-${option.value}`" class="font-normal">{{ option.label }}</FieldLabel>
-              </Field>
-            </FieldGroup></FieldSet>
+            <FieldDescription>导出内容包含当前房间的全部任务、任务组和依赖关系。</FieldDescription>
           </FieldGroup>
         </CardContent>
         <CardFooter class="justify-end"><UiButton :disabled="exporting" @click="handleExport"><Spinner v-if="exporting" data-icon="inline-start" /><Download v-else data-icon="inline-start" />导出配置</UiButton></CardFooter>
@@ -59,7 +54,6 @@ import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -73,7 +67,7 @@ export default {
   name: 'TaskImportExport',
   components: {
     Alert, AlertDescription, AlertTitle, AutomationRoomSelect, Card, CardAction, CardContent,
-    CardDescription, CardFooter, CardHeader, CardTitle, Checkbox, Download, Empty, EmptyDescription,
+    CardDescription, CardFooter, CardHeader, CardTitle, Download, Empty, EmptyDescription,
     EmptyHeader, EmptyTitle, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel,
     FieldLegend, FieldSet, RadioGroup, RadioGroupItem, RefreshCw, ShadcnTable, Spinner,
     TableBody, TableCell, TableHead, TableHeader, TableRow, Trash2, TriangleAlert, UiButton,
@@ -86,19 +80,13 @@ export default {
       filesLoading: false,
       exportForm: {
         description: '',
-        filename: 'task_config_' + new Date().toISOString().slice(0, 10),
-        options: ['tasks', 'groups', 'dependencies']
+        filename: 'task_config_' + new Date().toISOString().slice(0, 10)
       },
       importForm: {
         file: null,
         mode: 'merge'
       },
-      exportFiles: [],
-      exportOptions: [
-        { value: 'tasks', label: '包含任务数据' },
-        { value: 'groups', label: '包含任务组数据' },
-        { value: 'dependencies', label: '包含任务依赖关系' }
-      ]
+      exportFiles: []
     };
   },
   methods: {
@@ -120,19 +108,9 @@ export default {
           this.filesLoading = false;
         });
     },
-    toggleExportOption(value, checked) {
-      const options = this.exportForm.options.filter(option => option !== value);
-      if (checked) options.push(value);
-      this.exportForm.options = options;
-    },
     handleExport() {
       if (!this.exportForm.filename) {
         toast.warning('请输入文件名');
-        return;
-      }
-      
-      if (this.exportForm.options.length === 0) {
-        toast.warning('请至少选择一项导出选项');
         return;
       }
       
