@@ -1,20 +1,20 @@
 <template>
   <div class="actions-footer">
     <div class="settings-status">
-      <Badge v-if="hasChanges" variant="secondary">有未保存的更改</Badge>
-      <Badge v-else variant="outline">设置已同步</Badge>
+      <Badge v-if="hasChanges" variant="secondary">{{ $t('worlds.settingsUi.footer.unsaved') }}</Badge>
+      <Badge v-else variant="outline">{{ $t('worlds.settingsUi.footer.synced') }}</Badge>
       
       <Popover v-if="hasChanges">
         <PopoverTrigger as-child>
           <UiButton variant="ghost" size="sm" class="view-changes-btn">
             <EyeIcon data-icon="inline-start" />
-            查看变更 ({{ changedItemsCount }})
+            {{ $t('worlds.settingsUi.footer.viewChanges', { count: changedItemsCount }) }}
           </UiButton>
         </PopoverTrigger>
         <PopoverContent class="changes-popover">
           <PopoverHeader>
-            <PopoverTitle>已修改的设置项 ({{ changedItemsCount }})</PopoverTitle>
-            <PopoverDescription>保存后将应用以下配置变更。</PopoverDescription>
+            <PopoverTitle>{{ $t('worlds.settingsUi.footer.changedItems', { count: changedItemsCount }) }}</PopoverTitle>
+            <PopoverDescription>{{ $t('worlds.settingsUi.footer.changesDescription') }}</PopoverDescription>
           </PopoverHeader>
           <ScrollArea class="changes-list">
             <div v-for="(item, index) in changedItems" :key="index" class="change-item">
@@ -36,7 +36,7 @@
         :disabled="loading || saveLoading || !hasChanges"
       >
         <RotateCcwIcon data-icon="inline-start" />
-        重置
+        {{ $t('common.actions.reset') }}
       </UiButton>
       <UiButton
         @click="$emit('save')"
@@ -44,7 +44,7 @@
       >
         <Spinner v-if="saveLoading" data-icon="inline-start" />
         <CheckIcon v-else data-icon="inline-start" />
-        保存设置
+        {{ $t('worlds.settingsUi.footer.save') }}
       </UiButton>
     </div>
   </div>

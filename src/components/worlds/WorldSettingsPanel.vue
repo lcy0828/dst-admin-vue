@@ -4,8 +4,8 @@
       <InputGroup>
         <InputGroupAddon><SearchIcon /></InputGroupAddon>
         <InputGroupInput
-          placeholder="搜索设置项..."
-          aria-label="搜索设置项"
+          :placeholder="$t('worlds.settingsUi.search')"
+          :aria-label="$t('worlds.settingsUi.search')"
           :model-value="searchText"
           @update:model-value="$emit('search-input', $event)"
         />
@@ -46,7 +46,7 @@
     <Tabs v-else :default-value="Object.keys(settings)[0]" class="settings-tabs">
       <TabsList>
         <TabsTrigger v-for="(group, groupKey) in settings" :key="groupKey" :value="groupKey">
-          {{ groupKey === 'WORLDGEN_GROUP' ? '世界生成组' : '世界设置组' }}
+          {{ $t(groupKey === 'WORLDGEN_GROUP' ? 'worlds.settingsUi.worldgenGroup' : 'worlds.settingsUi.worldSettingsGroup') }}
         </TabsTrigger>
       </TabsList>
       <TabsContent v-for="(group, groupKey) in settings" :key="groupKey" :value="groupKey">

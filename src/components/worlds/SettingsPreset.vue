@@ -1,22 +1,22 @@
 <template>
   <div class="presets-section">
     <div class="preset-title">
-      <span>快速预设</span>
+      <span>{{ $t('worlds.settingsUi.presets.title') }}</span>
       <Tooltip>
         <TooltipTrigger as-child>
-          <UiButton variant="ghost" size="icon-xs" aria-label="查看预设说明" title="查看预设说明"><CircleHelpIcon /></UiButton>
+          <UiButton variant="ghost" size="icon-xs" :aria-label="$t('worlds.settingsUi.presets.viewHelp')" :title="$t('worlds.settingsUi.presets.viewHelp')"><CircleHelpIcon /></UiButton>
         </TooltipTrigger>
-        <TooltipContent>根据预设快速配置所有设置项</TooltipContent>
+        <TooltipContent>{{ $t('worlds.settingsUi.presets.description') }}</TooltipContent>
       </Tooltip>
     </div>
     <div class="preset-options">
       <ToggleGroup v-model="selectedPreset" type="single" variant="outline" :spacing="1">
-        <ToggleGroupItem value="default">默认设置</ToggleGroupItem>
-        <ToggleGroupItem value="easy">简单模式</ToggleGroupItem>
-        <ToggleGroupItem value="hard">困难模式</ToggleGroupItem>
-        <ToggleGroupItem value="abundant">资源丰富</ToggleGroupItem>
-        <ToggleGroupItem value="scarce">资源稀缺</ToggleGroupItem>
-        <ToggleGroupItem value="custom">自定义</ToggleGroupItem>
+        <ToggleGroupItem value="default">{{ $t('worlds.settingsUi.presets.default') }}</ToggleGroupItem>
+        <ToggleGroupItem value="easy">{{ $t('worlds.settingsUi.presets.easy') }}</ToggleGroupItem>
+        <ToggleGroupItem value="hard">{{ $t('worlds.settingsUi.presets.hard') }}</ToggleGroupItem>
+        <ToggleGroupItem value="abundant">{{ $t('worlds.settingsUi.presets.abundant') }}</ToggleGroupItem>
+        <ToggleGroupItem value="scarce">{{ $t('worlds.settingsUi.presets.scarce') }}</ToggleGroupItem>
+        <ToggleGroupItem value="custom">{{ $t('worlds.settingsUi.presets.custom') }}</ToggleGroupItem>
       </ToggleGroup>
       <UiButton
         variant="secondary"
@@ -25,7 +25,7 @@
         :disabled="selectedPreset !== 'custom' || disabled"
       >
         <StarIcon data-icon="inline-start" />
-        保存为预设
+        {{ $t('worlds.settingsUi.presets.save') }}
       </UiButton>
     </div>
   </div>

@@ -1,0 +1,3558 @@
+{
+  "forest": {
+    "WORLDGEN_GROUP": {
+      "resources": {
+        "order": 3,
+        "text": "Resources",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "uncommon": "Less",
+          "default": "Default",
+          "often": "More",
+          "mostly": "Lots",
+          "always": "Tons",
+          "insane": "Insane"
+        },
+        "items": {
+          "marshbush": {
+            "text": "Spiky Bushes",
+            "image": {
+              "x": 0.625,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "flowers": {
+            "text": "Flowers, Evil Flowers",
+            "image": {
+              "x": 0.0625,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "moon_hotspring": {
+            "text": "Hot Springs",
+            "image": {
+              "x": 0.1875,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "moon_berrybush": {
+            "text": "Stone Fruit Bushes",
+            "image": {
+              "x": 0.875,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "reeds": {
+            "text": "Reeds",
+            "image": {
+              "x": 0.3125,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "moon_tree": {
+            "text": "Lune Trees",
+            "image": {
+              "x": 0.5,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "sapling": {
+            "text": "Saplings",
+            "image": {
+              "x": 0.5625,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "moon_rock": {
+            "text": "Lunar Rocks",
+            "image": {
+              "x": 0.25,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "rock_ice": {
+            "text": "Mini Glaciers",
+            "image": {
+              "x": 0.3125,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "carrot": {
+            "text": "Carrots",
+            "image": {
+              "x": 0.5625,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "tumbleweed": {
+            "text": "Tumbleweeds",
+            "image": {
+              "x": 0.375,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "trees": {
+            "text": "Trees (All)",
+            "image": {
+              "x": 0.3125,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "ocean_seastack": {
+            "text": "Sea Stacks",
+            "image": {
+              "x": 0.8125,
+              "y": 0.25
+            },
+            "desc": {
+              "ocean_never": "None",
+              "ocean_rare": "Little",
+              "ocean_uncommon": "Less",
+              "ocean_default": "Default",
+              "ocean_often": "More",
+              "ocean_mostly": "Lots",
+              "ocean_always": "Tons",
+              "ocean_insane": "Insane"
+            },
+            "value": "ocean_default"
+          },
+          "grass": {
+            "text": "Grass",
+            "image": {
+              "x": 0.1875,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "berrybush": {
+            "text": "Berry Bushes",
+            "image": {
+              "x": 0.25,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "ponds": {
+            "text": "Ponds",
+            "image": {
+              "x": 0.1875,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "moon_sapling": {
+            "text": "Lunar Saplings",
+            "image": {
+              "x": 0.3125,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "rock": {
+            "text": "Boulders",
+            "image": {
+              "x": 0.4375,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "mushroom": {
+            "text": "Mushrooms",
+            "image": {
+              "x": 0.5625,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "meteorspawner": {
+            "text": "Meteor Fields",
+            "image": {
+              "x": 0.375,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "palmconetree": {
+            "text": "Palmcone Tree",
+            "image": {
+              "x": 0.0625,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "ocean_bullkelp": {
+            "text": "Bull Kelp",
+            "image": {
+              "x": 0.6875,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "moon_bullkelp": {
+            "text": "Beached Bull Kelp",
+            "image": {
+              "x": 0.9375,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "moon_starfish": {
+            "text": "Anenemies",
+            "image": {
+              "x": 0.4375,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "cactus": {
+            "text": "Cacti",
+            "image": {
+              "x": 0.5,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "flint": {
+            "text": "Flint",
+            "image": {
+              "x": 0,
+              "y": 0.125
+            },
+            "value": "default"
+          }
+        }
+      },
+      "global": {
+        "order": 1,
+        "text": "Global",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "season_start": {
+            "text": "Starting Season",
+            "image": {
+              "x": 0.625,
+              "y": 0.375
+            },
+            "desc": {
+              "default": "Autumn",
+              "winter": "Winter",
+              "spring": "Spring",
+              "summer": "Summer",
+              "autumn|spring": "Autumn or Spring",
+              "winter|summer": "Winter or Summer",
+              "autumn|winter|spring|summer": "Random"
+            },
+            "order": 1,
+            "value": "default"
+          }
+        }
+      },
+      "monsters": {
+        "order": 5,
+        "text": "Hostile Creatures and Spawners",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "uncommon": "Less",
+          "default": "Default",
+          "often": "More",
+          "mostly": "Lots",
+          "always": "Tons",
+          "insane": "Insane"
+        },
+        "items": {
+          "merm": {
+            "text": "Leaky Shack",
+            "image": {
+              "x": 0.6875,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "spiders": {
+            "text": "Spider Dens",
+            "image": {
+              "x": 0.875,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "moon_spiders": {
+            "text": "Shattered Spider Holes",
+            "image": {
+              "x": 0.375,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "tallbirds": {
+            "text": "Tallbirds",
+            "image": {
+              "x": 0.0625,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "angrybees": {
+            "text": "Killer Bee Hives",
+            "image": {
+              "x": 0.4375,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "ocean_waterplant": {
+            "text": "Sea Weeds",
+            "image": {
+              "x": 0.9375,
+              "y": 0.25
+            },
+            "desc": {
+              "ocean_never": "None",
+              "ocean_rare": "Little",
+              "ocean_uncommon": "Less",
+              "ocean_default": "Default",
+              "ocean_often": "More",
+              "ocean_mostly": "Lots",
+              "ocean_always": "Tons",
+              "ocean_insane": "Insane"
+            },
+            "value": "ocean_default"
+          },
+          "chess": {
+            "text": "Clockworks",
+            "image": {
+              "x": 0.8125,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "houndmound": {
+            "text": "Hound Mounds",
+            "image": {
+              "x": 0.25,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "walrus": {
+            "text": "MacTusk Camps",
+            "image": {
+              "x": 0.5625,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "tentacles": {
+            "text": "Tentacles",
+            "image": {
+              "x": 0.125,
+              "y": 0.5
+            },
+            "value": "default"
+          }
+        }
+      },
+      "animals": {
+        "order": 4,
+        "text": "Creatures and Spawners",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "uncommon": "Less",
+          "default": "Default",
+          "often": "More",
+          "mostly": "Lots",
+          "always": "Tons",
+          "insane": "Insane"
+        },
+        "items": {
+          "ocean_wobsterden": {
+            "text": "Wobster Mounds",
+            "image": {
+              "x": 0,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "ocean_shoal": {
+            "text": "Shoals",
+            "image": {
+              "x": 0.875,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "moles": {
+            "text": "Mole Burrows",
+            "image": {
+              "x": 0.75,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "beefalo": {
+            "text": "Beefalos",
+            "image": {
+              "x": 0.125,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "lightninggoat": {
+            "text": "Volt Goats",
+            "image": {
+              "x": 0.5,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "rabbits": {
+            "text": "Rabbit Holes",
+            "image": {
+              "x": 0.25,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "moon_fruitdragon": {
+            "text": "Saladmander",
+            "image": {
+              "x": 0.125,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "bees": {
+            "text": "Bee Hives",
+            "image": {
+              "x": 0.1875,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "pigs": {
+            "text": "Pig Houses",
+            "image": {
+              "x": 0.125,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "moon_carrot": {
+            "text": "Carrats",
+            "image": {
+              "x": 0,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "ocean_otterdens": {
+            "text": "Marotter Dens",
+            "image": {
+              "x": 0.75,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "buzzard": {
+            "text": "Buzzards",
+            "image": {
+              "x": 0.4375,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "catcoon": {
+            "text": "Hollow Stump",
+            "image": {
+              "x": 0.625,
+              "y": 0
+            },
+            "value": "default"
+          }
+        }
+      },
+      "misc": {
+        "order": 2,
+        "text": "World",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "prefabswaps_start": {
+            "text": "Starting Resource Variety",
+            "image": {
+              "x": 0,
+              "y": 0.5
+            },
+            "desc": {
+              "classic": "Classic",
+              "default": "Default",
+              "highly random": "Highly Random"
+            },
+            "order": 20,
+            "value": "default"
+          },
+          "moon_fissure": {
+            "text": "Celestial Fissures",
+            "image": {
+              "x": 0.0625,
+              "y": 0.25
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "uncommon": "Less",
+              "default": "Default",
+              "often": "More",
+              "mostly": "Lots",
+              "always": "Tons",
+              "insane": "Insane"
+            },
+            "value": "default"
+          },
+          "world_size": {
+            "text": "World Size",
+            "image": {
+              "x": 0.6875,
+              "y": 0.5
+            },
+            "desc": {
+              "small": "Small",
+              "medium": "Medium",
+              "default": "Large",
+              "huge": "Huge"
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "terrariumchest": {
+            "text": "Terrarium",
+            "image": {
+              "x": 0.1875,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "value": "default"
+          },
+          "task_set": {
+            "text": "Biomes",
+            "image": {
+              "x": 0.625,
+              "y": 0.5
+            },
+            "desc": {
+              "default": "Together",
+              "classic": "Classic"
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "boons": {
+            "text": "Failed Survivors",
+            "image": {
+              "x": 0.6875,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "uncommon": "Less",
+              "default": "Default",
+              "often": "More",
+              "mostly": "Lots",
+              "always": "Tons",
+              "insane": "Insane"
+            },
+            "order": 18,
+            "value": "default"
+          },
+          "roads": {
+            "text": "Roads",
+            "image": {
+              "x": 0.375,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "order": 6,
+            "value": "default"
+          },
+          "junkyard": {
+            "text": "Junk Yard",
+            "image": {
+              "x": 0.375,
+              "y": 0.125
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "value": "default"
+          },
+          "stageplays": {
+            "text": "Stage Plays",
+            "image": {
+              "x": 0.9375,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "value": "default"
+          },
+          "start_location": {
+            "text": "Spawn Area",
+            "image": {
+              "x": 0.75,
+              "y": 0.5
+            },
+            "desc": {
+              "plus": "Plus",
+              "default": "Default",
+              "darkness": "Dark"
+            },
+            "order": 2,
+            "value": "default"
+          },
+          "touchstone": {
+            "text": "Touch Stones",
+            "image": {
+              "x": 0.25,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "uncommon": "Less",
+              "default": "Default",
+              "often": "More",
+              "mostly": "Lots",
+              "always": "Tons",
+              "insane": "Insane"
+            },
+            "order": 17,
+            "value": "default"
+          },
+          "branching": {
+            "text": "Branches",
+            "image": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "Never",
+              "least": "Least",
+              "default": "Default",
+              "most": "Most",
+              "random": "Random"
+            },
+            "order": 4,
+            "value": "default"
+          },
+          "loop": {
+            "text": "Loops",
+            "image": {
+              "x": 0.5625,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "Never",
+              "default": "Default",
+              "always": "Always"
+            },
+            "order": 5,
+            "value": "default"
+          }
+        }
+      }
+    },
+    "WORLDSETTINGS_GROUP": {
+      "resources": {
+        "order": 4,
+        "text": "Resource Regrowth",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "veryslow": "Very Slow",
+          "slow": "Slow",
+          "default": "Default",
+          "fast": "Fast",
+          "veryfast": "Very Fast"
+        },
+        "items": {
+          "cactus_regrowth": {
+            "text": "Cacti",
+            "image": {
+              "x": 0.125,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "basicresource_regrowth": {
+            "text": "Basic Resources",
+            "image": {
+              "x": 0.375,
+              "y": 0
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "value": "none"
+          },
+          "evergreen_regrowth": {
+            "text": "Evergreens",
+            "image": {
+              "x": 0.3125,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "reeds_regrowth": {
+            "text": "Reeds",
+            "image": {
+              "x": 0.4375,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "deciduoustree_regrowth": {
+            "text": "Birchnut Trees",
+            "image": {
+              "x": 0.875,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "flowers_regrowth": {
+            "text": "Flowers",
+            "image": {
+              "x": 0.625,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "regrowth": {
+            "text": "Regrowth Multiplier",
+            "image": {
+              "x": 0.5,
+              "y": 0.375
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "moon_tree_regrowth": {
+            "text": "Lune Trees",
+            "image": {
+              "x": 0.125,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "twiggytrees_regrowth": {
+            "text": "Twiggy Trees",
+            "image": {
+              "x": 0.25,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "palmconetree_regrowth": {
+            "text": "Palmcone Tree",
+            "image": {
+              "x": 0.625,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "carrots_regrowth": {
+            "text": "Carrots",
+            "image": {
+              "x": 0.1875,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "saltstack_regrowth": {
+            "text": "Salt Formations",
+            "image": {
+              "x": 0.6875,
+              "y": 0.375
+            },
+            "value": "default"
+          }
+        }
+      },
+      "global": {
+        "order": 0,
+        "text": "Global",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "spawnmode": {
+            "text": "Spawn Mode",
+            "image": {
+              "x": 0.3125,
+              "y": 0.4375
+            },
+            "desc": {
+              "fixed": "Florid Postern",
+              "scatter": "Random"
+            },
+            "order": 7,
+            "value": "fixed"
+          },
+          "summer": {
+            "text": "Summer",
+            "image": {
+              "x": 0.9375,
+              "y": 0.4375
+            },
+            "desc": {
+              "noseason": "None",
+              "veryshortseason": "Very Short",
+              "shortseason": "Short",
+              "default": "Default",
+              "longseason": "Long",
+              "verylongseason": "Very Long",
+              "random": "Random"
+            },
+            "order": 5,
+            "value": "default"
+          },
+          "spring": {
+            "text": "Spring",
+            "image": {
+              "x": 0.8125,
+              "y": 0.4375
+            },
+            "desc": {
+              "noseason": "None",
+              "veryshortseason": "Very Short",
+              "shortseason": "Short",
+              "default": "Default",
+              "longseason": "Long",
+              "verylongseason": "Very Long",
+              "random": "Random"
+            },
+            "order": 4,
+            "value": "default"
+          },
+          "winter": {
+            "text": "Winter",
+            "image": {
+              "x": 0.4375,
+              "y": 0.5
+            },
+            "desc": {
+              "noseason": "None",
+              "veryshortseason": "Very Short",
+              "shortseason": "Short",
+              "default": "Default",
+              "longseason": "Long",
+              "verylongseason": "Very Long",
+              "random": "Random"
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "beefaloheat": {
+            "text": "Beefalo Mating Frequency",
+            "image": {
+              "x": 0.5625,
+              "y": 0
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 12,
+            "value": "default"
+          },
+          "day": {
+            "text": "Day Type",
+            "image": {
+              "x": 0.625,
+              "y": 0.0625
+            },
+            "desc": {
+              "default": "Default",
+              "longday": "Long Day",
+              "longdusk": "Long Dusk",
+              "longnight": "Long Night",
+              "noday": "No Day",
+              "nodusk": "No Dusk",
+              "nonight": "No Night",
+              "onlyday": "Only Day",
+              "onlydusk": "Only Dusk",
+              "onlynight": "Only Night"
+            },
+            "order": 6,
+            "value": "default"
+          },
+          "specialevent": {
+            "text": "Events",
+            "image": {
+              "x": 0.25,
+              "y": 0.125
+            },
+            "desc": {
+              "none": "None",
+              "default": "Auto"
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "krampus": {
+            "text": "Krampii",
+            "image": {
+              "x": 0.8125,
+              "y": 0.1875
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 13,
+            "value": "default"
+          },
+          "autumn": {
+            "text": "Autumn",
+            "image": {
+              "x": 0.25,
+              "y": 0
+            },
+            "desc": {
+              "noseason": "None",
+              "veryshortseason": "Very Short",
+              "shortseason": "Short",
+              "default": "Default",
+              "longseason": "Long",
+              "verylongseason": "Very Long",
+              "random": "Random"
+            },
+            "order": 2,
+            "value": "default"
+          },
+          "resettime": {
+            "text": "Death Reset Timer",
+            "image": {
+              "x": 0.5625,
+              "y": 0.375
+            },
+            "desc": {
+              "none": "Disabled",
+              "slow": "Slow",
+              "default": "Default",
+              "fast": "Fast",
+              "always": "Instant"
+            },
+            "order": 11,
+            "value": "default"
+          },
+          "ghostenabled": {
+            "text": "Survivor Death",
+            "image": {
+              "x": 0.9375,
+              "y": 0.125
+            },
+            "desc": {
+              "none": "Change Survivor",
+              "always": "Become a Ghost"
+            },
+            "order": 8,
+            "value": "always"
+          },
+          "ghostsanitydrain": {
+            "text": "Ghost Sanity Drain",
+            "image": {
+              "x": 0,
+              "y": 0.1875
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "order": 10,
+            "value": "always"
+          },
+          "portalresurection": {
+            "text": "Revive At Florid Postern",
+            "image": {
+              "x": 0.1875,
+              "y": 0.375
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "order": 9,
+            "value": "none"
+          }
+        }
+      },
+      "portal_resources": {
+        "order": 5,
+        "text": "Unnatural Portal Resources",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "default": "Default",
+          "often": "More",
+          "always": "Tons"
+        },
+        "items": {
+          "powder_monkey_portalrate": {
+            "text": "Powder Monkeys",
+            "image": {
+              "x": 0.25,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "bananabush_portalrate": {
+            "text": "Banana Bushes",
+            "image": {
+              "x": 0.3125,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "lightcrab_portalrate": {
+            "text": "Crustashines",
+            "image": {
+              "x": 0,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "monkeytail_portalrate": {
+            "text": "Monkeytails",
+            "image": {
+              "x": 0.9375,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "portal_spawnrate": {
+            "text": "Portal Activity",
+            "image": {
+              "x": 0.8125,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "palmcone_seed_portalrate": {
+            "text": "Palmcone Sprouts",
+            "image": {
+              "x": 0.6875,
+              "y": 0.3125
+            },
+            "value": "default"
+          }
+        }
+      },
+      "misc": {
+        "order": 3,
+        "text": "World",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "hounds": {
+            "text": "Hound Attacks",
+            "image": {
+              "x": 0.4375,
+              "y": 0.1875
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "frograin": {
+            "text": "Frog Rain",
+            "image": {
+              "x": 0.8125,
+              "y": 0.125
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "lightning": {
+            "text": "Lightning",
+            "image": {
+              "x": 0.1875,
+              "y": 0.25
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "alternatehunt": {
+            "text": "Hunt Surprises",
+            "image": {
+              "x": 0.0625,
+              "y": 0
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "summerhounds": {
+            "text": "Fire Hound Waves",
+            "image": {
+              "x": 0,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "meteorshowers": {
+            "text": "Meteor Frequency",
+            "image": {
+              "x": 0.625,
+              "y": 0.25
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "lunarhail_frequency": {
+            "text": "Lunar Hail",
+            "image": {
+              "x": 0.3125,
+              "y": 0.25
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "hunt": {
+            "text": "Hunts",
+            "image": {
+              "x": 0.1875,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "wildfires": {
+            "text": "Wildfires",
+            "image": {
+              "x": 0.1875,
+              "y": 0.4375
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "rifts_frequency": {
+            "text": "Wild Rift Frequency",
+            "image": {
+              "x": 0.25,
+              "y": 0.25
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "petrification": {
+            "text": "Forest Petrification",
+            "image": {
+              "x": 0.9375,
+              "y": 0.3125
+            },
+            "desc": {
+              "none": "None",
+              "few": "Slow",
+              "default": "Default",
+              "many": "Fast",
+              "max": "Very Fast"
+            },
+            "value": "default"
+          },
+          "winterhounds": {
+            "text": "Ice Hound Waves",
+            "image": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "order": 2,
+            "value": "default"
+          },
+          "weather": {
+            "text": "Rain",
+            "image": {
+              "x": 0.375,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "rifts_enabled": {
+            "text": "Wild Rifts",
+            "image": {
+              "x": 0.25,
+              "y": 0.25
+            },
+            "desc": {
+              "never": "None",
+              "default": "Auto Detect",
+              "always": "Always"
+            },
+            "value": "default"
+          }
+        }
+      },
+      "events": {
+        "order": 1,
+        "text": "Events",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "default": "Default",
+          "enabled": "Always"
+        },
+        "items": {
+          "crow_carnival": {
+            "text": "Midsummer Cawnival",
+            "image": {
+              "x": 0.5,
+              "y": 0.0625
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "winters_feast": {
+            "text": "Winter's Feast",
+            "image": {
+              "x": 0.5625,
+              "y": 0.5
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "year_of_the_catcoon": {
+            "text": "Year of the Catcoon",
+            "image": {
+              "x": 0.125,
+              "y": 0.5625
+            },
+            "order": 9,
+            "value": "default"
+          },
+          "year_of_the_dragonfly": {
+            "text": "Year of the Dragonfly",
+            "image": {
+              "x": 0.9375,
+              "y": 0.5
+            },
+            "order": 11,
+            "value": "default"
+          },
+          "year_of_the_pig": {
+            "text": "Year of the Pig King",
+            "image": {
+              "x": 0.0625,
+              "y": 0.375
+            },
+            "order": 6,
+            "value": "default"
+          },
+          "year_of_the_varg": {
+            "text": "Year of the Varg",
+            "image": {
+              "x": 0.3125,
+              "y": 0.5
+            },
+            "order": 5,
+            "value": "default"
+          },
+          "year_of_the_beefalo": {
+            "text": "Year of the Beefalo",
+            "image": {
+              "x": 0.8125,
+              "y": 0.5
+            },
+            "order": 8,
+            "value": "default"
+          },
+          "year_of_the_snake": {
+            "text": "Year of the Depths Worm",
+            "image": {
+              "x": 0.0625,
+              "y": 0.5625
+            },
+            "order": 12,
+            "value": "default"
+          },
+          "year_of_the_gobbler": {
+            "text": "Year of the Gobbler",
+            "image": {
+              "x": 0.875,
+              "y": 0.3125
+            },
+            "order": 4,
+            "value": "default"
+          },
+          "hallowed_nights": {
+            "text": "Hallowed Nights",
+            "image": {
+              "x": 0.3125,
+              "y": 0.1875
+            },
+            "order": 2,
+            "value": "default"
+          },
+          "year_of_the_bunnyman": {
+            "text": "Year of the Bunnyman",
+            "image": {
+              "x": 0,
+              "y": 0.5625
+            },
+            "order": 10,
+            "value": "default"
+          },
+          "year_of_the_carrat": {
+            "text": "Year of the Carrat",
+            "image": {
+              "x": 0.875,
+              "y": 0.5
+            },
+            "order": 7,
+            "value": "default"
+          }
+        }
+      },
+      "giants": {
+        "order": 8,
+        "text": "Giants",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "default": "Default",
+          "often": "More",
+          "always": "Tons"
+        },
+        "items": {
+          "daywalker2": {
+            "text": "Scrappy Werepig",
+            "image": {
+              "x": 0.75,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "fruitfly": {
+            "text": "Lord of the Fruit Flies",
+            "image": {
+              "x": 0.875,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "sharkboi": {
+            "text": "Frostjaw",
+            "image": {
+              "x": 0,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "klaus": {
+            "text": "Klaus",
+            "image": {
+              "x": 0.75,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "deerclops": {
+            "text": "Deerclops",
+            "image": {
+              "x": 0.9375,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "antliontribute": {
+            "text": "Antlion Tribute",
+            "image": {
+              "x": 0.125,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "dragonfly": {
+            "text": "Dragonfly",
+            "image": {
+              "x": 0,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "liefs": {
+            "text": "Treeguards",
+            "image": {
+              "x": 0.9375,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "crabking": {
+            "text": "Crabking",
+            "image": {
+              "x": 0.4375,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "goosemoose": {
+            "text": "Meese/Geese",
+            "image": {
+              "x": 0.125,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "malbatross": {
+            "text": "Malbatross",
+            "image": {
+              "x": 0.5,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "deciduousmonster": {
+            "text": "Poison Birchnut Trees",
+            "image": {
+              "x": 0.8125,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "bearger": {
+            "text": "Bearger",
+            "image": {
+              "x": 0.5,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "eyeofterror": {
+            "text": "Eye of Terror",
+            "image": {
+              "x": 0.4375,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "spiderqueen": {
+            "text": "Spider Queen",
+            "image": {
+              "x": 0.4375,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "beequeen": {
+            "text": "Bee Queen",
+            "image": {
+              "x": 0.625,
+              "y": 0
+            },
+            "value": "default"
+          }
+        }
+      },
+      "monsters": {
+        "order": 7,
+        "text": "Hostile Creatures",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "default": "Default",
+          "often": "More",
+          "always": "Tons"
+        },
+        "items": {
+          "spiders_setting": {
+            "text": "Spiders",
+            "image": {
+              "x": 0.5,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "pirateraids": {
+            "text": "Moon Quay Pirates",
+            "image": {
+              "x": 0.125,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "hound_mounds": {
+            "text": "Hounds",
+            "image": {
+              "x": 0.5,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "sharks": {
+            "text": "Sharks",
+            "image": {
+              "x": 0.0625,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "frogs": {
+            "text": "Frogs",
+            "image": {
+              "x": 0.75,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "lureplants": {
+            "text": "Lureplants",
+            "image": {
+              "x": 0.375,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "mutated_hounds": {
+            "text": "Horror Hounds",
+            "image": {
+              "x": 0.4375,
+              "y": 0.3125
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "value": "default"
+          },
+          "penguins_moon": {
+            "text": "Permafrost Pengulls",
+            "image": {
+              "x": 0,
+              "y": 0.3125
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "value": "default"
+          },
+          "walrus_setting": {
+            "text": "MacTusk",
+            "image": {
+              "x": 0.4375,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "mosquitos": {
+            "text": "Mosquitos",
+            "image": {
+              "x": 0.1875,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "wasps": {
+            "text": "Killer Bees",
+            "image": {
+              "x": 0.375,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "cookiecutters": {
+            "text": "Cookie Cutters",
+            "image": {
+              "x": 0.375,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "moon_spider": {
+            "text": "Shattered Spiders",
+            "image": {
+              "x": 0.0625,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "squid": {
+            "text": "Skittersquids",
+            "image": {
+              "x": 0.875,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "bats_setting": {
+            "text": "Bats",
+            "image": {
+              "x": 0.4375,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "spider_warriors": {
+            "text": "Spider Warriors",
+            "image": {
+              "x": 0.75,
+              "y": 0.4375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "value": "default"
+          },
+          "merms": {
+            "text": "Merms",
+            "image": {
+              "x": 0.5625,
+              "y": 0.25
+            },
+            "value": "default"
+          }
+        }
+      },
+      "animals": {
+        "order": 6,
+        "text": "Creatures",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "default": "Default",
+          "often": "More",
+          "always": "Tons"
+        },
+        "items": {
+          "bunnymen_setting": {
+            "text": "Bunnymen",
+            "image": {
+              "x": 0,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "wobsters": {
+            "text": "Wobsters",
+            "image": {
+              "x": 0.625,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "catcoons": {
+            "text": "Catcoons",
+            "image": {
+              "x": 0.25,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "rabbits_setting": {
+            "text": "Rabbits",
+            "image": {
+              "x": 0.3125,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "perd": {
+            "text": "Gobblers",
+            "image": {
+              "x": 0.8125,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "moles_setting": {
+            "text": "Moles",
+            "image": {
+              "x": 0.75,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "fishschools": {
+            "text": "Schools of Fish",
+            "image": {
+              "x": 0.5,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "birds": {
+            "text": "Birds",
+            "image": {
+              "x": 0.875,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "otters_setting": {
+            "text": "Marotters",
+            "image": {
+              "x": 0.5625,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "grassgekkos": {
+            "text": "Grass Gekko Morphing",
+            "image": {
+              "x": 0.25,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "penguins": {
+            "text": "Pengulls",
+            "image": {
+              "x": 0.75,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "gnarwail": {
+            "text": "Gnarwails",
+            "image": {
+              "x": 0.0625,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "pigs_setting": {
+            "text": "Pigs",
+            "image": {
+              "x": 0,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "butterfly": {
+            "text": "Butterflies",
+            "image": {
+              "x": 0.0625,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "bees_setting": {
+            "text": "Bees",
+            "image": {
+              "x": 0.6875,
+              "y": 0
+            },
+            "value": "default"
+          }
+        }
+      },
+      "survivors": {
+        "order": 2,
+        "text": "Survivors",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "spawnprotection": {
+            "text": "Griefer Spawn Protection",
+            "image": {
+              "x": 0.375,
+              "y": 0.4375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Auto Detect",
+              "always": "Always"
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "lessdamagetaken": {
+            "text": "Damage Taken",
+            "image": {
+              "x": 0.875,
+              "y": 0.1875
+            },
+            "desc": {
+              "always": "Less",
+              "none": "Default",
+              "more": "More"
+            },
+            "order": 6,
+            "value": "none"
+          },
+          "extrastartingitems": {
+            "text": "Extra Starting Resources",
+            "image": {
+              "x": 0.375,
+              "y": 0.125
+            },
+            "desc": {
+              "0": "Always",
+              "5": "After Day 5",
+              "15": "After Day 15",
+              "20": "After Day 20",
+              "default": "After Day 10",
+              "none": "Never"
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "seasonalstartingitems": {
+            "text": "Seasonal Starting Items",
+            "image": {
+              "x": 0.8125,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "order": 2,
+            "value": "default"
+          },
+          "healthpenalty": {
+            "text": "Max Health Penalty",
+            "image": {
+              "x": 0.375,
+              "y": 0.1875
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "order": 5,
+            "value": "always"
+          },
+          "brightmarecreatures": {
+            "text": "Enlightenment Monsters",
+            "image": {
+              "x": 0.9375,
+              "y": 0
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 11,
+            "value": "default"
+          },
+          "darkness": {
+            "text": "Darkness Damage",
+            "image": {
+              "x": 0.5625,
+              "y": 0.0625
+            },
+            "desc": {
+              "nonlethal": "Nonlethal",
+              "default": "Default"
+            },
+            "order": 9,
+            "value": "default"
+          },
+          "temperaturedamage": {
+            "text": "Temperature Damage",
+            "image": {
+              "x": 0.0625,
+              "y": 0.5
+            },
+            "desc": {
+              "nonlethal": "Nonlethal",
+              "default": "Default"
+            },
+            "order": 7,
+            "value": "default"
+          },
+          "dropeverythingondespawn": {
+            "text": "Drop Items on Disconnect",
+            "image": {
+              "x": 0.0625,
+              "y": 0.125
+            },
+            "desc": {
+              "default": "Default",
+              "always": "Everything"
+            },
+            "order": 4,
+            "value": "default"
+          },
+          "shadowcreatures": {
+            "text": "Sanity Monsters",
+            "image": {
+              "x": 0.875,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 10,
+            "value": "default"
+          },
+          "hunger": {
+            "text": "Hunger Damage",
+            "image": {
+              "x": 0.5625,
+              "y": 0.1875
+            },
+            "desc": {
+              "nonlethal": "Nonlethal",
+              "default": "Default"
+            },
+            "order": 8,
+            "value": "default"
+          }
+        }
+      }
+    }
+  },
+  "cave": {
+    "WORLDGEN_GROUP": {
+      "resources": {
+        "order": 3,
+        "text": "Resources",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "uncommon": "Less",
+          "default": "Default",
+          "often": "More",
+          "mostly": "Lots",
+          "always": "Tons",
+          "insane": "Insane"
+        },
+        "items": {
+          "marshbush": {
+            "text": "Spiky Bushes",
+            "image": {
+              "x": 0.625,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "reeds": {
+            "text": "Reeds",
+            "image": {
+              "x": 0.3125,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "sapling": {
+            "text": "Saplings",
+            "image": {
+              "x": 0.5625,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "mushtree": {
+            "text": "Mushroom Trees",
+            "image": {
+              "x": 0.625,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "trees": {
+            "text": "Trees (All)",
+            "image": {
+              "x": 0.3125,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "cave_ponds": {
+            "text": "Ponds",
+            "image": {
+              "x": 0.1875,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "grass": {
+            "text": "Grass",
+            "image": {
+              "x": 0.1875,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "berrybush": {
+            "text": "Berry Bushes",
+            "image": {
+              "x": 0.25,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "lichen": {
+            "text": "Lichen",
+            "image": {
+              "x": 0.4375,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "rock": {
+            "text": "Boulders",
+            "image": {
+              "x": 0.4375,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "mushroom": {
+            "text": "Mushrooms",
+            "image": {
+              "x": 0.5625,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "flower_cave": {
+            "text": "Light Flowers",
+            "image": {
+              "x": 0.125,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "banana": {
+            "text": "Bananas",
+            "image": {
+              "x": 0,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "wormlights": {
+            "text": "Glow Berries",
+            "image": {
+              "x": 0.8125,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "fern": {
+            "text": "Cave Ferns",
+            "image": {
+              "x": 0.875,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "flint": {
+            "text": "Flint",
+            "image": {
+              "x": 0,
+              "y": 0.125
+            },
+            "value": "default"
+          }
+        }
+      },
+      "global": {
+        "order": 1,
+        "text": "Global",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "season_start": {
+            "text": "Starting Season",
+            "image": {
+              "x": 0.625,
+              "y": 0.375
+            },
+            "desc": {
+              "default": "Autumn",
+              "winter": "Winter",
+              "spring": "Spring",
+              "summer": "Summer",
+              "autumn|spring": "Autumn or Spring",
+              "winter|summer": "Winter or Summer",
+              "autumn|winter|spring|summer": "Random"
+            },
+            "order": 1,
+            "value": "default"
+          }
+        }
+      },
+      "monsters": {
+        "order": 5,
+        "text": "Hostile Creatures and Spawners",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "uncommon": "Less",
+          "default": "Default",
+          "often": "More",
+          "mostly": "Lots",
+          "always": "Tons",
+          "insane": "Insane"
+        },
+        "items": {
+          "spiders": {
+            "text": "Spider Dens",
+            "image": {
+              "x": 0.875,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "fissure": {
+            "text": "Nightmare Fissures",
+            "image": {
+              "x": 0.9375,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "bats": {
+            "text": "Bats",
+            "image": {
+              "x": 0.0625,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "cave_spiders": {
+            "text": "Spilagmites",
+            "image": {
+              "x": 0.75,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "chess": {
+            "text": "Clockworks",
+            "image": {
+              "x": 0.8125,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "worms": {
+            "text": "Cave Worms",
+            "image": {
+              "x": 0.875,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "tentacles": {
+            "text": "Tentacles",
+            "image": {
+              "x": 0.125,
+              "y": 0.5
+            },
+            "value": "default"
+          }
+        }
+      },
+      "animals": {
+        "order": 4,
+        "text": "Creatures and Spawners",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "uncommon": "Less",
+          "default": "Default",
+          "often": "More",
+          "mostly": "Lots",
+          "always": "Tons",
+          "insane": "Insane"
+        },
+        "items": {
+          "rocky": {
+            "text": "Rock Lobsters",
+            "image": {
+              "x": 0.5,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "slurtles": {
+            "text": "Slurtle Mounds",
+            "image": {
+              "x": 0.8125,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "bunnymen": {
+            "text": "Rabbit Hutches",
+            "image": {
+              "x": 0.3125,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "monkey": {
+            "text": "Splumonkey Pods",
+            "image": {
+              "x": 0.8125,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "slurper": {
+            "text": "Slurpers",
+            "image": {
+              "x": 0.75,
+              "y": 0.375
+            },
+            "value": "default"
+          }
+        }
+      },
+      "misc": {
+        "order": 2,
+        "text": "World",
+        "atlas": {
+          "name": "worldgen_customization",
+          "width": 2048,
+          "height": 1024,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "prefabswaps_start": {
+            "text": "Starting Resource Variety",
+            "image": {
+              "x": 0,
+              "y": 0.5
+            },
+            "desc": {
+              "classic": "Classic",
+              "default": "Default",
+              "highly random": "Highly Random"
+            },
+            "order": 20,
+            "value": "default"
+          },
+          "world_size": {
+            "text": "World Size",
+            "image": {
+              "x": 0.6875,
+              "y": 0.5
+            },
+            "desc": {
+              "small": "Small",
+              "medium": "Medium",
+              "default": "Large",
+              "huge": "Huge"
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "task_set": {
+            "text": "Biomes",
+            "image": {
+              "x": 0.625,
+              "y": 0.5
+            },
+            "desc": {
+              "cave_default": "Underground"
+            },
+            "order": 1,
+            "value": "cave_default"
+          },
+          "boons": {
+            "text": "Failed Survivors",
+            "image": {
+              "x": 0.6875,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "uncommon": "Less",
+              "default": "Default",
+              "often": "More",
+              "mostly": "Lots",
+              "always": "Tons",
+              "insane": "Insane"
+            },
+            "order": 18,
+            "value": "default"
+          },
+          "start_location": {
+            "text": "Spawn Area",
+            "image": {
+              "x": 0.75,
+              "y": 0.5
+            },
+            "desc": {
+              "caves": "Caves"
+            },
+            "order": 2,
+            "value": "caves"
+          },
+          "cavelight": {
+            "text": "Sinkhole Lights",
+            "image": {
+              "x": 0.6875,
+              "y": 0
+            },
+            "desc": {
+              "never": "None",
+              "veryslow": "Very Slow",
+              "slow": "Slow",
+              "default": "Default",
+              "fast": "Fast",
+              "veryfast": "Very Fast"
+            },
+            "order": 18,
+            "value": "default"
+          },
+          "touchstone": {
+            "text": "Touch Stones",
+            "image": {
+              "x": 0.25,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "uncommon": "Less",
+              "default": "Default",
+              "often": "More",
+              "mostly": "Lots",
+              "always": "Tons",
+              "insane": "Insane"
+            },
+            "order": 17,
+            "value": "default"
+          },
+          "branching": {
+            "text": "Branches",
+            "image": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "Never",
+              "least": "Least",
+              "default": "Default",
+              "most": "Most",
+              "random": "Random"
+            },
+            "order": 4,
+            "value": "default"
+          },
+          "loop": {
+            "text": "Loops",
+            "image": {
+              "x": 0.5625,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "Never",
+              "default": "Default",
+              "always": "Always"
+            },
+            "order": 5,
+            "value": "default"
+          }
+        }
+      }
+    },
+    "WORLDSETTINGS_GROUP": {
+      "resources": {
+        "order": 4,
+        "text": "Resource Regrowth",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "veryslow": "Very Slow",
+          "slow": "Slow",
+          "default": "Default",
+          "fast": "Fast",
+          "veryfast": "Very Fast"
+        },
+        "items": {
+          "basicresource_regrowth": {
+            "text": "Basic Resources",
+            "image": {
+              "x": 0.375,
+              "y": 0
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "value": "none"
+          },
+          "flower_cave_regrowth": {
+            "text": "Light Flower",
+            "image": {
+              "x": 0.6875,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "lightflier_flower_regrowth": {
+            "text": "Lightbug Flower",
+            "image": {
+              "x": 0.125,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "mushtree_regrowth": {
+            "text": "Mushroom Trees",
+            "image": {
+              "x": 0.3125,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "mushtree_moon_regrowth": {
+            "text": "Lunar Mushtrees",
+            "image": {
+              "x": 0.375,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "regrowth": {
+            "text": "Regrowth Multiplier",
+            "image": {
+              "x": 0.5,
+              "y": 0.375
+            },
+            "order": 1,
+            "value": "default"
+          }
+        }
+      },
+      "global": {
+        "order": 0,
+        "text": "Global",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "spawnmode": {
+            "text": "Spawn Mode",
+            "image": {
+              "x": 0.3125,
+              "y": 0.4375
+            },
+            "desc": {
+              "fixed": "Florid Postern",
+              "scatter": "Random"
+            },
+            "order": 7,
+            "value": "fixed"
+          },
+          "summer": {
+            "text": "Summer",
+            "image": {
+              "x": 0.9375,
+              "y": 0.4375
+            },
+            "desc": {
+              "noseason": "None",
+              "veryshortseason": "Very Short",
+              "shortseason": "Short",
+              "default": "Default",
+              "longseason": "Long",
+              "verylongseason": "Very Long",
+              "random": "Random"
+            },
+            "order": 5,
+            "value": "default"
+          },
+          "spring": {
+            "text": "Spring",
+            "image": {
+              "x": 0.8125,
+              "y": 0.4375
+            },
+            "desc": {
+              "noseason": "None",
+              "veryshortseason": "Very Short",
+              "shortseason": "Short",
+              "default": "Default",
+              "longseason": "Long",
+              "verylongseason": "Very Long",
+              "random": "Random"
+            },
+            "order": 4,
+            "value": "default"
+          },
+          "winter": {
+            "text": "Winter",
+            "image": {
+              "x": 0.4375,
+              "y": 0.5
+            },
+            "desc": {
+              "noseason": "None",
+              "veryshortseason": "Very Short",
+              "shortseason": "Short",
+              "default": "Default",
+              "longseason": "Long",
+              "verylongseason": "Very Long",
+              "random": "Random"
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "beefaloheat": {
+            "text": "Beefalo Mating Frequency",
+            "image": {
+              "x": 0.5625,
+              "y": 0
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 12,
+            "value": "default"
+          },
+          "day": {
+            "text": "Day Type",
+            "image": {
+              "x": 0.625,
+              "y": 0.0625
+            },
+            "desc": {
+              "default": "Default",
+              "longday": "Long Day",
+              "longdusk": "Long Dusk",
+              "longnight": "Long Night",
+              "noday": "No Day",
+              "nodusk": "No Dusk",
+              "nonight": "No Night",
+              "onlyday": "Only Day",
+              "onlydusk": "Only Dusk",
+              "onlynight": "Only Night"
+            },
+            "order": 6,
+            "value": "default"
+          },
+          "specialevent": {
+            "text": "Events",
+            "image": {
+              "x": 0.25,
+              "y": 0.125
+            },
+            "desc": {
+              "none": "None",
+              "default": "Auto"
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "krampus": {
+            "text": "Krampii",
+            "image": {
+              "x": 0.8125,
+              "y": 0.1875
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 13,
+            "value": "default"
+          },
+          "autumn": {
+            "text": "Autumn",
+            "image": {
+              "x": 0.25,
+              "y": 0
+            },
+            "desc": {
+              "noseason": "None",
+              "veryshortseason": "Very Short",
+              "shortseason": "Short",
+              "default": "Default",
+              "longseason": "Long",
+              "verylongseason": "Very Long",
+              "random": "Random"
+            },
+            "order": 2,
+            "value": "default"
+          },
+          "resettime": {
+            "text": "Death Reset Timer",
+            "image": {
+              "x": 0.5625,
+              "y": 0.375
+            },
+            "desc": {
+              "none": "Disabled",
+              "slow": "Slow",
+              "default": "Default",
+              "fast": "Fast",
+              "always": "Instant"
+            },
+            "order": 11,
+            "value": "default"
+          },
+          "ghostenabled": {
+            "text": "Survivor Death",
+            "image": {
+              "x": 0.9375,
+              "y": 0.125
+            },
+            "desc": {
+              "none": "Change Survivor",
+              "always": "Become a Ghost"
+            },
+            "order": 8,
+            "value": "always"
+          },
+          "ghostsanitydrain": {
+            "text": "Ghost Sanity Drain",
+            "image": {
+              "x": 0,
+              "y": 0.1875
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "order": 10,
+            "value": "always"
+          },
+          "portalresurection": {
+            "text": "Revive At Florid Postern",
+            "image": {
+              "x": 0.1875,
+              "y": 0.375
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "order": 9,
+            "value": "none"
+          }
+        }
+      },
+      "misc": {
+        "order": 3,
+        "text": "World",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "wormattacks_boss": {
+            "text": "Great Worm",
+            "image": {
+              "x": 0.75,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "Never",
+              "rare": "Rare",
+              "default": "Default",
+              "often": "Often",
+              "always": "Always"
+            },
+            "value": "default"
+          },
+          "rifts_enabled_cave": {
+            "text": "Wild Rifts",
+            "image": {
+              "x": 0.9375,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Auto Detect",
+              "always": "Always"
+            },
+            "value": "default"
+          },
+          "acidrain_enabled": {
+            "text": "Acid Rain",
+            "image": {
+              "x": 0,
+              "y": 0
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "value": "always"
+          },
+          "rifts_frequency_cave": {
+            "text": "Wild Rift Frequency",
+            "image": {
+              "x": 0.9375,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "atriumgate": {
+            "text": "Ancient Gateway",
+            "image": {
+              "x": 0.1875,
+              "y": 0
+            },
+            "desc": {
+              "veryslow": "Very Slow",
+              "slow": "Slow",
+              "default": "Default",
+              "fast": "Fast",
+              "veryfast": "Very Fast"
+            },
+            "value": "default"
+          },
+          "wormattacks": {
+            "text": "Cave Worm Attacks",
+            "image": {
+              "x": 0.6875,
+              "y": 0.5
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "earthquakes": {
+            "text": "Earthquakes",
+            "image": {
+              "x": 0.1875,
+              "y": 0.125
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          },
+          "weather": {
+            "text": "Rain",
+            "image": {
+              "x": 0.375,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "value": "default"
+          }
+        }
+      },
+      "events": {
+        "order": 1,
+        "text": "Events",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "default": "Default",
+          "enabled": "Always"
+        },
+        "items": {
+          "crow_carnival": {
+            "text": "Midsummer Cawnival",
+            "image": {
+              "x": 0.5,
+              "y": 0.0625
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "winters_feast": {
+            "text": "Winter's Feast",
+            "image": {
+              "x": 0.5625,
+              "y": 0.5
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "year_of_the_catcoon": {
+            "text": "Year of the Catcoon",
+            "image": {
+              "x": 0.125,
+              "y": 0.5625
+            },
+            "order": 9,
+            "value": "default"
+          },
+          "year_of_the_dragonfly": {
+            "text": "Year of the Dragonfly",
+            "image": {
+              "x": 0.9375,
+              "y": 0.5
+            },
+            "order": 11,
+            "value": "default"
+          },
+          "year_of_the_pig": {
+            "text": "Year of the Pig King",
+            "image": {
+              "x": 0.0625,
+              "y": 0.375
+            },
+            "order": 6,
+            "value": "default"
+          },
+          "year_of_the_varg": {
+            "text": "Year of the Varg",
+            "image": {
+              "x": 0.3125,
+              "y": 0.5
+            },
+            "order": 5,
+            "value": "default"
+          },
+          "year_of_the_beefalo": {
+            "text": "Year of the Beefalo",
+            "image": {
+              "x": 0.8125,
+              "y": 0.5
+            },
+            "order": 8,
+            "value": "default"
+          },
+          "year_of_the_snake": {
+            "text": "Year of the Depths Worm",
+            "image": {
+              "x": 0.0625,
+              "y": 0.5625
+            },
+            "order": 12,
+            "value": "default"
+          },
+          "year_of_the_gobbler": {
+            "text": "Year of the Gobbler",
+            "image": {
+              "x": 0.875,
+              "y": 0.3125
+            },
+            "order": 4,
+            "value": "default"
+          },
+          "hallowed_nights": {
+            "text": "Hallowed Nights",
+            "image": {
+              "x": 0.3125,
+              "y": 0.1875
+            },
+            "order": 2,
+            "value": "default"
+          },
+          "year_of_the_bunnyman": {
+            "text": "Year of the Bunnyman",
+            "image": {
+              "x": 0,
+              "y": 0.5625
+            },
+            "order": 10,
+            "value": "default"
+          },
+          "year_of_the_carrat": {
+            "text": "Year of the Carrat",
+            "image": {
+              "x": 0.875,
+              "y": 0.5
+            },
+            "order": 7,
+            "value": "default"
+          }
+        }
+      },
+      "giants": {
+        "order": 8,
+        "text": "Giants",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "default": "Default",
+          "often": "More",
+          "always": "Tons"
+        },
+        "items": {
+          "fruitfly": {
+            "text": "Lord of the Fruit Flies",
+            "image": {
+              "x": 0.875,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "toadstool": {
+            "text": "Toadstool",
+            "image": {
+              "x": 0.125,
+              "y": 0.5
+            },
+            "value": "default"
+          },
+          "liefs": {
+            "text": "Treeguards",
+            "image": {
+              "x": 0.9375,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "daywalker": {
+            "text": "Nightmare Werepig",
+            "image": {
+              "x": 0.6875,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "spiderqueen": {
+            "text": "Spider Queen",
+            "image": {
+              "x": 0.4375,
+              "y": 0.4375
+            },
+            "value": "default"
+          }
+        }
+      },
+      "monsters": {
+        "order": 7,
+        "text": "Hostile Creatures",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "default": "Default",
+          "often": "More",
+          "always": "Tons"
+        },
+        "items": {
+          "nightmarecreatures": {
+            "text": "Ruins Nightmares",
+            "image": {
+              "x": 0.5,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "spiders_setting": {
+            "text": "Spiders",
+            "image": {
+              "x": 0.5,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "spider_spitter": {
+            "text": "Spitter Spiders",
+            "image": {
+              "x": 0.6875,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "molebats": {
+            "text": "Naked Mole Bats",
+            "image": {
+              "x": 0.6875,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "chest_mimics": {
+            "text": "Ornery Chests",
+            "image": {
+              "x": 0.3125,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "itemmimics": {
+            "text": "Mimicreeps",
+            "image": {
+              "x": 0.6875,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "bats_setting": {
+            "text": "Bats",
+            "image": {
+              "x": 0.4375,
+              "y": 0
+            },
+            "value": "default"
+          },
+          "spider_warriors": {
+            "text": "Spider Warriors",
+            "image": {
+              "x": 0.75,
+              "y": 0.4375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "value": "default"
+          },
+          "spider_hider": {
+            "text": "Cave Spiders",
+            "image": {
+              "x": 0.625,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "spider_dropper": {
+            "text": "Dangling Depth Dwellers",
+            "image": {
+              "x": 0.5625,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "merms": {
+            "text": "Merms",
+            "image": {
+              "x": 0.5625,
+              "y": 0.25
+            },
+            "value": "default"
+          }
+        }
+      },
+      "animals": {
+        "order": 6,
+        "text": "Creatures",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": {
+          "never": "None",
+          "rare": "Little",
+          "default": "Default",
+          "often": "More",
+          "always": "Tons"
+        },
+        "items": {
+          "bunnymen_setting": {
+            "text": "Bunnymen",
+            "image": {
+              "x": 0,
+              "y": 0.0625
+            },
+            "value": "default"
+          },
+          "mushgnome": {
+            "text": "Mush Gnomes",
+            "image": {
+              "x": 0.25,
+              "y": 0.3125
+            },
+            "value": "default"
+          },
+          "lightfliers": {
+            "text": "Bulbous Lightbugs",
+            "image": {
+              "x": 0.0625,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "slurtles_setting": {
+            "text": "Slurtles",
+            "image": {
+              "x": 0.125,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "moles_setting": {
+            "text": "Moles",
+            "image": {
+              "x": 0.75,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "monkey_setting": {
+            "text": "Splumonkeys",
+            "image": {
+              "x": 0.875,
+              "y": 0.25
+            },
+            "value": "default"
+          },
+          "rocky_setting": {
+            "text": "Rock Lobsters",
+            "image": {
+              "x": 0.625,
+              "y": 0.375
+            },
+            "value": "default"
+          },
+          "grassgekkos": {
+            "text": "Grass Gekko Morphing",
+            "image": {
+              "x": 0.25,
+              "y": 0.1875
+            },
+            "value": "default"
+          },
+          "snurtles": {
+            "text": "Snurtles",
+            "image": {
+              "x": 0.25,
+              "y": 0.4375
+            },
+            "value": "default"
+          },
+          "dustmoths": {
+            "text": "Dust Moths",
+            "image": {
+              "x": 0.125,
+              "y": 0.125
+            },
+            "value": "default"
+          },
+          "pigs_setting": {
+            "text": "Pigs",
+            "image": {
+              "x": 0,
+              "y": 0.375
+            },
+            "value": "default"
+          }
+        }
+      },
+      "survivors": {
+        "order": 2,
+        "text": "Survivors",
+        "atlas": {
+          "name": "worldsettings_customization",
+          "width": 2048,
+          "height": 2048,
+          "item_size": 128
+        },
+        "desc": null,
+        "items": {
+          "spawnprotection": {
+            "text": "Griefer Spawn Protection",
+            "image": {
+              "x": 0.375,
+              "y": 0.4375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Auto Detect",
+              "always": "Always"
+            },
+            "order": 3,
+            "value": "default"
+          },
+          "lessdamagetaken": {
+            "text": "Damage Taken",
+            "image": {
+              "x": 0.875,
+              "y": 0.1875
+            },
+            "desc": {
+              "always": "Less",
+              "none": "Default",
+              "more": "More"
+            },
+            "order": 6,
+            "value": "none"
+          },
+          "extrastartingitems": {
+            "text": "Extra Starting Resources",
+            "image": {
+              "x": 0.375,
+              "y": 0.125
+            },
+            "desc": {
+              "0": "Always",
+              "5": "After Day 5",
+              "15": "After Day 15",
+              "20": "After Day 20",
+              "default": "After Day 10",
+              "none": "Never"
+            },
+            "order": 1,
+            "value": "default"
+          },
+          "seasonalstartingitems": {
+            "text": "Seasonal Starting Items",
+            "image": {
+              "x": 0.8125,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "default": "Default"
+            },
+            "order": 2,
+            "value": "default"
+          },
+          "healthpenalty": {
+            "text": "Max Health Penalty",
+            "image": {
+              "x": 0.375,
+              "y": 0.1875
+            },
+            "desc": {
+              "none": "Disabled",
+              "always": "Enabled"
+            },
+            "order": 5,
+            "value": "always"
+          },
+          "brightmarecreatures": {
+            "text": "Enlightenment Monsters",
+            "image": {
+              "x": 0.9375,
+              "y": 0
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 11,
+            "value": "default"
+          },
+          "darkness": {
+            "text": "Darkness Damage",
+            "image": {
+              "x": 0.5625,
+              "y": 0.0625
+            },
+            "desc": {
+              "nonlethal": "Nonlethal",
+              "default": "Default"
+            },
+            "order": 9,
+            "value": "default"
+          },
+          "temperaturedamage": {
+            "text": "Temperature Damage",
+            "image": {
+              "x": 0.0625,
+              "y": 0.5
+            },
+            "desc": {
+              "nonlethal": "Nonlethal",
+              "default": "Default"
+            },
+            "order": 7,
+            "value": "default"
+          },
+          "dropeverythingondespawn": {
+            "text": "Drop Items on Disconnect",
+            "image": {
+              "x": 0.0625,
+              "y": 0.125
+            },
+            "desc": {
+              "default": "Default",
+              "always": "Everything"
+            },
+            "order": 4,
+            "value": "default"
+          },
+          "shadowcreatures": {
+            "text": "Sanity Monsters",
+            "image": {
+              "x": 0.875,
+              "y": 0.375
+            },
+            "desc": {
+              "never": "None",
+              "rare": "Little",
+              "default": "Default",
+              "often": "More",
+              "always": "Tons"
+            },
+            "order": 10,
+            "value": "default"
+          },
+          "hunger": {
+            "text": "Hunger Damage",
+            "image": {
+              "x": 0.5625,
+              "y": 0.1875
+            },
+            "desc": {
+              "nonlethal": "Nonlethal",
+              "default": "Default"
+            },
+            "order": 8,
+            "value": "default"
+          }
+        }
+      }
+    }
+  }
+}

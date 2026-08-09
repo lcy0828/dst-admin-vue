@@ -16,7 +16,7 @@
       </p>
       <UiSelect :model-value="item.value" @update:model-value="handleSelectChange" @update:open="handleSelectOpen">
         <SelectTrigger>
-          <SelectValue :placeholder="'选择' + item.text" />
+          <SelectValue :placeholder="$t('worlds.settingsUi.selectItem', { item: item.text })" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
@@ -26,7 +26,7 @@
               :value="descKey"
             >
               <span>{{ descText }}</span>
-              <Badge v-if="isDefaultOption(descKey)" variant="secondary">默认</Badge>
+              <Badge v-if="isDefaultOption(descKey)" variant="secondary">{{ $t('worlds.settingsUi.defaultOption') }}</Badge>
             </SelectItem>
           </SelectGroup>
         </SelectContent>
@@ -34,7 +34,7 @@
     </div>
     <Tooltip>
       <TooltipTrigger as-child>
-        <UiButton class="setting-hover-tips" variant="ghost" size="icon-xs" aria-label="查看设置说明" title="查看设置说明">
+        <UiButton class="setting-hover-tips" variant="ghost" size="icon-xs" :aria-label="$t('worlds.settingsUi.viewDescription')" :title="$t('worlds.settingsUi.viewDescription')">
           <CircleHelpIcon />
         </UiButton>
       </TooltipTrigger>
@@ -138,37 +138,33 @@ export default {
     },
     
     getSettingDescription() {
-      const cacheKey = `${this.itemKey}-${this.item.value}`;
+      const cacheKey = `${this.$i18n.locale}-${this.itemKey}-${this.item.value}`;
       if (this.descriptionCache[cacheKey]) {
         return this.descriptionCache[cacheKey];
       }
       
-      // 基本描述
-      let desc = `${this.item.text}：`;
-      
-      // 添加当前值的描述
       const options = this.getItemOptions(this.category.desc, this.item.desc);
       const currentValue = options[this.item.value] || this.item.value;
-      desc += `当前值为【${currentValue}】`;
+      let desc = this.$t('worlds.settingsUi.currentValue', { item: this.item.text, value: currentValue });
       
       // 使用策略模式添加详细描述
       const descriptionStrategies = {
-        monster: '。此选项影响游戏中怪物的数量和出现频率，数值越高难度越大。',
-        enemy: '。此选项影响游戏中怪物的数量和出现频率，数值越高难度越大。',
-        hound: '。此选项影响游戏中怪物的数量和出现频率，数值越高难度越大。',
-        regrowth: '。此选项影响资源再生速度，选择更快的速度可以使游戏更加轻松。',
-        respawn: '。此选项影响资源再生速度，选择更快的速度可以使游戏更加轻松。',
-        season: '。此选项影响季节的持续时间，影响游戏的整体节奏。',
-        start: '。此选项影响游戏开局设置。',
-        world_size: '。世界大小影响地图范围，较大的世界有更多资源但探索难度更高。',
-        damage: '。此选项影响伤害计算，调整游戏难度。'
+        monster: 'monster',
+        enemy: 'monster',
+        hound: 'monster',
+        regrowth: 'regrowth',
+        respawn: 'regrowth',
+        season: 'season',
+        start: 'start',
+        world_size: 'worldSize',
+        damage: 'damage'
       };
       
       // 查找适用的描述策略
       let descriptionAdded = false;
-      for (const [keyword, description] of Object.entries(descriptionStrategies)) {
+      for (const [keyword, descriptionKey] of Object.entries(descriptionStrategies)) {
         if (this.itemKey.includes(keyword) || (keyword === 'world_size' && this.itemKey === keyword)) {
-          desc += description;
+          desc += ` ${this.$t(`worlds.settingsUi.descriptions.${descriptionKey}`)}`;
           descriptionAdded = true;
           break;
         }
@@ -176,7 +172,7 @@ export default {
       
       // 如果没有匹配的策略，添加通用描述
       if (!descriptionAdded) {
-        desc += '。调整此选项可能会影响游戏平衡性。';
+        desc += ` ${this.$t('worlds.settingsUi.descriptions.generic')}`;
       }
       
       // 保存到缓存
