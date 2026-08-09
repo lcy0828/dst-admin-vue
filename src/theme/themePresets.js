@@ -1,6 +1,46 @@
-export const DEFAULT_THEME_ID = 'graphite'
+export const DEFAULT_THEME_ID = 'zinc'
 
 export const THEME_PRESETS = Object.freeze([
+  {
+    id: 'zinc',
+    name: 'Shadcn 中性',
+    primary: '#27272a',
+    accent: '#f59e0b',
+    sidebar: '#fafafa',
+    sidebarDeep: '#f4f4f5',
+    sidebarText: '#18181b',
+    sidebarActive: '#27272a',
+    sidebarBorder: '#e4e4e7',
+    semanticAccent: '#f4f4f5',
+    ring: '#71717a',
+    background: '#ffffff',
+    surface: '#ffffff',
+    surfaceMuted: '#f4f4f5',
+    text: '#18181b',
+    regular: '#3f3f46',
+    muted: '#71717a',
+    border: '#e4e4e7',
+    borderBase: '#d4d4d8',
+    dark: {
+      primary: '#e4e4e7',
+      accent: '#f59e0b',
+      sidebar: '#18181b',
+      sidebarDeep: '#27272a',
+      sidebarText: '#fafafa',
+      sidebarActive: '#e4e4e7',
+      sidebarBorder: '#3f3f46',
+      semanticAccent: '#27272a',
+      ring: '#a1a1aa',
+      background: '#09090b',
+      surface: '#18181b',
+      surfaceMuted: '#27272a',
+      text: '#fafafa',
+      regular: '#d4d4d8',
+      muted: '#a1a1aa',
+      border: '#3f3f46',
+      borderBase: '#52525b'
+    }
+  },
   {
     id: 'graphite',
     name: '石墨朱橙',
@@ -73,9 +113,13 @@ export const THEME_PRESETS = Object.freeze([
     border: '#e0e1ec',
     borderBase: '#cccede'
   }
-].map(preset => Object.freeze(preset)))
+].map(preset => Object.freeze({
+  ...preset,
+  ...(preset.dark ? { dark: Object.freeze(preset.dark) } : {})
+})))
 
 const DEFAULT_THEME = THEME_PRESETS.find(preset => preset.id === DEFAULT_THEME_ID)
+const CUSTOM_BASE_THEME = THEME_PRESETS.find(preset => preset.id === 'graphite')
 const LEGACY_DEFAULT_COLORS = new Set(['#3f7656', '#d97932'])
 
 function normalizedHex(value) {
@@ -96,5 +140,5 @@ export function normalizeThemeColor(value) {
 export function resolveThemePreset(value) {
   const primary = normalizeThemeColor(value)
   const preset = THEME_PRESETS.find(item => item.primary === primary)
-  return preset || Object.freeze({ ...DEFAULT_THEME, id: 'custom', name: '自定义主题', primary })
+  return preset || Object.freeze({ ...CUSTOM_BASE_THEME, id: 'custom', name: '自定义主题', primary })
 }

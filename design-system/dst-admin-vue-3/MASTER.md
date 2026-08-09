@@ -42,34 +42,35 @@ The product quality target is not maximum information per screen. It is the shor
 
 ## Palette
 
-`石墨朱橙` is the default theme. The system settings page also exposes `翡翠橙光`, `青柚珊瑚`, and `靛蓝琥珀`; selecting one previews the full token set immediately, while saving persists its primary color through the existing `ui.theme` field. Unknown custom primary colors use the graphite structural palette so legacy color customization remains compatible.
+`Shadcn 中性` is the default theme. The system settings page also exposes `石墨朱橙`, `翡翠橙光`, `青柚珊瑚`, and `靛蓝琥珀`; selecting one previews the full semantic token set immediately, while saving persists its primary color through the existing `ui.theme` field. Unknown custom primary colors use the graphite structural palette so legacy color customization remains compatible.
 
 | Role | Value | Token |
 | --- | --- | --- |
-| Primary action | `#e5482d` | `--primary-color` |
-| Primary hover | `#ed7f6c` | semantic accent token |
+| Primary action | `#27272a` | `--primary-color` |
+| Primary hover | `#3f3f46` | primary hover state |
 | Warm accent | `#f59e0b` | `--accent-color` |
 | Warning | `#c97908` | `--warning-color` |
 | Success / online | `#2f8a57` | `--success-color` |
 | Danger | `#d14343` | `--danger-color` |
-| Page background | `#f7f7f5` | `--bg-color` |
+| Page background | `#ffffff` | `--bg-color` |
 | Surface | `#ffffff` | `--surface-color` |
-| Muted surface | `#f0f1ee` | `--surface-muted` |
-| Sidebar | `#242626` | `--sidebar-color` |
-| Sidebar deep | `#1b1d1c` | `--sidebar-color-deep` |
-| Sidebar text | `#e9ece9` | `--sidebar-text` |
-| Sidebar active | `#ffb24a` | `--sidebar-active` |
-| Primary text | `#252826` | `--text-primary` |
-| Regular text | `#4f5551` | `--text-regular` |
-| Border | `#e1e4e1` | `--border-color` |
+| Muted surface | `#f4f4f5` | `--surface-muted` |
+| Sidebar | `#fafafa` | `--sidebar-color` |
+| Sidebar deep | `#f4f4f5` | `--sidebar-color-deep` |
+| Sidebar text | `#18181b` | `--sidebar-text` |
+| Sidebar active | `#27272a` | `--sidebar-active` |
+| Primary text | `#18181b` | `--text-primary` |
+| Regular text | `#3f3f46` | `--text-regular` |
+| Border | `#e4e4e7` | `--border-color` |
 
-Vermilion owns controls, links, focus, and active content states. Amber is limited to secondary emphasis and the active sidebar marker so the two warm hues do not compete across every component. Semantic success, warning, and danger colors remain stable across presets.
+The default Zinc preset keeps structure, controls, and navigation neutral. Colored presets replace the complete semantic token set instead of layering raw colors over individual components. Semantic success, warning, and danger colors remain stable across presets.
 
 ### Theme Presets
 
 | Preset | Primary | Accent | Sidebar | Background |
 | --- | --- | --- | --- | --- |
-| 石墨朱橙 (default) | `#e5482d` | `#f59e0b` | `#242626` | `#f7f7f5` |
+| Shadcn 中性 (default) | `#27272a` | `#f59e0b` | `#fafafa` | `#ffffff` |
+| 石墨朱橙 | `#e5482d` | `#f59e0b` | `#242626` | `#f7f7f5` |
 | 翡翠橙光 | `#0f8a5f` | `#ff7a1a` | `#102a24` | `#f5f8f6` |
 | 青柚珊瑚 | `#0e8f88` | `#ff6b4a` | `#173b3f` | `#f5f9f8` |
 | 靛蓝琥珀 | `#4f46e5` | `#f59e0b` | `#25294a` | `#f7f7fc` |

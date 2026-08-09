@@ -432,7 +432,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: getSystemPreferences().theme
+              color: this.chartColor('--chart-1')
             }
           }
         ]
@@ -591,7 +591,7 @@ export default {
             smooth: true,
             areaStyle: {},
             itemStyle: {
-              color: getSystemPreferences().theme
+              color: this.chartColor('--chart-1')
             }
           }
         ]

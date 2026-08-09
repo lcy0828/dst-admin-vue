@@ -95,7 +95,7 @@
               <Field>
                 <FieldContent>
                   <FieldTitle id="theme-options-label">界面主题</FieldTitle>
-                  <FieldDescription>默认使用石墨朱橙，也可以切换预设或选择自定义主色。</FieldDescription>
+                  <FieldDescription>默认使用 Shadcn 中性，也可以切换预设或选择自定义主色。</FieldDescription>
                 </FieldContent>
                 <ToggleGroup :model-value="selectedThemeId" type="single" class="theme-options" aria-labelledby="theme-options-label" :disabled="!fieldEditable('ui.theme')" @update:model-value="selectThemeById">
                   <ToggleGroupItem v-for="preset in themePresets" :key="preset.id" :value="preset.id" class="theme-option" :style="themeOptionStyle(preset)">
@@ -118,7 +118,7 @@
                   </div>
                   <UiInput id="custom-theme-color" v-model="settings.theme" class="color-input" type="color" aria-label="自定义主题主色" :disabled="!fieldEditable('ui.theme')" @update:model-value="previewCustomTheme" />
                   <Badge v-if="selectedThemeId === 'custom'" variant="secondary">已选择</Badge>
-                  <UiButton variant="ghost" size="sm" :disabled="!fieldEditable('ui.theme')" @click="resetDefaultTheme">恢复石墨默认</UiButton>
+                  <UiButton variant="ghost" size="sm" :disabled="!fieldEditable('ui.theme')" @click="resetDefaultTheme">恢复中性默认</UiButton>
                 </div>
               </Field>
             </FieldGroup>
@@ -394,7 +394,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { confirmAction } from '@/lib/feedback';
-import { THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
+import { DEFAULT_THEME_ID, THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
 import { applySystemPreferences, previewSystemTheme } from '@/utils/systemPreferences';
 import { getActiveRuntimeTarget } from '@/utils/runtimeTarget';
 import { toast } from 'vue-sonner';
@@ -507,7 +507,7 @@ export default {
         language: 'zh-CN',
         timezone: 'Asia/Shanghai',
         dateFormat: 'YYYY-MM-DD',
-        theme: themePresetById('graphite').primary,
+        theme: themePresetById(DEFAULT_THEME_ID).primary,
 
         // 安全设置
         passwordComplexity: false,
@@ -628,7 +628,7 @@ export default {
       return field?.editable === true;
     },
     themeValue(response) {
-      return normalizeThemeColor(this.field(response, 'ui.theme', themePresetById('graphite').primary).value);
+      return normalizeThemeColor(this.field(response, 'ui.theme', themePresetById(DEFAULT_THEME_ID).primary).value);
     },
     themeOptionStyle(preset) {
       return {
@@ -652,7 +652,7 @@ export default {
       previewSystemTheme(this.settings.theme);
     },
     resetDefaultTheme() {
-      this.selectTheme(themePresetById('graphite'));
+      this.selectTheme(themePresetById(DEFAULT_THEME_ID));
     },
     populateSettings(response) {
       this.settingsResponse = response;

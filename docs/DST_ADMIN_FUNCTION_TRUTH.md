@@ -40,6 +40,7 @@
 | Agent 注册、状态、配置和密钥轮换 | 可用 | 可用 | Agent 页面与运行目标配置可用；密钥常规读取仅返回掩码和指纹 |
 | Agent 领域动作 | 不适用 | 部分可用 | 当前只开放 `system.refresh` 和 `disk.inspect`；任意 shell/script/custom 不属于生产 API |
 | 系统设置与运行诊断 | 可用 | 部分可用 | 本机设置、版本、路径与 Mod fallback readiness 可用；远程仅限 Agent 已开放诊断 |
+| 界面主题 | 可用 | 不适用 | Shadcn 中性为默认；预设、自定义主色和浅色/深色模式统一驱动语义 token |
 | macOS 专服 | 可用 | 未验证 | 支持 Steam App 安装路径、空格路径、tmux 时间戳差异；已在本机 Master/Caves 联机验证 |
 | Linux 专服 | 部分可用 | 未验证 | 路径和进程模型已实现，但本轮没有真实 Linux DST 回归证据 |
 | Windows 专服 | 未实现 | 未实现 | 当前运行时依赖 tmux/Unix 进程模型，不应宣称兼容 |
@@ -57,8 +58,7 @@ Mod 读取顺序固定为：内嵌 gopher-lua、外部 Lua、Python/Lupa。保�
 3. 两步验证（2FA）。
 4. `cluster.ini` 独立导入/导出工作流。
 5. 旧物品目录和生成器占位文件的真实 API 接入与正式路由。
-6. 主题预设对正式 shadcn 外壳的完整生效验证；浅色/深色模式已经可用。
-7. Linux 真实专服回归矩阵和可复现的发布安装包。
+6. Linux 真实专服回归矩阵和可复现的发布安装包。
 
 ## 发布前人工验收
 

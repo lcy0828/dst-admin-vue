@@ -5,7 +5,7 @@ const DEFAULTS = Object.freeze({
   language: 'zh-CN',
   timezone: 'Asia/Shanghai',
   dateFormat: 'YYYY-MM-DD',
-  theme: '#e5482d',
+  theme: '#27272a',
   themePreset: DEFAULT_THEME_ID
 })
 
@@ -45,8 +45,9 @@ function applyThemeVariables(themeValue) {
   const root = document.documentElement
   const style = root.style
   const darkMode = root.classList.contains('dark')
+  const renderPreset = darkMode && preset.dark ? { ...preset, ...preset.dark } : preset
   const palette = darkMode
-    ? {
+    ? (preset.dark ? renderPreset : {
         background: mix(preset.sidebarDeep, '#000000', 0.08),
         surface: mix(preset.sidebar, '#ffffff', 0.04),
         surfaceMuted: mix(preset.sidebar, '#ffffff', 0.09),
@@ -57,21 +58,22 @@ function applyThemeVariables(themeValue) {
         borderBase: mix(preset.sidebar, '#ffffff', 0.26),
         sidebar: mix(preset.sidebar, '#000000', 0.05),
         sidebarDeep: mix(preset.sidebarDeep, '#000000', 0.1)
-      }
-    : preset
+      })
+    : renderPreset
   const success = darkMode ? '#55a878' : '#2f8a57'
   const warning = darkMode ? '#e5a436' : '#c97908'
   const danger = darkMode ? '#e26262' : '#d14343'
   const secondary = palette.surfaceMuted
-  const semanticAccent = mix(preset.primary, palette.surface, darkMode ? 0.82 : 0.9)
+  const semanticAccent = renderPreset.semanticAccent
+    || mix(renderPreset.primary, palette.surface, darkMode ? 0.82 : 0.9)
   const shadowColor = darkMode ? '#000000' : palette.text
   const shadowRgb = [1, 3, 5]
     .map(index => Number.parseInt(shadowColor.slice(index, index + 2), 16))
     .join(', ')
 
   const variables = {
-    '--primary-color': preset.primary,
-    '--accent-color': preset.accent,
+    '--primary-color': renderPreset.primary,
+    '--accent-color': renderPreset.accent,
     '--success-color': success,
     '--warning-color': warning,
     '--danger-color': danger,
@@ -85,9 +87,9 @@ function applyThemeVariables(themeValue) {
     '--surface-muted': palette.surfaceMuted,
     '--sidebar-color': palette.sidebar,
     '--sidebar-color-deep': palette.sidebarDeep,
-    '--sidebar-text': preset.sidebarText,
-    '--sidebar-active': preset.sidebarActive,
-    '--sidebar-active-bg': mix(preset.sidebarActive, palette.sidebar, 0.92),
+    '--sidebar-text': renderPreset.sidebarText,
+    '--sidebar-active': renderPreset.sidebarActive,
+    '--sidebar-active-bg': mix(renderPreset.sidebarActive, palette.sidebar, 0.92),
     '--shadow-card': `0 1px 2px rgba(${shadowRgb}, 0.06)`,
     '--shadow-card-hover': `0 2px 6px rgba(${shadowRgb}, 0.08)`,
     '--shadow-overlay': `0 12px 32px rgba(${shadowRgb}, 0.16)`,
@@ -97,8 +99,8 @@ function applyThemeVariables(themeValue) {
     '--card-foreground': palette.text,
     '--popover': palette.surface,
     '--popover-foreground': palette.text,
-    '--primary': preset.primary,
-    '--primary-foreground': readableForeground(preset.primary),
+    '--primary': renderPreset.primary,
+    '--primary-foreground': readableForeground(renderPreset.primary),
     '--secondary': secondary,
     '--secondary-foreground': palette.text,
     '--muted': secondary,
@@ -109,20 +111,20 @@ function applyThemeVariables(themeValue) {
     '--destructive-foreground': readableForeground(danger),
     '--border': palette.border,
     '--input': palette.borderBase,
-    '--ring': preset.primary,
-    '--chart-1': preset.primary,
+    '--ring': renderPreset.ring || renderPreset.primary,
+    '--chart-1': renderPreset.primary,
     '--chart-2': success,
-    '--chart-3': preset.accent,
+    '--chart-3': renderPreset.accent,
     '--chart-4': danger,
     '--chart-5': palette.muted,
     '--sidebar': palette.sidebar,
-    '--sidebar-foreground': preset.sidebarText,
-    '--sidebar-primary': preset.sidebarActive,
-    '--sidebar-primary-foreground': readableForeground(preset.sidebarActive),
+    '--sidebar-foreground': renderPreset.sidebarText,
+    '--sidebar-primary': renderPreset.sidebarActive,
+    '--sidebar-primary-foreground': readableForeground(renderPreset.sidebarActive),
     '--sidebar-accent': palette.sidebarDeep,
-    '--sidebar-accent-foreground': preset.sidebarText,
-    '--sidebar-border': mix(palette.sidebar, '#ffffff', 0.14),
-    '--sidebar-ring': preset.sidebarActive
+    '--sidebar-accent-foreground': renderPreset.sidebarText,
+    '--sidebar-border': renderPreset.sidebarBorder || mix(palette.sidebar, '#ffffff', 0.14),
+    '--sidebar-ring': renderPreset.ring || renderPreset.sidebarActive
   }
 
   for (const [name, value] of Object.entries(variables)) style.setProperty(name, value)
