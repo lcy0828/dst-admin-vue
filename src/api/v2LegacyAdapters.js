@@ -10,6 +10,7 @@ import {
 } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
+import { announcementTypeId } from '@/lib/systemDataIdentifiers.mjs'
 
 const MEBIBYTE = 1024 * 1024
 const GIBIBYTE = 1024 * 1024 * 1024
@@ -39,8 +40,8 @@ function legacyAnnouncement(value) {
   const publishedAt = new Date(value.publishTime)
   return {
     ...value,
-    type: value.important ? '重要' : '通知',
-    time: Number.isNaN(publishedAt.getTime()) ? '' : publishedAt.toLocaleString('zh-CN')
+    type: announcementTypeId(value.important),
+    time: Number.isNaN(publishedAt.getTime()) ? '' : publishedAt.toISOString()
   }
 }
 
@@ -55,13 +56,13 @@ function gameUpdateCapabilities(version = {}) {
   }
 }
 
-function formatUptime(seconds) {
+function formatCompactDuration(seconds) {
   if (!Number.isFinite(Number(seconds))) return ''
   const total = Math.max(0, Math.floor(seconds))
   const days = Math.floor(total / 86400)
   const hours = Math.floor((total % 86400) / 3600)
   const minutes = Math.floor((total % 3600) / 60)
-  return [days ? `${days}天` : '', hours ? `${hours}小时` : '', `${minutes}分钟`].filter(Boolean).join(' ')
+  return [days ? `${days}d` : '', hours ? `${hours}h` : '', `${minutes}m`].filter(Boolean).join(' ')
 }
 
 function bytesValue(bytes, divisor) {
@@ -245,7 +246,9 @@ function legacySystemStatus(status) {
     current_time: status.observedAt,
     hostname: host.hostname,
     os_info: [host.platform, host.version, host.architecture].filter(Boolean).join(' '),
-    uptime_formatted: host.available ? formatUptime(host.uptimeSeconds) : '',
+    uptime: host.available ? host.uptimeSeconds : null,
+    uptime_seconds: host.available ? host.uptimeSeconds : null,
+    uptime_formatted: host.available ? formatCompactDuration(host.uptimeSeconds) : '',
     cpu_model: cpu.available ? cpu.model : null,
     cpu_cores: cpu.available ? cpu.cores : null,
     cpu_threads: cpu.available ? cpu.threads : null,
@@ -263,7 +266,9 @@ function legacySystemStatus(status) {
     free_disk: disk.available ? bytesValue(disk.availableBytes, GIBIBYTE) : null,
     disk_usage: disk.available ? disk.usage : null,
     process_id: process.pid,
-    process_uptime_fmt: formatUptime(process.uptimeSeconds),
+    process_uptime: process.available ? process.uptimeSeconds : null,
+    process_uptime_seconds: process.available ? process.uptimeSeconds : null,
+    process_uptime_fmt: process.available ? formatCompactDuration(process.uptimeSeconds) : '',
     process_memory_rss: process.available ? bytesValue(process.memoryRssBytes, MEBIBYTE) : null,
     process_memory_vms: process.available ? bytesValue(process.memoryVmsBytes, MEBIBYTE) : null,
     process_cpu_usage: process.available ? process.cpuUsage : null,

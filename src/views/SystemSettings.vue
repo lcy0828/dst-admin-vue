@@ -308,7 +308,7 @@
         <div class="status-grid process-status-grid">
           <Card>
             <CardHeader><CardTitle class="status-card-title"><ChartNoAxesCombined />{{ $t('systemSettings.monitor.process') }}</CardTitle><CardDescription>{{ $t('systemSettings.monitor.processDescription') }}</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>{{ $t('systemSettings.monitor.processId') }}</dt><dd>{{ systemStatus.process_id }}</dd></div><div><dt>{{ $t('systemSettings.monitor.uptime') }}</dt><dd>{{ systemStatus.process_uptime_fmt }}</dd></div><div><dt>{{ $t('systemSettings.monitor.rss') }}</dt><dd>{{ systemStatus.process_memory_rss }} MB</dd></div><div><dt>{{ $t('systemSettings.monitor.vms') }}</dt><dd>{{ systemStatus.process_memory_vms }} MB</dd></div><div><dt>{{ $t('systemSettings.monitor.threads') }}</dt><dd>{{ systemStatus.process_threads }}</dd></div></dl><div class="usage-block"><div><span>{{ $t('systemSettings.monitor.processCpuUsage') }}</span><strong>{{ clampPercent(systemStatus.process_cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.process_cpu_usage)" :aria-label="$t('systemSettings.monitor.processCpuUsageAria')" /></div></CardContent>
+            <CardContent><dl class="status-list"><div><dt>{{ $t('systemSettings.monitor.processId') }}</dt><dd>{{ systemStatus.process_id }}</dd></div><div><dt>{{ $t('systemSettings.monitor.uptime') }}</dt><dd>{{ formatSystemDuration(systemStatus.process_uptime_seconds ?? systemStatus.process_uptime, systemStatus.process_uptime_fmt) }}</dd></div><div><dt>{{ $t('systemSettings.monitor.rss') }}</dt><dd>{{ systemStatus.process_memory_rss }} MB</dd></div><div><dt>{{ $t('systemSettings.monitor.vms') }}</dt><dd>{{ systemStatus.process_memory_vms }} MB</dd></div><div><dt>{{ $t('systemSettings.monitor.threads') }}</dt><dd>{{ systemStatus.process_threads }}</dd></div></dl><div class="usage-block"><div><span>{{ $t('systemSettings.monitor.processCpuUsage') }}</span><strong>{{ clampPercent(systemStatus.process_cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.process_cpu_usage)" :aria-label="$t('systemSettings.monitor.processCpuUsageAria')" /></div></CardContent>
           </Card>
           <Card>
             <CardHeader><CardTitle class="status-card-title"><CodeXml />{{ $t('systemSettings.monitor.goRuntime') }}</CardTitle><CardDescription>{{ systemStatus.go_version }}</CardDescription></CardHeader>
@@ -319,7 +319,7 @@
         <div class="status-section-heading"><h3>{{ $t('systemSettings.monitor.timeSection') }}</h3><Separator /></div>
         <Card>
           <CardHeader><CardTitle class="status-card-title"><Clock3 />{{ $t('systemSettings.monitor.time') }}</CardTitle><CardDescription>{{ $t('systemSettings.monitor.timeDescription') }}</CardDescription></CardHeader>
-          <CardContent><dl class="status-list time-status-list"><div><dt>{{ $t('systemSettings.monitor.systemUptime') }}</dt><dd>{{ systemStatus.uptime_formatted }}</dd></div><div><dt>{{ $t('systemSettings.monitor.currentTime') }}</dt><dd>{{ systemStatus.current_time }}</dd></div><div><dt>{{ $t('systemSettings.monitor.startTime') }}</dt><dd>{{ systemStatus.start_time }}</dd></div></dl></CardContent>
+          <CardContent><dl class="status-list time-status-list"><div><dt>{{ $t('systemSettings.monitor.systemUptime') }}</dt><dd>{{ formatSystemDuration(systemStatus.uptime_seconds ?? systemStatus.uptime, systemStatus.uptime_formatted) }}</dd></div><div><dt>{{ $t('systemSettings.monitor.currentTime') }}</dt><dd>{{ systemStatus.current_time }}</dd></div><div><dt>{{ $t('systemSettings.monitor.startTime') }}</dt><dd>{{ systemStatus.start_time }}</dd></div></dl></CardContent>
         </Card>
         </template>
       </TabsContent>
@@ -394,6 +394,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { confirmAction } from '@/lib/feedback';
+import { formatDurationSeconds } from '@/lib/localeFormatters.mjs';
 import { DEFAULT_THEME_ID, THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
 import { applySystemPreferences, previewSystemLanguage, previewSystemTheme } from '@/utils/systemPreferences';
 import { getActiveRuntimeTarget } from '@/utils/runtimeTarget';
@@ -559,11 +560,13 @@ export default {
         os_info: '',
         hostname: '',
         uptime: 0,
+        uptime_seconds: null,
         uptime_formatted: '',
         go_version: '',
         go_routines: 0,
         process_id: 0,
         process_uptime: 0,
+        process_uptime_seconds: null,
         process_uptime_fmt: '',
         process_memory_rss: 0,
         process_memory_vms: 0,
@@ -613,6 +616,9 @@ export default {
     }
   },
   methods: {
+    formatSystemDuration(seconds, fallback = '--') {
+      return formatDurationSeconds(seconds, (key, values) => this.$t(key, values), fallback || '--');
+    },
     field(response, id, fallback = '') {
       return response.fields?.find(item => item.id === id) || { value: fallback, configured: false };
     },

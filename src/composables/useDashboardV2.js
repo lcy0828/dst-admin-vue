@@ -1,6 +1,7 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { playerApi, roomApi, systemApi } from '@/api/index'
 import { confirmAction } from '@/lib/feedback'
+import { formatDurationSeconds } from '@/lib/localeFormatters.mjs'
 import {
   canCleanFailedWorld,
   canStartWorld,
@@ -376,4 +377,10 @@ export function formatServerUptime(value, translator = translate) {
   if (days > 0) return translator('dashboard.duration.daysHours', { days, hours })
   if (hours > 0) return translator('dashboard.duration.hoursMinutes', { hours, minutes })
   return translator('dashboard.duration.minutes', { minutes })
+}
+
+export function formatSystemUptime(status = {}, translator = translate) {
+  const seconds = status.uptime_seconds ?? status.uptime
+  if (hasMetric(seconds)) return formatDurationSeconds(seconds, translator)
+  return status.uptime_formatted || '--'
 }

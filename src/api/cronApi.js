@@ -3,6 +3,11 @@ import {
   consoleV2API,
   roomsV2API
 } from './v2'
+import {
+  isSystemAutomationGroup,
+  SYSTEM_AUTOMATION_GROUP_IDS,
+  SYSTEM_EXECUTOR_ID
+} from '@/lib/systemDataIdentifiers.mjs'
 
 const ROOM_KEY = 'dst-admin.automation.room-id'
 const SUCCESS_STATUSES = new Set(['succeeded'])
@@ -196,7 +201,7 @@ function mapRun(run) {
     updated_at: run.finishedAt,
     duration: run.durationMs,
     retry_count: run.retryCount || 0,
-    executor: '系统',
+    executor: SYSTEM_EXECUTOR_ID,
     output: run.output,
     error: run.error,
     params: { action: run.action, jobId: run.jobId }
@@ -211,12 +216,14 @@ async function loadTaskData(room) {
 
 async function ensureDefaultGroup(room) {
   const response = await automationV2API.groups(room.id)
-  const existing = (response.items || []).find(group => group.name === '未分组')
+  const existing = (response.items || []).find(group => (
+    isSystemAutomationGroup(group.name, SYSTEM_AUTOMATION_GROUP_IDS.UNGROUPED)
+  ))
   if (existing) return existing
   return automationV2API.createGroup(room.id, {
-    name: '未分组',
-    description: '兼容原版未分组任务',
-    type: 'custom',
+    name: SYSTEM_AUTOMATION_GROUP_IDS.UNGROUPED,
+    description: 'System group for ungrouped automation tasks',
+    type: 'system',
     enabled: true
   })
 }

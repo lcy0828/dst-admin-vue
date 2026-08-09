@@ -4,6 +4,10 @@ import {
   roomsV2API
 } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
+import {
+  isSystemAutomationGroup,
+  SYSTEM_AUTOMATION_GROUP_IDS
+} from '@/lib/systemDataIdentifiers.mjs'
 
 const success = (data, msg = '操作成功') => ({ status: 200, code: 200, data, msg })
 
@@ -187,11 +191,14 @@ function normalizeSchedule(value) {
 
 async function ensurePlayerGroup(roomId) {
   const response = await automationV2API.groups(roomId)
-  const existing = (response.items || []).find(group => group.name === '玩家管理')
+  const existing = (response.items || []).find(group => (
+    isSystemAutomationGroup(group.name, SYSTEM_AUTOMATION_GROUP_IDS.PLAYER_MANAGEMENT)
+  ))
   if (existing) return existing
   return automationV2API.createGroup(roomId, {
-    name: '玩家管理',
-    description: '玩家信息采集任务',
+    name: SYSTEM_AUTOMATION_GROUP_IDS.PLAYER_MANAGEMENT,
+    description: 'Scheduled player information refreshes',
+    type: 'system',
     enabled: true,
     expectedRevision: ''
   })

@@ -75,6 +75,7 @@ import {
   formatDisk,
   formatMemory,
   formatServerUptime,
+  formatSystemUptime,
   hasMetric,
   loadPercentage,
   percentage,
@@ -356,7 +357,7 @@ onMounted(() => {
               </div>
             </template>
           </CardContent>
-          <CardFooter class="text-muted-foreground justify-between gap-2 text-xs"><span>{{ t('dashboard.resources.uptime', { value: systemStatus.uptime_formatted || '--' }) }}</span><span>{{ formatDateTime(systemStatus.current_time, locale) }}</span></CardFooter>
+          <CardFooter class="text-muted-foreground justify-between gap-2 text-xs"><span>{{ t('dashboard.resources.uptime', { value: formatSystemUptime(systemStatus, t) }) }}</span><span>{{ formatDateTime(systemStatus.current_time, locale) }}</span></CardFooter>
         </Card>
 
         <Card>

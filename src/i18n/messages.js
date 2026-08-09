@@ -61,6 +61,11 @@ export const messages = {
       errors: {
         unknown: '未知错误'
       },
+      duration: {
+        daysHours: '{days} 天 {hours} 小时',
+        hoursMinutes: '{hours} 小时 {minutes} 分钟',
+        minutes: '{minutes} 分钟'
+      },
       pagination: {
         total: '共 {count} 条',
         pageSize: '每页条数',
@@ -523,6 +528,11 @@ export const messages = {
       },
       errors: {
         unknown: 'Unknown error'
+      },
+      duration: {
+        daysHours: '{days} days {hours} hours',
+        hoursMinutes: '{hours} hours {minutes} minutes',
+        minutes: '{minutes} minutes'
       },
       pagination: {
         total: '{count} items',
