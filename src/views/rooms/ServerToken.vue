@@ -1,15 +1,22 @@
 <template>
   <div class="server-token-page">
-    <header class="page-header" v-if="!savename">
+    <header v-if="!savename && !pendingMode" class="page-header">
       <h1>服务器令牌</h1>
       <p>查看或更新房间使用的 Klei 集群令牌。</p>
     </header>
 
-    <Card>
+    <Card v-if="!savename && !pendingMode">
+      <CardHeader><CardTitle>选择房间</CardTitle><CardDescription>读取并管理所选房间的真实 Klei 集群令牌。</CardDescription></CardHeader>
+      <CardContent><FieldGroup><Field><FieldLabel for="token-room">房间</FieldLabel><UiSelect v-model="selectedRoomId" :disabled="loadingRooms"><SelectTrigger id="token-room"><SelectValue placeholder="请选择已接管房间" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup></CardContent>
+    </Card>
+
+    <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>房间列表加载失败</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
+
+    <Card v-if="pendingMode || roomValue">
       <CardHeader>
         <CardTitle>服务器令牌</CardTitle>
         <CardDescription>安全地查看或更新当前房间的集群令牌。</CardDescription>
-        <CardAction v-if="savename || serverToken" class="token-actions max-sm:col-span-full max-sm:row-auto max-sm:justify-self-stretch">
+        <CardAction v-if="roomValue || serverToken" class="token-actions max-sm:col-span-full max-sm:row-auto max-sm:justify-self-stretch">
           <UiButton
             v-if="tokenConfigured && !tokenRevealed"
             size="sm"
@@ -52,7 +59,7 @@
             </UiButton>
           </AlertDescription>
         </Alert>
-        <div v-else-if="savename || serverToken" class="token-info">
+        <div v-else-if="roomValue || serverToken" class="token-info">
           <InputGroup>
             <InputGroupInput :model-value="serverToken || '--'" readonly />
             <InputGroupAddon align="inline-end">
@@ -93,6 +100,10 @@
         </div>
       </CardContent>
     </Card>
+
+    <Empty v-else-if="!loadingRooms && !roomLoadError">
+      <EmptyHeader><EmptyMedia variant="icon"><Info /></EmptyMedia><EmptyTitle>没有可管理的房间</EmptyTitle><EmptyDescription>先创建或接管一个房间，再管理服务器令牌。</EmptyDescription></EmptyHeader>
+    </Empty>
 
     <!-- 修改令牌对话框 -->
     <UiDialog v-model:open="dialogVisible" @update:open="handleDialogOpenChange">
@@ -138,14 +149,16 @@
 <script>
 import { CircleAlert, Copy, Eye, Info, Pencil, RefreshCw, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { serverApi } from '@/api/index';
+import { roomApi, serverApi } from '@/api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { promptText } from '@/lib/feedback';
@@ -172,6 +185,11 @@ export default {
     DialogHeader,
     DialogTitle,
     Eye,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
     Field,
     FieldError,
     FieldGroup,
@@ -184,14 +202,24 @@ export default {
     InputGroupInput,
     Pencil,
     RefreshCw,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
     Skeleton,
     Spinner,
-    TriangleAlert
+    TriangleAlert,
+    UiSelect
   },
   props: {
     savename: {
       type: String,
       default: ''
+    },
+    pendingMode: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -217,12 +245,21 @@ export default {
         token: ''
       },
       ruleFormError: '',
-      tokenErrors: { token: '', confirmation: '' }
+      tokenErrors: { token: '', confirmation: '' },
+      loadingRooms: false,
+      roomLoadError: '',
+      roomOptions: [],
+      selectedRoomId: ''
 
     };
   },
+  computed: {
+    roomValue() {
+      return this.savename || this.selectedRoomId;
+    }
+  },
   watch: {
-    savename: {
+    roomValue: {
       immediate: true,
       handler(newVal) {
         if (newVal) {
@@ -246,7 +283,7 @@ export default {
 
     // 获取服务器令牌
     fetchServerToken() {
-      const saveToUse = this.savename || this.currentSave;
+      const saveToUse = this.roomValue || this.currentSave;
       if (!saveToUse) return;
 
       this.loading = true;
@@ -289,12 +326,13 @@ export default {
           {
             confirmButtonText: '显示',
             cancelButtonText: '取消',
-            inputPlaceholder: this.roomName
+            inputPlaceholder: this.roomName,
+            inputValidator: value => value === this.roomName || '房间名不匹配'
           }
         );
         this.loading = true;
         const response = await serverApi.revealServerToken(
-          this.savename || this.currentSave,
+          this.roomValue || this.currentSave,
           result.value
         );
         this.serverToken = response.data;
@@ -334,11 +372,11 @@ export default {
     submitTokenForm() {
       this.tokenErrors = {
         token: this.validateToken(this.tokenForm.token),
-        confirmation: this.tokenForm.confirmation ? '' : '请输入完整房间名确认修改'
+        confirmation: this.tokenForm.confirmation === this.roomName ? '' : '请输入完整房间名确认修改'
       };
       if (this.tokenErrors.token || this.tokenErrors.confirmation) return;
       this.submitting = true;
-      const saveToUse = this.savename || this.currentSave;
+      const saveToUse = this.roomValue || this.currentSave;
       const newToken = this.tokenForm.token;
       serverApi.updateServerToken(saveToUse, newToken, this.tokenForm.confirmation)
         .then(() => {
@@ -354,8 +392,22 @@ export default {
         });
     },
 
-
-    // 格式化时间
+    async fetchRoomOptions() {
+      this.loadingRooms = true;
+      this.roomLoadError = '';
+      try {
+        const response = await roomApi.getRoomList();
+        this.roomOptions = (response.data || []).filter(room => room.managed !== false);
+        if (!this.selectedRoomId && this.roomOptions.length > 0) {
+          this.selectedRoomId = this.roomOptions[0].id;
+        }
+      } catch (error) {
+        this.roomOptions = [];
+        this.roomLoadError = error.message || '无法读取房间列表';
+      } finally {
+        this.loadingRooms = false;
+      }
+    },
 
     // 格式化时间
     formatTime(timestamp) {
@@ -370,6 +422,9 @@ export default {
         second: '2-digit'
       });
     }
+  },
+  created() {
+    if (!this.savename && !this.pendingMode) this.fetchRoomOptions();
   }
 }
 </script>

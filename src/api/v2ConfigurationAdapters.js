@@ -218,7 +218,16 @@ export const legacyRoomConfigApi = {
       clusterToken: token,
       includeCaves: values.shardEnabled
     })
-    await applyRoomConfiguration(room, config)
+    try {
+      await applyRoomConfiguration(room, config)
+    } catch (error) {
+      try {
+        await roomsV2API.deleteRoom(room.id, room.name)
+      } catch (rollbackError) {
+        throw new Error(`${error.message}；回滚新房间失败：${rollbackError.message}`)
+      }
+      throw error
+    }
     return success(room, '房间已创建并应用配置')
   },
   async importRoomConfig() {

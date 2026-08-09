@@ -101,7 +101,7 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { confirmAction } from '@/lib/feedback';
+import { confirmAction, promptText } from '@/lib/feedback';
 
 export default {
   name: 'WorldDetails',
@@ -203,20 +203,45 @@ export default {
         toast.info('已取消操作');
       });
     },
-    regenerateWorld() {
-      confirmAction(`确定要重新生成世界 "${this.world.name}" 吗？现有的世界数据将会丢失！`, '重新生成世界', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.loading = true;
-        roomApi.regenerateWorld({ room_id: this.roomId, world_id: this.worldId })
-          .then(response => toast.success(response.msg))
-          .catch(error => toast.error(error.message))
-          .finally(() => { this.loading = false; });
-      }).catch(() => {
-        toast.info('已取消操作');
-      });
+    async regenerateWorld() {
+      if (this.world.controlAvailable === false) {
+        toast.error('当前房间尚未接管，无法重新生成世界');
+        return;
+      }
+      if (this.world.status !== 'running') {
+        toast.warning('重新生成命令需要世界正在运行，请先启动世界');
+        return;
+      }
+      let confirmation;
+      try {
+        const result = await promptText(
+          `重新生成会清除世界“${this.world.name}”的当前进度。请输入完整房间名“${this.world.roomName}”确认`,
+          '重新生成世界',
+          {
+            confirmButtonText: '确认重新生成',
+            cancelButtonText: '取消',
+            inputValidator: value => value === this.world.roomName || '房间名不匹配'
+          }
+        );
+        confirmation = result.value;
+      } catch {
+        return;
+      }
+
+      this.loading = true;
+      try {
+        const response = await roomApi.regenerateWorld({
+          room_id: this.roomId,
+          world_id: this.worldId,
+          confirmation
+        });
+        await this.loadWorldData();
+        toast.success(response.msg || '重新生成命令已发送到世界进程');
+      } catch (error) {
+        toast.error(`重新生成世界失败：${error.message || '未知错误'}`);
+      } finally {
+        this.loading = false;
+      }
     },
     backupWorld() {
       confirmAction(`v2 后端将备份世界 "${this.world.name}" 所属的整个房间 "${this.world.roomName}"，确定继续吗?`, '备份世界', {
@@ -233,23 +258,41 @@ export default {
         toast.info('已取消操作');
       });
     },
-    deleteWorld() {
-      confirmAction(`确定要删除世界 "${this.world.name}" 吗？此操作不可恢复!`, '删除世界', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.loading = true;
-        roomApi.deleteWorld({ room_id: this.roomId, world_id: this.worldId })
-          .then(response => {
-            toast.success(response.msg);
-            this.goBack();
-          })
-          .catch(error => toast.error(error.message))
-          .finally(() => { this.loading = false; });
-      }).catch(() => {
-        toast.info('已取消操作');
-      });
+    async deleteWorld() {
+      if (this.world.status === 'running') {
+        toast.warning('删除前请先停止该世界');
+        return;
+      }
+      let confirmation;
+      try {
+        const result = await promptText(
+          `世界“${this.world.name}”将移入可恢复目录。请输入完整房间名“${this.world.roomName}”确认`,
+          '删除世界',
+          {
+            confirmButtonText: '移入恢复目录',
+            cancelButtonText: '取消',
+            inputValidator: value => value === this.world.roomName || '房间名不匹配'
+          }
+        );
+        confirmation = result.value;
+      } catch {
+        return;
+      }
+
+      this.loading = true;
+      try {
+        const response = await roomApi.deleteWorld({
+          room_id: this.roomId,
+          world_id: this.worldId,
+          confirmation
+        });
+        toast.success(response.msg || '世界已移入可恢复目录');
+        await this.$router.replace('/worlds/list');
+      } catch (error) {
+        toast.error(`删除世界失败：${error.message || '未知错误'}`);
+      } finally {
+        this.loading = false;
+      }
     },
     loadWorldData() {
       if (!this.roomId || !this.worldId) return;

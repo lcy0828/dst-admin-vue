@@ -263,26 +263,26 @@ export const playerApi = {
     return success(await waitForV2Job(job, 120000), '玩家列表更新成功')
   },
 
-  kickPlayer(player, selectedSession) {
-    return runAction(player, selectedSession, 'kick', { confirmation: player.user_id })
+  kickPlayer(player, selectedSession, confirmation) {
+    return runAction(player, selectedSession, 'kick', { confirmation })
   },
 
   banPlayer(player, data) {
-    return actionContext(player, data.archive_name).then(target =>
+    return actionContext(player).then(target =>
       playersV2API.action(target.room.id, target.playerId, 'ban', {
         worldId: target.worldId,
-        confirmation: target.room.name,
+        confirmation: data.confirmation,
         reason: data.reason,
         duration: data.duration
       })
     ).then(job => waitForV2Job(job)).then(job => success(job, '玩家已封禁'))
   },
 
-  unbanPlayer(player) {
+  unbanPlayer(player, confirmation) {
     return actionContext(player).then(target =>
       playersV2API.action(target.room.id, target.playerId, 'unban', {
         worldId: target.worldId,
-        confirmation: target.room.name
+        confirmation
       })
     ).then(job => waitForV2Job(job)).then(job => success(job, '已解除玩家封禁'))
   },
@@ -305,8 +305,8 @@ export const playerApi = {
     return success(sessionsFromCatalog(await loadCatalog()))
   },
 
-  killPlayer(player, selectedSession) {
-    return runAction(player, selectedSession, 'kill', { confirmation: player.user_id })
+  killPlayer(player, selectedSession, confirmation) {
+    return runAction(player, selectedSession, 'kill', { confirmation })
   },
 
   setGodMode(player, enabled, selectedSession) {
@@ -317,12 +317,12 @@ export const playerApi = {
     return runAction(player, selectedSession, 'creative-mode', { enabled })
   },
 
-  resurrectPlayer(player, selectedSession) {
-    return runAction(player, selectedSession, 'resurrect', { confirmation: player.user_id })
+  resurrectPlayer(player, selectedSession, confirmation) {
+    return runAction(player, selectedSession, 'resurrect', { confirmation })
   },
 
-  changeCharacter(player, selectedSession) {
-    return runAction(player, selectedSession, 'change-character', { confirmation: player.user_id })
+  changeCharacter(player, selectedSession, confirmation) {
+    return runAction(player, selectedSession, 'change-character', { confirmation })
   },
 
   async addRefreshSchedule(data) {

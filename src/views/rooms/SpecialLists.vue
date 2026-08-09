@@ -1,11 +1,20 @@
 <template>
   <div class="special-lists-page">
-    <header class="page-header" v-if="!savename">
+    <header v-if="!savename && !pendingMode" class="page-header">
       <h1>特殊名单</h1>
       <p>维护房间管理员、黑名单和白名单。</p>
     </header>
-    
-    <Tabs v-model="activeTab">
+
+    <Card v-if="!savename && !pendingMode">
+      <CardHeader><CardTitle>选择房间</CardTitle><CardDescription>名单会直接读写所选房间的真实配置。</CardDescription></CardHeader>
+      <CardContent>
+        <FieldGroup><Field><FieldLabel for="special-list-room">房间</FieldLabel><UiSelect v-model="selectedRoomId" :disabled="loadingRooms"><SelectTrigger id="special-list-room"><SelectValue placeholder="请选择已接管房间" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
+      </CardContent>
+    </Card>
+
+    <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>房间列表加载失败</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
+
+    <Tabs v-if="pendingMode || roomValue" v-model="activeTab" orientation="horizontal" class="lists-tabs">
       <TabsList>
         <TabsTrigger v-for="list in listDefinitions" :key="list.type" :value="list.type">
           {{ list.tabLabel }}
@@ -70,6 +79,10 @@
         </Card>
       </TabsContent>
     </Tabs>
+
+    <Empty v-else-if="!loadingRooms && !roomLoadError">
+      <EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>没有可管理的房间</EmptyTitle><EmptyDescription>先创建或接管一个房间，再维护特殊名单。</EmptyDescription></EmptyHeader>
+    </Empty>
     
     <!-- 添加用户对话框 -->
     <UiDialog v-model:open="dialogVisible" @update:open="handleDialogOpenChange">
@@ -106,7 +119,7 @@
 <script>
 import { CircleAlert, RefreshCw, Trash2, UserPlus, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { serverApi } from '@/api/index';
+import { roomApi, serverApi } from '@/api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -114,11 +127,12 @@ import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, Dia
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { confirmAction } from '@/lib/feedback';
+import { confirmAction, promptText } from '@/lib/feedback';
 
 export default {
   name: 'SpecialLists',
@@ -150,6 +164,12 @@ export default {
     FieldGroup,
     FieldLabel,
     UiInput,
+    UiSelect,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
     Skeleton,
     Spinner,
     UiTable,
@@ -169,6 +189,14 @@ export default {
   },
   props: {
     savename: {
+      type: String,
+      default: ''
+    },
+    pendingMode: {
+      type: Boolean,
+      default: false
+    },
+    roomName: {
       type: String,
       default: ''
     }
@@ -208,7 +236,20 @@ export default {
         id: ''
       },
       userFormError: '',
-      submitting: false
+      submitting: false,
+      loadingRooms: false,
+      roomLoadError: '',
+      roomOptions: [],
+      selectedRoomId: ''
+    }
+  },
+  computed: {
+    roomValue() {
+      return this.savename || this.selectedRoomId;
+    },
+    confirmationRoomName() {
+      if (this.roomName) return this.roomName;
+      return this.roomOptions.find(room => room.id === this.roomValue)?.name || '';
     }
   },
   methods: {
@@ -226,7 +267,7 @@ export default {
     
     // 获取所有列表数据
     fetchAllLists() {
-      if (!this.savename) return;
+      if (!this.roomValue) return;
       
       this.fetchAdminList();
       this.fetchBlockList();
@@ -244,7 +285,7 @@ export default {
       this.loading.admin = true;
       this.errors.admin = '';
       
-      serverApi.getAdminList(this.savename)
+      serverApi.getAdminList(this.roomValue)
         .then(res => {
           this.adminList = res.data;
           this.adminList = this.adminList.map(item => {
@@ -264,7 +305,7 @@ export default {
     fetchBlockList() {
       this.loading.block = true;
       this.errors.block = '';
-      serverApi.getBlockList(this.savename)
+      serverApi.getBlockList(this.roomValue)
         .then(res => {
           this.blockList = res.data;
           this.blockList = this.blockList.map(item => {
@@ -284,7 +325,7 @@ export default {
     fetchWhiteList() {
       this.loading.white = true;
       this.errors.white = '';
-      serverApi.getWhiteList(this.savename)
+      serverApi.getWhiteList(this.roomValue)
         .then(res => {
           this.whiteList = res.data;
           this.whiteList = this.whiteList.map(item => {
@@ -354,8 +395,8 @@ export default {
     async removeUser(type, index, row) {
       const idToRemove = row.id || row;
       try {
-        await confirmAction(`确定要从${type === 'admin' ? '管理员列表' : type === 'block' ? '黑名单' : '白名单'}中移除 ${idToRemove} 吗?`, '移除名单用户', { destructive: true });
-        if (!this.savename) {
+        if (this.pendingMode) {
+          await confirmAction(`确定要从${type === 'admin' ? '管理员列表' : type === 'block' ? '黑名单' : '白名单'}中移除 ${idToRemove} 吗?`, '移除名单用户', { destructive: true });
           switch(type) {
             case 'admin':
               this.adminList.splice(index, 1);
@@ -371,6 +412,20 @@ export default {
           toast.info('已从待保存名单移除，创建房间时才会写入服务器');
           return;
         }
+        const roomName = this.confirmationRoomName;
+        if (!roomName) {
+          toast.error('无法确定房间名称，请重新选择房间');
+          return;
+        }
+        await promptText(
+          `移除名单成员会修改房间访问配置。请输入完整房间名“${roomName}”确认`,
+          '移除名单用户',
+          {
+            confirmButtonText: '确认移除',
+            cancelButtonText: '取消',
+            inputValidator: value => value === roomName || '房间名不匹配'
+          }
+        );
         this.loading[type] = true;
         let listData;
         // 发送API请求
@@ -381,19 +436,19 @@ export default {
             listData = this.adminList
               .filter((item, idx) => idx !== index)
               .map(item => item.id || item);
-            apiPromise = serverApi.updateAdminList(this.savename, listData, true);
+            apiPromise = serverApi.updateAdminList(this.roomValue, listData, true);
             break;
           case 'block':
             listData = this.blockList
               .filter((item, idx) => idx !== index)
               .map(item => item.id || item);
-            apiPromise = serverApi.updateBlockList(this.savename, listData, true);
+            apiPromise = serverApi.updateBlockList(this.roomValue, listData, true);
             break;
           case 'white':
             listData = this.whiteList
               .filter((item, idx) => idx !== index)
               .map(item => item.id || item);
-            apiPromise = serverApi.updateWhiteList(this.savename, listData, true);
+            apiPromise = serverApi.updateWhiteList(this.roomValue, listData, true);
             break;
         }
         await apiPromise
@@ -423,11 +478,15 @@ export default {
         this.userFormError = 'KU ID格式必须为KU_开头加字母或数字';
         return;
       }
+      if (this.getList(this.dialogType).some(item => (item.id || item) === this.userForm.id)) {
+        this.userFormError = '该 KU ID 已在当前名单中';
+        return;
+      }
       this.userFormError = '';
         this.submitting = true;
         // 准备要添加的用户
         const newUser = this.userForm.id;
-        if (!this.savename) {
+        if (this.pendingMode) {
           switch(this.dialogType) {
             case 'admin':
               this.adminList.push({ id: newUser, name: newUser });
@@ -450,15 +509,15 @@ export default {
         switch(this.dialogType) {
           case 'admin':
               listData = [...this.adminList.map(item => item.id || item), newUser];
-              apiPromise = serverApi.updateAdminList(this.savename, listData);
+              apiPromise = serverApi.updateAdminList(this.roomValue, listData);
             break;
           case 'block':
             listData = [...this.blockList.map(item => item.id || item), newUser];
-            apiPromise = serverApi.updateBlockList(this.savename, listData);
+            apiPromise = serverApi.updateBlockList(this.roomValue, listData);
             break;
           case 'white':
             listData = [...this.whiteList.map(item => item.id || item), newUser];
-            apiPromise = serverApi.updateWhiteList(this.savename, listData);
+            apiPromise = serverApi.updateWhiteList(this.roomValue, listData);
             break;
         }        
         // 处理响应
@@ -481,10 +540,26 @@ export default {
       const block = this.blockList.map(item => item.id);
       const white = this.whiteList.map(item => item.id);
       this.$emit('add-user', { admin, block, white });
+    },
+    async fetchRoomOptions() {
+      this.loadingRooms = true;
+      this.roomLoadError = '';
+      try {
+        const response = await roomApi.getRoomList();
+        this.roomOptions = (response.data || []).filter(room => room.managed !== false);
+        if (!this.selectedRoomId && this.roomOptions.length > 0) {
+          this.selectedRoomId = this.roomOptions[0].id;
+        }
+      } catch (error) {
+        this.roomOptions = [];
+        this.roomLoadError = error.message || '无法读取房间列表';
+      } finally {
+        this.loadingRooms = false;
+      }
     }
   },
   watch: {
-    savename: {
+    roomValue: {
       immediate: true,
       handler(value) {
         if (value) {
@@ -492,6 +567,9 @@ export default {
         }
       }
     }
+  },
+  created() {
+    if (!this.savename && !this.pendingMode) this.fetchRoomOptions();
   }
 }
 </script>
@@ -502,6 +580,13 @@ export default {
   flex-direction: column;
   gap: 24px;
   width: 100%;
+  min-width: 0;
+}
+
+.lists-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   min-width: 0;
 }
 

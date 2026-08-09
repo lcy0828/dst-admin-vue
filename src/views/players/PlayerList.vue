@@ -5,9 +5,9 @@
       <div class="action-buttons">
         <UiButton size="sm" variant="outline" @click="refreshData" :disabled="loading"><RefreshCw data-icon="inline-start" />刷新</UiButton>
         <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />手动更新</UiButton>
-        <UiButton size="sm" variant="outline" @click="showSessionSelect"><Globe2 data-icon="inline-start" />选择游戏世界</UiButton>
+        <UiButton size="sm" variant="outline" @click="showSessionSelect"><Globe2 data-icon="inline-start" />默认任务世界</UiButton>
         <UiButton size="sm" @click="showScheduleDialog"><Clock3 data-icon="inline-start" />添加定时任务</UiButton>
-        <Badge v-if="activeSessionName">当前世界: {{ activeSessionLabel }}</Badge>
+        <Badge v-if="activeSessionName">任务世界: {{ activeSessionLabel }}</Badge>
       </div>
     </div>
 
@@ -101,16 +101,16 @@
                       <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" aria-label="打开玩家操作菜单" title="玩家操作"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                          <DropdownMenuItem @select="toggleGodMode(player)">无敌模式</DropdownMenuItem>
-                          <DropdownMenuItem @select="toggleCreativeMode(player)">制作模式</DropdownMenuItem>
-                          <DropdownMenuItem @select="resurrectPlayer(player)">复活玩家</DropdownMenuItem>
-                          <DropdownMenuItem @select="changeCharacter(player)">重选人物</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="player.status !== 'online'" @select="toggleGodMode(player)">无敌模式</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="player.status !== 'online'" @select="toggleCreativeMode(player)">制作模式</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="player.status !== 'online'" @select="resurrectPlayer(player)">复活玩家</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="player.status !== 'online'" @select="changeCharacter(player)">重选人物</DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                          <DropdownMenuItem variant="destructive" @select="kickPlayer(player)">踢出玩家</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" :disabled="player.status !== 'online'" @select="kickPlayer(player)">踢出玩家</DropdownMenuItem>
                           <DropdownMenuItem variant="destructive" @select="banPlayer(player)">封禁玩家</DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" @select="killPlayer(player)">杀死玩家</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" :disabled="player.status !== 'online'" @select="killPlayer(player)">杀死玩家</DropdownMenuItem>
                         </DropdownMenuGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -163,10 +163,10 @@
             </dl>
             <Separator />
             <section><h3>游戏操作</h3><div class="detail-action-grid">
-              <UiButton size="sm" variant="outline" @click="toggleGodMode(currentPlayer)">无敌模式</UiButton><UiButton size="sm" variant="outline" @click="toggleCreativeMode(currentPlayer)">制作模式</UiButton><UiButton size="sm" variant="outline" @click="resurrectPlayer(currentPlayer)">复活玩家</UiButton><UiButton size="sm" variant="outline" @click="changeCharacter(currentPlayer)">重选人物</UiButton>
+              <UiButton size="sm" variant="outline" :disabled="currentPlayer.status !== 'online'" @click="toggleGodMode(currentPlayer)">无敌模式</UiButton><UiButton size="sm" variant="outline" :disabled="currentPlayer.status !== 'online'" @click="toggleCreativeMode(currentPlayer)">制作模式</UiButton><UiButton size="sm" variant="outline" :disabled="currentPlayer.status !== 'online'" @click="resurrectPlayer(currentPlayer)">复活玩家</UiButton><UiButton size="sm" variant="outline" :disabled="currentPlayer.status !== 'online'" @click="changeCharacter(currentPlayer)">重选人物</UiButton>
             </div></section>
             <section><h3>危险操作</h3><div class="detail-action-grid">
-              <UiButton variant="destructive" size="sm" @click="kickPlayer(currentPlayer)">踢出</UiButton><UiButton variant="destructive" size="sm" @click="banPlayer(currentPlayer)">封禁</UiButton><UiButton variant="destructive" size="sm" @click="killPlayer(currentPlayer)">杀死</UiButton>
+              <UiButton variant="destructive" size="sm" :disabled="currentPlayer.status !== 'online'" @click="kickPlayer(currentPlayer)">踢出</UiButton><UiButton variant="destructive" size="sm" @click="banPlayer(currentPlayer)">封禁</UiButton><UiButton variant="destructive" size="sm" :disabled="currentPlayer.status !== 'online'" @click="killPlayer(currentPlayer)">杀死</UiButton>
             </div></section>
           </div>
         </ScrollArea>
@@ -176,7 +176,8 @@
     <UiDialog v-model:open="banDialogVisible">
       <DialogContent><DialogHeader><DialogTitle>封禁玩家</DialogTitle><DialogDescription>{{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
         <FieldGroup><Field :data-invalid="Boolean(banFormError)"><FieldLabel for="ban-reason">封禁原因</FieldLabel><UiTextarea id="ban-reason" v-model="banForm.reason" rows="3" placeholder="请输入封禁原因" :aria-invalid="Boolean(banFormError)" /><FieldError v-if="banFormError">{{ banFormError }}</FieldError></Field>
-          <Field><FieldLabel for="ban-duration">封禁时长</FieldLabel><UiSelect v-model="banForm.duration"><SelectTrigger id="ban-duration"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="duration in banDurations" :key="duration.value" :value="duration.value">{{ duration.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
+          <Field><FieldLabel for="ban-duration">封禁时长</FieldLabel><UiSelect v-model="banForm.duration"><SelectTrigger id="ban-duration"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="duration in banDurations" :key="duration.value" :value="duration.value">{{ duration.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field :data-invalid="Boolean(banConfirmationError)"><FieldLabel for="ban-confirmation">完整房间名</FieldLabel><UiInput id="ban-confirmation" v-model="banForm.confirmation" :placeholder="currentPlayer?.archive_name ? `请输入 ${currentPlayer.archive_name}` : '请输入完整房间名'" :aria-invalid="Boolean(banConfirmationError)" /><FieldDescription>封禁会修改房间黑名单。</FieldDescription><FieldError v-if="banConfirmationError">{{ banConfirmationError }}</FieldError></Field></FieldGroup>
         <DialogFooter><UiButton variant="outline" @click="banDialogVisible = false">取消</UiButton><UiButton variant="destructive" @click="confirmBanPlayer" :disabled="banning"><Spinner v-if="banning" data-icon="inline-start" />确认封禁</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
@@ -196,7 +197,7 @@
     </UiDialog>
 
     <UiDialog v-model:open="sessionSelectDialogVisible">
-      <DialogContent><DialogHeader><DialogTitle>选择游戏世界</DialogTitle><DialogDescription>玩家操作将在选中的世界执行。</DialogDescription></DialogHeader>
+      <DialogContent><DialogHeader><DialogTitle>默认任务世界</DialogTitle><DialogDescription>用于预填定时刷新任务；实时玩家操作始终发送到玩家当前所在世界。</DialogDescription></DialogHeader>
         <FieldGroup><Field><FieldLabel for="player-session">游戏世界</FieldLabel><UiSelect v-model="selectedSessionName"><SelectTrigger id="player-session"><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
         <Alert v-if="sessionList.length === 0" variant="destructive"><TriangleAlert /><AlertTitle>没有可用的世界</AlertTitle></Alert>
         <DialogFooter><UiButton variant="outline" @click="sessionSelectDialogVisible = false">取消</UiButton><UiButton @click="confirmSessionSelect">确认</UiButton></DialogFooter>
@@ -257,7 +258,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
-import { confirmAction } from '@/lib/feedback';
+import { promptText } from '@/lib/feedback';
 import SortButton from './SortButton.vue';
 
 export default {
@@ -413,9 +414,11 @@ export default {
       banDialogVisible: false,
       banForm: {
         reason: '',
-        duration: '1d'
+        duration: '1d',
+        confirmation: ''
       },
       banFormError: '',
+      banConfirmationError: '',
       banDurations: [
         { label: '1小时', value: '1h' },
         { label: '6小时', value: '6h' },
@@ -543,7 +546,7 @@ export default {
         params.sort_order = this.sortParams.order === 'ascending' ? 'asc' : 'desc';
       }
 
-      playerApi.getAllPlayers(params)
+      return playerApi.getAllPlayers(params)
         .then(response => {
           this.playerList = response.data || [];
           this.pagination.total = response.total || 0;
@@ -562,7 +565,7 @@ export default {
 
     // 刷新数据
     refreshData() {
-      this.fetchPlayerList();
+      return this.fetchPlayerList();
     },
 
     // 处理筛选
@@ -610,20 +613,35 @@ export default {
       this.playerDetailVisible = true;
     },
 
+    async confirmPlayerAction(player, title, description) {
+      const result = await promptText(
+        `${description} 请输入玩家 KU ID“${player.user_id}”确认。`,
+        title,
+        {
+          confirmButtonText: '确认执行',
+          cancelButtonText: '取消',
+          inputPlaceholder: player.user_id,
+          inputValidator: value => value === player.user_id || 'KU ID 不匹配'
+        }
+      );
+      return result.value;
+    },
+
     // 踢出玩家
     async kickPlayer(player) {
+      let confirmation;
       try {
-        await confirmAction(`确定要踢出玩家 ${player.player_name} 吗？`, '踢出玩家', { destructive: true });
+        confirmation = await this.confirmPlayerAction(player, '踢出玩家', `踢出玩家 ${player.player_name} 会立即中断其连接。`);
       } catch {
         return;
       }
 
       const loadingId = toast.loading('正在踢出玩家...');
       try {
-        await playerApi.kickPlayer(player, this.activeSessionName);
+        await playerApi.kickPlayer(player, null, confirmation);
         toast.success(`已踢出玩家 ${player.player_name}`);
         this.playerDetailVisible = false;
-        this.refreshData();
+        await this.refreshData();
       } catch (error) {
         console.error('踢出玩家失败:', error);
         toast.error(`踢出玩家失败: ${error.message || '未知错误'}`);
@@ -637,27 +655,29 @@ export default {
       this.currentPlayer = player;
       this.banForm = {
         reason: '',
-        duration: '1d'
+        duration: '1d',
+        confirmation: ''
       };
       this.banFormError = '';
+      this.banConfirmationError = '';
       this.banDialogVisible = true;
     },
 
     // 确认封禁玩家
     confirmBanPlayer() {
       const reason = this.banForm.reason.trim();
-      if (!reason) {
-        this.banFormError = '请输入封禁原因';
-        return;
-      }
-      this.banFormError = '';
+      this.banFormError = reason ? '' : '请输入封禁原因';
+      this.banConfirmationError = this.banForm.confirmation === this.currentPlayer.archive_name
+        ? ''
+        : '请输入完整房间名确认封禁';
+      if (this.banFormError || this.banConfirmationError) return;
 
       this.banning = true;
 
       const banData = {
         reason,
         duration: this.banForm.duration,
-        archive_name: this.activeSessionName
+        confirmation: this.banForm.confirmation
       };
 
       playerApi.banPlayer(this.currentPlayer, banData)
@@ -686,11 +706,12 @@ export default {
 
     // 确认重选人物
     async confirmChangeCharacter() {
+      let confirmation;
       try {
-        await confirmAction(
-          `确定要让玩家 ${this.currentPlayer.player_name} 重选人物吗？该操作会重置玩家数据。`,
+        confirmation = await this.confirmPlayerAction(
+          this.currentPlayer,
           '确认重选人物',
-          { destructive: true }
+          `重选人物会重置玩家 ${this.currentPlayer.player_name} 的角色数据。`
         );
       } catch {
         return;
@@ -698,7 +719,7 @@ export default {
 
       this.changingCharacter = true;
       try {
-        const response = await playerApi.changeCharacter(this.currentPlayer, this.activeSessionName);
+        const response = await playerApi.changeCharacter(this.currentPlayer, null, confirmation);
         if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
         toast.success(`已重置玩家 ${this.currentPlayer.player_name}，玩家可以重新选择角色`);
         this.characterDialogVisible = false;
@@ -1014,7 +1035,7 @@ export default {
         return;
       }
 
-      toast.success(`已选择游戏世界: ${this.activeSessionLabel}`);
+      toast.success(`已设置默认任务世界: ${this.activeSessionLabel}`);
       this.sessionSelectDialogVisible = false;
     },
 
@@ -1050,19 +1071,16 @@ export default {
 
     // 杀死玩家
     async killPlayer(player) {
+      let confirmation;
       try {
-        await confirmAction(
-          `确定要杀死玩家 ${player.player_name} 吗？该操作会导致玩家死亡。`,
-          '杀死玩家',
-          { destructive: true }
-        );
+        confirmation = await this.confirmPlayerAction(player, '杀死玩家', `该操作会导致玩家 ${player.player_name} 立即死亡。`);
       } catch {
         return;
       }
 
       const loadingId = toast.loading('正在执行操作...');
       try {
-        const response = await playerApi.killPlayer(player, this.activeSessionName);
+        const response = await playerApi.killPlayer(player, null, confirmation);
         if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
         toast.success(`已杀死玩家 ${player.player_name}`);
         this.playerDetailVisible = false;
@@ -1083,30 +1101,26 @@ export default {
     },
 
     // 确认设置无敌模式
-    confirmGodMode() {
+    async confirmGodMode() {
       this.settingGodMode = true;
 
-      playerApi.setGodMode(
-        this.currentPlayer,
-        this.godModeForm.enabled,
-        this.activeSessionName
-      )
-        .then(response => {
-          if (response && response.status === 200) {
-            const status = this.godModeForm.enabled ? '开启' : '关闭';
-            toast.success(`已${status}玩家 ${this.currentPlayer.player_name} 的无敌模式`);
-            this.godModeDialogVisible = false;
-          } else {
-            throw new Error(response.msg || '命令执行失败');
-          }
-        })
-        .catch(error => {
-          console.error('设置无敌模式失败:', error);
-          toast.error(`设置无敌模式失败: ${error.message || '未知错误'}`);
-        })
-        .finally(() => {
-          this.settingGodMode = false;
-        });
+      try {
+        const response = await playerApi.setGodMode(
+          this.currentPlayer,
+          this.godModeForm.enabled,
+          null
+        );
+        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
+        const status = this.godModeForm.enabled ? '开启' : '关闭';
+        await this.refreshData();
+        toast.success(`已${status}玩家 ${this.currentPlayer.player_name} 的无敌模式`);
+        this.godModeDialogVisible = false;
+      } catch (error) {
+        console.error('设置无敌模式失败:', error);
+        toast.error(`设置无敌模式失败: ${error.message || '未知错误'}`);
+      } finally {
+        this.settingGodMode = false;
+      }
     },
 
     // 切换制作模式
@@ -1117,43 +1131,40 @@ export default {
     },
 
     // 确认设置制作模式
-    confirmCreativeMode() {
+    async confirmCreativeMode() {
       this.settingCreativeMode = true;
 
-      playerApi.setCreativeMode(
-        this.currentPlayer,
-        this.creativeModeForm.enabled,
-        this.activeSessionName
-      )
-        .then(response => {
-          if (response && response.status === 200) {
-            const status = this.creativeModeForm.enabled ? '开启' : '关闭';
-            toast.success(`已${status}玩家 ${this.currentPlayer.player_name} 的制作模式`);
-            this.creativeModeDialogVisible = false;
-          } else {
-            throw new Error(response.msg || '命令执行失败');
-          }
-        })
-        .catch(error => {
-          console.error('设置制作模式失败:', error);
-          toast.error(`设置制作模式失败: ${error.message || '未知错误'}`);
-        })
-        .finally(() => {
-          this.settingCreativeMode = false;
-        });
+      try {
+        const response = await playerApi.setCreativeMode(
+          this.currentPlayer,
+          this.creativeModeForm.enabled,
+          null
+        );
+        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
+        const status = this.creativeModeForm.enabled ? '开启' : '关闭';
+        await this.refreshData();
+        toast.success(`已${status}玩家 ${this.currentPlayer.player_name} 的制作模式`);
+        this.creativeModeDialogVisible = false;
+      } catch (error) {
+        console.error('设置制作模式失败:', error);
+        toast.error(`设置制作模式失败: ${error.message || '未知错误'}`);
+      } finally {
+        this.settingCreativeMode = false;
+      }
     },
 
     // 复活玩家
     async resurrectPlayer(player) {
+      let confirmation;
       try {
-        await confirmAction(`确定要复活玩家 ${player.player_name} 吗？`, '复活玩家');
+        confirmation = await this.confirmPlayerAction(player, '复活玩家', `确认复活玩家 ${player.player_name}。`);
       } catch {
         return;
       }
 
       const loadingId = toast.loading('正在执行操作...');
       try {
-        const response = await playerApi.resurrectPlayer(player, this.activeSessionName);
+        const response = await playerApi.resurrectPlayer(player, null, confirmation);
         if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
         toast.success(`已复活玩家 ${player.player_name}`);
         this.refreshData();

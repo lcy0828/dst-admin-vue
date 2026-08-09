@@ -136,7 +136,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { RefreshCw, Search, ShieldCheck, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { playerApi } from '@/api/playerApi'
-import { confirmAction } from '@/lib/feedback'
+import { promptText } from '@/lib/feedback'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -232,13 +232,18 @@ function changePage(page) {
 
 async function unban(player) {
   try {
-    await confirmAction(
-      `确定要解除玩家 ${player.player_name || player.user_id} 的封禁吗？`,
+    const result = await promptText(
+      `解除封禁会修改房间黑名单。请输入完整房间名“${player.archive_name}”确认。`,
       '解除封禁',
-      { confirmButtonText: '解除封禁', destructive: true }
+      {
+        confirmButtonText: '解除封禁',
+        cancelButtonText: '取消',
+        inputPlaceholder: player.archive_name,
+        inputValidator: value => value === player.archive_name || '房间名不匹配'
+      }
     )
     unbanningId.value = player.user_id
-    await playerApi.unbanPlayer(player)
+    await playerApi.unbanPlayer(player, result.value)
     toast.success(`已解除 ${player.player_name || player.user_id} 的封禁`)
     await loadBans()
   } catch (value) {

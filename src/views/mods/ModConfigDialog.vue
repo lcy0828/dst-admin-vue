@@ -440,7 +440,7 @@ export default {
     },
     
     // 保存配置
-    saveConfig() {
+    async saveConfig() {
       if (this.saving) return;
       const prepared = this.prepareConfigForSubmit(this.configForm);
       const changedConfig = Object.fromEntries(
@@ -465,25 +465,23 @@ export default {
       };
       
       // 只使用新接口保存用户自定义配置
-      modApi.saveModCustomConfig(customConfigData)
-        .then(() => {
-          this.originalConfig = JSON.parse(JSON.stringify(this.configForm));
-          
-          this.$emit('config-updated', {
-            modId: this.modId,
-            configData: this.configForm
-          });
-          
-          this.dialogVisible = false;
-          
-          toast.success('配置已保存');
-        })
-        .catch(error => {
-          toast.error(`保存模组配置失败：${error.message || '未知错误'}`);
-        })
-        .finally(() => {
-          this.saving = false;
+      try {
+        await modApi.saveModCustomConfig(customConfigData);
+        await this.getUserCustomConfig();
+        this.originalConfig = JSON.parse(JSON.stringify(this.configForm));
+
+        this.$emit('config-updated', {
+          modId: this.modId,
+          configData: this.configForm
         });
+
+        this.dialogVisible = false;
+        toast.success('配置已保存');
+      } catch (error) {
+        toast.error(`保存模组配置失败：${error.message || '未知错误'}`);
+      } finally {
+        this.saving = false;
+      }
     },
     
     // 准备提交数据

@@ -15,8 +15,6 @@
       </div>
     </header>
 
-    <input ref="fileInput" type="file" accept=".ini" class="sr-only" @change="handleFileChange" />
-
     <div v-if="loading" class="loading-state">
       <Spinner />
       <span>{{ isEdit ? '正在处理房间配置' : '正在创建房间' }}</span>
@@ -66,14 +64,16 @@
       </CardContent>
     </Card>
 
-    <Tabs v-if="!loadError" v-model="activeTab" class="settings-tabs">
-      <TabsList class="settings-tab-list">
-        <TabsTrigger v-for="section in settingsSections" :key="section.key" :value="section.key">
-          {{ section.tabLabel }}
-        </TabsTrigger>
-        <TabsTrigger value="special-lists">特殊名单</TabsTrigger>
-        <TabsTrigger value="token">服务器令牌</TabsTrigger>
-      </TabsList>
+    <Tabs v-if="!loadError" v-model="activeTab" orientation="horizontal" class="settings-tabs">
+      <div class="settings-tabs-nav">
+        <TabsList variant="line" class="settings-tab-list">
+          <TabsTrigger v-for="section in settingsSections" :key="section.key" :value="section.key">
+            {{ section.tabLabel }}
+          </TabsTrigger>
+          <TabsTrigger value="special-lists">特殊名单</TabsTrigger>
+          <TabsTrigger value="token">服务器令牌</TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent v-for="section in settingsSections" :key="section.key" :value="section.key">
         <Card>
@@ -91,6 +91,7 @@
                 :key="field.key"
                 :orientation="field.type === 'switch' ? 'horizontal' : 'vertical'"
                 :data-invalid="isFieldInvalid(field.key)"
+                class="setting-field"
               >
                 <FieldContent>
                   <FieldLabel :for="`room-setting-${field.key}`">{{ field.label }}</FieldLabel>
@@ -144,11 +145,11 @@
       </TabsContent>
 
       <TabsContent value="special-lists">
-        <SpecialLists :savename="roomId" @add-user="handleAddUser" />
+        <SpecialLists :savename="roomId" :room-name="form.cluster_name" :pending-mode="!isEdit" @add-user="handleAddUser" />
       </TabsContent>
 
       <TabsContent value="token">
-        <ServerToken :savename="roomId" @input-token="handleInputToken" />
+        <ServerToken :savename="roomId" :pending-mode="!isEdit" @input-token="handleInputToken" />
       </TabsContent>
     </Tabs>
   </div>
@@ -383,8 +384,6 @@ export default {
       const errors = {};
       const requiredFields = {
         cluster_name: '请输入服务器名称',
-        cluster_description: '请输入服务器描述',
-        cluster_password: '请输入服务器密码',
         master_port: '请输入主服务器端口',
         cluster_key: '请输入连接密码'
       };
@@ -415,7 +414,7 @@ export default {
     handleInputToken(token) {
       this.form.serverToken = token;
     },
-    async loadRoomSettings(roomId) {
+    async loadRoomSettings(roomId, { notify = true } = {}) {
       try {
         this.loading = true;
         this.loadError = '';
@@ -473,7 +472,7 @@ export default {
             this.form.steam_group_admins = configData.STEAM.steam_group_admins === 'true';
           }
           
-          toast.success('配置加载成功');
+          if (notify) toast.success('配置加载成功');
           this.unsavedChanges = false;
         } else {
           throw new Error('获取房间配置失败');
@@ -488,14 +487,15 @@ export default {
     async saveSettings() {
       try {
         this.formErrors = [];
+        const pendingListErrors = [];
         
         if (!this.validateSettings()) {
           toast.error('请完善表单信息');
           return;
         }
         if (!this.isEdit) this.savename = this.saveNameForm.savename;
-        if (!this.isEdit && !this.form.serverToken) {
-          toast.error('请输入服务器令牌');
+        if (!this.isEdit && !this.form.offline_cluster && !this.form.serverToken) {
+          toast.error('在线服务器需要填写 Klei 集群令牌');
           this.activeTab = 'token';
           return;
         }
@@ -545,6 +545,7 @@ export default {
         if (this.isEdit) {
           // 编辑模式: 使用已有的roomId
           await roomConfigApi.saveRoomConfig(this.roomId, convertedData);
+          await this.loadRoomSettings(this.roomId, { notify: false });
         } else {
           // 创建模式: v2 会先真实创建房间，再应用完整 cluster.ini 配置。
           const created = await roomConfigApi.createRoom(
@@ -554,43 +555,42 @@ export default {
           );
           const createdRoom = created.data;
           const roomValue = createdRoom.id || this.savename;
-          const listTasks = [];
-          const { adminList, blockList, whiteList } = this.form;
-          if (adminList.length) listTasks.push(serverApi.updateAdminList(roomValue, adminList));
-          if (blockList.length) listTasks.push(serverApi.updateBlockList(roomValue, blockList));
-          if (whiteList.length) listTasks.push(serverApi.updateWhiteList(roomValue, whiteList));
-          await Promise.all(listTasks);
           this.roomId = roomValue;
+          this.savename = createdRoom.name || this.savename;
           this.isEdit = true;
+          await this.$router.replace({
+            path: this.$route.path,
+            query: { ...this.$route.query, id: roomValue }
+          });
+          const { adminList, blockList, whiteList } = this.form;
+          // 每次名单写入都会生成新 revision，必须按顺序应用。
+          const pendingLists = [
+            { label: '管理员名单', values: adminList, update: serverApi.updateAdminList },
+            { label: '黑名单', values: blockList, update: serverApi.updateBlockList },
+            { label: '白名单', values: whiteList, update: serverApi.updateWhiteList }
+          ];
+          for (const list of pendingLists) {
+            if (!list.values.length) continue;
+            try {
+              await list.update(roomValue, list.values);
+            } catch (error) {
+              pendingListErrors.push(`${list.label}: ${error.message || '写入失败'}`);
+            }
+          }
+          await this.loadRoomSettings(roomValue, { notify: false });
         }
-        
-        toast.success('保存成功');
+
+        if (pendingListErrors.length) {
+          toast.warning(`房间已创建，但部分名单未写入。请在特殊名单中重试：${pendingListErrors.join('；')}`);
+        } else {
+          toast.success('保存成功');
+        }
         this.unsavedChanges = false;
       } catch (error) {
         console.error('保存配置失败:', error);
         this.handleError(error, '保存配置失败');
       } finally {
         this.loading = false;
-      }
-    },
-    async handleFileChange(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      
-      try {
-        this.loading = true;
-        this.formErrors = [];
-        await roomConfigApi.importRoomConfig(this.roomId, file);
-        
-        toast.success('配置导入成功');
-        
-        await this.loadRoomSettings(this.roomId);
-      } catch (error) {
-        console.error('导入配置失败:', error);
-        this.handleError(error, '导入配置失败');
-      } finally {
-        this.loading = false;
-        event.target.value = '';
       }
     },
     handleError(error, defaultMessage) {
@@ -712,19 +712,52 @@ export default {
 }
 
 .settings-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
   min-width: 0;
 }
 
+.settings-tabs-nav {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .settings-tab-list {
+  display: inline-flex;
+  width: max-content;
+  min-width: 100%;
+  height: auto;
+  flex: none;
+  align-self: flex-start;
   max-width: 100%;
   justify-content: flex-start;
-  overflow-x: auto;
+  overflow: visible;
 }
 
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px 24px;
+}
+
+.setting-field {
+  min-width: 0;
+}
+
+.setting-field[data-orientation='horizontal'] {
+  justify-content: space-between;
+}
+
+.setting-field[data-orientation='horizontal'] :deep([data-slot='field-content']) {
+  min-width: 0;
+}
+
+.setting-field[data-orientation='horizontal'] :deep([data-slot='switch']) {
+  flex: none;
 }
 
 .section-title {
@@ -752,6 +785,10 @@ export default {
 
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-tab-list {
+    min-width: max-content;
   }
 }
 </style>

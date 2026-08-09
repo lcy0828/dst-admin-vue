@@ -65,7 +65,7 @@
           <Card v-for="mod in filteredMods" :key="mod.id" class="mod-card">
             <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultIcon" :src="mod.image || defaultIcon" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
             <CardHeader>
-              <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><UiSwitch v-model="mod.enabled" :aria-label="`切换 ${mod.name}`" @update:model-value="value => toggleModStatus(mod, value)" /></div>
+              <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><UiSwitch v-model="mod.enabled" :disabled="isModBusy(mod) || selectedRoomWorlds.length === 0" :aria-label="`切换 ${mod.name}`" @update:model-value="value => toggleModStatus(mod, value)" /></div>
               <CardDescription>{{ mod.author || '未知作者' }}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -78,16 +78,16 @@
               <div v-if="mod.tags && mod.tags.length" class="mod-tags"><Badge v-for="tag in mod.tags" :key="tag" variant="secondary">{{ tag }}</Badge></div>
             </CardContent>
             <CardFooter class="mod-actions">
-              <UiButton size="sm" :disabled="!selectedWorldId" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />配置</UiButton>
+              <UiButton size="sm" :disabled="!selectedWorldId || isModBusy(mod)" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />配置</UiButton>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" :aria-label="`打开 ${mod.name} 操作菜单`" title="模组操作"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuGroup>
                     <DropdownMenuItem @select="showModDetails(mod)">查看详情</DropdownMenuItem>
-                    <DropdownMenuItem v-if="mod.updateAvailable" @select="updateMod(mod)">更新模组</DropdownMenuItem>
+                    <DropdownMenuItem v-if="mod.updateAvailable" :disabled="isModBusy(mod)" @select="updateMod(mod)">更新模组</DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuGroup><DropdownMenuItem variant="destructive" @select="uninstallMod(mod)">卸载模组</DropdownMenuItem></DropdownMenuGroup>
+                  <DropdownMenuGroup><DropdownMenuItem variant="destructive" :disabled="isModBusy(mod)" @select="uninstallMod(mod)">卸载模组</DropdownMenuItem></DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
             </CardFooter>
@@ -272,6 +272,7 @@ export default {
       configFileDialogVisible: false,
       configFileContent: '',
       loadingConfig: false,
+      modActionState: {},
     };
   },
   computed: {
@@ -382,12 +383,12 @@ export default {
     },
 
     // 获取模组列表
-    async fetchModsList() {
+    async fetchModsList(silent = false) {
       if (!this.selectedRoomId) {
         this.modsList = [];
         return;
       }
-      this.loading = true;
+      if (!silent) this.loading = true;
       this.loadError = '';
       try {
         this.modsList = await modApi.getServerList({ roomId: this.selectedRoomId });
@@ -396,8 +397,17 @@ export default {
         this.loadError = error.message || '未知错误';
         toast.error(`获取模组列表失败：${this.loadError}`);
       } finally {
-        this.loading = false;
+        if (!silent) this.loading = false;
       }
+    },
+
+    isModBusy(mod) {
+      return Boolean(this.modActionState[mod?.modid]);
+    },
+
+    setModBusy(mod, busy) {
+      if (!mod?.modid) return;
+      this.modActionState = { ...this.modActionState, [mod.modid]: busy };
     },
     
     // 应用筛选
@@ -462,29 +472,34 @@ export default {
     },
     
     // 切换模组状态
-    toggleModStatus(mod, status) {
-      this.loading = true;
+    async toggleModStatus(mod, status) {
+      if (this.isModBusy(mod)) return;
+      if (this.selectedRoomWorlds.length === 0) {
+        mod.enabled = !status;
+        toast.warning('当前房间没有可配置的世界');
+        return;
+      }
+      this.setModBusy(mod, true);
       const action = status ? '启用' : '禁用';
-      
-      modApi.toggleMod({
-        roomId: this.selectedRoomId,
-        modid: mod.modid,
-        worldIds: mod.configuredWorlds.length > 0
-          ? mod.configuredWorlds
-          : this.selectedRoomWorlds.map(world => world.id),
-        enabled: status
-      }).then(() => {
-        // 更新成功后,更新本地状态
-        mod.enabled = status;
+
+      try {
+        await modApi.toggleMod({
+          roomId: this.selectedRoomId,
+          modid: mod.modid,
+          worldIds: mod.configuredWorlds.length > 0
+            ? mod.configuredWorlds
+            : this.selectedRoomWorlds.map(world => world.id),
+          enabled: status
+        });
+        await this.fetchModsList(true);
         toast.success(`已${action}模组 ${mod.name}`);
-      }).catch(err => {
+      } catch (err) {
         console.error(err);
-        // 操作失败,恢复状态
         mod.enabled = !status;
         toast.error(`${action}模组失败：${err.message || '未知错误'}`);
-      }).finally(() => {
-        this.loading = false;
-      });
+      } finally {
+        this.setModBusy(mod, false);
+      }
     },
     
     // 下拉菜单命令处理
@@ -510,15 +525,16 @@ export default {
     
     // 更新模组
     async updateMod(mod) {
-      this.loading = true;
+      if (this.isModBusy(mod)) return;
+      this.setModBusy(mod, true);
       try {
         await modApi.updateMod({ roomId: this.selectedRoomId, modid: mod.modid });
-        await this.fetchModsList();
+        await this.fetchModsList(true);
         toast.success(`模组 ${mod.name} 已更新`);
       } catch (error) {
         toast.error(`更新模组失败：${error.message || '未知错误'}`);
       } finally {
-        this.loading = false;
+        this.setModBusy(mod, false);
       }
     },
     
@@ -530,7 +546,7 @@ export default {
     },
     
     // 确认卸载
-    confirmUninstall() {
+    async confirmUninstall() {
       if (!this.currentModInfo) return;
       if (!this.currentRoom || this.uninstallConfirmation !== this.currentRoom.name) {
         toast.warning('请输入完整房间名确认卸载');
@@ -540,32 +556,26 @@ export default {
       this.uninstalling = true;
       
       // 使用新的接口卸载模组
-      modApi.deleteMod({
-        roomId: this.selectedRoomId,
-        modid: this.currentModInfo.modid,
-        worldIds: this.selectedRoomWorlds.map(world => world.id),
-        confirmation: this.uninstallConfirmation,
-        removeFiles: true
-      })
-        .then(() => {
-          // 从列表中移除
-          const index = this.modsList.findIndex(mod => mod.modid === this.currentModInfo.modid);
-          if (index > -1) {
-            this.modsList.splice(index, 1);
-          }
-          
-          toast.success(`模组 ${this.currentModInfo.name} 已成功卸载`);
-        })
-        .catch(err => {
-          console.error('卸载模组失败:', err);
-          toast.error(`卸载模组失败: ${err.message || '未知错误'}`);
-        })
-        .finally(() => {
-          this.uninstalling = false;
-          this.uninstallDialogVisible = false;
-          this.uninstallConfirmation = '';
-          this.currentModInfo = null;
+      const modName = this.currentModInfo.name;
+      try {
+        await modApi.deleteMod({
+          roomId: this.selectedRoomId,
+          modid: this.currentModInfo.modid,
+          worldIds: this.selectedRoomWorlds.map(world => world.id),
+          confirmation: this.uninstallConfirmation,
+          removeFiles: true
         });
+        await this.fetchModsList(true);
+        toast.success(`模组 ${modName} 已成功卸载`);
+        this.uninstallDialogVisible = false;
+        this.uninstallConfirmation = '';
+        this.currentModInfo = null;
+      } catch (err) {
+        console.error('卸载模组失败:', err);
+        toast.error(`卸载模组失败: ${err.message || '未知错误'}`);
+      } finally {
+        this.uninstalling = false;
+      }
     },
     
     // 导航到搜索页面

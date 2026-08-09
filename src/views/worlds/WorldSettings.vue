@@ -7,14 +7,43 @@
           <p>管理世界生成、运行参数和模组配置。</p>
         </div>
         <div class="header-actions">
-          <UiButton variant="outline" size="sm" @click="fetchWorldSettings" :disabled="loading">
-            <Spinner v-if="loading" data-icon="inline-start" />
+          <UiButton variant="outline" size="sm" @click="reloadSettings" :disabled="loading || loadingRooms">
+            <Spinner v-if="loading || loadingRooms" data-icon="inline-start" />
             <RefreshCw v-else data-icon="inline-start" />
             刷新设置
           </UiButton>
-          <UiButton size="sm" @click="showAddWorldDialog"><Plus data-icon="inline-start" />新增世界</UiButton>
+          <UiButton size="sm" :disabled="!roomId || roomHasRunningWorld" :title="roomHasRunningWorld ? '请先停止房间中的所有世界' : '新增世界'" @click="showAddWorldDialog"><Plus data-icon="inline-start" />新增世界</UiButton>
         </div>
       </header>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>选择房间</CardTitle>
+          <CardDescription>世界设置会直接读写所选房间的真实配置。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <Field>
+              <FieldLabel for="world-settings-room">房间</FieldLabel>
+              <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
+                <SelectTrigger id="world-settings-room"><SelectValue placeholder="请选择已接管房间" /></SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </UiSelect>
+            </Field>
+          </FieldGroup>
+        </CardContent>
+      </Card>
+
+      <Alert v-if="roomOptionsError" variant="destructive" class="load-error">
+        <TriangleAlert />
+        <AlertTitle>房间目录加载失败</AlertTitle>
+        <AlertDescription>{{ roomOptionsError }}</AlertDescription>
+        <AlertAction><UiButton size="sm" variant="outline" :disabled="loadingRooms" @click="retryRoomOptions">重新加载</UiButton></AlertAction>
+      </Alert>
 
       <Alert v-if="loadError" variant="destructive" class="load-error">
         <TriangleAlert />
@@ -23,7 +52,7 @@
         <AlertAction><UiButton size="sm" variant="outline" @click="reloadSettings">重新加载</UiButton></AlertAction>
       </Alert>
 
-      <Tabs v-if="!loadError" v-model="activeTab" class="world-tabs">
+      <Tabs v-if="!loadError && roomId" v-model="activeTab" orientation="horizontal" class="world-tabs">
         <div class="world-tabs-toolbar">
           <TabsList class="world-tab-list">
             <TabsTrigger v-for="world in visibleWorlds" :key="world.name" :value="world.name">
@@ -34,8 +63,9 @@
             v-if="currentWorld && !currentWorld.fallback"
             variant="destructive"
             size="icon-sm"
+            :disabled="currentWorld.status === 'running'"
             aria-label="删除当前世界"
-            title="删除当前世界"
+            :title="currentWorld.status === 'running' ? '请先停止当前世界' : '删除当前世界'"
             @click="confirmDeleteWorld(currentWorld)"
           >
             <Trash2 />
@@ -54,7 +84,7 @@
               <CardAction><Badge :variant="world.type === 'forest' ? 'outline' : 'secondary'">{{ world.type === 'forest' ? '森林' : '洞穴' }}</Badge></CardAction>
             </CardHeader>
             <CardContent>
-              <Tabs v-model="worldSectionTab">
+              <Tabs v-model="worldSectionTab" orientation="horizontal" class="world-section-tabs">
                 <TabsList class="section-tab-list">
                   <TabsTrigger value="worldgen">世界生成组</TabsTrigger>
                   <TabsTrigger value="worldsettings">世界设置组</TabsTrigger>
@@ -159,13 +189,21 @@
         </TabsContent>
       </Tabs>
 
-      <Empty v-if="!loadError && visibleWorlds.length === 0">
+      <Empty v-if="!loadError && roomId && visibleWorlds.length === 0">
         <EmptyHeader>
           <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
           <EmptyTitle>当前房间没有世界</EmptyTitle>
           <EmptyDescription>创建森林或洞穴世界后即可配置。</EmptyDescription>
         </EmptyHeader>
         <EmptyContent><UiButton @click="showAddWorldDialog"><Plus data-icon="inline-start" />新增世界</UiButton></EmptyContent>
+      </Empty>
+
+      <Empty v-if="!loadError && !roomId && !loadingRooms && !roomOptionsError">
+        <EmptyHeader>
+          <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
+          <EmptyTitle>{{ roomOptions.length ? '请选择房间' : '没有可管理的房间' }}</EmptyTitle>
+          <EmptyDescription>{{ roomOptions.length ? '选择一个已接管房间后即可管理世界配置。' : '先创建或接管房间，再管理世界配置。' }}</EmptyDescription>
+        </EmptyHeader>
       </Empty>
 
       <div class="footer-spacer" aria-hidden="true"></div>
@@ -182,20 +220,10 @@
       />
     </div>
 
-    <UiDialog v-model:open="presetDialogVisible">
-      <DialogContent>
-        <DialogHeader><DialogTitle>保存为自定义预设</DialogTitle><DialogDescription>为当前设置创建易识别的预设名称。</DialogDescription></DialogHeader>
-        <FieldGroup>
-          <Field><FieldLabel for="preset-name">预设名称</FieldLabel><UiInput id="preset-name" v-model="newPreset.name" placeholder="输入唯一的预设名称" /></Field>
-          <Field><FieldLabel for="preset-description">预设描述</FieldLabel><UiTextarea id="preset-description" v-model="newPreset.description" rows="3" placeholder="简要描述预设特点" /></Field>
-        </FieldGroup>
-        <DialogFooter><UiButton variant="outline" @click="presetDialogVisible = false">取消</UiButton><UiButton @click="confirmSavePreset">保存</UiButton></DialogFooter>
-      </DialogContent>
-    </UiDialog>
-
     <UiDialog v-model:open="addWorldDialogVisible">
       <DialogContent>
         <DialogHeader><DialogTitle>新增世界</DialogTitle><DialogDescription>在当前房间中创建新的森林或洞穴分片。</DialogDescription></DialogHeader>
+        <Alert v-if="roomHasRunningWorld" variant="destructive"><TriangleAlert /><AlertTitle>需要先停止房间</AlertTitle><AlertDescription>创建世界前必须停止该房间中的所有世界。</AlertDescription></Alert>
         <FieldGroup>
           <Field><FieldLabel for="new-world-name">世界名称</FieldLabel><UiInput id="new-world-name" v-model="newWorld.name" placeholder="请输入世界名称" /></Field>
           <Field>
@@ -208,7 +236,7 @@
         </FieldGroup>
         <DialogFooter>
           <UiButton variant="outline" @click="addWorldDialogVisible = false">取消</UiButton>
-          <UiButton @click="addWorld" :disabled="addWorldLoading">
+          <UiButton @click="addWorld" :disabled="addWorldLoading || roomHasRunningWorld">
             <Spinner v-if="addWorldLoading" data-icon="inline-start" />创建
           </UiButton>
         </DialogFooter>
@@ -223,14 +251,14 @@
         </DialogHeader>
         <Alert variant="destructive"><TriangleAlert /><AlertTitle>需要房间名确认</AlertTitle><AlertDescription>输入完整房间名后才能继续。</AlertDescription></Alert>
         <FieldGroup>
-          <Field>
-            <FieldLabel for="delete-world-confirmation">完整房间名</FieldLabel>
-            <UiInput id="delete-world-confirmation" v-model="deleteConfirmation" :placeholder="roomName ? `请输入 ${roomName}` : '请输入完整房间名'" />
-          </Field>
+            <Field :data-invalid="Boolean(deleteConfirmation) && deleteConfirmation !== roomName">
+              <FieldLabel for="delete-world-confirmation">完整房间名</FieldLabel>
+              <UiInput id="delete-world-confirmation" v-model="deleteConfirmation" :aria-invalid="Boolean(deleteConfirmation) && deleteConfirmation !== roomName" :placeholder="roomName ? `请输入 ${roomName}` : '请输入完整房间名'" />
+            </Field>
         </FieldGroup>
         <DialogFooter>
           <UiButton variant="outline" @click="deleteWorldDialogVisible = false">取消</UiButton>
-          <UiButton variant="destructive" @click="deleteWorld" :disabled="deleteWorldLoading">
+          <UiButton variant="destructive" @click="deleteWorld" :disabled="deleteWorldLoading || deleteConfirmation !== roomName || worldToDelete?.status === 'running'">
             <Spinner v-if="deleteWorldLoading" data-icon="inline-start" />删除
           </UiButton>
         </DialogFooter>
@@ -258,7 +286,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { confirmAction } from '@/lib/feedback';
 
 export default {
@@ -316,7 +343,6 @@ export default {
     UiInput,
     UiSelect,
     UiSwitch,
-    UiTextarea,
     WorldSettingsPanel
   },
   data() {
@@ -331,13 +357,6 @@ export default {
       saveLoading: false,
       searchText: '',
       hasChanges: false,
-      presetDialogVisible: false,
-      newPreset: {
-        name: '',
-        description: '',
-        settings: null
-      },
-      customPresets: [],
       descriptionCache: {},
       itemOptionsCache: {},
       changedItemsCache: null,
@@ -357,9 +376,13 @@ export default {
       // 添加房间相关数据
       roomId: null,
       roomName: null,
+      roomOptions: [],
+      selectedRoomId: '',
+      loadingRooms: false,
+      roomOptionsError: '',
       roomWorlds: [],
-      hasForestWorld: true,
-      hasCaveWorld: true,
+      hasForestWorld: false,
+      hasCaveWorld: false,
       worldOverrides: {}, // 存储每个世界的自定义配置
       worldOriginalSettings: {}, // 存储各世界从服务器加载后的真实基线
       loadedWorldConfigs: {}, // 用于跟踪已加载的世界配置
@@ -392,14 +415,12 @@ export default {
   created() {
     // 从URL参数中获取房间ID和名称
     const { roomId, roomName } = this.$route.query;
-    if (roomId && roomName) {
-      this.roomId = roomId;
-      this.roomName = roomName;
-      
-      this.fetchWorldSettings().then(() => this.loadRoomWorlds()).catch(() => {});
-    } else {
-      this.fetchWorldSettings().catch(() => {});
-    }
+    this.roomId = roomId || null;
+    this.roomName = roomName || '';
+    this.fetchWorldSettings()
+      .then(() => this.fetchRoomOptions())
+      .then(loaded => (loaded && this.roomId ? this.loadRoomWorlds() : undefined))
+      .catch(() => {});
     
     // 添加防抖的全局点击事件处理
     this.debouncedGlobalClick = this.debounce(this.handleGlobalClick, 50);
@@ -603,12 +624,12 @@ export default {
       return this.visibleWorlds.find(world => world.name === this.activeTab) || this.visibleWorlds[0] || null;
     },
 
+    roomHasRunningWorld() {
+      return this.roomWorlds.some(world => world.status === 'running');
+    },
+
     visibleWorlds() {
-      if (this.roomWorlds.length > 0) return this.sortedRoomWorlds;
-      const worlds = [];
-      if (this.hasForestWorld) worlds.push({ name: 'forest', type: 'forest', fallback: true });
-      if (this.hasCaveWorld) worlds.push({ name: 'cave', type: 'cave', fallback: true });
-      return worlds;
+      return this.roomWorlds.length > 0 ? this.sortedRoomWorlds : [];
     },
 
     // 世界按照ID数字排序
@@ -629,6 +650,66 @@ export default {
     }
   },
   methods: {
+    async fetchRoomOptions() {
+      this.loadingRooms = true;
+      this.roomOptionsError = '';
+      try {
+        const response = await api.worldApi.getWorldList();
+        this.roomOptions = Array.isArray(response.data) ? response.data : [];
+        const selected = this.roomOptions.find(room => room.id === this.roomId || room.name === this.roomName);
+        const query = { ...this.$route.query };
+        const hasLegacyRoomQuery = ['id', 'worldId', 'roomName'].some(key => key in query);
+        delete query.id;
+        delete query.worldId;
+        delete query.roomName;
+        if (selected) {
+          this.roomId = selected.id;
+          this.roomName = selected.name;
+          this.selectedRoomId = selected.id;
+          if (hasLegacyRoomQuery || query.roomId !== selected.id) {
+            query.roomId = selected.id;
+            await this.$router.replace({ path: this.$route.path, query });
+          }
+        } else {
+          this.roomId = null;
+          this.roomName = '';
+          this.selectedRoomId = '';
+          if (hasLegacyRoomQuery || 'roomId' in query) {
+            delete query.roomId;
+            await this.$router.replace({ path: this.$route.path, query });
+          }
+        }
+        return true;
+      } catch (error) {
+        this.roomOptions = [];
+        this.selectedRoomId = '';
+        this.roomOptionsError = error.message || '无法读取已接管房间目录';
+        return false;
+      } finally {
+        this.loadingRooms = false;
+      }
+    },
+    async retryRoomOptions() {
+      const loaded = await this.fetchRoomOptions();
+      if (loaded && this.roomId) await this.loadRoomWorlds();
+    },
+    async handleRoomChange(roomId) {
+      const room = this.roomOptions.find(item => item.id === roomId);
+      if (!room) return;
+      this.roomId = room.id;
+      this.roomName = room.name;
+      this.roomWorlds = [];
+      this.activeTab = '';
+      this.serverIni = null;
+      this.hasChanges = false;
+      this.loadError = '';
+      const query = { ...this.$route.query, roomId: room.id };
+      delete query.id;
+      delete query.worldId;
+      delete query.roomName;
+      await this.$router.replace({ path: this.$route.path, query });
+      await this.loadRoomWorlds();
+    },
     getSettingsForWorld(world) {
       return world.type === 'cave' ? this.filteredCaveSettings : this.filteredForestSettings;
     },
@@ -703,6 +784,8 @@ export default {
           if (!room || !Array.isArray(room.worlds)) {
             throw new Error('找不到指定房间或房间世界列表无效');
           }
+          this.roomId = room.id;
+          this.roomName = room.name;
           this.roomWorlds = room.worlds;
           this.hasForestWorld = this.roomWorlds.some(world => world.type === 'forest');
           this.hasCaveWorld = this.roomWorlds.some(world => world.type === 'cave');
@@ -881,7 +964,8 @@ export default {
     },
     reloadSettings() {
       return this.fetchWorldSettings()
-        .then(() => (this.roomId ? this.loadRoomWorlds() : undefined))
+        .then(() => this.fetchRoomOptions())
+        .then(loaded => (loaded && this.roomId ? this.loadRoomWorlds() : undefined))
         .catch(() => {});
     },
     getItemOptions(categoryDesc, itemDesc) {
@@ -938,23 +1022,10 @@ export default {
         worldname: currentWorld.name,
         overrides: changedSettings[worldType]
       })
-        .then(response => {
+        .then(async response => {
           if (response.status === 200) {
             toast.success(`${currentWorld.name} 世界设置保存成功`);
-            const activeSettings = worldType === 'forest' ? this.forestSettings : this.caveSettings;
-            this.worldOriginalSettings[currentWorld.name] = JSON.parse(JSON.stringify(activeSettings));
-
-            // 更新存储的世界覆盖配置
-            this.worldOverrides[currentWorld.name] = {
-              type: worldType,
-              data: JSON.parse(JSON.stringify(changedSettings[worldType]))
-            };
-            
-            // 清除变更状态和缓存
-            this.hasChanges = false;
-            this.changedItemsCache = null;
-            
-            // 重建缓存
+            await this.loadWorldOverrides(this.roomName, currentWorld.name);
             this.buildCaches();
           }
         })
@@ -1014,9 +1085,6 @@ export default {
           category.items[itemKey].value = sourceItem.value;
         }
       });
-    },
-    confirmSavePreset() {
-      toast.error('真实后端尚未提供自定义预设持久化接口');
     },
     extractEssentialSettings(settings) {
       const result = {};
@@ -1382,6 +1450,14 @@ export default {
     },
     // 显示新增世界对话框
     showAddWorldDialog() {
+      if (!this.roomId) {
+        toast.warning('请先选择房间');
+        return;
+      }
+      if (this.roomHasRunningWorld) {
+        toast.warning('创建世界前请先停止房间中的所有世界');
+        return;
+      }
       // 获取所有世界
       const allWorlds = this.roomWorlds;
       
@@ -1436,6 +1512,10 @@ export default {
     
     // 添加新世界
     addWorld() {
+      if (this.roomHasRunningWorld) {
+        toast.warning('创建世界前请先停止房间中的所有世界');
+        return;
+      }
       if (!this.newWorld.name) {
         toast.warning('请输入世界名称');
         return;
@@ -1488,6 +1568,10 @@ export default {
     
     // 显示删除世界确认对话框
     confirmDeleteWorld(world) {
+      if (world?.status === 'running') {
+        toast.warning('删除前请先停止当前世界');
+        return;
+      }
       this.worldToDelete = world;
       this.deleteConfirmation = '';
       this.deleteWorldDialogVisible = true;
@@ -1501,6 +1585,14 @@ export default {
       }
       if (!this.deleteConfirmation) {
         toast.warning('请输入完整房间名确认删除');
+        return;
+      }
+      if (this.deleteConfirmation !== this.roomName) {
+        toast.warning('房间名不匹配');
+        return;
+      }
+      if (this.worldToDelete.status === 'running') {
+        toast.warning('删除前请先停止当前世界');
         return;
       }
       
@@ -1538,7 +1630,9 @@ export default {
             if (response.status === 200) {
             // 查找指定的房间
               const room = response.data.find(r => r.id === this.roomId || r.name === this.roomName);
-              if (room && room.worlds && Array.isArray(room.worlds)) {
+              if (room && Array.isArray(room.worlds)) {
+                this.roomId = room.id;
+                this.roomName = room.name;
                 this.roomWorlds = room.worlds;
                 
                 // 检查是否有森林和洞穴世界
@@ -1554,12 +1648,13 @@ export default {
                     this.activeTab = this.sortedRoomWorlds[0].name;
                   }
                 } else {
-                  // 如果没有世界，则根据类型选择默认标签
-                  this.activeTab = this.hasForestWorld ? 'forest' : 'cave';
+                  this.activeTab = '';
+                  this.serverIni = null;
+                  this.hasChanges = false;
                 }
                 resolve();
               } else {
-                reject(new Error('找不到指定房间或房间没有世界'));
+                reject(new Error('找不到指定房间'));
               }
             } else {
               reject(new Error('获取世界列表失败'));
@@ -1620,12 +1715,10 @@ export default {
         worldname: currentWorld.name,
         config: this.serverIni
       })
-        .then(response => {
+        .then(async response => {
           if (response.status === 200) {
             toast.success('服务器基础配置保存成功');
-            // 更新原始配置
-            this.serverIniOriginal = JSON.parse(JSON.stringify(this.serverIni));
-            this.serverIniChanged = false;
+            await this.fetchServerIni(this.roomName, currentWorld.name);
           }
         })
         .catch(error => {
@@ -1788,6 +1881,15 @@ export default {
 
 .load-error {
   margin: 0;
+}
+
+.world-tabs,
+.world-section-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 
 .world-tabs-toolbar {

@@ -113,7 +113,7 @@
     <UiDialog v-model:open="specialListsVisible">
       <DialogScrollContent class="max-w-5xl">
         <DialogHeader><DialogTitle>特殊名单管理</DialogTitle><DialogDescription>维护房间管理员、黑名单和白名单。</DialogDescription></DialogHeader>
-        <SpecialLists v-if="specialListsVisible" :savename="selectedSavename" @close="specialListsVisible = false" />
+        <SpecialLists v-if="specialListsVisible" :savename="selectedSavename" :room-name="selectedRoomName" @close="specialListsVisible = false" />
       </DialogScrollContent>
     </UiDialog>
 
@@ -166,7 +166,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
-import { confirmAction } from '@/lib/feedback';
+import { confirmAction, promptText } from '@/lib/feedback';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 import LogViewer from '../servers/LogViewer.vue';
@@ -457,24 +457,41 @@ export default {
         toast.info('已取消操作');
       });
     },
-    deleteRoom(room) {
-      confirmAction(`确定要删除房间 "${room.name}" 吗? 此操作不可恢复!`, '删除房间', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        roomApi.deleteRoom(room.roomId || room.id)
-          .then(response => {
-            toast.success(response.msg || `已删除房间 ${room.name}`);
-            this.refreshRooms();
-          })
-          .catch(error => {
-            toast.error('删除房间失败: ' + (error.message || '未知错误'));
-            this.refreshRooms();
-          });
-      }).catch(() => {
-        toast.info('已取消操作');
-      });
+    async deleteRoom(room) {
+      if (room.isRunning) {
+        toast.warning('删除前请先停止房间中的所有世界');
+        return;
+      }
+
+      let confirmation;
+      try {
+        const result = await promptText(
+          `房间“${room.name}”将整体移入可恢复目录。请输入完整房间名确认`,
+          '删除房间',
+          {
+            confirmButtonText: '移入恢复目录',
+            cancelButtonText: '取消',
+            inputValidator: value => value === room.name || '房间名不匹配'
+          }
+        );
+        confirmation = result.value;
+      } catch {
+        return;
+      }
+
+      this.loading = true;
+      try {
+        const response = await roomApi.deleteRoom({
+          room_id: room.roomId || room.id,
+          confirmation
+        });
+        await this.refreshRooms(true);
+        toast.success(response.msg || `房间 ${room.name} 已移入可恢复目录`);
+      } catch (error) {
+        toast.error('删除房间失败: ' + (error.message || '未知错误'));
+      } finally {
+        this.loading = false;
+      }
     },
     // 按类型获取世界列表
     getWorldsByType(worlds, type) {
