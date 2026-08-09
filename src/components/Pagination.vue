@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!hidden" class="pagination-container">
+  <div v-if="!hidden && total > 0" class="pagination-container">
     <span class="pagination-total">共 {{ total }} 条</span>
     <NativeSelect v-model="pageSize" aria-label="每页条数" class="page-size-select" @change="handleSizeChange(pageSize)">
       <NativeSelectOption v-for="size in pageSizes" :key="size" :value="size">
@@ -147,7 +147,23 @@ export default {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
-  padding: 20px 0;
+  flex-wrap: wrap;
+  padding: 16px 0 0;
+}
+
+@media (max-width: 640px) {
+  .pagination-container {
+    justify-content: center;
+  }
+
+  .pagination-total {
+    flex: 1 0 100%;
+    text-align: center;
+  }
+
+  .page-jumper {
+    display: none;
+  }
 }
 
 .pagination-total {

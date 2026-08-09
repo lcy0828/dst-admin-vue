@@ -50,6 +50,7 @@
                     :to="item.to"
                     class="nav-link"
                     :class="{ active: isNavigationActive(item.to) }"
+                    :aria-current="isNavigationActive(item.to) ? 'page' : undefined"
                     @click="handleMenuSelect"
                   >
                     <component :is="item.icon" class="nav-icon" />
@@ -88,6 +89,7 @@
                         :to="child.to"
                         class="nav-submenu-link"
                         :class="{ active: isNavigationActive(child.to) }"
+                        :aria-current="isNavigationActive(child.to) ? 'page' : undefined"
                         @click="handleMenuSelect"
                       >
                         {{ child.label }}
@@ -161,6 +163,7 @@
         </div>
         <div class="right-menu">
           <RuntimeTargetSwitch @change="handleRuntimeTargetChange" />
+          <ThemeSwitch />
           <Tooltip>
             <TooltipTrigger as-child>
               <UiButton class="github-link" variant="ghost" size="icon" as-child>
@@ -370,6 +373,7 @@
 <script>
 import { authAPI } from '@/api/v2'
 import RuntimeTargetSwitch from '@/components/RuntimeTargetSwitch.vue'
+import ThemeSwitch from '@/components/ThemeSwitch.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -608,6 +612,7 @@ export default {
     PanelLeftClose,
     PanelLeftOpen,
     RuntimeTargetSwitch,
+    ThemeSwitch,
     Separator,
     Settings,
     Spinner,
@@ -887,8 +892,8 @@ export default {
   position: relative;
   z-index: 20;
   display: flex;
-  flex: 0 0 240px;
-  width: 240px;
+  flex: 0 0 256px;
+  width: 256px;
   min-width: 0;
   height: 100%;
   flex-direction: column;
@@ -907,9 +912,9 @@ export default {
 .brand-container {
   position: relative;
   display: flex;
-  flex: 0 0 60px;
+  flex: 0 0 68px;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--sidebar-border);
 }
 
@@ -924,14 +929,14 @@ export default {
 
 .brand-mark {
   display: inline-flex;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
   align-items: center;
   justify-content: center;
   color: var(--sidebar-primary-foreground);
   background: var(--sidebar-primary);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .brand-mark svg {
@@ -949,9 +954,9 @@ export default {
 .brand-copy strong {
   overflow: hidden;
   color: var(--sidebar-foreground);
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 18px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -973,23 +978,23 @@ export default {
 .sidebar-navigation {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 10px 8px 16px;
+  padding: 14px 10px 18px;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
 .nav-section + .nav-section {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .nav-section-label {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   padding: 0 10px;
   overflow: hidden;
-  color: color-mix(in srgb, var(--sidebar-foreground) 52%, transparent);
-  font-size: 10px;
-  font-weight: 650;
+  color: color-mix(in srgb, var(--sidebar-foreground) 55%, transparent);
+  font-size: 11px;
+  font-weight: 600;
   line-height: 22px;
   white-space: nowrap;
 }
@@ -1002,21 +1007,21 @@ export default {
 }
 
 .nav-item + .nav-item {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .nav-link {
   position: relative;
   display: flex;
   width: 100%;
-  height: 36px;
+  height: 40px;
   align-items: center;
   gap: 10px;
   padding: 0 10px;
   color: color-mix(in srgb, var(--sidebar-foreground) 82%, transparent);
   background: transparent;
   border: 0;
-  border-radius: 5px;
+  border-radius: 8px;
   outline: none;
   font: inherit;
   text-align: left;
@@ -1037,19 +1042,12 @@ export default {
 
 .nav-link.active {
   color: var(--sidebar-primary);
-  background: var(--sidebar-accent);
+  background: color-mix(in srgb, var(--sidebar-primary) 14%, var(--sidebar-accent));
   font-weight: 600;
 }
 
 .nav-link.active::before {
-  position: absolute;
-  top: 8px;
-  left: 0;
-  width: 3px;
-  height: 20px;
-  background: var(--sidebar-primary);
-  border-radius: 0 3px 3px 0;
-  content: '';
+  display: none;
 }
 
 .nav-icon {
@@ -1083,8 +1081,8 @@ export default {
 }
 
 .nav-submenu {
-  margin: 3px 0 5px 18px;
-  padding-left: 18px;
+  margin: 5px 0 6px 20px;
+  padding-left: 16px;
   border-left: 1px solid var(--sidebar-border);
 }
 
@@ -1092,13 +1090,13 @@ export default {
   position: relative;
   display: flex;
   min-width: 0;
-  height: 30px;
+  min-height: 34px;
   align-items: center;
   padding: 0 9px;
   overflow: hidden;
   color: color-mix(in srgb, var(--sidebar-foreground) 67%, transparent);
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: 7px;
+  font-size: 13px;
   line-height: 18px;
   text-decoration: none;
   text-overflow: ellipsis;
@@ -1115,15 +1113,16 @@ export default {
 
 .nav-submenu-link.active {
   color: var(--sidebar-primary);
+  background: color-mix(in srgb, var(--sidebar-primary) 12%, transparent);
   font-weight: 600;
 }
 
 .sidebar-footer {
   display: flex;
-  flex: 0 0 62px;
+  flex: 0 0 68px;
   align-items: center;
   gap: 8px;
-  padding: 10px 10px 10px 14px;
+  padding: 12px 12px 12px 16px;
   border-top: 1px solid var(--sidebar-border);
 }
 
@@ -1236,13 +1235,13 @@ export default {
   position: relative;
   z-index: 10;
   display: flex;
-  flex: 0 0 60px;
-  height: 60px;
+  flex: 0 0 64px;
+  height: 64px;
   min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 20px;
+  padding: 0 28px;
   background: var(--surface-color);
   border-bottom: 1px solid var(--border-color);
 }
@@ -1261,7 +1260,7 @@ export default {
 
 .right-menu {
   flex: 0 0 auto;
-  gap: 8px;
+  gap: 10px;
 }
 
 .user-dropdown {
@@ -1282,7 +1281,7 @@ export default {
   flex: 1 1 auto;
   min-width: 0;
   overflow: auto;
-  padding: 18px 20px 24px;
+  padding: 26px 28px 32px;
   background: var(--bg-color);
   scroll-behavior: smooth;
 }

@@ -34,7 +34,7 @@ export default {
     tooltipText() {
       return this.currentTheme === THEMES.LIGHT 
         ? '切换到暗黑模式' 
-        : '切换到科技白';
+        : '切换到浅色模式';
     }
   },
   mounted() {

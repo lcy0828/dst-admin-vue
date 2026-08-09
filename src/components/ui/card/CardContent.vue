@@ -13,7 +13,7 @@ const props = defineProps({
 <template>
   <div
     data-slot="card-content"
-    :class="cn('p-4 group-data-[size=sm]/card:p-3', props.class)"
+    :class="cn('p-5 group-data-[size=sm]/card:p-4', props.class)"
   >
     <slot />
   </div>

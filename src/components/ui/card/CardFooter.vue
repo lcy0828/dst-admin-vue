@@ -15,7 +15,7 @@ const props = defineProps({
     data-slot="card-footer"
     :class="
       cn(
-        'bg-muted/25 border-t px-4 py-3 group-data-[size=sm]/card:px-3 group-data-[size=sm]/card:py-2.5 flex items-center',
+        'border-t px-5 py-3.5 group-data-[size=sm]/card:px-4 group-data-[size=sm]/card:py-3 flex items-center',
         props.class,
       )
     "
