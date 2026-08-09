@@ -3,9 +3,22 @@
     <div class="login-backdrop" aria-hidden="true"></div>
     <Card class="login-card">
       <CardHeader>
-        <div class="login-brand">
-          <span class="login-mark" aria-hidden="true"><Gamepad2Icon /></span>
-          <span>DST Admin</span>
+        <div class="login-brand-row">
+          <div class="login-brand">
+            <span class="login-mark" aria-hidden="true"><Gamepad2Icon /></span>
+            <span>DST Admin</span>
+          </div>
+          <UiSelect :model-value="$i18n.locale" @update:model-value="switchLanguage">
+            <SelectTrigger size="sm" class="login-language" :aria-label="$t('settings.language.label')">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="zh-CN">{{ $t('settings.language.zhCN') }}</SelectItem>
+                <SelectItem value="en-US">{{ $t('settings.language.enUS') }}</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </UiSelect>
         </div>
         <CardTitle class="login-title">{{ $t('login.title') }}</CardTitle>
         <CardDescription>
@@ -77,7 +90,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { previewSystemLanguage } from '@/utils/systemPreferences'
 import { toast } from 'vue-sonner'
 
 export default {
@@ -100,8 +115,14 @@ export default {
     InputGroupInput,
     Gamepad2Icon,
     LockKeyholeIcon,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
     Spinner,
     UiButton,
+    UiSelect,
     UserIcon
   },
   data() {
@@ -123,6 +144,9 @@ export default {
     this.loadSession()
   },
   methods: {
+    switchLanguage(locale) {
+      previewSystemLanguage(locale)
+    },
     async loadSession() {
       try {
         const session = await authAPI.session()
@@ -198,10 +222,21 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
   color: var(--muted-foreground);
   font-size: 13px;
   font-weight: 600;
+}
+
+.login-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.login-language {
+  width: 128px;
 }
 
 .login-title {

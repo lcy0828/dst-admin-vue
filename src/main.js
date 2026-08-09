@@ -9,6 +9,8 @@ import { applySystemPreferences, getSystemPreferences } from './utils/systemPref
 import './utils/themeManager'
 import 'xterm/css/xterm.css'
 
+document.documentElement.lang = i18n.global.locale.value
+
 function loginRedirect(value, fallback = '/dashboard') {
   return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
     ? value
