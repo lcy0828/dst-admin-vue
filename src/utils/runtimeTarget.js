@@ -5,7 +5,7 @@ export const RUNTIME_TARGETS_UPDATED_EVENT = 'runtime-targets-updated'
 let activeTarget = {
   id: LOCAL_RUNTIME_TARGET_ID,
   kind: 'local',
-  name: '本机',
+  name: 'Local',
   status: 'configuration_required',
   configured: false,
   online: true,
@@ -20,7 +20,7 @@ export function setActiveRuntimeTarget(target) {
   const next = target?.id ? { ...target } : {
     id: LOCAL_RUNTIME_TARGET_ID,
     kind: 'local',
-    name: '本机',
+    name: 'Local',
     status: 'configuration_required',
     configured: false,
     online: true,

@@ -130,7 +130,18 @@ export const messages = {
         agentOnline: 'Agent 在线',
         agentOffline: 'Agent 离线',
         configure: '远程运行时配置',
-        switchLocal: '切换到本机'
+        switchLocal: '切换到本机',
+        targetLabel: '管理目标',
+        selectTarget: '选择管理目标',
+        openConfiguration: '打开远程运行时配置',
+        local: '本机',
+        localAvailable: '本机 · 可用',
+        localPending: '本机 · 待检查',
+        remoteUnconfigured: '远程 · 未配置',
+        remoteOnline: '远程 · 在线',
+        remoteOffline: '远程 · 离线',
+        loadFailed: '获取管理目标失败',
+        loadFailedDetail: '获取管理目标失败：{error}'
       }
     },
     navigation: {
@@ -603,7 +614,18 @@ export const messages = {
         agentOnline: 'Agent online',
         agentOffline: 'Agent offline',
         configure: 'Configure remote runtime',
-        switchLocal: 'Switch to local'
+        switchLocal: 'Switch to local',
+        targetLabel: 'Management target',
+        selectTarget: 'Select a management target',
+        openConfiguration: 'Open remote runtime configuration',
+        local: 'Local',
+        localAvailable: 'Local · Available',
+        localPending: 'Local · Pending check',
+        remoteUnconfigured: 'Remote · Not configured',
+        remoteOnline: 'Remote · Online',
+        remoteOffline: 'Remote · Offline',
+        loadFailed: 'Failed to load management targets',
+        loadFailedDetail: 'Failed to load management targets: {error}'
       }
     },
     navigation: {

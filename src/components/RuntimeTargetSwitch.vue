@@ -1,15 +1,15 @@
 <template>
   <div class="runtime-target-switch">
-    <span class="target-label">管理目标</span>
+    <span class="target-label">{{ $t('app.remote.targetLabel') }}</span>
     <UiSelect
       v-model="selectedId"
       :disabled="loading"
-      aria-label="选择管理目标"
+      :aria-label="$t('app.remote.selectTarget')"
       @update:model-value="selectTarget"
     >
       <SelectTrigger class="target-select">
         <Spinner v-if="loading" />
-        <SelectValue placeholder="选择管理目标" />
+        <SelectValue :placeholder="$t('app.remote.selectTarget')" />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
@@ -21,7 +21,7 @@
           >
             <div class="target-option">
               <span class="status-dot" :class="statusClass(target)"></span>
-              <span class="option-name">{{ target.name }}</span>
+              <span class="option-name">{{ targetName(target) }}</span>
               <span class="option-meta">{{ optionMeta(target) }}</span>
             </div>
           </SelectItem>
@@ -30,11 +30,11 @@
     </UiSelect>
     <Tooltip>
       <TooltipTrigger as-child>
-        <UiButton class="target-settings" variant="ghost" size="icon-sm" aria-label="打开远程运行时配置" @click="openAgentSettings">
+        <UiButton class="target-settings" variant="ghost" size="icon-sm" :aria-label="$t('app.remote.openConfiguration')" @click="openAgentSettings">
           <SettingsIcon />
         </UiButton>
       </TooltipTrigger>
-      <TooltipContent>远程运行时配置</TooltipContent>
+      <TooltipContent>{{ $t('app.remote.configure') }}</TooltipContent>
     </Tooltip>
   </div>
 </template>
@@ -46,6 +46,7 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { retainUnavailableRemoteTarget, runtimeTargetMeta, runtimeTargetName } from '@/lib/runtimeTargetPresentation.mjs'
 import {
   getActiveRuntimeTarget,
   RUNTIME_TARGET_CHANGED_EVENT,
@@ -90,20 +91,21 @@ export default {
   methods: {
     async loadTargets() {
       this.loading = true
+      const previousTarget = getActiveRuntimeTarget()
       try {
         const value = await runtimeTargetsV2API.list()
-        this.targets = value.items || []
+        this.targets = retainUnavailableRemoteTarget(value.items, this.selectedId, previousTarget)
         const current = this.targets.find(target => target.id === this.selectedId)
-        if (!current || (current.kind === 'agent' && !current.configured)) {
+        if (!current) {
           this.selectedId = value.defaultTargetId || 'local'
         }
         this.activateSelectedTarget()
       } catch (error) {
-        const local = setActiveRuntimeTarget()
-        this.selectedId = local.id
-        this.targets = [local]
-        this.$emit('change', local)
-        toast.error(error.message || '获取管理目标失败')
+        this.selectedId = previousTarget.id
+        this.targets = [previousTarget]
+        toast.error(error.message
+          ? this.$t('app.remote.loadFailedDetail', { error: error.message })
+          : this.$t('app.remote.loadFailed'))
       } finally {
         this.loading = false
       }
@@ -121,15 +123,11 @@ export default {
       const active = setActiveRuntimeTarget(target)
       this.$emit('change', active)
     },
-    optionLabel(target) {
-      if (target.kind === 'local') return target.name || '本机'
-      const suffix = target.configured ? '远程' : '未配置'
-      return `${target.name} · ${suffix}`
+    targetName(target) {
+      return runtimeTargetName(target, this.$t)
     },
     optionMeta(target) {
-      if (target.kind === 'local') return target.status === 'ready' ? '本机 · 可用' : '本机 · 待检查'
-      if (!target.configured) return '远程 · 未配置'
-      return target.online ? '远程 · 在线' : '远程 · 离线'
+      return runtimeTargetMeta(target, this.$t)
     },
     statusClass(target) {
       if (!target.configured || target.status === 'configuration_required') return 'needs-config'
