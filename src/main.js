@@ -18,7 +18,8 @@ function loginRedirect(value, fallback = '/dashboard') {
 }
 
 function updateDocumentTitle(route = router.currentRoute.value) {
-  const systemName = getSystemPreferences().systemName
+  const configuredName = getSystemPreferences().systemName
+  const systemName = configuredName === '饥荒管理系统' ? i18n.global.t('app.defaultName') : configuredName
   const routeTitle = route.meta?.titleKey ? i18n.global.t(route.meta.titleKey) : route.meta?.title
   document.title = routeTitle ? `${routeTitle} - ${systemName}` : systemName
 }

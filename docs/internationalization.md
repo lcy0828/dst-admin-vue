@@ -1,6 +1,6 @@
 # Internationalization
 
-The frontend uses `vue-i18n` and stores locale resources in `src/i18n/messages.js`.
+The frontend uses `vue-i18n`. `src/i18n/messages.js` assembles the base catalog and functional catalogs from the same directory.
 
 ## Supported locales
 
@@ -8,7 +8,7 @@ The frontend uses `vue-i18n` and stores locale resources in `src/i18n/messages.j
 - `en-US`: supported
 - `ja-JP`: reserved by the backend settings contract, but must remain disabled until a complete catalog is added
 
-The selected locale is persisted through the existing `ui.language` system setting. `applySystemPreferences()` updates both the active Vue locale and the document `lang` attribute.
+The selected locale is persisted through the existing `ui.language` system setting. A local `dst-admin-locale` value preserves the last selection before authentication and when the backend is unavailable. Once authenticated, the backend setting remains authoritative. `applySystemPreferences()` updates the Vue locale, local value, and document `lang` attribute.
 
 ## Data contract
 
@@ -29,7 +29,7 @@ Do not add raw user-facing text to a component when an i18n key is appropriate. 
 
 ## Adding a locale
 
-1. Add the locale catalog to `src/i18n/messages.js`.
+1. Add the locale catalog to the relevant module under `src/i18n/` and assemble it in `src/i18n/messages.js`.
 2. Add it to `SUPPORTED_LOCALES` in `src/i18n/index.js`.
 3. Enable the option in `SystemSettings.vue`.
 4. Run `npm test`; the catalog parity test requires every locale to expose the same keys.
