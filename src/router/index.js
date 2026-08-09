@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
+import MainLayoutV2 from '../layouts/MainLayoutV2.vue'
 
 // 公共路由
 export const constantRoutes = [
@@ -7,6 +8,18 @@ export const constantRoutes = [
     path: '/login',
     component: () => import('@/views/Login.vue'),
     hidden: true
+  },
+  {
+    path: '/preview-v2',
+    component: MainLayoutV2,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/v2/DashboardV2.vue'),
+        name: 'DashboardV2',
+        meta: { title: '服务总览' }
+      }
+    ]
   },
   {
     path: '/',
