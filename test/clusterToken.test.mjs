@@ -8,3 +8,12 @@ test('cluster token validation rejects incomplete values without fixing the prov
   assert.equal(clusterTokenError('pds-g^complete token'), '令牌不能包含空格或换行')
   assert.equal(clusterTokenError('', { required: false }), '')
 })
+
+test('cluster token validation delegates display messages to the active locale', () => {
+  const translator = key => `translated:${key}`
+
+  assert.equal(
+    clusterTokenError('expired', { translator }),
+    'translated:rooms.token.validation.incomplete',
+  )
+})

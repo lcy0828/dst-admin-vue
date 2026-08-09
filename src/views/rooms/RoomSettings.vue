@@ -3,17 +3,17 @@
     <header class="page-header">
       <div class="title-section">
         <div class="title-row">
-          <h1>{{ isEdit ? '编辑房间' : '创建房间' }}</h1>
+          <h1>{{ $t(isEdit ? 'rooms.settings.editTitle' : 'rooms.settings.createTitle') }}</h1>
           <span class="change-state" :data-dirty="unsavedChanges">
             <span class="change-state-dot" aria-hidden="true"></span>
             {{ changeStateLabel }}
           </span>
         </div>
-        <p>{{ isEdit ? '修改游戏规则、联网方式和分片参数。' : '完成基础配置后创建新的游戏房间。' }}</p>
+        <p>{{ $t(isEdit ? 'rooms.settings.editSubtitle' : 'rooms.settings.createSubtitle') }}</p>
         <code v-if="isEdit && roomId" class="room-reference">{{ roomId }}</code>
       </div>
       <div class="header-actions">
-        <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回</UiButton>
+        <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />{{ $t('rooms.settings.back') }}</UiButton>
         <UiButton @click="saveSettings" :disabled="saveDisabled">
           <Spinner v-if="saving" data-icon="inline-start" />
           <Save v-else data-icon="inline-start" />
@@ -24,24 +24,24 @@
 
     <div v-if="loading && !saving" class="loading-state">
       <Spinner />
-      <span>正在加载房间配置</span>
+      <span>{{ $t('rooms.settings.loading') }}</span>
     </div>
 
     <Alert v-if="loadError" variant="destructive" class="error-alert">
       <TriangleAlert />
-      <AlertTitle>房间配置加载失败</AlertTitle>
+      <AlertTitle>{{ $t('rooms.settings.loadFailed') }}</AlertTitle>
       <AlertDescription class="load-error-description">
         <span>{{ loadError }}</span>
         <UiButton variant="outline" size="sm" @click="loadRoomSettings(roomId)">
           <RefreshCw data-icon="inline-start" />
-          重新加载
+          {{ $t('rooms.settings.reload') }}
         </UiButton>
       </AlertDescription>
     </Alert>
 
     <Alert v-if="formErrors.length > 0" ref="validationAlert" variant="destructive" class="error-alert" tabindex="-1">
       <TriangleAlert />
-      <AlertTitle>表单验证失败</AlertTitle>
+      <AlertTitle>{{ $t('rooms.settings.validationFailed') }}</AlertTitle>
       <AlertDescription>
         <ul class="error-list">
           <li v-for="(error, index) in formErrors" :key="index">{{ error }}</li>
@@ -51,23 +51,23 @@
 
     <Card v-if="!isEdit" size="sm" class="save-name-card">
       <CardHeader>
-        <CardTitle class="section-title"><FolderKey />房间标识</CardTitle>
-        <CardDescription>房间存档名称创建后不可修改。</CardDescription>
-        <CardAction><Badge variant="outline">创建后锁定</Badge></CardAction>
+        <CardTitle class="section-title"><FolderKey />{{ $t('rooms.settings.identity') }}</CardTitle>
+        <CardDescription>{{ $t('rooms.settings.identityDescription') }}</CardDescription>
+        <CardAction><Badge variant="outline">{{ $t('rooms.settings.lockedAfterCreate') }}</Badge></CardAction>
       </CardHeader>
       <CardContent>
         <FieldGroup>
           <Field :data-invalid="Boolean(saveNameError)">
-            <FieldLabel for="room-savename">房间存档名称</FieldLabel>
+            <FieldLabel for="room-savename">{{ $t('rooms.settings.archiveName') }}</FieldLabel>
             <UiInput
               id="room-savename"
               v-model.trim="saveNameForm.savename"
-              placeholder="请输入房间存档名称，如 room1"
+              :placeholder="$t('rooms.settings.archiveNamePlaceholder')"
               :aria-invalid="Boolean(saveNameError)"
               autocomplete="off"
               @input="clearSaveNameError"
             />
-            <FieldDescription>仅支持字母、数字和下划线。</FieldDescription>
+            <FieldDescription>{{ $t('rooms.settings.archiveNameDescription') }}</FieldDescription>
             <FieldError v-if="saveNameError">{{ saveNameError }}</FieldError>
           </Field>
         </FieldGroup>
@@ -76,13 +76,13 @@
 
     <Tabs v-if="!loadError" v-model="activeTab" orientation="horizontal" class="settings-tabs">
       <div class="settings-tabs-nav">
-        <TabsList variant="line" class="settings-tab-list" aria-label="房间设置分类">
+        <TabsList variant="line" class="settings-tab-list" :aria-label="$t('rooms.settings.categoriesAria')">
           <TabsTrigger v-for="section in settingsSections" :key="section.key" :value="section.key" class="settings-tab-trigger">
             <component :is="section.icon" />
             {{ section.tabLabel }}
           </TabsTrigger>
-          <TabsTrigger value="special-lists" class="settings-tab-trigger"><ListChecks />特殊名单</TabsTrigger>
-          <TabsTrigger value="token" class="settings-tab-trigger"><KeyRound />服务器令牌</TabsTrigger>
+          <TabsTrigger value="special-lists" class="settings-tab-trigger"><ListChecks />{{ $t('rooms.settings.specialLists') }}</TabsTrigger>
+          <TabsTrigger value="token" class="settings-tab-trigger"><KeyRound />{{ $t('rooms.settings.serverToken') }}</TabsTrigger>
         </TabsList>
       </div>
 
@@ -121,7 +121,7 @@
 
                 <UiSelect v-if="field.type === 'select'" v-model="form[field.key]" :disabled="isFieldDisabled(field)" @update:model-value="clearFieldError(field.key)">
                   <SelectTrigger :id="`room-setting-${field.key}`" :aria-invalid="isFieldInvalid(field.key)">
-                    <SelectValue :placeholder="field.placeholder || '请选择'" />
+                    <SelectValue :placeholder="field.placeholder || $t('rooms.settings.selectPlaceholder')" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
@@ -165,8 +165,8 @@
                   />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton
-                      :aria-label="revealedFields[field.key] ? `隐藏${field.label}` : `显示${field.label}`"
-                      :title="revealedFields[field.key] ? `隐藏${field.label}` : `显示${field.label}`"
+                      :aria-label="$t(revealedFields[field.key] ? 'rooms.settings.hideField' : 'rooms.settings.showField', { field: field.label })"
+                      :title="$t(revealedFields[field.key] ? 'rooms.settings.hideField' : 'rooms.settings.showField', { field: field.label })"
                       @click="toggleSensitiveField(field.key)"
                     >
                       <EyeOff v-if="revealedFields[field.key]" />
@@ -231,80 +231,59 @@ import ServerToken from './ServerToken.vue';
 const SETTINGS_SECTIONS = [
   {
     key: 'gameplay',
-    tabLabel: '游戏模式',
-    title: '游戏模式配置',
-    description: '控制玩家容量、战斗规则和世界暂停策略。',
     icon: Gamepad2,
     fields: [
-      { key: 'game_mode', label: '游戏模式', type: 'select', description: '影响游戏难度和玩法。', options: [
-        { label: '生存模式', value: 'survival' }, { label: '无尽模式', value: 'endless' }, { label: '荒野模式', value: 'wilderness' }
-      ] },
-      { key: 'max_players', label: '最大玩家数', type: 'number', min: 1, max: 64, description: '服务器最大容纳玩家数量，上限 64 人。' },
-      { key: 'pvp', label: '开启玩家对战', type: 'switch', description: '允许玩家之间互相攻击。' },
-      { key: 'pause_when_empty', label: '无人时暂停', type: 'switch', description: '服务器无人时自动暂停游戏。' },
-      { key: 'vote_enabled', label: '投票重启', type: 'switch', description: '允许玩家投票重启世界。' },
-      { key: 'vote_kick_enabled', label: '投票踢人', type: 'switch', description: '允许玩家投票踢出其他玩家。' }
+      { key: 'game_mode', type: 'select', options: ['survival', 'endless', 'wilderness'] },
+      { key: 'max_players', type: 'number', min: 1, max: 64 },
+      { key: 'pvp', type: 'switch' },
+      { key: 'pause_when_empty', type: 'switch' },
+      { key: 'vote_enabled', type: 'switch' },
+      { key: 'vote_kick_enabled', type: 'switch' }
     ]
   },
   {
     key: 'network',
-    tabLabel: '网络设置',
-    title: '网络配置',
-    description: '配置服务器发现、访问限制和网络通信参数。',
     icon: Network,
     fields: [
-      { key: 'cluster_name', label: '服务器名称', type: 'text', required: true, description: '显示在服务器列表中的名称。' },
-      { key: 'cluster_description', label: '服务器描述', type: 'textarea', rows: 3, description: '显示在服务器列表中的介绍。' },
-      { key: 'cluster_password', label: '服务器密码', type: 'text', sensitive: true, placeholder: '可为空', autocomplete: 'new-password', description: '加入服务器时使用的密码。' },
-      { key: 'cluster_intention', label: '游戏偏好', type: 'select', description: '设置服务器的游戏风格和氛围。', options: [
-        { label: '合作', value: 'cooperative' }, { label: '竞争', value: 'competitive' }, { label: '社交', value: 'social' }, { label: '疯狂', value: 'madness' }
-      ] },
-      { key: 'cluster_language', label: '服务器语言', type: 'select', description: '设置服务器语言。', options: [
-        { label: '中文', value: 'zh' }, { label: '英文', value: 'en' }
-      ] },
-      { key: 'whitelist_slots', label: '预留位', type: 'number', min: 0, description: '为白名单玩家预留的位置数量。' },
-      { key: 'tick_rate', label: '通信频率', type: 'number', min: 15, max: 60, description: '服务器每秒通信次数。' },
-      { key: 'idle_timeout', label: '挂机超时时间', type: 'number', min: 0, description: '超过此时间自动踢出，0 表示不启用。' },
-      { key: 'lan_only_cluster', label: '局域网游戏', type: 'switch', description: '仅允许局域网内的玩家加入。' },
-      { key: 'offline_cluster', label: '离线服务器', type: 'switch', description: '离线模式，不依赖 Steam 功能。' },
-      { key: 'autosaver_enabled', label: '自动保存', type: 'switch', description: '启用游戏自动保存。' }
+      { key: 'cluster_name', type: 'text', required: true },
+      { key: 'cluster_description', type: 'textarea', rows: 3 },
+      { key: 'cluster_password', type: 'text', sensitive: true, autocomplete: 'new-password' },
+      { key: 'cluster_intention', type: 'select', options: ['cooperative', 'competitive', 'social', 'madness'] },
+      { key: 'cluster_language', type: 'select', options: ['zh', 'en'] },
+      { key: 'whitelist_slots', type: 'number', min: 0 },
+      { key: 'tick_rate', type: 'number', min: 15, max: 60 },
+      { key: 'idle_timeout', type: 'number', min: 0 },
+      { key: 'lan_only_cluster', type: 'switch' },
+      { key: 'offline_cluster', type: 'switch' },
+      { key: 'autosaver_enabled', type: 'switch' }
     ]
   },
   {
     key: 'system',
-    tabLabel: '系统设置',
-    title: '系统设置',
-    description: '配置控制台与存档快照。',
     icon: Settings2,
     fields: [
-      { key: 'console_enabled', label: '开启控制台', type: 'switch', description: '允许使用控制台命令。' },
-      { key: 'max_snapshots', label: '最大快照数', type: 'number', min: 1, description: '保留的最大存档快照数量。' }
+      { key: 'console_enabled', type: 'switch' },
+      { key: 'max_snapshots', type: 'number', min: 1 }
     ]
   },
   {
     key: 'shard',
-    tabLabel: '分片设置',
-    title: '分片设置',
-    description: '配置森林、洞穴等分片之间的通信。',
     icon: GitBranch,
     fields: [
-      { key: 'shard_enabled', label: '开启服务器共享', type: 'switch', description: '洞穴分片需要开启此选项。' },
-      { key: 'bind_ip', label: '监听地址', type: 'text', disabledWhen: 'shard_enabled', description: '服务器监听的 IP 地址。' },
-      { key: 'master_ip', label: '主服务器 IP', type: 'text', disabledWhen: 'shard_enabled', description: '主服务器的 IP 地址。' },
-      { key: 'master_port', label: '主服务器端口', type: 'number', min: 1, max: 65535, required: true, disabledWhen: 'shard_enabled', description: '分片连接主服务器使用的 UDP 端口。' },
-      { key: 'cluster_key', label: '连接密码', type: 'text', required: true, sensitive: true, autocomplete: 'new-password', disabledWhen: 'shard_enabled', description: '所有分片必须使用相同密码。' }
+      { key: 'shard_enabled', type: 'switch' },
+      { key: 'bind_ip', type: 'text', disabledWhen: 'shard_enabled' },
+      { key: 'master_ip', type: 'text', disabledWhen: 'shard_enabled' },
+      { key: 'master_port', type: 'number', min: 1, max: 65535, required: true, disabledWhen: 'shard_enabled' },
+      { key: 'cluster_key', type: 'text', required: true, sensitive: true, autocomplete: 'new-password', disabledWhen: 'shard_enabled' }
     ]
   },
   {
     key: 'steam',
-    tabLabel: 'Steam 设置',
-    title: 'Steam 设置',
-    description: '配置 Steam 组访问和管理员权限。',
     icon: Settings2,
     fields: [
-      { key: 'steam_group_only', label: '仅 Steam 组', type: 'switch', description: '只允许 Steam 组内成员加入。' },
-      { key: 'steam_group_id', label: 'Steam 组 ID', type: 'number', min: 0, disabledWhen: 'steam_group_only', description: '启用组限制时使用的 Steam 组 ID。' },
-      { key: 'steam_group_admins', label: '组管理员权限', type: 'switch', disabledWhen: 'steam_group_only', description: '授予 Steam 组管理员服务器管理权限。' }
+      { key: 'steam_group_only', type: 'switch' },
+      { key: 'steam_group_id', type: 'number', min: 0, disabledWhen: 'steam_group_only' },
+      { key: 'steam_group_admins', type: 'switch', disabledWhen: 'steam_group_only' }
     ]
   }
 ];
@@ -362,7 +341,6 @@ export default {
   data() {
     return {
       activeTab: 'gameplay',
-      settingsSections: SETTINGS_SECTIONS,
       isEdit: false,
       roomId: '',
       savename: '',
@@ -427,14 +405,36 @@ export default {
     }
   },
   computed: {
+    settingsSections() {
+      return SETTINGS_SECTIONS.map(section => ({
+        ...section,
+        tabLabel: this.$t(`rooms.settings.sections.${section.key}.tab`),
+        title: this.$t(`rooms.settings.sections.${section.key}.title`),
+        description: this.$t(`rooms.settings.sections.${section.key}.description`),
+        fields: section.fields.map(field => {
+          const fieldKey = `rooms.settings.fields.${field.key}`;
+          const placeholderKey = `${fieldKey}.placeholder`;
+          return {
+            ...field,
+            label: this.$t(`${fieldKey}.label`),
+            description: this.$t(`${fieldKey}.description`),
+            placeholder: this.$te(placeholderKey) ? this.$t(placeholderKey) : '',
+            options: (field.options || []).map(value => ({
+              value,
+              label: this.$t(`rooms.settings.options.${value}`)
+            }))
+          };
+        })
+      }));
+    },
     changeStateLabel() {
-      if (this.saving) return this.isEdit ? '正在保存' : '正在创建';
-      if (!this.isEdit) return this.unsavedChanges ? '配置未保存' : '待配置';
-      return this.unsavedChanges ? '有未保存更改' : '已保存';
+      if (this.saving) return this.$t(this.isEdit ? 'rooms.settings.state.saving' : 'rooms.settings.state.creating');
+      if (!this.isEdit) return this.$t(this.unsavedChanges ? 'rooms.settings.state.unsaved' : 'rooms.settings.state.pending');
+      return this.$t(this.unsavedChanges ? 'rooms.settings.state.dirty' : 'rooms.settings.state.saved');
     },
     saveButtonLabel() {
-      if (this.saving) return this.isEdit ? '保存中...' : '创建中...';
-      return this.isEdit ? '保存更改' : '创建房间';
+      if (this.saving) return this.$t(this.isEdit ? 'rooms.settings.state.savingButton' : 'rooms.settings.state.creatingButton');
+      return this.$t(this.isEdit ? 'rooms.settings.state.save' : 'rooms.settings.state.create');
     },
     saveDisabled() {
       return this.loading || this.saving || Boolean(this.loadError) || (this.isEdit && !this.unsavedChanges);
@@ -526,11 +526,11 @@ export default {
     validateSettings() {
       const errors = {};
       const requiredFields = {
-        cluster_name: '请输入服务器名称'
+        cluster_name: this.$t('rooms.settings.validation.clusterName')
       };
       if (this.form.shard_enabled) {
-        requiredFields.master_port = '请输入主服务器端口';
-        requiredFields.cluster_key = '请输入连接密码';
+        requiredFields.master_port = this.$t('rooms.settings.validation.masterPort');
+        requiredFields.cluster_key = this.$t('rooms.settings.validation.clusterKey');
       }
       Object.entries(requiredFields).forEach(([key, message]) => {
         if (this.form[key] === '' || this.form[key] === null || this.form[key] === undefined) errors[key] = message;
@@ -539,8 +539,8 @@ export default {
 
       this.saveNameError = '';
       if (!this.isEdit) {
-        if (!this.saveNameForm.savename) this.saveNameError = '请输入房间存档名称';
-        else if (!/^[a-zA-Z0-9_]+$/.test(this.saveNameForm.savename)) this.saveNameError = '存档名称只能包含字母、数字和下划线';
+        if (!this.saveNameForm.savename) this.saveNameError = this.$t('rooms.settings.validation.archiveName');
+        else if (!/^[a-zA-Z0-9_]+$/.test(this.saveNameForm.savename)) this.saveNameError = this.$t('rooms.settings.validation.archiveNameInvalid');
       }
 
       const validationMessages = [...Object.values(errors)];
@@ -619,14 +619,14 @@ export default {
             this.form.steam_group_admins = configData.STEAM.steam_group_admins === 'true';
           }
           
-          if (notify) toast.success('配置加载成功');
+          if (notify) toast.success(this.$t('rooms.settings.feedback.loaded'));
           this.captureBaseline();
         } else {
-          throw new Error('获取房间配置失败');
+          throw new Error(this.$t('rooms.settings.feedback.loadFailed'));
         }
       } catch (error) {
-        console.error('加载配置失败:', error);
-        this.loadError = this.handleError(error, '加载配置失败');
+        console.error('Failed to load room configuration:', error);
+        this.loadError = this.handleError(error, this.$t('rooms.settings.feedback.loadingFailed'));
       } finally {
         this.loading = false;
       }
@@ -637,13 +637,13 @@ export default {
         const pendingListErrors = [];
         
         if (!this.validateSettings()) {
-          toast.error('请完善表单信息');
+          toast.error(this.$t('rooms.settings.validation.completeForm'));
           this.focusFirstError();
           return;
         }
         if (!this.isEdit) this.savename = this.saveNameForm.savename;
         if (!this.isEdit && !this.form.offline_cluster) {
-          const tokenError = clusterTokenError(this.form.serverToken);
+          const tokenError = clusterTokenError(this.form.serverToken, { translator: this.$t });
           if (tokenError) {
             toast.error(tokenError);
             this.activeTab = 'token';
@@ -717,30 +717,30 @@ export default {
           const { adminList, blockList, whiteList } = this.form;
           // 每次名单写入都会生成新 revision，必须按顺序应用。
           const pendingLists = [
-            { label: '管理员名单', values: adminList, update: serverApi.updateAdminList },
-            { label: '黑名单', values: blockList, update: serverApi.updateBlockList },
-            { label: '白名单', values: whiteList, update: serverApi.updateWhiteList }
+            { label: this.$t('rooms.settings.lists.administrators'), values: adminList, update: serverApi.updateAdminList },
+            { label: this.$t('rooms.settings.lists.blocklist'), values: blockList, update: serverApi.updateBlockList },
+            { label: this.$t('rooms.settings.lists.allowlist'), values: whiteList, update: serverApi.updateWhiteList }
           ];
           for (const list of pendingLists) {
             if (!list.values.length) continue;
             try {
               await list.update(roomValue, list.values);
             } catch (error) {
-              pendingListErrors.push(`${list.label}: ${error.message || '写入失败'}`);
+              pendingListErrors.push(`${list.label}: ${error.message || this.$t('rooms.settings.feedback.listWriteFailed')}`);
             }
           }
           await this.loadRoomSettings(roomValue, { notify: false });
         }
 
         if (pendingListErrors.length) {
-          toast.warning(`房间已创建，但部分名单未写入。请在特殊名单中重试：${pendingListErrors.join('；')}`);
+          toast.warning(this.$t('rooms.settings.feedback.partialLists', { errors: pendingListErrors.join('; ') }));
         } else {
-          toast.success('保存成功');
+          toast.success(this.$t('rooms.settings.feedback.saved'));
         }
         this.captureBaseline();
       } catch (error) {
-        console.error('保存配置失败:', error);
-        this.handleError(error, '保存配置失败');
+        console.error('Failed to save room configuration:', error);
+        this.handleError(error, this.$t('rooms.settings.feedback.saveFailed'));
       } finally {
         this.saving = false;
       }
@@ -756,22 +756,22 @@ export default {
         // 处理HTTP错误
         switch (error.response.status) {
           case 400:
-            errorMessage = '请求参数错误';
+            errorMessage = this.$t('rooms.settings.feedback.badRequest');
             break;
           case 401:
-            errorMessage = '未授权访问';
+            errorMessage = this.$t('rooms.settings.feedback.unauthorized');
             break;
           case 403:
-            errorMessage = '访问被拒绝';
+            errorMessage = this.$t('rooms.settings.feedback.forbidden');
             break;
           case 404:
-            errorMessage = '资源不存在';
+            errorMessage = this.$t('rooms.settings.feedback.notFound');
             break;
           case 500:
-            errorMessage = '服务器内部错误';
+            errorMessage = this.$t('rooms.settings.feedback.serverError');
             break;
           default:
-            errorMessage = `请求失败 (${error.response.status})`;
+            errorMessage = this.$t('rooms.settings.feedback.requestFailed', { status: error.response.status });
         }
         
         // 如果有详细的错误信息，添加到表单错误列表
@@ -781,7 +781,7 @@ export default {
             : [error.response.data.errors];
         }
       } else if (error.request) {
-        errorMessage = '网络请求失败，请检查网络连接';
+        errorMessage = this.$t('rooms.settings.feedback.networkFailed');
       }
       
       toast.error(errorMessage);
@@ -805,9 +805,9 @@ export default {
   async beforeRouteLeave() {
     if (!this.unsavedChanges || this.saving) return true;
     try {
-      await confirmAction('当前房间配置尚未保存，离开后这些更改会丢失。', '离开房间设置', {
-        confirmButtonText: '放弃更改',
-        cancelButtonText: '继续编辑',
+      await confirmAction(this.$t('rooms.settings.leave.description'), this.$t('rooms.settings.leave.title'), {
+        confirmButtonText: this.$t('rooms.settings.leave.discard'),
+        cancelButtonText: this.$t('rooms.settings.leave.continue'),
         destructive: true
       });
       return true;

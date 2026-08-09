@@ -90,6 +90,97 @@ export const roomsMessages = {
           unknown: '其他世界'
         }
       },
+      settings: {
+        createTitle: '创建房间',
+        editTitle: '编辑房间',
+        createSubtitle: '完成基础配置后创建新的游戏房间。',
+        editSubtitle: '修改游戏规则、联网方式和分片参数。',
+        back: '返回',
+        loading: '正在加载房间配置',
+        loadFailed: '房间配置加载失败',
+        reload: '重新加载',
+        validationFailed: '表单验证失败',
+        identity: '房间标识',
+        identityDescription: '房间存档名称创建后不可修改。',
+        lockedAfterCreate: '创建后锁定',
+        archiveName: '房间存档名称',
+        archiveNamePlaceholder: '请输入房间存档名称，如 room1',
+        archiveNameDescription: '仅支持字母、数字和下划线。',
+        categoriesAria: '房间设置分类',
+        specialLists: '特殊名单',
+        serverToken: '服务器令牌',
+        selectPlaceholder: '请选择',
+        hideField: '隐藏{field}',
+        showField: '显示{field}',
+        sections: {
+          gameplay: { tab: '游戏模式', title: '游戏模式配置', description: '控制玩家容量、战斗规则和世界暂停策略。' },
+          network: { tab: '网络设置', title: '网络配置', description: '配置服务器发现、访问限制和网络通信参数。' },
+          system: { tab: '系统设置', title: '系统设置', description: '配置控制台与存档快照。' },
+          shard: { tab: '分片设置', title: '分片设置', description: '配置森林、洞穴等分片之间的通信。' },
+          steam: { tab: 'Steam 设置', title: 'Steam 设置', description: '配置 Steam 组访问和管理员权限。' }
+        },
+        fields: {
+          game_mode: { label: '游戏模式', description: '影响游戏难度和玩法。' },
+          max_players: { label: '最大玩家数', description: '服务器最大容纳玩家数量，上限 64 人。' },
+          pvp: { label: '开启玩家对战', description: '允许玩家之间互相攻击。' },
+          pause_when_empty: { label: '无人时暂停', description: '服务器无人时自动暂停游戏。' },
+          vote_enabled: { label: '投票重启', description: '允许玩家投票重启世界。' },
+          vote_kick_enabled: { label: '投票踢人', description: '允许玩家投票踢出其他玩家。' },
+          cluster_name: { label: '服务器名称', description: '显示在服务器列表中的名称。' },
+          cluster_description: { label: '服务器描述', description: '显示在服务器列表中的介绍。' },
+          cluster_password: { label: '服务器密码', description: '加入服务器时使用的密码。', placeholder: '可为空' },
+          cluster_intention: { label: '游戏偏好', description: '设置服务器的游戏风格和氛围。' },
+          cluster_language: { label: '服务器语言', description: '设置服务器语言。' },
+          whitelist_slots: { label: '预留位', description: '为白名单玩家预留的位置数量。' },
+          tick_rate: { label: '通信频率', description: '服务器每秒通信次数。' },
+          idle_timeout: { label: '挂机超时时间', description: '超过此时间自动踢出，0 表示不启用。' },
+          lan_only_cluster: { label: '局域网游戏', description: '仅允许局域网内的玩家加入。' },
+          offline_cluster: { label: '离线服务器', description: '离线模式，不依赖 Steam 功能。' },
+          autosaver_enabled: { label: '自动保存', description: '启用游戏自动保存。' },
+          console_enabled: { label: '开启控制台', description: '允许使用控制台命令。' },
+          max_snapshots: { label: '最大快照数', description: '保留的最大存档快照数量。' },
+          shard_enabled: { label: '开启服务器共享', description: '洞穴分片需要开启此选项。' },
+          bind_ip: { label: '监听地址', description: '服务器监听的 IP 地址。' },
+          master_ip: { label: '主服务器 IP', description: '主服务器的 IP 地址。' },
+          master_port: { label: '主服务器端口', description: '分片连接主服务器使用的 UDP 端口。' },
+          cluster_key: { label: '连接密码', description: '所有分片必须使用相同密码。' },
+          steam_group_only: { label: '仅 Steam 组', description: '只允许 Steam 组内成员加入。' },
+          steam_group_id: { label: 'Steam 组 ID', description: '启用组限制时使用的 Steam 组 ID。' },
+          steam_group_admins: { label: '组管理员权限', description: '授予 Steam 组管理员服务器管理权限。' }
+        },
+        options: {
+          survival: '生存模式', endless: '无尽模式', wilderness: '荒野模式',
+          cooperative: '合作', competitive: '竞争', social: '社交', madness: '疯狂',
+          zh: '中文', en: '英文'
+        },
+        state: {
+          saving: '正在保存', creating: '正在创建', unsaved: '配置未保存', pending: '待配置', dirty: '有未保存更改', saved: '已保存',
+          savingButton: '保存中...', creatingButton: '创建中...', save: '保存更改', create: '创建房间'
+        },
+        validation: {
+          clusterName: '请输入服务器名称', masterPort: '请输入主服务器端口', clusterKey: '请输入连接密码',
+          archiveName: '请输入房间存档名称', archiveNameInvalid: '存档名称只能包含字母、数字和下划线', completeForm: '请完善表单信息'
+        },
+        lists: { administrators: '管理员名单', blocklist: '黑名单', allowlist: '白名单' },
+        feedback: {
+          loaded: '配置加载成功', loadFailed: '获取房间配置失败', loadingFailed: '加载配置失败',
+          listWriteFailed: '写入失败', partialLists: '房间已创建，但部分名单未写入。请在特殊名单中重试：{errors}',
+          saved: '保存成功', saveFailed: '保存配置失败', badRequest: '请求参数错误', unauthorized: '未授权访问',
+          forbidden: '访问被拒绝', notFound: '资源不存在', serverError: '服务器内部错误', requestFailed: '请求失败（{status}）',
+          networkFailed: '网络请求失败，请检查网络连接'
+        },
+        leave: {
+          description: '当前房间配置尚未保存，离开后这些更改会丢失。', title: '离开房间设置', discard: '放弃更改', continue: '继续编辑'
+        }
+      },
+      token: {
+        validation: {
+          required: '请输入服务器令牌',
+          incomplete: '令牌内容不完整，请填写完整的 Klei 集群令牌',
+          tooLong: '长度不能超过 4096 个字符',
+          whitespace: '令牌不能包含空格或换行'
+        }
+      },
       selector: {
         room: '房间',
         placeholder: '请选择房间',
@@ -187,6 +278,97 @@ export const roomsMessages = {
           forest: 'Forest',
           cave: 'Caves',
           unknown: 'Other world'
+        }
+      },
+      settings: {
+        createTitle: 'Create room',
+        editTitle: 'Edit room',
+        createSubtitle: 'Complete the basic configuration to create a new game room.',
+        editSubtitle: 'Change game rules, connectivity, and shard settings.',
+        back: 'Back',
+        loading: 'Loading room configuration',
+        loadFailed: 'Failed to load room configuration',
+        reload: 'Reload',
+        validationFailed: 'Form validation failed',
+        identity: 'Room identity',
+        identityDescription: 'The room archive name cannot be changed after creation.',
+        lockedAfterCreate: 'Locked after creation',
+        archiveName: 'Room archive name',
+        archiveNamePlaceholder: 'Enter an archive name, for example room1',
+        archiveNameDescription: 'Use letters, numbers, and underscores only.',
+        categoriesAria: 'Room setting categories',
+        specialLists: 'Special lists',
+        serverToken: 'Server token',
+        selectPlaceholder: 'Select an option',
+        hideField: 'Hide {field}',
+        showField: 'Show {field}',
+        sections: {
+          gameplay: { tab: 'Gameplay', title: 'Gameplay configuration', description: 'Control player capacity, combat rules, and world pause behavior.' },
+          network: { tab: 'Network', title: 'Network configuration', description: 'Configure server discovery, access restrictions, and network communication.' },
+          system: { tab: 'System', title: 'System settings', description: 'Configure the console and archive snapshots.' },
+          shard: { tab: 'Shards', title: 'Shard settings', description: 'Configure communication between forest, cave, and other shards.' },
+          steam: { tab: 'Steam', title: 'Steam settings', description: 'Configure Steam group access and administrator privileges.' }
+        },
+        fields: {
+          game_mode: { label: 'Game mode', description: 'Controls game difficulty and play style.' },
+          max_players: { label: 'Maximum players', description: 'Maximum server capacity, up to 64 players.' },
+          pvp: { label: 'Player versus player', description: 'Allow players to attack one another.' },
+          pause_when_empty: { label: 'Pause when empty', description: 'Pause the game automatically when no players are online.' },
+          vote_enabled: { label: 'Vote to restart', description: 'Allow players to vote to restart the world.' },
+          vote_kick_enabled: { label: 'Vote to kick', description: 'Allow players to vote to remove another player.' },
+          cluster_name: { label: 'Server name', description: 'Name shown in the server browser.' },
+          cluster_description: { label: 'Server description', description: 'Description shown in the server browser.' },
+          cluster_password: { label: 'Server password', description: 'Password players use to join.', placeholder: 'Optional' },
+          cluster_intention: { label: 'Play style', description: 'Set the intended play style and atmosphere.' },
+          cluster_language: { label: 'Server language', description: 'Set the server language.' },
+          whitelist_slots: { label: 'Reserved slots', description: 'Number of player slots reserved for the allowlist.' },
+          tick_rate: { label: 'Tick rate', description: 'Number of server communication ticks per second.' },
+          idle_timeout: { label: 'Idle timeout', description: 'Remove idle players after this period. Use 0 to disable.' },
+          lan_only_cluster: { label: 'LAN only', description: 'Allow only players on the local network to join.' },
+          offline_cluster: { label: 'Offline server', description: 'Run offline without Steam features.' },
+          autosaver_enabled: { label: 'Automatic saves', description: 'Enable automatic game saves.' },
+          console_enabled: { label: 'Enable console', description: 'Allow console commands.' },
+          max_snapshots: { label: 'Maximum snapshots', description: 'Maximum number of archive snapshots to retain.' },
+          shard_enabled: { label: 'Enable shard sharing', description: 'Required when a cave shard is used.' },
+          bind_ip: { label: 'Bind address', description: 'IP address on which the server listens.' },
+          master_ip: { label: 'Primary server IP', description: 'IP address of the primary server.' },
+          master_port: { label: 'Primary server port', description: 'UDP port used by shards to reach the primary server.' },
+          cluster_key: { label: 'Connection password', description: 'Every shard must use the same password.' },
+          steam_group_only: { label: 'Steam group only', description: 'Allow only Steam group members to join.' },
+          steam_group_id: { label: 'Steam group ID', description: 'Steam group ID used when group access is enabled.' },
+          steam_group_admins: { label: 'Group administrator privileges', description: 'Grant server administration privileges to Steam group administrators.' }
+        },
+        options: {
+          survival: 'Survival', endless: 'Endless', wilderness: 'Wilderness',
+          cooperative: 'Cooperative', competitive: 'Competitive', social: 'Social', madness: 'Madness',
+          zh: 'Chinese', en: 'English'
+        },
+        state: {
+          saving: 'Saving', creating: 'Creating', unsaved: 'Configuration not saved', pending: 'Not configured', dirty: 'Unsaved changes', saved: 'Saved',
+          savingButton: 'Saving...', creatingButton: 'Creating...', save: 'Save changes', create: 'Create room'
+        },
+        validation: {
+          clusterName: 'Enter the server name', masterPort: 'Enter the primary server port', clusterKey: 'Enter the connection password',
+          archiveName: 'Enter the room archive name', archiveNameInvalid: 'Archive names may contain only letters, numbers, and underscores', completeForm: 'Complete the required form fields'
+        },
+        lists: { administrators: 'Administrator list', blocklist: 'Blocklist', allowlist: 'Allowlist' },
+        feedback: {
+          loaded: 'Configuration loaded', loadFailed: 'Failed to get room configuration', loadingFailed: 'Failed to load configuration',
+          listWriteFailed: 'Write failed', partialLists: 'The room was created, but some lists were not saved. Retry them under Special lists: {errors}',
+          saved: 'Saved successfully', saveFailed: 'Failed to save configuration', badRequest: 'Invalid request parameters', unauthorized: 'Unauthorized access',
+          forbidden: 'Access denied', notFound: 'Resource not found', serverError: 'Internal server error', requestFailed: 'Request failed ({status})',
+          networkFailed: 'Network request failed. Check the network connection.'
+        },
+        leave: {
+          description: 'This room configuration has not been saved. Leaving will discard these changes.', title: 'Leave room settings', discard: 'Discard changes', continue: 'Continue editing'
+        }
+      },
+      token: {
+        validation: {
+          required: 'Enter the server token',
+          incomplete: 'The token is incomplete. Enter the full Klei cluster token.',
+          tooLong: 'The token cannot exceed 4096 characters',
+          whitespace: 'The token cannot contain spaces or line breaks'
         }
       },
       selector: {
