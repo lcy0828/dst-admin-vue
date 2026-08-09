@@ -1,4 +1,6 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+import { sharedUiText } from '@/i18n/sharedUiMessages'
 import { cn } from '@/lib/utils'
 import { useSidebar } from './utils'
 
@@ -11,15 +13,17 @@ const props = defineProps({
 })
 
 const { toggleSidebar } = useSidebar()
+const { locale } = useI18n()
+const text = key => sharedUiText(key, locale.value)
 </script>
 
 <template>
   <button
     data-sidebar="rail"
     data-slot="sidebar-rail"
-    aria-label="切换侧边栏"
+    :aria-label="text('sidebar.toggle')"
     :tabindex="-1"
-    title="切换侧边栏"
+    :title="text('sidebar.toggle')"
     :class="cn(
       'hover:after:bg-sidebar-border absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-0.5 sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2',
       'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',

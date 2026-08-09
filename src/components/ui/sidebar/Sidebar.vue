@@ -1,5 +1,7 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { cn } from '@/lib/utils'
+import { sharedUiText } from '@/i18n/sharedUiMessages'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import SheetDescription from '@/components/ui/sheet/SheetDescription.vue'
 import SheetHeader from '@/components/ui/sheet/SheetHeader.vue'
@@ -22,6 +24,8 @@ const props = defineProps({
 })
 
 const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+const { locale } = useI18n()
+const text = key => sharedUiText(key, locale.value)
 </script>
 
 <template>
@@ -46,8 +50,8 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
       }"
     >
       <SheetHeader class="sr-only">
-        <SheetTitle>主导航</SheetTitle>
-        <SheetDescription>访问饥荒管理系统的各个功能区域。</SheetDescription>
+        <SheetTitle>{{ text('sidebar.title') }}</SheetTitle>
+        <SheetDescription>{{ text('sidebar.description') }}</SheetDescription>
       </SheetHeader>
       <div class="flex h-full w-full flex-col">
         <slot />

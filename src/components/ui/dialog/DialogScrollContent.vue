@@ -7,6 +7,8 @@ import {
   DialogPortal,
   useForwardPropsEmits,
 } from "reka-ui";
+import { useI18n } from "vue-i18n";
+import { sharedUiText } from "@/i18n/sharedUiMessages";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import DialogOverlay from "./DialogOverlay.vue";
@@ -38,6 +40,8 @@ const emits = defineEmits([
 const delegatedProps = reactiveOmit(props, "class");
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
+const { locale } = useI18n();
+const text = key => sharedUiText(key, locale.value);
 </script>
 
 <template>
@@ -69,9 +73,15 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
         <slot />
 
         <DialogClose as-child>
-          <Button class="absolute top-2 right-2" variant="ghost" size="icon-sm">
+          <Button
+            class="absolute top-2 right-2"
+            variant="ghost"
+            size="icon-sm"
+            :aria-label="text('dialog.close')"
+            :title="text('dialog.close')"
+          >
             <XIcon />
-            <span class="sr-only">关闭</span>
+            <span class="sr-only">{{ text('dialog.close') }}</span>
           </Button>
         </DialogClose>
       </DialogContent>

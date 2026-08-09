@@ -1,4 +1,5 @@
 import { toast } from 'vue-sonner'
+import { sharedUiText } from '../i18n/sharedUiMessages.js'
 
 let feedbackHandler = null
 const pendingRequests = []
@@ -16,7 +17,7 @@ function requestFeedback(kind, message, title, options = {}) {
     dispatch({
       kind,
       message: String(message ?? ''),
-      title: String(title || (kind === 'prompt' ? '请输入' : '确认操作')),
+      title: String(title || sharedUiText(kind === 'prompt' ? 'feedback.promptTitle' : 'feedback.confirmTitle')),
       options,
       resolve,
       reject,
@@ -33,11 +34,11 @@ export function registerFeedbackHost(handler) {
   }
 }
 
-export function confirmAction(message, title = '确认操作', options = {}) {
+export function confirmAction(message, title = '', options = {}) {
   return requestFeedback('confirm', message, title, options)
 }
 
-export function promptText(message, title = '请输入', options = {}) {
+export function promptText(message, title = '', options = {}) {
   return requestFeedback('prompt', message, title, options)
 }
 
