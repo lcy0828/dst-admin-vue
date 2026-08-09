@@ -144,7 +144,11 @@ export default {
       try {
         const action = this.setupRequired ? authAPI.setup : authAPI.login
         await action(this.loginForm.username, this.loginForm.password)
-        await this.$router.push('/')
+        const redirect = this.$route.query.redirect
+        const target = typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+          ? redirect
+          : '/dashboard'
+        await this.$router.push(target)
         toast.success(this.setupRequired ? '管理员创建成功' : '登录成功')
       } catch (error) {
         toast.error(error.message || '登录失败')

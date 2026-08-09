@@ -8,6 +8,12 @@ import { applySystemPreferences, getSystemPreferences } from './utils/systemPref
 import './utils/themeManager'
 import 'xterm/css/xterm.css'
 
+function loginRedirect(value, fallback = '/dashboard') {
+  return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')
+    ? value
+    : fallback
+}
+
 // 路由守卫
 router.beforeEach(async to => {
   try {
@@ -21,10 +27,14 @@ router.beforeEach(async to => {
     }
     const systemName = getSystemPreferences().systemName
     document.title = to.meta.title ? `${to.meta.title} - ${systemName}` : systemName
-    if (to.path === '/login') return session.authenticated ? '/dashboard' : true
-    return session.authenticated ? true : '/login'
+    if (to.path === '/login') {
+      return session.authenticated ? loginRedirect(to.query.redirect) : true
+    }
+    return session.authenticated ? true : { path: '/login', query: { redirect: to.fullPath } }
   } catch {
-    return to.path === '/login' ? true : { path: '/login', query: { reason: 'backend-unavailable' } }
+    return to.path === '/login'
+      ? true
+      : { path: '/login', query: { reason: 'backend-unavailable', redirect: to.fullPath } }
   }
 })
 
