@@ -4,9 +4,10 @@
       <InputGroup>
         <InputGroupAddon><SearchIcon /></InputGroupAddon>
         <InputGroupInput
-        placeholder="搜索设置项..."
-        :model-value="searchText"
-        @update:model-value="$emit('search-input', $event)"
+          placeholder="搜索设置项..."
+          aria-label="搜索设置项"
+          :model-value="searchText"
+          @update:model-value="$emit('search-input', $event)"
         />
       </InputGroup>
     </div>
@@ -237,7 +238,7 @@ export default {
   margin-bottom: 20px;
   padding: 0 0 18px;
   background: transparent;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
   border-radius: 0;
   box-shadow: none;
 }
@@ -248,17 +249,13 @@ export default {
   align-items: center;
   margin-bottom: 10px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
   user-select: none;
-}
-
-.category-header:hover h4 {
-  color: var(--text-primary);
 }
 
 .category-header h4 {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 14px;
 }
 

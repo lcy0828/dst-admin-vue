@@ -34,7 +34,7 @@
     </div>
     <Tooltip>
       <TooltipTrigger as-child>
-        <UiButton class="setting-hover-tips" variant="ghost" size="icon-xs" aria-label="查看设置说明">
+        <UiButton class="setting-hover-tips" variant="ghost" size="icon-xs" aria-label="查看设置说明" title="查看设置说明">
           <CircleHelpIcon />
         </UiButton>
       </TooltipTrigger>
@@ -245,9 +245,9 @@ export default {
   padding: 10px;
   position: relative;
   overflow: hidden;
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   transition: background-color 180ms ease, border-color 180ms ease;
 }
 
@@ -265,7 +265,7 @@ export default {
   top: 5px;
   right: 5px;
   font-size: 16px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   opacity: 0.55;
   transition: color 180ms ease, opacity 180ms ease;
   z-index: 2;
@@ -275,9 +275,9 @@ export default {
 .item-image {
   width: 50px;
   height: 50px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background-size: 1600% !important;
-  background-color: var(--surface-muted);
+  background-color: var(--muted);
 }
 
 .setting-image {
@@ -293,7 +293,7 @@ export default {
   margin: 0 20px 6px 0;
   font-weight: 500;
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--foreground);
 }
 
 .setting-info > * {

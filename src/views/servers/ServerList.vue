@@ -1,18 +1,22 @@
 <template>
   <div class="server-list-page">
-    <div class="page-header">
-      <div class="title-container">
-        <Server />
-        <span>服务器状态监控</span>
+    <header class="page-header">
+      <div>
+        <h1>服务器状态</h1>
+        <p>监控当前运行目标中的世界分片，并执行启动或停止操作。</p>
       </div>
       <UiButton size="sm" variant="outline" :disabled="loading" @click="refreshData">
         <Spinner v-if="loading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
         刷新
       </UiButton>
-    </div>
+    </header>
 
     <Card class="filter-container">
+      <CardHeader>
+        <CardTitle>筛选范围</CardTitle>
+        <CardDescription>按运行状态、房间和世界类型缩小结果。</CardDescription>
+      </CardHeader>
       <CardContent class="filter-content">
         <Tabs v-model="activeTab">
           <TabsList>
@@ -37,13 +41,20 @@
     </Card>
 
     <Card class="server-table-container">
+      <CardHeader>
+        <CardTitle>世界分片</CardTitle>
+        <CardDescription>状态来自当前选择的本机或远程运行目标。</CardDescription>
+      </CardHeader>
       <CardContent class="table-content">
         <Alert v-if="loadError" variant="destructive" class="server-feedback">
           <CircleAlert />
           <AlertTitle>服务器状态读取失败</AlertTitle>
           <AlertDescription>{{ loadError }}</AlertDescription>
+          <AlertAction><UiButton size="sm" variant="outline" @click="refreshData">重新加载</UiButton></AlertAction>
         </Alert>
-        <div v-if="loading && !serverList.length" class="loading-state" aria-busy="true"><Spinner /><span>正在读取服务器状态...</span></div>
+        <div v-if="loading && !serverList.length" class="table-skeleton" aria-busy="true" aria-label="正在读取服务器状态">
+          <Skeleton v-for="row in 5" :key="row" class="h-12 w-full" />
+        </div>
         <div v-else-if="filteredServerList.length" class="table-scroll">
         <ShadcnTable>
           <TableHeader><TableRow>
@@ -131,19 +142,20 @@
 </template>
 
 <script>
-import { CircleAlert, Play, RefreshCw, Server, ServerOff, Square } from '@lucide/vue';
+import { CircleAlert, Play, RefreshCw, ServerOff, Square } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { systemApi, roomApi } from '@/api/index';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirmAction } from '@/lib/feedback';
@@ -153,11 +165,12 @@ import { getActiveRuntimeTarget, RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/ru
 export default {
   name: 'ServerList',
   components: {
-    Alert, AlertDescription, AlertTitle, Badge, Card, CardContent, CircleAlert, DialogContent,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardContent, CardDescription,
+    CardHeader, CardTitle, CircleAlert, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
     EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldDescription, FieldGroup,
     FieldLabel, FieldLegend, FieldSet, Play, RefreshCw, SelectContent, SelectGroup, SelectItem,
-    SelectTrigger, SelectValue, Server, ServerOff, ShadcnTable, Spinner, Square, TableBody,
+    SelectTrigger, SelectValue, ServerOff, ShadcnTable, Skeleton, Spinner, Square, TableBody,
     TableCell, TableHead, TableHeader, TableRow, Tabs, TabsList, TabsTrigger, UiButton, UiCheckbox,
     UiDialog, UiSelect
   },
@@ -400,14 +413,15 @@ export default {
   border-bottom: 1px solid var(--border);
 }
 
-.title-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 28px;
-  color: var(--text-primary);
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .filter-container {
@@ -439,6 +453,13 @@ export default {
 
 .table-content {
   padding: 0;
+}
+
+.table-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
 }
 
 .server-name-container {

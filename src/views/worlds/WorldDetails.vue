@@ -1,16 +1,29 @@
 <template>
   <div class="world-details-page">
-    <div class="page-header">
-      <h2>世界详情</h2>
+    <header class="page-header">
+      <div>
+        <h1>世界详情</h1>
+        <p>查看世界基础信息，并执行运行、备份和维护操作。</p>
+      </div>
       <div class="header-actions">
         <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回列表</UiButton>
         <UiButton @click="editWorld"><Pencil data-icon="inline-start" />编辑世界</UiButton>
       </div>
+    </header>
+
+    <div v-if="loading && !world.id" class="details-skeleton" aria-busy="true" aria-label="正在加载世界信息">
+      <Skeleton class="h-52 w-full" />
+      <Skeleton class="h-40 w-full" />
     </div>
 
-    <div v-if="loading" class="loading-state"><Spinner /><span>正在加载世界信息</span></div>
+    <Alert v-else-if="loadError" variant="destructive">
+      <CircleAlert />
+      <AlertTitle>世界信息加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="loadWorldData">重新加载</UiButton></AlertAction>
+    </Alert>
 
-    <div class="details-layout">
+    <div v-else-if="world.id" class="details-layout">
       <div class="main-column">
         <Card>
           <CardHeader>
@@ -34,9 +47,12 @@
         <Card>
           <CardHeader><CardTitle>世界统计</CardTitle><CardDescription>当前后端可以提供的世界统计。</CardDescription></CardHeader>
           <CardContent class="stats-grid">
-            <div class="stat-item"><strong>--</strong><span>玩家访问次数</span></div>
             <div class="stat-item"><strong>{{ world.day ?? '--' }}</strong><span>总游戏天数</span></div>
-            <div class="stat-item"><strong>--</strong><span>死亡次数</span></div>
+            <Alert>
+              <Activity />
+              <AlertTitle>更多统计暂不可用</AlertTitle>
+              <AlertDescription>当前后端尚未返回玩家访问次数和死亡次数。</AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
       </div>
@@ -78,20 +94,25 @@
 </template>
 
 <script>
-import { Activity, Archive, ArrowLeft, Pencil, Play, RefreshCw, Square, Trash2 } from '@lucide/vue';
+import { Activity, Archive, ArrowLeft, CircleAlert, Pencil, Play, RefreshCw, Square, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi } from '../../api/index';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'WorldDetails',
   components: {
     Activity,
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
     Archive,
     ArrowLeft,
     Badge,
@@ -100,6 +121,7 @@ export default {
     CardDescription,
     CardHeader,
     CardTitle,
+    CircleAlert,
     Empty,
     EmptyDescription,
     EmptyHeader,
@@ -108,7 +130,7 @@ export default {
     Pencil,
     Play,
     RefreshCw,
-    Spinner,
+    Skeleton,
     Square,
     Trash2,
     UiButton
@@ -116,6 +138,7 @@ export default {
   data() {
     return {
       loading: false,
+      loadError: '',
       roomId: null,
       worldId: null,
       world: {
@@ -232,6 +255,7 @@ export default {
     loadWorldData() {
       if (!this.roomId || !this.worldId) return;
       this.loading = true;
+      this.loadError = '';
       return Promise.all([
         roomApi.getRoomDetail(this.roomId),
         roomApi.getRoomWorlds(this.roomId)
@@ -246,6 +270,7 @@ export default {
           };
         })
         .catch(error => {
+          this.loadError = error.message || '无法读取世界详情';
           toast.error(`获取世界详情失败：${error.message}`);
         })
         .finally(() => { this.loading = false; });
@@ -273,8 +298,7 @@ export default {
 
 .page-header,
 .header-actions,
-.card-header,
-.loading-state {
+.card-header {
   display: flex;
   align-items: center;
 }
@@ -287,22 +311,25 @@ export default {
   border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .header-actions {
   gap: 8px;
 }
 
-.loading-state {
-  justify-content: center;
+.details-skeleton {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
   gap: 8px;
-  min-height: 48px;
-  margin-bottom: 16px;
-  color: var(--muted-foreground);
 }
 
 .details-layout {
@@ -356,7 +383,7 @@ export default {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: minmax(140px, 0.5fr) minmax(0, 1.5fr);
   gap: 12px;
 }
 
@@ -390,6 +417,7 @@ export default {
 }
 
 @media (max-width: 860px) {
+  .details-skeleton,
   .details-layout {
     grid-template-columns: 1fr;
   }
@@ -399,6 +427,10 @@ export default {
   .page-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
 
   .header-actions > * {

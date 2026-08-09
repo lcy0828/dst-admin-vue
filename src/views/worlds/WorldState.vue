@@ -1,13 +1,16 @@
 <template>
   <div class="world-state-page">
-    <div class="page-header">
-      <h2>世界状态信息</h2>
+    <header class="page-header">
+      <div>
+        <h1>世界状态</h1>
+        <p>查询世界的季节、时间、天气和洞穴状态。</p>
+      </div>
       <UiButton @click="refreshData" :disabled="loading || !selectedArchive || !selectedWorld">
         <Spinner v-if="loading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
         刷新
       </UiButton>
-    </div>
+    </header>
 
     <Card class="filter-card">
       <CardHeader>
@@ -54,7 +57,16 @@
       </CardContent>
     </Card>
 
-    <div v-if="loading" class="loading-state"><Spinner /><span>正在读取世界状态</span></div>
+    <Alert v-if="loadError" variant="destructive">
+      <TriangleAlert />
+      <AlertTitle>世界状态读取失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">重新加载</UiButton></AlertAction>
+    </Alert>
+
+    <div v-else-if="loading" class="state-skeleton" aria-busy="true" aria-label="正在读取世界状态">
+      <Skeleton v-for="row in 6" :key="row" class="h-20 w-full" />
+    </div>
 
     <Empty v-else-if="!worldState">
       <EmptyHeader>
@@ -182,6 +194,7 @@
 import { Activity, CircleHelp, CircleMinus, CloudRain, CloudSnow, Leaf, Moon, RefreshCw, Search, Snowflake, Sprout, Sun, Sunrise, Sunset, TriangleAlert, Zap } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import api from '@/api';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -192,12 +205,17 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Progress as UiProgress } from '@/components/ui/progress';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default {
   name: 'WorldState',
   components: {
     Activity,
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
     Badge,
     Card,
     CardContent,
@@ -225,12 +243,14 @@ export default {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    Skeleton,
     Spinner,
     TableBody,
     TableCell,
     TableHead,
     TableHeader,
     TableRow,
+    TriangleAlert,
     UiButton,
     UiProgress,
     UiSelect,
@@ -239,6 +259,7 @@ export default {
   data() {
     return {
       loading: false,
+      loadError: '',
       archives: [],
       selectedArchive: '',
       selectedWorld: '',
@@ -340,6 +361,7 @@ export default {
     // 获取存档列表
     fetchArchives() {
       this.loading = true;
+      this.loadError = '';
       api.worldApi.getWorldList()
         .then(response => {
           this.archives = Array.isArray(response.data) ? response.data : [];
@@ -354,6 +376,7 @@ export default {
           }
         })
         .catch(error => {
+          this.loadError = error.message || '获取存档列表失败';
           toast.error(`获取存档列表失败: ${error.message || '未知错误'}`);
         })
         .finally(() => {
@@ -374,6 +397,7 @@ export default {
       }
 
       this.loading = true;
+      this.loadError = '';
       api.worldApi.getWorldState({
         archive_name: this.selectedArchive,
         world_name: this.selectedWorld
@@ -391,6 +415,7 @@ export default {
           toast.success(response.msg || '获取世界状态信息成功');
         })
         .catch(error => {
+          this.loadError = error.message || '获取世界状态失败';
           toast.error(`获取世界状态失败: ${error.message || '未知错误'}`);
           this.worldState = null;
           this.detailsTableData = [];
@@ -403,6 +428,9 @@ export default {
     // 刷新数据
     refreshData() {
       this.fetchWorldState();
+    },
+    retryLoad() {
+      return this.selectedArchive && this.selectedWorld ? this.fetchWorldState() : this.fetchArchives();
     },
 
     // 切换显示原始数据
@@ -1139,7 +1167,6 @@ export default {
 }
 
 .page-header,
-.loading-state,
 .details-header,
 .details-filters,
 .raw-header {
@@ -1155,10 +1182,15 @@ export default {
   border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .filter-card {
@@ -1176,11 +1208,10 @@ export default {
   min-width: 90px;
 }
 
-.loading-state {
-  min-height: 180px;
-  justify-content: center;
+.state-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 8px;
-  color: var(--muted-foreground);
 }
 
 .state-content {

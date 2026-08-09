@@ -1,12 +1,15 @@
 <template>
   <div class="backups-page">
-    <div class="page-header">
-      <h2>备份管理</h2>
+    <header class="page-header">
+      <div>
+        <h1>备份管理</h1>
+        <p>创建、下载、恢复和删除房间存档备份。</p>
+      </div>
       <div class="header-actions">
         <UiButton @click="showCreateBackupDialog"><PlusIcon data-icon="inline-start" />创建备份</UiButton>
         <UiButton variant="outline" :disabled="loading" @click="refreshBackups"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCwIcon v-else data-icon="inline-start" />刷新</UiButton>
       </div>
-    </div>
+    </header>
     <Alert v-if="loadError" variant="destructive" class="load-error-alert">
       <TriangleAlertIcon />
       <AlertTitle>备份列表加载失败</AlertTitle>
@@ -21,14 +24,14 @@
       </CardHeader>
       <CardContent><div class="table-wrap"><ShadcnTable><TableHeader><TableRow><TableHead>备份名称</TableHead><TableHead>存档名称</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
         <TableRow v-for="backup in filteredBackups" :key="`${backup.archive_name}-${backup.name}`"><TableCell><div class="backup-name"><FileArchiveIcon />{{ backup.name }}</div></TableCell><TableCell>{{ backup.archive_name }}</TableCell><TableCell>{{ backup.size_formatted }}</TableCell><TableCell>{{ backup.create_time }}</TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><DownloadIcon data-icon="inline-start" />下载</UiButton><UiButton size="sm" @click="showRestoreDialog(backup)">恢复</UiButton><UiButton variant="destructive" size="sm" @click="confirmDeleteBackup(backup)">删除</UiButton></div></TableCell></TableRow>
-        <TableEmpty v-if="loading" :colspan="5"><Spinner />正在加载备份</TableEmpty>
+        <TableEmpty v-if="loading" :colspan="5"><div class="table-skeleton" aria-label="正在加载备份"><Skeleton v-for="row in 4" :key="row" class="h-10 w-full" /></div></TableEmpty>
         <TableEmpty v-else-if="!loadError && filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>暂无备份</EmptyTitle><EmptyDescription>当前存档还没有可用备份。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
       </TableBody></ShadcnTable></div></CardContent>
     </Card>
 
-    <UiDialog v-model:open="createDialogVisible"><DialogContent><DialogHeader><DialogTitle>创建存档备份</DialogTitle><DialogDescription>选择需要立即备份的房间存档。</DialogDescription></DialogHeader><Field><FieldLabel>存档</FieldLabel><UiSelect v-model="selectedArchive"><SelectTrigger><SelectValue placeholder="请选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archivesList" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><DialogFooter><UiButton variant="outline" @click="createDialogVisible = false">取消</UiButton><UiButton :disabled="createLoading" @click="createBackup"><Spinner v-if="createLoading" data-icon="inline-start" />创建</UiButton></DialogFooter></DialogContent></UiDialog>
+    <UiDialog v-model:open="createDialogVisible"><DialogContent><DialogHeader><DialogTitle>创建存档备份</DialogTitle><DialogDescription>选择需要立即备份的房间存档。</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel>存档</FieldLabel><UiSelect v-model="selectedArchive"><SelectTrigger><SelectValue placeholder="请选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archivesList" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup><DialogFooter><UiButton variant="outline" @click="createDialogVisible = false">取消</UiButton><UiButton :disabled="createLoading" @click="createBackup"><Spinner v-if="createLoading" data-icon="inline-start" />创建</UiButton></DialogFooter></DialogContent></UiDialog>
 
-    <UiDialog v-model:open="restoreDialogVisible"><DialogContent class="sm:max-w-xl"><DialogHeader><DialogTitle>恢复存档备份</DialogTitle><DialogDescription>选择覆盖原存档或恢复为新存档。</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="restoreDialogVisible"><DialogScrollContent class="sm:max-w-xl"><DialogHeader><DialogTitle>恢复存档备份</DialogTitle><DialogDescription>选择覆盖原存档或恢复为新存档。</DialogDescription></DialogHeader>
       <div class="restore-dialog-content">
         <div class="info-row">
           <span class="label">备份文件：</span>
@@ -53,7 +56,7 @@
           </div>
         </div>
       </div>
-      <DialogFooter><UiButton variant="outline" @click="restoreDialogVisible = false">取消</UiButton><UiButton :disabled="restoreLoading" @click="restoreBackup"><Spinner v-if="restoreLoading" data-icon="inline-start" />恢复</UiButton></DialogFooter></DialogContent></UiDialog>
+      <DialogFooter><UiButton variant="outline" @click="restoreDialogVisible = false">取消</UiButton><UiButton :disabled="restoreLoading" @click="restoreBackup"><Spinner v-if="restoreLoading" data-icon="inline-start" />恢复</UiButton></DialogFooter></DialogScrollContent></UiDialog>
   </div>
 </template>
 
@@ -63,14 +66,15 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/u
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldLabel } from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { confirmAction } from '@/lib/feedback'
 import { toast } from 'vue-sonner'
@@ -92,6 +96,7 @@ export default {
     DialogDescription,
     DialogFooter,
     DialogHeader,
+    DialogScrollContent,
     DialogTitle,
     DownloadIcon,
     Empty,
@@ -99,6 +104,7 @@ export default {
     EmptyHeader,
     EmptyTitle,
     Field,
+    FieldGroup,
     FieldLabel,
     FileArchiveIcon,
     PlusIcon,
@@ -112,6 +118,7 @@ export default {
     SelectValue,
     Separator,
     ShadcnTable,
+    Skeleton,
     Spinner,
     TableBody,
     TableCell,
@@ -375,25 +382,24 @@ export default {
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.backups-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
 }
 
 .card-header {
@@ -410,7 +416,7 @@ export default {
 
 .backup-name .legacy-icon {
   font-size: 16px;
-  color: var(--primary-color);
+  color: var(--primary);
 }
 
 .archive-filter {
@@ -426,6 +432,19 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-skeleton {
+  display: flex;
+  min-width: 520px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
 }
 
 /* 恢复对话框样式 */
@@ -479,8 +498,8 @@ export default {
 .new-archive-option {
   margin-top: 15px;
   padding: 15px;
-  background-color: var(--surface-muted);
-  border-radius: 4px;
+  background-color: var(--muted);
+  border-radius: var(--radius);
 }
 
 @media (max-width: 640px) {

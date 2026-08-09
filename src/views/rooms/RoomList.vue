@@ -1,7 +1,10 @@
 <template>
   <div class="world-settings-page">
-    <div class="page-header">
-      <h2>房间列表</h2>
+    <header class="page-header">
+      <div>
+        <h1>房间列表</h1>
+        <p>管理当前运行目标中的房间、世界和访问配置。</p>
+      </div>
       <div class="header-actions">
         <InputGroup class="search-input">
           <InputGroupAddon><Search /></InputGroupAddon>
@@ -14,7 +17,7 @@
         </UiButton>
         <UiButton @click="createRoom"><Plus data-icon="inline-start" />创建房间</UiButton>
       </div>
-    </div>
+    </header>
 
     <Alert v-if="loadError && !loading" variant="destructive" class="settings-card">
       <CircleAlert />
@@ -28,12 +31,9 @@
       </AlertDescription>
     </Alert>
 
-    <Card v-if="loading" class="settings-card">
-      <CardContent class="loading-page-content">
-        <Spinner />
-        <p>正在加载页面内容...</p>
-      </CardContent>
-    </Card>
+    <div v-if="loading" class="room-skeleton settings-card" aria-busy="true" aria-label="正在加载房间列表">
+      <Skeleton v-for="row in 6" :key="row" class="h-28 w-full" />
+    </div>
 
     <Empty v-else-if="!loadError && filteredRooms.length === 0" class="settings-card">
       <EmptyHeader>
@@ -167,6 +167,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { confirmAction } from '@/lib/feedback';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
@@ -220,6 +221,7 @@ export default {
     Plus,
     RefreshCw,
     Search,
+    Skeleton,
     Spinner,
     Square,
     UiButton,
@@ -543,10 +545,15 @@ export default {
   gap: 12px;
   margin-bottom: 16px;
 
-  h2 {
+  h1 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 24px;
+    font-weight: 650;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: var(--muted-foreground);
   }
 }
 
@@ -571,13 +578,10 @@ export default {
   gap: 12px;
 }
 
-.loading-page-content {
-  min-height: 180px;
-  justify-content: center;
-  color: var(--muted-foreground);
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.room-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
 }
 
 .save-list {

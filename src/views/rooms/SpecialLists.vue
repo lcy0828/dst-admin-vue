@@ -1,8 +1,9 @@
 <template>
   <div class="special-lists-page">
-    <div class="page-header" v-if="!savename">
-      <h2>特殊名单管理</h2>
-    </div>
+    <header class="page-header" v-if="!savename">
+      <h1>特殊名单</h1>
+      <p>维护房间管理员、黑名单和白名单。</p>
+    </header>
     
     <Tabs v-model="activeTab">
       <TabsList>
@@ -23,9 +24,8 @@
             </UiButton>
           </CardHeader>
           <CardContent>
-            <div v-if="loading[list.type]" class="loading-state">
-              <Spinner />
-              <span>正在加载名单</span>
+            <div v-if="loading[list.type]" class="list-skeleton" aria-busy="true" aria-label="正在加载名单">
+              <Skeleton v-for="row in 4" :key="row" class="h-11 w-full" />
             </div>
             <Alert v-else-if="errors[list.type]" variant="destructive">
               <CircleAlert />
@@ -117,6 +117,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirmAction } from '@/lib/feedback';
@@ -150,6 +151,7 @@ export default {
     FieldGroup,
     FieldLabel,
     UiInput,
+    Skeleton,
     Spinner,
     UiTable,
     TableBody,
@@ -504,13 +506,18 @@ export default {
 .page-header {
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .save-selector {
@@ -545,13 +552,10 @@ export default {
   gap: 12px;
 }
 
-.loading-state {
+.list-skeleton {
   display: flex;
-  min-height: 160px;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: 8px;
-  color: var(--muted-foreground);
 }
 
 .list-header > div {

@@ -1,7 +1,10 @@
 <template>
   <div class="world-list-page">
-    <div class="page-header">
-      <h2>世界列表</h2>
+    <header class="page-header">
+      <div>
+        <h1>世界列表</h1>
+        <p>按房间筛选世界分片，并管理运行状态和配置。</p>
+      </div>
       <div class="header-actions">
         <InputGroup class="search-input">
           <InputGroupAddon><Search /></InputGroupAddon>
@@ -9,7 +12,14 @@
         </InputGroup>
         <UiButton @click="createWorld"><Plus data-icon="inline-start" />创建世界</UiButton>
       </div>
-    </div>
+    </header>
+
+    <Alert v-if="loadError" variant="destructive" class="load-error">
+      <CircleAlert />
+      <AlertTitle>世界列表加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="refreshWorlds(true)">重新加载</UiButton></AlertAction>
+    </Alert>
 
     <div class="world-layout">
       <aside class="sidebar-container">
@@ -49,7 +59,9 @@
             <AlertAction><UiButton variant="ghost" size="sm" @click="selectedRoom = null">查看全部</UiButton></AlertAction>
           </Alert>
 
-          <div v-if="loading" class="loading-state"><Spinner /><span>正在加载世界列表</span></div>
+          <div v-if="loading" class="world-skeleton" aria-busy="true" aria-label="正在加载世界列表">
+            <Skeleton v-for="row in 6" :key="row" class="h-12 w-full" />
+          </div>
 
           <div v-else-if="filteredWorlds.length > 0" class="table-wrap">
             <UiTable>
@@ -156,7 +168,7 @@
 </template>
 
 <script>
-import { Globe2, Info, MoreHorizontal, Plus, RefreshCw, Search } from '@lucide/vue';
+import { CircleAlert, Globe2, Info, MoreHorizontal, Plus, RefreshCw, Search } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '../../api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -171,6 +183,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
 import RoomCategories from '../../components/worlds/RoomCategories.vue';
@@ -188,6 +201,7 @@ export default {
     CardDescription,
     CardHeader,
     CardTitle,
+    CircleAlert,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -229,6 +243,7 @@ export default {
     SelectTrigger,
     SelectValue,
     Spinner,
+    Skeleton,
     TableBody,
     TableCell,
     TableHead,
@@ -242,6 +257,7 @@ export default {
   data() {
     return {
       loading: false,
+      loadError: '',
       searchQuery: '',
       currentCategory: 'all',
       rooms: [], // 房间列表
@@ -410,6 +426,7 @@ export default {
       this.isRefreshing = true;
       this.lastRefreshTime = now;
       this.loading = true;
+      this.loadError = '';
       console.log("开始获取世界列表");
 
       // 加载房间列表
@@ -465,6 +482,7 @@ export default {
         })
         .catch(error => {
           console.error('获取世界列表失败:', error);
+          this.loadError = error.message || '获取世界列表失败';
           toast.error('获取世界列表失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
@@ -662,7 +680,7 @@ export default {
 .card-header,
 .list-actions,
 .row-actions,
-.loading-state {
+.world-skeleton {
   display: flex;
   align-items: center;
 }
@@ -675,10 +693,15 @@ export default {
   border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .header-actions,
@@ -715,11 +738,13 @@ export default {
   margin-bottom: 12px;
 }
 
-.loading-state {
-  min-height: 220px;
-  justify-content: center;
+.world-skeleton {
+  flex-direction: column;
   gap: 8px;
-  color: var(--muted-foreground);
+}
+
+.load-error {
+  margin-bottom: 16px;
 }
 
 .table-wrap {

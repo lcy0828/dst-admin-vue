@@ -1,8 +1,8 @@
 <template>
   <div class="room-settings-page">
-    <div class="page-header">
+    <header class="page-header">
       <div class="title-section">
-        <h2>{{ isEdit ? '编辑房间' : '创建房间' }}</h2>
+        <h1>{{ isEdit ? '编辑房间' : '创建房间' }}</h1>
         <p>{{ isEdit ? '修改现有房间配置' : '创建全新的游戏房间' }}</p>
       </div>
       <div class="header-actions">
@@ -13,7 +13,7 @@
           保存
         </UiButton>
       </div>
-    </div>
+    </header>
 
     <input ref="fileInput" type="file" accept=".ini" class="sr-only" @change="handleFileChange" />
 
@@ -670,10 +670,10 @@ export default {
 }
 
 .title-section {
-  h2 {
+  h1 {
     margin: 0;
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 24px;
+    font-weight: 650;
   }
 
   p {

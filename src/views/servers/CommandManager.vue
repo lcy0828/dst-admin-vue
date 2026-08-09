@@ -1,5 +1,24 @@
 <template>
   <div class="command-manager-page">
+    <header class="page-header">
+      <div>
+        <h1>命令管理</h1>
+        <p>向世界分片执行 Lua 命令，并维护可复用的命令模板。</p>
+      </div>
+      <UiButton size="sm" variant="outline" :disabled="loading" @click="reloadCommandData">
+        <Spinner v-if="loading" data-icon="inline-start" />
+        <RefreshCw v-else data-icon="inline-start" />
+        刷新
+      </UiButton>
+    </header>
+
+    <Alert v-if="loadError" variant="destructive">
+      <CircleAlert />
+      <AlertTitle>命令数据加载失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="reloadCommandData">重新加载</UiButton></AlertAction>
+    </Alert>
+
     <Card>
       <CardHeader class="card-header-row"><div><CardTitle>执行命令</CardTitle><CardDescription>使用结构化模板或直接向分片发送 Lua 命令。</CardDescription></div><ToggleGroup v-model="commandMode" type="single"><ToggleGroupItem value="structured">结构化命令</ToggleGroupItem><ToggleGroupItem value="raw">原始命令</ToggleGroupItem></ToggleGroup></CardHeader>
       <CardContent class="content-stack">
@@ -25,7 +44,7 @@
           <Field><FieldLabel>选择服务器</FieldLabel><UiSelect v-model="rawCommandForm.server"><SelectTrigger class="w-full"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="server in servers" :key="server.id" :value="server.session_name">{{ server.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           <Field><FieldLabel for="raw-command">命令内容</FieldLabel><UiTextarea id="raw-command" v-model="rawCommandForm.command" rows="4" placeholder="请输入原始命令，例如：c_announce('欢迎来到服务器')" /></Field>
           <div class="form-actions"><UiButton :disabled="executing" @click="executeRawCommand"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行命令</UiButton>
-            <Popover><PopoverTrigger as-child><UiButton variant="outline"><BookOpen data-icon="inline-start" />常用命令</UiButton></PopoverTrigger><PopoverContent class="common-command-popover"><Field><FieldLabel class="sr-only" for="command-search">搜索命令</FieldLabel><UiInput id="command-search" v-model="commandSearch" placeholder="搜索命令" /></Field><div class="common-command-list"><button v-for="command in filteredCommonCommands" :key="command.command" type="button" @click="applyCommonCommand(command.command)"><strong>{{ command.name }}</strong><span>{{ command.description }}</span></button></div></PopoverContent></Popover>
+            <Popover><PopoverTrigger as-child><UiButton variant="outline"><BookOpen data-icon="inline-start" />常用命令</UiButton></PopoverTrigger><PopoverContent class="common-command-popover"><Field><FieldLabel class="sr-only" for="command-search">搜索命令</FieldLabel><UiInput id="command-search" v-model="commandSearch" placeholder="搜索命令" /></Field><div class="common-command-list"><UiButton v-for="command in filteredCommonCommands" :key="command.command" variant="ghost" class="common-command-item" @click="applyCommonCommand(command.command)"><strong>{{ command.name }}</strong><span>{{ command.description }}</span></UiButton></div></PopoverContent></Popover>
             <UiButton variant="outline" @click="showBatchCommandDialog"><ListPlus data-icon="inline-start" />批量命令</UiButton>
           </div>
         </FieldGroup>
@@ -40,8 +59,11 @@
       <CardHeader class="card-header-row"><div><CardTitle>服务器命令管理</CardTitle><CardDescription>维护自定义 Lua 命令及参数定义。</CardDescription></div><div class="form-actions"><UiButton size="sm" variant="outline" @click="exportCommands"><Download data-icon="inline-start" />导出</UiButton><UiButton size="sm" variant="outline" @click="importCommands"><Upload data-icon="inline-start" />导入</UiButton><UiButton size="sm" @click="showAddCommandDialog"><Plus data-icon="inline-start" />添加命令</UiButton></div></CardHeader>
       <CardContent class="content-stack">
         <ToggleGroup :model-value="currentType || '__all'" type="single" class="type-filter" @update:model-value="filterCommandsByType($event === '__all' ? '' : $event)"><ToggleGroupItem value="__all">全部命令</ToggleGroupItem><ToggleGroupItem v-for="type in commandTypes" :key="type" :value="type">{{ type }}</ToggleGroupItem></ToggleGroup>
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在读取命令...</span></div>
-        <ShadcnTable v-else><TableHeader><TableRow><TableHead>命令名称</TableHead><TableHead>命令类型</TableHead><TableHead>命令描述</TableHead><TableHead>内置命令</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="command in displayCommands" :key="command.id"><TableCell class="font-medium">{{ command.name }}</TableCell><TableCell>{{ command.type || command.category }}</TableCell><TableCell>{{ command.description }}</TableCell><TableCell><Badge :variant="command.isBuiltin || command.is_builtin ? 'default' : 'outline'">{{ command.isBuiltin || command.is_builtin ? '是' : '否' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton size="xs" variant="outline" :disabled="command.isBuiltin || command.is_builtin" @click="editCommand(command)"><Pencil data-icon="inline-start" />编辑</UiButton><UiButton size="xs" variant="destructive" :disabled="command.isBuiltin || command.is_builtin" @click="handleDelete(command)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow></TableBody></ShadcnTable>
+        <div v-if="loading" class="command-skeleton" aria-busy="true" aria-label="正在读取命令">
+          <Skeleton v-for="row in 5" :key="row" class="h-12 w-full" />
+        </div>
+        <div v-else-if="displayCommands.length" class="table-wrap"><ShadcnTable><TableHeader><TableRow><TableHead>命令名称</TableHead><TableHead>命令类型</TableHead><TableHead>命令描述</TableHead><TableHead>内置命令</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="command in displayCommands" :key="command.id"><TableCell class="font-medium">{{ command.name }}</TableCell><TableCell>{{ command.type || command.category }}</TableCell><TableCell>{{ command.description }}</TableCell><TableCell><Badge :variant="command.isBuiltin || command.is_builtin ? 'default' : 'outline'">{{ command.isBuiltin || command.is_builtin ? '是' : '否' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton size="xs" variant="outline" :disabled="command.isBuiltin || command.is_builtin" @click="editCommand(command)"><Pencil data-icon="inline-start" />编辑</UiButton><UiButton size="xs" variant="destructive" :disabled="command.isBuiltin || command.is_builtin" @click="handleDelete(command)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow></TableBody></ShadcnTable></div>
+        <Empty v-else-if="!loadError"><EmptyHeader><EmptyMedia variant="icon"><SquareTerminal /></EmptyMedia><EmptyTitle>当前分类没有命令</EmptyTitle><EmptyDescription>切换分类，或添加新的自定义命令。</EmptyDescription></EmptyHeader></Empty>
       </CardContent>
     </Card>
 
@@ -51,7 +73,7 @@
       <Field><FieldLabel for="command-description">命令描述</FieldLabel><UiTextarea id="command-description" v-model="commandForm.description" rows="2" placeholder="请输入命令描述" /></Field>
       <Field><FieldLabel for="command-script">命令脚本</FieldLabel><UiTextarea id="command-script" v-model="commandForm.command" rows="5" placeholder="请输入 Lua 命令脚本，例如: c_announce('Hello World')" /></Field>
       <Field orientation="horizontal"><UiSwitch id="command-parameterized" v-model="commandForm.parameterized" @update:model-value="handleParamSwitch" /><FieldLabel for="command-parameterized">包含参数</FieldLabel></Field>
-      <template v-if="commandForm.parameterized"><Separator /><div v-for="(param, index) in commandForm.parameters" :key="index" class="parameter-editor"><div class="parameter-grid"><Field><FieldLabel :for="`param-name-${index}`">参数名</FieldLabel><UiInput :id="`param-name-${index}`" v-model="param.name" placeholder="message" /></Field><Field><FieldLabel :for="`param-label-${index}`">标签</FieldLabel><UiInput :id="`param-label-${index}`" v-model="param.label" placeholder="消息内容" /></Field><Field><FieldLabel>类型</FieldLabel><UiSelect v-model="param.type"><SelectTrigger class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="string">字符串</SelectItem><SelectItem value="number">数字</SelectItem><SelectItem value="boolean">布尔值</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel :for="`param-default-${index}`">默认值</FieldLabel><UiInput :id="`param-default-${index}`" v-model="param.default" placeholder="默认值" /></Field><Field orientation="horizontal"><UiSwitch :id="`param-required-${index}`" v-model="param.required" /><FieldLabel :for="`param-required-${index}`">必填</FieldLabel></Field><UiButton size="icon" variant="destructive" aria-label="删除参数" @click="removeParam(index)"><Trash2 /></UiButton></div></div><UiButton variant="outline" @click="addParameter"><Plus data-icon="inline-start" />添加参数</UiButton></template>
+      <template v-if="commandForm.parameterized"><Separator /><div v-for="(param, index) in commandForm.parameters" :key="index" class="parameter-editor"><div class="parameter-grid"><Field><FieldLabel :for="`param-name-${index}`">参数名</FieldLabel><UiInput :id="`param-name-${index}`" v-model="param.name" placeholder="message" /></Field><Field><FieldLabel :for="`param-label-${index}`">标签</FieldLabel><UiInput :id="`param-label-${index}`" v-model="param.label" placeholder="消息内容" /></Field><Field><FieldLabel>类型</FieldLabel><UiSelect v-model="param.type"><SelectTrigger class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="string">字符串</SelectItem><SelectItem value="number">数字</SelectItem><SelectItem value="boolean">布尔值</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel :for="`param-default-${index}`">默认值</FieldLabel><UiInput :id="`param-default-${index}`" v-model="param.default" placeholder="默认值" /></Field><Field orientation="horizontal"><UiSwitch :id="`param-required-${index}`" v-model="param.required" /><FieldLabel :for="`param-required-${index}`">必填</FieldLabel></Field><UiButton size="icon" variant="destructive" aria-label="删除参数" title="删除参数" @click="removeParam(index)"><Trash2 /></UiButton></div></div><UiButton variant="outline" @click="addParameter"><Plus data-icon="inline-start" />添加参数</UiButton></template>
     </FieldGroup><DialogFooter><UiButton variant="outline" @click="dialogVisible = false">取消</UiButton><UiButton @click="submitForm">确定</UiButton></DialogFooter></DialogContent></UiDialog>
 
     <input
@@ -73,21 +95,24 @@
 
 <script>
 import {
-  BookOpen, CircleAlert, CircleCheck, Download, ListPlus, Pencil, Play, Plus, Trash2, Upload
+  BookOpen, CircleAlert, CircleCheck, Download, ListPlus, Pencil, Play, Plus, RefreshCw,
+  SquareTerminal, Trash2, Upload
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { commandManager, commandApi, COMMAND_TYPES } from '@/api';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress as UiProgress } from '@/components/ui/progress';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -98,17 +123,19 @@ import { confirmAction, promptText } from '@/lib/feedback';
 export default {
   name: 'CommandManager',
   components: {
-    Alert, AlertDescription, AlertTitle, Badge, BookOpen, Card, CardContent, CardDescription,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, BookOpen, Card, CardContent, CardDescription,
     CardHeader, CardTitle, CircleAlert, CircleCheck, DialogContent, DialogDescription, DialogFooter,
-    DialogHeader, DialogTitle, Download, Field, FieldDescription, FieldGroup, FieldLabel, ListPlus,
-    Pencil, Play, Plus, Popover, PopoverContent, PopoverTrigger, SelectContent, SelectGroup,
-    SelectItem, SelectLabel, SelectTrigger, SelectValue, Separator, ShadcnTable, Spinner, TableBody,
-    TableCell, TableHead, TableHeader, TableRow, ToggleGroup, ToggleGroupItem, Trash2, UiButton,
+    DialogHeader, DialogTitle, Download, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
+    Field, FieldDescription, FieldGroup, FieldLabel, ListPlus,
+    Pencil, Play, Plus, Popover, PopoverContent, PopoverTrigger, RefreshCw, SelectContent, SelectGroup,
+    SelectItem, SelectLabel, SelectTrigger, SelectValue, Separator, ShadcnTable, Skeleton, Spinner, TableBody,
+    SquareTerminal, TableCell, TableHead, TableHeader, TableRow, ToggleGroup, ToggleGroupItem, Trash2, UiButton,
     UiDialog, UiInput, UiProgress, UiSelect, UiSwitch, UiTextarea, Upload
   },
   data() {
     return {
       loading: false,
+      loadError: '',
       commands: [],
       displayCommands: [],
       currentType: '',
@@ -296,6 +323,7 @@ export default {
   methods: {
     async fetchCommands() {
       this.loading = true;
+      this.loadError = '';
       try {
         const response = await commandApi.getAllCommands();
         this.commands = response.items;
@@ -303,10 +331,15 @@ export default {
       } catch (error) {
         this.commands = [];
         this.displayCommands = [];
+        this.loadError = error.message || '获取命令列表失败';
         toast.error('获取命令列表失败: ' + error.message);
       } finally {
         this.loading = false;
       }
+    },
+
+    async reloadCommandData() {
+      await Promise.all([this.fetchCommands(), this.fetchServers()]);
     },
 
     filterCommandsByType(type) {
@@ -492,6 +525,7 @@ export default {
         this.servers = await commandApi.getServers();
       } catch (error) {
         this.servers = [];
+        this.loadError = error.message || '获取服务器列表失败';
         toast.error('获取服务器列表失败: ' + error.message);
       }
     },
@@ -852,6 +886,7 @@ export default {
   min-width: 0;
 }
 
+.page-header,
 .card-header-row,
 .form-actions,
 .section-heading,
@@ -862,6 +897,22 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.page-header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .card-header-row,
@@ -914,21 +965,15 @@ export default {
   overflow-y: auto;
 }
 
-.common-command-list button {
+.common-command-item {
   display: flex;
+  height: auto;
   flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
   padding: 8px;
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--foreground);
+  white-space: normal;
   text-align: left;
-  cursor: pointer;
-}
-
-.common-command-list button:hover {
-  background: var(--accent);
 }
 
 .common-command-list span {
@@ -949,10 +994,15 @@ export default {
   white-space: nowrap;
 }
 
-.loading-state {
-  justify-content: center;
-  min-height: 180px;
-  color: var(--muted-foreground);
+.command-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
 }
 
 .wide-dialog {
@@ -996,6 +1046,7 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .page-header,
   .card-header-row,
   .section-heading {
     align-items: stretch;

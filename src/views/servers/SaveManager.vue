@@ -1,14 +1,23 @@
 <template>
   <div class="page-container">
+    <header class="page-header">
+      <div>
+        <h1>存档管理</h1>
+        <p>创建、恢复、下载和上传房间备份。</p>
+      </div>
+      <UiButton size="sm" variant="outline" :disabled="loading || !selectedServer" @click="refreshData">
+        <Spinner v-if="loading" data-icon="inline-start" />
+        <RefreshCw v-else data-icon="inline-start" />
+        刷新
+      </UiButton>
+    </header>
+
     <Card class="main-card">
       <CardHeader class="card-header">
         <div>
-          <CardTitle>存档管理</CardTitle>
-          <CardDescription>创建、恢复、下载和上传房间备份。</CardDescription>
+          <CardTitle>房间备份</CardTitle>
+          <CardDescription>先选择房间，再管理后端返回的真实备份文件。</CardDescription>
         </div>
-        <UiButton size="sm" variant="outline" :disabled="loading" @click="refreshData">
-          <RefreshCw data-icon="inline-start" />刷新
-        </UiButton>
       </CardHeader>
       <CardContent class="content-stack">
         <Field class="server-select-wrapper">
@@ -23,26 +32,35 @@
           </UiSelect>
         </Field>
 
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在更新存档数据...</span></div>
-        <Empty v-else-if="!selectedServer">
+        <Alert v-if="loadError" variant="destructive">
+          <CircleAlert />
+          <AlertTitle>存档数据读取失败</AlertTitle>
+          <AlertDescription>{{ loadError }}</AlertDescription>
+          <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">重新加载</UiButton></AlertAction>
+        </Alert>
+
+        <div v-if="loading" class="save-skeleton" aria-busy="true" aria-label="正在更新存档数据">
+          <Skeleton v-for="row in 5" :key="row" class="h-12 w-full" />
+        </div>
+        <Empty v-else-if="!selectedServer && !loadError">
           <EmptyHeader>
             <EmptyMedia variant="icon"><FolderOpen /></EmptyMedia>
             <EmptyTitle>请选择一个服务器</EmptyTitle>
             <EmptyDescription>选择服务器后即可管理对应房间的存档。</EmptyDescription>
           </EmptyHeader>
         </Empty>
-        <template v-else>
+        <template v-else-if="!loadError">
           <div class="tool-bar">
             <UiButton @click="uploadDialogVisible = true"><Upload data-icon="inline-start" />上传存档</UiButton>
             <UiButton variant="outline" @click="createBackup"><ArchiveRestore data-icon="inline-start" />创建备份</UiButton>
             <UiButton variant="outline" :disabled="!hasSelection" @click="downloadSelected"><Download data-icon="inline-start" />下载所选</UiButton>
             <UiButton variant="destructive" :disabled="!hasSelection" @click="deleteSelected"><Trash2 data-icon="inline-start" />删除所选</UiButton>
           </div>
+          <div v-if="savesList.length" class="table-wrap">
           <ShadcnTable>
             <TableHeader><TableRow>
               <TableHead class="selection-cell"><span class="sr-only">选择</span></TableHead>
-              <TableHead>存档名称</TableHead><TableHead>大小</TableHead><TableHead>游戏天数</TableHead>
-              <TableHead>季节</TableHead><TableHead>玩家数</TableHead><TableHead>创建时间</TableHead><TableHead>操作</TableHead>
+              <TableHead>存档名称</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead>操作</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               <TableRow v-for="save in savesList" :key="save.id">
@@ -50,9 +68,7 @@
                   <UiCheckbox :model-value="isSaveSelected(save)" :aria-label="`选择 ${save.name}`" @update:model-value="toggleSaveSelection(save, $event)" />
                 </TableCell>
                 <TableCell><div class="save-name"><FileArchive /><span>{{ save.name }}</span><Badge v-if="save.isCurrent">当前存档</Badge></div></TableCell>
-                <TableCell>{{ save.size }}</TableCell><TableCell>{{ save.days }}</TableCell>
-                <TableCell><Badge variant="secondary">{{ save.season }}</Badge></TableCell>
-                <TableCell>{{ save.players }}</TableCell><TableCell>{{ save.createdAt }}</TableCell>
+                <TableCell>{{ save.size }}</TableCell><TableCell>{{ save.createdAt }}</TableCell>
                 <TableCell><div class="table-actions">
                   <UiButton size="xs" variant="ghost" :disabled="save.isCurrent" @click="handleActivate(save)">加载</UiButton>
                   <UiButton size="xs" variant="ghost" @click="handleRename(save)">重命名</UiButton>
@@ -62,6 +78,14 @@
               </TableRow>
             </TableBody>
           </ShadcnTable>
+          </div>
+          <Empty v-if="savesList.length === 0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><FolderOpen /></EmptyMedia>
+              <EmptyTitle>当前房间还没有备份</EmptyTitle>
+              <EmptyDescription>创建首个备份，或上传已有的 ZIP 存档。</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         </template>
       </CardContent>
     </Card>
@@ -102,9 +126,10 @@
 </template>
 
 <script>
-import { ArchiveRestore, Download, FileArchive, FolderOpen, RefreshCw, Trash2, Upload } from '@lucide/vue';
+import { ArchiveRestore, CircleAlert, Download, FileArchive, FolderOpen, RefreshCw, Trash2, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { backupsV2API, jobsV2API, roomsV2API } from '@/api/v2';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -115,6 +140,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input as UiInput } from '@/components/ui/input';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
@@ -124,17 +150,19 @@ const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled']);
 export default {
   name: 'SaveManager',
   components: {
-    ArchiveRestore, Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, DialogContent,
+    Alert, AlertAction, AlertDescription, AlertTitle, ArchiveRestore, Badge, Card, CardContent,
+    CardDescription, CardHeader, CardTitle, CircleAlert, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Download, Empty, EmptyDescription,
     EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldDescription, FieldGroup,
     FieldLabel, FileArchive, FolderOpen, RefreshCw, SelectContent, SelectGroup, SelectItem, SelectTrigger,
-    SelectValue, ShadcnTable, Spinner, TableBody, TableCell, TableHead, TableHeader, TableRow, Trash2,
+    SelectValue, ShadcnTable, Skeleton, Spinner, TableBody, TableCell, TableHead, TableHeader, TableRow, Trash2,
     UiButton, UiCheckbox, UiDialog, UiInput, UiSelect, UiSwitch, Upload
   },
   data() {
     return {
       loading: false,
       selectedServer: null,
+      loadError: '',
       serverList: [],
       savesList: [],
       selectedSaves: [],
@@ -160,6 +188,7 @@ export default {
   methods: {
     async loadRooms() {
       this.loading = true;
+      this.loadError = '';
       try {
         const response = await roomsV2API.list();
         const rooms = (response.items || []).filter(room => room.managed);
@@ -177,6 +206,7 @@ export default {
         }
       } catch (error) {
         this.serverList = [];
+        this.loadError = error.message || '读取房间列表失败';
         toast.error(error.message || '读取房间列表失败');
       } finally {
         this.loading = false;
@@ -194,15 +224,13 @@ export default {
     },
     async loadServerSaves(serverId) {
       this.loading = true;
+      this.loadError = '';
       try {
         const response = await backupsV2API.list(serverId);
         this.savesList = (response.items || []).map(backup => ({
           id: backup.id,
           name: backup.name,
           size: this.formatBytes(backup.size),
-          days: '--',
-          season: '--',
-          players: '--',
           createdAt: this.formatDate(backup.createdAt),
           isCurrent: false,
           raw: backup
@@ -210,10 +238,14 @@ export default {
         this.selectedSaves = [];
       } catch (error) {
         this.savesList = [];
+        this.loadError = error.message || '读取备份列表失败';
         toast.error(error.message || '读取备份列表失败');
       } finally {
         this.loading = false;
       }
+    },
+    retryLoad() {
+      return this.selectedServer ? this.loadServerSaves(this.selectedServer) : this.loadRooms();
     },
     isSaveSelected(save) {
       return this.selectedSaves.some(item => item.id === save.id);
@@ -404,14 +436,32 @@ export default {
   min-width: 0;
 }
 
+.page-header,
 .card-header,
 .tool-bar,
 .save-name,
 .table-actions,
-.loading-state,
 .file-drop {
   display: flex;
   align-items: center;
+}
+
+.page-header {
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .card-header {
@@ -438,7 +488,6 @@ export default {
 .tool-bar,
 .table-actions,
 .save-name,
-.loading-state,
 .file-drop {
   gap: 8px;
 }
@@ -458,11 +507,15 @@ export default {
   width: 42px;
 }
 
-.loading-state {
-  justify-content: center;
-  min-height: 180px;
-  color: var(--muted-foreground);
-  font-size: 13px;
+.save-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
 }
 
 .file-drop {
@@ -477,6 +530,7 @@ export default {
 }
 
 @media (max-width: 640px) {
+  .page-header,
   .card-header {
     align-items: stretch;
     flex-direction: column;

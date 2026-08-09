@@ -31,20 +31,20 @@
     </div>
     <div class="action-buttons">
       <UiButton
-        @click="$emit('save')" 
+        variant="outline"
+        @click="$emit('reset')"
+        :disabled="loading || saveLoading || !hasChanges"
+      >
+        <RotateCcwIcon data-icon="inline-start" />
+        重置
+      </UiButton>
+      <UiButton
+        @click="$emit('save')"
         :disabled="loading || saveLoading || !hasChanges"
       >
         <Spinner v-if="saveLoading" data-icon="inline-start" />
         <CheckIcon v-else data-icon="inline-start" />
         保存设置
-      </UiButton>
-      <UiButton
-        variant="outline"
-        @click="$emit('reset')" 
-        :disabled="loading || saveLoading || !hasChanges"
-      >
-        <RotateCcwIcon data-icon="inline-start" />
-        重置
       </UiButton>
     </div>
   </div>
@@ -117,6 +117,7 @@ export default {
   min-width: 0;
   align-items: center;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .action-buttons {
@@ -129,9 +130,7 @@ export default {
 }
 
 .view-changes-btn {
-  margin-left: 15px;
-  color: var(--warning-color);
-  transition: color 0.3s;
+  margin-left: 0;
 }
 
 .changes-popover {
@@ -145,7 +144,7 @@ export default {
 
 .change-item {
   padding: 8px 0;
-  border-bottom: 1px dashed var(--border-color);
+  border-bottom: 1px dashed var(--border);
 }
 
 .change-item:last-child {
@@ -164,13 +163,13 @@ export default {
 }
 
 .old-value {
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   text-decoration: line-through;
 }
 
 .change-item-values svg {
   margin: 0 8px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
 }
 
 .new-value {

@@ -33,20 +33,31 @@
             </SelectGroup>
           </SelectContent>
         </UiSelect>
-        <div class="search-wrapper">
-          <Search />
-          <UiInput v-model="searchQuery" placeholder="搜索日志" aria-label="搜索日志" />
-        </div>
+        <InputGroup class="search-wrapper">
+          <InputGroupAddon><Search /></InputGroupAddon>
+          <InputGroupInput v-model="searchQuery" placeholder="搜索日志" aria-label="搜索日志" />
+        </InputGroup>
       </div>
+
+      <Alert v-if="streamError" variant="destructive">
+        <CircleAlert />
+        <AlertTitle>日志流连接失败</AlertTitle>
+        <AlertDescription>{{ streamError }}</AlertDescription>
+        <AlertAction><UiButton size="sm" variant="outline" @click="refreshLogs">重新连接</UiButton></AlertAction>
+      </Alert>
+
+      <Empty v-if="logs.length === 0 && !loading && !streamError" class="log-empty">
+        <EmptyHeader>
+          <EmptyMedia variant="icon"><Info /></EmptyMedia>
+          <EmptyTitle>暂无日志记录</EmptyTitle>
+          <EmptyDescription>日志流连接后，新日志会显示在这里。</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
       
-      <div class="log-content" ref="logContent">
+      <div v-else class="log-content" ref="logContent">
         <div v-if="loading" class="log-loading">
           <Spinner />
           <span>正在连接日志流...</span>
-        </div>
-        <div v-if="logs.length === 0 && !loading" class="no-logs-message">
-          <Info />
-          <span>暂无日志记录</span>
         </div>
         <div v-else-if="logs.length > 0">
           <div class="log-info-row">已加载 {{ logs.length }} 行日志</div>
@@ -70,21 +81,25 @@
 </template>
 
 <script>
-import { Download, Info, RefreshCw, Search, X } from '@lucide/vue';
+import { CircleAlert, Download, Info, RefreshCw, Search, X } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldLabel } from '@/components/ui/field';
-import { Input as UiInput } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 
 export default {
   name: 'LogViewer',
   components: {
-    UiButton, UiCheckbox, Download, Field, FieldLabel, Info, UiInput, RefreshCw, Search, UiSelect, SelectContent,
-    SelectGroup, SelectItem, SelectTrigger, SelectValue, Spinner, X
+    Alert, AlertAction, AlertDescription, AlertTitle, CircleAlert, Download, Empty, EmptyDescription,
+    EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldLabel, Info, InputGroup, InputGroupAddon,
+    InputGroupInput, RefreshCw, Search, SelectContent, SelectGroup, SelectItem, SelectTrigger,
+    SelectValue, Spinner, UiButton, UiCheckbox, UiSelect, X
   },
   props: {
     archiveName: {
@@ -112,6 +127,7 @@ export default {
     return {
       logs: [],
       loading: false,
+      streamError: '',
       selectedWorld: this.defaultWorld || (this.worlds.length > 0 ? this.worlds[0].name : ''),
       searchQuery: '',
       autoScroll: true,
@@ -145,6 +161,7 @@ export default {
       }
       
       this.loading = true;
+      this.streamError = '';
       console.log('正在获取日志...', this.archiveName, this.selectedWorld);
       
       // 清空现有日志
@@ -165,6 +182,7 @@ export default {
         eventSource.addEventListener('open', () => {
           console.log('SSE连接已建立');
           this.loading = false;
+          this.streamError = '';
           this.logs.push('[系统] 已连接到日志流');
         });
         
@@ -209,12 +227,14 @@ export default {
           
           if (this.eventSource) {
             this.logs.push('[错误] 日志流连接断开');
+            this.streamError = '日志流连接已断开，请检查世界运行状态后重新连接。';
             this.loading = false;
             this.closeEventSource();
           }
         });
       } catch (error) {
         console.error('创建EventSource失败:', error);
+        this.streamError = error.message || '无法创建日志流连接';
         toast.error('连接日志流失败: ' + error.message);
         this.loading = false;
       }
@@ -301,9 +321,9 @@ export default {
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .log-header {
@@ -312,8 +332,8 @@ export default {
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  background-color: var(--surface-muted);
-  border-bottom: 1px solid var(--border-color);
+  background-color: var(--muted);
+  border-bottom: 1px solid var(--border);
 }
 
 .log-title {
@@ -329,13 +349,14 @@ export default {
 
 .log-subtitle {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
 }
 
 .log-content-wrapper {
   display: flex;
   flex-direction: column;
   flex: 1;
+  gap: 10px;
   padding: 12px 14px 14px;
   overflow: hidden;
 }
@@ -351,23 +372,7 @@ export default {
 }
 
 .search-wrapper {
-  position: relative;
   width: 220px;
-}
-
-.search-wrapper > svg {
-  position: absolute;
-  top: 50%;
-  left: 10px;
-  width: 16px;
-  height: 16px;
-  color: var(--muted-foreground);
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.search-wrapper input {
-  padding-left: 34px;
 }
 
 .log-content {
@@ -428,19 +433,9 @@ export default {
   margin-top: 10px;
 }
 
-.no-logs-message {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: var(--text-secondary);
-}
-
-.no-logs-message svg {
-  width: 30px;
-  height: 30px;
-  margin-bottom: 10px;
+.log-empty {
+  min-height: 240px;
+  border: 1px dashed var(--border);
 }
 
 .log-loading {

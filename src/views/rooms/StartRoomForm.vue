@@ -49,7 +49,7 @@
       
       <div class="form-actions">
         <UiButton variant="outline" @click="$emit('close')">取消</UiButton>
-        <UiButton @click="handleConfirm" :disabled="loading">
+        <UiButton @click="handleConfirm" :disabled="loading || selectedWorlds.length === 0">
           <Spinner v-if="loading" data-icon="inline-start" />
           启动
         </UiButton>

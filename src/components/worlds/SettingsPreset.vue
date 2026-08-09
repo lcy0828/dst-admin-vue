@@ -1,10 +1,10 @@
 <template>
   <div class="presets-section">
     <div class="preset-title">
-      <span>快速预设：</span>
+      <span>快速预设</span>
       <Tooltip>
         <TooltipTrigger as-child>
-          <UiButton variant="ghost" size="icon-xs" aria-label="查看预设说明"><CircleHelpIcon /></UiButton>
+          <UiButton variant="ghost" size="icon-xs" aria-label="查看预设说明" title="查看预设说明"><CircleHelpIcon /></UiButton>
         </TooltipTrigger>
         <TooltipContent>根据预设快速配置所有设置项</TooltipContent>
       </Tooltip>
@@ -81,11 +81,8 @@ export default {
 <style scoped>
 .presets-section {
   margin-bottom: 16px;
-  background-color: var(--surface-muted);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  padding: 12px;
-  box-shadow: none;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
 
 .preset-title {
@@ -94,12 +91,6 @@ export default {
   display: flex;
   align-items: center;
   gap: 5px;
-}
-
-.preset-title i {
-  color: var(--text-secondary);
-  font-size: 16px;
-  cursor: help;
 }
 
 .preset-options {
@@ -113,6 +104,12 @@ export default {
   .preset-options {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .preset-options [data-slot="toggle-group"] {
+    max-width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
   }
 }
 </style>

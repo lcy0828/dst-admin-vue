@@ -1,7 +1,10 @@
 <template>
   <div class="announcements-page">
-    <div class="page-header">
-      <h2>公告管理</h2>
+    <header class="page-header">
+      <div>
+        <h1>公告管理</h1>
+        <p>发布并维护面向玩家和管理员的系统公告。</p>
+      </div>
       <div class="header-actions">
         <UiButton @click="createAnnouncement"><PlusIcon data-icon="inline-start" />发布公告</UiButton>
         <UiButton variant="outline" :disabled="loading" @click="refreshAnnouncements">
@@ -10,7 +13,7 @@
           刷新
         </UiButton>
       </div>
-    </div>
+    </header>
     <Alert v-if="loadError" variant="destructive">
       <CircleAlertIcon />
       <AlertTitle>公告列表加载失败</AlertTitle>
@@ -54,14 +57,14 @@
             <TableEmpty v-if="!loading && !loadError && filteredAnnouncements.length === 0" :colspan="5">
               <Empty><EmptyHeader><EmptyTitle>暂无公告</EmptyTitle><EmptyDescription>当前筛选条件下没有公告记录。</EmptyDescription></EmptyHeader></Empty>
             </TableEmpty>
-            <TableEmpty v-if="loading" :colspan="5"><Spinner />正在加载公告</TableEmpty>
+            <TableEmpty v-if="loading" :colspan="5"><div class="table-skeleton" aria-label="正在加载公告"><Skeleton v-for="row in 4" :key="row" class="h-10 w-full" /></div></TableEmpty>
           </TableBody>
         </ShadcnTable></div>
       </CardContent>
     </Card>
 
     <UiDialog v-model:open="dialogVisible">
-      <DialogContent class="sm:max-w-2xl">
+      <DialogScrollContent class="sm:max-w-2xl">
         <DialogHeader><DialogTitle>{{ dialogTitle }}</DialogTitle><DialogDescription>查看公告内容和生效时间。</DialogDescription></DialogHeader>
         <template v-if="currentAnnouncement">
         <div class="announcement-detail">
@@ -85,11 +88,11 @@
           <UiButton @click="saveAnnouncement">保存</UiButton>
         </template>
         </DialogFooter>
-      </DialogContent>
+      </DialogScrollContent>
     </UiDialog>
 
     <UiDialog v-model:open="formVisible">
-      <DialogContent class="sm:max-w-3xl">
+      <DialogScrollContent class="sm:max-w-3xl">
         <DialogHeader><DialogTitle>{{ formTitle }}</DialogTitle><DialogDescription>设置公告内容、接收对象和过期时间。</DialogDescription></DialogHeader>
         <FieldGroup>
           <Field :data-invalid="Boolean(formErrors.title)"><FieldLabel for="announcement-title">标题</FieldLabel><UiInput id="announcement-title" v-model="announcementForm.title" :aria-invalid="Boolean(formErrors.title)" placeholder="请输入公告标题" /><FieldError v-if="formErrors.title">{{ formErrors.title }}</FieldError></Field>
@@ -99,7 +102,7 @@
           <Field orientation="horizontal"><FieldContent><FieldLabel for="announcement-important">重要公告</FieldLabel><FieldDescription>重要公告将在列表中突出显示。</FieldDescription></FieldContent><UiSwitch id="announcement-important" v-model="announcementForm.important" /></Field>
         </FieldGroup>
         <DialogFooter><UiButton variant="outline" @click="formVisible = false">取消</UiButton><UiButton :disabled="loading" @click="submitAnnouncementForm"><Spinner v-if="loading" data-icon="inline-start" />确定</UiButton></DialogFooter>
-      </DialogContent>
+      </DialogScrollContent>
     </UiDialog>
   </div>
 </template>
@@ -110,13 +113,14 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
@@ -137,10 +141,10 @@ export default {
     CardHeader,
     CardTitle,
     CircleAlertIcon,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
+    DialogScrollContent,
     DialogTitle,
     Empty,
     EmptyDescription,
@@ -164,6 +168,7 @@ export default {
     SelectTrigger,
     SelectValue,
     ShadcnTable,
+    Skeleton,
     Spinner,
     TableBody,
     TableCell,
@@ -363,25 +368,24 @@ export default {
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.announcements-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
 }
 
 .card-header {
@@ -405,6 +409,19 @@ export default {
   gap: 6px;
 }
 
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-skeleton {
+  display: flex;
+  min-width: 520px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
 .announcement-title {
   display: flex;
   align-items: center;
@@ -421,7 +438,7 @@ export default {
 
 .announcement-header {
   margin-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 15px;
 }
 
@@ -435,7 +452,7 @@ export default {
   gap: 8px 16px;
   justify-content: flex-start;
   flex-wrap: wrap;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 14px;
 }
 

@@ -28,6 +28,7 @@
               variant="outline"
               size="icon"
               aria-label="刷新工作台"
+              title="刷新工作台"
               :disabled="loading"
               @click="refreshWorkspace()"
             >
@@ -147,6 +148,7 @@
                     size="icon-sm"
                     :variant="world.status === 'running' ? 'destructive' : 'secondary'"
                     :aria-label="world.status === 'running' ? '停止世界' : '启动世界'"
+                    :title="world.status === 'running' ? '停止世界' : '启动世界'"
                     :disabled="world.controlAvailable === false || Boolean(worldActionId)"
                     @click="handleWorldAction(world, world.status === 'running' ? 'stop' : 'start')"
                   >
@@ -163,6 +165,7 @@
                     size="icon-sm"
                     variant="outline"
                     aria-label="重启世界"
+                    title="重启世界"
                     :disabled="world.status !== 'running' || world.controlAvailable === false || Boolean(worldActionId)"
                     @click="handleWorldAction(world, 'restart')"
                   >
@@ -177,6 +180,7 @@
                     size="icon-sm"
                     variant="ghost"
                     aria-label="世界配置"
+                    title="世界配置"
                     @click="openWorldSettings(world)"
                   >
                     <Settings />
@@ -249,13 +253,15 @@
                     执行
                   </UiButton>
                 </div>
-                <div v-if="commandResult" class="command-result" :class="{ failed: !commandResult.success }" role="status">
-                  <div>
-                    <strong>{{ commandResult.success ? '命令已发送' : '命令执行失败' }}</strong>
+                <Alert v-if="commandResult" :variant="commandResult.success ? 'default' : 'destructive'">
+                  <CircleCheck v-if="commandResult.success" />
+                  <CircleAlert v-else />
+                  <AlertTitle>{{ commandResult.success ? '命令已发送' : '命令执行失败' }}</AlertTitle>
+                  <AlertDescription>
+                    {{ commandResult.message }}
                     <span v-if="commandResult.runId">运行记录 {{ commandResult.runId }}</span>
-                  </div>
-                  <p>{{ commandResult.message }}</p>
-                </div>
+                  </AlertDescription>
+                </Alert>
               </div>
             </TabsContent>
           </Tabs>
@@ -272,10 +278,10 @@
               <UiButton variant="ghost" size="sm" @click="openPlayers">全部<ArrowRight data-icon="inline-end" /></UiButton>
             </div>
             <div v-if="recentPlayers.length" class="player-list">
-              <button
+              <UiButton
                 v-for="player in recentPlayers"
                 :key="`${player.room_id}:${player.user_id}`"
-                type="button"
+                variant="ghost"
                 class="player-row"
                 @click="openPlayers"
               >
@@ -284,12 +290,19 @@
                   <strong>{{ player.player_name || player.user_id }}</strong>
                   <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || '未知世界' }}</span>
                 </span>
-                <span class="player-status" :class="{ online: player.status === 'online' }">
+                <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
                   {{ player.status === 'online' ? '在线' : '离线' }}
-                </span>
-              </button>
+                </Badge>
+              </UiButton>
             </div>
-            <div v-else class="rail-empty">{{ contextErrors.players ? '玩家数据读取失败' : '暂无玩家记录' }}</div>
+            <Alert v-else-if="contextErrors.players" variant="destructive">
+              <CircleAlert />
+              <AlertTitle>玩家数据读取失败</AlertTitle>
+              <AlertDescription>{{ contextErrors.players }}</AlertDescription>
+            </Alert>
+            <Empty v-else class="rail-empty">
+              <EmptyHeader><EmptyTitle>暂无玩家记录</EmptyTitle><EmptyDescription>玩家加入房间后会显示在这里。</EmptyDescription></EmptyHeader>
+            </Empty>
           </section>
 
           <section class="rail-section">
@@ -309,26 +322,33 @@
                 </span>
               </div>
             </div>
-            <div v-else class="rail-empty">{{ contextErrors.backups ? '备份列表读取失败' : '暂无备份记录' }}</div>
+            <Alert v-else-if="contextErrors.backups" variant="destructive">
+              <CircleAlert />
+              <AlertTitle>备份列表读取失败</AlertTitle>
+              <AlertDescription>{{ contextErrors.backups }}</AlertDescription>
+            </Alert>
+            <Empty v-else class="rail-empty">
+              <EmptyHeader><EmptyTitle>暂无备份记录</EmptyTitle><EmptyDescription>创建房间备份后会显示在这里。</EmptyDescription></EmptyHeader>
+            </Empty>
           </section>
 
           <nav class="quick-nav" aria-label="服务器快捷入口">
-            <button type="button" @click="openPlayers">
+            <UiButton variant="ghost" @click="openPlayers">
               <User />
               <span>玩家管理</span>
-            </button>
-            <button type="button" @click="openMods">
+            </UiButton>
+            <UiButton variant="ghost" @click="openMods">
               <PackageOpen />
               <span>模组管理</span>
-            </button>
-            <button type="button" @click="openWorldState">
+            </UiButton>
+            <UiButton variant="ghost" @click="openWorldState">
               <ChartNoAxesCombined />
               <span>世界状态</span>
-            </button>
-            <button type="button" @click="$router.push('/logs/query')">
+            </UiButton>
+            <UiButton variant="ghost" @click="$router.push('/logs/query')">
               <Search />
               <span>日志查询</span>
-            </button>
+            </UiButton>
           </nav>
         </aside>
       </div>
@@ -343,7 +363,7 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -351,7 +371,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { confirmAction, promptText } from '@/lib/feedback'
 import {
-  ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, DatabaseBackup, FileCheck2,
+  ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
   FileText, Globe2, Moon, PackageOpen, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
   Settings, Square, Sun, Terminal, User
 } from '@lucide/vue'
@@ -387,6 +407,7 @@ export default {
     AlertTitle,
     Badge,
     CircleAlert,
+    CircleCheck,
     ArrowRight,
     ChartNoAxesCombined,
     ChevronDown,
@@ -398,6 +419,7 @@ export default {
     DropdownMenuTrigger,
     Empty,
     EmptyContent,
+    EmptyDescription,
     EmptyHeader,
     EmptyMedia,
     EmptyTitle,
@@ -819,7 +841,7 @@ export default {
   justify-content: space-between;
   gap: 20px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .workspace-heading {
@@ -829,7 +851,7 @@ export default {
 .workspace-kicker {
   display: block;
   margin-bottom: 3px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 
@@ -839,7 +861,7 @@ export default {
 
 .workspace-title-row h1 {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 22px;
   line-height: 30px;
   letter-spacing: 0;
@@ -847,7 +869,7 @@ export default {
 
 .workspace-heading p {
   margin: 3px 0 0;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   line-height: 20px;
 }
 
@@ -869,8 +891,8 @@ export default {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 
@@ -880,7 +902,7 @@ export default {
   gap: 2px 10px;
   min-width: 0;
   padding: 13px 16px;
-  border-right: 1px solid var(--border-color);
+  border-right: 1px solid var(--border);
 }
 
 .status-item:last-child {
@@ -889,7 +911,7 @@ export default {
 
 .status-label,
 .status-meta {
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 
@@ -897,7 +919,7 @@ export default {
   grid-row: 1 / span 2;
   grid-column: 2;
   align-self: center;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 22px;
   font-variant-numeric: tabular-nums;
 }
@@ -910,8 +932,8 @@ export default {
 .operation-panel,
 .rail-section {
   min-width: 0;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 
@@ -932,7 +954,7 @@ export default {
 .section-heading h2,
 .rail-heading h2 {
   margin: 0;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 15px;
   line-height: 22px;
   letter-spacing: 0;
@@ -943,7 +965,7 @@ export default {
   display: block;
   max-width: 520px;
   overflow: hidden;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -960,7 +982,7 @@ export default {
   min-width: 0;
   padding: 13px;
   cursor: pointer;
-  background: var(--surface-muted);
+  background: var(--muted);
   border: 1px solid transparent;
   border-radius: 4px;
   transition: border-color 180ms ease, background-color 180ms ease;
@@ -1023,7 +1045,7 @@ export default {
 
 .world-name-row strong {
   overflow: hidden;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1033,7 +1055,7 @@ export default {
   display: block;
   margin-top: 3px;
   overflow: hidden;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1051,14 +1073,14 @@ export default {
 }
 
 .world-facts dt {
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 11px;
 }
 
 .world-facts dd {
   margin: 2px 0 0;
   overflow: hidden;
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 13px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -1070,7 +1092,7 @@ export default {
   justify-content: flex-end;
   gap: 6px;
   padding-top: 10px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border);
 }
 
 .workspace-grid {
@@ -1138,39 +1160,10 @@ export default {
 
 .console-footer span {
   overflow: hidden;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.command-result {
-  margin-top: 12px;
-  padding: 12px;
-  color: var(--success-color);
-  background: color-mix(in srgb, var(--success-color) 9%, var(--card));
-  border-left: 3px solid var(--success-color);
-}
-
-.command-result.failed {
-  color: var(--danger-color);
-  background: color-mix(in srgb, var(--danger-color) 9%, var(--card));
-  border-left-color: var(--danger-color);
-}
-
-.command-result > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.command-result span,
-.command-result p {
-  font-size: 12px;
-}
-
-.command-result p {
-  margin: 6px 0 0;
 }
 
 .context-rail {
@@ -1190,7 +1183,7 @@ export default {
 
 .player-list,
 .backup-list {
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border);
 }
 
 .player-row {
@@ -1206,7 +1199,7 @@ export default {
   text-align: left;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .player-row:last-child {
@@ -1215,7 +1208,7 @@ export default {
 
 .player-row:hover .player-copy strong,
 .player-row:focus-visible .player-copy strong {
-  color: var(--primary-color);
+  color: var(--primary);
 }
 
 .player-row:focus-visible {
@@ -1228,8 +1221,8 @@ export default {
   width: 30px;
   height: 30px;
   place-items: center;
-  color: var(--text-regular);
-  background: var(--surface-muted);
+  color: var(--foreground);
+  background: var(--muted);
   border-radius: 4px;
 }
 
@@ -1246,26 +1239,21 @@ export default {
 }
 
 .player-copy strong {
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 13px;
   transition: color 180ms ease;
 }
 
-.player-copy span,
-.player-status {
-  color: var(--text-secondary);
+.player-copy span {
+  color: var(--muted-foreground);
   font-size: 11px;
-}
-
-.player-status.online {
-  color: var(--success-color);
 }
 
 .backup-row {
   gap: 9px;
   min-height: 49px;
   padding: 7px 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
 .backup-row:last-child {
@@ -1274,7 +1262,7 @@ export default {
 
 .backup-row > .legacy-icon {
   flex: 0 0 auto;
-  color: var(--primary-color);
+  color: var(--primary);
 }
 
 .backup-row span {
@@ -1290,18 +1278,18 @@ export default {
 }
 
 .backup-row strong {
-  color: var(--text-primary);
+  color: var(--foreground);
   font-size: 13px;
 }
 
 .backup-row small {
   margin-top: 2px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
 }
 
 .rail-empty {
   padding: 24px 8px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   text-align: center;
 }
 
@@ -1309,8 +1297,8 @@ export default {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   overflow: hidden;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 
@@ -1321,11 +1309,11 @@ export default {
   min-height: 48px;
   padding: 0 12px;
   cursor: pointer;
-  color: var(--text-regular);
+  color: var(--foreground);
   background: transparent;
   border: 0;
-  border-right: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   transition: color 180ms ease, background-color 180ms ease;
 }
 
@@ -1339,7 +1327,7 @@ export default {
 
 .quick-nav button:hover,
 .quick-nav button:focus-visible {
-  color: var(--primary-color);
+  color: var(--primary);
   background: var(--accent);
   outline: none;
 }
@@ -1354,7 +1342,7 @@ export default {
   }
 
   .status-item:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
   }
 
   .workspace-grid {
@@ -1373,7 +1361,7 @@ export default {
 
   .quick-nav button,
   .quick-nav button:nth-child(2n) {
-    border-right: 1px solid var(--border-color);
+    border-right: 1px solid var(--border);
     border-bottom: 0;
   }
 
@@ -1405,7 +1393,7 @@ export default {
   .status-item,
   .status-item:nth-child(2) {
     border-right: 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
   }
 
   .status-item:last-child {
@@ -1433,8 +1421,8 @@ export default {
 
   .quick-nav button,
   .quick-nav button:nth-child(2n) {
-    border-right: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
   }
 
   .quick-nav button:nth-child(2n) {

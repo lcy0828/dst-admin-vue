@@ -1,8 +1,9 @@
 <template>
   <div class="server-token-page">
-    <div class="page-header" v-if="!savename">
-      <h2>服务器令牌管理</h2>
-    </div>
+    <header class="page-header" v-if="!savename">
+      <h1>服务器令牌</h1>
+      <p>查看或更新房间使用的 Klei 集群令牌。</p>
+    </header>
 
     <Card class="token-card">
       <CardHeader class="card-header">
@@ -29,6 +30,7 @@
           <UiButton
             size="sm"
             variant="outline"
+            :disabled="loading"
             @click="fetchServerToken">
             <RefreshCw data-icon="inline-start" />
             刷新
@@ -37,9 +39,9 @@
       </CardHeader>
 
       <CardContent>
-        <div v-if="loading" class="loading-state">
-          <Spinner />
-          <span>正在加载令牌状态</span>
+        <div v-if="loading" class="token-skeleton" aria-busy="true" aria-label="正在加载令牌状态">
+          <Skeleton class="h-10 w-full" />
+          <Skeleton class="h-20 w-full" />
         </div>
         <Alert v-else-if="loadError" variant="destructive">
           <CircleAlert />
@@ -147,6 +149,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Input as UiInput } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { promptText } from '@/lib/feedback';
 
 export default {
@@ -182,6 +185,7 @@ export default {
     InputGroupInput,
     Pencil,
     RefreshCw,
+    Skeleton,
     Spinner,
     TriangleAlert
   },
@@ -380,13 +384,18 @@ export default {
 .page-header {
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
 }
 
 .save-selector {
@@ -432,7 +441,7 @@ export default {
 
 .token-note {
   margin-top: 15px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   display: flex;
   align-items: center;
   font-size: 14px;
@@ -445,7 +454,7 @@ export default {
 .empty-token {
   text-align: center;
   padding: 30px 0;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
 }
 
 .empty-token .legacy-icon {
@@ -453,13 +462,10 @@ export default {
   margin-bottom: 10px;
 }
 
-.loading-state {
+.token-skeleton {
   display: flex;
-  min-height: 120px;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: 8px;
-  color: var(--muted-foreground);
 }
 
 .token-card {

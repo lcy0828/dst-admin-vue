@@ -1,9 +1,9 @@
 <template>
   <div class="world-settings-container">
     <section class="settings-surface">
-      <div class="page-header">
+      <header class="page-header">
         <div>
-          <h2><Globe2 />世界设置{{ roomName ? ` - ${roomName}` : '' }}</h2>
+          <h1>世界设置{{ roomName ? ` - ${roomName}` : '' }}</h1>
           <p>管理世界生成、运行参数和模组配置。</p>
         </div>
         <div class="header-actions">
@@ -14,9 +14,16 @@
           </UiButton>
           <UiButton size="sm" @click="showAddWorldDialog"><Plus data-icon="inline-start" />新增世界</UiButton>
         </div>
-      </div>
+      </header>
 
-      <Tabs v-model="activeTab" class="world-tabs">
+      <Alert v-if="loadError" variant="destructive" class="load-error">
+        <TriangleAlert />
+        <AlertTitle>世界设置加载失败</AlertTitle>
+        <AlertDescription>{{ loadError }}</AlertDescription>
+        <AlertAction><UiButton size="sm" variant="outline" @click="reloadSettings">重新加载</UiButton></AlertAction>
+      </Alert>
+
+      <Tabs v-if="!loadError" v-model="activeTab" class="world-tabs">
         <div class="world-tabs-toolbar">
           <TabsList class="world-tab-list">
             <TabsTrigger v-for="world in visibleWorlds" :key="world.name" :value="world.name">
@@ -27,6 +34,7 @@
             v-if="currentWorld && !currentWorld.fallback"
             variant="destructive"
             size="icon-sm"
+            aria-label="删除当前世界"
             title="删除当前世界"
             @click="confirmDeleteWorld(currentWorld)"
           >
@@ -153,7 +161,7 @@
         </TabsContent>
       </Tabs>
 
-      <Empty v-if="visibleWorlds.length === 0">
+      <Empty v-if="!loadError && visibleWorlds.length === 0">
         <EmptyHeader>
           <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
           <EmptyTitle>当前房间没有世界</EmptyTitle>
@@ -165,7 +173,7 @@
       <div class="footer-spacer" aria-hidden="true"></div>
     </section>
 
-    <div id="settings-fixed-footer">
+    <div v-if="!loadError" id="settings-fixed-footer">
       <settings-footer
         :has-changes="hasChanges"
         :loading="loading"
@@ -320,6 +328,7 @@ export default {
       caveSettings: null,
       originalSettings: null,
       loading: false,
+      loadError: '',
       saveLoading: false,
       searchText: '',
       hasChanges: false,
@@ -388,9 +397,9 @@ export default {
       this.roomId = roomId;
       this.roomName = roomName;
       
-      this.fetchWorldSettings().then(() => this.loadRoomWorlds());
+      this.fetchWorldSettings().then(() => this.loadRoomWorlds()).catch(() => {});
     } else {
-      this.fetchWorldSettings();
+      this.fetchWorldSettings().catch(() => {});
     }
     
     // 添加防抖的全局点击事件处理
@@ -687,6 +696,7 @@ export default {
     loadRoomWorlds() {
       if (!this.roomId) return;
       this.loading = true;
+      this.loadError = '';
 
       api.worldApi.getWorldList()
         .then(response => {
@@ -713,6 +723,7 @@ export default {
             .then(() => this.fetchServerIni(this.roomName, firstWorld.name));
         })
         .catch(error => {
+          this.loadError = error.message || '获取房间世界列表失败';
           toast.error('获取房间世界列表失败: ' + (error.message || '未知错误'));
         })
         .finally(() => {
@@ -747,6 +758,7 @@ export default {
         }
         delete this.worldOriginalSettings[worldname];
         delete this.worldOverrides[worldname];
+        this.loadError = error.message || `加载世界 ${worldname} 的配置失败`;
         toast.error(`加载世界 ${worldname} 的配置失败: ${error.message || '未知错误'}`);
         return null;
       });
@@ -834,6 +846,7 @@ export default {
     },
     fetchWorldSettings() {
       this.loading = true;
+      this.loadError = '';
       // 使用Promise优化数据加载
       return fetch('/static/json/dst_world_setting_zh.json')
         .then(response => {
@@ -859,12 +872,18 @@ export default {
           return data; // 返回数据以便链式调用
         })
         .catch(error => {
+          this.loadError = error.message || '无法加载世界设置定义';
           toast.error('加载设置失败');
           return Promise.reject(error);
         })
         .finally(() => {
           this.loading = false;
         });
+    },
+    reloadSettings() {
+      return this.fetchWorldSettings()
+        .then(() => (this.roomId ? this.loadRoomWorlds() : undefined))
+        .catch(() => {});
     },
     getItemOptions(categoryDesc, itemDesc) {
       // 优化缓存键计算，减少序列化复杂对象的开销
@@ -1752,18 +1771,10 @@ export default {
   border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.page-header h2 svg {
-  width: 18px;
-  height: 18px;
+  font-size: 24px;
+  font-weight: 650;
 }
 
 .page-header p {
@@ -1775,6 +1786,10 @@ export default {
 .header-actions,
 .form-actions {
   gap: 8px;
+}
+
+.load-error {
+  margin-bottom: 16px;
 }
 
 .world-tabs-toolbar {

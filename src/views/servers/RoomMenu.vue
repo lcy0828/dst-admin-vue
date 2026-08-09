@@ -1,9 +1,9 @@
 <template>
   <div class="room-menu-page">
-    <div class="page-header">
-      <h2>房间管理</h2>
+    <header class="page-header">
+      <h1>房间管理</h1>
       <p>管理房间、世界、权限和模组配置</p>
-    </div>
+    </header>
 
     <div class="menu-grid">
       <Card
@@ -45,11 +45,11 @@
           <CircleAlert />
           <AlertTitle>房间数据读取失败</AlertTitle>
           <AlertDescription>{{ loadError }}</AlertDescription>
+          <AlertAction><UiButton size="sm" variant="outline" @click="refreshRooms">重新加载</UiButton></AlertAction>
         </Alert>
 
-        <div v-if="loading && !activeRooms.length" class="loading-state" aria-busy="true">
-          <Spinner />
-          <span>正在读取房间和分片状态...</span>
+        <div v-if="loading && !activeRooms.length" class="room-skeleton" aria-busy="true" aria-label="正在读取房间和分片状态">
+          <Skeleton v-for="row in 4" :key="row" class="h-12 w-full" />
         </div>
 
         <div v-else-if="activeRooms.length" class="table-scroll">
@@ -184,7 +184,7 @@ import {
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '@/api/index';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -193,6 +193,7 @@ import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, Dia
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
@@ -209,11 +210,11 @@ const ROOM_SECTIONS = [
 export default {
   name: 'RoomMenu',
   components: {
-    Alert, AlertDescription, AlertTitle, Badge, Card, CardContent, CardDescription, CardFooter,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardContent, CardDescription, CardFooter,
     CardHeader, CardTitle, CircleAlert, DialogContent, DialogDescription, DialogFooter,
     DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia,
     EmptyTitle, Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet,
-    FolderPlus, Pencil, Play, Plus, RefreshCw, ShadcnTable, Spinner, Square, TableBody,
+    FolderPlus, Pencil, Play, Plus, RefreshCw, ShadcnTable, Skeleton, Spinner, Square, TableBody,
     TableCell, TableHead, TableHeader, TableRow, UiButton, UiCheckbox, UiDialog
   },
   data() {
@@ -404,11 +405,10 @@ export default {
   border-bottom: 1px solid var(--border);
 }
 
-.page-header h2 {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 28px;
+  font-size: 24px;
+  font-weight: 650;
 }
 
 .page-header p {
@@ -478,13 +478,11 @@ export default {
   margin-bottom: 12px;
 }
 
-.loading-state {
+.room-skeleton {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   gap: 8px;
-  min-height: 220px;
-  color: var(--muted-foreground);
+  padding: 8px 0;
 }
 
 .table-scroll {
