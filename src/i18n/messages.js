@@ -46,6 +46,18 @@ export const messages = {
       },
       errors: {
         unknown: '未知错误'
+      },
+      pagination: {
+        total: '共 {count} 条',
+        pageSize: '每页条数',
+        perPage: '{count} 条/页',
+        previous: '上一页',
+        next: '下一页',
+        jump: '跳转页码'
+      },
+      feedback: {
+        input: '输入内容',
+        invalidInput: '输入内容格式不正确'
       }
     },
     app: {
@@ -490,6 +502,18 @@ export const messages = {
       },
       errors: {
         unknown: 'Unknown error'
+      },
+      pagination: {
+        total: '{count} items',
+        pageSize: 'Items per page',
+        perPage: '{count} per page',
+        previous: 'Previous page',
+        next: 'Next page',
+        jump: 'Go to page'
+      },
+      feedback: {
+        input: 'Input',
+        invalidInput: 'The input format is invalid'
       }
     },
     app: {

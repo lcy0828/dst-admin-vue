@@ -7,13 +7,13 @@
       </AlertDialogHeader>
       <AlertDialogFooter>
         <AlertDialogCancel @click="cancelRequest">
-          {{ activeRequest?.options?.cancelButtonText || '取消' }}
+          {{ activeRequest?.options?.cancelButtonText || t('common.actions.cancel') }}
         </AlertDialogCancel>
         <AlertDialogAction
           :variant="isDestructive ? 'destructive' : 'default'"
           @click="confirmRequest"
         >
-          {{ activeRequest?.options?.confirmButtonText || '确认' }}
+          {{ activeRequest?.options?.confirmButtonText || t('common.actions.confirm') }}
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
@@ -26,7 +26,7 @@
         <DialogDescription>{{ activeRequest?.message }}</DialogDescription>
       </DialogHeader>
       <Field :data-invalid="Boolean(promptError)">
-        <FieldLabel for="global-feedback-prompt" class="sr-only">输入内容</FieldLabel>
+        <FieldLabel for="global-feedback-prompt" class="sr-only">{{ t('common.feedback.input') }}</FieldLabel>
         <Input
           id="global-feedback-prompt"
           ref="promptInput"
@@ -39,10 +39,10 @@
       </Field>
       <DialogFooter>
         <Button variant="outline" @click="cancelRequest">
-          {{ activeRequest?.options?.cancelButtonText || '取消' }}
+          {{ activeRequest?.options?.cancelButtonText || t('common.actions.cancel') }}
         </Button>
         <Button @click="confirmPrompt">
-          {{ activeRequest?.options?.confirmButtonText || '确认' }}
+          {{ activeRequest?.options?.confirmButtonText || t('common.actions.confirm') }}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -51,6 +51,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,6 +75,7 @@ import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { registerFeedbackHost } from '@/lib/feedback'
 
+const { t } = useI18n()
 const activeRequest = ref(null)
 const requestQueue = []
 const promptValue = ref('')
@@ -124,7 +126,7 @@ function validatePrompt() {
   const value = promptValue.value
 
   if (options.inputPattern && !options.inputPattern.test(value)) {
-    promptError.value = options.inputErrorMessage || '输入内容格式不正确'
+    promptError.value = options.inputErrorMessage || t('common.feedback.invalidInput')
     return false
   }
 
@@ -133,7 +135,7 @@ function validatePrompt() {
     if (result !== true && result !== undefined) {
       promptError.value = typeof result === 'string'
         ? result
-        : options.inputErrorMessage || '输入内容格式不正确'
+        : options.inputErrorMessage || t('common.feedback.invalidInput')
       return false
     }
   }

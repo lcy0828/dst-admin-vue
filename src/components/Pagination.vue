@@ -1,9 +1,9 @@
 <template>
   <div v-if="!hidden && total > 0" class="pagination-container">
-    <span class="pagination-total">共 {{ total }} 条</span>
-    <NativeSelect v-model="pageSize" aria-label="每页条数" class="page-size-select" @change="handleSizeChange(pageSize)">
+    <span class="pagination-total">{{ $t('common.pagination.total', { count: total }) }}</span>
+    <NativeSelect v-model="pageSize" :aria-label="$t('common.pagination.pageSize')" class="page-size-select" @change="handleSizeChange(pageSize)">
       <NativeSelectOption v-for="size in pageSizes" :key="size" :value="size">
-        {{ size }} 条/页
+        {{ $t('common.pagination.perPage', { count: size }) }}
       </NativeSelectOption>
     </NativeSelect>
     <ShadcnPagination
@@ -14,7 +14,7 @@
       @update:page="handleCurrentChange"
     >
       <PaginationContent v-slot="{ items }">
-        <PaginationPrevious><ChevronLeftIcon /><span class="sr-only">上一页</span></PaginationPrevious>
+        <PaginationPrevious><ChevronLeftIcon /><span class="sr-only">{{ $t('common.pagination.previous') }}</span></PaginationPrevious>
         <template v-for="(item, index) in items" :key="index">
           <PaginationItem
             v-if="item.type === 'page'"
@@ -25,7 +25,7 @@
           </PaginationItem>
           <PaginationEllipsis v-else :index="index" />
         </template>
-        <PaginationNext><ChevronRightIcon /><span class="sr-only">下一页</span></PaginationNext>
+        <PaginationNext><ChevronRightIcon /><span class="sr-only">{{ $t('common.pagination.next') }}</span></PaginationNext>
       </PaginationContent>
     </ShadcnPagination>
     <UiInput
@@ -34,7 +34,7 @@
       min="1"
       :max="pageCount"
       :model-value="currentPage"
-      aria-label="跳转页码"
+      :aria-label="$t('common.pagination.jump')"
       @change="handleJump"
     />
   </div>
