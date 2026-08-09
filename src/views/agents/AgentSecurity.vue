@@ -1,26 +1,26 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
-    <header class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">Agent 安全设置</h1><p class="mt-1 text-sm text-muted-foreground">管理 Agent 连接密钥和安装配置。</p></header>
+    <header class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ $t('agents.security.title') }}</h1><p class="mt-1 text-sm text-muted-foreground">{{ $t('agents.security.subtitle') }}</p></header>
 
-    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>安全配置加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchApiKey">重试</UiButton></AlertAction></Alert>
+    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('agents.security.feedback.loadFailedTitle') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchApiKey">{{ $t('common.actions.retry') }}</UiButton></AlertAction></Alert>
 
     <Card>
       <CardHeader>
-        <CardTitle class="flex items-center gap-2"><KeyRound />API 密钥</CardTitle>
-        <CardDescription>Agent 使用此密钥建立经过验证的连接。现有密钥不会再次显示明文。</CardDescription>
+        <CardTitle class="flex items-center gap-2"><KeyRound />{{ $t('agents.security.key.title') }}</CardTitle>
+        <CardDescription>{{ $t('agents.security.key.description') }}</CardDescription>
       </CardHeader>
       <CardContent>
         <Skeleton v-if="loading && !apiKey" class="h-16 w-full" />
         <FieldGroup v-else>
-          <Field><FieldLabel for="agent-api-key">当前密钥</FieldLabel><InputGroup><InputGroupInput id="agent-api-key" :model-value="securityConfigured ? (showKey ? apiKey : '••••••••••••••••••••••••••••••••') : '未配置'" readonly /><InputGroupAddon align="inline-end"><UiButton variant="ghost" size="sm" :disabled="!securityConfigured" @click="toggleKeyVisibility"><EyeOff v-if="showKey" data-icon="inline-start" /><Eye v-else data-icon="inline-start" />{{ showKey ? '隐藏' : '显示' }}</UiButton></InputGroupAddon></InputGroup><FieldDescription v-if="securityConfigured && !keyRevealed">出于安全考虑，服务端仅返回现有密钥的掩码。</FieldDescription></Field>
-          <Alert v-if="!securityAvailable"><CircleAlert /><AlertTitle>密钥管理不可用</AlertTitle><AlertDescription>当前后端未开放密钥轮换能力。</AlertDescription></Alert>
+          <Field><FieldLabel for="agent-api-key">{{ $t('agents.security.key.current') }}</FieldLabel><InputGroup><InputGroupInput id="agent-api-key" :model-value="securityConfigured ? (showKey ? apiKey : '••••••••••••••••••••••••••••••••') : $t('common.states.unconfigured')" readonly /><InputGroupAddon align="inline-end"><UiButton variant="ghost" size="sm" :disabled="!securityConfigured" @click="toggleKeyVisibility"><EyeOff v-if="showKey" data-icon="inline-start" /><Eye v-else data-icon="inline-start" />{{ showKey ? $t('agents.security.actions.hide') : $t('agents.security.actions.show') }}</UiButton></InputGroupAddon></InputGroup><FieldDescription v-if="securityConfigured && !keyRevealed">{{ $t('agents.security.key.maskedDescription') }}</FieldDescription></Field>
+          <Alert v-if="!securityAvailable"><CircleAlert /><AlertTitle>{{ $t('agents.security.key.unavailableTitle') }}</AlertTitle><AlertDescription>{{ $t('agents.security.key.unavailableDescription') }}</AlertDescription></Alert>
         </FieldGroup>
       </CardContent>
-      <CardFooter class="flex flex-wrap justify-end gap-2"><UiButton variant="outline" :disabled="!keyRevealed" @click="copyKey"><Copy data-icon="inline-start" />复制密钥</UiButton><UiButton :disabled="!securityAvailable || loading" @click="confirmGenerateNewKey"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />生成新密钥</UiButton></CardFooter>
+      <CardFooter class="flex flex-wrap justify-end gap-2"><UiButton variant="outline" :disabled="!keyRevealed" @click="copyKey"><Copy data-icon="inline-start" />{{ $t('agents.security.actions.copyKey') }}</UiButton><UiButton :disabled="!securityAvailable || loading" @click="confirmGenerateNewKey"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('agents.security.actions.generateKey') }}</UiButton></CardFooter>
     </Card>
 
     <Card>
-      <CardHeader><CardTitle>安装 Agent</CardTitle><CardDescription>根据节点环境选择安装命令或手动配置。</CardDescription><CardAction><Badge variant="secondary">Beta</Badge></CardAction></CardHeader>
+      <CardHeader><CardTitle>{{ $t('agents.security.install.title') }}</CardTitle><CardDescription>{{ $t('agents.security.install.description') }}</CardDescription><CardAction><Badge variant="secondary">Beta</Badge></CardAction></CardHeader>
       <CardContent class="flex flex-col gap-6">
         <div>
 
@@ -37,7 +37,7 @@
                   class="copy-btn"
                   @click="copyInstallCommand('linux')">
                   <Copy data-icon="inline-start" />
-                  复制
+                  {{ $t('common.actions.copy') }}
                 </UiButton>
               </div>
             </TabsContent>
@@ -52,13 +52,13 @@
                   class="copy-btn"
                   @click="copyInstallCommand('windows')">
                   <Copy data-icon="inline-start" />
-                  复制
+                  {{ $t('common.actions.copy') }}
                 </UiButton>
               </div>
             </TabsContent>
             <TabsContent value="docker">
               <div class="code-block">
-                <pre><code>当前仓库没有发布可验证的 Agent Docker 镜像。</code></pre>
+                <pre><code>{{ $t('agents.security.install.dockerUnavailable') }}</code></pre>
                 <UiButton
                   variant="ghost"
                   size="sm"
@@ -66,7 +66,7 @@
                   class="copy-btn"
                   @click="copyInstallCommand('docker')">
                   <Copy data-icon="inline-start" />
-                  复制
+                  {{ $t('common.actions.copy') }}
                 </UiButton>
               </div>
             </TabsContent>
@@ -74,16 +74,16 @@
         </div>
 
           <Separator />
-          <div class="flex flex-col gap-3"><h3 class="text-sm font-medium">手动安装</h3>
+          <div class="flex flex-col gap-3"><h3 class="text-sm font-medium">{{ $t('agents.security.manual.title') }}</h3>
           <ol class="manual-steps">
             <li>
-              <Badge variant="outline">1</Badge><div class="step-content"><div class="step-title">下载 Agent 安装文件</div>
-                从 <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" rel="noopener noreferrer">项目仓库</a> 构建适合您系统的 Agent 二进制文件。
+              <Badge variant="outline">1</Badge><div class="step-content"><div class="step-title">{{ $t('agents.security.manual.downloadTitle') }}</div>
+                {{ $t('agents.security.manual.buildFrom') }} <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" rel="noopener noreferrer">{{ $t('agents.security.manual.repository') }}</a> {{ $t('agents.security.manual.buildForSystem') }}
               </div>
             </li>
             <li>
-              <Badge variant="outline">2</Badge><div class="step-content"><div class="step-title">配置 Agent</div>
-                创建配置文件 <code>conf/app.conf</code>，并添加以下内容：
+              <Badge variant="outline">2</Badge><div class="step-content"><div class="step-title">{{ $t('agents.security.manual.configureTitle') }}</div>
+                {{ $t('agents.security.manual.configureDescription') }} <code>conf/app.conf</code>：
                 <div class="code-block">
                   <pre><code>[agent]
 SECURITY_KEY = {{ apiKey }}
@@ -95,13 +95,13 @@ SERVER_URL = {{ installServerURL }}</code></pre>
                     class="copy-btn"
                     @click="copyConfigYaml()">
                     <Copy data-icon="inline-start" />
-                    复制
+                    {{ $t('common.actions.copy') }}
                   </UiButton>
                 </div>
               </div>
             </li>
             <li>
-              <Badge variant="outline">3</Badge><div class="step-content"><div class="step-title">运行 Agent</div>
+              <Badge variant="outline">3</Badge><div class="step-content"><div class="step-title">{{ $t('agents.security.manual.runTitle') }}</div>
                 <div class="code-block linux-cmd">
                   <pre><code>./dst-admin-agent</code></pre>
                   <UiButton
@@ -111,14 +111,14 @@ SERVER_URL = {{ installServerURL }}</code></pre>
                     class="copy-btn"
                     @click="copyRunCommand()">
                     <Copy data-icon="inline-start" />
-                    复制
+                    {{ $t('common.actions.copy') }}
                   </UiButton>
                 </div>
               </div>
             </li>
             <li>
-              <Badge variant="outline">4</Badge><div class="step-content"><div class="step-title">设置为系统服务（可选）</div>
-                为确保 Agent 在系统重启后自动运行，可以将其注册为系统服务。
+              <Badge variant="outline">4</Badge><div class="step-content"><div class="step-title">{{ $t('agents.security.manual.serviceTitle') }}</div>
+                {{ $t('agents.security.manual.serviceDescription') }}
               </div>
             </li>
           </ol>
@@ -156,7 +156,7 @@ export default {
   data() {
     return {
       loading: false,
-      loadError: '',
+      loadFailure: null,
       apiKey: '',
       keyRevealed: false,
       securityConfigured: false,
@@ -169,6 +169,13 @@ export default {
     this.fetchApiKey();
   },
   computed: {
+    loadError() {
+      if (!this.loadFailure) return '';
+      const message = this.$t(this.loadFailure.key);
+      return this.loadFailure.detail
+        ? this.$t('agents.security.feedback.errorWithDetail', { message, detail: this.loadFailure.detail })
+        : message;
+    },
     installServerURL() {
       const configured = String(import.meta.env.VITE_AGENT_SERVER_URL || '').trim();
       if (configured) return configured;
@@ -179,7 +186,7 @@ export default {
   methods: {
     async fetchApiKey() {
       this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         const response = await agentApi.getSecurityKey();
         this.apiKey = response.data?.key || '';
@@ -192,8 +199,11 @@ export default {
         this.keyRevealed = false;
         this.securityConfigured = false;
         this.securityAvailable = false;
-        this.loadError = error.message || '未知错误';
-        toast.error('获取API密钥失败: ' + this.loadError);
+        this.loadFailure = {
+          key: 'agents.security.feedback.loadFailed',
+          detail: String(error.message || '').trim()
+        };
+        toast.error(this.loadError);
       } finally {
         this.loading = false;
       }
@@ -203,26 +213,32 @@ export default {
     },
     async copyKey() {
       if (!this.keyRevealed) {
-        toast.warning('现有密钥只提供掩码；轮换后可复制一次新密钥');
+        toast.warning(this.$t('agents.security.feedback.maskedNotCopyable'));
         return;
       }
       try {
         await this.copyToClipboard(this.apiKey);
-        toast.success('API密钥已复制到剪贴板');
+        toast.success(this.$t('agents.security.feedback.keyCopied'));
       } catch (error) {
-        toast.error(error.message || '复制 API 密钥失败');
+        toast.error(this.$t('agents.security.feedback.copyKeyFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       }
     },
     async confirmGenerateNewKey() {
       try {
-        await confirmAction('生成新密钥将使现有密钥失效，所有使用旧密钥的 Agent 需要更新配置。确定要继续吗?', '生成新密钥', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
+        await confirmAction(this.$t('agents.security.feedback.rotateConfirm'), this.$t('agents.security.feedback.rotateTitle'), {
+          confirmButtonText: this.$t('common.actions.confirm'),
+          cancelButtonText: this.$t('common.actions.cancel'),
+          type: 'warning'
         });
         await this.generateNewKey();
-      } catch {
-        // 用户取消轮换。
+      } catch (error) {
+        if (error !== 'cancel' && error !== 'close') {
+          toast.error(this.$t('agents.security.feedback.rotateConfirmFailed', {
+            error: error.message || this.$t('common.errors.unknown')
+          }));
+        }
       }
     },
     async generateNewKey() {
@@ -238,11 +254,15 @@ export default {
           this.securityConfigured = refreshed.data?.configured === true;
           this.securityAvailable = refreshed.data?.available === true;
         } catch (error) {
-          toast.warning(error.message || '新密钥已生成，但安全状态刷新失败');
+          toast.warning(this.$t('agents.security.feedback.statusRefreshFailed', {
+            error: error.message || this.$t('common.errors.unknown')
+          }));
         }
-        toast.success(response.message || '新密钥已生成，请立即保存');
+        toast.success(this.$t('agents.security.feedback.keyGenerated'));
       } catch (error) {
-        toast.error('生成新密钥失败: ' + (error.message || '未知错误'));
+        toast.error(this.$t('agents.security.feedback.generateFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       } finally {
         this.loading = false;
       }
@@ -262,9 +282,11 @@ export default {
       }
       try {
         await this.copyToClipboard(command);
-        toast.success('安装命令已复制到剪贴板');
+        toast.success(this.$t('agents.security.feedback.installCopied'));
       } catch (error) {
-        toast.error(error.message || '复制安装命令失败');
+        toast.error(this.$t('agents.security.feedback.copyInstallFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       }
     },
     async copyConfigYaml() {
@@ -272,18 +294,22 @@ export default {
       const config = `[agent]\nSECURITY_KEY = ${this.apiKey}\nSERVER_URL = ${this.installServerURL}`;
       try {
         await this.copyToClipboard(config);
-        toast.success('配置内容已复制到剪贴板');
+        toast.success(this.$t('agents.security.feedback.configCopied'));
       } catch (error) {
-        toast.error(error.message || '复制配置内容失败');
+        toast.error(this.$t('agents.security.feedback.copyConfigFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       }
     },
     async copyRunCommand() {
       if (!this.keyRevealed) return;
       try {
         await this.copyToClipboard('./dst-admin-agent');
-        toast.success('运行命令已复制到剪贴板');
+        toast.success(this.$t('agents.security.feedback.runCopied'));
       } catch (error) {
-        toast.error(error.message || '复制运行命令失败');
+        toast.error(this.$t('agents.security.feedback.copyRunFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       }
     },
     async copyToClipboard(text) {
@@ -300,7 +326,7 @@ export default {
       el.select();
       const copied = document.execCommand('copy');
       document.body.removeChild(el);
-      if (!copied) throw new Error('浏览器未允许写入剪贴板');
+      if (!copied) throw new Error(this.$t('agents.security.feedback.clipboardDenied'));
     }
   }
 };
