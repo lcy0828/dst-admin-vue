@@ -2,43 +2,43 @@
   <div class="ban-list-page">
     <header class="page-heading">
       <div>
-        <h1>封禁管理</h1>
-        <p>查看各房间的封禁记录，并在确认后解除封禁。</p>
+        <h1>{{ t('players.banList.title') }}</h1>
+        <p>{{ t('players.banList.subtitle') }}</p>
       </div>
       <UiButton variant="outline" size="sm" :disabled="loading" @click="loadBans">
         <RefreshCw data-icon="inline-start" />
-        刷新
+        {{ t('players.actions.refresh') }}
       </UiButton>
     </header>
 
     <Card>
-      <CardHeader><div><CardTitle>筛选记录</CardTitle><CardDescription>按房间或玩家关键词查询封禁记录。</CardDescription></div></CardHeader>
+      <CardHeader><div><CardTitle>{{ t('players.banList.filterTitle') }}</CardTitle><CardDescription>{{ t('players.banList.filterDescription') }}</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
           <Field>
-            <FieldLabel for="ban-room-filter">房间</FieldLabel>
+            <FieldLabel for="ban-room-filter">{{ t('players.banList.room') }}</FieldLabel>
             <NativeSelect id="ban-room-filter" v-model="filters.archive_name" @change="applyFilters">
-              <NativeSelectOption value="">全部房间</NativeSelectOption>
+              <NativeSelectOption value="">{{ t('players.banList.allRooms') }}</NativeSelectOption>
               <NativeSelectOption v-for="archive in archives" :key="archive.id" :value="archive.id">
                 {{ archive.name }}
               </NativeSelectOption>
             </NativeSelect>
           </Field>
           <Field>
-            <FieldLabel for="ban-keyword-filter">关键词</FieldLabel>
+            <FieldLabel for="ban-keyword-filter">{{ t('players.fields.keyword') }}</FieldLabel>
             <InputGroup>
               <InputGroupAddon><Search /></InputGroupAddon>
               <InputGroupInput
                 id="ban-keyword-filter"
                 v-model="filters.keyword"
-                placeholder="玩家名称、KU ID 或封禁原因"
+                :placeholder="t('players.banList.keywordPlaceholder')"
                 @keyup.enter="applyFilters"
               />
             </InputGroup>
           </Field>
           <div class="filter-actions">
-            <UiButton size="sm" @click="applyFilters"><Search data-icon="inline-start" />查询</UiButton>
-            <UiButton variant="outline" size="sm" @click="resetFilters">重置</UiButton>
+            <UiButton size="sm" @click="applyFilters"><Search data-icon="inline-start" />{{ t('players.actions.query') }}</UiButton>
+            <UiButton variant="outline" size="sm" @click="resetFilters">{{ t('players.actions.reset') }}</UiButton>
           </div>
         </FieldGroup>
       </CardContent>
@@ -46,39 +46,39 @@
 
     <Alert v-if="error" variant="destructive">
       <TriangleAlert />
-      <AlertTitle>封禁记录加载失败</AlertTitle>
-      <AlertDescription>{{ error }}</AlertDescription>
-      <AlertAction><UiButton variant="outline" size="sm" @click="loadBans">重试</UiButton></AlertAction>
+      <AlertTitle>{{ t('players.banList.loadFailedTitle') }}</AlertTitle>
+      <AlertDescription>{{ errorText }}</AlertDescription>
+      <AlertAction><UiButton variant="outline" size="sm" @click="loadBans">{{ t('players.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
     <Card>
       <CardHeader>
         <div>
-          <CardTitle>封禁记录</CardTitle>
-          <CardDescription>共 {{ pagination.total }} 条有效记录</CardDescription>
+          <CardTitle>{{ t('players.banList.recordsTitle') }}</CardTitle>
+          <CardDescription>{{ t('players.banList.total', { count: pagination.total }) }}</CardDescription>
         </div>
       </CardHeader>
       <CardContent>
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在读取封禁记录</span></div>
+        <div v-if="loading" class="loading-state"><Spinner /><span>{{ t('players.banList.loading') }}</span></div>
         <div v-else-if="bans.length" class="table-wrap">
           <UiTable>
             <TableHeader>
               <TableRow>
-                <TableHead>玩家</TableHead>
-                <TableHead>房间 / 世界</TableHead>
-                <TableHead>封禁原因</TableHead>
-                <TableHead>封禁时间</TableHead>
-                <TableHead>到期时间</TableHead>
-                <TableHead class="action-column">操作</TableHead>
+                <TableHead>{{ t('players.fields.playerName') }}</TableHead>
+                <TableHead>{{ t('players.fields.roomAndWorld') }}</TableHead>
+                <TableHead>{{ t('players.fields.banReason') }}</TableHead>
+                <TableHead>{{ t('players.fields.bannedAt') }}</TableHead>
+                <TableHead>{{ t('players.fields.expiresAt') }}</TableHead>
+                <TableHead class="action-column">{{ t('players.fields.action') }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-for="player in bans" :key="`${player.room_id}:${player.user_id}`">
                 <TableCell>
-                  <div class="player-cell"><strong>{{ player.player_name || '未知玩家' }}</strong><code>{{ player.user_id }}</code></div>
+                  <div class="player-cell"><strong>{{ player.player_name || t('players.values.unknownPlayer') }}</strong><code>{{ player.user_id }}</code></div>
                 </TableCell>
-                <TableCell>{{ player.archive_name }} / {{ player.world_name || '未知世界' }}</TableCell>
-                <TableCell class="reason-cell">{{ player.ban_reason || '未记录原因' }}</TableCell>
+                <TableCell>{{ player.archive_name }} / {{ player.world_name || t('players.values.unknownWorld') }}</TableCell>
+                <TableCell class="reason-cell">{{ player.ban_reason || t('players.values.noReason') }}</TableCell>
                 <TableCell>{{ formatDate(player.banned_at) }}</TableCell>
                 <TableCell>
                   <Badge :variant="expiryVariant(player)">{{ formatExpiry(player.ban_expires_at) }}</Badge>
@@ -91,7 +91,7 @@
                     @click="unban(player)"
                   >
                     <Spinner v-if="unbanningId === player.user_id" data-icon="inline-start" />
-                    解除封禁
+                    {{ t('players.actions.unban') }}
                   </UiButton>
                 </TableCell>
               </TableRow>
@@ -101,8 +101,8 @@
         <Empty v-else>
           <EmptyHeader>
             <EmptyMedia variant="icon"><ShieldCheck /></EmptyMedia>
-            <EmptyTitle>没有封禁记录</EmptyTitle>
-            <EmptyDescription>当前筛选范围内没有被封禁的玩家。</EmptyDescription>
+            <EmptyTitle>{{ t('players.banList.emptyTitle') }}</EmptyTitle>
+            <EmptyDescription>{{ t('players.banList.emptyDescription') }}</EmptyDescription>
           </EmptyHeader>
         </Empty>
 
@@ -132,8 +132,9 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { RefreshCw, Search, ShieldCheck, TriangleAlert } from '@lucide/vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { playerApi } from '@/api/playerApi'
 import { promptText } from '@/lib/feedback'
@@ -148,31 +149,30 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { formatBanExpiry, formatPlayerDate, playerErrorDetail } from '@/i18n/playerMessages.js'
+
+const { locale, t } = useI18n()
 
 const archives = ref([])
 const bans = ref([])
 const loading = ref(false)
-const error = ref('')
+const error = ref(null)
 const unbanningId = ref('')
 const filters = reactive({ archive_name: '', keyword: '' })
 const pagination = reactive({ page: 1, page_size: 20, total: 0 })
 
+const errorText = computed(() => error.value ? playerErrorDetail(error.value, t) : '')
+
 function errorMessage(value) {
-  return value?.response?.data?.message || value?.message || '未知错误'
+  return playerErrorDetail(value, t)
 }
 
 function formatDate(value) {
-  if (!value) return '-'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString('zh-CN')
+  return formatPlayerDate(value, locale.value)
 }
 
 function formatExpiry(value) {
-  if (!value) return '永久'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '未知'
-  if (date.getTime() <= Date.now()) return '已到期'
-  return date.toLocaleString('zh-CN')
+  return formatBanExpiry(value, locale.value, t)
 }
 
 function expiryVariant(player) {
@@ -185,13 +185,13 @@ async function loadArchives() {
     const response = await playerApi.getArchives()
     archives.value = response.data || []
   } catch (value) {
-    toast.error(`房间列表加载失败：${errorMessage(value)}`)
+    toast.error(t('players.banList.archivesLoadFailed', { error: errorMessage(value) }))
   }
 }
 
 async function loadBans() {
   loading.value = true
-  error.value = ''
+  error.value = null
   try {
     const response = await playerApi.getBannedPlayers({
       ...filters,
@@ -208,7 +208,7 @@ async function loadBans() {
   } catch (value) {
     bans.value = []
     pagination.total = 0
-    error.value = errorMessage(value)
+    error.value = value
   } finally {
     loading.value = false
   }
@@ -233,22 +233,22 @@ function changePage(page) {
 async function unban(player) {
   try {
     const result = await promptText(
-      `解除封禁会修改房间黑名单。请输入完整房间名“${player.archive_name}”确认。`,
-      '解除封禁',
+      t('players.banList.unbanPrompt', { room: player.archive_name }),
+      t('players.actions.unban'),
       {
-        confirmButtonText: '解除封禁',
-        cancelButtonText: '取消',
+        confirmButtonText: t('players.actions.unban'),
+        cancelButtonText: t('players.actions.cancel'),
         inputPlaceholder: player.archive_name,
-        inputValidator: value => value === player.archive_name || '房间名不匹配'
+        inputValidator: value => value === player.archive_name || t('players.validation.roomNameMismatch')
       }
     )
     unbanningId.value = player.user_id
     await playerApi.unbanPlayer(player, result.value)
-    toast.success(`已解除 ${player.player_name || player.user_id} 的封禁`)
+    toast.success(t('players.banList.unbanSucceeded', { player: player.player_name || player.user_id }))
     await loadBans()
   } catch (value) {
     if (value === 'cancel' || value === 'close') return
-    toast.error(`解除封禁失败：${errorMessage(value)}`)
+    toast.error(t('players.banList.unbanFailed', { error: errorMessage(value) }))
   } finally {
     unbanningId.value = ''
   }

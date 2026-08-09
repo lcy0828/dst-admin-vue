@@ -1,79 +1,79 @@
 <template>
   <div class="player-list-page">
     <div class="page-header">
-      <div class="title-container"><h1>玩家列表</h1><p>查询玩家记录、在线状态并执行世界内操作。</p></div>
+      <div class="title-container"><h1>{{ $t('players.list.title') }}</h1><p>{{ $t('players.list.subtitle') }}</p></div>
       <div class="action-buttons">
-        <UiButton size="sm" variant="outline" @click="refreshData" :disabled="loading"><RefreshCw data-icon="inline-start" />刷新</UiButton>
-        <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />手动更新</UiButton>
-        <UiButton size="sm" variant="outline" @click="showSessionSelect"><Globe2 data-icon="inline-start" />默认任务世界</UiButton>
-        <UiButton size="sm" @click="showScheduleDialog"><Clock3 data-icon="inline-start" />添加定时任务</UiButton>
-        <Badge v-if="activeSessionName">任务世界: {{ activeSessionLabel }}</Badge>
+        <UiButton size="sm" variant="outline" @click="refreshData" :disabled="loading"><RefreshCw data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
+        <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />{{ $t('players.actions.manualUpdate') }}</UiButton>
+        <UiButton size="sm" variant="outline" @click="showSessionSelect"><Globe2 data-icon="inline-start" />{{ $t('players.actions.defaultTaskWorld') }}</UiButton>
+        <UiButton size="sm" @click="showScheduleDialog"><Clock3 data-icon="inline-start" />{{ $t('players.actions.addSchedule') }}</UiButton>
+        <Badge v-if="activeSessionName">{{ $t('players.list.taskWorld', { world: activeSessionLabel }) }}</Badge>
       </div>
     </div>
 
     <Card class="filter-card">
-      <CardHeader><div><CardTitle>筛选玩家</CardTitle><CardDescription>按存档、在线状态、角色或关键词缩小范围。</CardDescription></div></CardHeader>
+      <CardHeader><div><CardTitle>{{ $t('players.list.filterTitle') }}</CardTitle><CardDescription>{{ $t('players.list.filterDescription') }}</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-form">
           <Field>
-            <FieldLabel for="player-archive-filter">存档名称</FieldLabel>
+            <FieldLabel for="player-archive-filter">{{ $t('players.fields.archive') }}</FieldLabel>
             <NativeSelect id="player-archive-filter" v-model="filterForm.archive_name" @change="handleFilter">
-              <NativeSelectOption value="">全部存档</NativeSelectOption>
+              <NativeSelectOption value="">{{ $t('players.list.allArchives') }}</NativeSelectOption>
               <NativeSelectOption v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</NativeSelectOption>
             </NativeSelect>
           </Field>
           <Field>
-            <FieldLabel for="player-status-filter">玩家状态</FieldLabel>
+            <FieldLabel for="player-status-filter">{{ $t('players.fields.status') }}</FieldLabel>
             <NativeSelect id="player-status-filter" v-model="filterForm.status" @change="handleFilter">
-              <NativeSelectOption value="">全部状态</NativeSelectOption><NativeSelectOption value="online">在线</NativeSelectOption><NativeSelectOption value="offline">离线</NativeSelectOption>
+              <NativeSelectOption value="">{{ $t('players.list.allStatuses') }}</NativeSelectOption><NativeSelectOption value="online">{{ $t('players.statuses.online') }}</NativeSelectOption><NativeSelectOption value="offline">{{ $t('players.statuses.offline') }}</NativeSelectOption>
             </NativeSelect>
           </Field>
           <Field>
-            <FieldLabel for="player-character-filter">角色</FieldLabel>
+            <FieldLabel for="player-character-filter">{{ $t('players.fields.character') }}</FieldLabel>
             <NativeSelect id="player-character-filter" v-model="filterForm.prefab" @change="handleFilter">
-              <NativeSelectOption value="">全部角色</NativeSelectOption>
+              <NativeSelectOption value="">{{ $t('players.list.allCharacters') }}</NativeSelectOption>
               <NativeSelectOption v-for="character in characterOptions" :key="character.value" :value="character.value">{{ character.label }}</NativeSelectOption>
             </NativeSelect>
           </Field>
           <Field>
-            <FieldLabel for="player-keyword-filter">关键词</FieldLabel>
-            <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="player-keyword-filter" v-model="filterForm.keyword" placeholder="搜索玩家名称或 ID" @keyup.enter="handleFilter" /></InputGroup>
+            <FieldLabel for="player-keyword-filter">{{ $t('players.fields.keyword') }}</FieldLabel>
+            <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="player-keyword-filter" v-model="filterForm.keyword" :placeholder="$t('players.list.searchPlaceholder')" @keyup.enter="handleFilter" /></InputGroup>
           </Field>
-          <div class="filter-actions"><UiButton @click="handleFilter"><Search data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetFilter">重置</UiButton></div>
+          <div class="filter-actions"><UiButton @click="handleFilter"><Search data-icon="inline-start" />{{ $t('players.actions.search') }}</UiButton><UiButton variant="outline" @click="resetFilter">{{ $t('players.actions.reset') }}</UiButton></div>
         </FieldGroup>
       </CardContent>
     </Card>
 
     <Card class="table-card">
       <CardHeader class="table-operations">
-        <div><CardTitle>玩家列表</CardTitle><CardDescription>共 {{ pagination.total }} 名玩家</CardDescription></div>
-        <CardAction><UiButton size="sm" @click="exportPlayerData" :disabled="loading || Boolean(loadError)"><Download data-icon="inline-start" />导出数据</UiButton></CardAction>
+        <div><CardTitle>{{ $t('players.list.title') }}</CardTitle><CardDescription>{{ $t('players.list.total', { count: pagination.total }) }}</CardDescription></div>
+        <CardAction><UiButton size="sm" @click="exportPlayerData" :disabled="loading || Boolean(loadError)"><Download data-icon="inline-start" />{{ $t('players.actions.export') }}</UiButton></CardAction>
       </CardHeader>
       <CardContent>
         <Alert v-if="loadError" variant="destructive" class="mb-4">
           <TriangleAlert />
-          <AlertTitle>玩家列表加载失败</AlertTitle>
-          <AlertDescription>{{ loadError }}</AlertDescription>
-          <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">重试</UiButton></AlertAction>
+          <AlertTitle>{{ $t('players.list.loadFailedTitle') }}</AlertTitle>
+          <AlertDescription>{{ loadErrorText }}</AlertDescription>
+          <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">{{ $t('players.actions.retry') }}</UiButton></AlertAction>
         </Alert>
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在加载玩家列表</span></div>
+        <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('players.list.loading') }}</span></div>
         <div v-else-if="!loadError && playerList.length > 0" class="table-wrap">
           <UiTable>
             <TableHeader>
               <TableRow>
                 <TableHead><SortButton label="ID" field="id" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead><SortButton label="存档名称" field="archive_name" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead>玩家名称</TableHead>
+                <TableHead><SortButton :label="$t('players.fields.archive')" field="archive_name" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead>{{ $t('players.fields.playerName') }}</TableHead>
                 <TableHead>KU ID</TableHead>
-                <TableHead>角色</TableHead>
-                <TableHead><SortButton label="天数" field="player_age" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead><SortButton label="状态" field="status" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead>网络质量</TableHead>
-                <TableHead>性能</TableHead>
+                <TableHead>{{ $t('players.fields.character') }}</TableHead>
+                <TableHead><SortButton :label="$t('players.fields.days')" field="player_age" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead><SortButton :label="$t('players.fields.status')" field="status" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead>{{ $t('players.fields.network') }}</TableHead>
+                <TableHead>{{ $t('players.fields.performance') }}</TableHead>
                 <TableHead>Steam ID</TableHead>
-                <TableHead><SortButton label="首次登录" field="first_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead><SortButton label="最后登录" field="last_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead class="action-column">操作</TableHead>
+                <TableHead><SortButton :label="$t('players.fields.firstSeen')" field="first_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead><SortButton :label="$t('players.fields.lastSeen')" field="last_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead class="action-column">{{ $t('players.fields.action') }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -81,36 +81,36 @@
                 <TableCell>{{ player.id }}</TableCell>
                 <TableCell>{{ player.archive_name }}</TableCell>
                 <TableCell>
-                  <div class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" title="管理员" /><UserRoundCheck v-if="player.is_friend" title="好友" /></div>
+                  <div class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" :title="$t('players.list.administrator')" /><UserRoundCheck v-if="player.is_friend" :title="$t('players.list.friend')" /></div>
                 </TableCell>
                 <TableCell class="mono-cell">{{ player.user_id }}</TableCell>
                 <TableCell><Badge variant="outline">{{ getCharacterName(player.prefab) }}</Badge></TableCell>
                 <TableCell>{{ player.player_age }}</TableCell>
-                <TableCell><Badge :variant="player.status === 'online' ? 'default' : 'secondary'">{{ player.status === 'online' ? '在线' : '离线' }}</Badge></TableCell>
-                <TableCell><Badge v-if="player.status === 'online'" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
+                <TableCell><Badge :variant="getPlayerStatusMeta(player.status).variant">{{ getPlayerStatusMeta(player.status).label }}</Badge></TableCell>
+                <TableCell><Badge v-if="isPlayerOnline(player.status)" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
                 <TableCell><Badge :variant="getPerformanceBadgeVariant(player.performance)">{{ getPerformanceText(player.performance) }}</Badge></TableCell>
                 <TableCell>
-                  <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" title="在 Steam 中查看" aria-label="在 Steam 中查看玩家" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
+                  <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" :title="$t('players.actions.viewOnSteam')" :aria-label="$t('players.actions.viewPlayerOnSteam')" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
                 </TableCell>
                 <TableCell>{{ formatDate(player.first_seen) }}</TableCell>
                 <TableCell>{{ formatDate(player.last_seen) }}</TableCell>
                 <TableCell class="action-column">
                   <div class="row-actions">
-                    <UiButton variant="ghost" size="sm" @click="viewPlayerDetail(player)">详情</UiButton>
+                    <UiButton variant="ghost" size="sm" @click="viewPlayerDetail(player)">{{ $t('players.actions.details') }}</UiButton>
                     <DropdownMenu>
-                      <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" aria-label="打开玩家操作菜单" title="玩家操作"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
+                      <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" :aria-label="$t('players.actions.openPlayerMenu')" :title="$t('players.actions.playerActions')"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                          <DropdownMenuItem :disabled="player.status !== 'online'" @select="toggleGodMode(player)">无敌模式</DropdownMenuItem>
-                          <DropdownMenuItem :disabled="player.status !== 'online'" @select="toggleCreativeMode(player)">制作模式</DropdownMenuItem>
-                          <DropdownMenuItem :disabled="player.status !== 'online'" @select="resurrectPlayer(player)">复活玩家</DropdownMenuItem>
-                          <DropdownMenuItem :disabled="player.status !== 'online'" @select="changeCharacter(player)">重选人物</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="!isPlayerOnline(player.status)" @select="toggleGodMode(player)">{{ $t('players.operations.godMode') }}</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="!isPlayerOnline(player.status)" @select="toggleCreativeMode(player)">{{ $t('players.operations.creativeMode') }}</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="!isPlayerOnline(player.status)" @select="resurrectPlayer(player)">{{ $t('players.operations.resurrect') }}</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="!isPlayerOnline(player.status)" @select="changeCharacter(player)">{{ $t('players.operations.changeCharacter') }}</DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                          <DropdownMenuItem variant="destructive" :disabled="player.status !== 'online'" @select="kickPlayer(player)">踢出玩家</DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" @select="banPlayer(player)">封禁玩家</DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" :disabled="player.status !== 'online'" @select="killPlayer(player)">杀死玩家</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" :disabled="!isPlayerOnline(player.status)" @select="kickPlayer(player)">{{ $t('players.operations.kick') }}</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" @select="banPlayer(player)">{{ $t('players.operations.ban') }}</DropdownMenuItem>
+                          <DropdownMenuItem variant="destructive" :disabled="!isPlayerOnline(player.status)" @select="killPlayer(player)">{{ $t('players.operations.kill') }}</DropdownMenuItem>
                         </DropdownMenuGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -120,13 +120,13 @@
             </TableBody>
           </UiTable>
         </div>
-        <Empty v-else-if="!loadError"><EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>暂无玩家数据</EmptyTitle><EmptyDescription>选择存档或手动更新玩家列表。</EmptyDescription></EmptyHeader></Empty>
+        <Empty v-else-if="!loadError"><EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>{{ $t('players.list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ $t('players.list.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
 
       </CardContent>
       <CardFooter v-if="!loading && !loadError && pagination.total > 0" class="pagination-bar">
         <div class="page-size-control">
-          <span>每页</span>
-          <NativeSelect id="player-page-size" aria-label="每页显示数量" :model-value="String(pagination.page_size)" @update:model-value="value => handleSizeChange(Number(value))">
+          <span>{{ $t('players.list.perPage') }}</span>
+          <NativeSelect id="player-page-size" :aria-label="$t('players.list.perPageAria')" :model-value="String(pagination.page_size)" @update:model-value="value => handleSizeChange(Number(value))">
             <NativeSelectOption value="10">10</NativeSelectOption><NativeSelectOption value="20">20</NativeSelectOption><NativeSelectOption value="50">50</NativeSelectOption><NativeSelectOption value="100">100</NativeSelectOption>
           </NativeSelect>
         </div>
@@ -145,28 +145,28 @@
 
     <Sheet v-model:open="playerDetailVisible">
       <SheetContent side="right" class="player-detail-sheet">
-        <SheetHeader><SheetTitle>玩家详情</SheetTitle><SheetDescription>身份、连接状态和服务器操作。</SheetDescription></SheetHeader>
+        <SheetHeader><SheetTitle>{{ $t('players.detail.title') }}</SheetTitle><SheetDescription>{{ $t('players.detail.description') }}</SheetDescription></SheetHeader>
         <ScrollArea class="player-detail-scroll">
           <div v-if="currentPlayer" class="player-detail">
             <div class="player-detail-heading">
               <Avatar size="lg"><AvatarFallback>{{ getPlayerInitials(currentPlayer) }}</AvatarFallback></Avatar>
-              <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="currentPlayer.status === 'online' ? 'default' : 'secondary'">{{ currentPlayer.status === 'online' ? '在线' : '离线' }}</Badge></div><span>{{ getCharacterName(currentPlayer.prefab) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || '未知世界' }}</span></div>
+              <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="getPlayerStatusMeta(currentPlayer.status).variant">{{ getPlayerStatusMeta(currentPlayer.status).label }}</Badge></div><span>{{ getCharacterName(currentPlayer.prefab) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || $t('players.values.unknownWorld') }}</span></div>
             </div>
             <dl class="player-description-grid">
-              <div><dt>玩家 ID</dt><dd>{{ currentPlayer.id }}</dd></div><div><dt>KU ID</dt><dd>{{ currentPlayer.user_id }}</dd></div>
-              <div><dt>玩家名称</dt><dd>{{ currentPlayer.player_name }}</dd></div><div><dt>存档名称</dt><dd>{{ currentPlayer.archive_name }}</dd></div>
-              <div><dt>角色</dt><dd>{{ getCharacterName(currentPlayer.prefab) }}</dd></div><div><dt>天数</dt><dd>{{ currentPlayer.player_age }}</dd></div>
-              <div><dt>状态变更</dt><dd>{{ formatDate(currentPlayer.status_change) }}</dd></div><div><dt>Steam ID</dt><dd><UiButton variant="link" size="sm" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</UiButton></dd></div>
-              <div><dt>网络质量</dt><dd>{{ currentPlayer.status === 'online' ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div><div><dt>性能指标</dt><dd>{{ getPerformanceText(currentPlayer.performance) }}</dd></div>
-              <div><dt>首次登录</dt><dd>{{ formatDate(currentPlayer.first_seen) }}</dd></div><div><dt>最后登录</dt><dd>{{ formatDate(currentPlayer.last_seen) }}</dd></div>
-              <div><dt>创建时间</dt><dd>{{ formatDate(currentPlayer.created_at) }}</dd></div><div><dt>更新时间</dt><dd>{{ formatDate(currentPlayer.updated_at) }}</dd></div>
+              <div><dt>{{ $t('players.fields.playerId') }}</dt><dd>{{ currentPlayer.id }}</dd></div><div><dt>KU ID</dt><dd>{{ currentPlayer.user_id }}</dd></div>
+              <div><dt>{{ $t('players.fields.playerName') }}</dt><dd>{{ currentPlayer.player_name }}</dd></div><div><dt>{{ $t('players.fields.archive') }}</dt><dd>{{ currentPlayer.archive_name }}</dd></div>
+              <div><dt>{{ $t('players.fields.character') }}</dt><dd>{{ getCharacterName(currentPlayer.prefab) }}</dd></div><div><dt>{{ $t('players.fields.days') }}</dt><dd>{{ currentPlayer.player_age }}</dd></div>
+              <div><dt>{{ $t('players.fields.statusChanged') }}</dt><dd>{{ formatDate(currentPlayer.status_change) }}</dd></div><div><dt>Steam ID</dt><dd><UiButton variant="link" size="sm" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</UiButton></dd></div>
+              <div><dt>{{ $t('players.fields.network') }}</dt><dd>{{ isPlayerOnline(currentPlayer.status) ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div><div><dt>{{ $t('players.fields.performanceMetric') }}</dt><dd>{{ getPerformanceText(currentPlayer.performance) }}</dd></div>
+              <div><dt>{{ $t('players.fields.firstSeen') }}</dt><dd>{{ formatDate(currentPlayer.first_seen) }}</dd></div><div><dt>{{ $t('players.fields.lastSeen') }}</dt><dd>{{ formatDate(currentPlayer.last_seen) }}</dd></div>
+              <div><dt>{{ $t('players.fields.createdAt') }}</dt><dd>{{ formatDate(currentPlayer.created_at) }}</dd></div><div><dt>{{ $t('players.fields.updatedAt') }}</dt><dd>{{ formatDate(currentPlayer.updated_at) }}</dd></div>
             </dl>
             <Separator />
-            <section><h3>游戏操作</h3><div class="detail-action-grid">
-              <UiButton size="sm" variant="outline" :disabled="currentPlayer.status !== 'online'" @click="toggleGodMode(currentPlayer)">无敌模式</UiButton><UiButton size="sm" variant="outline" :disabled="currentPlayer.status !== 'online'" @click="toggleCreativeMode(currentPlayer)">制作模式</UiButton><UiButton size="sm" variant="outline" :disabled="currentPlayer.status !== 'online'" @click="resurrectPlayer(currentPlayer)">复活玩家</UiButton><UiButton size="sm" variant="outline" :disabled="currentPlayer.status !== 'online'" @click="changeCharacter(currentPlayer)">重选人物</UiButton>
+            <section><h3>{{ $t('players.detail.gameActions') }}</h3><div class="detail-action-grid">
+              <UiButton size="sm" variant="outline" :disabled="!isPlayerOnline(currentPlayer.status)" @click="toggleGodMode(currentPlayer)">{{ $t('players.operations.godMode') }}</UiButton><UiButton size="sm" variant="outline" :disabled="!isPlayerOnline(currentPlayer.status)" @click="toggleCreativeMode(currentPlayer)">{{ $t('players.operations.creativeMode') }}</UiButton><UiButton size="sm" variant="outline" :disabled="!isPlayerOnline(currentPlayer.status)" @click="resurrectPlayer(currentPlayer)">{{ $t('players.operations.resurrect') }}</UiButton><UiButton size="sm" variant="outline" :disabled="!isPlayerOnline(currentPlayer.status)" @click="changeCharacter(currentPlayer)">{{ $t('players.operations.changeCharacter') }}</UiButton>
             </div></section>
-            <section><h3>危险操作</h3><div class="detail-action-grid">
-              <UiButton variant="destructive" size="sm" :disabled="currentPlayer.status !== 'online'" @click="kickPlayer(currentPlayer)">踢出</UiButton><UiButton variant="destructive" size="sm" @click="banPlayer(currentPlayer)">封禁</UiButton><UiButton variant="destructive" size="sm" :disabled="currentPlayer.status !== 'online'" @click="killPlayer(currentPlayer)">杀死</UiButton>
+            <section><h3>{{ $t('players.detail.dangerousActions') }}</h3><div class="detail-action-grid">
+              <UiButton variant="destructive" size="sm" :disabled="!isPlayerOnline(currentPlayer.status)" @click="kickPlayer(currentPlayer)">{{ $t('players.operations.kickShort') }}</UiButton><UiButton variant="destructive" size="sm" @click="banPlayer(currentPlayer)">{{ $t('players.operations.banShort') }}</UiButton><UiButton variant="destructive" size="sm" :disabled="!isPlayerOnline(currentPlayer.status)" @click="killPlayer(currentPlayer)">{{ $t('players.operations.killShort') }}</UiButton>
             </div></section>
           </div>
         </ScrollArea>
@@ -174,60 +174,60 @@
     </Sheet>
 
     <UiDialog v-model:open="banDialogVisible">
-      <DialogContent><DialogHeader><DialogTitle>封禁玩家</DialogTitle><DialogDescription>{{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
-        <FieldGroup><Field :data-invalid="Boolean(banFormError)"><FieldLabel for="ban-reason">封禁原因</FieldLabel><UiTextarea id="ban-reason" v-model="banForm.reason" rows="3" placeholder="请输入封禁原因" :aria-invalid="Boolean(banFormError)" /><FieldError v-if="banFormError">{{ banFormError }}</FieldError></Field>
-          <Field><FieldLabel for="ban-duration">封禁时长</FieldLabel><UiSelect v-model="banForm.duration"><SelectTrigger id="ban-duration"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="duration in banDurations" :key="duration.value" :value="duration.value">{{ duration.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field :data-invalid="Boolean(banConfirmationError)"><FieldLabel for="ban-confirmation">完整房间名</FieldLabel><UiInput id="ban-confirmation" v-model="banForm.confirmation" :placeholder="currentPlayer?.archive_name ? `请输入 ${currentPlayer.archive_name}` : '请输入完整房间名'" :aria-invalid="Boolean(banConfirmationError)" /><FieldDescription>封禁会修改房间黑名单。</FieldDescription><FieldError v-if="banConfirmationError">{{ banConfirmationError }}</FieldError></Field></FieldGroup>
-        <DialogFooter><UiButton variant="outline" @click="banDialogVisible = false">取消</UiButton><UiButton variant="destructive" @click="confirmBanPlayer" :disabled="banning"><Spinner v-if="banning" data-icon="inline-start" />确认封禁</UiButton></DialogFooter>
+      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.ban.title') }}</DialogTitle><DialogDescription>{{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
+        <FieldGroup><Field :data-invalid="Boolean(banFormError)"><FieldLabel for="ban-reason">{{ $t('players.fields.banReason') }}</FieldLabel><UiTextarea id="ban-reason" v-model="banForm.reason" rows="3" :placeholder="$t('players.dialogs.ban.reasonPlaceholder')" :aria-invalid="Boolean(banFormError)" /><FieldError v-if="banFormError">{{ banFormErrorText }}</FieldError></Field>
+          <Field><FieldLabel for="ban-duration">{{ $t('players.fields.banDuration') }}</FieldLabel><UiSelect v-model="banForm.duration"><SelectTrigger id="ban-duration"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="duration in banDurations" :key="duration.value" :value="duration.value">{{ duration.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field :data-invalid="Boolean(banConfirmationError)"><FieldLabel for="ban-confirmation">{{ $t('players.fields.fullRoomName') }}</FieldLabel><UiInput id="ban-confirmation" v-model="banForm.confirmation" :placeholder="currentPlayer?.archive_name ? $t('players.dialogs.ban.roomPlaceholderNamed', { room: currentPlayer.archive_name }) : $t('players.dialogs.ban.roomPlaceholder')" :aria-invalid="Boolean(banConfirmationError)" /><FieldDescription>{{ $t('players.dialogs.ban.description') }}</FieldDescription><FieldError v-if="banConfirmationError">{{ banConfirmationErrorText }}</FieldError></Field></FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="banDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton variant="destructive" @click="confirmBanPlayer" :disabled="banning"><Spinner v-if="banning" data-icon="inline-start" />{{ $t('players.actions.confirmBan') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
 
     <UiDialog v-model:open="godModeDialogVisible">
-      <DialogContent><DialogHeader><DialogTitle>设置无敌模式</DialogTitle><DialogDescription>玩家 {{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
-        <Field orientation="horizontal"><FieldContent><FieldLabel for="god-mode-enabled">无敌模式</FieldLabel><FieldDescription>{{ godModeForm.enabled ? '开启' : '关闭' }}</FieldDescription></FieldContent><UiSwitch id="god-mode-enabled" v-model="godModeForm.enabled" /></Field>
-        <DialogFooter><UiButton variant="outline" @click="godModeDialogVisible = false">取消</UiButton><UiButton @click="confirmGodMode" :disabled="settingGodMode"><Spinner v-if="settingGodMode" data-icon="inline-start" />确认</UiButton></DialogFooter>
+      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.godMode.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.godMode.player', { player: currentPlayer?.player_name || '' }) }}</DialogDescription></DialogHeader>
+        <Field orientation="horizontal"><FieldContent><FieldLabel for="god-mode-enabled">{{ $t('players.operations.godMode') }}</FieldLabel><FieldDescription>{{ $t(godModeForm.enabled ? 'players.values.enabled' : 'players.values.disabled') }}</FieldDescription></FieldContent><UiSwitch id="god-mode-enabled" v-model="godModeForm.enabled" /></Field>
+        <DialogFooter><UiButton variant="outline" @click="godModeDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmGodMode" :disabled="settingGodMode"><Spinner v-if="settingGodMode" data-icon="inline-start" />{{ $t('players.actions.confirm') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
 
     <UiDialog v-model:open="creativeModeDialogVisible">
-      <DialogContent><DialogHeader><DialogTitle>设置制作模式</DialogTitle><DialogDescription>玩家 {{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
-        <Field orientation="horizontal"><FieldContent><FieldLabel for="creative-mode-enabled">制作模式</FieldLabel><FieldDescription>{{ creativeModeForm.enabled ? '开启' : '关闭' }}</FieldDescription></FieldContent><UiSwitch id="creative-mode-enabled" v-model="creativeModeForm.enabled" /></Field>
-        <DialogFooter><UiButton variant="outline" @click="creativeModeDialogVisible = false">取消</UiButton><UiButton @click="confirmCreativeMode" :disabled="settingCreativeMode"><Spinner v-if="settingCreativeMode" data-icon="inline-start" />确认</UiButton></DialogFooter>
+      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.creativeMode.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.creativeMode.player', { player: currentPlayer?.player_name || '' }) }}</DialogDescription></DialogHeader>
+        <Field orientation="horizontal"><FieldContent><FieldLabel for="creative-mode-enabled">{{ $t('players.operations.creativeMode') }}</FieldLabel><FieldDescription>{{ $t(creativeModeForm.enabled ? 'players.values.enabled' : 'players.values.disabled') }}</FieldDescription></FieldContent><UiSwitch id="creative-mode-enabled" v-model="creativeModeForm.enabled" /></Field>
+        <DialogFooter><UiButton variant="outline" @click="creativeModeDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmCreativeMode" :disabled="settingCreativeMode"><Spinner v-if="settingCreativeMode" data-icon="inline-start" />{{ $t('players.actions.confirm') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
 
     <UiDialog v-model:open="sessionSelectDialogVisible">
-      <DialogContent><DialogHeader><DialogTitle>默认任务世界</DialogTitle><DialogDescription>用于预填定时刷新任务；实时玩家操作始终发送到玩家当前所在世界。</DialogDescription></DialogHeader>
-        <FieldGroup><Field><FieldLabel for="player-session">游戏世界</FieldLabel><UiSelect v-model="selectedSessionName"><SelectTrigger id="player-session"><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
-        <Alert v-if="sessionList.length === 0" variant="destructive"><TriangleAlert /><AlertTitle>没有可用的世界</AlertTitle></Alert>
-        <DialogFooter><UiButton variant="outline" @click="sessionSelectDialogVisible = false">取消</UiButton><UiButton @click="confirmSessionSelect">确认</UiButton></DialogFooter>
+      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.session.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.session.description') }}</DialogDescription></DialogHeader>
+        <FieldGroup><Field><FieldLabel for="player-session">{{ $t('players.fields.gameWorld') }}</FieldLabel><UiSelect v-model="selectedSessionName"><SelectTrigger id="player-session"><SelectValue :placeholder="$t('players.dialogs.session.placeholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ getWorldState(session.state) }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
+        <Alert v-if="sessionList.length === 0" variant="destructive"><TriangleAlert /><AlertTitle>{{ $t('players.dialogs.session.empty') }}</AlertTitle></Alert>
+        <DialogFooter><UiButton variant="outline" @click="sessionSelectDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmSessionSelect">{{ $t('players.actions.confirm') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
 
     <UiDialog v-model:open="updateDialogVisible">
-      <DialogContent><DialogHeader><DialogTitle>手动更新玩家列表</DialogTitle><DialogDescription>从服务器读取最新的真实玩家信息。</DialogDescription></DialogHeader>
-        <FieldGroup><Field><FieldLabel for="update-archive">存档名称</FieldLabel><UiSelect v-model="updateForm.archive_name" @update:model-value="onArchiveChange"><SelectTrigger id="update-archive"><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field><FieldLabel for="update-world">世界名称</FieldLabel><NativeSelect id="update-world" v-model="updateForm.world_name"><NativeSelectOption value="">所有世界</NativeSelectOption><NativeSelectOption v-for="world in worldOptions" :key="world.value" :value="world.value">{{ world.label }}</NativeSelectOption></NativeSelect><FieldDescription>留空表示所有世界。</FieldDescription></Field></FieldGroup>
-        <DialogFooter><UiButton variant="outline" @click="updateDialogVisible = false">取消</UiButton><UiButton @click="confirmUpdate" :disabled="updating || !updateForm.archive_name"><Spinner v-if="updating" data-icon="inline-start" />开始更新</UiButton></DialogFooter>
+      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.update.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.update.description') }}</DialogDescription></DialogHeader>
+        <FieldGroup><Field><FieldLabel for="update-archive">{{ $t('players.fields.archive') }}</FieldLabel><UiSelect v-model="updateForm.archive_name" @update:model-value="onArchiveChange"><SelectTrigger id="update-archive"><SelectValue :placeholder="$t('players.dialogs.update.archivePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="update-world">{{ $t('players.fields.world') }}</FieldLabel><NativeSelect id="update-world" v-model="updateForm.world_name"><NativeSelectOption value="">{{ $t('players.dialogs.update.allWorlds') }}</NativeSelectOption><NativeSelectOption v-for="world in worldOptions" :key="world.value" :value="world.value">{{ world.label }}</NativeSelectOption></NativeSelect><FieldDescription>{{ $t('players.dialogs.update.allWorldsDescription') }}</FieldDescription></Field></FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="updateDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmUpdate" :disabled="updating || !updateForm.archive_name"><Spinner v-if="updating" data-icon="inline-start" />{{ $t('players.actions.startUpdate') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
 
     <UiDialog v-model:open="characterDialogVisible">
-      <DialogContent><DialogHeader><DialogTitle>重选人物</DialogTitle><DialogDescription>玩家 {{ currentPlayer?.player_name || '' }} 当前角色为 {{ currentPlayer ? getCharacterName(currentPlayer.prefab) : '' }}。</DialogDescription></DialogHeader>
-        <Alert variant="destructive"><TriangleAlert /><AlertTitle>玩家数据会被重置</AlertTitle><AlertDescription>完成后玩家可以重新选择角色。</AlertDescription></Alert>
-        <DialogFooter><UiButton variant="outline" @click="characterDialogVisible = false">取消</UiButton><UiButton @click="confirmChangeCharacter" :disabled="changingCharacter"><Spinner v-if="changingCharacter" data-icon="inline-start" />确认重选</UiButton></DialogFooter>
+      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.character.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.character.description', { player: currentPlayer?.player_name || '', character: currentPlayer ? getCharacterName(currentPlayer.prefab) : '' }) }}</DialogDescription></DialogHeader>
+        <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ $t('players.dialogs.character.warningTitle') }}</AlertTitle><AlertDescription>{{ $t('players.dialogs.character.warningDescription') }}</AlertDescription></Alert>
+        <DialogFooter><UiButton variant="outline" @click="characterDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmChangeCharacter" :disabled="changingCharacter"><Spinner v-if="changingCharacter" data-icon="inline-start" />{{ $t('players.actions.confirmReselect') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
 
     <UiDialog v-model:open="scheduleDialogVisible">
-      <DialogContent class="max-w-2xl"><DialogHeader><DialogTitle>添加定时更新任务</DialogTitle><DialogDescription>定期从选中世界同步玩家列表。</DialogDescription></DialogHeader>
+      <DialogContent class="max-w-2xl"><DialogHeader><DialogTitle>{{ $t('players.dialogs.schedule.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.schedule.description') }}</DialogDescription></DialogHeader>
         <FieldGroup>
-          <Field :data-invalid="Boolean(scheduleErrors.name)"><FieldLabel for="schedule-name">任务名称</FieldLabel><UiInput id="schedule-name" v-model="scheduleForm.name" :aria-invalid="Boolean(scheduleErrors.name)" /><FieldError v-if="scheduleErrors.name">{{ scheduleErrors.name }}</FieldError></Field>
-          <Field :data-invalid="Boolean(scheduleErrors.session_name)"><FieldLabel for="schedule-session">游戏世界</FieldLabel><UiSelect v-model="scheduleForm.session_name"><SelectTrigger id="schedule-session" :aria-invalid="Boolean(scheduleErrors.session_name)"><SelectValue placeholder="选择游戏世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="scheduleErrors.session_name">{{ scheduleErrors.session_name }}</FieldError></Field>
-          <Field :data-invalid="Boolean(scheduleErrors.spec)"><FieldLabel for="schedule-spec">执行计划</FieldLabel><UiInput id="schedule-spec" v-model="scheduleForm.spec" placeholder="例如：0 */3 * * * *" :aria-invalid="Boolean(scheduleErrors.spec)" /><FieldDescription>支持五段 Cron，或以 0 秒开头的六段 Cron。</FieldDescription><FieldError v-if="scheduleErrors.spec">{{ scheduleErrors.spec }}</FieldError></Field>
-          <Field><FieldLabel for="schedule-description">任务描述</FieldLabel><UiTextarea id="schedule-description" v-model="scheduleForm.description" rows="2" /></Field>
+          <Field :data-invalid="Boolean(scheduleErrors.name)"><FieldLabel for="schedule-name">{{ $t('players.fields.taskName') }}</FieldLabel><UiInput id="schedule-name" v-model="scheduleForm.name" :aria-invalid="Boolean(scheduleErrors.name)" /><FieldError v-if="scheduleErrors.name">{{ scheduleErrorText(scheduleErrors.name) }}</FieldError></Field>
+          <Field :data-invalid="Boolean(scheduleErrors.session_name)"><FieldLabel for="schedule-session">{{ $t('players.fields.gameWorld') }}</FieldLabel><UiSelect v-model="scheduleForm.session_name"><SelectTrigger id="schedule-session" :aria-invalid="Boolean(scheduleErrors.session_name)"><SelectValue :placeholder="$t('players.dialogs.schedule.worldPlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ getWorldState(session.state) }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="scheduleErrors.session_name">{{ scheduleErrorText(scheduleErrors.session_name) }}</FieldError></Field>
+          <Field :data-invalid="Boolean(scheduleErrors.spec)"><FieldLabel for="schedule-spec">{{ $t('players.fields.schedule') }}</FieldLabel><UiInput id="schedule-spec" v-model="scheduleForm.spec" :placeholder="$t('players.dialogs.schedule.specPlaceholder')" :aria-invalid="Boolean(scheduleErrors.spec)" /><FieldDescription>{{ $t('players.dialogs.schedule.specDescription') }}</FieldDescription><FieldError v-if="scheduleErrors.spec">{{ scheduleErrorText(scheduleErrors.spec) }}</FieldError></Field>
+          <Field><FieldLabel for="schedule-description">{{ $t('players.fields.taskDescription') }}</FieldLabel><UiTextarea id="schedule-description" v-model="scheduleForm.description" rows="2" /></Field>
         </FieldGroup>
-        <DialogFooter><UiButton variant="outline" @click="scheduleDialogVisible = false">取消</UiButton><UiButton @click="confirmAddSchedule" :disabled="addingSchedule"><Spinner v-if="addingSchedule" data-icon="inline-start" />确认添加</UiButton></DialogFooter>
+        <DialogFooter><UiButton variant="outline" @click="scheduleDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmAddSchedule" :disabled="addingSchedule"><Spinner v-if="addingSchedule" data-icon="inline-start" />{{ $t('players.actions.confirmAdd') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
   </div>
@@ -258,6 +258,19 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import {
+  formatPlayerDate,
+  isPlayerOnline,
+  PLAYER_BAN_DURATION_IDS,
+  PLAYER_CHARACTER_IDS,
+  playerBanDurationLabel,
+  playerCharacterLabel,
+  playerErrorDetail,
+  playerNetworkLabel,
+  playerPerformanceLabel,
+  playerStatusMeta,
+  playerWorldStateLabel
+} from '@/i18n/playerMessages.js';
 import { promptText } from '@/lib/feedback';
 import SortButton from './SortButton.vue';
 
@@ -355,7 +368,7 @@ export default {
       // 玩家列表数据
       playerList: [],
       loading: false,
-      loadError: '',
+      loadError: null,
 
       // 分页参数
       pagination: {
@@ -374,29 +387,6 @@ export default {
 
       // 存档选项
       archiveOptions: [],
-
-      // 角色选项
-      characterOptions: [
-        { label: '威尔逊', value: 'wilson' },
-        { label: '薇洛', value: 'willow' },
-        { label: '沃尔夫冈', value: 'wolfgang' },
-        { label: '温蒂', value: 'wendy' },
-        { label: 'WX-78', value: 'wx78' },
-        { label: '薇克巴顿', value: 'wickerbottom' },
-        { label: '伍迪', value: 'woodie' },
-        { label: '韦斯', value: 'wes' },
-        { label: '麦斯威尔', value: 'waxwell' },
-        { label: '薇格弗德', value: 'wathgrithr' },
-        { label: '韦伯', value: 'webber' },
-        { label: '薇诺娜', value: 'winona' },
-        { label: '沃利', value: 'warly' },
-        { label: '沃尔特', value: 'walter' },
-        { label: '沃拓克斯', value: 'wortox' },
-        { label: '沃姆伍德', value: 'wormwood' },
-        { label: '沃特', value: 'wurt' },
-        { label: '旺达', value: 'wanda' },
-        { label: '芜猴', value: 'wonkey' }
-      ],
 
       // 排序参数
       sortParams: {
@@ -419,16 +409,6 @@ export default {
       },
       banFormError: '',
       banConfirmationError: '',
-      banDurations: [
-        { label: '1小时', value: '1h' },
-        { label: '6小时', value: '6h' },
-        { label: '12小时', value: '12h' },
-        { label: '1天', value: '1d' },
-        { label: '3天', value: '3d' },
-        { label: '7天', value: '7d' },
-        { label: '30天', value: '30d' },
-        { label: '永久', value: 'permanent' }
-      ],
       banning: false,
 
       // 会话列表
@@ -482,6 +462,32 @@ export default {
   },
 
   computed: {
+    characterOptions() {
+      return PLAYER_CHARACTER_IDS.map(value => ({
+        value,
+        label: playerCharacterLabel(value, this.$t)
+      }));
+    },
+
+    banDurations() {
+      return PLAYER_BAN_DURATION_IDS.map(value => ({
+        value,
+        label: playerBanDurationLabel(value, this.$t)
+      }));
+    },
+
+    loadErrorText() {
+      return this.loadError ? playerErrorDetail(this.loadError, this.$t) : '';
+    },
+
+    banFormErrorText() {
+      return this.banFormError ? this.$t(`players.validation.${this.banFormError}`) : '';
+    },
+
+    banConfirmationErrorText() {
+      return this.banConfirmationError ? this.$t(`players.validation.${this.banConfirmationError}`) : '';
+    },
+
     // 获取默认的会话名称（Forest1）
     defaultSessionName() {
       if (this.sessionList && this.sessionList.length > 0) {
@@ -516,6 +522,24 @@ export default {
     }
   },
   methods: {
+    isPlayerOnline,
+
+    getPlayerStatusMeta(status) {
+      return playerStatusMeta(status, this.$t);
+    },
+
+    getWorldState(status) {
+      return playerWorldStateLabel(status, this.$t);
+    },
+
+    errorDetail(error) {
+      return playerErrorDetail(error, this.$t);
+    },
+
+    scheduleErrorText(key) {
+      return key ? this.$t(`players.validation.${key}`) : '';
+    },
+
     handlePlayerCommand(command) {
       if (!command?.player) return;
       const actions = {
@@ -532,7 +556,7 @@ export default {
     // 获取玩家列表
     fetchPlayerList() {
       this.loading = true;
-      this.loadError = '';
+      this.loadError = null;
 
       const params = {
         page: this.pagination.page,
@@ -553,10 +577,10 @@ export default {
         })
         .catch(error => {
           console.error('获取玩家列表失败:', error);
-          this.loadError = error?.response?.data?.message || error.message || '未知错误';
+          this.loadError = error;
           this.playerList = [];
           this.pagination.total = 0;
-          toast.error(`获取玩家列表失败: ${this.loadError}`);
+          toast.error(this.$t('players.feedback.listLoadFailed', { error: this.loadErrorText }));
         })
         .finally(() => {
           this.loading = false;
@@ -615,13 +639,13 @@ export default {
 
     async confirmPlayerAction(player, title, description) {
       const result = await promptText(
-        `${description} 请输入玩家 KU ID“${player.user_id}”确认。`,
+        this.$t('players.confirmations.appendKuId', { description, id: player.user_id }),
         title,
         {
-          confirmButtonText: '确认执行',
-          cancelButtonText: '取消',
+          confirmButtonText: this.$t('players.actions.confirmAction'),
+          cancelButtonText: this.$t('players.actions.cancel'),
           inputPlaceholder: player.user_id,
-          inputValidator: value => value === player.user_id || 'KU ID 不匹配'
+          inputValidator: value => value === player.user_id || this.$t('players.validation.kuIdMismatch')
         }
       );
       return result.value;
@@ -631,20 +655,24 @@ export default {
     async kickPlayer(player) {
       let confirmation;
       try {
-        confirmation = await this.confirmPlayerAction(player, '踢出玩家', `踢出玩家 ${player.player_name} 会立即中断其连接。`);
+        confirmation = await this.confirmPlayerAction(
+          player,
+          this.$t('players.confirmations.kickTitle'),
+          this.$t('players.confirmations.kickDescription', { player: player.player_name })
+        );
       } catch {
         return;
       }
 
-      const loadingId = toast.loading('正在踢出玩家...');
+      const loadingId = toast.loading(this.$t('players.feedback.kickLoading'));
       try {
         await playerApi.kickPlayer(player, null, confirmation);
-        toast.success(`已踢出玩家 ${player.player_name}`);
+        toast.success(this.$t('players.feedback.kickSucceeded', { player: player.player_name }));
         this.playerDetailVisible = false;
         await this.refreshData();
       } catch (error) {
         console.error('踢出玩家失败:', error);
-        toast.error(`踢出玩家失败: ${error.message || '未知错误'}`);
+        toast.error(this.$t('players.feedback.kickFailed', { error: this.errorDetail(error) }));
       } finally {
         toast.dismiss(loadingId);
       }
@@ -666,10 +694,10 @@ export default {
     // 确认封禁玩家
     confirmBanPlayer() {
       const reason = this.banForm.reason.trim();
-      this.banFormError = reason ? '' : '请输入封禁原因';
+      this.banFormError = reason ? '' : 'banReasonRequired';
       this.banConfirmationError = this.banForm.confirmation === this.currentPlayer.archive_name
         ? ''
-        : '请输入完整房间名确认封禁';
+        : 'banRoomMismatch';
       if (this.banFormError || this.banConfirmationError) return;
 
       this.banning = true;
@@ -682,14 +710,14 @@ export default {
 
       playerApi.banPlayer(this.currentPlayer, banData)
         .then(() => {
-          toast.success(`已封禁玩家 ${this.currentPlayer.player_name}`);
+          toast.success(this.$t('players.feedback.banSucceeded', { player: this.currentPlayer.player_name }));
           this.banDialogVisible = false;
           this.playerDetailVisible = false;
           this.refreshData();
         })
         .catch(error => {
           console.error('封禁玩家失败:', error);
-          toast.error(`封禁玩家失败: ${error.message || '未知错误'}`);
+          toast.error(this.$t('players.feedback.banFailed', { error: this.errorDetail(error) }));
         })
         .finally(() => {
           this.banning = false;
@@ -710,8 +738,8 @@ export default {
       try {
         confirmation = await this.confirmPlayerAction(
           this.currentPlayer,
-          '确认重选人物',
-          `重选人物会重置玩家 ${this.currentPlayer.player_name} 的角色数据。`
+          this.$t('players.confirmations.characterTitle'),
+          this.$t('players.confirmations.characterDescription', { player: this.currentPlayer.player_name })
         );
       } catch {
         return;
@@ -720,14 +748,14 @@ export default {
       this.changingCharacter = true;
       try {
         const response = await playerApi.changeCharacter(this.currentPlayer, null, confirmation);
-        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
-        toast.success(`已重置玩家 ${this.currentPlayer.player_name}，玩家可以重新选择角色`);
+        if (!response || response.status !== 200) throw new Error(response?.msg || this.$t('players.feedback.commandFailed'));
+        toast.success(this.$t('players.feedback.characterSucceeded', { player: this.currentPlayer.player_name }));
         this.characterDialogVisible = false;
         this.playerDetailVisible = false;
         this.refreshData();
       } catch (error) {
         console.error('重选人物失败:', error);
-        toast.error(`重选人物失败: ${error.message || '未知错误'}`);
+        toast.error(this.$t('players.feedback.characterFailed', { error: this.errorDetail(error) }));
       } finally {
         this.changingCharacter = false;
       }
@@ -737,13 +765,13 @@ export default {
     showScheduleDialog() {
       const sessionKey = this.activeSessionName;
       if (!sessionKey) {
-        toast.warning('没有可用于定时更新的游戏世界');
+        toast.warning(this.$t('players.feedback.noScheduleWorld'));
         return;
       }
       const sessionName = this.activeSessionLabel;
       this.scheduleForm = {
-        name: `自动更新玩家列表_${sessionName}`,
-        description: `定时更新${sessionName}的玩家列表`,
+        name: `player_refresh_${sessionName}`,
+        description: `Scheduled player refresh for ${sessionName}`,
         session_name: sessionKey,
         spec: '0 */3 * * * *' // 默认每3分钟执行一次
       };
@@ -757,12 +785,12 @@ export default {
       const spec = this.scheduleForm.spec.trim();
       const cronFields = spec.split(/\s+/).filter(Boolean);
 
-      if (!name) errors.name = '请输入任务名称';
-      else if (name.length < 2 || name.length > 50) errors.name = '长度应在 2 到 50 个字符之间';
-      if (!this.scheduleForm.session_name) errors.session_name = '请选择游戏世界';
-      if (!spec) errors.spec = '请输入 Cron 表达式';
+      if (!name) errors.name = 'taskNameRequired';
+      else if (name.length < 2 || name.length > 50) errors.name = 'taskNameLength';
+      if (!this.scheduleForm.session_name) errors.session_name = 'worldRequired';
+      if (!spec) errors.spec = 'cronRequired';
       else if (cronFields.length !== 5 && !(cronFields.length === 6 && cronFields[0] === '0')) {
-        errors.spec = '请输入五段 Cron，或以 0 秒开头的六段 Cron';
+        errors.spec = 'cronInvalid';
       }
 
       this.scheduleErrors = errors;
@@ -772,7 +800,7 @@ export default {
     // 确认添加定时任务
     confirmAddSchedule() {
       if (!this.validateScheduleForm()) {
-        toast.warning('请完善表单信息');
+        toast.warning(this.$t('players.validation.formIncomplete'));
         return;
       }
 
@@ -787,14 +815,14 @@ export default {
       playerApi.addRefreshSchedule(taskData)
         .then(response => {
           if (!response || response.status !== 200) {
-            throw new Error(response?.msg || response?.message || '添加失败');
+            throw new Error(response?.msg || response?.message || this.$t('players.feedback.addFailed'));
           }
-          toast.success('定时更新任务添加成功');
+          toast.success(this.$t('players.feedback.scheduleSucceeded'));
           this.scheduleDialogVisible = false;
         })
         .catch(error => {
           console.error('添加定时任务失败:', error);
-          toast.error(`添加定时任务失败: ${error.message || '未知错误'}`);
+          toast.error(this.$t('players.feedback.scheduleFailed', { error: this.errorDetail(error) }));
         })
         .finally(() => {
           this.addingSchedule = false;
@@ -803,7 +831,7 @@ export default {
 
     // 导出玩家数据
     exportPlayerData() {
-      const loadingId = toast.loading('正在导出真实玩家数据...');
+      const loadingId = toast.loading(this.$t('players.feedback.exportLoading'));
       const params = {
         ...this.filterForm,
         sort_by: this.sortParams.prop,
@@ -812,16 +840,16 @@ export default {
       playerApi.exportPlayers(params)
         .then(players => {
           const columns = [
-            ['存档名称', 'archive_name'],
-            ['世界名称', 'world_name'],
+            [this.$t('players.export.columns.archive'), 'archive_name'],
+            [this.$t('players.export.columns.world'), 'world_name'],
             ['KU ID', 'user_id'],
-            ['玩家名称', 'player_name'],
-            ['角色', 'prefab'],
-            ['天数', 'player_age'],
-            ['状态', 'status'],
+            [this.$t('players.export.columns.playerName'), 'player_name'],
+            [this.$t('players.export.columns.character'), 'prefab'],
+            [this.$t('players.export.columns.days'), 'player_age'],
+            [this.$t('players.export.columns.status'), 'status'],
             ['Steam ID', 'net_id'],
-            ['首次登录', 'first_seen'],
-            ['最后登录', 'last_seen']
+            [this.$t('players.export.columns.firstSeen'), 'first_seen'],
+            [this.$t('players.export.columns.lastSeen'), 'last_seen']
           ];
           const escapeCell = value => {
             let text = value === null || value === undefined ? '' : String(value);
@@ -836,49 +864,33 @@ export default {
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
-          link.download = `玩家数据_${new Date().toISOString().slice(0, 10)}.csv`;
+          link.download = this.$t('players.export.fileName', { date: new Date().toISOString().slice(0, 10) });
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-          toast.success(`已导出 ${players.length} 条真实玩家数据`);
+          toast.success(this.$t('players.feedback.exportSucceeded', { count: players.length }));
         })
         .catch(error => {
           console.error('导出玩家数据失败:', error);
-          toast.error(`导出玩家数据失败: ${error.message || '未知错误'}`);
+          toast.error(this.$t('players.feedback.exportFailed', { error: this.errorDetail(error) }));
         })
         .finally(() => toast.dismiss(loadingId));
     },
 
     // 格式化日期
     formatDate(dateString) {
-      if (!dateString) return '-';
-      const date = new Date(dateString);
-      return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
+      return formatPlayerDate(dateString, this.$i18n.locale);
     },
 
     // 获取角色名称
     getCharacterName(prefab) {
-      const character = this.characterOptions.find(c => c.value === prefab);
-      return character ? character.label : prefab;
+      return playerCharacterLabel(prefab, this.$t);
     },
 
     // 获取网络质量文本
     getNetworkQuality(netScore) {
-      switch(netScore) {
-        case 0: return '极佳';
-        case 1: return '中等';
-        case 2: return '很差';
-        default: return '未知';
-      }
+      return playerNetworkLabel(netScore, this.$t);
     },
 
     getNetworkBadgeVariant(netScore) {
@@ -890,12 +902,7 @@ export default {
 
     // 获取性能指标文本
     getPerformanceText(performance) {
-      switch(performance) {
-        case 0: return '性能良好';
-        case 1: return '性能一般';
-        case 2: return '性能差';
-        default: return '未知';
-      }
+      return playerPerformanceLabel(performance, this.$t);
     },
 
     getPerformanceBadgeVariant(performance) {
@@ -965,11 +972,11 @@ export default {
           textArea.select();
           const successful = document.execCommand('copy');
           document.body.removeChild(textArea);
-          if (!successful) throw new Error('浏览器未允许复制');
+          if (!successful) throw new Error(this.$t('players.feedback.copyDenied'));
         }
-        toast.success('Steam ID 已复制到剪贴板');
+        toast.success(this.$t('players.feedback.steamCopied'));
       } catch (err) {
-        toast.error(`复制失败: ${err.message || err}`);
+        toast.error(this.$t('players.feedback.copyFailed', { error: this.errorDetail(err) }));
       }
     },
 
@@ -994,7 +1001,7 @@ export default {
         .catch(error => {
           console.error('获取存档列表失败:', error);
           this.archiveOptions = [];
-          toast.error(`获取存档列表失败: ${error.message || '未知错误'}`);
+          toast.error(this.$t('players.feedback.archivesLoadFailed', { error: this.errorDetail(error) }));
         });
     },
 
@@ -1015,7 +1022,7 @@ export default {
         .catch(error => {
           console.error('获取会话列表失败:', error);
           this.sessionList = [];
-          toast.error(`获取游戏世界失败: ${error.message || '未知错误'}`);
+          toast.error(this.$t('players.feedback.worldsLoadFailed', { error: this.errorDetail(error) }));
         });
     },
 
@@ -1031,11 +1038,11 @@ export default {
     // 确认选择会话
     confirmSessionSelect() {
       if (!this.selectedSessionName) {
-        toast.warning('请选择一个游戏世界');
+        toast.warning(this.$t('players.feedback.worldRequired'));
         return;
       }
 
-      toast.success(`已设置默认任务世界: ${this.activeSessionLabel}`);
+      toast.success(this.$t('players.feedback.taskWorldSet', { world: this.activeSessionLabel }));
       this.sessionSelectDialogVisible = false;
     },
 
@@ -1073,21 +1080,25 @@ export default {
     async killPlayer(player) {
       let confirmation;
       try {
-        confirmation = await this.confirmPlayerAction(player, '杀死玩家', `该操作会导致玩家 ${player.player_name} 立即死亡。`);
+        confirmation = await this.confirmPlayerAction(
+          player,
+          this.$t('players.confirmations.killTitle'),
+          this.$t('players.confirmations.killDescription', { player: player.player_name })
+        );
       } catch {
         return;
       }
 
-      const loadingId = toast.loading('正在执行操作...');
+      const loadingId = toast.loading(this.$t('players.feedback.actionLoading'));
       try {
         const response = await playerApi.killPlayer(player, null, confirmation);
-        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
-        toast.success(`已杀死玩家 ${player.player_name}`);
+        if (!response || response.status !== 200) throw new Error(response?.msg || this.$t('players.feedback.commandFailed'));
+        toast.success(this.$t('players.feedback.killSucceeded', { player: player.player_name }));
         this.playerDetailVisible = false;
         this.refreshData();
       } catch (error) {
         console.error('杀死玩家失败:', error);
-        toast.error(`杀死玩家失败: ${error.message || '未知错误'}`);
+        toast.error(this.$t('players.feedback.killFailed', { error: this.errorDetail(error) }));
       } finally {
         toast.dismiss(loadingId);
       }
@@ -1110,14 +1121,14 @@ export default {
           this.godModeForm.enabled,
           null
         );
-        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
-        const status = this.godModeForm.enabled ? '开启' : '关闭';
+        if (!response || response.status !== 200) throw new Error(response?.msg || this.$t('players.feedback.commandFailed'));
+        const status = this.$t(this.godModeForm.enabled ? 'players.values.enabled' : 'players.values.disabled');
         await this.refreshData();
-        toast.success(`已${status}玩家 ${this.currentPlayer.player_name} 的无敌模式`);
+        toast.success(this.$t('players.feedback.godModeSucceeded', { status, player: this.currentPlayer.player_name }));
         this.godModeDialogVisible = false;
       } catch (error) {
         console.error('设置无敌模式失败:', error);
-        toast.error(`设置无敌模式失败: ${error.message || '未知错误'}`);
+        toast.error(this.$t('players.feedback.godModeFailed', { error: this.errorDetail(error) }));
       } finally {
         this.settingGodMode = false;
       }
@@ -1140,14 +1151,14 @@ export default {
           this.creativeModeForm.enabled,
           null
         );
-        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
-        const status = this.creativeModeForm.enabled ? '开启' : '关闭';
+        if (!response || response.status !== 200) throw new Error(response?.msg || this.$t('players.feedback.commandFailed'));
+        const status = this.$t(this.creativeModeForm.enabled ? 'players.values.enabled' : 'players.values.disabled');
         await this.refreshData();
-        toast.success(`已${status}玩家 ${this.currentPlayer.player_name} 的制作模式`);
+        toast.success(this.$t('players.feedback.creativeModeSucceeded', { status, player: this.currentPlayer.player_name }));
         this.creativeModeDialogVisible = false;
       } catch (error) {
         console.error('设置制作模式失败:', error);
-        toast.error(`设置制作模式失败: ${error.message || '未知错误'}`);
+        toast.error(this.$t('players.feedback.creativeModeFailed', { error: this.errorDetail(error) }));
       } finally {
         this.settingCreativeMode = false;
       }
@@ -1157,20 +1168,24 @@ export default {
     async resurrectPlayer(player) {
       let confirmation;
       try {
-        confirmation = await this.confirmPlayerAction(player, '复活玩家', `确认复活玩家 ${player.player_name}。`);
+        confirmation = await this.confirmPlayerAction(
+          player,
+          this.$t('players.confirmations.resurrectTitle'),
+          this.$t('players.confirmations.resurrectDescription', { player: player.player_name })
+        );
       } catch {
         return;
       }
 
-      const loadingId = toast.loading('正在执行操作...');
+      const loadingId = toast.loading(this.$t('players.feedback.actionLoading'));
       try {
         const response = await playerApi.resurrectPlayer(player, null, confirmation);
-        if (!response || response.status !== 200) throw new Error(response?.msg || '命令执行失败');
-        toast.success(`已复活玩家 ${player.player_name}`);
+        if (!response || response.status !== 200) throw new Error(response?.msg || this.$t('players.feedback.commandFailed'));
+        toast.success(this.$t('players.feedback.resurrectSucceeded', { player: player.player_name }));
         this.refreshData();
       } catch (error) {
         console.error('复活玩家失败:', error);
-        toast.error(`复活玩家失败: ${error.message || '未知错误'}`);
+        toast.error(this.$t('players.feedback.resurrectFailed', { error: this.errorDetail(error) }));
       } finally {
         toast.dismiss(loadingId);
       }
@@ -1206,7 +1221,7 @@ export default {
     // 确认更新玩家列表
     confirmUpdate() {
       if (!this.updateForm.archive_name) {
-        toast.warning('请选择存档');
+        toast.warning(this.$t('players.validation.archiveRequired'));
         return;
       }
 
@@ -1220,13 +1235,13 @@ export default {
 
       playerApi.updatePlayerInfo(updateParams)
         .then(() => {
-          toast.success('玩家列表更新成功');
+          toast.success(this.$t('players.feedback.updateSucceeded'));
           this.updateDialogVisible = false;
           this.refreshData();
         })
         .catch(error => {
           console.error('更新玩家列表失败:', error);
-          toast.error(`更新玩家列表失败: ${error.message || '未知错误'}`);
+          toast.error(this.$t('players.feedback.updateFailed', { error: this.errorDetail(error) }));
         })
         .finally(() => {
           this.updating = false;
