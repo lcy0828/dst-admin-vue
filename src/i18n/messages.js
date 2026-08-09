@@ -1,3 +1,4 @@
+import { agentMessages } from './agentMessages.js'
 import { corePageMessages } from './corePages.js'
 import { logToolsMessages } from './logToolsMessages.js'
 import { serverMessages } from './serverMessages.js'
@@ -9,6 +10,7 @@ import { worldsMessages } from './worldsMessages.js'
 
 export const messages = {
   'zh-CN': {
+    ...agentMessages['zh-CN'],
     ...corePageMessages['zh-CN'],
     ...logToolsMessages['zh-CN'],
     ...serverMessages['zh-CN'],
@@ -469,6 +471,7 @@ export const messages = {
     }
   },
   'en-US': {
+    ...agentMessages['en-US'],
     ...corePageMessages['en-US'],
     ...logToolsMessages['en-US'],
     ...serverMessages['en-US'],

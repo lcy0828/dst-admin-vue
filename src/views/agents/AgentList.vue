@@ -2,42 +2,42 @@
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="min-w-0">
-        <h1 class="text-2xl font-semibold tracking-normal">Agent 管理中心</h1>
-        <p class="mt-1 text-sm text-muted-foreground">管理远程节点、运行时配置与资源状态。</p>
+        <h1 class="text-2xl font-semibold tracking-normal">{{ $t('agents.list.title') }}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{{ $t('agents.list.subtitle') }}</p>
       </div>
-      <UiButton variant="outline" :disabled="loading" @click="refreshData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton>
+      <UiButton variant="outline" :disabled="loading" @click="refreshData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('common.actions.refresh') }}</UiButton>
     </header>
 
-    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>Agent 列表加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="refreshData">重试</UiButton></AlertAction></Alert>
-    <Alert v-if="runtimeLoadError" variant="destructive"><CircleAlert /><AlertTitle>远程运行时配置加载失败</AlertTitle><AlertDescription>{{ runtimeLoadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchRuntimeTargets">重试</UiButton></AlertAction></Alert>
+    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('agents.list.feedback.loadFailedTitle') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="refreshData">{{ $t('common.actions.retry') }}</UiButton></AlertAction></Alert>
+    <Alert v-if="runtimeLoadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('agents.list.feedback.runtimeLoadFailedTitle') }}</AlertTitle><AlertDescription>{{ runtimeLoadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchRuntimeTargets">{{ $t('common.actions.retry') }}</UiButton></AlertAction></Alert>
 
     <div class="grid gap-4 sm:grid-cols-3">
-      <Card><CardHeader><CardTitle>在线 Agent</CardTitle><CardDescription>当前保持连接的节点</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Network /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ connectedAgents }}</strong></CardContent></Card>
-      <Card><CardHeader><CardTitle>Agent 总数</CardTitle><CardDescription>已注册的远程节点</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Monitor /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ totalAgents }}</strong></CardContent></Card>
-      <Card><CardHeader><CardTitle>操作系统</CardTitle><CardDescription>已接入的系统类型</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Apple /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ uniqueOsCount }}</strong></CardContent></Card>
+      <Card><CardHeader><CardTitle>{{ $t('agents.list.metrics.online') }}</CardTitle><CardDescription>{{ $t('agents.list.metrics.onlineDescription') }}</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Network /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ connectedAgents }}</strong></CardContent></Card>
+      <Card><CardHeader><CardTitle>{{ $t('agents.list.metrics.total') }}</CardTitle><CardDescription>{{ $t('agents.list.metrics.totalDescription') }}</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Monitor /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ totalAgents }}</strong></CardContent></Card>
+      <Card><CardHeader><CardTitle>{{ $t('agents.list.metrics.operatingSystems') }}</CardTitle><CardDescription>{{ $t('agents.list.metrics.operatingSystemsDescription') }}</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Apple /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ uniqueOsCount }}</strong></CardContent></Card>
     </div>
 
-    <div v-if="loading" class="flex flex-col gap-3" aria-label="正在读取 Agent 状态">
+    <div v-if="loading" class="flex flex-col gap-3" :aria-label="$t('agents.list.loadingAria')">
       <Skeleton v-for="index in 3" :key="index" class="h-52 w-full" />
     </div>
     <div v-else-if="agentList.length > 0" class="flex flex-col gap-3">
               <Card v-for="agent in agentList" :key="agent.id">
                 <CardHeader>
-                  <CardTitle class="flex flex-wrap items-center gap-2"><Badge :variant="agent.connected ? 'default' : 'destructive'">{{ agent.connected ? '在线' : '离线' }}</Badge>{{ agent.hostname }}</CardTitle>
+                  <CardTitle class="flex flex-wrap items-center gap-2"><Badge :variant="agent.connected ? 'default' : 'destructive'">{{ agent.connected ? $t('common.states.online') : $t('common.states.offline') }}</Badge>{{ agent.hostname }}</CardTitle>
                   <CardDescription class="break-all">{{ agent.agent_uuid }}</CardDescription>
                   <CardAction class="flex flex-wrap justify-end gap-2">
-                    <UiButton size="sm" variant="outline" @click="showAgentDetails(agent)"><Eye data-icon="inline-start" />详情</UiButton>
+                    <UiButton size="sm" variant="outline" @click="showAgentDetails(agent)"><Eye data-icon="inline-start" />{{ $t('agents.list.actions.details') }}</UiButton>
                     <UiButton :variant="runtimeFor(agent).configured ? 'outline' : 'default'" size="sm" :disabled="Boolean(runtimeLoadError)" @click="openRuntimeConfig(agent)"><Settings data-icon="inline-start" />
-                      {{ runtimeFor(agent).configured ? '运行时配置' : '配置远程运行时' }}
+                      {{ runtimeFor(agent).configured ? $t('agents.list.actions.runtimeConfig') : $t('agents.list.actions.configureRuntime') }}
                     </UiButton>
-                    <UiButton size="sm" variant="outline" :disabled="!agent.connected" @click="navigateToCommand(agent.id)"><Terminal data-icon="inline-start" />执行命令</UiButton>
-                    <UiButton variant="destructive" size="sm" :disabled="agent.connected" @click="forgetAgent(agent)"><Trash2 data-icon="inline-start" />移除</UiButton>
+                    <UiButton size="sm" variant="outline" :disabled="!agent.connected" @click="navigateToCommand(agent.id)"><Terminal data-icon="inline-start" />{{ $t('agents.list.actions.executeCommand') }}</UiButton>
+                    <UiButton variant="destructive" size="sm" :disabled="agent.connected" @click="forgetAgent(agent)"><Trash2 data-icon="inline-start" />{{ $t('agents.list.actions.remove') }}</UiButton>
                   </CardAction>
                 </CardHeader>
                 <CardContent>
                   <div class="agent-info-grid">
                   <div class="info-item">
-                    <div class="info-label">系统</div>
+                    <div class="info-label">{{ $t('agents.list.fields.system') }}</div>
                     <div class="info-value">
                       <component :is="getOsIcon(agent.os)" class="system-icon" />
                       {{ agent.os }} ({{ agent.arch }})
@@ -45,7 +45,7 @@
                   </div>
 
                   <div class="info-item">
-                    <div class="info-label">IP地址</div>
+                    <div class="info-label">{{ $t('agents.list.fields.ipAddress') }}</div>
                     <div class="info-value ip-list">
                       <Tooltip v-for="(ip, idx) in agent.ip_addresses" :key="idx"><TooltipTrigger as-child><Badge variant="outline">{{ ip }}</Badge></TooltipTrigger><TooltipContent>{{ ip }}</TooltipContent></Tooltip>
                     </div>
@@ -53,11 +53,11 @@
 
                   <div class="info-item">
                     <div class="info-label">CPU</div>
-                    <div class="info-value">{{ agent.cpu_count }} 核心</div>
+                    <div class="info-value">{{ $t('agents.list.fields.cpuCores', { count: agent.cpu_count }) }}</div>
                   </div>
 
                   <div class="info-item">
-                    <div class="info-label">内存</div>
+                    <div class="info-label">{{ $t('agents.list.fields.memory') }}</div>
                     <div class="info-value">
                       {{ formatBytes(agent.memory ? agent.memory.allocated : 0) }} /
                       {{ formatBytes(agent.memory ? agent.memory.system : 0) }}
@@ -65,78 +65,78 @@
                   </div>
 
                   <div class="info-item">
-                    <div class="info-label">运行时间</div>
+                    <div class="info-label">{{ $t('agents.list.fields.uptime') }}</div>
                     <div class="info-value">{{ formatUptime(agent.uptime_seconds) }}</div>
                   </div>
 
                   <div class="info-item">
-                    <div class="info-label">用户</div>
-                    <div class="info-value">{{ agent.user ? agent.user.name : 'N/A' }}</div>
+                    <div class="info-label">{{ $t('agents.list.fields.user') }}</div>
+                    <div class="info-value">{{ agent.user ? agent.user.name : $t('agents.list.values.notAvailable') }}</div>
                   </div>
 
                   <div class="info-item">
-                    <div class="info-label">路径</div>
+                    <div class="info-label">{{ $t('agents.list.fields.path') }}</div>
                     <div class="info-value dir-path">{{ agent.current_dir }}</div>
                   </div>
 
                   <div class="info-item">
-                    <div class="info-label">最后心跳</div>
+                    <div class="info-label">{{ $t('agents.list.fields.lastHeartbeat') }}</div>
                     <div class="info-value">{{ formatTime(agent.last_heartbeat) }}</div>
                   </div>
                   </div>
                 </CardContent>
                 <CardFooter v-if="agent.connected" class="flex-col items-stretch gap-2">
                   <div v-if="agent.connected" class="resource-monitor">
-                    <div class="progress-label"><span>内存使用</span><span>{{ calculateMemoryUsage(agent) }}%</span></div>
-                    <UiProgress :model-value="calculateMemoryUsage(agent)" :aria-label="`${agent.hostname} 内存使用率`" />
+                    <div class="progress-label"><span>{{ $t('agents.list.fields.memoryUsage') }}</span><span>{{ calculateMemoryUsage(agent) }}%</span></div>
+                    <UiProgress :model-value="calculateMemoryUsage(agent)" :aria-label="$t('agents.list.fields.memoryUsageAria', { name: agent.hostname })" />
                   </div>
                 </CardFooter>
               </Card>
     </div>
 
-    <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Network /></EmptyMedia><EmptyTitle>暂无 Agent 连接</EmptyTitle><EmptyDescription>配置安全密钥并启动 Agent 后，节点会显示在这里。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="navigateToSecurity">添加 Agent</UiButton></EmptyContent></Empty>
+    <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Network /></EmptyMedia><EmptyTitle>{{ $t('agents.list.empty.title') }}</EmptyTitle><EmptyDescription>{{ $t('agents.list.empty.description') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="navigateToSecurity">{{ $t('agents.list.empty.add') }}</UiButton></EmptyContent></Empty>
 
-    <UiDialog v-model:open="detailVisible"><DialogContent class="detail-dialog"><DialogHeader><DialogTitle>Agent 详情</DialogTitle><DialogDescription>节点身份、系统与连接信息。</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="detailVisible"><DialogContent class="detail-dialog"><DialogHeader><DialogTitle>{{ $t('agents.list.details.title') }}</DialogTitle><DialogDescription>{{ $t('agents.list.details.description') }}</DialogDescription></DialogHeader>
       <dl v-if="selectedAgent" class="detail-grid">
-        <div class="detail-wide"><dt>UUID</dt><dd>{{ selectedAgent.agent_uuid }}</dd></div><div><dt>主机名</dt><dd>{{ selectedAgent.hostname || 'N/A' }}</dd></div>
-        <div><dt>状态</dt><dd>{{ selectedAgent.connected ? '在线' : '离线' }}</dd></div><div><dt>系统</dt><dd>{{ selectedAgent.os || 'N/A' }} ({{ selectedAgent.arch || 'N/A' }})</dd></div>
-        <div><dt>版本</dt><dd>{{ selectedAgent.version || 'N/A' }}</dd></div><div><dt>最后心跳</dt><dd>{{ formatTime(selectedAgent.last_heartbeat) }}</dd></div>
-        <div><dt>运行时间</dt><dd>{{ formatUptime(selectedAgent.uptime_seconds) }}</dd></div><div class="detail-wide"><dt>IP 地址</dt><dd>{{ (selectedAgent.ip_addresses || []).join(', ') || 'N/A' }}</dd></div>
-        <div class="detail-wide"><dt>能力</dt><dd>{{ (selectedAgent.capabilities || []).join(', ') || 'N/A' }}</dd></div>
+        <div class="detail-wide"><dt>UUID</dt><dd>{{ selectedAgent.agent_uuid }}</dd></div><div><dt>{{ $t('agents.list.details.hostname') }}</dt><dd>{{ selectedAgent.hostname || $t('agents.list.values.notAvailable') }}</dd></div>
+        <div><dt>{{ $t('common.fields.status') }}</dt><dd>{{ selectedAgent.connected ? $t('common.states.online') : $t('common.states.offline') }}</dd></div><div><dt>{{ $t('agents.list.fields.system') }}</dt><dd>{{ selectedAgent.os || $t('agents.list.values.notAvailable') }} ({{ selectedAgent.arch || $t('agents.list.values.notAvailable') }})</dd></div>
+        <div><dt>{{ $t('agents.list.details.version') }}</dt><dd>{{ selectedAgent.version || $t('agents.list.values.notAvailable') }}</dd></div><div><dt>{{ $t('agents.list.fields.lastHeartbeat') }}</dt><dd>{{ formatTime(selectedAgent.last_heartbeat) }}</dd></div>
+        <div><dt>{{ $t('agents.list.fields.uptime') }}</dt><dd>{{ formatUptime(selectedAgent.uptime_seconds) }}</dd></div><div class="detail-wide"><dt>{{ $t('agents.list.fields.ipAddress') }}</dt><dd>{{ (selectedAgent.ip_addresses || []).join(', ') || $t('agents.list.values.notAvailable') }}</dd></div>
+        <div class="detail-wide"><dt>{{ $t('agents.list.details.capabilities') }}</dt><dd>{{ (selectedAgent.capabilities || []).join(', ') || $t('agents.list.values.notAvailable') }}</dd></div>
       </dl>
     </DialogContent></UiDialog>
 
-    <UiDialog v-model:open="runtimeVisible"><DialogContent class="runtime-dialog"><DialogHeader><DialogTitle>远程运行时配置</DialogTitle><DialogDescription>保存此 Agent 的 DST 路径和兼容运行时。当前版本尚未开放房间、日志、备份等远程领域操作。</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="runtimeVisible"><DialogContent class="runtime-dialog"><DialogHeader><DialogTitle>{{ $t('agents.list.runtime.title') }}</DialogTitle><DialogDescription>{{ $t('agents.list.runtime.description') }}</DialogDescription></DialogHeader>
       <div v-if="runtimeAgent" class="runtime-scope">
         <div>
           <strong>{{ runtimeAgent.hostname }}</strong>
           <span>{{ runtimeAgent.os }} {{ runtimeAgent.arch }}</span>
         </div>
-        <Badge variant="outline">配置作用域：仅此 Agent</Badge>
+        <Badge variant="outline">{{ $t('agents.list.runtime.scope') }}</Badge>
       </div>
       <FieldGroup class="runtime-form">
         <div class="runtime-form-grid">
-          <Field :data-invalid="Boolean(runtimeErrors.displayName)"><FieldLabel for="runtime-name">显示名称</FieldLabel><UiInput id="runtime-name" v-model="runtimeForm.displayName" maxlength="100" :aria-invalid="Boolean(runtimeErrors.displayName)" /><FieldError v-if="runtimeErrors.displayName">{{ runtimeErrors.displayName }}</FieldError></Field>
-          <Field><FieldLabel>服务端模式</FieldLabel><ToggleGroup v-model="runtimeForm.serverMode" type="single"><ToggleGroupItem value="64">64 位</ToggleGroupItem><ToggleGroupItem value="32">32 位</ToggleGroupItem><ToggleGroupItem value="luajit">LuaJIT</ToggleGroupItem></ToggleGroup></Field>
+          <Field :data-invalid="Boolean(runtimeErrors.displayName)"><FieldLabel for="runtime-name">{{ $t('agents.list.runtime.displayName') }}</FieldLabel><UiInput id="runtime-name" v-model="runtimeForm.displayName" maxlength="100" :aria-invalid="Boolean(runtimeErrors.displayName)" /><FieldError v-if="runtimeErrors.displayName">{{ $t(runtimeErrors.displayName) }}</FieldError></Field>
+          <Field><FieldLabel>{{ $t('agents.list.runtime.serverMode') }}</FieldLabel><ToggleGroup v-model="runtimeForm.serverMode" type="single"><ToggleGroupItem value="64">{{ $t('agents.list.runtime.mode64') }}</ToggleGroupItem><ToggleGroupItem value="32">{{ $t('agents.list.runtime.mode32') }}</ToggleGroupItem><ToggleGroupItem value="luajit">LuaJIT</ToggleGroupItem></ToggleGroup></Field>
         </div>
-        <Field :data-invalid="Boolean(runtimeErrors.savePath)"><FieldLabel for="runtime-save">DST 存档路径</FieldLabel><UiInput id="runtime-save" v-model="runtimeForm.savePath" :placeholder="pathPlaceholder('save')" :aria-invalid="Boolean(runtimeErrors.savePath)" /><FieldError v-if="runtimeErrors.savePath">{{ runtimeErrors.savePath }}</FieldError></Field>
-        <Field :data-invalid="Boolean(runtimeErrors.serverPath)"><FieldLabel for="runtime-server">DST 服务端路径</FieldLabel><UiInput id="runtime-server" v-model="runtimeForm.serverPath" :placeholder="pathPlaceholder('server')" :aria-invalid="Boolean(runtimeErrors.serverPath)" /><FieldError v-if="runtimeErrors.serverPath">{{ runtimeErrors.serverPath }}</FieldError></Field>
-        <Field><FieldLabel for="runtime-backup">备份路径</FieldLabel><UiInput id="runtime-backup" v-model="runtimeForm.backupPath" :placeholder="pathPlaceholder('backup')" /></Field>
-        <Accordion type="single" collapsible class="runtime-advanced"><AccordionItem value="advanced"><AccordionTrigger>模组与兼容运行时</AccordionTrigger><AccordionContent><FieldGroup>
-            <Field><FieldLabel for="runtime-ugc">UGC 路径</FieldLabel><UiInput id="runtime-ugc" v-model="runtimeForm.ugcPath" /></Field>
-            <Field><FieldLabel for="runtime-steamcmd">SteamCMD 路径</FieldLabel><UiInput id="runtime-steamcmd" v-model="runtimeForm.steamcmdPath" /></Field>
-            <Field><FieldLabel for="runtime-workshop">Workshop 内容路径</FieldLabel><UiInput id="runtime-workshop" v-model="runtimeForm.workshopContentPath" /></Field>
+        <Field :data-invalid="Boolean(runtimeErrors.savePath)"><FieldLabel for="runtime-save">{{ $t('agents.list.runtime.savePath') }}</FieldLabel><UiInput id="runtime-save" v-model="runtimeForm.savePath" :placeholder="pathPlaceholder('save')" :aria-invalid="Boolean(runtimeErrors.savePath)" /><FieldError v-if="runtimeErrors.savePath">{{ $t(runtimeErrors.savePath) }}</FieldError></Field>
+        <Field :data-invalid="Boolean(runtimeErrors.serverPath)"><FieldLabel for="runtime-server">{{ $t('agents.list.runtime.serverPath') }}</FieldLabel><UiInput id="runtime-server" v-model="runtimeForm.serverPath" :placeholder="pathPlaceholder('server')" :aria-invalid="Boolean(runtimeErrors.serverPath)" /><FieldError v-if="runtimeErrors.serverPath">{{ $t(runtimeErrors.serverPath) }}</FieldError></Field>
+        <Field><FieldLabel for="runtime-backup">{{ $t('agents.list.runtime.backupPath') }}</FieldLabel><UiInput id="runtime-backup" v-model="runtimeForm.backupPath" :placeholder="pathPlaceholder('backup')" /></Field>
+        <Accordion type="single" collapsible class="runtime-advanced"><AccordionItem value="advanced"><AccordionTrigger>{{ $t('agents.list.runtime.advanced') }}</AccordionTrigger><AccordionContent><FieldGroup>
+            <Field><FieldLabel for="runtime-ugc">{{ $t('agents.list.runtime.ugcPath') }}</FieldLabel><UiInput id="runtime-ugc" v-model="runtimeForm.ugcPath" /></Field>
+            <Field><FieldLabel for="runtime-steamcmd">{{ $t('agents.list.runtime.steamcmdPath') }}</FieldLabel><UiInput id="runtime-steamcmd" v-model="runtimeForm.steamcmdPath" /></Field>
+            <Field><FieldLabel for="runtime-workshop">{{ $t('agents.list.runtime.workshopPath') }}</FieldLabel><UiInput id="runtime-workshop" v-model="runtimeForm.workshopContentPath" /></Field>
             <div class="runtime-form-grid">
-              <Field><FieldLabel for="runtime-lua">Lua 命令</FieldLabel><UiInput id="runtime-lua" v-model="runtimeForm.luaBinary" placeholder="lua" /></Field>
-              <Field><FieldLabel for="runtime-lua-fallback">Lua fallback 路径</FieldLabel><UiInput id="runtime-lua-fallback" v-model="runtimeForm.luaFallbackPath" /></Field>
+              <Field><FieldLabel for="runtime-lua">{{ $t('agents.list.runtime.luaCommand') }}</FieldLabel><UiInput id="runtime-lua" v-model="runtimeForm.luaBinary" placeholder="lua" /></Field>
+              <Field><FieldLabel for="runtime-lua-fallback">{{ $t('agents.list.runtime.luaFallbackPath') }}</FieldLabel><UiInput id="runtime-lua-fallback" v-model="runtimeForm.luaFallbackPath" /></Field>
             </div>
         </FieldGroup></AccordionContent></AccordionItem></Accordion>
       </FieldGroup>
       <DialogFooter class="runtime-dialog-footer">
-          <UiButton v-if="runtimeConfigured" variant="destructive" @click="removeRuntimeConfig">移除配置</UiButton>
+          <UiButton v-if="runtimeConfigured" variant="destructive" @click="removeRuntimeConfig">{{ $t('agents.list.runtime.removeConfig') }}</UiButton>
           <span class="runtime-footer-spacer"></span>
-          <UiButton variant="outline" @click="runtimeVisible = false">取消</UiButton>
-          <UiButton :disabled="runtimeSaving" @click="saveRuntimeConfig"><Spinner v-if="runtimeSaving" data-icon="inline-start" />保存配置</UiButton>
+          <UiButton variant="outline" @click="runtimeVisible = false">{{ $t('common.actions.cancel') }}</UiButton>
+          <UiButton :disabled="runtimeSaving" @click="saveRuntimeConfig"><Spinner v-if="runtimeSaving" data-icon="inline-start" />{{ $t('agents.list.runtime.saveConfig') }}</UiButton>
       </DialogFooter>
     </DialogContent></UiDialog>
   </div>
@@ -197,8 +197,8 @@ export default {
   data() {
     return {
       loading: false,
-      loadError: '',
-      runtimeLoadError: '',
+      loadFailure: null,
+      runtimeLoadFailure: null,
       agentData: {},
       agentList: [],
       detailVisible: false,
@@ -213,6 +213,12 @@ export default {
     };
   },
   computed: {
+    loadError() {
+      return this.localizedFailure(this.loadFailure);
+    },
+    runtimeLoadError() {
+      return this.localizedFailure(this.runtimeLoadFailure);
+    },
     totalAgents() {
       return this.agentList.length;
     },
@@ -230,7 +236,7 @@ export default {
   methods: {
     async fetchAgentList() {
       this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         const response = await agentApi.getAgentList();
         this.agentData = response.data || [];
@@ -238,8 +244,8 @@ export default {
         await this.fetchRuntimeTargets();
       } catch (error) {
         this.agentList = [];
-        this.loadError = error.message || '未知错误';
-        toast.error('获取Agent列表失败: ' + this.loadError);
+        this.loadFailure = this.failureState('agents.list.feedback.loadFailed', error);
+        toast.error(this.loadError);
       } finally {
         this.loading = false;
       }
@@ -248,7 +254,7 @@ export default {
       this.fetchAgentList();
     },
     async fetchRuntimeTargets() {
-      this.runtimeLoadError = '';
+      this.runtimeLoadFailure = null;
       try {
         const value = await runtimeTargetsV2API.list();
         this.runtimeByAgent = Object.fromEntries(
@@ -257,7 +263,7 @@ export default {
         return true;
       } catch (error) {
         this.runtimeByAgent = {};
-        this.runtimeLoadError = error.message || '无法读取远程运行时配置';
+        this.runtimeLoadFailure = this.failureState('agents.list.feedback.runtimeLoadFailed', error);
         return false;
       }
     },
@@ -274,12 +280,12 @@ export default {
     },
     async saveRuntimeConfig() {
       const errors = {};
-      if (!this.runtimeForm.displayName.trim()) errors.displayName = '请输入显示名称';
-      if (!this.runtimeForm.savePath.trim()) errors.savePath = '请输入远程存档路径';
-      if (!this.runtimeForm.serverPath.trim()) errors.serverPath = '请输入远程服务端路径';
+      if (!this.runtimeForm.displayName.trim()) errors.displayName = 'agents.list.validation.displayName';
+      if (!this.runtimeForm.savePath.trim()) errors.savePath = 'agents.list.validation.savePath';
+      if (!this.runtimeForm.serverPath.trim()) errors.serverPath = 'agents.list.validation.serverPath';
       this.runtimeErrors = errors;
       if (Object.keys(errors).length > 0 || !this.runtimeAgent) {
-        if (Object.keys(errors).length > 0) toast.warning('请完成必填的运行时配置');
+        if (Object.keys(errors).length > 0) toast.warning(this.$t('agents.list.validation.required'));
         return;
       }
       this.runtimeSaving = true;
@@ -288,10 +294,12 @@ export default {
         this.runtimeVisible = false;
         const refreshed = await this.fetchRuntimeTargets();
         announceRuntimeTargetsUpdated();
-        if (refreshed) toast.success('远程路径配置已保存；远程领域操作尚未开放');
-        else toast.warning('远程路径配置已保存，但刷新配置状态失败');
+        if (refreshed) toast.success(this.$t('agents.list.feedback.runtimeSaved'));
+        else toast.warning(this.$t('agents.list.feedback.runtimeSavedRefreshFailed'));
       } catch (error) {
-        toast.error(error.message || '保存远程运行时配置失败');
+        toast.error(this.$t('agents.list.feedback.runtimeSaveFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       } finally {
         this.runtimeSaving = false;
       }
@@ -299,20 +307,24 @@ export default {
     async removeRuntimeConfig() {
       if (!this.runtimeAgent) return;
       try {
-        await confirmAction(`确定移除 “${this.runtimeAgent.hostname}” 的远程运行时配置吗？`, '移除运行时配置', {
-          confirmButtonText: '移除',
-          cancelButtonText: '取消',
+        await confirmAction(this.$t('agents.list.feedback.runtimeRemoveConfirm', {
+          name: this.runtimeAgent.hostname
+        }), this.$t('agents.list.feedback.runtimeRemoveTitle'), {
+          confirmButtonText: this.$t('agents.list.actions.remove'),
+          cancelButtonText: this.$t('common.actions.cancel'),
           type: 'warning'
         });
         await runtimeTargetsV2API.remove(this.runtimeAgent.id);
         this.runtimeVisible = false;
         const refreshed = await this.fetchRuntimeTargets();
         announceRuntimeTargetsUpdated();
-        if (refreshed) toast.success('远程运行时配置已移除');
-        else toast.warning('远程运行时配置已移除，但刷新配置状态失败');
+        if (refreshed) toast.success(this.$t('agents.list.feedback.runtimeRemoved'));
+        else toast.warning(this.$t('agents.list.feedback.runtimeRemovedRefreshFailed'));
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
-          toast.error(error.message || '移除远程运行时配置失败');
+          toast.error(this.$t('agents.list.feedback.runtimeRemoveFailed', {
+            error: error.message || this.$t('common.errors.unknown')
+          }));
         }
       }
     },
@@ -351,17 +363,21 @@ export default {
     },
     async forgetAgent(agent) {
       try {
-        await confirmAction(`确定移除离线 Agent “${agent.hostname || agent.id}” 的历史记录吗？`, '移除 Agent', {
-          confirmButtonText: '移除',
-          cancelButtonText: '取消',
+        await confirmAction(this.$t('agents.list.feedback.agentRemoveConfirm', {
+          name: agent.hostname || agent.id
+        }), this.$t('agents.list.feedback.agentRemoveTitle'), {
+          confirmButtonText: this.$t('agents.list.actions.remove'),
+          cancelButtonText: this.$t('common.actions.cancel'),
           type: 'warning'
         });
         await agentApi.forgetAgent(agent.id);
-        toast.success('Agent 记录已移除');
+        toast.success(this.$t('agents.list.feedback.agentRemoved'));
         await this.fetchAgentList();
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
-          toast.error('移除 Agent 失败: ' + (error.message || '未知错误'));
+          toast.error(this.$t('agents.list.feedback.agentRemoveFailed', {
+            error: error.message || this.$t('common.errors.unknown')
+          }));
         }
       }
     },
@@ -383,28 +399,42 @@ export default {
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     },
     formatUptime(seconds) {
-      if (!seconds) return 'N/A';
+      if (!seconds) return this.$t('agents.list.values.notAvailable');
 
       const days = Math.floor(seconds / 86400);
       const hours = Math.floor((seconds % 86400) / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
 
       if (days > 0) {
-        return `${days}天 ${hours}小时`;
+        return this.$t('agents.list.duration.daysHours', { days, hours });
       } else if (hours > 0) {
-        return `${hours}小时 ${minutes}分钟`;
+        return this.$t('agents.list.duration.hoursMinutes', { hours, minutes });
       } else {
-        return `${minutes}分钟`;
+        return this.$t('agents.list.duration.minutes', { minutes });
       }
     },
     formatTime(timestamp) {
-      if (!timestamp) return 'N/A';
+      if (!timestamp) return this.$t('agents.list.values.notAvailable');
 
       const numeric = typeof timestamp === 'string' && /^\d+$/.test(timestamp) ? Number(timestamp) : timestamp;
       const date = typeof numeric === 'number'
         ? new Date(numeric < 1000000000000 ? numeric * 1000 : numeric)
         : new Date(numeric);
-      return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleString();
+      const localeState = this.$i18n?.locale;
+      const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN');
+      return Number.isNaN(date.getTime())
+        ? this.$t('agents.list.values.notAvailable')
+        : date.toLocaleString(locale);
+    },
+    failureState(key, error) {
+      return { key, detail: String(error?.message || '').trim() };
+    },
+    localizedFailure(failure) {
+      if (!failure) return '';
+      const message = this.$t(failure.key);
+      return failure.detail
+        ? this.$t('agents.list.feedback.errorWithDetail', { message, detail: failure.detail })
+        : message;
     },
     calculateMemoryUsage(agent) {
       if (!agent.memory || !agent.memory.allocated || !agent.memory.system) {
