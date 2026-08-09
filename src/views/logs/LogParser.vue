@@ -13,7 +13,7 @@
       <FileWarning />
       <AlertTitle>解析器状态加载失败</AlertTitle>
       <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" @click="getActiveParsers">重试</UiButton></AlertAction>
+      <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers">重试</UiButton></AlertAction>
     </Alert>
 
     <div v-if="loading && activeParsers.length === 0" class="loading-state">
@@ -28,40 +28,29 @@
       </EmptyHeader>
     </Empty>
     <div v-else-if="!loadError" class="parsers-container">
-          <Card v-for="parser in activeParsers" :key="parser.id" class="parser-card">
+          <Card v-for="parser in activeParsers" :key="parser.id" size="sm" class="parser-card">
             <CardHeader class="parser-header">
               <div class="parser-title">
-                <div class="type-indicator">
+                <div class="type-indicator" aria-hidden="true">
                   <Sun v-if="parser.server_type === 'Forest'" />
                   <Moon v-else />
                 </div>
-                <div>
+                <div class="parser-identity">
                   <CardTitle>{{ parser.archive_name }} / {{ parser.world_name }}</CardTitle>
+                  <CardDescription>{{ getServerTypeLabel(parser.server_type) }}</CardDescription>
                   <div class="parser-subtitle">
-                    <Badge variant="outline">{{ parser.server_type }}</Badge>
-                    <Badge :variant="getStatusVariant(parser.status)">{{ parser.status }}</Badge>
+                    <Badge :variant="getStatusVariant(parser.status)">{{ getStatusLabel(parser.status) }}</Badge>
                   </div>
                 </div>
               </div>
-              <Badge variant="secondary">ID: {{ parser.id.split('_').pop() }}</Badge>
+              <Badge variant="secondary">ID: {{ formatParserId(parser.id) }}</Badge>
             </CardHeader>
-            <CardContent class="parser-info">
-              <div class="info-item">
-                <Clock />
-                <span class="label">最近活动</span>
-                <span class="value">{{ formatTime(parser.last_activity) }}</span>
-              </div>
-              <div class="info-item">
-                <FileText />
-                <span class="label">日志文件</span>
-                <code class="value path-value">{{ parser.log_file }}</code>
-              </div>
-              <div class="info-statistics">
-                <div class="stat-item">
-                  <div class="stat-value">{{ parser.client_count == null ? '未提供' : parser.client_count }}</div>
-                  <div class="stat-label">客户端数量</div>
-                </div>
-              </div>
+            <CardContent>
+              <dl class="parser-info">
+                <div class="info-item"><dt><Clock />最近活动</dt><dd>{{ formatTime(parser.last_activity) }}</dd></div>
+                <div class="info-item"><dt>客户端数量</dt><dd>{{ parser.client_count == null ? '未提供' : parser.client_count }}</dd></div>
+                <div class="info-item path-item"><dt><FileText />日志文件</dt><dd><code class="path-value">{{ parser.log_file || '后端未提供' }}</code></dd></div>
+              </dl>
             </CardContent>
             <CardFooter class="parser-actions">
               <UiButton size="sm" @click="viewLogs(parser)">
@@ -92,7 +81,7 @@ import { jobsV2API, roomsV2API } from '@/api/v2';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -101,7 +90,7 @@ const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled']);
 export default {
   name: 'LogParser',
   components: {
-    Alert, AlertAction, AlertDescription, AlertTitle, Badge, UiButton, Card, CardContent, CardFooter, CardHeader, CardTitle,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, UiButton, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
     Clock, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Eye, FileText,
     FileWarning, Moon, RefreshCw, RotateCw, Spinner, Sun
   },
@@ -179,6 +168,7 @@ export default {
     formatTime(timestamp) {
       if (!timestamp) return '后端未提供';
       const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) return '时间格式无效';
       return date.toLocaleString('zh-CN', {
         year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit',
         minute: '2-digit', second: '2-digit', hour12: false
@@ -188,6 +178,15 @@ export default {
       if (status === 'running') return 'default';
       if (status === 'stopped') return 'destructive';
       return 'secondary';
+    },
+    getStatusLabel(status) {
+      return { running: '运行中', stopped: '已停止', starting: '启动中' }[status] || status || '未知状态';
+    },
+    getServerTypeLabel(type) {
+      return { Forest: '森林世界', Caves: '洞穴世界', Cave: '洞穴世界' }[type] || type || '未知世界类型';
+    },
+    formatParserId(id) {
+      return String(id || '-').split('_').pop();
     }
   }
 };
@@ -204,7 +203,6 @@ export default {
 .page-heading,
 .parser-header,
 .parser-title,
-.info-item,
 .parser-actions,
 .loading-state {
   display: flex;
@@ -214,13 +212,12 @@ export default {
 .page-heading,
 .parser-header {
   justify-content: space-between;
-  flex-direction: row;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
 .parser-title,
 .parser-subtitle,
-.info-item,
 .parser-actions,
 .loading-state {
   gap: 8px;
@@ -245,7 +242,7 @@ export default {
 
 .parsers-container {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
   gap: 12px;
 }
 
@@ -270,78 +267,72 @@ export default {
   margin-top: 6px;
 }
 
+.parser-identity {
+  min-width: 0;
+}
+
+.parser-identity :deep([data-slot='card-title']) {
+  overflow-wrap: anywhere;
+}
+
 .parser-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .info-item {
-  color: var(--muted-foreground);
-}
-
-.info-item > svg {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-}
-
-.info-item .label {
-  flex: 0 0 78px;
-  color: var(--foreground);
-  font-weight: 500;
-}
-
-.info-item .value {
   min-width: 0;
-  word-break: break-all;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
 }
 
-.path-value,
-.info-statistics {
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--muted);
+.info-item:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.info-item dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.info-item dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.path-item {
+  grid-column: 1 / -1;
+  border-bottom: 0;
 }
 
 .path-value {
-  padding: 2px 6px;
-  font-size: 13px;
-}
-
-.info-statistics {
-  padding: 10px 12px;
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.stat-label,
-.loading-state {
-  color: var(--muted-foreground);
-  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
 }
 
 .parser-actions {
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .loading-state {
   justify-content: center;
   min-height: 180px;
-}
-
-@media (max-width: 800px) {
-  .parsers-container {
-    grid-template-columns: 1fr;
-  }
+  color: var(--muted-foreground);
+  font-size: 13px;
 }
 
 @media (max-width: 640px) {
-  .page-heading,
-  .parser-header {
+  .page-heading {
     align-items: flex-start;
     flex-direction: column;
   }

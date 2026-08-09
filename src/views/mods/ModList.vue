@@ -10,6 +10,7 @@
     </header>
 
     <Card size="sm" class="filter-panel">
+      <CardHeader><div><CardTitle>筛选模组</CardTitle><CardDescription>选择房间和世界后管理真实模组配置。</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-form">
           <Field>
@@ -674,6 +675,7 @@ export default {
 .header-actions,
 .filter-actions,
 .mod-actions {
+  min-width: 0;
   gap: 8px;
 }
 
@@ -683,9 +685,14 @@ export default {
 
 .filter-form {
   display: grid;
-  grid-template-columns: repeat(5, minmax(150px, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   align-items: end;
   gap: 12px;
+}
+
+.filter-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .loading-state {
@@ -852,12 +859,6 @@ export default {
   word-break: break-word;
 }
 
-@media (max-width: 1180px) {
-  .filter-form {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 760px) {
   .page-heading {
     align-items: stretch;
@@ -866,10 +867,6 @@ export default {
 
   .filter-form {
     grid-template-columns: 1fr;
-  }
-
-  .filter-actions > * {
-    flex: 1;
   }
 
   .mod-details-sheet {

@@ -1,119 +1,139 @@
 <template>
-  <div class="regex-tester">
-    <FieldGroup>
-      <Field>
-        <FieldLabel for="regex-test-content">测试内容</FieldLabel>
-        <UiTextarea
-          id="regex-test-content"
-          v-model="regexForm.testContent"
-          rows="5"
-          placeholder="输入要测试的日志内容"
-        />
-      </Field>
-
-      <Field>
-        <FieldLabel for="regex-pattern">正则表达式</FieldLabel>
-        <InputGroup>
-          <InputGroupInput
-            id="regex-pattern"
-            v-model="regexForm.pattern"
-            placeholder="输入正则表达式"
-          />
-          <InputGroupAddon align="inline-end">
-            <InputGroupButton variant="default" @click="testRegex">
-              <RefreshCwIcon data-icon="inline-start" />
-              测试
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-      </Field>
-
-      <Field orientation="horizontal">
-        <FieldContent>
-          <FieldLabel for="regex-enabled">使用正则表达式</FieldLabel>
-          <FieldDescription>关闭后按普通字符串匹配。</FieldDescription>
-        </FieldContent>
-        <UiSwitch id="regex-enabled" v-model="regexForm.isRegex" @update:model-value="testRegex" />
-      </Field>
-
-      <Field>
-        <FieldLabel>匹配模式</FieldLabel>
-        <UiSelect v-model="regexForm.matchMode" @update:model-value="testRegex">
-          <SelectTrigger><SelectValue placeholder="选择匹配模式" /></SelectTrigger>
-          <SelectContent><SelectGroup>
-            <SelectItem value="single">单行匹配</SelectItem>
-            <SelectItem value="multi_line">多行匹配</SelectItem>
-            <SelectItem value="head_tail">首尾行匹配</SelectItem>
-          </SelectGroup></SelectContent>
-        </UiSelect>
-      </Field>
-
-      <Field v-if="regexForm.matchMode === 'head_tail'">
-        <FieldLabel for="regex-tail-pattern">尾行匹配模式</FieldLabel>
-        <InputGroup>
-          <InputGroupInput
-            id="regex-tail-pattern"
-            v-model="regexForm.tailPattern"
-            placeholder="输入尾行匹配模式"
-          />
-          <InputGroupAddon align="inline-end">
-            <InputGroupButton variant="default" @click="testRegex">
-              <RefreshCwIcon data-icon="inline-start" />
-              测试
-            </InputGroupButton>
-          </InputGroupAddon>
-        </InputGroup>
-      </Field>
-    </FieldGroup>
-
-    <div class="test-results">
-      <h4>测试结果</h4>
-      <Alert v-if="testResult.isValid === false" variant="destructive">
-        <CircleXIcon />
-        <AlertTitle>正则表达式无效</AlertTitle>
-        <AlertDescription>{{ testResult.error }}</AlertDescription>
-      </Alert>
-      <div v-else-if="testResult.isValid === true">
-        <Alert v-if="testResult.matches.length > 0">
-          <CircleCheckIcon />
-          <AlertTitle>匹配成功</AlertTitle>
-          <AlertDescription>找到 {{ testResult.matches.length }} 个匹配项</AlertDescription>
-        </Alert>
-        <Alert v-else>
-          <TriangleAlertIcon />
-          <AlertTitle>未找到匹配项</AlertTitle>
-          <AlertDescription>请检查测试内容、表达式和匹配模式。</AlertDescription>
-        </Alert>
-
-        <div v-if="testResult.matches.length > 0" class="matches-container">
-          <h5>匹配结果:</h5>
-          <div v-for="(match, index) in testResult.matches" :key="index" class="match-item">
-            <div class="match-index">匹配 #{{ index + 1 }}</div>
-            <div class="match-content">{{ match }}</div>
-          </div>
-        </div>
-
-        <div class="highlighted-content" v-if="testResult.highlightedContent">
-          <h5>高亮显示:</h5>
-          <div v-html="testResult.highlightedContent"></div>
-        </div>
+  <Card size="sm" class="regex-tester">
+    <CardHeader>
+      <div>
+        <CardTitle>匹配设置</CardTitle>
+        <CardDescription>日志样本、表达式与匹配结果。</CardDescription>
       </div>
-    </div>
+    </CardHeader>
+    <CardContent class="tester-content">
+      <FieldGroup>
+        <Field>
+          <FieldLabel for="regex-test-content">测试内容</FieldLabel>
+          <UiTextarea
+            id="regex-test-content"
+            v-model="regexForm.testContent"
+            rows="5"
+            placeholder="输入要测试的日志内容"
+          />
+        </Field>
 
-    <div class="actions">
-      <UiButton @click="applyRegex">应用到规则</UiButton>
+        <Field :data-invalid="patternInvalid">
+          <FieldLabel for="regex-pattern">正则表达式</FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              id="regex-pattern"
+              v-model="regexForm.pattern"
+              placeholder="输入正则表达式"
+              :aria-invalid="patternInvalid"
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton variant="default" :disabled="!canTest" @click="testRegex">
+                <RefreshCwIcon data-icon="inline-start" />
+                测试
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </Field>
+
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel for="regex-enabled">使用正则表达式</FieldLabel>
+          </FieldContent>
+          <UiSwitch id="regex-enabled" v-model="regexForm.isRegex" @update:model-value="testRegex" />
+        </Field>
+
+        <Field>
+          <FieldLabel for="regex-match-mode">匹配模式</FieldLabel>
+          <UiSelect v-model="regexForm.matchMode" @update:model-value="testRegex">
+            <SelectTrigger id="regex-match-mode"><SelectValue placeholder="选择匹配模式" /></SelectTrigger>
+            <SelectContent><SelectGroup>
+              <SelectItem value="single">单行匹配</SelectItem>
+              <SelectItem value="multi_line">多行匹配</SelectItem>
+              <SelectItem value="head_tail">首尾行匹配</SelectItem>
+            </SelectGroup></SelectContent>
+          </UiSelect>
+        </Field>
+
+        <Field v-if="regexForm.matchMode === 'head_tail'" :data-invalid="tailPatternInvalid">
+          <FieldLabel for="regex-tail-pattern">尾行匹配模式</FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              id="regex-tail-pattern"
+              v-model="regexForm.tailPattern"
+              placeholder="输入尾行匹配模式"
+              :aria-invalid="tailPatternInvalid"
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton variant="default" :disabled="!canTest || !regexForm.tailPattern" @click="testRegex">
+                <RefreshCwIcon data-icon="inline-start" />
+                测试
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </Field>
+      </FieldGroup>
+
+      <Separator />
+
+      <section class="test-results" aria-live="polite">
+        <div class="section-heading"><h4>测试结果</h4><Badge v-if="testResult.isValid === true" variant="secondary">{{ testResult.matches.length }} 项</Badge></div>
+        <Empty v-if="testResult.isValid === null" class="waiting-state">
+          <EmptyHeader><EmptyMedia variant="icon"><ScanSearchIcon /></EmptyMedia><EmptyTitle>等待测试</EmptyTitle><EmptyDescription>当前尚无测试结果。</EmptyDescription></EmptyHeader>
+        </Empty>
+        <Alert v-else-if="testResult.isValid === false" variant="destructive">
+          <CircleXIcon />
+          <AlertTitle>正则表达式无效</AlertTitle>
+          <AlertDescription>{{ testResult.error }}</AlertDescription>
+        </Alert>
+        <template v-else>
+          <Alert v-if="testResult.matches.length > 0">
+            <CircleCheckIcon />
+            <AlertTitle>匹配成功</AlertTitle>
+            <AlertDescription>找到 {{ testResult.matches.length }} 个匹配项</AlertDescription>
+          </Alert>
+          <Alert v-else>
+            <TriangleAlertIcon />
+            <AlertTitle>未找到匹配项</AlertTitle>
+            <AlertDescription>当前日志内容与表达式没有产生匹配。</AlertDescription>
+          </Alert>
+
+          <section v-if="testResult.matches.length > 0" class="matches-container">
+            <h5>匹配结果</h5>
+            <ol class="match-list">
+              <li v-for="(match, index) in testResult.matches" :key="index" class="match-item">
+                <span class="match-index">匹配 #{{ index + 1 }}</span>
+                <pre class="match-content">{{ match }}</pre>
+              </li>
+            </ol>
+          </section>
+
+          <section v-if="testResult.highlightedContent" class="highlighted-section">
+            <h5>高亮显示</h5>
+            <div class="highlighted-content" v-html="testResult.highlightedContent"></div>
+          </section>
+        </template>
+      </section>
+    </CardContent>
+
+    <CardFooter class="actions">
       <UiButton variant="outline" @click="resetForm">重置</UiButton>
-    </div>
-  </div>
+      <UiButton :disabled="!regexForm.pattern" @click="applyRegex">应用到规则</UiButton>
+    </CardFooter>
+  </Card>
 </template>
 
 <script>
-import { CircleCheckIcon, CircleXIcon, RefreshCwIcon, TriangleAlertIcon } from '@lucide/vue'
+import { CircleCheckIcon, CircleXIcon, RefreshCwIcon, ScanSearchIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldContent, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 
@@ -123,11 +143,22 @@ export default {
     Alert,
     AlertDescription,
     AlertTitle,
+    Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
     CircleCheckIcon,
     CircleXIcon,
+    Empty,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
     Field,
     FieldContent,
-    FieldDescription,
     FieldGroup,
     FieldLabel,
     InputGroup,
@@ -135,11 +166,13 @@ export default {
     InputGroupButton,
     InputGroupInput,
     RefreshCwIcon,
+    ScanSearchIcon,
     SelectContent,
     SelectGroup,
     SelectItem,
     SelectTrigger,
     SelectValue,
+    Separator,
     UiSwitch,
     UiTextarea,
     TriangleAlertIcon,
@@ -184,6 +217,18 @@ export default {
         highlightedContent: ''
       }
     };
+  },
+  computed: {
+    canTest() {
+      return Boolean(this.regexForm.testContent && this.regexForm.pattern)
+    },
+    tailPatternInvalid() {
+      return this.regexForm.matchMode === 'head_tail' && this.testResult.isValid === false &&
+        (!this.regexForm.tailPattern || this.testResult.error.includes('尾行'))
+    },
+    patternInvalid() {
+      return this.testResult.isValid === false && !this.tailPatternInvalid
+    }
   },
   mounted() {
     // 在组件挂载后运行测试
@@ -493,52 +538,92 @@ export default {
 
 <style scoped>
 .regex-tester {
-  padding: 16px;
+  min-width: 0;
 }
 
+.tester-content,
 .test-results {
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background-color: var(--surface-muted);
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.matches-container {
-  margin-top: 15px;
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.section-heading h4,
+.matches-container h5,
+.highlighted-section h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.waiting-state {
+  min-height: 160px;
+}
+
+.matches-container,
+.highlighted-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.match-list {
+  max-height: 320px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  list-style: none;
 }
 
 .match-item {
-  margin-bottom: 10px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background-color: var(--surface-color);
+  min-width: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.match-item:last-child {
+  border-bottom: 0;
 }
 
 .match-index {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
   font-weight: 600;
-  margin-bottom: 5px;
-  color: var(--primary-color);
 }
 
 .match-content {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
   white-space: pre-wrap;
-  font-family: monospace;
-  background-color: var(--surface-muted);
-  padding: 8px;
-  border-radius: 4px;
-  border-left: 3px solid var(--primary-color);
 }
 
 .highlighted-content {
-  margin-top: 15px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background-color: var(--surface-color);
   max-height: 300px;
-  overflow-y: auto;
+  min-width: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .highlighted-content :deep(.highlight) {
@@ -550,9 +635,14 @@ export default {
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 20px;
 }
 
+@media (max-width: 520px) {
+  .actions > * {
+    flex: 1 1 calc(50% - 4px);
+  }
+}
 </style>

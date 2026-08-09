@@ -12,6 +12,7 @@
     </header>
 
     <Card size="sm">
+      <CardHeader><div><CardTitle>筛选记录</CardTitle><CardDescription>按房间或玩家关键词查询封禁记录。</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
           <Field>
@@ -105,7 +106,8 @@
           </EmptyHeader>
         </Empty>
 
-        <div v-if="pagination.total > pagination.page_size" class="pagination-bar">
+      </CardContent>
+      <CardFooter v-if="!loading && pagination.total > pagination.page_size" class="pagination-bar">
           <Pagination
             :page="pagination.page"
             :total="pagination.total"
@@ -124,8 +126,7 @@
               <PaginationNext />
             </PaginationContent>
           </Pagination>
-        </div>
-      </CardContent>
+      </CardFooter>
     </Card>
   </div>
 </template>
@@ -139,7 +140,7 @@ import { confirmAction } from '@/lib/feedback'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
@@ -284,7 +285,7 @@ onMounted(() => {
 
 .filter-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 0.5fr) minmax(260px, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   align-items: end;
   gap: 12px;
 }
@@ -293,8 +294,14 @@ onMounted(() => {
 .loading-state,
 .pagination-bar {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 8px;
+}
+
+.filter-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .loading-state {
@@ -340,22 +347,15 @@ onMounted(() => {
 
 .pagination-bar {
   justify-content: flex-end;
-  padding-top: 12px;
 }
 
 @media (max-width: 720px) {
-  .page-heading,
-  .filter-grid {
+  .page-heading {
     align-items: stretch;
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .page-heading {
     flex-direction: column;
-  }
-
-  .filter-actions > * {
-    flex: 1;
   }
 }
 </style>

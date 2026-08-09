@@ -1,29 +1,32 @@
 <template>
-  <div class="rule-management-container">
-    <h1>规则管理</h1>
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex min-w-0 flex-col gap-1"><h1 class="text-xl font-semibold">规则管理</h1><p class="text-sm text-muted-foreground">配置房间日志的识别方式、优先级与启用状态。</p></header>
 
-    <Card class="rule-section">
-      <CardHeader class="rule-header">
-        <div><CardTitle>日志解析规则</CardTitle><CardDescription>为选定房间配置日志识别和解析优先级。</CardDescription></div>
-        <div class="rule-header-actions">
+    <Alert v-if="loadError" variant="destructive"><CircleAlertIcon /><AlertTitle>解析规则加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="selectedRoomId ? getParserRulesList() : loadRooms()">重试</UiButton></AlertAction></Alert>
+
+    <Card>
+      <CardHeader>
+        <CardTitle>日志解析规则</CardTitle><CardDescription>为选定房间配置日志识别和解析优先级。</CardDescription>
+        <CardAction class="flex flex-wrap items-end justify-end gap-2">
+          <Field><FieldLabel for="rule-room" class="sr-only">存档</FieldLabel>
           <UiSelect
             v-model="selectedRoomId"
             @update:model-value="getParserRulesList"
           >
-            <SelectTrigger class="room-select"><SelectValue placeholder="请选择存档" /></SelectTrigger>
+            <SelectTrigger id="rule-room" class="room-select"><SelectValue placeholder="请选择存档" /></SelectTrigger>
             <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
-          </UiSelect>
+          </UiSelect></Field>
           <UiButton size="sm" @click="addParserRule"><PlusIcon data-icon="inline-start" />添加解析规则</UiButton>
-        </div>
+        </CardAction>
       </CardHeader>
       <CardContent><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>规则名称</TableHead><TableHead>描述</TableHead><TableHead>日志类型</TableHead><TableHead>匹配模式</TableHead><TableHead>模式类型</TableHead><TableHead><UiButton variant="ghost" size="xs" @click="togglePrioritySort">优先级<ArrowUpDownIcon data-icon="inline-end" /></UiButton></TableHead><TableHead>状态</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
-        <TableRow v-for="rule in displayedParserRules" :key="rule.id"><TableCell>{{ rule.id }}</TableCell><TableCell>{{ rule.name }}</TableCell><TableCell class="description-cell">{{ rule.description }}</TableCell><TableCell><Badge :variant="getLogTypeTag(rule.log_type)">{{ rule.log_type }}</Badge></TableCell><TableCell><div class="pattern-container"><span class="pattern-text">{{ rule.pattern }}</span><Tooltip><TooltipTrigger as-child><UiButton class="copy-btn" variant="ghost" size="icon-xs" aria-label="复制匹配模式" @click.stop="copyPattern(rule.pattern)"><CopyIcon /></UiButton></TooltipTrigger><TooltipContent>复制匹配模式</TooltipContent></Tooltip></div></TableCell><TableCell><Badge :variant="getMatchModeTag(rule.match_mode)">{{ getMatchModeText(rule.match_mode) }}</Badge></TableCell><TableCell>{{ rule.priority }}</TableCell><TableCell><UiSwitch v-model="rule.is_enabled" :aria-label="`切换规则 ${rule.name}`" @update:model-value="toggleRuleStatus(rule)" /></TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="editParserRule(rule)">编辑</UiButton><UiButton variant="destructive" size="sm" :disabled="rule.built_in" :title="rule.built_in ? '内建规则不能删除' : '删除规则'" @click="removeParserRule(rule)">删除</UiButton></div></TableCell></TableRow>
-        <TableEmpty v-if="loading.parser" :colspan="9"><Spinner />正在加载规则</TableEmpty>
+        <TableRow v-for="rule in displayedParserRules" :key="rule.id"><TableCell>{{ rule.id }}</TableCell><TableCell>{{ rule.name }}</TableCell><TableCell class="max-w-60 truncate">{{ rule.description }}</TableCell><TableCell><Badge :variant="getLogTypeTag(rule.log_type)">{{ rule.log_type }}</Badge></TableCell><TableCell><div class="pattern-container"><span class="max-w-64 truncate">{{ rule.pattern }}</span><Tooltip><TooltipTrigger as-child><UiButton variant="ghost" size="icon-xs" aria-label="复制匹配模式" @click.stop="copyPattern(rule.pattern)"><CopyIcon /></UiButton></TooltipTrigger><TooltipContent>复制匹配模式</TooltipContent></Tooltip></div></TableCell><TableCell><Badge :variant="getMatchModeTag(rule.match_mode)">{{ getMatchModeText(rule.match_mode) }}</Badge></TableCell><TableCell>{{ rule.priority }}</TableCell><TableCell><UiSwitch v-model="rule.is_enabled" :aria-label="`切换规则 ${rule.name}`" @update:model-value="toggleRuleStatus(rule)" /></TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="editParserRule(rule)">编辑</UiButton><UiButton variant="destructive" size="sm" :disabled="rule.built_in" :title="rule.built_in ? '内建规则不能删除' : '删除规则'" @click="removeParserRule(rule)">删除</UiButton></div></TableCell></TableRow>
+        <TableEmpty v-if="loading.parser" :colspan="9"><div class="flex flex-col gap-2 py-4"><Skeleton v-for="index in 4" :key="index" class="h-8 w-full" /></div></TableEmpty>
         <TableEmpty v-else-if="displayedParserRules.length === 0" :colspan="9"><Empty><EmptyHeader><EmptyTitle>暂无解析规则</EmptyTitle><EmptyDescription>选择存档后添加第一条日志解析规则。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
       </TableBody></ShadcnTable></CardContent>
     </Card>
 
-    <UiDialog :open="dialogVisible.parser" @update:open="handleDialogOpenChange"><DialogContent class="sm:max-w-3xl"><DialogHeader><DialogTitle>{{ ruleForm.id ? '编辑解析规则' : '添加解析规则' }}</DialogTitle><DialogDescription>配置日志匹配表达式、模式和执行优先级。</DialogDescription></DialogHeader>
+    <UiDialog :open="dialogVisible.parser" @update:open="handleDialogOpenChange"><DialogScrollContent class="sm:max-w-3xl"><DialogHeader><DialogTitle>{{ ruleForm.id ? '编辑解析规则' : '添加解析规则' }}</DialogTitle><DialogDescription>配置日志匹配表达式、模式和执行优先级。</DialogDescription></DialogHeader>
       <FieldGroup>
         <Field :data-invalid="Boolean(formErrors.name)"><FieldLabel for="rule-name">规则名称</FieldLabel><UiInput id="rule-name" v-model="ruleForm.name" :aria-invalid="Boolean(formErrors.name)" /><FieldError v-if="formErrors.name">{{ formErrors.name }}</FieldError></Field>
         <Field :data-invalid="Boolean(formErrors.description)"><FieldLabel for="rule-description">描述</FieldLabel><UiTextarea id="rule-description" v-model="ruleForm.description" :aria-invalid="Boolean(formErrors.description)" /><FieldError v-if="formErrors.description">{{ formErrors.description }}</FieldError></Field>
@@ -31,7 +34,7 @@
         <Field :data-invalid="Boolean(formErrors.pattern)"><FieldLabel for="rule-pattern">匹配模式</FieldLabel><UiTextarea id="rule-pattern" v-model="ruleForm.pattern" rows="3" :aria-invalid="Boolean(formErrors.pattern)" /><FieldDescription>使用正则表达式，如: \[\d{2}:\d{2}:\d{2}\]: Player .* joined the game</FieldDescription><FieldError v-if="formErrors.pattern">{{ formErrors.pattern }}</FieldError></Field>
         <Field orientation="horizontal"><div><FieldLabel for="rule-regex">使用正则表达式</FieldLabel><FieldDescription>关闭后按普通字符串匹配。</FieldDescription></div><UiSwitch id="rule-regex" v-model="ruleForm.is_regex" /></Field>
         <Field orientation="horizontal"><div><FieldLabel for="rule-enabled">启用规则</FieldLabel><FieldDescription>关闭后规则将保留但不参与解析。</FieldDescription></div><UiSwitch id="rule-enabled" v-model="ruleForm.is_enabled" /></Field>
-        <Field :data-invalid="Boolean(formErrors.match_mode)"><FieldLabel>匹配模式类型</FieldLabel><UiSelect v-model="ruleForm.match_mode" @update:model-value="handleMatchModeChange"><SelectTrigger :aria-invalid="Boolean(formErrors.match_mode)"><SelectValue placeholder="选择匹配模式类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="single">单行匹配</SelectItem><SelectItem value="multi_line">多行匹配</SelectItem><SelectItem value="head_tail">首尾行匹配</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>
+        <Field :data-invalid="Boolean(formErrors.match_mode)"><FieldLabel for="rule-match-mode">匹配模式类型</FieldLabel><UiSelect v-model="ruleForm.match_mode" @update:model-value="handleMatchModeChange"><SelectTrigger id="rule-match-mode" :aria-invalid="Boolean(formErrors.match_mode)"><SelectValue placeholder="选择匹配模式类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="single">单行匹配</SelectItem><SelectItem value="multi_line">多行匹配</SelectItem><SelectItem value="head_tail">首尾行匹配</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>
             <span v-if="ruleForm.match_mode === 'single'">单行匹配：每行日志单独匹配和处理</span>
             <span v-else-if="ruleForm.match_mode === 'multi_line'">多行匹配：匹配到一条日志后，继续向下匹配相同类型的日志</span>
             <span v-else-if="ruleForm.match_mode === 'head_tail'">首尾行匹配：需要提供首行和尾行的匹配规则</span>
@@ -40,22 +43,23 @@
         <Field :data-invalid="Boolean(formErrors.priority)"><FieldLabel for="rule-priority">优先级</FieldLabel><UiInput id="rule-priority" v-model="ruleForm.priority" type="number" min="1" :aria-invalid="Boolean(formErrors.priority)" /><FieldDescription>数值越大优先级越高。</FieldDescription><FieldError v-if="formErrors.priority">{{ formErrors.priority }}</FieldError></Field>
       </FieldGroup>
       <DialogFooter><UiButton variant="outline" @click="handleCancelClick">取消</UiButton><UiButton @click="confirmRuleAction">确认</UiButton></DialogFooter>
-    </DialogContent></UiDialog>
+    </DialogScrollContent></UiDialog>
   </div>
 </template>
 
 <script>
-import { ArrowUpDownIcon, CopyIcon, PlusIcon } from '@lucide/vue'
+import { ArrowUpDownIcon, CircleAlertIcon, CopyIcon, PlusIcon } from '@lucide/vue'
 import { logApi, ruleManagementApi } from '@/api';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Spinner } from '@/components/ui/spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
@@ -66,18 +70,24 @@ import { toast } from 'vue-sonner'
 export default {
   name: 'RuleManagementView',
   components: {
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
     ArrowUpDownIcon,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
+    CircleAlertIcon,
     CopyIcon,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
+    DialogScrollContent,
     DialogTitle,
     Empty,
     EmptyDescription,
@@ -95,7 +105,7 @@ export default {
     SelectTrigger,
     SelectValue,
     ShadcnTable,
-    Spinner,
+    Skeleton,
     TableBody,
     TableCell,
     TableEmpty,
@@ -118,6 +128,7 @@ export default {
       loading: {
         parser: false
       },
+      loadError: '',
       // 对话框显示状态
       dialogVisible: {
         parser: false
@@ -157,6 +168,7 @@ export default {
   },
   methods: {
     async loadRooms() {
+      this.loadError = '';
       try {
         this.rooms = await logApi.getRoomOptions();
         if (this.rooms.length === 1) {
@@ -165,7 +177,8 @@ export default {
         }
       } catch (error) {
         this.rooms = [];
-        toast.error('获取存档列表失败: ' + (error.message || '未知错误'));
+        this.loadError = error.message || '未知错误';
+        toast.error('获取存档列表失败: ' + this.loadError);
       }
     },
 
@@ -177,6 +190,7 @@ export default {
         return;
       }
       this.loading.parser = true;
+      this.loadError = '';
       try {
         const response = await ruleManagementApi.getRulesList(this.selectedRoomId);
         console.log('获取解析规则列表响应:', response);
@@ -194,7 +208,8 @@ export default {
         this.extractUniqueLogTypes();
       } catch (error) {
         console.error('获取解析规则列表失败:', error);
-        toast.error('获取解析规则列表失败');
+        this.loadError = error.message || '获取解析规则列表失败';
+        toast.error(this.loadError);
         this.parserRulesList = [];
         this.uniqueLogTypes = [];
       } finally {
@@ -564,83 +579,14 @@ export default {
 </script>
 
 <style scoped>
-.rule-management-container {
-  width: 100%;
-  min-width: 0;
-}
-
-.rule-section {
-  margin-bottom: 0;
-  padding: 16px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-.rule-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.rule-header h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.rule-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .room-select {
   width: 220px;
 }
 
-.tip {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 5px;
-}
-
-/* 匹配模式列样式 */
 .pattern-container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  position: relative;
-}
-
-.pattern-text {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-right: 5px;
-}
-
-.copy-btn {
-  padding: 2px;
-  margin-left: 5px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.pattern-container:hover .copy-btn {
-  opacity: 1;
-}
-
-.description-cell {
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: 4px;
 }
 
 .actions-column {
@@ -655,24 +601,8 @@ export default {
 }
 
 @media (max-width: 640px) {
-  .rule-section {
-    padding: 12px;
-  }
-
-  .rule-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .rule-header-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .room-select,
-  .rule-header-actions button {
+  .room-select {
     width: 100%;
-    margin: 0;
   }
 
   .row-actions {

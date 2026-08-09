@@ -6,6 +6,7 @@
     </header>
 
     <Card size="sm" class="search-panel">
+      <CardHeader><div><CardTitle>搜索条件</CardTitle><CardDescription>选择目标房间并输入创意工坊模组名称。</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="search-form">
           <Field>
@@ -84,7 +85,7 @@
             </Card>
           </div>
 
-          <Pagination :page="currentPage" :total="totalResults" :items-per-page="pageSize" show-edges @update:page="handlePageChange">
+          <Pagination v-if="totalResults > pageSize" :page="currentPage" :total="totalResults" :items-per-page="pageSize" show-edges @update:page="handlePageChange">
             <PaginationContent v-slot="{ items }">
               <PaginationPrevious />
               <template v-for="(item, index) in items" :key="index">
@@ -494,14 +495,20 @@ export default {
 
 .search-form {
   display: grid;
-  grid-template-columns: 220px minmax(240px, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   align-items: end;
   gap: 12px;
 }
 
 .search-actions,
 .mod-actions {
+  min-width: 0;
   gap: 8px;
+}
+
+.search-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .mod-grid {
@@ -646,10 +653,6 @@ export default {
 
   .search-form {
     grid-template-columns: 1fr;
-  }
-
-  .search-actions > * {
-    flex: 1;
   }
 
   .mod-details-header {

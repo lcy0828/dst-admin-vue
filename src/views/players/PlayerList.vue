@@ -11,7 +11,8 @@
       </div>
     </div>
 
-    <Card class="filter-card">
+    <Card size="sm" class="filter-card">
+      <CardHeader><div><CardTitle>筛选玩家</CardTitle><CardDescription>按存档、在线状态、角色或关键词缩小范围。</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-form">
           <Field>
@@ -43,7 +44,7 @@
       </CardContent>
     </Card>
 
-    <Card class="table-card">
+    <Card size="sm" class="table-card">
       <CardHeader class="table-operations">
         <div><CardTitle>玩家列表</CardTitle><CardDescription>共 {{ pagination.total }} 名玩家</CardDescription></div>
         <UiButton size="sm" @click="exportPlayerData"><Download data-icon="inline-start" />导出数据</UiButton>
@@ -115,23 +116,25 @@
         </div>
         <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>暂无玩家数据</EmptyTitle><EmptyDescription>选择存档或手动更新玩家列表。</EmptyDescription></EmptyHeader></Empty>
 
-        <div class="pagination-bar">
+      </CardContent>
+      <CardFooter v-if="!loading && pagination.total > 0" class="pagination-bar">
+        <div class="page-size-control">
           <span>每页</span>
-          <NativeSelect :model-value="String(pagination.page_size)" @update:model-value="value => handleSizeChange(Number(value))">
+          <NativeSelect id="player-page-size" aria-label="每页显示数量" :model-value="String(pagination.page_size)" @update:model-value="value => handleSizeChange(Number(value))">
             <NativeSelectOption value="10">10</NativeSelectOption><NativeSelectOption value="20">20</NativeSelectOption><NativeSelectOption value="50">50</NativeSelectOption><NativeSelectOption value="100">100</NativeSelectOption>
           </NativeSelect>
-          <Pagination :page="pagination.page" :total="pagination.total" :items-per-page="pagination.page_size" show-edges @update:page="handleCurrentChange">
-            <PaginationContent v-slot="{ items }">
-              <PaginationPrevious />
-              <template v-for="(item, index) in items" :key="index">
-                <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === pagination.page">{{ item.value }}</PaginationItem>
-                <PaginationEllipsis v-else :index="index" />
-              </template>
-              <PaginationNext />
-            </PaginationContent>
-          </Pagination>
         </div>
-      </CardContent>
+        <Pagination :page="pagination.page" :total="pagination.total" :items-per-page="pagination.page_size" show-edges @update:page="handleCurrentChange">
+          <PaginationContent v-slot="{ items }">
+            <PaginationPrevious />
+            <template v-for="(item, index) in items" :key="index">
+              <PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === pagination.page">{{ item.value }}</PaginationItem>
+              <PaginationEllipsis v-else :index="index" />
+            </template>
+            <PaginationNext />
+          </PaginationContent>
+        </Pagination>
+      </CardFooter>
     </Card>
 
     <Sheet v-model:open="playerDetailVisible">
@@ -167,7 +170,7 @@
     <UiDialog v-model:open="banDialogVisible">
       <DialogContent><DialogHeader><DialogTitle>封禁玩家</DialogTitle><DialogDescription>{{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
         <FieldGroup><Field :data-invalid="Boolean(banFormError)"><FieldLabel for="ban-reason">封禁原因</FieldLabel><UiTextarea id="ban-reason" v-model="banForm.reason" rows="3" placeholder="请输入封禁原因" :aria-invalid="Boolean(banFormError)" /><FieldError v-if="banFormError">{{ banFormError }}</FieldError></Field>
-          <Field><FieldLabel>封禁时长</FieldLabel><UiSelect v-model="banForm.duration"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="duration in banDurations" :key="duration.value" :value="duration.value">{{ duration.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
+          <Field><FieldLabel for="ban-duration">封禁时长</FieldLabel><UiSelect v-model="banForm.duration"><SelectTrigger id="ban-duration"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="duration in banDurations" :key="duration.value" :value="duration.value">{{ duration.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
         <DialogFooter><UiButton variant="outline" @click="banDialogVisible = false">取消</UiButton><UiButton variant="destructive" @click="confirmBanPlayer" :disabled="banning"><Spinner v-if="banning" data-icon="inline-start" />确认封禁</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
@@ -188,7 +191,7 @@
 
     <UiDialog v-model:open="sessionSelectDialogVisible">
       <DialogContent><DialogHeader><DialogTitle>选择游戏世界</DialogTitle><DialogDescription>玩家操作将在选中的世界执行。</DialogDescription></DialogHeader>
-        <FieldGroup><Field><FieldLabel>游戏世界</FieldLabel><UiSelect v-model="selectedSessionName"><SelectTrigger><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
+        <FieldGroup><Field><FieldLabel for="player-session">游戏世界</FieldLabel><UiSelect v-model="selectedSessionName"><SelectTrigger id="player-session"><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
         <Alert v-if="sessionList.length === 0" variant="destructive"><TriangleAlert /><AlertTitle>没有可用的世界</AlertTitle></Alert>
         <DialogFooter><UiButton variant="outline" @click="sessionSelectDialogVisible = false">取消</UiButton><UiButton @click="confirmSessionSelect">确认</UiButton></DialogFooter>
       </DialogContent>
@@ -196,7 +199,7 @@
 
     <UiDialog v-model:open="updateDialogVisible">
       <DialogContent><DialogHeader><DialogTitle>手动更新玩家列表</DialogTitle><DialogDescription>从服务器读取最新的真实玩家信息。</DialogDescription></DialogHeader>
-        <FieldGroup><Field><FieldLabel>存档名称</FieldLabel><UiSelect v-model="updateForm.archive_name" @update:model-value="onArchiveChange"><SelectTrigger><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        <FieldGroup><Field><FieldLabel for="update-archive">存档名称</FieldLabel><UiSelect v-model="updateForm.archive_name" @update:model-value="onArchiveChange"><SelectTrigger id="update-archive"><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           <Field><FieldLabel for="update-world">世界名称</FieldLabel><NativeSelect id="update-world" v-model="updateForm.world_name"><NativeSelectOption value="">所有世界</NativeSelectOption><NativeSelectOption v-for="world in worldOptions" :key="world.value" :value="world.value">{{ world.label }}</NativeSelectOption></NativeSelect><FieldDescription>留空表示所有世界。</FieldDescription></Field></FieldGroup>
         <DialogFooter><UiButton variant="outline" @click="updateDialogVisible = false">取消</UiButton><UiButton @click="confirmUpdate" :disabled="updating || !updateForm.archive_name"><Spinner v-if="updating" data-icon="inline-start" />开始更新</UiButton></DialogFooter>
       </DialogContent>
@@ -213,7 +216,7 @@
       <DialogContent class="max-w-2xl"><DialogHeader><DialogTitle>添加定时更新任务</DialogTitle><DialogDescription>定期从选中世界同步玩家列表。</DialogDescription></DialogHeader>
         <FieldGroup>
           <Field :data-invalid="Boolean(scheduleErrors.name)"><FieldLabel for="schedule-name">任务名称</FieldLabel><UiInput id="schedule-name" v-model="scheduleForm.name" :aria-invalid="Boolean(scheduleErrors.name)" /><FieldError v-if="scheduleErrors.name">{{ scheduleErrors.name }}</FieldError></Field>
-          <Field :data-invalid="Boolean(scheduleErrors.session_name)"><FieldLabel>游戏世界</FieldLabel><UiSelect v-model="scheduleForm.session_name"><SelectTrigger :aria-invalid="Boolean(scheduleErrors.session_name)"><SelectValue placeholder="选择游戏世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="scheduleErrors.session_name">{{ scheduleErrors.session_name }}</FieldError></Field>
+          <Field :data-invalid="Boolean(scheduleErrors.session_name)"><FieldLabel for="schedule-session">游戏世界</FieldLabel><UiSelect v-model="scheduleForm.session_name"><SelectTrigger id="schedule-session" :aria-invalid="Boolean(scheduleErrors.session_name)"><SelectValue placeholder="选择游戏世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in sessionList" :key="session.key" :value="session.key">{{ session.name }} · {{ session.state }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="scheduleErrors.session_name">{{ scheduleErrors.session_name }}</FieldError></Field>
           <Field :data-invalid="Boolean(scheduleErrors.spec)"><FieldLabel for="schedule-spec">执行计划</FieldLabel><UiInput id="schedule-spec" v-model="scheduleForm.spec" placeholder="例如：0 */3 * * * *" :aria-invalid="Boolean(scheduleErrors.spec)" /><FieldDescription>支持五段 Cron，或以 0 秒开头的六段 Cron。</FieldDescription><FieldError v-if="scheduleErrors.spec">{{ scheduleErrors.spec }}</FieldError></Field>
           <Field><FieldLabel for="schedule-description">任务描述</FieldLabel><UiTextarea id="schedule-description" v-model="scheduleForm.description" rows="2" /></Field>
         </FieldGroup>
@@ -231,7 +234,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -263,6 +266,7 @@ export default {
     Card,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
     Clock3,
@@ -1213,6 +1217,7 @@ export default {
 <style scoped>
 .player-list-page {
   width: 100%;
+  min-width: 0;
 }
 
 .page-header {
@@ -1242,7 +1247,7 @@ export default {
 
 .filter-form {
   display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   align-items: flex-end;
   gap: 12px;
 }
@@ -1252,8 +1257,14 @@ export default {
 .row-actions,
 .steam-actions {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 8px;
+}
+
+.filter-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .table-operations {
@@ -1318,14 +1329,19 @@ export default {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 10px;
-  margin-top: 16px;
   color: var(--muted-foreground);
   font-size: 13px;
 }
 
-.pagination-bar :deep([data-slot='native-select-wrapper']) {
+.page-size-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-size-control :deep([data-slot='native-select-wrapper']) {
   width: 76px;
 }
 
@@ -1416,16 +1432,6 @@ export default {
   gap: 8px;
 }
 
-@media (max-width: 1180px) {
-  .filter-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .filter-actions {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 720px) {
   .page-header {
     flex-direction: column;
@@ -1450,7 +1456,7 @@ export default {
   }
 
   .filter-actions {
-    grid-column: auto;
+    grid-column: 1 / -1;
   }
 
   .table-operations {

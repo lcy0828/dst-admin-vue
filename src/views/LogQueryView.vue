@@ -1,25 +1,47 @@
 <template>
   <div class="log-query-container">
-    <div class="page-header">
-      <h1 class="page-title">日志查询</h1>
-    </div>
+    <header class="page-heading">
+      <div>
+        <h1>日志查询</h1>
+        <p>按存档、世界和类型检索已解析的服务器日志。</p>
+      </div>
+    </header>
 
-    <div class="filter-section">
-      <FieldGroup class="filter-grid">
-        <Field><FieldLabel>存档</FieldLabel><UiSelect v-model="queryParams.archive" @update:model-value="handleArchiveChange"><SelectTrigger><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.name" :value="item.name">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-        <Field><FieldLabel>世界</FieldLabel><UiSelect v-model="queryParams.world"><SelectTrigger><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.name" :value="world.name">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-        <Field><FieldLabel>日志类型</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger><SelectValue placeholder="选择日志类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in logTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-        <div class="filter-actions"><UiButton :disabled="loading" @click="queryLogs"><SearchIcon data-icon="inline-start" />查询</UiButton><UiButton variant="outline" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />重置</UiButton><UiButton variant="destructive" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />清空日志</UiButton></div>
-      </FieldGroup>
-    </div>
+    <Card size="sm">
+      <CardHeader>
+        <div><CardTitle>查询条件</CardTitle><CardDescription>选择日志来源后执行查询。</CardDescription></div>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup class="filter-grid">
+          <Field><FieldLabel for="log-archive-filter">存档</FieldLabel><UiSelect v-model="queryParams.archive" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.name" :value="item.name">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-world-filter">世界</FieldLabel><UiSelect v-model="queryParams.world"><SelectTrigger id="log-world-filter"><SelectValue placeholder="选择世界" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.name" :value="world.name">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-type-filter">日志类型</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger id="log-type-filter"><SelectValue placeholder="选择日志类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in logTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <div class="filter-actions"><UiButton :disabled="loading || !queryParams.archive || !queryParams.world" @click="queryLogs(true)"><SearchIcon data-icon="inline-start" />查询</UiButton><UiButton variant="outline" :disabled="loading" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />重置</UiButton><UiButton variant="destructive" :disabled="loading || !queryParams.archive || !queryParams.world" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />清空日志</UiButton></div>
+        </FieldGroup>
+      </CardContent>
+    </Card>
 
-    <div class="result-section">
-      <ShadcnTable><TableHeader><TableRow><TableHead>时间</TableHead><TableHead>类型</TableHead><TableHead>内容</TableHead><TableHead>世界</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody>
-        <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)">{{ log.log_type }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">创建规则</UiButton></TableCell></TableRow>
-        <TableEmpty v-if="loading" :colspan="5"><Spinner />正在查询日志</TableEmpty><TableEmpty v-else-if="logData.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>暂无日志</EmptyTitle><EmptyDescription>调整筛选条件后重新查询。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
-      </TableBody></ShadcnTable>
+    <Alert v-if="queryError" variant="destructive">
+      <TriangleAlertIcon />
+      <AlertTitle>日志查询失败</AlertTitle>
+      <AlertDescription>{{ queryError }}</AlertDescription>
+      <AlertAction><UiButton variant="outline" size="sm" :disabled="loading" @click="queryLogs()">重试</UiButton></AlertAction>
+    </Alert>
 
-      <div class="pagination-container">
+    <Card size="sm" class="result-card">
+      <CardHeader>
+        <div><CardTitle>查询结果</CardTitle><CardDescription>共 {{ total }} 条日志</CardDescription></div>
+      </CardHeader>
+      <CardContent>
+        <div v-if="loading" class="loading-state"><Spinner /><span>正在查询日志</span></div>
+        <div v-else-if="logData.length" class="table-wrap">
+          <ShadcnTable><TableHeader><TableRow><TableHead>时间</TableHead><TableHead>类型</TableHead><TableHead>内容</TableHead><TableHead>世界</TableHead><TableHead class="action-column">操作</TableHead></TableRow></TableHeader><TableBody>
+            <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)">{{ log.log_type }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell class="action-column"><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">创建规则</UiButton></TableCell></TableRow>
+          </TableBody></ShadcnTable>
+        </div>
+        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>暂无日志</EmptyTitle><EmptyDescription>调整筛选条件后重新查询。</EmptyDescription></EmptyHeader></Empty>
+      </CardContent>
+      <CardFooter v-if="!loading && total > 0" class="pagination-container">
         <AppPagination
           :page="queryParams.page"
           :limit="queryParams.page_size"
@@ -28,8 +50,8 @@
           @update:page="handleCurrentChange"
           @update:limit="handleSizeChange"
         />
-      </div>
-    </div>
+      </CardFooter>
+    </Card>
 
     <UiDialog :open="ruleDialogVisible" @update:open="handleRuleDialogOpenChange"><DialogContent class="rule-dialog sm:max-w-4xl"><DialogHeader><DialogTitle>基于日志创建解析规则</DialogTitle><DialogDescription>完善规则信息并验证匹配表达式。</DialogDescription></DialogHeader>
       <div v-if="selectedLog" class="rule-dialog-content">
@@ -58,19 +80,20 @@
 </template>
 
 <script>
-import { RotateCcwIcon, SearchIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
+import { RotateCcwIcon, ScrollTextIcon, SearchIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import { logApi, ruleManagementApi } from '@/api';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
-import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import AppPagination from '@/components/Pagination.vue'
 import RegexTester from '@/components/RegexTester.vue';
@@ -81,10 +104,17 @@ export default {
   name: 'LogQueryView',
   components: {
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     AppPagination,
     Badge,
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -93,6 +123,7 @@ export default {
     Empty,
     EmptyDescription,
     EmptyHeader,
+    EmptyMedia,
     EmptyTitle,
     Field,
     FieldError,
@@ -100,6 +131,7 @@ export default {
     FieldLabel,
     RegexTester,
     RotateCcwIcon,
+    ScrollTextIcon,
     SearchIcon,
     SelectContent,
     SelectGroup,
@@ -111,7 +143,6 @@ export default {
     Spinner,
     TableBody,
     TableCell,
-    TableEmpty,
     TableHead,
     TableHeader,
     TableRow,
@@ -156,6 +187,7 @@ export default {
       total: 0,
       // 加载状态
       loading: false,
+      queryError: '',
 
       // 规则对话框相关
       ruleDialogVisible: false,
@@ -421,12 +453,15 @@ export default {
 
     // 存档变更处理
     handleArchiveChange(value) {
+      this.queryParams.page = 1;
       this.getWorlds(value);
     },
 
     // 查询日志
-    async queryLogs() {
+    async queryLogs(resetPage = false) {
+      if (resetPage) this.queryParams.page = 1;
       this.loading = true;
+      this.queryError = '';
       try {
         await this.getLogTypes();
         console.log('查询参数:', this.queryParams);
@@ -465,7 +500,8 @@ export default {
         }
       } catch (error) {
         console.error('查询日志失败:', error);
-        toast.error('查询日志失败: ' + (error.message || '未知错误'));
+        this.queryError = error?.response?.data?.message || error?.message || '未知错误';
+        toast.error('查询日志失败: ' + this.queryError);
         this.logData = [];
         this.total = 0;
       } finally {
@@ -495,6 +531,7 @@ export default {
     // 分页大小变更
     handleSizeChange(val) {
       this.queryParams.page_size = val;
+      this.queryParams.page = 1;
       this.queryLogs();
     },
 
@@ -883,52 +920,85 @@ export default {
 
 <style scoped>
 .log-query-container {
+  display: flex;
   width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.filter-section {
-  margin-bottom: 16px;
-  padding: 16px;
-  border: 1px solid var(--border-color);
-  background: var(--surface-color);
-  border-radius: 4px;
-  box-shadow: none;
+.page-heading h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 28px;
+}
+
+.page-heading p {
+  margin: 2px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
   align-items: end;
   gap: 12px;
 }
 
 .filter-actions {
-  display: flex;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  align-items: center;
 }
 
-.result-section {
-  padding: 16px;
-  border: 1px solid var(--border-color);
-  background: var(--surface-color);
-  border-radius: 4px;
-  box-shadow: none;
+.result-card {
+  min-width: 0;
+}
+
+.loading-state {
+  display: flex;
+  min-height: 220px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-wrap :deep(table) {
+  min-width: 920px;
+}
+
+.action-column {
+  position: sticky;
+  right: 0;
+  width: 104px;
+  background: var(--card);
+  box-shadow: -1px 0 var(--border);
+  text-align: right;
 }
 
 .pagination-container {
   display: flex;
   justify-content: flex-end;
-  margin-top: 14px;
 }
 
 .log-content {
-  white-space: pre-wrap;
-  word-break: break-word;
+  min-width: 360px;
+  max-width: 680px;
   max-height: 300px;
   overflow-y: auto;
-  font-family: monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .rule-dialog-content {
@@ -949,27 +1019,11 @@ export default {
   overflow-y: auto;
 }
 
-/* 清空日志对话框样式 */
 .cleanup-dialog-content {
   padding: 10px 0;
 }
 
-.warning-text {
-  color: var(--warning-color);
-  font-weight: 500;
-  margin-bottom: 20px;
-  padding: 10px;
-  background-color: var(--surface-muted);
-  border-radius: 4px;
-  border-left: 4px solid var(--warning-color);
-}
-
 @media (max-width: 768px) {
-  .filter-section,
-  .result-section {
-    padding: 12px;
-  }
-
   .filter-grid {
     grid-template-columns: 1fr;
   }
@@ -979,16 +1033,19 @@ export default {
     grid-template-columns: 1fr 1fr;
   }
 
-  .filter-actions button {
-    width: 100%;
-  }
-
-  .filter-actions button:last-child {
-    grid-column: 1 / -1;
-  }
-
   .pagination-container {
-    justify-content: center;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .filter-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filter-actions > :last-child {
+    grid-column: 1 / -1;
   }
 }
 </style>

@@ -37,19 +37,25 @@ export default {
 </script>
 
 <style scoped>
+.page-container {
+  min-width: 0;
+}
+
 .page-header {
   margin-bottom: 16px;
 }
 
 .page-header h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 650;
+  line-height: 28px;
 }
 
 .page-header p {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   color: var(--muted-foreground);
+  font-size: 12px;
 }
 
 .unavailable-state {
