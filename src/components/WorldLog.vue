@@ -3,12 +3,12 @@
     <div class="log-toolbar">
       <FieldGroup class="log-controls">
         <Field>
-          <FieldLabel for="world-log-room">房间</FieldLabel>
+          <FieldLabel for="world-log-room">{{ $t('servers.liveLogs.fields.room') }}</FieldLabel>
           <UiSelect
             v-model="selectedRoomId"
             @update:model-value="handleRoomChange"
           >
-            <SelectTrigger id="world-log-room"><SelectValue placeholder="选择房间" /></SelectTrigger>
+            <SelectTrigger id="world-log-room"><SelectValue :placeholder="$t('servers.liveLogs.fields.selectRoom')" /></SelectTrigger>
             <SelectContent><SelectGroup>
               <SelectItem v-for="room in archives" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
             </SelectGroup></SelectContent>
@@ -16,13 +16,13 @@
         </Field>
 
         <Field>
-          <FieldLabel for="world-log-world">世界</FieldLabel>
+          <FieldLabel for="world-log-world">{{ $t('servers.liveLogs.fields.world') }}</FieldLabel>
           <UiSelect
             v-model="selectedWorldId"
             :disabled="!selectedRoomId || currentRoomWorlds.length === 0"
             @update:model-value="handleWorldChange"
           >
-            <SelectTrigger id="world-log-world"><SelectValue placeholder="选择世界" /></SelectTrigger>
+            <SelectTrigger id="world-log-world"><SelectValue :placeholder="$t('servers.liveLogs.fields.selectWorld')" /></SelectTrigger>
             <SelectContent><SelectGroup>
               <SelectItem v-for="world in currentRoomWorlds" :key="world.id" :value="world.id">
                 {{ world.name }} ({{ formatWorldType(world.type || world.role) }})
@@ -33,7 +33,7 @@
 
         <Field orientation="horizontal" class="toggle-field">
           <FieldContent>
-            <FieldLabel for="world-log-follow">实时跟随</FieldLabel>
+            <FieldLabel for="world-log-follow">{{ $t('servers.liveLogs.fields.follow') }}</FieldLabel>
           </FieldContent>
           <UiSwitch
             id="world-log-follow"
@@ -44,7 +44,7 @@
 
         <Field orientation="horizontal" class="toggle-field">
           <FieldContent>
-            <FieldLabel for="world-log-scroll">自动滚动</FieldLabel>
+            <FieldLabel for="world-log-scroll">{{ $t('servers.liveLogs.fields.autoScroll') }}</FieldLabel>
           </FieldContent>
           <UiSwitch
             id="world-log-scroll"
@@ -62,20 +62,20 @@
         >
           <Spinner v-if="loading" data-icon="inline-start" />
           <RefreshCwIcon v-else data-icon="inline-start" />
-          刷新
+          {{ $t('common.actions.refresh') }}
         </UiButton>
       </div>
     </div>
 
     <Alert v-if="loadError" variant="destructive">
       <TriangleAlertIcon />
-      <AlertTitle>日志读取失败</AlertTitle>
+      <AlertTitle>{{ $t('servers.liveLogs.terminal.loadFailed') }}</AlertTitle>
       <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="retryLoad">重试</UiButton></AlertAction>
+      <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="retryLoad">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
     <div class="log-content">
-      <div ref="terminal" class="terminal-container" role="log" :aria-label="title || '世界日志'"></div>
+      <div ref="terminal" class="terminal-container" role="log" :aria-label="title || $t('servers.liveLogs.terminal.defaultTitle')"></div>
     </div>
   </section>
 </template>
@@ -124,7 +124,7 @@ export default {
   props: {
     title: {
       type: String,
-      default: '世界日志'
+      default: ''
     },
     roomId: {
       type: String,
@@ -173,14 +173,8 @@ export default {
       return this.currentRoomWorlds.find(world => world.id === this.selectedWorldId) || null
     },
     streamStateLabel() {
-      return {
-        idle: '待选择',
-        connecting: '连接中',
-        reconnecting: '重连中',
-        connected: '实时',
-        paused: '已暂停',
-        error: '已断开'
-      }[this.streamState] || '未知'
+      const known = ['idle', 'connecting', 'reconnecting', 'connected', 'paused', 'error']
+      return this.$t(`servers.liveLogs.terminal.states.${known.includes(this.streamState) ? this.streamState : 'unknown'}`)
     },
     streamStateVariant() {
       if (this.streamState === 'connected') return 'default'
@@ -226,7 +220,7 @@ export default {
       this.terminal.loadAddon(this.fitAddon)
       this.terminal.open(this.$refs.terminal)
       this.$nextTick(() => this.fitAddon.fit())
-      this.writeSystemLine('请选择房间和世界以查看日志')
+      this.writeSystemLine(this.$t('servers.liveLogs.terminal.selectTarget'))
     },
     async loadArchives() {
       const requestSequence = ++this.archiveRequestSequence
@@ -244,7 +238,7 @@ export default {
         if (requestSequence !== this.archiveRequestSequence) return
         this.archives = []
         this.streamState = 'error'
-        this.loadError = error.message || '获取房间列表失败'
+        this.loadError = error.message || this.$t('servers.liveLogs.terminal.archiveLoadFailed')
         this.writeErrorLine(this.loadError)
       } finally {
         if (requestSequence === this.archiveRequestSequence) this.loading = false
@@ -281,20 +275,16 @@ export default {
       else {
         this.streamState = 'idle'
         this.terminal.clear()
-        this.writeSystemLine('当前房间没有可用世界')
+        this.writeSystemLine(this.$t('servers.liveLogs.terminal.noWorlds'))
       }
     },
     handleWorldChange() {
       this.loadLog()
     },
     formatWorldType(type) {
-      return {
-        forest: '森林',
-        master: '森林',
-        cave: '洞穴',
-        caves: '洞穴',
-        unknown: '自定义'
-      }[type] || '自定义'
+      if (type === 'forest' || type === 'master') return this.$t('servers.list.worldTypes.forest')
+      if (type === 'cave' || type === 'caves') return this.$t('servers.list.worldTypes.cave')
+      return type || this.$t('servers.list.worldTypes.custom')
     },
     async refreshLog() {
       if (!this.selectedRoomId || !this.selectedWorldId) return
@@ -319,7 +309,7 @@ export default {
       } catch (error) {
         if (requestSequence !== this.logRequestSequence) return
         this.streamState = 'error'
-        this.loadError = error.message || '日志读取失败'
+        this.loadError = error.message || this.$t('servers.liveLogs.terminal.loadFailed')
         this.writeErrorLine(this.loadError)
       } finally {
         if (requestSequence === this.logRequestSequence) this.loading = false
@@ -347,7 +337,9 @@ export default {
         if (this.eventSource !== source) return
         const payload = this.parseEvent(event)
         this.terminal.clear()
-        this.writeSystemLine(`日志文件已轮转：${payload?.snapshot?.fileName || 'server_log.txt'}`)
+        this.writeSystemLine(this.$t('servers.liveLogs.terminal.rotated', {
+          file: payload?.snapshot?.fileName || 'server_log.txt'
+        }))
       })
       source.addEventListener('heartbeat', () => {
         if (this.eventSource === source && this.streamState !== 'connected') this.streamState = 'connected'
@@ -362,7 +354,7 @@ export default {
           this.closeEventSource()
           return
         }
-        if (this.streamState !== 'reconnecting') this.writeSystemLine('日志流暂时中断，正在自动重连')
+        if (this.streamState !== 'reconnecting') this.writeSystemLine(this.$t('servers.liveLogs.terminal.reconnecting'))
         this.streamState = 'reconnecting'
         this.loadError = ''
       }
@@ -378,7 +370,10 @@ export default {
     renderSnapshot(snapshot) {
       if (!snapshot) return
       this.terminal.clear()
-      this.terminal.writeln(`\x1B[90m${snapshot.fileName || 'server_log.txt'} · ${snapshot.lines?.length || 0} 行\x1B[0m`)
+      this.terminal.writeln(`\x1B[90m${this.$t('servers.liveLogs.terminal.snapshot', {
+        file: snapshot.fileName || 'server_log.txt',
+        count: snapshot.lines?.length || 0
+      })}\x1B[0m`)
       ;(snapshot.lines || []).forEach(line => this.writeLogLine(line.text))
       if (this.autoScroll) this.terminal.scrollToBottom()
     },
@@ -387,10 +382,10 @@ export default {
       if (this.autoScroll) this.terminal.scrollToBottom()
     },
     writeSystemLine(message) {
-      this.terminal?.writeln(`\x1B[36m[系统]\x1B[0m ${message}`)
+      this.terminal?.writeln(`\x1B[36m${this.$t('servers.liveLogs.terminal.systemPrefix')}\x1B[0m ${message}`)
     },
     writeErrorLine(message) {
-      this.terminal?.writeln(`\x1B[31m[错误]\x1B[0m ${message}`)
+      this.terminal?.writeln(`\x1B[31m${this.$t('servers.liveLogs.terminal.errorPrefix')}\x1B[0m ${message}`)
     },
     retryLoad() {
       if (this.archives.length > 0 && this.selectedWorldId) return this.refreshLog()
@@ -421,6 +416,14 @@ export default {
     }
   },
   watch: {
+    '$i18n.locale'() {
+      if (!this.terminal) return
+      if (this.selectedRoomId && this.selectedWorldId) this.loadLog()
+      else {
+        this.terminal.clear()
+        this.writeSystemLine(this.$t('servers.liveLogs.terminal.selectTarget'))
+      }
+    },
     roomId(value) {
       if (!value || value === this.selectedRoomId) return
       this.selectedRoomId = value

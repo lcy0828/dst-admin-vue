@@ -2,21 +2,21 @@
   <div class="log-viewer-container">
     <div class="log-header">
       <div class="log-title">
-        <h3>{{ title }}</h3>
+        <h3>{{ displayTitle }}</h3>
         <span class="log-subtitle">{{ subtitle }}</span>
       </div>
       <div class="log-actions">
         <UiButton size="sm" @click="refreshLogs">
           <RefreshCw data-icon="inline-start" />
-          刷新
+          {{ $t('common.actions.refresh') }}
         </UiButton>
         <UiButton size="sm" variant="outline" @click="downloadLogs">
           <Download data-icon="inline-start" />
-          下载日志
+          {{ $t('servers.liveLogs.actions.download') }}
         </UiButton>
         <UiButton size="sm" variant="ghost" @click="$emit('close')">
           <X data-icon="inline-start" />
-          关闭
+          {{ $t('servers.liveLogs.actions.close') }}
         </UiButton>
       </div>
     </div>
@@ -24,7 +24,7 @@
     <div class="log-content-wrapper">
       <div class="log-filter">
         <UiSelect v-model="selectedWorld" @update:model-value="refreshLogs">
-          <SelectTrigger class="world-select"><SelectValue placeholder="选择世界" /></SelectTrigger>
+          <SelectTrigger class="world-select"><SelectValue :placeholder="$t('servers.liveLogs.fields.selectWorld')" /></SelectTrigger>
           <SelectContent>
             <SelectGroup>
               <SelectItem v-for="world in worlds" :key="world.name" :value="world.name">
@@ -35,32 +35,32 @@
         </UiSelect>
         <InputGroup class="search-wrapper">
           <InputGroupAddon><Search /></InputGroupAddon>
-          <InputGroupInput v-model="searchQuery" placeholder="搜索日志" aria-label="搜索日志" />
+          <InputGroupInput v-model="searchQuery" :placeholder="$t('servers.liveLogs.fields.search')" :aria-label="$t('servers.liveLogs.fields.search')" />
         </InputGroup>
       </div>
 
       <Alert v-if="streamError" variant="destructive">
         <CircleAlert />
-        <AlertTitle>日志流连接失败</AlertTitle>
+        <AlertTitle>{{ $t('servers.liveLogs.viewer.streamFailed') }}</AlertTitle>
         <AlertDescription>{{ streamError }}</AlertDescription>
-        <AlertAction><UiButton size="sm" variant="outline" @click="refreshLogs">重新连接</UiButton></AlertAction>
+        <AlertAction><UiButton size="sm" variant="outline" @click="refreshLogs">{{ $t('servers.liveLogs.actions.reconnect') }}</UiButton></AlertAction>
       </Alert>
 
       <Empty v-if="logs.length === 0 && !loading && !streamError" class="log-empty">
         <EmptyHeader>
           <EmptyMedia variant="icon"><Info /></EmptyMedia>
-          <EmptyTitle>暂无日志记录</EmptyTitle>
-          <EmptyDescription>日志流连接后，新日志会显示在这里。</EmptyDescription>
+          <EmptyTitle>{{ $t('servers.liveLogs.viewer.empty') }}</EmptyTitle>
+          <EmptyDescription>{{ $t('servers.liveLogs.viewer.emptyDescription') }}</EmptyDescription>
         </EmptyHeader>
       </Empty>
       
       <div v-else class="log-content" ref="logContent">
         <div v-if="loading" class="log-loading">
           <Spinner />
-          <span>正在连接日志流...</span>
+          <span>{{ $t('servers.liveLogs.viewer.connecting') }}</span>
         </div>
         <div v-else-if="logs.length > 0">
-          <div class="log-info-row">已加载 {{ logs.length }} 行日志</div>
+          <div class="log-info-row">{{ $t('servers.liveLogs.viewer.loadedLines', { count: logs.length }) }}</div>
           <pre><code v-for="(line, index) in filteredLogs" :key="index" 
             :class="{ 'log-info': line.includes('[INFO]'),
                       'log-warning': line.includes('[WARNING]'),
@@ -72,9 +72,9 @@
       <div class="log-actions-bottom">
         <Field orientation="horizontal" class="auto-scroll-control">
           <UiCheckbox id="log-auto-scroll" v-model="autoScroll" />
-          <FieldLabel for="log-auto-scroll">自动滚动到最新日志</FieldLabel>
+          <FieldLabel for="log-auto-scroll">{{ $t('servers.liveLogs.fields.autoScrollLatest') }}</FieldLabel>
         </Field>
-        <UiButton size="sm" variant="ghost" @click="clearLogs">清空当前显示</UiButton>
+        <UiButton size="sm" variant="ghost" @click="clearLogs">{{ $t('servers.liveLogs.actions.clear') }}</UiButton>
       </div>
     </div>
   </div>
@@ -109,7 +109,7 @@ export default {
     },
     title: {
       type: String,
-      default: '服务器日志'
+      default: ''
     },
     subtitle: {
       type: String,
@@ -139,6 +139,9 @@ export default {
     };
   },
   computed: {
+    displayTitle() {
+      return this.title || this.$t('servers.liveLogs.viewer.defaultTitle');
+    },
     filteredLogs() {
       if (!this.searchQuery) {
         return this.logs;
@@ -156,19 +159,16 @@ export default {
       this.refreshLogs();
     },
     formatWorldType(type) {
-      const typeMap = {
-        'forest': '主世界',
-        'cave': '洞穴',
-        'unknown': '未知'
-      };
-      return typeMap[type] || type;
+      if (type === 'forest' || type === 'master') return this.$t('servers.list.worldTypes.forest');
+      if (type === 'cave' || type === 'caves') return this.$t('servers.list.worldTypes.cave');
+      return type || this.$t('servers.list.worldTypes.custom');
     },
     async resolveLogTarget() {
       const roomResponse = await roomsV2API.list();
       const room = (roomResponse.items || []).find(item =>
         item.id === this.archiveName || item.name === this.archiveName || item.directoryName === this.archiveName
       );
-      if (!room) throw new Error(`未找到房间：${this.archiveName}`);
+      if (!room) throw new Error(this.$t('servers.liveLogs.feedback.roomNotFound', { room: this.archiveName }));
 
       const providedWorld = this.worlds.find(item =>
         item.id === this.selectedWorld || item.name === this.selectedWorld
@@ -178,7 +178,7 @@ export default {
       const world = (worldResponse.items || []).find(item =>
         item.id === worldReference || item.name === worldReference || item.directoryName === worldReference
       );
-      if (!world) throw new Error(`未找到世界：${this.selectedWorld}`);
+      if (!world) throw new Error(this.$t('servers.liveLogs.feedback.worldNotFound', { world: this.selectedWorld }));
 
       this.resolvedRoomId = room.id;
       this.resolvedWorldId = world.id;
@@ -186,7 +186,7 @@ export default {
     },
     async refreshLogs() {
       if (!this.archiveName || !this.selectedWorld) {
-        toast.warning('未指定存档或世界');
+        toast.warning(this.$t('servers.liveLogs.feedback.targetRequired'));
         return;
       }
 
@@ -206,8 +206,8 @@ export default {
         this.connectEventSource(target.roomId, target.worldId, requestSequence);
       } catch (error) {
         if (requestSequence !== this.requestSequence) return;
-        this.streamError = error.message || '无法创建日志流连接';
-        toast.error('读取日志失败：' + this.streamError);
+        this.streamError = error.message || this.$t('servers.liveLogs.feedback.streamUnavailable');
+        toast.error(this.$t('servers.liveLogs.feedback.readFailed', { error: this.streamError }));
       } finally {
         if (requestSequence === this.requestSequence) this.loading = false;
       }
@@ -245,7 +245,7 @@ export default {
           this.closeEventSource();
           return;
         }
-        this.streamError = '日志流暂时中断，正在自动重连。';
+        this.streamError = this.$t('servers.liveLogs.feedback.reconnecting');
       });
     },
     parseEvent(event) {
@@ -297,9 +297,11 @@ export default {
           link.remove();
           URL.revokeObjectURL(objectURL);
         }
-        toast.success('日志下载已开始');
+        toast.success(this.$t('servers.liveLogs.feedback.downloadStarted'));
       } catch (error) {
-        toast.error('下载日志失败：' + (error.message || '未知错误'));
+        toast.error(this.$t('servers.liveLogs.feedback.downloadFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       }
     },
     clearLogs() {

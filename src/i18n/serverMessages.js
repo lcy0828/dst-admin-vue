@@ -84,6 +84,63 @@ export const serverMessages = {
           cleanupSucceeded: '失败会话已清理',
           cleanupFailed: '清理失败：{error}'
         }
+      },
+      liveLogs: {
+        fields: {
+          room: '房间',
+          world: '世界',
+          selectRoom: '选择房间',
+          selectWorld: '选择世界',
+          follow: '实时跟随',
+          autoScroll: '自动滚动',
+          autoScrollLatest: '自动滚动到最新日志',
+          search: '搜索日志'
+        },
+        actions: {
+          download: '下载日志',
+          close: '关闭',
+          reconnect: '重新连接',
+          clear: '清空当前显示'
+        },
+        terminal: {
+          defaultTitle: '世界日志',
+          states: {
+            idle: '待选择',
+            connecting: '连接中',
+            reconnecting: '重连中',
+            connected: '实时',
+            paused: '已暂停',
+            error: '已断开',
+            unknown: '未知'
+          },
+          selectTarget: '请选择房间和世界以查看日志',
+          noWorlds: '当前房间没有可用世界',
+          archiveLoadFailed: '获取房间列表失败',
+          loadFailed: '日志读取失败',
+          rotated: '日志文件已轮转：{file}',
+          reconnecting: '日志流暂时中断，正在自动重连',
+          snapshot: '{file} · {count} 行',
+          systemPrefix: '[系统]',
+          errorPrefix: '[错误]'
+        },
+        viewer: {
+          defaultTitle: '服务器日志',
+          streamFailed: '日志流连接失败',
+          empty: '暂无日志记录',
+          emptyDescription: '日志流连接后，新日志会显示在这里。',
+          connecting: '正在连接日志流...',
+          loadedLines: '已加载 {count} 行日志'
+        },
+        feedback: {
+          roomNotFound: '未找到房间：{room}',
+          worldNotFound: '未找到世界：{world}',
+          targetRequired: '未指定存档或世界',
+          streamUnavailable: '无法创建日志流连接',
+          readFailed: '读取日志失败：{error}',
+          reconnecting: '日志流暂时中断，正在自动重连。',
+          downloadStarted: '日志下载已开始',
+          downloadFailed: '下载日志失败：{error}'
+        }
       }
     }
   },
@@ -171,6 +228,63 @@ export const serverMessages = {
           cleanupButton: 'Clean up',
           cleanupSucceeded: 'Failed session cleaned up',
           cleanupFailed: 'Cleanup failed: {error}'
+        }
+      },
+      liveLogs: {
+        fields: {
+          room: 'Room',
+          world: 'World',
+          selectRoom: 'Select a room',
+          selectWorld: 'Select a world',
+          follow: 'Follow live',
+          autoScroll: 'Auto-scroll',
+          autoScrollLatest: 'Scroll to the latest log automatically',
+          search: 'Search logs'
+        },
+        actions: {
+          download: 'Download logs',
+          close: 'Close',
+          reconnect: 'Reconnect',
+          clear: 'Clear current display'
+        },
+        terminal: {
+          defaultTitle: 'World logs',
+          states: {
+            idle: 'Select a world',
+            connecting: 'Connecting',
+            reconnecting: 'Reconnecting',
+            connected: 'Live',
+            paused: 'Paused',
+            error: 'Disconnected',
+            unknown: 'Unknown'
+          },
+          selectTarget: 'Select a room and world to view logs',
+          noWorlds: 'This room has no available worlds',
+          archiveLoadFailed: 'Failed to load rooms',
+          loadFailed: 'Failed to read logs',
+          rotated: 'Log file rotated: {file}',
+          reconnecting: 'The log stream was interrupted and is reconnecting automatically',
+          snapshot: '{file} · {count} lines',
+          systemPrefix: '[System]',
+          errorPrefix: '[Error]'
+        },
+        viewer: {
+          defaultTitle: 'Server logs',
+          streamFailed: 'Log stream connection failed',
+          empty: 'No log entries',
+          emptyDescription: 'New entries will appear here after the log stream connects.',
+          connecting: 'Connecting to the log stream...',
+          loadedLines: '{count} log lines loaded'
+        },
+        feedback: {
+          roomNotFound: 'Room not found: {room}',
+          worldNotFound: 'World not found: {world}',
+          targetRequired: 'No archive or world was specified',
+          streamUnavailable: 'Unable to create the log stream connection',
+          readFailed: 'Failed to read logs: {error}',
+          reconnecting: 'The log stream was interrupted and is reconnecting automatically.',
+          downloadStarted: 'Log download started',
+          downloadFailed: 'Failed to download logs: {error}'
         }
       }
     }

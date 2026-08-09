@@ -185,7 +185,7 @@ test('live log views reconnect transient streams and validate downloads', async 
 
   assert.match(terminalSource, /streamState = 'reconnecting'/)
   assert.match(terminalSource, /if \(payload\?\.message\)/)
-  assert.match(viewerSource, /日志流暂时中断，正在自动重连/)
+  assert.match(viewerSource, /servers\.liveLogs\.feedback\.reconnecting/)
   assert.match(viewerSource, /worldLogsV2API\.downloadBlob/)
   assert.match(viewerSource, /this\.logs\.length > 5000/)
   assert.match(apiSource, /downloadBlob:[\s\S]+getBinary/)
