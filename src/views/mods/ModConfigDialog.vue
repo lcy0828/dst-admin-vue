@@ -2,30 +2,30 @@
   <Sheet :open="dialogVisible" @update:open="handleSheetOpenChange">
     <SheetContent side="right" class="mod-config-sheet">
       <SheetHeader>
-        <SheetTitle>模组配置 - {{ modInfo ? modInfo.name || '未命名模组' : '加载中...' }}</SheetTitle>
-        <SheetDescription>修改当前世界的模组配置选项。</SheetDescription>
+        <SheetTitle>{{ $t('mods.config.title', { name: modInfo ? modInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</SheetTitle>
+        <SheetDescription>{{ $t('mods.config.description') }}</SheetDescription>
       </SheetHeader>
 
       <ScrollArea class="config-scroll-area">
-        <div v-if="loading" class="loading-container"><Spinner /><p>加载模组配置中...</p></div>
+        <div v-if="loading" class="loading-container"><Spinner /><p>{{ $t('mods.config.loading') }}</p></div>
 
         <Alert v-else-if="loadError" variant="destructive">
           <TriangleAlert />
-          <AlertTitle>模组配置加载失败</AlertTitle>
+          <AlertTitle>{{ $t('mods.config.loadFailedTitle') }}</AlertTitle>
           <AlertDescription>{{ loadError }}</AlertDescription>
-          <AlertAction><UiButton size="sm" variant="outline" @click="initializeConfig">重试</UiButton></AlertAction>
+          <AlertAction><UiButton size="sm" variant="outline" @click="initializeConfig">{{ $t('mods.actions.retry') }}</UiButton></AlertAction>
         </Alert>
 
         <template v-else-if="modInfo">
           <div v-if="hasOptions" class="reset-button-container">
             <UiButton size="sm" variant="outline" @click="resetToDefault">
-              <RotateCcw data-icon="inline-start" />重置为默认配置
+              <RotateCcw data-icon="inline-start" />{{ $t('mods.actions.resetDefaults') }}
             </UiButton>
           </div>
 
           <Alert v-if="modInfo.description">
             <Info />
-            <AlertTitle>模组描述</AlertTitle>
+            <AlertTitle>{{ $t('mods.config.modDescription') }}</AlertTitle>
             <AlertDescription>{{ modInfo.description }}</AlertDescription>
           </Alert>
 
@@ -36,12 +36,12 @@
                   <FieldLabel :for="`mod-option-${option.name}`">{{ option.label }}</FieldLabel>
                   <Tooltip v-if="option.hover">
                     <TooltipTrigger as-child>
-                      <UiButton type="button" variant="ghost" size="icon-xs" :aria-label="`查看 ${option.label} 说明`"><CircleHelp /></UiButton>
+                      <UiButton type="button" variant="ghost" size="icon-xs" :aria-label="$t('mods.config.optionHelp', { label: option.label })"><CircleHelp /></UiButton>
                     </TooltipTrigger>
                     <TooltipContent>{{ option.hover }}</TooltipContent>
                   </Tooltip>
                 </div>
-                <FieldDescription v-if="isBooleanOption(option)">{{ configForm[option.name] ? '开启' : '关闭' }}</FieldDescription>
+                <FieldDescription v-if="isBooleanOption(option)">{{ $t(configForm[option.name] ? 'mods.values.on' : 'mods.values.off') }}</FieldDescription>
               </FieldContent>
 
               <UiSwitch
@@ -56,7 +56,7 @@
                 v-model="configForm[option.name]"
                 @update:model-value="handleConfigChange(option.name)"
               >
-                <SelectTrigger :id="`mod-option-${option.name}`"><SelectValue placeholder="请选择" /></SelectTrigger>
+                <SelectTrigger :id="`mod-option-${option.name}`"><SelectValue :placeholder="$t('mods.config.selectOption')" /></SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem v-for="(opt, idx) in option.options" :key="idx" :value="opt.data">{{ opt.description }}</SelectItem>
@@ -76,19 +76,19 @@
           </FieldGroup>
 
           <Empty v-else>
-            <EmptyHeader><EmptyTitle>该模组没有配置选项</EmptyTitle><EmptyDescription>仍可直接启用或停用该模组。</EmptyDescription></EmptyHeader>
+            <EmptyHeader><EmptyTitle>{{ $t('mods.config.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ $t('mods.config.emptyDescription') }}</EmptyDescription></EmptyHeader>
           </Empty>
         </template>
 
         <Empty v-else>
-          <EmptyHeader><EmptyTitle>无法加载模组信息</EmptyTitle></EmptyHeader>
+          <EmptyHeader><EmptyTitle>{{ $t('mods.config.unavailable') }}</EmptyTitle></EmptyHeader>
         </Empty>
       </ScrollArea>
 
       <SheetFooter>
-        <UiButton variant="outline" @click="handleClose">取消</UiButton>
+        <UiButton variant="outline" @click="handleClose">{{ $t('mods.actions.cancel') }}</UiButton>
         <UiButton @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !modInfo">
-          <Spinner v-if="saving" data-icon="inline-start" />保存配置
+          <Spinner v-if="saving" data-icon="inline-start" />{{ $t('mods.actions.saveConfig') }}
         </UiButton>
       </SheetFooter>
     </SheetContent>
@@ -110,6 +110,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { createModFailure, formatModFailure } from '@/i18n/modMessages';
 import { confirmAction } from '@/lib/feedback';
 
 export default {
@@ -183,7 +184,7 @@ export default {
     return {
       dialogVisible: false,
       loading: false,
-      loadError: '',
+      loadFailure: null,
       saving: false,
       configForm: {},
       originalConfig: {},
@@ -196,6 +197,9 @@ export default {
     };
   },
   computed: {
+    loadError() {
+      return formatModFailure(this.$t, this.loadFailure);
+    },
     // 是否有配置选项
     hasOptions() {
       return this.modInfo && 
@@ -259,7 +263,7 @@ export default {
     resetComponentState() {
       this.isInitialized = false;
       this.loading = false;
-      this.loadError = '';
+      this.loadFailure = null;
       this.saving = false;
       this.configForm = {};
       this.originalConfig = {};
@@ -296,7 +300,7 @@ export default {
       
       this.isInitialized = true;
       this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       
       this.configForm = {};
       this.originalConfig = {};
@@ -310,7 +314,7 @@ export default {
         }
       } catch (error) {
         this.isInitialized = false;
-        this.loadError = error.message || '未知错误';
+        this.loadFailure = createModFailure('mods.errors.customConfig', error);
       } finally {
         this.loading = false;
       }
@@ -336,7 +340,7 @@ export default {
         })
         .catch(err => {
           console.error('获取用户自定义配置失败', err);
-          toast.error(`获取用户自定义配置失败：${err.message || '未知错误'}`);
+          toast.error(formatModFailure(this.$t, createModFailure('mods.errors.customConfig', err)));
           throw err;
         });
     },
@@ -363,7 +367,7 @@ export default {
             this.defaultConfig[option.name] = parsedValue;
           } else if (parsedValue === undefined && option.options && option.options.length > 0) {
             const defaultOption = option.options.find(opt => 
-              opt.description && opt.description.includes('默认')
+              opt.description && (opt.description.includes('默认') || /\bdefault\b/i.test(opt.description))
             );
             if (defaultOption) {
               this.configForm[option.name] = defaultOption.data;
@@ -429,13 +433,13 @@ export default {
     
     // 重置为默认配置
     resetToDefault() {
-      confirmAction('确定要重置所有配置为默认值吗？', '确认重置', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      confirmAction(this.$t('mods.config.feedback.resetConfirm'), this.$t('mods.config.feedback.resetTitle'), {
+        confirmButtonText: this.$t('mods.actions.confirm'),
+        cancelButtonText: this.$t('mods.actions.cancel'),
         type: 'warning'
       }).then(() => {
         this.configForm = JSON.parse(JSON.stringify(this.defaultConfig));
-        toast.success('配置已重置为默认值');
+        toast.success(this.$t('mods.config.feedback.resetSuccess'));
       }).catch(() => {});
     },
     
@@ -450,7 +454,7 @@ export default {
       );
       const enabled = this.modInfo?.configuration?.enabled ?? this.configuredEnabled;
       if (Object.keys(changedConfig).length === 0 && enabled === this.configuredEnabled) {
-        toast.info('没有需要保存的配置变更');
+        toast.info(this.$t('mods.config.feedback.noChanges'));
         return;
       }
 
@@ -476,9 +480,9 @@ export default {
         });
 
         this.dialogVisible = false;
-        toast.success('配置已保存');
+        toast.success(this.$t('mods.config.feedback.saved'));
       } catch (error) {
-        toast.error(`保存模组配置失败：${error.message || '未知错误'}`);
+        toast.error(formatModFailure(this.$t, createModFailure('mods.errors.saveConfig', error)));
       } finally {
         this.saving = false;
       }
@@ -526,9 +530,9 @@ export default {
       }
       
       if (hasChanges) {
-        confirmAction('您有未保存的配置更改，确定要关闭吗？', '关闭模组配置', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
+        confirmAction(this.$t('mods.config.feedback.unsavedConfirm'), this.$t('mods.config.feedback.closeTitle'), {
+          confirmButtonText: this.$t('mods.actions.confirm'),
+          cancelButtonText: this.$t('mods.actions.cancel'),
           type: 'warning'
         }).then(() => {
           if (typeof done === 'function') done();

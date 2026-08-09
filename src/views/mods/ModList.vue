@@ -1,93 +1,93 @@
 <template>
   <div class="page-container">
     <header class="page-heading">
-      <div><h1>已下载模组</h1><p>管理房间内已安装模组及各世界配置。</p></div>
+      <div><h1>{{ $t('mods.installed.title') }}</h1><p>{{ $t('mods.installed.subtitle') }}</p></div>
       <div class="header-actions">
-        <UiButton size="sm" variant="outline" @click="refreshModList" :disabled="loading || !selectedRoomId"><RefreshCw data-icon="inline-start" />刷新</UiButton>
-        <UiButton size="sm" @click="goToSearch"><Plus data-icon="inline-start" />添加模组</UiButton>
-        <UiButton size="sm" variant="outline" @click="getModConfigFile" :disabled="loadingConfig || !selectedWorldId"><FileCode2 data-icon="inline-start" />获取配置文件</UiButton>
+        <UiButton size="sm" variant="outline" @click="refreshModList" :disabled="loading || !selectedRoomId"><RefreshCw data-icon="inline-start" />{{ $t('mods.actions.refresh') }}</UiButton>
+        <UiButton size="sm" @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton>
+        <UiButton size="sm" variant="outline" @click="getModConfigFile" :disabled="loadingConfig || !selectedWorldId"><FileCode2 data-icon="inline-start" />{{ $t('mods.actions.getConfigFile') }}</UiButton>
       </div>
     </header>
 
     <Card class="filter-panel">
-      <CardHeader><div><CardTitle>筛选模组</CardTitle><CardDescription>选择房间和世界后管理真实模组配置。</CardDescription></div></CardHeader>
+      <CardHeader><div><CardTitle>{{ $t('mods.installed.filters.title') }}</CardTitle><CardDescription>{{ $t('mods.installed.filters.description') }}</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="filter-form">
           <Field>
-            <FieldLabel for="installed-mod-room">房间</FieldLabel>
+            <FieldLabel for="installed-mod-room">{{ $t('mods.installed.filters.room') }}</FieldLabel>
             <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
-              <SelectTrigger id="installed-mod-room"><SelectValue placeholder="请选择房间" /></SelectTrigger>
+              <SelectTrigger id="installed-mod-room"><SelectValue :placeholder="$t('mods.installed.filters.selectRoom')" /></SelectTrigger>
               <SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel for="installed-mod-world">世界</FieldLabel>
+            <FieldLabel for="installed-mod-world">{{ $t('mods.installed.filters.world') }}</FieldLabel>
             <UiSelect v-model="selectedWorldId" :disabled="!selectedRoomId" @update:model-value="handleWorldChange">
-              <SelectTrigger id="installed-mod-world"><SelectValue placeholder="配置与文件查看目标" /></SelectTrigger>
+              <SelectTrigger id="installed-mod-world"><SelectValue :placeholder="$t('mods.installed.filters.selectWorld')" /></SelectTrigger>
               <SelectContent><SelectGroup><SelectItem v-for="world in selectedRoomWorlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent>
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel for="installed-mod-status">状态</FieldLabel>
+            <FieldLabel for="installed-mod-status">{{ $t('mods.installed.filters.status') }}</FieldLabel>
             <UiSelect v-model="filterForm.status">
               <SelectTrigger id="installed-mod-status"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="enabled">已启用</SelectItem><SelectItem value="disabled">已禁用</SelectItem></SelectGroup></SelectContent>
+              <SelectContent><SelectGroup><SelectItem value="all">{{ $t('mods.installed.filters.statuses.all') }}</SelectItem><SelectItem value="enabled">{{ $t('mods.installed.filters.statuses.enabled') }}</SelectItem><SelectItem value="disabled">{{ $t('mods.installed.filters.statuses.disabled') }}</SelectItem></SelectGroup></SelectContent>
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel for="installed-mod-sort">排序方式</FieldLabel>
+            <FieldLabel for="installed-mod-sort">{{ $t('mods.installed.filters.sort') }}</FieldLabel>
             <UiSelect v-model="filterForm.sortBy">
               <SelectTrigger id="installed-mod-sort"><SelectValue /></SelectTrigger>
               <SelectContent><SelectGroup>
-                <SelectItem value="name">名称</SelectItem><SelectItem value="author">作者</SelectItem><SelectItem value="update_time">更新时间</SelectItem><SelectItem value="subscribers">订阅数</SelectItem><SelectItem value="rating">评分</SelectItem>
+                <SelectItem value="name">{{ $t('mods.installed.filters.sorts.name') }}</SelectItem><SelectItem value="author">{{ $t('mods.installed.filters.sorts.author') }}</SelectItem><SelectItem value="update_time">{{ $t('mods.installed.filters.sorts.updatedAt') }}</SelectItem><SelectItem value="subscribers">{{ $t('mods.installed.filters.sorts.subscribers') }}</SelectItem><SelectItem value="rating">{{ $t('mods.installed.filters.sorts.rating') }}</SelectItem>
               </SelectGroup></SelectContent>
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel for="installed-mod-search">关键词</FieldLabel>
-            <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="installed-mod-search" v-model="filterForm.keyword" placeholder="搜索模组" /></InputGroup>
+            <FieldLabel for="installed-mod-search">{{ $t('mods.installed.filters.keyword') }}</FieldLabel>
+            <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="installed-mod-search" v-model="filterForm.keyword" :placeholder="$t('mods.installed.filters.keywordPlaceholder')" /></InputGroup>
           </Field>
-          <div class="filter-actions"><UiButton @click="applyFilter">筛选</UiButton><UiButton variant="outline" @click="resetFilter">重置</UiButton></div>
+          <div class="filter-actions"><UiButton @click="applyFilter">{{ $t('mods.actions.filter') }}</UiButton><UiButton variant="outline" @click="resetFilter">{{ $t('mods.actions.reset') }}</UiButton></div>
         </FieldGroup>
       </CardContent>
     </Card>
 
     <Alert v-if="loadError" variant="destructive">
       <TriangleAlert />
-      <AlertTitle>模组列表加载失败</AlertTitle>
+      <AlertTitle>{{ $t('mods.installed.loadFailedTitle') }}</AlertTitle>
       <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">重试</UiButton></AlertAction>
+      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">{{ $t('mods.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
-    <div v-if="loading" class="loading-state"><Spinner /><span>正在加载模组列表</span></div>
+    <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('mods.installed.loading') }}</span></div>
 
     <div v-else-if="!loadError && filteredMods.length > 0" class="mod-grid">
           <Card v-for="mod in filteredMods" :key="mod.id" class="mod-card">
             <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultIcon" :src="mod.image || defaultIcon" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
             <CardHeader>
-              <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><UiSwitch v-model="mod.enabled" :disabled="isModBusy(mod) || selectedRoomWorlds.length === 0" :aria-label="`切换 ${mod.name}`" @update:model-value="value => toggleModStatus(mod, value)" /></div>
-              <CardDescription>{{ mod.author || '未知作者' }}</CardDescription>
+              <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><UiSwitch v-model="mod.enabled" :disabled="isModBusy(mod) || selectedRoomWorlds.length === 0" :aria-label="$t('mods.installed.aria.toggle', { name: mod.name })" @update:model-value="value => toggleModStatus(mod, value)" /></div>
+              <CardDescription>{{ mod.author || $t('mods.values.unknownAuthor') }}</CardDescription>
             </CardHeader>
             <CardContent>
               <div class="mod-meta">
                 <span v-if="mod.version"><Tag />{{ mod.version }}</span>
-                <span v-if="mod.update_time"><Clock />{{ mod.update_time }}</span>
-                <span v-if="mod.subscribers"><Users />{{ mod.subscribers }} 订阅</span>
-                <span v-if="mod.rating !== null"><Star />{{ mod.rating }} 评分</span>
+                <span v-if="mod.update_time"><Clock />{{ formatDate(mod.update_time) }}</span>
+                <span v-if="mod.subscribers"><Users />{{ mod.subscribers }} {{ $t('mods.values.subscriptions') }}</span>
+                <span v-if="mod.rating !== null"><Star />{{ mod.rating }} {{ $t('mods.values.rating') }}</span>
               </div>
               <div v-if="mod.tags && mod.tags.length" class="mod-tags"><Badge v-for="tag in mod.tags" :key="tag" variant="secondary">{{ tag }}</Badge></div>
             </CardContent>
             <CardFooter class="mod-actions">
-              <UiButton size="sm" :disabled="!selectedWorldId || isModBusy(mod)" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />配置</UiButton>
+              <UiButton size="sm" :disabled="!selectedWorldId || isModBusy(mod)" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />{{ $t('mods.actions.configure') }}</UiButton>
               <DropdownMenu>
-                <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" :aria-label="`打开 ${mod.name} 操作菜单`" title="模组操作"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
+                <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" :aria-label="$t('mods.installed.aria.openMenu', { name: mod.name })" :title="$t('mods.installed.aria.menuTitle')"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuGroup>
-                    <DropdownMenuItem @select="showModDetails(mod)">查看详情</DropdownMenuItem>
-                    <DropdownMenuItem v-if="mod.updateAvailable" :disabled="isModBusy(mod)" @select="updateMod(mod)">更新模组</DropdownMenuItem>
+                    <DropdownMenuItem @select="showModDetails(mod)">{{ $t('mods.actions.details') }}</DropdownMenuItem>
+                    <DropdownMenuItem v-if="mod.updateAvailable" :disabled="isModBusy(mod)" @select="updateMod(mod)">{{ $t('mods.actions.updateMod') }}</DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuGroup><DropdownMenuItem variant="destructive" :disabled="isModBusy(mod)" @select="uninstallMod(mod)">卸载模组</DropdownMenuItem></DropdownMenuGroup>
+                  <DropdownMenuGroup><DropdownMenuItem variant="destructive" :disabled="isModBusy(mod)" @select="uninstallMod(mod)">{{ $t('mods.actions.uninstall') }}</DropdownMenuItem></DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
             </CardFooter>
@@ -95,50 +95,50 @@
     </div>
 
     <Empty v-else-if="!loadError">
-      <EmptyHeader><EmptyMedia variant="icon"><PackageOpen /></EmptyMedia><EmptyTitle>{{ selectedRoomId ? '还没有安装任何模组' : '没有可管理的房间' }}</EmptyTitle><EmptyDescription>{{ selectedRoomId ? '从创意工坊搜索并添加模组。' : '先创建或接管一个房间，再管理模组。' }}</EmptyDescription></EmptyHeader>
-      <EmptyContent v-if="selectedRoomId"><UiButton @click="goToSearch"><Plus data-icon="inline-start" />添加模组</UiButton></EmptyContent>
+      <EmptyHeader><EmptyMedia variant="icon"><PackageOpen /></EmptyMedia><EmptyTitle>{{ $t(selectedRoomId ? 'mods.installed.empty.noMods' : 'mods.installed.empty.noRooms') }}</EmptyTitle><EmptyDescription>{{ $t(selectedRoomId ? 'mods.installed.empty.noModsDescription' : 'mods.installed.empty.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
+      <EmptyContent v-if="selectedRoomId"><UiButton @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton></EmptyContent>
     </Empty>
 
     <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :is-new-mod="false" @config-updated="handleConfigUpdated" />
 
     <Sheet v-model:open="detailsDialogVisible">
       <SheetContent side="right" class="mod-details-sheet">
-        <SheetHeader><SheetTitle>模组详情</SheetTitle><SheetDescription>已安装模组的版本、兼容性和文件信息。</SheetDescription></SheetHeader>
+        <SheetHeader><SheetTitle>{{ $t('mods.installed.details.title') }}</SheetTitle><SheetDescription>{{ $t('mods.installed.details.description') }}</SheetDescription></SheetHeader>
         <ScrollArea class="mod-details-scroll">
           <div v-if="currentModInfo" class="mod-details-content">
             <div class="mod-details-header">
               <div class="mod-details-image"><ImageIcon /><img v-if="currentModInfo.image || defaultIcon" :src="currentModInfo.image || defaultIcon" :alt="currentModInfo.name" @error="handleImageError" /></div>
-              <div><h3>{{ currentModInfo.name }}</h3><p>{{ currentModInfo.author || '未知作者' }}</p><Badge :variant="currentModInfo.enabled ? 'default' : 'secondary'">{{ currentModInfo.enabled ? '已启用' : '已禁用' }}</Badge></div>
+              <div><h3>{{ currentModInfo.name }}</h3><p>{{ currentModInfo.author || $t('mods.values.unknownAuthor') }}</p><Badge :variant="currentModInfo.enabled ? 'default' : 'secondary'">{{ $t(currentModInfo.enabled ? 'mods.values.enabled' : 'mods.values.disabled') }}</Badge></div>
             </div>
             <Separator />
-            <section><h4>模组描述</h4><p class="description-content">{{ currentModInfo.description || '该模组暂无描述' }}</p></section>
-            <section v-if="currentModInfo.compatibility"><h4>兼容性</h4><div class="compatibility-tags">
-              <Badge v-if="currentModInfo.compatibility.dst">饥荒联机版</Badge><Badge v-if="currentModInfo.compatibility.ds" variant="outline">单机版饥荒</Badge><Badge v-if="currentModInfo.compatibility.rog" variant="secondary">巨人国</Badge><Badge v-if="currentModInfo.compatibility.sw" variant="secondary">海难</Badge><Badge v-if="currentModInfo.compatibility.hamlet" variant="outline">哈姆雷特</Badge>
+            <section><h4>{{ $t('mods.installed.details.modDescription') }}</h4><p class="description-content">{{ currentModInfo.description || $t('mods.installed.details.noDescription') }}</p></section>
+            <section v-if="currentModInfo.compatibility"><h4>{{ $t('mods.installed.details.compatibility') }}</h4><div class="compatibility-tags">
+              <Badge v-if="currentModInfo.compatibility.dst">{{ $t('mods.installed.details.compatibilityValues.dst') }}</Badge><Badge v-if="currentModInfo.compatibility.ds" variant="outline">{{ $t('mods.installed.details.compatibilityValues.ds') }}</Badge><Badge v-if="currentModInfo.compatibility.rog" variant="secondary">{{ $t('mods.installed.details.compatibilityValues.rog') }}</Badge><Badge v-if="currentModInfo.compatibility.sw" variant="secondary">{{ $t('mods.installed.details.compatibilityValues.sw') }}</Badge><Badge v-if="currentModInfo.compatibility.hamlet" variant="outline">{{ $t('mods.installed.details.compatibilityValues.hamlet') }}</Badge>
             </div></section>
-            <section><h4>文件信息</h4><dl class="file-info-list">
-              <div><dt>模组 ID</dt><dd>{{ currentModInfo.modid || '未知' }}</dd></div><div><dt>安装位置</dt><dd>{{ currentModInfo.path || '未知' }}</dd></div><div><dt>文件大小</dt><dd>{{ currentModInfo.size || '未知' }}</dd></div><div><dt>安装时间</dt><dd>{{ currentModInfo.time || currentModInfo.installedAt || '未知' }}</dd></div>
+            <section><h4>{{ $t('mods.installed.details.fileInfo') }}</h4><dl class="file-info-list">
+              <div><dt>{{ $t('mods.installed.details.modId') }}</dt><dd>{{ currentModInfo.modid || $t('mods.values.unknown') }}</dd></div><div><dt>{{ $t('mods.installed.details.installPath') }}</dt><dd>{{ currentModInfo.path || $t('mods.values.unknown') }}</dd></div><div><dt>{{ $t('mods.installed.details.fileSize') }}</dt><dd>{{ currentModInfo.size || $t('mods.values.unknown') }}</dd></div><div><dt>{{ $t('mods.installed.details.installedAt') }}</dt><dd>{{ formatDate(currentModInfo.time || currentModInfo.installedAt, $t('mods.values.unknown')) }}</dd></div>
             </dl></section>
           </div>
         </ScrollArea>
-        <SheetFooter><UiButton variant="outline" @click="detailsDialogVisible = false">关闭</UiButton><UiButton @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo || !selectedWorldId">配置模组</UiButton></SheetFooter>
+        <SheetFooter><UiButton variant="outline" @click="detailsDialogVisible = false">{{ $t('mods.actions.close') }}</UiButton><UiButton @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo || !selectedWorldId">{{ $t('mods.actions.configure') }}</UiButton></SheetFooter>
       </SheetContent>
     </Sheet>
 
     <UiDialog v-model:open="uninstallDialogVisible">
       <DialogContent>
-        <DialogHeader><DialogTitle>卸载模组</DialogTitle><DialogDescription>此操作会永久删除模组文件和配置。</DialogDescription></DialogHeader>
-        <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ currentModInfo ? currentModInfo.name : '' }}</AlertTitle><AlertDescription>输入完整房间名确认卸载。</AlertDescription></Alert>
-        <FieldGroup><Field><FieldLabel for="uninstall-confirmation">完整房间名</FieldLabel><UiInput id="uninstall-confirmation" v-model="uninstallConfirmation" :placeholder="currentRoom ? `请输入 ${currentRoom.name}` : '请输入完整房间名'" /></Field></FieldGroup>
-        <DialogFooter><UiButton variant="outline" @click="uninstallDialogVisible = false">取消</UiButton><UiButton variant="destructive" @click="confirmUninstall" :disabled="uninstalling"><Spinner v-if="uninstalling" data-icon="inline-start" />确认卸载</UiButton></DialogFooter>
+        <DialogHeader><DialogTitle>{{ $t('mods.installed.uninstall.title') }}</DialogTitle><DialogDescription>{{ $t('mods.installed.uninstall.description') }}</DialogDescription></DialogHeader>
+        <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ currentModInfo ? currentModInfo.name : '' }}</AlertTitle><AlertDescription>{{ $t('mods.installed.uninstall.confirmationDescription') }}</AlertDescription></Alert>
+        <FieldGroup><Field><FieldLabel for="uninstall-confirmation">{{ $t('mods.installed.uninstall.roomName') }}</FieldLabel><UiInput id="uninstall-confirmation" v-model="uninstallConfirmation" :placeholder="currentRoom ? $t('mods.installed.uninstall.placeholder', { name: currentRoom.name }) : $t('mods.installed.uninstall.fallbackPlaceholder')" /></Field></FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="uninstallDialogVisible = false">{{ $t('mods.actions.cancel') }}</UiButton><UiButton variant="destructive" @click="confirmUninstall" :disabled="uninstalling"><Spinner v-if="uninstalling" data-icon="inline-start" />{{ $t('mods.actions.confirmUninstall') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
 
     <UiDialog v-model:open="configFileDialogVisible">
       <DialogContent class="max-w-4xl">
-        <DialogHeader><DialogTitle>模组配置文件</DialogTitle><DialogDescription>modoverrides.lua</DialogDescription></DialogHeader>
-        <div v-if="loadingConfig" class="loading-state"><Spinner /><span>正在读取配置文件</span></div>
+        <DialogHeader><DialogTitle>{{ $t('mods.installed.configFile.title') }}</DialogTitle><DialogDescription>modoverrides.lua</DialogDescription></DialogHeader>
+        <div v-if="loadingConfig" class="loading-state"><Spinner /><span>{{ $t('mods.installed.configFile.loading') }}</span></div>
         <pre v-else class="lua-code">{{ configFileContent }}</pre>
-        <DialogFooter><UiButton variant="outline" @click="configFileDialogVisible = false">关闭</UiButton><UiButton @click="downloadConfigFile"><Download data-icon="inline-start" />下载配置文件</UiButton></DialogFooter>
+        <DialogFooter><UiButton variant="outline" @click="configFileDialogVisible = false">{{ $t('mods.actions.close') }}</UiButton><UiButton @click="downloadConfigFile"><Download data-icon="inline-start" />{{ $t('mods.actions.downloadConfigFile') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
   </div>
@@ -165,6 +165,7 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
+import { createModFailure, formatModDate, formatModFailure } from '@/i18n/modMessages';
 
 export default {
   name: 'ModList',
@@ -244,7 +245,7 @@ export default {
       modsList: [],
       // 加载状态
       loading: false,
-      loadError: '',
+      loadFailure: null,
       loadingRooms: false,
       roomOptions: [],
       selectedRoomId: '',
@@ -276,6 +277,9 @@ export default {
     };
   },
   computed: {
+    loadError() {
+      return this.localizedFailure(this.loadFailure);
+    },
     currentRoom() {
       return this.roomOptions.find(room => room.id === this.selectedRoomId) || null;
     },
@@ -334,7 +338,7 @@ export default {
     },
     async initializeContext() {
       this.loadingRooms = true;
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         const context = await modApi.getContext({
           roomId: this.$route.query.roomId || '',
@@ -346,7 +350,7 @@ export default {
         this.selectedWorldId = context.world?.id || '';
         if (this.selectedRoomId) await this.fetchModsList();
       } catch (error) {
-        this.loadError = error.message || '加载模组上下文失败';
+        this.loadFailure = this.failure('mods.errors.context', error);
         toast.error(this.loadError);
       } finally {
         this.loadingRooms = false;
@@ -354,7 +358,7 @@ export default {
     },
 
     async handleRoomChange(roomId) {
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         const context = await modApi.getContext({ roomId });
         this.selectedRoomWorlds = context.worlds;
@@ -362,7 +366,7 @@ export default {
         await this.syncRouteContext();
         await this.fetchModsList();
       } catch (error) {
-        this.loadError = error.message || '切换房间失败';
+        this.loadFailure = this.failure('mods.errors.roomSwitch', error);
         toast.error(this.loadError);
       }
     },
@@ -389,13 +393,13 @@ export default {
         return;
       }
       if (!silent) this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         this.modsList = await modApi.getServerList({ roomId: this.selectedRoomId });
       } catch (error) {
         this.modsList = [];
-        this.loadError = error.message || '未知错误';
-        toast.error(`获取模组列表失败：${this.loadError}`);
+        this.loadFailure = this.failure('mods.errors.list', error);
+        toast.error(this.loadError);
       } finally {
         if (!silent) this.loading = false;
       }
@@ -408,6 +412,19 @@ export default {
     setModBusy(mod, busy) {
       if (!mod?.modid) return;
       this.modActionState = { ...this.modActionState, [mod.modid]: busy };
+    },
+
+    failure(key, error) {
+      return createModFailure(key, error);
+    },
+
+    localizedFailure(failure) {
+      return formatModFailure(this.$t, failure);
+    },
+
+    formatDate(value, fallback = '--') {
+      if (!value) return fallback;
+      return formatModDate(value, this.$i18n.locale);
     },
     
     // 应用筛选
@@ -437,7 +454,7 @@ export default {
     // 打开配置对话框
     openConfigDialog(mod) {
       if (!this.selectedWorldId) {
-        toast.warning('请先选择要配置的世界');
+        toast.warning(this.$t('mods.installed.feedback.selectConfigWorld'));
         return;
       }
       // 先重置当前模组信息
@@ -459,7 +476,7 @@ export default {
         });
       }).catch(err => {
         console.error(err);
-        toast.error(`获取模组配置失败：${err.message || '未知错误'}`);
+        toast.error(this.localizedFailure(this.failure('mods.errors.config', err)));
       }).finally(() => {
         this.loading = false;
       });
@@ -467,7 +484,7 @@ export default {
     
     // 配置更新回调
     handleConfigUpdated(data) {
-      toast.success(`模组 ${data.modId} 配置已更新！`);
+      toast.success(this.$t('mods.installed.feedback.configUpdated', { id: data.modId }));
       this.fetchModsList();
     },
     
@@ -476,12 +493,10 @@ export default {
       if (this.isModBusy(mod)) return;
       if (this.selectedRoomWorlds.length === 0) {
         mod.enabled = !status;
-        toast.warning('当前房间没有可配置的世界');
+        toast.warning(this.$t('mods.installed.feedback.noWorlds'));
         return;
       }
       this.setModBusy(mod, true);
-      const action = status ? '启用' : '禁用';
-
       try {
         await modApi.toggleMod({
           roomId: this.selectedRoomId,
@@ -492,11 +507,11 @@ export default {
           enabled: status
         });
         await this.fetchModsList(true);
-        toast.success(`已${action}模组 ${mod.name}`);
+        toast.success(this.$t(status ? 'mods.installed.feedback.enabled' : 'mods.installed.feedback.disabled', { name: mod.name }));
       } catch (err) {
         console.error(err);
         mod.enabled = !status;
-        toast.error(`${action}模组失败：${err.message || '未知错误'}`);
+        toast.error(this.localizedFailure(this.failure(status ? 'mods.errors.toggleEnable' : 'mods.errors.toggleDisable', err)));
       } finally {
         this.setModBusy(mod, false);
       }
@@ -530,9 +545,9 @@ export default {
       try {
         await modApi.updateMod({ roomId: this.selectedRoomId, modid: mod.modid });
         await this.fetchModsList(true);
-        toast.success(`模组 ${mod.name} 已更新`);
+        toast.success(this.$t('mods.installed.feedback.updated', { name: mod.name }));
       } catch (error) {
-        toast.error(`更新模组失败：${error.message || '未知错误'}`);
+        toast.error(this.localizedFailure(this.failure('mods.errors.update', error)));
       } finally {
         this.setModBusy(mod, false);
       }
@@ -549,7 +564,7 @@ export default {
     async confirmUninstall() {
       if (!this.currentModInfo) return;
       if (!this.currentRoom || this.uninstallConfirmation !== this.currentRoom.name) {
-        toast.warning('请输入完整房间名确认卸载');
+        toast.warning(this.$t('mods.installed.feedback.confirmRoomName'));
         return;
       }
       
@@ -566,13 +581,13 @@ export default {
           removeFiles: true
         });
         await this.fetchModsList(true);
-        toast.success(`模组 ${modName} 已成功卸载`);
+        toast.success(this.$t('mods.installed.feedback.uninstalled', { name: modName }));
         this.uninstallDialogVisible = false;
         this.uninstallConfirmation = '';
         this.currentModInfo = null;
       } catch (err) {
         console.error('卸载模组失败:', err);
-        toast.error(`卸载模组失败: ${err.message || '未知错误'}`);
+        toast.error(this.localizedFailure(this.failure('mods.errors.uninstall', err)));
       } finally {
         this.uninstalling = false;
       }
@@ -586,7 +601,7 @@ export default {
     // 获取配置文件
     getModConfigFile() {
       if (!this.selectedWorldId) {
-        toast.warning('请先选择要查看的世界');
+        toast.warning(this.$t('mods.installed.feedback.selectViewWorld'));
         return;
       }
       this.loadingConfig = true;
@@ -600,12 +615,12 @@ export default {
             this.configFileContent = res.modinfo;
             this.configFileDialogVisible = true;
           } else {
-            toast.warning('该世界还没有 modoverrides.lua 文件');
+            toast.warning(this.$t('mods.installed.feedback.configFileMissing'));
           }
         })
         .catch(err => {
           console.error('获取配置文件失败:', err);
-          toast.error(`获取配置文件失败：${err.message || '未知错误'}`);
+          toast.error(this.localizedFailure(this.failure('mods.errors.configFile', err)));
         })
         .finally(() => {
           this.loadingConfig = false;
@@ -615,7 +630,7 @@ export default {
     // 下载配置文件
     downloadConfigFile() {
       if (!this.configFileContent) {
-        toast.error('没有可下载的配置内容');
+        toast.error(this.$t('mods.installed.feedback.noDownloadContent'));
         return;
       }
       
@@ -635,7 +650,7 @@ export default {
       window.URL.revokeObjectURL(link.href);
       document.body.removeChild(link);
       
-      toast.success('模组配置文件已成功下载');
+      toast.success(this.$t('mods.installed.feedback.configFileDownloaded'));
     }
   }
 };

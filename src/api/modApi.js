@@ -12,16 +12,6 @@ function requireValue(value, message) {
   return value
 }
 
-function formatTime(value) {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  return new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-  }).format(date)
-}
-
 function mapSearchMod(mod) {
   return {
     id: mod.id,
@@ -29,7 +19,8 @@ function mapSearchMod(mod) {
     auth: mod.author || '',
     img: mod.previewUrl || '',
     sub: String(mod.subscriptions ?? ''),
-    time: formatTime(mod.updatedAt),
+    time: mod.updatedAt || '',
+    updatedAt: mod.updatedAt || '',
     version: '',
     describe: mod.description || '',
     rating: Number.isFinite(mod.score) ? mod.score : null,
@@ -47,7 +38,8 @@ function mapInstalledMod(mod) {
     description: mod.description || '',
     image: mod.previewUrl || '',
     version: '',
-    update_time: formatTime(mod.updatedAt),
+    update_time: mod.updatedAt || '',
+    updatedAt: mod.updatedAt || '',
     subscribers: String(mod.subscriptions ?? ''),
     rating: Number.isFinite(mod.score) ? mod.score : null,
     tags: mod.tags || [],
@@ -64,8 +56,9 @@ function mapInstalledMod(mod) {
     fallbackUsed: Boolean(mod.fallbackUsed),
     fallbackReason: mod.fallbackReason || '',
     warnings: mod.warnings || [],
-    time: formatTime(mod.localUpdatedAt),
-    installedAt: formatTime(mod.localUpdatedAt),
+    time: mod.localUpdatedAt || '',
+    installedAt: mod.localUpdatedAt || '',
+    localUpdatedAt: mod.localUpdatedAt || '',
     path: '',
     size: ''
   }

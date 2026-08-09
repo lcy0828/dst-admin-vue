@@ -1,35 +1,35 @@
 <template>
   <div class="page-container">
     <header class="page-heading">
-      <div><h1>搜索模组</h1><p>从创意工坊检索并安装到指定房间。</p></div>
-      <UiButton variant="outline" size="sm" @click="goToModList"><ArrowLeft data-icon="inline-start" />返回已下载模组</UiButton>
+      <div><h1>{{ $t('mods.search.title') }}</h1><p>{{ $t('mods.search.subtitle') }}</p></div>
+      <UiButton variant="outline" size="sm" @click="goToModList"><ArrowLeft data-icon="inline-start" />{{ $t('mods.actions.backToInstalled') }}</UiButton>
     </header>
 
     <Card class="search-panel">
-      <CardHeader><div><CardTitle>搜索条件</CardTitle><CardDescription>选择目标房间并输入创意工坊模组名称。</CardDescription></div></CardHeader>
+      <CardHeader><div><CardTitle>{{ $t('mods.search.form.title') }}</CardTitle><CardDescription>{{ $t('mods.search.form.description') }}</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="search-form">
           <Field>
-            <FieldLabel for="workshop-room">房间</FieldLabel>
+            <FieldLabel for="workshop-room">{{ $t('mods.search.form.room') }}</FieldLabel>
             <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
-              <SelectTrigger id="workshop-room"><SelectValue :placeholder="loadingRooms ? '正在加载房间' : '请选择房间'" /></SelectTrigger>
+              <SelectTrigger id="workshop-room"><SelectValue :placeholder="$t(loadingRooms ? 'mods.search.form.loadingRooms' : 'mods.search.form.selectRoom')" /></SelectTrigger>
               <SelectContent>
                 <SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup>
               </SelectContent>
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel for="mod-search-keyword">模组名称</FieldLabel>
+            <FieldLabel for="mod-search-keyword">{{ $t('mods.search.form.name') }}</FieldLabel>
             <InputGroup>
               <InputGroupAddon><Search /></InputGroupAddon>
-              <InputGroupInput id="mod-search-keyword" v-model="searchForm.keyword" placeholder="输入模组名称搜索" @keyup.enter="startSearch" />
+              <InputGroupInput id="mod-search-keyword" v-model="searchForm.keyword" :placeholder="$t('mods.search.form.namePlaceholder')" @keyup.enter="startSearch" />
             </InputGroup>
           </Field>
           <div class="search-actions">
             <UiButton @click="startSearch" :disabled="searching || !searchForm.keyword.trim()">
-              <Spinner v-if="searching" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索
+              <Spinner v-if="searching" data-icon="inline-start" /><Search v-else data-icon="inline-start" />{{ $t('mods.actions.search') }}
             </UiButton>
-            <UiButton variant="outline" @click="resetSearch">重置</UiButton>
+            <UiButton variant="outline" @click="resetSearch">{{ $t('mods.actions.reset') }}</UiButton>
           </div>
         </FieldGroup>
       </CardContent>
@@ -37,9 +37,9 @@
 
     <Alert v-if="loadError" variant="destructive">
       <TriangleAlert />
-      <AlertTitle>模组数据加载失败</AlertTitle>
+      <AlertTitle>{{ $t('mods.search.loadFailedTitle') }}</AlertTitle>
       <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">重试</UiButton></AlertAction>
+      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">{{ $t('mods.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
     <div v-if="searching" class="mod-grid">
@@ -59,14 +59,14 @@
                 <img v-if="mod.img || defaultImage" :src="mod.img || defaultImage" :alt="mod.name" loading="lazy" @error="handleImageError" />
               </div>
               <CardHeader>
-                <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><Badge v-if="mod.isInstalled">已安装</Badge></div>
-                <CardDescription>{{ mod.auth || '未知作者' }}</CardDescription>
+                <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><Badge v-if="mod.isInstalled">{{ $t('mods.values.installed') }}</Badge></div>
+                <CardDescription>{{ mod.auth || $t('mods.values.unknownAuthor') }}</CardDescription>
               </CardHeader>
               <CardContent class="mod-meta">
                 <span v-if="mod.version"><Tag />{{ mod.version }}</span>
-                <span><Clock />{{ mod.time || '--' }}</span>
-                <span><Users />{{ mod.sub || 0 }} 订阅</span>
-                <span v-if="mod.rating !== null"><Star />{{ formatRating(mod.rating) }} 评分</span>
+                <span><Clock />{{ formatDate(mod.time) }}</span>
+                <span><Users />{{ mod.sub || 0 }} {{ $t('mods.values.subscriptions') }}</span>
+                <span v-if="mod.rating !== null"><Star />{{ formatRating(mod.rating) }} {{ $t('mods.values.rating') }}</span>
               </CardContent>
               <CardFooter class="mod-actions">
                 <UiButton
@@ -78,9 +78,9 @@
                   <Spinner v-if="downloadingMods[mod.id]" data-icon="inline-start" />
                   <RefreshCw v-else-if="mod.isInstalled" data-icon="inline-start" />
                   <Download v-else data-icon="inline-start" />
-                  {{ downloadingMods[mod.id] ? '下载中' : mod.isInstalled ? '更新' : '下载' }}
+                  {{ $t(downloadingMods[mod.id] ? 'mods.actions.downloading' : mod.isInstalled ? 'mods.actions.update' : 'mods.actions.download') }}
                 </UiButton>
-                <UiButton variant="ghost" size="sm" @click="showModDetails(mod)">查看详情</UiButton>
+                <UiButton variant="ghost" size="sm" @click="showModDetails(mod)">{{ $t('mods.actions.details') }}</UiButton>
               </CardFooter>
             </Card>
           </div>
@@ -98,38 +98,38 @@
     </div>
 
     <Empty v-else-if="!loadError && hasSearched">
-      <EmptyHeader><EmptyMedia variant="icon"><SearchX /></EmptyMedia><EmptyTitle>没有找到匹配的模组</EmptyTitle><EmptyDescription>尝试使用其他关键词。</EmptyDescription></EmptyHeader>
+      <EmptyHeader><EmptyMedia variant="icon"><SearchX /></EmptyMedia><EmptyTitle>{{ $t('mods.search.empty.noResults') }}</EmptyTitle><EmptyDescription>{{ $t('mods.search.empty.noResultsDescription') }}</EmptyDescription></EmptyHeader>
     </Empty>
     <Empty v-else-if="!loadError">
-      <EmptyHeader><EmptyMedia variant="icon"><Search /></EmptyMedia><EmptyTitle>尚未搜索模组</EmptyTitle></EmptyHeader>
+      <EmptyHeader><EmptyMedia variant="icon"><Search /></EmptyMedia><EmptyTitle>{{ $t('mods.search.empty.notSearched') }}</EmptyTitle></EmptyHeader>
     </Empty>
 
     <UiDialog v-model:open="detailsDialogVisible">
       <DialogContent class="max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto">
-        <DialogHeader><DialogTitle>模组详情</DialogTitle><DialogDescription>创意工坊模组信息。</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ $t('mods.search.details.title') }}</DialogTitle><DialogDescription>{{ $t('mods.search.details.description') }}</DialogDescription></DialogHeader>
         <div v-if="currentModInfo" class="mod-details">
           <div class="mod-details-header">
             <div class="mod-details-image"><ImageIcon /><img v-if="currentModInfo.img || defaultImage" :src="currentModInfo.img || defaultImage" :alt="currentModInfo.name" @error="handleImageError" /></div>
             <div>
               <h3>{{ currentModInfo.name }}</h3>
               <div class="mod-details-meta">
-                <span><User />{{ currentModInfo.auth || '未知作者' }}</span>
+                <span><User />{{ currentModInfo.auth || $t('mods.values.unknownAuthor') }}</span>
                 <span v-if="currentModInfo.version"><Tag />v{{ currentModInfo.version }}</span>
-                <span><Clock />{{ currentModInfo.time || '--' }}</span>
-                <span v-if="currentModInfo.sub"><Users />{{ currentModInfo.sub }} 订阅</span>
-                <span v-if="currentModInfo.rating !== null"><Star />{{ formatRating(currentModInfo.rating) }} 评分</span>
+                <span><Clock />{{ formatDate(currentModInfo.time) }}</span>
+                <span v-if="currentModInfo.sub"><Users />{{ currentModInfo.sub }} {{ $t('mods.values.subscriptions') }}</span>
+                <span v-if="currentModInfo.rating !== null"><Star />{{ formatRating(currentModInfo.rating) }} {{ $t('mods.values.rating') }}</span>
               </div>
-              <Badge v-if="currentModInfo.isInstalled">已安装</Badge>
+              <Badge v-if="currentModInfo.isInstalled">{{ $t('mods.values.installed') }}</Badge>
             </div>
           </div>
           <Separator />
-          <div v-if="currentModInfo.describe"><h4>模组描述</h4><p class="description-content">{{ currentModInfo.describe }}</p></div>
+          <div v-if="currentModInfo.describe"><h4>{{ $t('mods.search.details.modDescription') }}</h4><p class="description-content">{{ currentModInfo.describe }}</p></div>
         </div>
         <DialogFooter>
-          <UiButton variant="outline" @click="detailsDialogVisible = false">关闭</UiButton>
+          <UiButton variant="outline" @click="detailsDialogVisible = false">{{ $t('mods.actions.close') }}</UiButton>
           <UiButton :disabled="!selectedRoomId || downloadingMods[currentModInfo?.id]" @click="handleDownloadMod(currentModInfo)">
             <Spinner v-if="downloadingMods[currentModInfo?.id]" data-icon="inline-start" />
-            {{ currentModInfo?.isInstalled ? '更新模组' : '下载模组' }}
+            {{ $t(currentModInfo?.isInstalled ? 'mods.actions.updateMod' : 'mods.actions.downloadMod') }}
           </UiButton>
         </DialogFooter>
       </DialogContent>
@@ -154,6 +154,7 @@ import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigg
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import { createModFailure, formatModDate, formatModFailure } from '@/i18n/modMessages';
 import { confirmAction } from '@/lib/feedback';
 
 export default {
@@ -222,7 +223,7 @@ export default {
         keyword: '',
       },
       searching: false,
-      loadError: '',
+      loadFailure: null,
       hasSearched: false,
       searchResults: [],
       totalResults: 0,
@@ -240,6 +241,11 @@ export default {
       currentModInfo: null // 当前查看的模组
     };
   },
+  computed: {
+    loadError() {
+      return this.localizedFailure(this.loadFailure);
+    }
+  },
   async created() {
     await this.initializeContext();
     const keyword = this.$route.query.keyword;
@@ -254,7 +260,7 @@ export default {
     },
     async initializeContext() {
       this.loadingRooms = true;
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         const context = await modApi.getContext({ roomId: this.$route.query.roomId || '' });
         this.roomOptions = context.rooms;
@@ -262,7 +268,7 @@ export default {
         this.selectedRoomWorlds = context.worlds;
         if (this.selectedRoomId) await this.getInstalledMods();
       } catch (error) {
-        this.loadError = error.message || '加载房间失败';
+        this.loadFailure = this.failure('mods.errors.context', error);
         toast.error(this.loadError);
       } finally {
         this.loadingRooms = false;
@@ -270,7 +276,7 @@ export default {
     },
 
     async handleRoomChange(roomId) {
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         const context = await modApi.getContext({ roomId });
         this.selectedRoomWorlds = context.worlds;
@@ -284,7 +290,7 @@ export default {
           isInstalled: this.isModInstalled(mod.id)
         }));
       } catch (error) {
-        this.loadError = error.message || '切换房间失败';
+        this.loadFailure = this.failure('mods.errors.roomSwitch', error);
         toast.error(this.loadError);
       }
     },
@@ -296,13 +302,13 @@ export default {
         return;
       }
       this.loadingInstalledMods = true;
-      this.loadError = '';
+      this.loadFailure = null;
       try {
         this.installedMods = await modApi.getServerList({ roomId: this.selectedRoomId });
       } catch (error) {
         this.installedMods = [];
-        this.loadError = error.message || '未知错误';
-        toast.error(`获取已安装模组失败：${this.loadError}`);
+        this.loadFailure = this.failure('mods.errors.installedList', error);
+        toast.error(this.loadError);
       } finally {
         this.loadingInstalledMods = false;
       }
@@ -320,7 +326,7 @@ export default {
 
     async searchMods() {
       if (!this.searchForm.keyword.trim()) {
-        toast.warning('请输入搜索关键词');
+        toast.warning(this.$t('mods.search.feedback.enterKeyword'));
         return;
       }
       if (this.searching) {
@@ -328,7 +334,7 @@ export default {
       }
       
       this.searching = true;
-      this.loadError = '';
+      this.loadFailure = null;
       this.hasSearched = true;
       this.searchResults = [];
       
@@ -344,8 +350,8 @@ export default {
         }));
         this.totalResults = data.total || 0;
       } catch (error) {
-        this.loadError = error.message || '未知错误';
-        toast.error(`搜索模组失败：${this.loadError}`);
+        this.loadFailure = this.failure('mods.errors.search', error);
+        toast.error(this.loadError);
         this.searchResults = [];
         this.totalResults = 0;
       } finally {
@@ -357,9 +363,9 @@ export default {
       
       // 如果模组已安装，询问是否要更新
       if (mod.isInstalled) {
-        confirmAction(`模组 "${name}" 已安装，是否要更新？`, '更新模组', {
-          confirmButtonText: '更新',
-          cancelButtonText: '取消',
+        confirmAction(this.$t('mods.search.feedback.installedConfirm', { name }), this.$t('mods.search.feedback.updateTitle'), {
+          confirmButtonText: this.$t('mods.actions.update'),
+          cancelButtonText: this.$t('mods.actions.cancel'),
           type: 'warning'
         }).then(() => {
           this.downloadMod(mod);
@@ -375,14 +381,14 @@ export default {
     // 实际执行下载的方法
     async downloadMod(mod) {
       if (!this.selectedRoomId) {
-        toast.warning('请先选择房间');
+        toast.warning(this.$t('mods.search.feedback.selectRoom'));
         return;
       }
       const id = mod.id;
       const wasInstalled = mod.isInstalled;
       
       // 显示下载中消息
-      const loadingMessage = toast.loading('正在下载模组，请耐心等待...');
+      const loadingMessage = toast.loading(this.$t('mods.search.feedback.downloading'));
       
       this.downloadingMods[id] = true;
       
@@ -397,9 +403,9 @@ export default {
         });
         mod.isInstalled = true;
         await this.getInstalledMods();
-        toast.success(wasInstalled ? '更新成功' : '下载成功');
+        toast.success(this.$t(wasInstalled ? 'mods.search.feedback.updated' : 'mods.search.feedback.downloaded'));
       } catch (error) {
-        toast.error(`${wasInstalled ? '更新' : '下载'}失败：${error.message || '未知错误'}`);
+        toast.error(this.localizedFailure(this.failure(wasInstalled ? 'mods.errors.update' : 'mods.errors.download', error)));
       } finally {
         toast.dismiss(loadingMessage);
         this.downloadingMods[id] = false;
@@ -413,7 +419,7 @@ export default {
       this.searching = false;
       this.totalResults = 0;
       this.currentPage = 1;
-      this.loadError = '';
+      this.loadFailure = null;
     },
 
     retryLoad() {
@@ -439,6 +445,18 @@ export default {
     // 提取星级评分
     formatRating(rating) {
       return Number.isFinite(Number(rating)) ? Number(rating).toFixed(2) : '';
+    },
+
+    formatDate(value) {
+      return formatModDate(value, this.$i18n.locale);
+    },
+
+    failure(key, error) {
+      return createModFailure(key, error);
+    },
+
+    localizedFailure(failure) {
+      return formatModFailure(this.$t, failure);
     },
     
     // 处理下拉菜单命令
