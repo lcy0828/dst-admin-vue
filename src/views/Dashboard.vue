@@ -1,543 +1,447 @@
 <template>
-  <div class="dashboard-content">
-    <header class="dashboard-header">
-      <div class="dashboard-heading">
-        <div>
-          <h1>服务总览</h1>
-          <p>集中查看专服状态、世界日志与主机资源。</p>
-        </div>
-        <span>更新于 {{ formatCheckedAt(systemStatus.current_time) }}</span>
+  <div class="dashboard-page">
+    <header class="overview-header">
+      <div>
+        <h1>服务总览</h1>
+        <p>
+          专服状态、世界日志与主机资源
+          <span aria-hidden="true">·</span>
+          更新于 {{ formatCheckedAt(systemStatus.current_time) }}
+        </p>
       </div>
-      <div class="dashboard-summary">
-        <Badge variant="outline" class="summary-badge">
-          <span class="summary-status-dot" :class="{ online: runningServerCount > 0 }" aria-hidden="true"></span>
-          {{ runningServerCount }} / {{ serverList.length }} 分片运行
-        </Badge>
-        <Badge variant="outline" class="summary-badge">
-          <UsersRound />
-          {{ playerSummary.online }} 人在线
-        </Badge>
-        <UiButton variant="outline" size="sm" :disabled="dashboardRefreshing" @click="refreshDashboard">
-          <Spinner v-if="dashboardRefreshing" data-icon="inline-start" />
-          <RefreshCw v-else data-icon="inline-start" />
-          刷新全部
-        </UiButton>
-      </div>
+      <UiButton variant="outline" size="sm" :disabled="dashboardRefreshing" @click="refreshDashboard">
+        <Spinner v-if="dashboardRefreshing" data-icon="inline-start" />
+        <RefreshCw v-else data-icon="inline-start" />
+        刷新全部
+      </UiButton>
     </header>
 
-    <Card class="version-card" aria-labelledby="version-title">
-      <CardHeader>
-        <CardTitle id="version-title" class="card-heading-with-icon">
-          <span class="heading-icon" aria-hidden="true"><PackageCheck /></span>
-          <span>版本与更新</span>
-        </CardTitle>
-        <CardDescription>检查当前游戏服务端版本与 Steam 更新状态。</CardDescription>
-        <CardAction class="version-actions">
-          <UiButton
-            v-if="canUpdateGame"
-            size="sm"
-            :disabled="versionLoading || gameUpdateBusy"
-            @click="updateDstServer"
-          >
-            <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
-            <Download v-else data-icon="inline-start" />
-            {{ gameUpdateBusy ? '更新中' : '更新游戏' }}
-          </UiButton>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="versionLoading || gameUpdateBusy"
-            @click="getVersionInfo"
-          >
-            <Spinner v-if="versionLoading" data-icon="inline-start" />
-            <RefreshCw v-else data-icon="inline-start" />
-            检查版本
-          </UiButton>
-        </CardAction>
-      </CardHeader>
-      <CardContent class="version-content">
-        <div class="version-details">
-        <div v-if="versionLoading" class="version-loading">
-          <Spinner />
-          <span>正在获取版本信息...</span>
-        </div>
-        <div v-else-if="versionError && !versionInfo.local" class="version-error" role="status">
-          <CircleAlert />
-          <span>{{ versionError }}</span>
-          <UiButton variant="ghost" size="sm" @click="getVersionInfo">重试</UiButton>
-        </div>
-        <div v-else class="version-info">
-          <div class="version-boxes">
-            <div class="version-box">
-              <span class="version-box-label">当前版本</span>
-              <strong class="version-box-value">{{ versionInfo.local?.version || '--' }}</strong>
-              <Badge :variant="versionInfo.installed ? 'secondary' : 'outline'">
-                {{ versionInfo.installed ? '已安装' : '未检测到安装' }}
-              </Badge>
-            </div>
-            <ChevronRight class="version-arrow" />
-            <div class="version-box" :class="{'version-box-outdated': isVersionOutdated}">
-              <span class="version-box-label">Steam 最新版本</span>
-              <a
-                v-if="versionInfo.latest?.update_url"
-                :href="versionInfo.latest.update_url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="version-box-value version-link"
-              >
-                {{ versionInfo.latest.version }}
-              </a>
-              <strong v-else class="version-box-value">{{ versionInfo.latest?.version || '--' }}</strong>
-              <Badge :variant="isVersionOutdated ? 'destructive' : 'outline'">
-                {{ versionInfo.latest?.version ? (isVersionOutdated ? '可更新' : '已是最新') : '检查中' }}
-              </Badge>
-            </div>
+    <Card size="sm" class="overview-strip" aria-label="服务概况">
+      <CardContent class="overview-metrics">
+        <div class="overview-metric">
+          <Activity aria-hidden="true" />
+          <div>
+            <span>运行分片</span>
+            <strong>{{ runningServerCount }} <small>/ {{ serverList.length }}</small></strong>
           </div>
-          <div class="version-meta">
-            <span>{{ versionInfo.install_path || '未配置安装位置' }}</span>
-            <span v-if="versionInfo.app_id">App ID {{ versionInfo.app_id }}</span>
-            <span v-if="versionInfo.checked_at">检查于 {{ formatCheckedAt(versionInfo.checked_at) }}</span>
+          <Badge :variant="runningServerCount > 0 ? 'secondary' : 'outline'">
+            {{ runningServerCount > 0 ? '运行中' : '未运行' }}
+          </Badge>
+        </div>
+        <div class="overview-metric">
+          <UsersRound aria-hidden="true" />
+          <div>
+            <span>在线玩家</span>
+            <strong>{{ playerSummary.online }} <small>人</small></strong>
           </div>
+          <span class="metric-note">记录 {{ playerSummary.total }} 人</span>
         </div>
-        </div>
-        <div class="version-notices">
-        <div v-if="!versionInfo.installed && !versionLoading" class="version-check-warning" role="status">
-          <CircleAlert />
-          <span>未检测到有效的 DST 安装，请检查系统设置中的服务端目录。</span>
-        </div>
-        <div v-else-if="versionInfo.update_method === 'steam-client'" class="version-managed-notice">
-          <CircleAlert />
-          <span>当前为 macOS Steam 客户端安装，请在 Steam 中更新游戏。</span>
-        </div>
-        <div v-else-if="versionInfo.installed && !versionInfo.update_supported" class="version-managed-notice">
-          <CircleAlert />
-          <span>{{ versionInfo.steamcmd_available ? '当前安装方式不支持面板更新。' : '未检测到 SteamCMD，面板更新不可用。' }}</span>
-        </div>
-        <div v-if="versionInfo.check_error || (versionError && versionInfo.local)" class="version-check-warning" role="status">
-          <CircleAlert />
-          <span>Steam 最新版本检查失败：{{ versionInfo.check_error || versionError }}</span>
-        </div>
-        <div v-if="isVersionOutdated" class="version-update-notice">
-          <CircleAlert />
-          <span>检测到新版本可用，请及时更新游戏服务端。</span>
-          <UiButton v-if="versionInfo.latest?.update_url" size="sm" @click="openUpdateLink">查看更新内容</UiButton>
-        </div>
-        <div v-if="updateStatus" class="version-update-status">
-          <div class="update-status-header">
-            <Spinner v-if="updateStatus.is_running" />
-            <CircleAlert v-else />
-            <span>更新状态：{{ updateStatus.is_completed ? '已完成' : (updateStatus.is_running ? '进行中' : '尚未开始') }}</span>
+        <div class="overview-metric">
+          <FolderPlus aria-hidden="true" />
+          <div>
+            <span>房间与世界</span>
+            <strong>{{ roomList.length }} <small>房间</small></strong>
           </div>
-          <UiProgress
-            v-if="updateStatus.is_completed || hasMetric(updateStatus.progress)"
-            :model-value="Number(updateStatus.progress)"
-          />
-          <div v-else-if="updateStatus.is_running" class="metric-unavailable">进度：--</div>
-          <div v-if="updateStatus.last_output" class="update-output">
-            <div class="output-label">最新输出</div>
-            <div class="output-content">{{ updateStatus.last_output }}</div>
-          </div>
-          <div v-if="updateStatus.error" class="update-error">
-            <div class="error-label">错误信息</div>
-            <div class="error-content">{{ updateStatus.error }}</div>
-          </div>
+          <span class="metric-note">{{ totalWorldCount }} 个分片</span>
         </div>
+        <div class="overview-metric">
+          <Gauge aria-hidden="true" />
+          <div>
+            <span>主机负载</span>
+            <strong>{{ hasMetric(systemStatus.cpu_usage) ? metricPercentage(systemStatus.cpu_usage) + '%' : '--' }}</strong>
+          </div>
+          <span class="metric-note">内存 {{ hasMetric(systemStatus.memory_usage) ? metricPercentage(systemStatus.memory_usage) + '%' : '--' }}</span>
         </div>
       </CardContent>
     </Card>
 
-    <div class="dashboard-grid">
-      <div class="dashboard-primary">
-      <Card class="server-monitor" aria-labelledby="server-monitor-title">
-        <CardHeader class="server-header">
-          <CardTitle class="panel-title">
-            <Activity aria-hidden="true" />
-            <span id="server-monitor-title">服务器状态</span>
-          </CardTitle>
-          <CardDescription>{{ serverList.length }} 个分片，{{ runningServerCount }} 个运行中</CardDescription>
-          <CardAction>
-            <UiButton variant="outline" size="sm" :disabled="serverLoading" @click="refreshServerData">
-              <Spinner v-if="serverLoading" data-icon="inline-start" />
-              <RefreshCw v-else data-icon="inline-start" />
-              刷新
-            </UiButton>
-          </CardAction>
-        </CardHeader>
-        <CardContent class="server-monitor-body">
-          <ShadcnTable v-if="serverList.length > 0 && !serverDataError">
-            <TableHeader>
-              <TableRow>
-                <TableHead>状态</TableHead>
-                <TableHead>房间名称</TableHead>
-                <TableHead>世界名称</TableHead>
-                <TableHead>启动时间</TableHead>
-                <TableHead>运行时间</TableHead>
-                <TableHead>操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-for="server in serverList"
-                :key="`${server.room_id}-${server.world_id}`"
-                :class="{ 'server-offline': server.status === 'stopped' }"
-              >
-                <TableCell>
-                  <Badge :variant="server.status === 'running' ? 'secondary' : 'outline'">
-                    {{ getServerStatusName(server.status) }}
-                  </Badge>
-                </TableCell>
-                <TableCell><span class="server-name-text">{{ server.archive_name }}</span></TableCell>
-                <TableCell><Badge variant="outline">{{ server.world_name }}</Badge></TableCell>
-                <TableCell>{{ server.start_time || '--' }}</TableCell>
-                <TableCell>{{ formatServerUptime(server.start_time) }}</TableCell>
-                <TableCell>
-                <div class="server-row-actions">
-                  <UiButton
-                    size="sm"
-                    :variant="server.status === 'running' ? 'destructive' : 'secondary'"
-                    :disabled="serverLoading"
-                    @click="handleServerAction(server)"
-                  >
-                    <Square v-if="server.status === 'running'" data-icon="inline-start" />
-                    <Play v-else data-icon="inline-start" />
-                    {{ server.status === 'running' ? '停止' : '启动' }}
-                  </UiButton>
-                  <UiButton
-                    size="sm"
-                    variant="outline"
-                    :disabled="serverLoading"
-                    @click="handleConfigure(server)"
-                  >
-                    <Settings data-icon="inline-start" />
-                    配置
-                  </UiButton>
-                </div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </ShadcnTable>
-
-          <Alert v-else-if="serverDataError" class="server-error-state">
-            <CircleAlert />
-            <AlertTitle>{{ serverErrorTitle }}</AlertTitle>
-            <AlertDescription>{{ serverDataError }}</AlertDescription>
-            <AlertAction>
-              <UiButton variant="outline" size="sm" @click="goToSystemSettings">系统设置</UiButton>
-              <UiButton size="sm" @click="refreshServerData">重试</UiButton>
-            </AlertAction>
-          </Alert>
-
-          <Empty v-else-if="roomList.length === 0">
-            <EmptyHeader>
-              <EmptyMedia variant="icon"><FolderPlus /></EmptyMedia>
-              <EmptyTitle>当前目标还没有房间</EmptyTitle>
-              <EmptyDescription>创建房间并配置至少一个世界后，即可启动专服。</EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <div class="server-state-actions">
-                <UiButton variant="outline" size="sm" @click="refreshServerData">重新检查</UiButton>
-                <UiButton size="sm" @click="createRoom">创建房间</UiButton>
-              </div>
-            </EmptyContent>
-          </Empty>
-
-          <Empty v-else>
-            <EmptyHeader>
-              <EmptyMedia variant="icon"><CirclePlay /></EmptyMedia>
-              <EmptyTitle>服务器尚未启动</EmptyTitle>
-              <EmptyDescription>已识别 {{ roomList.length }} 个房间，可选择房间和世界启动专服。</EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent><UiButton size="sm" @click="openStartRoomDialog">启动房间</UiButton></EmptyContent>
-          </Empty>
-        </CardContent>
-        <CardFooter v-if="serverList.length > 0 && !serverDataError" class="server-footer">
-          <span class="server-stats">共 {{ serverList.length }} 个服务器实例，{{ serverList.filter(s => s.status === 'running').length }} 个运行中</span>
-        </CardFooter>
-
-        <UiDialog v-model:open="startRoomDialogVisible">
-          <DialogContent class="sm:max-w-lg" :close-on-escape-key-down="!startRoomLoading">
-            <DialogHeader>
-              <DialogTitle>启动房间</DialogTitle>
-              <DialogDescription>选择需要启动的房间和世界分片。</DialogDescription>
-            </DialogHeader>
-            <FieldGroup>
-              <Field>
-                <FieldLabel for="dashboard-room">选择房间</FieldLabel>
-                <UiSelect
-                  :model-value="startRoomForm.roomId"
-                  :disabled="startRoomLoading"
-                  @update:model-value="handleStartRoomSelection"
-                >
-                  <SelectTrigger id="dashboard-room">
-                    <SelectValue placeholder="请选择房间" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem
-                        v-for="(room, index) in roomList"
-                        :key="room.id || index"
-                        :value="String(index)"
-                      >
-                        {{ room.name }}
-                      </SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </UiSelect>
-              </Field>
-
-              <FieldSet>
-                <FieldLegend variant="label">选择世界</FieldLegend>
-                <FieldGroup v-if="currentRoomWorlds.length > 0" class="gap-3">
-                  <Field
-                    v-for="world in currentRoomWorlds"
-                    :key="world.name"
-                    orientation="horizontal"
-                  >
-                    <Checkbox
-                      :id="`dashboard-world-${world.id || world.name}`"
-                      :model-value="startRoomForm.selectedWorlds.includes(world.name)"
-                      :disabled="startRoomLoading"
-                      @update:model-value="toggleSelectedWorld(world.name, $event)"
-                    />
-                    <FieldLabel :for="`dashboard-world-${world.id || world.name}`" class="world-option-label">
-                      <span>{{ world.name }}</span>
-                      <Badge variant="outline">{{ getWorldTypeName(world.type) }}</Badge>
-                    </FieldLabel>
-                  </Field>
-                  <div class="world-selection-actions">
-                    <UiButton variant="ghost" size="sm" :disabled="startRoomLoading" @click="selectAllWorlds">全选</UiButton>
-                    <UiButton variant="ghost" size="sm" :disabled="startRoomLoading" @click="unselectAllWorlds">取消全选</UiButton>
-                  </div>
-                </FieldGroup>
-                <Alert v-else-if="startRoomForm.roomId !== '' && !startRoomLoading">
-                  <CircleAlert />
-                  <AlertTitle>该房间还没有可用世界</AlertTitle>
-                  <AlertDescription>请先到房间管理中完成世界配置。</AlertDescription>
-                </Alert>
-                <div v-else-if="startRoomLoading" class="dialog-loading" aria-busy="true">
-                  <Spinner />
-                  <span>正在读取世界配置...</span>
-                </div>
-              </FieldSet>
-
-              <Field orientation="horizontal">
-                <FieldContent>
-                  <FieldTitle>服务器模式</FieldTitle>
-                  <FieldDescription>跟随系统设置中的运行模式。</FieldDescription>
-                </FieldContent>
-                <UiButton variant="outline" size="sm" @click="goToSystemSettings">查看设置</UiButton>
-              </Field>
-            </FieldGroup>
-            <DialogFooter>
-              <UiButton variant="outline" :disabled="startRoomLoading" @click="startRoomDialogVisible = false">取消</UiButton>
-              <UiButton :disabled="!canStartSelectedRoom" @click="startRoom">
-                <Spinner v-if="startRoomLoading" data-icon="inline-start" />
-                <Play v-else data-icon="inline-start" />
-                启动所选世界
+    <div class="operations-layout">
+      <main class="operations-main">
+        <Card size="sm" aria-labelledby="server-monitor-title">
+          <CardHeader>
+            <CardTitle id="server-monitor-title" class="card-title-with-icon">
+              <Activity aria-hidden="true" />
+              服务器状态
+            </CardTitle>
+            <CardDescription>{{ serverList.length }} 个分片，{{ runningServerCount }} 个运行中</CardDescription>
+            <CardAction>
+              <UiButton variant="outline" size="sm" :disabled="serverLoading" @click="refreshServerData">
+                <Spinner v-if="serverLoading" data-icon="inline-start" />
+                <RefreshCw v-else data-icon="inline-start" />
+                刷新
               </UiButton>
-            </DialogFooter>
-          </DialogContent>
-        </UiDialog>
+            </CardAction>
+          </CardHeader>
+          <CardContent class="server-content">
+            <ShadcnTable v-if="serverList.length > 0 && !serverDataError">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>状态</TableHead>
+                  <TableHead>房间</TableHead>
+                  <TableHead>世界</TableHead>
+                  <TableHead>启动时间</TableHead>
+                  <TableHead>运行时间</TableHead>
+                  <TableHead class="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-for="server in serverList" :key="`${server.room_id}-${server.world_id}`">
+                  <TableCell>
+                    <Badge :variant="server.status === 'running' ? 'secondary' : 'outline'">
+                      {{ getServerStatusName(server.status) }}
+                    </Badge>
+                  </TableCell>
+                  <TableCell class="font-medium">{{ server.archive_name }}</TableCell>
+                  <TableCell>{{ server.world_name }}</TableCell>
+                  <TableCell class="text-muted-foreground">{{ server.start_time || '--' }}</TableCell>
+                  <TableCell class="text-muted-foreground">{{ formatServerUptime(server.start_time) }}</TableCell>
+                  <TableCell>
+                    <div class="server-actions">
+                      <UiButton
+                        size="sm"
+                        :variant="server.status === 'running' ? 'destructive' : 'secondary'"
+                        :disabled="serverLoading"
+                        @click="handleServerAction(server)"
+                      >
+                        <Square v-if="server.status === 'running'" data-icon="inline-start" />
+                        <Play v-else data-icon="inline-start" />
+                        {{ server.status === 'running' ? '停止' : '启动' }}
+                      </UiButton>
+                      <UiButton size="sm" variant="outline" :disabled="serverLoading" @click="handleConfigure(server)">
+                        <Settings data-icon="inline-start" />
+                        配置
+                      </UiButton>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </ShadcnTable>
 
-      </Card>
-
-      <Card class="world-log-card">
-        <CardHeader>
-          <CardTitle class="card-heading-with-icon"><ScrollText /><span>世界日志</span></CardTitle>
-          <CardDescription>实时查看当前世界分片输出，便于确认启动和运行状态。</CardDescription>
-        </CardHeader>
-        <CardContent class="world-log-content">
-          <WorldLog ref="worldLog" class="world-log" />
-        </CardContent>
-      </Card>
-      </div>
-
-      <Card class="system-info" aria-labelledby="system-resource-title">
-        <CardHeader>
-          <CardTitle class="panel-title">
-            <Gauge aria-hidden="true" />
-            <span id="system-resource-title">系统资源</span>
-          </CardTitle>
-          <CardDescription>{{ systemStatus.os_info || '等待系统信息' }}</CardDescription>
-          <CardAction>
-            <Tooltip>
-              <TooltipTrigger as-child>
-                <UiButton
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="刷新系统资源"
-                  :disabled="systemLoading"
-                  @click="refreshSystemStatus"
-                >
-                  <Spinner v-if="systemLoading" />
-                  <RefreshCw v-else />
-                </UiButton>
-              </TooltipTrigger>
-              <TooltipContent>刷新系统资源</TooltipContent>
-            </Tooltip>
-          </CardAction>
-        </CardHeader>
-        <CardContent class="resource-usage">
-          <template v-if="systemLoading">
-            <div v-for="metric in 4" :key="metric" class="resource-item" aria-busy="true">
-              <Skeleton class="h-4 w-28" />
-              <Skeleton class="mt-3 h-2 w-full" />
-              <Skeleton class="mt-3 h-3 w-3/4" />
-            </div>
-          </template>
-          <template v-else>
-            <div class="resource-item">
-              <div class="resource-label">
-                <span>CPU使用率</span>
-                <strong>{{ hasMetric(systemStatus.cpu_usage) ? metricPercentage(systemStatus.cpu_usage) + '%' : '--' }}</strong>
-              </div>
-              <UiProgress v-if="hasMetric(systemStatus.cpu_usage)" :model-value="metricPercentage(systemStatus.cpu_usage)" />
-              <div v-else class="metric-unavailable">--</div>
-              <div class="resource-detail">
-                <span>{{ systemStatus.cpu_model || '--' }} {{ systemStatus.cpu_mhz ? '(' + systemStatus.cpu_mhz + 'MHz)' : '' }}</span>
-                <span>{{ displayMetric(systemStatus.cpu_cores) }}核心 / {{ displayMetric(systemStatus.cpu_threads) }}线程</span>
-              </div>
-            </div>
-            <div class="resource-item">
-              <div class="resource-label">
-                <span>内存使用率</span>
-                <strong>{{ hasMetric(systemStatus.memory_usage) ? metricPercentage(systemStatus.memory_usage) + '%' : '--' }}</strong>
-              </div>
-              <UiProgress v-if="hasMetric(systemStatus.memory_usage)" :model-value="metricPercentage(systemStatus.memory_usage)" />
-              <div v-else class="metric-unavailable">--</div>
-              <div class="resource-detail">
-                <span>总内存: {{ formatMemory(systemStatus.total_memory) }}</span>
-                <span>已用: {{ formatMemory(systemStatus.used_memory) }}</span>
-                <span>空闲: {{ formatMemory(systemStatus.free_memory) }}</span>
-              </div>
-            </div>
-            <div class="resource-item">
-              <div class="resource-label">
-                <span>磁盘使用率</span>
-                <strong>{{ hasMetric(systemStatus.disk_usage) ? metricPercentage(systemStatus.disk_usage) + '%' : '--' }}</strong>
-              </div>
-              <UiProgress v-if="hasMetric(systemStatus.disk_usage)" :model-value="metricPercentage(systemStatus.disk_usage)" />
-              <div v-else class="metric-unavailable">--</div>
-              <div class="resource-detail">
-                <span>总容量: {{ formatDisk(systemStatus.total_disk) }}</span>
-                <span>已用: {{ formatDisk(systemStatus.used_disk) }}</span>
-                <span>空闲: {{ formatDisk(systemStatus.free_disk) }}</span>
-              </div>
-            </div>
-            <div class="resource-item">
-              <div class="resource-label">
-                <span>系统负载</span>
-                <strong>{{ hasMetric(systemStatus.cpu_load1) ? loadPercentage(systemStatus.cpu_load1) + '%' : '--' }}</strong>
-              </div>
-              <UiProgress v-if="hasMetric(systemStatus.cpu_load1)" :model-value="loadPercentage(systemStatus.cpu_load1)" />
-              <div v-else class="metric-unavailable">--</div>
-              <div class="resource-detail">
-                <span>1分钟: {{ formatDecimal(systemStatus.cpu_load1) }}</span>
-                <span>5分钟: {{ formatDecimal(systemStatus.cpu_load5) }}</span>
-                <span>15分钟: {{ formatDecimal(systemStatus.cpu_load15) }}</span>
-              </div>
-            </div>
-          </template>
-        </CardContent>
-          <CardFooter class="system-info-footer">
-            <div class="system-info-item">
-              <Cpu aria-hidden="true" />
-              <span>{{ systemStatus.os_info || '--' }}</span>
-            </div>
-            <div class="system-info-item">
-              <Clock3 aria-hidden="true" />
-              <span>运行时间: {{ systemStatus.uptime_formatted || '--' }}</span>
-            </div>
-            <div class="system-info-item">
-              <RefreshCw aria-hidden="true" />
-              <span>更新时间: {{ formatCheckedAt(systemStatus.current_time) }}</span>
-            </div>
-          </CardFooter>
-      </Card>
-    </div>
-
-    <div class="section-heading">
-      <div class="section-title">
-        <ChartNoAxesCombined />
-        <div>
-          <h2>最近游戏数据</h2>
-          <p>玩家概况与近期公告。</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="data-section">
-      <Card class="player-stats">
-        <CardHeader>
-          <CardTitle>玩家实时概况</CardTitle>
-          <CardDescription>汇总当前运行目标中的玩家与世界信息。</CardDescription>
-          <CardAction>
-            <UiButton
-              variant="ghost"
-              size="sm"
-              :disabled="playerSummaryLoading || serverLoading"
-              @click="refreshPlayerSummary"
-            >
-              <Spinner v-if="playerSummaryLoading" data-icon="inline-start" />
-              <RefreshCw v-else data-icon="inline-start" />
-              刷新
-            </UiButton>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <div v-if="playerSummaryLoading" class="player-summary-grid" aria-busy="true">
-            <Skeleton v-for="index in 4" :key="index" class="h-16 w-full" />
-          </div>
-          <template v-else>
-            <Alert v-if="playerSummaryError" class="player-summary-alert">
+            <Alert v-else-if="serverDataError" variant="destructive">
               <CircleAlert />
-              <AlertTitle>{{ playerSummary.loadedRooms ? '部分玩家数据不可用' : '玩家数据不可用' }}</AlertTitle>
-              <AlertDescription>{{ playerSummaryError }}</AlertDescription>
+              <AlertTitle>{{ serverErrorTitle }}</AlertTitle>
+              <AlertDescription>{{ serverDataError }}</AlertDescription>
+              <AlertAction class="server-state-actions">
+                <UiButton variant="outline" size="sm" @click="goToSystemSettings">系统设置</UiButton>
+                <UiButton size="sm" @click="refreshServerData">重试</UiButton>
+              </AlertAction>
             </Alert>
-            <div class="player-summary-grid">
-              <div class="player-summary-item">
-                <span>在线玩家</span>
-                <strong>{{ playerSummary.online }}</strong>
-              </div>
-              <div class="player-summary-item">
-                <span>玩家记录</span>
-                <strong>{{ playerSummary.total }}</strong>
-              </div>
-              <div class="player-summary-item">
-                <span>已接管房间</span>
-                <strong>{{ roomList.length }}</strong>
-              </div>
-              <div class="player-summary-item">
-                <span>世界分片</span>
-                <strong>{{ totalWorldCount }}</strong>
-              </div>
-            </div>
-            <p class="player-summary-footnote">
-              已读取 {{ playerSummary.loadedRooms }} / {{ roomList.length }} 个房间的实时玩家记录
-            </p>
-          </template>
-        </CardContent>
-      </Card>
 
-      <Card class="announcement-card">
-        <CardHeader>
-          <CardTitle>公告管理</CardTitle>
-          <CardDescription>查看并发布面向玩家的运营公告。</CardDescription>
-          <CardAction>
-            <UiButton variant="ghost" size="sm" @click="gotoAnnouncement">
-              更多
-              <ArrowRight data-icon="inline-end" />
+            <Empty v-else-if="roomList.length === 0" class="server-empty">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><FolderPlus /></EmptyMedia>
+                <EmptyTitle>当前目标还没有房间</EmptyTitle>
+                <EmptyDescription>创建房间并配置至少一个世界后，即可启动专服。</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <div class="server-state-actions">
+                  <UiButton variant="outline" size="sm" @click="refreshServerData">重新检查</UiButton>
+                  <UiButton size="sm" @click="createRoom">创建房间</UiButton>
+                </div>
+              </EmptyContent>
+            </Empty>
+
+            <Empty v-else class="server-empty">
+              <EmptyHeader>
+                <EmptyMedia variant="icon"><CirclePlay /></EmptyMedia>
+                <EmptyTitle>服务器尚未启动</EmptyTitle>
+                <EmptyDescription>已识别 {{ roomList.length }} 个房间，可选择需要启动的世界分片。</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent><UiButton size="sm" @click="openStartRoomDialog">启动房间</UiButton></EmptyContent>
+            </Empty>
+          </CardContent>
+          <CardFooter v-if="serverList.length > 0 && !serverDataError" class="server-footer">
+            共 {{ serverList.length }} 个服务器实例，{{ runningServerCount }} 个运行中
+          </CardFooter>
+        </Card>
+
+        <Card size="sm" class="world-log-card">
+          <CardHeader>
+            <CardTitle class="card-title-with-icon">
+              <ScrollText aria-hidden="true" />
+              世界日志
+            </CardTitle>
+            <CardDescription>查看世界分片的实时输出与连接状态</CardDescription>
+          </CardHeader>
+          <CardContent class="world-log-content">
+            <WorldLog ref="worldLog" />
+          </CardContent>
+        </Card>
+      </main>
+
+      <aside class="operations-rail">
+        <Card size="sm" aria-labelledby="system-resource-title">
+          <CardHeader>
+            <CardTitle id="system-resource-title" class="card-title-with-icon">
+              <Gauge aria-hidden="true" />
+              系统资源
+            </CardTitle>
+            <CardDescription>{{ systemStatus.os_info || '等待系统信息' }}</CardDescription>
+            <CardAction>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <UiButton
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="刷新系统资源"
+                    :disabled="systemLoading"
+                    @click="refreshSystemStatus"
+                  >
+                    <Spinner v-if="systemLoading" />
+                    <RefreshCw v-else />
+                  </UiButton>
+                </TooltipTrigger>
+                <TooltipContent>刷新系统资源</TooltipContent>
+              </Tooltip>
+            </CardAction>
+          </CardHeader>
+          <CardContent class="resource-list">
+            <template v-if="systemLoading">
+              <div v-for="metric in 4" :key="metric" class="resource-row" aria-busy="true">
+                <div class="resource-label"><Skeleton class="h-4 w-24" /><Skeleton class="h-4 w-10" /></div>
+                <Skeleton class="h-2 w-full" />
+                <Skeleton class="h-3 w-3/4" />
+              </div>
+            </template>
+            <template v-else>
+              <div class="resource-row">
+                <div class="resource-label">
+                  <span>CPU 使用率</span>
+                  <strong>{{ hasMetric(systemStatus.cpu_usage) ? metricPercentage(systemStatus.cpu_usage) + '%' : '--' }}</strong>
+                </div>
+                <UiProgress v-if="hasMetric(systemStatus.cpu_usage)" :model-value="metricPercentage(systemStatus.cpu_usage)" />
+                <span class="resource-detail">
+                  {{ systemStatus.cpu_model || '--' }} · {{ displayMetric(systemStatus.cpu_cores) }} 核心 / {{ displayMetric(systemStatus.cpu_threads) }} 线程
+                  <template v-if="systemStatus.cpu_mhz"> · {{ systemStatus.cpu_mhz }} MHz</template>
+                </span>
+              </div>
+              <div class="resource-row">
+                <div class="resource-label">
+                  <span>内存使用率</span>
+                  <strong>{{ hasMetric(systemStatus.memory_usage) ? metricPercentage(systemStatus.memory_usage) + '%' : '--' }}</strong>
+                </div>
+                <UiProgress v-if="hasMetric(systemStatus.memory_usage)" :model-value="metricPercentage(systemStatus.memory_usage)" />
+                <span class="resource-detail">
+                  总计 {{ formatMemory(systemStatus.total_memory) }} · 已用 {{ formatMemory(systemStatus.used_memory) }} · 空闲 {{ formatMemory(systemStatus.free_memory) }}
+                </span>
+              </div>
+              <div class="resource-row">
+                <div class="resource-label">
+                  <span>磁盘使用率</span>
+                  <strong>{{ hasMetric(systemStatus.disk_usage) ? metricPercentage(systemStatus.disk_usage) + '%' : '--' }}</strong>
+                </div>
+                <UiProgress v-if="hasMetric(systemStatus.disk_usage)" :model-value="metricPercentage(systemStatus.disk_usage)" />
+                <span class="resource-detail">
+                  总计 {{ formatDisk(systemStatus.total_disk) }} · 已用 {{ formatDisk(systemStatus.used_disk) }} · 空闲 {{ formatDisk(systemStatus.free_disk) }}
+                </span>
+              </div>
+              <div class="resource-row">
+                <div class="resource-label">
+                  <span>系统负载</span>
+                  <strong>{{ hasMetric(systemStatus.cpu_load1) ? formatDecimal(systemStatus.cpu_load1) : '--' }}</strong>
+                </div>
+                <UiProgress v-if="hasMetric(systemStatus.cpu_load1)" :model-value="loadPercentage(systemStatus.cpu_load1)" />
+                <span class="resource-detail">1 / 5 / 15 分钟 · {{ formatDecimal(systemStatus.cpu_load1) }} / {{ formatDecimal(systemStatus.cpu_load5) }} / {{ formatDecimal(systemStatus.cpu_load15) }}</span>
+              </div>
+            </template>
+          </CardContent>
+          <CardFooter class="system-meta">
+            <span><Cpu aria-hidden="true" />{{ displayMetric(systemStatus.cpu_cores) }} 核 / {{ displayMetric(systemStatus.cpu_threads) }} 线程</span>
+            <span><Clock3 aria-hidden="true" />运行 {{ systemStatus.uptime_formatted || '--' }}</span>
+          </CardFooter>
+        </Card>
+
+        <Card size="sm" aria-labelledby="version-title">
+          <CardHeader>
+            <CardTitle id="version-title" class="card-title-with-icon">
+              <PackageCheck aria-hidden="true" />
+              版本与更新
+            </CardTitle>
+            <CardDescription>游戏服务端与 Steam 版本</CardDescription>
+            <CardAction>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <UiButton
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="检查游戏版本"
+                    :disabled="versionLoading || gameUpdateBusy"
+                    @click="getVersionInfo"
+                  >
+                    <Spinner v-if="versionLoading" />
+                    <RefreshCw v-else />
+                  </UiButton>
+                </TooltipTrigger>
+                <TooltipContent>检查游戏版本</TooltipContent>
+              </Tooltip>
+            </CardAction>
+          </CardHeader>
+          <CardContent class="version-content">
+            <div v-if="versionLoading" class="inline-loading">
+              <Spinner />
+              <span>正在获取版本信息...</span>
+            </div>
+            <Alert v-else-if="versionError && !versionInfo.local" variant="destructive">
+              <CircleAlert />
+              <AlertTitle>版本读取失败</AlertTitle>
+              <AlertDescription>{{ versionError }}</AlertDescription>
+            </Alert>
+            <template v-else>
+              <div class="version-comparison">
+                <div>
+                  <span>当前版本</span>
+                  <strong>{{ versionInfo.local?.version || '--' }}</strong>
+                  <Badge :variant="versionInfo.installed ? 'secondary' : 'outline'">
+                    {{ versionInfo.installed ? '已安装' : '未安装' }}
+                  </Badge>
+                </div>
+                <ChevronRight aria-hidden="true" />
+                <div>
+                  <span>Steam 最新</span>
+                  <a
+                    v-if="versionInfo.latest?.update_url"
+                    :href="versionInfo.latest.update_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >{{ versionInfo.latest.version }}</a>
+                  <strong v-else>{{ versionInfo.latest?.version || '--' }}</strong>
+                  <Badge :variant="isVersionOutdated ? 'destructive' : 'outline'">
+                    {{ versionInfo.latest?.version ? (isVersionOutdated ? '可更新' : '已最新') : '待检查' }}
+                  </Badge>
+                </div>
+              </div>
+              <p class="version-path" :title="versionInfo.install_path || ''">
+                {{ versionInfo.install_path || '未配置安装位置' }}
+              </p>
+              <div class="version-meta">
+                <span v-if="versionInfo.app_id">App ID {{ versionInfo.app_id }}</span>
+                <span v-if="versionInfo.checked_at">检查于 {{ formatCheckedAt(versionInfo.checked_at) }}</span>
+              </div>
+
+              <Alert v-if="!versionInfo.installed && !versionLoading" variant="destructive">
+                <CircleAlert />
+                <AlertTitle>未检测到 DST 安装</AlertTitle>
+                <AlertDescription>请检查系统设置中的服务端目录。</AlertDescription>
+              </Alert>
+              <Alert v-else-if="versionInfo.update_method === 'steam-client'">
+                <CircleAlert />
+                <AlertTitle>由 Steam 客户端管理</AlertTitle>
+                <AlertDescription>macOS 安装请在 Steam 中更新游戏。</AlertDescription>
+              </Alert>
+              <Alert v-else-if="versionInfo.installed && !versionInfo.update_supported">
+                <CircleAlert />
+                <AlertTitle>面板更新不可用</AlertTitle>
+                <AlertDescription>{{ versionInfo.steamcmd_available ? '当前安装方式不支持面板更新。' : '未检测到 SteamCMD。' }}</AlertDescription>
+              </Alert>
+              <Alert v-if="versionInfo.check_error || (versionError && versionInfo.local)" variant="destructive">
+                <CircleAlert />
+                <AlertTitle>Steam 版本检查失败</AlertTitle>
+                <AlertDescription>{{ versionInfo.check_error || versionError }}</AlertDescription>
+              </Alert>
+              <Alert v-if="isVersionOutdated">
+                <Download />
+                <AlertTitle>有新版本可用</AlertTitle>
+                <AlertDescription>建议更新后再启动服务器。</AlertDescription>
+              </Alert>
+            </template>
+
+            <div v-if="updateStatus" class="update-status">
+              <div>
+                <Spinner v-if="updateStatus.is_running" />
+                <CircleAlert v-else />
+                <span>{{ updateStatus.is_completed ? '更新已完成' : (updateStatus.is_running ? '正在更新' : '等待更新') }}</span>
+              </div>
+              <UiProgress
+                v-if="updateStatus.is_completed || hasMetric(updateStatus.progress)"
+                :model-value="Number(updateStatus.progress)"
+              />
+              <p v-if="updateStatus.last_output">{{ updateStatus.last_output }}</p>
+              <p v-if="updateStatus.error" class="text-destructive">{{ updateStatus.error }}</p>
+            </div>
+          </CardContent>
+          <CardFooter v-if="canUpdateGame || isVersionOutdated" class="version-footer">
+            <UiButton
+              v-if="canUpdateGame"
+              size="sm"
+              :disabled="versionLoading || gameUpdateBusy"
+              @click="updateDstServer"
+            >
+              <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
+              <Download v-else data-icon="inline-start" />
+              {{ gameUpdateBusy ? '更新中' : '更新游戏' }}
             </UiButton>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <div class="announcement-list">
-            <Alert v-if="announcementsError">
+            <UiButton v-if="isVersionOutdated && versionInfo.latest?.update_url" variant="outline" size="sm" @click="openUpdateLink">
+              查看更新内容
+            </UiButton>
+          </CardFooter>
+        </Card>
+      </aside>
+    </div>
+
+    <section class="secondary-section" aria-labelledby="game-data-title">
+      <header class="section-header">
+        <div>
+          <h2 id="game-data-title">游戏数据</h2>
+          <p>玩家概况与近期公告</p>
+        </div>
+      </header>
+      <div class="secondary-grid">
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle class="card-title-with-icon"><UsersRound aria-hidden="true" />玩家概况</CardTitle>
+            <CardDescription>当前管理目标中的玩家与世界汇总</CardDescription>
+            <CardAction>
+              <UiButton
+                variant="ghost"
+                size="sm"
+                :disabled="playerSummaryLoading || serverLoading"
+                @click="refreshPlayerSummary"
+              >
+                <Spinner v-if="playerSummaryLoading" data-icon="inline-start" />
+                <RefreshCw v-else data-icon="inline-start" />
+                刷新
+              </UiButton>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <div v-if="playerSummaryLoading" class="player-grid" aria-busy="true">
+              <Skeleton v-for="index in 4" :key="index" class="h-16 w-full" />
+            </div>
+            <template v-else>
+              <Alert v-if="playerSummaryError" class="player-alert">
+                <CircleAlert />
+                <AlertTitle>{{ playerSummary.loadedRooms ? '部分玩家数据不可用' : '玩家数据不可用' }}</AlertTitle>
+                <AlertDescription>{{ playerSummaryError }}</AlertDescription>
+              </Alert>
+              <div class="player-grid">
+                <div><span>在线玩家</span><strong>{{ playerSummary.online }}</strong></div>
+                <div><span>玩家记录</span><strong>{{ playerSummary.total }}</strong></div>
+                <div><span>已接管房间</span><strong>{{ roomList.length }}</strong></div>
+                <div><span>世界分片</span><strong>{{ totalWorldCount }}</strong></div>
+              </div>
+              <p class="player-footnote">已读取 {{ playerSummary.loadedRooms }} / {{ roomList.length }} 个房间</p>
+            </template>
+          </CardContent>
+        </Card>
+
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle class="card-title-with-icon"><Megaphone aria-hidden="true" />近期公告</CardTitle>
+            <CardDescription>发布给玩家的运营消息</CardDescription>
+            <CardAction>
+              <UiButton variant="ghost" size="sm" @click="gotoAnnouncement">
+                更多
+                <ArrowRight data-icon="inline-end" />
+              </UiButton>
+            </CardAction>
+          </CardHeader>
+          <CardContent class="announcement-list">
+            <Alert v-if="announcementsError" variant="destructive">
               <CircleAlert />
               <AlertTitle>公告读取失败</AlertTitle>
               <AlertDescription>{{ announcementsError }}</AlertDescription>
             </Alert>
-            <Empty v-else-if="announcements.length === 0">
+            <Empty v-else-if="announcements.length === 0" class="announcement-empty">
               <EmptyHeader>
                 <EmptyMedia variant="icon"><Megaphone /></EmptyMedia>
                 <EmptyTitle>暂无公告</EmptyTitle>
@@ -545,30 +449,105 @@
               </EmptyHeader>
               <EmptyContent><UiButton size="sm" @click="gotoAnnouncement">管理公告</UiButton></EmptyContent>
             </Empty>
-            <div class="announcement-item" v-for="(item, index) in announcements" :key="index">
-              <div class="announcement-title">
-                <Badge variant="outline">{{ item.type }}</Badge>
-                <span>{{ item.title }}</span>
-              </div>
-              <div class="announcement-body">{{ item.content }}</div>
-              <div class="announcement-footer">
-                <span class="announcement-time">{{ item.time }}</span>
-                <div class="announcement-actions">
-                  <UiButton variant="ghost" size="sm" @click="editAnnouncement(item)">
-                    <Pencil data-icon="inline-start" />
-                    编辑
-                  </UiButton>
-                  <UiButton variant="ghost" size="sm" @click="publishAnnouncement(item)">
-                    <Send data-icon="inline-start" />
-                    发布
-                  </UiButton>
+            <template v-else>
+              <article v-for="(item, index) in announcements" :key="index" class="announcement-item">
+                <div class="announcement-title">
+                  <Badge variant="outline">{{ item.type }}</Badge>
+                  <strong>{{ item.title }}</strong>
                 </div>
+                <p>{{ item.content }}</p>
+                <footer>
+                  <span>{{ item.time }}</span>
+                  <div>
+                    <UiButton variant="ghost" size="sm" @click="editAnnouncement(item)">
+                      <Pencil data-icon="inline-start" />编辑
+                    </UiButton>
+                    <UiButton variant="ghost" size="sm" @click="publishAnnouncement(item)">
+                      <Send data-icon="inline-start" />发布
+                    </UiButton>
+                  </div>
+                </footer>
+              </article>
+            </template>
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+
+    <UiDialog v-model:open="startRoomDialogVisible">
+      <DialogContent class="sm:max-w-lg" :close-on-escape-key-down="!startRoomLoading">
+        <DialogHeader>
+          <DialogTitle>启动房间</DialogTitle>
+          <DialogDescription>选择需要启动的房间和世界分片。</DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field>
+            <FieldLabel for="dashboard-room">选择房间</FieldLabel>
+            <UiSelect
+              :model-value="startRoomForm.roomId"
+              :disabled="startRoomLoading"
+              @update:model-value="handleStartRoomSelection"
+            >
+              <SelectTrigger id="dashboard-room"><SelectValue placeholder="请选择房间" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem v-for="(room, index) in roomList" :key="room.id || index" :value="String(index)">
+                    {{ room.name }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+          </Field>
+
+          <FieldSet>
+            <FieldLegend variant="label">选择世界</FieldLegend>
+            <FieldGroup v-if="currentRoomWorlds.length > 0" class="gap-3">
+              <Field v-for="world in currentRoomWorlds" :key="world.name" orientation="horizontal">
+                <Checkbox
+                  :id="`dashboard-world-${world.id || world.name}`"
+                  :model-value="startRoomForm.selectedWorlds.includes(world.name)"
+                  :disabled="startRoomLoading"
+                  @update:model-value="toggleSelectedWorld(world.name, $event)"
+                />
+                <FieldLabel :for="`dashboard-world-${world.id || world.name}`" class="world-option-label">
+                  <span>{{ world.name }}</span>
+                  <Badge variant="outline">{{ getWorldTypeName(world.type) }}</Badge>
+                </FieldLabel>
+              </Field>
+              <div class="world-selection-actions">
+                <UiButton variant="ghost" size="sm" :disabled="startRoomLoading" @click="selectAllWorlds">全选</UiButton>
+                <UiButton variant="ghost" size="sm" :disabled="startRoomLoading" @click="unselectAllWorlds">取消全选</UiButton>
               </div>
+            </FieldGroup>
+            <Alert v-else-if="startRoomForm.roomId !== '' && !startRoomLoading">
+              <CircleAlert />
+              <AlertTitle>该房间还没有可用世界</AlertTitle>
+              <AlertDescription>请先到房间管理中完成世界配置。</AlertDescription>
+            </Alert>
+            <div v-else-if="startRoomLoading" class="inline-loading" aria-busy="true">
+              <Spinner />
+              <span>正在读取世界配置...</span>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </FieldSet>
+
+          <Field orientation="horizontal">
+            <FieldContent>
+              <FieldTitle>服务器模式</FieldTitle>
+              <FieldDescription>跟随系统设置中的运行模式。</FieldDescription>
+            </FieldContent>
+            <UiButton variant="outline" size="sm" @click="goToSystemSettings">查看设置</UiButton>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" :disabled="startRoomLoading" @click="startRoomDialogVisible = false">取消</UiButton>
+          <UiButton :disabled="!canStartSelectedRoom" @click="startRoom">
+            <Spinner v-if="startRoomLoading" data-icon="inline-start" />
+            <Play v-else data-icon="inline-start" />
+            启动所选世界
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
@@ -624,7 +603,6 @@ import { toast } from 'vue-sonner';
 import {
   Activity,
   ArrowRight,
-  ChartNoAxesCombined,
   ChevronRight,
   CirclePlay,
   CircleAlert,
@@ -663,7 +641,6 @@ export default {
     CardFooter,
     CardHeader,
     CardTitle,
-    ChartNoAxesCombined,
     ChevronRight,
     Checkbox,
     CirclePlay,
@@ -1394,1735 +1371,576 @@ export default {
 </script>
 
 <style scoped>
-.dashboard-content {
+.dashboard-page {
+  display: flex;
   width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.panel-header {
+.overview-header {
   display: flex;
-  min-height: 32px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-
-
-.section-divider {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 40px;
-  margin: 20px 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-}
-
-.section-title i {
-  margin-right: 8px;
-  font-size: 20px;
-  color: var(--primary-color);
-}
-
-.section-title > svg {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  margin-right: 8px;
-  color: var(--primary-color);
-}
-
-.data-section {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.server-monitor, .system-info, .player-stats, .announcement-card {
-  box-shadow: var(--shadow-card);
-  border-radius: 4px;
-}
-
-.monitor-section {
+  min-height: 56px;
   align-items: flex-start;
-  margin-bottom: 4px;
-}
-
-.server-monitor,
-.system-info {
-  width: 100%;
-  height: auto;
-}
-
-.server-name {
-  display: flex;
-  align-items: center;
-}
-
-.server-title {
-  margin-left: 10px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.server-offline {
-  background-color: var(--muted);
-  color: var(--text-secondary);
-}
-
-.server-restarting {
-  background-color: var(--accent);
-}
-
-.season-badge {
-  display: inline-block;
-  padding: 5px 8px;
-  border-radius: 3px;
-  font-size: 12px;
-  color: white;
-}
-
-.season-spring {
-  background-color: var(--success-color);
-}
-
-.season-summer {
-  background-color: var(--warning-color);
-}
-
-.season-autumn {
-  background-color: var(--danger-color);
-}
-
-.season-winter {
-  background-color: var(--primary-color);
-}
-
-.resource-usage {
-  margin-bottom: 0;
-}
-
-.resource-item {
-  margin-bottom: 0;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.resource-item:first-child {
-  padding-top: 0;
-}
-
-.resource-item:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.metric-unavailable {
-  height: 16px;
-  line-height: 16px;
-  color: var(--muted-foreground);
-}
-
-.mode-hint {
-  margin-left: 12px;
-  color: var(--muted-foreground);
-  font-size: 12px;
-}
-
-.resource-label {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-  font-size: 14px;
-  color: var(--text-regular);
-}
-
-.resource-value {
-  font-weight: bold;
-  color: var(--text-primary);
-}
-
-.resource-detail {
-  display: flex;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.system-events {
-  border-top: 1px solid var(--border-color);
-  padding-top: 15px;
-  margin-top: 5px;
-}
-
-.event-header {
-  font-size: 14px;
-  font-weight: bold;
-  color: var(--text-primary);
-  margin-bottom: 10px;
-}
-
-.event-list {
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.event-item {
-  display: flex;
-  margin-bottom: 10px;
-  font-size: 13px;
-}
-
-.event-time {
-  width: 45px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-
-.event-content {
-  flex: 1;
-  color: var(--text-regular);
-}
-
-.player-summary-alert {
-  margin-bottom: 12px;
-}
-
-.player-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.player-summary-item {
-  display: flex;
-  min-width: 0;
-  min-height: 64px;
-  flex-direction: column;
-  justify-content: center;
-  padding: 10px 12px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-}
-
-.player-summary-item span {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.player-summary-item strong {
-  margin-top: 3px;
-  color: var(--text-primary);
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-}
-
-.player-summary-footnote {
-  margin: 10px 0 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.announcement-list {
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.announcement-item {
-  padding: 15px 0;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.announcement-item:last-child {
-  border-bottom: none;
-}
-
-.announcement-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.announcement-title span {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.announcement-body {
-  font-size: 13px;
-  color: var(--text-regular);
-  margin-bottom: 10px;
-  line-height: 1.5;
-}
-
-.announcement-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-}
-
-.announcement-time {
-  color: var(--text-secondary);
-}
-
-.announcement-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.log-section {
-  margin-bottom: 20px;
-}
-
-.world-log-wrapper {
-  height: 400px;
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-card);
-}
-
-.world-log {
-  height: 100%;
-}
-
-.system-info-footer {
-  display: flex;
-  flex-direction: column;
-  padding-top: 12px;
-  margin-top: 12px;
-  border-top: 1px solid var(--border-color);
-}
-
-.system-info-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: var(--text-regular);
-}
-
-.system-info-item i {
-  margin-right: 8px;
-  color: var(--primary-color);
-}
-
-.system-info-item > svg {
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  color: var(--primary-color);
-}
-
-
-
-/* 服务器监控相关样式 */
-.server-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.server-header span {
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.server-header i {
-  margin-right: 8px;
-  color: var(--primary-color);
-}
-
-.server-row-actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
-
-.server-name-info {
-  display: flex;
-  align-items: center;
-}
-
-.server-name-text {
-  font-weight: 500;
-  margin-left: 5px;
-}
-
-.time-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.time-info span:first-child {
-  font-weight: 500;
-}
-
-.time-info span:last-child {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 3px;
-}
-
-.server-footer {
-  margin-top: 15px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--text-regular);
-  font-size: 13px;
-}
-
-.server-monitor-body {
-  min-height: 132px;
-}
-
-.server-stats {
-  color: var(--text-secondary);
-}
-
-.empty-server,
-.server-error-state {
-  min-height: 132px;
-  padding: 24px 0;
-  text-align: center;
-  color: var(--text-secondary);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.empty-server .legacy-icon,
-.server-error-state .legacy-icon {
-  width: 22px;
-  height: 22px;
-  margin: 0 0 10px;
-  color: var(--muted-foreground);
-}
-
-.empty-server strong,
-.server-error-state strong {
-  margin-bottom: 6px;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.empty-server > span,
-.server-error-state span {
-  margin-bottom: 12px;
-}
-
-.server-error-state {
-  padding-right: 20px;
-  padding-left: 20px;
-}
-
-.server-error-state .legacy-icon {
-  color: var(--warning-color);
-}
-
-.server-error-state span {
-  max-width: 720px;
-  color: var(--text-secondary);
-  line-height: 20px;
-  overflow-wrap: anywhere;
-}
-
-.server-state-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.world-selection-actions {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.dialog-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 80px;
-  color: var(--text-secondary);
-}
-
-.world-option-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-}
-
-.version-info-row {
-  margin-bottom: 16px;
-}
-
-.version-card {
-  height: auto;
-  box-shadow: var(--shadow-card);
-  border-radius: 4px;
-}
-
-.version-content {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-  padding: 14px 16px;
-}
-
-.version-icon {
-  width: 22px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 0;
-  font-size: 17px;
-  color: var(--primary-color);
-}
-
-.version-details {
-  min-width: 0;
-  flex: 1;
-}
-
-.version-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-height: 34px;
-  margin-bottom: 0;
-}
-
-.version-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.version-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.version-info {
-  margin-bottom: 0;
-}
-
-.version-boxes {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  max-width: 760px;
-  margin: 10px 0 0;
-  border-top: 1px solid var(--border-color);
-}
-
-.version-box {
-  flex: 1 1 260px;
-  padding: 10px 0 0;
-  text-align: left;
-  background-color: transparent;
-  transition: color 0.15s ease;
-}
-
-.version-box-outdated {
-  color: var(--danger-color);
-}
-
-.version-box-outdated .version-box-value {
-  color: var(--danger-color);
-}
-
-.version-box-label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 3px;
-}
-
-.version-box-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 3px;
-}
-
-.version-arrow {
-  align-self: center;
-  margin: 10px 20px 0;
-  color: var(--text-secondary);
-  font-size: 20px;
-}
-
-.version-box-date {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.version-link {
-  color: var(--primary-color);
-  text-decoration: none;
-  transition: all 0.3s;
-}
-
-.version-link:hover {
-  opacity: 0.8;
-}
-
-.version-warning-icon {
-  margin-left: 5px;
-  color: var(--destructive);
-  font-size: 16px;
-}
-
-.version-loading {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  min-height: 32px;
-  padding: 8px 0 0;
-  color: var(--text-secondary);
-}
-
-.version-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
-  padding-top: 8px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 20px;
-}
-
-.version-meta span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.version-managed-notice,
-.version-check-warning,
-.version-error {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 7px 9px;
-  border-left: 2px solid var(--border-color);
-  background: var(--surface-muted);
-  color: var(--text-regular);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.version-check-warning,
-.version-error {
-  border-left-color: var(--warning-color);
-  background: var(--surface-muted);
-}
-
-.version-error button {
-  margin-left: auto;
-}
-
-.version-update-notice {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 7px 9px;
-  border-left: 2px solid var(--danger-color);
-  background-color: var(--surface-muted);
-  color: var(--danger-color);
-}
-
-.version-update-notice i {
-  margin-right: 8px;
-  font-size: 16px;
-}
-
-.version-update-notice button {
-  margin-left: auto;
-}
-
-.version-update-status {
-  margin-top: 15px;
-  padding: 10px;
-  background-color: var(--surface-muted);
-  border-radius: 4px;
-}
-
-.update-status-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-  font-weight: bold;
-}
-
-.update-status-header i {
-  margin-right: 8px;
-  font-size: 16px;
-}
-
-.update-output, .update-error {
-  margin-top: 10px;
-  font-size: 13px;
-}
-
-.output-label, .error-label {
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.output-content {
-  padding: 5px;
-  background-color: var(--muted);
-  border-radius: 3px;
-  word-break: break-all;
-}
-
-.error-content {
-  padding: 5px;
-  background-color: var(--accent);
-  border-radius: 3px;
-  color: var(--destructive);
-  word-break: break-all;
-}
-
-@media (max-width: 768px) {
-  .dashboard-content {
-    padding: 0 0 12px;
-  }
-
-  .section-divider {
-    margin: 18px 0 12px;
-  }
-
-  .version-content {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr);
-    gap: 10px;
-    align-items: start;
-    padding: 4px;
-  }
-
-  .version-icon {
-    width: 36px;
-    height: 36px;
-    margin-right: 0;
-    font-size: 18px;
-  }
-
-  .version-details {
-    min-width: 0;
-  }
-
-  .version-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .version-actions {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .version-boxes {
-    align-items: stretch;
-  }
-
-  .version-arrow {
-    margin: 0 6px;
-  }
-
-  .version-box-value {
-    font-size: 16px;
-  }
-
-  .resource-detail {
-    flex-wrap: wrap;
-    gap: 4px 12px;
-  }
-
-  .version-update-notice {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .version-update-notice button {
-    margin-left: 0;
-  }
-}
-
-/* Dashboard workspace hierarchy */
-.dashboard-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.dashboard-header {
-  display: flex;
-  min-height: 42px;
-  align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
-.dashboard-heading {
-  display: flex;
+.overview-header > div {
   min-width: 0;
-  align-items: baseline;
-  gap: 12px;
 }
 
-.dashboard-heading h1 {
+.overview-header h1,
+.section-header h2 {
   margin: 0;
-  color: var(--text-primary);
-  font-size: 20px;
-  font-weight: 650;
-  line-height: 28px;
+  color: var(--foreground);
   letter-spacing: 0;
 }
 
-.dashboard-heading span {
-  color: var(--text-secondary);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.dashboard-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.summary-badge {
-  min-height: 30px;
-  gap: 6px;
-  padding-right: 10px;
-  padding-left: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-.summary-badge svg {
-  width: 14px;
-  height: 14px;
-}
-
-.summary-status-dot {
-  width: 7px;
-  height: 7px;
-  background: var(--muted-foreground);
-  border-radius: 50%;
-}
-
-.summary-status-dot.online {
-  background: var(--success-color);
-}
-
-.version-strip {
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 16px;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-left: 3px solid var(--primary-color);
-  border-radius: 5px;
-  box-shadow: none;
-}
-
-.version-strip-heading {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.version-strip-heading > div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.version-strip-heading span:not(.version-icon) {
-  color: var(--text-secondary);
-  font-size: 11px;
-  line-height: 15px;
-}
-
-.version-strip-heading strong {
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 19px;
-}
-
-.version-icon {
-  display: inline-flex;
-  flex: 0 0 32px;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  color: var(--primary-color);
-  background: var(--accent);
-  border-radius: 5px;
-}
-
-.version-icon svg {
-  width: 17px;
-  height: 17px;
-}
-
-.version-details,
-.version-info {
-  min-width: 0;
-}
-
-.version-boxes {
-  display: flex;
-  max-width: none;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  margin: 0;
-  border: 0;
-}
-
-.version-box {
-  display: grid;
-  flex: 0 1 auto;
-  grid-template-columns: auto auto;
-  align-items: center;
-  gap: 2px 8px;
-  min-width: 148px;
-  padding: 0;
-  text-align: left;
-}
-
-.version-box-label {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 10px;
-  line-height: 14px;
-}
-
-.version-box-value {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 20px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.version-box-outdated .version-box-value,
-.version-link {
-  color: var(--primary-color);
-}
-
-.version-link {
-  text-decoration: none;
-}
-
-.version-link:hover {
-  text-decoration: underline;
-  opacity: 1;
-}
-
-.version-arrow {
-  flex: 0 0 14px;
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  color: var(--text-secondary);
-}
-
-.version-meta {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 2px 14px;
-  padding-top: 7px;
-  color: var(--text-secondary);
-  font-size: 10px;
-  line-height: 15px;
-}
-
-.version-meta span:first-child {
-  max-width: 480px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.version-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
-.version-loading,
-.version-error {
-  min-height: 42px;
-  padding: 0;
-}
-
-.version-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--warning-color);
-  background: transparent;
-  border: 0;
-}
-
-.version-error svg,
-.version-notices svg {
-  flex: 0 0 15px;
-  width: 15px;
-  height: 15px;
-}
-
-.version-notices {
-  display: flex;
-  grid-column: 1 / -1;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.version-notices:empty {
-  display: none;
-}
-
-.version-managed-notice,
-.version-check-warning,
-.version-update-notice {
-  display: flex;
-  min-height: 32px;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  padding: 6px 9px;
-  color: var(--text-regular);
-  background: var(--surface-muted);
-  border: 0;
-  border-left: 2px solid var(--info-color);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.version-check-warning {
-  border-left-color: var(--warning-color);
-}
-
-.version-update-notice {
-  color: var(--danger-color);
-  border-left-color: var(--danger-color);
-}
-
-.version-update-notice button {
-  margin-left: auto;
-}
-
-.version-update-status {
-  margin: 0;
-  padding: 10px;
-  background: var(--surface-muted);
-  border-radius: 4px;
-}
-
-.operations-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(320px, 0.8fr);
-  align-items: start;
-  gap: 16px;
-}
-
-.operation-panel {
-  min-width: 0;
-  overflow: hidden;
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  box-shadow: none;
-}
-
-.operation-panel-header {
-  display: flex;
-  min-height: 58px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.panel-title {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.panel-title > svg {
-  flex: 0 0 18px;
-  width: 18px;
-  height: 18px;
-  color: var(--primary-color);
-}
-
-.panel-title > div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.panel-title h2 {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 20px;
-}
-
-.server-header .panel-title span,
-.panel-title span {
-  overflow: hidden;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.server-monitor,
-.system-info {
-  width: 100%;
-  height: auto;
-  margin: 0;
-  border-radius: 5px;
-  box-shadow: none;
-}
-
-.server-monitor-body {
-  min-height: 236px;
-  padding: 0 14px 12px;
-  overflow-x: auto;
-}
-
-.server-footer {
-  margin-top: 10px;
-  padding-top: 10px;
-}
-
-.system-info .resource-usage {
-  padding: 0 14px;
-}
-
-.resource-item {
-  padding: 11px 0;
-}
-
-.resource-item:first-child {
-  padding-top: 12px;
-}
-
-.resource-label {
-  margin-bottom: 6px;
-  font-size: 12px;
-  font-weight: 550;
-}
-
-.resource-detail {
-  justify-content: flex-start;
-  gap: 4px 12px;
-  font-size: 10px;
-  line-height: 15px;
-}
-
-.system-info-footer {
-  gap: 6px;
-  margin: 0 14px;
-  padding: 11px 0 13px;
-}
-
-.system-info-item {
-  min-width: 0;
-  gap: 7px;
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 11px;
-}
-
-.system-info-item svg {
-  flex: 0 0 14px;
-  width: 14px;
-  height: 14px;
-  color: var(--text-secondary);
-}
-
-.section-divider {
-  min-height: 34px;
-  margin: 4px 0 -4px;
-  padding: 0;
-  border-bottom: 0;
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.monitor-section,
-.version-info-row {
-  margin: 0;
-}
-
-@media (max-width: 1180px) {
-  .operations-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .system-info {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.4fr);
-  }
-
-  .system-info .operation-panel-header {
-    grid-column: 1 / -1;
-  }
-
-  .system-info-footer {
-    align-self: stretch;
-    justify-content: center;
-    margin-left: 0;
-    padding-left: 14px;
-    border-top: 0;
-    border-left: 1px solid var(--border-color);
-  }
-}
-
-@media (max-width: 900px) {
-  .version-strip {
-    grid-template-columns: 140px minmax(0, 1fr);
-  }
-
-  .version-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-end;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-color);
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-content {
-    gap: 12px;
-    padding: 0;
-  }
-
-  .dashboard-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .dashboard-heading {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .dashboard-summary {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .dashboard-summary > button {
-    margin-left: auto;
-  }
-
-  .version-strip {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px;
-  }
-
-  .version-actions,
-  .version-notices {
-    grid-column: auto;
-  }
-
-  .version-actions {
-    justify-content: flex-start;
-  }
-
-  .version-boxes {
-    align-items: stretch;
-  }
-
-  .version-box {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
-  .version-meta span:first-child {
-    max-width: 100%;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .operation-panel-header {
-    min-height: 54px;
-    padding: 9px 12px;
-  }
-
-  .server-monitor-body {
-    padding-right: 10px;
-    padding-left: 10px;
-  }
-
-  .system-info {
-    display: block;
-  }
-
-  .system-info-footer {
-    margin-left: 14px;
-    padding-left: 0;
-    border-top: 1px solid var(--border-color);
-    border-left: 0;
-  }
-}
-
-@media (max-width: 520px) {
-  .dashboard-heading span,
-  .summary-badge:nth-child(2) {
-    display: none;
-  }
-
-  .dashboard-summary > button {
-    margin-left: 0;
-  }
-
-  .version-boxes {
-    flex-wrap: wrap;
-  }
-
-  .version-box {
-    flex-basis: calc(50% - 16px);
-  }
-}
-
-/* Shadcn dashboard composition */
-.dashboard-content {
-  gap: 20px;
-}
-
-.dashboard-header {
-  min-height: 56px;
-  align-items: flex-start;
-  padding: 0;
-  border: 0;
-}
-
-.dashboard-heading {
-  align-items: flex-end;
-  gap: 14px;
-}
-
-.dashboard-heading > div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.dashboard-heading h1 {
+.overview-header h1 {
   font-size: 24px;
   font-weight: 700;
   line-height: 32px;
 }
 
-.dashboard-heading p {
-  margin: 0;
+.overview-header p,
+.section-header p {
+  margin: 2px 0 0;
   color: var(--muted-foreground);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 20px;
 }
 
-.dashboard-heading > span {
-  padding-bottom: 2px;
-  font-size: 12px;
+.overview-header p span {
+  margin: 0 4px;
 }
 
-.dashboard-summary {
-  padding-top: 2px;
+.overview-strip {
+  box-shadow: none;
 }
 
-.summary-badge {
-  min-height: 32px;
-  border-radius: var(--radius-md);
+.overview-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0;
 }
 
-.version-card,
-.server-monitor,
-.system-info,
-.world-log-card,
-.player-stats,
-.announcement-card {
-  margin: 0;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-}
-
-.card-heading-with-icon,
-.panel-title {
-  display: flex;
+.overview-metric {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
+  padding: 14px 16px;
 }
 
-.card-heading-with-icon > svg,
-.panel-title > svg {
-  flex: 0 0 18px;
+.overview-metric + .overview-metric {
+  border-left: 1px solid var(--border);
+}
+
+.overview-metric > svg {
   width: 18px;
   height: 18px;
   color: var(--primary);
 }
 
-.heading-icon {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary);
-  background: var(--accent);
-  border-radius: var(--radius-md);
-}
-
-.heading-icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.version-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.version-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.version-boxes {
-  display: flex;
-  max-width: none;
-  align-items: center;
-  gap: 14px;
-  margin: 0;
-  border: 0;
-}
-
-.version-box {
-  display: grid;
-  flex: 0 1 240px;
-  min-width: 0;
-  grid-template-columns: minmax(0, auto) auto;
-  align-items: center;
-  gap: 4px 8px;
-  padding: 12px;
-  background: var(--muted);
-  border-radius: var(--radius-md);
-}
-
-.version-box-label {
-  grid-column: 1 / -1;
-  margin: 0;
-  font-size: 12px;
-}
-
-.version-box-value {
-  margin: 0;
-  font-size: 16px;
-  line-height: 22px;
-}
-
-.version-meta {
-  gap: 4px 16px;
-  padding-top: 10px;
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.version-managed-notice,
-.version-check-warning,
-.version-update-notice,
-.version-error {
-  min-height: 38px;
-  margin: 0;
-  padding: 9px 11px;
-  background: var(--muted);
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  align-items: start;
-  gap: 20px;
-}
-
-.dashboard-primary {
+.overview-metric > div {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 20px;
+  gap: 1px;
 }
 
-.server-header {
-  align-items: start;
+.overview-metric span {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 16px;
 }
 
-.server-monitor-body {
-  min-height: 190px;
-  padding-top: 2px;
-  overflow-x: auto;
+.overview-metric strong {
+  color: var(--foreground);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 24px;
 }
 
-.server-monitor-body [data-slot='table-container'] {
-  border: 0;
+.overview-metric strong small {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
 }
 
-.server-row-actions {
-  justify-content: flex-start;
+.overview-metric .metric-note {
   white-space: nowrap;
 }
 
+.operations-layout {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+  gap: 16px;
+}
+
+.operations-main,
+.operations-rail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title-with-icon > svg {
+  width: 16px;
+  height: 16px;
+  color: var(--primary);
+}
+
+.server-content {
+  min-height: 0;
+  padding-top: 0;
+}
+
+.server-content [data-slot='table-container'] {
+  border: 0;
+}
+
+.server-actions,
+.server-state-actions,
+.world-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.server-actions {
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.server-empty {
+  min-height: 152px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
 .server-footer {
-  justify-content: flex-start;
-  margin: 0;
-  padding-top: 12px;
   color: var(--muted-foreground);
   font-size: 12px;
 }
 
 .world-log-content {
-  height: 360px;
-  min-height: 300px;
+  height: 356px;
+  min-height: 320px;
+  padding-top: 0;
 }
 
-.world-log {
-  height: 100%;
+.resource-list {
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
-.system-info .resource-usage {
-  padding: 0 20px 4px;
+.resource-row {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 0;
 }
 
-.resource-item,
-.resource-item:first-child {
-  padding: 14px 0;
+.resource-row + .resource-row {
+  border-top: 1px solid var(--border);
 }
 
 .resource-label {
-  margin-bottom: 8px;
-  font-size: 13px;
-}
-
-.resource-detail {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px 10px;
-  margin-top: 7px;
-  font-size: 11px;
-  line-height: 17px;
-}
-
-.system-info-footer {
-  align-items: stretch;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 14px 20px;
-}
-
-.system-info-item {
-  gap: 8px;
-  margin: 0;
-  font-size: 12px;
-}
-
-.section-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 2px;
+  gap: 12px;
+  color: var(--foreground);
+  font-size: 12px;
+  line-height: 18px;
 }
 
-.section-title {
-  gap: 10px;
+.resource-label strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
 }
 
-.section-title > svg {
-  margin: 0;
+.resource-detail {
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 15px;
+  overflow-wrap: anywhere;
 }
 
-.section-title > div {
+.system-meta {
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+
+.system-meta span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.system-meta svg {
+  width: 13px;
+  height: 13px;
+}
+
+.version-content {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 10px;
+  padding-top: 0;
 }
 
-.section-title h2,
-.section-title p {
+.version-comparison {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.version-comparison > div {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 6px;
+}
+
+.version-comparison > div > span {
+  grid-column: 1 / -1;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.version-comparison strong,
+.version-comparison a {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-comparison a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.version-comparison a:hover {
+  text-decoration: underline;
+}
+
+.version-comparison > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted-foreground);
+}
+
+.version-path {
   margin: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.section-title h2 {
+.version-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-top: -5px;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.inline-loading {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.update-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--muted);
+  border-radius: var(--radius-md);
+}
+
+.update-status > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.update-status p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.version-footer {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.secondary-section {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.section-header h2 {
   font-size: 16px;
   font-weight: 650;
   line-height: 22px;
 }
 
-.section-title p {
-  color: var(--muted-foreground);
+.section-header p {
   font-size: 12px;
-  font-weight: 400;
   line-height: 18px;
 }
 
-.data-section {
-  gap: 20px;
+.secondary-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.player-alert {
+  margin-bottom: 12px;
+}
+
+.player-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.player-grid > div {
+  display: flex;
+  min-width: 0;
+  min-height: 64px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--muted);
+  border-radius: var(--radius-md);
+}
+
+.player-grid span {
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+
+.player-grid strong {
+  color: var(--foreground);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-footnote {
+  margin: 10px 0 0;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+
+.announcement-list {
+  display: flex;
+  max-height: 280px;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.announcement-empty {
+  min-height: 150px;
+}
+
+.announcement-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.announcement-item + .announcement-item {
+  border-top: 1px solid var(--border);
+}
+
+.announcement-title,
+.announcement-item footer,
+.announcement-item footer > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.announcement-title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.announcement-item p {
+  display: -webkit-box;
   margin: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 18px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.announcement-item footer {
+  justify-content: space-between;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+
+.world-option-label {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.world-selection-actions {
+  justify-content: flex-end;
 }
 
 @media (max-width: 1180px) {
-  .dashboard-grid {
+  .operations-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .system-info {
-    display: flex;
+  .operations-rail {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
   }
 }
 
-@media (max-width: 768px) {
-  .dashboard-content {
-    gap: 16px;
+@media (max-width: 900px) {
+  .overview-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dashboard-heading {
-    width: 100%;
-    align-items: flex-start;
+  .overview-metric:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .overview-metric:nth-child(4) {
+    border-top: 1px solid var(--border);
+  }
+
+  .secondary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard-page {
+    gap: 12px;
+  }
+
+  .overview-header {
+    min-height: 0;
     flex-direction: column;
-    gap: 4px;
   }
 
-  .dashboard-heading > span {
-    padding: 0;
+  .overview-header > button {
+    width: 100%;
   }
 
-  .dashboard-summary {
-    align-items: stretch;
-  }
-
-  .dashboard-summary > button {
-    margin-left: 0;
-  }
-
-  .version-actions {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-    padding-top: 10px;
-  }
-
-  .version-boxes {
-    align-items: stretch;
+  .operations-rail {
+    display: flex;
   }
 
   .world-log-content {
-    height: 320px;
-    min-height: 280px;
-  }
-
-  .data-section {
-    grid-template-columns: minmax(0, 1fr);
+    height: 430px;
+    min-height: 360px;
   }
 }
 
 @media (max-width: 520px) {
-  .dashboard-heading > span,
-  .summary-badge:nth-child(2) {
-    display: inline-flex;
+  .overview-metrics {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .version-actions > button,
-  .dashboard-summary > button {
-    flex: 1 1 auto;
+  .overview-metric + .overview-metric {
+    border-top: 1px solid var(--border);
+    border-left: 0;
   }
 
-  .version-boxes {
+  .overview-metric {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    padding: 12px;
+  }
+
+  .player-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .server-actions {
+    justify-content: flex-start;
+  }
+
+  .system-meta {
+    align-items: flex-start;
     flex-direction: column;
   }
 
-  .version-arrow {
-    display: none;
-  }
-
-  .version-box {
-    width: 100%;
-    flex-basis: auto;
+  .announcement-item footer {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

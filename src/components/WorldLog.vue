@@ -440,7 +440,7 @@ export default {
   display: grid;
   flex: 1;
   min-width: 0;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+  grid-template-columns: repeat(2, minmax(150px, 1fr)) repeat(2, minmax(108px, auto));
   align-items: end;
   gap: 10px;
 }
@@ -457,7 +457,7 @@ export default {
 
 .toggle-field {
   min-height: 36px;
-  padding: 0 2px;
+  padding: 0;
 }
 
 .log-content {
@@ -486,7 +486,7 @@ export default {
   border-radius: 3px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 860px) {
   .log-toolbar {
     align-items: flex-start;
     flex-direction: column;
@@ -494,6 +494,17 @@ export default {
 
   .log-actions {
     width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 600px) {
+  .log-controls {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .log-actions {
     justify-content: space-between;
   }
 }
