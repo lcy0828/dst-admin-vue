@@ -3,6 +3,7 @@ import { serverMessages } from './serverMessages.js'
 import { systemSettingsMessages } from './systemSettingsMessages.js'
 import { roomsMessages } from './roomsMessages.js'
 import { worldMapsMessages } from './worldMapsMessages.js'
+import { worldStateMessages } from './worldStateMessages.js'
 import { worldsMessages } from './worldsMessages.js'
 
 export const messages = {
@@ -12,6 +13,7 @@ export const messages = {
     ...systemSettingsMessages['zh-CN'],
     ...roomsMessages['zh-CN'],
     ...worldMapsMessages['zh-CN'],
+    ...worldStateMessages['zh-CN'],
     ...worldsMessages['zh-CN'],
     common: {
       actions: {
@@ -470,6 +472,7 @@ export const messages = {
     ...systemSettingsMessages['en-US'],
     ...roomsMessages['en-US'],
     ...worldMapsMessages['en-US'],
+    ...worldStateMessages['en-US'],
     ...worldsMessages['en-US'],
     common: {
       actions: {

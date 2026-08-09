@@ -2,27 +2,27 @@
   <div class="world-state-page">
     <header class="page-header">
       <div>
-        <h1>世界状态</h1>
-        <p>查询世界的季节、时间、天气和洞穴状态。</p>
+        <h1>{{ $t('worldState.title') }}</h1>
+        <p>{{ $t('worldState.subtitle') }}</p>
       </div>
       <UiButton @click="refreshData" :disabled="loading || !selectedArchive || !selectedWorld">
         <Spinner v-if="loading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
-        刷新
+        {{ $t('worldState.actions.refresh') }}
       </UiButton>
     </header>
 
     <Card class="filter-card">
       <CardHeader>
-        <CardTitle>状态查询</CardTitle>
-        <CardDescription>选择房间存档和世界分片。</CardDescription>
+        <CardTitle>{{ $t('worldState.query.title') }}</CardTitle>
+        <CardDescription>{{ $t('worldState.query.description') }}</CardDescription>
       </CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
           <Field>
-            <FieldLabel>存档名称</FieldLabel>
+            <FieldLabel>{{ $t('worldState.query.archive') }}</FieldLabel>
             <UiSelect v-model="selectedArchive" @update:model-value="handleArchiveChange">
-              <SelectTrigger><SelectValue placeholder="请选择存档" /></SelectTrigger>
+              <SelectTrigger><SelectValue :placeholder="$t('worldState.query.selectArchive')" /></SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   <SelectItem v-for="archive in archives" :key="archive.id || archive.name" :value="archive.name || archive.id">
@@ -33,9 +33,9 @@
             </UiSelect>
           </Field>
           <Field>
-            <FieldLabel>世界名称</FieldLabel>
+            <FieldLabel>{{ $t('worldState.query.world') }}</FieldLabel>
             <UiSelect v-model="selectedWorld" :disabled="!selectedArchive">
-              <SelectTrigger><SelectValue placeholder="请选择世界" /></SelectTrigger>
+              <SelectTrigger><SelectValue :placeholder="$t('worldState.query.selectWorld')" /></SelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   <SelectItem
@@ -50,8 +50,10 @@
             </UiSelect>
           </Field>
           <Field class="query-action">
-            <FieldLabel class="sr-only">查询状态</FieldLabel>
-            <UiButton @click="fetchWorldState" :disabled="loading || !selectedArchive || !selectedWorld">查询</UiButton>
+            <FieldLabel class="sr-only">{{ $t('worldState.query.queryAria') }}</FieldLabel>
+            <UiButton @click="fetchWorldState" :disabled="loading || !selectedArchive || !selectedWorld">
+              {{ $t('worldState.actions.query') }}
+            </UiButton>
           </Field>
         </FieldGroup>
       </CardContent>
@@ -59,86 +61,86 @@
 
     <Alert v-if="loadError" variant="destructive">
       <TriangleAlert />
-      <AlertTitle>世界状态读取失败</AlertTitle>
-      <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">重新加载</UiButton></AlertAction>
+      <AlertTitle>{{ $t('worldState.error.title') }}</AlertTitle>
+      <AlertDescription>{{ loadErrorMessage }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="retryLoad">{{ $t('worldState.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
-    <div v-else-if="loading" class="state-skeleton" aria-busy="true" aria-label="正在读取世界状态">
+    <div v-else-if="loading" class="state-skeleton" aria-busy="true" :aria-label="$t('worldState.loadingAria')">
       <Skeleton v-for="row in 6" :key="row" class="h-20 w-full" />
     </div>
 
     <Empty v-else-if="!worldState">
       <EmptyHeader>
         <EmptyMedia variant="icon"><Activity /></EmptyMedia>
-        <EmptyTitle>暂无世界状态</EmptyTitle>
-        <EmptyDescription>{{ selectedArchive && selectedWorld ? '点击查询获取最新状态。' : '请选择存档和世界。' }}</EmptyDescription>
+        <EmptyTitle>{{ $t('worldState.empty.title') }}</EmptyTitle>
+        <EmptyDescription>{{ $t(selectedArchive && selectedWorld ? 'worldState.empty.ready' : 'worldState.empty.select') }}</EmptyDescription>
       </EmptyHeader>
     </Empty>
 
     <div v-else class="state-content">
       <div class="state-cards">
         <Card class="state-card">
-          <CardHeader><CardTitle>季节</CardTitle><CardDescription>{{ getSeasonDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getSeasonIcon()" class="state-icon" /></span></CardAction></CardHeader>
-          <CardContent class="state-value"><strong>{{ getSeasonName() }}</strong><small>世界天数 {{ displayValue(worldState.cycles) }}</small></CardContent>
+          <CardHeader><CardTitle>{{ $t('worldState.cards.season') }}</CardTitle><CardDescription>{{ getSeasonDetail() }}</CardDescription><CardAction><span class="state-icon-wrap" aria-hidden="true"><component :is="getSeasonIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getSeasonName() }}</strong><small>{{ $t('worldState.cards.worldDays', { days: displayValue(worldState.cycles) }) }}</small></CardContent>
         </Card>
         <Card class="state-card">
-          <CardHeader><CardTitle>地表时间</CardTitle><CardDescription>{{ getPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getPhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
-          <CardContent class="state-value"><strong>{{ getPhaseName() }}</strong><small>全天进度 {{ formatPercent(worldState.time) }}</small></CardContent>
+          <CardHeader><CardTitle>{{ $t('worldState.cards.surfaceTime') }}</CardTitle><CardDescription>{{ getPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap" aria-hidden="true"><component :is="getPhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getPhaseName() }}</strong><small>{{ $t('worldState.cards.dayProgress', { progress: formatPercent(worldState.time) }) }}</small></CardContent>
         </Card>
         <Card class="state-card">
-          <CardHeader><CardTitle>地表天气</CardTitle><CardDescription>{{ getWeatherDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getWeatherIcon()" class="state-icon" /></span></CardAction></CardHeader>
-          <CardContent class="state-value"><strong>{{ getWeatherName() }}</strong><small>温度 {{ formatNumber(worldState.temperature, 1, '°C') }}</small></CardContent>
+          <CardHeader><CardTitle>{{ $t('worldState.cards.surfaceWeather') }}</CardTitle><CardDescription>{{ getWeatherDetail() }}</CardDescription><CardAction><span class="state-icon-wrap" aria-hidden="true"><component :is="getWeatherIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getWeatherName() }}</strong><small>{{ $t('worldState.cards.temperature', { temperature: formatNumber(worldState.temperature, 1, '°C') }) }}</small></CardContent>
         </Card>
         <Card class="state-card">
-          <CardHeader><CardTitle>地表月相</CardTitle><CardDescription>{{ getMoonPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getMoonIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardHeader><CardTitle>{{ $t('worldState.cards.surfaceMoon') }}</CardTitle><CardDescription>{{ getMoonPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap" aria-hidden="true"><component :is="getMoonIcon()" class="state-icon" /></span></CardAction></CardHeader>
           <CardContent class="state-value"><strong>{{ getMoonPhaseName() }}</strong></CardContent>
         </Card>
         <Card v-if="hasCaveInfo()" class="state-card">
-          <CardHeader><CardTitle>洞穴时间</CardTitle><CardDescription>当前洞穴时间阶段</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getCavePhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardHeader><CardTitle>{{ $t('worldState.cards.caveTime') }}</CardTitle><CardDescription>{{ $t('worldState.cards.caveTimeDescription') }}</CardDescription><CardAction><span class="state-icon-wrap" aria-hidden="true"><component :is="getCavePhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
           <CardContent class="state-value"><strong>{{ getCavePhaseName() }}</strong></CardContent>
         </Card>
         <Card v-if="hasCaveInfo()" class="state-card">
-          <CardHeader><CardTitle>洞穴月相</CardTitle><CardDescription>{{ getCaveMoonPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getCaveMoonIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardHeader><CardTitle>{{ $t('worldState.cards.caveMoon') }}</CardTitle><CardDescription>{{ getCaveMoonPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap" aria-hidden="true"><component :is="getCaveMoonIcon()" class="state-icon" /></span></CardAction></CardHeader>
           <CardContent class="state-value"><strong>{{ getCaveMoonPhaseName() }}</strong></CardContent>
         </Card>
         <Card v-if="hasNightmareInfo()" class="state-card">
-          <CardHeader><CardTitle>梦魇循环</CardTitle><CardDescription>{{ getNightmarePhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getNightmarePhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardHeader><CardTitle>{{ $t('worldState.cards.nightmare') }}</CardTitle><CardDescription>{{ getNightmarePhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap" aria-hidden="true"><component :is="getNightmarePhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
           <CardContent class="state-value"><strong>{{ getNightmarePhaseName() }}</strong></CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>地表季节进度</CardTitle>
-          <CardDescription>已过 {{ displayValue(worldState.elapsed_days_in_season) }} 天 / 剩余 {{ displayValue(worldState.remaining_days_in_season) }} 天</CardDescription>
+          <CardTitle>{{ $t('worldState.seasonProgress.title') }}</CardTitle>
+          <CardDescription>{{ $t('worldState.seasonProgress.summary', { elapsed: displayValue(worldState.elapsed_days_in_season), remaining: displayValue(worldState.remaining_days_in_season) }) }}</CardDescription>
         </CardHeader>
         <CardContent>
           <UiProgress v-if="isFiniteNumber(worldState.season_progress)" :model-value="worldState.season_progress * 100" />
           <span v-else>--</span>
           <div class="season-lengths">
-            <Badge variant="outline">秋季 {{ displayValue(worldState.autumn_length) }} 天</Badge>
-            <Badge variant="outline">冬季 {{ displayValue(worldState.winter_length) }} 天</Badge>
-            <Badge variant="outline">春季 {{ displayValue(worldState.spring_length) }} 天</Badge>
-            <Badge variant="outline">夏季 {{ displayValue(worldState.summer_length) }} 天</Badge>
+            <Badge variant="outline">{{ seasonLengthLabel('autumn', worldState.autumn_length) }}</Badge>
+            <Badge variant="outline">{{ seasonLengthLabel('winter', worldState.winter_length) }}</Badge>
+            <Badge variant="outline">{{ seasonLengthLabel('spring', worldState.spring_length) }}</Badge>
+            <Badge variant="outline">{{ seasonLengthLabel('summer', worldState.summer_length) }}</Badge>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>详细信息</CardTitle>
-          <CardDescription>按属性、描述或分类筛选状态字段。</CardDescription>
+          <CardTitle>{{ $t('worldState.details.title') }}</CardTitle>
+          <CardDescription>{{ $t('worldState.details.description') }}</CardDescription>
           <CardAction class="details-filters max-lg:col-span-full max-lg:row-auto max-lg:justify-self-stretch">
             <InputGroup>
               <InputGroupAddon><Search /></InputGroupAddon>
-              <InputGroupInput v-model="searchQuery" placeholder="搜索属性或描述" />
+              <InputGroupInput v-model="searchQuery" :placeholder="$t('worldState.details.search')" />
             </InputGroup>
             <UiSelect v-model="currentCategory">
-              <SelectTrigger><SelectValue placeholder="所有分类" /></SelectTrigger>
+              <SelectTrigger><SelectValue :placeholder="$t('worldState.details.allCategories')" /></SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="all">所有分类</SelectItem>
+                  <SelectItem value="all">{{ $t('worldState.details.allCategories') }}</SelectItem>
                   <SelectItem v-for="(label, key) in categoryMap" :key="key" :value="key">{{ label }}</SelectItem>
                 </SelectGroup>
               </SelectContent>
@@ -147,7 +149,7 @@
         </CardHeader>
         <CardContent class="table-wrap">
           <UiTable>
-            <TableHeader><TableRow><TableHead>属性</TableHead><TableHead>值</TableHead><TableHead>描述</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>{{ $t('worldState.details.columns.property') }}</TableHead><TableHead>{{ $t('worldState.details.columns.value') }}</TableHead><TableHead>{{ $t('worldState.details.columns.description') }}</TableHead></TableRow></TableHeader>
             <TableBody>
               <TableRow v-for="item in filteredDetailsTableData" :key="item.name">
                 <TableCell>{{ item.name }}</TableCell><TableCell>{{ item.value }}</TableCell><TableCell>{{ item.description }}</TableCell>
@@ -160,9 +162,9 @@
       <Collapsible v-model:open="showRawData">
         <Card>
           <CardHeader>
-            <CardTitle>原始数据</CardTitle><CardDescription>后端返回的原始世界状态。</CardDescription>
+            <CardTitle>{{ $t('worldState.raw.title') }}</CardTitle><CardDescription>{{ $t('worldState.raw.description') }}</CardDescription>
             <CardAction><CollapsibleTrigger as-child>
-              <UiButton variant="outline" size="sm">{{ showRawData ? '隐藏' : '显示' }}</UiButton>
+              <UiButton variant="outline" size="sm">{{ $t(showRawData ? 'worldState.actions.hide' : 'worldState.actions.show') }}</UiButton>
             </CollapsibleTrigger></CardAction>
           </CardHeader>
           <CollapsibleContent>
@@ -191,6 +193,7 @@ import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigg
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { translateWorldStateValue } from '@/i18n/worldStateMessages';
 
 export default {
   name: 'WorldState',
@@ -244,7 +247,7 @@ export default {
   data() {
     return {
       loading: false,
-      loadError: '',
+      loadError: null,
       archives: [],
       selectedArchive: '',
       selectedWorld: '',
@@ -254,20 +257,19 @@ export default {
       refreshInterval: null,
       detailsTableData: [],
       searchQuery: '',
-      currentCategory: '',
-      categoryMap: {
-        basic: '基本信息',
-        season: '季节信息',
-        time: '时间信息',
-        moon: '月相信息',
-        weather: '天气信息',
-        cave: '洞穴信息',
-        nightmare: '梦魇循环信息',
-        other: '其他信息'
-      }
+      currentCategory: ''
     };
   },
   computed: {
+    loadErrorMessage() {
+      return this.localizedError(this.loadError);
+    },
+    categoryMap() {
+      return Object.fromEntries(
+        ['basic', 'season', 'time', 'moon', 'weather', 'cave', 'nightmare', 'other']
+          .map(category => [category, this.$t(`worldState.details.categories.${category}`)])
+      );
+    },
     worldsOfSelectedArchive() {
       if (!this.selectedArchive) return [];
       const archive = this.archives.find(a => a.name === this.selectedArchive || a.id === this.selectedArchive);
@@ -336,6 +338,11 @@ export default {
       return result;
     }
   },
+  watch: {
+    '$i18n.locale'() {
+      if (this.worldState) this.prepareDetailsTableData();
+    }
+  },
   created() {
     this.fetchArchives();
   },
@@ -346,7 +353,7 @@ export default {
     // 获取存档列表
     fetchArchives() {
       this.loading = true;
-      this.loadError = '';
+      this.loadError = null;
       api.worldApi.getWorldList()
         .then(response => {
           this.archives = Array.isArray(response.data) ? response.data : [];
@@ -361,8 +368,8 @@ export default {
           }
         })
         .catch(error => {
-          this.loadError = error.message || '获取存档列表失败';
-          toast.error(`获取存档列表失败: ${error.message || '未知错误'}`);
+          this.loadError = this.createLoadError('worldState.error.archiveList', error);
+          toast.error(this.localizedError(this.loadError));
         })
         .finally(() => {
           this.loading = false;
@@ -377,12 +384,12 @@ export default {
     // 获取世界状态
     fetchWorldState() {
       if (!this.selectedArchive || !this.selectedWorld) {
-        toast.warning('请选择存档和世界');
+        toast.warning(this.$t('worldState.feedback.selectArchiveAndWorld'));
         return;
       }
 
       this.loading = true;
-      this.loadError = '';
+      this.loadError = null;
       api.worldApi.getWorldState({
         archive_name: this.selectedArchive,
         world_name: this.selectedWorld
@@ -397,11 +404,11 @@ export default {
               query: { archive: this.selectedArchive, world: this.selectedWorld }
             });
           }
-          toast.success(response.msg || '获取世界状态信息成功');
+          toast.success(this.$t('worldState.feedback.loaded'));
         })
         .catch(error => {
-          this.loadError = error.message || '获取世界状态失败';
-          toast.error(`获取世界状态失败: ${error.message || '未知错误'}`);
+          this.loadError = this.createLoadError('worldState.error.worldState', error);
+          toast.error(this.localizedError(this.loadError));
           this.worldState = null;
           this.detailsTableData = [];
         })
@@ -439,6 +446,33 @@ export default {
 
     displayValue(value) {
       return value === undefined || value === null || value === '' ? '--' : value;
+    },
+
+    createLoadError(key, error) {
+      return { key, detail: error?.message || '' };
+    },
+
+    localizedError(error) {
+      if (!error) return '';
+      const message = this.$t(error.key);
+      const detail = error.detail || this.$t('worldState.error.unknown');
+      return this.$t('worldState.error.withDetail', { message, detail });
+    },
+
+    protocolLabel(group, value) {
+      return translateWorldStateValue(
+        key => this.$t(key),
+        key => this.$te(key),
+        group,
+        value
+      );
+    },
+
+    seasonLengthLabel(season, days) {
+      return this.$t('worldState.seasonProgress.length', {
+        season: this.protocolLabel('seasons', season),
+        days: this.displayValue(days)
+      });
     },
 
     formatNumber(value, digits = 1, suffix = '') {
@@ -512,95 +546,101 @@ export default {
         };
 
         const booleanValue = value => {
-          if (value === true) return '是';
-          if (value === false) return '否';
+          if (value === true) return this.$t('worldState.values.yes');
+          if (value === false) return this.$t('worldState.values.no');
           return '--';
         };
 
+        const detailItem = (key, value) => ({
+          name: this.$t(`worldState.details.fields.${key}.name`),
+          value,
+          description: this.$t(`worldState.details.fields.${key}.description`)
+        });
+
         // 基本信息
         const basicInfo = [
-          { name: '存档名称', value: safeGet(this.worldState, 'archive_name'), description: '游戏存档的名称' },
-          { name: '世界名称', value: safeGet(this.worldState, 'world_name'), description: '当前世界的名称' },
-          { name: '世界天数', value: safeGet(this.worldState, 'cycles'), description: '从世界创建开始，已经过的完整昔夜循环总数' }
+          detailItem('archiveName', safeGet(this.worldState, 'archive_name')),
+          detailItem('worldName', safeGet(this.worldState, 'world_name')),
+          detailItem('worldDays', safeGet(this.worldState, 'cycles'))
         ];
 
         // 地表季节信息
         const seasonInfo = [
-          { name: '地表季节', value: this.getSeasonName(), description: '地表的当前季节' },
-          { name: '当前季节已过天数', value: safeGet(this.worldState, 'elapsed_days_in_season'), description: '当前季节已经过去的天数' },
-          { name: '当前季节剩余天数', value: safeGet(this.worldState, 'remaining_days_in_season'), description: '当前季节还剩余的天数' },
-          { name: '季节进度', value: safePercent(this.worldState.season_progress), description: '当前季节的进度 (0-100%)' },
-          { name: '是否秋季', value: booleanValue(this.worldState.is_autumn), description: '当前是否是秋季' },
-          { name: '是否冬季', value: booleanValue(this.worldState.is_winter), description: '当前是否是冬季' },
-          { name: '是否春季', value: booleanValue(this.worldState.is_spring), description: '当前是否是春季' },
-          { name: '是否夏季', value: booleanValue(this.worldState.is_summer), description: '当前是否是夏季' },
-          { name: '秋季长度', value: safeGet(this.worldState, 'autumn_length'), description: '秋季设定持续的总天数' },
-          { name: '冬季长度', value: safeGet(this.worldState, 'winter_length'), description: '冬季设定持续的总天数' },
-          { name: '春季长度', value: safeGet(this.worldState, 'spring_length'), description: '春季设定持续的总天数' },
-          { name: '夏季长度', value: safeGet(this.worldState, 'summer_length'), description: '夏季设定持续的总天数' }
+          detailItem('surfaceSeason', this.getSeasonName()),
+          detailItem('elapsedSeasonDays', safeGet(this.worldState, 'elapsed_days_in_season')),
+          detailItem('remainingSeasonDays', safeGet(this.worldState, 'remaining_days_in_season')),
+          detailItem('seasonProgress', safePercent(this.worldState.season_progress)),
+          detailItem('isAutumn', booleanValue(this.worldState.is_autumn)),
+          detailItem('isWinter', booleanValue(this.worldState.is_winter)),
+          detailItem('isSpring', booleanValue(this.worldState.is_spring)),
+          detailItem('isSummer', booleanValue(this.worldState.is_summer)),
+          detailItem('autumnLength', safeGet(this.worldState, 'autumn_length')),
+          detailItem('winterLength', safeGet(this.worldState, 'winter_length')),
+          detailItem('springLength', safeGet(this.worldState, 'spring_length')),
+          detailItem('summerLength', safeGet(this.worldState, 'summer_length'))
         ];
 
         // 地表时间信息
         const timeInfo = [
-          { name: '地表时间阶段', value: this.getPhaseName(), description: '地表的当前时间阶段(白天/黄昏/夜晚)' },
-          { name: '是否白天', value: booleanValue(this.worldState.is_day), description: '地表当前是否是白天' },
-          { name: '是否黄昏', value: booleanValue(this.worldState.is_dusk), description: '地表当前是否是黄昏' },
-          { name: '是否夜晚', value: booleanValue(this.worldState.is_night), description: '地表当前是否是夜晚' },
-          { name: '当前阶段进度', value: safePercent(this.worldState.time_in_phase), description: '当前在当前时间阶段内的进度 (0-100%)' },
-          { name: '全天进度', value: safePercent(this.worldState.time), description: '当前在整个昔夜循环中的进度 (0-100%)' }
+          detailItem('surfacePhase', this.getPhaseName()),
+          detailItem('isDay', booleanValue(this.worldState.is_day)),
+          detailItem('isDusk', booleanValue(this.worldState.is_dusk)),
+          detailItem('isNight', booleanValue(this.worldState.is_night)),
+          detailItem('phaseProgress', safePercent(this.worldState.time_in_phase)),
+          detailItem('dayProgress', safePercent(this.worldState.time))
         ];
 
         // 地表月相信息
         const moonInfo = [
-          { name: '地表月相', value: this.getMoonPhaseName(), description: '地表的当前月相' },
-          { name: '是否满月', value: booleanValue(this.worldState.is_full_moon), description: '地表当前是否是满月' },
-          { name: '是否新月', value: booleanValue(this.worldState.is_new_moon), description: '地表当前是否是新月' },
-          { name: '是否渐盈期', value: booleanValue(this.worldState.is_waxing_moon), description: '地表的月亮当前是否处于渐盈状态' }
+          detailItem('surfaceMoon', this.getMoonPhaseName()),
+          detailItem('isFullMoon', booleanValue(this.worldState.is_full_moon)),
+          detailItem('isNewMoon', booleanValue(this.worldState.is_new_moon)),
+          detailItem('isWaxingMoon', booleanValue(this.worldState.is_waxing_moon))
         ];
 
         // 地表天气信息
         const weatherInfo = [
-          { name: '地表温度', value: this.isFiniteNumber(this.worldState.temperature) ? `${safeToFixed(this.worldState.temperature, 1)}°C` : '--', description: '当前世界的环境温度' },
-          { name: '降水类型', value: this.getPrecipitationName(), description: '当前的降水类型' },
-          { name: '降水概率', value: safePercent(this.worldState.pop), description: '降水概率' },
-          { name: '是否下雨', value: booleanValue(this.worldState.is_raining), description: '当前是否正在下雨' },
-          { name: '是否下雪', value: booleanValue(this.worldState.is_snowing), description: '当前是否正在下雪' },
-          { name: '是否下酸雨', value: booleanValue(this.worldState.is_acid_raining), description: '当前是否正在下酸雨' },
-          { name: '是否下月石雹', value: booleanValue(this.worldState.is_lunar_hailing), description: '当前是否正在下月石雹' },
-          { name: '月石雹等级', value: safeGet(this.worldState, 'lunar_hail_level'), description: '月石雹的强度等级' },
-          { name: '湿度', value: safeToFixed(this.worldState.wetness, 1), description: '影响玩家角色的潮湿度等级' },
-          { name: '是否潮湿', value: booleanValue(this.worldState.is_wet), description: '世界环境当前是否普遍潮湿' },
-          { name: '水分', value: this.isFiniteNumber(this.worldState.moisture) || this.isFiniteNumber(this.worldState.moisture_ceil) ? `${safeToFixed(this.worldState.moisture, 1)} / ${safeToFixed(this.worldState.moisture_ceil, 1)}` : '--', description: '当前世界的水分值/上限' },
-          { name: '雪量', value: safeToFixed(this.worldState.snow_level, 1), description: '当前地面积雪的程度' },
-          { name: '是否被雪覆盖', value: booleanValue(this.worldState.is_snow_covered), description: '地表是否被雪覆盖' }
+          detailItem('surfaceTemperature', this.isFiniteNumber(this.worldState.temperature) ? `${safeToFixed(this.worldState.temperature, 1)}°C` : '--'),
+          detailItem('precipitationType', this.getPrecipitationName()),
+          detailItem('precipitationChance', safePercent(this.worldState.pop)),
+          detailItem('isRaining', booleanValue(this.worldState.is_raining)),
+          detailItem('isSnowing', booleanValue(this.worldState.is_snowing)),
+          detailItem('isAcidRaining', booleanValue(this.worldState.is_acid_raining)),
+          detailItem('isLunarHailing', booleanValue(this.worldState.is_lunar_hailing)),
+          detailItem('lunarHailLevel', safeGet(this.worldState, 'lunar_hail_level')),
+          detailItem('wetness', safeToFixed(this.worldState.wetness, 1)),
+          detailItem('isWet', booleanValue(this.worldState.is_wet)),
+          detailItem('moisture', this.isFiniteNumber(this.worldState.moisture) || this.isFiniteNumber(this.worldState.moisture_ceil) ? `${safeToFixed(this.worldState.moisture, 1)} / ${safeToFixed(this.worldState.moisture_ceil, 1)}` : '--'),
+          detailItem('snowLevel', safeToFixed(this.worldState.snow_level, 1)),
+          detailItem('isSnowCovered', booleanValue(this.worldState.is_snow_covered))
         ];
 
         // 洞穴信息
         const caveInfo = [
-          { name: '洞穴时间阶段', value: safeGet(this.worldState, 'cavephase'), description: '洞穴中的当前时间阶段' },
-          { name: '洞穴是否白天', value: booleanValue(this.worldState.iscaveday), description: '洞穴中当前是否是白天' },
-          { name: '洞穴是否黄昏', value: booleanValue(this.worldState.iscavedusk), description: '洞穴中当前是否是黄昏' },
-          { name: '洞穴是否夜晚', value: booleanValue(this.worldState.iscavenight), description: '洞穴中当前是否是夜晚' },
-          { name: '洞穴月相', value: safeGet(this.worldState, 'cavemoonphase'), description: '洞穴中的当前月相' },
-          { name: '洞穴是否满月', value: booleanValue(this.worldState.iscavefullmoon), description: '洞穴中当前是否是满月' },
-          { name: '洞穴是否新月', value: booleanValue(this.worldState.iscavenewmoon), description: '洞穴中当前是否是新月' },
-          { name: '洞穴是否渐盈期', value: booleanValue(this.worldState.iscavewaxingmoon), description: '洞穴中的月亮当前是否处于渐盈状态' }
+          detailItem('cavePhase', this.getCavePhaseName()),
+          detailItem('isCaveDay', booleanValue(this.worldState.iscaveday)),
+          detailItem('isCaveDusk', booleanValue(this.worldState.iscavedusk)),
+          detailItem('isCaveNight', booleanValue(this.worldState.iscavenight)),
+          detailItem('caveMoon', this.getCaveMoonPhaseName()),
+          detailItem('isCaveFullMoon', booleanValue(this.worldState.iscavefullmoon)),
+          detailItem('isCaveNewMoon', booleanValue(this.worldState.iscavenewmoon)),
+          detailItem('isCaveWaxingMoon', booleanValue(this.worldState.iscavewaxingmoon))
         ];
 
         // 梦魇循环信息
         const nightmareInfo = [
-          { name: '梦魇循环阶段', value: safeGet(this.worldState, 'nightmarephase'), description: '当前梦魇循环的阶段' },
-          { name: '是否梦魇平静期', value: booleanValue(this.worldState.isnightmarecalm), description: '梦魇循环当前是否处于平静阶段' },
-          { name: '是否梦魇黑暗期', value: booleanValue(this.worldState.isnightmarewild), description: '梦魇循环当前是否处于黑暗阶段' },
-          { name: '是否梦魇警告期', value: booleanValue(this.worldState.isnightmarewarn), description: '梦魇循环当前是否处于警告阶段' },
-          { name: '是否梦魇黄昏期', value: booleanValue(this.worldState.isnightmaredawn), description: '梦魇循环当前是否处于黄昏阶段' },
-          { name: '梦魇循环时间', value: safeGet(this.worldState, 'nightmaretime'), description: '在当前梦魇循环状态下经过的总时间' },
-          { name: '梦魇循环阶段时间', value: safeGet(this.worldState, 'nightmaretimeinphase'), description: '在当前梦魇循环的单个阶段内经过的时间' }
+          detailItem('nightmarePhase', this.getNightmarePhaseName()),
+          detailItem('isNightmareCalm', booleanValue(this.worldState.isnightmarecalm)),
+          detailItem('isNightmareWild', booleanValue(this.worldState.isnightmarewild)),
+          detailItem('isNightmareWarn', booleanValue(this.worldState.isnightmarewarn)),
+          detailItem('isNightmareDawn', booleanValue(this.worldState.isnightmaredawn)),
+          detailItem('nightmareTime', safeGet(this.worldState, 'nightmaretime')),
+          detailItem('nightmarePhaseTime', safeGet(this.worldState, 'nightmaretimeinphase'))
         ];
 
         // 其他信息
         const otherInfo = [
-          { name: '月亮祈坛是否激活', value: booleanValue(this.worldState.is_alter_awake), description: '月亮祈坛/天体英雄是否处于激活状态' }
+          detailItem('alterAwake', booleanValue(this.worldState.is_alter_awake))
         ];
 
         // 合并所有信息
@@ -627,20 +667,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const seasonMap = {
-          autumn: '秋季',
-          winter: '冬季',
-          spring: '春季',
-          summer: '夏季'
-        };
-
         const season = this.worldState.season;
-        if (!season) return '未知';
-
-        return seasonMap[season] || season;
+        return this.protocolLabel('seasons', season);
       } catch (err) {
         console.error('获取季节名称时出错:', err);
-        return '未知';
+        return this.$t('worldState.values.unknown');
       }
     },
 
@@ -653,7 +684,7 @@ export default {
         const remaining = this.displayValue(this.worldState.remaining_days_in_season);
         const progress = this.formatPercent(this.worldState.season_progress);
 
-        return `已过 ${elapsed} 天 / 剩余 ${remaining} 天 (进度: ${progress})`;
+        return this.$t('worldState.seasonProgress.detail', { elapsed, remaining, progress });
       } catch (err) {
         console.error('获取季节详细信息时出错:', err);
         return '';
@@ -702,19 +733,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const phaseMap = {
-          day: '白天',
-          dusk: '黄昏',
-          night: '夜晚'
-        };
-
         const phase = this.worldState.phase;
-        if (!phase) return '未知';
-
-        return phaseMap[phase] || phase;
+        return this.protocolLabel('phases', phase);
       } catch (err) {
         console.error('获取时间阶段名称时出错:', err);
-        return '未知';
+        return this.$t('worldState.values.unknown');
       }
     },
 
@@ -723,7 +746,9 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        return `当前阶段进度: ${this.formatPercent(this.worldState.time_in_phase)}`;
+        return this.$t('worldState.cards.phaseProgress', {
+          progress: this.formatPercent(this.worldState.time_in_phase)
+        });
       } catch (err) {
         console.error('获取时间详细信息时出错:', err);
         return '';
@@ -755,16 +780,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const precipitationMap = {
-          none: '无降水',
-          rain: '下雨',
-          snow: '下雪'
-        };
         const precipitation = this.worldState.precipitation;
-        return precipitation ? (precipitationMap[precipitation] || precipitation) : '--';
+        return precipitation ? this.protocolLabel('weather', precipitation) : '--';
       } catch (err) {
         console.error('获取天气名称时出错:', err);
-        return '未知';
+        return this.$t('worldState.values.unknown');
       }
     },
 
@@ -777,35 +797,41 @@ export default {
 
         // 添加降水类型信息
         if (this.worldState.precipitation && this.worldState.precipitation !== 'none') {
-          const precipitationMap = {
-            rain: '雨',
-            snow: '雪'
-          };
-          details.push(`降水类型: ${precipitationMap[this.worldState.precipitation] || this.worldState.precipitation}`);
+          details.push(this.$t('worldState.weatherDetail.precipitationType', {
+            value: this.protocolLabel('precipitation', this.worldState.precipitation)
+          }));
         }
 
         // 添加降水概率
         if (this.isFiniteNumber(this.worldState.pop)) {
-          details.push(`降水概率: ${(this.worldState.pop * 100).toFixed(1)}%`);
+          details.push(this.$t('worldState.weatherDetail.precipitationChance', {
+            value: `${(this.worldState.pop * 100).toFixed(1)}%`
+          }));
         }
 
         // 添加湿度信息
         if (this.isFiniteNumber(this.worldState.wetness)) {
-          details.push(`湿度: ${this.worldState.wetness.toFixed(1)}`);
+          details.push(this.$t('worldState.weatherDetail.wetness', {
+            value: this.worldState.wetness.toFixed(1)
+          }));
         }
 
         // 添加雪量信息
         if (this.isFiniteNumber(this.worldState.snow_level) && this.worldState.snow_level > 0) {
-          details.push(`雪量: ${this.worldState.snow_level.toFixed(1)}`);
+          details.push(this.$t('worldState.weatherDetail.snowLevel', {
+            value: this.worldState.snow_level.toFixed(1)
+          }));
         }
 
         // 添加雪覆盖信息
         if (this.worldState.is_snow_covered) {
-          details.push('地面被雪覆盖');
+          details.push(this.$t('worldState.weatherDetail.snowCovered'));
         }
 
-        if (details.length) return details.join(', ');
-        return this.worldState.precipitation === 'none' ? '无降水' : '--';
+        if (details.length) return details.join(this.$t('worldState.listSeparator'));
+        return this.worldState.precipitation === 'none'
+          ? this.protocolLabel('weather', 'none')
+          : '--';
       } catch (err) {
         console.error('获取天气详细信息时出错:', err);
         return '';
@@ -835,14 +861,9 @@ export default {
     // 获取降水类型名称
     getPrecipitationName() {
       if (!this.worldState) return '';
-
-      const precipitationMap = {
-        none: '无',
-        rain: '雨',
-        snow: '雪'
-      };
-
-      return precipitationMap[this.worldState.precipitation] || this.worldState.precipitation || '--';
+      return this.worldState.precipitation
+        ? this.protocolLabel('precipitation', this.worldState.precipitation)
+        : '--';
     },
 
     // 获取月相名称
@@ -850,21 +871,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const moonPhaseMap = {
-          new: '新月',
-          quarter: '弦月',
-          half: '半月',
-          threequarter: '盈凸月',
-          full: '满月'
-        };
-
         const moonPhase = this.worldState.moon_phase;
-        if (!moonPhase) return '未知';
-
-        return moonPhaseMap[moonPhase] || moonPhase;
+        return this.protocolLabel('moon', moonPhase);
       } catch (err) {
         console.error('获取月相名称时出错:', err);
-        return '未知';
+        return this.$t('worldState.values.unknown');
       }
     },
 
@@ -888,10 +899,10 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        if (this.worldState.is_full_moon === true) return '满月';
-        if (this.worldState.is_new_moon === true) return '新月';
-        if (this.worldState.is_waxing_moon === true) return '渐盈期';
-        if (this.worldState.is_waxing_moon === false) return '渐亏期';
+        if (this.worldState.is_full_moon === true) return this.protocolLabel('moon', 'full');
+        if (this.worldState.is_new_moon === true) return this.protocolLabel('moon', 'new');
+        if (this.worldState.is_waxing_moon === true) return this.protocolLabel('moonState', 'waxing');
+        if (this.worldState.is_waxing_moon === false) return this.protocolLabel('moonState', 'waning');
         return '--';
       } catch (err) {
         console.error('获取月相详细信息时出错:', err);
@@ -923,19 +934,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const phaseMap = {
-          day: '白天',
-          dusk: '黄昏',
-          night: '夜晚'
-        };
-
         const phase = this.worldState.cavephase;
-        if (!phase) return '未知';
-
-        return phaseMap[phase] || phase;
+        return this.protocolLabel('phases', phase);
       } catch (err) {
         console.error('获取洞穴时间阶段名称时出错:', err);
-        return '未知';
+        return this.$t('worldState.values.unknown');
       }
     },
 
@@ -980,21 +983,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const moonPhaseMap = {
-          new: '新月',
-          quarter: '弦月',
-          half: '半月',
-          threequarter: '盈凸月',
-          full: '满月'
-        };
-
         const moonPhase = this.worldState.cavemoonphase;
-        if (!moonPhase) return '未知';
-
-        return moonPhaseMap[moonPhase] || moonPhase;
+        return this.protocolLabel('moon', moonPhase);
       } catch (err) {
         console.error('获取洞穴月相名称时出错:', err);
-        return '未知';
+        return this.$t('worldState.values.unknown');
       }
     },
 
@@ -1024,10 +1017,10 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        if (this.worldState.iscavefullmoon === true) return '满月';
-        if (this.worldState.iscavenewmoon === true) return '新月';
-        if (this.worldState.iscavewaxingmoon === true) return '渐盈期';
-        if (this.worldState.iscavewaxingmoon === false) return '渐亏期';
+        if (this.worldState.iscavefullmoon === true) return this.protocolLabel('moon', 'full');
+        if (this.worldState.iscavenewmoon === true) return this.protocolLabel('moon', 'new');
+        if (this.worldState.iscavewaxingmoon === true) return this.protocolLabel('moonState', 'waxing');
+        if (this.worldState.iscavewaxingmoon === false) return this.protocolLabel('moonState', 'waning');
         return '--';
       } catch (err) {
         console.error('获取洞穴月相详细信息时出错:', err);
@@ -1059,21 +1052,11 @@ export default {
       if (!this.worldState) return '';
 
       try {
-        const phaseMap = {
-          calm: '平静期',
-          warn: '警告期',
-          wild: '黑暗期',
-          dawn: '黄昏期',
-          none: '无效期'
-        };
-
         const phase = this.worldState.nightmarephase;
-        if (!phase) return '未知';
-
-        return phaseMap[phase] || phase;
+        return this.protocolLabel('nightmare', phase);
       } catch (err) {
         console.error('获取梦魇循环阶段名称时出错:', err);
-        return '未知';
+        return this.$t('worldState.values.unknown');
       }
     },
 
@@ -1122,20 +1105,22 @@ export default {
       try {
         let details = [];
 
-        if (this.worldState.isnightmarecalm) details.push('平静期');
-        if (this.worldState.isnightmarewarn) details.push('警告期');
-        if (this.worldState.isnightmarewild) details.push('黑暗期');
-        if (this.worldState.isnightmaredawn) details.push('黄昏期');
+        if (this.worldState.isnightmarecalm) details.push(this.protocolLabel('nightmare', 'calm'));
+        if (this.worldState.isnightmarewarn) details.push(this.protocolLabel('nightmare', 'warn'));
+        if (this.worldState.isnightmarewild) details.push(this.protocolLabel('nightmare', 'wild'));
+        if (this.worldState.isnightmaredawn) details.push(this.protocolLabel('nightmare', 'dawn'));
 
         if (details.length === 0) {
           if (this.worldState.nightmarephase === 'none') {
-            details.push('无效期');
+            details.push(this.protocolLabel('nightmare', 'none'));
+          } else if (this.worldState.nightmarephase) {
+            details.push(this.protocolLabel('nightmare', this.worldState.nightmarephase));
           } else {
-            details.push('未知状态');
+            details.push(this.$t('worldState.values.unknownState'));
           }
         }
 
-        return details.join(', ');
+        return details.join(this.$t('worldState.listSeparator'));
       } catch (err) {
         console.error('获取梦魇循环阶段详细信息时出错:', err);
         return '';
