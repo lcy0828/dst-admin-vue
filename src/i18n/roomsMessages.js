@@ -1,0 +1,200 @@
+export const roomsMessages = {
+  'zh-CN': {
+    rooms: {
+      list: {
+        title: '房间列表',
+        subtitle: '管理当前运行目标中的房间、世界和访问配置。',
+        search: '搜索房间',
+        create: '创建房间',
+        createNew: '创建新房间',
+        loadFailed: '房间列表加载失败',
+        reload: '重新加载',
+        loadingAria: '正在加载房间列表',
+        noMatch: '未找到匹配房间',
+        empty: '暂无房间',
+        noMatchDescription: '请调整搜索关键词后重试。',
+        emptyDescription: '您尚未创建任何房间。',
+        worldCount: '{count} 个世界',
+        running: '运行中',
+        forest: '主世界：',
+        cave: '洞穴：',
+        other: '其他：',
+        start: '开启',
+        stop: '停止',
+        edit: '编辑',
+        more: '更多操作',
+        specialLists: '特殊名单',
+        serverToken: '服务器令牌',
+        viewLogs: '查看日志',
+        backup: '备份房间',
+        delete: '删除房间',
+        dialogs: {
+          specialListsTitle: '特殊名单管理',
+          specialListsDescription: '维护房间管理员、黑名单和白名单。',
+          tokenTitle: '服务器令牌管理',
+          tokenDescription: '查看或更新当前房间的服务器令牌。',
+          logsTitle: '服务器日志',
+          logsDescription: '{room} 的实时与历史日志。',
+          logsPanelTitle: '服务器日志 - {room}',
+          startTitle: '启动房间',
+          startDescription: '选择本次要启动的世界类型。'
+        },
+        feedback: {
+          refreshed: '房间列表已刷新',
+          listFailed: '获取房间列表失败',
+          serviceUnavailable: '无法连接管理服务，请检查服务状态后重试',
+          dataFailed: '获取数据失败：{error}',
+          noMatchingWorld: '没有找到符合条件的真实世界',
+          started: '房间 {room} 已启动',
+          startFailed: '启动房间失败：{error}',
+          backupConfirm: '确定要备份房间“{room}”吗？',
+          backupTitle: '备份房间',
+          backupCreated: '房间 {room} 的备份已创建',
+          backupFailed: '备份房间失败：{error}',
+          canceled: '已取消操作',
+          stopBeforeDelete: '删除前请先停止房间中的所有世界',
+          deletePrompt: '房间“{room}”将整体移入可恢复目录。请输入完整房间名确认',
+          deleteTitle: '删除房间',
+          moveToRecovery: '移入恢复目录',
+          roomNameMismatch: '房间名不匹配',
+          movedToRecovery: '房间 {room} 已移入可恢复目录',
+          deleteFailed: '删除房间失败：{error}',
+          stopConfirm: '确定要停止房间“{room}”吗？',
+          stopTitle: '停止房间',
+          stopped: '房间 {room} 已停止',
+          stopFailed: '停止房间失败：{error}'
+        }
+      },
+      start: {
+        title: '启动 {room}',
+        description: '选择需要启动的世界分片。',
+        serverMode: '服务器模式',
+        bit32: '32 位',
+        bit64: '64 位',
+        serverModeDescription: 'v2 使用系统设置中的服务端位数',
+        preview: '将启动的世界',
+        noWorlds: '没有匹配的世界',
+        noWorldsDescription: '请切换启动模式，或先为房间创建对应类型的世界。',
+        submit: '启动',
+        roomUnavailable: '无法加载房间信息',
+        roomUnavailableDescription: '关闭窗口后重新选择房间。',
+        options: {
+          all: '所有世界',
+          forest: '仅森林世界',
+          cave: '仅洞穴世界',
+          unknown: '仅其他世界'
+        },
+        types: {
+          forest: '森林',
+          cave: '洞穴',
+          unknown: '其他世界'
+        }
+      },
+      selector: {
+        room: '房间',
+        placeholder: '请选择房间',
+        loadFailed: '房间列表加载失败',
+        readFailed: '读取房间列表失败'
+      }
+    }
+  },
+  'en-US': {
+    rooms: {
+      list: {
+        title: 'Rooms',
+        subtitle: 'Manage rooms, worlds, and access settings on the current runtime target.',
+        search: 'Search rooms',
+        create: 'Create room',
+        createNew: 'Create new room',
+        loadFailed: 'Failed to load rooms',
+        reload: 'Reload',
+        loadingAria: 'Loading rooms',
+        noMatch: 'No matching rooms',
+        empty: 'No rooms',
+        noMatchDescription: 'Adjust the search terms and try again.',
+        emptyDescription: 'You have not created any rooms yet.',
+        worldCount: '{count} worlds',
+        running: 'Running',
+        forest: 'Primary world:',
+        cave: 'Caves:',
+        other: 'Other:',
+        start: 'Start',
+        stop: 'Stop',
+        edit: 'Edit',
+        more: 'More actions',
+        specialLists: 'Special lists',
+        serverToken: 'Server token',
+        viewLogs: 'View logs',
+        backup: 'Back up room',
+        delete: 'Delete room',
+        dialogs: {
+          specialListsTitle: 'Manage special lists',
+          specialListsDescription: 'Maintain administrators, blocklist, and allowlist entries.',
+          tokenTitle: 'Manage server token',
+          tokenDescription: 'View or update the server token for this room.',
+          logsTitle: 'Server logs',
+          logsDescription: 'Live and historical logs for {room}.',
+          logsPanelTitle: 'Server logs - {room}',
+          startTitle: 'Start room',
+          startDescription: 'Choose the world types to start this time.'
+        },
+        feedback: {
+          refreshed: 'Room list refreshed',
+          listFailed: 'Failed to load rooms',
+          serviceUnavailable: 'Unable to connect to the management service. Check its status and try again.',
+          dataFailed: 'Failed to load data: {error}',
+          noMatchingWorld: 'No real worlds matched the selection',
+          started: 'Room {room} started',
+          startFailed: 'Failed to start room: {error}',
+          backupConfirm: 'Back up room “{room}”?',
+          backupTitle: 'Back up room',
+          backupCreated: 'Backup created for room {room}',
+          backupFailed: 'Failed to back up room: {error}',
+          canceled: 'Operation canceled',
+          stopBeforeDelete: 'Stop every world in the room before deleting it',
+          deletePrompt: 'Room “{room}” will be moved to a recoverable directory. Enter the full room name to confirm.',
+          deleteTitle: 'Delete room',
+          moveToRecovery: 'Move to recovery',
+          roomNameMismatch: 'Room name does not match',
+          movedToRecovery: 'Room {room} moved to the recovery directory',
+          deleteFailed: 'Failed to delete room: {error}',
+          stopConfirm: 'Stop room “{room}”?',
+          stopTitle: 'Stop room',
+          stopped: 'Room {room} stopped',
+          stopFailed: 'Failed to stop room: {error}'
+        }
+      },
+      start: {
+        title: 'Start {room}',
+        description: 'Choose the world shards to start.',
+        serverMode: 'Server architecture',
+        bit32: '32-bit',
+        bit64: '64-bit',
+        serverModeDescription: 'v2 uses the server architecture from system settings',
+        preview: 'Worlds to start',
+        noWorlds: 'No matching worlds',
+        noWorldsDescription: 'Choose another start mode or create a world of this type first.',
+        submit: 'Start',
+        roomUnavailable: 'Unable to load room information',
+        roomUnavailableDescription: 'Close this dialog and select the room again.',
+        options: {
+          all: 'All worlds',
+          forest: 'Forest worlds only',
+          cave: 'Cave worlds only',
+          unknown: 'Other worlds only'
+        },
+        types: {
+          forest: 'Forest',
+          cave: 'Caves',
+          unknown: 'Other world'
+        }
+      },
+      selector: {
+        room: 'Room',
+        placeholder: 'Select a room',
+        loadFailed: 'Failed to load rooms',
+        readFailed: 'Failed to read rooms'
+      }
+    }
+  }
+}

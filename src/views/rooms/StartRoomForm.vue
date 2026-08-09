@@ -3,8 +3,8 @@
     <div v-if="room" class="form-container">
       <FieldGroup>
         <FieldSet>
-          <FieldLegend variant="label">启动 {{ room.name }}</FieldLegend>
-          <FieldDescription>选择需要启动的世界分片。</FieldDescription>
+          <FieldLegend variant="label">{{ $t('rooms.start.title', { room: room.name }) }}</FieldLegend>
+          <FieldDescription>{{ $t('rooms.start.description') }}</FieldDescription>
           <RadioGroup v-model="formData.worldType" class="option-grid">
             <Field v-for="option in worldTypeOptions" :key="option.value" orientation="horizontal">
               <RadioGroupItem :id="`world-type-${option.value}`" :value="option.value" />
@@ -14,24 +14,24 @@
         </FieldSet>
         
         <Field data-disabled>
-          <FieldLabel>服务器模式</FieldLabel>
+          <FieldLabel>{{ $t('rooms.start.serverMode') }}</FieldLabel>
           <RadioGroup v-model="formData.serverMode" class="option-grid" disabled>
             <Field orientation="horizontal" data-disabled>
               <RadioGroupItem id="server-mode-32" value="32" disabled />
-              <FieldLabel for="server-mode-32" class="font-normal">32位</FieldLabel>
+              <FieldLabel for="server-mode-32" class="font-normal">{{ $t('rooms.start.bit32') }}</FieldLabel>
             </Field>
             <Field orientation="horizontal" data-disabled>
               <RadioGroupItem id="server-mode-64" value="64" disabled />
-              <FieldLabel for="server-mode-64" class="font-normal">64位</FieldLabel>
+              <FieldLabel for="server-mode-64" class="font-normal">{{ $t('rooms.start.bit64') }}</FieldLabel>
             </Field>
           </RadioGroup>
-          <FieldDescription>v2 使用系统设置中的服务端位数</FieldDescription>
+          <FieldDescription>{{ $t('rooms.start.serverModeDescription') }}</FieldDescription>
         </Field>
         
         <Separator />
         
         <FieldSet class="world-preview">
-          <FieldLegend variant="label">将启动的世界</FieldLegend>
+          <FieldLegend variant="label">{{ $t('rooms.start.preview') }}</FieldLegend>
           <div v-if="selectedWorlds.length" class="world-list" role="list">
             <div v-for="world in selectedWorlds" :key="world.name" class="world-item" role="listitem">
               <CheckCircle2 class="status-icon" />
@@ -41,25 +41,25 @@
           </div>
           <Alert v-else>
             <TriangleAlert />
-            <AlertTitle>没有匹配的世界</AlertTitle>
-            <AlertDescription>请切换启动模式，或先为房间创建对应类型的世界。</AlertDescription>
+            <AlertTitle>{{ $t('rooms.start.noWorlds') }}</AlertTitle>
+            <AlertDescription>{{ $t('rooms.start.noWorldsDescription') }}</AlertDescription>
           </Alert>
         </FieldSet>
       </FieldGroup>
       
       <div class="form-actions">
-        <UiButton variant="outline" @click="$emit('close')">取消</UiButton>
+        <UiButton variant="outline" @click="$emit('close')">{{ $t('common.actions.cancel') }}</UiButton>
         <UiButton @click="handleConfirm" :disabled="loading || selectedWorlds.length === 0">
           <Spinner v-if="loading" data-icon="inline-start" />
-          启动
+          {{ $t('rooms.start.submit') }}
         </UiButton>
       </div>
     </div>
     
     <Alert v-else variant="destructive">
       <TriangleAlert />
-      <AlertTitle>无法加载房间信息</AlertTitle>
-      <AlertDescription>关闭窗口后重新选择房间。</AlertDescription>
+      <AlertTitle>{{ $t('rooms.start.roomUnavailable') }}</AlertTitle>
+      <AlertDescription>{{ $t('rooms.start.roomUnavailableDescription') }}</AlertDescription>
     </Alert>
   </div>
 </template>
@@ -117,16 +117,16 @@ export default {
       formData: {
         worldType: this.startForm.worldType,
         serverMode: this.startForm.serverMode
-      },
-      worldTypeOptions: [
-        { value: 'all', label: '所有世界' },
-        { value: 'forest', label: '仅森林世界' },
-        { value: 'cave', label: '仅洞穴世界' },
-        { value: 'unknown', label: '仅其他世界' }
-      ]
+      }
     }
   },
   computed: {
+    worldTypeOptions() {
+      return ['all', 'forest', 'cave', 'unknown'].map(value => ({
+        value,
+        label: this.$t(`rooms.start.options.${value}`)
+      }));
+    },
     forestWorlds() {
       if (!this.room || !this.room.worlds) return [];
       return this.room.worlds.filter(world => world.type === 'forest');
@@ -165,9 +165,7 @@ export default {
       return 'outline';
     },
     getWorldTypeName(type) {
-      if (type === 'forest') return '森林';
-      if (type === 'cave') return '洞穴';
-      return '其他世界';
+      return this.$t(`rooms.start.types.${['forest', 'cave'].includes(type) ? type : 'unknown'}`);
     }
   }
 }

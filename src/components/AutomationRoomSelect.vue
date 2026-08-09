@@ -1,11 +1,11 @@
 <template>
   <div class="automation-room-select">
     <Field>
-      <FieldLabel>房间</FieldLabel>
+      <FieldLabel>{{ $t('rooms.selector.room') }}</FieldLabel>
       <UiSelect v-model="roomId" :disabled="loading" @update:model-value="handleChange">
         <SelectTrigger class="automation-room-trigger">
           <Spinner v-if="loading" />
-          <SelectValue placeholder="请选择房间" />
+          <SelectValue :placeholder="$t('rooms.selector.placeholder')" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
@@ -18,8 +18,8 @@
     </Field>
     <Alert v-if="loadError" variant="destructive">
       <CircleAlert />
-      <AlertTitle>房间列表加载失败</AlertTitle>
-      <AlertAction><UiButton size="sm" variant="outline" @click="loadRooms">重试</UiButton></AlertAction>
+      <AlertTitle>{{ $t('rooms.selector.loadFailed') }}</AlertTitle>
+      <AlertAction><UiButton size="sm" variant="outline" @click="loadRooms">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
   </div>
 </template>
@@ -62,8 +62,8 @@ export default {
         this.roomId = scope.roomId
         if (this.roomId) this.$emit('ready', this.roomId)
       } catch (error) {
-        this.loadError = error.message || '读取房间列表失败'
-        toast.error(error.message || '读取房间列表失败')
+        this.loadError = error.message || this.$t('rooms.selector.readFailed')
+        toast.error(error.message || this.$t('rooms.selector.readFailed'))
       } finally {
         this.loading = false
       }

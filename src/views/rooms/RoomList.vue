@@ -2,47 +2,47 @@
   <div class="world-settings-page">
     <header class="page-header">
       <div>
-        <h1>房间列表</h1>
-        <p>管理当前运行目标中的房间、世界和访问配置。</p>
+        <h1>{{ $t('rooms.list.title') }}</h1>
+        <p>{{ $t('rooms.list.subtitle') }}</p>
       </div>
       <div class="header-actions">
         <InputGroup class="search-input">
           <InputGroupAddon><Search /></InputGroupAddon>
-          <InputGroupInput v-model="searchQuery" placeholder="搜索房间" />
+          <InputGroupInput v-model="searchQuery" :placeholder="$t('rooms.list.search')" />
         </InputGroup>
         <UiButton variant="outline" @click="refreshRooms" :disabled="isRefreshing">
           <Spinner v-if="isRefreshing" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
-          刷新
+          {{ $t('common.actions.refresh') }}
         </UiButton>
-        <UiButton @click="createRoom"><Plus data-icon="inline-start" />创建房间</UiButton>
+        <UiButton @click="createRoom"><Plus data-icon="inline-start" />{{ $t('rooms.list.create') }}</UiButton>
       </div>
     </header>
 
     <Alert v-if="loadError && !loading" variant="destructive" class="settings-card">
       <CircleAlert />
-      <AlertTitle>房间列表加载失败</AlertTitle>
+      <AlertTitle>{{ $t('rooms.list.loadFailed') }}</AlertTitle>
       <AlertDescription class="error-description">
         <span>{{ loadError }}</span>
         <UiButton variant="outline" size="sm" @click="refreshRooms(true)">
           <RefreshCw data-icon="inline-start" />
-          重新加载
+          {{ $t('rooms.list.reload') }}
         </UiButton>
       </AlertDescription>
     </Alert>
 
-    <div v-if="loading" class="room-skeleton settings-card" aria-busy="true" aria-label="正在加载房间列表">
+    <div v-if="loading" class="room-skeleton settings-card" aria-busy="true" :aria-label="$t('rooms.list.loadingAria')">
       <Skeleton v-for="row in 6" :key="row" class="h-28 w-full" />
     </div>
 
     <Empty v-else-if="!loadError && filteredRooms.length === 0" class="settings-card">
       <EmptyHeader>
         <EmptyMedia variant="icon"><FolderPlus /></EmptyMedia>
-        <EmptyTitle>{{ searchQuery ? '未找到匹配房间' : '暂无房间' }}</EmptyTitle>
-        <EmptyDescription>{{ searchQuery ? '请调整搜索关键词后重试。' : '您尚未创建任何房间。' }}</EmptyDescription>
+        <EmptyTitle>{{ $t(searchQuery ? 'rooms.list.noMatch' : 'rooms.list.empty') }}</EmptyTitle>
+        <EmptyDescription>{{ $t(searchQuery ? 'rooms.list.noMatchDescription' : 'rooms.list.emptyDescription') }}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent v-if="!searchQuery">
-        <UiButton @click="createRoom"><Plus data-icon="inline-start" />创建新房间</UiButton>
+        <UiButton @click="createRoom"><Plus data-icon="inline-start" />{{ $t('rooms.list.createNew') }}</UiButton>
       </EmptyContent>
     </Empty>
 
@@ -52,26 +52,26 @@
           <CardTitle>{{ room.name }}</CardTitle>
           <CardDescription class="save-info">
             <span v-if="room.updateTime"><Clock />{{ formatDate(room.updateTime) }}</span>
-            <span v-if="room.worlds"><LayoutGrid />{{ room.worlds.length }} 个世界</span>
+            <span v-if="room.worlds"><LayoutGrid />{{ $t('rooms.list.worldCount', { count: room.worlds.length }) }}</span>
           </CardDescription>
-          <CardAction v-if="room.isRunning"><Badge>运行中</Badge></CardAction>
+          <CardAction v-if="room.isRunning"><Badge>{{ $t('rooms.list.running') }}</Badge></CardAction>
         </CardHeader>
         <CardContent class="save-item-content">
               <div class="save-worlds" v-if="room.worlds && room.worlds.length">
                 <div class="world-category forest" v-if="getWorldsByType(room.worlds, 'forest').length > 0">
-                  <span class="world-category-title">主世界:</span>
+                  <span class="world-category-title">{{ $t('rooms.list.forest') }}</span>
                   <div class="world-tags">
                     <Badge v-for="world in getWorldsByType(room.worlds, 'forest')" :key="world.name" variant="outline">{{ world.name }}</Badge>
                   </div>
                 </div>
                 <div class="world-category cave" v-if="getWorldsByType(room.worlds, 'cave').length > 0">
-                  <span class="world-category-title">洞穴:</span>
+                  <span class="world-category-title">{{ $t('rooms.list.cave') }}</span>
                   <div class="world-tags">
                     <Badge v-for="world in getWorldsByType(room.worlds, 'cave')" :key="world.name" variant="secondary">{{ world.name }}</Badge>
                   </div>
                 </div>
                 <div class="world-category unknown" v-if="getWorldsByType(room.worlds, 'unknown').length > 0">
-                  <span class="world-category-title">其他:</span>
+                  <span class="world-category-title">{{ $t('rooms.list.other') }}</span>
                   <div class="world-tags">
                     <Badge v-for="world in getWorldsByType(room.worlds, 'unknown')" :key="world.name" variant="outline">{{ world.name }}</Badge>
                   </div>
@@ -82,27 +82,27 @@
                 <UiButton
                   v-if="!room.isRunning"
                   size="sm"
-                  @click="startRoom(room)"><Play data-icon="inline-start" />开启</UiButton>
+                  @click="startRoom(room)"><Play data-icon="inline-start" />{{ $t('rooms.list.start') }}</UiButton>
                 <UiButton
                   v-else
                   variant="destructive"
                   size="sm"
-                  @click="stopRoom(room)"><Square data-icon="inline-start" />停止</UiButton>
-                <UiButton variant="outline" size="sm" @click="editRoom(room)"><Pencil data-icon="inline-start" />编辑</UiButton>
+                  @click="stopRoom(room)"><Square data-icon="inline-start" />{{ $t('rooms.list.stop') }}</UiButton>
+                <UiButton variant="outline" size="sm" @click="editRoom(room)"><Pencil data-icon="inline-start" />{{ $t('rooms.list.edit') }}</UiButton>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <UiButton variant="outline" size="sm">更多操作<ChevronDown data-icon="inline-end" /></UiButton>
+              <UiButton variant="outline" size="sm">{{ $t('rooms.list.more') }}<ChevronDown data-icon="inline-end" /></UiButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
-                <DropdownMenuItem @select="handleSpecialLists(room)">特殊名单</DropdownMenuItem>
-                <DropdownMenuItem @select="handleServerToken(room)">服务器令牌</DropdownMenuItem>
-                <DropdownMenuItem @select="handleViewLogs(room)">查看日志</DropdownMenuItem>
-                <DropdownMenuItem @select="backupRoom(room)">备份房间</DropdownMenuItem>
+                <DropdownMenuItem @select="handleSpecialLists(room)">{{ $t('rooms.list.specialLists') }}</DropdownMenuItem>
+                <DropdownMenuItem @select="handleServerToken(room)">{{ $t('rooms.list.serverToken') }}</DropdownMenuItem>
+                <DropdownMenuItem @select="handleViewLogs(room)">{{ $t('rooms.list.viewLogs') }}</DropdownMenuItem>
+                <DropdownMenuItem @select="backupRoom(room)">{{ $t('rooms.list.backup') }}</DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem variant="destructive" @select="deleteRoom(room)">删除房间</DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" @select="deleteRoom(room)">{{ $t('rooms.list.delete') }}</DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -112,28 +112,28 @@
 
     <UiDialog v-model:open="specialListsVisible">
       <DialogScrollContent class="max-w-5xl">
-        <DialogHeader><DialogTitle>特殊名单管理</DialogTitle><DialogDescription>维护房间管理员、黑名单和白名单。</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ $t('rooms.list.dialogs.specialListsTitle') }}</DialogTitle><DialogDescription>{{ $t('rooms.list.dialogs.specialListsDescription') }}</DialogDescription></DialogHeader>
         <SpecialLists v-if="specialListsVisible" :savename="selectedSavename" :room-name="selectedRoomName" @close="specialListsVisible = false" />
       </DialogScrollContent>
     </UiDialog>
 
     <UiDialog v-model:open="serverTokenVisible">
       <DialogContent class="max-w-3xl">
-        <DialogHeader><DialogTitle>服务器令牌管理</DialogTitle><DialogDescription>查看或更新当前房间的服务器令牌。</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ $t('rooms.list.dialogs.tokenTitle') }}</DialogTitle><DialogDescription>{{ $t('rooms.list.dialogs.tokenDescription') }}</DialogDescription></DialogHeader>
         <ServerToken v-if="serverTokenVisible" :savename="selectedSavename" @close="serverTokenVisible = false" />
       </DialogContent>
     </UiDialog>
 
     <UiDialog v-model:open="logViewerVisible">
       <DialogScrollContent class="max-w-5xl">
-        <DialogHeader><DialogTitle>服务器日志</DialogTitle><DialogDescription>{{ selectedRoomName }} 的实时与历史日志。</DialogDescription></DialogHeader>
-        <LogViewer v-if="logViewerVisible" :archiveName="selectedSavename" :title="'服务器日志 - ' + selectedRoomName" :subtitle="selectedWorldDisplay" :worlds="selectedRoomWorlds" :defaultWorld="selectedRoomWorldName" @close="logViewerVisible = false" />
+        <DialogHeader><DialogTitle>{{ $t('rooms.list.dialogs.logsTitle') }}</DialogTitle><DialogDescription>{{ $t('rooms.list.dialogs.logsDescription', { room: selectedRoomName }) }}</DialogDescription></DialogHeader>
+        <LogViewer v-if="logViewerVisible" :archiveName="selectedSavename" :title="$t('rooms.list.dialogs.logsPanelTitle', { room: selectedRoomName })" :subtitle="selectedWorldDisplay" :worlds="selectedRoomWorlds" :defaultWorld="selectedRoomWorldName" @close="logViewerVisible = false" />
       </DialogScrollContent>
     </UiDialog>
 
     <UiDialog v-model:open="startDialogVisible">
       <DialogScrollContent class="max-w-3xl">
-        <DialogHeader><DialogTitle>启动房间</DialogTitle><DialogDescription>选择本次要启动的世界类型。</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ $t('rooms.list.dialogs.startTitle') }}</DialogTitle><DialogDescription>{{ $t('rooms.list.dialogs.startDescription') }}</DialogDescription></DialogHeader>
         <StartRoomForm v-if="startDialogVisible" :room="selectedRoom" :startForm="startForm" :loading="startLoading" @confirm="confirmStartRoom" @close="closeStartDialog" />
       </DialogScrollContent>
     </UiDialog>
@@ -287,7 +287,7 @@ export default {
     formatDate(timestamp) {
       if (!timestamp) return '';
       const date = new Date(timestamp);
-      return date.toLocaleString();
+      return date.toLocaleString(this.$i18n.locale);
     },
     refreshRooms(force = false) {
       // 如果正在刷新或者距离上次刷新不足2秒，则不进行刷新
@@ -333,16 +333,16 @@ export default {
               });
             }
 
-            toast.success('房间列表已刷新');
+            toast.success(this.$t('rooms.list.feedback.refreshed'));
             console.log('Refreshed rooms and server status at', new Date().toLocaleTimeString());
           } else {
-            throw new Error('获取房间列表失败');
+            throw new Error(this.$t('rooms.list.feedback.listFailed'));
           }
         })
         .catch(error => {
-          console.error("获取数据失败:", error);
-          this.loadError = error.message || '无法连接管理服务，请检查服务状态后重试';
-          toast.error('获取数据失败: ' + this.loadError);
+          console.error('Failed to load room data:', error);
+          this.loadError = error.message || this.$t('rooms.list.feedback.serviceUnavailable');
+          toast.error(this.$t('rooms.list.feedback.dataFailed', { error: this.loadError }));
         })
         .finally(() => {
           this.loading = false;
@@ -373,20 +373,20 @@ export default {
             ? worlds
             : worlds.filter(world => world.type === this.startForm.worldType);
           if (selectedWorlds.length === 0) {
-            throw new Error('没有找到符合条件的真实世界');
+            throw new Error(this.$t('rooms.list.feedback.noMatchingWorld'));
           }
           return roomApi.startRoom({
             room_id: roomId,
             world_ids: selectedWorlds.map(world => world.id)
           });
         })
-        .then(async response => {
+        .then(async () => {
           this.startDialogVisible = false;
           await this.refreshRooms(true);
-          toast.success(response.msg || `房间 ${this.selectedRoom.name} 已启动`);
+          toast.success(this.$t('rooms.list.feedback.started', { room: this.selectedRoom.name }));
         })
         .catch(error => {
-          toast.error(`启动房间失败: ${error.message || '未知错误'}`);
+          toast.error(this.$t('rooms.list.feedback.startFailed', { error: error.message || this.$t('common.errors.unknown') }));
         })
         .finally(() => {
           this.startLoading = false;
@@ -433,45 +433,46 @@ export default {
       this.selectedRoomName = room.name;
       this.selectedRoomWorlds = room.worlds || [];
       this.selectedRoomWorldName = room.worlds && room.worlds.length > 0 ? room.worlds[0].name : '';
-      this.selectedWorldDisplay = room.worlds && room.worlds.length > 0 ?
-        `${room.worlds[0].name} (${room.worlds[0].type === 'forest' ? '森林' : (room.worlds[0].type === 'cave' ? '洞穴' : '其他')})` : '';
+      this.selectedWorldDisplay = room.worlds && room.worlds.length > 0
+        ? `${room.worlds[0].name} (${this.$t(`rooms.start.types.${['forest', 'cave'].includes(room.worlds[0].type) ? room.worlds[0].type : 'unknown'}`)})`
+        : '';
       this.logViewerVisible = true;
     },
     closeLogViewerDialog() {
       this.logViewerVisible = false;
     },
     backupRoom(room) {
-      confirmAction(`确定要备份房间 "${room.name}" 吗?`, '备份房间', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      confirmAction(this.$t('rooms.list.feedback.backupConfirm', { room: room.name }), this.$t('rooms.list.feedback.backupTitle'), {
+        confirmButtonText: this.$t('common.actions.confirm'),
+        cancelButtonText: this.$t('common.actions.cancel'),
         type: 'info'
       }).then(() => {
         roomApi.backupRoom(room.roomId || room.id)
-          .then(response => {
-            toast.success(response.msg || `房间 ${room.name} 的备份已创建`);
+          .then(() => {
+            toast.success(this.$t('rooms.list.feedback.backupCreated', { room: room.name }));
           })
           .catch(error => {
-            toast.error('备份房间失败: ' + (error.message || '未知错误'));
+            toast.error(this.$t('rooms.list.feedback.backupFailed', { error: error.message || this.$t('common.errors.unknown') }));
           });
       }).catch(() => {
-        toast.info('已取消操作');
+        toast.info(this.$t('rooms.list.feedback.canceled'));
       });
     },
     async deleteRoom(room) {
       if (room.isRunning) {
-        toast.warning('删除前请先停止房间中的所有世界');
+        toast.warning(this.$t('rooms.list.feedback.stopBeforeDelete'));
         return;
       }
 
       let confirmation;
       try {
         const result = await promptText(
-          `房间“${room.name}”将整体移入可恢复目录。请输入完整房间名确认`,
-          '删除房间',
+          this.$t('rooms.list.feedback.deletePrompt', { room: room.name }),
+          this.$t('rooms.list.feedback.deleteTitle'),
           {
-            confirmButtonText: '移入恢复目录',
-            cancelButtonText: '取消',
-            inputValidator: value => value === room.name || '房间名不匹配'
+            confirmButtonText: this.$t('rooms.list.feedback.moveToRecovery'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            inputValidator: value => value === room.name || this.$t('rooms.list.feedback.roomNameMismatch')
           }
         );
         confirmation = result.value;
@@ -481,14 +482,14 @@ export default {
 
       this.loading = true;
       try {
-        const response = await roomApi.deleteRoom({
+        await roomApi.deleteRoom({
           room_id: room.roomId || room.id,
           confirmation
         });
         await this.refreshRooms(true);
-        toast.success(response.msg || `房间 ${room.name} 已移入可恢复目录`);
+        toast.success(this.$t('rooms.list.feedback.movedToRecovery', { room: room.name }));
       } catch (error) {
-        toast.error('删除房间失败: ' + (error.message || '未知错误'));
+        toast.error(this.$t('rooms.list.feedback.deleteFailed', { error: error.message || this.$t('common.errors.unknown') }));
       } finally {
         this.loading = false;
       }
@@ -516,25 +517,25 @@ export default {
     },
     // 停止房间
     stopRoom(room) {
-      confirmAction(`确定要停止房间 "${room.name}" 吗?`, '停止房间', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      confirmAction(this.$t('rooms.list.feedback.stopConfirm', { room: room.name }), this.$t('rooms.list.feedback.stopTitle'), {
+        confirmButtonText: this.$t('common.actions.confirm'),
+        cancelButtonText: this.$t('common.actions.cancel'),
         type: 'warning'
       }).then(() => {
         this.loading = true;
         roomApi.stopRoom(room.roomId || room.id)
-          .then(async response => {
+          .then(async () => {
             await this.refreshRooms(true);
-            toast.success(response.msg || `房间 ${room.name} 已停止`);
+            toast.success(this.$t('rooms.list.feedback.stopped', { room: room.name }));
           })
           .catch(error => {
-            toast.error('停止房间失败: ' + (error.message || '未知错误'));
+            toast.error(this.$t('rooms.list.feedback.stopFailed', { error: error.message || this.$t('common.errors.unknown') }));
           })
           .finally(() => {
             this.loading = false;
           });
       }).catch(() => {
-        toast.info('已取消操作');
+        toast.info(this.$t('rooms.list.feedback.canceled'));
       });
     }
   }
