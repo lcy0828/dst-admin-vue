@@ -2,8 +2,11 @@
   <div class="dashboard-content">
     <header class="dashboard-header">
       <div class="dashboard-heading">
-        <h1>服务总览</h1>
-        <span>{{ formatCheckedAt(systemStatus.current_time) }}</span>
+        <div>
+          <h1>服务总览</h1>
+          <p>集中查看专服状态、世界日志与主机资源。</p>
+        </div>
+        <span>更新于 {{ formatCheckedAt(systemStatus.current_time) }}</span>
       </div>
       <div class="dashboard-summary">
         <Badge variant="outline" class="summary-badge">
@@ -22,15 +25,38 @@
       </div>
     </header>
 
-    <section class="version-strip" aria-labelledby="version-title">
-      <div class="version-strip-heading">
-        <span class="version-icon" aria-hidden="true"><PackageCheck /></span>
-        <div>
-          <span>游戏服务端</span>
-          <strong id="version-title">版本与更新</strong>
-        </div>
-      </div>
-      <div class="version-details">
+    <Card class="version-card" aria-labelledby="version-title">
+      <CardHeader>
+        <CardTitle id="version-title" class="card-heading-with-icon">
+          <span class="heading-icon" aria-hidden="true"><PackageCheck /></span>
+          <span>版本与更新</span>
+        </CardTitle>
+        <CardDescription>检查当前游戏服务端版本与 Steam 更新状态。</CardDescription>
+        <CardAction class="version-actions">
+          <UiButton
+            v-if="canUpdateGame"
+            size="sm"
+            :disabled="versionLoading || gameUpdateBusy"
+            @click="updateDstServer"
+          >
+            <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
+            <Download v-else data-icon="inline-start" />
+            {{ gameUpdateBusy ? '更新中' : '更新游戏' }}
+          </UiButton>
+          <UiButton
+            variant="outline"
+            size="sm"
+            :disabled="versionLoading || gameUpdateBusy"
+            @click="getVersionInfo"
+          >
+            <Spinner v-if="versionLoading" data-icon="inline-start" />
+            <RefreshCw v-else data-icon="inline-start" />
+            检查版本
+          </UiButton>
+        </CardAction>
+      </CardHeader>
+      <CardContent class="version-content">
+        <div class="version-details">
         <div v-if="versionLoading" class="version-loading">
           <Spinner />
           <span>正在获取版本信息...</span>
@@ -73,30 +99,8 @@
             <span v-if="versionInfo.checked_at">检查于 {{ formatCheckedAt(versionInfo.checked_at) }}</span>
           </div>
         </div>
-      </div>
-      <div class="version-actions">
-        <UiButton
-          v-if="canUpdateGame"
-          size="sm"
-          :disabled="versionLoading || gameUpdateBusy"
-          @click="updateDstServer"
-        >
-          <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
-          <Download v-else data-icon="inline-start" />
-          {{ gameUpdateBusy ? '更新中' : '更新游戏' }}
-        </UiButton>
-        <UiButton
-          variant="ghost"
-          size="sm"
-          :disabled="versionLoading || gameUpdateBusy"
-          @click="getVersionInfo"
-        >
-          <Spinner v-if="versionLoading" data-icon="inline-start" />
-          <RefreshCw v-else data-icon="inline-start" />
-          检查版本
-        </UiButton>
-      </div>
-      <div class="version-notices">
+        </div>
+        <div class="version-notices">
         <div v-if="!versionInfo.installed && !versionLoading" class="version-check-warning" role="status">
           <CircleAlert />
           <span>未检测到有效的 DST 安装，请检查系统设置中的服务端目录。</span>
@@ -138,27 +142,28 @@
             <div class="error-content">{{ updateStatus.error }}</div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- 服务器监控 -->
-    <div class="operations-grid">
-      <section class="operation-panel server-monitor" aria-labelledby="server-monitor-title">
-        <div class="operation-panel-header server-header">
-          <div class="panel-title">
-            <Activity aria-hidden="true" />
-            <div>
-              <h2 id="server-monitor-title">服务器状态</h2>
-              <span>{{ serverList.length }} 个分片，{{ runningServerCount }} 个运行中</span>
-            </div>
-          </div>
-          <UiButton variant="ghost" size="sm" :disabled="serverLoading" @click="refreshServerData">
-            <Spinner v-if="serverLoading" data-icon="inline-start" />
-            <RefreshCw v-else data-icon="inline-start" />
-            刷新
-          </UiButton>
         </div>
-        <div class="server-monitor-body">
+      </CardContent>
+    </Card>
+
+    <div class="dashboard-grid">
+      <div class="dashboard-primary">
+      <Card class="server-monitor" aria-labelledby="server-monitor-title">
+        <CardHeader class="server-header">
+          <CardTitle class="panel-title">
+            <Activity aria-hidden="true" />
+            <span id="server-monitor-title">服务器状态</span>
+          </CardTitle>
+          <CardDescription>{{ serverList.length }} 个分片，{{ runningServerCount }} 个运行中</CardDescription>
+          <CardAction>
+            <UiButton variant="outline" size="sm" :disabled="serverLoading" @click="refreshServerData">
+              <Spinner v-if="serverLoading" data-icon="inline-start" />
+              <RefreshCw v-else data-icon="inline-start" />
+              刷新
+            </UiButton>
+          </CardAction>
+        </CardHeader>
+        <CardContent class="server-monitor-body">
           <ShadcnTable v-if="serverList.length > 0 && !serverDataError">
             <TableHeader>
               <TableRow>
@@ -212,10 +217,6 @@
             </TableBody>
           </ShadcnTable>
 
-          <div class="server-footer" v-if="serverList.length > 0 && !serverDataError">
-            <span class="server-stats">共 {{ serverList.length }} 个服务器实例，{{ serverList.filter(s => s.status === 'running').length }} 个运行中</span>
-          </div>
-
           <Alert v-else-if="serverDataError" class="server-error-state">
             <CircleAlert />
             <AlertTitle>{{ serverErrorTitle }}</AlertTitle>
@@ -248,7 +249,10 @@
             </EmptyHeader>
             <EmptyContent><UiButton size="sm" @click="openStartRoomDialog">启动房间</UiButton></EmptyContent>
           </Empty>
-        </div>
+        </CardContent>
+        <CardFooter v-if="serverList.length > 0 && !serverDataError" class="server-footer">
+          <span class="server-stats">共 {{ serverList.length }} 个服务器实例，{{ serverList.filter(s => s.status === 'running').length }} 个运行中</span>
+        </CardFooter>
 
         <UiDialog v-model:open="startRoomDialogVisible">
           <DialogContent class="sm:max-w-lg" :close-on-escape-key-down="!startRoomLoading">
@@ -335,34 +339,45 @@
           </DialogContent>
         </UiDialog>
 
-      </section>
+      </Card>
 
-      <aside class="operation-panel system-info" aria-labelledby="system-resource-title">
-        <div class="operation-panel-header panel-header">
-          <div class="panel-title">
+      <Card class="world-log-card">
+        <CardHeader>
+          <CardTitle class="card-heading-with-icon"><ScrollText /><span>世界日志</span></CardTitle>
+          <CardDescription>实时查看当前世界分片输出，便于确认启动和运行状态。</CardDescription>
+        </CardHeader>
+        <CardContent class="world-log-content">
+          <WorldLog ref="worldLog" class="world-log" />
+        </CardContent>
+      </Card>
+      </div>
+
+      <Card class="system-info" aria-labelledby="system-resource-title">
+        <CardHeader>
+          <CardTitle class="panel-title">
             <Gauge aria-hidden="true" />
-            <div>
-              <h2 id="system-resource-title">系统资源</h2>
-              <span>{{ systemStatus.os_info || '等待系统信息' }}</span>
-            </div>
-          </div>
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <UiButton
-                variant="ghost"
-                size="icon-sm"
-                aria-label="刷新系统资源"
-                :disabled="systemLoading"
-                @click="refreshSystemStatus"
-              >
-                <Spinner v-if="systemLoading" />
-                <RefreshCw v-else />
-              </UiButton>
-            </TooltipTrigger>
-            <TooltipContent>刷新系统资源</TooltipContent>
-          </Tooltip>
-        </div>
-        <div class="resource-usage">
+            <span id="system-resource-title">系统资源</span>
+          </CardTitle>
+          <CardDescription>{{ systemStatus.os_info || '等待系统信息' }}</CardDescription>
+          <CardAction>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <UiButton
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="刷新系统资源"
+                  :disabled="systemLoading"
+                  @click="refreshSystemStatus"
+                >
+                  <Spinner v-if="systemLoading" />
+                  <RefreshCw v-else />
+                </UiButton>
+              </TooltipTrigger>
+              <TooltipContent>刷新系统资源</TooltipContent>
+            </Tooltip>
+          </CardAction>
+        </CardHeader>
+        <CardContent class="resource-usage">
           <template v-if="systemLoading">
             <div v-for="metric in 4" :key="metric" class="resource-item" aria-busy="true">
               <Skeleton class="h-4 w-28" />
@@ -423,8 +438,8 @@
               </div>
             </div>
           </template>
-        </div>
-          <div class="system-info-footer">
+        </CardContent>
+          <CardFooter class="system-info-footer">
             <div class="system-info-item">
               <Cpu aria-hidden="true" />
               <span>{{ systemStatus.os_info || '--' }}</span>
@@ -437,25 +452,17 @@
               <RefreshCw aria-hidden="true" />
               <span>更新时间: {{ formatCheckedAt(systemStatus.current_time) }}</span>
             </div>
-          </div>
-      </aside>
+          </CardFooter>
+      </Card>
     </div>
 
-    <div class="section-divider">
-      <div class="section-title">
-        <ScrollText />
-        <span>世界日志</span>
-      </div>
-    </div>
-
-    <div class="world-log-wrapper log-section">
-      <WorldLog ref="worldLog" class="world-log" />
-    </div>
-
-    <div class="section-divider">
+    <div class="section-heading">
       <div class="section-title">
         <ChartNoAxesCombined />
-        <span>最近游戏数据</span>
+        <div>
+          <h2>最近游戏数据</h2>
+          <p>玩家概况与近期公告。</p>
+        </div>
       </div>
     </div>
 
@@ -571,7 +578,7 @@ import { playerApi, roomApi, systemApi } from '@/api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog as UiDialog,
@@ -653,6 +660,7 @@ export default {
     CardAction,
     CardContent,
     CardDescription,
+    CardFooter,
     CardHeader,
     CardTitle,
     ChartNoAxesCombined,
@@ -2746,6 +2754,375 @@ export default {
 
   .version-box {
     flex-basis: calc(50% - 16px);
+  }
+}
+
+/* Shadcn dashboard composition */
+.dashboard-content {
+  gap: 20px;
+}
+
+.dashboard-header {
+  min-height: 56px;
+  align-items: flex-start;
+  padding: 0;
+  border: 0;
+}
+
+.dashboard-heading {
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.dashboard-heading > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dashboard-heading h1 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+.dashboard-heading p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dashboard-heading > span {
+  padding-bottom: 2px;
+  font-size: 12px;
+}
+
+.dashboard-summary {
+  padding-top: 2px;
+}
+
+.summary-badge {
+  min-height: 32px;
+  border-radius: var(--radius-md);
+}
+
+.version-card,
+.server-monitor,
+.system-info,
+.world-log-card,
+.player-stats,
+.announcement-card {
+  margin: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.card-heading-with-icon,
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.card-heading-with-icon > svg,
+.panel-title > svg {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--primary);
+}
+
+.heading-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  background: var(--accent);
+  border-radius: var(--radius-md);
+}
+
+.heading-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.version-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.version-boxes {
+  display: flex;
+  max-width: none;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  border: 0;
+}
+
+.version-box {
+  display: grid;
+  flex: 0 1 240px;
+  min-width: 0;
+  grid-template-columns: minmax(0, auto) auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 12px;
+  background: var(--muted);
+  border-radius: var(--radius-md);
+}
+
+.version-box-label {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+}
+
+.version-box-value {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.version-meta {
+  gap: 4px 16px;
+  padding-top: 10px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.version-managed-notice,
+.version-check-warning,
+.version-update-notice,
+.version-error {
+  min-height: 38px;
+  margin: 0;
+  padding: 9px 11px;
+  background: var(--muted);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: 20px;
+}
+
+.dashboard-primary {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.server-header {
+  align-items: start;
+}
+
+.server-monitor-body {
+  min-height: 190px;
+  padding-top: 2px;
+  overflow-x: auto;
+}
+
+.server-monitor-body [data-slot='table-container'] {
+  border: 0;
+}
+
+.server-row-actions {
+  justify-content: flex-start;
+  white-space: nowrap;
+}
+
+.server-footer {
+  justify-content: flex-start;
+  margin: 0;
+  padding-top: 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.world-log-content {
+  height: 360px;
+  min-height: 300px;
+}
+
+.world-log {
+  height: 100%;
+}
+
+.system-info .resource-usage {
+  padding: 0 20px 4px;
+}
+
+.resource-item,
+.resource-item:first-child {
+  padding: 14px 0;
+}
+
+.resource-label {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.resource-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.system-info-footer {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 20px;
+}
+
+.system-info-item {
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.section-title {
+  gap: 10px;
+}
+
+.section-title > svg {
+  margin: 0;
+}
+
+.section-title > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.section-title h2,
+.section-title p {
+  margin: 0;
+}
+
+.section-title h2 {
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 22px;
+}
+
+.section-title p {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.data-section {
+  gap: 20px;
+  margin: 0;
+}
+
+@media (max-width: 1180px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .system-info {
+    display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-content {
+    gap: 16px;
+  }
+
+  .dashboard-heading {
+    width: 100%;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dashboard-heading > span {
+    padding: 0;
+  }
+
+  .dashboard-summary {
+    align-items: stretch;
+  }
+
+  .dashboard-summary > button {
+    margin-left: 0;
+  }
+
+  .version-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding-top: 10px;
+  }
+
+  .version-boxes {
+    align-items: stretch;
+  }
+
+  .world-log-content {
+    height: 320px;
+    min-height: 280px;
+  }
+
+  .data-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .dashboard-heading > span,
+  .summary-badge:nth-child(2) {
+    display: inline-flex;
+  }
+
+  .version-actions > button,
+  .dashboard-summary > button {
+    flex: 1 1 auto;
+  }
+
+  .version-boxes {
+    flex-direction: column;
+  }
+
+  .version-arrow {
+    display: none;
+  }
+
+  .version-box {
+    width: 100%;
+    flex-basis: auto;
   }
 }
 </style>

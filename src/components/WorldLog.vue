@@ -1,65 +1,62 @@
 <template>
-  <div class="world-log-container">
-    <div class="log-header">
-      <div class="log-title">
-        <FileTextIcon />
-        <span>{{ title || '世界日志' }}</span>
-        <span class="stream-state" :class="`is-${streamState}`">
-          <span class="state-dot"></span>
-          {{ streamStateLabel }}
-        </span>
-      </div>
+  <section ref="root" class="world-log-container">
+    <div class="log-toolbar">
+      <FieldGroup class="log-controls">
+        <Field>
+          <FieldLabel for="world-log-room">房间</FieldLabel>
+          <UiSelect
+            v-model="selectedRoomId"
+            @update:model-value="handleRoomChange"
+          >
+            <SelectTrigger id="world-log-room"><SelectValue placeholder="选择房间" /></SelectTrigger>
+            <SelectContent><SelectGroup>
+              <SelectItem v-for="room in archives" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
+            </SelectGroup></SelectContent>
+          </UiSelect>
+        </Field>
 
-      <div class="log-actions">
-        <UiSelect
-          v-model="selectedRoomId"
-          aria-label="选择房间"
-          @update:model-value="handleRoomChange"
-        >
-          <SelectTrigger><SelectValue placeholder="选择房间" /></SelectTrigger>
-          <SelectContent><SelectGroup>
-            <SelectItem v-for="room in archives" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
-          </SelectGroup></SelectContent>
-        </UiSelect>
+        <Field>
+          <FieldLabel for="world-log-world">世界</FieldLabel>
+          <UiSelect
+            v-model="selectedWorldId"
+            :disabled="!selectedRoomId || currentRoomWorlds.length === 0"
+            @update:model-value="handleWorldChange"
+          >
+            <SelectTrigger id="world-log-world"><SelectValue placeholder="选择世界" /></SelectTrigger>
+            <SelectContent><SelectGroup>
+              <SelectItem v-for="world in currentRoomWorlds" :key="world.id" :value="world.id">
+                {{ world.name }} ({{ formatWorldType(world.type || world.role) }})
+              </SelectItem>
+            </SelectGroup></SelectContent>
+          </UiSelect>
+        </Field>
 
-        <UiSelect
-          v-model="selectedWorldId"
-          aria-label="选择世界"
-          :disabled="!selectedRoomId || currentRoomWorlds.length === 0"
-          @update:model-value="handleWorldChange"
-        >
-          <SelectTrigger><SelectValue placeholder="选择世界" /></SelectTrigger>
-          <SelectContent><SelectGroup>
-            <SelectItem v-for="world in currentRoomWorlds" :key="world.id" :value="world.id">
-              {{ world.name }} ({{ formatWorldType(world.type || world.role) }})
-            </SelectItem>
-          </SelectGroup></SelectContent>
-        </UiSelect>
-
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <UiSwitch
+        <Field orientation="horizontal" class="toggle-field">
+          <FieldContent>
+            <FieldLabel for="world-log-follow">实时跟随</FieldLabel>
+          </FieldContent>
+          <UiSwitch
+            id="world-log-follow"
             v-model="followLog"
-            aria-label="实时跟随日志"
             @update:model-value="handleFollowChange"
           />
-          </TooltipTrigger>
-          <TooltipContent>实时跟随日志</TooltipContent>
-        </Tooltip>
+        </Field>
 
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <UiSwitch
+        <Field orientation="horizontal" class="toggle-field">
+          <FieldContent>
+            <FieldLabel for="world-log-scroll">自动滚动</FieldLabel>
+          </FieldContent>
+          <UiSwitch
+            id="world-log-scroll"
             v-model="autoScroll"
-            aria-label="自动滚动到最新日志"
           />
-          </TooltipTrigger>
-          <TooltipContent>自动滚动到最新日志</TooltipContent>
-        </Tooltip>
+        </Field>
+      </FieldGroup>
 
+      <div class="log-actions">
+        <Badge :variant="streamStateVariant">{{ streamStateLabel }}</Badge>
         <UiButton
           size="sm"
-          aria-label="刷新日志"
           :disabled="loading || !selectedWorldId"
           @click="refreshLog"
         >
@@ -70,29 +67,46 @@
       </div>
     </div>
 
+    <Alert v-if="loadError" variant="destructive">
+      <TriangleAlertIcon />
+      <AlertTitle>日志读取失败</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="retryLoad">重试</UiButton></AlertAction>
+    </Alert>
+
     <div class="log-content">
-      <div ref="terminal" class="terminal-container"></div>
+      <div ref="terminal" class="terminal-container" role="log" :aria-label="title || '世界日志'"></div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script>
-import { FileTextIcon, RefreshCwIcon } from '@lucide/vue'
+import { RefreshCwIcon, TriangleAlertIcon } from '@lucide/vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { roomApi } from '@/api/index'
 import { worldLogsV2API } from '@/api/v2'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
+import { Field, FieldContent, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch as UiSwitch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default {
   name: 'WorldLog',
   components: {
-    FileTextIcon,
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
+    Badge,
+    Field,
+    FieldContent,
+    FieldGroup,
+    FieldLabel,
     RefreshCwIcon,
     SelectContent,
     SelectGroup,
@@ -100,10 +114,8 @@ export default {
     SelectTrigger,
     SelectValue,
     Spinner,
+    TriangleAlertIcon,
     UiSwitch,
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
     UiButton,
     UiSelect
   },
@@ -141,7 +153,9 @@ export default {
       autoScroll: true,
       eventSource: null,
       manuallyClosedEventSource: false,
-      streamState: 'idle'
+      streamState: 'idle',
+      loadError: '',
+      resizeObserver: null
     }
   },
   computed: {
@@ -162,15 +176,26 @@ export default {
         paused: '已暂停',
         error: '已断开'
       }[this.streamState] || '未知'
+    },
+    streamStateVariant() {
+      if (this.streamState === 'connected') return 'default'
+      if (this.streamState === 'error') return 'destructive'
+      if (this.streamState === 'connecting') return 'outline'
+      return 'secondary'
     }
   },
   async mounted() {
     this.initTerminal()
     window.addEventListener('resize', this.onResize)
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(this.onResize)
+      this.resizeObserver.observe(this.$refs.root)
+    }
     await this.loadArchives()
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.onResize)
+    this.resizeObserver?.disconnect()
     this.closeEventSource()
     this.terminal?.dispose()
   },
@@ -198,6 +223,7 @@ export default {
     },
     async loadArchives() {
       this.loading = true
+      this.loadError = ''
       try {
         const response = await roomApi.getRoomList()
         this.archives = Array.isArray(response)
@@ -208,7 +234,8 @@ export default {
       } catch (error) {
         this.archives = []
         this.streamState = 'error'
-        this.writeErrorLine(error.message || '获取房间列表失败')
+        this.loadError = error.message || '获取房间列表失败'
+        this.writeErrorLine(this.loadError)
       } finally {
         this.loading = false
       }
@@ -258,6 +285,7 @@ export default {
       if (!this.selectedRoomId || !this.selectedWorldId || !this.terminal) return
 
       this.loading = true
+      this.loadError = ''
       this.closeEventSource()
       this.terminal.clear()
       this.terminal.writeln(`\x1B[1;33m${this.currentRoom?.name || '-'} / ${this.currentWorld?.name || '-'}\x1B[0m`)
@@ -269,7 +297,8 @@ export default {
         else this.streamState = 'paused'
       } catch (error) {
         this.streamState = 'error'
-        this.writeErrorLine(error.message || '日志读取失败')
+        this.loadError = error.message || '日志读取失败'
+        this.writeErrorLine(this.loadError)
       } finally {
         this.loading = false
       }
@@ -329,6 +358,10 @@ export default {
     writeErrorLine(message) {
       this.terminal?.writeln(`\x1B[31m[错误]\x1B[0m ${message}`)
     },
+    retryLoad() {
+      if (this.archives.length > 0 && this.selectedWorldId) return this.refreshLog()
+      return this.loadArchives()
+    },
     handleFollowChange(enabled) {
       if (enabled) {
         if (this.selectedWorldId) this.connectEventSource()
@@ -344,7 +377,13 @@ export default {
       this.eventSource = null
     },
     onResize() {
-      this.fitAddon?.fit()
+      window.requestAnimationFrame(() => {
+        try {
+          this.fitAddon?.fit()
+        } catch {
+          // The terminal may be temporarily hidden while dashboard panels switch.
+        }
+      })
     }
   },
   watch: {
@@ -381,80 +420,44 @@ export default {
 <style scoped>
 .world-log-container {
   display: flex;
-  flex-direction: column;
-  min-height: 360px;
   height: 100%;
-  overflow: hidden;
-  background: #181a19;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-}
-
-.log-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: var(--surface-color);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.log-title,
-.log-actions,
-.stream-state {
-  display: flex;
-  align-items: center;
-}
-
-.log-title {
-  flex: 0 0 auto;
-  gap: 8px;
   min-width: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
+  min-height: 0;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
 }
 
-.log-title > svg {
-  color: var(--primary-color);
+.log-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.stream-state {
-  gap: 5px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 400;
-}
-
-.state-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--info-color);
-}
-
-.stream-state.is-connected .state-dot {
-  background: var(--success-color);
-}
-
-.stream-state.is-connecting .state-dot {
-  background: var(--warning-color);
-}
-
-.stream-state.is-error .state-dot {
-  background: var(--danger-color);
+.log-controls {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+  align-items: end;
+  gap: 10px;
 }
 
 .log-actions {
-  justify-content: flex-end;
-  gap: 8px;
+  display: flex;
+  flex: none;
   min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
+  gap: 8px;
 }
 
-.log-actions > * {
-  width: 150px;
+.toggle-field {
+  min-height: 36px;
+  padding: 0 2px;
 }
 
 .log-content {
@@ -462,13 +465,14 @@ export default {
   min-height: 0;
   padding: 10px;
   overflow: hidden;
+  border-radius: var(--radius);
   background: #181a19;
 }
 
 .terminal-container {
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 180px;
   overflow: hidden;
 }
 
@@ -482,24 +486,15 @@ export default {
   border-radius: 3px;
 }
 
-@media (max-width: 768px) {
-  .world-log-container {
-    min-height: 440px;
-  }
-
-  .log-header {
+@media (max-width: 640px) {
+  .log-toolbar {
     align-items: flex-start;
     flex-direction: column;
   }
 
   .log-actions {
     width: 100%;
-    justify-content: flex-start;
-  }
-
-  .log-actions > * {
-    flex: 1 1 140px;
-    width: auto;
+    justify-content: space-between;
   }
 }
 </style>
