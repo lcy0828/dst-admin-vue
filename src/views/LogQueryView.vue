@@ -3,23 +3,36 @@
     <header class="page-heading">
       <div>
         <h1>日志查询</h1>
-        <p>按存档、世界和类型检索已解析的服务器日志。</p>
+        <p>解析并检索真实的饥荒服务器日志快照。</p>
       </div>
+      <UiButton :disabled="refreshLoading || sourceLoading || !queryParams.archive" @click="refreshLogs">
+        <Spinner v-if="refreshLoading" data-icon="inline-start" />
+        <RefreshCwIcon v-else data-icon="inline-start" />
+        {{ refreshLoading ? '正在解析' : '解析最新日志' }}
+      </UiButton>
     </header>
 
     <Card>
       <CardHeader>
-        <div><CardTitle>查询条件</CardTitle><CardDescription>选择日志来源后执行查询。</CardDescription></div>
+        <div><CardTitle>查询条件</CardTitle><CardDescription>按房间、世界、类型或正文内容筛选解析结果。</CardDescription></div>
       </CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
-          <Field><FieldLabel for="log-archive-filter">存档</FieldLabel><UiSelect v-model="queryParams.archive" :disabled="sourceLoading || worldsLoading" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue :placeholder="sourceLoading ? '正在加载存档' : '选择存档'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.name" :value="item.name">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field><FieldLabel for="log-world-filter">世界</FieldLabel><UiSelect v-model="queryParams.world" :disabled="sourceLoading || worldsLoading || !queryParams.archive"><SelectTrigger id="log-world-filter"><SelectValue :placeholder="worldsLoading ? '正在加载世界' : '选择世界'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.name" :value="world.name">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-archive-filter">存档</FieldLabel><UiSelect v-model="queryParams.archive" :disabled="sourceLoading || worldsLoading" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue :placeholder="sourceLoading ? '正在加载存档' : '选择存档'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.id" :value="item.id">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="log-world-filter">世界</FieldLabel><UiSelect v-model="queryParams.world" :disabled="sourceLoading || worldsLoading || !queryParams.archive"><SelectTrigger id="log-world-filter"><SelectValue :placeholder="worldsLoading ? '正在加载世界' : '选择世界'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           <Field><FieldLabel for="log-type-filter">日志类型</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger id="log-type-filter"><SelectValue placeholder="选择日志类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in logTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field class="query-field"><FieldLabel for="log-query-input">正文检索</FieldLabel><InputGroup><InputGroupInput id="log-query-input" v-model="queryParams.query" maxlength="256" placeholder="日志正文或原始内容" @keyup.enter="queryLogs(true)" /><InputGroupAddon><SearchIcon /></InputGroupAddon></InputGroup></Field>
           <div class="filter-actions"><UiButton :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="queryLogs(true)"><SearchIcon data-icon="inline-start" />查询</UiButton><UiButton variant="outline" :disabled="loading || sourceLoading || worldsLoading" @click="resetQuery"><RotateCcwIcon data-icon="inline-start" />重置</UiButton><UiButton variant="destructive" :disabled="loading || sourceLoading || worldsLoading || !queryParams.archive || !queryParams.world" @click="showCleanupLogDialog"><Trash2Icon data-icon="inline-start" />清空日志</UiButton></div>
         </FieldGroup>
       </CardContent>
     </Card>
+
+    <Alert v-if="refreshStatus" :variant="refreshStatus.variant">
+      <CircleCheckIcon v-if="refreshStatus.variant !== 'destructive'" />
+      <TriangleAlertIcon v-else />
+      <AlertTitle>{{ refreshStatus.title }}</AlertTitle>
+      <AlertDescription>{{ refreshStatus.description }}</AlertDescription>
+    </Alert>
 
     <Alert v-if="sourceError" variant="destructive">
       <TriangleAlertIcon />
@@ -37,8 +50,12 @@
 
     <Card class="result-card">
       <CardHeader>
-        <div><CardTitle>查询结果</CardTitle><CardDescription>共 {{ total }} 条日志</CardDescription></div>
+        <div><CardTitle>查询结果</CardTitle><CardDescription>共 {{ total }} 条日志<span v-if="lastRefreshedAt">，解析于 {{ formatDate(lastRefreshedAt) }}</span></CardDescription></div>
+        <CardAction v-if="lastRefreshedAt"><Badge variant="outline">快照已就绪</Badge></CardAction>
       </CardHeader>
+      <div v-if="lastRefreshedAt" class="count-strip" aria-label="日志类型统计">
+        <Badge v-for="type in populatedLogTypes" :key="type.type" variant="outline">{{ type.name }} {{ type.count }}</Badge>
+      </div>
       <CardContent>
         <div v-if="loading" class="loading-state"><Spinner /><span>正在查询日志</span></div>
         <div v-else-if="logData.length" class="table-wrap">
@@ -46,7 +63,7 @@
             <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)">{{ log.log_type }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell class="action-column"><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">创建规则</UiButton></TableCell></TableRow>
           </TableBody></ShadcnTable>
         </div>
-        <Empty v-else-if="!queryError"><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>暂无日志</EmptyTitle><EmptyDescription>调整筛选条件后重新查询。</EmptyDescription></EmptyHeader></Empty>
+        <Empty v-else-if="!queryError"><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>{{ lastRefreshedAt ? '没有匹配的日志' : '尚未解析日志' }}</EmptyTitle><EmptyDescription>{{ lastRefreshedAt ? '调整筛选条件后重新查询。' : '先解析当前存档的最新服务器日志，再进行检索。' }}</EmptyDescription></EmptyHeader><EmptyContent v-if="!lastRefreshedAt"><UiButton :disabled="refreshLoading || !queryParams.archive" @click="refreshLogs"><RefreshCwIcon data-icon="inline-start" />解析最新日志</UiButton></EmptyContent></Empty>
       </CardContent>
       <CardFooter v-if="!loading && total > 0" class="pagination-container">
         <AppPagination
@@ -85,16 +102,17 @@
 </template>
 
 <script>
-import { RotateCcwIcon, ScrollTextIcon, SearchIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
+import { CircleCheckIcon, RefreshCwIcon, RotateCcwIcon, ScrollTextIcon, SearchIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import { logApi, ruleManagementApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
@@ -103,6 +121,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import AppPagination from '@/components/Pagination.vue'
 import RegexTester from '@/components/RegexTester.vue';
 import { confirmAction } from '@/lib/feedback'
+import { normalizeLogSources } from '@/lib/logQuerySupport.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import { toast } from 'vue-sonner'
 
@@ -116,17 +135,20 @@ export default {
     AppPagination,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardFooter,
     CardHeader,
     CardTitle,
+    CircleCheckIcon,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
     Empty,
+    EmptyContent,
     EmptyDescription,
     EmptyHeader,
     EmptyMedia,
@@ -137,7 +159,11 @@ export default {
     FieldLabel,
     FieldLegend,
     FieldSet,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
     RegexTester,
+    RefreshCwIcon,
     RotateCcwIcon,
     ScrollTextIcon,
     SearchIcon,
@@ -169,6 +195,7 @@ export default {
         archive: '',
         world: '',
         type: '',
+        query: '',
         page: 1,
         page_size: 20
       },
@@ -181,7 +208,6 @@ export default {
         { type: '', name: '全部' },
         { type: 'system', name: '系统' },
         { type: 'chat', name: '聊天' },
-        { type: 'connection', name: '连接' },
         { type: 'player', name: '玩家' },
         { type: 'entity', name: '实体' },
         { type: 'world', name: '世界' },
@@ -196,11 +222,16 @@ export default {
       // 加载状态
       loading: false,
       queryError: '',
+      counts: {},
+      lastRefreshedAt: null,
+      refreshLoading: false,
+      refreshStatus: null,
       sourceLoading: false,
       worldsLoading: false,
       sourceError: '',
       sourceRequestSequence: 0,
       queryRequestSequence: 0,
+      refreshRequestSequence: 0,
 
       // 规则对话框相关
       ruleDialogVisible: false,
@@ -227,12 +258,25 @@ export default {
       cleanupDialogVisible: false,
       cleanupLoading: false,
       cleanupForm: {
+        room_id: '',
+        world_id: '',
         archive_name: '',
         world_name: ''
       }
     };
   },
   computed: {
+    selectedArchive() {
+      return this.archives.find(archive => archive.id === this.queryParams.archive) || null
+    },
+    selectedWorld() {
+      return this.worlds.find(world => world.id === this.queryParams.world) || null
+    },
+    populatedLogTypes() {
+      return this.logTypes
+        .filter(item => item.type && Number(this.counts[item.type]) > 0)
+        .map(item => ({ ...item, count: Number(this.counts[item.type]) }))
+    },
     queryTypeModel: {
       get() {
         return this.queryParams.type || '__all__'
@@ -247,16 +291,24 @@ export default {
     this.getArchives();
   },
   beforeUnmount() {
+    this.sourceRequestSequence += 1
+    this.queryRequestSequence += 1
+    this.refreshRequestSequence += 1
     window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
   },
   methods: {
     handleRuntimeTargetChange() {
       this.sourceRequestSequence += 1;
       this.queryRequestSequence += 1;
+      this.refreshRequestSequence += 1;
       this.archives = [];
       this.worlds = [];
       this.logData = [];
       this.total = 0;
+      this.counts = {};
+      this.lastRefreshedAt = null;
+      this.refreshLoading = false;
+      this.refreshStatus = null;
       this.queryParams.archive = '';
       this.queryParams.world = '';
       this.getArchives();
@@ -272,14 +324,12 @@ export default {
         if (response?.status !== 200 || !Array.isArray(response.data)) {
           throw new Error(response?.msg || '存档列表响应格式异常');
         }
-        this.archives = response.data.map(item => ({
-            name: item.archive_name,
-            worlds: (item.worlds || []).map(worldName => ({ name: worldName }))
-        }));
+        this.archives = normalizeLogSources(response.data);
         const requestedArchive = this.$route.query.archive;
-        this.queryParams.archive = this.archives.some(item => item.name === requestedArchive)
-          ? requestedArchive
-          : (this.archives[0]?.name || '');
+        const matchedArchive = this.archives.find(item => item.id === requestedArchive || item.name === requestedArchive)
+        this.queryParams.archive = matchedArchive
+          ? matchedArchive.id
+          : (this.archives[0]?.id || '');
         await this.getWorlds(this.queryParams.archive);
       } catch (error) {
         if (requestSequence !== this.sourceRequestSequence) return;
@@ -304,12 +354,11 @@ export default {
 
       this.worldsLoading = true;
       this.sourceError = '';
-      const selectedArchive = this.archives.find(archive => archive.name === archiveName);
+      const selectedArchive = this.archives.find(archive => archive.id === archiveName || archive.name === archiveName);
       this.worlds = this.sortWorlds(selectedArchive?.worlds || []);
       const requestedWorld = this.$route.query.world;
-      this.queryParams.world = this.worlds.some(item => item.name === requestedWorld)
-        ? requestedWorld
-        : (this.worlds[0]?.name || '');
+      const matchedWorld = this.worlds.find(item => item.id === requestedWorld || item.name === requestedWorld)
+      this.queryParams.world = matchedWorld ? matchedWorld.id : (this.worlds[0]?.id || '');
       this.worldsLoading = false;
       if (this.queryParams.world) await this.queryLogs();
     },
@@ -340,6 +389,43 @@ export default {
       this.getWorlds(value);
     },
 
+    async refreshLogs() {
+      if (!this.queryParams.archive || this.refreshLoading) return
+      const requestSequence = ++this.refreshRequestSequence
+      const archiveName = this.selectedArchive?.name || '当前存档'
+      this.refreshLoading = true
+      this.refreshStatus = null
+      try {
+        const response = await logApi.refresh(this.queryParams.archive)
+        if (requestSequence !== this.refreshRequestSequence) return
+        if (response?.status !== 200 || !response.data) {
+          throw new Error(response?.msg || '日志刷新任务响应格式异常')
+        }
+        const targets = Array.isArray(response.data.targets) ? response.data.targets : []
+        const details = targets
+          .filter(target => target.message)
+          .map(target => `${target.name || target.targetId}：${target.message}`)
+          .join('；')
+        this.refreshStatus = {
+          variant: 'default',
+          title: `${archiveName} 的日志已解析`,
+          description: details || '所有世界的结构化日志快照已更新。'
+        }
+        toast.success(`${archiveName} 的日志解析完成`)
+        await this.queryLogs(true)
+      } catch (error) {
+        if (requestSequence !== this.refreshRequestSequence) return
+        this.refreshStatus = {
+          variant: 'destructive',
+          title: '日志解析失败',
+          description: error.message || '无法解析服务器日志'
+        }
+        toast.error(`日志解析失败：${error.message || '未知错误'}`)
+      } finally {
+        if (requestSequence === this.refreshRequestSequence) this.refreshLoading = false
+      }
+    },
+
     // 查询日志
     async queryLogs(resetPage = false) {
       const requestSequence = ++this.queryRequestSequence;
@@ -355,12 +441,16 @@ export default {
         }
         this.logData = response.data.logs;
         this.total = Number(response.data.total) || 0;
+        this.counts = response.data.counts || {};
+        this.lastRefreshedAt = response.data.last_refreshed_at || null;
       } catch (error) {
         if (requestSequence !== this.queryRequestSequence) return;
         this.queryError = error.message || '未知错误';
         toast.error('查询日志失败: ' + this.queryError);
         this.logData = [];
         this.total = 0;
+        this.counts = {};
+        this.lastRefreshedAt = null;
       } finally {
         if (requestSequence === this.queryRequestSequence) this.loading = false;
       }
@@ -368,17 +458,19 @@ export default {
 
     // 格式化日期
     formatDate(timestamp) {
-      if (!timestamp) return '';
+      if (!timestamp) return '--';
       const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) return '--';
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
     },
 
     // 重置查询条件
     resetQuery() {
       this.queryParams = {
-        archive: this.archives.length > 0 ? this.archives[0].name : '',
-        world: this.worlds.length > 0 ? this.worlds[0].name : '',
+        archive: this.archives.length > 0 ? this.archives[0].id : '',
+        world: this.worlds.length > 0 ? this.worlds[0].id : '',
         type: '',
+        query: '',
         page: 1,
         page_size: 20
       };
@@ -431,8 +523,8 @@ export default {
 
       // 自定义排序函数
       return sortedWorlds.sort((a, b) => {
-        const nameA = a.name || '';
-        const nameB = b.name || '';
+        const nameA = String(a?.name || '');
+        const nameB = String(b?.name || '');
 
         // 检查是否以Forest开头
         const isAForest = nameA.startsWith('Forest');
@@ -726,8 +818,10 @@ export default {
       }
 
       // 设置清空日志表单的值
-      this.cleanupForm.archive_name = this.queryParams.archive;
-      this.cleanupForm.world_name = this.queryParams.world;
+      this.cleanupForm.room_id = this.queryParams.archive;
+      this.cleanupForm.world_id = this.queryParams.world;
+      this.cleanupForm.archive_name = this.selectedArchive?.name || this.queryParams.archive;
+      this.cleanupForm.world_name = this.selectedWorld?.name || this.queryParams.world;
 
       // 显示对话框
       this.cleanupDialogVisible = true;
@@ -785,6 +879,13 @@ export default {
   line-height: 32px;
 }
 
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .page-heading p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
@@ -807,6 +908,13 @@ export default {
 
 .result-card {
   min-width: 0;
+}
+
+.count-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 20px 16px;
 }
 
 .loading-state {
@@ -868,6 +976,11 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .filter-grid {
     grid-template-columns: 1fr;
   }

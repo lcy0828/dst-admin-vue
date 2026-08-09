@@ -4,6 +4,7 @@ import {
   roomsV2API,
   structuredLogsV2API
 } from './v2'
+import { buildStructuredLogFilter, normalizeStructuredLogList } from '../lib/logQuerySupport.mjs'
 
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled'])
 const success = (data, msg = '操作成功') => ({ status: 200, data, msg })
@@ -119,37 +120,21 @@ export const realLogApi = {
       }
     }))
     return success(archiveCatalog.map(room => ({
+      room_id: room.id,
       archive_name: room.name,
-      worlds: room.worlds.map(world => world.name)
+      worlds: room.worlds.map(world => ({
+        world_id: world.id,
+        world_name: world.name,
+        directory_name: world.directory_name
+      }))
     })), '日志房间列表已刷新')
   },
 
   async getLogsData(params) {
     const room = resolveArchive(params)
     const world = params.world || params.world_id ? resolveWorld(room, params) : null
-    const response = await structuredLogsV2API.list(room.id, {
-      worldId: world?.id,
-      type: params.type || undefined,
-      limit: params.page_size || 20,
-      offset: (Math.max(1, params.page || 1) - 1) * (params.page_size || 20)
-    })
-    return success({
-      logs: (response.items || []).map(item => ({
-        id: item.id,
-        room_id: item.roomId,
-        world_id: item.worldId,
-        world_name: item.worldName,
-        log_type: item.type,
-        content: item.content,
-        raw_content: item.rawContent,
-        timestamp: item.occurredAt || item.observedAt,
-        rule_id: item.ruleId,
-        rule_name: item.ruleName
-      })),
-      total: response.total || 0,
-      counts: response.counts || {},
-      last_refreshed_at: response.lastRefreshedAt || null
-    }, '日志查询完成')
+    const response = await structuredLogsV2API.list(room.id, buildStructuredLogFilter(params, world?.id))
+    return success(normalizeStructuredLogList(response), '日志查询完成')
   },
 
   async getRoomOptions() {
@@ -164,9 +149,10 @@ export const realLogApi = {
     return success([...new Set((response.items || []).map(item => item.logType))])
   },
 
-  async refresh(roomId) {
-    if (!roomId) throw new Error('请先选择存档')
-    const job = await structuredLogsV2API.refresh(roomId)
+  async refresh(roomReference) {
+    if (!roomReference) throw new Error('请先选择存档')
+    const room = resolveArchive(roomReference)
+    const job = await structuredLogsV2API.refresh(room.id)
     return success(await waitForJob(job), '日志解析刷新完成')
   },
 
