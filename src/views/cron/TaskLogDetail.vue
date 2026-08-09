@@ -1,25 +1,27 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">日志详情</h1><p class="mt-1 text-sm text-muted-foreground">查看任务运行参数、输出及执行信息。</p></div>
-      <div class="flex flex-wrap gap-2"><UiButton size="sm" :disabled="loading" @click="fetchLogDetail"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回</UiButton></div>
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ $t('cronLogs.detailPage.title') }}</h1><p class="mt-1 text-sm text-muted-foreground">{{ $t('cronLogs.detailPage.subtitle') }}</p></div>
+      <div class="flex flex-wrap gap-2"><UiButton size="sm" :disabled="loading" @click="fetchLogDetail"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('cronLogs.common.actions.refresh') }}</UiButton><UiButton size="sm" variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />{{ $t('cronLogs.common.actions.back') }}</UiButton></div>
     </header>
     <Card>
-      <CardHeader><CardTitle>执行详情</CardTitle><CardDescription>任务参数、时间、输出和错误信息。</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{{ $t('cronLogs.detailPage.cardTitle') }}</CardTitle><CardDescription>{{ $t('cronLogs.detailPage.cardDescription') }}</CardDescription></CardHeader>
       <CardContent>
         <div v-if="loading" class="flex flex-col gap-4">
           <Skeleton class="h-10 w-1/3" />
           <Skeleton class="h-72 w-full" />
         </div>
 
+        <Alert v-else-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('cronLogs.detailPage.feedback.loadFailed') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
+
         <div v-else-if="logData" class="flex flex-col gap-6">
           <section>
-            <h3 class="section-title">基本信息</h3>
+            <h3 class="section-title">{{ $t('cronLogs.detailPage.sections.basic') }}</h3>
             <dl class="detail-grid">
-              <div class="detail-item"><dt>日志 ID</dt><dd>{{ logData.id }}</dd></div>
-              <div class="detail-item"><dt>任务 ID</dt><dd>{{ logData.task_id }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.logId') }}</dt><dd>{{ logData.id }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.taskId') }}</dt><dd>{{ logData.task_id }}</dd></div>
               <div class="detail-item">
-                <dt>任务名称</dt>
+                <dt>{{ $t('cronLogs.detailPage.fields.task') }}</dt>
                 <dd>
                 <router-link
                   :to="`/cron/edit/${logData.task_id}`"
@@ -27,45 +29,45 @@
                   v-if="logData.task_id">
                   {{ logData.task_name }}
                 </router-link>
-                <span v-else>{{ logData.task_name || '未知任务' }}</span>
+                <span v-else>{{ logData.task_name || $t('cronLogs.common.values.unknownTask') }}</span>
                 </dd>
               </div>
-              <div class="detail-item"><dt>任务类型</dt><dd>{{ getTaskTypeText(logData.task_type) }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.type') }}</dt><dd>{{ getTaskTypeText(logData.task_type) }}</dd></div>
               <div class="detail-item">
-                <dt>执行状态</dt>
+                <dt>{{ $t('cronLogs.detailPage.fields.status') }}</dt>
                 <dd><Badge :variant="getRunStatusVariant(logData.status)">
                   {{ getRunStatusText(logData.status) }}
                 </Badge></dd>
               </div>
-              <div class="detail-item"><dt>触发方式</dt><dd><Badge variant="secondary">{{ getTriggerTypeText(logData.trigger_type) }}</Badge></dd></div>
-              <div class="detail-item"><dt>开始时间</dt><dd>{{ logData.start_time || logData.created_at }}</dd></div>
-              <div class="detail-item"><dt>结束时间</dt><dd>{{ logData.end_time || logData.updated_at }}</dd></div>
-              <div class="detail-item"><dt>执行耗时</dt><dd>{{ formatDuration(logData.duration) }}</dd></div>
-              <div class="detail-item"><dt>执行者</dt><dd>{{ logData.executor || '系统' }}</dd></div>
-              <div class="detail-item"><dt>重试次数</dt><dd>{{ logData.retry_count || 0 }}</dd></div>
-              <div class="detail-item"><dt>IP 地址</dt><dd>{{ logData.ip || '-' }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.trigger') }}</dt><dd><Badge variant="secondary">{{ getTriggerTypeText(logData.trigger_type) }}</Badge></dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.startedAt') }}</dt><dd>{{ formatDate(logData.start_time || logData.created_at) }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.endedAt') }}</dt><dd>{{ formatDate(logData.end_time || logData.updated_at) }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.duration') }}</dt><dd>{{ formatDuration(logData.duration) }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.executor') }}</dt><dd>{{ executorLabel(logData.executor) }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.retries') }}</dt><dd>{{ logData.retry_count || 0 }}</dd></div>
+              <div class="detail-item"><dt>{{ $t('cronLogs.detailPage.fields.ip') }}</dt><dd>{{ logData.ip || $t('cronLogs.common.values.notAvailable') }}</dd></div>
             </dl>
           </section>
 
           <section>
-            <h3 class="section-title">执行参数</h3>
+            <h3 class="section-title">{{ $t('cronLogs.detailPage.sections.params') }}</h3>
             <pre v-if="logData.params" class="code-block">{{ formatParams(logData.params) }}</pre>
-            <Empty v-else><EmptyHeader><EmptyTitle>无参数</EmptyTitle></EmptyHeader></Empty>
+            <Empty v-else><EmptyHeader><EmptyTitle>{{ $t('cronLogs.detailPage.emptyParams') }}</EmptyTitle></EmptyHeader></Empty>
           </section>
 
           <section>
-            <h3 class="section-title">执行输出</h3>
+            <h3 class="section-title">{{ $t('cronLogs.detailPage.sections.output') }}</h3>
             <pre v-if="logData.output" class="code-block">{{ logData.output }}</pre>
-            <Empty v-else><EmptyHeader><EmptyTitle>无输出</EmptyTitle></EmptyHeader></Empty>
+            <Empty v-else><EmptyHeader><EmptyTitle>{{ $t('cronLogs.detailPage.emptyOutput') }}</EmptyTitle></EmptyHeader></Empty>
           </section>
 
-          <Alert v-if="logData.error" variant="destructive"><CircleAlert /><AlertTitle>错误信息</AlertTitle><AlertDescription><pre class="code-block error">{{ logData.error }}</pre></AlertDescription></Alert>
+          <Alert v-if="logData.error" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('cronLogs.detailPage.error') }}</AlertTitle><AlertDescription><pre class="code-block error">{{ logData.error }}</pre></AlertDescription></Alert>
         </div>
 
         <Empty v-else>
           <EmptyHeader>
-            <EmptyTitle>未找到日志详情</EmptyTitle>
-            <EmptyDescription>日志可能已被清理或链接无效。</EmptyDescription>
+            <EmptyTitle>{{ $t('cronLogs.detailPage.missing') }}</EmptyTitle>
+            <EmptyDescription>{{ $t('cronLogs.detailPage.missingDescription') }}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       </CardContent>
@@ -84,6 +86,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  createCronLogFailure,
+  cronExecutorLabel,
+  cronRunStatusLabel,
+  cronRunStatusVariant,
+  cronTaskTypeLabel,
+  cronTriggerLabel,
+  formatCronLogDate,
+  formatCronLogDuration,
+  formatCronLogFailure
+} from '@/i18n/cronLogMessages';
 
 export default {
   name: 'TaskLogDetail',
@@ -96,13 +109,19 @@ export default {
     return {
       loading: false,
       logId: null,
-      logData: null
+      logData: null,
+      loadFailure: null
     };
+  },
+  computed: {
+    loadError() {
+      return formatCronLogFailure(this.loadFailure, this.$t);
+    }
   },
   created() {
     this.logId = this.$route.params.id;
     if (!this.logId) {
-      toast.error('缺少日志 ID 参数');
+      toast.error(this.$t('cronLogs.detailPage.feedback.missingId'));
       this.goBack();
       return;
     }
@@ -112,6 +131,7 @@ export default {
   methods: {
     fetchLogDetail() {
       this.loading = true;
+      this.loadFailure = null;
       cronTaskApi.getLogDetail(this.logId)
         .then(response => {
           console.log('日志详情响应:', response);
@@ -150,12 +170,14 @@ export default {
             }
 
             console.error('响应格式不符合预期:', response);
-            toast.error('获取日志详情失败：响应格式不符合预期');
+            this.loadFailure = createCronLogFailure('cronLogs.detailPage.feedback.invalidResponse');
+            toast.error(this.loadError);
           }
         })
         .catch(error => {
           console.error('获取日志详情失败:', error);
-          toast.error('获取日志详情失败');
+          this.loadFailure = createCronLogFailure('cronLogs.detailPage.feedback.loadFailed', error);
+          toast.error(this.loadError);
         })
         .finally(() => {
           this.loading = false;
@@ -171,25 +193,22 @@ export default {
       }
     },
     getTaskTypeText(type) {
-      const typeMap = {
-        'function': '受控函数',
-        'tmux_command': '内建命令'
-      };
-      return typeMap[type] || type || '未知类型';
+      return cronTaskTypeLabel(type, this.$t);
     },
     getRunStatusText(status) {
-      const labels = { queued: '等待执行', running: '执行中', success: '成功', failed: '失败', canceled: '已取消', skipped: '已跳过' };
-      return labels[status] || '未知';
+      return cronRunStatusLabel(status, this.$t);
     },
     getRunStatusVariant(status) {
-      if (status === 'success') return 'default';
-      if (['failed', 'canceled', 'skipped'].includes(status)) return 'destructive';
-      return 'secondary';
+      return cronRunStatusVariant(status);
     },
     formatDuration(duration) {
-      if (duration == null) return '-';
-      if (duration < 1000) return `${duration} 毫秒`;
-      return `${(duration / 1000).toFixed(2)} 秒`;
+      return formatCronLogDuration(duration, this.$i18n.locale, this.$t);
+    },
+    formatDate(value) {
+      return formatCronLogDate(value, this.$i18n.locale);
+    },
+    executorLabel(value) {
+      return cronExecutorLabel(value, this.$t);
     },
     formatParams(params) {
       if (!params) return '';
@@ -208,24 +227,8 @@ export default {
       }
     },
 
-    // 根据trigger_type获取触发方式的文本描述
     getTriggerTypeText(triggerType) {
-      // 根据实际情况调整映射关系
-      const triggerTypeMap = {
-        0: '定时触发', // 0 代表定时触发
-        1: '手动触发', // 1 代表手动触发
-        2: '事件触发', // 2 代表事件触发
-        3: '依赖触发', // 3 代表依赖触发
-        4: 'API触发'    // 4 代表API触发
-      };
-
-      // 兼容旧版的is_manual字段
-      if (triggerType === undefined && this.logData) {
-        // 注意：is_manual为1时表示手动执行，对应trigger_type为1
-        return this.logData.is_manual === 1 ? '手动触发' : '定时触发';
-      }
-
-      return triggerTypeMap[triggerType] || '未知触发';
+      return cronTriggerLabel(triggerType, this.$t, this.logData?.is_manual === 1);
     }
   }
 };

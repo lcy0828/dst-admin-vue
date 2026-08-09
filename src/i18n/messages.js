@@ -3,8 +3,10 @@ import { announcementMessages } from './announcementMessages.js'
 import { backupMessages } from './backupMessages.js'
 import { commandMessages } from './commandMessages.js'
 import { corePageMessages } from './corePages.js'
+import { cronLogMessages } from './cronLogMessages.js'
 import { logToolsMessages } from './logToolsMessages.js'
 import { modMessages } from './modMessages.js'
+import { playerMessages } from './playerMessages.js'
 import { serverMessages } from './serverMessages.js'
 import { systemSettingsMessages } from './systemSettingsMessages.js'
 import { roomsMessages } from './roomsMessages.js'
@@ -20,8 +22,10 @@ export const messages = {
     ...backupMessages['zh-CN'],
     ...commandMessages['zh-CN'],
     ...corePageMessages['zh-CN'],
+    ...cronLogMessages['zh-CN'],
     ...logToolsMessages['zh-CN'],
     ...modMessages['zh-CN'],
+    ...playerMessages['zh-CN'],
     ...serverMessages['zh-CN'],
     ...systemSettingsMessages['zh-CN'],
     ...roomsMessages['zh-CN'],
@@ -491,8 +495,10 @@ export const messages = {
     ...backupMessages['en-US'],
     ...commandMessages['en-US'],
     ...corePageMessages['en-US'],
+    ...cronLogMessages['en-US'],
     ...logToolsMessages['en-US'],
     ...modMessages['en-US'],
+    ...playerMessages['en-US'],
     ...serverMessages['en-US'],
     ...systemSettingsMessages['en-US'],
     ...roomsMessages['en-US'],

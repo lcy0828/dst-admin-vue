@@ -670,7 +670,7 @@ export const realCronTaskApi = {
     const filename = `${String(data.filename || 'task_config').replace(/[^A-Za-z0-9._-]/g, '_')}.json`
     const content = JSON.stringify(document, null, 2)
     const blob = new Blob([content], { type: 'application/json' })
-    exportHistory.unshift({ filename, description: data.description || '', size: blob.size, created_at: new Date().toLocaleString(), blob })
+    exportHistory.unshift({ filename, description: data.description || '', size: blob.size, created_at: new Date().toISOString(), blob })
     return nested({ filename }, '真实任务配置已生成')
   },
 
