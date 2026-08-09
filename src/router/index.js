@@ -328,6 +328,12 @@ export const constantRoutes = [
         component: () => import('@/views/worlds/WorldState.vue'),
         name: 'WorldState',
         meta: { title: '世界状态', icon: 'data-analysis' }
+      },
+      {
+        path: 'maps',
+        component: () => import('@/views/worlds/WorldMaps.vue'),
+        name: 'WorldMaps',
+        meta: { title: '地图与 Session', icon: 'map' }
       }
     ]
   },

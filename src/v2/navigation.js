@@ -48,7 +48,8 @@ export const V2_NAVIGATION = [
         children: [
           { label: '世界列表', to: '/worlds/list' },
           { label: '世界设置', to: '/worlds/settings' },
-          { label: '世界状态', to: '/worlds/state' }
+          { label: '世界状态', to: '/worlds/state' },
+          { label: '地图与 Session', to: '/worlds/maps' }
         ]
       }
     ]

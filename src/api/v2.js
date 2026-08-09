@@ -17,6 +17,27 @@ export class APIError extends Error {
   }
 }
 
+async function getBinary(path, accept) {
+  const response = await fetch(`${baseURL}${path}`, {
+    credentials: 'include',
+    headers: {
+      Accept: accept,
+      'Cache-Control': 'no-store',
+      Pragma: 'no-cache',
+      'X-DST-Runtime-Target': getActiveRuntimeTarget().id
+    }
+  })
+  if (!response.ok) {
+    const envelope = await response.json().catch(() => null)
+    throw new APIError(
+      response.status,
+      envelope?.error || { code: 'BINARY_REQUEST_FAILED', message: `资源读取失败（HTTP ${response.status}）` },
+      envelope?.meta?.requestId || response.headers.get('X-Request-Id') || ''
+    )
+  }
+  return response.blob()
+}
+
 const client = axios.create({
   baseURL,
   timeout: apiConfig.TIMEOUT,
@@ -156,6 +177,19 @@ export const structuredLogsV2API = {
   list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/structured-logs`, { params }),
   refresh: roomId => client.post(`/rooms/${encode(roomId)}/structured-logs/actions/refresh`),
   clear: (roomId, worldId) => client.post(`/rooms/${encode(roomId)}/structured-logs/actions/clear`, { worldId })
+}
+
+export const worldMapsV2API = {
+  list: roomId => client.get(`/rooms/${encode(roomId)}/maps`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  sessions: (roomId, worldId) => client.get(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/sessions`,
+    { headers: { 'Cache-Control': 'no-store' } }
+  ),
+  generate: (roomId, input) => client.post(`/rooms/${encode(roomId)}/maps/actions/generate`, input),
+  imageBlob: (mapId, layer) => getBinary(`/maps/${encode(mapId)}/images/${encode(layer)}`, 'image/png'),
+  sessionBlob: sessionId => getBinary(`/sessions/${encode(sessionId)}/download`, 'application/octet-stream')
 }
 
 export const worldLogsV2API = {
