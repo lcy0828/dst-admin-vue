@@ -33,9 +33,6 @@
           <UiSelect v-model="typeFilter"><SelectTrigger><SelectValue placeholder="按类型筛选" /></SelectTrigger><SelectContent><SelectGroup>
             <SelectItem value="all">全部类型</SelectItem><SelectItem value="forest">森林服务器</SelectItem><SelectItem value="cave">洞穴服务器</SelectItem>
           </SelectGroup></SelectContent></UiSelect>
-          <UiSelect v-model="statusFilter"><SelectTrigger><SelectValue placeholder="按状态筛选" /></SelectTrigger><SelectContent><SelectGroup>
-            <SelectItem value="all">全部状态</SelectItem><SelectItem value="online">在线</SelectItem><SelectItem value="offline">离线</SelectItem><SelectItem value="restarting">重启中</SelectItem>
-          </SelectGroup></SelectContent></UiSelect>
         </div>
       </CardContent>
     </Card>
@@ -58,14 +55,14 @@
         <div v-else-if="filteredServerList.length" class="table-scroll">
         <ShadcnTable>
           <TableHeader><TableRow>
-            <TableHead>服务器名称</TableHead><TableHead>玩家</TableHead><TableHead>天数</TableHead><TableHead>季节</TableHead>
-            <TableHead>服务器模式</TableHead><TableHead>运行时间</TableHead><TableHead>部署方式</TableHead><TableHead>操作</TableHead>
+            <TableHead>服务器名称</TableHead><TableHead>天数</TableHead><TableHead>季节</TableHead>
+            <TableHead>运行目标</TableHead><TableHead>操作</TableHead>
           </TableRow></TableHeader>
           <TableBody><TableRow v-for="server in filteredServerList" :key="server.session_name">
             <TableCell>
             <div class="server-name-container">
               <Badge :variant="server.status === 'running' ? 'default' : 'secondary'">
-                {{ server.status === 'running' ? '运行中' : '已停止' }}
+                {{ serverStatusLabel(server.status) }}
               </Badge>
               <Badge variant="outline">{{ getWorldTypeName(server.world_type, server.world_name) }}</Badge>
               <div>
@@ -74,16 +71,15 @@
               </div>
             </div>
             </TableCell>
-            <TableCell>{{ server.players ?? '-' }}</TableCell><TableCell>{{ server.day ?? '-' }}</TableCell>
+            <TableCell>{{ server.day ?? '-' }}</TableCell>
             <TableCell><Badge v-if="server.season" variant="secondary">{{ server.season }}</Badge><span v-else>-</span></TableCell>
-            <TableCell><Badge v-if="server.server_mode" variant="outline">{{ getServerModeText(server.server_mode) }}</Badge><span v-else>-</span></TableCell>
-            <TableCell>{{ formatRuntime(server.start_time) }}</TableCell><TableCell><Badge variant="secondary">{{ runtimeTargetLabel }}</Badge></TableCell>
+            <TableCell><Badge variant="secondary">{{ runtimeTargetLabel }}</Badge></TableCell>
             <TableCell><div class="operation-buttons">
               <UiButton
                 size="xs"
                 :variant="server.status === 'running' ? 'destructive' : 'default'"
-                :disabled="server.control_available === false || serverActionId === serverKey(server)"
-                :title="server.control_available === false ? '当前运行目标不支持控制此分片' : ''"
+                :disabled="!canControlServer(server) || serverActionId === serverKey(server)"
+                :title="!canControlServer(server) ? (server.status_message || '当前分片状态不可控制') : ''"
                 @click="handleServerAction(server)"
               >
                 <Spinner v-if="serverActionId === serverKey(server)" data-icon="inline-start" />
@@ -159,7 +155,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirmAction } from '@/lib/feedback';
-import { formatTimeDiff } from '@/utils/dateUtils';
 import { getActiveRuntimeTarget, RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
 
 export default {
@@ -180,7 +175,6 @@ export default {
       activeTab: 'all',
       roomFilter: '',
       typeFilter: '',
-      statusFilter: '',
       serverList: [],
       roomList: [],
       loadError: '',
@@ -211,15 +205,6 @@ export default {
           if (server.world_type) return server.world_type === this.typeFilter;
           return (server.world_name || '').toLowerCase().includes(this.typeFilter);
         });
-      }
-
-      // 根据状态筛选
-      if (this.statusFilter && this.statusFilter !== 'all') {
-        const statusMap = {
-          'online': 'running',
-          'offline': 'stopped'
-        };
-        result = result.filter(server => server.status === statusMap[this.statusFilter]);
       }
 
       return result;
@@ -281,15 +266,6 @@ export default {
     navigateToRoomCreation() {
       this.$router.push('/rooms/settings');
     },
-    getServerModeText(mode) {
-      switch(mode) {
-        case '32': return '32位';
-        case '64': return '64位';
-        case 'luajit': return 'LuaJit';
-        default: return mode;
-      }
-    },
-
     getWorldTypeName(worldType, worldName = '') {
       if (worldType === 'forest') return '森林';
       if (worldType === 'cave') return '洞穴';
@@ -310,7 +286,7 @@ export default {
         .map(world => world.id);
     },
     canStartWorld(world) {
-      return world.status !== 'running' && world.controlAvailable !== false;
+      return world.status === 'stopped' && world.controlAvailable !== false;
     },
     toggleWorld(worldId, checked) {
       if (checked) {
@@ -348,6 +324,10 @@ export default {
       }
     },
     async handleServerAction(server) {
+      if (!this.canControlServer(server)) {
+        toast.warning(server.status_message || '当前分片状态不可控制');
+        return;
+      }
       const isRunning = server.status === 'running';
       const action = isRunning ? '停止' : '启动';
       try {
@@ -375,11 +355,11 @@ export default {
     serverKey(server) {
       return `${server.room_id}:${server.world_id}`;
     },
-    formatRuntime(startTime) {
-      if (!startTime) return '-';
-      const startedAt = new Date(startTime).getTime();
-      if (!Number.isFinite(startedAt)) return '-';
-      return formatTimeDiff(Date.now() - startedAt);
+    canControlServer(server) {
+      return server.control_available !== false && ['running', 'stopped'].includes(server.status);
+    },
+    serverStatusLabel(status) {
+      return { running: '运行中', stopped: '已停止' }[status] || '状态未知';
     },
     handleConfigure(server) {
       this.$router.push({

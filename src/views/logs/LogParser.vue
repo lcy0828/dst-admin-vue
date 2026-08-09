@@ -1,8 +1,8 @@
 <template>
   <div class="app-container">
     <header class="page-heading">
-      <div><h1>活跃日志解析器</h1><p>查看当前房间日志流和解析器状态。</p></div>
-      <UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers">
+      <div><h1>运行中世界日志</h1><p>查看当前运行中的世界，并进入对应的实时日志。</p></div>
+      <UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers(true)">
         <Spinner v-if="loading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
         刷新
@@ -11,20 +11,20 @@
 
     <Alert v-if="loadError" variant="destructive">
       <FileWarning />
-      <AlertTitle>解析器状态加载失败</AlertTitle>
+      <AlertTitle>世界状态加载失败</AlertTitle>
       <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers">重试</UiButton></AlertAction>
+      <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="getActiveParsers(true)">重试</UiButton></AlertAction>
     </Alert>
 
     <div v-if="loading && activeParsers.length === 0" class="loading-state">
       <Spinner />
-      <span>正在读取解析器状态...</span>
+      <span>正在读取世界状态...</span>
     </div>
     <Empty v-else-if="!loadError && activeParsers.length === 0">
       <EmptyHeader>
         <EmptyMedia variant="icon"><FileWarning /></EmptyMedia>
-        <EmptyTitle>暂无运行中的日志解析器</EmptyTitle>
-        <EmptyDescription>启动房间后，可在这里查看对应的日志解析器。</EmptyDescription>
+        <EmptyTitle>暂无运行中的世界</EmptyTitle>
+        <EmptyDescription>启动房间世界后，可在这里查看对应的实时日志。</EmptyDescription>
       </EmptyHeader>
     </Empty>
     <div v-else-if="!loadError" class="parsers-container">
@@ -47,9 +47,7 @@
             </CardHeader>
             <CardContent>
               <dl class="parser-info">
-                <div class="info-item"><dt><Clock />最近活动</dt><dd>{{ formatTime(parser.last_activity) }}</dd></div>
-                <div class="info-item"><dt>客户端数量</dt><dd>{{ parser.client_count == null ? '未提供' : parser.client_count }}</dd></div>
-                <div class="info-item path-item"><dt><FileText />日志文件</dt><dd><code class="path-value">{{ parser.log_file || '后端未提供' }}</code></dd></div>
+                <div class="info-item path-item"><dt>运行控制</dt><dd>{{ parser.control_available ? '可用' : (parser.status_message || '当前运行环境不可用') }}</dd></div>
               </dl>
             </CardContent>
             <CardFooter class="parser-actions">
@@ -60,12 +58,12 @@
               <UiButton
                 variant="outline"
                 size="sm"
-                :disabled="restartingParserId === parser.id"
-                @click="restartParser(parser)"
+                :disabled="parser.control_available === false || restartingParserId === parser.id"
+                @click="restartWorld(parser)"
               >
                 <Spinner v-if="restartingParserId === parser.id" data-icon="inline-start" />
                 <RotateCw v-else data-icon="inline-start" />
-                重新启动
+                重启世界
               </UiButton>
             </CardFooter>
           </Card>
@@ -74,7 +72,7 @@
 </template>
 
 <script>
-import { Clock, Eye, FileText, FileWarning, Moon, RefreshCw, RotateCw, Sun } from '@lucide/vue';
+import { Eye, FileWarning, Moon, RefreshCw, RotateCw, Sun } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { logApi } from '@/api/index';
 import { jobsV2API, roomsV2API } from '@/api/v2';
@@ -84,6 +82,8 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
+import { confirmAction } from '@/lib/feedback';
+import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
 
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled']);
 
@@ -91,7 +91,7 @@ export default {
   name: 'LogParser',
   components: {
     Alert, AlertAction, AlertDescription, AlertTitle, Badge, UiButton, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
-    Clock, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Eye, FileText,
+    Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Eye,
     FileWarning, Moon, RefreshCw, RotateCw, Spinner, Sun
   },
   data() {
@@ -99,37 +99,46 @@ export default {
       activeParsers: [],
       loading: false,
       loadError: '',
-      restartingParserId: ''
+      restartingParserId: '',
+      refreshSequence: 0
     };
   },
   created() {
     this.getActiveParsers();
   },
+  mounted() {
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+  },
+  beforeUnmount() {
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+  },
   methods: {
-    async getActiveParsers() {
+    handleRuntimeTargetChange() {
+      this.activeParsers = [];
+      this.getActiveParsers();
+    },
+    async getActiveParsers(notify = false) {
+      const requestSequence = ++this.refreshSequence;
       this.loading = true;
       this.loadError = '';
       try {
         const response = await logApi.getActiveLogParsers();
-        if (response && response.data) {
-          if (Array.isArray(response.data)) this.activeParsers = response.data;
-          else if (response.data.status === 200 && Array.isArray(response.data.data)) this.activeParsers = response.data.data;
-          else {
-            this.activeParsers = [];
-            this.loadError = response.data.message || '后端没有返回有效的解析器列表';
-          }
-          if (response.data.msg) toast.success(response.data.msg);
+        if (requestSequence !== this.refreshSequence) return;
+        if (response?.status === 200 && Array.isArray(response.data)) {
+          this.activeParsers = response.data;
+          if (notify) toast.success(response.msg || '运行中世界已刷新');
         } else {
-          this.loadError = '后端没有返回解析器数据';
-          toast.error(`获取活跃解析器列表失败：${this.loadError}`);
+          this.loadError = response?.msg || '后端没有返回有效的世界列表';
+          toast.error(`获取运行中世界失败：${this.loadError}`);
           this.activeParsers = [];
         }
       } catch (error) {
+        if (requestSequence !== this.refreshSequence) return;
         this.loadError = error.message || '未知错误';
-        toast.error(`获取活跃解析器列表失败：${this.loadError}`);
+        toast.error(`获取运行中世界失败：${this.loadError}`);
         this.activeParsers = [];
       } finally {
-        this.loading = false;
+        if (requestSequence === this.refreshSequence) this.loading = false;
       }
     },
     viewLogs(parser) {
@@ -152,7 +161,19 @@ export default {
       }
       return current;
     },
-    async restartParser(parser) {
+    async restartWorld(parser) {
+      if (parser.control_available === false) return;
+      try {
+        await confirmAction(
+          `确定要重启“${parser.archive_name} / ${parser.world_name}”吗？在线玩家会暂时断开连接。`,
+          '重启世界',
+          { confirmButtonText: '确认重启', cancelButtonText: '取消', type: 'warning' }
+        );
+      } catch (error) {
+        if (error === 'cancel' || error === 'close') return;
+        toast.error(error.message || '无法确认重启操作');
+        return;
+      }
       this.restartingParserId = parser.id;
       try {
         const job = await roomsV2API.action(parser.room_id, 'restart', [parser.world_id]);
@@ -164,15 +185,6 @@ export default {
       } finally {
         this.restartingParserId = '';
       }
-    },
-    formatTime(timestamp) {
-      if (!timestamp) return '后端未提供';
-      const date = new Date(timestamp);
-      if (Number.isNaN(date.getTime())) return '时间格式无效';
-      return date.toLocaleString('zh-CN', {
-        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit',
-        minute: '2-digit', second: '2-digit', hour12: false
-      });
     },
     getStatusVariant(status) {
       if (status === 'running') return 'default';

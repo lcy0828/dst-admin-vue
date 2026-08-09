@@ -62,8 +62,8 @@
         <div v-else-if="logs.length > 0">
           <div class="log-info-row">已加载 {{ logs.length }} 行日志</div>
           <pre><code v-for="(line, index) in filteredLogs" :key="index" 
-            :class="{ 'log-info': line.includes('[INFO]') || line.includes('event:log'), 
-                      'log-warning': line.includes('[WARNING]'), 
+            :class="{ 'log-info': line.includes('[INFO]'),
+                      'log-warning': line.includes('[WARNING]'),
                       'log-error': line.includes('[ERROR]') || line.includes('[FATAL]'),
                       'log-debug': line.includes('[DEBUG]') }">{{ line }}</code></pre>
         </div>
@@ -74,7 +74,7 @@
           <UiCheckbox id="log-auto-scroll" v-model="autoScroll" />
           <FieldLabel for="log-auto-scroll">自动滚动到最新日志</FieldLabel>
         </Field>
-        <UiButton size="sm" variant="ghost" @click="clearLogs">清空日志</UiButton>
+        <UiButton size="sm" variant="ghost" @click="clearLogs">清空当前显示</UiButton>
       </div>
     </div>
   </div>
@@ -83,7 +83,7 @@
 <script>
 import { CircleAlert, Download, Info, RefreshCw, Search, X } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { serverApi } from '@/api/index';
+import { roomsV2API, worldLogsV2API } from '@/api/v2';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
@@ -92,6 +92,7 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
+import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
 
 export default {
   name: 'LogViewer',
@@ -131,8 +132,10 @@ export default {
       selectedWorld: this.defaultWorld || (this.worlds.length > 0 ? this.worlds[0].name : ''),
       searchQuery: '',
       autoScroll: true,
-      refreshInterval: null,
-      eventSource: null
+      eventSource: null,
+      resolvedRoomId: '',
+      resolvedWorldId: '',
+      requestSequence: 0
     };
   },
   computed: {
@@ -146,6 +149,12 @@ export default {
     }
   },
   methods: {
+    handleRuntimeTargetChange() {
+      this.requestSequence += 1;
+      this.closeEventSource();
+      this.logs = [];
+      this.refreshLogs();
+    },
     formatWorldType(type) {
       const typeMap = {
         'forest': '主世界',
@@ -154,94 +163,110 @@ export default {
       };
       return typeMap[type] || type;
     },
-    refreshLogs() {
+    async resolveLogTarget() {
+      const roomResponse = await roomsV2API.list();
+      const room = (roomResponse.items || []).find(item =>
+        item.id === this.archiveName || item.name === this.archiveName || item.directoryName === this.archiveName
+      );
+      if (!room) throw new Error(`未找到房间：${this.archiveName}`);
+
+      const providedWorld = this.worlds.find(item =>
+        item.id === this.selectedWorld || item.name === this.selectedWorld
+      );
+      const worldReference = providedWorld?.id || this.selectedWorld;
+      const worldResponse = await roomsV2API.worlds(room.id);
+      const world = (worldResponse.items || []).find(item =>
+        item.id === worldReference || item.name === worldReference || item.directoryName === worldReference
+      );
+      if (!world) throw new Error(`未找到世界：${this.selectedWorld}`);
+
+      this.resolvedRoomId = room.id;
+      this.resolvedWorldId = world.id;
+      return { roomId: room.id, worldId: world.id };
+    },
+    async refreshLogs() {
       if (!this.archiveName || !this.selectedWorld) {
         toast.warning('未指定存档或世界');
         return;
       }
-      
+
+      const requestSequence = ++this.requestSequence;
       this.loading = true;
       this.streamError = '';
-      console.log('正在获取日志...', this.archiveName, this.selectedWorld);
-      
-      // 清空现有日志
       this.logs = [];
-      
-      // 关闭已存在的EventSource连接
+      this.resolvedRoomId = '';
+      this.resolvedWorldId = '';
       this.closeEventSource();
-      
-      // 创建新的EventSource连接
-      const url = serverApi.getServerLogStreamUrl(this.archiveName, this.selectedWorld);
-      console.log('EventSource URL:', url);
-      
+
       try {
-        const eventSource = new EventSource(url);
-        this.eventSource = eventSource;
-        
-        // 连接建立事件
-        eventSource.addEventListener('open', () => {
-          console.log('SSE连接已建立');
-          this.loading = false;
-          this.streamError = '';
-          this.logs.push('[系统] 已连接到日志流');
-        });
-        
-        // 日志事件
-        eventSource.addEventListener('log', (event) => {
-          if (event.data) {
-            console.log('收到日志事件:', event.data);
-            this.logs.push(event.data);
-            
-            // 如果启用了自动滚动，滚动到底部
-            if (this.autoScroll) {
-              this.$nextTick(() => {
-                this.scrollToBottom();
-              });
-            }
-          }
-        });
-        
-        // 消息事件 (默认事件)
-        eventSource.addEventListener('message', (event) => {
-          if (event.data) {
-            console.log('收到消息事件:', event.data);
-            this.logs.push(event.data);
-            
-            // 如果启用了自动滚动，滚动到底部
-            if (this.autoScroll) {
-              this.$nextTick(() => {
-                this.scrollToBottom();
-              });
-            }
-          }
-        });
-        
-        // 心跳事件
-        eventSource.addEventListener('heartbeat', (event) => {
-          console.log('收到心跳:', event.data);
-        });
-        
-        // 错误事件
-        eventSource.addEventListener('error', (event) => {
-          console.error('SSE连接错误:', event);
-          
-          if (this.eventSource) {
-            this.logs.push('[错误] 日志流连接断开');
-            this.streamError = '日志流连接已断开，请检查世界运行状态后重新连接。';
-            this.loading = false;
-            this.closeEventSource();
-          }
-        });
+        const target = await this.resolveLogTarget();
+        const snapshot = await worldLogsV2API.snapshot(target.roomId, target.worldId, { limit: 300 });
+        if (requestSequence !== this.requestSequence) return;
+        this.renderSnapshot(snapshot);
+        this.connectEventSource(target.roomId, target.worldId, requestSequence);
       } catch (error) {
-        console.error('创建EventSource失败:', error);
+        if (requestSequence !== this.requestSequence) return;
         this.streamError = error.message || '无法创建日志流连接';
-        toast.error('连接日志流失败: ' + error.message);
-        this.loading = false;
+        toast.error('读取日志失败：' + this.streamError);
+      } finally {
+        if (requestSequence === this.requestSequence) this.loading = false;
       }
+    },
+    connectEventSource(roomId, worldId, requestSequence) {
+      const eventSource = new EventSource(worldLogsV2API.eventURL(roomId, worldId, 300), {
+        withCredentials: true
+      });
+      this.eventSource = eventSource;
+
+      eventSource.addEventListener('connected', event => {
+        if (requestSequence !== this.requestSequence) return;
+        const payload = this.parseEvent(event);
+        this.streamError = '';
+        if (payload?.snapshot) this.renderSnapshot(payload.snapshot);
+      });
+      eventSource.addEventListener('line', event => {
+        if (requestSequence !== this.requestSequence) return;
+        const payload = this.parseEvent(event);
+        if (payload?.line?.text !== undefined) this.appendLogLine(payload.line.text);
+      });
+      eventSource.addEventListener('reset', event => {
+        if (requestSequence !== this.requestSequence) return;
+        const payload = this.parseEvent(event);
+        this.renderSnapshot(payload?.snapshot || { lines: [] });
+      });
+      eventSource.addEventListener('heartbeat', () => {
+        if (requestSequence === this.requestSequence) this.streamError = '';
+      });
+      eventSource.addEventListener('error', event => {
+        if (requestSequence !== this.requestSequence || this.eventSource !== eventSource) return;
+        const payload = this.parseEvent(event);
+        this.streamError = payload?.message || '日志流连接已断开，请检查世界运行状态后重新连接。';
+        this.closeEventSource();
+      });
+    },
+    parseEvent(event) {
+      if (!event?.data) return null;
+      try {
+        return JSON.parse(event.data);
+      } catch {
+        return { message: event.data };
+      }
+    },
+    renderSnapshot(snapshot) {
+      this.logs = (snapshot?.lines || []).map(line =>
+        typeof line === 'string' ? line : String(line?.text ?? '')
+      );
+      this.scrollAfterUpdate();
+    },
+    appendLogLine(line) {
+      this.logs.push(String(line ?? ''));
+      this.scrollAfterUpdate();
+    },
+    scrollAfterUpdate() {
+      if (this.autoScroll) this.$nextTick(() => this.scrollToBottom());
     },
     closeEventSource() {
       if (this.eventSource) {
-        console.log('关闭SSE连接');
         this.eventSource.close();
         this.eventSource = null;
       }
@@ -252,41 +277,31 @@ export default {
         logContent.scrollTop = logContent.scrollHeight;
       }
     },
-    downloadLogs() {
-      if (this.logs.length === 0) {
-        toast.warning('没有日志可下载');
-        return;
+    async downloadLogs() {
+      try {
+        if (!this.resolvedRoomId || !this.resolvedWorldId) await this.resolveLogTarget();
+        const link = document.createElement('a');
+        link.href = worldLogsV2API.downloadURL(this.resolvedRoomId, this.resolvedWorldId);
+        link.download = `${this.archiveName}_${this.selectedWorld}.log`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success('日志下载已开始');
+      } catch (error) {
+        toast.error('下载日志失败：' + (error.message || '未知错误'));
       }
-      
-      const logText = this.logs.join('\n');
-      const blob = new Blob([logText], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${this.archiveName}_${this.selectedWorld}_${new Date().toISOString().split('T')[0]}.log`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success('日志下载已开始');
     },
     clearLogs() {
       this.logs = [];
-    },
-    startAutoRefresh() {
-      // SSE连接会自动刷新，不需要额外的刷新逻辑
-    },
-    stopAutoRefresh() {
-      // 关闭EventSource连接
-      this.closeEventSource();
     }
   },
   mounted() {
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
     this.refreshLogs();
   },
   beforeUnmount() {
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    this.requestSequence += 1;
     this.closeEventSource();
   },
   watch: {
@@ -295,7 +310,7 @@ export default {
       this.refreshLogs();
     },
     defaultWorld(newVal) {
-      if (newVal && !this.selectedWorld) {
+      if (newVal && newVal !== this.selectedWorld) {
         this.selectedWorld = newVal;
         this.closeEventSource();
         this.refreshLogs();
@@ -303,13 +318,16 @@ export default {
     },
     worlds: {
       handler(newWorlds) {
-        if (newWorlds.length > 0 && !this.selectedWorld) {
-          this.selectedWorld = newWorlds[0].name;
+        const selectedStillExists = newWorlds.some(world =>
+          world.name === this.selectedWorld || world.id === this.selectedWorld
+        );
+        if (newWorlds.length > 0 && !selectedStillExists) {
+          const preferred = newWorlds.find(world => world.name === this.defaultWorld || world.id === this.defaultWorld);
+          this.selectedWorld = (preferred || newWorlds[0]).name;
           this.closeEventSource();
           this.refreshLogs();
         }
-      },
-      immediate: true
+      }
     }
   }
 };

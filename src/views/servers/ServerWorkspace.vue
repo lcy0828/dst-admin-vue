@@ -142,7 +142,7 @@
                     :variant="world.status === 'running' ? 'destructive' : 'secondary'"
                     :aria-label="world.status === 'running' ? '停止世界' : '启动世界'"
                     :title="world.status === 'running' ? '停止世界' : '启动世界'"
-                    :disabled="world.controlAvailable === false || Boolean(worldActionId)"
+                    :disabled="!canToggleWorld(world) || Boolean(worldActionId)"
                     @click="handleWorldAction(world, world.status === 'running' ? 'stop' : 'start')"
                   >
                     <Spinner v-if="worldActionId === world.id" />
@@ -243,7 +243,7 @@
                 <div class="console-footer">
                   <span>目标：{{ selectedConsoleServer?.name || '未选择' }}</span>
                   <UiButton
-                    :disabled="!consoleServer || !rawCommand.trim()"
+                    :disabled="commandExecuting || !consoleServer || !rawCommand.trim()"
                     @click="executeRawCommand"
                   >
                     <Spinner v-if="commandExecuting" data-icon="inline-start" />
@@ -372,6 +372,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { confirmAction, promptText } from '@/lib/feedback'
+import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
   ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
   FileText, Globe2, Moon, PackageOpen, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
@@ -490,6 +491,8 @@ export default {
       commandExecuting: false,
       commandResult: null,
       refreshTimer: null,
+      refreshSequence: 0,
+      contextSequence: 0,
       commonCommands: [
         { name: '保存世界', command: 'c_save()' },
         { name: '查看在线玩家', command: 'c_listallplayers()' },
@@ -529,15 +532,33 @@ export default {
     await this.refreshWorkspace()
     this.refreshTimer = window.setInterval(() => this.refreshWorkspace(true), 30000)
   },
+  mounted() {
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
+  },
   beforeUnmount() {
     if (this.refreshTimer) window.clearInterval(this.refreshTimer)
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
   },
   methods: {
+    handleRuntimeTargetChange() {
+      this.contextSequence += 1
+      this.selectedRoomId = ''
+      this.selectedWorldId = ''
+      this.rooms = []
+      this.playerStats = null
+      this.backups = []
+      this.consoleServers = []
+      this.consoleServer = ''
+      this.commandResult = null
+      this.contextLoading = false
+      this.refreshWorkspace()
+    },
     unwrapList(response) {
       if (Array.isArray(response)) return response
       return Array.isArray(response?.data) ? response.data : []
     },
     async refreshWorkspace(silent = false) {
+      const requestSequence = ++this.refreshSequence
       if (!silent) this.loading = true
       this.loadError = ''
       const previousRoomId = this.selectedRoomId
@@ -545,6 +566,7 @@ export default {
         roomApi.getRoomList(),
         systemApi.getDashboardStatus()
       ])
+      if (requestSequence !== this.refreshSequence) return
 
       if (roomsResult.status === 'rejected') {
         this.rooms = []
@@ -562,7 +584,7 @@ export default {
         if (silent && previousRoomId === this.selectedRoomId) await this.refreshPlayerStats()
         else await this.refreshRoomContext()
       }
-      if (!silent) this.loading = false
+      if (requestSequence === this.refreshSequence) this.loading = false
     },
     resolveSelection() {
       let room = this.rooms.find(item => item.id === this.selectedRoomId)
@@ -584,6 +606,7 @@ export default {
     },
     async refreshRoomContext() {
       if (!this.selectedRoom) return
+      const requestSequence = ++this.contextSequence
       const roomId = this.selectedRoomId
       const roomName = this.selectedRoom.name
       this.contextLoading = true
@@ -598,7 +621,7 @@ export default {
         commandApi.getServers()
       ])
 
-      if (this.selectedRoomId !== roomId) return
+      if (requestSequence !== this.contextSequence || this.selectedRoomId !== roomId) return
       this.playerStats = playersResult.status === 'fulfilled'
         ? playersResult.value?.data || null
         : null
@@ -624,13 +647,16 @@ export default {
     },
     async refreshPlayerStats() {
       if (!this.selectedRoom) return
+      const requestSequence = ++this.contextSequence
       const roomId = this.selectedRoomId
       this.contextErrors.players = ''
       try {
         const response = await playerApi.getPlayerStats(this.selectedRoom.name)
-        if (this.selectedRoomId === roomId) this.playerStats = response?.data || null
+        if (requestSequence === this.contextSequence && this.selectedRoomId === roomId) {
+          this.playerStats = response?.data || null
+        }
       } catch (error) {
-        if (this.selectedRoomId === roomId) {
+        if (requestSequence === this.contextSequence && this.selectedRoomId === roomId) {
           this.playerStats = null
           this.contextErrors.players = error.message || '玩家数据读取失败'
         }
@@ -659,6 +685,12 @@ export default {
       }).catch(() => {})
     },
     async handleWorldAction(world, action) {
+      if ((action === 'start' && world.status !== 'stopped') ||
+          (['stop', 'restart'].includes(action) && world.status !== 'running') ||
+          world.controlAvailable === false) {
+        toast.warning(world.statusMessage || '当前世界状态不可执行该操作')
+        return
+      }
       const label = { start: '启动', stop: '停止', restart: '重启' }[action]
       try {
         await confirmAction(`确定要${label}“${this.selectedRoom.name} / ${world.name}”吗？`, `${label}世界`, {
@@ -793,6 +825,9 @@ export default {
     },
     worldStatusLabel(status) {
       return { running: '运行中', stopped: '已停止', starting: '启动中', stopping: '停止中' }[status] || '未知'
+    },
+    canToggleWorld(world) {
+      return world.controlAvailable !== false && ['running', 'stopped'].includes(world.status)
     },
     seasonLabel(season) {
       return { autumn: '秋季', winter: '冬季', spring: '春季', summer: '夏季' }[season] || season || '--'

@@ -103,6 +103,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import AppPagination from '@/components/Pagination.vue'
 import RegexTester from '@/components/RegexTester.vue';
 import { confirmAction } from '@/lib/feedback'
+import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import { toast } from 'vue-sonner'
 
 export default {
@@ -198,6 +199,8 @@ export default {
       sourceLoading: false,
       worldsLoading: false,
       sourceError: '',
+      sourceRequestSequence: 0,
+      queryRequestSequence: 0,
 
       // 规则对话框相关
       ruleDialogVisible: false,
@@ -240,124 +243,54 @@ export default {
     }
   },
   mounted() {
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
     this.getArchives();
-    this.getLogTypes();
+  },
+  beforeUnmount() {
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
   },
   methods: {
+    handleRuntimeTargetChange() {
+      this.sourceRequestSequence += 1;
+      this.queryRequestSequence += 1;
+      this.archives = [];
+      this.worlds = [];
+      this.logData = [];
+      this.total = 0;
+      this.queryParams.archive = '';
+      this.queryParams.world = '';
+      this.getArchives();
+    },
     // 获取存档列表
     async getArchives() {
+      const requestSequence = ++this.sourceRequestSequence;
       this.sourceLoading = true;
       this.sourceError = '';
       try {
-        console.log('开始获取有日志的存档列表');
         const response = await logApi.getArchivesWithLogs();
-        console.log('获取到存档列表响应:', response);
-
-        // 处理新接口的响应格式
-        if (response && response.status === 200 && response.data && Array.isArray(response.data.data)) {
-          // 新接口格式
-          const archivesData = response.data.data;
-          // 将新格式转换为兼容现有代码的格式
-          this.archives = archivesData.map(item => ({
-            name: item.archive_name,
-            worlds: item.worlds.map(worldName => ({ name: worldName }))
-          }));
-
-          if (this.archives.length > 0) {
-            const requestedArchive = this.$route.query.archive;
-            this.queryParams.archive = this.archives.some(item => item.name === requestedArchive)
-              ? requestedArchive
-              : this.archives[0].name;
-            this.getWorlds(this.queryParams.archive);
-          }
-        } else if (response && response.data && Array.isArray(response.data)) {
-          // 直接返回数组的格式
-          const archivesData = response.data;
-          this.archives = archivesData.map(item => ({
-            name: item.archive_name,
-            worlds: item.worlds.map(worldName => ({ name: worldName }))
-          }));
-
-          if (this.archives.length > 0) {
-            this.queryParams.archive = this.archives[0].name;
-            this.getWorlds(this.queryParams.archive);
-          }
-        } else if (response && response.status === 200 && Array.isArray(response.data)) {
-          // 兼容旧接口格式
-          this.archives = response.data;
-          if (this.archives.length > 0) {
-            this.queryParams.archive = this.archives[0].name;
-            this.getWorlds(this.queryParams.archive);
-          }
-        } else if (response && response.data && response.data.status === 200 && Array.isArray(response.data.data)) {
-          // 兼容旧接口格式
-          this.archives = response.data.data;
-          if (this.archives.length > 0) {
-            this.queryParams.archive = this.archives[0].name;
-            this.getWorlds(this.queryParams.archive);
-          }
-        } else {
-          console.error('获取存档列表格式错误:', response);
-          toast.warning('获取存档列表格式错误，尝试使用旧接口');
-          // 尝试使用旧接口
-          const oldResponse = await logApi.getArchiveList();
-          if (oldResponse && oldResponse.status === 200 && Array.isArray(oldResponse.data)) {
-            this.archives = oldResponse.data;
-            if (this.archives.length > 0) {
-              this.queryParams.archive = this.archives[0].name;
-              this.getWorlds(this.queryParams.archive);
-            }
-          } else if (oldResponse && oldResponse.data && oldResponse.data.status === 200 && Array.isArray(oldResponse.data.data)) {
-            this.archives = oldResponse.data.data;
-            if (this.archives.length > 0) {
-              this.queryParams.archive = this.archives[0].name;
-              this.getWorlds(this.queryParams.archive);
-            }
-          } else {
-            this.sourceError = '存档列表响应格式异常';
-            toast.error(this.sourceError);
-          }
+        if (requestSequence !== this.sourceRequestSequence) return;
+        if (response?.status !== 200 || !Array.isArray(response.data)) {
+          throw new Error(response?.msg || '存档列表响应格式异常');
         }
+        this.archives = response.data.map(item => ({
+            name: item.archive_name,
+            worlds: (item.worlds || []).map(worldName => ({ name: worldName }))
+        }));
+        const requestedArchive = this.$route.query.archive;
+        this.queryParams.archive = this.archives.some(item => item.name === requestedArchive)
+          ? requestedArchive
+          : (this.archives[0]?.name || '');
+        await this.getWorlds(this.queryParams.archive);
       } catch (error) {
-        console.error('获取存档列表失败:', error);
-        // 显示详细错误信息
-        if (error.response) {
-          console.error('错误响应数据:', error.response.data);
-          console.error('错误状态码:', error.response.status);
-        } else if (error.request) {
-          console.error('无响应错误:', error.request);
-        } else {
-          console.error('请求配置错误:', error.message);
-        }
-        console.error('完整错误对象:', error);
-        // 尝试使用旧接口
-        try {
-          console.log('尝试使用旧接口获取存档列表');
-          const oldResponse = await logApi.getArchiveList();
-          if (oldResponse && oldResponse.status === 200 && Array.isArray(oldResponse.data)) {
-            this.archives = oldResponse.data;
-            if (this.archives.length > 0) {
-              this.queryParams.archive = this.archives[0].name;
-              this.getWorlds(this.queryParams.archive);
-            }
-          } else if (oldResponse && oldResponse.data && oldResponse.data.status === 200 && Array.isArray(oldResponse.data.data)) {
-            this.archives = oldResponse.data.data;
-            if (this.archives.length > 0) {
-              this.queryParams.archive = this.archives[0].name;
-              this.getWorlds(this.queryParams.archive);
-            }
-          } else {
-            this.sourceError = error?.response?.data?.message || error?.message || '获取存档列表失败';
-            toast.error(this.sourceError);
-          }
-        } catch (oldError) {
-          console.error('旧接口获取存档列表也失败:', oldError);
-          this.archives = [];
-          this.sourceError = oldError?.response?.data?.message || oldError?.message || error?.message || '获取存档列表失败';
-          toast.error(this.sourceError);
-        }
+        if (requestSequence !== this.sourceRequestSequence) return;
+        this.archives = [];
+        this.worlds = [];
+        this.queryParams.archive = '';
+        this.queryParams.world = '';
+        this.sourceError = error.message || '获取存档列表失败';
+        toast.error(this.sourceError);
       } finally {
-        this.sourceLoading = false;
+        if (requestSequence === this.sourceRequestSequence) this.sourceLoading = false;
       }
     },
 
@@ -371,103 +304,14 @@ export default {
 
       this.worldsLoading = true;
       this.sourceError = '';
-      this.worlds = [];
-      try {
-        console.log('开始获取世界列表，存档名:', archiveName);
-
-        // 直接从archives中查找当前选择的存档
-        const selectedArchive = this.archives.find(archive => archive.name === archiveName);
-        if (selectedArchive && selectedArchive.worlds && Array.isArray(selectedArchive.worlds)) {
-          this.worlds = this.sortWorlds(selectedArchive.worlds);
-          console.log('从选中存档中获取并排序世界列表:', this.worlds);
-
-          if (this.worlds.length > 0) {
-            const requestedWorld = this.$route.query.world;
-            this.queryParams.world = this.worlds.some(item => item.name === requestedWorld)
-              ? requestedWorld
-              : this.worlds[0].name;
-            // 触发一次查询
-            this.$nextTick(() => {
-              this.queryLogs();
-            });
-          } else {
-            this.queryParams.world = '';
-          }
-        } else {
-          // 如果在存档对象中找不到worlds，则尝试使用新API
-          try {
-            console.log('使用新API获取世界列表');
-            const response = await logApi.getArchivesWithLogs();
-
-            if (response && response.status === 200 && response.data && Array.isArray(response.data.data)) {
-              // 新接口格式
-              const archive = response.data.data.find(item => item.archive_name === archiveName);
-              if (archive && Array.isArray(archive.worlds)) {
-                this.worlds = this.sortWorlds(archive.worlds.map(worldName => ({ name: worldName })));
-                console.log('使用新API获取并排序世界列表:', this.worlds);
-
-                if (this.worlds.length > 0) {
-                  this.queryParams.world = this.worlds[0].name;
-                  // 触发一次查询
-                  this.$nextTick(() => {
-                    this.queryLogs();
-                  });
-                } else {
-                  this.queryParams.world = '';
-                }
-                return;
-              }
-            } else if (response && response.data && Array.isArray(response.data)) {
-              // 直接返回数组的格式
-              const archive = response.data.find(item => item.archive_name === archiveName);
-              if (archive && Array.isArray(archive.worlds)) {
-                this.worlds = this.sortWorlds(archive.worlds.map(worldName => ({ name: worldName })));
-                console.log('使用新API获取并排序世界列表:', this.worlds);
-
-                if (this.worlds.length > 0) {
-                  this.queryParams.world = this.worlds[0].name;
-                  // 触发一次查询
-                  this.$nextTick(() => {
-                    this.queryLogs();
-                  });
-                } else {
-                  this.queryParams.world = '';
-                }
-                return;
-              }
-            }
-
-            // 如果新API没有找到对应的存档或世界，则尝试旧API
-            console.log('新API没有找到对应的存档或世界，尝试旧API');
-          } catch (newApiError) {
-            console.error('新API获取世界列表失败:', newApiError);
-          }
-
-          // 尝试旧API
-          console.log('尝试使用旧API获取世界列表');
-          const worlds = await logApi.getWorldsByArchive(archiveName);
-          this.worlds = this.sortWorlds(worlds || []);
-          console.log('通过旧API获取并排序世界列表:', this.worlds);
-
-          if (this.worlds.length > 0) {
-            this.queryParams.world = this.worlds[0].name;
-            // 触发一次查询
-            this.$nextTick(() => {
-              this.queryLogs();
-            });
-          } else {
-            this.queryParams.world = '';
-          }
-        }
-      } catch (error) {
-        console.error('获取世界列表失败:', error);
-        this.sourceError = error?.response?.data?.message || error?.message || '获取世界列表失败';
-        toast.error(this.sourceError);
-        this.worlds = [];
-        this.queryParams.world = '';
-      } finally {
-        this.worldsLoading = false;
-      }
+      const selectedArchive = this.archives.find(archive => archive.name === archiveName);
+      this.worlds = this.sortWorlds(selectedArchive?.worlds || []);
+      const requestedWorld = this.$route.query.world;
+      this.queryParams.world = this.worlds.some(item => item.name === requestedWorld)
+        ? requestedWorld
+        : (this.worlds[0]?.name || '');
+      this.worldsLoading = false;
+      if (this.queryParams.world) await this.queryLogs();
     },
 
     retrySources() {
@@ -480,14 +324,13 @@ export default {
 
     // 获取日志类型统计
     async getLogTypes() {
-      try {
-        const response = await logApi.getLogTypes(this.queryParams);
-        const existing = new Set(this.logTypes.map(item => item.type));
-        for (const type of response.data || []) {
-          if (!existing.has(type)) this.logTypes.push({ type, name: type });
-        }
-      } catch (error) {
-        console.error('获取日志类型统计失败:', error);
+      const response = await logApi.getLogTypes(this.queryParams);
+      if (response?.status !== 200 || !Array.isArray(response.data)) {
+        throw new Error(response?.msg || '日志类型响应格式异常');
+      }
+      const existing = new Set(this.logTypes.map(item => item.type));
+      for (const type of response.data) {
+        if (!existing.has(type)) this.logTypes.push({ type, name: type });
       }
     },
 
@@ -499,53 +342,27 @@ export default {
 
     // 查询日志
     async queryLogs(resetPage = false) {
+      const requestSequence = ++this.queryRequestSequence;
       if (resetPage) this.queryParams.page = 1;
       this.loading = true;
       this.queryError = '';
       try {
         await this.getLogTypes();
-        console.log('查询参数:', this.queryParams);
         const response = await logApi.getLogsData(this.queryParams);
-        console.log('日志查询响应:', response);
-
-        // 递归查找logs数组
-        const findLogs = (obj) => {
-          if (!obj || typeof obj !== 'object') return null;
-
-          if (obj.logs && Array.isArray(obj.logs)) {
-            return {
-              logs: obj.logs,
-              total: obj.total || 0
-            };
-          }
-
-          for (const key in obj) {
-            const result = findLogs(obj[key]);
-            if (result) return result;
-          }
-
-          return null;
-        };
-
-        const result = findLogs(response);
-
-        if (result) {
-          this.logData = result.logs;
-          this.total = result.total;
-          console.log('成功找到并处理日志数据:', this.logData);
-        } else {
-          console.error('未找到有效的日志数据:', response);
-          this.logData = [];
-          this.total = 0;
+        if (requestSequence !== this.queryRequestSequence) return;
+        if (response?.status !== 200 || !Array.isArray(response.data?.logs)) {
+          throw new Error(response?.msg || '日志查询响应格式异常');
         }
+        this.logData = response.data.logs;
+        this.total = Number(response.data.total) || 0;
       } catch (error) {
-        console.error('查询日志失败:', error);
-        this.queryError = error?.response?.data?.message || error?.message || '未知错误';
+        if (requestSequence !== this.queryRequestSequence) return;
+        this.queryError = error.message || '未知错误';
         toast.error('查询日志失败: ' + this.queryError);
         this.logData = [];
         this.total = 0;
       } finally {
-        this.loading = false;
+        if (requestSequence === this.queryRequestSequence) this.loading = false;
       }
     },
 
@@ -641,8 +458,6 @@ export default {
 
     // 从日志创建规则
     createRuleFromLog(log) {
-      console.log('创建规则使用的日志:', log);
-
       // 确保有日志内容
       if (!log || (!log.raw_content && !log.content)) {
         toast.error('日志内容为空，无法创建规则');
@@ -703,8 +518,6 @@ export default {
         this.initialPattern = '';
         return;
       }
-
-      console.log('为日志生成正则表达式:', content);
 
       // 尝试生成一个更精确的正则表达式
       // 先检查是否有时间戳格式 [HH:MM:SS]
@@ -769,7 +582,6 @@ export default {
         }
       }
 
-      console.log('生成的正则表达式:', this.initialPattern);
     },
 
     // 将正则测试器的结果应用到规则
@@ -787,9 +599,9 @@ export default {
         if (!length) return emptyMessage
         return length < min || length > max ? lengthMessage : ''
       }
-      this.ruleFormErrors.name = validateLength(this.ruleForm.name, 2, 50, '请输入规则名称', '规则名称长度应在2-50个字符之间')
-      this.ruleFormErrors.description = validateLength(this.ruleForm.description, 2, 200, '请输入规则描述', '规则描述长度应在2-200个字符之间')
-      this.ruleFormErrors.log_type = this.ruleForm.log_type.trim() ? '' : '请选择日志类型'
+      this.ruleFormErrors.name = validateLength(this.ruleForm.name, 1, 80, '请输入规则名称', '规则名称不能超过80个字符')
+      this.ruleFormErrors.description = String(this.ruleForm.description || '').trim().length > 300 ? '规则描述不能超过300个字符' : ''
+      this.ruleFormErrors.log_type = /^[A-Za-z0-9_.-]{1,48}$/.test(this.ruleForm.log_type.trim()) ? '' : '日志类型应为1-48个字母、数字、点、横线或下划线'
       return !Object.values(this.ruleFormErrors).some(Boolean)
     },
     async saveRule() {
@@ -830,12 +642,9 @@ export default {
           // 确保优先级是数字类型
           formData.priority = parseInt(formData.priority, 10);
 
-          console.log('提交的规则数据:', formData);
-
           // 添加解析规则
           this.ruleSaving = true;
-          const response = await ruleManagementApi.addRule(formData);
-          console.log('添加规则响应:', response);
+          await ruleManagementApi.addRule(this.queryParams.archive, formData);
           toast.success('添加解析规则成功');
 
           // 关闭对话框
@@ -844,7 +653,6 @@ export default {
           this.selectedLog = null;
           this.initialPattern = '';
         } catch (error) {
-          console.error('解析规则操作失败:', error);
           toast.error('解析规则操作失败: ' + (error.message || '未知错误'));
         } finally {
           this.ruleSaving = false;
@@ -941,19 +749,17 @@ export default {
       this.cleanupLoading = true;
       try {
         const response = await logApi.cleanupLog(this.cleanupForm);
-        console.log('清空日志响应:', response);
 
         if (response && response.status === 200) {
           toast.success(response.msg || '成功清空日志记录');
           // 关闭对话框
           this.cleanupDialogVisible = false;
           // 重新查询日志，刷新列表
-          this.queryLogs();
+          await this.queryLogs();
         } else {
           toast.error(response?.msg || '清空日志失败');
         }
       } catch (error) {
-        console.error('清空日志失败:', error);
         toast.error('清空日志失败: ' + (error.message || '未知错误'));
       } finally {
         this.cleanupLoading = false;

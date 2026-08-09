@@ -9,6 +9,8 @@ export const COMMAND_TYPES = {
 }
 
 const serverKey = (roomId, worldId) => `${roomId}::${worldId}`
+const RUN_POLL_INTERVAL = 300
+const RUN_POLL_TIMEOUT = 30000
 
 const parseServerKey = value => {
   const separator = String(value || '').indexOf('::')
@@ -72,6 +74,23 @@ async function loadServers() {
   }))
   serverCache = groups.flat()
   return serverCache
+}
+
+async function waitForCommandRun(roomId, run, timeoutMs = RUN_POLL_TIMEOUT) {
+  if (!run?.id) throw new Error('后端没有返回命令执行记录 ID')
+  const deadline = Date.now() + timeoutMs
+  let current = run
+  while (current.status === 'sending') {
+    if (Date.now() >= deadline) {
+      throw new Error('等待命令发送完成超时，请到命令历史确认最终结果')
+    }
+    await new Promise(resolve => setTimeout(resolve, RUN_POLL_INTERVAL))
+    current = await consoleV2API.run(roomId, current.id)
+  }
+  if (current.status !== 'sent') {
+    throw new Error(current.errorMessage || current.message || '命令发送失败')
+  }
+  return current
 }
 
 class CommandManager {
@@ -138,13 +157,21 @@ class CommandManager {
     const document = JSON.parse(jsonString)
     if (!Array.isArray(document)) throw new Error('导入文件必须是命令数组')
     const created = []
-    for (const command of document) {
-      created.push(await this.addCommand({
-        ...command,
-        type: command.type || command.category,
-        command: command.command || command.script,
-        parameterized: Array.isArray(command.parameters) && command.parameters.length > 0
-      }))
+    for (let index = 0; index < document.length; index += 1) {
+      const command = document[index]
+      try {
+        created.push(await this.addCommand({
+          ...command,
+          type: command.type || command.category,
+          command: command.command || command.script,
+          parameterized: Array.isArray(command.parameters) && command.parameters.length > 0
+        }))
+      } catch (error) {
+        const importError = new Error(`第 ${index + 1} 条命令导入失败：${error.message || '未知错误'}`)
+        importError.importedCount = created.length
+        importError.totalCount = document.length
+        throw importError
+      }
     }
     return created
   }
@@ -166,15 +193,17 @@ export const commandApi = {
   getServers: loadServers,
   async executeCommand(server, commandId, argumentsMap = {}, confirmation = '') {
     const target = parseServerKey(server)
-    return consoleV2API.execute(target.roomId, target.worldId, {
+    const run = await consoleV2API.execute(target.roomId, target.worldId, {
       commandId,
       arguments: argumentsMap,
       confirmation
     })
+    return waitForCommandRun(target.roomId, run)
   },
   async executeRawCommand(server, command, confirmation) {
     const target = parseServerKey(server)
-    return consoleV2API.executeRaw(target.roomId, target.worldId, { command, confirmation })
+    const run = await consoleV2API.executeRaw(target.roomId, target.worldId, { command, confirmation })
+    return waitForCommandRun(target.roomId, run)
   },
   async getCommandHistory() {
     const servers = serverCache.length > 0 ? serverCache : await loadServers()

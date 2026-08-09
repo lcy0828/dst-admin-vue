@@ -17,7 +17,7 @@ const v2FeatureRoutes = [
   createV2Route('servers/commands', () => import('@/views/servers/CommandManager.vue'), 'V2CommandManager', '命令设置', '服务器管理'),
   createV2Route('logs/query', () => import('@/views/LogQueryView.vue'), 'V2LogQuery', '日志查询', '日志管理器'),
   createV2Route('logs/rules', () => import('@/views/RuleManagementView.vue'), 'V2RuleManagement', '规则管理', '日志管理器'),
-  createV2Route('logs/parser', () => import('@/views/logs/LogParser.vue'), 'V2LogParser', '日志解析器', '日志管理器'),
+  createV2Route('logs/parser', () => import('@/views/logs/LogParser.vue'), 'V2LogParser', '运行中日志', '日志管理器'),
   createV2Route('rooms/list', () => import('@/views/rooms/RoomList.vue'), 'V2RoomList', '房间列表', '房间管理'),
   createV2Route('rooms/settings', () => import('@/views/rooms/RoomSettings.vue'), 'V2RoomSettings', '房间设置', '房间管理'),
   createV2Route('rooms/special-lists', () => import('@/views/rooms/SpecialLists.vue'), 'V2SpecialLists', '特殊名单', '房间管理'),
@@ -169,7 +169,7 @@ export const constantRoutes = [
         path: 'parser',
         component: () => import('@/views/logs/LogParser.vue'),
         name: 'LogParser',
-        meta: { title: '日志解析器', icon: 'view' }
+        meta: { title: '运行中日志', icon: 'view' }
       }
     ]
   },

@@ -31,7 +31,7 @@
 
     <UiDialog v-model:open="createDialogVisible"><DialogContent><DialogHeader><DialogTitle>创建存档备份</DialogTitle><DialogDescription>选择需要立即备份的房间存档。</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel>存档</FieldLabel><UiSelect v-model="selectedArchive"><SelectTrigger><SelectValue placeholder="请选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archivesList" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup><DialogFooter><UiButton variant="outline" @click="createDialogVisible = false">取消</UiButton><UiButton :disabled="createLoading" @click="createBackup"><Spinner v-if="createLoading" data-icon="inline-start" />创建</UiButton></DialogFooter></DialogContent></UiDialog>
 
-    <UiDialog v-model:open="restoreDialogVisible"><DialogScrollContent class="sm:max-w-xl"><DialogHeader><DialogTitle>恢复存档备份</DialogTitle><DialogDescription>选择覆盖原存档或恢复为新存档。</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="restoreDialogVisible"><DialogScrollContent class="sm:max-w-xl"><DialogHeader><DialogTitle>恢复存档备份</DialogTitle><DialogDescription>将备份内容覆盖到原房间存档。</DialogDescription></DialogHeader>
       <div class="restore-dialog-content">
         <div class="info-row">
           <span class="label">备份文件：</span>
@@ -42,19 +42,7 @@
           <span class="value">{{ currentBackup ? currentBackup.archive_name : '' }}</span>
         </div>
         <Separator />
-        <div class="restore-options">
-          <div class="option-title">恢复选项</div>
-          <RadioGroup v-model="restoreOption" class="restore-radio-group"><Field orientation="horizontal"><RadioGroupItem id="restore-original" value="original" /><FieldLabel for="restore-original">恢复到原存档</FieldLabel></Field><Field orientation="horizontal"><RadioGroupItem id="restore-new" value="new" /><FieldLabel for="restore-new">恢复到新存档</FieldLabel></Field></RadioGroup>
-
-          <div v-if="restoreOption === 'original'" class="original-archive-option">
-            <Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>将覆盖原存档</AlertTitle><AlertDescription>此操作无法撤销，请确保已备份重要数据。</AlertDescription></Alert>
-          </div>
-
-          <div v-if="restoreOption === 'new'" class="new-archive-option">
-            <Field><FieldLabel for="new-archive-name">新存档名称</FieldLabel><UiInput id="new-archive-name" v-model="newArchiveName" placeholder="请输入新存档名称" /></Field>
-            <Field orientation="horizontal"><Checkbox id="overwrite-existing" v-model="overwriteExisting" /><FieldLabel for="overwrite-existing">如果存档已存在则覆盖</FieldLabel></Field>
-          </div>
-        </div>
+        <Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>将覆盖原存档</AlertTitle><AlertDescription>此操作无法撤销，请确保已备份重要数据。<span v-if="!backupCapabilities.restoreToNewRoom">当前后端暂不支持恢复为新房间，因此这里只提供原房间恢复。</span></AlertDescription></Alert>
       </div>
       <DialogFooter><UiButton variant="outline" @click="restoreDialogVisible = false">取消</UiButton><UiButton :disabled="restoreLoading" @click="restoreBackup"><Spinner v-if="restoreLoading" data-icon="inline-start" />恢复</UiButton></DialogFooter></DialogScrollContent></UiDialog>
   </div>
@@ -65,18 +53,16 @@ import { DownloadIcon, FileArchiveIcon, PlusIcon, RefreshCwIcon, TriangleAlertIc
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input as UiInput } from '@/components/ui/input'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { confirmAction } from '@/lib/feedback'
+import { BACKEND_CAPABILITIES, buildBackupCatalog, roomNamesFromResponse } from '@/lib/legacySupport.mjs'
 import { toast } from 'vue-sonner'
 
 export default {
@@ -92,7 +78,6 @@ export default {
     CardDescription,
     CardHeader,
     CardTitle,
-    Checkbox,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -109,8 +94,6 @@ export default {
     FieldLabel,
     FileArchiveIcon,
     PlusIcon,
-    RadioGroup,
-    RadioGroupItem,
     RefreshCwIcon,
     SelectContent,
     SelectGroup,
@@ -130,7 +113,6 @@ export default {
     TriangleAlertIcon,
     UiButton,
     UiDialog,
-    UiInput,
     UiSelect
   },
   data() {
@@ -146,9 +128,7 @@ export default {
       backupsList: [],
       archivesList: [],
       currentBackup: null,
-      restoreOption: 'original',
-      newArchiveName: '',
-      overwriteExisting: false
+      backupCapabilities: BACKEND_CAPABILITIES.backups
     }
   },
   computed: {
@@ -171,20 +151,12 @@ export default {
       return this.$api.backupApi.getBackupList()
         .then(res => {
           if (res.status === 200) {
-            // 处理返回的数据结构
-            let allBackups = [];
-            // 将各个存档的备份整合到一个列表中
-            for (const archive in res.data) {
-              if (Object.hasOwnProperty.call(res.data, archive)) {
-                if (!this.archivesList.includes(archive)) {
-                  this.archivesList.push(archive);
-                }
-                
-                const backups = res.data[archive];
-                allBackups = [...allBackups, ...backups];
-              }
+            const catalog = buildBackupCatalog(res);
+            this.archivesList = catalog.archives;
+            this.backupsList = catalog.backups;
+            if (this.selectedFilter !== '__all__' && !catalog.archives.includes(this.selectedFilter)) {
+              this.selectedFilter = '__all__';
             }
-            this.backupsList = allBackups;
           } else {
             this.loadError = res.msg || '服务未返回可用的备份列表';
             toast.error('获取备份列表失败：' + this.loadError);
@@ -204,18 +176,16 @@ export default {
       // 使用房间管理接口获取存档列表
       this.$api.roomApi.getRoomList()
         .then(res => {
-          if (Array.isArray(res)) {
-            // 提取房间名称作为存档列表
-            this.archivesList = res.map(room => room.savename || room.name);
-          } else if (res.data && Array.isArray(res.data)) {
-            this.archivesList = res.data.map(room => room.savename || room.name);
-          }
+          this.archivesList = roomNamesFromResponse(res);
+          if (!this.archivesList.includes(this.selectedArchive)) this.selectedArchive = '';
           
           if (this.archivesList.length === 0) {
             toast.warning('没有可用的存档');
           }
         })
         .catch(err => {
+          this.archivesList = [];
+          this.selectedArchive = '';
           toast.error('获取存档列表失败：' + (err.message || '未知错误'));
         });
     },
@@ -231,7 +201,7 @@ export default {
           if (res.status === 200) {
             toast.success(res.msg || '创建备份成功');
             this.createDialogVisible = false;
-            this.refreshBackups();
+            return this.refreshBackups();
           } else {
             toast.error('创建备份失败：' + res.msg);
           }
@@ -262,9 +232,6 @@ export default {
     // 显示恢复备份对话框
     showRestoreDialog(backup) {
       this.currentBackup = backup;
-      this.restoreOption = 'original';
-      this.newArchiveName = `${backup.archive_name}_restored`;
-      this.overwriteExisting = false;
       this.restoreDialogVisible = true;
     },
     
@@ -275,48 +242,27 @@ export default {
         return;
       }
       
-      let targetName = null;
-      let overwriteTarget = true; // 始终设置为 true
-      
-      if (this.restoreOption === 'original') {
-        // 恢复到原存档时再次确认
-        try {
-          await confirmAction('您确定要恢复此备份到原存档吗？此操作将覆盖原存档所有内容且无法撤销！', '恢复备份', {
-            confirmButtonText: '确认恢复',
-            cancelButtonText: '取消',
-            type: 'warning'
-          })
-          this.executeRestore(this.currentBackup.archive_name, this.currentBackup.name, null, true);
-        } catch {
-          toast.info('已取消恢复操作')
-        }
-        return;
-      } else if (this.restoreOption === 'new') {
-        if (!this.newArchiveName) {
-          toast.warning('请输入新存档名称');
-          return;
-        }
-        targetName = this.newArchiveName;
-        overwriteTarget = this.overwriteExisting;
-        
-        this.executeRestore(this.currentBackup.archive_name, this.currentBackup.name, targetName, overwriteTarget);
+      try {
+        await confirmAction('您确定要恢复此备份到原存档吗？此操作将覆盖原存档所有内容且无法撤销！', '恢复备份', {
+          confirmButtonText: '确认恢复',
+          cancelButtonText: '取消',
+          type: 'warning'
+        })
+        await this.executeRestore(this.currentBackup.archive_name, this.currentBackup.name);
+      } catch {
+        toast.info('已取消恢复操作')
       }
     },
     
     // 执行恢复操作
-    executeRestore(archive, backup, targetName, overwriteTarget) {
+    executeRestore(archive, backup) {
       this.restoreLoading = true;
-      this.$api.backupApi.restoreBackup(
-        archive,
-        backup,
-        targetName,
-        overwriteTarget
-      )
+      return this.$api.backupApi.restoreBackup(archive, backup)
         .then(res => {
           if (res.status === 200) {
             toast.success(res.msg || '备份恢复成功');
             this.restoreDialogVisible = false;
-            this.refreshBackups();
+            return this.refreshBackups();
           } else {
             toast.error('恢复备份失败：' + res.msg);
           }
@@ -351,7 +297,7 @@ export default {
         .then(res => {
           if (res.status === 200) {
             toast.success(res.msg || '备份删除成功');
-            this.refreshBackups();
+            return this.refreshBackups();
           } else {
             toast.error('删除备份失败：' + res.msg);
           }
@@ -438,7 +384,6 @@ export default {
   padding: 8px 0;
 }
 
-/* 恢复对话框样式 */
 .restore-dialog-content {
   padding: 0;
 }
@@ -451,46 +396,6 @@ export default {
 .info-row .label {
   font-weight: 500;
   width: 100px;
-}
-
-.restore-options {
-  margin-top: 15px;
-}
-
-.option-title {
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.restore-radio-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.restore-radio-group [data-slot="field"] {
-  margin-bottom: 10px;
-  margin-left: 0;
-}
-
-.original-archive-option {
-  margin-top: 15px;
-}
-
-.form-item {
-  margin-bottom: 15px;
-}
-
-.form-item .label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.new-archive-option {
-  margin-top: 15px;
-  padding: 15px;
-  background-color: var(--muted);
-  border-radius: var(--radius);
 }
 
 @media (max-width: 640px) {

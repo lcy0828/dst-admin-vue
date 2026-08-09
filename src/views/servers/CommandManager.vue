@@ -51,7 +51,7 @@
 
         <Alert v-if="executionResult" :variant="executionResult.status === 200 ? 'default' : 'destructive'"><CircleCheck v-if="executionResult.status === 200" /><CircleAlert v-else /><AlertTitle>{{ executionResult.status === 200 ? '执行成功' : '执行失败' }}</AlertTitle><AlertDescription><pre>{{ executionResult.msg }}</pre></AlertDescription></Alert>
 
-        <div v-if="commandHistory.length" class="command-history"><Separator /><div class="section-heading"><h3>命令历史记录</h3><div><UiButton size="sm" variant="ghost" @click="clearHistory">清空历史</UiButton><UiButton size="sm" variant="ghost" @click="saveHistoryToFile"><Download data-icon="inline-start" />保存文件</UiButton></div></div><ShadcnTable><TableHeader><TableRow><TableHead>执行时间</TableHead><TableHead>服务器</TableHead><TableHead>命令</TableHead><TableHead>状态</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="item in commandHistory" :key="item.id"><TableCell>{{ item.time }}</TableCell><TableCell>{{ item.serverName }}</TableCell><TableCell class="truncate-cell">{{ item.mode === 'structured' ? item.commandName : item.command }}</TableCell><TableCell><Badge :variant="item.status === 200 ? 'default' : 'destructive'">{{ item.status === 200 ? '成功' : '失败' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton size="xs" variant="ghost" @click="rerunCommand(item)">重新执行</UiButton><UiButton size="xs" variant="ghost" @click="copyCommand(item)">复制命令</UiButton></div></TableCell></TableRow></TableBody></ShadcnTable></div>
+        <div v-if="commandHistory.length" class="command-history"><Separator /><div class="section-heading"><h3>命令历史记录</h3><div><UiButton size="sm" variant="ghost" @click="clearHistory">清空历史</UiButton><UiButton size="sm" variant="ghost" @click="saveHistoryToFile"><Download data-icon="inline-start" />保存文件</UiButton></div></div><ShadcnTable><TableHeader><TableRow><TableHead>执行时间</TableHead><TableHead>服务器</TableHead><TableHead>命令</TableHead><TableHead>状态</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="item in commandHistory" :key="item.id"><TableCell>{{ item.time }}</TableCell><TableCell>{{ item.serverName }}</TableCell><TableCell class="truncate-cell">{{ item.mode === 'structured' ? item.commandName : item.command }}</TableCell><TableCell><Badge :variant="historyStatusVariant(item.status)">{{ historyStatusLabel(item.status) }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton size="xs" variant="ghost" @click="rerunCommand(item)">重新执行</UiButton><UiButton size="xs" variant="ghost" @click="copyCommand(item)">复制命令</UiButton></div></TableCell></TableRow></TableBody></ShadcnTable></div>
       </CardContent>
     </Card>
 
@@ -119,6 +119,7 @@ import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, Tab
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { confirmAction, promptText } from '@/lib/feedback';
+import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
 
 export default {
   name: 'CommandManager',
@@ -320,7 +321,23 @@ export default {
     await Promise.all([this.fetchCommands(), this.fetchServers()]);
     await this.loadCommandHistory();
   },
+  mounted() {
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+  },
+  beforeUnmount() {
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+  },
   methods: {
+    async handleRuntimeTargetChange() {
+      this.commands = [];
+      this.displayCommands = [];
+      this.servers = [];
+      this.commandHistory = [];
+      this.currentCommand = null;
+      this.executionResult = null;
+      await this.reloadCommandData();
+      await this.loadCommandHistory();
+    },
     async fetchCommands() {
       this.loading = true;
       this.loadError = '';
@@ -481,9 +498,14 @@ export default {
         try {
           const importedCommands = await commandManager.importCommands(e.target.result);
           toast.success(`成功导入 ${importedCommands.length} 个命令`);
-          await this.fetchCommands();
         } catch (error) {
-          toast.error('导入命令失败: ' + error.message);
+          if (error.importedCount > 0) {
+            toast.warning(`已导入 ${error.importedCount}/${error.totalCount} 个命令；${error.message}`);
+          } else {
+            toast.error('导入命令失败: ' + error.message);
+          }
+        } finally {
+          await this.fetchCommands();
         }
       };
 
@@ -589,7 +611,7 @@ export default {
           confirmation
         );
         this.showRunResult(run);
-        toast.success('命令已发送');
+        if (run.status === 'sent') toast.success('命令已发送');
         await this.loadCommandHistory();
       } catch (error) {
         this.showExecutionError(error);
@@ -624,7 +646,7 @@ export default {
           confirmation
         );
         this.showRunResult(run);
-        toast.success('命令已发送');
+        if (run.status === 'sent') toast.success('命令已发送');
         await this.loadCommandHistory();
       } catch (error) {
         this.showExecutionError(error);
@@ -694,8 +716,18 @@ export default {
         commandName: run.name,
         params: run.arguments || {},
         command: run.rawCommand || '',
-        status: run.status === 'sent' ? 200 : 500
+        status: run.status
       };
+    },
+
+    historyStatusVariant(status) {
+      if (status === 'sent') return 'default';
+      if (status === 'sending') return 'secondary';
+      return 'destructive';
+    },
+
+    historyStatusLabel(status) {
+      return { sent: '成功', sending: '发送中', failed: '失败' }[status] || '未知';
     },
 
     // 清空历史记录
@@ -772,8 +804,7 @@ export default {
         // 使用Clipboard API复制文本
         navigator.clipboard.writeText(textToCopy).then(() => {
           toast.success('命令已复制到剪贴板');
-        }).catch(err => {
-          console.error('复制失败:', err);
+        }).catch(() => {
           toast.error('复制命令失败');
         });
       }
@@ -845,7 +876,6 @@ export default {
               await new Promise(resolve => setTimeout(resolve, this.batchCommandForm.interval));
             }
           } catch (error) {
-            console.error('执行批量命令出错:', error);
             this.batchResults.push({
               command: command.trim(),
               success: false,
@@ -863,7 +893,10 @@ export default {
 
         const successCount = this.batchResults.filter(r => r.success).length;
         this.batchStatus = successCount === totalCommands ? 'success' : 'exception';
-        toast.success(`批量命令执行完成：共 ${totalCommands} 条命令，成功 ${successCount} 条，失败 ${totalCommands - successCount} 条`);
+        const summary = `批量命令执行完成：共 ${totalCommands} 条命令，成功 ${successCount} 条，失败 ${totalCommands - successCount} 条`;
+        if (successCount === totalCommands) toast.success(summary);
+        else if (successCount > 0) toast.warning(summary);
+        else toast.error(summary);
         await this.loadCommandHistory();
       } catch (error) {
         if (error === 'cancel' || error === 'close') return;

@@ -65,13 +65,13 @@
                 <TableCell class="selection-cell">
                   <UiCheckbox :model-value="isSaveSelected(save)" :aria-label="`选择 ${save.name}`" @update:model-value="toggleSaveSelection(save, $event)" />
                 </TableCell>
-                <TableCell><div class="save-name"><FileArchive /><span>{{ save.name }}</span><Badge v-if="save.isCurrent">当前存档</Badge></div></TableCell>
+                <TableCell><div class="save-name"><FileArchive /><span>{{ save.name }}</span></div></TableCell>
                 <TableCell>{{ save.size }}</TableCell><TableCell>{{ save.createdAt }}</TableCell>
                 <TableCell><div class="table-actions">
-                  <UiButton size="xs" variant="ghost" :disabled="save.isCurrent" @click="handleActivate(save)">加载</UiButton>
+                  <UiButton size="xs" variant="ghost" @click="handleActivate(save)">加载</UiButton>
                   <UiButton size="xs" variant="ghost" @click="handleRename(save)">重命名</UiButton>
                   <UiButton size="xs" variant="ghost" @click="handleDownload(save)">下载</UiButton>
-                  <UiButton size="xs" variant="destructive" :disabled="save.isCurrent" @click="handleDelete(save)">删除</UiButton>
+                  <UiButton size="xs" variant="destructive" @click="handleDelete(save)">删除</UiButton>
                 </div></TableCell>
               </TableRow>
             </TableBody>
@@ -90,7 +90,7 @@
 
     <UiDialog v-model:open="uploadDialogVisible">
       <DialogContent>
-        <DialogHeader><DialogTitle>上传存档</DialogTitle><DialogDescription>上传不超过 100MB 的 ZIP 存档文件。</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>上传存档</DialogTitle><DialogDescription>上传不超过 16GB 的 ZIP 存档文件。</DialogDescription></DialogHeader>
         <FieldGroup>
           <Field><FieldLabel for="save-name">存档名称</FieldLabel><UiInput id="save-name" v-model="uploadForm.name" placeholder="请输入存档名称" /></Field>
           <Field>
@@ -99,7 +99,7 @@
               <Upload /><span>{{ uploadFile ? uploadFile.name : '选择 ZIP 存档文件' }}</span>
               <input id="save-file" class="sr-only" type="file" accept=".zip,application/zip" @change="handleFileChange">
             </label>
-            <FieldDescription>只能上传一个 ZIP 文件，且不超过 100MB。</FieldDescription>
+            <FieldDescription>只能上传一个 ZIP 文件，且不超过 16GB。</FieldDescription>
           </Field>
           <Field orientation="horizontal"><UiSwitch id="activate-upload" v-model="uploadForm.activate" /><FieldLabel for="activate-upload">上传后直接激活</FieldLabel></Field>
         </FieldGroup>
@@ -128,7 +128,6 @@ import { ArchiveRestore, CircleAlert, Download, FileArchive, FolderOpen, Refresh
 import { toast } from 'vue-sonner';
 import { backupsV2API, jobsV2API, roomsV2API } from '@/api/v2';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
@@ -148,7 +147,7 @@ const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled']);
 export default {
   name: 'SaveManager',
   components: {
-    Alert, AlertAction, AlertDescription, AlertTitle, ArchiveRestore, Badge, Card, CardContent,
+    Alert, AlertAction, AlertDescription, AlertTitle, ArchiveRestore, Card, CardContent,
     CardDescription, CardHeader, CardTitle, CircleAlert, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Download, Empty, EmptyDescription,
     EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldDescription, FieldGroup,
@@ -230,7 +229,6 @@ export default {
           name: backup.name,
           size: this.formatBytes(backup.size),
           createdAt: this.formatDate(backup.createdAt),
-          isCurrent: false,
           raw: backup
         }));
         this.selectedSaves = [];
@@ -349,9 +347,14 @@ export default {
           confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
         });
         this.loading = true;
-        await Promise.all(this.selectedSaves.map(save => backupsV2API.delete(save.id, save.name)));
+        const selected = [...this.selectedSaves];
+        const results = await Promise.allSettled(selected.map(save => backupsV2API.delete(save.id, save.name)));
         await this.loadServerSaves(this.selectedServer);
-        toast.success('所选存档已删除');
+        const deleted = results.filter(result => result.status === 'fulfilled').length;
+        const failed = results.length - deleted;
+        if (!failed) toast.success(`已删除 ${deleted} 个备份`);
+        else if (deleted) toast.warning(`已删除 ${deleted} 个备份，${failed} 个删除失败`);
+        else throw results.find(result => result.status === 'rejected')?.reason || new Error('批量删除失败');
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') toast.error(error.message || '批量删除失败');
       } finally {
@@ -376,8 +379,8 @@ export default {
     },
     handleFileChange(event) {
       const file = event.target.files?.[0] || null;
-      if (file && file.size > 100 * 1024 * 1024) {
-        toast.warning('存档文件不能超过 100MB');
+      if (file && file.size > 16 * 1024 * 1024 * 1024) {
+        toast.warning('存档文件不能超过 16GB');
         event.target.value = '';
         return;
       }

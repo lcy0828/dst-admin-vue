@@ -295,7 +295,7 @@ export default {
       return (room.worlds || []).filter(world => this.canStartWorld(world));
     },
     canStartWorld(world) {
-      return world.status !== 'running' && world.controlAvailable !== false;
+      return world.status === 'stopped' && world.controlAvailable !== false;
     },
     startRoom(room) {
       const worlds = this.startableWorlds(room);

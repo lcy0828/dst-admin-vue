@@ -42,7 +42,7 @@
             <span v-else-if="ruleForm.match_mode === 'head_tail'">首尾行匹配：需要提供首行和尾行的匹配规则</span>
           </FieldDescription><FieldError v-if="formErrors.match_mode">{{ formErrors.match_mode }}</FieldError></Field>
         <Field v-if="ruleForm.match_mode === 'head_tail'" :data-invalid="Boolean(formErrors.tail_pattern)"><FieldLabel for="rule-tail-pattern">尾行匹配模式</FieldLabel><UiTextarea id="rule-tail-pattern" v-model="ruleForm.tail_pattern" rows="3" :aria-invalid="Boolean(formErrors.tail_pattern)" /><FieldDescription>仅当匹配模式为首尾行匹配时有效。</FieldDescription><FieldError v-if="formErrors.tail_pattern">{{ formErrors.tail_pattern }}</FieldError></Field>
-        <Field :data-invalid="Boolean(formErrors.priority)"><FieldLabel for="rule-priority">优先级</FieldLabel><UiInput id="rule-priority" v-model="ruleForm.priority" type="number" min="1" :aria-invalid="Boolean(formErrors.priority)" /><FieldDescription>数值越大优先级越高。</FieldDescription><FieldError v-if="formErrors.priority">{{ formErrors.priority }}</FieldError></Field>
+        <Field :data-invalid="Boolean(formErrors.priority)"><FieldLabel for="rule-priority">优先级</FieldLabel><UiInput id="rule-priority" v-model="ruleForm.priority" type="number" min="0" max="1000" :aria-invalid="Boolean(formErrors.priority)" /><FieldDescription>0-1000，数值越大优先级越高。</FieldDescription><FieldError v-if="formErrors.priority">{{ formErrors.priority }}</FieldError></Field>
       </FieldGroup>
       <DialogFooter><UiButton variant="outline" :disabled="savingRule" @click="handleCancelClick">取消</UiButton><UiButton :disabled="savingRule" @click="confirmRuleAction"><Spinner v-if="savingRule" data-icon="inline-start" />确认</UiButton></DialogFooter>
     </DialogScrollContent></UiDialog>
@@ -68,6 +68,7 @@ import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, Tabl
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { confirmAction } from '@/lib/feedback'
+import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import { toast } from 'vue-sonner'
 
 export default {
@@ -165,7 +166,9 @@ export default {
       // 唯一的日志类型列表
       uniqueLogTypes: [],
       rooms: [],
-      selectedRoomId: ''
+      selectedRoomId: '',
+      roomRequestSequence: 0,
+      ruleRequestSequence: 0
     };
   },
   computed: {
@@ -176,26 +179,42 @@ export default {
     }
   },
   mounted() {
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
     this.loadRooms();
   },
+  beforeUnmount() {
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+  },
   methods: {
+    handleRuntimeTargetChange() {
+      this.roomRequestSequence += 1;
+      this.ruleRequestSequence += 1;
+      this.rooms = [];
+      this.selectedRoomId = '';
+      this.parserRulesList = [];
+      this.uniqueLogTypes = [];
+      this.loadRooms();
+    },
     async loadRooms() {
+      const requestSequence = ++this.roomRequestSequence;
       this.loadError = '';
       this.loadErrorContext = '';
       this.loading.rooms = true;
       try {
         this.rooms = await logApi.getRoomOptions();
+        if (requestSequence !== this.roomRequestSequence) return;
         if (this.rooms.length === 1) {
           this.selectedRoomId = this.rooms[0].id;
           await this.getParserRulesList();
         }
       } catch (error) {
+        if (requestSequence !== this.roomRequestSequence) return;
         this.rooms = [];
         this.loadError = error.message || '未知错误';
         this.loadErrorContext = 'rooms';
         toast.error('获取存档列表失败: ' + this.loadError);
       } finally {
-        this.loading.rooms = false;
+        if (requestSequence === this.roomRequestSequence) this.loading.rooms = false;
       }
     },
 
@@ -206,33 +225,29 @@ export default {
         this.uniqueLogTypes = [];
         return;
       }
+      const requestSequence = ++this.ruleRequestSequence;
       this.loading.parser = true;
       this.loadError = '';
       this.loadErrorContext = '';
       try {
         const response = await ruleManagementApi.getRulesList(this.selectedRoomId);
-        console.log('获取解析规则列表响应:', response);
-        let rulesList = [];
-
-        if (response && response.status === 200) {
-          rulesList = response.data || [];
-        } else if (response && response.data && response.data.status === 200) {
-          rulesList = response.data.data || [];
+        if (requestSequence !== this.ruleRequestSequence) return;
+        if (response?.status !== 200 || !Array.isArray(response.data)) {
+          throw new Error(response?.msg || '解析规则响应格式异常');
         }
-
-        this.parserRulesList = rulesList;
+        this.parserRulesList = response.data;
 
         // 提取唯一的log_type值
         this.extractUniqueLogTypes();
       } catch (error) {
-        console.error('获取解析规则列表失败:', error);
+        if (requestSequence !== this.ruleRequestSequence) return;
         this.loadError = error.message || '获取解析规则列表失败';
         this.loadErrorContext = 'rules';
         toast.error(this.loadError);
         this.parserRulesList = [];
         this.uniqueLogTypes = [];
       } finally {
-        this.loading.parser = false;
+        if (requestSequence === this.ruleRequestSequence) this.loading.parser = false;
       }
     },
 
@@ -248,9 +263,7 @@ export default {
         }
       });
 
-      // 转换为数组
       this.uniqueLogTypes = Array.from(logTypesSet);
-      console.log('提取的唯一日志类型:', this.uniqueLogTypes);
     },
 
     // 添加解析规则对话框
@@ -300,13 +313,14 @@ export default {
         if (length === 0) return emptyMessage
         return length < min || length > max ? lengthMessage : ''
       }
-      this.formErrors.name = validateLength(this.ruleForm.name, 2, 50, '请输入规则名称', '规则名称长度应在2-50个字符之间')
-      this.formErrors.description = validateLength(this.ruleForm.description, 2, 200, '请输入规则描述', '规则描述长度应在2-200个字符之间')
-      this.formErrors.log_type = this.ruleForm.log_type.trim() ? '' : '请选择日志类型'
-      this.formErrors.pattern = validateLength(this.ruleForm.pattern, 2, 200, '请输入匹配模式', '匹配模式长度应在2-200个字符之间')
+      this.formErrors.name = validateLength(this.ruleForm.name, 1, 80, '请输入规则名称', '规则名称不能超过80个字符')
+      this.formErrors.description = String(this.ruleForm.description || '').trim().length > 300 ? '规则描述不能超过300个字符' : ''
+      this.formErrors.log_type = /^[A-Za-z0-9_.-]{1,48}$/.test(this.ruleForm.log_type.trim()) ? '' : '日志类型应为1-48个字母、数字、点、横线或下划线'
+      this.formErrors.pattern = validateLength(this.ruleForm.pattern, 1, 512, '请输入匹配模式', '匹配模式不能超过512个字符')
       this.formErrors.match_mode = this.ruleForm.match_mode ? '' : '请选择匹配模式类型'
-      this.formErrors.tail_pattern = this.ruleForm.match_mode === 'head_tail' && !this.ruleForm.tail_pattern.trim() ? '首尾行匹配模式下需要提供尾行匹配模式' : ''
-      this.formErrors.priority = Number(this.ruleForm.priority) >= 1 ? '' : '优先级应大于等于1'
+      this.formErrors.tail_pattern = this.ruleForm.match_mode === 'head_tail' && (!this.ruleForm.tail_pattern.trim() || this.ruleForm.tail_pattern.length > 512) ? '首尾行匹配模式需要提供不超过512个字符的尾行正则' : ''
+      const priority = Number(this.ruleForm.priority)
+      this.formErrors.priority = Number.isInteger(priority) && priority >= 0 && priority <= 1000 ? '' : '优先级必须是0-1000的整数'
       return !Object.values(this.formErrors).some(Boolean)
     },
     resetFormErrors() {
@@ -316,22 +330,14 @@ export default {
       if (this.savingRule || !this.validateRuleForm()) return
       this.savingRule = true
       try {
-          // 创建一个新的数据对象
           const formData = { ...this.ruleForm };
-          // 确保优先级是数字类型
           formData.priority = parseInt(formData.priority, 10);
 
-          console.log('提交的数据:', formData);
-
           if (this.ruleForm.id) {
-            // 编辑解析规则
-            const response = await ruleManagementApi.updateRule(this.selectedRoomId, this.ruleForm.id, formData);
-            console.log('更新规则响应:', response);
+            await ruleManagementApi.updateRule(this.selectedRoomId, this.ruleForm.id, formData);
             toast.success('编辑解析规则成功');
           } else {
-            // 添加解析规则
-            const response = await ruleManagementApi.addRule(this.selectedRoomId, formData);
-            console.log('添加规则响应:', response);
+            await ruleManagementApi.addRule(this.selectedRoomId, formData);
             toast.success('添加解析规则成功');
 
             // 如果是新的日志类型，直接添加到唯一日志类型列表中
@@ -340,9 +346,8 @@ export default {
             }
           }
           this.dialogVisible.parser = false;
-          await this.getParserRulesList(); // 刷新列表
+          await this.getParserRulesList();
         } catch (error) {
-          console.error('解析规则操作失败:', error);
           toast.error('解析规则操作失败: ' + (error.message || '未知错误'));
         } finally {
           this.savingRule = false
@@ -359,16 +364,14 @@ export default {
           type: 'warning'
         })
         this.deletingRuleId = row.id
-        const response = await ruleManagementApi.deleteRule(this.selectedRoomId, row.id);
-        console.log('删除规则响应:', response);
+        await ruleManagementApi.deleteRule(this.selectedRoomId, row.id);
         toast.success('删除解析规则成功');
         await this.getParserRulesList();
       } catch (error) {
-        if (error === 'cancel') {
+        if (error === 'cancel' || error === 'close') {
           toast.info('已取消删除')
           return
         }
-        console.error('删除解析规则失败:', error);
         toast.error('删除解析规则失败: ' + (error.message || '未知错误'));
       } finally {
         this.deletingRuleId = null
@@ -380,14 +383,11 @@ export default {
       if (this.togglingRuleIds.includes(rule.id)) return
       this.togglingRuleIds.push(rule.id)
       try {
-        // 创建一个新的规则对象，避免修改原始数据
         const updatedRule = { ...rule };
-        const response = await ruleManagementApi.updateRule(this.selectedRoomId, rule.id, updatedRule);
-        console.log('更新规则状态响应:', response);
+        await ruleManagementApi.updateRule(this.selectedRoomId, rule.id, updatedRule);
         toast.success('规则状态更新成功');
-        await this.getParserRulesList(); // 刷新列表
+        await this.getParserRulesList();
       } catch (error) {
-        console.error('规则状态更新失败:', error);
         rule.is_enabled = !rule.is_enabled; // 恢复原状态
         toast.error('规则状态更新失败: ' + (error.message || '未知错误'));
       } finally {
@@ -432,7 +432,6 @@ export default {
 
     // 处理匹配模式变更
     handleMatchModeChange(value) {
-      console.log('匹配模式变更:', value);
       // 如果不是首尾行匹配模式，清空尾行匹配模式
       if (value !== 'head_tail') {
         this.ruleForm.tail_pattern = '';
@@ -446,64 +445,12 @@ export default {
 
     // 处理日志类型变更
     handleLogTypeChange(value) {
-      console.log('日志类型变更:', value);
       // 确保值被正确设置
       this.ruleForm.log_type = value;
 
       // 如果是新的日志类型，添加到列表中
       if (value && !this.uniqueLogTypes.includes(value)) {
         this.uniqueLogTypes.push(value);
-      }
-    },
-
-    // 处理选择框显示状态变化
-    handleSelectVisibleChange(visible) {
-      // 当选择框关闭时，确保自定义输入的值被保存
-      if (!visible && this.ruleForm.log_type && this.ruleForm.log_type.trim() !== '') {
-        // 如果是新的日志类型，添加到列表中
-        if (!this.uniqueLogTypes.includes(this.ruleForm.log_type)) {
-          this.uniqueLogTypes.push(this.ruleForm.log_type);
-        }
-      }
-    },
-
-    // 处理Enter键按下事件
-    handleEnterKey(event) {
-      console.log('Enter键按下事件:', event);
-      // 获取当前输入框中的值
-      const inputValue = event.target.value;
-
-      if (inputValue && inputValue.trim() !== '') {
-        // 设置到表单中
-        this.ruleForm.log_type = inputValue;
-
-        // 如果是新的日志类型，添加到列表中
-        if (!this.uniqueLogTypes.includes(inputValue)) {
-          this.uniqueLogTypes.push(inputValue);
-        }
-
-        // 阻止事件继续传播，防止被默认选项覆盖
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    },
-
-    // 处理选择框失去焦点事件
-    handleSelectBlur(event) {
-      console.log('选择框失去焦点:', event);
-
-      // 确保当前输入的值被保存
-      if (this.ruleForm.log_type && this.ruleForm.log_type.trim() !== '') {
-        // 如果是新的日志类型，添加到列表中
-        const currentValue = this.ruleForm.log_type;
-        if (!this.uniqueLogTypes.includes(currentValue)) {
-          this.uniqueLogTypes.push(currentValue);
-
-          // 强制更新数据，确保值不会被覆盖
-          this.$nextTick(() => {
-            this.ruleForm.log_type = currentValue;
-          });
-        }
       }
     },
 
@@ -524,8 +471,7 @@ export default {
         .then(() => {
           toast.success('匹配模式已复制到剪贴板');
         })
-        .catch(err => {
-          console.error('复制失败:', err);
+        .catch(() => {
           // 备用方案：创建一个临时文本区域并复制
           this.fallbackCopy(pattern);
         });
@@ -550,8 +496,7 @@ export default {
         } else {
           toast.warning('复制失败，请手动复制');
         }
-      } catch (err) {
-        console.error('复制失败:', err);
+      } catch {
         toast.error('复制失败，请手动复制');
       }
 

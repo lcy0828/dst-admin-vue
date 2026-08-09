@@ -95,12 +95,11 @@ export const realLogApi = {
         archive_name: room.name,
         world_name: world.name,
         server_type: world.role === 'master' ? 'Forest' : world.role === 'caves' ? 'Caves' : 'Custom',
-        log_file: `${room.directoryName}/${world.directoryName}/server_log.txt`,
         status: world.status,
-        last_activity: null,
-        client_count: null
+        control_available: world.controlAvailable !== false,
+        status_message: world.statusMessage || ''
       })))
-    return success(parsers, '活跃日志解析器已刷新')
+    return success(parsers, '运行中世界已刷新')
   },
 
   async getArchivesWithLogs() {
@@ -154,7 +153,7 @@ export const realLogApi = {
   },
 
   async getRoomOptions() {
-    if (!archiveCatalog.length) await this.getArchivesWithLogs()
+    await this.getArchivesWithLogs()
     return archiveCatalog.map(room => ({ id: room.id, name: room.name }))
   },
 
@@ -176,15 +175,6 @@ export const realLogApi = {
     const world = resolveWorld(room, data)
     const result = await structuredLogsV2API.clear(room.id, world.id)
     return success(result, `已清空 ${result.deleted || 0} 条解析日志`)
-  },
-
-  getArchiveList() {
-    return this.getArchivesWithLogs()
-  },
-
-  async getWorldsByArchive(archiveName) {
-    if (!archiveCatalog.length) await this.getArchivesWithLogs()
-    return resolveArchive(archiveName).worlds.map(world => ({ name: world.name }))
   }
 }
 
@@ -197,10 +187,6 @@ export const realRuleManagementApi = {
   },
 
   async addRule(roomReference, data) {
-    if (data === undefined) {
-      data = roomReference
-      roomReference = data
-    }
     const room = resolveArchive(roomReference)
     return success(mapRule(await logRulesV2API.create(room.id, ruleInput(data))), '添加解析规则成功')
   },

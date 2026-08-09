@@ -95,6 +95,7 @@ import { Field, FieldContent, FieldGroup, FieldLabel } from '@/components/ui/fie
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch as UiSwitch } from '@/components/ui/switch'
+import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 
 export default {
   name: 'WorldLog',
@@ -156,7 +157,9 @@ export default {
       manuallyClosedEventSource: false,
       streamState: 'idle',
       loadError: '',
-      resizeObserver: null
+      resizeObserver: null,
+      archiveRequestSequence: 0,
+      logRequestSequence: 0
     }
   },
   computed: {
@@ -188,6 +191,7 @@ export default {
   async mounted() {
     this.initTerminal()
     window.addEventListener('resize', this.onResize)
+    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(this.onResize)
       this.resizeObserver.observe(this.$refs.root)
@@ -196,6 +200,7 @@ export default {
   },
   beforeUnmount() {
     window.removeEventListener('resize', this.onResize)
+    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
     this.resizeObserver?.disconnect()
     this.closeEventSource()
     this.terminal?.dispose()
@@ -223,23 +228,35 @@ export default {
       this.writeSystemLine('请选择房间和世界以查看日志')
     },
     async loadArchives() {
+      const requestSequence = ++this.archiveRequestSequence
       this.loading = true
       this.loadError = ''
       try {
         const response = await roomApi.getRoomList()
+        if (requestSequence !== this.archiveRequestSequence) return
         this.archives = Array.isArray(response)
           ? response
           : (Array.isArray(response?.data) ? response.data : [])
         this.resolveInitialSelection()
         if (this.selectedRoomId && this.selectedWorldId) await this.loadLog()
       } catch (error) {
+        if (requestSequence !== this.archiveRequestSequence) return
         this.archives = []
         this.streamState = 'error'
         this.loadError = error.message || '获取房间列表失败'
         this.writeErrorLine(this.loadError)
       } finally {
-        this.loading = false
+        if (requestSequence === this.archiveRequestSequence) this.loading = false
       }
+    },
+    handleRuntimeTargetChange() {
+      this.closeEventSource()
+      this.logRequestSequence += 1
+      this.selectedRoomId = ''
+      this.selectedWorldId = ''
+      this.archives = []
+      this.terminal?.clear()
+      this.loadArchives()
     },
     resolveInitialSelection() {
       const preferredRoom = this.archives.find(room =>
@@ -285,6 +302,7 @@ export default {
     async loadLog() {
       if (!this.selectedRoomId || !this.selectedWorldId || !this.terminal) return
 
+      const requestSequence = ++this.logRequestSequence
       this.loading = true
       this.loadError = ''
       this.closeEventSource()
@@ -293,15 +311,17 @@ export default {
 
       try {
         const snapshot = await worldLogsV2API.snapshot(this.selectedRoomId, this.selectedWorldId, { limit: 300 })
+        if (requestSequence !== this.logRequestSequence) return
         this.renderSnapshot(snapshot)
         if (this.followLog) this.connectEventSource()
         else this.streamState = 'paused'
       } catch (error) {
+        if (requestSequence !== this.logRequestSequence) return
         this.streamState = 'error'
         this.loadError = error.message || '日志读取失败'
         this.writeErrorLine(this.loadError)
       } finally {
-        this.loading = false
+        if (requestSequence === this.logRequestSequence) this.loading = false
       }
     },
     connectEventSource() {
@@ -311,27 +331,33 @@ export default {
       this.eventSource = source
 
       source.addEventListener('connected', event => {
+        if (this.eventSource !== source) return
         const payload = this.parseEvent(event)
         this.streamState = 'connected'
+        this.loadError = ''
         if (payload?.snapshot) this.renderSnapshot(payload.snapshot)
       })
       source.addEventListener('line', event => {
+        if (this.eventSource !== source) return
         const payload = this.parseEvent(event)
         if (payload?.line?.text !== undefined) this.writeLogLine(payload.line.text)
       })
       source.addEventListener('reset', event => {
+        if (this.eventSource !== source) return
         const payload = this.parseEvent(event)
         this.terminal.clear()
         this.writeSystemLine(`日志文件已轮转：${payload?.snapshot?.fileName || 'server_log.txt'}`)
       })
       source.addEventListener('heartbeat', () => {
-        if (this.streamState !== 'connected') this.streamState = 'connected'
+        if (this.eventSource === source && this.streamState !== 'connected') this.streamState = 'connected'
       })
       source.onerror = event => {
-        if (this.manuallyClosedEventSource) return
+        if (this.manuallyClosedEventSource || this.eventSource !== source) return
         const payload = this.parseEvent(event)
         this.streamState = 'error'
-        if (payload?.message) this.writeErrorLine(payload.message)
+        this.loadError = payload?.message || '日志流连接已断开，请检查世界运行状态后重试'
+        this.writeErrorLine(this.loadError)
+        this.closeEventSource()
       }
     },
     parseEvent(event) {
