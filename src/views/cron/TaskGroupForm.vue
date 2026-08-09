@@ -1,14 +1,11 @@
 <template>
-  <div class="app-container">
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ isEdit ? '编辑任务组' : '添加任务组' }}</h1><p class="mt-1 text-sm text-muted-foreground">组织并统一控制一组关联的自动化任务。</p></div>
+      <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton variant="outline" size="sm" @click="$router.push('/cron/groups')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></div>
+    </header>
     <Card>
-      <CardHeader>
-        <CardTitle>{{ isEdit ? '编辑任务组' : '添加任务组' }}</CardTitle>
-        <CardDescription>组织并统一控制一组关联的自动化任务</CardDescription>
-        <CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton variant="outline" size="sm" @click="$router.push('/cron/groups')">
-            <ArrowLeft data-icon="inline-start" />
-            返回列表
-          </UiButton></CardAction>
-      </CardHeader>
+      <CardHeader><CardTitle>任务组配置</CardTitle><CardDescription>设置名称、用途与启用状态。</CardDescription></CardHeader>
       <CardContent>
         <form @submit.prevent="submitForm">
           <FieldGroup>
@@ -65,7 +62,7 @@ import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -76,7 +73,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 export default {
   name: 'TaskGroupForm',
   components: {
-    ArrowLeft, AutomationRoomSelect, Card, CardAction, CardContent, CardDescription, CardHeader,
+    ArrowLeft, AutomationRoomSelect, Card, CardContent, CardDescription, CardHeader,
     CardTitle, Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel,
     FieldLegend, FieldSet, RadioGroup, RadioGroupItem, Spinner, UiButton, UiInput, UiSwitch, UiTextarea
   },

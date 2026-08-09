@@ -1,9 +1,11 @@
 <template>
-  <div class="app-container">
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ isEdit ? '编辑任务' : '添加任务' }}</h1><p class="mt-1 text-sm text-muted-foreground">配置调度、执行目标和失败重试策略。</p></div>
+      <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></div>
+    </header>
     <Card>
-      <CardHeader>
-        <CardTitle>{{ isEdit ? '编辑任务' : '添加任务' }}</CardTitle><CardDescription>配置调度、执行目标和失败重试策略</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></CardAction>
-      </CardHeader>
+      <CardHeader><CardTitle>任务配置</CardTitle><CardDescription>填写必填信息后保存，调度规则将立即生效。</CardDescription></CardHeader>
       <CardContent>
         <form @submit.prevent="submitForm">
           <Tabs v-model="activeTab"><TabsList><TabsTrigger value="basic">基本信息</TabsTrigger><TabsTrigger value="advanced">高级选项</TabsTrigger></TabsList>
@@ -53,7 +55,7 @@ import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -70,7 +72,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 export default {
   name: 'TaskForm',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardAction, CardContent,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardContent,
     CardDescription, CardHeader, CardTitle, Checkbox, Field, FieldContent, FieldDescription,
     FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle, InputGroup, InputGroupAddon,
     InputGroupInput, Plus, RadioGroup, RadioGroupItem, ScrollArea, SelectContent, SelectGroup,

@@ -1,6 +1,6 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
-    <header class="flex min-w-0 flex-col gap-1"><h1 class="flex items-center gap-2 text-xl font-semibold"><LockKeyhole />Agent 安全设置</h1><p class="text-sm text-muted-foreground">管理 Agent 连接密钥和安装配置。</p></header>
+    <header class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">Agent 安全设置</h1><p class="mt-1 text-sm text-muted-foreground">管理 Agent 连接密钥和安装配置。</p></header>
 
     <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>安全配置加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchApiKey">重试</UiButton></AlertAction></Alert>
 
@@ -129,7 +129,7 @@ SERVER_URL = wss://your-domain/agent</code></pre>
 </template>
 
 <script>
-import { CircleAlert, Copy, Eye, EyeOff, KeyRound, LockKeyhole, RefreshCw } from '@lucide/vue';
+import { CircleAlert, Copy, Eye, EyeOff, KeyRound, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -150,7 +150,7 @@ export default {
     Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardAction, CardContent,
     CardDescription, CardFooter, CardHeader, CardTitle, CircleAlert, Copy, Eye, EyeOff, Field,
     FieldDescription, FieldGroup, FieldLabel, InputGroup, InputGroupAddon, InputGroupInput,
-    KeyRound, LockKeyhole, RefreshCw, Separator, Skeleton, Spinner, Tabs, TabsContent, TabsList,
+    KeyRound, RefreshCw, Separator, Skeleton, Spinner, Tabs, TabsContent, TabsList,
     TabsTrigger, UiButton
   },
   data() {

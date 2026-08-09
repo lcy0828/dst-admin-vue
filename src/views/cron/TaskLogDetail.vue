@@ -1,21 +1,11 @@
 <template>
-  <div class="app-container">
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">日志详情</h1><p class="mt-1 text-sm text-muted-foreground">查看任务运行参数、输出及执行信息。</p></div>
+      <div class="flex flex-wrap gap-2"><UiButton size="sm" :disabled="loading" @click="fetchLogDetail"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回</UiButton></div>
+    </header>
     <Card>
-      <CardHeader>
-        <CardTitle>日志详情</CardTitle>
-        <CardDescription>查看任务运行参数、输出及执行信息</CardDescription>
-        <CardAction class="flex flex-wrap gap-2">
-          <UiButton size="sm" :disabled="loading" @click="fetchLogDetail">
-            <Spinner v-if="loading" data-icon="inline-start" />
-            <RefreshCw v-else data-icon="inline-start" />
-            刷新
-          </UiButton>
-          <UiButton size="sm" variant="outline" @click="goBack">
-            <ArrowLeft data-icon="inline-start" />
-            返回
-          </UiButton>
-        </CardAction>
-      </CardHeader>
+      <CardHeader><CardTitle>执行详情</CardTitle><CardDescription>任务参数、时间、输出和错误信息。</CardDescription></CardHeader>
       <CardContent>
         <div v-if="loading" class="flex flex-col gap-4">
           <Skeleton class="h-10 w-1/3" />
@@ -90,7 +80,7 @@ import { cronTaskApi } from '@/api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -98,7 +88,7 @@ import { Spinner } from '@/components/ui/spinner';
 export default {
   name: 'TaskLogDetail',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, Badge, Card, CardAction, CardContent,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, Badge, Card, CardContent,
     CardDescription, CardHeader, CardTitle, CircleAlert, Empty, EmptyDescription, EmptyHeader,
     EmptyTitle, RefreshCw, Skeleton, Spinner, UiButton
   },

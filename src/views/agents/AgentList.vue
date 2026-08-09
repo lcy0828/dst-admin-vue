@@ -1,19 +1,19 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
-      <div class="flex min-w-0 flex-col gap-1">
-        <h1 class="flex items-center gap-2 text-xl font-semibold"><Network />Agent 管理中心</h1>
-        <p class="text-sm text-muted-foreground">管理远程节点、运行时配置与资源状态。</p>
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-semibold tracking-normal">Agent 管理中心</h1>
+        <p class="mt-1 text-sm text-muted-foreground">管理远程节点、运行时配置与资源状态。</p>
       </div>
       <UiButton variant="outline" :disabled="loading" @click="refreshData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton>
     </header>
 
     <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>Agent 列表加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="refreshData">重试</UiButton></AlertAction></Alert>
 
-    <div class="grid gap-3 sm:grid-cols-3">
-      <Card size="sm"><CardHeader><CardDescription>在线 Agent</CardDescription><CardTitle>{{ connectedAgents }}</CardTitle></CardHeader></Card>
-      <Card size="sm"><CardHeader><CardDescription>Agent 总数</CardDescription><CardTitle>{{ totalAgents }}</CardTitle></CardHeader></Card>
-      <Card size="sm"><CardHeader><CardDescription>操作系统</CardDescription><CardTitle>{{ uniqueOsCount }}</CardTitle></CardHeader></Card>
+    <div class="grid gap-4 sm:grid-cols-3">
+      <Card><CardHeader><CardTitle>在线 Agent</CardTitle><CardDescription>当前保持连接的节点</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Network /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ connectedAgents }}</strong></CardContent></Card>
+      <Card><CardHeader><CardTitle>Agent 总数</CardTitle><CardDescription>已注册的远程节点</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Monitor /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ totalAgents }}</strong></CardContent></Card>
+      <Card><CardHeader><CardTitle>操作系统</CardTitle><CardDescription>已接入的系统类型</CardDescription><CardAction><span class="flex size-9 items-center justify-center rounded-md bg-muted text-muted-foreground"><Apple /></span></CardAction></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ uniqueOsCount }}</strong></CardContent></Card>
     </div>
 
     <div v-if="loading" class="flex flex-col gap-3" aria-label="正在读取 Agent 状态">

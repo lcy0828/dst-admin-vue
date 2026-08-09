@@ -1,55 +1,42 @@
 <template>
-  <div class="app-container">
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">任务统计图表</h1><p class="mt-1 text-sm text-muted-foreground">分析执行次数、成功率和耗时趋势。</p></div>
+      <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新数据</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div>
+    </header>
     <Card>
-      <CardHeader>
-        <CardTitle>任务统计图表</CardTitle><CardDescription>分析执行次数、成功率和耗时趋势</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新数据</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></CardAction>
-      </CardHeader>
+      <CardHeader><CardTitle>统计范围</CardTitle><CardDescription>选择日期、任务组和具体任务。</CardDescription></CardHeader>
       <CardContent>
-      <FieldGroup class="filter-grid">
-        <Field><FieldLabel for="chart-date-range">时间范围</FieldLabel><UiSelect v-model="dateRange" @update:model-value="loadAllCharts"><SelectTrigger id="chart-date-range"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="7">最近 7 天</SelectItem><SelectItem value="30">最近 30 天</SelectItem><SelectItem value="90">最近 90 天</SelectItem><SelectItem value="180">最近 180 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-        <Field><FieldLabel for="chart-group">任务组</FieldLabel><UiSelect v-model="groupId" @update:model-value="handleGroupChange"><SelectTrigger id="chart-group"><SelectValue placeholder="选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-        <Field v-if="groupId && groupId !== 'all'"><FieldLabel for="chart-task">任务</FieldLabel><UiSelect v-model="taskId" @update:model-value="loadTaskCharts"><SelectTrigger id="chart-task"><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in tasks" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-      </FieldGroup>
-      <Alert v-if="loadError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>统计数据加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
-      <div v-if="loading" class="flex flex-col gap-4"><Skeleton class="h-24 w-full" /><Skeleton class="h-96 w-full" /></div>
-      <div v-else>
-        <dl class="stats-cards">
-          <div class="stat-item">
-            <dt>总任务数</dt>
-            <dd>{{ overview.total_tasks || 0 }}</dd>
-          </div>
-          <div class="stat-item">
-            <dt>总执行次数</dt>
-            <dd>{{ overview.total_executions || 0 }}</dd>
-          </div>
-          <div class="stat-item">
-            <dt>成功率</dt>
-            <dd>{{ overview.success_rate || 0 }}%</dd>
-          </div>
-          <div class="stat-item">
-            <dt>平均执行时长</dt>
-            <dd>{{ overview.avg_duration || 0 }} 秒</dd>
-          </div>
-        </dl>
-        
-        <div class="chart-container">
-          <div id="overviewChart" class="chart-box"></div>
-          <div id="durationChart" class="chart-box"></div>
-        </div>
-        
-        <div v-if="groupId && groupId !== 'all' && (!taskId || taskId === 'all')" class="chart-container">
-          <h3 class="chart-title">任务组执行统计</h3>
-          <div id="groupTasksChart" class="chart-box"></div>
-        </div>
-        
-        <div v-if="taskId && taskId !== 'all'" class="chart-container">
-          <h3 class="chart-title">任务执行统计</h3>
-          <div id="taskExecutionChart" class="chart-box"></div>
-          <div id="taskDurationChart" class="chart-box"></div>
-        </div>
-      </div>
+        <FieldGroup class="filter-grid">
+          <Field><FieldLabel for="chart-date-range">时间范围</FieldLabel><UiSelect v-model="dateRange" @update:model-value="loadAllCharts"><SelectTrigger id="chart-date-range"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="7">最近 7 天</SelectItem><SelectItem value="30">最近 30 天</SelectItem><SelectItem value="90">最近 90 天</SelectItem><SelectItem value="180">最近 180 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="chart-group">任务组</FieldLabel><UiSelect v-model="groupId" @update:model-value="handleGroupChange"><SelectTrigger id="chart-group"><SelectValue placeholder="选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field v-if="groupId && groupId !== 'all'"><FieldLabel for="chart-task">任务</FieldLabel><UiSelect v-model="taskId" @update:model-value="loadTaskCharts"><SelectTrigger id="chart-task"><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in tasks" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        </FieldGroup>
+        <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>统计数据加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
       </CardContent>
     </Card>
+
+    <div v-if="loading" class="flex flex-col gap-4"><Skeleton class="h-36 w-full" /><Skeleton class="h-96 w-full" /></div>
+    <div v-else class="flex min-w-0 flex-col gap-6">
+      <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+        <Card><CardHeader><CardTitle>总任务数</CardTitle><CardDescription>当前统计范围</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.total_tasks || 0 }}</strong></CardContent></Card>
+        <Card><CardHeader><CardTitle>总执行次数</CardTitle><CardDescription>累计调度记录</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.total_executions || 0 }}</strong></CardContent></Card>
+        <Card><CardHeader><CardTitle>成功率</CardTitle><CardDescription>成功执行占比</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.success_rate || 0 }}%</strong></CardContent></Card>
+        <Card><CardHeader><CardTitle>平均执行时长</CardTitle><CardDescription>全部已完成任务</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.avg_duration || 0 }}<span class="ml-1.5 text-sm font-normal text-muted-foreground">秒</span></strong></CardContent></Card>
+      </div>
+
+      <div class="grid min-w-0 gap-6 xl:grid-cols-2">
+        <Card><CardHeader><CardTitle>执行概览</CardTitle><CardDescription>成功与失败次数分布</CardDescription></CardHeader><CardContent class="pt-1"><div id="overviewChart" class="chart-box"></div></CardContent></Card>
+        <Card><CardHeader><CardTitle>耗时趋势</CardTitle><CardDescription>统计范围内的执行耗时变化</CardDescription></CardHeader><CardContent class="pt-1"><div id="durationChart" class="chart-box"></div></CardContent></Card>
+      </div>
+
+      <Card v-if="groupId && groupId !== 'all' && (!taskId || taskId === 'all')"><CardHeader><CardTitle>任务组执行统计</CardTitle><CardDescription>组内任务执行情况对比</CardDescription></CardHeader><CardContent class="pt-1"><div id="groupTasksChart" class="chart-box"></div></CardContent></Card>
+
+      <div v-if="taskId && taskId !== 'all'" class="grid min-w-0 gap-6 xl:grid-cols-2">
+        <Card><CardHeader><CardTitle>任务执行统计</CardTitle><CardDescription>所选任务的成功与失败情况</CardDescription></CardHeader><CardContent class="pt-1"><div id="taskExecutionChart" class="chart-box"></div></CardContent></Card>
+        <Card><CardHeader><CardTitle>任务耗时统计</CardTitle><CardDescription>所选任务的执行耗时变化</CardDescription></CardHeader><CardContent class="pt-1"><div id="taskDurationChart" class="chart-box"></div></CardContent></Card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -61,7 +48,7 @@ import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -71,7 +58,7 @@ import { getSystemPreferences } from '@/utils/systemPreferences';
 export default {
   name: 'TaskCharts',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardAction, CardContent,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardContent,
     CardDescription, CardHeader, CardTitle, CircleAlert, Field, FieldGroup, FieldLabel,
     RefreshCw, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, Skeleton,
     Spinner, UiButton, UiSelect
@@ -621,65 +608,14 @@ export default {
 </script>
 
 <style scoped>
-.filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; }
-.stats-cards {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  overflow: hidden;
-  margin-bottom: 20px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.stat-item {
-  min-width: 0;
-  margin: 0;
-  padding: 12px;
-  border-right: 1px solid var(--border);
-}
-.stat-item:last-child {
-  border-right: 0;
-}
-.stat-item dt {
-  font-size: 14px;
-  color: var(--muted-foreground);
-  margin-bottom: 10px;
-}
-.stat-item dd {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--foreground);
-}
-.chart-container {
-  margin-top: 20px;
-  margin-bottom: 20px;
-}
-.chart-title {
-  font-size: 16px;
-  margin-bottom: 15px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
+.filter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .chart-box {
   width: 100%;
   height: 400px;
-  margin-bottom: 20px;
 }
 
 @media (max-width: 768px) {
   .filter-grid { grid-template-columns: 1fr; }
-  .stats-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .stat-item:nth-child(2) {
-    border-right: 0;
-  }
-
-  .stat-item:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--border);
-  }
-
   .chart-box {
     height: 320px;
   }

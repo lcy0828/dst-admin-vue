@@ -1,9 +1,18 @@
 <template>
-  <div class="app-container">
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-semibold tracking-normal">定时任务管理</h1>
+        <p class="mt-1 text-sm text-muted-foreground">配置并监控服务器自动化任务。</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+        <UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton>
+        <UiButton size="sm" variant="outline" @click="$router.push('/cron/logs')"><FileText data-icon="inline-start" />执行日志</UiButton>
+      </div>
+    </header>
     <Card>
-      <CardHeader><CardTitle>定时任务管理</CardTitle><CardDescription>配置并监控服务器自动化任务</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2">
-          <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
-          <UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/logs')"><FileText data-icon="inline-start" />执行日志</UiButton></CardAction></CardHeader>
+      <CardHeader><CardTitle>任务列表</CardTitle><CardDescription>按类型、状态和关键词筛选当前房间任务。</CardDescription></CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid"><Field><FieldLabel for="task-type-filter">任务类型</FieldLabel><UiSelect v-model="listQuery.type"><SelectTrigger id="task-type-filter"><SelectValue placeholder="选择类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="function">函数</SelectItem><SelectItem value="shell">Shell 命令</SelectItem><SelectItem value="tmux_command">TMUX 命令</SelectItem><SelectItem value="tmux_raw_command">TMUX 原始命令</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-status-filter">状态</FieldLabel><UiSelect :model-value="String(listQuery.status)" @update:model-value="listQuery.status = $event"><SelectTrigger id="task-status-filter"><SelectValue placeholder="选择状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="1">启用</SelectItem><SelectItem value="0">禁用</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-keyword">关键词</FieldLabel><UiInput id="task-keyword" v-model="listQuery.keyword" placeholder="搜索任务名称或描述" @keyup.enter="fetchData" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
         <Alert v-if="fetchError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>任务列表加载失败</AlertTitle><AlertDescription>无法读取当前房间的任务数据，请检查连接后重试。</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="retryFetch">重新加载</UiButton></AlertAction></Alert>
@@ -39,13 +48,10 @@
     <UiDialog v-model:open="statsDialogVisible"><DialogScrollContent class="max-w-4xl"><DialogHeader><DialogTitle>任务统计</DialogTitle><DialogDescription>任务历史执行表现和耗时趋势</DialogDescription></DialogHeader>
       <div v-if="statsLoading" class="flex flex-col gap-3"><Skeleton class="h-24 w-full" /><Skeleton class="h-72 w-full" /></div><div v-else class="task-stats">
         <div v-if="taskStats" class="stats-overview">
-          <Card size="sm"><CardHeader><CardDescription>成功率</CardDescription><CardTitle>{{ taskStats.success_rate }}%</CardTitle></CardHeader></Card>
-          <Card size="sm"><CardHeader><CardDescription>平均耗时</CardDescription><CardTitle>
-              {{ taskStats.avg_duration }} {{ taskStats.duration_unit === 's' ? '秒' : '毫秒' }}
-              <span v-if="taskStats.duration_unit === 'ms'" class="unit-note">(约 {{ (taskStats.avg_duration / 1000).toFixed(2) }} 秒)</span>
-            </CardTitle></CardHeader></Card>
-          <Card size="sm"><CardHeader><CardDescription>总执行次数</CardDescription><CardTitle>{{ taskStats.total_runs }}</CardTitle></CardHeader></Card>
-          <Card size="sm"><CardHeader><CardDescription>最近执行</CardDescription><CardTitle>{{ taskStats.last_run || '无' }}</CardTitle></CardHeader></Card>
+          <Card><CardHeader><CardTitle>成功率</CardTitle><CardDescription>历史执行结果</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ taskStats.success_rate }}%</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>平均耗时</CardTitle><CardDescription>已完成执行</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ taskStats.avg_duration }} <span class="text-sm font-normal text-muted-foreground">{{ taskStats.duration_unit === 's' ? '秒' : '毫秒' }}</span></strong><p v-if="taskStats.duration_unit === 'ms'" class="mt-1 text-xs text-muted-foreground">约 {{ (taskStats.avg_duration / 1000).toFixed(2) }} 秒</p></CardContent></Card>
+          <Card><CardHeader><CardTitle>总执行次数</CardTitle><CardDescription>全部历史记录</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ taskStats.total_runs }}</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>最近执行</CardTitle><CardDescription>最后一次调度</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-base font-semibold">{{ taskStats.last_run || '无' }}</strong></CardContent></Card>
         </div>
         <div v-if="taskStats && (taskStats.success_count > 0 || taskStats.fail_count > 0)" class="stats-detail">
           <div class="grid gap-4 sm:grid-cols-2">
@@ -86,7 +92,7 @@ import { getSystemPreferences } from '@/utils/systemPreferences';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
@@ -103,7 +109,7 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'TaskList',
   components: {
-    Alert, AlertAction, AlertDescription, AlertTitle, AutomationRoomSelect, Badge, Card, CardAction, CardContent,
+    Alert, AlertAction, AlertDescription, AlertTitle, AutomationRoomSelect, Badge, Card, CardContent,
     CardDescription, CardHeader, CardTitle, ChartNoAxesColumn, CircleAlert, CircleCheck, CircleOff, Clock,
     DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle,
     DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator,

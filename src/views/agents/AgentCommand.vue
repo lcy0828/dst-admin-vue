@@ -1,7 +1,7 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
-      <div class="flex min-w-0 flex-col gap-1"><h1 class="flex items-center gap-2 text-xl font-semibold"><Terminal />Agent 命令管理</h1><p class="text-sm text-muted-foreground">向已连接节点发送白名单动作并检查执行结果。</p></div>
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">Agent 命令管理</h1><p class="mt-1 text-sm text-muted-foreground">向已连接节点发送白名单动作并检查执行结果。</p></div>
       <UiButton size="sm" @click="showCommandTemplates"><LayoutTemplate data-icon="inline-start" />使用模板</UiButton>
     </header>
 
@@ -73,7 +73,7 @@
 </template>
 
 <script>
-import { ChevronLeft, ChevronRight, CircleAlert, Copy, History, LayoutTemplate, Play, RefreshCw, SquareTerminal, Terminal } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, CircleAlert, Copy, History, LayoutTemplate, Play, RefreshCw, SquareTerminal } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -103,7 +103,7 @@ export default {
     FieldGroup, FieldLabel, FieldLegend, FieldSet, History, LayoutTemplate, Play, RefreshCw,
     SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, ShadcnTable, Skeleton, Spinner,
     SquareTerminal, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent,
-    TabsList, TabsTrigger, Terminal, UiButton, UiCheckbox, UiDialog, UiInput, UiSelect, UiSwitch,
+    TabsList, TabsTrigger, UiButton, UiCheckbox, UiDialog, UiInput, UiSelect, UiSwitch,
     UiTextarea
   },
   data() {

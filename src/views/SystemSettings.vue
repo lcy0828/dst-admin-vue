@@ -1,9 +1,9 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
-    <header class="flex flex-wrap items-start justify-between gap-4">
-      <div class="flex min-w-0 flex-col gap-1">
-        <h1 class="text-xl font-semibold">系统设置</h1>
-        <p class="text-sm text-muted-foreground">管理界面、安全、备份、通知和当前主机运行状态。</p>
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-semibold tracking-normal">系统设置</h1>
+        <p class="mt-1 text-sm text-muted-foreground">管理界面、安全、备份、通知和当前主机运行状态。</p>
       </div>
       <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSettings()">
         <Spinner v-if="loading" data-icon="inline-start" />

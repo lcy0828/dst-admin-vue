@@ -1,13 +1,15 @@
 <template>
-  <div class="app-container">
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">任务组管理</h1><p class="mt-1 text-sm text-muted-foreground">按用途组织任务并统一控制启用状态。</p></div>
+      <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="fetchData" @change="fetchData" />
+        <UiButton size="sm" @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton>
+        <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton>
+        <UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton>
+      </div>
+    </header>
     <Card>
-      <CardHeader>
-        <CardTitle>任务组管理</CardTitle><CardDescription>按用途组织任务并统一控制启用状态</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="fetchData" @change="fetchData" />
-            <UiButton size="sm" @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton>
-            <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton>
-            <UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton>
-        </CardAction>
-      </CardHeader>
+      <CardHeader><CardTitle>任务组列表</CardTitle><CardDescription>查看任务数量、类型和当前启用状态。</CardDescription></CardHeader>
       <CardContent>
         <div v-if="loading && groupList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 5" :key="index" class="h-12 w-full" /></div>
         <Empty v-else-if="groupList.length === 0"><EmptyHeader><EmptyTitle>暂无任务组</EmptyTitle><EmptyDescription>创建任务组以分类管理自动化任务。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton></EmptyContent></Empty>
@@ -42,10 +44,10 @@
         <div v-if="statsLoading" class="flex flex-col gap-3"><Skeleton class="h-20 w-full" /><Skeleton class="h-72 w-full" /></div>
         <div v-else class="group-stats">
         <div v-if="groupStats" class="stats-overview">
-          <Card size="sm"><CardHeader><CardDescription>总任务数</CardDescription><CardTitle>{{ groupStats.total_tasks }}</CardTitle></CardHeader></Card>
-          <Card size="sm"><CardHeader><CardDescription>启用任务数</CardDescription><CardTitle>{{ groupStats.enabled_tasks }}</CardTitle></CardHeader></Card>
-          <Card size="sm"><CardHeader><CardDescription>成功率</CardDescription><CardTitle>{{ groupStats.success_rate }}%</CardTitle></CardHeader></Card>
-          <Card size="sm"><CardHeader><CardDescription>平均耗时</CardDescription><CardTitle>{{ groupStats.avg_duration }} 秒</CardTitle></CardHeader></Card>
+          <Card><CardHeader><CardTitle>总任务数</CardTitle><CardDescription>组内全部任务</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ groupStats.total_tasks }}</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>启用任务数</CardTitle><CardDescription>当前参与调度</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ groupStats.enabled_tasks }}</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>成功率</CardTitle><CardDescription>近 30 天执行结果</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ groupStats.success_rate }}%</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>平均耗时</CardTitle><CardDescription>近 30 天已完成执行</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ groupStats.avg_duration }}<span class="ml-1 text-sm font-normal text-muted-foreground">秒</span></strong></CardContent></Card>
         </div>
         <div class="stats-charts" v-if="groupStats">
           <div id="groupExecutionChart" class="h-72 w-full"></div>
@@ -66,7 +68,7 @@ import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -78,7 +80,7 @@ import { getSystemPreferences } from '@/utils/systemPreferences';
 export default {
   name: 'TaskGroups',
   components: {
-    ArrowLeft, AutomationRoomSelect, Badge, Card, CardAction, CardContent, CardDescription,
+    ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription,
     CardHeader, CardTitle, ChartNoAxesColumn, CircleCheck, CircleOff,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
     EmptyDescription, EmptyHeader, EmptyTitle, Eye, Pencil, Plus, RefreshCw, Skeleton,

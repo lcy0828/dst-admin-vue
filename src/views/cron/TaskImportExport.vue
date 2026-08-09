@@ -1,8 +1,12 @@
 <template>
-  <div class="app-container flex flex-col gap-4">
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">任务配置迁移</h1><p class="mt-1 text-sm text-muted-foreground">在当前房间导入、导出和管理自动化任务配置。</p></div>
+      <automation-room-select @ready="getExportFiles" @change="getExportFiles" />
+    </header>
     <div class="grid gap-4 lg:grid-cols-2">
       <Card>
-        <CardHeader><CardTitle>导出任务配置</CardTitle><CardDescription>将当前房间的任务配置保存为 JSON 文件</CardDescription><automation-room-select @ready="getExportFiles" @change="getExportFiles" /></CardHeader>
+        <CardHeader><CardTitle>导出任务配置</CardTitle><CardDescription>将当前房间的任务配置保存为 JSON 文件</CardDescription></CardHeader>
         <CardContent>
           <FieldGroup>
             <Field><FieldLabel for="export-description">导出描述</FieldLabel><UiTextarea id="export-description" v-model="exportForm.description" rows="3" placeholder="为本次导出添加描述信息" /></Field>
