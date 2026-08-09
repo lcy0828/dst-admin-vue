@@ -156,13 +156,6 @@ body[data-ui-version='v2'] {
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
-/* 重置样式 */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 html, body {
   height: 100%;
   font-family: 'Inter Variable', Inter, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
@@ -171,13 +164,6 @@ html, body {
   font-size: 14px;
   color: var(--text-primary);
   background-color: var(--bg-color);
-}
-
-button,
-input,
-textarea,
-select {
-  font: inherit;
 }
 
 button,
@@ -396,11 +382,6 @@ a,
   }
 }
 
-:focus-visible {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -520,6 +501,19 @@ a,
   * {
     @apply border-border outline-ring/50;
   }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+
   body {
     @apply bg-background text-foreground;
   }

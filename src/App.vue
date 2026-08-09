@@ -20,21 +20,6 @@ export default {
 </script>
 
 <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html, body {
-  font-family: 'Inter Variable', Inter, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  height: 100%;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
 #app,
 .app-root {
   height: 100%;
