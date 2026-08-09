@@ -2,15 +2,11 @@
   <div class="app-container">
     <Card>
       <CardHeader>
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div><CardTitle>任务组管理</CardTitle><CardDescription>按用途组织任务并统一控制启用状态</CardDescription></div>
-          <div class="flex flex-wrap gap-2">
+        <CardTitle>任务组管理</CardTitle><CardDescription>按用途组织任务并统一控制启用状态</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="fetchData" @change="fetchData" />
             <UiButton size="sm" @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />添加任务组</UiButton>
             <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton>
             <UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton>
-          </div>
-        </div>
-        <automation-room-select @ready="fetchData" @change="fetchData" />
+        </CardAction>
       </CardHeader>
       <CardContent>
         <div v-if="loading && groupList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 5" :key="index" class="h-12 w-full" /></div>
@@ -70,7 +66,7 @@ import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -82,7 +78,7 @@ import { getSystemPreferences } from '@/utils/systemPreferences';
 export default {
   name: 'TaskGroups',
   components: {
-    ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription,
+    ArrowLeft, AutomationRoomSelect, Badge, Card, CardAction, CardContent, CardDescription,
     CardHeader, CardTitle, ChartNoAxesColumn, CircleCheck, CircleOff,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
     EmptyDescription, EmptyHeader, EmptyTitle, Eye, Pencil, Plus, RefreshCw, Skeleton,

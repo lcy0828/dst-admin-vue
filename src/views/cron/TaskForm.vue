@@ -2,8 +2,7 @@
   <div class="app-container">
     <Card>
       <CardHeader>
-        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>{{ isEdit ? '编辑任务' : '添加任务' }}</CardTitle><CardDescription>配置调度、执行目标和失败重试策略</CardDescription></div><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></div>
-        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+        <CardTitle>{{ isEdit ? '编辑任务' : '添加任务' }}</CardTitle><CardDescription>配置调度、执行目标和失败重试策略</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></CardAction>
       </CardHeader>
       <CardContent>
         <form @submit.prevent="submitForm">
@@ -54,7 +53,7 @@ import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -71,7 +70,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 export default {
   name: 'TaskForm',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardContent,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardAction, CardContent,
     CardDescription, CardHeader, CardTitle, Checkbox, Field, FieldContent, FieldDescription,
     FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle, InputGroup, InputGroupAddon,
     InputGroupInput, Plus, RadioGroup, RadioGroupItem, ScrollArea, SelectContent, SelectGroup,

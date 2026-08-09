@@ -1,9 +1,9 @@
 <template>
   <div class="app-container">
     <Card>
-      <CardHeader><div class="task-header"><div><CardTitle>定时任务管理</CardTitle><CardDescription>配置并监控服务器自动化任务</CardDescription></div><div class="task-header-controls">
+      <CardHeader><CardTitle>定时任务管理</CardTitle><CardDescription>配置并监控服务器自动化任务</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2">
           <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
-          <div class="task-header-actions"><UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/logs')"><FileText data-icon="inline-start" />执行日志</UiButton></div></div></div></CardHeader>
+          <UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/logs')"><FileText data-icon="inline-start" />执行日志</UiButton></CardAction></CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid"><Field><FieldLabel for="task-type-filter">任务类型</FieldLabel><UiSelect v-model="listQuery.type"><SelectTrigger id="task-type-filter"><SelectValue placeholder="选择类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="function">函数</SelectItem><SelectItem value="shell">Shell 命令</SelectItem><SelectItem value="tmux_command">TMUX 命令</SelectItem><SelectItem value="tmux_raw_command">TMUX 原始命令</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-status-filter">状态</FieldLabel><UiSelect :model-value="String(listQuery.status)" @update:model-value="listQuery.status = $event"><SelectTrigger id="task-status-filter"><SelectValue placeholder="选择状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="1">启用</SelectItem><SelectItem value="0">禁用</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-keyword">关键词</FieldLabel><UiInput id="task-keyword" v-model="listQuery.keyword" placeholder="搜索任务名称或描述" @keyup.enter="fetchData" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
         <Alert v-if="fetchError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>任务列表加载失败</AlertTitle><AlertDescription>无法读取当前房间的任务数据，请检查连接后重试。</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="retryFetch">重新加载</UiButton></AlertAction></Alert>
@@ -86,7 +86,7 @@ import { getSystemPreferences } from '@/utils/systemPreferences';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
@@ -103,7 +103,7 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'TaskList',
   components: {
-    Alert, AlertAction, AlertDescription, AlertTitle, AutomationRoomSelect, Badge, Card, CardContent,
+    Alert, AlertAction, AlertDescription, AlertTitle, AutomationRoomSelect, Badge, Card, CardAction, CardContent,
     CardDescription, CardHeader, CardTitle, ChartNoAxesColumn, CircleAlert, CircleCheck, CircleOff, Clock,
     DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle,
     DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator,
@@ -1047,55 +1047,7 @@ export default {
   width: 100%;
 }
 
-.box-card {
-  margin-bottom: 0;
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-.task-header,
-.task-header-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.task-header {
-  justify-content: space-between;
-}
-
-.task-header-title {
-  flex: 0 0 auto;
-  font-weight: 600;
-}
-
-.task-header-controls {
-  min-width: 0;
-  justify-content: flex-end;
-}
-
 .filter-grid { display: grid; grid-template-columns: 1fr .75fr 1.4fr auto; margin-bottom: 20px; }
-
-/* 表格样式 */
-.task-table {
-  margin-bottom: 0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-/* 表格行样式 */
-.task-table :deep(.disabled-row) {
-  background-color: var(--muted);
-  color: var(--muted-foreground);
-}
-
-.task-table :deep(.success-row) {
-  background-color: var(--muted);
-}
-
-.task-table :deep(.warning-row) {
-  background-color: var(--muted);
-}
 
 /* 任务名称单元格 */
 .task-name-cell {
@@ -1301,39 +1253,8 @@ export default {
   margin-top: 20px;
 }
 
-.pagination-container {
-  margin-top: 14px;
-}
-
 @media (max-width: 768px) {
-  .task-header,
-  .task-header-controls {
-    width: 100%;
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .task-header-controls :deep(.automation-room-select) {
-    width: 100%;
-    margin: 0;
-  }
-
-  .task-header-actions {
-    display: flex;
-    width: 100%;
-  }
-
-  .task-header-actions > * {
-    flex: 1 1 50%;
-    width: auto;
-    margin-left: 0 !important;
-  }
-
   .filter-grid { grid-template-columns: 1fr; }
-
-  .pagination-container {
-    justify-content: center;
-  }
 
   .stats-overview {
     grid-template-columns: repeat(2, minmax(0, 1fr));

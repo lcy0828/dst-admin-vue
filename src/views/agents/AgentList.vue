@@ -1,54 +1,40 @@
 <template>
-  <div class="agent-list-container">
-    <section class="main-panel">
-      <div class="page-header agent-page-header">
-        <span class="card-title"><Network />Agent 管理中心</span>
-        <UiButton variant="outline" :disabled="loading" @click="refreshData"><RefreshCw data-icon="inline-start" />刷新</UiButton>
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-wrap items-start justify-between gap-4">
+      <div class="flex min-w-0 flex-col gap-1">
+        <h1 class="flex items-center gap-2 text-xl font-semibold"><Network />Agent 管理中心</h1>
+        <p class="text-sm text-muted-foreground">管理远程节点、运行时配置与资源状态。</p>
       </div>
+      <UiButton variant="outline" :disabled="loading" @click="refreshData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton>
+    </header>
 
-      <div class="agent-list-header">
-        <div class="stat-cards">
-          <div class="stat-card">
-            <div class="stat-value">{{ connectedAgents }}</div>
-            <div class="stat-label">在线Agent</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ totalAgents }}</div>
-            <div class="stat-label">总Agent数</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ uniqueOsCount }}</div>
-            <div class="stat-label">操作系统</div>
-          </div>
-        </div>
-      </div>
+    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>Agent 列表加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="refreshData">重试</UiButton></AlertAction></Alert>
 
-      <div class="agent-list-content">
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在读取 Agent 状态...</span></div>
-        <div v-else-if="agentList.length > 0" class="agent-stack">
-              <Card v-for="agent in agentList" :key="agent.id" class="agent-card" :class="{ 'agent-connected': agent.connected }">
-                <CardHeader class="agent-card-header">
-                  <div class="agent-name">
-                    <Badge :variant="agent.connected ? 'default' : 'destructive'">{{ agent.connected ? '在线' : '离线' }}</Badge>
-                    <span class="hostname">{{ agent.hostname }}</span>
-                  </div>
-                  <div class="agent-actions">
+    <div class="grid gap-3 sm:grid-cols-3">
+      <Card size="sm"><CardHeader><CardDescription>在线 Agent</CardDescription><CardTitle>{{ connectedAgents }}</CardTitle></CardHeader></Card>
+      <Card size="sm"><CardHeader><CardDescription>Agent 总数</CardDescription><CardTitle>{{ totalAgents }}</CardTitle></CardHeader></Card>
+      <Card size="sm"><CardHeader><CardDescription>操作系统</CardDescription><CardTitle>{{ uniqueOsCount }}</CardTitle></CardHeader></Card>
+    </div>
+
+    <div v-if="loading" class="flex flex-col gap-3" aria-label="正在读取 Agent 状态">
+      <Skeleton v-for="index in 3" :key="index" class="h-52 w-full" />
+    </div>
+    <div v-else-if="agentList.length > 0" class="flex flex-col gap-3">
+              <Card v-for="agent in agentList" :key="agent.id">
+                <CardHeader>
+                  <CardTitle class="flex flex-wrap items-center gap-2"><Badge :variant="agent.connected ? 'default' : 'destructive'">{{ agent.connected ? '在线' : '离线' }}</Badge>{{ agent.hostname }}</CardTitle>
+                  <CardDescription class="break-all">{{ agent.agent_uuid }}</CardDescription>
+                  <CardAction class="flex flex-wrap justify-end gap-2">
                     <UiButton size="sm" variant="outline" @click="showAgentDetails(agent)"><Eye data-icon="inline-start" />详情</UiButton>
                     <UiButton :variant="runtimeFor(agent).configured ? 'outline' : 'default'" size="sm" @click="openRuntimeConfig(agent)"><Settings data-icon="inline-start" />
                       {{ runtimeFor(agent).configured ? '运行时配置' : '配置远程运行时' }}
                     </UiButton>
                     <UiButton size="sm" variant="outline" @click="navigateToCommand(agent.id)"><Terminal data-icon="inline-start" />执行命令</UiButton>
                     <UiButton variant="destructive" size="sm" :disabled="agent.connected" @click="forgetAgent(agent)"><Trash2 data-icon="inline-start" />移除</UiButton>
-                  </div>
+                  </CardAction>
                 </CardHeader>
                 <CardContent>
-                  <Separator />
                   <div class="agent-info-grid">
-                  <div class="info-item">
-                    <div class="info-label">UUID</div>
-                    <div class="info-value uuid-value">{{ agent.agent_uuid }}</div>
-                  </div>
-
                   <div class="info-item">
                     <div class="info-label">系统</div>
                     <div class="info-value">
@@ -97,18 +83,17 @@
                     <div class="info-value">{{ formatTime(agent.last_heartbeat) }}</div>
                   </div>
                   </div>
-
+                </CardContent>
+                <CardFooter v-if="agent.connected" class="flex-col items-stretch gap-2">
                   <div v-if="agent.connected" class="resource-monitor">
                     <div class="progress-label"><span>内存使用</span><span>{{ calculateMemoryUsage(agent) }}%</span></div>
-                    <UiProgress :model-value="calculateMemoryUsage(agent)" />
+                    <UiProgress :model-value="calculateMemoryUsage(agent)" :aria-label="`${agent.hostname} 内存使用率`" />
                   </div>
-                </CardContent>
+                </CardFooter>
               </Card>
-        </div>
+    </div>
 
-        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Network /></EmptyMedia><EmptyTitle>暂无 Agent 连接</EmptyTitle><EmptyDescription>配置安全密钥并启动 Agent 后，节点会显示在这里。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="navigateToSecurity">添加 Agent</UiButton></EmptyContent></Empty>
-      </div>
-    </section>
+    <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Network /></EmptyMedia><EmptyTitle>暂无 Agent 连接</EmptyTitle><EmptyDescription>配置安全密钥并启动 Agent 后，节点会显示在这里。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="navigateToSecurity">添加 Agent</UiButton></EmptyContent></Empty>
 
     <UiDialog v-model:open="detailVisible"><DialogContent class="detail-dialog"><DialogHeader><DialogTitle>Agent 详情</DialogTitle><DialogDescription>节点身份、系统与连接信息。</DialogDescription></DialogHeader>
       <dl v-if="selectedAgent" class="detail-grid">
@@ -157,20 +142,21 @@
 </template>
 
 <script>
-import { Apple, Eye, Monitor, Network, RefreshCw, Settings, Terminal, Trash2 } from '@lucide/vue';
+import { Apple, CircleAlert, Eye, Monitor, Network, RefreshCw, Settings, Terminal, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
 import { runtimeTargetsV2API } from '@/api/v2';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Progress as UiProgress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -200,15 +186,17 @@ const editableRuntimeConfig = (agent, config = {}) => {
 export default {
   name: 'AgentList',
   components: {
-    Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge, Card, CardContent, CardHeader,
+    Accordion, AccordionContent, AccordionItem, AccordionTrigger, Alert, AlertAction, AlertDescription,
+    AlertTitle, Badge, Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle,
     DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
     EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldError, FieldGroup,
-    FieldLabel, Network, RefreshCw, Separator, Settings, Spinner, Terminal, ToggleGroup, ToggleGroupItem,
+    FieldLabel, CircleAlert, Network, RefreshCw, Settings, Skeleton, Spinner, Terminal, ToggleGroup, ToggleGroupItem,
     Tooltip, TooltipContent, TooltipTrigger, Trash2, UiButton, UiDialog, UiInput, UiProgress
   },
   data() {
     return {
       loading: false,
+      loadError: '',
       agentData: {},
       agentList: [],
       detailVisible: false,
@@ -246,6 +234,7 @@ export default {
   methods: {
     async fetchAgentList() {
       this.loading = true;
+      this.loadError = '';
       try {
         const response = await agentApi.getAgentList();
         this.agentData = response.data || [];
@@ -253,7 +242,8 @@ export default {
         await this.fetchRuntimeTargets();
       } catch (error) {
         this.agentList = [];
-        toast.error('获取Agent列表失败: ' + (error.message || '未知错误'));
+        this.loadError = error.message || '未知错误';
+        toast.error('获取Agent列表失败: ' + this.loadError);
       } finally {
         this.loading = false;
       }
@@ -419,134 +409,18 @@ export default {
 </script>
 
 <style scoped>
-.agent-list-container {
-  width: 100%;
-  min-height: 100%;
-}
-
-.main-panel {
-  width: 100%;
-}
-
-.agent-page-header {
-  align-items: center;
-}
-
-.card-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.agent-list-header {
-  margin-bottom: 16px;
-}
-
-.stat-cards {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.stat-card {
-  padding: 14px 16px;
-  text-align: left;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background: var(--surface-color);
-  cursor: default;
-}
-
-.stat-value {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--primary-color);
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.agent-card {
-  margin-bottom: 12px;
-  border-radius: 4px;
-  border: 1px solid var(--border-color);
-  box-shadow: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.agent-card:hover {
-  border-color: var(--ring);
-  box-shadow: none;
-}
-
-.agent-connected {
-  border-left: 4px solid var(--success-color);
-}
-
-.agent-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.agent-stack,
-.agent-actions,
-.ip-list,
-.loading-state,
 .progress-label {
   display: flex;
-}
-
-.agent-stack {
-  flex-direction: column;
-  gap: 12px;
-}
-
-.agent-actions,
-.ip-list,
-.loading-state,
-.progress-label {
   align-items: center;
   gap: 8px;
-}
-
-.agent-actions,
-.ip-list {
-  flex-wrap: wrap;
-}
-
-.loading-state {
-  justify-content: center;
-  min-height: 220px;
-  color: var(--muted-foreground);
-}
-
-.progress-label {
   justify-content: space-between;
-  margin-bottom: 6px;
   color: var(--muted-foreground);
   font-size: 12px;
 }
 
-.agent-name {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.hostname {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .agent-info-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px 20px;
 }
 
@@ -557,20 +431,13 @@ export default {
 
 .info-label {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   margin-bottom: 4px;
 }
 
 .info-value {
   font-size: 14px;
-  color: var(--text-regular);
   word-break: break-all;
-}
-
-.uuid-value {
-  font-family: monospace;
-  color: var(--primary-color);
-  font-size: 12px;
 }
 
 .dir-path {
@@ -579,31 +446,9 @@ export default {
 }
 
 .resource-monitor {
-  margin-top: 20px;
-}
-
-.progress-item {
-  margin-bottom: 10px;
-}
-
-.empty-agents {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 0;
-}
-
-.empty-icon {
-  font-size: 30px;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
-}
-
-.empty-text {
-  color: var(--text-secondary);
-  font-size: 14px;
-  margin-bottom: 16px;
+  gap: 6px;
 }
 
 .runtime-scope {
@@ -611,8 +456,6 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-color);
 }
 
 .runtime-scope > div {
@@ -624,13 +467,12 @@ export default {
 
 .runtime-scope strong {
   overflow: hidden;
-  color: var(--text-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .runtime-scope span {
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   font-size: 12px;
 }
 
@@ -646,8 +488,6 @@ export default {
 
 .runtime-advanced {
   margin-top: 4px;
-  border-top-color: var(--border-color);
-  border-bottom-color: var(--border-color);
 }
 
 .runtime-dialog-footer {
@@ -702,43 +542,8 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .stat-cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .stat-card {
-    padding: 10px;
-    text-align: center;
-  }
-
-  .stat-value {
-    font-size: 19px;
-  }
-
-  .stat-label {
-    font-size: 12px;
-  }
-
   .agent-info-grid {
     grid-template-columns: 1fr;
-  }
-
-  .agent-card-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .agent-actions {
-    display: flex;
-    width: 100%;
-    margin-top: 12px;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .agent-actions > * {
-    flex: 1 1 auto;
   }
 
   .runtime-scope {

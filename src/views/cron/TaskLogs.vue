@@ -2,8 +2,7 @@
   <div class="app-container">
     <Card>
       <CardHeader>
-        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>任务执行日志</CardTitle><CardDescription>查询任务运行结果并清理历史记录</CardDescription></div><div class="flex flex-wrap gap-2"><UiButton size="sm" variant="destructive" @click="handleClearLogs"><Trash2 data-icon="inline-start" />清理旧日志</UiButton><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div></div>
-        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+        <CardTitle>任务执行日志</CardTitle><CardDescription>查询任务运行结果并清理历史记录</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" variant="destructive" @click="handleClearLogs"><Trash2 data-icon="inline-start" />清理旧日志</UiButton><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></CardAction>
       </CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid"><Field><FieldLabel for="log-task-filter">任务</FieldLabel><UiSelect v-model="listQuery.task_id"><SelectTrigger id="log-task-filter"><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-status-filter">状态</FieldLabel><UiSelect v-model="listQuery.status"><SelectTrigger id="log-status-filter"><SelectValue placeholder="执行状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="success">成功</SelectItem><SelectItem value="failed">失败</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-start-date">开始日期</FieldLabel><UiInput id="log-start-date" v-model="listQuery.start_date" type="date" /></Field><Field><FieldLabel for="log-end-date">结束日期</FieldLabel><UiInput id="log-end-date" v-model="listQuery.end_date" type="date" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="handleSearch"><Spinner v-if="loading" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
@@ -44,7 +43,7 @@ import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -59,7 +58,7 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'TaskLogs',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card, CardAction,
     CardContent, CardDescription, CardHeader, CardTitle, CircleAlert, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle,
     Empty, EmptyDescription, EmptyHeader, EmptyTitle, Eye, Field, FieldGroup, FieldLabel,

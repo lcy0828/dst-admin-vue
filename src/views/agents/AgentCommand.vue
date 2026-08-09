@@ -1,87 +1,92 @@
 <template>
-  <div class="agent-command-container">
-    <Card class="main-card">
-      <CardHeader class="card-header-row">
-        <div><CardTitle class="card-title"><Terminal />Agent 命令管理</CardTitle><CardDescription>向已连接节点发送白名单动作并检查执行结果。</CardDescription></div>
-        <UiButton size="sm" @click="showCommandTemplates"><LayoutTemplate data-icon="inline-start" />使用模板</UiButton>
-      </CardHeader>
-      <CardContent class="command-content">
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在加载命令数据...</span></div>
-        <div class="section">
-          <div class="section-title">
-            <span><SquareTerminal />命令执行</span>
-            <Field orientation="horizontal" class="batch-mode-switch"><UiSwitch id="batch-mode" v-model="batchMode" @update:model-value="onBatchModeChange" /><FieldLabel for="batch-mode">批量执行</FieldLabel></Field>
-          </div>
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-wrap items-start justify-between gap-4">
+      <div class="flex min-w-0 flex-col gap-1"><h1 class="flex items-center gap-2 text-xl font-semibold"><Terminal />Agent 命令管理</h1><p class="text-sm text-muted-foreground">向已连接节点发送白名单动作并检查执行结果。</p></div>
+      <UiButton size="sm" @click="showCommandTemplates"><LayoutTemplate data-icon="inline-start" />使用模板</UiButton>
+    </header>
 
+    <Alert v-if="agentLoadError" variant="destructive"><CircleAlert /><AlertTitle>Agent 列表加载失败</AlertTitle><AlertDescription>{{ agentLoadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchAgentList">重试</UiButton></AlertAction></Alert>
+
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2"><SquareTerminal />命令执行</CardTitle>
+        <CardDescription>选择一个或多个在线 Agent，并执行后端允许的动作。</CardDescription>
+        <CardAction><Field orientation="horizontal"><UiSwitch id="batch-mode" v-model="batchMode" @update:model-value="onBatchModeChange" /><FieldLabel for="batch-mode">批量执行</FieldLabel></Field></CardAction>
+      </CardHeader>
+      <CardContent>
           <FieldGroup>
-            <Field v-if="!batchMode"><FieldLabel>Agent ID</FieldLabel><UiSelect v-model="commandForm.agent_id" @update:open="handleAgentSelectVisibleChange"><SelectTrigger class="w-full"><SelectValue placeholder="请选择 Agent" /></SelectTrigger><SelectContent><SelectGroup>
+            <Field v-if="!batchMode"><FieldLabel for="command-agent">Agent ID</FieldLabel><UiSelect v-model="commandForm.agent_id" @update:open="handleAgentSelectVisibleChange"><SelectTrigger id="command-agent" class="w-full"><SelectValue placeholder="请选择 Agent" /></SelectTrigger><SelectContent><SelectGroup>
               <SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.hostname || '未知' }} ({{ agent.id || '未知' }})</SelectItem>
             </SelectGroup></SelectContent></UiSelect></Field>
             <FieldSet v-else><FieldLegend variant="label">Agent ID</FieldLegend><FieldDescription>选择一个或多个在线 Agent。</FieldDescription><FieldGroup class="agent-checkboxes">
               <Field v-for="agent in agentList" :key="agent.id" orientation="horizontal"><UiCheckbox :id="`command-agent-${agent.id}`" :model-value="isBatchAgentSelected(agent.id)" @update:model-value="toggleBatchAgent(agent.id, $event)" /><FieldLabel :for="`command-agent-${agent.id}`" class="font-normal">{{ agent.hostname || '未知' }} · {{ agent.id }}</FieldLabel></Field>
             </FieldGroup></FieldSet>
-            <Field><FieldLabel>命令类型</FieldLabel><UiSelect v-model="commandForm.type"><SelectTrigger class="w-full"><SelectValue placeholder="请选择命令类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="shell">Shell 命令</SelectItem><SelectItem value="powershell">PowerShell 命令</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field><FieldLabel for="command-type">命令类型</FieldLabel><UiSelect v-model="commandForm.type"><SelectTrigger id="command-type" class="w-full"><SelectValue placeholder="请选择命令类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="shell">Shell 命令</SelectItem><SelectItem value="powershell">PowerShell 命令</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
             <Field><FieldLabel for="agent-command-content">命令内容</FieldLabel><UiTextarea id="agent-command-content" v-model="commandForm.content" rows="4" placeholder="请输入要执行的命令内容" /></Field>
             <Field><FieldLabel for="agent-command-timeout">超时时间（秒）</FieldLabel><UiInput id="agent-command-timeout" v-model.number="commandForm.timeout" type="number" min="1" max="600" step="5" /></Field>
-            <div class="form-actions"><UiButton :disabled="commandLoading" @click="executeCommand"><Spinner v-if="commandLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行命令</UiButton><UiButton variant="outline" @click="resetCommand">重置</UiButton></div>
           </FieldGroup>
-        </div>
+      </CardContent>
+      <CardFooter class="flex flex-wrap justify-end gap-2"><UiButton variant="outline" @click="resetCommand">重置</UiButton><UiButton :disabled="commandLoading" @click="executeCommand"><Spinner v-if="commandLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />执行命令</UiButton></CardFooter>
+    </Card>
 
-        <div class="section">
-          <div class="section-title">
-            <span><History />命令历史</span>
-          </div>
-          <div class="history-filter">
-            <UiSelect v-model="historyFilter.agent_id" @update:model-value="onAgentFilterChange"><SelectTrigger><SelectValue placeholder="选择 Agent" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部 Agent</SelectItem><SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.hostname }} ({{ agent.id }})</SelectItem></SelectGroup></SelectContent></UiSelect>
-            <UiSelect v-model="historyFilter.status" @update:model-value="onStatusFilterChange"><SelectTrigger><SelectValue placeholder="命令状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部状态</SelectItem><SelectItem v-for="status in commandStatuses" :key="status.value" :value="status.value">{{ status.label }}</SelectItem></SelectGroup></SelectContent></UiSelect>
-            <UiInput v-model="historyFilter.search" placeholder="搜索命令内容" @input="onSearchChange" />
-            <UiInput v-model="historyFilter.date_range[0]" type="date" aria-label="开始日期" @change="onDateRangeChange" /><UiInput v-model="historyFilter.date_range[1]" type="date" aria-label="结束日期" @change="onDateRangeChange" />
-            <UiButton size="sm" variant="outline" @click="refreshHistory"><RefreshCw data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="ghost" @click="getAllHistory">全部历史</UiButton>
-          </div>
+    <Card>
+      <CardHeader><CardTitle class="flex items-center gap-2"><History />命令历史</CardTitle><CardDescription>按节点、状态和时间范围检索历史结果。</CardDescription><CardAction class="flex flex-wrap gap-2"><UiButton size="sm" variant="outline" :disabled="historyLoading" @click="refreshHistory"><Spinner v-if="historyLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="ghost" @click="getAllHistory">重置筛选</UiButton></CardAction></CardHeader>
+      <CardContent class="flex flex-col gap-4">
+          <FieldGroup class="history-filter">
+            <Field><FieldLabel for="history-agent">Agent</FieldLabel><UiSelect v-model="historyFilter.agent_id" @update:model-value="onAgentFilterChange"><SelectTrigger id="history-agent"><SelectValue placeholder="选择 Agent" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部 Agent</SelectItem><SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.hostname }} ({{ agent.id }})</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field><FieldLabel for="history-status">状态</FieldLabel><UiSelect v-model="historyFilter.status" @update:model-value="onStatusFilterChange"><SelectTrigger id="history-status"><SelectValue placeholder="命令状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部状态</SelectItem><SelectItem v-for="status in commandStatuses" :key="status.value" :value="status.value">{{ status.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field><FieldLabel for="history-search">关键词</FieldLabel><UiInput id="history-search" v-model="historyFilter.search" placeholder="搜索命令内容" @input="onSearchChange" /></Field>
+            <Field><FieldLabel for="history-start">开始日期</FieldLabel><UiInput id="history-start" v-model="historyFilter.date_range[0]" type="date" @change="onDateRangeChange" /></Field>
+            <Field><FieldLabel for="history-end">结束日期</FieldLabel><UiInput id="history-end" v-model="historyFilter.date_range[1]" type="date" @change="onDateRangeChange" /></Field>
+          </FieldGroup>
 
-          <div v-if="historyLoading" class="loading-state compact"><Spinner /><span>正在读取历史...</span></div>
-          <ShadcnTable v-else><TableHeader><TableRow><TableHead>命令 ID</TableHead><TableHead>Agent ID</TableHead><TableHead>类型</TableHead><TableHead>命令内容</TableHead><TableHead>状态</TableHead><TableHead>结果</TableHead><TableHead>执行时间</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody>
-            <TableRow v-for="command in commandHistory" :key="command.command_id"><TableCell>{{ command.command_id }}</TableCell><TableCell class="truncate-cell">{{ command.agent_id }}</TableCell><TableCell><Badge variant="outline">{{ command.type }}</Badge></TableCell><TableCell class="truncate-cell">{{ command.content }}</TableCell><TableCell><Badge :variant="getStatusVariant(command.status)">{{ command.status }}</Badge></TableCell><TableCell><Badge v-if="command.status === 'completed'" :variant="command.success ? 'default' : 'destructive'">{{ command.success ? '成功' : '失败' }}</Badge><span v-else>-</span></TableCell><TableCell>{{ formatTime(command.start_time) }}</TableCell><TableCell><UiButton size="xs" variant="ghost" @click="viewCommandDetail(command)">查看详情</UiButton></TableCell></TableRow>
+          <Alert v-if="historyError" variant="destructive"><CircleAlert /><AlertTitle>命令历史加载失败</AlertTitle><AlertDescription>{{ historyError }}</AlertDescription></Alert>
+          <div v-if="historyLoading" class="flex flex-col gap-2"><Skeleton v-for="index in 4" :key="index" class="h-10 w-full" /></div>
+          <Empty v-else-if="commandHistory.length === 0"><EmptyHeader><EmptyTitle>暂无命令历史</EmptyTitle><EmptyDescription>当前筛选条件下没有执行记录。</EmptyDescription></EmptyHeader></Empty>
+          <ShadcnTable v-else><TableHeader><TableRow><TableHead>命令 ID</TableHead><TableHead>Agent ID</TableHead><TableHead>类型</TableHead><TableHead>命令内容</TableHead><TableHead>状态</TableHead><TableHead>结果</TableHead><TableHead>执行时间</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
+            <TableRow v-for="command in commandHistory" :key="command.command_id"><TableCell>{{ command.command_id }}</TableCell><TableCell class="max-w-56 truncate">{{ command.agent_id }}</TableCell><TableCell><Badge variant="outline">{{ command.type }}</Badge></TableCell><TableCell class="max-w-56 truncate">{{ command.content }}</TableCell><TableCell><Badge :variant="getStatusVariant(command.status)">{{ command.status }}</Badge></TableCell><TableCell><Badge v-if="command.status === 'completed'" :variant="command.success ? 'default' : 'destructive'">{{ command.success ? '成功' : '失败' }}</Badge><span v-else>-</span></TableCell><TableCell>{{ formatTime(command.start_time) }}</TableCell><TableCell class="text-right"><UiButton size="xs" variant="ghost" @click="viewCommandDetail(command)">查看详情</UiButton></TableCell></TableRow>
           </TableBody></ShadcnTable>
-          <div class="pagination-container"><span>共 {{ total }} 条</span><UiSelect :model-value="String(pageSize)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="page-size"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ size }} 条/页</SelectItem></SelectGroup></SelectContent></UiSelect><UiButton size="icon-sm" variant="outline" :disabled="currentPage <= 1" aria-label="上一页" @click="handleCurrentChange(currentPage - 1)"><ChevronLeft /></UiButton><span>{{ currentPage }} / {{ totalPages }}</span><UiButton size="icon-sm" variant="outline" :disabled="currentPage >= totalPages" aria-label="下一页" @click="handleCurrentChange(currentPage + 1)"><ChevronRight /></UiButton></div>
-        </div>
+      </CardContent>
+      <CardFooter v-if="total > 0" class="pagination-container"><span>共 {{ total }} 条</span><UiSelect :model-value="String(pageSize)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="page-size" aria-label="每页显示条数"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ size }} 条/页</SelectItem></SelectGroup></SelectContent></UiSelect><UiButton size="icon-sm" variant="outline" :disabled="currentPage <= 1" aria-label="上一页" @click="handleCurrentChange(currentPage - 1)"><ChevronLeft /></UiButton><span>{{ currentPage }} / {{ totalPages }}</span><UiButton size="icon-sm" variant="outline" :disabled="currentPage >= totalPages" aria-label="下一页" @click="handleCurrentChange(currentPage + 1)"><ChevronRight /></UiButton></CardFooter>
+    </Card>
 
-        <UiDialog v-model:open="dialogVisible"><DialogContent class="wide-dialog"><DialogHeader><DialogTitle>命令详情</DialogTitle><DialogDescription>查看命令参数、状态和节点返回内容。</DialogDescription></DialogHeader>
+        <UiDialog v-model:open="dialogVisible"><DialogScrollContent class="wide-dialog"><DialogHeader><DialogTitle>命令详情</DialogTitle><DialogDescription>查看命令参数、状态和节点返回内容。</DialogDescription></DialogHeader>
           <div v-if="selectedCommand" class="command-detail">
             <dl class="detail-grid"><div><dt>命令 ID</dt><dd>{{ selectedCommand.command_id }}</dd></div><div><dt>Agent ID</dt><dd>{{ selectedCommand.agent_id }}</dd></div><div><dt>命令类型</dt><dd>{{ selectedCommand.type }}</dd></div><div><dt>状态</dt><dd><Badge :variant="getStatusVariant(selectedCommand.status)">{{ selectedCommand.status }}</Badge></dd></div><div><dt>退出码</dt><dd>{{ selectedCommand.status === 'completed' ? selectedCommand.exit_code : '-' }}</dd></div><div><dt>结果</dt><dd>{{ selectedCommand.status === 'completed' ? (selectedCommand.success ? '成功' : '失败') : '-' }}</dd></div><div><dt>开始时间</dt><dd>{{ formatTime(selectedCommand.start_time) }}</dd></div><div><dt>结束时间</dt><dd>{{ formatTime(selectedCommand.end_time) }}</dd></div></dl>
             <pre class="command-content">{{ selectedCommand.content }}</pre>
-            <Tabs default-value="output"><TabsList><TabsTrigger value="output">输出</TabsTrigger><TabsTrigger v-if="selectedCommand.error_msg" value="error">错误</TabsTrigger></TabsList><TabsContent value="output"><pre v-if="selectedCommand.output" class="command-output">{{ selectedCommand.output }}</pre><div v-else class="no-output">无输出内容</div></TabsContent><TabsContent v-if="selectedCommand.error_msg" value="error"><pre class="command-error">{{ selectedCommand.error_msg }}</pre></TabsContent></Tabs>
+            <Tabs default-value="output"><TabsList><TabsTrigger value="output">输出</TabsTrigger><TabsTrigger v-if="selectedCommand.error_msg" value="error">错误</TabsTrigger></TabsList><TabsContent value="output"><pre v-if="selectedCommand.output" class="command-output">{{ selectedCommand.output }}</pre><Empty v-else><EmptyHeader><EmptyTitle>无输出内容</EmptyTitle></EmptyHeader></Empty></TabsContent><TabsContent v-if="selectedCommand.error_msg" value="error"><Alert variant="destructive"><CircleAlert /><AlertTitle>命令执行错误</AlertTitle><AlertDescription><pre class="command-error">{{ selectedCommand.error_msg }}</pre></AlertDescription></Alert></TabsContent></Tabs>
             <div class="detail-actions">
               <UiButton size="sm" :disabled="detailLoading" @click="refreshCommandDetail(selectedCommand.command_id)"><Spinner v-if="detailLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新结果</UiButton>
               <UiButton variant="outline" size="sm" @click="copyCommandDetailOutput"><Copy data-icon="inline-start" />复制输出</UiButton>
             </div>
           </div>
-        </DialogContent></UiDialog>
+        </DialogScrollContent></UiDialog>
 
-        <UiDialog v-model:open="templateDialogVisible"><DialogContent class="wide-dialog"><DialogHeader><DialogTitle>命令模板</DialogTitle><DialogDescription>仅可使用后端白名单允许的动作模板。</DialogDescription></DialogHeader>
+        <UiDialog v-model:open="templateDialogVisible"><DialogScrollContent class="wide-dialog"><DialogHeader><DialogTitle>命令模板</DialogTitle><DialogDescription>仅可使用后端白名单允许的动作模板。</DialogDescription></DialogHeader>
           <div class="template-container">
             <Tabs v-model="activeTemplateCategory"><TabsList><TabsTrigger value="system">系统信息</TabsTrigger><TabsTrigger value="file">文件操作</TabsTrigger><TabsTrigger value="network">网络工具</TabsTrigger></TabsList>
               <TabsContent v-for="category in templateCategories" :key="category.value" :value="category.value"><ShadcnTable><TableHeader><TableRow><TableHead>模板名称</TableHead><TableHead>描述</TableHead><TableHead>操作</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="item in category.items" :key="item.id"><TableCell>{{ item.name }}</TableCell><TableCell>{{ item.description }}</TableCell><TableCell><UiButton size="xs" variant="ghost" :disabled="!item.supported" @click="useTemplate(item)">使用</UiButton></TableCell></TableRow></TableBody></ShadcnTable></TabsContent>
             </Tabs>
           </div>
-        </DialogContent></UiDialog>
-      </CardContent>
-    </Card>
+        </DialogScrollContent></UiDialog>
   </div>
 </template>
 
 <script>
-import { ChevronLeft, ChevronRight, Copy, History, LayoutTemplate, Play, RefreshCw, SquareTerminal, Terminal } from '@lucide/vue';
+import { ChevronLeft, ChevronRight, CircleAlert, Copy, History, LayoutTemplate, Play, RefreshCw, SquareTerminal, Terminal } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as UiDialog, DialogDescription, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -91,20 +96,23 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 export default {
   name: 'AgentCommand',
   components: {
-    Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, ChevronLeft, ChevronRight,
-    Copy, DialogContent, DialogDescription, DialogHeader, DialogTitle, Field, FieldDescription,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardAction, CardContent,
+    CardDescription, CardFooter, CardHeader, CardTitle, ChevronLeft, ChevronRight, CircleAlert,
+    Copy, DialogDescription, DialogHeader, DialogScrollContent, DialogTitle, Empty, EmptyDescription,
+    EmptyHeader, EmptyTitle, Field, FieldDescription,
     FieldGroup, FieldLabel, FieldLegend, FieldSet, History, LayoutTemplate, Play, RefreshCw,
-    SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, ShadcnTable, Spinner,
+    SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, ShadcnTable, Skeleton, Spinner,
     SquareTerminal, TableBody, TableCell, TableHead, TableHeader, TableRow, Tabs, TabsContent,
     TabsList, TabsTrigger, Terminal, UiButton, UiCheckbox, UiDialog, UiInput, UiSelect, UiSwitch,
     UiTextarea
   },
   data() {
     return {
-      loading: false,
       commandLoading: false,
       historyLoading: false,
       agentListLoading: false,
+      agentLoadError: '',
+      historyError: '',
       dialogVisible: false,
       showKey: false,
       currentPage: 1,
@@ -203,6 +211,7 @@ export default {
     // Agent列表相关方法
     async fetchAgentList() {
       this.agentListLoading = true;
+      this.agentLoadError = '';
       try {
         const response = await agentApi.getAgentList();
         if (response && response.code === 200) {
@@ -228,10 +237,12 @@ export default {
           
         } else {
           console.error('Agent列表响应格式错误:', response);
+          this.agentLoadError = '响应格式错误';
           toast.error('获取 Agent 列表响应格式错误');
         }
       } catch (error) {
         console.error('获取Agent列表失败:', error);
+        this.agentLoadError = error.message || '未知错误';
         toast.error('获取 Agent 列表失败：' + error.message);
       } finally {
         this.agentListLoading = false;
@@ -443,6 +454,7 @@ export default {
     // 命令历史相关方法
     async fetchCommandHistory() {
       this.historyLoading = true;
+      this.historyError = '';
       try {
         const params = this.commandHistoryParams();
         const agentId = this.historyFilter.agent_id === 'all' ? '' : (this.historyFilter.agent_id || '');
@@ -456,7 +468,8 @@ export default {
         this.commandHistory = items;
         this.total = this.historyFilter.status === 'timeout' ? items.length : (response.data?.total || 0);
       } catch (error) {
-        toast.error('获取命令历史失败：' + (error.message || '未知错误'));
+        this.historyError = error.message || '未知错误';
+        toast.error('获取命令历史失败：' + this.historyError);
         this.commandHistory = [];
         this.total = 0;
       } finally {
@@ -618,61 +631,10 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.agent-command-container {
-  width: 100%;
-  min-width: 0;
-}
-
-.card-header-row,
-.card-title,
-.section-title,
-.section-title > span,
-.history-filter,
-.form-actions,
-.pagination-container,
-.loading-state {
-  display: flex;
-  align-items: center;
-}
-
-.card-header-row {
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-direction: row;
-  gap: 12px;
-}
-
-.card-title,
-.section-title > span,
-.history-filter,
-.form-actions,
-.pagination-container,
-.loading-state {
-  gap: 8px;
-}
-
-.section {
-  margin-bottom: 24px;
-}
-
-.section:last-child {
-  margin-bottom: 0;
-}
-
-.section-title {
-  justify-content: space-between;
-  margin-bottom: 14px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
 .history-filter {
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.history-filter > * {
-  flex: 1 1 150px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .agent-checkboxes {
@@ -680,32 +642,18 @@ export default {
   overflow-y: auto;
 }
 
-.loading-state {
-  justify-content: center;
-  min-height: 180px;
-  color: var(--muted-foreground);
-}
-
-.loading-state.compact {
-  min-height: 100px;
-}
-
 .pagination-container {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
-  margin-top: 16px;
   color: var(--muted-foreground);
   font-size: 12px;
 }
 
 .page-size {
   width: 110px;
-}
-
-.truncate-cell {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .wide-dialog {
@@ -750,18 +698,16 @@ export default {
   padding: 10px;
   overflow-y: auto;
   border-radius: var(--radius);
-  background: #1e1e1e;
-  color: #fff;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .command-error {
-  color: #ff7979;
-}
-
-.no-output {
-  padding: 20px;
-  color: var(--muted-foreground);
-  text-align: center;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
 }
 
 .detail-actions {
@@ -777,14 +723,8 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .card-header-row,
-  .section-title {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .history-filter > * {
-    flex-basis: 100%;
+  .history-filter {
+    grid-template-columns: 1fr;
   }
 
   .detail-grid {

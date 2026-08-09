@@ -13,9 +13,9 @@
                 <FieldLabel :for="`export-${option.value}`" class="font-normal">{{ option.label }}</FieldLabel>
               </Field>
             </FieldGroup></FieldSet>
-            <UiButton :disabled="exporting" @click="handleExport"><Spinner v-if="exporting" data-icon="inline-start" /><Download v-else data-icon="inline-start" />导出配置</UiButton>
           </FieldGroup>
         </CardContent>
+        <CardFooter class="justify-end"><UiButton :disabled="exporting" @click="handleExport"><Spinner v-if="exporting" data-icon="inline-start" /><Download v-else data-icon="inline-start" />导出配置</UiButton></CardFooter>
       </Card>
 
       <Card>
@@ -28,14 +28,14 @@
               <Field orientation="horizontal"><RadioGroupItem id="import-override" value="override" /><FieldContent><FieldLabel for="import-override">覆盖</FieldLabel><FieldDescription>按照文件内容更新现有配置</FieldDescription></FieldContent></Field>
             </RadioGroup></FieldSet>
             <Alert v-if="importForm.mode === 'override'" variant="destructive"><TriangleAlert /><AlertTitle>覆盖模式</AlertTitle><AlertDescription>现有任务配置可能被覆盖，请确认文件来源可靠。</AlertDescription></Alert>
-            <UiButton :disabled="importing || !importForm.file" @click="handleImport"><Spinner v-if="importing" data-icon="inline-start" /><Upload v-else data-icon="inline-start" />导入配置</UiButton>
           </FieldGroup>
         </CardContent>
+        <CardFooter class="justify-end"><UiButton :disabled="importing || !importForm.file" @click="handleImport"><Spinner v-if="importing" data-icon="inline-start" /><Upload v-else data-icon="inline-start" />导入配置</UiButton></CardFooter>
       </Card>
     </div>
 
     <Card>
-      <CardHeader class="flex-row items-center justify-between gap-4"><div><CardTitle>本次浏览器导出记录</CardTitle><CardDescription>刷新页面后记录可能被清空</CardDescription></div><UiButton size="sm" variant="outline" :disabled="filesLoading" @click="getExportFiles"><Spinner v-if="filesLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton></CardHeader>
+      <CardHeader><CardTitle>本次浏览器导出记录</CardTitle><CardDescription>刷新页面后记录可能被清空</CardDescription><CardAction><UiButton size="sm" variant="outline" :disabled="filesLoading" @click="getExportFiles"><Spinner v-if="filesLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton></CardAction></CardHeader>
       <CardContent>
         <div v-if="filesLoading" class="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground" role="status"><Spinner /><span>正在读取导出记录</span></div>
         <Empty v-else-if="exportFiles.length === 0"><EmptyHeader><EmptyTitle>暂无导出记录</EmptyTitle><EmptyDescription>完成一次导出后，文件会显示在这里。</EmptyDescription></EmptyHeader></Empty>
@@ -54,7 +54,7 @@ import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
@@ -68,8 +68,8 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'TaskImportExport',
   components: {
-    Alert, AlertDescription, AlertTitle, AutomationRoomSelect, Card, CardContent,
-    CardDescription, CardHeader, CardTitle, Checkbox, Download, Empty, EmptyDescription,
+    Alert, AlertDescription, AlertTitle, AutomationRoomSelect, Card, CardAction, CardContent,
+    CardDescription, CardFooter, CardHeader, CardTitle, Checkbox, Download, Empty, EmptyDescription,
     EmptyHeader, EmptyTitle, Field, FieldContent, FieldDescription, FieldGroup, FieldLabel,
     FieldLegend, FieldSet, RadioGroup, RadioGroupItem, RefreshCw, ShadcnTable, Spinner,
     TableBody, TableCell, TableHead, TableHeader, TableRow, Trash2, TriangleAlert, UiButton,

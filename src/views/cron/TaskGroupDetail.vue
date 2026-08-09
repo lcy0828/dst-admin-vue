@@ -2,11 +2,7 @@
   <div class="app-container">
     <Card>
       <CardHeader>
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div><CardTitle>{{ group ? `${group.name} - 任务组详情` : '任务组详情' }}</CardTitle><CardDescription>查看任务组配置和组内任务</CardDescription></div>
-          <div class="flex flex-wrap gap-2"><UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton><UiButton v-if="group" size="sm" variant="outline" @click="handleEditGroup"><Pencil data-icon="inline-start" />编辑任务组</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/groups')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></div>
-        </div>
-        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+        <CardTitle>{{ group ? `${group.name} - 任务组详情` : '任务组详情' }}</CardTitle><CardDescription>查看任务组配置和组内任务</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton><UiButton v-if="group" size="sm" variant="outline" @click="handleEditGroup"><Pencil data-icon="inline-start" />编辑任务组</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/groups')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></CardAction>
       </CardHeader>
       <CardContent>
         <div v-if="loading && !group" class="flex flex-col gap-3"><Skeleton class="h-36 w-full" /><Skeleton class="h-64 w-full" /></div>
@@ -44,7 +40,7 @@ import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Separator } from '@/components/ui/separator';
@@ -57,7 +53,7 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'TaskGroupDetail',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card, CardAction, CardContent,
     CardDescription, CardHeader, CardTitle, CircleCheck, CircleX, DialogDescription, DialogFooter,
     DialogHeader, DialogScrollContent, DialogTitle, Empty, EmptyContent, EmptyDescription,
     EmptyHeader, EmptyTitle, Pencil, Play, Plus, Separator, ShadcnTable, Skeleton, Spinner,

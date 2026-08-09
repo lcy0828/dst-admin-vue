@@ -2,17 +2,12 @@
   <div class="app-container">
     <Card>
       <CardHeader>
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <CardTitle>{{ isEdit ? '编辑任务组' : '添加任务组' }}</CardTitle>
-            <CardDescription>组织并统一控制一组关联的自动化任务</CardDescription>
-          </div>
-          <UiButton variant="outline" size="sm" @click="$router.push('/cron/groups')">
+        <CardTitle>{{ isEdit ? '编辑任务组' : '添加任务组' }}</CardTitle>
+        <CardDescription>组织并统一控制一组关联的自动化任务</CardDescription>
+        <CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton variant="outline" size="sm" @click="$router.push('/cron/groups')">
             <ArrowLeft data-icon="inline-start" />
             返回列表
-          </UiButton>
-        </div>
-        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+          </UiButton></CardAction>
       </CardHeader>
       <CardContent>
         <form @submit.prevent="submitForm">
@@ -70,7 +65,7 @@ import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -81,7 +76,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 export default {
   name: 'TaskGroupForm',
   components: {
-    ArrowLeft, AutomationRoomSelect, Card, CardContent, CardDescription, CardHeader,
+    ArrowLeft, AutomationRoomSelect, Card, CardAction, CardContent, CardDescription, CardHeader,
     CardTitle, Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel,
     FieldLegend, FieldSet, RadioGroup, RadioGroupItem, Spinner, UiButton, UiInput, UiSwitch, UiTextarea
   },

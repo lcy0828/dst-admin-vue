@@ -2,8 +2,7 @@
   <div class="app-container">
     <Card>
       <CardHeader>
-        <div class="flex flex-wrap items-start justify-between gap-4"><div><CardTitle>任务统计图表</CardTitle><CardDescription>分析执行次数、成功率和耗时趋势</CardDescription></div><div class="flex gap-2"><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新数据</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div></div>
-        <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
+        <CardTitle>任务统计图表</CardTitle><CardDescription>分析执行次数、成功率和耗时趋势</CardDescription><CardAction class="flex flex-wrap items-center justify-end gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新数据</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></CardAction>
       </CardHeader>
       <CardContent>
       <FieldGroup class="filter-grid">
@@ -62,7 +61,7 @@ import * as echarts from 'echarts';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -72,7 +71,7 @@ import { getSystemPreferences } from '@/utils/systemPreferences';
 export default {
   name: 'TaskCharts',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardContent,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardAction, CardContent,
     CardDescription, CardHeader, CardTitle, CircleAlert, Field, FieldGroup, FieldLabel,
     RefreshCw, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, Skeleton,
     Spinner, UiButton, UiSelect

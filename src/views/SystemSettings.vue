@@ -1,9 +1,9 @@
 <template>
-  <div class="page-container">
-    <header class="page-header settings-page-header">
-      <div class="settings-page-heading">
-        <h1>系统设置</h1>
-        <p>管理界面、安全、备份、通知和当前主机运行状态。</p>
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-wrap items-start justify-between gap-4">
+      <div class="flex min-w-0 flex-col gap-1">
+        <h1 class="text-xl font-semibold">系统设置</h1>
+        <p class="text-sm text-muted-foreground">管理界面、安全、备份、通知和当前主机运行状态。</p>
       </div>
       <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSettings()">
         <Spinner v-if="loading" data-icon="inline-start" />
@@ -12,7 +12,10 @@
       </UiButton>
     </header>
 
-    <Tabs v-model="activeTab" class="settings-tabs-root">
+    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>系统设置加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="loadSettings(false)">重试</UiButton></AlertAction></Alert>
+    <div v-if="initialLoading" class="flex flex-col gap-3"><Skeleton class="h-10 w-full" /><Skeleton class="h-72 w-full" /></div>
+
+    <Tabs v-else v-model="activeTab" class="settings-tabs-root">
       <div class="settings-tabs-scroll">
         <TabsList variant="line" class="settings-tabs">
           <TabsTrigger value="basic">基本设置</TabsTrigger>
@@ -262,9 +265,12 @@
       <TabsContent value="systemStatus">
         <div class="status-header">
           <div><h2>系统详细监控</h2><p>查看当前运行管理后端的主机与 Go 进程状态。</p></div>
-          <UiButton size="sm" :disabled="loading" @click="refreshSystemStatus"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新状态</UiButton>
+          <UiButton size="sm" :disabled="statusLoading" @click="refreshSystemStatus"><Spinner v-if="statusLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新状态</UiButton>
         </div>
 
+        <Alert v-if="statusError" variant="destructive" class="mt-4"><CircleAlert /><AlertTitle>系统状态加载失败</AlertTitle><AlertDescription>{{ statusError }}</AlertDescription></Alert>
+        <div v-if="statusLoading" class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4"><Skeleton v-for="index in 4" :key="index" class="h-52 w-full" /></div>
+        <template v-else>
         <div class="status-section-heading"><h3>系统状态</h3><Separator /></div>
         <div class="status-grid system-status-grid">
           <Card>
@@ -314,11 +320,12 @@
           <CardHeader><CardTitle class="status-card-title"><Clock3 />时间信息</CardTitle><CardDescription>主机启动与当前时间</CardDescription></CardHeader>
           <CardContent><dl class="status-list time-status-list"><div><dt>系统运行时间</dt><dd>{{ systemStatus.uptime_formatted }}</dd></div><div><dt>当前时间</dt><dd>{{ systemStatus.current_time }}</dd></div><div><dt>启动时间</dt><dd>{{ systemStatus.start_time }}</dd></div></dl></CardContent>
         </Card>
+        </template>
       </TabsContent>
     </Tabs>
 
     <UiDialog v-model:open="backupHistoryVisible">
-      <DialogContent class="sm:max-w-4xl">
+      <DialogScrollContent class="sm:max-w-4xl">
         <DialogHeader><DialogTitle>备份历史记录</DialogTitle><DialogDescription>所有已接管房间的真实备份文件。</DialogDescription></DialogHeader>
         <div class="table-scroll">
           <ShadcnTable>
@@ -337,7 +344,7 @@
           </ShadcnTable>
         </div>
         <DialogFooter><UiButton variant="outline" @click="backupHistoryVisible = false">关闭</UiButton></DialogFooter>
-      </DialogContent>
+      </DialogScrollContent>
     </UiDialog>
   </div>
 </template>
@@ -346,6 +353,7 @@
 import {
   Activity,
   ChartNoAxesCombined,
+  CircleAlert,
   Clock3,
   CodeXml,
   Cpu,
@@ -362,16 +370,18 @@ import {
 } from '@lucide/vue';
 import { systemApi } from '@/api';
 import { backupsV2API, jobsV2API, roomsV2API, systemV2API } from '@/api/v2';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldSeparator, FieldTitle } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Progress as UiProgress } from '@/components/ui/progress';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -390,6 +400,10 @@ export default {
   name: 'SystemSettings',
   components: {
     Activity,
+    Alert,
+    AlertAction,
+    AlertDescription,
+    AlertTitle,
     Badge,
     Card,
     CardContent,
@@ -398,14 +412,15 @@ export default {
     CardHeader,
     CardTitle,
     ChartNoAxesCombined,
+    CircleAlert,
     Clock3,
     CodeXml,
     Cpu,
     DatabaseBackup,
-    DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
+    DialogScrollContent,
     DialogTitle,
     Download,
     Empty,
@@ -435,6 +450,7 @@ export default {
     Send,
     Separator,
     ShadcnTable,
+    Skeleton,
     Spinner,
     TableBody,
     TableCell,
@@ -459,6 +475,10 @@ export default {
   data() {
     return {
       loading: false,
+      initialLoading: true,
+      loadError: '',
+      statusLoading: false,
+      statusError: '',
       activeTab: 'basic',
       revision: '',
       settingsResponse: null,
@@ -479,7 +499,7 @@ export default {
         language: 'zh-CN',
         timezone: 'Asia/Shanghai',
         dateFormat: 'YYYY-MM-DD',
-        theme: '#e5482d',
+        theme: themePresetById('graphite').primary,
 
         // 安全设置
         passwordComplexity: false,
@@ -591,7 +611,7 @@ export default {
       return this.field(response, id, String(fallback)).value === 'true';
     },
     themeValue(response) {
-      return normalizeThemeColor(this.field(response, 'ui.theme', '#e5482d').value);
+      return normalizeThemeColor(this.field(response, 'ui.theme', themePresetById('graphite').primary).value);
     },
     themeOptionStyle(preset) {
       return {
@@ -654,15 +674,18 @@ export default {
     },
     async loadSettings(showMessage = true) {
       this.loading = true;
+      this.loadError = '';
       try {
         const response = await systemV2API.settings();
         this.populateSettings(response);
         applySystemPreferences(response);
         if (showMessage === true) toast.success('设置已刷新');
       } catch (error) {
-        toast.error(error.message || '读取系统设置失败');
+        this.loadError = error.message || '读取系统设置失败';
+        toast.error(this.loadError);
       } finally {
         this.loading = false;
+        this.initialLoading = false;
       }
     },
     resetFormErrors(fields = Object.keys(this.formErrors)) {
@@ -889,7 +912,8 @@ export default {
 
     // 刷新系统状态信息
     refreshSystemStatus() {
-      this.loading = true;
+      this.statusLoading = true;
+      this.statusError = '';
 
       systemApi.getDashboardStatus()
         .then(res => {
@@ -897,14 +921,16 @@ export default {
             this.systemStatus = res.data;
             toast.success('系统状态已刷新');
           } else {
-            toast.error('获取系统状态失败：' + (res?.msg || '未知错误'));
+            this.statusError = res?.msg || '未知错误';
+            toast.error('获取系统状态失败：' + this.statusError);
           }
         })
         .catch(err => {
-          toast.error('获取系统状态失败：' + (err.message || '未知错误'));
+          this.statusError = err.message || '未知错误';
+          toast.error('获取系统状态失败：' + this.statusError);
         })
         .finally(() => {
-          this.loading = false;
+          this.statusLoading = false;
         });
     },
 
@@ -942,14 +968,6 @@ export default {
 </script>
 
 <style scoped>
-.page-container {
-  width: 100%;
-}
-
-.settings-page-heading {
-  min-width: 0;
-}
-
 .status-header h2 {
   margin: 0;
   color: var(--foreground);
@@ -958,7 +976,6 @@ export default {
   line-height: 28px;
 }
 
-.settings-page-header p,
 .status-header p {
   margin: 2px 0 0;
   color: var(--muted-foreground);
@@ -1281,7 +1298,6 @@ export default {
     flex-direction: column;
   }
 
-  .settings-page-header > button,
   .status-header > button {
     width: 100%;
   }

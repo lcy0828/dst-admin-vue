@@ -1,45 +1,28 @@
 <template>
-  <div class="agent-security-container">
-    <Card class="main-card">
-      <CardHeader>
-        <CardTitle class="card-title"><LockKeyhole />Agent 安全设置</CardTitle>
-        <CardDescription>管理 Agent 连接密钥和安装配置。</CardDescription>
-      </CardHeader>
-      <CardContent class="security-content">
-        <div v-if="loading" class="loading-state"><Spinner /><span>正在读取安全配置...</span></div>
-        <div class="section-title">
-          <KeyRound /> API 密钥管理
-        </div>
-        
-        <div class="api-key-box">
-          <div class="key-display">
-            <span class="key-label">当前密钥</span>
-            <div class="key-value-wrapper">
-              <span v-if="!showKey" class="key-value-masked">••••••••••••••••••••••••••••••••</span>
-              <span v-else class="key-value">{{ apiKey || '未配置' }}</span>
-              <UiButton
-                variant="ghost"
-                size="sm"
-                :disabled="!apiKey"
-                @click="toggleKeyVisibility" 
-                class="key-toggle">
-                <EyeOff v-if="showKey" data-icon="inline-start" />
-                <Eye v-else data-icon="inline-start" />
-                {{ showKey ? '隐藏' : '显示' }}
-              </UiButton>
-            </div>
-          </div>
-          
-          <div class="key-actions">
-            <Tooltip><TooltipTrigger as-child><UiButton size="icon" :disabled="!keyRevealed" aria-label="复制密钥" @click="copyKey"><Copy /></UiButton></TooltipTrigger><TooltipContent>复制密钥</TooltipContent></Tooltip>
-            <Tooltip><TooltipTrigger as-child><UiButton variant="outline" size="icon" :disabled="!securityAvailable" aria-label="生成新密钥" @click="confirmGenerateNewKey"><RefreshCw /></UiButton></TooltipTrigger><TooltipContent>生成新密钥，现有密钥将失效</TooltipContent></Tooltip>
-          </div>
-        </div>
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex min-w-0 flex-col gap-1"><h1 class="flex items-center gap-2 text-xl font-semibold"><LockKeyhole />Agent 安全设置</h1><p class="text-sm text-muted-foreground">管理 Agent 连接密钥和安装配置。</p></header>
 
-        <Separator />
-        
-        <div class="installation-guide">
-          <div class="section-subtitle">快速安装 <Badge variant="secondary">Beta</Badge></div>
+    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>安全配置加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="fetchApiKey">重试</UiButton></AlertAction></Alert>
+
+    <Card>
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2"><KeyRound />API 密钥</CardTitle>
+        <CardDescription>Agent 使用此密钥建立经过验证的连接。现有密钥不会再次显示明文。</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Skeleton v-if="loading && !apiKey" class="h-16 w-full" />
+        <FieldGroup v-else>
+          <Field><FieldLabel for="agent-api-key">当前密钥</FieldLabel><InputGroup><InputGroupInput id="agent-api-key" :model-value="showKey ? (apiKey || '未配置') : '••••••••••••••••••••••••••••••••'" readonly /><InputGroupAddon align="inline-end"><UiButton variant="ghost" size="sm" :disabled="!apiKey" @click="toggleKeyVisibility"><EyeOff v-if="showKey" data-icon="inline-start" /><Eye v-else data-icon="inline-start" />{{ showKey ? '隐藏' : '显示' }}</UiButton></InputGroupAddon></InputGroup><FieldDescription v-if="!keyRevealed">出于安全考虑，服务端仅返回现有密钥的掩码。</FieldDescription></Field>
+          <Alert v-if="!securityAvailable"><CircleAlert /><AlertTitle>密钥管理不可用</AlertTitle><AlertDescription>当前后端未开放密钥轮换能力。</AlertDescription></Alert>
+        </FieldGroup>
+      </CardContent>
+      <CardFooter class="flex flex-wrap justify-end gap-2"><UiButton variant="outline" :disabled="!keyRevealed" @click="copyKey"><Copy data-icon="inline-start" />复制密钥</UiButton><UiButton :disabled="!securityAvailable || loading" @click="confirmGenerateNewKey"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />生成新密钥</UiButton></CardFooter>
+    </Card>
+
+    <Card>
+      <CardHeader><CardTitle>安装 Agent</CardTitle><CardDescription>根据节点环境选择安装命令或手动配置。</CardDescription><CardAction><Badge variant="secondary">Beta</Badge></CardAction></CardHeader>
+      <CardContent class="flex flex-col gap-6">
+        <div>
 
           <Tabs v-model="activeInstallTab">
             <TabsList><TabsTrigger value="linux">Linux</TabsTrigger><TabsTrigger value="windows">Windows</TabsTrigger><TabsTrigger value="docker">Docker</TabsTrigger></TabsList>
@@ -88,18 +71,18 @@
               </div>
             </TabsContent>
           </Tabs>
-          
-          <div class="section-subtitle">手动安装</div>
+        </div>
+
+          <Separator />
+          <div class="flex flex-col gap-3"><h3 class="text-sm font-medium">手动安装</h3>
           <ol class="manual-steps">
             <li>
-              <div class="step-title">下载Agent安装文件</div>
-              <div class="step-content">
+              <Badge variant="outline">1</Badge><div class="step-content"><div class="step-title">下载 Agent 安装文件</div>
                 从 <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" rel="noopener noreferrer">项目仓库</a> 构建适合您系统的 Agent 二进制文件。
               </div>
             </li>
             <li>
-              <div class="step-title">配置Agent</div>
-              <div class="step-content">
+              <Badge variant="outline">2</Badge><div class="step-content"><div class="step-title">配置 Agent</div>
                 创建配置文件 <code>conf/app.conf</code>，并添加以下内容：
                 <div class="code-block">
                   <pre><code>[agent]
@@ -118,8 +101,7 @@ SERVER_URL = wss://your-domain/agent</code></pre>
               </div>
             </li>
             <li>
-              <div class="step-title">运行Agent</div>
-              <div class="step-content">
+              <Badge variant="outline">3</Badge><div class="step-content"><div class="step-title">运行 Agent</div>
                 <div class="code-block linux-cmd">
                   <pre><code>./dst-admin-agent -server "wss://your-domain/agent" -keyfile ./conf/app.conf</code></pre>
                   <UiButton
@@ -135,10 +117,8 @@ SERVER_URL = wss://your-domain/agent</code></pre>
               </div>
             </li>
             <li>
-              <div class="step-title">设置为系统服务 (可选)</div>
-              <div class="step-content">
-                为确保Agent在系统重启后自动运行，您可以将其设置为系统服务。
-                <a class="guide-link" href="#" target="_blank"><FileText />查看详细指南</a>
+              <Badge variant="outline">4</Badge><div class="step-content"><div class="step-title">设置为系统服务（可选）</div>
+                为确保 Agent 在系统重启后自动运行，可以将其注册为系统服务。
               </div>
             </li>
           </ol>
@@ -149,28 +129,34 @@ SERVER_URL = wss://your-domain/agent</code></pre>
 </template>
 
 <script>
-import { Copy, Eye, EyeOff, FileText, KeyRound, LockKeyhole, RefreshCw } from '@lucide/vue';
+import { CircleAlert, Copy, Eye, EyeOff, KeyRound, LockKeyhole, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'AgentSecurity',
   components: {
-    Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Copy, Eye, EyeOff,
-    FileText, KeyRound, LockKeyhole, RefreshCw, Separator, Spinner, Tabs, TabsContent,
-    TabsList, TabsTrigger, Tooltip, TooltipContent, TooltipTrigger, UiButton
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardAction, CardContent,
+    CardDescription, CardFooter, CardHeader, CardTitle, CircleAlert, Copy, Eye, EyeOff, Field,
+    FieldDescription, FieldGroup, FieldLabel, InputGroup, InputGroupAddon, InputGroupInput,
+    KeyRound, LockKeyhole, RefreshCw, Separator, Skeleton, Spinner, Tabs, TabsContent, TabsList,
+    TabsTrigger, UiButton
   },
   data() {
     return {
       loading: false,
+      loadError: '',
       apiKey: '',
       keyRevealed: false,
       securityAvailable: false,
@@ -184,6 +170,7 @@ export default {
   methods: {
     async fetchApiKey() {
       this.loading = true;
+      this.loadError = '';
       try {
         const response = await agentApi.getSecurityKey();
         this.apiKey = response.data?.key || '';
@@ -194,7 +181,8 @@ export default {
         this.apiKey = '';
         this.keyRevealed = false;
         this.securityAvailable = false;
-        toast.error('获取API密钥失败: ' + (error.message || '未知错误'));
+        this.loadError = error.message || '未知错误';
+        toast.error('获取API密钥失败: ' + this.loadError);
       } finally {
         this.loading = false;
       }
@@ -280,231 +268,58 @@ export default {
 </script>
 
 <style scoped>
-.agent-security-container {
-  width: 100%;
-  min-width: 0;
-}
-
-.main-card {
-  margin-bottom: 0;
-  background-color: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: none;
-}
-
-.card-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.security-content {
-  padding: 0;
-}
-
-.section-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.section-subtitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 20px 0 10px;
-  display: flex;
-  align-items: center;
-}
-
-.beta-badge {
-  background-color: var(--primary-color);
-  color: white;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  margin-left: 8px;
-}
-
-.api-key-box {
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 14px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.key-display {
-  flex: 1;
-  min-width: 300px;
-}
-
-.key-label {
-  display: block;
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-
-.key-value-wrapper {
-  display: flex;
-  align-items: center;
-  background-color: var(--surface-color);
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  padding: 8px 12px;
-}
-
-.key-value, .key-value-masked {
-  font-family: monospace;
-  flex: 1;
-  word-break: break-all;
-}
-
-.key-value {
-  color: var(--primary-color);
-}
-
-.key-value-masked {
-  color: var(--text-regular);
-  letter-spacing: 2px;
-}
-
-.key-toggle {
-  margin-left: 10px;
-}
-
-.key-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 0;
-}
-
 .code-block {
-  background-color: #282c34;
-  border-radius: 4px;
-  padding: 14px;
   position: relative;
-  margin: 15px 0;
+  margin: 12px 0;
+  padding: 14px;
   overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
 }
 
 .code-block pre {
   margin: 0;
+  padding-right: 72px;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .code-block code {
-  color: #abb2bf;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .copy-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  color: #abb2bf;
-}
-
-.copy-btn:hover {
-  color: #fff;
-}
-
-.loading-state,
-.guide-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.loading-state {
-  justify-content: center;
-  min-height: 120px;
-  color: var(--muted-foreground);
-}
-
-.guide-link {
-  width: fit-content;
-  margin-top: 8px;
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.guide-link > svg {
-  width: 16px;
-  height: 16px;
+  top: 8px;
+  right: 8px;
 }
 
 .manual-steps {
-  counter-reset: step-counter;
-  list-style-type: none;
-  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .manual-steps li {
-  counter-increment: step-counter;
-  margin-bottom: 18px;
-  position: relative;
-  padding-left: 35px;
-}
-
-.manual-steps li::before {
-  content: counter(step-counter);
-  position: absolute;
-  left: 0;
-  top: 0;
-  background-color: var(--primary-color);
-  color: white;
-  font-weight: 600;
-  border-radius: 3px;
-  width: 24px;
-  height: 24px;
-  line-height: 24px;
-  text-align: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
 }
 
 .step-title {
   font-weight: 600;
-  margin-bottom: 5px;
-  color: var(--text-primary);
+  margin-bottom: 4px;
 }
 
 .step-content {
-  color: var(--text-regular);
-}
-
-.linux-cmd code {
-  color: #c3e88d;
-}
-
-@media (max-width: 768px) {
-  .api-key-box {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .key-display {
-    width: 100%;
-    min-width: 0;
-  }
-  
-  .key-actions {
-    margin-top: 0;
-    width: 100%;
-    justify-content: flex-end;
-  }
+  min-width: 0;
+  color: var(--muted-foreground);
 }
 </style>
