@@ -44,16 +44,14 @@
 
         <TabsContent v-for="world in visibleWorlds" :key="world.name" :value="world.name">
           <Card>
-            <CardHeader class="world-header">
-              <div class="world-heading">
+            <CardHeader>
+              <CardTitle class="world-heading">
                 <Sun v-if="world.type === 'forest'" />
                 <Moon v-else />
-                <div>
-                  <CardTitle>{{ world.name }} {{ world.type === 'forest' ? '森林世界' : '洞穴世界' }}</CardTitle>
-                  <CardDescription>配置地形、资源、危险、分片参数和模组。</CardDescription>
-                </div>
-              </div>
-              <Badge :variant="world.type === 'forest' ? 'outline' : 'secondary'">{{ world.type === 'forest' ? '森林' : '洞穴' }}</Badge>
+                {{ world.name }} {{ world.type === 'forest' ? '森林世界' : '洞穴世界' }}
+              </CardTitle>
+              <CardDescription>配置地形、资源、危险、分片参数和模组。</CardDescription>
+              <CardAction><Badge :variant="world.type === 'forest' ? 'outline' : 'secondary'">{{ world.type === 'forest' ? '森林' : '洞穴' }}</Badge></CardAction>
             </CardHeader>
             <CardContent>
               <Tabs v-model="worldSectionTab">
@@ -250,7 +248,7 @@ import api from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -272,6 +270,7 @@ export default {
     AlertTitle,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
@@ -1750,13 +1749,15 @@ export default {
 }
 
 .settings-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   min-width: 0;
 }
 
 .page-header,
 .header-actions,
 .world-tabs-toolbar,
-.world-header,
 .world-heading,
 .form-actions {
   display: flex;
@@ -1766,21 +1767,18 @@ export default {
 .page-header {
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .header-actions,
@@ -1789,7 +1787,7 @@ export default {
 }
 
 .load-error {
-  margin-bottom: 16px;
+  margin: 0;
 }
 
 .world-tabs-toolbar {
@@ -1802,11 +1800,6 @@ export default {
   max-width: 100%;
   justify-content: flex-start;
   overflow-x: auto;
-}
-
-.world-header {
-  justify-content: space-between;
-  gap: 16px;
 }
 
 .world-heading {
@@ -1860,8 +1853,7 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .page-header,
-  .world-header {
+  .page-header {
     align-items: stretch;
     flex-direction: column;
   }

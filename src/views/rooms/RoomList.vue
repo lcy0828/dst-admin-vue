@@ -49,14 +49,12 @@
     <div v-else-if="!loadError" class="save-list">
       <Card v-for="room in filteredRooms" :key="room.id" class="save-item">
         <CardHeader>
-          <div class="room-title-row">
-            <CardTitle>{{ room.name }}</CardTitle>
-            <Badge v-if="room.isRunning">运行中</Badge>
-          </div>
+          <CardTitle>{{ room.name }}</CardTitle>
           <CardDescription class="save-info">
             <span v-if="room.updateTime"><Clock />{{ formatDate(room.updateTime) }}</span>
             <span v-if="room.worlds"><LayoutGrid />{{ room.worlds.length }} 个世界</span>
           </CardDescription>
+          <CardAction v-if="room.isRunning"><Badge>运行中</Badge></CardAction>
         </CardHeader>
         <CardContent class="save-item-content">
               <div class="save-worlds" v-if="room.worlds && room.worlds.length">
@@ -134,10 +132,10 @@
     </UiDialog>
 
     <UiDialog v-model:open="startDialogVisible">
-      <DialogContent class="max-w-3xl">
+      <DialogScrollContent class="max-w-3xl">
         <DialogHeader><DialogTitle>启动房间</DialogTitle><DialogDescription>选择本次要启动的世界类型。</DialogDescription></DialogHeader>
         <StartRoomForm v-if="startDialogVisible" :room="selectedRoom" :startForm="startForm" :loading="startLoading" @confirm="confirmStartRoom" @close="closeStartDialog" />
-      </DialogContent>
+      </DialogScrollContent>
     </UiDialog>
   </div>
 </template>
@@ -161,7 +159,7 @@ import { roomApi, systemApi } from '../../api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -182,6 +180,7 @@ export default {
     AlertTitle,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardFooter,
@@ -527,13 +526,16 @@ export default {
 
 <style lang="scss" scoped>
 .world-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-height: 100%;
+  min-width: 0;
 }
 
 .page-header,
 .header-actions,
-.room-title-row,
 .save-info,
 .save-actions {
   display: flex;
@@ -543,17 +545,17 @@ export default {
 .page-header {
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
 
   h1 {
     margin: 0;
     font-size: 24px;
-    font-weight: 650;
+    font-weight: 600;
   }
 
   p {
     margin: 4px 0 0;
     color: var(--muted-foreground);
+    font-size: 14px;
   }
 }
 
@@ -568,7 +570,7 @@ export default {
 }
 
 .settings-card {
-  margin-bottom: 20px;
+  margin: 0;
 }
 
 .error-description {
@@ -594,7 +596,6 @@ export default {
   min-width: 0;
 }
 
-.room-title-row,
 .save-actions {
   justify-content: space-between;
   gap: 8px;

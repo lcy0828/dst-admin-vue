@@ -104,7 +104,7 @@
     </Card>
 
     <UiDialog v-model:open="startRoomDialogVisible">
-      <DialogContent>
+      <DialogScrollContent>
         <DialogHeader><DialogTitle>选择并启动房间</DialogTitle><DialogDescription>选择当前运行目标中的房间和真实世界分片。</DialogDescription></DialogHeader>
         <FieldGroup>
           <Field><FieldLabel>选择房间</FieldLabel><UiSelect :model-value="startRoomForm.roomIndex" @update:model-value="selectStartRoom"><SelectTrigger class="w-full"><SelectValue placeholder="请选择房间" /></SelectTrigger><SelectContent><SelectGroup>
@@ -136,7 +136,7 @@
           </FieldSet>
         </FieldGroup>
         <DialogFooter><UiButton variant="outline" :disabled="startRoomLoading" @click="startRoomDialogVisible = false">取消</UiButton><UiButton :disabled="startRoomLoading || !startRoomForm.worldIds.length" @click="handleStartRoomFrom"><Spinner v-if="startRoomLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />启动所选分片</UiButton></DialogFooter>
-      </DialogContent>
+      </DialogScrollContent>
     </UiDialog>
   </div>
 </template>
@@ -150,7 +150,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -166,8 +166,8 @@ export default {
   name: 'ServerList',
   components: {
     Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardContent, CardDescription,
-    CardHeader, CardTitle, CircleAlert, DialogContent,
-    DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
+    CardHeader, CardTitle, CircleAlert, DialogDescription, DialogFooter, DialogHeader,
+    DialogScrollContent, DialogTitle, Empty, EmptyContent,
     EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldDescription, FieldGroup,
     FieldLabel, FieldLegend, FieldSet, Play, RefreshCw, SelectContent, SelectGroup, SelectItem,
     SelectTrigger, SelectValue, ServerOff, ShadcnTable, Skeleton, Spinner, Square, TableBody,
@@ -399,6 +399,9 @@ export default {
 
 <style scoped>
 .server-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
@@ -408,24 +411,22 @@ export default {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 .filter-container {
-  margin-bottom: 16px;
+  margin: 0;
 }
 
 .filter-content {

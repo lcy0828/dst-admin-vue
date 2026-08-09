@@ -79,46 +79,32 @@
     <div v-else class="state-content">
       <div class="state-cards">
         <Card class="state-card">
-          <CardContent>
-            <component :is="getSeasonIcon()" class="state-icon" />
-            <div><span>季节</span><strong>{{ getSeasonName() }}</strong><small>{{ getSeasonDetail() }}</small><small>世界天数: {{ displayValue(worldState.cycles) }}</small></div>
-          </CardContent>
+          <CardHeader><CardTitle>季节</CardTitle><CardDescription>{{ getSeasonDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getSeasonIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getSeasonName() }}</strong><small>世界天数 {{ displayValue(worldState.cycles) }}</small></CardContent>
         </Card>
         <Card class="state-card">
-          <CardContent>
-            <component :is="getPhaseIcon()" class="state-icon" />
-            <div><span>地表时间</span><strong>{{ getPhaseName() }}</strong><small>{{ getPhaseDetail() }}</small><small>全天进度: {{ formatPercent(worldState.time) }}</small></div>
-          </CardContent>
+          <CardHeader><CardTitle>地表时间</CardTitle><CardDescription>{{ getPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getPhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getPhaseName() }}</strong><small>全天进度 {{ formatPercent(worldState.time) }}</small></CardContent>
         </Card>
         <Card class="state-card">
-          <CardContent>
-            <component :is="getWeatherIcon()" class="state-icon" />
-            <div><span>地表天气</span><strong>{{ getWeatherName() }}</strong><small>温度: {{ formatNumber(worldState.temperature, 1, '°C') }}</small><small>{{ getWeatherDetail() }}</small></div>
-          </CardContent>
+          <CardHeader><CardTitle>地表天气</CardTitle><CardDescription>{{ getWeatherDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getWeatherIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getWeatherName() }}</strong><small>温度 {{ formatNumber(worldState.temperature, 1, '°C') }}</small></CardContent>
         </Card>
         <Card class="state-card">
-          <CardContent>
-            <component :is="getMoonIcon()" class="state-icon" />
-            <div><span>地表月相</span><strong>{{ getMoonPhaseName() }}</strong><small>{{ getMoonPhaseDetail() }}</small></div>
-          </CardContent>
+          <CardHeader><CardTitle>地表月相</CardTitle><CardDescription>{{ getMoonPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getMoonIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getMoonPhaseName() }}</strong></CardContent>
         </Card>
         <Card v-if="hasCaveInfo()" class="state-card">
-          <CardContent>
-            <component :is="getCavePhaseIcon()" class="state-icon" />
-            <div><span>洞穴时间</span><strong>{{ getCavePhaseName() }}</strong><small>洞穴时间阶段</small></div>
-          </CardContent>
+          <CardHeader><CardTitle>洞穴时间</CardTitle><CardDescription>当前洞穴时间阶段</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getCavePhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getCavePhaseName() }}</strong></CardContent>
         </Card>
         <Card v-if="hasCaveInfo()" class="state-card">
-          <CardContent>
-            <component :is="getCaveMoonIcon()" class="state-icon" />
-            <div><span>洞穴月相</span><strong>{{ getCaveMoonPhaseName() }}</strong><small>{{ getCaveMoonPhaseDetail() }}</small></div>
-          </CardContent>
+          <CardHeader><CardTitle>洞穴月相</CardTitle><CardDescription>{{ getCaveMoonPhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getCaveMoonIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getCaveMoonPhaseName() }}</strong></CardContent>
         </Card>
         <Card v-if="hasNightmareInfo()" class="state-card">
-          <CardContent>
-            <component :is="getNightmarePhaseIcon()" class="state-icon" />
-            <div><span>梦魇循环</span><strong>{{ getNightmarePhaseName() }}</strong><small>{{ getNightmarePhaseDetail() }}</small></div>
-          </CardContent>
+          <CardHeader><CardTitle>梦魇循环</CardTitle><CardDescription>{{ getNightmarePhaseDetail() }}</CardDescription><CardAction><span class="state-icon-wrap"><component :is="getNightmarePhaseIcon()" class="state-icon" /></span></CardAction></CardHeader>
+          <CardContent class="state-value"><strong>{{ getNightmarePhaseName() }}</strong></CardContent>
         </Card>
       </div>
 
@@ -140,12 +126,10 @@
       </Card>
 
       <Card>
-        <CardHeader class="details-header">
-          <div>
-            <CardTitle>详细信息</CardTitle>
-            <CardDescription>按属性、描述或分类筛选状态字段。</CardDescription>
-          </div>
-          <div class="details-filters">
+        <CardHeader>
+          <CardTitle>详细信息</CardTitle>
+          <CardDescription>按属性、描述或分类筛选状态字段。</CardDescription>
+          <CardAction class="details-filters max-lg:col-span-full max-lg:row-auto max-lg:justify-self-stretch">
             <InputGroup>
               <InputGroupAddon><Search /></InputGroupAddon>
               <InputGroupInput v-model="searchQuery" placeholder="搜索属性或描述" />
@@ -159,7 +143,7 @@
                 </SelectGroup>
               </SelectContent>
             </UiSelect>
-          </div>
+          </CardAction>
         </CardHeader>
         <CardContent class="table-wrap">
           <UiTable>
@@ -175,11 +159,11 @@
 
       <Collapsible v-model:open="showRawData">
         <Card>
-          <CardHeader class="raw-header">
-            <div><CardTitle>原始数据</CardTitle><CardDescription>后端返回的原始世界状态。</CardDescription></div>
-            <CollapsibleTrigger as-child>
+          <CardHeader>
+            <CardTitle>原始数据</CardTitle><CardDescription>后端返回的原始世界状态。</CardDescription>
+            <CardAction><CollapsibleTrigger as-child>
               <UiButton variant="outline" size="sm">{{ showRawData ? '隐藏' : '显示' }}</UiButton>
-            </CollapsibleTrigger>
+            </CollapsibleTrigger></CardAction>
           </CardHeader>
           <CollapsibleContent>
             <CardContent><pre class="raw-data">{{ worldState.raw_data }}</pre></CardContent>
@@ -197,7 +181,7 @@ import api from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -218,6 +202,7 @@ export default {
     AlertTitle,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
@@ -1162,14 +1147,15 @@ export default {
 
 <style scoped>
 .world-state-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
 
 .page-header,
-.details-header,
-.details-filters,
-.raw-header {
+.details-filters {
   display: flex;
   align-items: center;
 }
@@ -1177,24 +1163,22 @@ export default {
 .page-header {
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 .filter-card {
-  margin-bottom: 16px;
+  margin: 0;
 }
 
 .filter-grid {
@@ -1217,44 +1201,49 @@ export default {
 .state-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
 .state-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
-.state-card [data-slot="card-content"] {
+.state-icon-wrap {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding-top: 18px;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  background: var(--muted);
 }
 
 .state-icon {
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   flex: none;
-  color: var(--primary);
+  color: var(--muted-foreground);
 }
 
-.state-card [data-slot="card-content"] > div {
+.state-value {
   display: flex;
+  min-height: 52px;
   min-width: 0;
-  flex-direction: column;
-  gap: 3px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.state-card span,
-.state-card small {
+.state-value strong {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.state-value small {
   color: var(--muted-foreground);
   font-size: 12px;
-}
-
-.state-card strong {
-  font-size: 16px;
 }
 
 .season-lengths {
@@ -1262,12 +1251,6 @@ export default {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
-}
-
-.details-header,
-.raw-header {
-  justify-content: space-between;
-  gap: 16px;
 }
 
 .details-filters {
@@ -1308,12 +1291,6 @@ export default {
 
   .query-action > * {
     width: 100%;
-  }
-
-  .details-header,
-  .raw-header {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .details-filters {

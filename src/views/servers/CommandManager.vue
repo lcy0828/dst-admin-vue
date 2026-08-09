@@ -20,7 +20,7 @@
     </Alert>
 
     <Card>
-      <CardHeader class="card-header-row"><div><CardTitle>执行命令</CardTitle><CardDescription>使用结构化模板或直接向分片发送 Lua 命令。</CardDescription></div><ToggleGroup v-model="commandMode" type="single"><ToggleGroupItem value="structured">结构化命令</ToggleGroupItem><ToggleGroupItem value="raw">原始命令</ToggleGroupItem></ToggleGroup></CardHeader>
+      <CardHeader><CardTitle>执行命令</CardTitle><CardDescription>使用结构化模板或直接向分片发送 Lua 命令。</CardDescription><CardAction class="max-sm:col-span-full max-sm:row-auto max-sm:justify-self-start"><ToggleGroup v-model="commandMode" type="single"><ToggleGroupItem value="structured">结构化命令</ToggleGroupItem><ToggleGroupItem value="raw">原始命令</ToggleGroupItem></ToggleGroup></CardAction></CardHeader>
       <CardContent class="content-stack">
         <FieldGroup v-if="commandMode === 'structured'">
           <Field><FieldLabel>选择服务器</FieldLabel><UiSelect v-model="executeForm.server"><SelectTrigger class="w-full"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="server in servers" :key="server.id" :value="server.session_name">{{ server.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
@@ -56,7 +56,7 @@
     </Card>
 
     <Card>
-      <CardHeader class="card-header-row"><div><CardTitle>服务器命令管理</CardTitle><CardDescription>维护自定义 Lua 命令及参数定义。</CardDescription></div><div class="form-actions"><UiButton size="sm" variant="outline" @click="exportCommands"><Download data-icon="inline-start" />导出</UiButton><UiButton size="sm" variant="outline" @click="importCommands"><Upload data-icon="inline-start" />导入</UiButton><UiButton size="sm" @click="showAddCommandDialog"><Plus data-icon="inline-start" />添加命令</UiButton></div></CardHeader>
+      <CardHeader><CardTitle>服务器命令管理</CardTitle><CardDescription>维护自定义 Lua 命令及参数定义。</CardDescription><CardAction class="form-actions max-sm:col-span-full max-sm:row-auto max-sm:justify-self-stretch"><UiButton size="sm" variant="outline" @click="exportCommands"><Download data-icon="inline-start" />导出</UiButton><UiButton size="sm" variant="outline" @click="importCommands"><Upload data-icon="inline-start" />导入</UiButton><UiButton size="sm" @click="showAddCommandDialog"><Plus data-icon="inline-start" />添加命令</UiButton></CardAction></CardHeader>
       <CardContent class="content-stack">
         <ToggleGroup :model-value="currentType || '__all'" type="single" class="type-filter" @update:model-value="filterCommandsByType($event === '__all' ? '' : $event)"><ToggleGroupItem value="__all">全部命令</ToggleGroupItem><ToggleGroupItem v-for="type in commandTypes" :key="type" :value="type">{{ type }}</ToggleGroupItem></ToggleGroup>
         <div v-if="loading" class="command-skeleton" aria-busy="true" aria-label="正在读取命令">
@@ -67,14 +67,14 @@
       </CardContent>
     </Card>
 
-    <UiDialog v-model:open="dialogVisible"><DialogContent class="wide-dialog"><DialogHeader><DialogTitle>{{ dialogType === 'add' ? '添加命令' : '编辑命令' }}</DialogTitle><DialogDescription>定义命令脚本、分类及可选参数。</DialogDescription></DialogHeader><FieldGroup>
+    <UiDialog v-model:open="dialogVisible"><DialogScrollContent class="sm:max-w-3xl"><DialogHeader><DialogTitle>{{ dialogType === 'add' ? '添加命令' : '编辑命令' }}</DialogTitle><DialogDescription>定义命令脚本、分类及可选参数。</DialogDescription></DialogHeader><FieldGroup>
       <Field><FieldLabel for="command-name">命令名称</FieldLabel><UiInput id="command-name" v-model="commandForm.name" placeholder="请输入命令名称" /></Field>
       <Field><FieldLabel>命令类型</FieldLabel><UiSelect v-model="commandForm.type"><SelectTrigger class="w-full"><SelectValue placeholder="请选择命令类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in commandTypes" :key="type" :value="type">{{ type }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
       <Field><FieldLabel for="command-description">命令描述</FieldLabel><UiTextarea id="command-description" v-model="commandForm.description" rows="2" placeholder="请输入命令描述" /></Field>
       <Field><FieldLabel for="command-script">命令脚本</FieldLabel><UiTextarea id="command-script" v-model="commandForm.command" rows="5" placeholder="请输入 Lua 命令脚本，例如: c_announce('Hello World')" /></Field>
       <Field orientation="horizontal"><UiSwitch id="command-parameterized" v-model="commandForm.parameterized" @update:model-value="handleParamSwitch" /><FieldLabel for="command-parameterized">包含参数</FieldLabel></Field>
       <template v-if="commandForm.parameterized"><Separator /><div v-for="(param, index) in commandForm.parameters" :key="index" class="parameter-editor"><div class="parameter-grid"><Field><FieldLabel :for="`param-name-${index}`">参数名</FieldLabel><UiInput :id="`param-name-${index}`" v-model="param.name" placeholder="message" /></Field><Field><FieldLabel :for="`param-label-${index}`">标签</FieldLabel><UiInput :id="`param-label-${index}`" v-model="param.label" placeholder="消息内容" /></Field><Field><FieldLabel>类型</FieldLabel><UiSelect v-model="param.type"><SelectTrigger class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="string">字符串</SelectItem><SelectItem value="number">数字</SelectItem><SelectItem value="boolean">布尔值</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel :for="`param-default-${index}`">默认值</FieldLabel><UiInput :id="`param-default-${index}`" v-model="param.default" placeholder="默认值" /></Field><Field orientation="horizontal"><UiSwitch :id="`param-required-${index}`" v-model="param.required" /><FieldLabel :for="`param-required-${index}`">必填</FieldLabel></Field><UiButton size="icon" variant="destructive" aria-label="删除参数" title="删除参数" @click="removeParam(index)"><Trash2 /></UiButton></div></div><UiButton variant="outline" @click="addParameter"><Plus data-icon="inline-start" />添加参数</UiButton></template>
-    </FieldGroup><DialogFooter><UiButton variant="outline" @click="dialogVisible = false">取消</UiButton><UiButton @click="submitForm">确定</UiButton></DialogFooter></DialogContent></UiDialog>
+    </FieldGroup><DialogFooter><UiButton variant="outline" @click="dialogVisible = false">取消</UiButton><UiButton @click="submitForm">确定</UiButton></DialogFooter></DialogScrollContent></UiDialog>
 
     <input
       ref="importInput"
@@ -84,12 +84,12 @@
       @change="handleImportFile"
     />
 
-    <UiDialog v-model:open="batchCommandDialogVisible"><DialogContent class="wide-dialog"><DialogHeader><DialogTitle>批量执行命令</DialogTitle><DialogDescription>每行一条命令，按顺序执行；以 # 开头的行会被忽略。</DialogDescription></DialogHeader><FieldGroup>
+    <UiDialog v-model:open="batchCommandDialogVisible"><DialogScrollContent class="sm:max-w-3xl"><DialogHeader><DialogTitle>批量执行命令</DialogTitle><DialogDescription>每行一条命令，按顺序执行；以 # 开头的行会被忽略。</DialogDescription></DialogHeader><FieldGroup>
       <Field><FieldLabel>选择服务器</FieldLabel><UiSelect v-model="batchCommandForm.server"><SelectTrigger class="w-full"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="server in servers" :key="server.id" :value="server.session_name">{{ server.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
       <Field><FieldLabel for="batch-commands">命令列表</FieldLabel><UiTextarea id="batch-commands" v-model="batchCommandForm.commands" rows="10" placeholder="# 每行输入一条命令" /></Field>
       <Field><FieldLabel for="batch-interval">执行间隔（毫秒）</FieldLabel><UiInput id="batch-interval" v-model.number="batchCommandForm.interval" type="number" min="100" max="5000" step="100" /></Field>
       <div v-if="batchResults.length" class="batch-results"><UiProgress :model-value="batchProgress" /><div class="batch-result-list"><div v-for="(result, index) in batchResults" :key="index" class="batch-result-item"><span class="batch-command">{{ result.command }}</span><Badge :variant="result.success ? 'default' : 'destructive'">{{ result.success ? '成功' : '失败' }}</Badge></div></div></div>
-    </FieldGroup><DialogFooter><UiButton variant="outline" @click="batchCommandDialogVisible = false">关闭</UiButton><UiButton :disabled="executingBatch || !batchCommandForm.server || !batchCommandForm.commands" @click="executeBatchCommands"><Spinner v-if="executingBatch" data-icon="inline-start" />开始执行</UiButton></DialogFooter></DialogContent></UiDialog>
+    </FieldGroup><DialogFooter><UiButton variant="outline" @click="batchCommandDialogVisible = false">关闭</UiButton><UiButton :disabled="executingBatch || !batchCommandForm.server || !batchCommandForm.commands" @click="executeBatchCommands"><Spinner v-if="executingBatch" data-icon="inline-start" />开始执行</UiButton></DialogFooter></DialogScrollContent></UiDialog>
   </div>
 </template>
 
@@ -103,8 +103,8 @@ import { commandManager, commandApi, COMMAND_TYPES } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -123,9 +123,9 @@ import { confirmAction, promptText } from '@/lib/feedback';
 export default {
   name: 'CommandManager',
   components: {
-    Alert, AlertAction, AlertDescription, AlertTitle, Badge, BookOpen, Card, CardContent, CardDescription,
-    CardHeader, CardTitle, CircleAlert, CircleCheck, DialogContent, DialogDescription, DialogFooter,
-    DialogHeader, DialogTitle, Download, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, BookOpen, Card, CardAction, CardContent, CardDescription,
+    CardHeader, CardTitle, CircleAlert, CircleCheck, DialogDescription, DialogFooter,
+    DialogHeader, DialogScrollContent, DialogTitle, Download, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
     Field, FieldDescription, FieldGroup, FieldLabel, ListPlus,
     Pencil, Play, Plus, Popover, PopoverContent, PopoverTrigger, RefreshCw, SelectContent, SelectGroup,
     SelectItem, SelectLabel, SelectTrigger, SelectValue, Separator, ShadcnTable, Skeleton, Spinner, TableBody,
@@ -878,7 +878,13 @@ export default {
 </script>
 
 <style scoped>
-.command-manager-page,
+.command-manager-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
 .content-stack {
   display: flex;
   flex-direction: column;
@@ -887,7 +893,6 @@ export default {
 }
 
 .page-header,
-.card-header-row,
 .form-actions,
 .section-heading,
 .table-actions,
@@ -907,15 +912,15 @@ export default {
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
-.card-header-row,
 .section-heading {
   justify-content: space-between;
   align-items: flex-start;
@@ -1005,12 +1010,6 @@ export default {
   overflow-x: auto;
 }
 
-.wide-dialog {
-  max-width: min(820px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-}
-
 .parameter-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1047,7 +1046,6 @@ export default {
 
 @media (max-width: 768px) {
   .page-header,
-  .card-header-row,
   .section-heading {
     align-items: stretch;
     flex-direction: column;

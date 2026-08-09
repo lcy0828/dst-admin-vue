@@ -23,19 +23,17 @@
       </UiButton></AlertAction>
     </Alert>
     <Card v-if="!loadError || announcements.length" class="announcements-card">
-      <CardHeader class="card-header">
-        <div>
-          <CardTitle>公告列表</CardTitle>
-          <CardDescription>管理面向玩家和管理员的系统公告。</CardDescription>
-        </div>
-        <UiSelect v-model="statusFilter">
+      <CardHeader>
+        <CardTitle>公告列表</CardTitle>
+        <CardDescription>管理面向玩家和管理员的系统公告。</CardDescription>
+        <CardAction><UiSelect v-model="statusFilter">
           <SelectTrigger class="status-filter"><SelectValue placeholder="状态筛选" /></SelectTrigger>
           <SelectContent><SelectGroup>
             <SelectItem value="all">全部</SelectItem>
             <SelectItem value="active">有效</SelectItem>
             <SelectItem value="expired">已过期</SelectItem>
           </SelectGroup></SelectContent>
-        </UiSelect>
+        </UiSelect></CardAction>
       </CardHeader>
       <CardContent>
         <div class="table-wrap"><ShadcnTable>
@@ -112,7 +110,7 @@ import { CircleAlertIcon, PlusIcon, RefreshCwIcon } from '@lucide/vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
@@ -136,6 +134,7 @@ export default {
     AlertTitle,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
@@ -357,6 +356,9 @@ export default {
 
 <style scoped>
 .announcements-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
@@ -366,32 +368,24 @@ export default {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 .header-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .status-filter {
@@ -462,8 +456,7 @@ export default {
 }
 
 @media (max-width: 640px) {
-  .page-header,
-  .card-header {
+  .page-header {
     align-items: stretch;
     flex-direction: column;
   }

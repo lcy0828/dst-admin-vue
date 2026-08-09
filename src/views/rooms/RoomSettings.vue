@@ -649,6 +649,9 @@ export default {
 
 <style lang="scss" scoped>
 .room-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
@@ -664,22 +667,19 @@ export default {
 .page-header {
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .title-section {
   h1 {
     margin: 0;
     font-size: 24px;
-    font-weight: 650;
+    font-weight: 600;
   }
 
   p {
     margin: 4px 0 0;
     color: var(--muted-foreground);
-    font-size: 13px;
+    font-size: 14px;
   }
 }
 
@@ -691,13 +691,12 @@ export default {
   justify-content: center;
   gap: 8px;
   min-height: 48px;
-  margin-bottom: 16px;
   color: var(--muted-foreground);
 }
 
 .error-alert,
 .save-name-card {
-  margin-bottom: 16px;
+  margin: 0;
 }
 
 .error-list {

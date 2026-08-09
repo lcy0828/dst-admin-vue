@@ -5,13 +5,11 @@
       <p>查看或更新房间使用的 Klei 集群令牌。</p>
     </header>
 
-    <Card class="token-card">
-      <CardHeader class="card-header">
-        <div class="token-heading">
-          <CardTitle>服务器令牌</CardTitle>
-          <CardDescription>安全地查看或更新当前房间的集群令牌。</CardDescription>
-        </div>
-        <div v-if="savename || serverToken" class="token-actions">
+    <Card>
+      <CardHeader>
+        <CardTitle>服务器令牌</CardTitle>
+        <CardDescription>安全地查看或更新当前房间的集群令牌。</CardDescription>
+        <CardAction v-if="savename || serverToken" class="token-actions max-sm:col-span-full max-sm:row-auto max-sm:justify-self-stretch">
           <UiButton
             v-if="tokenConfigured && !tokenRevealed"
             size="sm"
@@ -35,7 +33,7 @@
             <RefreshCw data-icon="inline-start" />
             刷新
           </UiButton>
-        </div>
+        </CardAction>
       </CardHeader>
 
       <CardContent>
@@ -143,7 +141,7 @@ import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -160,6 +158,7 @@ export default {
     AlertTitle,
     UiButton,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
@@ -377,49 +376,37 @@ export default {
 
 <style scoped>
 .server-token-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
 
 .page-header {
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
+  margin: 0;
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 .save-selector {
-  margin-bottom: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  margin: 0;
 }
 
 .token-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.token-heading {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .error-description {
@@ -457,28 +444,13 @@ export default {
   color: var(--muted-foreground);
 }
 
-.empty-token .legacy-icon {
-  font-size: 30px;
-  margin-bottom: 10px;
-}
-
 .token-skeleton {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.token-card {
-  border-radius: 4px;
-  box-shadow: none;
-}
-
 @media (max-width: 640px) {
-  .card-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
   .token-actions {
     width: 100%;
   }

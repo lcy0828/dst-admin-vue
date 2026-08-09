@@ -33,23 +33,27 @@ export default {
 
 <style scoped>
 .room-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
 
 .page-header {
-  margin-bottom: 16px;
+  margin: 0;
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 .unavailable-state {

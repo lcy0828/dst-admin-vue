@@ -15,12 +15,10 @@
         @keydown.enter="navigateTo(section.path)"
         @keydown.space.prevent="navigateTo(section.path)"
       >
-        <CardHeader class="menu-card-header">
-          <div class="card-icon"><component :is="section.icon" /></div>
-          <div>
-            <CardTitle>{{ section.title }}</CardTitle>
-            <CardDescription>{{ section.description }}</CardDescription>
-          </div>
+        <CardHeader>
+          <CardTitle>{{ section.title }}</CardTitle>
+          <CardDescription>{{ section.description }}</CardDescription>
+          <CardAction><span class="card-icon"><component :is="section.icon" /></span></CardAction>
         </CardHeader>
         <CardContent class="card-features">
           <Badge v-for="feature in section.features" :key="feature" variant="secondary">{{ feature }}</Badge>
@@ -29,16 +27,14 @@
     </div>
 
     <Card class="active-rooms-card">
-      <CardHeader class="active-rooms-header">
-        <div>
-          <CardTitle>房间运行状态</CardTitle>
-          <CardDescription>数据来自当前运行目标，切换本机或远程 Agent 后会自动刷新。</CardDescription>
-        </div>
-        <UiButton size="sm" variant="outline" :disabled="loading" @click="refreshRooms({ notify: true })">
+      <CardHeader>
+        <CardTitle>房间运行状态</CardTitle>
+        <CardDescription>数据来自当前运行目标，切换本机或远程 Agent 后会自动刷新。</CardDescription>
+        <CardAction><UiButton size="sm" variant="outline" :disabled="loading" @click="refreshRooms({ notify: true })">
           <Spinner v-if="loading" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
           刷新列表
-        </UiButton>
+        </UiButton></CardAction>
       </CardHeader>
       <CardContent>
         <Alert v-if="loadError" variant="destructive" class="rooms-feedback">
@@ -187,7 +183,7 @@ import { roomApi, systemApi } from '@/api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -210,7 +206,7 @@ const ROOM_SECTIONS = [
 export default {
   name: 'RoomMenu',
   components: {
-    Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardContent, CardDescription, CardFooter,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardAction, CardContent, CardDescription, CardFooter,
     CardHeader, CardTitle, CircleAlert, DialogContent, DialogDescription, DialogFooter,
     DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia,
     EmptyTitle, Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet,
@@ -395,32 +391,33 @@ export default {
 
 <style scoped>
 .room-menu-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
 
 .page-header {
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
+  margin: 0;
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 2px 0 0;
   color: var(--muted-foreground);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 .menu-card {
@@ -434,13 +431,6 @@ export default {
   border-color: var(--ring);
   background: var(--muted);
   outline: none;
-}
-
-.menu-card-header {
-  display: flex;
-  align-items: flex-start;
-  flex-direction: row;
-  gap: 12px;
 }
 
 .card-icon {
@@ -463,15 +453,7 @@ export default {
 }
 
 .active-rooms-card {
-  margin-top: 16px;
-}
-
-.active-rooms-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-direction: row;
-  gap: 12px;
+  margin: 0;
 }
 
 .rooms-feedback {
@@ -505,9 +487,5 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .active-rooms-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
 }
 </style>

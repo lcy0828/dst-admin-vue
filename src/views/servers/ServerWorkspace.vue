@@ -65,38 +65,31 @@
 
     <template v-else-if="selectedRoom">
       <section class="status-strip" aria-label="服务器概况">
-        <div class="status-item">
-          <span class="status-label">世界状态</span>
-          <strong>{{ runningWorlds.length }} / {{ worlds.length }}</strong>
-          <span class="status-meta">运行中</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">在线玩家</span>
-          <strong>{{ playerStats ? playerStats.online_count : '--' }}</strong>
-          <span class="status-meta">
-            {{ contextErrors.players ? '读取失败' : `共 ${playerStats ? playerStats.total_count : '--'} 人` }}
-          </span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">磁盘使用</span>
-          <strong>{{ formatPercent(systemStatus.disk_usage) }}</strong>
-          <span class="status-meta">剩余 {{ formatDisk(systemStatus.free_disk) }}</span>
-        </div>
-        <div class="status-item">
-          <span class="status-label">最近备份</span>
-          <strong class="status-time">{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</strong>
-          <span class="status-meta">{{ contextErrors.backups ? '读取失败' : (latestBackup?.size_formatted || '暂无记录') }}</span>
-        </div>
+        <Card>
+          <CardHeader><CardTitle>世界状态</CardTitle><CardDescription>{{ runningWorlds.length }} 个分片运行中</CardDescription></CardHeader>
+          <CardContent class="status-content"><strong>{{ runningWorlds.length }}<span>/ {{ worlds.length }}</span></strong></CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>在线玩家</CardTitle><CardDescription>{{ contextErrors.players ? '读取失败' : `共 ${playerStats ? playerStats.total_count : '--'} 人` }}</CardDescription></CardHeader>
+          <CardContent class="status-content"><strong>{{ playerStats ? playerStats.online_count : '--' }}<span>人</span></strong></CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>磁盘使用</CardTitle><CardDescription>剩余 {{ formatDisk(systemStatus.free_disk) }}</CardDescription></CardHeader>
+          <CardContent class="status-content"><strong>{{ formatPercent(systemStatus.disk_usage) }}</strong></CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>最近备份</CardTitle><CardDescription>{{ contextErrors.backups ? '读取失败' : (latestBackup?.size_formatted || '暂无记录') }}</CardDescription></CardHeader>
+          <CardContent class="status-content"><strong class="status-time">{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</strong></CardContent>
+        </Card>
       </section>
 
-      <section class="world-section">
-        <div class="section-heading">
-          <div>
-            <h2>世界与分片</h2>
-            <span>{{ selectedRoom.directoryName || selectedRoom.savepath || '' }}</span>
-          </div>
-          <UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />房间设置</UiButton>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>世界与分片</CardTitle>
+          <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || '当前房间的分片列表' }}</CardDescription>
+          <CardAction><UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />房间设置</UiButton></CardAction>
+        </CardHeader>
+        <CardContent>
 
         <div v-if="worlds.length" class="world-grid">
           <article
@@ -192,11 +185,16 @@
           </article>
         </div>
         <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>当前房间没有世界</EmptyTitle></EmptyHeader></Empty>
-      </section>
+        </CardContent>
+      </Card>
 
       <div class="workspace-grid">
-        <section class="operation-panel">
-          <Tabs v-model="activeOperation" class="operation-tabs">
+        <Card>
+          <CardHeader>
+            <CardTitle>运行控制</CardTitle>
+            <CardDescription>查看当前分片日志，或向选定世界发送控制台命令。</CardDescription>
+          </CardHeader>
+          <CardContent><Tabs v-model="activeOperation" class="operation-tabs">
             <TabsList>
               <TabsTrigger value="logs"><FileText />实时日志</TabsTrigger>
               <TabsTrigger value="console"><Terminal />控制台</TabsTrigger>
@@ -264,19 +262,18 @@
                 </Alert>
               </div>
             </TabsContent>
-          </Tabs>
-        </section>
+          </Tabs></CardContent>
+        </Card>
 
         <aside class="context-rail" :aria-busy="contextLoading">
           <div v-if="contextLoading" class="panel-loading"><Spinner /><span>正在加载房间信息...</span></div>
-          <section class="rail-section">
-            <div class="rail-heading">
-              <div>
-                <h2>玩家</h2>
-                <span>{{ contextErrors.players ? '数据读取失败' : (playerStats ? `${playerStats.online_count} 人在线` : '状态不可用') }}</span>
-              </div>
-              <UiButton variant="ghost" size="sm" @click="openPlayers">全部<ArrowRight data-icon="inline-end" /></UiButton>
-            </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>玩家</CardTitle>
+              <CardDescription>{{ contextErrors.players ? '数据读取失败' : (playerStats ? `${playerStats.online_count} 人在线` : '状态不可用') }}</CardDescription>
+              <CardAction><UiButton variant="ghost" size="sm" @click="openPlayers">全部<ArrowRight data-icon="inline-end" /></UiButton></CardAction>
+            </CardHeader>
+            <CardContent>
             <div v-if="recentPlayers.length" class="player-list">
               <UiButton
                 v-for="player in recentPlayers"
@@ -303,16 +300,16 @@
             <Empty v-else class="rail-empty">
               <EmptyHeader><EmptyTitle>暂无玩家记录</EmptyTitle><EmptyDescription>玩家加入房间后会显示在这里。</EmptyDescription></EmptyHeader>
             </Empty>
-          </section>
+            </CardContent>
+          </Card>
 
-          <section class="rail-section">
-            <div class="rail-heading">
-              <div>
-                <h2>最近备份</h2>
-                <span>{{ contextErrors.backups ? '列表读取失败' : `${backups.length} 个记录` }}</span>
-              </div>
-              <UiButton variant="ghost" size="sm" @click="$router.push('/backups')">全部<ArrowRight data-icon="inline-end" /></UiButton>
-            </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>最近备份</CardTitle>
+              <CardDescription>{{ contextErrors.backups ? '列表读取失败' : `${backups.length} 个记录` }}</CardDescription>
+              <CardAction><UiButton variant="ghost" size="sm" @click="$router.push('/backups')">全部<ArrowRight data-icon="inline-end" /></UiButton></CardAction>
+            </CardHeader>
+            <CardContent>
             <div v-if="backups.length" class="backup-list">
               <div v-for="backup in backups.slice(0, 3)" :key="backup.id || backup.name" class="backup-row">
                 <FileCheck2 />
@@ -330,9 +327,12 @@
             <Empty v-else class="rail-empty">
               <EmptyHeader><EmptyTitle>暂无备份记录</EmptyTitle><EmptyDescription>创建房间备份后会显示在这里。</EmptyDescription></EmptyHeader>
             </Empty>
-          </section>
+            </CardContent>
+          </Card>
 
-          <nav class="quick-nav" aria-label="服务器快捷入口">
+          <Card>
+            <CardHeader><CardTitle>快捷入口</CardTitle><CardDescription>打开当前房间的常用管理页面。</CardDescription></CardHeader>
+            <CardContent><nav class="quick-nav" aria-label="服务器快捷入口">
             <UiButton variant="ghost" @click="openPlayers">
               <User />
               <span>玩家管理</span>
@@ -349,7 +349,8 @@
               <Search />
               <span>日志查询</span>
             </UiButton>
-          </nav>
+            </nav></CardContent>
+          </Card>
         </aside>
       </div>
     </template>
@@ -362,6 +363,7 @@ import { backupApi, commandApi, playerApi, roomApi, systemApi } from '@/api'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -406,6 +408,12 @@ export default {
     AlertDescription,
     AlertTitle,
     Badge,
+    Card,
+    CardAction,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
     CircleAlert,
     CircleCheck,
     ArrowRight,
@@ -819,15 +827,13 @@ export default {
 .workspace-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
   min-width: 0;
 }
 
 .workspace-header,
 .workspace-title-row,
 .workspace-toolbar,
-.section-heading,
-.rail-heading,
 .world-main,
 .world-name-row,
 .console-toolbar,
@@ -840,8 +846,6 @@ export default {
 .workspace-header {
   justify-content: space-between;
   gap: 20px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .workspace-heading {
@@ -862,8 +866,9 @@ export default {
 .workspace-title-row h1 {
   margin: 0;
   color: var(--foreground);
-  font-size: 22px;
-  line-height: 30px;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
   letter-spacing: 0;
 }
 
@@ -890,120 +895,68 @@ export default {
 .status-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  overflow: hidden;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  gap: 16px;
 }
 
-.status-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 10px;
-  min-width: 0;
-  padding: 13px 16px;
-  border-right: 1px solid var(--border);
+.status-content {
+  display: flex;
+  min-height: 64px;
+  align-items: flex-end;
 }
 
-.status-item:last-child {
-  border-right: 0;
-}
-
-.status-label,
-.status-meta {
-  color: var(--muted-foreground);
-  font-size: 12px;
-}
-
-.status-item strong {
-  grid-row: 1 / span 2;
-  grid-column: 2;
-  align-self: center;
+.status-content strong {
   color: var(--foreground);
-  font-size: 22px;
+  font-size: 30px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.status-item .status-time {
-  font-size: 17px;
-}
-
-.world-section,
-.operation-panel,
-.rail-section {
-  min-width: 0;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
-.world-section {
-  padding: 14px;
-}
-
-.section-heading,
-.rail-heading {
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.section-heading {
-  margin-bottom: 12px;
-}
-
-.section-heading h2,
-.rail-heading h2 {
-  margin: 0;
-  color: var(--foreground);
-  font-size: 15px;
-  line-height: 22px;
-  letter-spacing: 0;
-}
-
-.section-heading span,
-.rail-heading span {
-  display: block;
-  max-width: 520px;
-  overflow: hidden;
+.status-content strong span {
+  margin-left: 6px;
   color: var(--muted-foreground);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.status-content .status-time {
+  font-size: 20px;
 }
 
 .world-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
 }
 
 .world-item {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(240px, 0.8fr) auto;
+  align-items: center;
+  gap: 16px;
   min-width: 0;
-  padding: 13px;
+  padding: 14px 0;
   cursor: pointer;
-  background: var(--muted);
-  border: 1px solid transparent;
-  border-radius: 4px;
-  transition: border-color 180ms ease, background-color 180ms ease;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  transition: background-color 180ms ease;
 }
 
 .world-item:hover,
 .world-item:focus-visible {
-  border-color: var(--border);
+  background: var(--muted);
   outline: none;
 }
 
 .world-item.selected {
   background: var(--accent);
-  border-color: var(--ring);
 }
 
 .world-item.running::before {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 0;
+  left: -20px;
   width: 3px;
   content: '';
   background: var(--success-color);
@@ -1065,7 +1018,7 @@ export default {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin: 13px 0 11px;
+  margin: 0;
 }
 
 .world-facts div {
@@ -1091,23 +1044,14 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
+  padding: 0;
 }
 
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
-  gap: 16px;
+  gap: 24px;
   align-items: start;
-}
-
-.operation-panel {
-  overflow: hidden;
-}
-
-.operation-tabs {
-  padding: 14px;
 }
 
 .tab-label {
@@ -1171,14 +1115,6 @@ export default {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
-}
-
-.rail-section {
-  padding: 13px;
-}
-
-.rail-heading {
-  margin-bottom: 10px;
 }
 
 .player-list,
@@ -1260,11 +1196,6 @@ export default {
   border-bottom: 0;
 }
 
-.backup-row > .legacy-icon {
-  flex: 0 0 auto;
-  color: var(--primary);
-}
-
 .backup-row span {
   min-width: 0;
 }
@@ -1296,53 +1227,16 @@ export default {
 .quick-nav {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: hidden;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  gap: 4px;
 }
 
 .quick-nav button {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 48px;
-  padding: 0 12px;
-  cursor: pointer;
-  color: var(--foreground);
-  background: transparent;
-  border: 0;
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  transition: color 180ms ease, background-color 180ms ease;
-}
-
-.quick-nav button:nth-child(2n) {
-  border-right: 0;
-}
-
-.quick-nav button:nth-last-child(-n + 2) {
-  border-bottom: 0;
-}
-
-.quick-nav button:hover,
-.quick-nav button:focus-visible {
-  color: var(--primary);
-  background: var(--accent);
-  outline: none;
+  justify-content: flex-start;
 }
 
 @media (max-width: 1100px) {
   .status-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .status-item:nth-child(2) {
-    border-right: 0;
-  }
-
-  .status-item:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--border);
   }
 
   .workspace-grid {
@@ -1359,15 +1253,6 @@ export default {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .quick-nav button,
-  .quick-nav button:nth-child(2n) {
-    border-right: 1px solid var(--border);
-    border-bottom: 0;
-  }
-
-  .quick-nav button:last-child {
-    border-right: 0;
-  }
 }
 
 @media (max-width: 768px) {
@@ -1390,19 +1275,21 @@ export default {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .status-item,
-  .status-item:nth-child(2) {
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .status-item:last-child {
-    border-bottom: 0;
-  }
-
-  .world-grid,
   .context-rail {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .world-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .world-facts {
+    margin: 2px 0;
+  }
+
+  .world-actions {
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
   }
 
   .workspace-log {
@@ -1419,25 +1306,11 @@ export default {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .quick-nav button,
-  .quick-nav button:nth-child(2n) {
-    border-right: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .quick-nav button:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .quick-nav button:nth-last-child(-n + 2) {
-    border-bottom: 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .world-item,
-  .player-copy strong,
-  .quick-nav button {
+  .player-copy strong {
     transition: none;
   }
 }

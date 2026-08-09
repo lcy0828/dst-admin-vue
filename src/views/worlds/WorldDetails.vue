@@ -27,11 +27,9 @@
       <div class="main-column">
         <Card>
           <CardHeader>
-            <div class="card-header">
-              <CardTitle>世界信息</CardTitle>
-              <Badge :variant="getStatusTag(world.status)">{{ getStatusName(world.status) }}</Badge>
-            </div>
+            <CardTitle>世界信息</CardTitle>
             <CardDescription>{{ world.roomName ? `所属房间：${world.roomName}` : '世界基础信息' }}</CardDescription>
+            <CardAction><Badge :variant="getStatusTag(world.status)">{{ getStatusName(world.status) }}</Badge></CardAction>
           </CardHeader>
           <CardContent>
             <dl class="world-info">
@@ -77,7 +75,7 @@
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>最近活动</CardTitle></CardHeader>
+          <CardHeader><CardTitle>最近活动</CardTitle><CardDescription>当前世界的操作与状态变化记录。</CardDescription></CardHeader>
           <CardContent>
             <Empty>
               <EmptyHeader>
@@ -100,7 +98,7 @@ import { roomApi } from '../../api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { confirmAction } from '@/lib/feedback';
@@ -117,6 +115,7 @@ export default {
     ArrowLeft,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
@@ -292,13 +291,15 @@ export default {
 
 <style scoped>
 .world-details-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
 
 .page-header,
-.header-actions,
-.card-header {
+.header-actions {
   display: flex;
   align-items: center;
 }
@@ -306,20 +307,18 @@ export default {
 .page-header {
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 .header-actions {
@@ -329,13 +328,13 @@ export default {
 .details-skeleton {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-  gap: 8px;
+  gap: 24px;
 }
 
 .details-layout {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-  gap: 16px;
+  gap: 24px;
 }
 
 .main-column,
@@ -343,12 +342,7 @@ export default {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
-}
-
-.card-header {
-  justify-content: space-between;
-  gap: 12px;
+  gap: 24px;
 }
 
 .world-info {
@@ -389,12 +383,12 @@ export default {
 
 .stat-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex-direction: column;
   gap: 4px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  justify-content: center;
+  padding-right: 12px;
+  border-right: 1px solid var(--border);
 }
 
 .stat-item strong {
@@ -433,12 +427,14 @@ export default {
     grid-template-columns: 1fr;
   }
 
-  .header-actions > * {
-    flex: 1;
+  .stat-item {
+    padding: 0 0 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr;
+  .header-actions > * {
+    flex: 1;
   }
 }
 </style>

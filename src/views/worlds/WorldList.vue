@@ -27,12 +27,10 @@
       </aside>
 
       <Card class="world-list-card">
-        <CardHeader class="card-header">
-          <div>
-            <CardTitle>{{ getCategoryTitle() }}</CardTitle>
-            <CardDescription>按房间筛选并管理世界运行状态。</CardDescription>
-          </div>
-          <div class="list-actions">
+        <CardHeader>
+          <CardTitle>{{ getCategoryTitle() }}</CardTitle>
+          <CardDescription>按房间筛选并管理世界运行状态。</CardDescription>
+          <CardAction class="list-actions max-sm:col-span-full max-sm:row-auto max-sm:justify-self-stretch">
             <UiSelect v-model="selectedRoom" @update:model-value="handleRoomChange">
               <SelectTrigger class="room-select"><SelectValue placeholder="选择房间" /></SelectTrigger>
               <SelectContent>
@@ -48,7 +46,7 @@
               <RefreshCw v-else data-icon="inline-start" />
               刷新
             </UiButton>
-          </div>
+          </CardAction>
         </CardHeader>
 
         <CardContent>
@@ -174,7 +172,7 @@ import { roomApi, systemApi } from '../../api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -197,6 +195,7 @@ export default {
     AlertTitle,
     Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
@@ -671,13 +670,15 @@ export default {
 
 <style scoped lang="scss">
 .world-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
 
 .page-header,
 .header-actions,
-.card-header,
 .list-actions,
 .row-actions,
 .world-skeleton {
@@ -688,20 +689,18 @@ export default {
 .page-header {
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 .header-actions,
@@ -717,17 +716,12 @@ export default {
 .world-layout {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
-  gap: 16px;
+  gap: 24px;
 }
 
 .sidebar-container,
 .world-list-card {
   min-width: 0;
-}
-
-.card-header {
-  justify-content: space-between;
-  gap: 16px;
 }
 
 .room-select {
@@ -744,7 +738,7 @@ export default {
 }
 
 .load-error {
-  margin-bottom: 16px;
+  margin: 0;
 }
 
 .table-wrap {
@@ -788,8 +782,7 @@ export default {
 }
 
 @media (max-width: 640px) {
-  .page-header,
-  .card-header {
+  .page-header {
     align-items: stretch;
     flex-direction: column;
   }

@@ -13,15 +13,13 @@
       </TabsList>
       <TabsContent v-for="list in listDefinitions" :key="list.type" :value="list.type">
         <Card>
-          <CardHeader class="list-header">
-            <div>
-              <CardTitle>{{ list.title }}</CardTitle>
-              <CardDescription>维护 {{ list.tabLabel }} 中的玩家 KU ID。</CardDescription>
-            </div>
-            <UiButton size="sm" @click="addUser(list.type)">
+          <CardHeader>
+            <CardTitle>{{ list.title }}</CardTitle>
+            <CardDescription>维护 {{ list.tabLabel }} 中的玩家 KU ID。</CardDescription>
+            <CardAction><UiButton size="sm" @click="addUser(list.type)">
               <UserPlus data-icon="inline-start" />
               添加{{ list.actionLabel }}
-            </UiButton>
+            </UiButton></CardAction>
           </CardHeader>
           <CardContent>
             <div v-if="loading[list.type]" class="list-skeleton" aria-busy="true" aria-label="正在加载名单">
@@ -111,7 +109,7 @@ import { toast } from 'vue-sonner';
 import { serverApi } from '@/api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -130,6 +128,7 @@ export default {
     AlertTitle,
     UiButton,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
@@ -499,35 +498,31 @@ export default {
 
 <style scoped>
 .special-lists-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
 
 .page-header {
-  margin-bottom: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
+  margin: 0;
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
+  font-size: 14px;
 }
 
 .save-selector {
-  margin-bottom: 20px;
-}
-
-.list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  margin: 0;
 }
 
 .action-column {
@@ -558,21 +553,10 @@ export default {
   gap: 8px;
 }
 
-.list-header > div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 @media (max-width: 640px) {
-  .list-header,
   .error-description {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .list-header > button {
-    width: 100%;
   }
 }
 </style>

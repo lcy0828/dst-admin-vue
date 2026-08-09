@@ -13,11 +13,9 @@
     </header>
 
     <Card class="main-card">
-      <CardHeader class="card-header">
-        <div>
-          <CardTitle>房间备份</CardTitle>
-          <CardDescription>先选择房间，再管理后端返回的真实备份文件。</CardDescription>
-        </div>
+      <CardHeader>
+        <CardTitle>房间备份</CardTitle>
+        <CardDescription>先选择房间，再管理后端返回的真实备份文件。</CardDescription>
       </CardHeader>
       <CardContent class="content-stack">
         <Field class="server-select-wrapper">
@@ -432,12 +430,14 @@ export default {
 
 <style scoped>
 .page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   width: 100%;
   min-width: 0;
 }
 
 .page-header,
-.card-header,
 .tool-bar,
 .save-name,
 .table-actions,
@@ -450,25 +450,18 @@ export default {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  margin-bottom: 16px;
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .page-header p {
   margin: 4px 0 0;
   color: var(--muted-foreground);
-}
-
-.card-header {
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-direction: row;
-  gap: 12px;
+  font-size: 14px;
 }
 
 .content-stack {
@@ -530,8 +523,7 @@ export default {
 }
 
 @media (max-width: 640px) {
-  .page-header,
-  .card-header {
+  .page-header {
     align-items: stretch;
     flex-direction: column;
   }
