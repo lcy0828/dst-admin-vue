@@ -1,6 +1,13 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { playerApi, roomApi, systemApi } from '@/api/index'
 import { confirmAction } from '@/lib/feedback'
+import {
+  canCleanFailedWorld,
+  canStartWorld,
+  canStopWorld,
+  worldPrimaryAction,
+  worldStatusMessage
+} from '@/lib/worldRuntimeStatus.mjs'
 import { formatTimeDiff } from '@/utils/dateUtils'
 import { toast } from 'vue-sonner'
 
@@ -154,7 +161,12 @@ export function useDashboardV2() {
   }
 
   async function handleServerAction(server) {
-    const running = server.status === 'running'
+    const primaryAction = worldPrimaryAction(server)
+    if (primaryAction.disabled || !primaryAction.kind) {
+      toast.warning(worldStatusMessage(server) || '当前分片状态不可操作')
+      return
+    }
+    const running = canStopWorld(server)
     const action = running ? '停止' : '启动'
     try {
       await confirmAction(`确定要${action}“${server.archive_name} / ${server.world_name}”吗？`, '服务器操作确认', {
@@ -178,11 +190,16 @@ export function useDashboardV2() {
   }
 
   async function startRoom(room, worlds) {
+    const startableWorlds = worlds.filter(canStartWorld)
+    if (!startableWorlds.length) {
+      toast.warning('请至少选择一个可启动的世界分片')
+      return false
+    }
     serverLoading.value = true
     try {
       const response = await roomApi.startRoom({
         room_id: room.id,
-        world_ids: worlds.map(world => world.id)
+        world_ids: startableWorlds.map(world => world.id)
       })
       toast.success(response.msg || `房间 ${room.name} 已启动`)
       await refreshServers()
@@ -190,6 +207,31 @@ export function useDashboardV2() {
     } catch (error) {
       toast.error(`启动房间失败：${error.message || '未知错误'}`)
       return false
+    } finally {
+      serverLoading.value = false
+    }
+  }
+
+  async function cleanupFailedServer(server) {
+    if (!canCleanFailedWorld(server)) {
+      toast.warning(worldStatusMessage(server) || '当前分片没有可清理的失败会话')
+      return
+    }
+    try {
+      await confirmAction(`确定要停止并清理“${server.archive_name} / ${server.world_name}”的失败会话吗？`, '清理失败会话', {
+        confirmText: '确认清理'
+      })
+    } catch {
+      return
+    }
+
+    serverLoading.value = true
+    try {
+      const response = await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id })
+      toast.success(response.msg || '失败会话已清理')
+      await refreshServers()
+    } catch (error) {
+      toast.error(`清理失败：${error.message || '未知错误'}`)
     } finally {
       serverLoading.value = false
     }
@@ -282,6 +324,7 @@ export function useDashboardV2() {
     refreshServers,
     refreshVersion,
     handleServerAction,
+    cleanupFailedServer,
     startRoom,
     updateGame,
     resumeUpdatePolling

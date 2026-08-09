@@ -9,13 +9,14 @@ import {
   worldStatesV2API
 } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
+import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
 
 const MEBIBYTE = 1024 * 1024
 const GIBIBYTE = 1024 * 1024 * 1024
 const ROOM_JOB_TIMEOUT = 3 * 60 * 1000
 const BACKUP_JOB_TIMEOUT = 5 * 60 * 1000
 
-let roomCatalog = []
+const roomCatalogCache = createAsyncResourceCache({ ttlMs: 750 })
 
 const success = (data, msg = '操作成功') => ({ status: 200, data, msg })
 
@@ -169,20 +170,21 @@ function mapWorldState(snapshot, room) {
 }
 
 async function loadRoomCatalog() {
-  const response = await roomsV2API.list()
-  const rooms = response.items || []
-  roomCatalog = await Promise.all(rooms.map(async room => {
-    const [worlds, states] = await Promise.all([
-      roomsV2API.worlds(room.id),
-      worldStatesV2API.list(room.id).catch(() => ({ items: [] }))
-    ])
-    return mapRoom(room, worlds.items || [], states.items || [])
-  }))
-  return roomCatalog
+  return roomCatalogCache.load(async () => {
+    const response = await roomsV2API.list()
+    const rooms = response.items || []
+    return Promise.all(rooms.map(async room => {
+      const [worlds, states] = await Promise.all([
+        roomsV2API.worlds(room.id),
+        worldStatesV2API.list(room.id).catch(() => ({ items: [] }))
+      ])
+      return mapRoom(room, worlds.items || [], states.items || [])
+    }))
+  })
 }
 
 async function resolveRoom(value) {
-  const rooms = roomCatalog.length ? roomCatalog : await loadRoomCatalog()
+  const rooms = await loadRoomCatalog()
   const room = rooms.find(item => item.id === value || item.name === value || item.savename === value)
   if (!room) throw new Error(`未找到房间：${value}`)
   return room
@@ -320,7 +322,7 @@ export const legacyRoomApi = {
       await roomsV2API.action(room.id, 'start', selectedWorldIDs(room, params)),
       ROOM_JOB_TIMEOUT
     )
-    roomCatalog = []
+    roomCatalogCache.invalidate()
     return success(job, '启动完成')
   },
   async stopRoom(input) {
@@ -330,7 +332,7 @@ export const legacyRoomApi = {
       await roomsV2API.action(room.id, 'stop', worldIds),
       ROOM_JOB_TIMEOUT
     )
-    roomCatalog = []
+    roomCatalogCache.invalidate()
     return success(job, '停止完成')
   },
   async backupRoom(roomValue, name = '') {
@@ -342,7 +344,7 @@ export const legacyRoomApi = {
     const room = await resolveRoom(roomReference(input))
     const confirmation = input && typeof input === 'object' ? input.confirmation : ''
     const result = await roomsV2API.deleteRoom(room.id, confirmation)
-    roomCatalog = []
+    roomCatalogCache.invalidate()
     return success(result, '房间已移入可恢复目录')
   },
   async regenerateWorld(input = {}) {
@@ -362,14 +364,14 @@ export const legacyRoomApi = {
     if (run.status !== 'sent') {
       throw new Error(run.errorMessage || run.message || '重新生成命令执行失败')
     }
-    roomCatalog = []
+    roomCatalogCache.invalidate()
     return success(run, '重新生成命令已发送到世界进程')
   },
   async deleteWorld(input = {}) {
     const room = await resolveRoom(roomReference(input))
     const [worldId] = selectedWorldIDs(room, input)
     const result = await roomsV2API.deleteWorld(room.id, worldId, input.confirmation || '')
-    roomCatalog = []
+    roomCatalogCache.invalidate()
     return success(result, '世界已移入可恢复目录')
   },
   async saveWorldSettings() {
@@ -432,7 +434,7 @@ export const legacySystemApi = {
     throw new Error('请使用 v2 系统设置预览与应用接口，旧配置接口未执行')
   },
   async stopTmuxServer(params) {
-    const rooms = roomCatalog.length ? roomCatalog : await loadRoomCatalog()
+    const rooms = await loadRoomCatalog()
     const server = legacyServers(rooms).find(item =>
       item.session_name === params.session_name ||
       (item.archive_name === params.archive_name && item.world_name === params.world_name)
@@ -442,11 +444,11 @@ export const legacySystemApi = {
       await roomsV2API.action(server.room_id, 'stop', [server.world_id]),
       ROOM_JOB_TIMEOUT
     )
-    roomCatalog = []
+    roomCatalogCache.invalidate()
     return success(job, '停止完成')
   },
   async restartTmuxServer(params) {
-    const rooms = roomCatalog.length ? roomCatalog : await loadRoomCatalog()
+    const rooms = await loadRoomCatalog()
     const server = legacyServers(rooms).find(item =>
       item.session_name === params.session_name ||
       (item.archive_name === params.archive_name && item.world_name === params.world_name)
@@ -456,7 +458,7 @@ export const legacySystemApi = {
       await roomsV2API.action(server.room_id, 'restart', [server.world_id]),
       ROOM_JOB_TIMEOUT
     )
-    roomCatalog = []
+    roomCatalogCache.invalidate()
     return success(job, '重启完成')
   },
   async getGameVersion() {
@@ -606,7 +608,7 @@ export const legacyBackupApi = {
       await backupsV2API.restore(backup.id, room.name),
       BACKUP_JOB_TIMEOUT
     )
-    roomCatalog = []
+    roomCatalogCache.invalidate()
     return success(job, '备份恢复完成')
   },
   async deleteBackup(archive, backupName) {

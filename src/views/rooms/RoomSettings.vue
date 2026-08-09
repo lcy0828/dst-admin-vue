@@ -224,6 +224,7 @@ import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { confirmAction } from '@/lib/feedback';
+import { clusterTokenError } from '@/lib/clusterToken.mjs';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 
@@ -642,11 +643,14 @@ export default {
           return;
         }
         if (!this.isEdit) this.savename = this.saveNameForm.savename;
-        if (!this.isEdit && !this.form.offline_cluster && !this.form.serverToken) {
-          toast.error('在线服务器需要填写 Klei 集群令牌');
-          this.activeTab = 'token';
-          this.$nextTick(() => document.getElementById('server-token')?.focus());
-          return;
+        if (!this.isEdit && !this.form.offline_cluster) {
+          const tokenError = clusterTokenError(this.form.serverToken);
+          if (tokenError) {
+            toast.error(tokenError);
+            this.activeTab = 'token';
+            this.$nextTick(() => document.getElementById('server-token')?.focus());
+            return;
+          }
         }
         
         // 将表单数据转换为API所需的格式

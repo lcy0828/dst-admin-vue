@@ -85,9 +85,13 @@
                 id="server-token"
                 v-model="ruleForm.token"
                 placeholder="请输入服务器令牌"
+                :minlength="16"
+                autocomplete="off"
+                :spellcheck="false"
                 :aria-invalid="Boolean(ruleFormError)"
                 @input="handleInput"
               />
+              <FieldDescription>填写 Klei 生成的完整集群令牌，内容不会出现在日志中。</FieldDescription>
               <FieldError v-if="ruleFormError">{{ ruleFormError }}</FieldError>
             </Field>
           </FieldGroup>
@@ -115,7 +119,8 @@
         <FieldGroup>
           <Field :data-invalid="Boolean(tokenErrors.token)">
             <FieldLabel for="new-server-token">新令牌</FieldLabel>
-            <UiInput id="new-server-token" v-model="tokenForm.token" placeholder="请输入新令牌" :aria-invalid="Boolean(tokenErrors.token)" />
+            <UiInput id="new-server-token" v-model="tokenForm.token" placeholder="请输入新令牌" :minlength="16" autocomplete="off" :spellcheck="false" :aria-invalid="Boolean(tokenErrors.token)" />
+            <FieldDescription>至少 16 个字符，不能包含空格或换行。</FieldDescription>
             <FieldError v-if="tokenErrors.token">{{ tokenErrors.token }}</FieldError>
           </Field>
           <Field :data-invalid="Boolean(tokenErrors.confirmation)">
@@ -155,13 +160,14 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { promptText } from '@/lib/feedback';
+import { clusterTokenError } from '@/lib/clusterToken.mjs';
 
 export default {
   name: 'ServerToken',
@@ -191,6 +197,7 @@ export default {
     EmptyMedia,
     EmptyTitle,
     Field,
+    FieldDescription,
     FieldError,
     FieldGroup,
     FieldLabel,
@@ -276,9 +283,7 @@ export default {
     },
 
     validateToken(token) {
-      if (!token) return '请输入服务器令牌';
-      if (token.length > 4096) return '长度不能超过 4096 个字符';
-      return '';
+      return clusterTokenError(token);
     },
 
     // 获取服务器令牌
