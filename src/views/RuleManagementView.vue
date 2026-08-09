@@ -4,6 +4,8 @@
 
     <Alert v-if="loadError" variant="destructive"><CircleAlertIcon /><AlertTitle>{{ loadErrorContext === 'rooms' ? '存档列表加载失败' : '解析规则加载失败' }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="loadErrorContext === 'rooms' ? loadRooms() : getParserRulesList()">重试</UiButton></AlertAction></Alert>
 
+    <Alert v-if="migrationNoticeVisible"><HistoryIcon /><AlertTitle>检测到旧版日志规则</AlertTitle><AlertDescription>当前存档有 {{ migrationPreview.ready }} 条规则可升级，另有 {{ migrationPreview.conflicts + migrationPreview.incompatible }} 条需要检查。迁移前可以逐条预览，不会导入过宽兜底规则。</AlertDescription><AlertAction><UiButton size="sm" variant="outline" :disabled="migrationLoading" @click="openMigrationDialog"><Spinner v-if="migrationLoading" data-icon="inline-start" />查看升级</UiButton></AlertAction></Alert>
+
     <Card>
       <CardHeader>
         <CardTitle>日志解析规则</CardTitle><CardDescription>为选定房间配置日志识别和解析优先级。</CardDescription>
@@ -17,6 +19,7 @@
             <SelectTrigger id="rule-room" class="room-select"><SelectValue :placeholder="loading.rooms ? '正在加载存档' : '请选择存档'" /></SelectTrigger>
             <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
           </UiSelect></Field>
+          <UiButton v-if="migrationPreview && migrationPreview.ready > 0" size="sm" variant="outline" :disabled="migrationLoading || loading.parser" @click="openMigrationDialog"><HistoryIcon data-icon="inline-start" />升级旧规则</UiButton>
           <UiButton size="sm" :disabled="loading.rooms || loading.parser || !selectedRoomId" @click="addParserRule"><PlusIcon data-icon="inline-start" />添加解析规则</UiButton>
         </CardAction>
       </CardHeader>
@@ -46,11 +49,21 @@
       </FieldGroup>
       <DialogFooter><UiButton variant="outline" :disabled="savingRule" @click="handleCancelClick">取消</UiButton><UiButton :disabled="savingRule" @click="confirmRuleAction"><Spinner v-if="savingRule" data-icon="inline-start" />确认</UiButton></DialogFooter>
     </DialogScrollContent></UiDialog>
+
+    <UiDialog v-model:open="dialogVisible.migration"><DialogScrollContent class="sm:max-w-4xl"><DialogHeader><DialogTitle>升级旧版日志规则</DialogTitle><DialogDescription>将旧版全局规则复制到当前存档。可导入规则会保留匹配模式并提升到细分类优先级，完成后重新解析真实日志。</DialogDescription></DialogHeader>
+      <template v-if="migrationPreview">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4"><div class="flex flex-col gap-1"><span class="text-xs text-muted-foreground">可导入</span><span class="text-lg font-semibold">{{ migrationPreview.ready }}</span></div><div class="flex flex-col gap-1"><span class="text-xs text-muted-foreground">已跳过</span><span class="text-lg font-semibold">{{ migrationPreview.skipped }}</span></div><div class="flex flex-col gap-1"><span class="text-xs text-muted-foreground">冲突</span><span class="text-lg font-semibold">{{ migrationPreview.conflicts }}</span></div><div class="flex flex-col gap-1"><span class="text-xs text-muted-foreground">不兼容</span><span class="text-lg font-semibold">{{ migrationPreview.incompatible }}</span></div></div>
+        <Alert v-if="migrationPreview.conflicts + migrationPreview.incompatible > 0"><CircleAlertIcon /><AlertTitle>有规则不会自动导入</AlertTitle><AlertDescription>冲突和不兼容项会原样保留在旧表中，可根据下方原因手动调整；本次操作只导入标记为“可导入”的规则。</AlertDescription></Alert>
+        <ShadcnTable class="min-w-[760px]"><TableHeader><TableRow><TableHead>旧 ID</TableHead><TableHead>规则</TableHead><TableHead>日志类型</TableHead><TableHead>模式</TableHead><TableHead>优先级</TableHead><TableHead>处理结果</TableHead><TableHead>说明</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="item in migrationPreview.items" :key="item.legacyId"><TableCell>{{ item.legacyId }}</TableCell><TableCell><div class="flex max-w-56 flex-col gap-1"><span class="font-medium">{{ item.name }}</span><span class="truncate text-xs text-muted-foreground" :title="item.pattern">{{ item.pattern }}</span></div></TableCell><TableCell><Badge variant="secondary">{{ item.logType }}</Badge></TableCell><TableCell>{{ getMatchModeText(item.matchMode) }}</TableCell><TableCell>{{ item.priority }}</TableCell><TableCell><Badge :variant="getMigrationStatusVariant(item.status)">{{ getMigrationStatusText(item.status) }}</Badge></TableCell><TableCell class="max-w-64 text-sm text-muted-foreground">{{ item.reason }}</TableCell></TableRow><TableEmpty v-if="migrationPreview.items.length === 0" :colspan="7">没有检测到旧版规则</TableEmpty></TableBody></ShadcnTable>
+      </template>
+      <div v-else class="flex flex-col gap-2 py-4"><Skeleton v-for="index in 4" :key="index" class="h-8 w-full" /></div>
+      <DialogFooter><UiButton variant="outline" :disabled="migrationApplying" @click="dialogVisible.migration = false">取消</UiButton><UiButton :disabled="migrationApplying || !migrationPreview || migrationPreview.ready === 0" @click="migrateLegacyRules"><Spinner v-if="migrationApplying" data-icon="inline-start" />导入 {{ migrationPreview?.ready || 0 }} 条并重新解析</UiButton></DialogFooter>
+    </DialogScrollContent></UiDialog>
   </div>
 </template>
 
 <script>
-import { ArrowUpDownIcon, CircleAlertIcon, CopyIcon, PlusIcon, ScrollTextIcon } from '@lucide/vue'
+import { ArrowUpDownIcon, CircleAlertIcon, CopyIcon, HistoryIcon, PlusIcon, ScrollTextIcon } from '@lucide/vue'
 import { logApi, ruleManagementApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -68,7 +81,7 @@ import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, Tabl
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { confirmAction } from '@/lib/feedback'
-import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
+import { getActiveRuntimeTarget, RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import { toast } from 'vue-sonner'
 
 export default {
@@ -104,6 +117,7 @@ export default {
     FieldError,
     FieldGroup,
     FieldLabel,
+    HistoryIcon,
     PlusIcon,
     ScrollTextIcon,
     SelectContent,
@@ -140,11 +154,15 @@ export default {
       loadError: '',
       loadErrorContext: '',
       savingRule: false,
+      migrationLoading: false,
+      migrationApplying: false,
+      migrationPreview: null,
       deletingRuleId: null,
       togglingRuleIds: [],
       // 对话框显示状态
       dialogVisible: {
-        parser: false
+        parser: false,
+        migration: false
       },
       // 解析规则表单数据
       ruleForm: {
@@ -172,6 +190,10 @@ export default {
     };
   },
   computed: {
+    migrationNoticeVisible() {
+      if (!this.migrationPreview?.sourceAvailable) return false
+      return this.migrationPreview.ready > 0 || this.migrationPreview.conflicts > 0 || this.migrationPreview.incompatible > 0
+    },
     displayedParserRules() {
       if (this.prioritySort === 'none') return this.parserRulesList
       const direction = this.prioritySort === 'asc' ? 1 : -1
@@ -193,6 +215,8 @@ export default {
       this.selectedRoomId = '';
       this.parserRulesList = [];
       this.uniqueLogTypes = [];
+      this.migrationPreview = null;
+      this.dialogVisible.migration = false;
       this.loadRooms();
     },
     async loadRooms() {
@@ -239,6 +263,7 @@ export default {
 
         // 提取唯一的log_type值
         this.extractUniqueLogTypes();
+        this.getRuleMigrationPreview(requestSequence);
       } catch (error) {
         if (requestSequence !== this.ruleRequestSequence) return;
         this.loadError = error.message || '获取解析规则列表失败';
@@ -248,6 +273,70 @@ export default {
         this.uniqueLogTypes = [];
       } finally {
         if (requestSequence === this.ruleRequestSequence) this.loading.parser = false;
+      }
+    },
+
+    async getRuleMigrationPreview(ruleRequestSequence = this.ruleRequestSequence) {
+      if (!this.selectedRoomId) {
+        this.migrationPreview = null
+        return
+      }
+      this.migrationLoading = true
+      try {
+        const preview = await ruleManagementApi.getMigrationPreview(this.selectedRoomId)
+        if (ruleRequestSequence !== this.ruleRequestSequence) return
+        this.migrationPreview = preview
+      } catch {
+        if (ruleRequestSequence === this.ruleRequestSequence) this.migrationPreview = null
+      } finally {
+        if (ruleRequestSequence === this.ruleRequestSequence) this.migrationLoading = false
+      }
+    },
+
+    async openMigrationDialog() {
+      if (!this.selectedRoomId || this.migrationApplying) return
+      await this.getRuleMigrationPreview()
+      if (!this.migrationPreview) {
+        toast.error('旧版规则迁移预览加载失败')
+        return
+      }
+      this.dialogVisible.migration = true
+    },
+
+    async migrateLegacyRules() {
+      if (this.migrationApplying || !this.migrationPreview?.ready) return
+      const roomId = this.selectedRoomId
+      const runtimeTargetId = getActiveRuntimeTarget().id
+      const requestSequence = this.ruleRequestSequence
+      this.migrationApplying = true
+      try {
+        const result = await ruleManagementApi.migrateLegacyRules(roomId)
+        const imported = Number(result?.imported || 0)
+        this.dialogVisible.migration = false
+        if (requestSequence !== this.ruleRequestSequence || roomId !== this.selectedRoomId || runtimeTargetId !== getActiveRuntimeTarget().id) {
+          toast.warning(`已在原运行目标导入 ${imported} 条规则；运行目标已切换，未自动重新解析`)
+          return
+        }
+        await this.getParserRulesList()
+        if (roomId !== this.selectedRoomId || runtimeTargetId !== getActiveRuntimeTarget().id) {
+          toast.warning(`已导入 ${imported} 条规则；运行目标已切换，未自动重新解析`)
+          return
+        }
+        if (imported === 0) {
+          toast.info('没有需要导入的旧版规则')
+          return
+        }
+        toast.success(`已导入 ${imported} 条规则，正在重新解析日志`)
+        try {
+          await logApi.refresh(roomId)
+          toast.success(`日志重新解析完成，${imported} 条旧版规则已生效`)
+        } catch (error) {
+          toast.warning(`规则已导入，但日志重新解析失败：${error.message || '未知错误'}`)
+        }
+      } catch (error) {
+        toast.error('旧版规则迁移失败: ' + (error.message || '未知错误'))
+      } finally {
+        this.migrationApplying = false
       }
     },
 
@@ -428,6 +517,24 @@ export default {
         head_tail: '首尾行'
       };
       return matchModeTextMap[match_mode] || match_mode;
+    },
+
+    getMigrationStatusText(status) {
+      return {
+        ready: '可导入',
+        skipped: '已跳过',
+        conflict: '冲突',
+        incompatible: '不兼容'
+      }[status] || status
+    },
+
+    getMigrationStatusVariant(status) {
+      return {
+        ready: 'default',
+        skipped: 'secondary',
+        conflict: 'destructive',
+        incompatible: 'outline'
+      }[status] || 'secondary'
     },
 
     // 处理匹配模式变更

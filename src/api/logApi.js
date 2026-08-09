@@ -187,5 +187,15 @@ export const realRuleManagementApi = {
   async testRule(roomReference, data, sample) {
     const room = resolveArchive(roomReference)
     return success(await logRulesV2API.test(room.id, { ...ruleInput(data), sample }))
+  },
+
+  async getMigrationPreview(roomReference) {
+    const room = resolveArchive(roomReference)
+    return logRulesV2API.migrationPreview(room.id)
+  },
+
+  async migrateLegacyRules(roomReference) {
+    const room = resolveArchive(roomReference)
+    return logRulesV2API.migrateLegacy(room.id)
   }
 }

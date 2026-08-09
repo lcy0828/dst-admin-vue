@@ -213,7 +213,11 @@ export const logRulesV2API = {
   create: (roomId, input) => client.post(`/rooms/${encode(roomId)}/log-rules`, input),
   update: (roomId, ruleId, input) => client.put(`/rooms/${encode(roomId)}/log-rules/${encode(ruleId)}`, input),
   delete: (roomId, ruleId) => client.delete(`/rooms/${encode(roomId)}/log-rules/${encode(ruleId)}`),
-  test: (roomId, input) => client.post(`/rooms/${encode(roomId)}/log-rules/actions/test`, input)
+  test: (roomId, input) => client.post(`/rooms/${encode(roomId)}/log-rules/actions/test`, input),
+  migrationPreview: roomId => client.get(`/rooms/${encode(roomId)}/log-rules/migration-preview`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  migrateLegacy: roomId => client.post(`/rooms/${encode(roomId)}/log-rules/actions/migrate-legacy`)
 }
 
 export const playersV2API = {

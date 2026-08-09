@@ -186,3 +186,20 @@ test('live log views reconnect transient streams and validate downloads', async 
   assert.match(viewerSource, /this\.logs\.length > 5000/)
   assert.match(apiSource, /downloadBlob:[\s\S]+getBinary/)
 })
+
+test('legacy rule migration previews changes before importing and reparsing real logs', async () => {
+  const [viewSource, adapterSource, apiSource] = await Promise.all([
+    readFile(new URL('../src/views/RuleManagementView.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/api/logApi.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/api/v2.js', import.meta.url), 'utf8')
+  ])
+
+  assert.match(apiSource, /log-rules\/migration-preview/)
+  assert.match(apiSource, /log-rules\/actions\/migrate-legacy/)
+  assert.match(adapterSource, /getMigrationPreview/)
+  assert.match(adapterSource, /migrateLegacyRules/)
+  assert.match(viewSource, /migrationPreview\.items/)
+  assert.match(viewSource, /ruleManagementApi\.migrateLegacyRules\(roomId\)/)
+  assert.match(viewSource, /await logApi\.refresh\(roomId\)/)
+  assert.match(viewSource, /runtimeTargetId !== getActiveRuntimeTarget\(\)\.id/)
+})
