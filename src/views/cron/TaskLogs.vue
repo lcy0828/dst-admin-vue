@@ -11,8 +11,8 @@
 
         <Alert v-if="loadError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>日志加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
         <div v-if="loading && logList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 6" :key="index" class="h-12 w-full" /></div>
-        <Empty v-else-if="logList.length === 0"><EmptyHeader><EmptyTitle>暂无日志记录</EmptyTitle><EmptyDescription>当前筛选条件下没有执行日志。</EmptyDescription></EmptyHeader></Empty>
-        <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>任务名称</TableHead><TableHead>开始时间</TableHead><TableHead>执行耗时</TableHead><TableHead>状态</TableHead><TableHead>触发方式</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
+        <Empty v-else-if="!loadError && logList.length === 0"><EmptyHeader><EmptyTitle>暂无日志记录</EmptyTitle><EmptyDescription>当前筛选条件下没有执行日志。</EmptyDescription></EmptyHeader></Empty>
+        <div v-else-if="!loadError" class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>任务名称</TableHead><TableHead>开始时间</TableHead><TableHead>执行耗时</TableHead><TableHead>状态</TableHead><TableHead>触发方式</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
           <TableRow v-for="log in logList" :key="log.id"><TableCell>{{ log.id }}</TableCell><TableCell><router-link v-if="log.task_id" :to="`/cron/edit/${log.task_id}`" class="link-type">{{ log.task_name }}</router-link><span v-else>{{ log.task_name || '未知任务' }}</span></TableCell><TableCell class="whitespace-nowrap">{{ log.start_time || log.created_at }}</TableCell><TableCell>{{ log.duration ? `${log.duration} 毫秒` : '-' }}</TableCell><TableCell><Badge :variant="getRunStatusVariant(log.status)">{{ getRunStatusText(log.status) }}</Badge></TableCell><TableCell><Badge variant="secondary">{{ getTriggerTypeText(log.trigger_type) }}</Badge></TableCell><TableCell class="text-right"><UiButton size="sm" variant="outline" @click="viewLogDetail(log)"><Eye data-icon="inline-start" />查看详情</UiButton></TableCell></TableRow>
         </TableBody></ShadcnTable></div>
         <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>每页</span><UiSelect :model-value="String(listQuery.page_size)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24" aria-label="每页显示条数"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10, 20, 50, 100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>共 {{ total }} 条</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.page_size" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
@@ -201,12 +201,16 @@ export default {
 
             console.error('响应格式不符合预期:', response);
             this.loadError = '获取日志列表失败：响应格式不符合预期';
+            this.logList = [];
+            this.total = 0;
             toast.error(this.loadError);
           }
         })
         .catch(error => {
           console.error('获取日志列表失败:', error);
           this.loadError = error.message || '获取日志列表失败';
+          this.logList = [];
+          this.total = 0;
           toast.error(this.loadError);
         })
         .finally(() => {

@@ -164,7 +164,7 @@ export default {
     goBack() {
       // 如果是从任务详情页面进来的，就返回任务详情页面
       if (this.$route.query.from === 'task' && this.$route.query.task_id) {
-        this.$router.push(`/cron/task/${this.$route.query.task_id}`);
+        this.$router.push(`/cron/edit/${this.$route.query.task_id}`);
       } else {
         // 否则默认返回日志列表
         this.$router.push('/cron/logs');
