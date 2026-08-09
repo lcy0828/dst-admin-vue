@@ -2,21 +2,21 @@
   <div class="world-maps-page">
     <header class="page-heading">
       <div>
-        <h1>地图与 Session</h1>
-        <p>查看世界地图版本、生成任务和原始 Session 快照。</p>
+        <h1>{{ t('worldMaps.title') }}</h1>
+        <p>{{ t('worldMaps.subtitle') }}</p>
       </div>
       <UiButton variant="outline" :disabled="sourceLoading || worldsLoading || mapsLoading || sessionsLoading" @click="reloadSelectedWorld">
         <Spinner v-if="mapsLoading || sessionsLoading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
-        刷新
+        {{ t('worldMaps.actions.refresh') }}
       </UiButton>
     </header>
 
     <Alert v-if="sourceError" variant="destructive">
       <TriangleAlert />
-      <AlertTitle>地图数据加载失败</AlertTitle>
+      <AlertTitle>{{ t('worldMaps.errors.sourceLoadFailedTitle') }}</AlertTitle>
       <AlertDescription>{{ sourceError }}</AlertDescription>
-      <AlertAction><UiButton variant="outline" size="sm" :disabled="sourceLoading" @click="loadSources">重试</UiButton></AlertAction>
+      <AlertAction><UiButton variant="outline" size="sm" :disabled="sourceLoading" @click="loadSources">{{ t('worldMaps.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
     <div v-if="sourceLoading" class="loading-grid">
@@ -28,22 +28,22 @@
     <template v-else>
       <Card>
         <CardHeader>
-          <CardTitle>世界来源</CardTitle>
-          <CardDescription>只列出已接管房间的真实世界和 Session 文件。</CardDescription>
+          <CardTitle>{{ t('worldMaps.source.title') }}</CardTitle>
+          <CardDescription>{{ t('worldMaps.source.description') }}</CardDescription>
         </CardHeader>
         <CardContent>
           <FieldGroup class="source-grid">
             <Field>
-              <FieldLabel for="map-room-select">存档</FieldLabel>
+              <FieldLabel for="map-room-select">{{ t('worldMaps.source.archive') }}</FieldLabel>
               <UiSelect :model-value="selectedRoomId" :disabled="worldsLoading || !rooms.length" @update:model-value="handleRoomChange">
-                <SelectTrigger id="map-room-select"><SelectValue placeholder="选择存档" /></SelectTrigger>
+                <SelectTrigger id="map-room-select"><SelectValue :placeholder="t('worldMaps.source.selectArchive')" /></SelectTrigger>
                 <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
               </UiSelect>
             </Field>
             <Field>
-              <FieldLabel for="map-world-select">世界</FieldLabel>
+              <FieldLabel for="map-world-select">{{ t('worldMaps.source.world') }}</FieldLabel>
               <UiSelect :model-value="selectedWorldId" :disabled="worldsLoading || !worlds.length" @update:model-value="handleWorldChange">
-                <SelectTrigger id="map-world-select"><SelectValue :placeholder="worldsLoading ? '正在加载世界' : '选择世界'" /></SelectTrigger>
+                <SelectTrigger id="map-world-select"><SelectValue :placeholder="worldsLoading ? t('worldMaps.source.loadingWorlds') : t('worldMaps.source.selectWorld')" /></SelectTrigger>
                 <SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent>
               </UiSelect>
             </Field>
@@ -53,13 +53,13 @@
 
       <Alert v-if="selectedRoomId && !renderer.available">
         <TriangleAlert />
-        <AlertTitle>地图渲染器未就绪</AlertTitle>
-        <AlertDescription>当前节点未找到可执行的 dst-map-renderer。已有地图查看和 Session 下载不受影响，新地图生成暂不可用。</AlertDescription>
+        <AlertTitle>{{ t('worldMaps.renderer.unavailableTitle') }}</AlertTitle>
+        <AlertDescription>{{ t('worldMaps.renderer.unavailableDescription') }}</AlertDescription>
       </Alert>
       <Alert v-else-if="renderer.available">
         <CircleCheck />
-        <AlertTitle>地图渲染器已就绪</AlertTitle>
-        <AlertDescription>{{ renderer.path || '当前节点已完成地图渲染器配置。' }}</AlertDescription>
+        <AlertTitle>{{ t('worldMaps.renderer.readyTitle') }}</AlertTitle>
+        <AlertDescription>{{ renderer.path || t('worldMaps.renderer.readyDescription') }}</AlertDescription>
       </Alert>
 
       <Alert v-if="generationJob">
@@ -73,66 +73,66 @@
             <Progress v-if="generationBusy" :model-value="generationProgress" />
           </div>
         </AlertDescription>
-        <AlertAction v-if="generationBusy"><UiButton variant="outline" size="sm" :disabled="cancelLoading" @click="cancelGeneration"><Spinner v-if="cancelLoading" data-icon="inline-start" />取消任务</UiButton></AlertAction>
+        <AlertAction v-if="generationBusy"><UiButton variant="outline" size="sm" :disabled="cancelLoading" @click="cancelGeneration"><Spinner v-if="cancelLoading" data-icon="inline-start" />{{ t('worldMaps.actions.cancelJob') }}</UiButton></AlertAction>
       </Alert>
 
       <div class="workspace-grid">
         <div class="control-column">
           <Card>
             <CardHeader>
-              <CardTitle>生成地图</CardTitle>
-              <CardDescription>从选定 Session 生成经过校验的不可变地图版本。</CardDescription>
+              <CardTitle>{{ t('worldMaps.generation.title') }}</CardTitle>
+              <CardDescription>{{ t('worldMaps.generation.description') }}</CardDescription>
             </CardHeader>
             <CardContent>
               <FieldGroup>
                 <Field>
-                  <FieldLabel for="map-session-select">Session 快照</FieldLabel>
+                  <FieldLabel for="map-session-select">{{ t('worldMaps.generation.sessionSnapshot') }}</FieldLabel>
                   <UiSelect v-model="selectedSessionId" :disabled="sessionsLoading || !sessions.length">
-                    <SelectTrigger id="map-session-select"><SelectValue :placeholder="sessionsLoading ? '正在读取 Session' : '选择 Session'" /></SelectTrigger>
+                    <SelectTrigger id="map-session-select"><SelectValue :placeholder="sessionsLoading ? t('worldMaps.generation.readingSessions') : t('worldMaps.generation.selectSession')" /></SelectTrigger>
                     <SelectContent><SelectGroup><SelectItem v-for="session in sessions" :key="session.id" :value="session.id">{{ session.sessionId }} / {{ session.fileName }}</SelectItem></SelectGroup></SelectContent>
                   </UiSelect>
-                  <FieldDescription v-if="selectedSession">{{ formatMapBytes(selectedSession.size) }} · {{ selectedSession.playerCount }} 位玩家数据 · {{ formatMapTime(selectedSession.modifiedAt) }}</FieldDescription>
+                  <FieldDescription v-if="selectedSession">{{ t('worldMaps.generation.snapshotMetadata', { size: formatMapBytes(selectedSession.size), count: selectedSession.playerCount, time: formatMapTime(selectedSession.modifiedAt) }) }}</FieldDescription>
                 </Field>
                 <FieldSet>
-                  <FieldLegend variant="label">地图图层</FieldLegend>
-                  <FieldDescription>地形层始终生成，可叠加位置和世界状态图层。</FieldDescription>
+                  <FieldLegend variant="label">{{ t('worldMaps.generation.layers') }}</FieldLegend>
+                  <FieldDescription>{{ t('worldMaps.generation.layersDescription') }}</FieldDescription>
                   <ToggleGroup v-model="generationLayers" type="multiple" variant="outline" :spacing="1" class="layer-picker">
-                    <ToggleGroupItem v-for="layer in WORLD_MAP_LAYERS" :key="layer.id" :value="layer.id" :disabled="layer.id === 'terrain'">{{ layer.label }}</ToggleGroupItem>
+                    <ToggleGroupItem v-for="layer in WORLD_MAP_LAYERS" :key="layer.id" :value="layer.id" :disabled="layer.id === 'terrain'">{{ mapLayerLabel(layer.id) }}</ToggleGroupItem>
                   </ToggleGroup>
                 </FieldSet>
               </FieldGroup>
             </CardContent>
             <CardFooter class="justify-between gap-3">
-              <span class="text-muted-foreground text-xs">{{ sessions.length }} 个可诊断快照</span>
+              <span class="text-muted-foreground text-xs">{{ t('worldMaps.generation.diagnosticSnapshots', { count: sessions.length }) }}</span>
               <UiButton :disabled="!canGenerate" @click="generateMap">
                 <Spinner v-if="generationBusy" data-icon="inline-start" />
                 <MapPinned v-else data-icon="inline-start" />
-                {{ generationBusy ? '正在生成' : '生成地图' }}
+                {{ generationBusy ? t('worldMaps.actions.generating') : t('worldMaps.actions.generate') }}
               </UiButton>
             </CardFooter>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Session 诊断</CardTitle>
-              <CardDescription>{{ sessions.length ? `当前世界共 ${sessions.length} 个快照` : '当前世界没有可用 Session' }}</CardDescription>
+              <CardTitle>{{ t('worldMaps.sessions.title') }}</CardTitle>
+              <CardDescription>{{ sessions.length ? t('worldMaps.sessions.countDescription', { count: sessions.length }) : t('worldMaps.sessions.unavailableDescription') }}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div v-if="sessionsLoading" class="inline-loading"><Spinner /><span>正在读取 Session</span></div>
-              <Alert v-else-if="sessionError" variant="destructive"><TriangleAlert /><AlertTitle>Session 读取失败</AlertTitle><AlertDescription>{{ sessionError }}</AlertDescription></Alert>
+              <div v-if="sessionsLoading" class="inline-loading"><Spinner /><span>{{ t('worldMaps.generation.readingSessions') }}</span></div>
+              <Alert v-else-if="sessionError" variant="destructive"><TriangleAlert /><AlertTitle>{{ t('worldMaps.sessions.loadFailedTitle') }}</AlertTitle><AlertDescription>{{ sessionError }}</AlertDescription></Alert>
               <ScrollArea v-else-if="sessions.length" class="session-scroll">
                 <ShadcnTable>
-                  <TableHeader><TableRow><TableHead>快照</TableHead><TableHead>大小</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>{{ t('worldMaps.sessions.columns.snapshot') }}</TableHead><TableHead>{{ t('worldMaps.sessions.columns.size') }}</TableHead><TableHead class="text-right">{{ t('worldMaps.sessions.columns.actions') }}</TableHead></TableRow></TableHeader>
                   <TableBody>
                     <TableRow v-for="session in sessions" :key="session.id">
-                      <TableCell><div class="session-name"><strong class="truncate">{{ session.fileName }}</strong><span class="truncate">{{ session.sessionId }}</span><Badge v-if="session.latest" variant="secondary">最新</Badge></div></TableCell>
+                      <TableCell><div class="session-name"><strong class="truncate">{{ session.fileName }}</strong><span class="truncate">{{ session.sessionId }}</span><Badge v-if="session.latest" variant="secondary">{{ t('worldMaps.sessions.latest') }}</Badge></div></TableCell>
                       <TableCell>{{ formatMapBytes(session.size) }}</TableCell>
-                      <TableCell class="text-right"><UiButton size="icon-sm" variant="ghost" :disabled="sessionDownloadId === session.id" :aria-label="`下载 Session ${session.fileName}`" title="下载 Session" @click="downloadSession(session)"><Spinner v-if="sessionDownloadId === session.id" /><Download v-else /></UiButton></TableCell>
+                      <TableCell class="text-right"><UiButton size="icon-sm" variant="ghost" :disabled="sessionDownloadId === session.id" :aria-label="t('worldMaps.actions.downloadSessionAria', { file: session.fileName })" :title="t('worldMaps.actions.downloadSession')" @click="downloadSession(session)"><Spinner v-if="sessionDownloadId === session.id" /><Download v-else /></UiButton></TableCell>
                     </TableRow>
                   </TableBody>
                 </ShadcnTable>
               </ScrollArea>
-              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><FileArchive /></EmptyMedia><EmptyTitle>没有 Session 快照</EmptyTitle><EmptyDescription>世界首次保存后，Session 文件会在这里出现。</EmptyDescription></EmptyHeader></Empty>
+              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><FileArchive /></EmptyMedia><EmptyTitle>{{ t('worldMaps.sessions.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ t('worldMaps.sessions.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
             </CardContent>
           </Card>
         </div>
@@ -140,9 +140,9 @@
         <div class="viewer-column">
           <Card class="map-viewer-card">
             <CardHeader>
-              <CardTitle>{{ currentMap ? `${selectedWorld?.name || '世界'}地图` : '地图查看器' }}</CardTitle>
+              <CardTitle>{{ currentMap ? t('worldMaps.viewer.worldTitle', { world: selectedWorld?.name || t('worldMaps.values.defaultWorld') }) : t('worldMaps.viewer.title') }}</CardTitle>
               <CardDescription v-if="currentMap">{{ currentMap.width }} × {{ currentMap.height }} · {{ currentMap.sessionLabel }}</CardDescription>
-              <CardDescription v-else>选择或生成一个可用地图版本。</CardDescription>
+              <CardDescription v-else>{{ t('worldMaps.viewer.description') }}</CardDescription>
               <CardAction v-if="currentMap"><Badge variant="outline">{{ formatMapTime(currentMap.finishedAt || currentMap.createdAt) }}</Badge></CardAction>
             </CardHeader>
             <CardContent>
@@ -156,46 +156,46 @@
                     v-for="(layer, index) in renderedVisibleLayers"
                     :key="`${currentMap.id}-${layer}`"
                     :src="mapImageSources[layer]"
-                    :alt="`${selectedWorld?.name || '世界'} ${mapLayerLabel(layer)}图层`"
+                    :alt="t('worldMaps.viewer.layerAlt', { world: selectedWorld?.name || t('worldMaps.values.defaultWorld'), layer: mapLayerLabel(layer) })"
                     :class="cn('map-layer', index > 0 && 'map-layer--overlay')"
                     @load="markLayerLoaded(layer)"
                     @error="markLayerFailed(layer)"
                   >
                 </div>
-                <Alert v-if="failedLayers.length" variant="destructive" class="mt-4"><TriangleAlert /><AlertTitle>部分地图图层加载失败</AlertTitle><AlertDescription>{{ failedLayers.map(mapLayerLabel).join('、') }}</AlertDescription></Alert>
+                <Alert v-if="failedLayers.length" variant="destructive" class="mt-4"><TriangleAlert /><AlertTitle>{{ t('worldMaps.viewer.partialLayersFailed') }}</AlertTitle><AlertDescription>{{ failedLayers.map(mapLayerLabel).join(listSeparator) }}</AlertDescription></Alert>
               </template>
-              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><MapIcon /></EmptyMedia><EmptyTitle>还没有可用地图</EmptyTitle><EmptyDescription>{{ renderer.available ? '选择 Session 后生成第一个地图版本。' : '配置地图渲染器后即可从 Session 生成地图。' }}</EmptyDescription></EmptyHeader></Empty>
+              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><MapIcon /></EmptyMedia><EmptyTitle>{{ t('worldMaps.viewer.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ renderer.available ? t('worldMaps.viewer.emptyRendererReady') : t('worldMaps.viewer.emptyRendererUnavailable') }}</EmptyDescription></EmptyHeader></Empty>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>地图版本</CardTitle>
-              <CardDescription>成功版本、运行任务和失败诊断均保留在同一历史中。</CardDescription>
+              <CardTitle>{{ t('worldMaps.history.title') }}</CardTitle>
+              <CardDescription>{{ t('worldMaps.history.description') }}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div v-if="mapsLoading" class="inline-loading"><Spinner /><span>正在读取地图版本</span></div>
-              <Alert v-else-if="mapError" variant="destructive"><TriangleAlert /><AlertTitle>地图历史读取失败</AlertTitle><AlertDescription>{{ mapError }}</AlertDescription></Alert>
+              <div v-if="mapsLoading" class="inline-loading"><Spinner /><span>{{ t('worldMaps.history.loading') }}</span></div>
+              <Alert v-else-if="mapError" variant="destructive"><TriangleAlert /><AlertTitle>{{ t('worldMaps.history.loadFailedTitle') }}</AlertTitle><AlertDescription>{{ mapError }}</AlertDescription></Alert>
               <div v-else-if="worldMaps.length" class="history-table">
                 <ShadcnTable>
-                  <TableHeader><TableRow><TableHead>时间</TableHead><TableHead>Session</TableHead><TableHead>状态</TableHead><TableHead>阶段</TableHead><TableHead>图层</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>{{ t('worldMaps.history.columns.time') }}</TableHead><TableHead>{{ t('worldMaps.history.columns.session') }}</TableHead><TableHead>{{ t('worldMaps.history.columns.status') }}</TableHead><TableHead>{{ t('worldMaps.history.columns.stage') }}</TableHead><TableHead>{{ t('worldMaps.history.columns.layers') }}</TableHead><TableHead class="text-right">{{ t('worldMaps.history.columns.actions') }}</TableHead></TableRow></TableHeader>
                   <TableBody>
                     <TableRow v-for="map in worldMaps" :key="map.id">
                       <TableCell>{{ formatMapTime(map.createdAt) }}</TableCell>
                       <TableCell class="max-w-52 truncate" :title="map.sessionLabel">{{ map.sessionLabel }}</TableCell>
                       <TableCell><Badge :variant="mapStatusMeta(map.status).variant">{{ mapStatusMeta(map.status).label }}</Badge></TableCell>
                       <TableCell>{{ mapStageLabel(map.stage) }}</TableCell>
-                      <TableCell>{{ normalizeMapLayers(map.layers).map(mapLayerLabel).join('、') }}</TableCell>
+                      <TableCell>{{ normalizeMapLayers(map.layers).map(mapLayerLabel).join(listSeparator) }}</TableCell>
                       <TableCell class="text-right">
-                        <UiButton v-if="map.status === 'succeeded'" size="icon-sm" variant="ghost" title="查看地图" aria-label="查看地图" @click="selectMap(map)"><Eye /></UiButton>
-                        <UiButton v-else-if="map.status === 'failed'" size="icon-sm" variant="ghost" title="查看诊断" aria-label="查看地图失败诊断" @click="openDiagnostic(map)"><FileWarning /></UiButton>
+                        <UiButton v-if="map.status === 'succeeded'" size="icon-sm" variant="ghost" :title="t('worldMaps.actions.viewMap')" :aria-label="t('worldMaps.actions.viewMap')" @click="selectMap(map)"><Eye /></UiButton>
+                        <UiButton v-else-if="map.status === 'failed'" size="icon-sm" variant="ghost" :title="t('worldMaps.actions.viewDiagnostic')" :aria-label="t('worldMaps.actions.viewDiagnosticAria')" @click="openDiagnostic(map)"><FileWarning /></UiButton>
                         <Spinner v-else />
                       </TableCell>
                     </TableRow>
                   </TableBody>
                 </ShadcnTable>
               </div>
-              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><History /></EmptyMedia><EmptyTitle>没有地图版本</EmptyTitle><EmptyDescription>生成任务提交后，状态会显示在这里。</EmptyDescription></EmptyHeader></Empty>
+              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><History /></EmptyMedia><EmptyTitle>{{ t('worldMaps.history.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ t('worldMaps.history.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
             </CardContent>
           </Card>
         </div>
@@ -204,10 +204,10 @@
 
     <UiDialog :open="Boolean(diagnosticMap)" @update:open="open => { if (!open) diagnosticMap = null }">
       <DialogScrollContent class="sm:max-w-3xl">
-        <DialogHeader><DialogTitle>地图生成诊断</DialogTitle><DialogDescription>{{ diagnosticMap?.sessionLabel }}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ t('worldMaps.diagnostic.title') }}</DialogTitle><DialogDescription>{{ diagnosticMap?.sessionLabel }}</DialogDescription></DialogHeader>
         <div v-if="diagnosticMap" class="diagnostic-content">
-          <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ diagnosticMap.errorMessage || '地图生成失败' }}</AlertTitle><AlertDescription>失败阶段：{{ mapStageLabel(diagnosticMap.stage) }}</AlertDescription></Alert>
-          <FieldSet><FieldLegend variant="label">渲染器输出</FieldLegend><pre class="diagnostic-log">{{ diagnosticMap.log || '渲染器没有返回日志。' }}</pre></FieldSet>
+          <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ t('worldMaps.generation.failedTitle') }}</AlertTitle><AlertDescription>{{ diagnosticDescription }}</AlertDescription></Alert>
+          <FieldSet><FieldLegend variant="label">{{ t('worldMaps.diagnostic.rendererOutput') }}</FieldLegend><pre class="diagnostic-log">{{ diagnosticMap.log || t('worldMaps.diagnostic.noLogs') }}</pre></FieldSet>
         </div>
       </DialogScrollContent>
     </UiDialog>
@@ -216,6 +216,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import {
   CircleCheck,
@@ -244,21 +245,26 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import {
+  formatWorldMapTime,
+  worldMapDiagnosticError,
+  worldMapErrorDetail,
+  worldMapJobFailure,
+  worldMapLayerLabel,
+  worldMapStageLabel,
+  worldMapStatusMeta
+} from '@/i18n/worldMapsMessages.js'
 import { cn } from '@/lib/utils'
 import {
   WORLD_MAP_LAYERS,
   formatMapBytes,
-  formatMapTime,
-  mapJobFailure,
-  mapLayerLabel,
-  mapStageLabel,
-  mapStatusMeta,
   normalizeMapLayers
 } from '@/lib/worldMaps.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import { toast } from 'vue-sonner'
 
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled'])
+const { locale, t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -281,9 +287,9 @@ const sourceLoading = ref(false)
 const worldsLoading = ref(false)
 const mapsLoading = ref(false)
 const sessionsLoading = ref(false)
-const sourceError = ref('')
-const mapError = ref('')
-const sessionError = ref('')
+const sourceFailure = ref(null)
+const mapFailure = ref(null)
+const sessionFailure = ref(null)
 
 const generationJob = ref(null)
 const activeJobId = ref('')
@@ -298,6 +304,9 @@ let destroyed = false
 
 const selectedWorld = computed(() => worlds.value.find(world => world.id === selectedWorldId.value) || null)
 const selectedSession = computed(() => sessions.value.find(session => session.id === selectedSessionId.value) || null)
+const sourceError = computed(() => localizedFailure(sourceFailure.value))
+const mapError = computed(() => localizedFailure(mapFailure.value))
+const sessionError = computed(() => localizedFailure(sessionFailure.value))
 const worldMaps = computed(() => maps.value.filter(map => map.worldId === selectedWorldId.value))
 const currentMap = computed(() => worldMaps.value.find(map => map.id === selectedMapId.value && map.status === 'succeeded') || null)
 const currentMapLayers = computed(() => normalizeMapLayers(currentMap.value?.layers))
@@ -319,21 +328,55 @@ const generationProgress = computed(() => {
   const completed = targets.filter(target => TERMINAL_JOB_STATES.has(target.status)).length
   return Math.round((completed / targets.length) * 100)
 })
+const listSeparator = computed(() => t('worldMaps.values.listSeparator'))
 const generationTitle = computed(() => {
-  if (generationBusy.value) return '地图生成任务正在执行'
-  if (generationJob.value?.status === 'succeeded') return '地图生成完成'
-  if (generationJob.value?.status === 'canceled') return '地图生成已取消'
-  return '地图生成失败'
+  if (generationBusy.value) return t('worldMaps.generation.runningTitle')
+  if (generationJob.value?.status === 'succeeded') return t('worldMaps.generation.completedTitle')
+  if (generationJob.value?.status === 'canceled') return t('worldMaps.generation.canceledTitle')
+  return t('worldMaps.generation.failedTitle')
 })
 const generationDescription = computed(() => {
-  const target = (generationJob.value?.targets || [])[0]
-  if (target?.message) return target.message
-  if (generationBusy.value) return '正在运行外部渲染器并校验输出图层。'
+  if (generationBusy.value) return t('worldMaps.generation.runningDescription')
   if (generationJob.value?.status !== 'succeeded') return mapJobFailure(generationJob.value)
-  return '新地图版本已经发布。'
+  return t('worldMaps.generation.publishedDescription')
+})
+const diagnosticDescription = computed(() => {
+  const stage = mapStageLabel(diagnosticMap.value?.stage)
+  const error = worldMapDiagnosticError(diagnosticMap.value?.errorMessage, t)
+  return error
+    ? t('worldMaps.diagnostic.failedStageWithError', { stage, error })
+    : t('worldMaps.diagnostic.failedStage', { stage })
 })
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+
+function formatMapTime(value) {
+  return formatWorldMapTime(value, locale.value)
+}
+
+function mapLayerLabel(layer) {
+  return worldMapLayerLabel(layer, t)
+}
+
+function mapStatusMeta(status) {
+  return worldMapStatusMeta(status, t)
+}
+
+function mapStageLabel(stage) {
+  return worldMapStageLabel(stage, t)
+}
+
+function mapJobFailure(job) {
+  return worldMapJobFailure(job, t)
+}
+
+function errorDetail(error) {
+  return worldMapErrorDetail(error, t)
+}
+
+function localizedFailure(failure) {
+  return failure ? t(failure.key, { error: errorDetail(failure.error) }) : ''
+}
 
 function routeValue(value) {
   return Array.isArray(value) ? value[0] : String(value || '')
@@ -384,7 +427,9 @@ async function loadMapImages(mapId, layers) {
 async function loadSources() {
   const epoch = ++loadEpoch
   sourceLoading.value = true
-  sourceError.value = ''
+  sourceFailure.value = null
+  mapFailure.value = null
+  sessionFailure.value = null
   maps.value = []
   sessions.value = []
   selectMap(null)
@@ -396,7 +441,7 @@ async function loadSources() {
     if (selectedRoomId.value) await loadSelectedRoom(epoch)
   } catch (error) {
     if (destroyed || epoch !== loadEpoch) return
-    sourceError.value = error.message || '无法读取已接管房间'
+    sourceFailure.value = { key: 'worldMaps.errors.roomsLoadFailed', error }
     rooms.value = []
     worlds.value = []
   } finally {
@@ -406,7 +451,7 @@ async function loadSources() {
 
 async function loadSelectedRoom(epoch) {
   worldsLoading.value = true
-  sourceError.value = ''
+  sourceFailure.value = null
   try {
     const response = await roomsV2API.worlds(selectedRoomId.value)
     if (destroyed || epoch !== loadEpoch) return
@@ -418,7 +463,7 @@ async function loadSelectedRoom(epoch) {
     if (destroyed || epoch !== loadEpoch) return
     worlds.value = []
     selectedWorldId.value = ''
-    sourceError.value = error.message || '无法读取世界列表'
+    sourceFailure.value = { key: 'worldMaps.errors.worldsLoadFailed', error }
   } finally {
     if (!destroyed && epoch === loadEpoch) worldsLoading.value = false
   }
@@ -431,7 +476,7 @@ async function loadSelectedWorld(epoch) {
 
 async function loadMaps(epoch, resumeJob = true) {
   mapsLoading.value = true
-  mapError.value = ''
+  mapFailure.value = null
   try {
     const response = await worldMapsV2API.list(selectedRoomId.value)
     if (destroyed || epoch !== loadEpoch) return
@@ -443,7 +488,7 @@ async function loadMaps(epoch, resumeJob = true) {
     if (resumeJob && running && !activeJobId.value) void monitorJob(running.sourceJobId, true)
   } catch (error) {
     if (destroyed || epoch !== loadEpoch) return
-    mapError.value = error.message || '无法读取地图版本'
+    mapFailure.value = { key: 'worldMaps.errors.mapsLoadFailed', error }
     maps.value = []
     renderer.value = { available: false, path: '' }
   } finally {
@@ -453,7 +498,7 @@ async function loadMaps(epoch, resumeJob = true) {
 
 async function loadSessions(epoch) {
   sessionsLoading.value = true
-  sessionError.value = ''
+  sessionFailure.value = null
   try {
     const response = await worldMapsV2API.sessions(selectedRoomId.value, selectedWorldId.value)
     if (destroyed || epoch !== loadEpoch) return
@@ -463,7 +508,7 @@ async function loadSessions(epoch) {
     }
   } catch (error) {
     if (destroyed || epoch !== loadEpoch) return
-    sessionError.value = error.message || '无法读取 Session 快照'
+    sessionFailure.value = { key: 'worldMaps.errors.sessionsLoadFailed', error }
     sessions.value = []
     selectedSessionId.value = ''
   } finally {
@@ -545,12 +590,12 @@ async function generateMap() {
     })
     generationJob.value = job
     activeJobId.value = job.id
-    toast.success('地图生成任务已提交')
+    toast.success(t('worldMaps.feedback.generationSubmitted'))
     await loadMaps(loadEpoch, false)
     await monitorJob(job.id, false)
   } catch (error) {
     activeJobId.value = ''
-    toast.error(`地图生成失败：${error.message || '未知错误'}`)
+    toast.error(t('worldMaps.feedback.generationFailed', { error: errorDetail(error) }))
   }
 }
 
@@ -567,9 +612,9 @@ async function downloadSession(session) {
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
-    toast.success('Session 下载已开始')
+    toast.success(t('worldMaps.feedback.sessionDownloadStarted'))
   } catch (error) {
-    toast.error(`Session 下载失败：${error.message || '未知错误'}`)
+    toast.error(t('worldMaps.feedback.sessionDownloadFailed', { error: errorDetail(error) }))
   } finally {
     sessionDownloadId.value = ''
   }
@@ -587,9 +632,9 @@ async function monitorJob(jobId, silent) {
       generationJob.value = job
       if (TERMINAL_JOB_STATES.has(job.status)) {
         if (job.status === 'succeeded') {
-          if (!silent) toast.success('地图生成完成')
+          if (!silent) toast.success(t('worldMaps.generation.completedTitle'))
         } else if (!silent) {
-          toast.error(`地图生成未完成：${mapJobFailure(job)}`)
+          toast.error(t('worldMaps.feedback.generationIncomplete', { error: mapJobFailure(job) }))
         }
         await loadMaps(loadEpoch, false)
         const generated = worldMaps.value.find(map => map.sourceJobId === jobId && map.status === 'succeeded')
@@ -598,9 +643,9 @@ async function monitorJob(jobId, silent) {
       }
       await delay(700)
     }
-    if (!destroyed && token === jobEpoch) toast.warning('地图任务仍在执行，请稍后刷新状态')
+    if (!destroyed && token === jobEpoch) toast.warning(t('worldMaps.feedback.jobStillRunning'))
   } catch (error) {
-    if (!destroyed && token === jobEpoch && !silent) toast.error(`地图任务状态读取失败：${error.message || '未知错误'}`)
+    if (!destroyed && token === jobEpoch && !silent) toast.error(t('worldMaps.feedback.jobStatusFailed', { error: errorDetail(error) }))
   } finally {
     if (token === jobEpoch) activeJobId.value = ''
   }
@@ -611,9 +656,9 @@ async function cancelGeneration() {
   cancelLoading.value = true
   try {
     await jobsV2API.cancel(activeJobId.value)
-    toast.success('已提交地图任务取消请求')
+    toast.success(t('worldMaps.feedback.cancelRequested'))
   } catch (error) {
-    toast.error(`取消地图任务失败：${error.message || '未知错误'}`)
+    toast.error(t('worldMaps.feedback.cancelFailed', { error: errorDetail(error) }))
   } finally {
     cancelLoading.value = false
   }
