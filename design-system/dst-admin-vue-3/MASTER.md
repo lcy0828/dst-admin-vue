@@ -1,6 +1,6 @@
 # DST Admin Vue 3 Design System
 
-This file is the visual migration contract for the Vue 3 upgrade.
+This file is the visual and interaction contract for the Vue 3 client.
 
 ## Open-source Product Positioning
 
@@ -23,7 +23,7 @@ The product quality target is not maximum information per screen. It is the shor
 
 ## Non-Negotiable Migration Rules
 
-- Preserve every Vue 2 page, route, menu level, table column, form field, dialog, and command entry.
+- Preserve the function inventory from the Vue 2 reference: pages, routes, menu levels, table columns, form fields, dialogs, and command entries.
 - Preserve the legacy information density, content width, and drill-down workflow.
 - Theme changes must be implemented through shared tokens or equivalent color replacement. They must not rearrange page structure.
 - Do not add mock, fixture, sample, or in-memory data to user-facing flows.
@@ -38,7 +38,7 @@ The product quality target is not maximum information per screen. It is the shor
 - Card radius: 6px; dialogs may use 8px
 - Page padding: 16px on desktop, 12px on compact screens
 - Controls: keep filters and commands adjacent to the data they affect
-- Navigation: keep the legacy left sidebar, header, and breadcrumb hierarchy; use an overlay drawer on compact screens
+- Navigation: use the shared shadcn sidebar, header, and breadcrumb hierarchy; collapse to the component's compact-screen behavior
 
 ## Palette
 
@@ -47,7 +47,7 @@ The product quality target is not maximum information per screen. It is the shor
 | Role | Value | Token |
 | --- | --- | --- |
 | Primary action | `#e5482d` | `--primary-color` |
-| Primary hover | `#ed7f6c` | Element Plus primary light token |
+| Primary hover | `#ed7f6c` | semantic accent token |
 | Warm accent | `#f59e0b` | `--accent-color` |
 | Warning | `#c97908` | `--warning-color` |
 | Success / online | `#2f8a57` | `--success-color` |
@@ -86,7 +86,7 @@ Vermilion owns controls, links, focus, and active content states. Amber is limit
 ## Interaction
 
 - Keep every legacy action in its existing location.
-- Use Element Plus SVG icons through the legacy icon compatibility map.
+- Use Lucide Vue icons through shared shadcn-vue components.
 - Clickable controls must have visible hover and keyboard focus states.
 - Button color follows semantics: primary for the page's main action, danger only for destructive actions, warning for risky or attention-required actions, and neutral for secondary actions.
 - Toolbars and filters wrap as groups; table containers scroll horizontally rather than compressing columns into unreadable widths.

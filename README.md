@@ -34,9 +34,9 @@
 
 - Vue 3.5
 - Vue Router 4
-- Element Plus
-- Vite 8
-- Axios、ECharts、xterm.js
+- shadcn-vue（Reka UI）与 Tailwind CSS 4
+- Lucide Vue、vue-sonner
+- Vite 8、Axios、ECharts、xterm.js
 
 ## 本地开发
 
@@ -59,7 +59,10 @@ VITE_API_PROXY_TARGET=http://127.0.0.1:8000
 
 ```bash
 npm run lint -- --no-fix
+npm test
 npm run build
 ```
+
+当前仓库没有 `api:generate` 或浏览器 `test:e2e` 脚本，不应把它们写入发布命令。真实功能状态、远程边界和人工验收项见 [`docs/DST_ADMIN_FUNCTION_TRUTH.md`](docs/DST_ADMIN_FUNCTION_TRUTH.md)。
 
 视觉和交互约束记录在 [`design-system/dst-admin-vue-3/MASTER.md`](design-system/dst-admin-vue-3/MASTER.md)。
