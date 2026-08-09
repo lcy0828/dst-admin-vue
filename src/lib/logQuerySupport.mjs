@@ -53,3 +53,14 @@ export function normalizeStructuredLogList(response = {}) {
     last_refreshed_at: response.lastRefreshedAt || null
   }
 }
+
+export function structuredLogSnapshotKey(roomId, worldId) {
+  const room = String(roomId || '').trim()
+  const world = String(worldId || '').trim()
+  return room && world ? `${room}:${world}` : ''
+}
+
+export function shouldBootstrapStructuredLogs({ roomId, worldId, lastRefreshedAt, attemptedKeys = [] } = {}) {
+  const key = structuredLogSnapshotKey(roomId, worldId)
+  return Boolean(key && !lastRefreshedAt && !attemptedKeys.includes(key))
+}

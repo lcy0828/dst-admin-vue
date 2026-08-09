@@ -121,7 +121,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import AppPagination from '@/components/Pagination.vue'
 import RegexTester from '@/components/RegexTester.vue';
 import { confirmAction } from '@/lib/feedback'
-import { normalizeLogSources } from '@/lib/logQuerySupport.mjs'
+import { normalizeLogSources, shouldBootstrapStructuredLogs, structuredLogSnapshotKey } from '@/lib/logQuerySupport.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import { toast } from 'vue-sonner'
 
@@ -232,6 +232,7 @@ export default {
       sourceRequestSequence: 0,
       queryRequestSequence: 0,
       refreshRequestSequence: 0,
+      bootstrapAttemptedKeys: [],
 
       // 规则对话框相关
       ruleDialogVisible: false,
@@ -309,6 +310,7 @@ export default {
       this.lastRefreshedAt = null;
       this.refreshLoading = false;
       this.refreshStatus = null;
+      this.bootstrapAttemptedKeys = [];
       this.queryParams.archive = '';
       this.queryParams.world = '';
       this.getArchives();
@@ -429,6 +431,7 @@ export default {
     // 查询日志
     async queryLogs(resetPage = false) {
       const requestSequence = ++this.queryRequestSequence;
+      let bootstrapSnapshot = false;
       if (resetPage) this.queryParams.page = 1;
       this.loading = true;
       this.queryError = '';
@@ -443,6 +446,12 @@ export default {
         this.total = Number(response.data.total) || 0;
         this.counts = response.data.counts || {};
         this.lastRefreshedAt = response.data.last_refreshed_at || null;
+        bootstrapSnapshot = shouldBootstrapStructuredLogs({
+          roomId: this.queryParams.archive,
+          worldId: this.queryParams.world,
+          lastRefreshedAt: this.lastRefreshedAt,
+          attemptedKeys: this.bootstrapAttemptedKeys
+        });
       } catch (error) {
         if (requestSequence !== this.queryRequestSequence) return;
         this.queryError = error.message || '未知错误';
@@ -453,6 +462,10 @@ export default {
         this.lastRefreshedAt = null;
       } finally {
         if (requestSequence === this.queryRequestSequence) this.loading = false;
+      }
+      if (bootstrapSnapshot && requestSequence === this.queryRequestSequence) {
+        this.bootstrapAttemptedKeys.push(structuredLogSnapshotKey(this.queryParams.archive, this.queryParams.world));
+        await this.refreshLogs();
       }
     },
 

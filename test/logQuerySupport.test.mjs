@@ -5,7 +5,9 @@ import { readFile } from 'node:fs/promises'
 import {
   buildStructuredLogFilter,
   normalizeLogSources,
-  normalizeStructuredLogList
+  normalizeStructuredLogList,
+  shouldBootstrapStructuredLogs,
+  structuredLogSnapshotKey
 } from '../src/lib/logQuerySupport.mjs'
 
 test('log sources preserve stable room and world ids while accepting legacy names', () => {
@@ -86,4 +88,27 @@ test('log query page keeps the refresh job and requery lifecycle visible', async
   assert.match(source, /await this\.queryLogs\(true\)/)
   assert.match(source, /尚未解析日志/)
   assert.match(source, /InputGroupInput[^>]+queryParams\.query/)
+})
+
+test('an uninitialized world snapshot is bootstrapped only once', () => {
+  const key = structuredLogSnapshotKey('room-id', 'master-id')
+  assert.equal(key, 'room-id:master-id')
+  assert.equal(shouldBootstrapStructuredLogs({
+    roomId: 'room-id',
+    worldId: 'master-id',
+    lastRefreshedAt: null,
+    attemptedKeys: []
+  }), true)
+  assert.equal(shouldBootstrapStructuredLogs({
+    roomId: 'room-id',
+    worldId: 'master-id',
+    lastRefreshedAt: null,
+    attemptedKeys: [key]
+  }), false)
+  assert.equal(shouldBootstrapStructuredLogs({
+    roomId: 'room-id',
+    worldId: 'master-id',
+    lastRefreshedAt: '2026-08-09T15:00:00Z',
+    attemptedKeys: []
+  }), false)
 })
