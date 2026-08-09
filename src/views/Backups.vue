@@ -2,49 +2,49 @@
   <div class="backups-page">
     <header class="page-header">
       <div>
-        <h1>备份管理</h1>
-        <p>创建、下载、恢复和删除房间存档备份。</p>
+        <h1>{{ $t('backups.title') }}</h1>
+        <p>{{ $t('backups.subtitle') }}</p>
       </div>
       <div class="header-actions">
-        <UiButton @click="showCreateBackupDialog"><PlusIcon data-icon="inline-start" />创建备份</UiButton>
-        <UiButton variant="outline" :disabled="loading" @click="refreshBackups"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCwIcon v-else data-icon="inline-start" />刷新</UiButton>
+        <UiButton @click="showCreateBackupDialog"><PlusIcon data-icon="inline-start" />{{ $t('backups.actions.create') }}</UiButton>
+        <UiButton variant="outline" :disabled="loading" @click="refreshBackups"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCwIcon v-else data-icon="inline-start" />{{ $t('backups.actions.refresh') }}</UiButton>
       </div>
     </header>
     <Alert v-if="loadError" variant="destructive" class="load-error-alert">
       <TriangleAlertIcon />
-      <AlertTitle>备份列表加载失败</AlertTitle>
+      <AlertTitle>{{ $t('backups.list.loadFailed') }}</AlertTitle>
       <AlertDescription>{{ loadError }}</AlertDescription>
       <AlertAction><UiButton variant="outline" size="sm" @click="refreshBackups">
-        <RefreshCwIcon data-icon="inline-start" />重新加载
+        <RefreshCwIcon data-icon="inline-start" />{{ $t('backups.actions.reload') }}
       </UiButton></AlertAction>
     </Alert>
     <Card v-if="!loadError || backupsList.length" class="backups-card">
-      <CardHeader><CardTitle>备份列表</CardTitle><CardDescription>下载、恢复或删除现有世界存档备份。</CardDescription>
-        <CardAction><UiSelect v-model="selectedFilter"><SelectTrigger class="archive-filter"><SelectValue placeholder="选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="__all__">全部</SelectItem><SelectItem v-for="archive in archiveOptions" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></CardAction>
+      <CardHeader><CardTitle>{{ $t('backups.list.title') }}</CardTitle><CardDescription>{{ $t('backups.list.description') }}</CardDescription>
+        <CardAction><UiSelect v-model="selectedFilter"><SelectTrigger class="archive-filter"><SelectValue :placeholder="$t('backups.list.archivePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="__all__">{{ $t('backups.list.allArchives') }}</SelectItem><SelectItem v-for="archive in archiveOptions" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></CardAction>
       </CardHeader>
-      <CardContent><div class="table-wrap"><ShadcnTable><TableHeader><TableRow><TableHead>备份名称</TableHead><TableHead>存档名称</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead class="actions-column">操作</TableHead></TableRow></TableHeader><TableBody>
-        <TableRow v-for="backup in filteredBackups" :key="`${backup.archive_name}-${backup.name}`"><TableCell><div class="backup-name"><FileArchiveIcon />{{ backup.name }}</div></TableCell><TableCell>{{ backup.archive_name }}</TableCell><TableCell>{{ backup.size_formatted }}</TableCell><TableCell>{{ backup.create_time }}</TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><DownloadIcon data-icon="inline-start" />下载</UiButton><UiButton size="sm" @click="showRestoreDialog(backup)">恢复</UiButton><UiButton variant="destructive" size="sm" @click="confirmDeleteBackup(backup)">删除</UiButton></div></TableCell></TableRow>
-        <TableEmpty v-if="loading" :colspan="5"><div class="table-skeleton" aria-label="正在加载备份"><Skeleton v-for="row in 4" :key="row" class="h-10 w-full" /></div></TableEmpty>
-        <TableEmpty v-else-if="!loadError && filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>暂无备份</EmptyTitle><EmptyDescription>当前存档还没有可用备份。</EmptyDescription></EmptyHeader></Empty></TableEmpty>
+      <CardContent><div class="table-wrap"><ShadcnTable><TableHeader><TableRow><TableHead>{{ $t('backups.list.columns.name') }}</TableHead><TableHead>{{ $t('backups.list.columns.archive') }}</TableHead><TableHead>{{ $t('backups.list.columns.size') }}</TableHead><TableHead>{{ $t('backups.list.columns.createdAt') }}</TableHead><TableHead class="actions-column">{{ $t('backups.list.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
+        <TableRow v-for="backup in filteredBackups" :key="`${backup.archive_name}-${backup.name}`"><TableCell><div class="backup-name"><FileArchiveIcon />{{ backup.name }}</div></TableCell><TableCell>{{ backup.archive_name }}</TableCell><TableCell>{{ backup.size_formatted }}</TableCell><TableCell>{{ formatDate(backup.createdAt || backup.create_time) }}</TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><DownloadIcon data-icon="inline-start" />{{ $t('backups.actions.download') }}</UiButton><UiButton size="sm" @click="showRestoreDialog(backup)">{{ $t('backups.actions.restore') }}</UiButton><UiButton variant="destructive" size="sm" @click="confirmDeleteBackup(backup)">{{ $t('backups.actions.delete') }}</UiButton></div></TableCell></TableRow>
+        <TableEmpty v-if="loading" :colspan="5"><div class="table-skeleton" :aria-label="$t('backups.list.loading')"><Skeleton v-for="row in 4" :key="row" class="h-10 w-full" /></div></TableEmpty>
+        <TableEmpty v-else-if="!loadError && filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>{{ $t('backups.list.empty') }}</EmptyTitle><EmptyDescription>{{ $t('backups.list.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty></TableEmpty>
       </TableBody></ShadcnTable></div></CardContent>
     </Card>
 
-    <UiDialog v-model:open="createDialogVisible"><DialogContent><DialogHeader><DialogTitle>创建存档备份</DialogTitle><DialogDescription>选择需要立即备份的房间存档。</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel>存档</FieldLabel><UiSelect v-model="selectedArchive"><SelectTrigger><SelectValue placeholder="请选择存档" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archivesList" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup><DialogFooter><UiButton variant="outline" @click="createDialogVisible = false">取消</UiButton><UiButton :disabled="createLoading" @click="createBackup"><Spinner v-if="createLoading" data-icon="inline-start" />创建</UiButton></DialogFooter></DialogContent></UiDialog>
+    <UiDialog v-model:open="createDialogVisible"><DialogContent><DialogHeader><DialogTitle>{{ $t('backups.createDialog.title') }}</DialogTitle><DialogDescription>{{ $t('backups.createDialog.description') }}</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel>{{ $t('backups.createDialog.archive') }}</FieldLabel><UiSelect v-model="selectedArchive"><SelectTrigger><SelectValue :placeholder="$t('backups.createDialog.archivePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archivesList" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup><DialogFooter><UiButton variant="outline" @click="createDialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton><UiButton :disabled="createLoading" @click="createBackup"><Spinner v-if="createLoading" data-icon="inline-start" />{{ $t('backups.actions.confirmCreate') }}</UiButton></DialogFooter></DialogContent></UiDialog>
 
-    <UiDialog v-model:open="restoreDialogVisible"><DialogScrollContent class="sm:max-w-xl"><DialogHeader><DialogTitle>恢复存档备份</DialogTitle><DialogDescription>将备份内容覆盖到原房间存档。</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="restoreDialogVisible"><DialogScrollContent class="sm:max-w-xl"><DialogHeader><DialogTitle>{{ $t('backups.restoreDialog.title') }}</DialogTitle><DialogDescription>{{ $t('backups.restoreDialog.description') }}</DialogDescription></DialogHeader>
       <div class="restore-dialog-content">
         <div class="info-row">
-          <span class="label">备份文件：</span>
+          <span class="label">{{ $t('backups.restoreDialog.backupFile') }}</span>
           <span class="value">{{ currentBackup ? currentBackup.name : '' }}</span>
         </div>
         <div class="info-row">
-          <span class="label">源存档：</span>
+          <span class="label">{{ $t('backups.restoreDialog.sourceArchive') }}</span>
           <span class="value">{{ currentBackup ? currentBackup.archive_name : '' }}</span>
         </div>
         <Separator />
-        <Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>将覆盖原存档</AlertTitle><AlertDescription>此操作无法撤销，请确保已备份重要数据。<span v-if="!backupCapabilities.restoreToNewRoom">当前后端暂不支持恢复为新房间，因此这里只提供原房间恢复。</span></AlertDescription></Alert>
+        <Alert variant="destructive"><TriangleAlertIcon /><AlertTitle>{{ $t('backups.restoreDialog.overwriteTitle') }}</AlertTitle><AlertDescription>{{ $t('backups.restoreDialog.overwriteDescription') }}<span v-if="!backupCapabilities.restoreToNewRoom"> {{ $t('backups.restoreDialog.originalOnly') }}</span></AlertDescription></Alert>
       </div>
-      <DialogFooter><UiButton variant="outline" @click="restoreDialogVisible = false">取消</UiButton><UiButton :disabled="restoreLoading" @click="restoreBackup"><Spinner v-if="restoreLoading" data-icon="inline-start" />恢复</UiButton></DialogFooter></DialogScrollContent></UiDialog>
+      <DialogFooter><UiButton variant="outline" @click="restoreDialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton><UiButton :disabled="restoreLoading" @click="restoreBackup"><Spinner v-if="restoreLoading" data-icon="inline-start" />{{ $t('backups.actions.restore') }}</UiButton></DialogFooter></DialogScrollContent></UiDialog>
   </div>
 </template>
 
@@ -118,7 +118,7 @@ export default {
   data() {
     return {
       loading: false,
-      loadError: '',
+      loadFailure: null,
       createLoading: false,
       restoreLoading: false,
       createDialogVisible: false,
@@ -132,6 +132,13 @@ export default {
     }
   },
   computed: {
+    loadError() {
+      if (!this.loadFailure) return ''
+      const message = this.$t(this.loadFailure.key)
+      return this.loadFailure.detail
+        ? this.$t('backups.feedback.withDetail', { message, detail: this.loadFailure.detail })
+        : message
+    },
     archiveOptions() {
       // 从备份列表中提取所有唯一的存档名称
       const archives = this.backupsList.map(backup => backup.archive_name);
@@ -147,7 +154,7 @@ export default {
   methods: {
     refreshBackups() {
       this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       return this.$api.backupApi.getBackupList()
         .then(res => {
           if (res.status === 200) {
@@ -158,13 +165,19 @@ export default {
               this.selectedFilter = '__all__';
             }
           } else {
-            this.loadError = res.msg || '服务未返回可用的备份列表';
-            toast.error('获取备份列表失败：' + this.loadError);
+            this.loadFailure = {
+              key: 'backups.feedback.listUnavailable',
+              detail: String(res?.msg || '').trim()
+            };
+            toast.error(this.$t('backups.feedback.listFailed', { error: this.loadError }));
           }
         })
         .catch(err => {
-          this.loadError = err.message || '无法连接备份服务';
-          toast.error('获取备份列表失败：' + this.loadError);
+          this.loadFailure = {
+            key: 'backups.feedback.serviceUnavailable',
+            detail: String(err?.message || '').trim()
+          };
+          toast.error(this.$t('backups.feedback.listFailed', { error: this.loadError }));
         })
         .finally(() => {
           this.loading = false;
@@ -180,18 +193,20 @@ export default {
           if (!this.archivesList.includes(this.selectedArchive)) this.selectedArchive = '';
           
           if (this.archivesList.length === 0) {
-            toast.warning('没有可用的存档');
+            toast.warning(this.$t('backups.feedback.noArchives'));
           }
         })
         .catch(err => {
           this.archivesList = [];
           this.selectedArchive = '';
-          toast.error('获取存档列表失败：' + (err.message || '未知错误'));
+          toast.error(this.$t('backups.feedback.archiveListFailed', {
+            error: err?.message || this.$t('common.errors.unknown')
+          }));
         });
     },
     createBackup() {
       if (!this.selectedArchive) {
-        toast.warning('请选择要备份的存档');
+        toast.warning(this.$t('backups.feedback.selectArchive'));
         return;
       }
       
@@ -199,15 +214,19 @@ export default {
       this.$api.backupApi.createBackup(this.selectedArchive)
         .then(res => {
           if (res.status === 200) {
-            toast.success(res.msg || '创建备份成功');
+            toast.success(this.$t('backups.feedback.created'));
             this.createDialogVisible = false;
             return this.refreshBackups();
           } else {
-            toast.error('创建备份失败：' + res.msg);
+            toast.error(this.$t('backups.feedback.createFailed', {
+              error: res?.msg || this.$t('common.errors.unknown')
+            }));
           }
         })
         .catch(err => {
-          toast.error('创建备份失败：' + err.message);
+          toast.error(this.$t('backups.feedback.createFailed', {
+            error: err?.message || this.$t('common.errors.unknown')
+          }));
         })
         .finally(() => {
           this.createLoading = false;
@@ -224,9 +243,11 @@ export default {
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          toast.success(`正在下载备份：${name}`);
+          toast.success(this.$t('backups.feedback.downloading', { name }));
         })
-        .catch(error => toast.error(`下载备份失败：${error.message}`));
+        .catch(error => toast.error(this.$t('backups.feedback.downloadFailed', {
+          error: error?.message || this.$t('common.errors.unknown')
+        })));
     },
     
     // 显示恢复备份对话框
@@ -238,19 +259,19 @@ export default {
     // 恢复备份
     async restoreBackup() {
       if (!this.currentBackup) {
-        toast.warning('未选择备份文件');
+        toast.warning(this.$t('backups.feedback.noBackupSelected'));
         return;
       }
       
       try {
-        await confirmAction('您确定要恢复此备份到原存档吗？此操作将覆盖原存档所有内容且无法撤销！', '恢复备份', {
-          confirmButtonText: '确认恢复',
-          cancelButtonText: '取消',
+        await confirmAction(this.$t('backups.feedback.restoreConfirm'), this.$t('backups.feedback.restoreTitle'), {
+          confirmButtonText: this.$t('backups.feedback.restoreButton'),
+          cancelButtonText: this.$t('common.actions.cancel'),
           type: 'warning'
         })
         await this.executeRestore(this.currentBackup.archive_name, this.currentBackup.name);
       } catch {
-        toast.info('已取消恢复操作')
+        toast.info(this.$t('backups.feedback.restoreCanceled'))
       }
     },
     
@@ -260,15 +281,19 @@ export default {
       return this.$api.backupApi.restoreBackup(archive, backup)
         .then(res => {
           if (res.status === 200) {
-            toast.success(res.msg || '备份恢复成功');
+            toast.success(this.$t('backups.feedback.restored'));
             this.restoreDialogVisible = false;
             return this.refreshBackups();
           } else {
-            toast.error('恢复备份失败：' + res.msg);
+            toast.error(this.$t('backups.feedback.restoreFailed', {
+              error: res?.msg || this.$t('common.errors.unknown')
+            }));
           }
         })
         .catch(err => {
-          toast.error('恢复备份失败：' + err.message);
+          toast.error(this.$t('backups.feedback.restoreFailed', {
+            error: err?.message || this.$t('common.errors.unknown')
+          }));
         })
         .finally(() => {
           this.restoreLoading = false;
@@ -279,14 +304,14 @@ export default {
     async confirmDeleteBackup(backup) {
       const { archive_name, name } = backup;
       try {
-        await confirmAction(`确定要删除备份文件“${name}”吗？此操作不可逆！`, '删除备份', {
-          confirmButtonText: '确认删除',
-          cancelButtonText: '取消',
+        await confirmAction(this.$t('backups.feedback.deleteConfirm', { name }), this.$t('backups.feedback.deleteTitle'), {
+          confirmButtonText: this.$t('backups.feedback.deleteButton'),
+          cancelButtonText: this.$t('common.actions.cancel'),
           type: 'warning'
         })
         this.deleteBackup(archive_name, name);
       } catch {
-        toast.info('已取消删除')
+        toast.info(this.$t('backups.feedback.deleteCanceled'))
       }
     },
     
@@ -296,18 +321,30 @@ export default {
       this.$api.backupApi.deleteBackup(archive, backup)
         .then(res => {
           if (res.status === 200) {
-            toast.success(res.msg || '备份删除成功');
+            toast.success(this.$t('backups.feedback.deleted'));
             return this.refreshBackups();
           } else {
-            toast.error('删除备份失败：' + res.msg);
+            toast.error(this.$t('backups.feedback.deleteFailed', {
+              error: res?.msg || this.$t('common.errors.unknown')
+            }));
           }
         })
         .catch(err => {
-          toast.error('删除备份失败：' + err.message);
+          toast.error(this.$t('backups.feedback.deleteFailed', {
+            error: err?.message || this.$t('common.errors.unknown')
+          }));
         })
         .finally(() => {
           this.loading = false;
         });
+    },
+    formatDate(value) {
+      if (!value) return '--'
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime())) return String(value)
+      const localeState = this.$i18n?.locale
+      const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN')
+      return date.toLocaleString(locale, { hour12: false })
     }
   },
   mounted() {

@@ -295,12 +295,11 @@ function formatBytes(bytes) {
 }
 
 function mapBackup(backup, roomName) {
-  const createdAt = backup.createdAt ? new Date(backup.createdAt) : null
   return {
     ...backup,
     archive_name: roomName,
     size_formatted: formatBytes(backup.size),
-    create_time: createdAt && Number.isFinite(createdAt.getTime()) ? createdAt.toLocaleString() : '--'
+    create_time: backup.createdAt || ''
   }
 }
 
