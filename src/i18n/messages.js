@@ -1,8 +1,10 @@
 import { corePageMessages } from './corePages.js'
+import { systemSettingsMessages } from './systemSettingsMessages.js'
 
 export const messages = {
   'zh-CN': {
     ...corePageMessages['zh-CN'],
+    ...systemSettingsMessages['zh-CN'],
     common: {
       actions: {
         cancel: '取消',
@@ -444,6 +446,7 @@ export const messages = {
   },
   'en-US': {
     ...corePageMessages['en-US'],
+    ...systemSettingsMessages['en-US'],
     common: {
       actions: {
         cancel: 'Cancel',

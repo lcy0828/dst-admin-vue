@@ -2,54 +2,54 @@
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="min-w-0">
-        <h1 class="text-2xl font-semibold tracking-normal">系统设置</h1>
-        <p class="mt-1 text-sm text-muted-foreground">管理界面、安全、备份、通知和当前主机运行状态。</p>
+        <h1 class="text-2xl font-semibold tracking-normal">{{ $t('systemSettings.title') }}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{{ $t('systemSettings.subtitle') }}</p>
       </div>
       <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSettings()">
         <Spinner v-if="loading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
-        刷新
+        {{ $t('common.actions.refresh') }}
       </UiButton>
     </header>
 
-    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>系统设置加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="loadSettings(false)">重试</UiButton></AlertAction></Alert>
-    <Alert v-if="lockedSettingCount > 0"><CircleAlert /><AlertTitle>部分设置由环境变量管理</AlertTitle><AlertDescription>{{ lockedSettingCount }} 个字段已锁定，页面不会提交或覆盖这些字段。</AlertDescription></Alert>
+    <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('systemSettings.loadFailed') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="loadSettings(false)">{{ $t('common.actions.retry') }}</UiButton></AlertAction></Alert>
+    <Alert v-if="lockedSettingCount > 0"><CircleAlert /><AlertTitle>{{ $t('systemSettings.environmentManaged') }}</AlertTitle><AlertDescription>{{ $t('systemSettings.environmentManagedDescription', { count: lockedSettingCount }) }}</AlertDescription></Alert>
     <div v-if="initialLoading" class="flex flex-col gap-3"><Skeleton class="h-10 w-full" /><Skeleton class="h-72 w-full" /></div>
 
     <Tabs v-else v-model="activeTab" class="settings-tabs-root">
       <div class="settings-tabs-scroll">
         <TabsList variant="line" class="settings-tabs">
-          <TabsTrigger value="basic" class="settings-tab-trigger"><Settings2 />基本设置</TabsTrigger>
-          <TabsTrigger value="security" class="settings-tab-trigger"><ShieldCheck />安全设置</TabsTrigger>
-          <TabsTrigger value="backup" class="settings-tab-trigger"><DatabaseBackup />备份设置</TabsTrigger>
-          <TabsTrigger value="notification" class="settings-tab-trigger"><BellRing />通知设置</TabsTrigger>
-          <TabsTrigger value="systemStatus" class="settings-tab-trigger"><Activity />系统状态</TabsTrigger>
+          <TabsTrigger value="basic" class="settings-tab-trigger"><Settings2 />{{ $t('systemSettings.tabs.basic') }}</TabsTrigger>
+          <TabsTrigger value="security" class="settings-tab-trigger"><ShieldCheck />{{ $t('systemSettings.tabs.security') }}</TabsTrigger>
+          <TabsTrigger value="backup" class="settings-tab-trigger"><DatabaseBackup />{{ $t('systemSettings.tabs.backup') }}</TabsTrigger>
+          <TabsTrigger value="notification" class="settings-tab-trigger"><BellRing />{{ $t('systemSettings.tabs.notification') }}</TabsTrigger>
+          <TabsTrigger value="systemStatus" class="settings-tab-trigger"><Activity />{{ $t('systemSettings.tabs.systemStatus') }}</TabsTrigger>
         </TabsList>
       </div>
 
       <TabsContent value="basic" class="settings-tab-content">
         <Card size="sm" class="settings-card">
           <CardHeader>
-            <CardTitle>基本设置</CardTitle>
-            <CardDescription>设置管理系统的显示名称、地区格式和界面主题。</CardDescription>
+            <CardTitle>{{ $t('systemSettings.tabs.basic') }}</CardTitle>
+            <CardDescription>{{ $t('systemSettings.basic.description') }}</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
               <Field orientation="responsive" :data-invalid="Boolean(formErrors.systemName)">
                 <FieldContent>
-                  <FieldLabel for="system-name">管理系统名称</FieldLabel>
+                  <FieldLabel for="system-name">{{ $t('systemSettings.basic.systemName') }}</FieldLabel>
                   <FieldError v-if="formErrors.systemName">{{ formErrors.systemName }}</FieldError>
                 </FieldContent>
-                <UiInput id="system-name" v-model="settings.systemName" class="setting-control" :disabled="!fieldEditable('ui.systemName')" :aria-invalid="Boolean(formErrors.systemName)" placeholder="请输入管理系统名称" @input="formErrors.systemName = ''" />
+                <UiInput id="system-name" v-model="settings.systemName" class="setting-control" :disabled="!fieldEditable('ui.systemName')" :aria-invalid="Boolean(formErrors.systemName)" :placeholder="$t('systemSettings.basic.systemNamePlaceholder')" @input="formErrors.systemName = ''" />
               </Field>
 
               <Field orientation="responsive" :data-invalid="Boolean(formErrors.adminEmail)">
                 <FieldContent>
-                  <FieldLabel for="admin-email">管理员联系邮箱</FieldLabel>
-                  <FieldDescription>可留空；填写后用于接收管理通知。</FieldDescription>
+                  <FieldLabel for="admin-email">{{ $t('systemSettings.basic.adminEmail') }}</FieldLabel>
+                  <FieldDescription>{{ $t('systemSettings.basic.adminEmailDescription') }}</FieldDescription>
                   <FieldError v-if="formErrors.adminEmail">{{ formErrors.adminEmail }}</FieldError>
                 </FieldContent>
-                <UiInput id="admin-email" v-model="settings.adminEmail" class="setting-control" type="email" :disabled="!fieldEditable('ui.adminEmail')" :aria-invalid="Boolean(formErrors.adminEmail)" placeholder="请输入管理员联系邮箱" @input="formErrors.adminEmail = ''" />
+                <UiInput id="admin-email" v-model="settings.adminEmail" class="setting-control" type="email" :disabled="!fieldEditable('ui.adminEmail')" :aria-invalid="Boolean(formErrors.adminEmail)" :placeholder="$t('systemSettings.basic.adminEmailPlaceholder')" @input="formErrors.adminEmail = ''" />
               </Field>
 
               <Field orientation="responsive">
@@ -65,43 +65,43 @@
               </Field>
 
               <Field orientation="responsive">
-                <FieldContent><FieldLabel for="system-timezone">时区设置</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="system-timezone">{{ $t('systemSettings.basic.timezone') }}</FieldLabel></FieldContent>
                 <UiSelect v-model="settings.timezone" :disabled="!fieldEditable('ui.timezone')">
-                  <SelectTrigger id="system-timezone" class="setting-control"><SelectValue placeholder="请选择时区" /></SelectTrigger>
+                  <SelectTrigger id="system-timezone" class="setting-control"><SelectValue :placeholder="$t('systemSettings.basic.timezonePlaceholder')" /></SelectTrigger>
                   <SelectContent><SelectGroup>
-                    <SelectItem value="Asia/Shanghai">(GMT+08:00) 北京时间</SelectItem>
-                    <SelectItem value="UTC">(GMT+00:00) 协调世界时</SelectItem>
-                    <SelectItem value="America/Los_Angeles">(GMT-08:00) 太平洋标准时间</SelectItem>
-                    <SelectItem value="America/New_York">(GMT-05:00) 东部标准时间</SelectItem>
-                    <SelectItem value="Europe/Berlin">(GMT+01:00) 中欧标准时间</SelectItem>
-                    <SelectItem value="Asia/Tokyo">(GMT+09:00) 日本标准时间</SelectItem>
+                    <SelectItem value="Asia/Shanghai">{{ $t('systemSettings.basic.timezones.shanghai') }}</SelectItem>
+                    <SelectItem value="UTC">{{ $t('systemSettings.basic.timezones.utc') }}</SelectItem>
+                    <SelectItem value="America/Los_Angeles">{{ $t('systemSettings.basic.timezones.losAngeles') }}</SelectItem>
+                    <SelectItem value="America/New_York">{{ $t('systemSettings.basic.timezones.newYork') }}</SelectItem>
+                    <SelectItem value="Europe/Berlin">{{ $t('systemSettings.basic.timezones.berlin') }}</SelectItem>
+                    <SelectItem value="Asia/Tokyo">{{ $t('systemSettings.basic.timezones.tokyo') }}</SelectItem>
                   </SelectGroup></SelectContent>
                 </UiSelect>
               </Field>
 
               <Field orientation="responsive">
-                <FieldContent><FieldLabel for="date-format">日期格式</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="date-format">{{ $t('systemSettings.basic.dateFormat') }}</FieldLabel></FieldContent>
                 <UiSelect v-model="settings.dateFormat" :disabled="!fieldEditable('ui.dateFormat')">
-                  <SelectTrigger id="date-format" class="setting-control"><SelectValue placeholder="请选择日期格式" /></SelectTrigger>
+                  <SelectTrigger id="date-format" class="setting-control"><SelectValue :placeholder="$t('systemSettings.basic.dateFormatPlaceholder')" /></SelectTrigger>
                   <SelectContent><SelectGroup>
                     <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
                     <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
                     <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                    <SelectItem value="YYYY年MM月DD日">YYYY年MM月DD日</SelectItem>
+                    <SelectItem value="YYYY年MM月DD日">{{ $t('systemSettings.basic.longDateFormat') }}</SelectItem>
                   </SelectGroup></SelectContent>
                 </UiSelect>
               </Field>
 
               <Field>
                 <FieldContent>
-                  <FieldTitle id="theme-options-label">界面主题</FieldTitle>
-                  <FieldDescription>默认使用 Shadcn 中性，也可以切换预设或选择自定义主色。</FieldDescription>
+                  <FieldTitle id="theme-options-label">{{ $t('systemSettings.basic.theme') }}</FieldTitle>
+                  <FieldDescription>{{ $t('systemSettings.basic.themeDescription') }}</FieldDescription>
                 </FieldContent>
                 <ToggleGroup :model-value="selectedThemeId" type="single" class="theme-options" aria-labelledby="theme-options-label" :disabled="!fieldEditable('ui.theme')" @update:model-value="selectThemeById">
                   <ToggleGroupItem v-for="preset in themePresets" :key="preset.id" :value="preset.id" class="theme-option" :style="themeOptionStyle(preset)">
                     <span class="theme-option-head">
-                      <span class="theme-option-name">{{ preset.name }}</span>
-                      <Badge v-if="selectedThemeId === preset.id" variant="secondary">已选择</Badge>
+                      <span class="theme-option-name">{{ themePresetName(preset) }}</span>
+                      <Badge v-if="selectedThemeId === preset.id" variant="secondary">{{ $t('systemSettings.basic.selected') }}</Badge>
                     </span>
                     <span class="theme-swatches" aria-hidden="true">
                       <span class="theme-swatch theme-swatch-sidebar"></span>
@@ -113,213 +113,213 @@
                 </ToggleGroup>
                 <div class="custom-theme-control">
                   <div class="custom-theme-copy">
-                    <FieldLabel for="custom-theme-color">自定义主色</FieldLabel>
-                    <FieldDescription>{{ selectedThemeId === 'custom' ? '当前使用自定义颜色。' : '选择颜色后立即预览。' }}</FieldDescription>
+                    <FieldLabel for="custom-theme-color">{{ $t('systemSettings.basic.customColor') }}</FieldLabel>
+                    <FieldDescription>{{ $t(selectedThemeId === 'custom' ? 'systemSettings.basic.customColorActive' : 'systemSettings.basic.customColorPreview') }}</FieldDescription>
                   </div>
-                  <UiInput id="custom-theme-color" v-model="settings.theme" class="color-input" type="color" aria-label="自定义主题主色" :disabled="!fieldEditable('ui.theme')" @update:model-value="previewCustomTheme" />
-                  <Badge v-if="selectedThemeId === 'custom'" variant="secondary">已选择</Badge>
-                  <UiButton variant="ghost" size="sm" :disabled="!fieldEditable('ui.theme')" @click="resetDefaultTheme">恢复中性默认</UiButton>
+                  <UiInput id="custom-theme-color" v-model="settings.theme" class="color-input" type="color" :aria-label="$t('systemSettings.basic.customColorAria')" :disabled="!fieldEditable('ui.theme')" @update:model-value="previewCustomTheme" />
+                  <Badge v-if="selectedThemeId === 'custom'" variant="secondary">{{ $t('systemSettings.basic.selected') }}</Badge>
+                  <UiButton variant="ghost" size="sm" :disabled="!fieldEditable('ui.theme')" @click="resetDefaultTheme">{{ $t('systemSettings.basic.restoreDefault') }}</UiButton>
                 </div>
               </Field>
             </FieldGroup>
           </CardContent>
           <CardFooter class="settings-card-footer">
-            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />重置</UiButton>
-            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton>
+            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
           </CardFooter>
         </Card>
       </TabsContent>
 
       <TabsContent value="security" class="settings-tab-content">
         <Card size="sm" class="settings-card">
-          <CardHeader><CardTitle>安全设置</CardTitle><CardDescription>控制登录密码、会话和管理端访问范围。</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('systemSettings.tabs.security') }}</CardTitle><CardDescription>{{ $t('systemSettings.security.description') }}</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
               <Field orientation="horizontal">
-                <FieldContent><FieldLabel for="password-complexity">启用密码复杂度检查</FieldLabel><FieldDescription>开启后，密码必须包含大小写字母、数字和特殊字符。</FieldDescription></FieldContent>
+                <FieldContent><FieldLabel for="password-complexity">{{ $t('systemSettings.security.passwordComplexity') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.security.passwordComplexityDescription') }}</FieldDescription></FieldContent>
                 <UiSwitch id="password-complexity" v-model="settings.passwordComplexity" :disabled="!fieldEditable('security.passwordComplexity')" />
               </Field>
               <Field orientation="responsive" :data-disabled="!fieldEditable('security.minPasswordLength')">
-                <FieldContent><FieldLabel for="min-password-length">密码最小长度</FieldLabel><FieldDescription>独立于复杂度检查，允许设置 6 至 20 位。</FieldDescription></FieldContent>
+                <FieldContent><FieldLabel for="min-password-length">{{ $t('systemSettings.security.minPasswordLength') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.security.minPasswordLengthDescription') }}</FieldDescription></FieldContent>
                 <UiInput id="min-password-length" class="number-control" type="number" min="6" max="20" :disabled="!fieldEditable('security.minPasswordLength')" :model-value="String(settings.minPasswordLength)" @update:model-value="settings.minPasswordLength = Number($event)" />
               </Field>
               <Field orientation="responsive">
-                <FieldContent><FieldLabel for="session-timeout">会话超时时间（分钟）</FieldLabel><FieldDescription>用户无操作后自动退出系统的时间。</FieldDescription></FieldContent>
+                <FieldContent><FieldLabel for="session-timeout">{{ $t('systemSettings.security.sessionTimeout') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.security.sessionTimeoutDescription') }}</FieldDescription></FieldContent>
                 <UiInput id="session-timeout" class="number-control" type="number" min="5" max="1440" :disabled="!fieldEditable('security.sessionTimeout')" :model-value="String(settings.sessionTimeout)" @update:model-value="settings.sessionTimeout = Number($event)" />
               </Field>
               <Field orientation="responsive">
-                <FieldContent><FieldLabel for="max-login-attempts">最大登录尝试次数</FieldLabel><FieldDescription>超过次数后账户将被临时锁定。</FieldDescription></FieldContent>
+                <FieldContent><FieldLabel for="max-login-attempts">{{ $t('systemSettings.security.maxLoginAttempts') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.security.maxLoginAttemptsDescription') }}</FieldDescription></FieldContent>
                 <UiInput id="max-login-attempts" class="number-control" type="number" min="3" max="10" :disabled="!fieldEditable('security.maxLoginAttempts')" :model-value="String(settings.maxLoginAttempts)" @update:model-value="settings.maxLoginAttempts = Number($event)" />
               </Field>
               <Field orientation="horizontal" data-disabled>
-                <FieldContent><FieldLabel for="two-factor-auth">启用双因素认证</FieldLabel><FieldDescription>需要先完成身份验证器密钥绑定，当前版本尚未开放。</FieldDescription></FieldContent>
+                <FieldContent><FieldLabel for="two-factor-auth">{{ $t('systemSettings.security.twoFactor') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.security.twoFactorDescription') }}</FieldDescription></FieldContent>
                 <UiSwitch id="two-factor-auth" v-model="settings.twoFactorAuth" disabled />
               </Field>
               <Field>
-                <FieldLabel for="ip-whitelist">IP 白名单</FieldLabel>
-                <UiTextarea id="ip-whitelist" v-model="settings.ipWhitelist" rows="3" :disabled="!fieldEditable('security.ipWhitelist')" placeholder="每行一个 IP 地址或网段，例如：192.168.1.1 或 192.168.1.0/24" />
-                <FieldDescription>仅允许这些 IP 地址访问管理系统，留空表示不限制。</FieldDescription>
+                <FieldLabel for="ip-whitelist">{{ $t('systemSettings.security.ipWhitelist') }}</FieldLabel>
+                <UiTextarea id="ip-whitelist" v-model="settings.ipWhitelist" rows="3" :disabled="!fieldEditable('security.ipWhitelist')" :placeholder="$t('systemSettings.security.ipWhitelistPlaceholder')" />
+                <FieldDescription>{{ $t('systemSettings.security.ipWhitelistDescription') }}</FieldDescription>
               </Field>
             </FieldGroup>
           </CardContent>
           <CardFooter class="settings-card-footer">
-            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />重置</UiButton>
-            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton>
+            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
           </CardFooter>
         </Card>
       </TabsContent>
 
       <TabsContent value="backup" class="settings-tab-content">
         <Card size="sm" class="settings-card">
-          <CardHeader><CardTitle>备份设置</CardTitle><CardDescription>为所有已接管房间同步真实备份策略。</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('systemSettings.tabs.backup') }}</CardTitle><CardDescription>{{ $t('systemSettings.backup.description') }}</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
               <Field orientation="horizontal">
-                <FieldContent><FieldLabel for="auto-backup">启用自动备份</FieldLabel><FieldDescription>定期自动备份系统数据。</FieldDescription></FieldContent>
+                <FieldContent><FieldLabel for="auto-backup">{{ $t('systemSettings.backup.auto') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.backup.autoDescription') }}</FieldDescription></FieldContent>
                 <UiSwitch id="auto-backup" v-model="settings.autoBackup" :disabled="!fieldEditable('backup.auto')" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel for="backup-frequency">备份频率</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="backup-frequency">{{ $t('systemSettings.backup.frequency') }}</FieldLabel></FieldContent>
                 <UiSelect v-model="settings.backupFrequency" :disabled="!settings.autoBackup || !fieldEditable('backup.frequency')">
-                  <SelectTrigger id="backup-frequency" class="setting-control"><SelectValue placeholder="请选择备份频率" /></SelectTrigger>
-                  <SelectContent><SelectGroup><SelectItem value="daily">每天</SelectItem><SelectItem value="weekly">每周</SelectItem><SelectItem value="monthly">每月</SelectItem></SelectGroup></SelectContent>
+                  <SelectTrigger id="backup-frequency" class="setting-control"><SelectValue :placeholder="$t('systemSettings.backup.frequencyPlaceholder')" /></SelectTrigger>
+                  <SelectContent><SelectGroup><SelectItem value="daily">{{ $t('systemSettings.backup.daily') }}</SelectItem><SelectItem value="weekly">{{ $t('systemSettings.backup.weekly') }}</SelectItem><SelectItem value="monthly">{{ $t('systemSettings.backup.monthly') }}</SelectItem></SelectGroup></SelectContent>
                 </UiSelect>
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel for="backup-time">备份时间</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="backup-time">{{ $t('systemSettings.backup.time') }}</FieldLabel></FieldContent>
                 <UiInput id="backup-time" v-model="settings.backupTime" class="setting-control" type="time" :disabled="!settings.autoBackup || !fieldEditable('backup.time')" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel for="backup-retention">保留备份数量</FieldLabel><FieldDescription>系统将保留的最近备份数量。</FieldDescription></FieldContent>
+                <FieldContent><FieldLabel for="backup-retention">{{ $t('systemSettings.backup.retention') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.backup.retentionDescription') }}</FieldDescription></FieldContent>
                 <UiInput id="backup-retention" class="number-control" type="number" min="1" max="100" :disabled="!settings.autoBackup || !fieldEditable('backup.retention')" :model-value="String(settings.backupRetention)" @update:model-value="settings.backupRetention = Number($event)" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel for="backup-location">备份存储位置</FieldLabel><FieldDescription>真实本地备份路径，修改后重启服务生效。</FieldDescription></FieldContent>
-                <UiInput id="backup-location" v-model="settings.backupLocation" class="setting-control" :disabled="!settings.autoBackup || !fieldEditable('paths.backup')" placeholder="请输入备份存储路径" />
+                <FieldContent><FieldLabel for="backup-location">{{ $t('systemSettings.backup.location') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.backup.locationDescription') }}</FieldDescription></FieldContent>
+                <UiInput id="backup-location" v-model="settings.backupLocation" class="setting-control" :disabled="!settings.autoBackup || !fieldEditable('paths.backup')" :placeholder="$t('systemSettings.backup.locationPlaceholder')" />
               </Field>
-              <FieldSeparator>手动备份</FieldSeparator>
+              <FieldSeparator>{{ $t('systemSettings.backup.manual') }}</FieldSeparator>
               <Field orientation="responsive">
-                <FieldContent><FieldTitle>立即执行</FieldTitle><FieldDescription>对当前所有已接管房间创建备份，或查看真实备份历史。</FieldDescription></FieldContent>
+                <FieldContent><FieldTitle>{{ $t('systemSettings.backup.runNow') }}</FieldTitle><FieldDescription>{{ $t('systemSettings.backup.runNowDescription') }}</FieldDescription></FieldContent>
                 <div class="field-actions">
-                  <UiButton :disabled="loading" @click="handleBackupNow"><DatabaseBackup data-icon="inline-start" />立即备份</UiButton>
-                  <UiButton variant="outline" :disabled="loading" @click="showBackupHistory"><History data-icon="inline-start" />查看备份历史</UiButton>
+                  <UiButton :disabled="loading" @click="handleBackupNow"><DatabaseBackup data-icon="inline-start" />{{ $t('systemSettings.backup.createNow') }}</UiButton>
+                  <UiButton variant="outline" :disabled="loading" @click="showBackupHistory"><History data-icon="inline-start" />{{ $t('systemSettings.backup.viewHistory') }}</UiButton>
                 </div>
               </Field>
             </FieldGroup>
           </CardContent>
           <CardFooter class="settings-card-footer">
-            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />重置</UiButton>
-            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton>
+            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
           </CardFooter>
         </Card>
       </TabsContent>
 
       <TabsContent value="notification" class="settings-tab-content">
         <Card size="sm" class="settings-card">
-          <CardHeader><CardTitle>通知设置</CardTitle><CardDescription>配置 SMTP 连接；通知事件开关将在后续版本开放。</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('systemSettings.tabs.notification') }}</CardTitle><CardDescription>{{ $t('systemSettings.notification.description') }}</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
               <Field orientation="horizontal">
-                <FieldContent><FieldLabel for="email-notification">启用邮件通知</FieldLabel><FieldDescription>启用系统邮件通知功能。</FieldDescription></FieldContent>
+                <FieldContent><FieldLabel for="email-notification">{{ $t('systemSettings.notification.emailEnabled') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.notification.emailEnabledDescription') }}</FieldDescription></FieldContent>
                 <UiSwitch id="email-notification" v-model="settings.emailNotification" :disabled="!fieldEditable('notification.emailEnabled')" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpServer)">
-                <FieldContent><FieldLabel for="smtp-server">SMTP 服务器</FieldLabel><FieldError v-if="formErrors.smtpServer">{{ formErrors.smtpServer }}</FieldError></FieldContent>
-                <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpServer')" :aria-invalid="Boolean(formErrors.smtpServer)" placeholder="例如：smtp.example.com" @input="formErrors.smtpServer = ''" />
+                <FieldContent><FieldLabel for="smtp-server">{{ $t('systemSettings.notification.smtpServer') }}</FieldLabel><FieldError v-if="formErrors.smtpServer">{{ formErrors.smtpServer }}</FieldError></FieldContent>
+                <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpServer')" :aria-invalid="Boolean(formErrors.smtpServer)" :placeholder="$t('systemSettings.notification.smtpServerPlaceholder')" @input="formErrors.smtpServer = ''" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification">
-                <FieldContent><FieldLabel for="smtp-port">SMTP 端口</FieldLabel></FieldContent>
+                <FieldContent><FieldLabel for="smtp-port">{{ $t('systemSettings.notification.smtpPort') }}</FieldLabel></FieldContent>
                 <UiInput id="smtp-port" class="number-control" type="number" min="1" max="65535" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpPort')" :model-value="String(settings.smtpPort)" @update:model-value="settings.smtpPort = Number($event)" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpUsername)">
-                <FieldContent><FieldLabel for="smtp-username">SMTP 用户名</FieldLabel><FieldError v-if="formErrors.smtpUsername">{{ formErrors.smtpUsername }}</FieldError></FieldContent>
-                <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpUsername')" :aria-invalid="Boolean(formErrors.smtpUsername)" placeholder="邮箱账号" @input="formErrors.smtpUsername = ''" />
+                <FieldContent><FieldLabel for="smtp-username">{{ $t('systemSettings.notification.smtpUsername') }}</FieldLabel><FieldError v-if="formErrors.smtpUsername">{{ formErrors.smtpUsername }}</FieldError></FieldContent>
+                <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpUsername')" :aria-invalid="Boolean(formErrors.smtpUsername)" :placeholder="$t('systemSettings.notification.smtpUsernamePlaceholder')" @input="formErrors.smtpUsername = ''" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpPassword)">
-                <FieldContent><FieldLabel for="smtp-password">SMTP 密码</FieldLabel><FieldError v-if="formErrors.smtpPassword">{{ formErrors.smtpPassword }}</FieldError></FieldContent>
-                <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpPassword')" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="smtpPasswordConfigured ? '已配置，留空表示保持不变' : '邮箱密码或授权码'" @input="formErrors.smtpPassword = ''" />
+                <FieldContent><FieldLabel for="smtp-password">{{ $t('systemSettings.notification.smtpPassword') }}</FieldLabel><FieldError v-if="formErrors.smtpPassword">{{ formErrors.smtpPassword }}</FieldError></FieldContent>
+                <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpPassword')" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="$t(smtpPasswordConfigured ? 'systemSettings.notification.smtpPasswordConfigured' : 'systemSettings.notification.smtpPasswordPlaceholder')" @input="formErrors.smtpPassword = ''" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.senderEmail)">
-                <FieldContent><FieldLabel for="sender-email">发件人邮箱</FieldLabel><FieldError v-if="formErrors.senderEmail">{{ formErrors.senderEmail }}</FieldError></FieldContent>
-                <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!settings.emailNotification || !fieldEditable('notification.senderEmail')" :aria-invalid="Boolean(formErrors.senderEmail)" placeholder="系统发送邮件的邮箱地址" @input="formErrors.senderEmail = ''" />
+                <FieldContent><FieldLabel for="sender-email">{{ $t('systemSettings.notification.senderEmail') }}</FieldLabel><FieldError v-if="formErrors.senderEmail">{{ formErrors.senderEmail }}</FieldError></FieldContent>
+                <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!settings.emailNotification || !fieldEditable('notification.senderEmail')" :aria-invalid="Boolean(formErrors.senderEmail)" :placeholder="$t('systemSettings.notification.senderEmailPlaceholder')" @input="formErrors.senderEmail = ''" />
               </Field>
               <Field orientation="responsive" :data-disabled="!settings.emailNotification">
-                <FieldContent><FieldTitle>连接检查</FieldTitle><FieldDescription>使用当前 SMTP 参数执行一次真实连接与认证测试。</FieldDescription></FieldContent>
-                <UiButton variant="outline" :disabled="loading || !settings.emailNotification" @click="testEmailConnection"><Send data-icon="inline-start" />测试邮件连接</UiButton>
+                <FieldContent><FieldTitle>{{ $t('systemSettings.notification.connectionCheck') }}</FieldTitle><FieldDescription>{{ $t('systemSettings.notification.connectionCheckDescription') }}</FieldDescription></FieldContent>
+                <UiButton variant="outline" :disabled="loading || !settings.emailNotification" @click="testEmailConnection"><Send data-icon="inline-start" />{{ $t('systemSettings.notification.testConnection') }}</UiButton>
               </Field>
-              <FieldSeparator>通知事件</FieldSeparator>
+              <FieldSeparator>{{ $t('systemSettings.notification.events') }}</FieldSeparator>
               <FieldGroup class="notification-events">
-                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-server-status">服务器状态变更</FieldLabel><UiSwitch id="notify-server-status" v-model="settings.notifyServerStatus" disabled /></Field>
-                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-login-failures">用户登录异常</FieldLabel><UiSwitch id="notify-login-failures" v-model="settings.notifyLoginFailures" disabled /></Field>
-                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-backup-results">数据库备份结果</FieldLabel><UiSwitch id="notify-backup-results" v-model="settings.notifyBackupResults" disabled /></Field>
-                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-system-updates">系统更新通知</FieldLabel><UiSwitch id="notify-system-updates" v-model="settings.notifySystemUpdates" disabled /></Field>
+                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-server-status">{{ $t('systemSettings.notification.serverStatus') }}</FieldLabel><UiSwitch id="notify-server-status" v-model="settings.notifyServerStatus" disabled /></Field>
+                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-login-failures">{{ $t('systemSettings.notification.loginFailures') }}</FieldLabel><UiSwitch id="notify-login-failures" v-model="settings.notifyLoginFailures" disabled /></Field>
+                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-backup-results">{{ $t('systemSettings.notification.backupResults') }}</FieldLabel><UiSwitch id="notify-backup-results" v-model="settings.notifyBackupResults" disabled /></Field>
+                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-system-updates">{{ $t('systemSettings.notification.systemUpdates') }}</FieldLabel><UiSwitch id="notify-system-updates" v-model="settings.notifySystemUpdates" disabled /></Field>
               </FieldGroup>
             </FieldGroup>
           </CardContent>
           <CardFooter class="settings-card-footer">
-            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />重置</UiButton>
-            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />保存设置</UiButton>
+            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton>
+            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
           </CardFooter>
         </Card>
       </TabsContent>
 
       <TabsContent value="systemStatus" class="settings-tab-content">
         <div class="status-header">
-          <div><h2>系统详细监控</h2><p>查看当前运行管理后端的主机与 Go 进程状态。</p></div>
-          <UiButton size="sm" :disabled="statusLoading" @click="refreshSystemStatus"><Spinner v-if="statusLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新状态</UiButton>
+          <div><h2>{{ $t('systemSettings.monitor.title') }}</h2><p>{{ $t('systemSettings.monitor.description') }}</p></div>
+          <UiButton size="sm" :disabled="statusLoading" @click="refreshSystemStatus"><Spinner v-if="statusLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('systemSettings.monitor.refresh') }}</UiButton>
         </div>
 
-        <Alert v-if="statusError" variant="destructive" class="mt-4"><CircleAlert /><AlertTitle>系统状态加载失败</AlertTitle><AlertDescription>{{ statusError }}</AlertDescription></Alert>
+        <Alert v-if="statusError" variant="destructive" class="mt-4"><CircleAlert /><AlertTitle>{{ $t('systemSettings.monitor.loadFailed') }}</AlertTitle><AlertDescription>{{ statusError }}</AlertDescription></Alert>
         <div v-if="statusLoading" class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4"><Skeleton v-for="index in 4" :key="index" class="h-52 w-full" /></div>
         <template v-else-if="statusLoaded">
-        <div class="status-section-heading"><h3>系统状态</h3><Separator /></div>
+        <div class="status-section-heading"><h3>{{ $t('systemSettings.monitor.system') }}</h3><Separator /></div>
         <div class="status-grid system-status-grid">
           <Card>
-            <CardHeader><CardTitle class="status-card-title"><Cpu />CPU 状态</CardTitle><CardDescription>{{ systemStatus.cpu_model }}</CardDescription></CardHeader>
+            <CardHeader><CardTitle class="status-card-title"><Cpu />{{ $t('systemSettings.monitor.cpu') }}</CardTitle><CardDescription>{{ systemStatus.cpu_model }}</CardDescription></CardHeader>
             <CardContent class="status-card-content">
-              <dl class="status-list"><div><dt>频率</dt><dd>{{ systemStatus.cpu_mhz }} MHz</dd></div><div><dt>物理核心</dt><dd>{{ systemStatus.cpu_cores }}</dd></div><div><dt>逻辑核心</dt><dd>{{ systemStatus.cpu_threads }}</dd></div></dl>
-              <div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.cpu_usage)" aria-label="CPU 使用率" /></div>
+              <dl class="status-list"><div><dt>{{ $t('systemSettings.monitor.frequency') }}</dt><dd>{{ systemStatus.cpu_mhz }} MHz</dd></div><div><dt>{{ $t('systemSettings.monitor.physicalCores') }}</dt><dd>{{ systemStatus.cpu_cores }}</dd></div><div><dt>{{ $t('systemSettings.monitor.logicalCores') }}</dt><dd>{{ systemStatus.cpu_threads }}</dd></div></dl>
+              <div class="usage-block"><div><span>{{ $t('systemSettings.monitor.usage') }}</span><strong>{{ clampPercent(systemStatus.cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.cpu_usage)" :aria-label="$t('systemSettings.monitor.cpuUsageAria')" /></div>
               <div v-if="(systemStatus.cpu_core_usage || []).length" class="core-usage-container">
                 <div v-for="(usage, index) in (systemStatus.cpu_core_usage || [])" :key="index" class="core-usage-item">
-                  <div class="core-usage-label"><span>核心 {{ index }}</span><Badge v-if="isCoreOverloaded(usage)" variant="destructive">高负载</Badge><span>{{ Number(usage).toFixed(2) }}%</span></div>
-                  <UiProgress :model-value="clampPercent(usage)" :aria-label="`CPU 核心 ${index} 使用率`" />
+                  <div class="core-usage-label"><span>{{ $t('systemSettings.monitor.core', { index }) }}</span><Badge v-if="isCoreOverloaded(usage)" variant="destructive">{{ $t('systemSettings.monitor.highLoad') }}</Badge><span>{{ Number(usage).toFixed(2) }}%</span></div>
+                  <UiProgress :model-value="clampPercent(usage)" :aria-label="$t('systemSettings.monitor.coreUsageAria', { index })" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle class="status-card-title"><Activity />系统负载</CardTitle><CardDescription>{{ systemStatus.hostname }}</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>1 分钟</dt><dd>{{ systemStatus.cpu_load1 }}</dd></div><div><dt>5 分钟</dt><dd>{{ systemStatus.cpu_load5 }}</dd></div><div><dt>15 分钟</dt><dd>{{ systemStatus.cpu_load15 }}</dd></div><div><dt>系统</dt><dd>{{ systemStatus.os_info }}</dd></div></dl></CardContent>
+            <CardHeader><CardTitle class="status-card-title"><Activity />{{ $t('systemSettings.monitor.systemLoad') }}</CardTitle><CardDescription>{{ systemStatus.hostname }}</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>{{ $t('systemSettings.monitor.oneMinute') }}</dt><dd>{{ systemStatus.cpu_load1 }}</dd></div><div><dt>{{ $t('systemSettings.monitor.fiveMinutes') }}</dt><dd>{{ systemStatus.cpu_load5 }}</dd></div><div><dt>{{ $t('systemSettings.monitor.fifteenMinutes') }}</dt><dd>{{ systemStatus.cpu_load15 }}</dd></div><div><dt>{{ $t('systemSettings.monitor.os') }}</dt><dd>{{ systemStatus.os_info }}</dd></div></dl></CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle class="status-card-title"><MemoryStick />内存状态</CardTitle><CardDescription>物理内存占用</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>总内存</dt><dd>{{ formatMemory(systemStatus.total_memory) }}</dd></div><div><dt>已用内存</dt><dd>{{ formatMemory(systemStatus.used_memory) }}</dd></div><div><dt>空闲内存</dt><dd>{{ formatMemory(systemStatus.free_memory) }}</dd></div></dl><div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.memory_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.memory_usage)" aria-label="内存使用率" /></div></CardContent>
+            <CardHeader><CardTitle class="status-card-title"><MemoryStick />{{ $t('systemSettings.monitor.memory') }}</CardTitle><CardDescription>{{ $t('systemSettings.monitor.physicalMemory') }}</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>{{ $t('systemSettings.monitor.totalMemory') }}</dt><dd>{{ formatMemory(systemStatus.total_memory) }}</dd></div><div><dt>{{ $t('systemSettings.monitor.usedMemory') }}</dt><dd>{{ formatMemory(systemStatus.used_memory) }}</dd></div><div><dt>{{ $t('systemSettings.monitor.freeMemory') }}</dt><dd>{{ formatMemory(systemStatus.free_memory) }}</dd></div></dl><div class="usage-block"><div><span>{{ $t('systemSettings.monitor.usage') }}</span><strong>{{ clampPercent(systemStatus.memory_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.memory_usage)" :aria-label="$t('systemSettings.monitor.memoryUsageAria')" /></div></CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle class="status-card-title"><HardDrive />磁盘状态</CardTitle><CardDescription>管理后端所在磁盘</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>总空间</dt><dd>{{ systemStatus.total_disk }} GB</dd></div><div><dt>已用空间</dt><dd>{{ systemStatus.used_disk }} GB</dd></div><div><dt>空闲空间</dt><dd>{{ systemStatus.free_disk }} GB</dd></div></dl><div class="usage-block"><div><span>使用率</span><strong>{{ clampPercent(systemStatus.disk_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.disk_usage)" aria-label="磁盘使用率" /></div></CardContent>
+            <CardHeader><CardTitle class="status-card-title"><HardDrive />{{ $t('systemSettings.monitor.disk') }}</CardTitle><CardDescription>{{ $t('systemSettings.monitor.diskDescription') }}</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>{{ $t('systemSettings.monitor.totalSpace') }}</dt><dd>{{ systemStatus.total_disk }} GB</dd></div><div><dt>{{ $t('systemSettings.monitor.usedSpace') }}</dt><dd>{{ systemStatus.used_disk }} GB</dd></div><div><dt>{{ $t('systemSettings.monitor.freeSpace') }}</dt><dd>{{ systemStatus.free_disk }} GB</dd></div></dl><div class="usage-block"><div><span>{{ $t('systemSettings.monitor.usage') }}</span><strong>{{ clampPercent(systemStatus.disk_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.disk_usage)" :aria-label="$t('systemSettings.monitor.diskUsageAria')" /></div></CardContent>
           </Card>
         </div>
 
-        <div class="status-section-heading"><h3>程序状态</h3><Separator /></div>
+        <div class="status-section-heading"><h3>{{ $t('systemSettings.monitor.processSection') }}</h3><Separator /></div>
         <div class="status-grid process-status-grid">
           <Card>
-            <CardHeader><CardTitle class="status-card-title"><ChartNoAxesCombined />进程信息</CardTitle><CardDescription>当前管理后端进程</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>进程 ID</dt><dd>{{ systemStatus.process_id }}</dd></div><div><dt>运行时间</dt><dd>{{ systemStatus.process_uptime_fmt }}</dd></div><div><dt>物理内存</dt><dd>{{ systemStatus.process_memory_rss }} MB</dd></div><div><dt>虚拟内存</dt><dd>{{ systemStatus.process_memory_vms }} MB</dd></div><div><dt>线程数</dt><dd>{{ systemStatus.process_threads }}</dd></div></dl><div class="usage-block"><div><span>CPU 使用率</span><strong>{{ clampPercent(systemStatus.process_cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.process_cpu_usage)" aria-label="管理后端进程 CPU 使用率" /></div></CardContent>
+            <CardHeader><CardTitle class="status-card-title"><ChartNoAxesCombined />{{ $t('systemSettings.monitor.process') }}</CardTitle><CardDescription>{{ $t('systemSettings.monitor.processDescription') }}</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>{{ $t('systemSettings.monitor.processId') }}</dt><dd>{{ systemStatus.process_id }}</dd></div><div><dt>{{ $t('systemSettings.monitor.uptime') }}</dt><dd>{{ systemStatus.process_uptime_fmt }}</dd></div><div><dt>{{ $t('systemSettings.monitor.rss') }}</dt><dd>{{ systemStatus.process_memory_rss }} MB</dd></div><div><dt>{{ $t('systemSettings.monitor.vms') }}</dt><dd>{{ systemStatus.process_memory_vms }} MB</dd></div><div><dt>{{ $t('systemSettings.monitor.threads') }}</dt><dd>{{ systemStatus.process_threads }}</dd></div></dl><div class="usage-block"><div><span>{{ $t('systemSettings.monitor.processCpuUsage') }}</span><strong>{{ clampPercent(systemStatus.process_cpu_usage).toFixed(1) }}%</strong></div><UiProgress :model-value="clampPercent(systemStatus.process_cpu_usage)" :aria-label="$t('systemSettings.monitor.processCpuUsageAria')" /></div></CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle class="status-card-title"><CodeXml />Go 运行时</CardTitle><CardDescription>{{ systemStatus.go_version }}</CardDescription></CardHeader>
-            <CardContent><dl class="status-list"><div><dt>Goroutines</dt><dd>{{ systemStatus.go_routines }}</dd></div><div><dt>堆分配</dt><dd>{{ systemStatus.go_memory_alloc }} MB</dd></div><div><dt>系统分配</dt><dd>{{ systemStatus.go_memory_sys }} MB</dd></div><div><dt>堆对象数</dt><dd>{{ systemStatus.go_memory_heap_objs }}</dd></div><div><dt>GC 暂停</dt><dd>{{ (systemStatus.go_gc_pause / 1000000).toFixed(2) }} ms</dd></div><div><dt>GC 运行次数</dt><dd>{{ systemStatus.go_gc_runs }}</dd></div></dl></CardContent>
+            <CardHeader><CardTitle class="status-card-title"><CodeXml />{{ $t('systemSettings.monitor.goRuntime') }}</CardTitle><CardDescription>{{ systemStatus.go_version }}</CardDescription></CardHeader>
+            <CardContent><dl class="status-list"><div><dt>Goroutines</dt><dd>{{ systemStatus.go_routines }}</dd></div><div><dt>{{ $t('systemSettings.monitor.heapAllocated') }}</dt><dd>{{ systemStatus.go_memory_alloc }} MB</dd></div><div><dt>{{ $t('systemSettings.monitor.systemAllocated') }}</dt><dd>{{ systemStatus.go_memory_sys }} MB</dd></div><div><dt>{{ $t('systemSettings.monitor.heapObjects') }}</dt><dd>{{ systemStatus.go_memory_heap_objs }}</dd></div><div><dt>{{ $t('systemSettings.monitor.gcPause') }}</dt><dd>{{ (systemStatus.go_gc_pause / 1000000).toFixed(2) }} ms</dd></div><div><dt>{{ $t('systemSettings.monitor.gcRuns') }}</dt><dd>{{ systemStatus.go_gc_runs }}</dd></div></dl></CardContent>
           </Card>
         </div>
 
-        <div class="status-section-heading"><h3>系统时间</h3><Separator /></div>
+        <div class="status-section-heading"><h3>{{ $t('systemSettings.monitor.timeSection') }}</h3><Separator /></div>
         <Card>
-          <CardHeader><CardTitle class="status-card-title"><Clock3 />时间信息</CardTitle><CardDescription>主机启动与当前时间</CardDescription></CardHeader>
-          <CardContent><dl class="status-list time-status-list"><div><dt>系统运行时间</dt><dd>{{ systemStatus.uptime_formatted }}</dd></div><div><dt>当前时间</dt><dd>{{ systemStatus.current_time }}</dd></div><div><dt>启动时间</dt><dd>{{ systemStatus.start_time }}</dd></div></dl></CardContent>
+          <CardHeader><CardTitle class="status-card-title"><Clock3 />{{ $t('systemSettings.monitor.time') }}</CardTitle><CardDescription>{{ $t('systemSettings.monitor.timeDescription') }}</CardDescription></CardHeader>
+          <CardContent><dl class="status-list time-status-list"><div><dt>{{ $t('systemSettings.monitor.systemUptime') }}</dt><dd>{{ systemStatus.uptime_formatted }}</dd></div><div><dt>{{ $t('systemSettings.monitor.currentTime') }}</dt><dd>{{ systemStatus.current_time }}</dd></div><div><dt>{{ $t('systemSettings.monitor.startTime') }}</dt><dd>{{ systemStatus.start_time }}</dd></div></dl></CardContent>
         </Card>
         </template>
       </TabsContent>
@@ -327,24 +327,24 @@
 
     <UiDialog v-model:open="backupHistoryVisible">
       <DialogScrollContent class="sm:max-w-4xl">
-        <DialogHeader><DialogTitle>备份历史记录</DialogTitle><DialogDescription>所有已接管房间的真实备份文件。</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ $t('systemSettings.history.title') }}</DialogTitle><DialogDescription>{{ $t('systemSettings.history.description') }}</DialogDescription></DialogHeader>
         <div class="table-scroll">
           <ShadcnTable>
-            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>房间</TableHead><TableHead>文件名</TableHead><TableHead>大小</TableHead><TableHead>创建时间</TableHead><TableHead>状态</TableHead><TableHead class="table-actions-head">操作</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>{{ $t('systemSettings.history.room') }}</TableHead><TableHead>{{ $t('systemSettings.history.filename') }}</TableHead><TableHead>{{ $t('systemSettings.history.size') }}</TableHead><TableHead>{{ $t('systemSettings.history.createdAt') }}</TableHead><TableHead>{{ $t('systemSettings.history.status') }}</TableHead><TableHead class="table-actions-head">{{ $t('systemSettings.history.actions') }}</TableHead></TableRow></TableHeader>
             <TableBody>
-              <TableRow v-for="backup in backupHistory" :key="backup.id"><TableCell>{{ backup.id }}</TableCell><TableCell>{{ backup.roomName }}</TableCell><TableCell>{{ backup.filename }}</TableCell><TableCell>{{ backup.size }}</TableCell><TableCell>{{ backup.createTime }}</TableCell><TableCell><Badge :variant="backup.status === 'success' ? 'secondary' : 'destructive'">{{ backup.status === 'success' ? '成功' : '失败' }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton variant="outline" size="sm" :disabled="loading" @click="downloadBackup(backup)"><Download data-icon="inline-start" />下载</UiButton><UiButton variant="destructive" size="sm" :disabled="loading" @click="deleteBackup(backup)"><Trash2 data-icon="inline-start" />删除</UiButton></div></TableCell></TableRow>
+              <TableRow v-for="backup in backupHistory" :key="backup.id"><TableCell>{{ backup.id }}</TableCell><TableCell>{{ backup.roomName }}</TableCell><TableCell>{{ backup.filename }}</TableCell><TableCell>{{ backup.size }}</TableCell><TableCell>{{ backup.createTime }}</TableCell><TableCell><Badge :variant="backup.status === 'success' ? 'secondary' : 'destructive'">{{ $t(backup.status === 'success' ? 'systemSettings.history.success' : 'systemSettings.history.failed') }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton variant="outline" size="sm" :disabled="loading" @click="downloadBackup(backup)"><Download data-icon="inline-start" />{{ $t('systemSettings.history.download') }}</UiButton><UiButton variant="destructive" size="sm" :disabled="loading" @click="deleteBackup(backup)"><Trash2 data-icon="inline-start" />{{ $t('common.actions.delete') }}</UiButton></div></TableCell></TableRow>
               <TableEmpty v-if="backupHistory.length === 0" :colspan="7">
                 <Empty>
                   <EmptyHeader>
-                    <EmptyTitle>暂无备份记录</EmptyTitle>
-                    <EmptyDescription>当前已接管房间还没有可下载的备份。</EmptyDescription>
+                    <EmptyTitle>{{ $t('systemSettings.history.empty') }}</EmptyTitle>
+                    <EmptyDescription>{{ $t('systemSettings.history.emptyDescription') }}</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
               </TableEmpty>
             </TableBody>
           </ShadcnTable>
         </div>
-        <DialogFooter><UiButton variant="outline" @click="backupHistoryVisible = false">关闭</UiButton></DialogFooter>
+        <DialogFooter><UiButton variant="outline" @click="backupHistoryVisible = false">{{ $t('common.actions.close') }}</UiButton></DialogFooter>
       </DialogScrollContent>
     </UiDialog>
   </div>
@@ -638,6 +638,11 @@ export default {
         '--theme-background': preset.background
       };
     },
+    themePresetName(preset) {
+      const id = preset?.id || 'custom';
+      const key = `systemSettings.basic.themeNames.${id}`;
+      return this.$te(key) ? this.$t(key) : preset?.name || id;
+    },
     selectThemeById(id) {
       if (!id) return;
       this.selectTheme(themePresetById(id));
@@ -701,10 +706,10 @@ export default {
         const response = await systemV2API.settings();
         this.populateSettings(response);
         applySystemPreferences(response);
-        if (showMessage === true) toast.success('设置已刷新');
+        if (showMessage === true) toast.success(this.$t('systemSettings.feedback.refreshed'));
         return true;
       } catch (error) {
-        this.loadError = error.message || '读取系统设置失败';
+        this.loadError = error.message || this.$t('systemSettings.feedback.loadFailed');
         toast.error(this.loadError);
         return false;
       } finally {
@@ -727,29 +732,29 @@ export default {
       this.resetFormErrors(fields);
       if (!this.settings.emailNotification) return true;
 
-      if (!String(this.settings.smtpServer || '').trim()) this.formErrors.smtpServer = '请输入 SMTP 服务器地址';
-      if (!String(this.settings.smtpUsername || '').trim()) this.formErrors.smtpUsername = '请输入 SMTP 用户名';
-      if (!String(this.settings.smtpPassword || '').trim() && !this.smtpPasswordConfigured) this.formErrors.smtpPassword = '请输入 SMTP 密码';
+      if (!String(this.settings.smtpServer || '').trim()) this.formErrors.smtpServer = this.$t('systemSettings.validation.smtpServerRequired');
+      if (!String(this.settings.smtpUsername || '').trim()) this.formErrors.smtpUsername = this.$t('systemSettings.validation.smtpUsernameRequired');
+      if (!String(this.settings.smtpPassword || '').trim() && !this.smtpPasswordConfigured) this.formErrors.smtpPassword = this.$t('systemSettings.validation.smtpPasswordRequired');
       if (includeSender) {
-        if (!String(this.settings.senderEmail || '').trim()) this.formErrors.senderEmail = '请输入发件人邮箱';
-        else if (!this.isValidEmail(this.settings.senderEmail)) this.formErrors.senderEmail = '请输入正确的邮箱地址';
+        if (!String(this.settings.senderEmail || '').trim()) this.formErrors.senderEmail = this.$t('systemSettings.validation.senderEmailRequired');
+        else if (!this.isValidEmail(this.settings.senderEmail)) this.formErrors.senderEmail = this.$t('systemSettings.validation.emailInvalid');
       }
       return fields.every(field => !this.formErrors[field]);
     },
     validateSettings() {
       this.resetFormErrors();
-      if (!String(this.settings.systemName || '').trim()) this.formErrors.systemName = '请输入系统名称';
+      if (!String(this.settings.systemName || '').trim()) this.formErrors.systemName = this.$t('systemSettings.validation.systemNameRequired');
       if (String(this.settings.adminEmail || '').trim() && !this.isValidEmail(this.settings.adminEmail)) {
-        this.formErrors.adminEmail = '请输入正确的邮箱地址';
+        this.formErrors.adminEmail = this.$t('systemSettings.validation.emailInvalid');
       }
       if (this.settings.emailNotification && !String(this.settings.adminEmail || '').trim()) {
-        this.formErrors.adminEmail = '启用邮件通知时必须填写管理员联系邮箱';
+        this.formErrors.adminEmail = this.$t('systemSettings.validation.adminEmailRequired');
       }
       const emailValid = this.validateEmailFields(true);
       const basicValid = !this.formErrors.systemName && !this.formErrors.adminEmail;
       if (!basicValid) this.activeTab = 'basic';
       else if (!emailValid) this.activeTab = 'notification';
-      if (!basicValid || !emailValid) toast.warning('请检查表单中的错误');
+      if (!basicValid || !emailValid) toast.warning(this.$t('systemSettings.validation.checkForm'));
       return basicValid && emailValid;
     },
     settingsInput() {
@@ -794,10 +799,10 @@ export default {
         const preview = await systemV2API.previewSettings(input);
         if (!preview.valid) {
           const messages = preview.issues.filter(issue => issue.severity === 'error').map(issue => issue.message);
-          throw new Error(messages.join('；') || '系统设置校验失败');
+          throw new Error(messages.join('; ') || this.$t('systemSettings.validation.settingsInvalid'));
         }
         if (preview.changes.length === 0) {
-          toast.info('设置没有变化');
+          toast.info(this.$t('systemSettings.feedback.unchanged'));
           return;
         }
         const result = await systemV2API.applySettings({ ...input, confirmation: APPLY_CONFIRMATION });
@@ -812,29 +817,30 @@ export default {
         this.populateSettings(result.settings);
         applySystemPreferences(result.settings);
         const refreshed = await this.loadSettings(false);
-        const suffix = result.settings.restartRequired ? '；路径或运行参数需要重启服务后生效' : '';
         if (!refreshed) {
-          toast.warning('系统设置已保存，但刷新最新设置失败，请稍后手动刷新');
+          toast.warning(this.$t('systemSettings.feedback.refreshAfterSaveFailed'));
         } else if (backupPolicyError) {
-          toast.warning(`系统设置已保存，但房间备份策略同步失败：${backupPolicyError.message || '未知错误'}`);
+          toast.warning(this.$t('systemSettings.feedback.backupSyncFailed', { error: backupPolicyError.message || this.$t('common.errors.unknown') }));
         } else {
-          toast.success(`设置已保存并生效${suffix}`);
+          toast.success(result.settings.restartRequired
+            ? this.$t('systemSettings.feedback.savedRestartRequired', { reason: this.$t('systemSettings.feedback.restartRequired') })
+            : this.$t('systemSettings.feedback.saved'));
         }
       } catch (error) {
-        toast.error(error.message || '保存系统设置失败');
+        toast.error(error.message || this.$t('systemSettings.feedback.saveFailed'));
       } finally {
         this.loading = false;
       }
     },
     async resetSettings() {
       try {
-        await confirmAction('确定放弃当前未保存的修改，并重新读取服务器设置吗？', '重置系统设置', {
-          confirmButtonText: '确定重置',
-          cancelButtonText: '取消'
+        await confirmAction(this.$t('systemSettings.feedback.resetConfirm'), this.$t('systemSettings.feedback.resetTitle'), {
+          confirmButtonText: this.$t('systemSettings.feedback.resetConfirmButton'),
+          cancelButtonText: this.$t('common.actions.cancel')
         });
         await this.loadSettings(false);
       } catch (error) {
-        if (error !== 'cancel' && error !== 'close') toast.error(error.message || '重置系统设置失败');
+        if (error !== 'cancel' && error !== 'close') toast.error(error.message || this.$t('systemSettings.feedback.resetFailed'));
       }
     },
     backupIntervalMinutes() {
@@ -865,13 +871,13 @@ export default {
       this.loading = true;
       try {
         const rooms = await this.managedRooms();
-        if (rooms.length === 0) throw new Error('没有已接管的房间可以备份');
+        if (rooms.length === 0) throw new Error(this.$t('systemSettings.feedback.noManagedRooms'));
         const jobs = await Promise.all(rooms.map(room => backupsV2API.create(room.id)));
         await this.waitForJobs(jobs);
         await this.loadBackupHistory();
-        toast.success(`已完成 ${rooms.length} 个房间的真实备份`);
+        toast.success(this.$t('systemSettings.feedback.backupCompleted', { count: rooms.length }));
       } catch (error) {
-        toast.error(error.message || '创建备份失败');
+        toast.error(error.message || this.$t('systemSettings.feedback.backupCreateFailed'));
       } finally {
         this.loading = false;
       }
@@ -883,9 +889,9 @@ export default {
         if (current.every(job => TERMINAL_SYSTEM_JOB_STATES.has(job.status))) break;
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      if (current.some(job => !TERMINAL_SYSTEM_JOB_STATES.has(job.status))) throw new Error('备份任务仍在执行，请稍后查看历史记录');
+      if (current.some(job => !TERMINAL_SYSTEM_JOB_STATES.has(job.status))) throw new Error(this.$t('systemSettings.feedback.backupRunning'));
       const failed = current.find(job => job.status !== 'succeeded');
-      if (failed) throw new Error(failed.error?.message || '部分房间备份失败');
+      if (failed) throw new Error(failed.error?.message || this.$t('systemSettings.feedback.backupPartialFailure'));
     },
     async loadBackupHistory() {
       const response = await roomsV2API.list();
@@ -907,7 +913,7 @@ export default {
         await this.loadBackupHistory();
         this.backupHistoryVisible = true;
       } catch (error) {
-        toast.error(error.message || '读取备份历史失败');
+        toast.error(error.message || this.$t('systemSettings.feedback.historyLoadFailed'));
       } finally {
         this.loading = false;
       }
@@ -921,7 +927,7 @@ export default {
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
-          throw new Error(payload?.error?.message || `下载失败（HTTP ${response.status}）`);
+          throw new Error(payload?.error?.message || this.$t('systemSettings.feedback.downloadHttpFailed', { status: response.status }));
         }
         const url = URL.createObjectURL(await response.blob());
         const link = document.createElement('a');
@@ -932,32 +938,32 @@ export default {
         link.remove();
         URL.revokeObjectURL(url);
       } catch (error) {
-        toast.error(error.message || '下载备份失败');
+        toast.error(error.message || this.$t('systemSettings.feedback.downloadFailed'));
       } finally {
         this.loading = false;
       }
     },
     async deleteBackup(backup) {
       try {
-        await confirmAction(`确定要删除备份：${backup.filename}吗？`, '删除备份', {
-          confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning'
+        await confirmAction(this.$t('systemSettings.feedback.deleteConfirm', { filename: backup.filename }), this.$t('systemSettings.feedback.deleteTitle'), {
+          confirmButtonText: this.$t('common.actions.delete'), cancelButtonText: this.$t('common.actions.cancel'), type: 'warning'
         });
         this.loading = true;
         try {
           await backupsV2API.delete(backup.id, backup.name);
           await this.loadBackupHistory();
-          toast.success('备份已删除');
+          toast.success(this.$t('systemSettings.feedback.deleted'));
         } finally {
           this.loading = false;
         }
       } catch (error) {
-        if (error !== 'cancel' && error !== 'close') toast.error(error.message || '删除备份失败');
+        if (error !== 'cancel' && error !== 'close') toast.error(error.message || this.$t('systemSettings.feedback.deleteFailed'));
       }
     },
     async testEmailConnection() {
       if (!this.validateEmailFields(false)) {
         this.activeTab = 'notification';
-        toast.warning('请检查 SMTP 连接参数');
+        toast.warning(this.$t('systemSettings.feedback.smtpCheckForm'));
         return;
       }
       this.loading = true;
@@ -968,9 +974,9 @@ export default {
           username: this.settings.smtpUsername,
           password: this.settings.smtpPassword
         });
-        toast.success(`SMTP 连接与认证成功（${result.tls ? 'TLS' : '本机明文连接'}）`);
+        toast.success(this.$t('systemSettings.feedback.smtpSucceeded', { transport: result.tls ? 'TLS' : this.$t('systemSettings.feedback.localPlaintext') }));
       } catch (error) {
-        toast.error(error.details?.reason || error.message || 'SMTP 连接测试失败');
+        toast.error(error.details?.reason || error.message || this.$t('systemSettings.feedback.smtpFailed'));
       } finally {
         this.loading = false;
       }
@@ -986,15 +992,15 @@ export default {
           if (res && res.data && res.status === 200) {
             this.systemStatus = res.data;
             this.statusLoaded = true;
-            toast.success('系统状态已刷新');
+            toast.success(this.$t('systemSettings.feedback.statusRefreshed'));
           } else {
-            this.statusError = res?.msg || '未知错误';
-            toast.error('获取系统状态失败：' + this.statusError);
+            this.statusError = res?.msg || this.$t('common.errors.unknown');
+            toast.error(this.$t('systemSettings.feedback.statusLoadFailed', { error: this.statusError }));
           }
         })
         .catch(err => {
-          this.statusError = err.message || '未知错误';
-          toast.error('获取系统状态失败：' + this.statusError);
+          this.statusError = err.message || this.$t('common.errors.unknown');
+          toast.error(this.$t('systemSettings.feedback.statusLoadFailed', { error: this.statusError }));
         })
         .finally(() => {
           this.statusLoading = false;
@@ -1010,7 +1016,7 @@ export default {
     },
     formatDateTime(value) {
       if (!value) return '';
-      return new Intl.DateTimeFormat('zh-CN', {
+      return new Intl.DateTimeFormat(this.settings.language || 'zh-CN', {
         timeZone: this.settings.timezone,
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
