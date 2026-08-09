@@ -955,7 +955,7 @@ export default {
         const response = await logApi.cleanupLog(this.cleanupForm);
 
         if (response && response.status === 200) {
-          toast.success(response.msg || this.$t('logs.query.feedback.cleanupSuccess'));
+          toast.success(this.$t('logs.query.feedback.cleanupSuccess'));
           // 关闭对话框
           this.cleanupDialogVisible = false;
           // 重新查询日志，刷新列表

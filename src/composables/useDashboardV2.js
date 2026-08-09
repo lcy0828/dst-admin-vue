@@ -180,8 +180,8 @@ export function useDashboardV2() {
     serverLoading.value = true
     try {
       const input = { room_id: server.room_id, world_id: server.world_id }
-      const response = running ? await roomApi.stopRoom(input) : await roomApi.startRoom(input)
-      toast.success(response.msg || translate('dashboard.feedback.actionCompleted', { action }))
+      await (running ? roomApi.stopRoom(input) : roomApi.startRoom(input))
+      toast.success(translate('dashboard.feedback.actionCompleted', { action }))
       await refreshServers()
     } catch (error) {
       toast.error(translate('dashboard.feedback.actionFailed', { action, error: error.message || translate('common.errors.unknown') }))
@@ -198,11 +198,11 @@ export function useDashboardV2() {
     }
     serverLoading.value = true
     try {
-      const response = await roomApi.startRoom({
+      await roomApi.startRoom({
         room_id: room.id,
         world_ids: startableWorlds.map(world => world.id)
       })
-      toast.success(response.msg || translate('dashboard.feedback.roomStarted', { room: room.name }))
+      toast.success(translate('dashboard.feedback.roomStarted', { room: room.name }))
       await refreshServers()
       return true
     } catch (error) {
@@ -228,8 +228,8 @@ export function useDashboardV2() {
 
     serverLoading.value = true
     try {
-      const response = await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id })
-      toast.success(response.msg || translate('dashboard.feedback.cleanupSucceeded'))
+      await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id })
+      toast.success(translate('dashboard.feedback.cleanupSucceeded'))
       await refreshServers()
     } catch (error) {
       toast.error(translate('dashboard.feedback.cleanupFailed', { error: error.message || translate('common.errors.unknown') }))
@@ -274,7 +274,7 @@ export function useDashboardV2() {
       const jobId = response.data?.session_name
       if (!jobId) throw new Error(response.msg || translate('dashboard.feedback.invalidUpdateResponse'))
       sessionStorage.setItem('dstUpdateSessionName', jobId)
-      toast.success(response.msg || translate('dashboard.feedback.updateSubmitted'))
+      toast.success(translate('dashboard.feedback.updateSubmitted'))
       await pollUpdateStatus(jobId)
       if (!updateStatus.value?.is_completed && !updateStatus.value?.error) {
         updateTimer = setInterval(() => pollUpdateStatus(jobId), 3000)
