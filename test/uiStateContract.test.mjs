@@ -65,5 +65,25 @@ test('room settings keeps tabs above content and switches in stable fields', asy
   assert.match(roomSettings, /orientation="horizontal"/)
   assert.match(roomSettings, /class="settings-tabs-nav"/)
   assert.match(roomSettings, /\.settings-tabs\s*\{[^}]*flex-direction:\s*column/s)
+  assert.match(roomSettings, /\.settings-tab-list\s*\{[^}]*max-width:\s*none/s)
+  assert.match(roomSettings, /'setting-field--switch': field\.type === 'switch'/)
+  assert.match(roomSettings, /\.setting-field--switch\s*\{[^}]*min-height:\s*72px/s)
   assert.match(roomSettings, /data-slot='switch'.{0,80}flex:\s*none/s)
+})
+
+test('settings pages preserve dirty state and only show relevant save actions', async () => {
+  const [roomSettings, worldSettings, systemSettings] = await Promise.all([
+    source('src/views/rooms/RoomSettings.vue'),
+    source('src/views/worlds/WorldSettings.vue'),
+    source('src/views/SystemSettings.vue')
+  ])
+
+  assert.match(roomSettings, /baselineFingerprint/)
+  assert.match(roomSettings, /this\.activeTab = invalidSection\.key/)
+  assert.match(roomSettings, /async beforeRouteLeave\(\)/)
+  assert.match(roomSettings, /saving:\s*false/)
+  assert.match(worldSettings, /v-if="!loadError && showWorldSettingsFooter"/)
+  assert.match(worldSettings, /\['worldgen', 'worldsettings'\]\.includes\(this\.worldSectionTab\)/)
+  assert.match(systemSettings, /class="settings-tab-trigger"/)
+  assert.match(systemSettings, /\.settings-tabs\s*\{[^}]*max-width:\s*none/s)
 })

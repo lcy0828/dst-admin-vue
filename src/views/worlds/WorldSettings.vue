@@ -1,5 +1,5 @@
 <template>
-  <div class="world-settings-container">
+  <div class="world-settings-container" :class="{ 'has-fixed-footer': showWorldSettingsFooter }">
     <section class="settings-surface">
       <header class="page-header">
         <div>
@@ -16,7 +16,7 @@
         </div>
       </header>
 
-      <Card>
+      <Card size="sm" class="room-picker-card">
         <CardHeader>
           <CardTitle>选择房间</CardTitle>
           <CardDescription>世界设置会直接读写所选房间的真实配置。</CardDescription>
@@ -54,7 +54,7 @@
 
       <Tabs v-if="!loadError && roomId" v-model="activeTab" orientation="horizontal" class="world-tabs">
         <div class="world-tabs-toolbar">
-          <TabsList class="world-tab-list">
+          <TabsList class="world-tab-list" aria-label="世界列表">
             <TabsTrigger v-for="world in visibleWorlds" :key="world.name" :value="world.name">
               {{ world.name }}{{ world.type === 'forest' ? ' · 森林' : world.type === 'cave' ? ' · 洞穴' : '' }}
             </TabsTrigger>
@@ -73,7 +73,7 @@
         </div>
 
         <TabsContent v-for="world in visibleWorlds" :key="world.name" :value="world.name">
-          <Card>
+          <Card size="sm" class="world-settings-card">
             <CardHeader>
               <CardTitle class="world-heading">
                 <Sun v-if="world.type === 'forest'" />
@@ -85,11 +85,11 @@
             </CardHeader>
             <CardContent>
               <Tabs v-model="worldSectionTab" orientation="horizontal" class="world-section-tabs">
-                <TabsList class="section-tab-list">
-                  <TabsTrigger value="worldgen">世界生成组</TabsTrigger>
-                  <TabsTrigger value="worldsettings">世界设置组</TabsTrigger>
-                  <TabsTrigger value="server-ini">基础配置</TabsTrigger>
-                  <TabsTrigger value="mods">模组配置</TabsTrigger>
+                <TabsList variant="line" class="section-tab-list" aria-label="世界配置分类">
+                  <TabsTrigger value="worldgen"><Sparkles />世界生成</TabsTrigger>
+                  <TabsTrigger value="worldsettings"><SlidersHorizontal />世界规则</TabsTrigger>
+                  <TabsTrigger value="server-ini"><ServerCog />基础配置</TabsTrigger>
+                  <TabsTrigger value="mods"><Package />模组配置</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="worldgen">
@@ -206,10 +206,9 @@
         </EmptyHeader>
       </Empty>
 
-      <div class="footer-spacer" aria-hidden="true"></div>
     </section>
 
-    <div v-if="!loadError" id="settings-fixed-footer">
+    <div v-if="!loadError && showWorldSettingsFooter" id="settings-fixed-footer">
       <settings-footer
         :has-changes="hasChanges"
         :loading="loading"
@@ -268,7 +267,7 @@
 </template>
 
 <script>
-import { Globe2, Moon, Package, Plus, RefreshCw, Sun, Trash2, TriangleAlert } from '@lucide/vue';
+import { Globe2, Moon, Package, Plus, RefreshCw, ServerCog, SlidersHorizontal, Sparkles, Sun, Trash2, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import WorldSettingsPanel from '@/components/worlds/WorldSettingsPanel.vue';
 import SettingsFooter from '@/components/worlds/SettingsFooter.vue';
@@ -328,8 +327,11 @@ export default {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    ServerCog,
     SettingsFooter,
+    SlidersHorizontal,
     Skeleton,
+    Sparkles,
     Spinner,
     Sun,
     Tabs,
@@ -622,6 +624,10 @@ export default {
     
     currentWorld() {
       return this.visibleWorlds.find(world => world.name === this.activeTab) || this.visibleWorlds[0] || null;
+    },
+
+    showWorldSettingsFooter() {
+      return Boolean(this.currentWorld && ['worldgen', 'worldsettings'].includes(this.worldSectionTab));
     },
 
     roomHasRunningWorld() {
@@ -1838,6 +1844,9 @@ export default {
 .world-settings-container {
   width: 100%;
   min-width: 0;
+}
+
+.world-settings-container.has-fixed-footer {
   padding-bottom: 88px;
 }
 
@@ -1883,6 +1892,15 @@ export default {
   margin: 0;
 }
 
+.room-picker-card :deep([data-slot='card-header']),
+.world-settings-card > :deep([data-slot='card-header']) {
+  border-bottom: 1px solid var(--border);
+}
+
+.room-picker-card :deep([data-slot='field']) {
+  max-width: 560px;
+}
+
 .world-tabs,
 .world-section-tabs {
   display: flex;
@@ -1893,15 +1911,43 @@ export default {
 }
 
 .world-tabs-toolbar {
+  min-width: 0;
   justify-content: space-between;
   gap: 8px;
 }
 
-.world-tab-list,
-.section-tab-list {
+.world-tab-list {
+  min-width: 0;
+  flex: 1;
   max-width: 100%;
   justify-content: flex-start;
   overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.world-tab-list :deep([data-slot='tabs-trigger']) {
+  min-width: max-content;
+  flex: none;
+  padding-right: 12px;
+  padding-left: 12px;
+}
+
+.section-tab-list {
+  width: max-content;
+  min-width: 100%;
+  height: auto;
+  max-width: none;
+  justify-content: flex-start;
+  padding: 0 0 8px;
+  overflow: visible;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-tab-list :deep([data-slot='tabs-trigger']) {
+  min-height: 32px;
+  flex: none;
+  padding-right: 12px;
+  padding-left: 12px;
 }
 
 .world-heading {
@@ -1932,13 +1978,17 @@ export default {
   gap: 20px 24px;
 }
 
+.server-ini-grid :deep([data-slot='field'][data-orientation='horizontal']) {
+  min-height: 72px;
+  padding: 12px 14px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
 .form-actions {
   grid-column: 1 / -1;
   justify-content: flex-end;
-}
-
-.footer-spacer {
-  height: 72px;
 }
 
 #settings-fixed-footer {
@@ -1952,6 +2002,11 @@ export default {
   border-top: 1px solid var(--border);
   background: var(--background);
   box-shadow: 0 -3px 14px color-mix(in srgb, var(--foreground) 10%, transparent);
+  z-index: 9;
+}
+
+:global([data-slot='sidebar-wrapper']:has([data-slot='sidebar'][data-state='collapsed'])) #settings-fixed-footer {
+  left: var(--sidebar-width-icon, 3rem);
 }
 
 @media (max-width: 768px) {
@@ -1968,6 +2023,10 @@ export default {
     align-items: flex-start;
   }
 
+  .world-tab-list {
+    min-width: 0;
+  }
+
   .server-ini-grid {
     grid-template-columns: 1fr;
   }
@@ -1975,6 +2034,10 @@ export default {
   #settings-fixed-footer {
     left: 0;
     padding: 8px 12px;
+  }
+
+  .world-settings-container.has-fixed-footer {
+    padding-bottom: 128px;
   }
 }
 </style>

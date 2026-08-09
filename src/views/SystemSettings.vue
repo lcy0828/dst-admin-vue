@@ -19,16 +19,16 @@
     <Tabs v-else v-model="activeTab" class="settings-tabs-root">
       <div class="settings-tabs-scroll">
         <TabsList variant="line" class="settings-tabs">
-          <TabsTrigger value="basic">基本设置</TabsTrigger>
-          <TabsTrigger value="security">安全设置</TabsTrigger>
-          <TabsTrigger value="backup">备份设置</TabsTrigger>
-          <TabsTrigger value="notification">通知设置</TabsTrigger>
-          <TabsTrigger value="systemStatus">高级系统状态</TabsTrigger>
+          <TabsTrigger value="basic" class="settings-tab-trigger"><Settings2 />基本设置</TabsTrigger>
+          <TabsTrigger value="security" class="settings-tab-trigger"><ShieldCheck />安全设置</TabsTrigger>
+          <TabsTrigger value="backup" class="settings-tab-trigger"><DatabaseBackup />备份设置</TabsTrigger>
+          <TabsTrigger value="notification" class="settings-tab-trigger"><BellRing />通知设置</TabsTrigger>
+          <TabsTrigger value="systemStatus" class="settings-tab-trigger"><Activity />系统状态</TabsTrigger>
         </TabsList>
       </div>
 
-      <TabsContent value="basic">
-        <Card>
+      <TabsContent value="basic" class="settings-tab-content">
+        <Card size="sm" class="settings-card">
           <CardHeader>
             <CardTitle>基本设置</CardTitle>
             <CardDescription>设置管理系统的显示名称、地区格式和界面主题。</CardDescription>
@@ -130,8 +130,8 @@
         </Card>
       </TabsContent>
 
-      <TabsContent value="security">
-        <Card>
+      <TabsContent value="security" class="settings-tab-content">
+        <Card size="sm" class="settings-card">
           <CardHeader><CardTitle>安全设置</CardTitle><CardDescription>控制登录密码、会话和管理端访问范围。</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
@@ -169,8 +169,8 @@
         </Card>
       </TabsContent>
 
-      <TabsContent value="backup">
-        <Card>
+      <TabsContent value="backup" class="settings-tab-content">
+        <Card size="sm" class="settings-card">
           <CardHeader><CardTitle>备份设置</CardTitle><CardDescription>为所有已接管房间同步真实备份策略。</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
@@ -214,8 +214,8 @@
         </Card>
       </TabsContent>
 
-      <TabsContent value="notification">
-        <Card>
+      <TabsContent value="notification" class="settings-tab-content">
+        <Card size="sm" class="settings-card">
           <CardHeader><CardTitle>通知设置</CardTitle><CardDescription>配置 SMTP 连接；通知事件开关将在后续版本开放。</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
@@ -263,7 +263,7 @@
         </Card>
       </TabsContent>
 
-      <TabsContent value="systemStatus">
+      <TabsContent value="systemStatus" class="settings-tab-content">
         <div class="status-header">
           <div><h2>系统详细监控</h2><p>查看当前运行管理后端的主机与 Go 进程状态。</p></div>
           <UiButton size="sm" :disabled="statusLoading" @click="refreshSystemStatus"><Spinner v-if="statusLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新状态</UiButton>
@@ -353,6 +353,7 @@
 <script>
 import {
   Activity,
+  BellRing,
   ChartNoAxesCombined,
   CircleAlert,
   Clock3,
@@ -367,6 +368,8 @@ import {
   RotateCcw,
   Save,
   Send,
+  Settings2,
+  ShieldCheck,
   Trash2
 } from '@lucide/vue';
 import { systemApi } from '@/api';
@@ -406,6 +409,7 @@ export default {
     AlertDescription,
     AlertTitle,
     Badge,
+    BellRing,
     Card,
     CardContent,
     CardDescription,
@@ -449,6 +453,8 @@ export default {
     SelectTrigger,
     SelectValue,
     Send,
+    Settings2,
+    ShieldCheck,
     Separator,
     ShadcnTable,
     Skeleton,
@@ -1048,16 +1054,47 @@ export default {
 .settings-tabs-scroll {
   width: 100%;
   overflow-x: auto;
-  padding: 0 2px 6px;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
   scrollbar-width: thin;
 }
 
 .settings-tabs {
-  min-width: max-content;
+  width: max-content;
+  min-width: 100%;
+  height: auto;
+  max-width: none;
+  justify-content: flex-start;
+  padding: 0 0 8px;
+  overflow: visible;
+}
+
+.settings-tab-trigger {
+  min-height: 32px;
+  flex: none;
+  padding-right: 12px;
+  padding-left: 12px;
+}
+
+.settings-tab-content {
+  min-width: 0;
+  margin: 0;
+}
+
+.settings-card > :deep([data-slot='card-header']) {
+  border-bottom: 1px solid var(--border);
 }
 
 .settings-form {
   max-width: 960px;
+}
+
+.settings-form > :deep([data-slot='field'][data-orientation='horizontal']) {
+  min-height: 72px;
+  padding: 12px 14px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .setting-control {

@@ -2,22 +2,29 @@
   <div class="room-settings-page">
     <header class="page-header">
       <div class="title-section">
-        <h1>{{ isEdit ? '编辑房间' : '创建房间' }}</h1>
-        <p>{{ isEdit ? '修改现有房间配置' : '创建全新的游戏房间' }}</p>
+        <div class="title-row">
+          <h1>{{ isEdit ? '编辑房间' : '创建房间' }}</h1>
+          <span class="change-state" :data-dirty="unsavedChanges">
+            <span class="change-state-dot" aria-hidden="true"></span>
+            {{ changeStateLabel }}
+          </span>
+        </div>
+        <p>{{ isEdit ? '修改游戏规则、联网方式和分片参数。' : '完成基础配置后创建新的游戏房间。' }}</p>
+        <code v-if="isEdit && roomId" class="room-reference">{{ roomId }}</code>
       </div>
       <div class="header-actions">
         <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回</UiButton>
-        <UiButton @click="saveSettings" :disabled="loading || Boolean(loadError)">
-          <Spinner v-if="loading" data-icon="inline-start" />
+        <UiButton @click="saveSettings" :disabled="saveDisabled">
+          <Spinner v-if="saving" data-icon="inline-start" />
           <Save v-else data-icon="inline-start" />
-          保存
+          {{ saveButtonLabel }}
         </UiButton>
       </div>
     </header>
 
-    <div v-if="loading" class="loading-state">
+    <div v-if="loading && !saving" class="loading-state">
       <Spinner />
-      <span>{{ isEdit ? '正在处理房间配置' : '正在创建房间' }}</span>
+      <span>正在加载房间配置</span>
     </div>
 
     <Alert v-if="loadError" variant="destructive" class="error-alert">
@@ -32,7 +39,7 @@
       </AlertDescription>
     </Alert>
 
-    <Alert v-if="formErrors.length > 0" variant="destructive" class="error-alert">
+    <Alert v-if="formErrors.length > 0" ref="validationAlert" variant="destructive" class="error-alert" tabindex="-1">
       <TriangleAlert />
       <AlertTitle>表单验证失败</AlertTitle>
       <AlertDescription>
@@ -42,10 +49,11 @@
       </AlertDescription>
     </Alert>
 
-    <Card v-if="!isEdit" class="save-name-card">
+    <Card v-if="!isEdit" size="sm" class="save-name-card">
       <CardHeader>
-        <CardTitle>房间标识</CardTitle>
+        <CardTitle class="section-title"><FolderKey />房间标识</CardTitle>
         <CardDescription>房间存档名称创建后不可修改。</CardDescription>
+        <CardAction><Badge variant="outline">创建后锁定</Badge></CardAction>
       </CardHeader>
       <CardContent>
         <FieldGroup>
@@ -56,6 +64,8 @@
               v-model.trim="saveNameForm.savename"
               placeholder="请输入房间存档名称，如 room1"
               :aria-invalid="Boolean(saveNameError)"
+              autocomplete="off"
+              @input="clearSaveNameError"
             />
             <FieldDescription>仅支持字母、数字和下划线。</FieldDescription>
             <FieldError v-if="saveNameError">{{ saveNameError }}</FieldError>
@@ -66,17 +76,18 @@
 
     <Tabs v-if="!loadError" v-model="activeTab" orientation="horizontal" class="settings-tabs">
       <div class="settings-tabs-nav">
-        <TabsList variant="line" class="settings-tab-list">
-          <TabsTrigger v-for="section in settingsSections" :key="section.key" :value="section.key">
+        <TabsList variant="line" class="settings-tab-list" aria-label="房间设置分类">
+          <TabsTrigger v-for="section in settingsSections" :key="section.key" :value="section.key" class="settings-tab-trigger">
+            <component :is="section.icon" />
             {{ section.tabLabel }}
           </TabsTrigger>
-          <TabsTrigger value="special-lists">特殊名单</TabsTrigger>
-          <TabsTrigger value="token">服务器令牌</TabsTrigger>
+          <TabsTrigger value="special-lists" class="settings-tab-trigger"><ListChecks />特殊名单</TabsTrigger>
+          <TabsTrigger value="token" class="settings-tab-trigger"><KeyRound />服务器令牌</TabsTrigger>
         </TabsList>
       </div>
 
-      <TabsContent v-for="section in settingsSections" :key="section.key" :value="section.key">
-        <Card>
+      <TabsContent v-for="section in settingsSections" :key="section.key" :value="section.key" class="settings-tab-content">
+        <Card size="sm" class="settings-section-card">
           <CardHeader>
             <CardTitle class="section-title">
               <component :is="section.icon" />
@@ -91,15 +102,24 @@
                 :key="field.key"
                 :orientation="field.type === 'switch' ? 'horizontal' : 'vertical'"
                 :data-invalid="isFieldInvalid(field.key)"
-                class="setting-field"
+                :data-disabled="isFieldDisabled(field) || undefined"
+                :class="[
+                  'setting-field',
+                  {
+                    'setting-field--switch': field.type === 'switch',
+                    'setting-field--wide': field.type === 'textarea'
+                  }
+                ]"
               >
                 <FieldContent>
-                  <FieldLabel :for="`room-setting-${field.key}`">{{ field.label }}</FieldLabel>
+                  <FieldLabel :for="`room-setting-${field.key}`">
+                    {{ field.label }}<span v-if="field.required" class="required-indicator" aria-hidden="true">*</span>
+                  </FieldLabel>
                   <FieldDescription>{{ field.description }}</FieldDescription>
                   <FieldError v-if="isFieldInvalid(field.key)">{{ getFieldError(field.key) }}</FieldError>
                 </FieldContent>
 
-                <UiSelect v-if="field.type === 'select'" v-model="form[field.key]">
+                <UiSelect v-if="field.type === 'select'" v-model="form[field.key]" :disabled="isFieldDisabled(field)" @update:model-value="clearFieldError(field.key)">
                   <SelectTrigger :id="`room-setting-${field.key}`" :aria-invalid="isFieldInvalid(field.key)">
                     <SelectValue :placeholder="field.placeholder || '请选择'" />
                   </SelectTrigger>
@@ -118,6 +138,8 @@
                   v-model="form[field.key]"
                   :rows="field.rows || 3"
                   :aria-invalid="isFieldInvalid(field.key)"
+                  :disabled="isFieldDisabled(field)"
+                  @input="clearFieldError(field.key)"
                 />
 
                 <UiSwitch
@@ -125,7 +147,33 @@
                   :id="`room-setting-${field.key}`"
                   v-model="form[field.key]"
                   :aria-invalid="isFieldInvalid(field.key)"
+                  :disabled="isFieldDisabled(field)"
+                  @update:model-value="clearFieldError(field.key)"
                 />
+
+                <InputGroup v-else-if="field.sensitive">
+                  <InputGroupInput
+                    :id="`room-setting-${field.key}`"
+                    v-model="form[field.key]"
+                    :type="revealedFields[field.key] ? 'text' : 'password'"
+                    :placeholder="field.placeholder"
+                    :autocomplete="field.autocomplete || 'off'"
+                    :aria-invalid="isFieldInvalid(field.key)"
+                    :required="field.required"
+                    :disabled="isFieldDisabled(field)"
+                    @input="clearFieldError(field.key)"
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      :aria-label="revealedFields[field.key] ? `隐藏${field.label}` : `显示${field.label}`"
+                      :title="revealedFields[field.key] ? `隐藏${field.label}` : `显示${field.label}`"
+                      @click="toggleSensitiveField(field.key)"
+                    >
+                      <EyeOff v-if="revealedFields[field.key]" />
+                      <Eye v-else />
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                </InputGroup>
 
                 <UiInput
                   v-else
@@ -136,6 +184,10 @@
                   :max="field.max"
                   :placeholder="field.placeholder"
                   :aria-invalid="isFieldInvalid(field.key)"
+                  :required="field.required"
+                  :autocomplete="field.autocomplete || 'off'"
+                  :disabled="isFieldDisabled(field)"
+                  @input="clearFieldError(field.key)"
                   @change="normalizeNumberField(field)"
                 />
               </Field>
@@ -144,11 +196,11 @@
         </Card>
       </TabsContent>
 
-      <TabsContent value="special-lists">
+      <TabsContent value="special-lists" class="settings-tab-content">
         <SpecialLists :savename="roomId" :room-name="form.cluster_name" :pending-mode="!isEdit" @add-user="handleAddUser" />
       </TabsContent>
 
-      <TabsContent value="token">
+      <TabsContent value="token" class="settings-tab-content">
         <ServerToken :savename="roomId" :pending-mode="!isEdit" @input-token="handleInputToken" />
       </TabsContent>
     </Tabs>
@@ -156,19 +208,22 @@
 </template>
 
 <script>
-import { ArrowLeft, Gamepad2, GitBranch, Network, RefreshCw, Save, Settings2, TriangleAlert } from '@lucide/vue';
+import { ArrowLeft, Eye, EyeOff, FolderKey, Gamepad2, GitBranch, KeyRound, ListChecks, Network, RefreshCw, Save, Settings2, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomConfigApi, serverApi } from '../../api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import { confirmAction } from '@/lib/feedback';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 
@@ -197,21 +252,21 @@ const SETTINGS_SECTIONS = [
     description: '配置服务器发现、访问限制和网络通信参数。',
     icon: Network,
     fields: [
-      { key: 'lan_only_cluster', label: '局域网游戏', type: 'switch', description: '仅允许局域网内的玩家加入。' },
+      { key: 'cluster_name', label: '服务器名称', type: 'text', required: true, description: '显示在服务器列表中的名称。' },
+      { key: 'cluster_description', label: '服务器描述', type: 'textarea', rows: 3, description: '显示在服务器列表中的介绍。' },
+      { key: 'cluster_password', label: '服务器密码', type: 'text', sensitive: true, placeholder: '可为空', autocomplete: 'new-password', description: '加入服务器时使用的密码。' },
       { key: 'cluster_intention', label: '游戏偏好', type: 'select', description: '设置服务器的游戏风格和氛围。', options: [
         { label: '合作', value: 'cooperative' }, { label: '竞争', value: 'competitive' }, { label: '社交', value: 'social' }, { label: '疯狂', value: 'madness' }
       ] },
-      { key: 'cluster_password', label: '服务器密码', type: 'text', placeholder: '可为空', description: '加入服务器时使用的密码。' },
-      { key: 'cluster_description', label: '服务器描述', type: 'textarea', rows: 3, description: '显示在服务器列表中的介绍。' },
-      { key: 'cluster_name', label: '服务器名称', type: 'text', description: '显示在服务器列表中的名称。' },
-      { key: 'offline_cluster', label: '离线服务器', type: 'switch', description: '离线模式，不依赖 Steam 功能。' },
       { key: 'cluster_language', label: '服务器语言', type: 'select', description: '设置服务器语言。', options: [
         { label: '中文', value: 'zh' }, { label: '英文', value: 'en' }
       ] },
       { key: 'whitelist_slots', label: '预留位', type: 'number', min: 0, description: '为白名单玩家预留的位置数量。' },
       { key: 'tick_rate', label: '通信频率', type: 'number', min: 15, max: 60, description: '服务器每秒通信次数。' },
-      { key: 'autosaver_enabled', label: '自动保存', type: 'switch', description: '启用游戏自动保存。' },
-      { key: 'idle_timeout', label: '挂机超时时间', type: 'number', min: 0, description: '超过此时间自动踢出，0 表示不启用。' }
+      { key: 'idle_timeout', label: '挂机超时时间', type: 'number', min: 0, description: '超过此时间自动踢出，0 表示不启用。' },
+      { key: 'lan_only_cluster', label: '局域网游戏', type: 'switch', description: '仅允许局域网内的玩家加入。' },
+      { key: 'offline_cluster', label: '离线服务器', type: 'switch', description: '离线模式，不依赖 Steam 功能。' },
+      { key: 'autosaver_enabled', label: '自动保存', type: 'switch', description: '启用游戏自动保存。' }
     ]
   },
   {
@@ -233,10 +288,10 @@ const SETTINGS_SECTIONS = [
     icon: GitBranch,
     fields: [
       { key: 'shard_enabled', label: '开启服务器共享', type: 'switch', description: '洞穴分片需要开启此选项。' },
-      { key: 'bind_ip', label: '监听地址', type: 'text', description: '服务器监听的 IP 地址。' },
-      { key: 'master_ip', label: '主服务器 IP', type: 'text', description: '主服务器的 IP 地址。' },
-      { key: 'master_port', label: '主服务器端口', type: 'number', min: 1, max: 65535, description: '分片连接主服务器使用的 UDP 端口。' },
-      { key: 'cluster_key', label: '连接密码', type: 'text', description: '所有分片必须使用相同密码。' }
+      { key: 'bind_ip', label: '监听地址', type: 'text', disabledWhen: 'shard_enabled', description: '服务器监听的 IP 地址。' },
+      { key: 'master_ip', label: '主服务器 IP', type: 'text', disabledWhen: 'shard_enabled', description: '主服务器的 IP 地址。' },
+      { key: 'master_port', label: '主服务器端口', type: 'number', min: 1, max: 65535, required: true, disabledWhen: 'shard_enabled', description: '分片连接主服务器使用的 UDP 端口。' },
+      { key: 'cluster_key', label: '连接密码', type: 'text', required: true, sensitive: true, autocomplete: 'new-password', disabledWhen: 'shard_enabled', description: '所有分片必须使用相同密码。' }
     ]
   },
   {
@@ -247,8 +302,8 @@ const SETTINGS_SECTIONS = [
     icon: Settings2,
     fields: [
       { key: 'steam_group_only', label: '仅 Steam 组', type: 'switch', description: '只允许 Steam 组内成员加入。' },
-      { key: 'steam_group_id', label: 'Steam 组 ID', type: 'number', min: 0, description: '启用组限制时使用的 Steam 组 ID。' },
-      { key: 'steam_group_admins', label: '组管理员权限', type: 'switch', description: '授予 Steam 组管理员服务器管理权限。' }
+      { key: 'steam_group_id', label: 'Steam 组 ID', type: 'number', min: 0, disabledWhen: 'steam_group_only', description: '启用组限制时使用的 Steam 组 ID。' },
+      { key: 'steam_group_admins', label: '组管理员权限', type: 'switch', disabledWhen: 'steam_group_only', description: '授予 Steam 组管理员服务器管理权限。' }
     ]
   }
 ];
@@ -260,7 +315,9 @@ export default {
     AlertDescription,
     AlertTitle,
     ArrowLeft,
+    Badge,
     Card,
+    CardAction,
     CardContent,
     CardDescription,
     CardHeader,
@@ -271,6 +328,15 @@ export default {
     FieldError,
     FieldGroup,
     FieldLabel,
+    Eye,
+    EyeOff,
+    FolderKey,
+    InputGroup,
+    InputGroupAddon,
+    InputGroupButton,
+    InputGroupInput,
+    KeyRound,
+    ListChecks,
     RefreshCw,
     Save,
     SelectContent,
@@ -353,7 +419,24 @@ export default {
       loading: false,
       loadError: '',
       formErrors: [],
-      unsavedChanges: false
+      unsavedChanges: false,
+      baselineFingerprint: '',
+      saving: false,
+      revealedFields: {}
+    }
+  },
+  computed: {
+    changeStateLabel() {
+      if (this.saving) return this.isEdit ? '正在保存' : '正在创建';
+      if (!this.isEdit) return this.unsavedChanges ? '配置未保存' : '待配置';
+      return this.unsavedChanges ? '有未保存更改' : '已保存';
+    },
+    saveButtonLabel() {
+      if (this.saving) return this.isEdit ? '保存中...' : '创建中...';
+      return this.isEdit ? '保存更改' : '创建房间';
+    },
+    saveDisabled() {
+      return this.loading || this.saving || Boolean(this.loadError) || (this.isEdit && !this.unsavedChanges);
     }
   },
   created() {
@@ -363,9 +446,68 @@ export default {
       this.isEdit = true;
       this.roomId = roomId;
       this.loadRoomSettings(roomId);
+    } else {
+      this.$nextTick(() => this.captureBaseline());
     }
   },
+  mounted() {
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
+  },
+  beforeUnmount() {
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
+  },
   methods: {
+    getFormFingerprint() {
+      return JSON.stringify({ saveNameForm: this.saveNameForm, form: this.form });
+    },
+    captureBaseline() {
+      this.baselineFingerprint = this.getFormFingerprint();
+      this.unsavedChanges = false;
+    },
+    updateDirtyState() {
+      if (!this.baselineFingerprint) return;
+      this.unsavedChanges = this.getFormFingerprint() !== this.baselineFingerprint;
+    },
+    handleBeforeUnload(event) {
+      if (!this.unsavedChanges || this.saving) return;
+      event.preventDefault();
+      event.returnValue = '';
+    },
+    clearFieldError(key) {
+      if (!this.validationErrors[key]) return;
+      const errors = { ...this.validationErrors };
+      delete errors[key];
+      this.validationErrors = errors;
+      this.formErrors = Object.values(errors);
+      if (this.saveNameError) this.formErrors.unshift(this.saveNameError);
+    },
+    clearSaveNameError() {
+      if (!this.saveNameError) return;
+      this.saveNameError = '';
+      this.formErrors = Object.values(this.validationErrors);
+    },
+    toggleSensitiveField(key) {
+      this.revealedFields = { ...this.revealedFields, [key]: !this.revealedFields[key] };
+    },
+    isFieldDisabled(field) {
+      return Boolean(field.disabledWhen && !this.form[field.disabledWhen]);
+    },
+    focusFirstError() {
+      let targetId = '';
+      if (this.saveNameError) {
+        targetId = 'room-savename';
+      } else {
+        const invalidKey = Object.keys(this.validationErrors)[0];
+        const invalidSection = this.settingsSections.find(section => section.fields.some(field => field.key === invalidKey));
+        if (invalidSection) this.activeTab = invalidSection.key;
+        if (invalidKey) targetId = `room-setting-${invalidKey}`;
+      }
+      this.$nextTick(() => {
+        const target = targetId ? document.getElementById(targetId) : this.$refs.validationAlert?.$el;
+        target?.focus?.();
+        target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      });
+    },
     getFieldError(key) {
       return this.validationErrors[key] || '';
     },
@@ -383,10 +525,12 @@ export default {
     validateSettings() {
       const errors = {};
       const requiredFields = {
-        cluster_name: '请输入服务器名称',
-        master_port: '请输入主服务器端口',
-        cluster_key: '请输入连接密码'
+        cluster_name: '请输入服务器名称'
       };
+      if (this.form.shard_enabled) {
+        requiredFields.master_port = '请输入主服务器端口';
+        requiredFields.cluster_key = '请输入连接密码';
+      }
       Object.entries(requiredFields).forEach(([key, message]) => {
         if (this.form[key] === '' || this.form[key] === null || this.form[key] === undefined) errors[key] = message;
       });
@@ -404,15 +548,18 @@ export default {
       return validationMessages.length === 0;
     },
     goBack() {
-      this.$router.push('/rooms/list');
+      const listPath = this.$route.path.startsWith('/preview-v2') ? '/preview-v2/rooms/list' : '/rooms/list';
+      this.$router.push(listPath);
     },
     handleAddUser(users) {
       this.form.adminList = users.admin;
       this.form.blockList = users.block;
       this.form.whiteList = users.white;
+      this.updateDirtyState();
     },
     handleInputToken(token) {
       this.form.serverToken = token;
+      this.updateDirtyState();
     },
     async loadRoomSettings(roomId, { notify = true } = {}) {
       try {
@@ -473,7 +620,7 @@ export default {
           }
           
           if (notify) toast.success('配置加载成功');
-          this.unsavedChanges = false;
+          this.captureBaseline();
         } else {
           throw new Error('获取房间配置失败');
         }
@@ -491,12 +638,14 @@ export default {
         
         if (!this.validateSettings()) {
           toast.error('请完善表单信息');
+          this.focusFirstError();
           return;
         }
         if (!this.isEdit) this.savename = this.saveNameForm.savename;
         if (!this.isEdit && !this.form.offline_cluster && !this.form.serverToken) {
           toast.error('在线服务器需要填写 Klei 集群令牌');
           this.activeTab = 'token';
+          this.$nextTick(() => document.getElementById('server-token')?.focus());
           return;
         }
         
@@ -541,7 +690,7 @@ export default {
           }
         };
         
-        this.loading = true;
+        this.saving = true;
         if (this.isEdit) {
           // 编辑模式: 使用已有的roomId
           await roomConfigApi.saveRoomConfig(this.roomId, convertedData);
@@ -585,12 +734,12 @@ export default {
         } else {
           toast.success('保存成功');
         }
-        this.unsavedChanges = false;
+        this.captureBaseline();
       } catch (error) {
         console.error('保存配置失败:', error);
         this.handleError(error, '保存配置失败');
       } finally {
-        this.loading = false;
+        this.saving = false;
       }
     },
     handleError(error, defaultMessage) {
@@ -640,8 +789,27 @@ export default {
     form: {
       deep: true,
       handler() {
-        this.unsavedChanges = true;
+        this.updateDirtyState();
       }
+    },
+    saveNameForm: {
+      deep: true,
+      handler() {
+        this.updateDirtyState();
+      }
+    }
+  },
+  async beforeRouteLeave() {
+    if (!this.unsavedChanges || this.saving) return true;
+    try {
+      await confirmAction('当前房间配置尚未保存，离开后这些更改会丢失。', '离开房间设置', {
+        confirmButtonText: '放弃更改',
+        cancelButtonText: '继续编辑',
+        destructive: true
+      });
+      return true;
+    } catch {
+      return false;
     }
   }
 }
@@ -658,6 +826,7 @@ export default {
 
 .page-header,
 .header-actions,
+.title-row,
 .section-title,
 .loading-state {
   display: flex;
@@ -670,6 +839,8 @@ export default {
 }
 
 .title-section {
+  min-width: 0;
+
   h1 {
     margin: 0;
     font-size: 24px;
@@ -683,7 +854,46 @@ export default {
   }
 }
 
+.title-row {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.change-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.change-state-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--chart-2);
+  border-radius: 999px;
+}
+
+.change-state[data-dirty='true'] .change-state-dot {
+  background: var(--chart-3);
+}
+
+.room-reference {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 6px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .header-actions {
+  flex: none;
   gap: 8px;
 }
 
@@ -697,6 +907,15 @@ export default {
 .error-alert,
 .save-name-card {
   margin: 0;
+}
+
+.save-name-card :deep([data-slot='card-header']),
+.settings-section-card :deep([data-slot='card-header']) {
+  border-bottom: 1px solid var(--border);
+}
+
+.save-name-card :deep([data-slot='field-group']) {
+  max-width: 560px;
 }
 
 .error-list {
@@ -724,6 +943,8 @@ export default {
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
 }
 
 .settings-tab-list {
@@ -731,25 +952,56 @@ export default {
   width: max-content;
   min-width: 100%;
   height: auto;
+  padding: 0 0 8px;
   flex: none;
   align-self: flex-start;
-  max-width: 100%;
+  max-width: none;
   justify-content: flex-start;
   overflow: visible;
+}
+
+.settings-tab-trigger {
+  min-height: 32px;
+  flex: none;
+  padding-right: 12px;
+  padding-left: 12px;
+}
+
+.settings-tab-content {
+  min-width: 0;
+  margin: 0;
 }
 
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px 24px;
+  align-items: start;
+  gap: 18px 24px;
 }
 
 .setting-field {
   min-width: 0;
 }
 
+.setting-field--wide {
+  grid-column: 1 / -1;
+}
+
+.setting-field--switch {
+  min-height: 72px;
+  padding: 12px 14px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.setting-field--switch[data-disabled] {
+  background: transparent;
+}
+
 .setting-field[data-orientation='horizontal'] {
   justify-content: space-between;
+  gap: 16px;
 }
 
 .setting-field[data-orientation='horizontal'] :deep([data-slot='field-content']) {
@@ -769,6 +1021,21 @@ export default {
   }
 }
 
+.required-indicator {
+  margin-left: 2px;
+  color: var(--destructive);
+}
+
+@media (max-width: 920px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .setting-field--wide {
+    grid-column: auto;
+  }
+}
+
 @media (max-width: 760px) {
   .load-error-description {
     align-items: flex-start;
@@ -783,12 +1050,14 @@ export default {
     flex: 1;
   }
 
-  .settings-grid {
-    grid-template-columns: 1fr;
-  }
-
   .settings-tab-list {
     min-width: max-content;
+  }
+
+  .save-name-card :deep([data-slot='card-action']) {
+    grid-row: auto;
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }
 </style>
