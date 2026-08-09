@@ -1,18 +1,18 @@
 <template>
   <div class="special-lists-page">
     <header v-if="!savename && !pendingMode" class="page-header">
-      <h1>特殊名单</h1>
-      <p>维护房间管理员、黑名单和白名单。</p>
+      <h1>{{ $t('rooms.specialLists.title') }}</h1>
+      <p>{{ $t('rooms.specialLists.subtitle') }}</p>
     </header>
 
     <Card v-if="!savename && !pendingMode">
-      <CardHeader><CardTitle>选择房间</CardTitle><CardDescription>名单会直接读写所选房间的真实配置。</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{{ $t('rooms.specialLists.selectRoom') }}</CardTitle><CardDescription>{{ $t('rooms.specialLists.selectRoomDescription') }}</CardDescription></CardHeader>
       <CardContent>
-        <FieldGroup><Field><FieldLabel for="special-list-room">房间</FieldLabel><UiSelect v-model="selectedRoomId" :disabled="loadingRooms"><SelectTrigger id="special-list-room"><SelectValue placeholder="请选择已接管房间" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
+        <FieldGroup><Field><FieldLabel for="special-list-room">{{ $t('rooms.selector.room') }}</FieldLabel><UiSelect v-model="selectedRoomId" :disabled="loadingRooms"><SelectTrigger id="special-list-room"><SelectValue :placeholder="$t('rooms.selector.managedPlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
       </CardContent>
     </Card>
 
-    <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>房间列表加载失败</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
+    <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('rooms.selector.loadFailed') }}</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
 
     <Tabs v-if="pendingMode || roomValue" v-model="activeTab" orientation="horizontal" class="lists-tabs">
       <TabsList>
@@ -24,24 +24,24 @@
         <Card>
           <CardHeader>
             <CardTitle>{{ list.title }}</CardTitle>
-            <CardDescription>维护 {{ list.tabLabel }} 中的玩家 KU ID。</CardDescription>
+            <CardDescription>{{ $t('rooms.specialLists.listDescription', { list: list.tabLabel }) }}</CardDescription>
             <CardAction><UiButton size="sm" @click="addUser(list.type)">
               <UserPlus data-icon="inline-start" />
-              添加{{ list.actionLabel }}
+              {{ $t('rooms.specialLists.add', { member: list.actionLabel }) }}
             </UiButton></CardAction>
           </CardHeader>
           <CardContent>
-            <div v-if="loading[list.type]" class="list-skeleton" aria-busy="true" aria-label="正在加载名单">
+            <div v-if="loading[list.type]" class="list-skeleton" aria-busy="true" :aria-label="$t('rooms.specialLists.loadingAria')">
               <Skeleton v-for="row in 4" :key="row" class="h-11 w-full" />
             </div>
             <Alert v-else-if="errors[list.type]" variant="destructive">
               <CircleAlert />
-              <AlertTitle>{{ list.title }}加载失败</AlertTitle>
+              <AlertTitle>{{ $t('rooms.specialLists.listLoadFailed', { list: list.title }) }}</AlertTitle>
               <AlertDescription class="error-description">
                 <span>{{ errors[list.type] }}</span>
                 <UiButton variant="outline" size="sm" @click="fetchList(list.type)">
                   <RefreshCw data-icon="inline-start" />
-                  重新加载
+                  {{ $t('common.actions.retry') }}
                 </UiButton>
               </AlertDescription>
             </Alert>
@@ -49,9 +49,9 @@
               <UiTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>玩家名称</TableHead>
+                    <TableHead>{{ $t('rooms.specialLists.columns.playerName') }}</TableHead>
                     <TableHead>KU ID</TableHead>
-                    <TableHead class="action-column">操作</TableHead>
+                    <TableHead class="action-column">{{ $t('common.fields.actions') }}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -61,7 +61,7 @@
                     <TableCell class="action-column">
                       <UiButton variant="destructive" size="sm" @click="removeUser(list.type, index, user)">
                         <Trash2 data-icon="inline-start" />
-                        移除
+                        {{ $t('rooms.specialLists.remove') }}
                       </UiButton>
                     </TableCell>
                   </TableRow>
@@ -72,7 +72,7 @@
               <EmptyHeader>
                 <EmptyMedia variant="icon"><Users /></EmptyMedia>
                 <EmptyTitle>{{ list.emptyText }}</EmptyTitle>
-                <EmptyDescription>添加 KU ID 后会显示在这里。</EmptyDescription>
+                <EmptyDescription>{{ $t('rooms.specialLists.emptyDescription') }}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </CardContent>
@@ -81,7 +81,7 @@
     </Tabs>
 
     <Empty v-else-if="!loadingRooms && !roomLoadError">
-      <EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>没有可管理的房间</EmptyTitle><EmptyDescription>先创建或接管一个房间，再维护特殊名单。</EmptyDescription></EmptyHeader>
+      <EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>{{ $t('rooms.specialLists.noRooms') }}</EmptyTitle><EmptyDescription>{{ $t('rooms.specialLists.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
     </Empty>
     
     <!-- 添加用户对话框 -->
@@ -89,7 +89,7 @@
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{{ dialogTitle }}</DialogTitle>
-          <DialogDescription>输入玩家的 KU ID，例如 KU_XXXXX。</DialogDescription>
+          <DialogDescription>{{ $t('rooms.specialLists.dialogDescription') }}</DialogDescription>
         </DialogHeader>
         <FieldGroup>
           <Field :data-invalid="Boolean(userFormError)">
@@ -97,7 +97,7 @@
             <UiInput
               id="special-list-ku-id"
               v-model.trim="userForm.id"
-              placeholder="格式: KU_XXXXX"
+              :placeholder="$t('rooms.specialLists.kuIdPlaceholder')"
               :aria-invalid="Boolean(userFormError)"
               @keyup.enter="submitUserForm"
             />
@@ -105,10 +105,10 @@
           </Field>
         </FieldGroup>
         <DialogFooter>
-          <UiButton variant="outline" @click="dialogVisible = false">取消</UiButton>
+          <UiButton variant="outline" @click="dialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton>
           <UiButton @click="submitUserForm" :disabled="submitting">
             <Spinner v-if="submitting" data-icon="inline-start" />
-            确定
+            {{ $t('common.actions.confirm') }}
           </UiButton>
         </DialogFooter>
       </DialogContent>
@@ -205,12 +205,6 @@ export default {
     return {      
       // 标签页
       activeTab: 'admin',
-      listDefinitions: [
-        { type: 'admin', tabLabel: '管理员名单', title: '管理员列表', actionLabel: '管理员', emptyText: '暂无管理员' },
-        { type: 'block', tabLabel: '黑名单', title: '黑名单列表', actionLabel: '黑名单', emptyText: '暂无黑名单用户' },
-        { type: 'white', tabLabel: '白名单', title: '白名单列表', actionLabel: '白名单', emptyText: '暂无白名单用户' }
-      ],
-      
       // 数据
       adminList: [],
       blockList: [],
@@ -231,7 +225,6 @@ export default {
       // 对话框
       dialogVisible: false,
       dialogType: 'admin', // admin, block, white
-      dialogTitle: '添加管理员',
       userForm: {
         id: ''
       },
@@ -244,6 +237,20 @@ export default {
     }
   },
   computed: {
+    listDefinitions() {
+      return ['admin', 'block', 'white'].map(type => ({
+        type,
+        tabLabel: this.$t(`rooms.specialLists.definitions.${type}.tab`),
+        title: this.$t(`rooms.specialLists.definitions.${type}.title`),
+        actionLabel: this.$t(`rooms.specialLists.definitions.${type}.member`),
+        emptyText: this.$t(`rooms.specialLists.definitions.${type}.empty`)
+      }));
+    },
+    dialogTitle() {
+      return this.$t('rooms.specialLists.dialogTitle', {
+        member: this.$t(`rooms.specialLists.definitions.${this.dialogType}.member`)
+      });
+    },
     roomValue() {
       return this.savename || this.selectedRoomId;
     },
@@ -293,8 +300,9 @@ export default {
           });
         })
         .catch(err => {
-          this.errors.admin = err.message || '无法读取管理员名单';
-          toast.error('获取管理员列表失败: ' + this.errors.admin);
+          const list = this.$t('rooms.specialLists.definitions.admin.tab');
+          this.errors.admin = err.message || this.$t('rooms.specialLists.feedback.readFailed', { list });
+          toast.error(this.$t('rooms.specialLists.feedback.fetchFailed', { list, error: this.errors.admin }));
         })
         .finally(() => {
           this.loading.admin = false;
@@ -313,8 +321,9 @@ export default {
           });
         })
         .catch(err => {
-          this.errors.block = err.message || '无法读取黑名单';
-          toast.error('获取黑名单失败: ' + this.errors.block);
+          const list = this.$t('rooms.specialLists.definitions.block.tab');
+          this.errors.block = err.message || this.$t('rooms.specialLists.feedback.readFailed', { list });
+          toast.error(this.$t('rooms.specialLists.feedback.fetchFailed', { list, error: this.errors.block }));
         })
         .finally(() => {
           this.loading.block = false;
@@ -333,8 +342,9 @@ export default {
           });
         })
         .catch(err => {
-          this.errors.white = err.message || '无法读取白名单';
-          toast.error('获取白名单失败: ' + this.errors.white);
+          const list = this.$t('rooms.specialLists.definitions.white.tab');
+          this.errors.white = err.message || this.$t('rooms.specialLists.feedback.readFailed', { list });
+          toast.error(this.$t('rooms.specialLists.feedback.fetchFailed', { list, error: this.errors.white }));
         })
         .finally(() => {
           this.loading.white = false;
@@ -372,18 +382,6 @@ export default {
     // 打开添加用户对话框
     addUser(type) {
       this.dialogType = type;
-      switch(type) {
-        case 'admin':
-          this.dialogTitle = '添加管理员';
-          break;
-        case 'block':
-          this.dialogTitle = '添加黑名单';
-          break;
-        case 'white':
-          this.dialogTitle = '添加白名单';
-          break;
-      }
-      
       this.userForm = {
         id: ''
       };
@@ -396,7 +394,10 @@ export default {
       const idToRemove = row.id || row;
       try {
         if (this.pendingMode) {
-          await confirmAction(`确定要从${type === 'admin' ? '管理员列表' : type === 'block' ? '黑名单' : '白名单'}中移除 ${idToRemove} 吗?`, '移除名单用户', { destructive: true });
+          await confirmAction(this.$t('rooms.specialLists.feedback.pendingRemoveConfirm', {
+            list: this.$t(`rooms.specialLists.definitions.${type}.title`),
+            id: idToRemove
+          }), this.$t('rooms.specialLists.feedback.removeTitle'), { destructive: true });
           switch(type) {
             case 'admin':
               this.adminList.splice(index, 1);
@@ -409,21 +410,21 @@ export default {
               break;
           }
           this.emitPendingLists();
-          toast.info('已从待保存名单移除，创建房间时才会写入服务器');
+          toast.info(this.$t('rooms.specialLists.feedback.removedPending'));
           return;
         }
         const roomName = this.confirmationRoomName;
         if (!roomName) {
-          toast.error('无法确定房间名称，请重新选择房间');
+          toast.error(this.$t('rooms.specialLists.feedback.missingRoom'));
           return;
         }
         await promptText(
-          `移除名单成员会修改房间访问配置。请输入完整房间名“${roomName}”确认`,
-          '移除名单用户',
+          this.$t('rooms.specialLists.feedback.removePrompt', { room: roomName }),
+          this.$t('rooms.specialLists.feedback.removeTitle'),
           {
-            confirmButtonText: '确认移除',
-            cancelButtonText: '取消',
-            inputValidator: value => value === roomName || '房间名不匹配'
+            confirmButtonText: this.$t('rooms.specialLists.feedback.confirmRemove'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            inputValidator: value => value === roomName || this.$t('rooms.specialLists.feedback.roomNameMismatch')
           }
         );
         this.loading[type] = true;
@@ -453,12 +454,14 @@ export default {
         }
         await apiPromise
           .then(() => {
-            toast.success('移除成功');
+            toast.success(this.$t('rooms.specialLists.feedback.removed'));
             this.fetchAllLists();
           })
           .catch(err => {
-            console.error('移除失败:', err);
-            toast.error('移除失败: ' + (err.message || '未知错误'));
+            console.error('Failed to remove list member:', err);
+            toast.error(this.$t('rooms.specialLists.feedback.removeFailed', {
+              error: err.message || this.$t('common.errors.unknown')
+            }));
           })
           .finally(() => {
             this.loading[type] = false;
@@ -471,15 +474,15 @@ export default {
     // 提交表单
     submitUserForm() {
       if (!this.userForm.id) {
-        this.userFormError = '请输入KU ID';
+        this.userFormError = this.$t('rooms.specialLists.validation.requiredKuId');
         return;
       }
       if (!/^KU_[A-Za-z0-9]+$/.test(this.userForm.id)) {
-        this.userFormError = 'KU ID格式必须为KU_开头加字母或数字';
+        this.userFormError = this.$t('rooms.specialLists.validation.invalidKuId');
         return;
       }
       if (this.getList(this.dialogType).some(item => (item.id || item) === this.userForm.id)) {
-        this.userFormError = '该 KU ID 已在当前名单中';
+        this.userFormError = this.$t('rooms.specialLists.validation.duplicateKuId');
         return;
       }
       this.userFormError = '';
@@ -501,7 +504,7 @@ export default {
           this.submitting = false;
           this.dialogVisible = false;
           this.emitPendingLists();
-          toast.info('已加入待保存名单，创建房间时才会写入服务器');
+          toast.info(this.$t('rooms.specialLists.feedback.addedPending'));
           return;
         }
         let listData;
@@ -525,13 +528,15 @@ export default {
           .then(() => {
             this.submitting = false;
             this.dialogVisible = false;
-            toast.success('添加成功');
+            toast.success(this.$t('rooms.specialLists.feedback.added'));
             
             // 重新获取列表数据
             this.fetchAllLists();
           })
           .catch(err => {
-            toast.error('添加失败: ' + (err.message || '未知错误'));
+            toast.error(this.$t('rooms.specialLists.feedback.addFailed', {
+              error: err.message || this.$t('common.errors.unknown')
+            }));
             this.submitting = false;
           });
     },
@@ -552,7 +557,7 @@ export default {
         }
       } catch (error) {
         this.roomOptions = [];
-        this.roomLoadError = error.message || '无法读取房间列表';
+        this.roomLoadError = error.message || this.$t('rooms.selector.readFailed');
       } finally {
         this.loadingRooms = false;
       }

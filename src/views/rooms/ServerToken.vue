@@ -1,21 +1,21 @@
 <template>
   <div class="server-token-page">
     <header v-if="!savename && !pendingMode" class="page-header">
-      <h1>服务器令牌</h1>
-      <p>查看或更新房间使用的 Klei 集群令牌。</p>
+      <h1>{{ $t('rooms.token.title') }}</h1>
+      <p>{{ $t('rooms.token.subtitle') }}</p>
     </header>
 
     <Card v-if="!savename && !pendingMode">
-      <CardHeader><CardTitle>选择房间</CardTitle><CardDescription>读取并管理所选房间的真实 Klei 集群令牌。</CardDescription></CardHeader>
-      <CardContent><FieldGroup><Field><FieldLabel for="token-room">房间</FieldLabel><UiSelect v-model="selectedRoomId" :disabled="loadingRooms"><SelectTrigger id="token-room"><SelectValue placeholder="请选择已接管房间" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup></CardContent>
+      <CardHeader><CardTitle>{{ $t('rooms.token.selectRoom') }}</CardTitle><CardDescription>{{ $t('rooms.token.selectRoomDescription') }}</CardDescription></CardHeader>
+      <CardContent><FieldGroup><Field><FieldLabel for="token-room">{{ $t('rooms.selector.room') }}</FieldLabel><UiSelect v-model="selectedRoomId" :disabled="loadingRooms"><SelectTrigger id="token-room"><SelectValue :placeholder="$t('rooms.selector.managedPlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup></CardContent>
     </Card>
 
-    <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>房间列表加载失败</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
+    <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('rooms.selector.loadFailed') }}</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
 
     <Card v-if="pendingMode || roomValue">
       <CardHeader>
-        <CardTitle>服务器令牌</CardTitle>
-        <CardDescription>安全地查看或更新当前房间的集群令牌。</CardDescription>
+        <CardTitle>{{ $t('rooms.token.title') }}</CardTitle>
+        <CardDescription>{{ $t('rooms.token.cardDescription') }}</CardDescription>
         <CardAction v-if="roomValue || serverToken" class="token-actions max-sm:col-span-full max-sm:row-auto max-sm:justify-self-stretch">
           <UiButton
             v-if="tokenConfigured && !tokenRevealed"
@@ -23,14 +23,14 @@
             variant="outline"
             @click="revealToken">
             <Eye data-icon="inline-start" />
-            显示令牌
+            {{ $t('rooms.token.reveal') }}
           </UiButton>
           <UiButton
             size="sm"
             variant="outline"
             @click="showTokenDialog" >
             <Pencil data-icon="inline-start" />
-            修改令牌
+            {{ $t('rooms.token.edit') }}
           </UiButton>
           <UiButton
             size="sm"
@@ -38,24 +38,24 @@
             :disabled="loading"
             @click="fetchServerToken">
             <RefreshCw data-icon="inline-start" />
-            刷新
+            {{ $t('common.actions.refresh') }}
           </UiButton>
         </CardAction>
       </CardHeader>
 
       <CardContent>
-        <div v-if="loading" class="token-skeleton" aria-busy="true" aria-label="正在加载令牌状态">
+        <div v-if="loading" class="token-skeleton" aria-busy="true" :aria-label="$t('rooms.token.loadingAria')">
           <Skeleton class="h-10 w-full" />
           <Skeleton class="h-20 w-full" />
         </div>
         <Alert v-else-if="loadError" variant="destructive">
           <CircleAlert />
-          <AlertTitle>服务器令牌加载失败</AlertTitle>
+          <AlertTitle>{{ $t('rooms.token.loadFailed') }}</AlertTitle>
           <AlertDescription class="error-description">
             <span>{{ loadError }}</span>
             <UiButton variant="outline" size="sm" @click="fetchServerToken">
               <RefreshCw data-icon="inline-start" />
-              重新加载
+              {{ $t('common.actions.retry') }}
             </UiButton>
           </AlertDescription>
         </Alert>
@@ -65,85 +65,85 @@
             <InputGroupAddon align="inline-end">
               <InputGroupButton :disabled="!tokenRevealed" @click="copyToken">
                 <Copy data-icon="inline-start" />
-                复制
+                {{ $t('common.actions.copy') }}
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
 
           <Alert class="token-help">
             <Info />
-            <AlertTitle>令牌用法说明</AlertTitle>
-            <AlertDescription>服务器令牌用于在您的服务器中标识饥荒服务器。更改令牌将导致您的服务器在玩家列表中显示为新服务器。若无特殊需求，建议保持默认令牌。</AlertDescription>
+            <AlertTitle>{{ $t('rooms.token.helpTitle') }}</AlertTitle>
+            <AlertDescription>{{ $t('rooms.token.helpDescription') }}</AlertDescription>
           </Alert>
         </div>
 
         <div v-else>
           <FieldGroup>
             <Field :data-invalid="Boolean(ruleFormError)">
-              <FieldLabel for="server-token">服务器令牌</FieldLabel>
+              <FieldLabel for="server-token">{{ $t('rooms.token.title') }}</FieldLabel>
               <UiInput
                 id="server-token"
                 v-model="ruleForm.token"
-                placeholder="请输入服务器令牌"
+                :placeholder="$t('rooms.token.placeholder')"
                 :minlength="16"
                 autocomplete="off"
                 :spellcheck="false"
                 :aria-invalid="Boolean(ruleFormError)"
                 @input="handleInput"
               />
-              <FieldDescription>填写 Klei 生成的完整集群令牌，内容不会出现在日志中。</FieldDescription>
+              <FieldDescription>{{ $t('rooms.token.fieldDescription') }}</FieldDescription>
               <FieldError v-if="ruleFormError">{{ ruleFormError }}</FieldError>
             </Field>
           </FieldGroup>
 
           <Alert class="token-help">
             <Info />
-            <AlertTitle>令牌用法说明</AlertTitle>
-            <AlertDescription>服务器令牌用于在您的服务器中标识饥荒服务器。示例: pds-g^KU_HQpffVs^dasdadadawqwqfrdgth5435gf=</AlertDescription>
+            <AlertTitle>{{ $t('rooms.token.helpTitle') }}</AlertTitle>
+            <AlertDescription>{{ $t('rooms.token.pendingHelpDescription') }}</AlertDescription>
           </Alert>
         </div>
       </CardContent>
     </Card>
 
     <Empty v-else-if="!loadingRooms && !roomLoadError">
-      <EmptyHeader><EmptyMedia variant="icon"><Info /></EmptyMedia><EmptyTitle>没有可管理的房间</EmptyTitle><EmptyDescription>先创建或接管一个房间，再管理服务器令牌。</EmptyDescription></EmptyHeader>
+      <EmptyHeader><EmptyMedia variant="icon"><Info /></EmptyMedia><EmptyTitle>{{ $t('rooms.token.noRooms') }}</EmptyTitle><EmptyDescription>{{ $t('rooms.token.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
     </Empty>
 
     <!-- 修改令牌对话框 -->
     <UiDialog v-model:open="dialogVisible" @update:open="handleDialogOpenChange">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>修改服务器令牌</DialogTitle>
-          <DialogDescription>更新令牌前需要输入完整房间名进行确认。</DialogDescription>
+          <DialogTitle>{{ $t('rooms.token.dialogTitle') }}</DialogTitle>
+          <DialogDescription>{{ $t('rooms.token.dialogDescription') }}</DialogDescription>
         </DialogHeader>
         <FieldGroup>
           <Field :data-invalid="Boolean(tokenErrors.token)">
-            <FieldLabel for="new-server-token">新令牌</FieldLabel>
-            <UiInput id="new-server-token" v-model="tokenForm.token" placeholder="请输入新令牌" :minlength="16" autocomplete="off" :spellcheck="false" :aria-invalid="Boolean(tokenErrors.token)" />
-            <FieldDescription>至少 16 个字符，不能包含空格或换行。</FieldDescription>
+            <FieldLabel for="new-server-token">{{ $t('rooms.token.newToken') }}</FieldLabel>
+            <UiInput id="new-server-token" v-model="tokenForm.token" :placeholder="$t('rooms.token.newTokenPlaceholder')" :minlength="16" autocomplete="off" :spellcheck="false" :aria-invalid="Boolean(tokenErrors.token)" />
+            <FieldDescription>{{ $t('rooms.token.newTokenDescription') }}</FieldDescription>
             <FieldError v-if="tokenErrors.token">{{ tokenErrors.token }}</FieldError>
           </Field>
           <Field :data-invalid="Boolean(tokenErrors.confirmation)">
-            <FieldLabel for="token-confirmation">确认房间名</FieldLabel>
+            <FieldLabel for="token-confirmation">{{ $t('rooms.token.confirmation') }}</FieldLabel>
             <UiInput
               id="token-confirmation"
               v-model="tokenForm.confirmation"
-              :placeholder="roomName ? `请输入 ${roomName}` : '请输入完整房间名'"
+              :placeholder="roomName ? $t('rooms.token.confirmationPlaceholder', { room: roomName }) : $t('rooms.token.confirmationPlaceholderGeneric')"
               :aria-invalid="Boolean(tokenErrors.confirmation)"
             />
             <FieldError v-if="tokenErrors.confirmation">{{ tokenErrors.confirmation }}</FieldError>
           </Field>
           <Alert variant="destructive">
             <TriangleAlert />
-            <AlertTitle>警告</AlertTitle>
-            <AlertDescription>修改服务器令牌会导致您的服务器在玩家列表中显示为新服务器。确定要继续吗？</AlertDescription>
+            <AlertTitle>{{ $t('rooms.token.warning') }}</AlertTitle>
+            <AlertDescription>{{ $t('rooms.token.warningDescription') }}</AlertDescription>
           </Alert>
         </FieldGroup>
         <DialogFooter>
-          <UiButton variant="outline" @click="dialogVisible = false">取消</UiButton>
+          <UiButton variant="outline" @click="dialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton>
           <UiButton @click="submitTokenForm" :disabled="submitting">
             <Spinner v-if="submitting" data-icon="inline-start" />
-            确定
+            {{ $t('common.actions.confirm') }}
           </UiButton>
         </DialogFooter>
       </DialogContent>
@@ -283,7 +283,7 @@ export default {
     },
 
     validateToken(token) {
-      return clusterTokenError(token);
+      return clusterTokenError(token, { translator: this.$t });
     },
 
     // 获取服务器令牌
@@ -301,8 +301,8 @@ export default {
           this.roomName = res.data.roomName || '';
         })
         .catch(err => {
-          this.loadError = err.message || '无法读取服务器令牌状态';
-          toast.error('获取服务器令牌失败: ' + this.loadError);
+          this.loadError = err.message || this.$t('rooms.token.feedback.readFailed');
+          toast.error(this.$t('rooms.token.feedback.fetchFailed', { error: this.loadError }));
         })
         .finally(() => {
           this.loading = false;
@@ -312,27 +312,29 @@ export default {
     // 复制令牌到剪贴板
     async copyToken() {
       if (!this.tokenRevealed) {
-        toast.warning('请先显示真实令牌，脱敏值不能复制');
+        toast.warning(this.$t('rooms.token.feedback.revealFirst'));
         return;
       }
       try {
         await navigator.clipboard.writeText(this.serverToken);
-        toast.success('令牌已复制到剪贴板');
+        toast.success(this.$t('rooms.token.feedback.copied'));
       } catch (error) {
-        toast.error('复制失败: ' + (error.message || '请检查浏览器权限'));
+        toast.error(this.$t('rooms.token.feedback.copyFailed', {
+          error: error.message || this.$t('rooms.token.feedback.copyPermission')
+        }));
       }
     },
 
     async revealToken() {
       try {
         const result = await promptText(
-          `请输入完整房间名“${this.roomName}”以显示真实令牌`,
-          '显示服务器令牌',
+          this.$t('rooms.token.feedback.revealPrompt', { room: this.roomName }),
+          this.$t('rooms.token.feedback.revealTitle'),
           {
-            confirmButtonText: '显示',
-            cancelButtonText: '取消',
+            confirmButtonText: this.$t('rooms.token.reveal'),
+            cancelButtonText: this.$t('common.actions.cancel'),
             inputPlaceholder: this.roomName,
-            inputValidator: value => value === this.roomName || '房间名不匹配'
+            inputValidator: value => value === this.roomName || this.$t('rooms.token.feedback.roomNameMismatch')
           }
         );
         this.loading = true;
@@ -344,7 +346,9 @@ export default {
         this.tokenRevealed = true;
       } catch (error) {
         if (error !== 'cancel' && error !== 'close' && error?.action !== 'cancel' && error?.action !== 'close') {
-          toast.error('显示令牌失败: ' + (error.message || '确认房间名不正确'));
+          toast.error(this.$t('rooms.token.feedback.revealFailed', {
+            error: error.message || this.$t('rooms.token.feedback.revealConfirmationFailed')
+          }));
         }
       } finally {
         this.loading = false;
@@ -377,7 +381,7 @@ export default {
     submitTokenForm() {
       this.tokenErrors = {
         token: this.validateToken(this.tokenForm.token),
-        confirmation: this.tokenForm.confirmation === this.roomName ? '' : '请输入完整房间名确认修改'
+        confirmation: this.tokenForm.confirmation === this.roomName ? '' : this.$t('rooms.token.feedback.confirmationRequired')
       };
       if (this.tokenErrors.token || this.tokenErrors.confirmation) return;
       this.submitting = true;
@@ -386,11 +390,13 @@ export default {
       serverApi.updateServerToken(saveToUse, newToken, this.tokenForm.confirmation)
         .then(() => {
           this.dialogVisible = false;
-          toast.success('服务器令牌已更新');
+          toast.success(this.$t('rooms.token.feedback.updated'));
           this.fetchServerToken();
         })
         .catch(err => {
-          toast.error('更新令牌失败: ' + (err.message || '未知错误'));
+          toast.error(this.$t('rooms.token.feedback.updateFailed', {
+            error: err.message || this.$t('common.errors.unknown')
+          }));
         })
         .finally(() => {
           this.submitting = false;
@@ -408,24 +414,10 @@ export default {
         }
       } catch (error) {
         this.roomOptions = [];
-        this.roomLoadError = error.message || '无法读取房间列表';
+        this.roomLoadError = error.message || this.$t('rooms.selector.readFailed');
       } finally {
         this.loadingRooms = false;
       }
-    },
-
-    // 格式化时间
-    formatTime(timestamp) {
-      if (!timestamp) return '';
-      const date = new Date(timestamp);
-      return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
     }
   },
   created() {
