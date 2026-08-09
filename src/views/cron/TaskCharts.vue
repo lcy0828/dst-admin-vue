@@ -1,40 +1,40 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">任务统计图表</h1><p class="mt-1 text-sm text-muted-foreground">分析执行次数、成功率和耗时趋势。</p></div>
-      <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新数据</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回任务列表</UiButton></div>
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ text('charts.title') }}</h1><p class="mt-1 text-sm text-muted-foreground">{{ text('charts.subtitle') }}</p></div>
+      <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" :disabled="loading" @click="loadAllCharts"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ text('common.actions.refreshData') }}</UiButton><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />{{ text('common.actions.backToTasks') }}</UiButton></div>
     </header>
     <Card>
-      <CardHeader><CardTitle>统计范围</CardTitle><CardDescription>选择日期、任务组和具体任务。</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{{ text('charts.rangeTitle') }}</CardTitle><CardDescription>{{ text('charts.rangeDescription') }}</CardDescription></CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
-          <Field><FieldLabel for="chart-date-range">时间范围</FieldLabel><UiSelect v-model="dateRange" @update:model-value="loadAllCharts"><SelectTrigger id="chart-date-range"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="7">最近 7 天</SelectItem><SelectItem value="30">最近 30 天</SelectItem><SelectItem value="90">最近 90 天</SelectItem><SelectItem value="180">最近 180 天</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field><FieldLabel for="chart-group">任务组</FieldLabel><UiSelect v-model="groupId" @update:model-value="handleGroupChange"><SelectTrigger id="chart-group"><SelectValue placeholder="选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field v-if="groupId && groupId !== 'all'"><FieldLabel for="chart-task">任务</FieldLabel><UiSelect v-model="taskId" @update:model-value="loadTaskCharts"><SelectTrigger id="chart-task"><SelectValue placeholder="选择任务" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem v-for="task in tasks" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="chart-date-range">{{ text('charts.fields.range') }}</FieldLabel><UiSelect v-model="dateRange" @update:model-value="loadAllCharts"><SelectTrigger id="chart-date-range"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="7">{{ text('charts.ranges.days7') }}</SelectItem><SelectItem value="30">{{ text('charts.ranges.days30') }}</SelectItem><SelectItem value="90">{{ text('charts.ranges.days90') }}</SelectItem><SelectItem value="180">{{ text('charts.ranges.days180') }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field><FieldLabel for="chart-group">{{ text('charts.fields.group') }}</FieldLabel><UiSelect v-model="groupId" @update:model-value="handleGroupChange"><SelectTrigger id="chart-group"><SelectValue :placeholder="text('charts.fields.selectGroup')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ text('common.values.all') }}</SelectItem><SelectItem v-for="group in groups" :key="group.id" :value="String(group.id)">{{ groupLabel(group.name) }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field v-if="groupId && groupId !== 'all'"><FieldLabel for="chart-task">{{ text('charts.fields.task') }}</FieldLabel><UiSelect v-model="taskId" @update:model-value="loadTaskCharts"><SelectTrigger id="chart-task"><SelectValue :placeholder="text('charts.fields.selectTask')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ text('common.values.all') }}</SelectItem><SelectItem v-for="task in tasks" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
         </FieldGroup>
-        <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>统计数据加载失败</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
+        <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ text('charts.loadFailedTitle') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
       </CardContent>
     </Card>
 
     <div v-if="loading" class="flex flex-col gap-4"><Skeleton class="h-36 w-full" /><Skeleton class="h-96 w-full" /></div>
     <div v-else class="flex min-w-0 flex-col gap-6">
       <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-        <Card><CardHeader><CardTitle>总任务数</CardTitle><CardDescription>当前统计范围</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.total_tasks || 0 }}</strong></CardContent></Card>
-        <Card><CardHeader><CardTitle>总执行次数</CardTitle><CardDescription>累计调度记录</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.total_executions || 0 }}</strong></CardContent></Card>
-        <Card><CardHeader><CardTitle>成功率</CardTitle><CardDescription>成功执行占比</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.success_rate || 0 }}%</strong></CardContent></Card>
-        <Card><CardHeader><CardTitle>平均执行时长</CardTitle><CardDescription>全部已完成任务</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.avg_duration || 0 }}<span class="ml-1.5 text-sm font-normal text-muted-foreground">秒</span></strong></CardContent></Card>
+        <Card><CardHeader><CardTitle>{{ text('charts.metrics.totalTasks') }}</CardTitle><CardDescription>{{ text('charts.metrics.currentRange') }}</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.total_tasks || 0 }}</strong></CardContent></Card>
+        <Card><CardHeader><CardTitle>{{ text('charts.metrics.totalExecutions') }}</CardTitle><CardDescription>{{ text('charts.metrics.cumulativeRuns') }}</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.total_executions || 0 }}</strong></CardContent></Card>
+        <Card><CardHeader><CardTitle>{{ text('charts.metrics.successRate') }}</CardTitle><CardDescription>{{ text('charts.metrics.successShare') }}</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.success_rate || 0 }}%</strong></CardContent></Card>
+        <Card><CardHeader><CardTitle>{{ text('charts.metrics.averageDuration') }}</CardTitle><CardDescription>{{ text('charts.metrics.allCompleted') }}</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ text('common.units.seconds', { value: overview.avg_duration || 0 }) }}</strong></CardContent></Card>
       </div>
 
       <div class="grid min-w-0 gap-6 xl:grid-cols-2">
-        <Card><CardHeader><CardTitle>执行概览</CardTitle><CardDescription>成功与失败次数分布</CardDescription></CardHeader><CardContent class="pt-1"><div id="overviewChart" class="chart-box"></div></CardContent></Card>
-        <Card><CardHeader><CardTitle>耗时趋势</CardTitle><CardDescription>统计范围内的执行耗时变化</CardDescription></CardHeader><CardContent class="pt-1"><div id="durationChart" class="chart-box"></div></CardContent></Card>
+        <Card><CardHeader><CardTitle>{{ text('charts.cards.overview') }}</CardTitle><CardDescription>{{ text('charts.cards.overviewDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><div id="overviewChart" class="chart-box"></div></CardContent></Card>
+        <Card><CardHeader><CardTitle>{{ text('charts.cards.duration') }}</CardTitle><CardDescription>{{ text('charts.cards.durationDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><div id="durationChart" class="chart-box"></div></CardContent></Card>
       </div>
 
-      <Card v-if="groupId && groupId !== 'all' && (!taskId || taskId === 'all')"><CardHeader><CardTitle>任务组执行统计</CardTitle><CardDescription>组内任务执行情况对比</CardDescription></CardHeader><CardContent class="pt-1"><div id="groupTasksChart" class="chart-box"></div></CardContent></Card>
+      <Card v-if="groupId && groupId !== 'all' && (!taskId || taskId === 'all')"><CardHeader><CardTitle>{{ text('charts.cards.group') }}</CardTitle><CardDescription>{{ text('charts.cards.groupDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><div id="groupTasksChart" class="chart-box"></div></CardContent></Card>
 
       <div v-if="taskId && taskId !== 'all'" class="grid min-w-0 gap-6 xl:grid-cols-2">
-        <Card><CardHeader><CardTitle>任务执行统计</CardTitle><CardDescription>所选任务的成功与失败情况</CardDescription></CardHeader><CardContent class="pt-1"><div id="taskExecutionChart" class="chart-box"></div></CardContent></Card>
-        <Card><CardHeader><CardTitle>任务耗时统计</CardTitle><CardDescription>所选任务的执行耗时变化</CardDescription></CardHeader><CardContent class="pt-1"><div id="taskDurationChart" class="chart-box"></div></CardContent></Card>
+        <Card><CardHeader><CardTitle>{{ text('charts.cards.task') }}</CardTitle><CardDescription>{{ text('charts.cards.taskDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><div id="taskExecutionChart" class="chart-box"></div></CardContent></Card>
+        <Card><CardHeader><CardTitle>{{ text('charts.cards.taskDuration') }}</CardTitle><CardDescription>{{ text('charts.cards.taskDurationDescription') }}</CardDescription></CardHeader><CardContent class="pt-1"><div id="taskDurationChart" class="chart-box"></div></CardContent></Card>
       </div>
     </div>
   </div>
@@ -56,6 +56,12 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  createCronTaskFailure,
+  cronTaskFailureText,
+  cronTaskGroupLabel,
+  cronTaskText
+} from '@/i18n/cronTaskMessages';
 import { getSystemPreferences } from '@/utils/systemPreferences';
 
 export default {
@@ -69,7 +75,7 @@ export default {
   data() {
     return {
       loading: false,
-      loadError: '',
+      loadFailure: null,
       dateRange: '30',
       groupId: '',
       taskId: '',
@@ -82,8 +88,29 @@ export default {
         groupTasksChart: null,
         taskExecutionChart: null,
         taskDurationChart: null
+      },
+      chartData: {
+        overviewChart: null,
+        durationChart: null,
+        groupTasksChart: null,
+        taskExecutionChart: null,
+        taskDurationChart: null
       }
     };
+  },
+  computed: {
+    activeLocale() {
+      const state = this.$i18n?.locale;
+      return typeof state === 'string' ? state : (state?.value || 'zh-CN');
+    },
+    loadError() {
+      return cronTaskFailureText(this.loadFailure, this.activeLocale);
+    }
+  },
+  watch: {
+    activeLocale() {
+      this.$nextTick(this.renderChartsForLocale);
+    }
   },
   mounted() {
     // 处理窗口调整大小时重新渲染图表
@@ -101,6 +128,23 @@ export default {
     window.removeEventListener('resize', this.resizeCharts);
   },
   methods: {
+    text(key, parameters) {
+      return cronTaskText(key, this.activeLocale, parameters);
+    },
+    groupLabel(name) {
+      return cronTaskGroupLabel(name, this.activeLocale);
+    },
+    setLoadFailure(key, error) {
+      this.loadFailure = createCronTaskFailure(key, error);
+      toast.error(cronTaskFailureText(this.loadFailure, this.activeLocale));
+    },
+    renderChartsForLocale() {
+      if (this.chartData.overviewChart) this.initOverviewChart(this.chartData.overviewChart);
+      if (this.chartData.durationChart) this.initDurationChart(this.chartData.durationChart);
+      if (this.chartData.groupTasksChart) this.initGroupTasksChart(this.chartData.groupTasksChart);
+      if (this.chartData.taskExecutionChart) this.initTaskExecutionChart(this.chartData.taskExecutionChart);
+      if (this.chartData.taskDurationChart) this.initTaskDurationChart(this.chartData.taskDurationChart);
+    },
     chartColor(variable) {
       const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
       return value || getSystemPreferences().theme;
@@ -168,7 +212,7 @@ export default {
         })
         .catch(error => {
           console.error('获取任务组列表失败:', error);
-          toast.error('获取任务组列表失败');
+          toast.error(cronTaskFailureText(createCronTaskFailure('charts.feedback.groupsFailed', error), this.activeLocale));
         });
     },
     fetchTasks(groupId) {
@@ -208,7 +252,7 @@ export default {
         })
         .catch(error => {
           console.error('获取任务列表失败:', error);
-          toast.error('获取任务列表失败');
+          toast.error(cronTaskFailureText(createCronTaskFailure('charts.feedback.tasksFailed', error), this.activeLocale));
         });
     },
     handleGroupChange(value) {
@@ -223,7 +267,7 @@ export default {
     },
     loadAllCharts() {
       this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       
       // 先清除任务特定图表
       this.taskId = '';
@@ -241,14 +285,12 @@ export default {
               this.initDurationChart(response.data.data);
             });
           } else {
-            this.loadError = response.data?.msg || response.data?.message || '获取概览数据失败';
-            toast.error(this.loadError);
+            this.setLoadFailure('charts.feedback.overviewFailed', response.data?.msg || response.data?.message);
           }
         })
         .catch(error => {
           console.error('获取概览数据失败:', error);
-          this.loadError = error.message || '获取概览数据失败';
-          toast.error(this.loadError);
+          this.setLoadFailure('charts.feedback.overviewFailed', error);
         })
         .finally(() => {
           this.loading = false;
@@ -258,7 +300,7 @@ export default {
       if (!this.groupId) return;
       
       this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       
       cronTaskApi.getGroupChart(this.groupId, { days: this.dateRange })
         .then(response => {
@@ -268,14 +310,12 @@ export default {
               this.initGroupTasksChart(response.data.data);
             });
           } else {
-            this.loadError = response.data?.msg || response.data?.message || '获取任务组图表失败';
-            toast.error(this.loadError);
+            this.setLoadFailure('charts.feedback.groupChartFailed', response.data?.msg || response.data?.message);
           }
         })
         .catch(error => {
           console.error('获取任务组图表失败:', error);
-          this.loadError = error.message || '获取任务组图表失败';
-          toast.error(this.loadError);
+          this.setLoadFailure('charts.feedback.groupChartFailed', error);
         })
         .finally(() => {
           this.loading = false;
@@ -285,7 +325,7 @@ export default {
       if (!this.taskId || this.taskId === 'all') return;
       
       this.loading = true;
-      this.loadError = '';
+      this.loadFailure = null;
       
       // 获取任务执行图表
       cronTaskApi.getTaskChart(this.taskId, { days: this.dateRange })
@@ -296,14 +336,12 @@ export default {
               this.initTaskExecutionChart(response.data.data);
             });
           } else {
-            this.loadError = response.data?.msg || response.data?.message || '获取任务执行图表失败';
-            toast.error(this.loadError);
+            this.setLoadFailure('charts.feedback.taskChartFailed', response.data?.msg || response.data?.message);
           }
         })
         .catch(error => {
           console.error('获取任务执行图表失败:', error);
-          this.loadError = error.message || '获取任务执行图表失败';
-          toast.error(this.loadError);
+          this.setLoadFailure('charts.feedback.taskChartFailed', error);
         });
       
       // 获取任务执行时长图表
@@ -315,20 +353,19 @@ export default {
               this.initTaskDurationChart(response.data.data);
             });
           } else {
-            this.loadError = response.data?.msg || response.data?.message || '获取任务执行时长图表失败';
-            toast.error(this.loadError);
+            this.setLoadFailure('charts.feedback.durationChartFailed', response.data?.msg || response.data?.message);
           }
         })
         .catch(error => {
           console.error('获取任务执行时长图表失败:', error);
-          this.loadError = error.message || '获取任务执行时长图表失败';
-          toast.error(this.loadError);
+          this.setLoadFailure('charts.feedback.durationChartFailed', error);
         })
         .finally(() => {
           this.loading = false;
         });
     },
     initOverviewChart(data) {
+      this.chartData.overviewChart = data;
       const chartDom = document.getElementById('overviewChart');
       if (!chartDom) return;
       
@@ -340,7 +377,7 @@ export default {
       
       const option = {
         title: {
-          text: '任务执行成功/失败统计',
+          text: this.text('charts.graph.overviewTitle'),
           left: 'center'
         },
         tooltip: {
@@ -350,7 +387,7 @@ export default {
           }
         },
         legend: {
-          data: ['成功', '失败'],
+          data: [this.text('charts.graph.success'), this.text('charts.graph.failed')],
           bottom: 10
         },
         grid: {
@@ -369,7 +406,7 @@ export default {
         },
         series: [
           {
-            name: '成功',
+            name: this.text('charts.graph.success'),
             type: 'bar',
             stack: 'total',
             itemStyle: {
@@ -378,7 +415,7 @@ export default {
             data: data.success || []
           },
           {
-            name: '失败',
+            name: this.text('charts.graph.failed'),
             type: 'bar',
             stack: 'total',
             itemStyle: {
@@ -392,6 +429,7 @@ export default {
       this.charts.overviewChart.setOption(this.themedChartOption(option));
     },
     initDurationChart(data) {
+      this.chartData.durationChart = data;
       const chartDom = document.getElementById('durationChart');
       if (!chartDom) return;
       
@@ -403,7 +441,7 @@ export default {
       
       const option = {
         title: {
-          text: '任务平均执行时长统计',
+          text: this.text('charts.graph.averageDurationTitle'),
           left: 'center'
         },
         tooltip: {
@@ -422,13 +460,13 @@ export default {
         },
         yAxis: {
           type: 'value',
-          name: '执行时长(秒)'
+          name: this.text('common.units.secondsAxis')
         },
         series: [
           {
             data: data.durations || [],
             type: 'line',
-            name: '平均执行时长',
+            name: this.text('charts.graph.averageDuration'),
             smooth: true,
             areaStyle: {},
             itemStyle: {
@@ -441,6 +479,7 @@ export default {
       this.charts.durationChart.setOption(this.themedChartOption(option));
     },
     initGroupTasksChart(data) {
+      this.chartData.groupTasksChart = data;
       const chartDom = document.getElementById('groupTasksChart');
       if (!chartDom) return;
       
@@ -452,7 +491,7 @@ export default {
       
       const option = {
         title: {
-          text: '任务组内各任务执行情况',
+          text: this.text('charts.graph.groupTitle'),
           left: 'center'
         },
         tooltip: {
@@ -466,7 +505,7 @@ export default {
         },
         series: [
           {
-            name: '执行次数',
+            name: this.text('charts.graph.executions'),
             type: 'pie',
             radius: '60%',
             center: ['60%', '50%'],
@@ -488,6 +527,7 @@ export default {
       this.charts.groupTasksChart.setOption(this.themedChartOption(option));
     },
     initTaskExecutionChart(data) {
+      this.chartData.taskExecutionChart = data;
       const chartDom = document.getElementById('taskExecutionChart');
       if (!chartDom) return;
       
@@ -499,7 +539,7 @@ export default {
       
       const option = {
         title: {
-          text: '任务执行成功/失败情况',
+          text: this.text('charts.graph.taskTitle'),
           left: 'center'
         },
         tooltip: {
@@ -509,7 +549,7 @@ export default {
           }
         },
         legend: {
-          data: ['成功', '失败'],
+          data: [this.text('charts.graph.success'), this.text('charts.graph.failed')],
           bottom: 10
         },
         grid: {
@@ -528,7 +568,7 @@ export default {
         },
         series: [
           {
-            name: '成功',
+            name: this.text('charts.graph.success'),
             type: 'bar',
             stack: 'total',
             itemStyle: {
@@ -537,7 +577,7 @@ export default {
             data: data.success || []
           },
           {
-            name: '失败',
+            name: this.text('charts.graph.failed'),
             type: 'bar',
             stack: 'total',
             itemStyle: {
@@ -551,6 +591,7 @@ export default {
       this.charts.taskExecutionChart.setOption(this.themedChartOption(option));
     },
     initTaskDurationChart(data) {
+      this.chartData.taskDurationChart = data;
       const chartDom = document.getElementById('taskDurationChart');
       if (!chartDom) return;
       
@@ -562,7 +603,7 @@ export default {
       
       const option = {
         title: {
-          text: '任务执行时长统计',
+          text: this.text('charts.graph.taskDurationTitle'),
           left: 'center'
         },
         tooltip: {
@@ -581,13 +622,13 @@ export default {
         },
         yAxis: {
           type: 'value',
-          name: '执行时长(秒)'
+          name: this.text('common.units.secondsAxis')
         },
         series: [
           {
             data: data.durations || [],
             type: 'line',
-            name: '执行时长',
+            name: this.text('charts.graph.duration'),
             smooth: true,
             areaStyle: {},
             itemStyle: {

@@ -1,11 +1,11 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">任务执行结果</h1><p class="mt-1 text-sm text-muted-foreground">执行完成前每 5 秒自动刷新。</p></div>
-      <div class="flex flex-wrap gap-2"><UiButton size="sm" :disabled="loading" @click="fetchLogDetail"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />刷新</UiButton><UiButton size="sm" variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回</UiButton></div>
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ text('execution.title') }}</h1><p class="mt-1 text-sm text-muted-foreground">{{ text('execution.subtitle') }}</p></div>
+      <div class="flex flex-wrap gap-2"><UiButton size="sm" :disabled="loading" @click="fetchLogDetail"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ text('common.actions.refresh') }}</UiButton><UiButton size="sm" variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />{{ text('common.actions.back') }}</UiButton></div>
     </header>
     <Card>
-      <CardHeader><CardTitle>执行状态</CardTitle><CardDescription>任务运行结果与完整输出。</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{{ text('execution.cardTitle') }}</CardTitle><CardDescription>{{ text('execution.cardDescription') }}</CardDescription></CardHeader>
       <CardContent>
         <div v-if="loading" class="flex flex-col gap-4">
           <Skeleton class="h-10 w-1/3" />
@@ -24,12 +24,12 @@
           </Alert>
 
           <section>
-            <h3 class="section-title">基本信息</h3>
+            <h3 class="section-title">{{ text('execution.basicInfo') }}</h3>
             <dl class="detail-grid">
-              <div class="detail-item"><dt>日志 ID</dt><dd>{{ logData.id }}</dd></div>
-              <div class="detail-item"><dt>任务 ID</dt><dd>{{ logData.task_id }}</dd></div>
+              <div class="detail-item"><dt>{{ text('execution.fields.logId') }}</dt><dd>{{ logData.id }}</dd></div>
+              <div class="detail-item"><dt>{{ text('execution.fields.taskId') }}</dt><dd>{{ logData.task_id }}</dd></div>
               <div class="detail-item">
-                <dt>任务名称</dt>
+                <dt>{{ text('execution.fields.taskName') }}</dt>
                 <dd>
                 <router-link
                   :to="`/cron/edit/${logData.task_id}`"
@@ -37,37 +37,37 @@
                   v-if="logData.task_id">
                   {{ logData.task_name }}
                 </router-link>
-                <span v-else>{{ logData.task_name || '未知任务' }}</span>
+                <span v-else>{{ logData.task_name || text('common.values.unknownTask') }}</span>
                 </dd>
               </div>
               <div class="detail-item">
-                <dt>执行状态</dt>
+                <dt>{{ text('execution.fields.status') }}</dt>
                 <dd><Badge :variant="getRunStatusVariant(logData.status)">
                   {{ getRunStatusText(logData.status) }}
                 </Badge></dd>
               </div>
-              <div class="detail-item"><dt>开始时间</dt><dd>{{ logData.start_time || logData.created_at }}</dd></div>
-              <div class="detail-item"><dt>结束时间</dt><dd>{{ logData.end_time || logData.updated_at }}</dd></div>
-              <div class="detail-item"><dt>执行耗时</dt><dd>{{ formatDuration(logData.duration) }}</dd></div>
-              <div class="detail-item"><dt>触发方式</dt><dd><Badge variant="secondary">{{ getTriggerTypeText(logData.trigger_type) }}</Badge></dd></div>
+              <div class="detail-item"><dt>{{ text('execution.fields.start') }}</dt><dd>{{ formatDate(logData.start_time || logData.created_at) }}</dd></div>
+              <div class="detail-item"><dt>{{ text('execution.fields.end') }}</dt><dd>{{ formatDate(logData.end_time || logData.updated_at) }}</dd></div>
+              <div class="detail-item"><dt>{{ text('execution.fields.duration') }}</dt><dd>{{ formatDuration(logData.duration) }}</dd></div>
+              <div class="detail-item"><dt>{{ text('execution.fields.trigger') }}</dt><dd><Badge variant="secondary">{{ getTriggerTypeText(logData.trigger_type) }}</Badge></dd></div>
             </dl>
           </section>
 
           <section>
-            <h3 class="section-title">执行输出</h3>
+            <h3 class="section-title">{{ text('execution.output') }}</h3>
             <pre v-if="logData.output" class="code-block">{{ logData.output }}</pre>
-            <Empty v-else><EmptyHeader><EmptyTitle>无输出</EmptyTitle></EmptyHeader></Empty>
+            <Empty v-else><EmptyHeader><EmptyTitle>{{ text('execution.noOutput') }}</EmptyTitle></EmptyHeader></Empty>
           </section>
 
-          <Alert v-if="logData.error" variant="destructive"><CircleAlert /><AlertTitle>错误信息</AlertTitle><AlertDescription><pre class="code-block error">{{ logData.error }}</pre></AlertDescription></Alert>
+          <Alert v-if="logData.error" variant="destructive"><CircleAlert /><AlertTitle>{{ text('execution.error') }}</AlertTitle><AlertDescription><pre class="code-block error">{{ logData.error }}</pre></AlertDescription></Alert>
         </div>
 
         <Empty v-else>
           <EmptyHeader>
-            <EmptyTitle>未找到日志详情</EmptyTitle>
-            <EmptyDescription>日志可能已被清理或链接无效。</EmptyDescription>
+            <EmptyTitle>{{ text('execution.notFoundTitle') }}</EmptyTitle>
+            <EmptyDescription>{{ text('execution.notFoundDescription') }}</EmptyDescription>
           </EmptyHeader>
-          <EmptyContent><UiButton @click="fetchLogDetail">重新加载</UiButton></EmptyContent>
+          <EmptyContent><UiButton @click="fetchLogDetail">{{ text('common.actions.reload') }}</UiButton></EmptyContent>
         </Empty>
       </CardContent>
     </Card>
@@ -85,6 +85,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  createCronTaskFailure,
+  cronTaskFailureText,
+  cronTaskStatusLabel,
+  cronTaskText,
+  cronTaskTriggerLabel,
+  formatCronTaskDate,
+  formatCronTaskMilliseconds
+} from '@/i18n/cronTaskMessages';
 
 export default {
   name: 'TaskExecutionResult',
@@ -101,10 +110,16 @@ export default {
       refreshInterval: null
     };
   },
+  computed: {
+    activeLocale() {
+      const state = this.$i18n?.locale;
+      return typeof state === 'string' ? state : (state?.value || 'zh-CN');
+    }
+  },
   created() {
     this.logId = this.$route.params.id;
     if (!this.logId) {
-      toast.error('缺少日志 ID 参数');
+      toast.error(this.text('execution.feedback.missingId'));
       this.goBack();
       return;
     }
@@ -168,12 +183,12 @@ export default {
             }
 
             console.error('响应格式不符合预期:', response);
-            toast.error('获取日志详情失败：响应格式不符合预期');
+            toast.error(this.text('execution.feedback.invalidResponse'));
           }
         })
         .catch(error => {
           console.error('获取日志详情失败:', error);
-          toast.error('获取日志详情失败');
+          toast.error(this.failureText('execution.feedback.loadFailed', error));
         })
         .finally(() => {
           this.loading = false;
@@ -188,60 +203,49 @@ export default {
         this.$router.push('/cron/logs');
       }
     },
+    text(key, parameters) {
+      return cronTaskText(key, this.activeLocale, parameters);
+    },
+    failureText(key, error) {
+      return cronTaskFailureText(createCronTaskFailure(key, error), this.activeLocale);
+    },
+    formatDate(value) {
+      return formatCronTaskDate(value, this.activeLocale);
+    },
     formatDuration(duration) {
-      if (duration == null) return '-';
-
-      // 如果duration小于1000，认为是毫秒
-      if (duration < 1000) {
-        return `${duration} 毫秒`;
-      }
-
-      // 否则转换为秒
-      const seconds = duration / 1000;
-      if (seconds < 60) {
-        return `${seconds.toFixed(2)} 秒`;
-      }
-
-      // 如果超过60秒，转换为分钟和秒
-      const minutes = Math.floor(seconds / 60);
-      const remainingSeconds = (seconds % 60).toFixed(0);
-      return `${minutes} 分 ${remainingSeconds} 秒`;
+      return formatCronTaskMilliseconds(duration, this.activeLocale);
     },
 
     getRunStatusText(status) {
-      const labels = { queued: '等待执行', running: '执行中', success: '成功', failed: '失败', canceled: '已取消', skipped: '已跳过' };
-      return labels[status] || '未知';
+      return cronTaskStatusLabel(status, this.activeLocale);
     },
     isTerminalFailure(status) {
-      return ['failed', 'canceled', 'skipped'].includes(status);
+      return ['failed', 'canceled', 'skipped'].includes(String(status || '').toLowerCase());
     },
     getRunStatusVariant(status) {
-      if (status === 'success') return 'default';
+      if (['success', 'succeeded', 'completed'].includes(String(status || '').toLowerCase())) return 'default';
       if (this.isTerminalFailure(status)) return 'destructive';
       return 'secondary';
     },
     getRunStatusTitle(status) {
-      if (status === 'success') return '任务执行成功';
-      if (this.isTerminalFailure(status)) return `任务${this.getRunStatusText(status)}`;
-      return status === 'running' ? '任务执行中' : '任务等待执行';
+      const normalized = String(status || '').toLowerCase();
+      if (['success', 'succeeded', 'completed'].includes(normalized)) return this.text('execution.statusTitles.success');
+      if (this.isTerminalFailure(normalized)) return this.text('execution.statusTitles.failed', { status: this.getRunStatusText(status) });
+      if (normalized === 'running') return this.text('execution.statusTitles.running');
+      if (['queued', 'pending'].includes(normalized)) return this.text('execution.statusTitles.queued');
+      return this.getRunStatusText(status);
     },
     getRunStatusDescription(log) {
-      if (log.status === 'success') return `任务已成功执行，耗时 ${this.formatDuration(log.duration)}`;
-      if (this.isTerminalFailure(log.status)) return log.error || '任务未成功完成，请查看错误信息';
-      return '任务已进入执行队列，页面会自动刷新状态。';
+      if (['success', 'succeeded', 'completed'].includes(String(log.status || '').toLowerCase())) {
+        return this.text('execution.descriptions.success', { duration: this.formatDuration(log.duration) });
+      }
+      if (this.isTerminalFailure(log.status)) return log.error || this.text('execution.descriptions.failed');
+      return this.text('execution.descriptions.pending');
     },
 
     // 根据trigger_type获取触发方式的文本描述
     getTriggerTypeText(triggerType) {
-      // 根据实际情况调整映射关系
-      const triggerTypeMap = {
-        0: '定时触发', // 0 代表定时触发
-        1: '手动触发', // 1 代表手动触发
-        2: '事件触发', // 2 代表事件触发
-        3: '依赖触发', // 3 代表依赖触发
-        4: 'API触发'    // 4 代表API触发
-      };
-      return triggerTypeMap[triggerType] || '未知触发';
+      return cronTaskTriggerLabel(triggerType, this.activeLocale);
     }
   }
 };

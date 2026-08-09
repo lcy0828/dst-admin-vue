@@ -5,6 +5,7 @@ import { commandMessages } from './commandMessages.js'
 import { corePageMessages } from './corePages.js'
 import { cronGroupMessages } from './cronGroupMessages.js'
 import { cronLogMessages } from './cronLogMessages.js'
+import { cronTaskMessages } from './cronTaskMessages.js'
 import { logToolsMessages } from './logToolsMessages.js'
 import { modMessages } from './modMessages.js'
 import { playerMessages } from './playerMessages.js'
@@ -35,6 +36,7 @@ export const messages = {
     ...worldMapsMessages['zh-CN'],
     ...worldStateMessages['zh-CN'],
     ...worldsMessages['zh-CN'],
+    cronTasks: cronTaskMessages['zh-CN'],
     common: {
       actions: {
         cancel: '取消',
@@ -520,6 +522,7 @@ export const messages = {
     ...worldMapsMessages['en-US'],
     ...worldStateMessages['en-US'],
     ...worldsMessages['en-US'],
+    cronTasks: cronTaskMessages['en-US'],
     common: {
       actions: {
         cancel: 'Cancel',

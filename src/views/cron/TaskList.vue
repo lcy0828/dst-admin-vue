@@ -2,73 +2,73 @@
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
       <div class="min-w-0">
-        <h1 class="text-2xl font-semibold tracking-normal">定时任务管理</h1>
-        <p class="mt-1 text-sm text-muted-foreground">配置并监控服务器自动化任务。</p>
+        <h1 class="text-2xl font-semibold tracking-normal">{{ text('list.title') }}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{{ text('list.subtitle') }}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" />
-        <UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton>
-        <UiButton size="sm" variant="outline" @click="$router.push('/cron/logs')"><FileText data-icon="inline-start" />执行日志</UiButton>
+        <UiButton size="sm" @click="handleAddTask"><Plus data-icon="inline-start" />{{ text('common.actions.addTask') }}</UiButton>
+        <UiButton size="sm" variant="outline" @click="$router.push('/cron/logs')"><FileText data-icon="inline-start" />{{ text('common.actions.logs') }}</UiButton>
       </div>
     </header>
     <Card>
-      <CardHeader><CardTitle>任务列表</CardTitle><CardDescription>按类型、状态和关键词筛选当前房间任务。</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{{ text('list.cardTitle') }}</CardTitle><CardDescription>{{ text('list.cardDescription') }}</CardDescription></CardHeader>
       <CardContent>
-        <FieldGroup class="filter-grid"><Field><FieldLabel for="task-type-filter">任务类型</FieldLabel><UiSelect v-model="listQuery.type"><SelectTrigger id="task-type-filter"><SelectValue placeholder="选择类型" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="function">受控函数</SelectItem><SelectItem value="tmux_command">内建命令</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-status-filter">状态</FieldLabel><UiSelect :model-value="String(listQuery.status)" @update:model-value="listQuery.status = $event"><SelectTrigger id="task-status-filter"><SelectValue placeholder="选择状态" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">全部</SelectItem><SelectItem value="1">启用</SelectItem><SelectItem value="0">禁用</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-keyword">关键词</FieldLabel><UiInput id="task-keyword" v-model="listQuery.keyword" placeholder="搜索任务名称或描述" @keyup.enter="fetchData" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><Search v-else data-icon="inline-start" />搜索</UiButton><UiButton variant="outline" @click="resetQuery">重置</UiButton></div></FieldGroup>
-        <Alert v-if="fetchError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>任务列表加载失败</AlertTitle><AlertDescription>无法读取当前房间的任务数据，请检查连接后重试。</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="retryFetch">重新加载</UiButton></AlertAction></Alert>
+        <FieldGroup class="filter-grid"><Field><FieldLabel for="task-type-filter">{{ text('list.filters.type') }}</FieldLabel><UiSelect v-model="listQuery.type"><SelectTrigger id="task-type-filter"><SelectValue :placeholder="text('list.filters.selectType')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ text('common.values.all') }}</SelectItem><SelectItem value="function">{{ taskTypeLabel('function') }}</SelectItem><SelectItem value="tmux_command">{{ taskTypeLabel('tmux_command') }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-status-filter">{{ text('list.filters.status') }}</FieldLabel><UiSelect :model-value="String(listQuery.status)" @update:model-value="listQuery.status = $event"><SelectTrigger id="task-status-filter"><SelectValue :placeholder="text('list.filters.selectStatus')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ text('common.values.all') }}</SelectItem><SelectItem value="1">{{ text('common.values.enabled') }}</SelectItem><SelectItem value="0">{{ text('common.values.disabled') }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-keyword">{{ text('list.filters.keyword') }}</FieldLabel><UiInput id="task-keyword" v-model="listQuery.keyword" :placeholder="text('list.filters.keywordPlaceholder')" @keyup.enter="fetchData" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><Search v-else data-icon="inline-start" />{{ text('common.actions.search') }}</UiButton><UiButton variant="outline" @click="resetQuery">{{ text('common.actions.reset') }}</UiButton></div></FieldGroup>
+        <Alert v-if="fetchError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>{{ text('list.loadFailedTitle') }}</AlertTitle><AlertDescription>{{ fetchError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="retryFetch">{{ text('common.actions.reload') }}</UiButton></AlertAction></Alert>
         <div v-if="loading && taskList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 6" :key="index" class="h-14 w-full" /></div>
-        <Empty v-else-if="taskList.length === 0"><EmptyHeader><EmptyTitle>暂无定时任务</EmptyTitle><EmptyDescription>当前筛选条件下没有任务。</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="handleAddTask"><Plus data-icon="inline-start" />添加任务</UiButton></EmptyContent></Empty>
-        <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>任务名称</TableHead><TableHead>Cron 表达式</TableHead><TableHead>类型</TableHead><TableHead>目标</TableHead><TableHead>依赖任务</TableHead><TableHead>超时/重试</TableHead><TableHead>上次执行</TableHead><TableHead>状态</TableHead><TableHead class="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
-          <TableRow v-for="task in taskList" :key="task.id" :class="task.status === 0 ? 'opacity-60' : ''"><TableCell>{{ task.id }}</TableCell><TableCell><div class="min-w-40"><div class="flex items-center gap-2"><span class="font-medium">{{ task.name }}</span><Badge v-if="isNewTask(task)" variant="destructive">NEW</Badge></div><p v-if="task.description" class="mt-1 max-w-56 truncate text-xs text-muted-foreground">{{ task.description }}</p></div></TableCell><TableCell class="font-mono text-xs">{{ task.spec }}</TableCell><TableCell><Badge variant="outline">{{ getTaskTypeName(task.type) }}</Badge></TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="block max-w-48 truncate">{{ truncate(getFormattedTarget(task), 40) }}</span></TooltipTrigger><TooltipContent>{{ getFormattedTarget(task) }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell><span v-if="!task.dependencies || task.dependencies.length === 0" class="text-muted-foreground">无依赖</span><div v-else class="flex max-w-48 flex-wrap gap-1"><Badge v-for="dep in task.dependencies" :key="dep.id || dep" variant="secondary">{{ dep.name || dep.id || dep }}</Badge></div></TableCell><TableCell><div class="flex min-w-24 flex-col gap-1 text-xs"><span><Clock class="inline size-3" /> {{ task.timeout || '无限' }}</span><span><RefreshCw class="inline size-3" /> {{ task.retry_times || 0 }}</span></div></TableCell><TableCell><div class="min-w-36"><span v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'">{{ formatDateTime(task.last_run_time) }}</span><span v-else class="text-muted-foreground">未执行</span><Badge v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'" class="mt-1" :variant="task.last_status === 1 ? 'default' : 'destructive'">{{ task.last_status === 1 ? '成功' : '失败' }}</Badge></div></TableCell><TableCell><Badge :variant="task.status === 1 ? 'default' : 'secondary'">{{ task.status === 1 ? '启用' : '禁用' }}</Badge></TableCell><TableCell><div class="flex min-w-max justify-end gap-1"><UiButton size="icon-sm" variant="outline" title="立即执行" :aria-label="`立即执行任务 ${task.name}`" @click="handleRunNow(task)"><Play /></UiButton><UiButton size="icon-sm" variant="ghost" :title="task.status === 1 ? '禁用任务' : '启用任务'" :aria-label="task.status === 1 ? `禁用任务 ${task.name}` : `启用任务 ${task.name}`" @click="handleToggleStatus(task)"><CircleOff v-if="task.status === 1" /><CircleCheck v-else /></UiButton><UiButton size="icon-sm" variant="ghost" title="编辑任务" :aria-label="`编辑任务 ${task.name}`" @click="handleEdit(task)"><Pencil /></UiButton><DropdownMenu><DropdownMenuTrigger as-child><UiButton size="icon-sm" variant="ghost" title="更多操作" :aria-label="`打开任务 ${task.name} 的更多操作`"><Ellipsis /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuGroup><DropdownMenuItem @select="viewTaskLogs(task.id)"><FileText />查看日志</DropdownMenuItem><DropdownMenuItem @select="viewTaskStats(task.id)"><ChartNoAxesColumn />查看统计</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" @select="handleDelete(task)"><Trash2 />删除任务</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent></DropdownMenu></div></TableCell></TableRow>
+        <Empty v-else-if="taskList.length === 0"><EmptyHeader><EmptyTitle>{{ text('list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ text('list.emptyDescription') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="handleAddTask"><Plus data-icon="inline-start" />{{ text('common.actions.addTask') }}</UiButton></EmptyContent></Empty>
+        <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>{{ text('list.columns.id') }}</TableHead><TableHead>{{ text('list.columns.name') }}</TableHead><TableHead>{{ text('list.columns.cron') }}</TableHead><TableHead>{{ text('list.columns.type') }}</TableHead><TableHead>{{ text('list.columns.target') }}</TableHead><TableHead>{{ text('list.columns.dependencies') }}</TableHead><TableHead>{{ text('list.columns.timeoutRetry') }}</TableHead><TableHead>{{ text('list.columns.lastRun') }}</TableHead><TableHead>{{ text('list.columns.status') }}</TableHead><TableHead class="text-right">{{ text('list.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
+          <TableRow v-for="task in taskList" :key="task.id" :class="task.status === 0 ? 'opacity-60' : ''"><TableCell>{{ task.id }}</TableCell><TableCell><div class="min-w-40"><div class="flex items-center gap-2"><span class="font-medium">{{ task.name }}</span><Badge v-if="isNewTask(task)" variant="destructive">{{ text('common.values.new') }}</Badge></div><p v-if="task.description" class="mt-1 max-w-56 truncate text-xs text-muted-foreground">{{ task.description }}</p></div></TableCell><TableCell class="font-mono text-xs">{{ task.spec }}</TableCell><TableCell><Badge variant="outline">{{ getTaskTypeName(task.type) }}</Badge></TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="block max-w-48 truncate">{{ truncate(getFormattedTarget(task), 40) }}</span></TooltipTrigger><TooltipContent>{{ getFormattedTarget(task) }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell><span v-if="!task.dependencies || task.dependencies.length === 0" class="text-muted-foreground">{{ text('common.values.noDependencies') }}</span><div v-else class="flex max-w-48 flex-wrap gap-1"><Badge v-for="dep in task.dependencies" :key="dep.id || dep" variant="secondary">{{ dep.name || dep.id || dep }}</Badge></div></TableCell><TableCell><div class="flex min-w-24 flex-col gap-1 text-xs"><span><Clock class="inline size-3" /> {{ formatTimeout(task.timeout) }}</span><span><RefreshCw class="inline size-3" /> {{ task.retry_times || 0 }}</span></div></TableCell><TableCell><div class="min-w-36"><span v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'">{{ formatDateTime(task.last_run_time) }}</span><span v-else class="text-muted-foreground">{{ text('common.values.notExecuted') }}</span><Badge v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'" class="mt-1" :variant="task.last_status === 1 ? 'default' : 'destructive'">{{ text(task.last_status === 1 ? 'common.values.success' : 'common.values.failed') }}</Badge></div></TableCell><TableCell><Badge :variant="task.status === 1 ? 'default' : 'secondary'">{{ text(task.status === 1 ? 'common.values.enabled' : 'common.values.disabled') }}</Badge></TableCell><TableCell><div class="flex min-w-max justify-end gap-1"><UiButton size="icon-sm" variant="outline" :title="text('common.actions.run')" :aria-label="text('list.actionAria.run', { name: task.name })" @click="handleRunNow(task)"><Play /></UiButton><UiButton size="icon-sm" variant="ghost" :title="text(task.status === 1 ? 'common.actions.disableTask' : 'common.actions.enableTask')" :aria-label="text(task.status === 1 ? 'list.actionAria.disable' : 'list.actionAria.enable', { name: task.name })" @click="handleToggleStatus(task)"><CircleOff v-if="task.status === 1" /><CircleCheck v-else /></UiButton><UiButton size="icon-sm" variant="ghost" :title="text('common.actions.edit')" :aria-label="text('list.actionAria.edit', { name: task.name })" @click="handleEdit(task)"><Pencil /></UiButton><DropdownMenu><DropdownMenuTrigger as-child><UiButton size="icon-sm" variant="ghost" :title="text('common.actions.more')" :aria-label="text('list.actionAria.more', { name: task.name })"><Ellipsis /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuGroup><DropdownMenuItem @select="viewTaskLogs(task.id)"><FileText />{{ text('common.actions.viewLogs') }}</DropdownMenuItem><DropdownMenuItem @select="viewTaskStats(task.id)"><ChartNoAxesColumn />{{ text('common.actions.viewStats') }}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" @select="handleDelete(task)"><Trash2 />{{ text('common.actions.delete') }}</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent></DropdownMenu></div></TableCell></TableRow>
         </TableBody></ShadcnTable></div>
-        <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>每页</span><UiSelect :model-value="String(listQuery.limit)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24" aria-label="每页显示条数"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10,20,50,100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>共 {{ total }} 条</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.limit" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
+        <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>{{ text('list.pagination.perPage') }}</span><UiSelect :model-value="String(listQuery.limit)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24" :aria-label="text('list.pagination.perPageAria')"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10,20,50,100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>{{ text('list.pagination.total', { count: total }) }}</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.limit" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
       </CardContent>
     </Card>
 
-    <UiDialog v-model:open="dialogVisible"><DialogScrollContent class="max-w-3xl"><DialogHeader><DialogTitle>执行结果</DialogTitle><DialogDescription>任务本次手动执行的返回信息</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="dialogVisible"><DialogScrollContent class="max-w-3xl"><DialogHeader><DialogTitle>{{ text('list.result.title') }}</DialogTitle><DialogDescription>{{ text('list.result.description') }}</DialogDescription></DialogHeader>
       <div v-if="taskResult" class="task-result">
         <div v-if="taskResult.success !== undefined">
-          <p><strong>执行状态：</strong> <Badge :variant="taskResult.success ? 'default' : 'destructive'">{{ taskResult.success ? '成功' : '失败' }}</Badge></p>
-          <p v-if="taskResult.timestamp"><strong>执行时间：</strong> {{ taskResult.timestamp }}</p>
-          <p v-if="taskResult.duration != null"><strong>执行耗时：</strong> {{ formatDuration(taskResult.duration) }}</p>
+          <p><strong>{{ text('list.result.status') }}</strong> <Badge :variant="taskResult.success ? 'default' : 'destructive'">{{ text(taskResult.success ? 'common.values.success' : 'common.values.failed') }}</Badge></p>
+          <p v-if="taskResult.timestamp"><strong>{{ text('list.result.time') }}</strong> {{ formatDateTime(taskResult.timestamp) }}</p>
+          <p v-if="taskResult.duration != null"><strong>{{ text('list.result.duration') }}</strong> {{ formatDuration(taskResult.duration) }}</p>
         </div>
 
-        <Alert v-if="taskResult.message"><Info /><AlertTitle>执行消息</AlertTitle><AlertDescription>{{ taskResult.message }}</AlertDescription></Alert>
+        <Alert v-if="taskResult.message"><Info /><AlertTitle>{{ text('list.result.message') }}</AlertTitle><AlertDescription>{{ taskResult.message }}</AlertDescription></Alert>
 
         <div v-if="taskResult.output" class="result-output">
-          <strong>输出结果：</strong>
+          <strong>{{ text('list.result.output') }}</strong>
           <pre>{{ taskResult.output }}</pre>
         </div>
 
-        <Alert v-if="!taskResult.success && !taskResult.output && !taskResult.message" class="my-4"><Info /><AlertTitle>任务已开始异步执行</AlertTitle><AlertDescription>任务正在后台执行，请查看任务日志获取执行结果。</AlertDescription></Alert>
+        <Alert v-if="!taskResult.success && !taskResult.output && !taskResult.message" class="my-4"><Info /><AlertTitle>{{ text('list.result.asyncTitle') }}</AlertTitle><AlertDescription>{{ text('list.result.asyncDescription') }}</AlertDescription></Alert>
       </div>
-      <Alert v-else><Info /><AlertTitle>任务已开始异步执行</AlertTitle><AlertDescription>任务正在后台执行，请查看任务日志获取执行结果。</AlertDescription></Alert>
-      <DialogFooter><UiButton variant="outline" @click="dialogVisible = false">关闭</UiButton><UiButton @click="viewTaskLogs(currentTaskId)">查看任务日志</UiButton></DialogFooter></DialogScrollContent></UiDialog>
+      <Alert v-else><Info /><AlertTitle>{{ text('list.result.asyncTitle') }}</AlertTitle><AlertDescription>{{ text('list.result.asyncDescription') }}</AlertDescription></Alert>
+      <DialogFooter><UiButton variant="outline" @click="dialogVisible = false">{{ text('common.actions.close') }}</UiButton><UiButton @click="viewTaskLogs(currentTaskId)">{{ text('common.actions.viewLogs') }}</UiButton></DialogFooter></DialogScrollContent></UiDialog>
 
-    <UiDialog v-model:open="statsDialogVisible"><DialogScrollContent class="max-w-4xl"><DialogHeader><DialogTitle>任务统计</DialogTitle><DialogDescription>任务历史执行表现和耗时趋势</DialogDescription></DialogHeader>
+    <UiDialog v-model:open="statsDialogVisible"><DialogScrollContent class="max-w-4xl"><DialogHeader><DialogTitle>{{ text('list.stats.title') }}</DialogTitle><DialogDescription>{{ text('list.stats.description') }}</DialogDescription></DialogHeader>
       <div v-if="statsLoading" class="flex flex-col gap-3"><Skeleton class="h-24 w-full" /><Skeleton class="h-72 w-full" /></div><div v-else class="task-stats">
         <div v-if="taskStats" class="stats-overview">
-          <Card><CardHeader><CardTitle>成功率</CardTitle><CardDescription>历史执行结果</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ taskStats.success_rate }}%</strong></CardContent></Card>
-          <Card><CardHeader><CardTitle>平均耗时</CardTitle><CardDescription>已完成执行</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ taskStats.avg_duration }} <span class="text-sm font-normal text-muted-foreground">{{ taskStats.duration_unit === 's' ? '秒' : '毫秒' }}</span></strong><p v-if="taskStats.duration_unit === 'ms'" class="mt-1 text-xs text-muted-foreground">约 {{ (taskStats.avg_duration / 1000).toFixed(2) }} 秒</p></CardContent></Card>
-          <Card><CardHeader><CardTitle>总执行次数</CardTitle><CardDescription>全部历史记录</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ taskStats.total_runs }}</strong></CardContent></Card>
-          <Card><CardHeader><CardTitle>最近执行</CardTitle><CardDescription>最后一次调度</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-base font-semibold">{{ taskStats.last_run || '无' }}</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>{{ text('list.stats.successRate') }}</CardTitle><CardDescription>{{ text('list.stats.historyResults') }}</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ taskStats.success_rate }}%</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>{{ text('list.stats.averageDuration') }}</CardTitle><CardDescription>{{ text('list.stats.completedRuns') }}</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ formatStatsDuration(taskStats) }}</strong><p v-if="taskStats.duration_unit === 'ms'" class="mt-1 text-xs text-muted-foreground">{{ text('common.units.approximateSeconds', { value: (taskStats.avg_duration / 1000).toFixed(2) }) }}</p></CardContent></Card>
+          <Card><CardHeader><CardTitle>{{ text('list.stats.totalRuns') }}</CardTitle><CardDescription>{{ text('list.stats.allHistory') }}</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-2xl font-semibold tabular-nums">{{ taskStats.total_runs }}</strong></CardContent></Card>
+          <Card><CardHeader><CardTitle>{{ text('list.stats.latestRun') }}</CardTitle><CardDescription>{{ text('list.stats.lastSchedule') }}</CardDescription></CardHeader><CardContent class="pt-1"><strong class="text-base font-semibold">{{ taskStats.last_run ? formatDateTime(taskStats.last_run) : text('common.values.none') }}</strong></CardContent></Card>
         </div>
         <div v-if="taskStats && (taskStats.success_count > 0 || taskStats.fail_count > 0)" class="stats-detail">
           <div class="grid gap-4 sm:grid-cols-2">
               <div class="detail-item">
-                <span class="detail-label">成功次数:</span>
+                <span class="detail-label">{{ text('list.stats.successCount') }}</span>
                 <span class="detail-value success">{{ taskStats.success_count }}</span>
               </div>
               <div class="detail-item">
-                <span class="detail-label">失败次数:</span>
+                <span class="detail-label">{{ text('list.stats.failureCount') }}</span>
                 <span class="detail-value fail">{{ taskStats.fail_count }}</span>
               </div>
           </div>
           <div v-if="taskStats.last_status !== undefined" class="mt-3">
               <div class="detail-item">
-                <span class="detail-label">最近状态:</span>
+                <span class="detail-label">{{ text('list.stats.latestStatus') }}</span>
                 <Badge :variant="taskStats.last_status === 1 ? 'default' : 'destructive'">
-                  {{ taskStats.last_status === 1 ? '成功' : '失败' }}
+                  {{ text(taskStats.last_status === 1 ? 'common.values.success' : 'common.values.failed') }}
                 </Badge>
               </div>
           </div>
@@ -78,7 +78,7 @@
           <div id="durationChart" class="h-72 w-full"></div>
         </div>
       </div>
-      <DialogFooter><UiButton variant="outline" @click="statsDialogVisible = false">关闭</UiButton></DialogFooter></DialogScrollContent></UiDialog>
+      <DialogFooter><UiButton variant="outline" @click="statsDialogVisible = false">{{ text('common.actions.close') }}</UiButton></DialogFooter></DialogScrollContent></UiDialog>
   </div>
 </template>
 
@@ -107,6 +107,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  createCronTaskFailure,
+  cronTaskActionName,
+  cronTaskFailureText,
+  cronTaskGroupLabel,
+  cronTaskText,
+  cronTaskTypeLabel,
+  formatCronTaskDate,
+  formatCronTaskFlexibleDuration
+} from '@/i18n/cronTaskMessages';
 import { confirmAction } from '@/lib/feedback';
 
 export default {
@@ -146,10 +156,45 @@ export default {
       taskStats: null,
       executionChart: null,
       durationChart: null,
-      fetchError: false
+      executionChartData: null,
+      durationChartData: null,
+      fetchFailure: null
     };
   },
+  computed: {
+    activeLocale() {
+      const state = this.$i18n?.locale;
+      return typeof state === 'string' ? state : (state?.value || 'zh-CN');
+    },
+    fetchError() {
+      return cronTaskFailureText(this.fetchFailure, this.activeLocale);
+    }
+  },
+  watch: {
+    activeLocale() {
+      this.$nextTick(() => {
+        if (this.executionChartData) this.initExecutionChart(this.executionChartData);
+        if (this.durationChartData) this.initDurationChart(this.durationChartData);
+      });
+    }
+  },
   methods: {
+    text(key, parameters) {
+      return cronTaskText(key, this.activeLocale, parameters);
+    },
+    failureText(key, error) {
+      return cronTaskFailureText(createCronTaskFailure(key, error), this.activeLocale);
+    },
+    setFetchFailure(key, error) {
+      this.fetchFailure = createCronTaskFailure(key, error);
+      return cronTaskFailureText(this.fetchFailure, this.activeLocale);
+    },
+    taskTypeLabel(type) {
+      return cronTaskTypeLabel(type, this.activeLocale);
+    },
+    groupLabel(name) {
+      return cronTaskGroupLabel(name, this.activeLocale);
+    },
     chartColor(variable) {
       return getComputedStyle(document.documentElement).getPropertyValue(variable).trim() || getSystemPreferences().theme;
     },
@@ -222,58 +267,29 @@ export default {
 
     // 获取任务类型名称
     getTaskTypeName(type) {
-      const typeMap = {
-        'function': '函数',
-        'shell': 'Shell命令',
-        'tmux_command': 'TMUX命令',
-        'tmux_raw_command': 'TMUX原始命令'
-      };
-      return typeMap[type] || type;
+      return cronTaskTypeLabel(type, this.activeLocale);
     },
 
     // 格式化执行耗时
     formatDuration(duration) {
-      if (duration === undefined || duration === null) return '-';
-
-      // 判断是否为毫秒值
-      const isMilliseconds = duration > 1000 || duration < 0.01;
-
-      if (isMilliseconds) {
-        // 如果是毫秒值
-        if (duration >= 1000) {
-          // 转换为秒
-          return `${(duration / 1000).toFixed(2)} 秒`;
-        } else {
-          // 保持毫秒
-          return `${Math.round(duration)} 毫秒`;
-        }
-      } else {
-        // 已经是秒值
-        return `${parseFloat(duration).toFixed(2)} 秒`;
-      }
+      return formatCronTaskFlexibleDuration(duration, this.activeLocale);
+    },
+    formatTimeout(timeout) {
+      const value = Number(timeout);
+      return Number.isFinite(value) && value > 0
+        ? this.text('common.units.seconds', { value })
+        : this.text('common.values.unlimited');
+    },
+    formatStatsDuration(stats) {
+      return this.text(
+        stats.duration_unit === 's' ? 'common.units.seconds' : 'common.units.milliseconds',
+        { value: stats.avg_duration }
+      );
     },
 
     // 格式化日期时间
     formatDateTime(dateTimeStr) {
-      if (!dateTimeStr || dateTimeStr === '0001-01-01T00:00:00Z') {
-        return '未计划';
-      }
-
-      try {
-        const date = new Date(dateTimeStr);
-        return date.toLocaleString('zh-CN', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        });
-      } catch (e) {
-        console.warn('日期格式化失败:', e);
-        return dateTimeStr;
-      }
+      return formatCronTaskDate(dateTimeStr, this.activeLocale);
     },
 
     // 获取TMUX命令列表
@@ -305,35 +321,46 @@ export default {
       return command ? (command.script || command.command || '') : '';
     },
 
+    formatTmuxTarget(sessionName, commandId, parameters = []) {
+      const parts = [
+        this.text('list.target.server', { value: sessionName }),
+        this.text('list.target.command', { value: this.getCommandNameById(commandId) }),
+        this.text('list.target.content', { value: this.getCommandContentById(commandId) })
+      ];
+      if (parameters.length > 0) {
+        parts.push(this.text('list.target.parameters', { value: parameters.join(', ') }));
+      }
+      return parts.join(this.text('list.target.separator'));
+    },
+
+    formatRawTmuxTarget(sessionName, command) {
+      return [
+        this.text('list.target.server', { value: sessionName }),
+        this.text('list.target.command', { value: command })
+      ].join(this.text('list.target.separator'));
+    },
+
     // 格式化显示目标
     getFormattedTarget(task) {
       if (task.type === 'tmux_command') {
         // 优先使用新的直接字段
         if (task.session_name && task.command_id) {
-          const commandName = this.getCommandNameById(task.command_id);
-          const commandContent = this.getCommandContentById(task.command_id);
-          const params = task.command_params && task.command_params.length > 0
-            ? ', 参数: ' + task.command_params.join(', ')
-            : '';
-          return `服务器: ${task.session_name}, 命令: ${commandName}, 内容: ${commandContent}${params}`;
+          return this.formatTmuxTarget(task.session_name, task.command_id, task.command_params || []);
         }
         // 其次使用tmux_task字段
         else if (task.tmux_task && task.tmux_task.session_name && task.tmux_task.command_id) {
-          const commandName = this.getCommandNameById(task.tmux_task.command_id);
-          const commandContent = this.getCommandContentById(task.tmux_task.command_id);
-          const params = task.tmux_task.command_params && task.tmux_task.command_params.length > 0
-            ? ', 参数: ' + task.tmux_task.command_params.join(', ')
-            : '';
-          return `服务器: ${task.tmux_task.session_name}, 命令: ${commandName}, 内容: ${commandContent}${params}`;
+          return this.formatTmuxTarget(
+            task.tmux_task.session_name,
+            task.tmux_task.command_id,
+            task.tmux_task.command_params || []
+          );
         }
         // 兼容旧的target字段
         else if (task.target) {
           try {
             const targetArray = JSON.parse(task.target);
             if (Array.isArray(targetArray) && targetArray.length >= 2) {
-              const commandName = this.getCommandNameById(targetArray[1]);
-              const commandContent = this.getCommandContentById(targetArray[1]);
-              return `服务器: ${targetArray[0]}, 命令: ${commandName}, 内容: ${commandContent}${targetArray.length > 2 ? ', 参数: ' + targetArray.slice(2).join(', ') : ''}`;
+              return this.formatTmuxTarget(targetArray[0], targetArray[1], targetArray.slice(2));
             }
           } catch (e) {
             console.warn('解析目标失败:', e);
@@ -342,30 +369,33 @@ export default {
       } else if (task.type === 'tmux_raw_command') {
         // 优先使用新的直接字段
         if (task.session_name && task.raw_command) {
-          return `服务器: ${task.session_name}, 命令: ${task.raw_command}`;
+          return this.formatRawTmuxTarget(task.session_name, task.raw_command);
         }
         // 其次使用tmux_task字段
         else if (task.tmux_task && task.tmux_task.session_name && task.tmux_task.raw_command) {
-          return `服务器: ${task.tmux_task.session_name}, 命令: ${task.tmux_task.raw_command}`;
+          return this.formatRawTmuxTarget(task.tmux_task.session_name, task.tmux_task.raw_command);
         }
         // 兼容旧的target字段
         else if (task.target) {
           try {
             const targetArray = JSON.parse(task.target);
             if (Array.isArray(targetArray) && targetArray.length >= 2) {
-              return `服务器: ${targetArray[0]}, 命令: ${targetArray[1]}`;
+              return this.formatRawTmuxTarget(targetArray[0], targetArray[1]);
             }
           } catch (e) {
             console.warn('解析目标失败:', e);
           }
         }
       }
+      if (task.type === 'function') {
+        return cronTaskActionName(task.target, this.activeLocale, task.target);
+      }
       return task.target;
     },
 
     fetchData() {
       this.loading = true;
-      this.fetchError = false;
+      this.fetchFailure = null;
       const query = {
         ...this.listQuery,
         type: this.listQuery.type === 'all' ? '' : this.listQuery.type,
@@ -474,8 +504,7 @@ export default {
               }
 
               // 给任务添加group_name属性
-              task.group_name = task.group_id === 0 ? '未分组' :
-                this.groupList.find(g => g.id === task.group_id)?.name || '未知';
+              task.group_name = this.groupList.find(g => g.id === task.group_id)?.name || '';
 
               // 如果下次执行时间是无效值或不存在，设置为空
               if (!task.next_run_time || task.next_run_time === '0001-01-01T00:00:00Z') {
@@ -490,18 +519,19 @@ export default {
             this.total = this.total || tasksData.length;
           } else {
             console.error('无法识别的响应格式:', response);
-            toast.error('获取任务列表失败：无法识别的响应格式');
+            toast.error(this.setFetchFailure(
+              'list.feedback.taskListInvalid',
+              response?.data?.msg || response?.data?.message
+            ));
             this.taskList = [];
             this.total = 0;
-            this.fetchError = true;
           }
         })
         .catch(error => {
           console.error('获取任务列表失败:', error);
-          toast.error('获取任务列表失败：' + (error.message || '未知错误'));
+          toast.error(this.setFetchFailure('list.feedback.taskListFailed', error));
           this.taskList = [];
           this.total = 0;
-          this.fetchError = true;
         })
         .finally(() => {
           this.loading = false;
@@ -509,7 +539,7 @@ export default {
     },
     fetchGroups() {
       console.log('开始获取任务组列表');
-      cronTaskApi.getGroups()
+      return cronTaskApi.getGroups()
         .then(response => {
           console.log('获取任务组列表响应:', response);
 
@@ -557,15 +587,17 @@ export default {
             this.groupList = groupsData;
           } else {
             console.error('无法识别的响应格式:', response);
-            toast.error(response.data?.msg || response.data?.message || '获取任务组列表失败：无法识别的响应格式');
+            const detail = response.data?.msg || response.data?.message;
+            toast.error(detail
+              ? this.failureText('list.feedback.groupListFailed', detail)
+              : this.text('list.feedback.groupListInvalid'));
             this.groupList = [];
           }
         })
         .catch(error => {
           console.error('获取任务组列表失败:', error);
-          toast.error('获取任务组列表失败：' + (error.message || '未知错误'));
+          toast.error(this.failureText('list.feedback.groupListFailed', error));
           this.groupList = [];
-          this.fetchError = true;
         });
     },
     handleSizeChange(val) {
@@ -593,10 +625,13 @@ export default {
     handleEdit(row) {
       this.$router.push(`/cron/edit/${row.id}`);
     },
+    responseMessage(response) {
+      return response?.msg || response?.message || response?.data?.msg || response?.data?.message || '';
+    },
     handleDelete(row) {
-      confirmAction('确定要删除此任务吗？删除后不可恢复。', '确认删除', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      confirmAction(this.text('list.confirm.deleteMessage'), this.text('list.confirm.deleteTitle'), {
+        confirmButtonText: this.text('common.actions.confirm'),
+        cancelButtonText: this.text('common.actions.cancel'),
         type: 'warning'
       }).then(() => {
         cronTaskApi.deleteTask(row.id)
@@ -609,32 +644,27 @@ export default {
               (response.status === 200) || // 旧格式 {status: 200, ...}
               (response.data && response.data.status === 200) // 嵌套旧格式
             ) {
-              toast.success('删除成功');
+              toast.success(this.text('list.feedback.deleted'));
               this.fetchData();
             } else {
-              const errorMsg =
-                response.msg ||
-                response.message ||
-                (response.data && (response.data.msg || response.data.message)) ||
-                '删除失败';
-              toast.error(errorMsg);
+              toast.error(this.failureText('list.feedback.deleteFailed', this.responseMessage(response)));
             }
           })
           .catch(error => {
             console.error('删除任务失败:', error);
-            toast.error('删除任务失败');
+            toast.error(this.failureText('list.feedback.deleteFailed', error));
           });
       }).catch(() => {
-        toast.info('已取消删除');
+        toast.info(this.text('list.feedback.deleteCanceled'));
       });
     },
     handleToggleStatus(row) {
-      const action = row.status === 1 ? '禁用' : '启用';
+      const action = row.status === 1 ? 'disable' : 'enable';
       const actionApi = row.status === 1 ? cronTaskApi.disableTask : cronTaskApi.enableTask;
 
-      confirmAction(`确定要${action}此任务吗？`, `确认${action}`, {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      confirmAction(this.text(`list.confirm.${action}Message`), this.text(`list.confirm.${action}Title`), {
+        confirmButtonText: this.text('common.actions.confirm'),
+        cancelButtonText: this.text('common.actions.cancel'),
         type: 'warning'
       }).then(() => {
         actionApi(row.id)
@@ -647,29 +677,24 @@ export default {
               (response.status === 200) || // 旧格式 {status: 200, ...}
               (response.data && response.data.status === 200) // 嵌套旧格式
             ) {
-              toast.success(`${action}成功`);
+              toast.success(this.text(`list.feedback.${action === 'enable' ? 'enabled' : 'disabled'}`));
               this.fetchData();
             } else {
-              const errorMsg =
-                response.msg ||
-                response.message ||
-                (response.data && (response.data.msg || response.data.message)) ||
-                `${action}失败`;
-              toast.error(errorMsg);
+              toast.error(this.failureText(`list.feedback.${action}Failed`, this.responseMessage(response)));
             }
           })
           .catch(error => {
             console.error(`${action}任务失败:`, error);
-            toast.error(`${action}任务失败`);
+            toast.error(this.failureText(`list.feedback.${action}Failed`, error));
           });
       }).catch(() => {
-        toast.info(`已取消${action}`);
+        toast.info(this.text(`list.feedback.${action}Canceled`));
       });
     },
     handleRunNow(row) {
-      confirmAction('确定要立即执行此任务吗？', '确认执行', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      confirmAction(this.text('list.confirm.runMessage'), this.text('list.confirm.runTitle'), {
+        confirmButtonText: this.text('common.actions.confirm'),
+        cancelButtonText: this.text('common.actions.cancel'),
         type: 'info'
       }).then(() => {
         this.loading = true;
@@ -688,7 +713,7 @@ export default {
               const successMsg =
                 response.msg ||
                 (response.data && response.data.msg) ||
-                '任务已开始运行';
+                this.text('list.feedback.runStarted');
 
               toast.success(successMsg);
               this.fetchData();
@@ -727,9 +752,9 @@ export default {
                   // 已经在上面显示了成功消息，这里不需要额外操作
 
                   // 可选：将任务添加到待查看列表，并提示用户查看日志
-                  confirmAction('任务已开始异步执行，是否查看任务日志？', '任务执行中', {
-                    confirmButtonText: '查看日志',
-                    cancelButtonText: '稍后再看',
+                  confirmAction(this.text('list.confirm.asyncMessage'), this.text('list.confirm.asyncTitle'), {
+                    confirmButtonText: this.text('list.confirm.viewLogs'),
+                    cancelButtonText: this.text('list.confirm.later'),
                     type: 'success',
                     center: true
                   }).then(() => {
@@ -742,23 +767,18 @@ export default {
                 }
               }
             } else {
-              const errorMsg =
-                response.msg ||
-                response.message ||
-                (response.data && (response.data.msg || response.data.message)) ||
-                '任务执行失败';
-              toast.error(errorMsg);
+              toast.error(this.failureText('list.feedback.runFailed', this.responseMessage(response)));
             }
           })
           .catch(error => {
             console.error('执行任务失败:', error);
-            toast.error('执行任务失败');
+            toast.error(this.failureText('list.feedback.runFailed', error));
           })
           .finally(() => {
             this.loading = false;
           });
       }).catch(() => {
-        toast.info('已取消执行');
+        toast.info(this.text('list.feedback.runCanceled'));
       });
     },
     viewTaskLogs(taskId) {
@@ -842,17 +862,12 @@ export default {
                 }
               });
           } else {
-            const errorMsg =
-              response.msg ||
-              response.message ||
-              (response.data && (response.data.msg || response.data.message)) ||
-              '获取任务统计失败';
-            toast.error(errorMsg);
+            toast.error(this.failureText('list.feedback.statsFailed', this.responseMessage(response)));
           }
         })
         .catch(error => {
           console.error('获取任务统计失败:', error);
-          toast.error('获取任务统计失败');
+          toast.error(this.failureText('list.feedback.statsFailed', error));
         })
         .finally(() => {
           this.statsLoading = false;
@@ -869,17 +884,7 @@ export default {
         successRate = Math.round((data.success_count / data.total_count) * 100);
       }
 
-      // 格式化最近执行时间
-      let lastRun = data.last_run_time || data.last_run || '';
-      if (lastRun && lastRun.includes('T')) {
-        // 将ISO格式转换为更友好的格式
-        try {
-          const date = new Date(lastRun);
-          lastRun = date.toLocaleString();
-        } catch (e) {
-          console.warn('日期格式化失败:', e);
-        }
-      }
+      const lastRun = data.last_run_time || data.last_run || '';
 
       // 处理平均耗时，将毫秒转换为更易读的格式
       let formattedDuration = 0;
@@ -911,14 +916,16 @@ export default {
       };
     },
     initExecutionChart(data) {
+      this.executionChartData = data;
       const chartDom = document.getElementById('executionChart');
       if (!chartDom) return;
 
+      if (this.executionChart) this.executionChart.dispose();
       this.executionChart = echarts.init(chartDom);
 
       const option = {
         title: {
-          text: '任务执行成功/失败统计（近30天）',
+          text: this.text('list.charts.executionTitle'),
           left: 'center'
         },
         tooltip: {
@@ -928,7 +935,7 @@ export default {
           }
         },
         legend: {
-          data: ['成功', '失败'],
+          data: [this.text('common.values.success'), this.text('common.values.failed')],
           bottom: 10
         },
         grid: {
@@ -947,7 +954,7 @@ export default {
         },
         series: [
           {
-            name: '成功',
+            name: this.text('common.values.success'),
             type: 'bar',
             stack: 'total',
             itemStyle: {
@@ -956,7 +963,7 @@ export default {
             data: data.success || []
           },
           {
-            name: '失败',
+            name: this.text('common.values.failed'),
             type: 'bar',
             stack: 'total',
             itemStyle: {
@@ -970,14 +977,16 @@ export default {
       this.executionChart.setOption(this.themedChartOption(option));
     },
     initDurationChart(data) {
+      this.durationChartData = data;
       const chartDom = document.getElementById('durationChart');
       if (!chartDom) return;
 
+      if (this.durationChart) this.durationChart.dispose();
       this.durationChart = echarts.init(chartDom);
 
       const option = {
         title: {
-          text: '任务执行时长统计（近30天）',
+          text: this.text('list.charts.durationTitle'),
           left: 'center'
         },
         tooltip: {
@@ -996,13 +1005,13 @@ export default {
         },
         yAxis: {
           type: 'value',
-          name: '执行时长(秒)'
+          name: this.text('common.units.secondsAxis')
         },
         series: [
           {
             data: data.durations || [],
             type: 'line',
-            name: '执行时长',
+            name: this.text('list.charts.durationSeries'),
             smooth: true,
             areaStyle: {},
             itemStyle: {
@@ -1015,7 +1024,7 @@ export default {
       this.durationChart.setOption(this.themedChartOption(option));
     },
     retryFetch() {
-      this.fetchError = false;
+      this.fetchFailure = null;
       this.fetchGroups();
 
       // 先获取任务组，然后获取任务列表

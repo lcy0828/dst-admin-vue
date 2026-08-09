@@ -1,43 +1,43 @@
 <template>
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ isEdit ? '编辑任务' : '添加任务' }}</h1><p class="mt-1 text-sm text-muted-foreground">配置调度、执行目标和失败重试策略。</p></div>
-      <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />返回列表</UiButton></div>
+      <div class="min-w-0"><h1 class="text-2xl font-semibold tracking-normal">{{ text(isEdit ? 'form.editTitle' : 'form.addTitle') }}</h1><p class="mt-1 text-sm text-muted-foreground">{{ text('form.subtitle') }}</p></div>
+      <div class="flex flex-wrap items-center gap-2"><automation-room-select @ready="handleAutomationRoom" @change="handleAutomationRoom" /><UiButton size="sm" variant="outline" @click="$router.push('/cron/tasks')"><ArrowLeft data-icon="inline-start" />{{ text('common.actions.backToList') }}</UiButton></div>
     </header>
     <Card>
-      <CardHeader><CardTitle>任务配置</CardTitle><CardDescription>填写必填信息后保存，调度规则将立即生效。</CardDescription></CardHeader>
+      <CardHeader><CardTitle>{{ text('form.cardTitle') }}</CardTitle><CardDescription>{{ text('form.cardDescription') }}</CardDescription></CardHeader>
       <CardContent>
         <form @submit.prevent="submitForm">
-          <Tabs v-model="activeTab"><TabsList><TabsTrigger value="basic">基本信息</TabsTrigger><TabsTrigger value="advanced">高级选项</TabsTrigger></TabsList>
+          <Tabs v-model="activeTab"><TabsList><TabsTrigger value="basic">{{ text('form.tabs.basic') }}</TabsTrigger><TabsTrigger value="advanced">{{ text('form.tabs.advanced') }}</TabsTrigger></TabsList>
             <TabsContent value="basic"><FieldGroup class="mt-4">
-              <Field :data-invalid="Boolean(formErrors.name)"><FieldLabel for="task-name">任务名称</FieldLabel><UiInput id="task-name" v-model="taskForm.name" :aria-invalid="Boolean(formErrors.name)" placeholder="请输入任务名称" /><FieldError v-if="formErrors.name">{{ formErrors.name }}</FieldError></Field>
-              <Field :data-invalid="Boolean(formErrors.description)"><FieldLabel for="task-description">任务描述</FieldLabel><UiTextarea id="task-description" v-model="taskForm.description" rows="3" :aria-invalid="Boolean(formErrors.description)" placeholder="请输入任务描述" /><FieldError v-if="formErrors.description">{{ formErrors.description }}</FieldError></Field>
-              <Field><FieldLabel for="task-group">所属任务组</FieldLabel><UiSelect :model-value="String(taskForm.group_id)" @update:model-value="taskForm.group_id = Number($event)"><SelectTrigger id="task-group"><SelectValue placeholder="请选择任务组" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="0">无分组</SelectItem><SelectItem v-for="group in groupList" :key="group.id" :value="String(group.id)">{{ group.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-              <Field :data-invalid="Boolean(formErrors.spec)"><FieldLabel for="task-spec">Cron 表达式</FieldLabel><UiInput id="task-spec" v-model="taskForm.spec" class="font-mono" :aria-invalid="Boolean(formErrors.spec)" placeholder="例如：0 0 * * * *" /><FieldError v-if="formErrors.spec">{{ formErrors.spec }}</FieldError><FieldDescription>格式：秒 分 时 日 月 星期 [年]。示例：每 5 分钟执行一次为 0 */5 * * * *</FieldDescription></Field>
-              <FieldSet><FieldLegend variant="label">任务类型</FieldLegend><RadioGroup v-model="taskForm.type" class="grid gap-3 sm:grid-cols-2"><Field v-for="option in typeOptions" :key="option.value" orientation="horizontal"><RadioGroupItem :id="`task-type-${option.value}`" :value="option.value" /><FieldLabel :for="`task-type-${option.value}`">{{ option.label }}</FieldLabel></Field></RadioGroup></FieldSet>
+              <Field :data-invalid="Boolean(formErrors.name)"><FieldLabel for="task-name">{{ text('form.fields.name') }}</FieldLabel><UiInput id="task-name" v-model="taskForm.name" :aria-invalid="Boolean(formErrors.name)" :placeholder="text('form.fields.namePlaceholder')" /><FieldError v-if="formErrors.name">{{ formErrorText(formErrors.name) }}</FieldError></Field>
+              <Field :data-invalid="Boolean(formErrors.description)"><FieldLabel for="task-description">{{ text('form.fields.description') }}</FieldLabel><UiTextarea id="task-description" v-model="taskForm.description" rows="3" :aria-invalid="Boolean(formErrors.description)" :placeholder="text('form.fields.descriptionPlaceholder')" /><FieldError v-if="formErrors.description">{{ formErrorText(formErrors.description) }}</FieldError></Field>
+              <Field><FieldLabel for="task-group">{{ text('form.fields.group') }}</FieldLabel><UiSelect :model-value="String(taskForm.group_id)" @update:model-value="taskForm.group_id = Number($event)"><SelectTrigger id="task-group"><SelectValue :placeholder="text('form.fields.selectGroup')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="0">{{ text('common.values.noGroup') }}</SelectItem><SelectItem v-for="group in groupList" :key="group.id" :value="String(group.id)">{{ groupLabel(group.name) }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+              <Field :data-invalid="Boolean(formErrors.spec)"><FieldLabel for="task-spec">{{ text('form.fields.cron') }}</FieldLabel><UiInput id="task-spec" v-model="taskForm.spec" class="font-mono" :aria-invalid="Boolean(formErrors.spec)" :placeholder="text('form.fields.cronPlaceholder')" /><FieldError v-if="formErrors.spec">{{ formErrorText(formErrors.spec) }}</FieldError><FieldDescription>{{ text('form.fields.cronDescription') }}</FieldDescription></Field>
+              <FieldSet><FieldLegend variant="label">{{ text('form.fields.taskType') }}</FieldLegend><RadioGroup v-model="taskForm.type" class="grid gap-3 sm:grid-cols-2"><Field v-for="option in typeOptions" :key="option.value" orientation="horizontal"><RadioGroupItem :id="`task-type-${option.value}`" :value="option.value" /><FieldLabel :for="`task-type-${option.value}`">{{ option.label }}</FieldLabel></Field></RadioGroup></FieldSet>
 
-              <Field v-if="taskForm.type === 'function'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="task-function">选择函数</FieldLabel><UiSelect :model-value="taskForm.target" @update:model-value="handleFunctionChange"><SelectTrigger id="task-function" :aria-invalid="Boolean(formErrors.target)"><SelectValue placeholder="请选择函数" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="func in functionList" :key="func.name" :value="func.name">{{ func.name }} - {{ func.description }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="formErrors.target">{{ formErrors.target }}</FieldError></Field>
+              <Field v-if="taskForm.type === 'function'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="task-function">{{ text('form.fields.function') }}</FieldLabel><UiSelect :model-value="taskForm.target" @update:model-value="handleFunctionChange"><SelectTrigger id="task-function" :aria-invalid="Boolean(formErrors.target)"><SelectValue :placeholder="text('form.fields.selectFunction')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="func in functionList" :key="func.name" :value="func.name">{{ functionOptionLabel(func) }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="formErrors.target">{{ formErrorText(formErrors.target) }}</FieldError></Field>
 
-              <FieldSet v-else-if="taskForm.type === 'tmux_command'"><FieldLegend>TMUX 命令</FieldLegend><FieldGroup>
-                <Field><FieldLabel for="tmux-session">选择服务器</FieldLabel><UiSelect v-model="tmuxSession" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-session"><SelectValue placeholder="请选择服务器" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in tmuxSessions" :key="session.session_name" :value="session.session_name">{{ session.archive_name }} - {{ session.world_name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-                <Field><FieldLabel for="tmux-command">选择命令</FieldLabel><UiSelect v-model="tmuxCommandId" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-command"><SelectValue placeholder="请选择命令" /></SelectTrigger><SelectContent><SelectGroup v-for="group in tmuxCommandGroups" :key="group.type"><SelectLabel>{{ group.type }}</SelectLabel><SelectItem v-for="command in group.commands" :key="command.id" :value="String(command.id)" :disabled="command.risk === 'high' || command.risk === 'critical'">{{ command.name }}{{ command.risk === 'high' || command.risk === 'critical' ? '（不可用于定时任务）' : '' }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-                <Field v-if="currentTmuxCommand"><FieldLabel for="tmux-command-preview">命令内容</FieldLabel><UiTextarea id="tmux-command-preview" :model-value="currentTmuxCommand.script || currentTmuxCommand.command" rows="2" readonly /></Field>
-                <Field v-if="currentTmuxCommand && currentTmuxCommand.needs_params" :data-invalid="Boolean(formErrors.target)"><FieldTitle>命令参数</FieldTitle><div class="flex flex-col gap-2"><Field v-for="(parameter, index) in currentTmuxCommand.parameters" :key="parameter.name"><FieldLabel :for="`command-parameter-${parameter.name}`">{{ parameter.label || parameter.name }}</FieldLabel><UiSelect v-if="parameter.type === 'enum'" :model-value="String(tmuxParams[index] || '')" @update:model-value="updateCommandParameter(index, $event)"><SelectTrigger :id="`command-parameter-${parameter.name}`" :aria-invalid="Boolean(formErrors.target)"><SelectValue :placeholder="parameter.description || '请选择'" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="option in parameter.options" :key="option" :value="option">{{ option }}</SelectItem></SelectGroup></SelectContent></UiSelect><UiInput v-else :id="`command-parameter-${parameter.name}`" v-model="tmuxParams[index]" :type="parameter.type === 'integer' ? 'number' : 'text'" :min="parameter.minimum" :max="parameter.maximum" :aria-invalid="Boolean(formErrors.target)" :placeholder="parameter.description || '参数值'" @input="updateTmuxTarget" /></Field></div><FieldError v-if="formErrors.target">{{ formErrors.target }}</FieldError><FieldDescription v-if="currentTmuxCommand.example">示例：{{ currentTmuxCommand.example }}</FieldDescription></Field>
+              <FieldSet v-else-if="taskForm.type === 'tmux_command'"><FieldLegend>{{ text('form.fields.tmux') }}</FieldLegend><FieldGroup>
+                <Field><FieldLabel for="tmux-session">{{ text('form.fields.server') }}</FieldLabel><UiSelect v-model="tmuxSession" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-session"><SelectValue :placeholder="text('form.fields.selectServer')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in tmuxSessions" :key="session.session_name" :value="session.session_name">{{ session.archive_name }} - {{ session.world_name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+                <Field><FieldLabel for="tmux-command">{{ text('form.fields.command') }}</FieldLabel><UiSelect v-model="tmuxCommandId" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-command"><SelectValue :placeholder="text('form.fields.selectCommand')" /></SelectTrigger><SelectContent><SelectGroup v-for="group in tmuxCommandGroups" :key="group.type"><SelectLabel>{{ group.type }}</SelectLabel><SelectItem v-for="command in group.commands" :key="command.id" :value="String(command.id)" :disabled="command.risk === 'high' || command.risk === 'critical'">{{ command.name }}{{ command.risk === 'high' || command.risk === 'critical' ? text('form.fields.unavailableForSchedule') : '' }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+                <Field v-if="currentTmuxCommand"><FieldLabel for="tmux-command-preview">{{ text('form.fields.commandContent') }}</FieldLabel><UiTextarea id="tmux-command-preview" :model-value="currentTmuxCommand.script || currentTmuxCommand.command" rows="2" readonly /></Field>
+                <Field v-if="currentTmuxCommand && currentTmuxCommand.needs_params" :data-invalid="Boolean(formErrors.target)"><FieldTitle>{{ text('form.fields.commandParameters') }}</FieldTitle><div class="flex flex-col gap-2"><Field v-for="(parameter, index) in currentTmuxCommand.parameters" :key="parameter.name"><FieldLabel :for="`command-parameter-${parameter.name}`">{{ parameter.label || parameter.name }}</FieldLabel><UiSelect v-if="parameter.type === 'enum'" :model-value="String(tmuxParams[index] || '')" @update:model-value="updateCommandParameter(index, $event)"><SelectTrigger :id="`command-parameter-${parameter.name}`" :aria-invalid="Boolean(formErrors.target)"><SelectValue :placeholder="parameter.description || text('form.fields.select')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="option in parameter.options" :key="option" :value="option">{{ option }}</SelectItem></SelectGroup></SelectContent></UiSelect><UiInput v-else :id="`command-parameter-${parameter.name}`" v-model="tmuxParams[index]" :type="parameter.type === 'integer' ? 'number' : 'text'" :min="parameter.minimum" :max="parameter.maximum" :aria-invalid="Boolean(formErrors.target)" :placeholder="parameter.description || text('form.fields.parameterValue')" @input="updateTmuxTarget" /></Field></div><FieldError v-if="formErrors.target">{{ formErrorText(formErrors.target) }}</FieldError><FieldDescription v-if="currentTmuxCommand.example">{{ text('form.fields.example', { value: currentTmuxCommand.example }) }}</FieldDescription></Field>
               </FieldGroup></FieldSet>
 
-              <Field v-if="taskForm.type === 'function' && currentFunction?.param_types?.length"><FieldTitle>函数参数</FieldTitle><div class="flex flex-col gap-2"><InputGroup v-for="(parameter, index) in currentFunction.param_types" :key="parameter"><InputGroupAddon>{{ parameter }}</InputGroupAddon><InputGroupInput v-model="taskForm.args[index]" :type="parameter === 'keep' ? 'number' : 'text'" :min="parameter === 'keep' ? 1 : undefined" :max="parameter === 'keep' ? 100 : undefined" :aria-label="parameter" placeholder="参数值" /></InputGroup></div></Field>
+              <Field v-if="taskForm.type === 'function' && currentFunction?.param_types?.length"><FieldTitle>{{ text('form.fields.functionParameters') }}</FieldTitle><div class="flex flex-col gap-2"><InputGroup v-for="(parameter, index) in currentFunction.param_types" :key="parameter"><InputGroupAddon>{{ parameter }}</InputGroupAddon><InputGroupInput v-model="taskForm.args[index]" :type="parameter === 'keep' ? 'number' : 'text'" :min="parameter === 'keep' ? 1 : undefined" :max="parameter === 'keep' ? 100 : undefined" :aria-label="parameter" :placeholder="text('form.fields.parameterValue')" /></InputGroup></div></Field>
             </FieldGroup></TabsContent>
 
             <TabsContent value="advanced"><FieldGroup class="mt-4">
-              <Field :data-invalid="Boolean(formErrors.timeout)"><FieldLabel for="task-timeout">超时设置（秒）</FieldLabel><UiInput id="task-timeout" v-model.number="taskForm.timeout" type="number" min="5" max="3600" :aria-invalid="Boolean(formErrors.timeout)" /><FieldError v-if="formErrors.timeout">{{ formErrors.timeout }}</FieldError><FieldDescription>后端允许 5–3600 秒，默认 300 秒。</FieldDescription></Field>
-              <Field><FieldLabel for="task-retry-times">重试次数</FieldLabel><UiInput id="task-retry-times" v-model.number="taskForm.retry_times" type="number" min="0" max="10" /><FieldDescription>任务失败后自动重试的次数，0 表示不重试。</FieldDescription></Field>
-              <Field v-if="taskForm.retry_times > 0"><FieldLabel for="task-retry-interval">重试间隔（秒）</FieldLabel><UiInput id="task-retry-interval" v-model.number="taskForm.retry_interval" type="number" min="1" max="3600" /></Field>
-              <FieldSet><FieldLegend variant="label">依赖任务</FieldLegend><FieldDescription>当前任务会在所选依赖任务全部成功后执行，请避免循环依赖。</FieldDescription><ScrollArea class="max-h-64 rounded-md border p-3"><FieldGroup class="gap-3"><Field v-for="task in availableTasks" :key="task.id" orientation="horizontal" :data-disabled="String(task.id) === String(taskId)"><Checkbox :id="`dependency-${task.id}`" :model-value="taskForm.dependencies.map(String).includes(String(task.id))" :disabled="String(task.id) === String(taskId)" @update:model-value="toggleDependency(task.id, $event)" /><FieldLabel :for="`dependency-${task.id}`" class="font-normal">{{ task.name }}</FieldLabel></Field></FieldGroup></ScrollArea></FieldSet>
+              <Field :data-invalid="Boolean(formErrors.timeout)"><FieldLabel for="task-timeout">{{ text('form.fields.timeout') }}</FieldLabel><UiInput id="task-timeout" v-model.number="taskForm.timeout" type="number" min="5" max="3600" :aria-invalid="Boolean(formErrors.timeout)" /><FieldError v-if="formErrors.timeout">{{ formErrorText(formErrors.timeout) }}</FieldError><FieldDescription>{{ text('form.fields.timeoutDescription') }}</FieldDescription></Field>
+              <Field><FieldLabel for="task-retry-times">{{ text('form.fields.retries') }}</FieldLabel><UiInput id="task-retry-times" v-model.number="taskForm.retry_times" type="number" min="0" max="10" /><FieldDescription>{{ text('form.fields.retriesDescription') }}</FieldDescription></Field>
+              <Field v-if="taskForm.retry_times > 0"><FieldLabel for="task-retry-interval">{{ text('form.fields.retryInterval') }}</FieldLabel><UiInput id="task-retry-interval" v-model.number="taskForm.retry_interval" type="number" min="1" max="3600" /></Field>
+              <FieldSet><FieldLegend variant="label">{{ text('form.fields.dependencies') }}</FieldLegend><FieldDescription>{{ text('form.fields.dependenciesDescription') }}</FieldDescription><ScrollArea class="max-h-64 rounded-md border p-3"><FieldGroup class="gap-3"><Field v-for="task in availableTasks" :key="task.id" orientation="horizontal" :data-disabled="String(task.id) === String(taskId)"><Checkbox :id="`dependency-${task.id}`" :model-value="taskForm.dependencies.map(String).includes(String(task.id))" :disabled="String(task.id) === String(taskId)" @update:model-value="toggleDependency(task.id, $event)" /><FieldLabel :for="`dependency-${task.id}`" class="font-normal">{{ task.name }}</FieldLabel></Field></FieldGroup></ScrollArea></FieldSet>
             </FieldGroup></TabsContent>
           </Tabs>
           <Separator class="my-6" />
-          <Field orientation="horizontal"><FieldContent><FieldLabel for="task-status">启用任务</FieldLabel><FieldDescription>禁用后调度器不会自动执行此任务。</FieldDescription></FieldContent><UiSwitch id="task-status" :model-value="taskForm.status === 1" @update:model-value="taskForm.status = $event ? 1 : 0" /></Field>
-          <div class="mt-6 flex justify-end gap-2"><UiButton type="button" variant="outline" @click="cancel">取消</UiButton><UiButton type="submit" :disabled="submitting"><Spinner v-if="submitting" data-icon="inline-start" />保存</UiButton></div>
+          <Field orientation="horizontal"><FieldContent><FieldLabel for="task-status">{{ text('form.fields.enabled') }}</FieldLabel><FieldDescription>{{ text('form.fields.enabledDescription') }}</FieldDescription></FieldContent><UiSwitch id="task-status" :model-value="taskForm.status === 1" @update:model-value="taskForm.status = $event ? 1 : 0" /></Field>
+          <div class="mt-6 flex justify-end gap-2"><UiButton type="button" variant="outline" @click="cancel">{{ text('common.actions.cancel') }}</UiButton><UiButton type="submit" :disabled="submitting"><Spinner v-if="submitting" data-icon="inline-start" />{{ text('common.actions.save') }}</UiButton></div>
         </form>
       </CardContent>
     </Card>
@@ -63,6 +63,15 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import {
+  createCronTaskFailure,
+  cronTaskActionDescription,
+  cronTaskActionName,
+  cronTaskFailureText,
+  cronTaskGroupLabel,
+  cronTaskText,
+  cronTaskTypeLabel
+} from '@/i18n/cronTaskMessages';
 
 export default {
   name: 'TaskForm',
@@ -111,11 +120,7 @@ export default {
         dependencies: [],
         status: 1
       },
-      formErrors: {},
-      typeOptions: [
-        { value: 'function', label: '受控函数' },
-        { value: 'tmux_command', label: '内建命令' }
-      ]
+      formErrors: {}
     };
   },
   created() {
@@ -128,11 +133,38 @@ export default {
     if (this.$route.query.group_id) this.taskForm.group_id = this.$route.query.group_id;
   },
   computed: {
+    activeLocale() {
+      const state = this.$i18n?.locale;
+      return typeof state === 'string' ? state : (state?.value || 'zh-CN');
+    },
+    typeOptions() {
+      return ['function', 'tmux_command'].map(value => ({
+        value,
+        label: cronTaskTypeLabel(value, this.activeLocale)
+      }));
+    },
     currentFunction() {
       return this.functionList.find(item => item.name === this.taskForm.target) || null;
     }
   },
   methods: {
+    text(key, parameters) {
+      return cronTaskText(key, this.activeLocale, parameters);
+    },
+    failureText(key, error) {
+      return cronTaskFailureText(createCronTaskFailure(key, error), this.activeLocale);
+    },
+    formErrorText(key) {
+      return this.text(key);
+    },
+    groupLabel(name) {
+      return cronTaskGroupLabel(name, this.activeLocale);
+    },
+    functionOptionLabel(func) {
+      const name = cronTaskActionName(func.name, this.activeLocale, func.name);
+      const description = cronTaskActionDescription(func.name, this.activeLocale, func.description);
+      return description ? `${name} - ${description}` : name;
+    },
     handleAutomationRoom() {
       this.functionList = [];
       this.groupList = [];
@@ -200,16 +232,16 @@ export default {
             } else if (Array.isArray(functionsData)) {
               this.functionList = functionsData;
             } else {
-              toast.error('获取函数列表失败：响应格式不符合预期');
+              toast.error(this.text('form.feedback.functionsInvalid'));
             }
           } else {
             console.error('响应格式不符合预期:', response);
-            toast.error('获取函数列表失败：响应格式不符合预期');
+            toast.error(this.text('form.feedback.functionsInvalid'));
           }
         })
         .catch(error => {
           console.error('获取函数列表失败:', error);
-          toast.error('获取函数列表失败：' + (error.message || '未知错误'));
+          toast.error(this.failureText('form.feedback.functionsFailed', error));
         });
     },
     getGroups() {
@@ -244,7 +276,7 @@ export default {
         })
         .catch(error => {
           console.error('获取任务组列表失败:', error);
-          toast.error('获取任务组列表失败');
+          toast.error(this.failureText('form.feedback.groupsFailed', error));
         });
     },
     getAvailableTasks() {
@@ -286,7 +318,7 @@ export default {
         })
         .catch(error => {
           console.error('获取可用任务列表失败:', error);
-          toast.error('获取可用任务列表失败');
+          toast.error(this.failureText('form.feedback.tasksFailed', error));
         });
     },
     getTaskDetail(id) {
@@ -439,12 +471,15 @@ export default {
               status: taskData.status
             };
           } else {
-            toast.error(response.data?.msg || response.data?.message || '获取任务详情失败：无效的响应格式');
+            const detail = response.data?.msg || response.data?.message;
+            toast.error(detail
+              ? this.failureText('form.feedback.detailFailed', detail)
+              : this.text('form.feedback.detailInvalid'));
           }
         })
         .catch(error => {
           console.error('获取任务详情失败:', error);
-          toast.error('获取任务详情失败');
+          toast.error(this.failureText('form.feedback.detailFailed', error));
         });
     },
     handleFunctionChange(value) {
@@ -460,12 +495,12 @@ export default {
             this.tmuxSessions = response.data.data || [];
             console.log('获取TMUX会话列表成功:', this.tmuxSessions);
           } else {
-            toast.warning('获取 TMUX 会话列表失败：' + response.data?.msg);
+            toast.warning(this.failureText('form.feedback.sessionsFailed', response.data?.msg));
           }
         })
         .catch(error => {
           console.error('获取TMUX会话列表失败:', error);
-          toast.error('获取 TMUX 会话列表失败');
+          toast.error(this.failureText('form.feedback.sessionsFailed', error));
         });
     },
 
@@ -477,12 +512,12 @@ export default {
             this.processTmuxCommands();
             console.log('获取TMUX命令列表成功:', this.tmuxCommands);
           } else {
-            toast.warning('获取 TMUX 命令列表失败：' + response.data?.msg);
+            toast.warning(this.failureText('form.feedback.commandsFailed', response.data?.msg));
           }
         })
         .catch(error => {
           console.error('获取TMUX命令列表失败:', error);
-          toast.error('获取 TMUX 命令列表失败');
+          toast.error(this.failureText('form.feedback.commandsFailed', error));
         });
     },
 
@@ -539,14 +574,14 @@ export default {
       const errors = {};
       const name = (this.taskForm.name || '').trim();
       const description = (this.taskForm.description || '').trim();
-      if (!name) errors.name = '请输入任务名称';
-      else if (name.length < 2 || name.length > 50) errors.name = '长度应在 2 到 50 个字符之间';
-      if (description.length > 200) errors.description = '描述不能超过 200 个字符';
-      if (!(this.taskForm.spec || '').trim()) errors.spec = '请输入 Cron 表达式';
-      if (!(this.taskForm.target || '').trim() && this.taskForm.type === 'function') errors.target = '请选择执行目标';
-      if (this.taskForm.type === 'tmux_command' && (!this.tmuxSession || !this.tmuxCommandId)) errors.target = '请选择服务器和 TMUX 命令';
-      if (this.taskForm.type === 'tmux_command' && this.currentTmuxCommand?.parameters?.some((parameter, index) => parameter.required && (this.tmuxParams[index] === '' || this.tmuxParams[index] == null))) errors.target = '请填写全部必填命令参数';
-      if (this.taskForm.timeout < 5 || this.taskForm.timeout > 3600) errors.timeout = '超时必须在 5–3600 秒之间';
+      if (!name) errors.name = 'form.validation.nameRequired';
+      else if (name.length < 2 || name.length > 50) errors.name = 'form.validation.nameLength';
+      if (description.length > 200) errors.description = 'form.validation.descriptionLength';
+      if (!(this.taskForm.spec || '').trim()) errors.spec = 'form.validation.cronRequired';
+      if (!(this.taskForm.target || '').trim() && this.taskForm.type === 'function') errors.target = 'form.validation.targetRequired';
+      if (this.taskForm.type === 'tmux_command' && (!this.tmuxSession || !this.tmuxCommandId)) errors.target = 'form.validation.tmuxTargetRequired';
+      if (this.taskForm.type === 'tmux_command' && this.currentTmuxCommand?.parameters?.some((parameter, index) => parameter.required && (this.tmuxParams[index] === '' || this.tmuxParams[index] == null))) errors.target = 'form.validation.commandParametersRequired';
+      if (this.taskForm.timeout < 5 || this.taskForm.timeout > 3600) errors.timeout = 'form.validation.timeoutRange';
       this.formErrors = errors;
       if (Object.keys(errors).length > 0) this.activeTab = 'basic';
       return Object.keys(errors).length === 0;
@@ -554,7 +589,7 @@ export default {
 
     submitForm() {
       if (!this.validateForm()) {
-        toast.warning('请完善表单信息');
+        toast.warning(this.text('form.validation.incomplete'));
         return;
       }
       this.submitting = true;
@@ -592,20 +627,22 @@ export default {
                 (response.status === 200) || // 旧格式 {status: 200, ...}
                 (response.data && response.data.status === 200) // 嵌套旧格式
               ) {
-                toast.success(this.isEdit ? '更新成功' : '添加成功');
+                toast.success(this.text(this.isEdit ? 'form.feedback.updated' : 'form.feedback.added'));
                 this.$router.push('/cron/tasks');
               } else {
                 const errorMsg =
                   response.msg ||
                   response.message ||
                   (response.data && (response.data.msg || response.data.message)) ||
-                  (this.isEdit ? '更新失败' : '添加失败');
-                toast.error(errorMsg);
+                  '';
+                toast.error(errorMsg
+                  ? this.failureText(this.isEdit ? 'form.feedback.updateFailed' : 'form.feedback.addFailed', errorMsg)
+                  : this.text(this.isEdit ? 'form.feedback.updateFailed' : 'form.feedback.addFailed'));
               }
             })
             .catch(error => {
               console.error(this.isEdit ? '更新任务失败:' : '添加任务失败:', error);
-              toast.error(error.message || (this.isEdit ? '更新任务失败' : '添加任务失败'));
+              toast.error(this.failureText(this.isEdit ? 'form.feedback.updateFailed' : 'form.feedback.addFailed', error));
             })
             .finally(() => {
               this.submitting = false;
