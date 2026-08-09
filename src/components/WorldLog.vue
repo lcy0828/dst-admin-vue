@@ -82,6 +82,7 @@
 
 <script>
 import { RefreshCwIcon, TriangleAlertIcon } from '@lucide/vue'
+import { markRaw } from 'vue'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
@@ -201,7 +202,7 @@ export default {
   },
   methods: {
     initTerminal() {
-      this.terminal = new Terminal({
+      this.terminal = markRaw(new Terminal({
         cursorBlink: false,
         disableStdin: true,
         fontSize: 13,
@@ -214,8 +215,8 @@ export default {
           selectionBackground: '#5c4736'
         },
         scrollback: 5000
-      })
-      this.fitAddon = new FitAddon()
+      }))
+      this.fitAddon = markRaw(new FitAddon())
       this.terminal.loadAddon(this.fitAddon)
       this.terminal.open(this.$refs.terminal)
       this.$nextTick(() => this.fitAddon.fit())
