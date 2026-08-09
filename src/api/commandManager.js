@@ -1,11 +1,19 @@
 import { consoleV2API, roomsV2API } from './v2'
+import { COMMAND_CATEGORY_IDS, normalizeCommandCategory } from '../lib/commandCategories.mjs'
 
-export const COMMAND_TYPES = {
-  INFO: '信息查询',
-  PLAYER: '玩家操作',
-  WORLD: '世界操作',
-  SYSTEM: '系统操作',
-  CUSTOM: '自定义命令'
+export const COMMAND_TYPES = COMMAND_CATEGORY_IDS
+
+export const COMMAND_ERROR_CODES = Object.freeze({
+  INVALID_SERVER: 'COMMAND_INVALID_SERVER',
+  MISSING_RUN_ID: 'COMMAND_MISSING_RUN_ID',
+  RUN_TIMEOUT: 'COMMAND_RUN_TIMEOUT',
+  RUN_FAILED: 'COMMAND_RUN_FAILED',
+  IMPORT_INVALID_FORMAT: 'COMMAND_IMPORT_INVALID_FORMAT',
+  IMPORT_ITEM_FAILED: 'COMMAND_IMPORT_ITEM_FAILED'
+})
+
+function commandError(code, message, details = {}) {
+  return Object.assign(new Error(message), { code, ...details })
 }
 
 const serverKey = (roomId, worldId) => `${roomId}::${worldId}`
@@ -15,7 +23,7 @@ const RUN_POLL_TIMEOUT = 30000
 const parseServerKey = value => {
   const separator = String(value || '').indexOf('::')
   if (separator <= 0 || separator === String(value).length - 2) {
-    throw new Error('请选择有效的服务器世界')
+    throw commandError(COMMAND_ERROR_CODES.INVALID_SERVER, 'Select a valid server world')
   }
   return {
     roomId: value.slice(0, separator),
@@ -23,21 +31,25 @@ const parseServerKey = value => {
   }
 }
 
-const mapDefinition = definition => ({
-  ...definition,
-  type: definition.category,
-  command: definition.script,
-  isBuiltin: Boolean(definition.isBuiltin),
-  is_builtin: Boolean(definition.isBuiltin),
-  parameterized: (definition.parameters || []).length > 0,
-  needs_params: (definition.parameters || []).length > 0,
-  parameters: definition.parameters || []
-})
+const mapDefinition = definition => {
+  const category = normalizeCommandCategory(definition.category)
+  return {
+    ...definition,
+    category,
+    type: category,
+    command: definition.script,
+    isBuiltin: Boolean(definition.isBuiltin),
+    is_builtin: Boolean(definition.isBuiltin),
+    parameterized: (definition.parameters || []).length > 0,
+    needs_params: (definition.parameters || []).length > 0,
+    parameters: definition.parameters || []
+  }
+}
 
 const toDefinitionInput = command => ({
   name: String(command.name || '').trim(),
   description: String(command.description || '').trim(),
-  category: String(command.type || command.category || COMMAND_TYPES.CUSTOM).trim(),
+  category: normalizeCommandCategory(command.type || command.category),
   script: String(command.command || command.script || '').trim(),
   parameters: command.parameterized === false ? [] : (command.parameters || []).map(parameter => ({
     name: String(parameter.name || '').trim(),
@@ -77,18 +89,21 @@ async function loadServers() {
 }
 
 async function waitForCommandRun(roomId, run, timeoutMs = RUN_POLL_TIMEOUT) {
-  if (!run?.id) throw new Error('后端没有返回命令执行记录 ID')
+  if (!run?.id) {
+    throw commandError(COMMAND_ERROR_CODES.MISSING_RUN_ID, 'The backend did not return a command run ID')
+  }
   const deadline = Date.now() + timeoutMs
   let current = run
   while (current.status === 'sending') {
     if (Date.now() >= deadline) {
-      throw new Error('等待命令发送完成超时，请到命令历史确认最终结果')
+      throw commandError(COMMAND_ERROR_CODES.RUN_TIMEOUT, 'Timed out waiting for command delivery')
     }
     await new Promise(resolve => setTimeout(resolve, RUN_POLL_INTERVAL))
     current = await consoleV2API.run(roomId, current.id)
   }
   if (current.status !== 'sent') {
-    throw new Error(current.errorMessage || current.message || '命令发送失败')
+    const detail = current.errorMessage || current.message || ''
+    throw commandError(COMMAND_ERROR_CODES.RUN_FAILED, 'Command delivery failed', { detail })
   }
   return current
 }
@@ -109,7 +124,8 @@ class CommandManager {
   }
 
   getCommandsByType(type) {
-    return this.commands.filter(command => command.type === type)
+    const category = normalizeCommandCategory(type)
+    return this.commands.filter(command => command.type === category)
   }
 
   getBuiltinCommands() {
@@ -154,8 +170,17 @@ class CommandManager {
   }
 
   async importCommands(jsonString) {
-    const document = JSON.parse(jsonString)
-    if (!Array.isArray(document)) throw new Error('导入文件必须是命令数组')
+    let document
+    try {
+      document = JSON.parse(jsonString)
+    } catch (error) {
+      throw commandError(COMMAND_ERROR_CODES.IMPORT_INVALID_FORMAT, 'The import document must be valid JSON', {
+        detail: error.message || ''
+      })
+    }
+    if (!Array.isArray(document)) {
+      throw commandError(COMMAND_ERROR_CODES.IMPORT_INVALID_FORMAT, 'The import document must be an array of commands')
+    }
     const created = []
     for (let index = 0; index < document.length; index += 1) {
       const command = document[index]
@@ -167,10 +192,12 @@ class CommandManager {
           parameterized: Array.isArray(command.parameters) && command.parameters.length > 0
         }))
       } catch (error) {
-        const importError = new Error(`第 ${index + 1} 条命令导入失败：${error.message || '未知错误'}`)
-        importError.importedCount = created.length
-        importError.totalCount = document.length
-        throw importError
+        throw commandError(COMMAND_ERROR_CODES.IMPORT_ITEM_FAILED, `Command ${index + 1} could not be imported`, {
+          detail: error.detail || error.message || '',
+          itemNumber: index + 1,
+          importedCount: created.length,
+          totalCount: document.length
+        })
       }
     }
     return created
