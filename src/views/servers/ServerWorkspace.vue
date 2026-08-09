@@ -111,11 +111,12 @@
               <div class="world-identity">
                 <div class="world-name-row">
                   <strong>{{ world.name }}</strong>
-                  <Badge :variant="world.status === 'running' ? 'secondary' : 'outline'">
-                    {{ worldStatusLabel(world.status) }}
+                  <Badge :variant="worldStatusVariant(world)">
+                    {{ worldStatusLabel(world) }}
                   </Badge>
                 </div>
                 <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || '未设置目录' }}</span>
+                <span v-if="worldStatusMessage(world)" class="world-failure">{{ worldStatusMessage(world) }}</span>
               </div>
             </div>
 
@@ -139,18 +140,33 @@
                 <TooltipTrigger as-child>
                   <UiButton
                     size="icon-sm"
-                    :variant="world.status === 'running' ? 'destructive' : 'secondary'"
-                    :aria-label="world.status === 'running' ? '停止世界' : '启动世界'"
-                    :title="world.status === 'running' ? '停止世界' : '启动世界'"
+                    :variant="worldPrimaryAction(world).variant"
+                    :aria-label="`${worldPrimaryAction(world).label}世界`"
+                    :title="`${worldPrimaryAction(world).label}世界`"
                     :disabled="!canToggleWorld(world) || Boolean(worldActionId)"
-                    @click="handleWorldAction(world, world.status === 'running' ? 'stop' : 'start')"
+                    @click="handleWorldAction(world, worldPrimaryAction(world).kind)"
                   >
-                    <Spinner v-if="worldActionId === world.id" />
+                    <Spinner v-if="worldActionId === world.id || isWorldStarting(world)" />
                     <Square v-else-if="world.status === 'running'" />
-                    <Play v-else />
+                    <Play v-else-if="worldPrimaryAction(world).kind === 'start'" />
                   </UiButton>
                 </TooltipTrigger>
-                <TooltipContent>{{ world.status === 'running' ? '停止世界' : '启动世界' }}</TooltipContent>
+                <TooltipContent>{{ worldPrimaryAction(world).label }}世界</TooltipContent>
+              </Tooltip>
+              <Tooltip v-if="world.status === 'failed'">
+                <TooltipTrigger as-child>
+                  <UiButton
+                    size="icon-sm"
+                    variant="outline"
+                    aria-label="清理失败会话"
+                    title="清理失败会话"
+                    :disabled="!canCleanFailedWorld(world) || Boolean(worldActionId)"
+                    @click="handleWorldAction(world, 'cleanup')"
+                  >
+                    <Square />
+                  </UiButton>
+                </TooltipTrigger>
+                <TooltipContent>清理失败会话</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger as-child>
@@ -159,7 +175,7 @@
                     variant="outline"
                     aria-label="重启世界"
                     title="重启世界"
-                    :disabled="world.status !== 'running' || world.controlAvailable === false || Boolean(worldActionId)"
+                    :disabled="!canStopWorld(world) || Boolean(worldActionId)"
                     @click="handleWorldAction(world, 'restart')"
                   >
                     <RotateCw />
@@ -174,6 +190,7 @@
                     variant="ghost"
                     aria-label="世界配置"
                     title="世界配置"
+                    :disabled="!canConfigureWorld(world)"
                     @click="openWorldSettings(world)"
                   >
                     <Settings />
@@ -372,6 +389,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { confirmAction, promptText } from '@/lib/feedback'
+import {
+  canCleanFailedWorld,
+  canConfigureWorld,
+  canStartWorld,
+  canStopWorld,
+  isWorldStarting,
+  worldPrimaryAction,
+  worldStatusLabel,
+  worldStatusMessage,
+  worldStatusVariant
+} from '@/lib/worldRuntimeStatus.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
   ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
@@ -685,15 +713,17 @@ export default {
       }).catch(() => {})
     },
     async handleWorldAction(world, action) {
-      if ((action === 'start' && world.status !== 'stopped') ||
-          (['stop', 'restart'].includes(action) && world.status !== 'running') ||
-          world.controlAvailable === false) {
-        toast.warning(world.statusMessage || '当前世界状态不可执行该操作')
+      if (!action ||
+          (action === 'start' && !canStartWorld(world)) ||
+          (action === 'cleanup' && !canCleanFailedWorld(world)) ||
+          (['stop', 'restart'].includes(action) && !canStopWorld(world))) {
+        toast.warning(worldStatusMessage(world) || '当前世界状态不可执行该操作')
         return
       }
-      const label = { start: '启动', stop: '停止', restart: '重启' }[action]
+      const label = { start: '启动', stop: '停止', restart: '重启', cleanup: '清理失败会话' }[action]
+      const confirmationTitle = action === 'cleanup' ? '清理失败会话' : `${label}世界`
       try {
-        await confirmAction(`确定要${label}“${this.selectedRoom.name} / ${world.name}”吗？`, `${label}世界`, {
+        await confirmAction(`确定要${label}“${this.selectedRoom.name} / ${world.name}”吗？`, confirmationTitle, {
           confirmButtonText: `确认${label}`,
           cancelButtonText: '取消',
           type: action === 'start' ? 'info' : 'warning'
@@ -708,6 +738,7 @@ export default {
         const target = { room_id: this.selectedRoom.id, world_id: world.id }
         if (action === 'start') response = await roomApi.startRoom(target)
         if (action === 'stop') response = await roomApi.stopRoom(target)
+        if (action === 'cleanup') response = await roomApi.stopRoom(target)
         if (action === 'restart') response = await systemApi.restartTmuxServer({
           ...target,
           archive_name: this.selectedRoom.name,
@@ -824,10 +855,31 @@ export default {
       return '自定义世界'
     },
     worldStatusLabel(status) {
-      return { running: '运行中', stopped: '已停止', starting: '启动中', stopping: '停止中' }[status] || '未知'
+      return worldStatusLabel(status)
+    },
+    worldStatusVariant(world) {
+      return worldStatusVariant(world)
+    },
+    worldStatusMessage(world) {
+      return worldStatusMessage(world)
+    },
+    worldPrimaryAction(world) {
+      return worldPrimaryAction(world)
+    },
+    isWorldStarting(world) {
+      return isWorldStarting(world)
+    },
+    canStopWorld(world) {
+      return canStopWorld(world)
+    },
+    canCleanFailedWorld(world) {
+      return canCleanFailedWorld(world)
+    },
+    canConfigureWorld(world) {
+      return canConfigureWorld(world)
     },
     canToggleWorld(world) {
-      return world.controlAvailable !== false && ['running', 'stopped'].includes(world.status)
+      return !worldPrimaryAction(world).disabled
     },
     seasonLabel(season) {
       return { autumn: '秋季', winter: '冬季', spring: '春季', summer: '夏季' }[season] || season || '--'
@@ -1047,6 +1099,14 @@ export default {
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.world-identity > .world-failure {
+  overflow: visible;
+  color: var(--destructive);
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .world-facts {

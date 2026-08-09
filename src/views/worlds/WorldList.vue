@@ -81,18 +81,25 @@
                   <TableCell><Badge :variant="getWorldTypeTag(world.type)">{{ getWorldTypeName(world.type) }}</Badge></TableCell>
                   <TableCell>{{ world.season ?? '--' }}</TableCell>
                   <TableCell>{{ world.day ?? '--' }}</TableCell>
-                  <TableCell><Badge :variant="getWorldStatusTag(world.status)">{{ getWorldStatusName(world.status) }}</Badge></TableCell>
+                  <TableCell>
+                    <Badge :variant="getWorldStatusTag(world)">{{ getWorldStatusName(world) }}</Badge>
+                    <p v-if="getWorldStatusMessage(world)" class="status-failure">{{ getWorldStatusMessage(world) }}</p>
+                  </TableCell>
                   <TableCell class="action-column" @click.stop>
                     <div class="row-actions">
                       <UiButton
-                        :variant="world.status === 'running' ? 'destructive' : 'default'"
+                        :variant="getWorldPrimaryAction(world).variant"
                         size="sm"
-                        :disabled="world.controlAvailable === false"
+                        :disabled="getWorldPrimaryAction(world).disabled || loading"
                         @click="toggleWorldStatus(world)"
                       >
-                        {{ world.status === 'running' ? '停止' : '启动' }}
+                        <Spinner v-if="isWorldStarting(world)" data-icon="inline-start" />
+                        <Square v-else-if="world.status === 'running'" data-icon="inline-start" />
+                        <Play v-else-if="getWorldPrimaryAction(world).kind === 'start'" data-icon="inline-start" />
+                        {{ getWorldPrimaryAction(world).label }}
                       </UiButton>
-                      <UiButton variant="outline" size="sm" @click="editWorld(world)">编辑</UiButton>
+                      <UiButton v-if="world.status === 'failed'" variant="outline" size="sm" :disabled="!canCleanFailedWorld(world) || loading" @click="cleanupFailedWorld(world)"><Square data-icon="inline-start" />清理会话</UiButton>
+                      <UiButton variant="outline" size="sm" :disabled="!canConfigureWorld(world)" :title="!canConfigureWorld(world) ? '请先停止或清理该世界' : ''" @click="editWorld(world)">编辑</UiButton>
                       <DropdownMenu>
                         <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" aria-label="打开世界操作菜单" title="世界操作"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -103,7 +110,7 @@
                           </DropdownMenuGroup>
                           <DropdownMenuSeparator />
                           <DropdownMenuGroup>
-                            <DropdownMenuItem variant="destructive" @select="deleteWorld(world)">删除世界</DropdownMenuItem>
+                            <DropdownMenuItem variant="destructive" :disabled="!canDeleteWorld(world)" @select="deleteWorld(world)">删除世界</DropdownMenuItem>
                           </DropdownMenuGroup>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -166,7 +173,7 @@
 </template>
 
 <script>
-import { CircleAlert, Globe2, Info, MoreHorizontal, Plus, RefreshCw, Search } from '@lucide/vue';
+import { CircleAlert, Globe2, Info, MoreHorizontal, Play, Plus, RefreshCw, Search, Square } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '../../api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -184,6 +191,17 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction, promptText } from '@/lib/feedback';
+import {
+  canCleanFailedWorld as canCleanFailedRuntimeWorld,
+  canConfigureWorld as canConfigureRuntimeWorld,
+  canDeleteWorld as canDeleteRuntimeWorld,
+  canStopWorld,
+  isWorldStarting,
+  worldPrimaryAction,
+  worldStatusLabel,
+  worldStatusMessage,
+  worldStatusVariant
+} from '@/lib/worldRuntimeStatus.mjs';
 import RoomCategories from '../../components/worlds/RoomCategories.vue';
 
 export default {
@@ -230,6 +248,7 @@ export default {
     InputGroupAddon,
     InputGroupInput,
     MoreHorizontal,
+    Play,
     Plus,
     RadioGroup,
     RadioGroupItem,
@@ -242,6 +261,7 @@ export default {
     SelectTrigger,
     SelectValue,
     Spinner,
+    Square,
     Skeleton,
     TableBody,
     TableCell,
@@ -369,13 +389,28 @@ export default {
       return 'outline';
     },
     getWorldStatusName(status) {
-      if (status === 'running') return '运行中';
-      if (status === 'stopped') return '已停止';
-      return '未知';
+      return worldStatusLabel(status);
     },
     getWorldStatusTag(status) {
-      if (status === 'running') return 'default';
-      return 'secondary';
+      return worldStatusVariant(status);
+    },
+    getWorldStatusMessage(world) {
+      return worldStatusMessage(world);
+    },
+    getWorldPrimaryAction(world) {
+      return worldPrimaryAction(world);
+    },
+    isWorldStarting(world) {
+      return isWorldStarting(world);
+    },
+    canCleanFailedWorld(world) {
+      return canCleanFailedRuntimeWorld(world);
+    },
+    canConfigureWorld(world) {
+      return canConfigureRuntimeWorld(world);
+    },
+    canDeleteWorld(world) {
+      return canDeleteRuntimeWorld(world);
     },
     handleCategoryChange(category) {
       this.currentCategory = category;
@@ -393,7 +428,9 @@ export default {
                 server.world_name === world.name
               );
 
-              world.status = runningServer?.status || 'unknown';
+              world.status = runningServer?.status || world.status || 'unknown';
+              world.controlAvailable = runningServer?.control_available ?? world.controlAvailable;
+              world.statusMessage = runningServer?.status_message || world.statusMessage || '';
             });
 
             this.rooms.forEach(room => {
@@ -457,7 +494,9 @@ export default {
                   season: world.season ?? null,
                   day: world.day ?? null,
                   status: world.status || 'unknown',
-                  description: world.description || ''
+                  description: world.description || '',
+                  controlAvailable: world.controlAvailable,
+                  statusMessage: world.statusMessage || ''
                 }));
                 allWorlds = [...allWorlds, ...worldsData];
               }
@@ -513,7 +552,12 @@ export default {
       });
     },
     toggleWorldStatus(world) {
-      const action = world.status === 'running' ? '停止' : '启动';
+      const primaryAction = worldPrimaryAction(world);
+      if (primaryAction.disabled || !primaryAction.kind) {
+        toast.warning(worldStatusMessage(world) || '当前世界状态不可操作');
+        return;
+      }
+      const action = primaryAction.kind === 'stop' ? '停止' : (world.status === 'failed' ? '重试启动' : '启动');
       confirmAction(`确定要${action}世界 "${world.name}" 吗?`, `${action}世界`, {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -524,7 +568,7 @@ export default {
           room_id: world.roomId,
           world_id: world.id
         };
-        const operation = world.status === 'running'
+        const operation = primaryAction.kind === 'stop'
           ? roomApi.stopRoom(request)
           : roomApi.startRoom(request);
         operation
@@ -541,6 +585,31 @@ export default {
       }).catch(() => {
         toast.info('已取消操作');
       });
+    },
+    async cleanupFailedWorld(world) {
+      if (!canCleanFailedRuntimeWorld(world)) {
+        toast.warning(worldStatusMessage(world) || '当前世界没有可清理的失败会话');
+        return;
+      }
+      try {
+        await confirmAction(`确定要停止并清理世界“${world.name}”的失败会话吗？`, '清理失败会话', {
+          confirmButtonText: '确认清理',
+          type: 'warning'
+        });
+      } catch {
+        return;
+      }
+
+      this.loading = true;
+      try {
+        const response = await roomApi.stopRoom({ room_id: world.roomId, world_id: world.id });
+        await this.refreshWorlds(true);
+        toast.success(response?.msg || '失败会话已清理');
+      } catch (error) {
+        toast.error(`清理失败：${error.message || '未知错误'}`);
+      } finally {
+        this.loading = false;
+      }
     },
     handleRowClick(row) {
       // 点击行跳转到详情页
@@ -572,11 +641,11 @@ export default {
       });
     },
     async regenerateWorld(world) {
-      if (world.controlAvailable === false) {
+      if (!canStopWorld(world) && world.status === 'running') {
         toast.error('当前房间尚未接管，无法重新生成世界');
         return;
       }
-      if (world.status !== 'running') {
+      if (!canStopWorld(world)) {
         toast.warning('重新生成命令需要世界正在运行，请先启动世界');
         return;
       }
@@ -627,8 +696,8 @@ export default {
       });
     },
     async deleteWorld(world) {
-      if (world.status === 'running') {
-        toast.warning('删除前请先停止该世界');
+      if (!canDeleteRuntimeWorld(world)) {
+        toast.warning(world.status === 'failed' ? '请先清理失败会话，再删除该世界' : '删除前请先停止该世界');
         return;
       }
       let confirmation;
@@ -791,6 +860,15 @@ export default {
 
 .world-row {
   cursor: pointer;
+}
+
+.status-failure {
+  max-width: 320px;
+  margin: 4px 0 0;
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .action-column {

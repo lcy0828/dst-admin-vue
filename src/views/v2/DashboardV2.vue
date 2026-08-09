@@ -59,6 +59,16 @@ import {
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
+  canCleanFailedWorld,
+  canConfigureWorld,
+  canStartWorld,
+  isWorldStarting,
+  worldPrimaryAction,
+  worldStatusLabel,
+  worldStatusMessage,
+  worldStatusVariant
+} from '@/lib/worldRuntimeStatus.mjs'
+import {
   formatDateTime,
   formatDecimal,
   formatDisk,
@@ -103,26 +113,29 @@ const {
   refreshServers,
   refreshVersion,
   handleServerAction,
+  cleanupFailedServer,
   startRoom,
   updateGame,
   resumeUpdatePolling
 } = useDashboardV2()
 
 const selectedRoom = computed(() => roomList.value.find(room => String(room.id) === selectedRoomId.value) || null)
-const selectedWorlds = computed(() => (selectedRoom.value?.worlds || []).filter(world => selectedWorldIds.value.includes(String(world.id))))
+const selectedWorlds = computed(() => (selectedRoom.value?.worlds || []).filter(world => (
+  selectedWorldIds.value.includes(String(world.id)) && canStartWorld(world)
+)))
 const canStartRoom = computed(() => Boolean(selectedRoom.value && selectedWorlds.value.length && !serverLoading.value))
 
 function openStartDialog() {
   const firstRoom = roomList.value[0]
   selectedRoomId.value = firstRoom ? String(firstRoom.id) : ''
-  selectedWorldIds.value = (firstRoom?.worlds || []).map(world => String(world.id))
+  selectedWorldIds.value = (firstRoom?.worlds || []).filter(canStartWorld).map(world => String(world.id))
   startDialogOpen.value = true
 }
 
 function handleRoomSelection(value) {
   selectedRoomId.value = value
   const room = roomList.value.find(item => String(item.id) === value)
-  selectedWorldIds.value = (room?.worlds || []).map(world => String(world.id))
+  selectedWorldIds.value = (room?.worlds || []).filter(canStartWorld).map(world => String(world.id))
 }
 
 function toggleWorld(worldId, checked) {
@@ -135,12 +148,6 @@ async function submitStartRoom() {
   if (!canStartRoom.value) return
   const started = await startRoom(selectedRoom.value, selectedWorlds.value)
   if (started) startDialogOpen.value = false
-}
-
-function statusLabel(status) {
-  if (status === 'running') return '在线'
-  if (status === 'stopped') return '离线'
-  return '未知'
 }
 
 function worldTypeLabel(type) {
@@ -253,16 +260,23 @@ onMounted(() => {
               </TableHeader>
               <TableBody>
                 <TableRow v-for="server in serverList" :key="`${server.room_id}-${server.world_id}`">
-                  <TableCell><Badge :variant="server.status === 'running' ? 'secondary' : 'outline'">{{ statusLabel(server.status) }}</Badge></TableCell>
+                  <TableCell>
+                    <Badge :variant="worldStatusVariant(server)">{{ worldStatusLabel(server) }}</Badge>
+                    <p v-if="worldStatusMessage(server)" class="text-destructive mt-1 max-w-64 break-words text-xs">{{ worldStatusMessage(server) }}</p>
+                  </TableCell>
                   <TableCell class="font-medium">{{ server.archive_name }}</TableCell>
                   <TableCell>{{ server.world_name }}</TableCell>
                   <TableCell class="text-muted-foreground">{{ formatServerUptime(server.start_time) }}</TableCell>
                   <TableCell>
                     <div class="flex justify-end gap-1.5">
-                      <Button size="sm" :variant="server.status === 'running' ? 'destructive' : 'secondary'" :disabled="serverLoading" @click="handleServerAction(server)">
-                        <Square v-if="server.status === 'running'" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{ server.status === 'running' ? '停止' : '启动' }}
+                      <Button size="sm" :variant="worldPrimaryAction(server).variant" :disabled="serverLoading || worldPrimaryAction(server).disabled" @click="handleServerAction(server)">
+                        <Spinner v-if="isWorldStarting(server)" data-icon="inline-start" />
+                        <Square v-else-if="server.status === 'running'" data-icon="inline-start" />
+                        <Play v-else-if="worldPrimaryAction(server).kind === 'start'" data-icon="inline-start" />
+                        {{ worldPrimaryAction(server).label }}
                       </Button>
-                      <Button variant="outline" size="sm" @click="router.push({ path: '/worlds/settings', query: { roomId: server.room_id, worldId: server.world_id } })"><Settings data-icon="inline-start" />配置</Button>
+                      <Button v-if="server.status === 'failed'" variant="outline" size="sm" :disabled="serverLoading || !canCleanFailedWorld(server)" @click="cleanupFailedServer(server)"><Square data-icon="inline-start" />清理会话</Button>
+                      <Button variant="outline" size="sm" :disabled="!canConfigureWorld(server)" :title="!canConfigureWorld(server) ? '请先停止或清理该分片' : ''" @click="router.push({ path: '/worlds/settings', query: { roomId: server.room_id, worldId: server.world_id } })"><Settings data-icon="inline-start" />配置</Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -375,7 +389,7 @@ onMounted(() => {
         <DialogHeader><DialogTitle>启动房间</DialogTitle><DialogDescription>选择需要启动的房间和世界分片。</DialogDescription></DialogHeader>
         <FieldGroup>
           <Field><FieldLabel for="v2-room">房间</FieldLabel><Select :model-value="selectedRoomId" @update:model-value="handleRoomSelection"><SelectTrigger id="v2-room"><SelectValue placeholder="选择房间" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomList" :key="room.id" :value="String(room.id)">{{ room.name }}</SelectItem></SelectGroup></SelectContent></Select></Field>
-          <FieldSet><FieldLegend variant="label">世界分片</FieldLegend><FieldGroup v-if="selectedRoom?.worlds?.length" class="gap-3"><Field v-for="world in selectedRoom.worlds" :key="world.id" orientation="horizontal"><Checkbox :id="`v2-world-${world.id}`" :model-value="selectedWorldIds.includes(String(world.id))" @update:model-value="toggleWorld(world.id, $event)" /><FieldLabel :for="`v2-world-${world.id}`" class="flex flex-1 items-center justify-between"><span>{{ world.name }}</span><Badge variant="outline">{{ worldTypeLabel(world.type) }}</Badge></FieldLabel></Field></FieldGroup><Alert v-else><CircleAlert /><AlertTitle>没有可用世界</AlertTitle><AlertDescription>请先完成世界配置。</AlertDescription></Alert></FieldSet>
+          <FieldSet><FieldLegend variant="label">世界分片</FieldLegend><FieldGroup v-if="selectedRoom?.worlds?.length" class="gap-3"><Field v-for="world in selectedRoom.worlds" :key="world.id" orientation="horizontal" :data-disabled="!canStartWorld(world) || undefined"><Checkbox :id="`v2-world-${world.id}`" :model-value="selectedWorldIds.includes(String(world.id))" :disabled="!canStartWorld(world) || serverLoading" @update:model-value="toggleWorld(world.id, $event)" /><FieldLabel :for="`v2-world-${world.id}`" class="flex flex-1 flex-wrap items-center justify-between gap-2"><span>{{ world.name }}</span><span class="flex items-center gap-2"><Badge variant="outline">{{ worldTypeLabel(world.type) }}</Badge><Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world) }}</Badge></span><span v-if="worldStatusMessage(world)" class="text-destructive basis-full text-xs">{{ worldStatusMessage(world) }}</span></FieldLabel></Field></FieldGroup><Alert v-else><CircleAlert /><AlertTitle>没有可用世界</AlertTitle><AlertDescription>请先完成世界配置。</AlertDescription></Alert></FieldSet>
         </FieldGroup>
         <DialogFooter><Button variant="outline" @click="startDialogOpen = false">取消</Button><Button :disabled="!canStartRoom" @click="submitStartRoom"><Spinner v-if="serverLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />启动所选世界</Button></DialogFooter>
       </DialogContent>

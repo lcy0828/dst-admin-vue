@@ -23,6 +23,7 @@
             <TabsTrigger value="all">全部分片</TabsTrigger>
             <TabsTrigger value="running">运行中</TabsTrigger>
             <TabsTrigger value="stopped">已停止</TabsTrigger>
+            <TabsTrigger value="failed">启动失败</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -61,13 +62,14 @@
           <TableBody><TableRow v-for="server in filteredServerList" :key="server.session_name">
             <TableCell>
             <div class="server-name-container">
-              <Badge :variant="server.status === 'running' ? 'default' : 'secondary'">
+              <Badge :variant="serverStatusVariant(server)">
                 {{ serverStatusLabel(server.status) }}
               </Badge>
               <Badge variant="outline">{{ getWorldTypeName(server.world_type, server.world_name) }}</Badge>
               <div>
                 <div class="server-world">{{ server.world_name }}</div>
                 <div class="server-room">{{ server.archive_name }}</div>
+                <div v-if="serverStatusMessage(server)" class="server-failure">{{ serverStatusMessage(server) }}</div>
               </div>
             </div>
             </TableCell>
@@ -77,17 +79,18 @@
             <TableCell><div class="operation-buttons">
               <UiButton
                 size="xs"
-                :variant="server.status === 'running' ? 'destructive' : 'default'"
+                :variant="serverPrimaryAction(server).variant"
                 :disabled="!canControlServer(server) || serverActionId === serverKey(server)"
-                :title="!canControlServer(server) ? (server.status_message || '当前分片状态不可控制') : ''"
+                :title="!canControlServer(server) ? (serverStatusMessage(server) || '当前分片状态不可控制') : ''"
                 @click="handleServerAction(server)"
               >
-                <Spinner v-if="serverActionId === serverKey(server)" data-icon="inline-start" />
+                <Spinner v-if="serverActionId === serverKey(server) || isServerStarting(server)" data-icon="inline-start" />
                 <Square v-else-if="server.status === 'running'" data-icon="inline-start" />
-                <Play v-else data-icon="inline-start" />
-                {{ server.status === 'running' ? '停止' : '启动' }}
+                <Play v-else-if="serverPrimaryAction(server).kind === 'start'" data-icon="inline-start" />
+                {{ serverPrimaryAction(server).label }}
               </UiButton>
-              <UiButton size="xs" variant="outline" @click="handleConfigure(server)">配置</UiButton>
+              <UiButton v-if="server.status === 'failed'" size="xs" variant="outline" :disabled="!canCleanFailedServer(server) || serverActionId === serverKey(server)" @click="handleCleanupFailedServer(server)"><Square data-icon="inline-start" />清理会话</UiButton>
+              <UiButton size="xs" variant="outline" :disabled="!canConfigureServer(server)" :title="!canConfigureServer(server) ? '请先停止或清理该分片' : ''" @click="handleConfigure(server)">配置</UiButton>
             </div></TableCell>
           </TableRow></TableBody>
         </ShadcnTable>
@@ -125,7 +128,8 @@
                 <FieldLabel :for="`server-world-${world.id}`" class="font-normal">
                   {{ world.name }}
                   <Badge variant="outline">{{ getWorldTypeName(world.type, world.name) }}</Badge>
-                  <Badge v-if="world.status === 'running'" variant="secondary">已运行</Badge>
+                  <Badge :variant="serverStatusVariant(world)">{{ serverStatusLabel(world.status) }}</Badge>
+                  <span v-if="serverStatusMessage(world)" class="server-failure basis-full">{{ serverStatusMessage(world) }}</span>
                 </FieldLabel>
               </Field>
             </FieldGroup>
@@ -155,6 +159,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirmAction } from '@/lib/feedback';
+import {
+  canCleanFailedWorld,
+  canConfigureWorld,
+  canStartWorld as canStartRuntimeWorld,
+  isWorldStarting,
+  worldPrimaryAction,
+  worldStatusLabel,
+  worldStatusMessage,
+  worldStatusVariant
+} from '@/lib/worldRuntimeStatus.mjs';
 import { getActiveRuntimeTarget, RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
 
 export default {
@@ -286,7 +300,7 @@ export default {
         .map(world => world.id);
     },
     canStartWorld(world) {
-      return world.status === 'stopped' && world.controlAvailable !== false;
+      return canStartRuntimeWorld(world);
     },
     toggleWorld(worldId, checked) {
       if (checked) {
@@ -325,7 +339,7 @@ export default {
     },
     async handleServerAction(server) {
       if (!this.canControlServer(server)) {
-        toast.warning(server.status_message || '当前分片状态不可控制');
+        toast.warning(this.serverStatusMessage(server) || '当前分片状态不可控制');
         return;
       }
       const isRunning = server.status === 'running';
@@ -352,14 +366,57 @@ export default {
         this.serverActionId = '';
       }
     },
+    async handleCleanupFailedServer(server) {
+      if (!canCleanFailedWorld(server)) {
+        toast.warning(this.serverStatusMessage(server) || '当前分片没有可清理的失败会话');
+        return;
+      }
+      try {
+        await confirmAction(`确定要停止并清理“${server.archive_name} / ${server.world_name}”的失败会话吗？`, '清理失败会话', {
+          confirmButtonText: '确认清理',
+          type: 'warning'
+        });
+      } catch {
+        return;
+      }
+
+      this.serverActionId = this.serverKey(server);
+      try {
+        const response = await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id });
+        await this.fetchData();
+        toast.success(response?.msg || '失败会话已清理');
+      } catch (error) {
+        toast.error(`清理失败：${error.message || '未知错误'}`);
+      } finally {
+        this.serverActionId = '';
+      }
+    },
     serverKey(server) {
       return `${server.room_id}:${server.world_id}`;
     },
     canControlServer(server) {
-      return server.control_available !== false && ['running', 'stopped'].includes(server.status);
+      return !this.serverPrimaryAction(server).disabled;
+    },
+    canCleanFailedServer(server) {
+      return canCleanFailedWorld(server);
+    },
+    canConfigureServer(server) {
+      return canConfigureWorld(server);
     },
     serverStatusLabel(status) {
-      return { running: '运行中', stopped: '已停止' }[status] || '状态未知';
+      return worldStatusLabel(status);
+    },
+    serverStatusVariant(server) {
+      return worldStatusVariant(server);
+    },
+    serverStatusMessage(server) {
+      return worldStatusMessage(server);
+    },
+    serverPrimaryAction(server) {
+      return worldPrimaryAction(server);
+    },
+    isServerStarting(server) {
+      return isWorldStarting(server);
     },
     handleConfigure(server) {
       this.$router.push({
@@ -458,6 +515,13 @@ export default {
 .server-room {
   font-size: 12px;
   color: var(--muted-foreground);
+}
+
+.server-failure {
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .operation-buttons {

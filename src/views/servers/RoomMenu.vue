@@ -67,13 +67,14 @@
                 <TableCell>{{ runningWorlds(room).length }} / {{ room.worlds.length }}</TableCell>
                 <TableCell>{{ formatUpdatedAt(room) }}</TableCell>
                 <TableCell>
-                  <Badge :variant="runningWorlds(room).length ? 'default' : 'secondary'">
-                    {{ runningWorlds(room).length ? '运行中' : '已停止' }}
-                  </Badge>
+                  <Badge :variant="roomStatusVariant(room)">{{ roomStatusLabel(room) }}</Badge>
+                  <p v-for="world in failedWorlds(room)" :key="world.id" class="room-failure">
+                    {{ world.name }}：{{ worldStatusMessage(world) || '启动失败' }}
+                  </p>
                 </TableCell>
                 <TableCell>
                   <div class="table-actions">
-                    <UiButton size="xs" variant="outline" @click="editRoom(room)">
+                    <UiButton size="xs" variant="outline" :disabled="!canConfigureRoom(room)" :title="!canConfigureRoom(room) ? '请先停止或清理房间分片' : ''" @click="editRoom(room)">
                       <Pencil data-icon="inline-start" />编辑
                     </UiButton>
                     <UiButton
@@ -84,6 +85,17 @@
                       <Spinner v-if="roomActionId === room.id" data-icon="inline-start" />
                       <Play v-else data-icon="inline-start" />
                       启动分片
+                    </UiButton>
+                    <UiButton
+                      v-if="failedWorlds(room).length"
+                      size="xs"
+                      variant="outline"
+                      :disabled="!cleanableFailedWorlds(room).length || roomActionId === room.id"
+                      @click="cleanupFailedWorlds(room)"
+                    >
+                      <Spinner v-if="roomActionId === room.id" data-icon="inline-start" />
+                      <Square v-else data-icon="inline-start" />
+                      清理失败会话
                     </UiButton>
                     <UiButton
                       v-if="runningWorlds(room).length"
@@ -144,7 +156,8 @@
               <FieldLabel :for="`room-world-${world.id}`" class="font-normal">
                 {{ world.name }}
                 <Badge variant="outline">{{ worldTypeLabel(world.type) }}</Badge>
-                <Badge v-if="world.status === 'running'" variant="secondary">已运行</Badge>
+                <Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world) }}</Badge>
+                <span v-if="worldStatusMessage(world)" class="room-failure basis-full">{{ worldStatusMessage(world) }}</span>
               </FieldLabel>
             </Field>
           </FieldGroup>
@@ -192,6 +205,15 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
+import {
+  canCleanFailedWorld,
+  canConfigureWorld,
+  canStartWorld as canStartRuntimeWorld,
+  canStopWorld,
+  worldStatusLabel,
+  worldStatusMessage,
+  worldStatusVariant
+} from '@/lib/worldRuntimeStatus.mjs';
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
 
 const ROOM_SECTIONS = [
@@ -265,6 +287,7 @@ export default {
               ...world,
               status: server?.status || world.status || 'stopped',
               controlAvailable: server?.control_available ?? world.controlAvailable,
+              statusMessage: server?.status_message || world.statusMessage || '',
               updatedAt: server?.update_time || world.updatedAt || world.updateTime
             };
           })
@@ -289,13 +312,45 @@ export default {
       return (room.worlds || []).filter(world => world.status === 'running');
     },
     stoppableWorlds(room) {
-      return this.runningWorlds(room).filter(world => world.controlAvailable !== false);
+      return (room.worlds || []).filter(world => canStopWorld(world));
     },
     startableWorlds(room) {
       return (room.worlds || []).filter(world => this.canStartWorld(world));
     },
     canStartWorld(world) {
-      return world.status === 'stopped' && world.controlAvailable !== false;
+      return canStartRuntimeWorld(world);
+    },
+    failedWorlds(room) {
+      return (room.worlds || []).filter(world => world.status === 'failed');
+    },
+    cleanableFailedWorlds(room) {
+      return this.failedWorlds(room).filter(world => canCleanFailedWorld(world));
+    },
+    canConfigureRoom(room) {
+      const worlds = room.worlds || [];
+      return !worlds.length || worlds.every(world => canConfigureWorld(world));
+    },
+    roomStatus(room) {
+      const worlds = room.worlds || [];
+      if (worlds.some(world => world.status === 'running')) return 'running';
+      if (worlds.some(world => world.status === 'starting')) return 'starting';
+      if (worlds.some(world => world.status === 'failed')) return 'failed';
+      return 'stopped';
+    },
+    roomStatusLabel(room) {
+      return worldStatusLabel(this.roomStatus(room));
+    },
+    roomStatusVariant(room) {
+      return worldStatusVariant(this.roomStatus(room));
+    },
+    worldStatusLabel(world) {
+      return worldStatusLabel(world);
+    },
+    worldStatusVariant(world) {
+      return worldStatusVariant(world);
+    },
+    worldStatusMessage(world) {
+      return worldStatusMessage(world);
     },
     startRoom(room) {
       const worlds = this.startableWorlds(room);
@@ -341,6 +396,35 @@ export default {
         toast.error(`启动失败：${error.message || '未知错误'}`);
       } finally {
         this.startLoading = false;
+        this.roomActionId = '';
+      }
+    },
+    async cleanupFailedWorlds(room) {
+      const worlds = this.cleanableFailedWorlds(room);
+      if (!worlds.length) {
+        toast.warning('当前房间没有可清理的失败会话');
+        return;
+      }
+      try {
+        await confirmAction(`确定要停止并清理“${room.name}”中 ${worlds.length} 个失败会话吗？`, '清理失败会话', {
+          confirmButtonText: '确认清理',
+          type: 'warning'
+        });
+      } catch {
+        return;
+      }
+
+      this.roomActionId = room.id;
+      try {
+        const response = await roomApi.stopRoom({
+          room_id: room.id,
+          world_ids: worlds.map(world => world.id)
+        });
+        await this.refreshRooms();
+        toast.success(response?.msg || '失败会话已清理');
+      } catch (error) {
+        toast.error(`清理失败：${error.message || '未知错误'}`);
+      } finally {
         this.roomActionId = '';
       }
     },
@@ -412,6 +496,14 @@ export default {
   margin: 2px 0 0;
   color: var(--muted-foreground);
   font-size: 14px;
+}
+
+.room-failure {
+  margin-top: 4px;
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .menu-grid {
