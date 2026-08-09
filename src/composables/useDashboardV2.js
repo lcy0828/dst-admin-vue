@@ -8,7 +8,7 @@ import {
   worldPrimaryAction,
   worldStatusMessage
 } from '@/lib/worldRuntimeStatus.mjs'
-import { formatTimeDiff } from '@/utils/dateUtils'
+import { i18n, translate } from '@/i18n'
 import { toast } from 'vue-sonner'
 
 const emptyVersion = () => ({
@@ -75,10 +75,10 @@ export function useDashboardV2() {
     systemError.value = ''
     try {
       const response = await systemApi.getDashboardStatus()
-      if (response?.status !== 200 || !response.data) throw new Error(response?.msg || '系统状态响应无效')
+      if (response?.status !== 200 || !response.data) throw new Error(response?.msg || translate('dashboard.feedback.invalidSystemResponse'))
       systemStatus.value = response.data
     } catch (error) {
-      systemError.value = error.message || '获取系统状态失败'
+      systemError.value = error.message || translate('dashboard.feedback.systemLoadFailed')
     } finally {
       systemLoading.value = false
     }
@@ -90,7 +90,7 @@ export function useDashboardV2() {
     playerSummary.value = { total: 0, online: 0, loadedRooms: 0, failedRooms: 0 }
     try {
       if (roomError.value) {
-        playerError.value = '房间列表读取失败，无法汇总玩家数据'
+        playerError.value = translate('dashboard.feedback.playersBlocked')
         return
       }
       const results = await Promise.allSettled(
@@ -107,7 +107,7 @@ export function useDashboardV2() {
         playerSummary.value.loadedRooms += 1
       }
       if (playerSummary.value.failedRooms > 0) {
-        playerError.value = `${playerSummary.value.failedRooms} 个房间的玩家数据读取失败`
+        playerError.value = translate('dashboard.feedback.playerRoomsFailed', { count: playerSummary.value.failedRooms })
       }
     } finally {
       playerLoading.value = false
@@ -127,14 +127,14 @@ export function useDashboardV2() {
       serverList.value = Array.isArray(servers.value.data) ? servers.value.data : []
     } else {
       serverList.value = []
-      serverError.value = servers.reason?.message || '获取服务器状态失败'
+      serverError.value = servers.reason?.message || translate('dashboard.feedback.serverLoadFailed')
     }
 
     if (rooms.status === 'fulfilled' && rooms.value?.status === 200) {
       roomList.value = Array.isArray(rooms.value.data) ? rooms.value.data : []
     } else {
       roomList.value = []
-      roomError.value = rooms.reason?.message || '获取房间列表失败'
+      roomError.value = rooms.reason?.message || translate('dashboard.feedback.roomLoadFailed')
     }
 
     serverLoading.value = false
@@ -146,10 +146,10 @@ export function useDashboardV2() {
     versionError.value = ''
     try {
       const response = await systemApi.getGameVersion()
-      if (response?.status !== 200 || !response.data) throw new Error(response?.msg || '版本响应无效')
+      if (response?.status !== 200 || !response.data) throw new Error(response?.msg || translate('dashboard.feedback.invalidVersionResponse'))
       versionInfo.value = response.data
     } catch (error) {
-      versionError.value = error.message || '获取游戏版本失败'
+      versionError.value = error.message || translate('dashboard.feedback.versionLoadFailed')
     } finally {
       versionLoading.value = false
     }
@@ -161,16 +161,16 @@ export function useDashboardV2() {
   }
 
   async function handleServerAction(server) {
-    const primaryAction = worldPrimaryAction(server)
+    const primaryAction = worldPrimaryAction(server, translate)
     if (primaryAction.disabled || !primaryAction.kind) {
-      toast.warning(worldStatusMessage(server) || '当前分片状态不可操作')
+      toast.warning(worldStatusMessage(server) || translate('dashboard.feedback.actionUnavailable'))
       return
     }
     const running = canStopWorld(server)
-    const action = running ? '停止' : '启动'
+    const action = translate(running ? 'worldRuntime.actions.stop' : 'worldRuntime.actions.start')
     try {
-      await confirmAction(`确定要${action}“${server.archive_name} / ${server.world_name}”吗？`, '服务器操作确认', {
-        confirmText: `确认${action}`
+      await confirmAction(translate('dashboard.feedback.actionConfirm', { action, room: server.archive_name, world: server.world_name }), translate('dashboard.feedback.actionConfirmTitle'), {
+        confirmText: translate('dashboard.feedback.actionConfirmButton', { action })
       })
     } catch {
       return
@@ -180,10 +180,10 @@ export function useDashboardV2() {
     try {
       const input = { room_id: server.room_id, world_id: server.world_id }
       const response = running ? await roomApi.stopRoom(input) : await roomApi.startRoom(input)
-      toast.success(response.msg || `${action}完成`)
+      toast.success(response.msg || translate('dashboard.feedback.actionCompleted', { action }))
       await refreshServers()
     } catch (error) {
-      toast.error(`${action}失败：${error.message || '未知错误'}`)
+      toast.error(translate('dashboard.feedback.actionFailed', { action, error: error.message || translate('common.errors.unknown') }))
     } finally {
       serverLoading.value = false
     }
@@ -192,7 +192,7 @@ export function useDashboardV2() {
   async function startRoom(room, worlds) {
     const startableWorlds = worlds.filter(canStartWorld)
     if (!startableWorlds.length) {
-      toast.warning('请至少选择一个可启动的世界分片')
+      toast.warning(translate('dashboard.feedback.selectWorld'))
       return false
     }
     serverLoading.value = true
@@ -201,11 +201,11 @@ export function useDashboardV2() {
         room_id: room.id,
         world_ids: startableWorlds.map(world => world.id)
       })
-      toast.success(response.msg || `房间 ${room.name} 已启动`)
+      toast.success(response.msg || translate('dashboard.feedback.roomStarted', { room: room.name }))
       await refreshServers()
       return true
     } catch (error) {
-      toast.error(`启动房间失败：${error.message || '未知错误'}`)
+      toast.error(translate('dashboard.feedback.roomStartFailed', { error: error.message || translate('common.errors.unknown') }))
       return false
     } finally {
       serverLoading.value = false
@@ -214,12 +214,12 @@ export function useDashboardV2() {
 
   async function cleanupFailedServer(server) {
     if (!canCleanFailedWorld(server)) {
-      toast.warning(worldStatusMessage(server) || '当前分片没有可清理的失败会话')
+      toast.warning(worldStatusMessage(server) || translate('dashboard.feedback.cleanupUnavailable'))
       return
     }
     try {
-      await confirmAction(`确定要停止并清理“${server.archive_name} / ${server.world_name}”的失败会话吗？`, '清理失败会话', {
-        confirmText: '确认清理'
+      await confirmAction(translate('dashboard.feedback.cleanupConfirm', { room: server.archive_name, world: server.world_name }), translate('dashboard.feedback.cleanupTitle'), {
+        confirmText: translate('dashboard.feedback.cleanupButton')
       })
     } catch {
       return
@@ -228,10 +228,10 @@ export function useDashboardV2() {
     serverLoading.value = true
     try {
       const response = await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id })
-      toast.success(response.msg || '失败会话已清理')
+      toast.success(response.msg || translate('dashboard.feedback.cleanupSucceeded'))
       await refreshServers()
     } catch (error) {
-      toast.error(`清理失败：${error.message || '未知错误'}`)
+      toast.error(translate('dashboard.feedback.cleanupFailed', { error: error.message || translate('common.errors.unknown') }))
     } finally {
       serverLoading.value = false
     }
@@ -253,15 +253,15 @@ export function useDashboardV2() {
       }
     } catch (error) {
       stopUpdatePolling()
-      toast.error(error.message || '获取更新状态失败')
+      toast.error(error.message || translate('dashboard.feedback.updateStatusFailed'))
     }
   }
 
   async function updateGame() {
     if (!canUpdateGame.value) return
     try {
-      await confirmAction('确定要更新饥荒服务器吗？更新期间服务器将暂时不可用。', '更新确认', {
-        confirmText: '确定更新'
+      await confirmAction(translate('dashboard.feedback.updateConfirm'), translate('dashboard.feedback.updateConfirmTitle'), {
+        confirmText: translate('dashboard.feedback.updateConfirmButton')
       })
     } catch {
       return
@@ -271,15 +271,15 @@ export function useDashboardV2() {
     try {
       const response = await systemApi.updateDstServer({ force: true })
       const jobId = response.data?.session_name
-      if (!jobId) throw new Error(response.msg || '更新任务响应无效')
+      if (!jobId) throw new Error(response.msg || translate('dashboard.feedback.invalidUpdateResponse'))
       sessionStorage.setItem('dstUpdateSessionName', jobId)
-      toast.success(response.msg || '更新任务已提交')
+      toast.success(response.msg || translate('dashboard.feedback.updateSubmitted'))
       await pollUpdateStatus(jobId)
       if (!updateStatus.value?.is_completed && !updateStatus.value?.error) {
         updateTimer = setInterval(() => pollUpdateStatus(jobId), 3000)
       }
     } catch (error) {
-      toast.error(error.message || '更新游戏失败')
+      toast.error(error.message || translate('dashboard.feedback.updateFailed'))
     } finally {
       updateStarting.value = false
     }
@@ -359,14 +359,21 @@ export function formatDecimal(value) {
   return hasMetric(value) ? Number(value).toFixed(2) : '--'
 }
 
-export function formatDateTime(value) {
+export function formatDateTime(value, locale = i18n.global.locale.value) {
   if (!value) return '--'
   const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-CN', { hour12: false })
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(locale, { hour12: false })
 }
 
-export function formatServerUptime(value) {
+export function formatServerUptime(value, translator = translate) {
   if (!value) return '--'
   const timestamp = new Date(value).getTime()
-  return Number.isFinite(timestamp) ? formatTimeDiff(Date.now() - timestamp) : '--'
+  if (!Number.isFinite(timestamp)) return '--'
+  const totalMinutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000))
+  const days = Math.floor(totalMinutes / 1440)
+  const hours = Math.floor((totalMinutes % 1440) / 60)
+  const minutes = totalMinutes % 60
+  if (days > 0) return translator('dashboard.duration.daysHours', { days, hours })
+  if (hours > 0) return translator('dashboard.duration.hoursMinutes', { hours, minutes })
+  return translator('dashboard.duration.minutes', { minutes })
 }

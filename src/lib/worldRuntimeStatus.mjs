@@ -8,7 +8,9 @@ export function worldRuntimeStatus(worldOrStatus) {
   return KNOWN_WORLD_STATUSES.has(status) ? status : 'unknown'
 }
 
-export function worldStatusLabel(worldOrStatus) {
+export function worldStatusLabel(worldOrStatus, translator) {
+  const status = worldRuntimeStatus(worldOrStatus)
+  if (typeof translator === 'function') return translator(`worldRuntime.statuses.${status}`)
   return {
     stopped: '已停止',
     starting: '启动中',
@@ -16,7 +18,7 @@ export function worldStatusLabel(worldOrStatus) {
     failed: '启动失败',
     stopping: '停止中',
     unknown: '状态未知'
-  }[worldRuntimeStatus(worldOrStatus)]
+  }[status]
 }
 
 export function worldStatusVariant(worldOrStatus) {
@@ -64,22 +66,25 @@ export function canDeleteWorld(world) {
   return worldControlAvailable(world) && worldRuntimeStatus(world) === 'stopped'
 }
 
-export function worldPrimaryAction(world) {
+export function worldPrimaryAction(world, translator) {
   const status = worldRuntimeStatus(world)
+  const label = (key, fallback) => typeof translator === 'function'
+    ? translator(`worldRuntime.actions.${key}`)
+    : fallback
   if (status === 'running') {
-    return { kind: 'stop', label: '停止', variant: 'destructive', disabled: !canStopWorld(world) }
+    return { kind: 'stop', label: label('stop', '停止'), variant: 'destructive', disabled: !canStopWorld(world) }
   }
   if (status === 'stopped') {
-    return { kind: 'start', label: '启动', variant: 'default', disabled: !canStartWorld(world) }
+    return { kind: 'start', label: label('start', '启动'), variant: 'default', disabled: !canStartWorld(world) }
   }
   if (status === 'failed') {
-    return { kind: 'start', label: '重试启动', variant: 'default', disabled: !canStartWorld(world) }
+    return { kind: 'start', label: label('retry', '重试启动'), variant: 'default', disabled: !canStartWorld(world) }
   }
   if (status === 'starting') {
-    return { kind: null, label: '启动中', variant: 'secondary', disabled: true }
+    return { kind: null, label: label('starting', '启动中'), variant: 'secondary', disabled: true }
   }
   if (status === 'stopping') {
-    return { kind: null, label: '停止中', variant: 'secondary', disabled: true }
+    return { kind: null, label: label('stopping', '停止中'), variant: 'secondary', disabled: true }
   }
-  return { kind: null, label: '不可操作', variant: 'outline', disabled: true }
+  return { kind: null, label: label('unavailable', '不可操作'), variant: 'outline', disabled: true }
 }

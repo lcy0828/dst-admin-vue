@@ -7,22 +7,22 @@
           <span class="login-mark" aria-hidden="true"><Gamepad2Icon /></span>
           <span>DST Admin</span>
         </div>
-        <CardTitle class="login-title">饥荒服务器管理系统</CardTitle>
+        <CardTitle class="login-title">{{ $t('login.title') }}</CardTitle>
         <CardDescription>
-          {{ setupRequired ? '首次使用，请创建管理员账户。' : "Don't Starve Together Server Console" }}
+          {{ setupRequired ? $t('login.setupDescription') : $t('login.description') }}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form class="login-form" @submit.prevent="handleLogin">
           <FieldGroup>
             <Field :data-invalid="Boolean(validationErrors.username)">
-              <FieldLabel for="login-username">用户名</FieldLabel>
+              <FieldLabel for="login-username">{{ $t('login.username') }}</FieldLabel>
               <InputGroup>
                 <InputGroupAddon><UserIcon /></InputGroupAddon>
                 <InputGroupInput
                   id="login-username"
                   v-model="loginForm.username"
-                  placeholder="请输入用户名"
+                  :placeholder="$t('login.usernamePlaceholder')"
                   autocomplete="username"
                   :aria-invalid="Boolean(validationErrors.username)"
                 />
@@ -31,14 +31,14 @@
             </Field>
 
             <Field :data-invalid="Boolean(validationErrors.password)">
-              <FieldLabel for="login-password">密码</FieldLabel>
+              <FieldLabel for="login-password">{{ $t('login.password') }}</FieldLabel>
               <InputGroup>
                 <InputGroupAddon><LockKeyholeIcon /></InputGroupAddon>
                 <InputGroupInput
                   id="login-password"
                   v-model="loginForm.password"
                   type="password"
-                  placeholder="请输入密码"
+                  :placeholder="$t('login.passwordPlaceholder')"
                   autocomplete="current-password"
                   :aria-invalid="Boolean(validationErrors.password)"
                 />
@@ -49,21 +49,21 @@
             <Field orientation="horizontal">
               <div class="remember-field">
                 <Checkbox id="remember-login" v-model="loginForm.remember" />
-                <FieldLabel for="remember-login">记住我</FieldLabel>
+                <FieldLabel for="remember-login">{{ $t('login.remember') }}</FieldLabel>
               </div>
-              <FieldDescription v-if="setupRequired">密码至少 6 位</FieldDescription>
+              <FieldDescription v-if="setupRequired">{{ $t('login.passwordHint') }}</FieldDescription>
             </Field>
 
             <UiButton type="submit" class="login-button" :disabled="loading">
               <Spinner v-if="loading" data-icon="inline-start" />
-              {{ setupRequired ? '创建管理员' : '登录' }}
+              {{ setupRequired ? $t('login.createAdministrator') : $t('login.submit') }}
             </UiButton>
           </FieldGroup>
         </form>
       </CardContent>
       <CardFooter class="login-footer">
-        <span>本地优先</span>
-        <span>远程节点独立配置</span>
+        <span>{{ $t('login.localFirst') }}</span>
+        <span>{{ $t('login.remoteSeparate') }}</span>
       </CardFooter>
     </Card>
   </div>
@@ -134,10 +134,10 @@ export default {
       }
     },
     async handleLogin() {
-      this.validationErrors.username = this.loginForm.username.trim() ? '' : '请输入用户名'
+      this.validationErrors.username = this.loginForm.username.trim() ? '' : this.$t('login.validation.usernameRequired')
       this.validationErrors.password = this.loginForm.password
-        ? (this.loginForm.password.length >= 6 ? '' : '密码长度不少于6位')
-        : '请输入密码'
+        ? (this.loginForm.password.length >= 6 ? '' : this.$t('login.validation.passwordTooShort'))
+        : this.$t('login.validation.passwordRequired')
       if (this.validationErrors.username || this.validationErrors.password) return
 
       this.loading = true
@@ -149,9 +149,9 @@ export default {
           ? redirect
           : '/dashboard'
         await this.$router.push(target)
-        toast.success(this.setupRequired ? '管理员创建成功' : '登录成功')
+        toast.success(this.setupRequired ? this.$t('login.feedback.setupSucceeded') : this.$t('login.feedback.loginSucceeded'))
       } catch (error) {
-        toast.error(error.message || '登录失败')
+        toast.error(error.message || this.$t('login.feedback.loginFailed'))
       } finally {
         this.loading = false
       }

@@ -1,5 +1,8 @@
+import { corePageMessages } from './corePages.js'
+
 export const messages = {
   'zh-CN': {
+    ...corePageMessages['zh-CN'],
     common: {
       actions: {
         cancel: '取消',
@@ -440,6 +443,7 @@ export const messages = {
     }
   },
   'en-US': {
+    ...corePageMessages['en-US'],
     common: {
       actions: {
         cancel: 'Cancel',

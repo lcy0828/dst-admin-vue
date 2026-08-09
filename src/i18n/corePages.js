@@ -1,0 +1,374 @@
+export const corePageMessages = {
+  'zh-CN': {
+    login: {
+      title: '饥荒服务器管理系统',
+      setupDescription: '首次使用，请创建管理员账户。',
+      description: "Don't Starve Together Server Console",
+      username: '用户名',
+      usernamePlaceholder: '请输入用户名',
+      password: '密码',
+      passwordPlaceholder: '请输入密码',
+      remember: '记住我',
+      passwordHint: '密码至少 6 位',
+      createAdministrator: '创建管理员',
+      submit: '登录',
+      localFirst: '本地优先',
+      remoteSeparate: '远程节点独立配置',
+      validation: {
+        usernameRequired: '请输入用户名',
+        passwordRequired: '请输入密码',
+        passwordTooShort: '密码长度不少于 6 位'
+      },
+      feedback: {
+        setupSucceeded: '管理员创建成功',
+        loginSucceeded: '登录成功',
+        loginFailed: '登录失败'
+      }
+    },
+    worldRuntime: {
+      statuses: {
+        stopped: '已停止',
+        starting: '启动中',
+        running: '运行中',
+        failed: '启动失败',
+        stopping: '停止中',
+        unknown: '状态未知'
+      },
+      actions: {
+        stop: '停止',
+        start: '启动',
+        retry: '重试启动',
+        starting: '启动中',
+        stopping: '停止中',
+        unavailable: '不可操作'
+      },
+      types: {
+        forest: '森林',
+        cave: '洞穴',
+        unknown: '未知'
+      }
+    },
+    dashboard: {
+      title: '服务总览',
+      subtitle: '专服、玩家和主机状态',
+      lastUpdated: '最后更新 {time}',
+      refreshAll: '刷新全部',
+      summary: {
+        runningShards: '运行分片',
+        serverProcesses: '当前专服进程',
+        running: '运行中',
+        notRunning: '未运行',
+        onlinePlayers: '在线玩家',
+        playerSummary: '实时玩家汇总',
+        people: '人',
+        recordedPlayers: '记录 {count} 人',
+        roomsAndWorlds: '房间与世界',
+        managedDirectories: '当前管理目录',
+        rooms: '{count} 个房间',
+        roomUnit: '个房间',
+        worlds: '{count} 个世界',
+        hostLoad: '主机负载',
+        waitingSystem: '等待系统信息',
+        memory: '内存 {value}'
+      },
+      playersUnavailable: '部分玩家数据不可用',
+      servers: {
+        title: '服务器状态',
+        description: '{total} 个分片，{running} 个运行中',
+        startRoom: '启动房间',
+        columns: {
+          status: '状态',
+          room: '房间',
+          world: '世界',
+          uptime: '运行时间',
+          actions: '操作'
+        },
+        cleanupSession: '清理会话',
+        configure: '配置',
+        configureDisabled: '请先停止或清理该分片',
+        loadFailed: '服务器数据加载失败',
+        noRooms: '还没有房间',
+        noRoomsDescription: '创建房间并配置世界后即可启动专服。',
+        createRoom: '创建房间',
+        notStarted: '服务器尚未启动',
+        notStartedDescription: '选择房间和世界分片开始运行。',
+        totalInstances: '共 {count} 个服务器实例'
+      },
+      logs: {
+        title: '世界日志',
+        description: '查看世界分片的实时输出与连接状态',
+        empty: '暂无世界日志',
+        emptyDescription: '创建房间和世界后，这里会显示实时日志。'
+      },
+      resources: {
+        title: '系统资源',
+        refresh: '刷新系统资源',
+        unavailable: '系统状态不可用',
+        coresThreads: '{cores} 核 / {threads} 线程',
+        memory: '内存',
+        used: '已用 {used} / {total}',
+        disk: '磁盘',
+        free: '空闲 {free} / {total}',
+        load: '系统负载',
+        loadWindow: '1 / 5 / 15 分钟 · {one} / {five} / {fifteen}',
+        uptime: '运行 {value}'
+      },
+      version: {
+        title: '版本与更新',
+        description: '游戏服务端与 Steam 版本',
+        check: '检查游戏版本',
+        loadFailed: '版本读取失败',
+        current: '当前版本',
+        latest: 'Steam 最新',
+        installed: '已安装',
+        notInstalled: '未安装',
+        updateAvailable: '可更新',
+        upToDate: '已最新',
+        installPathMissing: '未配置安装位置',
+        steamManaged: '由 Steam 客户端管理',
+        steamManagedDescription: 'macOS 安装请在 Steam 中更新游戏。',
+        panelUnavailable: '面板更新不可用',
+        unsupportedInstall: '当前安装方式不支持面板更新。',
+        steamcmdMissing: '未检测到 SteamCMD。',
+        updateCompleted: '更新已完成',
+        updating: '正在更新',
+        waiting: '等待更新',
+        updateButtonBusy: '更新中',
+        updateButton: '更新游戏'
+      },
+      startDialog: {
+        title: '启动房间',
+        description: '选择需要启动的房间和世界分片。',
+        room: '房间',
+        selectRoom: '选择房间',
+        worlds: '世界分片',
+        noWorlds: '没有可用世界',
+        noWorldsDescription: '请先完成世界配置。',
+        submit: '启动所选世界'
+      },
+      feedback: {
+        invalidSystemResponse: '系统状态响应无效',
+        systemLoadFailed: '获取系统状态失败',
+        playersBlocked: '房间列表读取失败，无法汇总玩家数据',
+        playerRoomsFailed: '{count} 个房间的玩家数据读取失败',
+        serverLoadFailed: '获取服务器状态失败',
+        roomLoadFailed: '获取房间列表失败',
+        invalidVersionResponse: '版本响应无效',
+        versionLoadFailed: '获取游戏版本失败',
+        actionUnavailable: '当前分片状态不可操作',
+        actionConfirm: '确定要{action}“{room} / {world}”吗？',
+        actionConfirmTitle: '服务器操作确认',
+        actionConfirmButton: '确认{action}',
+        actionCompleted: '{action}完成',
+        actionFailed: '{action}失败：{error}',
+        selectWorld: '请至少选择一个可启动的世界分片',
+        roomStarted: '房间 {room} 已启动',
+        roomStartFailed: '启动房间失败：{error}',
+        cleanupUnavailable: '当前分片没有可清理的失败会话',
+        cleanupConfirm: '确定要停止并清理“{room} / {world}”的失败会话吗？',
+        cleanupTitle: '清理失败会话',
+        cleanupButton: '确认清理',
+        cleanupSucceeded: '失败会话已清理',
+        cleanupFailed: '清理失败：{error}',
+        updateStatusFailed: '获取更新状态失败',
+        updateConfirm: '确定要更新饥荒服务器吗？更新期间服务器将暂时不可用。',
+        updateConfirmTitle: '更新确认',
+        updateConfirmButton: '确定更新',
+        invalidUpdateResponse: '更新任务响应无效',
+        updateSubmitted: '更新任务已提交',
+        updateFailed: '更新游戏失败'
+      },
+      duration: {
+        daysHours: '{days} 天 {hours} 小时',
+        hoursMinutes: '{hours} 小时 {minutes} 分钟',
+        minutes: '{minutes} 分钟'
+      }
+    }
+  },
+  'en-US': {
+    login: {
+      title: "Don't Starve Together Server Manager",
+      setupDescription: 'Create the administrator account to get started.',
+      description: "Don't Starve Together Server Console",
+      username: 'Username',
+      usernamePlaceholder: 'Enter your username',
+      password: 'Password',
+      passwordPlaceholder: 'Enter your password',
+      remember: 'Remember me',
+      passwordHint: 'Use at least 6 characters',
+      createAdministrator: 'Create administrator',
+      submit: 'Sign in',
+      localFirst: 'Local by default',
+      remoteSeparate: 'Remote nodes configured separately',
+      validation: {
+        usernameRequired: 'Enter your username',
+        passwordRequired: 'Enter your password',
+        passwordTooShort: 'Password must be at least 6 characters'
+      },
+      feedback: {
+        setupSucceeded: 'Administrator created',
+        loginSucceeded: 'Signed in',
+        loginFailed: 'Sign-in failed'
+      }
+    },
+    worldRuntime: {
+      statuses: {
+        stopped: 'Stopped',
+        starting: 'Starting',
+        running: 'Running',
+        failed: 'Start failed',
+        stopping: 'Stopping',
+        unknown: 'Unknown status'
+      },
+      actions: {
+        stop: 'Stop',
+        start: 'Start',
+        retry: 'Retry start',
+        starting: 'Starting',
+        stopping: 'Stopping',
+        unavailable: 'Unavailable'
+      },
+      types: {
+        forest: 'Forest',
+        cave: 'Caves',
+        unknown: 'Unknown'
+      }
+    },
+    dashboard: {
+      title: 'Service overview',
+      subtitle: 'Dedicated servers, players, and host status',
+      lastUpdated: 'Last updated {time}',
+      refreshAll: 'Refresh all',
+      summary: {
+        runningShards: 'Running shards',
+        serverProcesses: 'Current server processes',
+        running: 'Running',
+        notRunning: 'Not running',
+        onlinePlayers: 'Online players',
+        playerSummary: 'Live player summary',
+        people: 'players',
+        recordedPlayers: '{count} recorded',
+        roomsAndWorlds: 'Rooms and worlds',
+        managedDirectories: 'Managed directories',
+        rooms: '{count} rooms',
+        roomUnit: 'rooms',
+        worlds: '{count} worlds',
+        hostLoad: 'Host load',
+        waitingSystem: 'Waiting for system information',
+        memory: 'Memory {value}'
+      },
+      playersUnavailable: 'Some player data is unavailable',
+      servers: {
+        title: 'Server status',
+        description: '{total} shards, {running} running',
+        startRoom: 'Start room',
+        columns: {
+          status: 'Status',
+          room: 'Room',
+          world: 'World',
+          uptime: 'Uptime',
+          actions: 'Actions'
+        },
+        cleanupSession: 'Clean up session',
+        configure: 'Configure',
+        configureDisabled: 'Stop or clean up this shard first',
+        loadFailed: 'Failed to load server data',
+        noRooms: 'No rooms yet',
+        noRoomsDescription: 'Create a room and configure its worlds before starting the server.',
+        createRoom: 'Create room',
+        notStarted: 'No servers are running',
+        notStartedDescription: 'Choose a room and world shards to start.',
+        totalInstances: '{count} server instances'
+      },
+      logs: {
+        title: 'World logs',
+        description: 'View live output and connection status for world shards',
+        empty: 'No world logs',
+        emptyDescription: 'Live logs will appear here after you create a room and world.'
+      },
+      resources: {
+        title: 'System resources',
+        refresh: 'Refresh system resources',
+        unavailable: 'System status unavailable',
+        coresThreads: '{cores} cores / {threads} threads',
+        memory: 'Memory',
+        used: '{used} used / {total}',
+        disk: 'Disk',
+        free: '{free} free / {total}',
+        load: 'System load',
+        loadWindow: '1 / 5 / 15 min · {one} / {five} / {fifteen}',
+        uptime: 'Up {value}'
+      },
+      version: {
+        title: 'Version and updates',
+        description: 'Game server and Steam versions',
+        check: 'Check game version',
+        loadFailed: 'Failed to load version information',
+        current: 'Current version',
+        latest: 'Latest on Steam',
+        installed: 'Installed',
+        notInstalled: 'Not installed',
+        updateAvailable: 'Update available',
+        upToDate: 'Up to date',
+        installPathMissing: 'Install path not configured',
+        steamManaged: 'Managed by the Steam client',
+        steamManagedDescription: 'Update the game in Steam on macOS.',
+        panelUnavailable: 'Panel update unavailable',
+        unsupportedInstall: 'This installation method cannot be updated from the panel.',
+        steamcmdMissing: 'SteamCMD was not detected.',
+        updateCompleted: 'Update complete',
+        updating: 'Updating',
+        waiting: 'Waiting to update',
+        updateButtonBusy: 'Updating',
+        updateButton: 'Update game'
+      },
+      startDialog: {
+        title: 'Start room',
+        description: 'Choose the room and world shards to start.',
+        room: 'Room',
+        selectRoom: 'Select a room',
+        worlds: 'World shards',
+        noWorlds: 'No worlds available',
+        noWorldsDescription: 'Complete the world configuration first.',
+        submit: 'Start selected worlds'
+      },
+      feedback: {
+        invalidSystemResponse: 'Invalid system status response',
+        systemLoadFailed: 'Failed to load system status',
+        playersBlocked: 'The room list could not be loaded, so player data cannot be summarized',
+        playerRoomsFailed: 'Failed to load player data for {count} rooms',
+        serverLoadFailed: 'Failed to load server status',
+        roomLoadFailed: 'Failed to load rooms',
+        invalidVersionResponse: 'Invalid version response',
+        versionLoadFailed: 'Failed to load the game version',
+        actionUnavailable: 'This shard cannot be controlled in its current state',
+        actionConfirm: '{action} “{room} / {world}”?',
+        actionConfirmTitle: 'Confirm server action',
+        actionConfirmButton: 'Confirm {action}',
+        actionCompleted: '{action} complete',
+        actionFailed: '{action} failed: {error}',
+        selectWorld: 'Select at least one world shard that can be started',
+        roomStarted: 'Room {room} started',
+        roomStartFailed: 'Failed to start room: {error}',
+        cleanupUnavailable: 'This shard has no failed session to clean up',
+        cleanupConfirm: 'Stop and clean up the failed session for “{room} / {world}”?',
+        cleanupTitle: 'Clean up failed session',
+        cleanupButton: 'Clean up',
+        cleanupSucceeded: 'Failed session cleaned up',
+        cleanupFailed: 'Cleanup failed: {error}',
+        updateStatusFailed: 'Failed to get update status',
+        updateConfirm: 'Update the DST server? The server will be temporarily unavailable during the update.',
+        updateConfirmTitle: 'Confirm update',
+        updateConfirmButton: 'Update',
+        invalidUpdateResponse: 'Invalid update job response',
+        updateSubmitted: 'Update job submitted',
+        updateFailed: 'Failed to update the game'
+      },
+      duration: {
+        daysHours: '{days}d {hours}h',
+        hoursMinutes: '{hours}h {minutes}m',
+        minutes: '{minutes}m'
+      }
+    }
+  }
+}

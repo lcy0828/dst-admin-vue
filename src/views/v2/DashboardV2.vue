@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   Activity,
   ChevronRight,
@@ -81,6 +82,7 @@ import {
 } from '@/composables/useDashboardV2'
 
 const router = useRouter()
+const { locale, t } = useI18n()
 const startDialogOpen = ref(false)
 const selectedRoomId = ref('')
 const selectedWorldIds = ref([])
@@ -151,9 +153,7 @@ async function submitStartRoom() {
 }
 
 function worldTypeLabel(type) {
-  if (type === 'forest') return '森林'
-  if (type === 'cave') return '洞穴'
-  return '未知'
+  return t(`worldRuntime.types.${['forest', 'cave'].includes(type) ? type : 'unknown'}`)
 }
 
 onMounted(() => {
@@ -166,74 +166,74 @@ onMounted(() => {
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="min-w-0">
-        <h1 class="text-2xl font-semibold tracking-normal">服务总览</h1>
+        <h1 class="text-2xl font-semibold tracking-normal">{{ t('dashboard.title') }}</h1>
         <p class="text-muted-foreground mt-1 text-sm">
-          专服、玩家和主机状态
+          {{ t('dashboard.subtitle') }}
           <span class="mx-1.5">·</span>
-          最后更新 {{ formatDateTime(lastRefreshedAt) }}
+          {{ t('dashboard.lastUpdated', { time: formatDateTime(lastRefreshedAt, locale) }) }}
         </p>
       </div>
       <Button variant="outline" size="sm" :disabled="dashboardLoading" @click="refreshDashboard">
         <Spinner v-if="dashboardLoading" data-icon="inline-start" />
         <RefreshCw v-else data-icon="inline-start" />
-        刷新全部
+        {{ t('dashboard.refreshAll') }}
       </Button>
     </header>
 
     <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
       <Card>
         <CardHeader>
-          <CardTitle>运行分片</CardTitle>
-          <CardDescription>当前专服进程</CardDescription>
+          <CardTitle>{{ t('dashboard.summary.runningShards') }}</CardTitle>
+          <CardDescription>{{ t('dashboard.summary.serverProcesses') }}</CardDescription>
           <CardAction><span class="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md"><Activity /></span></CardAction>
         </CardHeader>
         <CardContent class="flex min-h-16 items-end justify-between gap-3 pt-1">
           <Skeleton v-if="serverLoading" class="h-9 w-24" />
           <strong v-else class="text-3xl font-semibold tabular-nums">{{ runningServerCount }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">/ {{ serverList.length }}</span></strong>
-          <Badge :variant="runningServerCount ? 'secondary' : 'outline'">{{ runningServerCount ? '运行中' : '未运行' }}</Badge>
+          <Badge :variant="runningServerCount ? 'secondary' : 'outline'">{{ t(runningServerCount ? 'dashboard.summary.running' : 'dashboard.summary.notRunning') }}</Badge>
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>在线玩家</CardTitle>
-          <CardDescription>实时玩家汇总</CardDescription>
+          <CardTitle>{{ t('dashboard.summary.onlinePlayers') }}</CardTitle>
+          <CardDescription>{{ t('dashboard.summary.playerSummary') }}</CardDescription>
           <CardAction><span class="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md"><UsersRound /></span></CardAction>
         </CardHeader>
         <CardContent class="flex min-h-16 items-end justify-between gap-3 pt-1">
           <Skeleton v-if="playerLoading" class="h-9 w-24" />
-          <strong v-else class="text-3xl font-semibold tabular-nums">{{ playerSummary.online }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">人</span></strong>
-          <span class="text-muted-foreground text-xs">记录 {{ playerSummary.total }} 人</span>
+          <strong v-else class="text-3xl font-semibold tabular-nums">{{ playerSummary.online }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">{{ t('dashboard.summary.people') }}</span></strong>
+          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.recordedPlayers', { count: playerSummary.total }) }}</span>
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>房间与世界</CardTitle>
-          <CardDescription>当前管理目录</CardDescription>
+          <CardTitle>{{ t('dashboard.summary.roomsAndWorlds') }}</CardTitle>
+          <CardDescription>{{ t('dashboard.summary.managedDirectories') }}</CardDescription>
           <CardAction><span class="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md"><House /></span></CardAction>
         </CardHeader>
         <CardContent class="flex min-h-16 items-end justify-between gap-3 pt-1">
           <Skeleton v-if="serverLoading" class="h-9 w-24" />
-          <strong v-else class="text-3xl font-semibold tabular-nums">{{ roomList.length }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">个房间</span></strong>
-          <span class="text-muted-foreground text-xs">{{ totalWorldCount }} 个世界</span>
+          <strong v-else class="text-3xl font-semibold tabular-nums">{{ roomList.length }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">{{ t('dashboard.summary.roomUnit') }}</span></strong>
+          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.worlds', { count: totalWorldCount }) }}</span>
         </CardContent>
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>主机负载</CardTitle>
-          <CardDescription>{{ systemStatus.os_info || '等待系统信息' }}</CardDescription>
+          <CardTitle>{{ t('dashboard.summary.hostLoad') }}</CardTitle>
+          <CardDescription>{{ systemStatus.os_info || t('dashboard.summary.waitingSystem') }}</CardDescription>
           <CardAction><span class="bg-muted text-muted-foreground flex size-9 items-center justify-center rounded-md"><Cpu /></span></CardAction>
         </CardHeader>
         <CardContent class="flex min-h-16 items-end justify-between gap-3 pt-1">
           <Skeleton v-if="systemLoading" class="h-9 w-24" />
           <strong v-else class="text-3xl font-semibold tabular-nums">{{ hasMetric(systemStatus.cpu_usage) ? `${percentage(systemStatus.cpu_usage)}%` : '--' }}</strong>
-          <span class="text-muted-foreground text-xs">内存 {{ hasMetric(systemStatus.memory_usage) ? `${percentage(systemStatus.memory_usage)}%` : '--' }}</span>
+          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.memory', { value: hasMetric(systemStatus.memory_usage) ? `${percentage(systemStatus.memory_usage)}%` : '--' }) }}</span>
         </CardContent>
       </Card>
     </div>
 
     <Alert v-if="playerError">
       <CircleAlert />
-      <AlertTitle>部分玩家数据不可用</AlertTitle>
+      <AlertTitle>{{ t('dashboard.playersUnavailable') }}</AlertTitle>
       <AlertDescription>{{ playerError }}</AlertDescription>
     </Alert>
 
@@ -241,13 +241,13 @@ onMounted(() => {
       <div class="flex min-w-0 flex-col gap-6">
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2"><Activity />服务器状态</CardTitle>
-            <CardDescription>{{ serverList.length }} 个分片，{{ runningServerCount }} 个运行中</CardDescription>
+            <CardTitle class="flex items-center gap-2"><Activity />{{ t('dashboard.servers.title') }}</CardTitle>
+            <CardDescription>{{ t('dashboard.servers.description', { total: serverList.length, running: runningServerCount }) }}</CardDescription>
             <CardAction class="flex gap-1.5">
-              <Button v-if="roomList.length" size="sm" @click="openStartDialog"><Play data-icon="inline-start" />启动房间</Button>
+              <Button v-if="roomList.length" size="sm" @click="openStartDialog"><Play data-icon="inline-start" />{{ t('dashboard.servers.startRoom') }}</Button>
               <Button variant="outline" size="sm" :disabled="serverLoading" @click="refreshServers">
                 <Spinner v-if="serverLoading" data-icon="inline-start" />
-                <RefreshCw v-else data-icon="inline-start" />刷新
+                <RefreshCw v-else data-icon="inline-start" />{{ t('common.actions.refresh') }}
               </Button>
             </CardAction>
           </CardHeader>
@@ -255,28 +255,28 @@ onMounted(() => {
             <Table v-if="serverList.length && !serverError">
               <TableHeader>
                 <TableRow>
-                  <TableHead>状态</TableHead><TableHead>房间</TableHead><TableHead>世界</TableHead><TableHead>运行时间</TableHead><TableHead class="text-right">操作</TableHead>
+                  <TableHead>{{ t('dashboard.servers.columns.status') }}</TableHead><TableHead>{{ t('dashboard.servers.columns.room') }}</TableHead><TableHead>{{ t('dashboard.servers.columns.world') }}</TableHead><TableHead>{{ t('dashboard.servers.columns.uptime') }}</TableHead><TableHead class="text-right">{{ t('dashboard.servers.columns.actions') }}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow v-for="server in serverList" :key="`${server.room_id}-${server.world_id}`">
                   <TableCell>
-                    <Badge :variant="worldStatusVariant(server)">{{ worldStatusLabel(server) }}</Badge>
+                    <Badge :variant="worldStatusVariant(server)">{{ worldStatusLabel(server, t) }}</Badge>
                     <p v-if="worldStatusMessage(server)" class="text-destructive mt-1 max-w-64 break-words text-xs">{{ worldStatusMessage(server) }}</p>
                   </TableCell>
                   <TableCell class="font-medium">{{ server.archive_name }}</TableCell>
                   <TableCell>{{ server.world_name }}</TableCell>
-                  <TableCell class="text-muted-foreground">{{ formatServerUptime(server.start_time) }}</TableCell>
+                  <TableCell class="text-muted-foreground">{{ formatServerUptime(server.start_time, t) }}</TableCell>
                   <TableCell>
                     <div class="flex justify-end gap-1.5">
-                      <Button size="sm" :variant="worldPrimaryAction(server).variant" :disabled="serverLoading || worldPrimaryAction(server).disabled" @click="handleServerAction(server)">
+                      <Button size="sm" :variant="worldPrimaryAction(server, t).variant" :disabled="serverLoading || worldPrimaryAction(server, t).disabled" @click="handleServerAction(server)">
                         <Spinner v-if="isWorldStarting(server)" data-icon="inline-start" />
                         <Square v-else-if="server.status === 'running'" data-icon="inline-start" />
-                        <Play v-else-if="worldPrimaryAction(server).kind === 'start'" data-icon="inline-start" />
-                        {{ worldPrimaryAction(server).label }}
+                        <Play v-else-if="worldPrimaryAction(server, t).kind === 'start'" data-icon="inline-start" />
+                        {{ worldPrimaryAction(server, t).label }}
                       </Button>
-                      <Button v-if="server.status === 'failed'" variant="outline" size="sm" :disabled="serverLoading || !canCleanFailedWorld(server)" @click="cleanupFailedServer(server)"><Square data-icon="inline-start" />清理会话</Button>
-                      <Button variant="outline" size="sm" :disabled="!canConfigureWorld(server)" :title="!canConfigureWorld(server) ? '请先停止或清理该分片' : ''" @click="router.push({ path: '/worlds/settings', query: { roomId: server.room_id, worldId: server.world_id } })"><Settings data-icon="inline-start" />配置</Button>
+                      <Button v-if="server.status === 'failed'" variant="outline" size="sm" :disabled="serverLoading || !canCleanFailedWorld(server)" @click="cleanupFailedServer(server)"><Square data-icon="inline-start" />{{ t('dashboard.servers.cleanupSession') }}</Button>
+                      <Button variant="outline" size="sm" :disabled="!canConfigureWorld(server)" :title="!canConfigureWorld(server) ? t('dashboard.servers.configureDisabled') : ''" @click="router.push({ path: '/worlds/settings', query: { roomId: server.room_id, worldId: server.world_id } })"><Settings data-icon="inline-start" />{{ t('dashboard.servers.configure') }}</Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -284,35 +284,35 @@ onMounted(() => {
             </Table>
 
             <Alert v-else-if="serverError || roomError" variant="destructive">
-              <CircleAlert /><AlertTitle>服务器数据加载失败</AlertTitle><AlertDescription>{{ serverError || roomError }}</AlertDescription>
-              <AlertAction><Button size="sm" variant="outline" @click="refreshServers">重试</Button></AlertAction>
+              <CircleAlert /><AlertTitle>{{ t('dashboard.servers.loadFailed') }}</AlertTitle><AlertDescription>{{ serverError || roomError }}</AlertDescription>
+              <AlertAction><Button size="sm" variant="outline" @click="refreshServers">{{ t('common.actions.retry') }}</Button></AlertAction>
             </Alert>
 
             <Empty v-else-if="!roomList.length" class="min-h-56 py-8">
-              <EmptyHeader><EmptyMedia variant="icon"><FolderPlus /></EmptyMedia><EmptyTitle>还没有房间</EmptyTitle><EmptyDescription>创建房间并配置世界后即可启动专服。</EmptyDescription></EmptyHeader>
-              <EmptyContent><Button size="sm" @click="router.push('/rooms/settings')">创建房间</Button></EmptyContent>
+              <EmptyHeader><EmptyMedia variant="icon"><FolderPlus /></EmptyMedia><EmptyTitle>{{ t('dashboard.servers.noRooms') }}</EmptyTitle><EmptyDescription>{{ t('dashboard.servers.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
+              <EmptyContent><Button size="sm" @click="router.push('/rooms/settings')">{{ t('dashboard.servers.createRoom') }}</Button></EmptyContent>
             </Empty>
 
             <Empty v-else class="min-h-56 py-8">
-              <EmptyHeader><EmptyMedia variant="icon"><CirclePlay /></EmptyMedia><EmptyTitle>服务器尚未启动</EmptyTitle><EmptyDescription>选择房间和世界分片开始运行。</EmptyDescription></EmptyHeader>
-              <EmptyContent><Button size="sm" @click="openStartDialog">启动房间</Button></EmptyContent>
+              <EmptyHeader><EmptyMedia variant="icon"><CirclePlay /></EmptyMedia><EmptyTitle>{{ t('dashboard.servers.notStarted') }}</EmptyTitle><EmptyDescription>{{ t('dashboard.servers.notStartedDescription') }}</EmptyDescription></EmptyHeader>
+              <EmptyContent><Button size="sm" @click="openStartDialog">{{ t('dashboard.servers.startRoom') }}</Button></EmptyContent>
             </Empty>
           </CardContent>
-          <CardFooter v-if="serverList.length" class="text-muted-foreground text-xs">共 {{ serverList.length }} 个服务器实例</CardFooter>
+          <CardFooter v-if="serverList.length" class="text-muted-foreground text-xs">{{ t('dashboard.servers.totalInstances', { count: serverList.length }) }}</CardFooter>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2"><ScrollText />世界日志</CardTitle>
-            <CardDescription>查看世界分片的实时输出与连接状态</CardDescription>
+            <CardTitle class="flex items-center gap-2"><ScrollText />{{ t('dashboard.logs.title') }}</CardTitle>
+            <CardDescription>{{ t('dashboard.logs.description') }}</CardDescription>
           </CardHeader>
           <CardContent v-if="roomList.length" class="h-[460px] min-h-[380px] pt-1"><WorldLog /></CardContent>
           <CardContent v-else class="pt-1">
             <Empty class="min-h-48 py-8">
               <EmptyHeader>
                 <EmptyMedia variant="icon"><ScrollText /></EmptyMedia>
-                <EmptyTitle>暂无世界日志</EmptyTitle>
-                <EmptyDescription>创建房间和世界后，这里会显示实时日志。</EmptyDescription>
+                <EmptyTitle>{{ t('dashboard.logs.empty') }}</EmptyTitle>
+                <EmptyDescription>{{ t('dashboard.logs.emptyDescription') }}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </CardContent>
@@ -322,76 +322,76 @@ onMounted(() => {
       <aside class="flex min-w-0 flex-col gap-6">
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2"><Gauge />系统资源</CardTitle>
-            <CardDescription>{{ systemStatus.os_info || '等待系统信息' }}</CardDescription>
+            <CardTitle class="flex items-center gap-2"><Gauge />{{ t('dashboard.resources.title') }}</CardTitle>
+            <CardDescription>{{ systemStatus.os_info || t('dashboard.summary.waitingSystem') }}</CardDescription>
             <CardAction>
-              <Tooltip><TooltipTrigger as-child><Button variant="ghost" size="icon-sm" :disabled="systemLoading" aria-label="刷新系统资源" @click="refreshSystem"><Spinner v-if="systemLoading" /><RefreshCw v-else /></Button></TooltipTrigger><TooltipContent>刷新系统资源</TooltipContent></Tooltip>
+              <Tooltip><TooltipTrigger as-child><Button variant="ghost" size="icon-sm" :disabled="systemLoading" :aria-label="t('dashboard.resources.refresh')" @click="refreshSystem"><Spinner v-if="systemLoading" /><RefreshCw v-else /></Button></TooltipTrigger><TooltipContent>{{ t('dashboard.resources.refresh') }}</TooltipContent></Tooltip>
             </CardAction>
           </CardHeader>
           <CardContent class="flex flex-col gap-5 pt-1">
-            <Alert v-if="systemError" variant="destructive"><CircleAlert /><AlertTitle>系统状态不可用</AlertTitle><AlertDescription>{{ systemError }}</AlertDescription></Alert>
+            <Alert v-if="systemError" variant="destructive"><CircleAlert /><AlertTitle>{{ t('dashboard.resources.unavailable') }}</AlertTitle><AlertDescription>{{ systemError }}</AlertDescription></Alert>
             <template v-else>
               <div class="flex flex-col gap-2">
                 <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><Cpu class="text-muted-foreground size-4" />CPU</span><strong class="tabular-nums">{{ hasMetric(systemStatus.cpu_usage) ? `${percentage(systemStatus.cpu_usage)}%` : '--' }}</strong></div>
                 <Progress :model-value="percentage(systemStatus.cpu_usage)" class="h-2" />
-                <span class="text-muted-foreground text-xs">{{ systemStatus.cpu_model || '--' }} · {{ systemStatus.cpu_cores || '--' }} 核 / {{ systemStatus.cpu_threads || '--' }} 线程</span>
+                <span class="text-muted-foreground text-xs">{{ systemStatus.cpu_model || '--' }} · {{ t('dashboard.resources.coresThreads', { cores: systemStatus.cpu_cores || '--', threads: systemStatus.cpu_threads || '--' }) }}</span>
               </div>
               <Separator />
               <div class="flex flex-col gap-2">
-                <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><MemoryStick class="text-muted-foreground size-4" />内存</span><strong class="tabular-nums">{{ hasMetric(systemStatus.memory_usage) ? `${percentage(systemStatus.memory_usage)}%` : '--' }}</strong></div>
+                <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><MemoryStick class="text-muted-foreground size-4" />{{ t('dashboard.resources.memory') }}</span><strong class="tabular-nums">{{ hasMetric(systemStatus.memory_usage) ? `${percentage(systemStatus.memory_usage)}%` : '--' }}</strong></div>
                 <Progress :model-value="percentage(systemStatus.memory_usage)" class="h-2" />
-                <span class="text-muted-foreground text-xs">已用 {{ formatMemory(systemStatus.used_memory) }} / {{ formatMemory(systemStatus.total_memory) }}</span>
+                <span class="text-muted-foreground text-xs">{{ t('dashboard.resources.used', { used: formatMemory(systemStatus.used_memory), total: formatMemory(systemStatus.total_memory) }) }}</span>
               </div>
               <Separator />
               <div class="flex flex-col gap-2">
-                <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><HardDrive class="text-muted-foreground size-4" />磁盘</span><strong class="tabular-nums">{{ hasMetric(systemStatus.disk_usage) ? `${percentage(systemStatus.disk_usage)}%` : '--' }}</strong></div>
+                <div class="flex items-center justify-between"><span class="flex items-center gap-2 text-sm"><HardDrive class="text-muted-foreground size-4" />{{ t('dashboard.resources.disk') }}</span><strong class="tabular-nums">{{ hasMetric(systemStatus.disk_usage) ? `${percentage(systemStatus.disk_usage)}%` : '--' }}</strong></div>
                 <Progress :model-value="percentage(systemStatus.disk_usage)" class="h-2" />
-                <span class="text-muted-foreground text-xs">空闲 {{ formatDisk(systemStatus.free_disk) }} / {{ formatDisk(systemStatus.total_disk) }}</span>
+                <span class="text-muted-foreground text-xs">{{ t('dashboard.resources.free', { free: formatDisk(systemStatus.free_disk), total: formatDisk(systemStatus.total_disk) }) }}</span>
               </div>
               <Separator />
               <div class="flex flex-col gap-2">
-                <div class="flex items-center justify-between"><span class="text-sm">系统负载</span><strong class="tabular-nums">{{ formatDecimal(systemStatus.cpu_load1) }}</strong></div>
+                <div class="flex items-center justify-between"><span class="text-sm">{{ t('dashboard.resources.load') }}</span><strong class="tabular-nums">{{ formatDecimal(systemStatus.cpu_load1) }}</strong></div>
                 <Progress :model-value="loadPercentage(systemStatus.cpu_load1, systemStatus.cpu_threads || systemStatus.cpu_cores)" class="h-2" />
-                <span class="text-muted-foreground text-xs">1 / 5 / 15 分钟 · {{ formatDecimal(systemStatus.cpu_load1) }} / {{ formatDecimal(systemStatus.cpu_load5) }} / {{ formatDecimal(systemStatus.cpu_load15) }}</span>
+                <span class="text-muted-foreground text-xs">{{ t('dashboard.resources.loadWindow', { one: formatDecimal(systemStatus.cpu_load1), five: formatDecimal(systemStatus.cpu_load5), fifteen: formatDecimal(systemStatus.cpu_load15) }) }}</span>
               </div>
             </template>
           </CardContent>
-          <CardFooter class="text-muted-foreground justify-between gap-2 text-xs"><span>运行 {{ systemStatus.uptime_formatted || '--' }}</span><span>{{ formatDateTime(systemStatus.current_time) }}</span></CardFooter>
+          <CardFooter class="text-muted-foreground justify-between gap-2 text-xs"><span>{{ t('dashboard.resources.uptime', { value: systemStatus.uptime_formatted || '--' }) }}</span><span>{{ formatDateTime(systemStatus.current_time, locale) }}</span></CardFooter>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle class="flex items-center gap-2"><PackageCheck />版本与更新</CardTitle>
-            <CardDescription>游戏服务端与 Steam 版本</CardDescription>
-            <CardAction><Tooltip><TooltipTrigger as-child><Button variant="ghost" size="icon-sm" :disabled="versionLoading" aria-label="检查游戏版本" @click="refreshVersion"><Spinner v-if="versionLoading" /><RefreshCw v-else /></Button></TooltipTrigger><TooltipContent>检查游戏版本</TooltipContent></Tooltip></CardAction>
+            <CardTitle class="flex items-center gap-2"><PackageCheck />{{ t('dashboard.version.title') }}</CardTitle>
+            <CardDescription>{{ t('dashboard.version.description') }}</CardDescription>
+            <CardAction><Tooltip><TooltipTrigger as-child><Button variant="ghost" size="icon-sm" :disabled="versionLoading" :aria-label="t('dashboard.version.check')" @click="refreshVersion"><Spinner v-if="versionLoading" /><RefreshCw v-else /></Button></TooltipTrigger><TooltipContent>{{ t('dashboard.version.check') }}</TooltipContent></Tooltip></CardAction>
           </CardHeader>
           <CardContent class="flex flex-col gap-4 pt-1">
-            <Alert v-if="versionError" variant="destructive"><CircleAlert /><AlertTitle>版本读取失败</AlertTitle><AlertDescription>{{ versionError }}</AlertDescription></Alert>
+            <Alert v-if="versionError" variant="destructive"><CircleAlert /><AlertTitle>{{ t('dashboard.version.loadFailed') }}</AlertTitle><AlertDescription>{{ versionError }}</AlertDescription></Alert>
             <template v-else>
               <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                <div class="flex min-w-0 flex-col gap-1"><span class="text-muted-foreground text-xs">当前版本</span><strong class="truncate tabular-nums">{{ versionInfo.local?.version || '--' }}</strong><Badge :variant="versionInfo.installed ? 'secondary' : 'outline'" class="self-start">{{ versionInfo.installed ? '已安装' : '未安装' }}</Badge></div>
+                <div class="flex min-w-0 flex-col gap-1"><span class="text-muted-foreground text-xs">{{ t('dashboard.version.current') }}</span><strong class="truncate tabular-nums">{{ versionInfo.local?.version || '--' }}</strong><Badge :variant="versionInfo.installed ? 'secondary' : 'outline'" class="self-start">{{ t(versionInfo.installed ? 'dashboard.version.installed' : 'dashboard.version.notInstalled') }}</Badge></div>
                 <ChevronRight class="text-muted-foreground size-4" />
-                <div class="flex min-w-0 flex-col gap-1"><span class="text-muted-foreground text-xs">Steam 最新</span><strong class="truncate tabular-nums">{{ versionInfo.latest?.version || '--' }}</strong><Badge :variant="isVersionOutdated ? 'destructive' : 'outline'" class="self-start">{{ isVersionOutdated ? '可更新' : '已最新' }}</Badge></div>
+                <div class="flex min-w-0 flex-col gap-1"><span class="text-muted-foreground text-xs">{{ t('dashboard.version.latest') }}</span><strong class="truncate tabular-nums">{{ versionInfo.latest?.version || '--' }}</strong><Badge :variant="isVersionOutdated ? 'destructive' : 'outline'" class="self-start">{{ t(isVersionOutdated ? 'dashboard.version.updateAvailable' : 'dashboard.version.upToDate') }}</Badge></div>
               </div>
-              <p class="text-muted-foreground truncate text-xs" :title="versionInfo.install_path">{{ versionInfo.install_path || '未配置安装位置' }}</p>
-              <Alert v-if="versionInfo.update_method === 'steam-client'"><CircleAlert /><AlertTitle>由 Steam 客户端管理</AlertTitle><AlertDescription>macOS 安装请在 Steam 中更新游戏。</AlertDescription></Alert>
-              <Alert v-else-if="versionInfo.installed && !versionInfo.update_supported"><CircleAlert /><AlertTitle>面板更新不可用</AlertTitle><AlertDescription>{{ versionInfo.steamcmd_available ? '当前安装方式不支持面板更新。' : '未检测到 SteamCMD。' }}</AlertDescription></Alert>
-              <div v-if="updateStatus" class="bg-muted flex flex-col gap-2 rounded-md p-3"><span class="text-sm font-medium">{{ updateStatus.is_completed ? '更新已完成' : (updateStatus.is_running ? '正在更新' : '等待更新') }}</span><Progress v-if="hasMetric(updateStatus.progress)" :model-value="Number(updateStatus.progress)" /><p v-if="updateStatus.last_output" class="text-muted-foreground break-all text-xs">{{ updateStatus.last_output }}</p><p v-if="updateStatus.error" class="text-destructive text-xs">{{ updateStatus.error }}</p></div>
+              <p class="text-muted-foreground truncate text-xs" :title="versionInfo.install_path">{{ versionInfo.install_path || t('dashboard.version.installPathMissing') }}</p>
+              <Alert v-if="versionInfo.update_method === 'steam-client'"><CircleAlert /><AlertTitle>{{ t('dashboard.version.steamManaged') }}</AlertTitle><AlertDescription>{{ t('dashboard.version.steamManagedDescription') }}</AlertDescription></Alert>
+              <Alert v-else-if="versionInfo.installed && !versionInfo.update_supported"><CircleAlert /><AlertTitle>{{ t('dashboard.version.panelUnavailable') }}</AlertTitle><AlertDescription>{{ t(versionInfo.steamcmd_available ? 'dashboard.version.unsupportedInstall' : 'dashboard.version.steamcmdMissing') }}</AlertDescription></Alert>
+              <div v-if="updateStatus" class="bg-muted flex flex-col gap-2 rounded-md p-3"><span class="text-sm font-medium">{{ t(updateStatus.is_completed ? 'dashboard.version.updateCompleted' : (updateStatus.is_running ? 'dashboard.version.updating' : 'dashboard.version.waiting')) }}</span><Progress v-if="hasMetric(updateStatus.progress)" :model-value="Number(updateStatus.progress)" /><p v-if="updateStatus.last_output" class="text-muted-foreground break-all text-xs">{{ updateStatus.last_output }}</p><p v-if="updateStatus.error" class="text-destructive text-xs">{{ updateStatus.error }}</p></div>
             </template>
           </CardContent>
-          <CardFooter v-if="canUpdateGame"><Button size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><Download v-else data-icon="inline-start" />{{ gameUpdateBusy ? '更新中' : '更新游戏' }}</Button></CardFooter>
+          <CardFooter v-if="canUpdateGame"><Button size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><Download v-else data-icon="inline-start" />{{ t(gameUpdateBusy ? 'dashboard.version.updateButtonBusy' : 'dashboard.version.updateButton') }}</Button></CardFooter>
         </Card>
       </aside>
     </div>
 
     <Dialog v-model:open="startDialogOpen">
       <DialogContent class="sm:max-w-lg">
-        <DialogHeader><DialogTitle>启动房间</DialogTitle><DialogDescription>选择需要启动的房间和世界分片。</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{{ t('dashboard.startDialog.title') }}</DialogTitle><DialogDescription>{{ t('dashboard.startDialog.description') }}</DialogDescription></DialogHeader>
         <FieldGroup>
-          <Field><FieldLabel for="v2-room">房间</FieldLabel><Select :model-value="selectedRoomId" @update:model-value="handleRoomSelection"><SelectTrigger id="v2-room"><SelectValue placeholder="选择房间" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomList" :key="room.id" :value="String(room.id)">{{ room.name }}</SelectItem></SelectGroup></SelectContent></Select></Field>
-          <FieldSet><FieldLegend variant="label">世界分片</FieldLegend><FieldGroup v-if="selectedRoom?.worlds?.length" class="gap-3"><Field v-for="world in selectedRoom.worlds" :key="world.id" orientation="horizontal" :data-disabled="!canStartWorld(world) || undefined"><Checkbox :id="`v2-world-${world.id}`" :model-value="selectedWorldIds.includes(String(world.id))" :disabled="!canStartWorld(world) || serverLoading" @update:model-value="toggleWorld(world.id, $event)" /><FieldLabel :for="`v2-world-${world.id}`" class="flex flex-1 flex-wrap items-center justify-between gap-2"><span>{{ world.name }}</span><span class="flex items-center gap-2"><Badge variant="outline">{{ worldTypeLabel(world.type) }}</Badge><Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world) }}</Badge></span><span v-if="worldStatusMessage(world)" class="text-destructive basis-full text-xs">{{ worldStatusMessage(world) }}</span></FieldLabel></Field></FieldGroup><Alert v-else><CircleAlert /><AlertTitle>没有可用世界</AlertTitle><AlertDescription>请先完成世界配置。</AlertDescription></Alert></FieldSet>
+          <Field><FieldLabel for="v2-room">{{ t('dashboard.startDialog.room') }}</FieldLabel><Select :model-value="selectedRoomId" @update:model-value="handleRoomSelection"><SelectTrigger id="v2-room"><SelectValue :placeholder="t('dashboard.startDialog.selectRoom')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomList" :key="room.id" :value="String(room.id)">{{ room.name }}</SelectItem></SelectGroup></SelectContent></Select></Field>
+          <FieldSet><FieldLegend variant="label">{{ t('dashboard.startDialog.worlds') }}</FieldLegend><FieldGroup v-if="selectedRoom?.worlds?.length" class="gap-3"><Field v-for="world in selectedRoom.worlds" :key="world.id" orientation="horizontal" :data-disabled="!canStartWorld(world) || undefined"><Checkbox :id="`v2-world-${world.id}`" :model-value="selectedWorldIds.includes(String(world.id))" :disabled="!canStartWorld(world) || serverLoading" @update:model-value="toggleWorld(world.id, $event)" /><FieldLabel :for="`v2-world-${world.id}`" class="flex flex-1 flex-wrap items-center justify-between gap-2"><span>{{ world.name }}</span><span class="flex items-center gap-2"><Badge variant="outline">{{ worldTypeLabel(world.type) }}</Badge><Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world, t) }}</Badge></span><span v-if="worldStatusMessage(world)" class="text-destructive basis-full text-xs">{{ worldStatusMessage(world) }}</span></FieldLabel></Field></FieldGroup><Alert v-else><CircleAlert /><AlertTitle>{{ t('dashboard.startDialog.noWorlds') }}</AlertTitle><AlertDescription>{{ t('dashboard.startDialog.noWorldsDescription') }}</AlertDescription></Alert></FieldSet>
         </FieldGroup>
-        <DialogFooter><Button variant="outline" @click="startDialogOpen = false">取消</Button><Button :disabled="!canStartRoom" @click="submitStartRoom"><Spinner v-if="serverLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />启动所选世界</Button></DialogFooter>
+        <DialogFooter><Button variant="outline" @click="startDialogOpen = false">{{ t('common.actions.cancel') }}</Button><Button :disabled="!canStartRoom" @click="submitStartRoom"><Spinner v-if="serverLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{ t('dashboard.startDialog.submit') }}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </div>
