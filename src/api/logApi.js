@@ -4,9 +4,8 @@ import {
   roomsV2API,
   structuredLogsV2API
 } from './v2'
-import { buildStructuredLogFilter, normalizeStructuredLogList } from '../lib/logQuerySupport.mjs'
+import { buildStructuredLogFilter, inspectStructuredLogRefreshJob, normalizeStructuredLogList } from '../lib/logQuerySupport.mjs'
 
-const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled'])
 const success = (data, msg = '操作成功') => ({ status: 200, data, msg })
 let archiveCatalog = []
 
@@ -33,14 +32,12 @@ async function waitForJob(job, timeoutMs = 120000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const current = await jobsV2API.get(job.id)
-    if (!TERMINAL_JOB_STATES.has(current.status)) {
+    const result = inspectStructuredLogRefreshJob(current)
+    if (!result.terminal) {
       await new Promise(resolve => setTimeout(resolve, 500))
       continue
     }
-    if (current.status !== 'succeeded') {
-      const failed = (current.targets || []).find(item => item.status === 'failed')
-      throw new Error(failed?.error?.message || current.error?.message || '日志刷新任务执行失败')
-    }
+    if (!result.usable) throw new Error(result.errorMessage)
     return current
   }
   throw new Error('日志刷新任务超时，请到任务记录中查看最终状态')

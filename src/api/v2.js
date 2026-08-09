@@ -200,8 +200,9 @@ export const worldLogsV2API = {
   eventURL: (roomId, worldId, tail = 200) => (
     `${baseURL}/rooms/${encode(roomId)}/worlds/${encode(worldId)}/logs/events?tail=${encode(tail)}`
   ),
-  downloadURL: (roomId, worldId) => (
-    `${baseURL}/rooms/${encode(roomId)}/worlds/${encode(worldId)}/logs/download`
+  downloadBlob: (roomId, worldId) => getBinary(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/logs/download`,
+    'text/plain'
   )
 }
 

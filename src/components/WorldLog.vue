@@ -176,6 +176,7 @@ export default {
       return {
         idle: '待选择',
         connecting: '连接中',
+        reconnecting: '重连中',
         connected: '实时',
         paused: '已暂停',
         error: '已断开'
@@ -184,7 +185,7 @@ export default {
     streamStateVariant() {
       if (this.streamState === 'connected') return 'default'
       if (this.streamState === 'error') return 'destructive'
-      if (this.streamState === 'connecting') return 'outline'
+      if (this.streamState === 'connecting' || this.streamState === 'reconnecting') return 'outline'
       return 'secondary'
     }
   },
@@ -354,10 +355,16 @@ export default {
       source.onerror = event => {
         if (this.manuallyClosedEventSource || this.eventSource !== source) return
         const payload = this.parseEvent(event)
-        this.streamState = 'error'
-        this.loadError = payload?.message || '日志流连接已断开，请检查世界运行状态后重试'
-        this.writeErrorLine(this.loadError)
-        this.closeEventSource()
+        if (payload?.message) {
+          this.streamState = 'error'
+          this.loadError = payload.message
+          this.writeErrorLine(this.loadError)
+          this.closeEventSource()
+          return
+        }
+        if (this.streamState !== 'reconnecting') this.writeSystemLine('日志流暂时中断，正在自动重连')
+        this.streamState = 'reconnecting'
+        this.loadError = ''
       }
     },
     parseEvent(event) {

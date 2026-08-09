@@ -28,7 +28,7 @@
     </Card>
 
     <Alert v-if="refreshStatus" :variant="refreshStatus.variant">
-      <CircleCheckIcon v-if="refreshStatus.variant !== 'destructive'" />
+      <CircleCheckIcon v-if="refreshStatus.variant !== 'destructive' && !refreshStatus.partial" />
       <TriangleAlertIcon v-else />
       <AlertTitle>{{ refreshStatus.title }}</AlertTitle>
       <AlertDescription>{{ refreshStatus.description }}</AlertDescription>
@@ -424,8 +424,10 @@ export default {
       this.queryLogs();
     },
 
-    async refreshLogs() {
+    async refreshLogs(options = {}) {
       if (!this.queryParams.archive || this.refreshLoading) return
+      const bootstrapKey = typeof options?.bootstrapKey === 'string' ? options.bootstrapKey : ''
+      const bootstrapWorldId = this.queryParams.world
       const requestSequence = ++this.refreshRequestSequence
       const archiveName = this.selectedArchive?.name || '当前存档'
       this.refreshLoading = true
@@ -437,25 +439,40 @@ export default {
           throw new Error(response?.msg || '日志刷新任务响应格式异常')
         }
         const targets = Array.isArray(response.data.targets) ? response.data.targets : []
-        const details = targets
+        const succeeded = targets.filter(target => target.status === 'succeeded')
+        const failed = targets.filter(target => target.status === 'failed' || target.status === 'canceled')
+        const successDetails = succeeded
           .filter(target => target.message)
           .map(target => `${target.name || target.targetId}：${target.message}`)
-          .join('；')
+        const failureDetails = failed.map(target =>
+          `${target.name || target.targetId}：${target.error?.message || '解析失败'}`
+        )
+        const partial = response.data.outcome === 'partial' || failed.length > 0
         this.refreshStatus = {
           variant: 'default',
-          title: `${archiveName} 的日志已解析`,
-          description: details || '所有世界的结构化日志快照已更新。'
+          partial,
+          title: partial ? `${archiveName} 的日志部分解析完成` : `${archiveName} 的日志已解析`,
+          description: [...successDetails, ...failureDetails].join('；') || '所有世界的结构化日志快照已更新。'
         }
-        toast.success(`${archiveName} 的日志解析完成`)
+        if (partial) toast.warning(`${archiveName} 仅部分世界解析完成`)
+        else toast.success(`${archiveName} 的日志解析完成`)
         await this.queryLogs(true)
+        if (partial && bootstrapKey && !succeeded.some(target => target.targetId === bootstrapWorldId)) {
+          this.bootstrapAttemptedKeys = this.bootstrapAttemptedKeys.filter(key => key !== bootstrapKey)
+        }
+        return true
       } catch (error) {
         if (requestSequence !== this.refreshRequestSequence) return
+        if (bootstrapKey) {
+          this.bootstrapAttemptedKeys = this.bootstrapAttemptedKeys.filter(key => key !== bootstrapKey)
+        }
         this.refreshStatus = {
           variant: 'destructive',
           title: '日志解析失败',
           description: error.message || '无法解析服务器日志'
         }
         toast.error(`日志解析失败：${error.message || '未知错误'}`)
+        return false
       } finally {
         if (requestSequence === this.refreshRequestSequence) this.refreshLoading = false
       }
@@ -512,8 +529,9 @@ export default {
         if (requestSequence === this.queryRequestSequence) this.loading = false;
       }
       if (bootstrapSnapshot && requestSequence === this.queryRequestSequence) {
-        this.bootstrapAttemptedKeys.push(structuredLogSnapshotKey(this.queryParams.archive, this.queryParams.world));
-        await this.refreshLogs();
+        const bootstrapKey = structuredLogSnapshotKey(this.queryParams.archive, this.queryParams.world);
+        this.bootstrapAttemptedKeys.push(bootstrapKey);
+        await this.refreshLogs({ bootstrapKey });
       }
     },
 

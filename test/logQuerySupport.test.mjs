@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 
 import {
   buildStructuredLogFilter,
+  inspectStructuredLogRefreshJob,
   normalizeLogSources,
   normalizeStructuredLogList,
   shouldBootstrapStructuredLogs,
@@ -30,6 +31,32 @@ test('log sources preserve stable room and world ids while accepting legacy name
       { id: 'LegacyCaves', name: 'LegacyCaves' }
     ]
   }])
+})
+
+test('partial structured log refreshes remain usable when a shard succeeded', () => {
+  assert.deepEqual(inspectStructuredLogRefreshJob({
+    status: 'failed',
+    outcome: 'partial',
+    targets: [
+      { status: 'succeeded', targetId: 'master' },
+      { status: 'failed', targetId: 'caves', error: { message: 'caves log missing' } }
+    ]
+  }), {
+    terminal: true,
+    usable: true,
+    partial: true,
+    errorMessage: 'caves log missing'
+  })
+  assert.equal(inspectStructuredLogRefreshJob({
+    status: 'failed',
+    targets: [{ status: 'failed', error: { message: 'all failed' } }]
+  }).usable, false)
+  assert.deepEqual(inspectStructuredLogRefreshJob({ status: 'running' }), {
+    terminal: false,
+    usable: false,
+    partial: false,
+    errorMessage: '日志刷新任务执行失败'
+  })
 })
 
 test('structured log filters trim search text and calculate bounded offsets', () => {
@@ -94,6 +121,7 @@ test('log query page keeps the refresh job and requery lifecycle visible', async
   assert.match(source, /InputGroupInput[^>]+queryParams\.query/)
   assert.match(source, /@update:model-value="handleWorldChange"/)
   assert.match(source, /Promise\.allSettled/)
+  assert.match(source, /refreshLogs\(\{ bootstrapKey \}\)/)
 })
 
 test('an uninitialized world snapshot is bootstrapped only once', () => {
@@ -142,4 +170,19 @@ test('cleared snapshots remain distinct from worlds that were never parsed', () 
     snapshot_updated_at: '2026-08-09T16:00:00Z',
     last_refreshed_at: null
   })
+})
+
+test('live log views reconnect transient streams and validate downloads', async () => {
+  const [terminalSource, viewerSource, apiSource] = await Promise.all([
+    readFile(new URL('../src/components/WorldLog.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/views/servers/LogViewer.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/api/v2.js', import.meta.url), 'utf8')
+  ])
+
+  assert.match(terminalSource, /streamState = 'reconnecting'/)
+  assert.match(terminalSource, /if \(payload\?\.message\)/)
+  assert.match(viewerSource, /日志流暂时中断，正在自动重连/)
+  assert.match(viewerSource, /worldLogsV2API\.downloadBlob/)
+  assert.match(viewerSource, /this\.logs\.length > 5000/)
+  assert.match(apiSource, /downloadBlob:[\s\S]+getBinary/)
 })

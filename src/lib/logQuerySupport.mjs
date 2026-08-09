@@ -3,6 +3,23 @@ const positiveInteger = (value, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
+const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled'])
+
+export function inspectStructuredLogRefreshJob(job = {}) {
+  const status = String(job.status || '')
+  const targets = Array.isArray(job.targets) ? job.targets : []
+  const succeeded = targets.filter(target => target?.status === 'succeeded')
+  const terminal = TERMINAL_JOB_STATES.has(status)
+  const usable = terminal && (status === 'succeeded' || succeeded.length > 0)
+  const failed = targets.find(target => target?.status === 'failed' || target?.status === 'canceled')
+  return {
+    terminal,
+    usable,
+    partial: usable && status !== 'succeeded',
+    errorMessage: failed?.error?.message || job.error?.message || '日志刷新任务执行失败'
+  }
+}
+
 export function normalizeLogSources(items) {
   if (!Array.isArray(items)) return []
   return items.flatMap(item => {

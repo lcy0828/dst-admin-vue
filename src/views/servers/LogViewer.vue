@@ -240,8 +240,12 @@ export default {
       eventSource.addEventListener('error', event => {
         if (requestSequence !== this.requestSequence || this.eventSource !== eventSource) return;
         const payload = this.parseEvent(event);
-        this.streamError = payload?.message || '日志流连接已断开，请检查世界运行状态后重新连接。';
-        this.closeEventSource();
+        if (payload?.message) {
+          this.streamError = payload.message;
+          this.closeEventSource();
+          return;
+        }
+        this.streamError = '日志流暂时中断，正在自动重连。';
       });
     },
     parseEvent(event) {
@@ -260,6 +264,7 @@ export default {
     },
     appendLogLine(line) {
       this.logs.push(String(line ?? ''));
+      if (this.logs.length > 5000) this.logs.splice(0, this.logs.length - 5000);
       this.scrollAfterUpdate();
     },
     scrollAfterUpdate() {
@@ -280,12 +285,18 @@ export default {
     async downloadLogs() {
       try {
         if (!this.resolvedRoomId || !this.resolvedWorldId) await this.resolveLogTarget();
+        const blob = await worldLogsV2API.downloadBlob(this.resolvedRoomId, this.resolvedWorldId);
+        const objectURL = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = worldLogsV2API.downloadURL(this.resolvedRoomId, this.resolvedWorldId);
-        link.download = `${this.archiveName}_${this.selectedWorld}.log`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+        try {
+          link.href = objectURL;
+          link.download = `${this.archiveName}_${this.selectedWorld}.log`;
+          document.body.appendChild(link);
+          link.click();
+        } finally {
+          link.remove();
+          URL.revokeObjectURL(objectURL);
+        }
         toast.success('日志下载已开始');
       } catch (error) {
         toast.error('下载日志失败：' + (error.message || '未知错误'));
