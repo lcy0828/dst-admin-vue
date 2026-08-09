@@ -38,11 +38,12 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     v-slot="slotProps"
     v-bind="forwarded"
     data-slot="toggle-group"
+    :data-orientation="props.orientation || 'horizontal'"
     :data-size="props.size"
     :data-variant="props.variant"
     :data-spacing="props.spacing"
     :style="{ '--gap': props.spacing }"
-    :class="cn('rounded-lg group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] data-vertical:flex-col data-vertical:items-stretch', props.class)"
+    :class="cn('rounded-lg group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] data-[orientation=vertical]:flex-col data-[orientation=vertical]:items-stretch', props.class)"
   >
     <slot v-bind="slotProps" />
   </ToggleGroupRoot>
