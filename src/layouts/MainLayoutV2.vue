@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Eye, EyeOff, GitFork, KeyRound, Settings, TriangleAlert } from '@lucide/vue'
 import { authAPI } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
@@ -12,8 +12,10 @@ import { Badge } from '@/components/ui/badge'
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage
+  BreadcrumbPage,
+  BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,6 +44,7 @@ import { getSystemPreferences } from '@/utils/systemPreferences'
 import { toast } from 'vue-sonner'
 
 const router = useRouter()
+const route = useRoute()
 const systemName = ref(getSystemPreferences().systemName)
 const currentUser = ref({})
 const runtimeTarget = ref(getActiveRuntimeTarget())
@@ -52,8 +55,17 @@ const passwordsVisible = ref(false)
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 
-const remoteContextBlocked = computed(() => runtimeTarget.value.id !== LOCAL_RUNTIME_TARGET_ID)
+const remoteContextBlocked = computed(() => runtimeTarget.value.id !== LOCAL_RUNTIME_TARGET_ID
+  && !route.path.startsWith('/preview-v2/agents'))
 const userInitial = computed(() => (currentUser.value.username || '管').trim().slice(0, 1).toUpperCase())
+const breadcrumbs = computed(() => {
+  if (route.path === '/preview-v2') return [{ label: '服务总览' }]
+
+  const items = [{ label: '服务总览', to: '/preview-v2' }]
+  if (route.meta.parentTitle) items.push({ label: route.meta.parentTitle })
+  items.push({ label: route.meta.title || '当前页面' })
+  return items
+})
 
 function updateSystemName(event) {
   systemName.value = event.detail?.systemName || getSystemPreferences().systemName
@@ -162,7 +174,14 @@ onBeforeUnmount(() => {
         <Separator orientation="vertical" class="mr-1 h-4" />
         <Breadcrumb class="hidden md:block">
           <BreadcrumbList>
-            <BreadcrumbItem><BreadcrumbPage>服务总览</BreadcrumbPage></BreadcrumbItem>
+            <template v-for="(item, index) in breadcrumbs" :key="`${item.label}-${index}`">
+              <BreadcrumbItem>
+                <BreadcrumbLink v-if="item.to" as-child><RouterLink :to="item.to">{{ item.label }}</RouterLink></BreadcrumbLink>
+                <BreadcrumbPage v-else-if="index === breadcrumbs.length - 1">{{ item.label }}</BreadcrumbPage>
+                <span v-else class="text-muted-foreground">{{ item.label }}</span>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator v-if="index < breadcrumbs.length - 1" />
+            </template>
           </BreadcrumbList>
         </Breadcrumb>
         <div class="ml-auto flex min-w-0 items-center gap-1.5">
@@ -179,7 +198,7 @@ onBeforeUnmount(() => {
             <TooltipContent>GitHub 仓库</TooltipContent>
           </Tooltip>
           <Button variant="outline" size="sm" class="hidden lg:inline-flex" as-child>
-            <RouterLink to="/dashboard">返回旧界面</RouterLink>
+            <a href="/dashboard">返回旧界面</a>
           </Button>
         </div>
       </header>

@@ -27,28 +27,28 @@ export const V2_NAVIGATION = [
         label: '服务器管理',
         icon: ServerCog,
         children: [
-          { label: '服务器工作台', to: '/servers/workspace' },
-          { label: '服务器列表', to: '/servers/list' },
-          { label: '命令设置', to: '/servers/commands' }
+          { label: '服务器工作台', to: '/preview-v2/servers/workspace' },
+          { label: '服务器列表', to: '/preview-v2/servers/list' },
+          { label: '命令设置', to: '/preview-v2/servers/commands' }
         ]
       },
       {
         label: '房间管理',
         icon: House,
         children: [
-          { label: '房间列表', to: '/rooms/list' },
-          { label: '房间设置', to: '/rooms/settings' },
-          { label: '特殊名单', to: '/rooms/special-lists' },
-          { label: '服务器令牌', to: '/rooms/token' }
+          { label: '房间列表', to: '/preview-v2/rooms/list' },
+          { label: '房间设置', to: '/preview-v2/rooms/settings' },
+          { label: '特殊名单', to: '/preview-v2/rooms/special-lists' },
+          { label: '服务器令牌', to: '/preview-v2/rooms/token' }
         ]
       },
       {
         label: '世界管理',
         icon: Globe2,
         children: [
-          { label: '世界列表', to: '/worlds/list' },
-          { label: '世界设置', to: '/worlds/settings' },
-          { label: '世界状态', to: '/worlds/state' }
+          { label: '世界列表', to: '/preview-v2/worlds/list' },
+          { label: '世界设置', to: '/preview-v2/worlds/settings' },
+          { label: '世界状态', to: '/preview-v2/worlds/state' }
         ]
       }
     ]
@@ -60,16 +60,16 @@ export const V2_NAVIGATION = [
         label: '模组管理',
         icon: Blocks,
         children: [
-          { label: '已下载模组', to: '/mods/list' },
-          { label: '模组搜索', to: '/mods/search' }
+          { label: '已下载模组', to: '/preview-v2/mods/list' },
+          { label: '模组搜索', to: '/preview-v2/mods/search' }
         ]
       },
       {
         label: '玩家管理',
         icon: UsersRound,
         children: [
-          { label: '玩家列表', to: '/players/list' },
-          { label: '封禁管理', to: '/players/bans' }
+          { label: '玩家列表', to: '/preview-v2/players/list' },
+          { label: '封禁管理', to: '/preview-v2/players/bans' }
         ]
       }
     ]
@@ -81,22 +81,23 @@ export const V2_NAVIGATION = [
         label: '日志管理器',
         icon: FileSearch,
         children: [
-          { label: '日志查询', to: '/logs/query' },
-          { label: '规则管理', to: '/logs/rules' },
-          { label: '日志解析器', to: '/logs/parser' }
+          { label: '日志查询', to: '/preview-v2/logs/query' },
+          { label: '规则管理', to: '/preview-v2/logs/rules' },
+          { label: '日志解析器', to: '/preview-v2/logs/parser' }
         ]
       },
-      { label: '公告管理', to: '/announcements', icon: Megaphone },
-      { label: '备份管理', to: '/backups', icon: ArchiveRestore },
+      { label: '公告管理', to: '/preview-v2/announcements', icon: Megaphone },
+      { label: '备份管理', to: '/preview-v2/backups', icon: ArchiveRestore },
       {
         label: '定时任务',
         icon: CalendarClock,
         children: [
-          { label: '任务列表', to: '/cron/tasks' },
-          { label: '创建任务', to: '/cron/add' },
-          { label: '任务组', to: '/cron/groups' },
-          { label: '执行日志', to: '/cron/logs' },
-          { label: '运行统计', to: '/cron/charts' }
+          { label: '任务列表', to: '/preview-v2/cron/tasks' },
+          { label: '创建任务', to: '/preview-v2/cron/add' },
+          { label: '任务组', to: '/preview-v2/cron/groups' },
+          { label: '执行日志', to: '/preview-v2/cron/logs' },
+          { label: '运行统计', to: '/preview-v2/cron/charts' },
+          { label: '导入导出', to: '/preview-v2/cron/import-export' }
         ]
       }
     ]
@@ -108,12 +109,12 @@ export const V2_NAVIGATION = [
         label: 'Agent 管理',
         icon: RadioTower,
         children: [
-          { label: 'Agent 列表', to: '/agents/list' },
-          { label: '命令管理', to: '/agents/command' },
-          { label: '安全设置', to: '/agents/security' }
+          { label: 'Agent 列表', to: '/preview-v2/agents/list' },
+          { label: '命令管理', to: '/preview-v2/agents/command' },
+          { label: '安全设置', to: '/preview-v2/agents/security' }
         ]
       },
-      { label: '系统设置', to: '/system/settings', icon: Settings2 }
+      { label: '系统设置', to: '/preview-v2/system/settings', icon: Settings2 }
     ]
   }
 ]
