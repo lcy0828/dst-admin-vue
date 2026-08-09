@@ -64,7 +64,7 @@
 import { ArrowLeft, ChartNoAxesColumn, CircleCheck, CircleOff, Eye, Pencil, Plus, RefreshCw, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
-import * as echarts from 'echarts';
+import { echarts } from '@/lib/echarts.mjs';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';

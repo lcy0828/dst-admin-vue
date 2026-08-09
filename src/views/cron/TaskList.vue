@@ -86,7 +86,10 @@
 import { ChartNoAxesColumn, CircleAlert, CircleCheck, CircleOff, Clock, Ellipsis, FileText, Info, Pencil, Play, Plus, RefreshCw, Search, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
-import * as echarts from 'echarts';
+import { echarts } from '@/lib/echarts.mjs';
+import { LineChart } from 'echarts/charts';
+
+echarts.use([LineChart]);
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { getSystemPreferences } from '@/utils/systemPreferences';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';

@@ -44,7 +44,10 @@
 import { ArrowLeft, CircleAlert, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
-import * as echarts from 'echarts';
+import { echarts } from '@/lib/echarts.mjs';
+import { LineChart, PieChart } from 'echarts/charts';
+
+echarts.use([LineChart, PieChart]);
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
