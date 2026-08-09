@@ -2,14 +2,14 @@
   <div class="workspace-page">
     <header class="workspace-header">
       <div class="workspace-heading">
-        <span class="workspace-kicker">当前管理目标</span>
+        <span class="workspace-kicker">{{ $t('servers.workspace.kicker') }}</span>
         <div class="workspace-title-row">
-          <h1>服务器工作台</h1>
+          <h1>{{ $t('servers.workspace.title') }}</h1>
           <Badge v-if="selectedRoom" :variant="runningWorlds.length > 0 ? 'secondary' : 'outline'">
-            {{ runningWorlds.length > 0 ? '运行中' : '已停止' }}
+            {{ runningWorlds.length > 0 ? $t('worldRuntime.statuses.running') : $t('worldRuntime.statuses.stopped') }}
           </Badge>
         </div>
-        <p>{{ selectedRoom ? `${selectedRoom.name} · ${worlds.length} 个世界` : '尚未选择房间' }}</p>
+        <p>{{ selectedRoom ? $t('servers.workspace.roomSummary', { name: selectedRoom.name, count: worlds.length }) : $t('servers.workspace.noRoomSelected') }}</p>
       </div>
 
       <div class="workspace-toolbar">
@@ -17,7 +17,7 @@
           v-model="selectedRoomId"
           @update:model-value="handleRoomChange"
         >
-          <SelectTrigger class="room-select" aria-label="选择房间"><SelectValue placeholder="选择房间" /></SelectTrigger>
+          <SelectTrigger class="room-select" :aria-label="$t('servers.workspace.roomSelect')"><SelectValue :placeholder="$t('servers.workspace.roomSelect')" /></SelectTrigger>
           <SelectContent><SelectGroup>
             <SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
           </SelectGroup></SelectContent>
@@ -27,8 +27,8 @@
             <UiButton
               variant="outline"
               size="icon"
-              aria-label="刷新工作台"
-              title="刷新工作台"
+              :aria-label="$t('servers.workspace.refresh')"
+              :title="$t('servers.workspace.refresh')"
               :disabled="loading"
               @click="refreshWorkspace()"
             >
@@ -36,7 +36,7 @@
               <RefreshCw v-else />
             </UiButton>
           </TooltipTrigger>
-          <TooltipContent>刷新工作台</TooltipContent>
+          <TooltipContent>{{ $t('servers.workspace.refresh') }}</TooltipContent>
         </Tooltip>
         <UiButton
           :disabled="!selectedRoom || backupCreating"
@@ -44,50 +44,50 @@
         >
           <Spinner v-if="backupCreating" data-icon="inline-start" />
           <DatabaseBackup v-else data-icon="inline-start" />
-          {{ backupCreating ? '正在创建' : '创建备份' }}
+          {{ backupCreating ? $t('servers.workspace.backups.creating') : $t('servers.workspace.backups.create') }}
         </UiButton>
       </div>
     </header>
 
     <Alert v-if="loadError" class="workspace-alert" variant="destructive">
       <CircleAlert />
-      <AlertTitle>工作台加载失败</AlertTitle>
-      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertTitle>{{ $t('servers.workspace.feedback.loadFailedTitle') }}</AlertTitle>
+      <AlertDescription>{{ localizedError(loadError) }}</AlertDescription>
       <AlertAction>
-        <UiButton size="sm" variant="outline" @click="refreshWorkspace()">重新加载</UiButton>
+        <UiButton size="sm" variant="outline" @click="refreshWorkspace()">{{ $t('servers.workspace.reload') }}</UiButton>
       </AlertAction>
     </Alert>
 
     <Empty v-else-if="!loading && rooms.length === 0">
-      <EmptyHeader><EmptyMedia variant="icon"><ServerOff /></EmptyMedia><EmptyTitle>当前目标没有已接管的房间</EmptyTitle></EmptyHeader>
-      <EmptyContent><UiButton @click="$router.push('/rooms/list')">前往房间管理</UiButton></EmptyContent>
+      <EmptyHeader><EmptyMedia variant="icon"><ServerOff /></EmptyMedia><EmptyTitle>{{ $t('servers.workspace.empty.noRooms') }}</EmptyTitle></EmptyHeader>
+      <EmptyContent><UiButton @click="$router.push('/rooms/list')">{{ $t('servers.workspace.empty.openRooms') }}</UiButton></EmptyContent>
     </Empty>
 
     <template v-else-if="selectedRoom">
-      <section class="status-strip" aria-label="服务器概况">
+      <section class="status-strip" :aria-label="$t('servers.workspace.overview.label')">
         <Card>
-          <CardHeader><CardTitle>世界状态</CardTitle><CardDescription>{{ runningWorlds.length }} 个分片运行中</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('servers.workspace.overview.worldStatus') }}</CardTitle><CardDescription>{{ $t('servers.workspace.overview.runningShards', { count: runningWorlds.length }) }}</CardDescription></CardHeader>
           <CardContent class="status-content"><strong>{{ runningWorlds.length }}<span>/ {{ worlds.length }}</span></strong></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>在线玩家</CardTitle><CardDescription>{{ contextErrors.players ? '读取失败' : `共 ${playerStats ? playerStats.total_count : '--'} 人` }}</CardDescription></CardHeader>
-          <CardContent class="status-content"><strong>{{ playerStats ? playerStats.online_count : '--' }}<span>人</span></strong></CardContent>
+          <CardHeader><CardTitle>{{ $t('servers.workspace.overview.onlinePlayers') }}</CardTitle><CardDescription>{{ contextErrors.players ? $t('servers.workspace.states.readFailed') : $t('servers.workspace.overview.totalPlayers', { count: playerStats ? playerStats.total_count : '--' }) }}</CardDescription></CardHeader>
+          <CardContent class="status-content"><strong>{{ playerStats ? playerStats.online_count : '--' }}<span>{{ $t('servers.workspace.units.players') }}</span></strong></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>磁盘使用</CardTitle><CardDescription>剩余 {{ formatDisk(systemStatus.free_disk) }}</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('servers.workspace.overview.diskUsage') }}</CardTitle><CardDescription>{{ $t('servers.workspace.overview.diskFree', { value: formatDisk(systemStatus.free_disk) }) }}</CardDescription></CardHeader>
           <CardContent class="status-content"><strong>{{ formatPercent(systemStatus.disk_usage) }}</strong></CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>最近备份</CardTitle><CardDescription>{{ contextErrors.backups ? '读取失败' : (latestBackup?.size_formatted || '暂无记录') }}</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('servers.workspace.backups.latest') }}</CardTitle><CardDescription>{{ contextErrors.backups ? $t('servers.workspace.states.readFailed') : (latestBackup?.size_formatted || $t('servers.workspace.states.noRecords')) }}</CardDescription></CardHeader>
           <CardContent class="status-content"><strong class="status-time">{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</strong></CardContent>
         </Card>
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>世界与分片</CardTitle>
-          <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || '当前房间的分片列表' }}</CardDescription>
-          <CardAction><UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />房间设置</UiButton></CardAction>
+          <CardTitle>{{ $t('servers.workspace.worlds.title') }}</CardTitle>
+          <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || $t('servers.workspace.worlds.description') }}</CardDescription>
+          <CardAction><UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />{{ $t('servers.workspace.worlds.roomSettings') }}</UiButton></CardAction>
         </CardHeader>
         <CardContent>
 
@@ -115,23 +115,23 @@
                     {{ worldStatusLabel(world) }}
                   </Badge>
                 </div>
-                <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || '未设置目录' }}</span>
+                <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || $t('servers.workspace.worlds.directoryUnset') }}</span>
                 <span v-if="worldStatusMessage(world)" class="world-failure">{{ worldStatusMessage(world) }}</span>
               </div>
             </div>
 
             <dl class="world-facts">
               <div>
-                <dt>天数</dt>
+                <dt>{{ $t('servers.workspace.worlds.day') }}</dt>
                 <dd>{{ metricValue(world.day) }}</dd>
               </div>
               <div>
-                <dt>季节</dt>
+                <dt>{{ $t('servers.workspace.worlds.season') }}</dt>
                 <dd>{{ seasonLabel(world.season) }}</dd>
               </div>
               <div>
-                <dt>控制</dt>
-                <dd>{{ world.controlAvailable === false ? '不可用' : '可用' }}</dd>
+                <dt>{{ $t('servers.workspace.worlds.control') }}</dt>
+                <dd>{{ world.controlAvailable === false ? $t('servers.workspace.states.unavailable') : $t('servers.workspace.states.available') }}</dd>
               </div>
             </dl>
 
@@ -141,8 +141,8 @@
                   <UiButton
                     size="icon-sm"
                     :variant="worldPrimaryAction(world).variant"
-                    :aria-label="`${worldPrimaryAction(world).label}世界`"
-                    :title="`${worldPrimaryAction(world).label}世界`"
+                    :aria-label="worldActionLabel(world)"
+                    :title="worldActionLabel(world)"
                     :disabled="!canToggleWorld(world) || Boolean(worldActionId)"
                     @click="handleWorldAction(world, worldPrimaryAction(world).kind)"
                   >
@@ -151,70 +151,70 @@
                     <Play v-else-if="worldPrimaryAction(world).kind === 'start'" />
                   </UiButton>
                 </TooltipTrigger>
-                <TooltipContent>{{ worldPrimaryAction(world).label }}世界</TooltipContent>
+                <TooltipContent>{{ worldActionLabel(world) }}</TooltipContent>
               </Tooltip>
               <Tooltip v-if="world.status === 'failed'">
                 <TooltipTrigger as-child>
                   <UiButton
                     size="icon-sm"
                     variant="outline"
-                    aria-label="清理失败会话"
-                    title="清理失败会话"
+                    :aria-label="$t('servers.workspace.worlds.cleanupFailedSession')"
+                    :title="$t('servers.workspace.worlds.cleanupFailedSession')"
                     :disabled="!canCleanFailedWorld(world) || Boolean(worldActionId)"
                     @click="handleWorldAction(world, 'cleanup')"
                   >
                     <Square />
                   </UiButton>
                 </TooltipTrigger>
-                <TooltipContent>清理失败会话</TooltipContent>
+                <TooltipContent>{{ $t('servers.workspace.worlds.cleanupFailedSession') }}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger as-child>
                   <UiButton
                     size="icon-sm"
                     variant="outline"
-                    aria-label="重启世界"
-                    title="重启世界"
+                    :aria-label="$t('servers.workspace.worlds.restart')"
+                    :title="$t('servers.workspace.worlds.restart')"
                     :disabled="!canStopWorld(world) || Boolean(worldActionId)"
                     @click="handleWorldAction(world, 'restart')"
                   >
                     <RotateCw />
                   </UiButton>
                 </TooltipTrigger>
-                <TooltipContent>重启世界</TooltipContent>
+                <TooltipContent>{{ $t('servers.workspace.worlds.restart') }}</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger as-child>
                   <UiButton
                     size="icon-sm"
                     variant="ghost"
-                    aria-label="世界配置"
-                    title="世界配置"
+                    :aria-label="$t('servers.workspace.worlds.configure')"
+                    :title="$t('servers.workspace.worlds.configure')"
                     :disabled="!canConfigureWorld(world)"
                     @click="openWorldSettings(world)"
                   >
                     <Settings />
                   </UiButton>
                 </TooltipTrigger>
-                <TooltipContent>世界配置</TooltipContent>
+                <TooltipContent>{{ $t('servers.workspace.worlds.configure') }}</TooltipContent>
               </Tooltip>
             </div>
           </article>
         </div>
-        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>当前房间没有世界</EmptyTitle></EmptyHeader></Empty>
+        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>{{ $t('servers.workspace.empty.noWorlds') }}</EmptyTitle></EmptyHeader></Empty>
         </CardContent>
       </Card>
 
       <div class="workspace-grid">
         <Card>
           <CardHeader>
-            <CardTitle>运行控制</CardTitle>
-            <CardDescription>查看当前分片日志，或向选定世界发送控制台命令。</CardDescription>
+            <CardTitle>{{ $t('servers.workspace.operations.title') }}</CardTitle>
+            <CardDescription>{{ $t('servers.workspace.operations.description') }}</CardDescription>
           </CardHeader>
           <CardContent><Tabs v-model="activeOperation" class="operation-tabs">
             <TabsList>
-              <TabsTrigger value="logs"><FileText />实时日志</TabsTrigger>
-              <TabsTrigger value="console"><Terminal />控制台</TabsTrigger>
+              <TabsTrigger value="logs"><FileText />{{ $t('servers.workspace.operations.liveLogs') }}</TabsTrigger>
+              <TabsTrigger value="console"><Terminal />{{ $t('servers.workspace.console.title') }}</TabsTrigger>
             </TabsList>
             <TabsContent value="logs">
               <world-log
@@ -224,57 +224,57 @@
                 :world-id="selectedWorldId"
                 :archive-name="selectedRoom.name"
                 :world-name="selectedWorld.name"
-                title="分片日志"
+                :title="$t('servers.workspace.operations.shardLogs')"
                 class="workspace-log"
               />
-              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>请选择世界</EmptyTitle></EmptyHeader></Empty>
+              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>{{ $t('servers.workspace.empty.selectWorld') }}</EmptyTitle></EmptyHeader></Empty>
             </TabsContent>
 
             <TabsContent value="console">
               <div class="console-panel">
-                <div v-if="contextLoading" class="panel-loading"><Spinner /><span>正在加载控制台...</span></div>
+                <div v-if="contextLoading" class="panel-loading"><Spinner /><span>{{ $t('servers.workspace.console.loading') }}</span></div>
                 <div class="console-toolbar">
                   <UiSelect v-model="consoleServer">
-                    <SelectTrigger class="console-select" aria-label="选择控制台目标世界"><SelectValue placeholder="选择目标世界" /></SelectTrigger>
+                    <SelectTrigger class="console-select" :aria-label="$t('servers.workspace.console.selectTarget')"><SelectValue :placeholder="$t('servers.workspace.console.selectWorld')" /></SelectTrigger>
                     <SelectContent><SelectGroup>
                       <SelectItem v-for="server in roomConsoleServers" :key="server.session_name" :value="server.session_name">{{ server.name }}</SelectItem>
                     </SelectGroup></SelectContent>
                   </UiSelect>
                   <DropdownMenu>
-                    <DropdownMenuTrigger as-child><UiButton variant="outline">常用命令<ChevronDown data-icon="inline-end" /></UiButton></DropdownMenuTrigger>
+                    <DropdownMenuTrigger as-child><UiButton variant="outline">{{ $t('servers.workspace.console.commonCommands.title') }}<ChevronDown data-icon="inline-end" /></UiButton></DropdownMenuTrigger>
                     <DropdownMenuContent><DropdownMenuGroup>
-                      <DropdownMenuItem v-for="item in commonCommands" :key="item.command" @select="applyCommonCommand(item.command)">{{ item.name }}</DropdownMenuItem>
+                      <DropdownMenuItem v-for="item in commonCommands" :key="item.command" @select="applyCommonCommand(item.command)">{{ $t(item.nameKey) }}</DropdownMenuItem>
                     </DropdownMenuGroup></DropdownMenuContent>
                   </DropdownMenu>
-                  <UiButton variant="ghost" @click="$router.push('/servers/commands')"><Settings data-icon="inline-start" />命令管理</UiButton>
+                  <UiButton variant="ghost" @click="$router.push('/servers/commands')"><Settings data-icon="inline-start" />{{ $t('servers.workspace.console.commandManager') }}</UiButton>
                 </div>
                 <Alert v-if="contextErrors.console" class="context-error" variant="destructive">
-                  <CircleAlert /><AlertTitle>控制台不可用</AlertTitle><AlertDescription>{{ contextErrors.console }}</AlertDescription>
+                  <CircleAlert /><AlertTitle>{{ $t('servers.workspace.console.unavailable') }}</AlertTitle><AlertDescription>{{ localizedError(contextErrors.console) }}</AlertDescription>
                 </Alert>
                 <UiTextarea
                   v-model="rawCommand"
                   rows="7"
-                  placeholder="输入 Lua 控制台命令"
-                  aria-label="Lua 控制台命令"
+                  :placeholder="$t('servers.workspace.console.placeholder')"
+                  :aria-label="$t('servers.workspace.console.commandAria')"
                 />
                 <div class="console-footer">
-                  <span>目标：{{ selectedConsoleServer?.name || '未选择' }}</span>
+                  <span>{{ $t('servers.workspace.console.target', { name: selectedConsoleServer?.name || $t('servers.workspace.states.notSelected') }) }}</span>
                   <UiButton
                     :disabled="commandExecuting || !consoleServer || !rawCommand.trim()"
                     @click="executeRawCommand"
                   >
                     <Spinner v-if="commandExecuting" data-icon="inline-start" />
                     <Send v-else data-icon="inline-start" />
-                    执行
+                    {{ $t('servers.workspace.console.execute') }}
                   </UiButton>
                 </div>
                 <Alert v-if="commandResult" :variant="commandResult.success ? 'default' : 'destructive'">
                   <CircleCheck v-if="commandResult.success" />
                   <CircleAlert v-else />
-                  <AlertTitle>{{ commandResult.success ? '命令已发送' : '命令执行失败' }}</AlertTitle>
+                  <AlertTitle>{{ commandResult.success ? $t('servers.workspace.console.sent') : $t('servers.workspace.console.failed') }}</AlertTitle>
                   <AlertDescription>
-                    {{ commandResult.message }}
-                    <span v-if="commandResult.runId">运行记录 {{ commandResult.runId }}</span>
+                    {{ commandResult.message || $t(commandResult.success ? 'servers.workspace.console.sentDescription' : 'servers.workspace.console.sendFailed') }}
+                    <span v-if="commandResult.runId">{{ $t('servers.workspace.console.runRecord', { id: commandResult.runId }) }}</span>
                   </AlertDescription>
                 </Alert>
               </div>
@@ -283,12 +283,12 @@
         </Card>
 
         <aside class="context-rail" :aria-busy="contextLoading">
-          <div v-if="contextLoading" class="panel-loading"><Spinner /><span>正在加载房间信息...</span></div>
+          <div v-if="contextLoading" class="panel-loading"><Spinner /><span>{{ $t('servers.workspace.context.loading') }}</span></div>
           <Card>
             <CardHeader>
-              <CardTitle>玩家</CardTitle>
-              <CardDescription>{{ contextErrors.players ? '数据读取失败' : (playerStats ? `${playerStats.online_count} 人在线` : '状态不可用') }}</CardDescription>
-              <CardAction><UiButton variant="ghost" size="sm" @click="openPlayers">全部<ArrowRight data-icon="inline-end" /></UiButton></CardAction>
+              <CardTitle>{{ $t('servers.workspace.players.title') }}</CardTitle>
+              <CardDescription>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.onlineCount', { count: playerStats.online_count }) : $t('servers.workspace.states.statusUnavailable')) }}</CardDescription>
+              <CardAction><UiButton variant="ghost" size="sm" @click="openPlayers">{{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" /></UiButton></CardAction>
             </CardHeader>
             <CardContent>
             <div v-if="recentPlayers.length" class="player-list">
@@ -302,29 +302,29 @@
                 <span class="player-avatar"><User /></span>
                 <span class="player-copy">
                   <strong>{{ player.player_name || player.user_id }}</strong>
-                  <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || '未知世界' }}</span>
+                  <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || $t('servers.workspace.players.unknownWorld') }}</span>
                 </span>
                 <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
-                  {{ player.status === 'online' ? '在线' : '离线' }}
+                  {{ playerStatusLabel(player.status) }}
                 </Badge>
               </UiButton>
             </div>
             <Alert v-else-if="contextErrors.players" variant="destructive">
               <CircleAlert />
-              <AlertTitle>玩家数据读取失败</AlertTitle>
-              <AlertDescription>{{ contextErrors.players }}</AlertDescription>
+              <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
+              <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
             </Alert>
             <Empty v-else class="rail-empty">
-              <EmptyHeader><EmptyTitle>暂无玩家记录</EmptyTitle><EmptyDescription>玩家加入房间后会显示在这里。</EmptyDescription></EmptyHeader>
+              <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.players.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.players.emptyDescription') }}</EmptyDescription></EmptyHeader>
             </Empty>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>最近备份</CardTitle>
-              <CardDescription>{{ contextErrors.backups ? '列表读取失败' : `${backups.length} 个记录` }}</CardDescription>
-              <CardAction><UiButton variant="ghost" size="sm" @click="$router.push('/backups')">全部<ArrowRight data-icon="inline-end" /></UiButton></CardAction>
+              <CardTitle>{{ $t('servers.workspace.backups.latest') }}</CardTitle>
+              <CardDescription>{{ contextErrors.backups ? $t('servers.workspace.states.listReadFailed') : $t('servers.workspace.backups.recordCount', { count: backups.length }) }}</CardDescription>
+              <CardAction><UiButton variant="ghost" size="sm" @click="$router.push('/backups')">{{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" /></UiButton></CardAction>
             </CardHeader>
             <CardContent>
             <div v-if="backups.length" class="backup-list">
@@ -332,39 +332,39 @@
                 <FileCheck2 />
                 <span>
                   <strong>{{ backup.name }}</strong>
-                  <small>{{ backup.create_time || formatCompactTime(backup.createdAt) }} · {{ backup.size_formatted || '--' }}</small>
+                  <small>{{ formatCompactTime(backup.createdAt || backup.create_time) }} · {{ backup.size_formatted || '--' }}</small>
                 </span>
               </div>
             </div>
             <Alert v-else-if="contextErrors.backups" variant="destructive">
               <CircleAlert />
-              <AlertTitle>备份列表读取失败</AlertTitle>
-              <AlertDescription>{{ contextErrors.backups }}</AlertDescription>
+              <AlertTitle>{{ $t('servers.workspace.backups.loadFailed') }}</AlertTitle>
+              <AlertDescription>{{ localizedError(contextErrors.backups) }}</AlertDescription>
             </Alert>
             <Empty v-else class="rail-empty">
-              <EmptyHeader><EmptyTitle>暂无备份记录</EmptyTitle><EmptyDescription>创建房间备份后会显示在这里。</EmptyDescription></EmptyHeader>
+              <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.backups.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.backups.emptyDescription') }}</EmptyDescription></EmptyHeader>
             </Empty>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>快捷入口</CardTitle><CardDescription>打开当前房间的常用管理页面。</CardDescription></CardHeader>
-            <CardContent><nav class="quick-nav" aria-label="服务器快捷入口">
+            <CardHeader><CardTitle>{{ $t('servers.workspace.quickNav.title') }}</CardTitle><CardDescription>{{ $t('servers.workspace.quickNav.description') }}</CardDescription></CardHeader>
+            <CardContent><nav class="quick-nav" :aria-label="$t('servers.workspace.quickNav.label')">
             <UiButton variant="ghost" @click="openPlayers">
               <User />
-              <span>玩家管理</span>
+              <span>{{ $t('servers.workspace.quickNav.players') }}</span>
             </UiButton>
             <UiButton variant="ghost" @click="openMods">
               <PackageOpen />
-              <span>模组管理</span>
+              <span>{{ $t('servers.workspace.quickNav.mods') }}</span>
             </UiButton>
             <UiButton variant="ghost" @click="openWorldState">
               <ChartNoAxesCombined />
-              <span>世界状态</span>
+              <span>{{ $t('servers.workspace.quickNav.worldState') }}</span>
             </UiButton>
             <UiButton variant="ghost" @click="$router.push('/logs/query')">
               <Search />
-              <span>日志查询</span>
+              <span>{{ $t('servers.workspace.quickNav.logQuery') }}</span>
             </UiButton>
             </nav></CardContent>
           </Card>
@@ -408,26 +408,11 @@ import {
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
-const CHARACTER_NAMES = {
-  wilson: '威尔逊',
-  willow: '薇洛',
-  wolfgang: '沃尔夫冈',
-  wendy: '温蒂',
-  wx78: 'WX-78',
-  wickerbottom: '薇克巴顿',
-  woodie: '伍迪',
-  wes: '韦斯',
-  waxwell: '麦斯威尔',
-  wathgrithr: '薇格弗德',
-  webber: '韦伯',
-  winona: '薇诺娜',
-  wortox: '沃拓克斯',
-  wormwood: '沃姆伍德',
-  warly: '沃利',
-  wurt: '沃特',
-  walter: '沃尔特',
-  wanda: '旺达'
-}
+const KNOWN_CHARACTERS = new Set([
+  'wilson', 'willow', 'wolfgang', 'wendy', 'wx78', 'wickerbottom', 'woodie', 'wes',
+  'waxwell', 'wathgrithr', 'webber', 'winona', 'wortox', 'wormwood', 'warly', 'wurt',
+  'walter', 'wanda', 'wonkey'
+])
 
 export default {
   name: 'ServerWorkspace',
@@ -498,7 +483,7 @@ export default {
     return {
       loading: false,
       contextLoading: false,
-      loadError: '',
+      loadError: null,
       rooms: [],
       selectedRoomId: this.$route.query.roomId || '',
       selectedWorldId: this.$route.query.worldId || '',
@@ -507,9 +492,9 @@ export default {
       backups: [],
       consoleServers: [],
       contextErrors: {
-        players: '',
-        backups: '',
-        console: ''
+        players: null,
+        backups: null,
+        console: null
       },
       worldActionId: '',
       backupCreating: false,
@@ -522,11 +507,11 @@ export default {
       refreshSequence: 0,
       contextSequence: 0,
       commonCommands: [
-        { name: '保存世界', command: 'c_save()' },
-        { name: '查看在线玩家', command: 'c_listallplayers()' },
-        { name: '查看世界天数', command: "print('当前天数: ' .. TheWorld.state.cycles + 1)" },
-        { name: '查看当前季节', command: "print('当前季节: ' .. TheWorld.state.season)" },
-        { name: '发送公告', command: "c_announce('请输入公告内容')" }
+        { nameKey: 'servers.workspace.console.commonCommands.save', command: 'c_save()' },
+        { nameKey: 'servers.workspace.console.commonCommands.players', command: 'c_listallplayers()' },
+        { nameKey: 'servers.workspace.console.commonCommands.day', command: "print('当前天数: ' .. TheWorld.state.cycles + 1)" },
+        { nameKey: 'servers.workspace.console.commonCommands.season', command: "print('当前季节: ' .. TheWorld.state.season)" },
+        { nameKey: 'servers.workspace.console.commonCommands.announce', command: "c_announce('请输入公告内容')" }
       ]
     }
   },
@@ -578,6 +563,8 @@ export default {
       this.consoleServers = []
       this.consoleServer = ''
       this.commandResult = null
+      this.loadError = null
+      this.contextErrors = { players: null, backups: null, console: null }
       this.contextLoading = false
       this.refreshWorkspace()
     },
@@ -588,7 +575,7 @@ export default {
     async refreshWorkspace(silent = false) {
       const requestSequence = ++this.refreshSequence
       if (!silent) this.loading = true
-      this.loadError = ''
+      this.loadError = null
       const previousRoomId = this.selectedRoomId
       const [roomsResult, systemResult] = await Promise.allSettled([
         roomApi.getRoomList(),
@@ -598,7 +585,7 @@ export default {
 
       if (roomsResult.status === 'rejected') {
         this.rooms = []
-        this.loadError = roomsResult.reason?.message || '无法读取房间和世界状态'
+        this.loadError = this.errorState('servers.workspace.feedback.loadFailed', roomsResult.reason)
       } else {
         this.rooms = this.unwrapList(roomsResult.value)
         this.resolveSelection()
@@ -642,7 +629,7 @@ export default {
       this.backups = []
       this.consoleServers = []
       this.consoleServer = ''
-      this.contextErrors = { players: '', backups: '', console: '' }
+      this.contextErrors = { players: null, backups: null, console: null }
       const [playersResult, backupsResult, consoleResult] = await Promise.allSettled([
         playerApi.getPlayerStats(roomName),
         backupApi.getBackupList(),
@@ -654,8 +641,8 @@ export default {
         ? playersResult.value?.data || null
         : null
       this.contextErrors.players = playersResult.status === 'rejected'
-        ? (playersResult.reason?.message || '玩家数据读取失败')
-        : ''
+        ? this.errorState('servers.workspace.feedback.playersLoadFailed', playersResult.reason)
+        : null
       this.backups = backupsResult.status === 'fulfilled'
         ? [...(backupsResult.value?.data?.[roomName] || [])].sort((left, right) => {
           const leftTime = new Date(left.createdAt || left.create_time || 0).getTime()
@@ -664,12 +651,12 @@ export default {
         })
         : []
       this.contextErrors.backups = backupsResult.status === 'rejected'
-        ? (backupsResult.reason?.message || '备份列表读取失败')
-        : ''
+        ? this.errorState('servers.workspace.feedback.backupsLoadFailed', backupsResult.reason)
+        : null
       this.consoleServers = consoleResult.status === 'fulfilled' ? consoleResult.value : []
       this.contextErrors.console = consoleResult.status === 'rejected'
-        ? (consoleResult.reason?.message || '控制台目标读取失败')
-        : ''
+        ? this.errorState('servers.workspace.feedback.consoleTargetsLoadFailed', consoleResult.reason)
+        : null
       this.syncConsoleTarget()
       this.contextLoading = false
     },
@@ -677,7 +664,7 @@ export default {
       if (!this.selectedRoom) return
       const requestSequence = ++this.contextSequence
       const roomId = this.selectedRoomId
-      this.contextErrors.players = ''
+      this.contextErrors.players = null
       try {
         const response = await playerApi.getPlayerStats(this.selectedRoom.name)
         if (requestSequence === this.contextSequence && this.selectedRoomId === roomId) {
@@ -686,7 +673,7 @@ export default {
       } catch (error) {
         if (requestSequence === this.contextSequence && this.selectedRoomId === roomId) {
           this.playerStats = null
-          this.contextErrors.players = error.message || '玩家数据读取失败'
+          this.contextErrors.players = this.errorState('servers.workspace.feedback.playersLoadFailed', error)
         }
       }
     },
@@ -717,15 +704,23 @@ export default {
           (action === 'start' && !canStartWorld(world)) ||
           (action === 'cleanup' && !canCleanFailedWorld(world)) ||
           (['stop', 'restart'].includes(action) && !canStopWorld(world))) {
-        toast.warning(worldStatusMessage(world) || '当前世界状态不可执行该操作')
+        toast.warning(worldStatusMessage(world) || this.$t('servers.workspace.feedback.actionUnavailable'))
         return
       }
-      const label = { start: '启动', stop: '停止', restart: '重启', cleanup: '清理失败会话' }[action]
-      const confirmationTitle = action === 'cleanup' ? '清理失败会话' : `${label}世界`
+      const label = this.$t(`servers.workspace.actions.${action}`)
+      const confirmationTitle = action === 'cleanup'
+        ? this.$t('servers.workspace.worlds.cleanupFailedSession')
+        : this.$t('servers.workspace.feedback.actionTitle', { action: label })
       try {
-        await confirmAction(`确定要${label}“${this.selectedRoom.name} / ${world.name}”吗？`, confirmationTitle, {
-          confirmButtonText: `确认${label}`,
-          cancelButtonText: '取消',
+        await confirmAction(this.$t('servers.workspace.feedback.actionConfirm', {
+          action: label,
+          room: this.selectedRoom.name,
+          world: world.name
+        }), confirmationTitle, {
+          confirmButtonText: action === 'cleanup'
+            ? this.$t('servers.workspace.feedback.cleanupButton')
+            : this.$t('servers.workspace.feedback.actionButton', { action: label }),
+          cancelButtonText: this.$t('common.actions.cancel'),
           type: action === 'start' ? 'info' : 'warning'
         })
       } catch {
@@ -734,20 +729,22 @@ export default {
 
       this.worldActionId = world.id
       try {
-        let response
         const target = { room_id: this.selectedRoom.id, world_id: world.id }
-        if (action === 'start') response = await roomApi.startRoom(target)
-        if (action === 'stop') response = await roomApi.stopRoom(target)
-        if (action === 'cleanup') response = await roomApi.stopRoom(target)
-        if (action === 'restart') response = await systemApi.restartTmuxServer({
+        if (action === 'start') await roomApi.startRoom(target)
+        if (action === 'stop') await roomApi.stopRoom(target)
+        if (action === 'cleanup') await roomApi.stopRoom(target)
+        if (action === 'restart') await systemApi.restartTmuxServer({
           ...target,
           archive_name: this.selectedRoom.name,
           world_name: world.name
         })
-        toast.success(response?.msg || `${label}完成`)
+        toast.success(this.$t('servers.workspace.feedback.actionCompleted', { action: label }))
         await this.refreshWorkspace(true)
       } catch (error) {
-        toast.error(`${label}失败：${error.message || '未知错误'}`)
+        toast.error(this.$t('servers.workspace.feedback.actionFailed', {
+          action: label,
+          error: error.message || this.$t('common.errors.unknown')
+        }))
       } finally {
         this.worldActionId = ''
       }
@@ -756,11 +753,13 @@ export default {
       if (!this.selectedRoom) return
       this.backupCreating = true
       try {
-        const response = await backupApi.createBackup(this.selectedRoom.name)
-        toast.success(response?.msg || '备份已创建')
+        await backupApi.createBackup(this.selectedRoom.name)
+        toast.success(this.$t('servers.workspace.feedback.backupCreated'))
         await this.refreshRoomContext()
       } catch (error) {
-        toast.error(`创建备份失败：${error.message || '未知错误'}`)
+        toast.error(this.$t('servers.workspace.feedback.backupCreateFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }))
       } finally {
         this.backupCreating = false
       }
@@ -775,12 +774,12 @@ export default {
       let confirmation
       try {
         const response = await promptText(
-          `该操作会向分片发送 Lua 命令，请输入房间名“${server.room_name}”确认`,
-          '执行确认',
+          this.$t('servers.workspace.console.confirmDescription', { room: server.room_name }),
+          this.$t('servers.workspace.console.confirmTitle'),
           {
-            confirmButtonText: '确认执行',
-            cancelButtonText: '取消',
-            inputValidator: value => value === server.room_name || '房间名不匹配'
+            confirmButtonText: this.$t('servers.workspace.console.confirmExecute'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            inputValidator: value => value === server.room_name || this.$t('servers.workspace.console.roomMismatch')
           }
         )
         confirmation = response.value
@@ -796,13 +795,13 @@ export default {
         this.commandResult = {
           success,
           runId: run.id,
-          message: run.message || run.errorMessage || (success ? '命令已发送到分片控制台' : '命令发送失败')
+          message: success ? '' : (run.errorMessage || run.message || '')
         }
-        if (success) toast.success('命令已发送')
-        else toast.error(this.commandResult.message)
+        if (success) toast.success(this.$t('servers.workspace.console.sent'))
+        else toast.error(this.commandResult.message || this.$t('servers.workspace.console.sendFailed'))
       } catch (error) {
-        this.commandResult = { success: false, message: error.message || '命令发送失败' }
-        toast.error(this.commandResult.message)
+        this.commandResult = { success: false, message: error.message || '' }
+        toast.error(this.commandResult.message || this.$t('servers.workspace.console.sendFailed'))
       } finally {
         this.commandExecuting = false
       }
@@ -849,13 +848,14 @@ export default {
       return ['cave', 'caves'].includes(world.type || world.role) ? 'cave' : 'forest'
     },
     worldRoleLabel(world) {
-      const role = world.type || world.role
-      if (['forest', 'master'].includes(role)) return '森林世界'
-      if (['cave', 'caves'].includes(role)) return '洞穴世界'
-      return '自定义世界'
+      const rawRole = world.type || world.role
+      const role = String(rawRole || '').trim().toLowerCase()
+      if (['forest', 'master'].includes(role)) return this.$t('servers.workspace.worlds.roles.forest')
+      if (['cave', 'caves'].includes(role)) return this.$t('servers.workspace.worlds.roles.cave')
+      return rawRole || this.$t('servers.workspace.worlds.roles.custom')
     },
     worldStatusLabel(status) {
-      return worldStatusLabel(status)
+      return worldStatusLabel(status, key => this.$t(key))
     },
     worldStatusVariant(world) {
       return worldStatusVariant(world)
@@ -864,7 +864,7 @@ export default {
       return worldStatusMessage(world)
     },
     worldPrimaryAction(world) {
-      return worldPrimaryAction(world)
+      return worldPrimaryAction(world, key => this.$t(key))
     },
     isWorldStarting(world) {
       return isWorldStarting(world)
@@ -879,13 +879,43 @@ export default {
       return canConfigureWorld(world)
     },
     canToggleWorld(world) {
-      return !worldPrimaryAction(world).disabled
+      return !this.worldPrimaryAction(world).disabled
+    },
+    worldActionLabel(world) {
+      return this.$t('servers.workspace.worlds.actionLabel', {
+        action: this.worldPrimaryAction(world).label
+      })
     },
     seasonLabel(season) {
-      return { autumn: '秋季', winter: '冬季', spring: '春季', summer: '夏季' }[season] || season || '--'
+      const normalized = String(season || '').trim().toLowerCase()
+      if (['autumn', 'winter', 'spring', 'summer'].includes(normalized)) {
+        return this.$t(`servers.list.seasons.${normalized}`)
+      }
+      return season || '--'
     },
     characterLabel(prefab) {
-      return CHARACTER_NAMES[prefab] || prefab || '未知角色'
+      const normalized = String(prefab || '').trim().toLowerCase()
+      if (KNOWN_CHARACTERS.has(normalized)) {
+        return this.$t(`servers.workspace.players.characters.${normalized}`)
+      }
+      return prefab || this.$t('servers.workspace.players.unknownCharacter')
+    },
+    playerStatusLabel(status) {
+      const normalized = String(status || '').trim().toLowerCase()
+      if (['online', 'offline'].includes(normalized)) {
+        return this.$t(`common.states.${normalized}`)
+      }
+      return status || this.$t('common.states.unknown')
+    },
+    errorState(key, error) {
+      return { key, detail: String(error?.message || '').trim() }
+    },
+    localizedError(state) {
+      if (!state) return ''
+      const message = this.$t(state.key)
+      return state.detail
+        ? this.$t('servers.workspace.feedback.errorWithDetail', { message, detail: state.detail })
+        : message
     },
     metricValue(value) {
       return value === null || value === undefined || value === '' ? '--' : value
@@ -900,11 +930,13 @@ export default {
       if (!value) return '--'
       const date = new Date(value)
       if (!Number.isFinite(date.getTime())) return String(value)
+      const localeState = this.$i18n?.locale
+      const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN')
       const now = new Date()
       if (date.toDateString() === now.toDateString()) {
-        return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+        return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
       }
-      return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+      return date.toLocaleDateString(locale, { month: '2-digit', day: '2-digit' })
     }
   }
 }

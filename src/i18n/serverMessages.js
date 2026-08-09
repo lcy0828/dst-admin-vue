@@ -85,6 +85,171 @@ export const serverMessages = {
           cleanupFailed: '清理失败：{error}'
         }
       },
+      workspace: {
+        kicker: '当前管理目标',
+        title: '服务器工作台',
+        roomSummary: '{name} · {count} 个世界',
+        noRoomSelected: '尚未选择房间',
+        roomSelect: '选择房间',
+        refresh: '刷新工作台',
+        reload: '重新加载',
+        actions: {
+          all: '全部',
+          start: '启动',
+          stop: '停止',
+          restart: '重启',
+          cleanup: '清理失败会话'
+        },
+        units: {
+          players: '人'
+        },
+        states: {
+          readFailed: '读取失败',
+          noRecords: '暂无记录',
+          unavailable: '不可用',
+          available: '可用',
+          notSelected: '未选择',
+          dataReadFailed: '数据读取失败',
+          statusUnavailable: '状态不可用',
+          listReadFailed: '列表读取失败'
+        },
+        empty: {
+          noRooms: '当前目标没有已接管的房间',
+          openRooms: '前往房间管理',
+          noWorlds: '当前房间没有世界',
+          selectWorld: '请选择世界'
+        },
+        overview: {
+          label: '服务器概况',
+          worldStatus: '世界状态',
+          runningShards: '{count} 个分片运行中',
+          onlinePlayers: '在线玩家',
+          totalPlayers: '共 {count} 人',
+          diskUsage: '磁盘使用',
+          diskFree: '剩余 {value}'
+        },
+        backups: {
+          latest: '最近备份',
+          creating: '正在创建',
+          create: '创建备份',
+          recordCount: '{count} 个记录',
+          loadFailed: '备份列表读取失败',
+          empty: '暂无备份记录',
+          emptyDescription: '创建房间备份后会显示在这里。'
+        },
+        worlds: {
+          title: '世界与分片',
+          description: '当前房间的分片列表',
+          roomSettings: '房间设置',
+          directoryUnset: '未设置目录',
+          day: '天数',
+          season: '季节',
+          control: '控制',
+          cleanupFailedSession: '清理失败会话',
+          restart: '重启世界',
+          configure: '世界配置',
+          actionLabel: '{action}世界',
+          roles: {
+            forest: '森林世界',
+            cave: '洞穴世界',
+            custom: '自定义世界'
+          }
+        },
+        operations: {
+          title: '运行控制',
+          description: '查看当前分片日志，或向选定世界发送控制台命令。',
+          liveLogs: '实时日志',
+          shardLogs: '分片日志'
+        },
+        console: {
+          title: '控制台',
+          loading: '正在加载控制台...',
+          selectTarget: '选择控制台目标世界',
+          selectWorld: '选择目标世界',
+          commandManager: '命令管理',
+          unavailable: '控制台不可用',
+          placeholder: '输入 Lua 控制台命令',
+          commandAria: 'Lua 控制台命令',
+          target: '目标：{name}',
+          execute: '执行',
+          sent: '命令已发送',
+          failed: '命令执行失败',
+          sentDescription: '命令已发送到分片控制台',
+          sendFailed: '命令发送失败',
+          runRecord: '运行记录 {id}',
+          confirmDescription: '该操作会向分片发送 Lua 命令，请输入房间名“{room}”确认',
+          confirmTitle: '执行确认',
+          confirmExecute: '确认执行',
+          roomMismatch: '房间名不匹配',
+          commonCommands: {
+            title: '常用命令',
+            save: '保存世界',
+            players: '查看在线玩家',
+            day: '查看世界天数',
+            season: '查看当前季节',
+            announce: '发送公告'
+          }
+        },
+        context: {
+          loading: '正在加载房间信息...'
+        },
+        players: {
+          title: '玩家',
+          onlineCount: '{count} 人在线',
+          unknownWorld: '未知世界',
+          loadFailed: '玩家数据读取失败',
+          empty: '暂无玩家记录',
+          emptyDescription: '玩家加入房间后会显示在这里。',
+          unknownCharacter: '未知角色',
+          characters: {
+            wilson: '威尔逊',
+            willow: '薇洛',
+            wolfgang: '沃尔夫冈',
+            wendy: '温蒂',
+            wx78: 'WX-78',
+            wickerbottom: '薇克巴顿',
+            woodie: '伍迪',
+            wes: '韦斯',
+            waxwell: '麦斯威尔',
+            wathgrithr: '薇格弗德',
+            webber: '韦伯',
+            winona: '薇诺娜',
+            wortox: '沃拓克斯',
+            wormwood: '沃姆伍德',
+            warly: '沃利',
+            wurt: '沃特',
+            walter: '沃尔特',
+            wanda: '旺达',
+            wonkey: '芜猴'
+          }
+        },
+        quickNav: {
+          title: '快捷入口',
+          description: '打开当前房间的常用管理页面。',
+          label: '服务器快捷入口',
+          players: '玩家管理',
+          mods: '模组管理',
+          worldState: '世界状态',
+          logQuery: '日志查询'
+        },
+        feedback: {
+          loadFailedTitle: '工作台加载失败',
+          loadFailed: '无法读取房间和世界状态',
+          playersLoadFailed: '玩家数据读取失败',
+          backupsLoadFailed: '备份列表读取失败',
+          consoleTargetsLoadFailed: '控制台目标读取失败',
+          actionUnavailable: '当前世界状态不可执行该操作',
+          actionTitle: '{action}世界',
+          actionConfirm: '确定要{action}“{room} / {world}”吗？',
+          actionButton: '确认{action}',
+          cleanupButton: '确认清理',
+          actionCompleted: '{action}完成',
+          actionFailed: '{action}失败：{error}',
+          backupCreated: '备份已创建',
+          backupCreateFailed: '创建备份失败：{error}',
+          errorWithDetail: '{message}：{detail}'
+        }
+      },
       liveLogs: {
         fields: {
           room: '房间',
@@ -228,6 +393,171 @@ export const serverMessages = {
           cleanupButton: 'Clean up',
           cleanupSucceeded: 'Failed session cleaned up',
           cleanupFailed: 'Cleanup failed: {error}'
+        }
+      },
+      workspace: {
+        kicker: 'Current management target',
+        title: 'Server workspace',
+        roomSummary: '{name} · {count} worlds',
+        noRoomSelected: 'No room selected',
+        roomSelect: 'Select a room',
+        refresh: 'Refresh workspace',
+        reload: 'Reload',
+        actions: {
+          all: 'All',
+          start: 'Start',
+          stop: 'Stop',
+          restart: 'Restart',
+          cleanup: 'Clean up failed session'
+        },
+        units: {
+          players: 'players'
+        },
+        states: {
+          readFailed: 'Failed to read',
+          noRecords: 'No records',
+          unavailable: 'Unavailable',
+          available: 'Available',
+          notSelected: 'Not selected',
+          dataReadFailed: 'Failed to read data',
+          statusUnavailable: 'Status unavailable',
+          listReadFailed: 'Failed to read list'
+        },
+        empty: {
+          noRooms: 'No managed rooms on the current target',
+          openRooms: 'Open room management',
+          noWorlds: 'This room has no worlds',
+          selectWorld: 'Select a world'
+        },
+        overview: {
+          label: 'Server overview',
+          worldStatus: 'World status',
+          runningShards: '{count} shards running',
+          onlinePlayers: 'Online players',
+          totalPlayers: '{count} players total',
+          diskUsage: 'Disk usage',
+          diskFree: '{value} free'
+        },
+        backups: {
+          latest: 'Latest backup',
+          creating: 'Creating',
+          create: 'Create backup',
+          recordCount: '{count} records',
+          loadFailed: 'Failed to load backups',
+          empty: 'No backups',
+          emptyDescription: 'Room backups will appear here after they are created.'
+        },
+        worlds: {
+          title: 'Worlds and shards',
+          description: 'Shards in the current room',
+          roomSettings: 'Room settings',
+          directoryUnset: 'Directory not set',
+          day: 'Day',
+          season: 'Season',
+          control: 'Control',
+          cleanupFailedSession: 'Clean up failed session',
+          restart: 'Restart world',
+          configure: 'Configure world',
+          actionLabel: '{action} world',
+          roles: {
+            forest: 'Forest world',
+            cave: 'Caves world',
+            custom: 'Custom world'
+          }
+        },
+        operations: {
+          title: 'Runtime control',
+          description: 'View logs from the current shard or send a console command to the selected world.',
+          liveLogs: 'Live logs',
+          shardLogs: 'Shard logs'
+        },
+        console: {
+          title: 'Console',
+          loading: 'Loading console...',
+          selectTarget: 'Select a console target world',
+          selectWorld: 'Select a target world',
+          commandManager: 'Command management',
+          unavailable: 'Console unavailable',
+          placeholder: 'Enter a Lua console command',
+          commandAria: 'Lua console command',
+          target: 'Target: {name}',
+          execute: 'Execute',
+          sent: 'Command sent',
+          failed: 'Command failed',
+          sentDescription: 'The command was sent to the shard console',
+          sendFailed: 'Failed to send command',
+          runRecord: 'Run record {id}',
+          confirmDescription: 'This sends a Lua command to the shard. Enter the room name “{room}” to confirm.',
+          confirmTitle: 'Confirm execution',
+          confirmExecute: 'Execute command',
+          roomMismatch: 'Room name does not match',
+          commonCommands: {
+            title: 'Common commands',
+            save: 'Save world',
+            players: 'List online players',
+            day: 'Show world day',
+            season: 'Show current season',
+            announce: 'Send announcement'
+          }
+        },
+        context: {
+          loading: 'Loading room details...'
+        },
+        players: {
+          title: 'Players',
+          onlineCount: '{count} online',
+          unknownWorld: 'Unknown world',
+          loadFailed: 'Failed to load players',
+          empty: 'No player records',
+          emptyDescription: 'Players will appear here after they join the room.',
+          unknownCharacter: 'Unknown character',
+          characters: {
+            wilson: 'Wilson',
+            willow: 'Willow',
+            wolfgang: 'Wolfgang',
+            wendy: 'Wendy',
+            wx78: 'WX-78',
+            wickerbottom: 'Wickerbottom',
+            woodie: 'Woodie',
+            wes: 'Wes',
+            waxwell: 'Maxwell',
+            wathgrithr: 'Wigfrid',
+            webber: 'Webber',
+            winona: 'Winona',
+            wortox: 'Wortox',
+            wormwood: 'Wormwood',
+            warly: 'Warly',
+            wurt: 'Wurt',
+            walter: 'Walter',
+            wanda: 'Wanda',
+            wonkey: 'Wonkey'
+          }
+        },
+        quickNav: {
+          title: 'Quick links',
+          description: 'Open common management pages for the current room.',
+          label: 'Server quick links',
+          players: 'Players',
+          mods: 'Mods',
+          worldState: 'World state',
+          logQuery: 'Log query'
+        },
+        feedback: {
+          loadFailedTitle: 'Failed to load workspace',
+          loadFailed: 'Unable to load room and world status',
+          playersLoadFailed: 'Failed to load player data',
+          backupsLoadFailed: 'Failed to load backups',
+          consoleTargetsLoadFailed: 'Failed to load console targets',
+          actionUnavailable: 'This action is unavailable in the current world state',
+          actionTitle: '{action} world',
+          actionConfirm: '{action} “{room} / {world}”?',
+          actionButton: 'Confirm {action}',
+          cleanupButton: 'Clean up',
+          actionCompleted: '{action} complete',
+          actionFailed: '{action} failed: {error}',
+          backupCreated: 'Backup created',
+          backupCreateFailed: 'Failed to create backup: {error}',
+          errorWithDetail: '{message}: {detail}'
         }
       },
       liveLogs: {
