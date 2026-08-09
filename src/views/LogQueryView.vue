@@ -219,6 +219,9 @@ export default {
         { type: 'world', name: '世界' },
         { type: 'error', name: '错误' },
         { type: 'warning', name: '警告' },
+        { type: 'startup', name: '专服启动' },
+        { type: 'worldgen', name: '世界生成' },
+        { type: 'diagnostic', name: '引擎诊断' },
         { type: 'unknown', name: '未知' }
       ],
       // 日志数据
@@ -588,6 +591,12 @@ export default {
           return 'destructive';
         case 'warning':
           return 'outline';
+        case 'startup':
+          return 'secondary';
+        case 'worldgen':
+          return 'default';
+        case 'diagnostic':
+          return 'secondary';
         default:
           return 'secondary';
       }

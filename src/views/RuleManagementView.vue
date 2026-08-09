@@ -492,6 +492,9 @@ export default {
         player: 'outline',
         error: 'destructive',
         warning: 'outline',
+        startup: 'secondary',
+        worldgen: 'default',
+        diagnostic: 'secondary',
         version: 'secondary',
         remoteexcute: 'secondary',
         connection: 'secondary'
