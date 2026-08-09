@@ -33,7 +33,7 @@
           <p v-if="taskResult.duration != null"><strong>{{ text('list.result.duration') }}</strong> {{ formatDuration(taskResult.duration) }}</p>
         </div>
 
-        <Alert v-if="taskResult.message"><Info /><AlertTitle>{{ text('list.result.message') }}</AlertTitle><AlertDescription>{{ taskResult.message }}</AlertDescription></Alert>
+        <Alert v-if="taskResult.message"><Info /><AlertTitle>{{ text('list.result.message') }}</AlertTitle><AlertDescription>{{ resultMessage(taskResult.message) }}</AlertDescription></Alert>
 
         <div v-if="taskResult.output" class="result-output">
           <strong>{{ text('list.result.output') }}</strong>
@@ -628,6 +628,12 @@ export default {
     responseMessage(response) {
       return response?.msg || response?.message || response?.data?.msg || response?.data?.message || '';
     },
+    resultMessage(message) {
+      if (message === 'task_started' || message === '任务已开始运行') {
+        return this.text('list.feedback.runStarted');
+      }
+      return message;
+    },
     handleDelete(row) {
       confirmAction(this.text('list.confirm.deleteMessage'), this.text('list.confirm.deleteTitle'), {
         confirmButtonText: this.text('common.actions.confirm'),
@@ -709,11 +715,7 @@ export default {
               (response.status === 200) || // 旧格式 {status: 200, ...}
               (response.data && response.data.status === 200) // 嵌套旧格式
             ) {
-              // 获取成功消息
-              const successMsg =
-                response.msg ||
-                (response.data && response.data.msg) ||
-                this.text('list.feedback.runStarted');
+              const successMsg = this.text('list.feedback.runStarted');
 
               toast.success(successMsg);
               this.fetchData();

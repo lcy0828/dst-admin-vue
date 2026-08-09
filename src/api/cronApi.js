@@ -456,7 +456,7 @@ export const realCronTaskApi = {
     const room = await roomForCached('task', id)
     const job = await automationV2API.runTask(room.id, id)
     const runs = await automationV2API.runs(room.id, { taskId: id, limit: 1, offset: 0 })
-    return nested({ job_id: job.id, log_id: runs.items?.[0]?.id, message: '任务已开始运行' }, '任务已开始运行')
+    return nested({ job_id: job.id, log_id: runs.items?.[0]?.id, message: 'task_started' }, 'task_started')
   },
 
   async getFunctions() {
