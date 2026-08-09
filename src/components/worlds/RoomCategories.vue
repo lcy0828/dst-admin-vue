@@ -2,13 +2,13 @@
   <section class="room-categories" aria-labelledby="room-category-title">
     <header class="categories-header">
       <div>
-        <h2 id="room-category-title">房间筛选</h2>
-        <p>按运行状态和世界类型筛选。</p>
+        <h2 id="room-category-title">{{ $t('worlds.categories.title') }}</h2>
+        <p>{{ $t('worlds.categories.description') }}</p>
       </div>
       <UiButton variant="ghost" size="sm" :disabled="isRefreshing" @click="refreshCategories">
         <Spinner v-if="isRefreshing" data-icon="inline-start" />
         <RefreshCwIcon v-else data-icon="inline-start" />
-        刷新
+        {{ $t('common.actions.refresh') }}
       </UiButton>
     </header>
 
@@ -58,16 +58,25 @@ export default {
     return {
       activeCategory: 'all',
       isRefreshing: false,
-      lastRefreshTime: 0,
-      categories: [
-        { value: 'all', label: '所有房间', icon: markRaw(LayoutGridIcon) },
-        { value: 'active', label: '活跃房间', icon: markRaw(PlayIcon) },
-        { value: 'inactive', label: '非活跃房间', icon: markRaw(PauseIcon) },
-        { value: 'forest', label: '仅主世界', icon: markRaw(SunIcon) },
-        { value: 'cave', label: '仅洞穴', icon: markRaw(MoonIcon) },
-        { value: 'both', label: '混合房间', icon: markRaw(NetworkIcon) }
-      ]
+      lastRefreshTime: 0
     };
+  },
+  computed: {
+    categories() {
+      const icons = {
+        all: markRaw(LayoutGridIcon),
+        active: markRaw(PlayIcon),
+        inactive: markRaw(PauseIcon),
+        forest: markRaw(SunIcon),
+        cave: markRaw(MoonIcon),
+        both: markRaw(NetworkIcon)
+      };
+      return Object.entries(icons).map(([value, icon]) => ({
+        value,
+        icon,
+        label: this.$t(`worlds.categories.filters.${value}`)
+      }));
+    }
   },
   methods: {
     handleCategorySelect(category) {

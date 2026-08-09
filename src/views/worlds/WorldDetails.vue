@@ -2,59 +2,59 @@
   <div class="world-details-page">
     <header class="page-header">
       <div>
-        <h1>世界详情</h1>
-        <p>查看世界基础信息，并执行运行、备份和维护操作。</p>
+        <h1>{{ $t('worlds.details.title') }}</h1>
+        <p>{{ $t('worlds.details.subtitle') }}</p>
       </div>
       <div class="header-actions">
-        <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />返回列表</UiButton>
-        <UiButton :disabled="!canConfigureWorld(world)" :title="!canConfigureWorld(world) ? '请先停止或清理该世界' : ''" @click="editWorld"><Pencil data-icon="inline-start" />编辑世界</UiButton>
+        <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />{{ $t('worlds.details.back') }}</UiButton>
+        <UiButton :disabled="!canConfigureWorld(world)" :title="!canConfigureWorld(world) ? $t('worlds.list.configureDisabled') : ''" @click="editWorld"><Pencil data-icon="inline-start" />{{ $t('worlds.details.edit') }}</UiButton>
       </div>
     </header>
 
-    <div v-if="loading && !world.id" class="details-skeleton" aria-busy="true" aria-label="正在加载世界信息">
+    <div v-if="loading && !world.id" class="details-skeleton" aria-busy="true" :aria-label="$t('worlds.details.loadingAria')">
       <Skeleton class="h-52 w-full" />
       <Skeleton class="h-40 w-full" />
     </div>
 
     <Alert v-else-if="loadError" variant="destructive">
       <CircleAlert />
-      <AlertTitle>世界信息加载失败</AlertTitle>
+      <AlertTitle>{{ $t('worlds.details.loadFailed') }}</AlertTitle>
       <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" @click="loadWorldData">重新加载</UiButton></AlertAction>
+      <AlertAction><UiButton size="sm" variant="outline" @click="loadWorldData">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
     <div v-else-if="world.id" class="details-layout">
       <div class="main-column">
         <Alert v-if="getWorldStatusMessage(world)" :variant="world.status === 'failed' ? 'destructive' : 'default'">
           <CircleAlert />
-          <AlertTitle>{{ world.status === 'failed' ? '世界启动失败' : '世界运行提示' }}</AlertTitle>
+          <AlertTitle>{{ $t(world.status === 'failed' ? 'worlds.details.startFailed' : 'worlds.details.runtimeNotice') }}</AlertTitle>
           <AlertDescription>{{ getWorldStatusMessage(world) }}</AlertDescription>
         </Alert>
         <Card>
           <CardHeader>
-            <CardTitle>世界信息</CardTitle>
-            <CardDescription>{{ world.roomName ? `所属房间：${world.roomName}` : '世界基础信息' }}</CardDescription>
+            <CardTitle>{{ $t('worlds.details.info') }}</CardTitle>
+            <CardDescription>{{ world.roomName ? $t('worlds.details.roomDescription', { room: world.roomName }) : $t('worlds.details.basicDescription') }}</CardDescription>
             <CardAction><Badge :variant="getStatusTag(world)">{{ getStatusName(world) }}</Badge></CardAction>
           </CardHeader>
           <CardContent>
             <dl class="world-info">
-              <div class="info-item"><dt>世界名称</dt><dd>{{ world.name || '--' }}</dd></div>
-              <div class="info-item"><dt>世界类型</dt><dd><Badge :variant="getTypeTag(world.type)">{{ getTypeName(world.type) }}</Badge></dd></div>
-              <div class="info-item"><dt>当前季节</dt><dd>{{ world.season || '--' }}</dd></div>
-              <div class="info-item"><dt>当前天数</dt><dd>{{ world.day ?? '--' }}</dd></div>
-              <div class="info-item"><dt>描述</dt><dd class="description">{{ world.description || '--' }}</dd></div>
+              <div class="info-item"><dt>{{ $t('worlds.details.fields.name') }}</dt><dd>{{ world.name || '--' }}</dd></div>
+              <div class="info-item"><dt>{{ $t('worlds.details.fields.type') }}</dt><dd><Badge :variant="getTypeTag(world.type)">{{ getTypeName(world.type) }}</Badge></dd></div>
+              <div class="info-item"><dt>{{ $t('worlds.details.fields.season') }}</dt><dd>{{ world.season || '--' }}</dd></div>
+              <div class="info-item"><dt>{{ $t('worlds.details.fields.day') }}</dt><dd>{{ world.day ?? '--' }}</dd></div>
+              <div class="info-item"><dt>{{ $t('worlds.details.fields.description') }}</dt><dd class="description">{{ world.description || '--' }}</dd></div>
             </dl>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>世界统计</CardTitle><CardDescription>当前后端可以提供的世界统计。</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('worlds.details.stats') }}</CardTitle><CardDescription>{{ $t('worlds.details.statsDescription') }}</CardDescription></CardHeader>
           <CardContent class="stats-grid">
-            <div class="stat-item"><strong>{{ world.day ?? '--' }}</strong><span>总游戏天数</span></div>
+            <div class="stat-item"><strong>{{ world.day ?? '--' }}</strong><span>{{ $t('worlds.details.totalDays') }}</span></div>
             <Alert>
               <Activity />
-              <AlertTitle>更多统计暂不可用</AlertTitle>
-              <AlertDescription>当前后端尚未返回玩家访问次数和死亡次数。</AlertDescription>
+              <AlertTitle>{{ $t('worlds.details.moreStatsUnavailable') }}</AlertTitle>
+              <AlertDescription>{{ $t('worlds.details.moreStatsDescription') }}</AlertDescription>
             </Alert>
           </CardContent>
         </Card>
@@ -62,7 +62,7 @@
 
       <div class="side-column">
         <Card>
-          <CardHeader><CardTitle>快捷操作</CardTitle><CardDescription>操作当前世界及其所属房间。</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('worlds.details.quickActions') }}</CardTitle><CardDescription>{{ $t('worlds.details.quickActionsDescription') }}</CardDescription></CardHeader>
           <CardContent class="action-list">
             <UiButton
               :variant="getWorldPrimaryAction(world).variant"
@@ -74,21 +74,21 @@
               <Play v-else-if="getWorldPrimaryAction(world).kind === 'start'" data-icon="inline-start" />
               {{ getWorldPrimaryAction(world).label }}
             </UiButton>
-            <UiButton v-if="world.status === 'failed'" variant="outline" :disabled="loading || !canCleanFailedWorld(world)" @click="cleanupFailedWorld"><Square data-icon="inline-start" />清理失败会话</UiButton>
-            <UiButton variant="outline" :disabled="loading || !canStopWorld(world)" @click="regenerateWorld"><RefreshCw data-icon="inline-start" />重新生成</UiButton>
-            <UiButton variant="outline" :disabled="loading" @click="backupWorld"><Archive data-icon="inline-start" />备份世界</UiButton>
-            <UiButton variant="destructive" :disabled="loading || !canDeleteWorld(world)" @click="deleteWorld"><Trash2 data-icon="inline-start" />删除世界</UiButton>
+            <UiButton v-if="world.status === 'failed'" variant="outline" :disabled="loading || !canCleanFailedWorld(world)" @click="cleanupFailedWorld"><Square data-icon="inline-start" />{{ $t('worlds.actions.cleanupSession') }}</UiButton>
+            <UiButton variant="outline" :disabled="loading || !canStopWorld(world)" @click="regenerateWorld"><RefreshCw data-icon="inline-start" />{{ $t('worlds.actions.regenerate') }}</UiButton>
+            <UiButton variant="outline" :disabled="loading" @click="backupWorld"><Archive data-icon="inline-start" />{{ $t('worlds.actions.backup') }}</UiButton>
+            <UiButton variant="destructive" :disabled="loading || !canDeleteWorld(world)" @click="deleteWorld"><Trash2 data-icon="inline-start" />{{ $t('worlds.actions.delete') }}</UiButton>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>最近活动</CardTitle><CardDescription>当前世界的操作与状态变化记录。</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('worlds.details.recentActivity') }}</CardTitle><CardDescription>{{ $t('worlds.details.recentActivityDescription') }}</CardDescription></CardHeader>
           <CardContent>
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon"><Activity /></EmptyMedia>
-                <EmptyTitle>暂无真实活动数据</EmptyTitle>
-                <EmptyDescription>后端返回活动记录后将在这里显示。</EmptyDescription>
+                <EmptyTitle>{{ $t('worlds.details.noActivity') }}</EmptyTitle>
+                <EmptyDescription>{{ $t('worlds.details.noActivityDescription') }}</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </CardContent>
@@ -184,7 +184,7 @@ export default {
       });
     },
     getStatusName(status) {
-      return worldStatusLabel(status);
+      return worldStatusLabel(status, this.$t);
     },
     getStatusTag(status) {
       return worldStatusVariant(status);
@@ -193,7 +193,7 @@ export default {
       return worldStatusMessage(world);
     },
     getWorldPrimaryAction(world) {
-      return worldPrimaryAction(world);
+      return worldPrimaryAction(world, this.$t);
     },
     isWorldStarting(world) {
       return isWorldStarting(world);
@@ -211,24 +211,24 @@ export default {
       return canDeleteRuntimeWorld(world);
     },
     getTypeName(type) {
-      if (type === 'forest' || type === 'master') return '主世界';
-      if (type === 'cave') return '洞穴';
-      return '其他';
+      if (type === 'forest' || type === 'master') return this.$t('worlds.types.master');
+      if (type === 'cave') return this.$t('worlds.types.cave');
+      return this.$t('worlds.types.other');
     },
     getTypeTag(type) {
       if (type === 'cave') return 'secondary';
       return 'outline';
     },
     toggleWorldStatus() {
-      const primaryAction = worldPrimaryAction(this.world);
+      const primaryAction = worldPrimaryAction(this.world, this.$t);
       if (primaryAction.disabled || !primaryAction.kind) {
-        toast.warning(worldStatusMessage(this.world) || '当前世界状态不可操作');
+        toast.warning(worldStatusMessage(this.world) || this.$t('worlds.feedback.actionUnavailable'));
         return;
       }
-      const action = primaryAction.kind === 'stop' ? '停止' : (this.world.status === 'failed' ? '重试启动' : '启动');
-      confirmAction(`确定要${action}世界 "${this.world.name}" 吗?`, `${action}世界`, {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      const action = primaryAction.label;
+      confirmAction(this.$t('worlds.feedback.actionConfirm', { action, world: this.world.name }), this.$t('worlds.feedback.actionTitle', { action }), {
+        confirmButtonText: this.$t('common.actions.confirm'),
+        cancelButtonText: this.$t('common.actions.cancel'),
         type: 'warning'
       }).then(() => {
         this.loading = true;
@@ -237,24 +237,27 @@ export default {
           ? roomApi.stopRoom(request)
           : roomApi.startRoom(request);
         operation
-          .then(async response => {
+          .then(async () => {
             await this.loadWorldData();
-            toast.success(response.msg || `${action}完成`);
+            toast.success(this.$t('worlds.feedback.actionCompleted', { action }));
           })
-          .catch(error => toast.error(`${action}失败：${error.message}`))
+          .catch(error => toast.error(this.$t('worlds.feedback.actionFailed', {
+            action,
+            error: error.message || this.$t('common.errors.unknown')
+          })))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        toast.info('已取消操作');
+        toast.info(this.$t('worlds.feedback.canceled'));
       });
     },
     async cleanupFailedWorld() {
       if (!canCleanFailedRuntimeWorld(this.world)) {
-        toast.warning(worldStatusMessage(this.world) || '当前世界没有可清理的失败会话');
+        toast.warning(worldStatusMessage(this.world) || this.$t('worlds.feedback.cleanupUnavailable'));
         return;
       }
       try {
-        await confirmAction(`确定要停止并清理世界“${this.world.name}”的失败会话吗？`, '清理失败会话', {
-          confirmButtonText: '确认清理',
+        await confirmAction(this.$t('worlds.feedback.cleanupConfirm', { world: this.world.name }), this.$t('worlds.feedback.cleanupTitle'), {
+          confirmButtonText: this.$t('worlds.feedback.cleanupButton'),
           type: 'warning'
         });
       } catch {
@@ -263,33 +266,35 @@ export default {
 
       this.loading = true;
       try {
-        const response = await roomApi.stopRoom({ room_id: this.roomId, world_id: this.worldId });
+        await roomApi.stopRoom({ room_id: this.roomId, world_id: this.worldId });
         await this.loadWorldData();
-        toast.success(response?.msg || '失败会话已清理');
+        toast.success(this.$t('worlds.feedback.cleanupSucceeded'));
       } catch (error) {
-        toast.error(`清理失败：${error.message || '未知错误'}`);
+        toast.error(this.$t('worlds.feedback.cleanupFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       } finally {
         this.loading = false;
       }
     },
     async regenerateWorld() {
       if (!canStopWorld(this.world) && this.world.status === 'running') {
-        toast.error('当前房间尚未接管，无法重新生成世界');
+        toast.error(this.$t('worlds.feedback.unmanagedRegenerate'));
         return;
       }
       if (!canStopWorld(this.world)) {
-        toast.warning('重新生成命令需要世界正在运行，请先启动世界');
+        toast.warning(this.$t('worlds.feedback.regenerateNeedsRunning'));
         return;
       }
       let confirmation;
       try {
         const result = await promptText(
-          `重新生成会清除世界“${this.world.name}”的当前进度。请输入完整房间名“${this.world.roomName}”确认`,
-          '重新生成世界',
+          this.$t('worlds.feedback.regeneratePrompt', { world: this.world.name, room: this.world.roomName }),
+          this.$t('worlds.feedback.regenerateTitle'),
           {
-            confirmButtonText: '确认重新生成',
-            cancelButtonText: '取消',
-            inputValidator: value => value === this.world.roomName || '房间名不匹配'
+            confirmButtonText: this.$t('worlds.feedback.regenerateButton'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            inputValidator: value => value === this.world.roomName || this.$t('worlds.feedback.roomNameMismatch')
           }
         );
         confirmation = result.value;
@@ -299,48 +304,52 @@ export default {
 
       this.loading = true;
       try {
-        const response = await roomApi.regenerateWorld({
+        await roomApi.regenerateWorld({
           room_id: this.roomId,
           world_id: this.worldId,
           confirmation
         });
         await this.loadWorldData();
-        toast.success(response.msg || '重新生成命令已发送到世界进程');
+        toast.success(this.$t('worlds.feedback.regenerated'));
       } catch (error) {
-        toast.error(`重新生成世界失败：${error.message || '未知错误'}`);
+        toast.error(this.$t('worlds.feedback.regenerateFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       } finally {
         this.loading = false;
       }
     },
     backupWorld() {
-      confirmAction(`v2 后端将备份世界 "${this.world.name}" 所属的整个房间 "${this.world.roomName}"，确定继续吗?`, '备份世界', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
+      confirmAction(this.$t('worlds.feedback.backupConfirm', { world: this.world.name, room: this.world.roomName }), this.$t('worlds.feedback.backupTitle'), {
+        confirmButtonText: this.$t('common.actions.confirm'),
+        cancelButtonText: this.$t('common.actions.cancel'),
         type: 'info'
       }).then(() => {
         this.loading = true;
-        roomApi.backupRoom(this.roomId, `世界 ${this.world.name}`)
-          .then(response => toast.success(response.msg || '房间备份已创建'))
-          .catch(error => toast.error(`备份失败：${error.message}`))
+        roomApi.backupRoom(this.roomId, `world ${this.world.name}`)
+          .then(() => toast.success(this.$t('worlds.feedback.backupCreated')))
+          .catch(error => toast.error(this.$t('worlds.feedback.backupFailed', {
+            error: error.message || this.$t('common.errors.unknown')
+          })))
           .finally(() => { this.loading = false; });
       }).catch(() => {
-        toast.info('已取消操作');
+        toast.info(this.$t('worlds.feedback.canceled'));
       });
     },
     async deleteWorld() {
       if (!canDeleteRuntimeWorld(this.world)) {
-        toast.warning(this.world.status === 'failed' ? '请先清理失败会话，再删除该世界' : '删除前请先停止该世界');
+        toast.warning(this.$t(this.world.status === 'failed' ? 'worlds.feedback.deleteNeedsCleanup' : 'worlds.feedback.deleteNeedsStop'));
         return;
       }
       let confirmation;
       try {
         const result = await promptText(
-          `世界“${this.world.name}”将移入可恢复目录。请输入完整房间名“${this.world.roomName}”确认`,
-          '删除世界',
+          this.$t('worlds.feedback.deletePrompt', { world: this.world.name, room: this.world.roomName }),
+          this.$t('worlds.feedback.deleteTitle'),
           {
-            confirmButtonText: '移入恢复目录',
-            cancelButtonText: '取消',
-            inputValidator: value => value === this.world.roomName || '房间名不匹配'
+            confirmButtonText: this.$t('worlds.feedback.moveToRecovery'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            inputValidator: value => value === this.world.roomName || this.$t('worlds.feedback.roomNameMismatch')
           }
         );
         confirmation = result.value;
@@ -350,15 +359,17 @@ export default {
 
       this.loading = true;
       try {
-        const response = await roomApi.deleteWorld({
+        await roomApi.deleteWorld({
           room_id: this.roomId,
           world_id: this.worldId,
           confirmation
         });
-        toast.success(response.msg || '世界已移入可恢复目录');
+        toast.success(this.$t('worlds.feedback.deleteSucceeded'));
         await this.$router.replace('/worlds/list');
       } catch (error) {
-        toast.error(`删除世界失败：${error.message || '未知错误'}`);
+        toast.error(this.$t('worlds.feedback.deleteFailed', {
+          error: error.message || this.$t('common.errors.unknown')
+        }));
       } finally {
         this.loading = false;
       }
@@ -373,7 +384,7 @@ export default {
       ])
         .then(([roomResponse, worlds]) => {
           const world = worlds.find(item => item.id === this.worldId);
-          if (!world) throw new Error('未找到指定世界');
+          if (!world) throw new Error(this.$t('worlds.details.notFound'));
           this.world = {
             ...world,
             roomName: roomResponse.data.name,
@@ -381,8 +392,10 @@ export default {
           };
         })
         .catch(error => {
-          this.loadError = error.message || '无法读取世界详情';
-          toast.error(`获取世界详情失败：${error.message}`);
+          this.loadError = error.message || this.$t('worlds.details.readFailed');
+          toast.error(this.$t('worlds.details.fetchFailed', {
+            error: error.message || this.$t('common.errors.unknown')
+          }));
         })
         .finally(() => { this.loading = false; });
     }
@@ -394,7 +407,7 @@ export default {
       this.worldId = worldId || id;
       this.loadWorldData();
     } else {
-      toast.error('未指定世界ID');
+      toast.error(this.$t('worlds.details.missingId'));
       this.goBack();
     }
   }
