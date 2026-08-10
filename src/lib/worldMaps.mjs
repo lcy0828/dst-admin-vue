@@ -13,7 +13,33 @@ export const WORLD_MAP_CATEGORIES = Object.freeze([
   { id: 'other', defaultVisible: false }
 ])
 
+// DST's default 45-degree camera heading is offset by the minimap's 90-degree axes.
+export const DST_OFFICIAL_MAP_ROTATION = 3 * Math.PI / 4
+export const DST_MAP_ROTATION_STEP = Math.PI / 4
+
 const categoryOrder = new Map(WORLD_MAP_CATEGORIES.map((category, index) => [category.id, index]))
+
+export function normalizeMapRotation(rotation) {
+  const fullTurn = 2 * Math.PI
+  let normalized = Number(rotation) % fullTurn
+  if (!Number.isFinite(normalized)) return DST_OFFICIAL_MAP_ROTATION
+  if (normalized > Math.PI) normalized -= fullTurn
+  if (normalized <= -Math.PI) normalized += fullTurn
+  return normalized
+}
+
+export function mapIconPresentation(category, zoom, selected = false) {
+  const normalizedCategory = categoryOrder.has(category) ? category : 'other'
+  const normalizedZoom = Number.isFinite(Number(zoom)) ? Number(zoom) : 0
+  if (selected) return { visible: true, size: 38 }
+  if (normalizedCategory === 'resource' && normalizedZoom < 3) return { visible: false, size: 0 }
+  if (normalizedCategory === 'other' && normalizedZoom < 4) return { visible: false, size: 0 }
+  if (normalizedZoom < 1.75) {
+    return { visible: true, size: ['spawnPoint', 'player'].includes(normalizedCategory) ? 24 : 18 }
+  }
+  if (normalizedZoom < 3.5) return { visible: true, size: 24 }
+  return { visible: true, size: 32 }
+}
 
 export function normalizeFeatureCategories(categories) {
   if (!Array.isArray(categories)) return []

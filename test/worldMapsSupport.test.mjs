@@ -3,13 +3,17 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
 import {
+  DST_MAP_ROTATION_STEP,
+  DST_OFFICIAL_MAP_ROTATION,
   WORLD_MAP_LAYERS,
   defaultFeatureCategories,
   formatMapBytes,
+  mapIconPresentation,
   mapFeatureCounts,
   mapJobFailure,
   mapStageLabel,
   mapStatusMeta,
+  normalizeMapRotation,
   normalizeFeatureCategories,
   searchMapFeatures
 } from '../src/lib/worldMaps.mjs'
@@ -33,6 +37,18 @@ test('feature categories remain stable, searchable, and counted without dropping
   })
   assert.deepEqual(searchMapFeatures(features, 'MYTH').map(item => item.id), ['myth_tree:1'])
   assert.deepEqual(searchMapFeatures(features, 'mod_unknown').map(item => item.id), ['mod_unknown:1'])
+})
+
+test('map presentation follows the official camera orientation and reduces icon clutter', () => {
+  assert.equal(DST_OFFICIAL_MAP_ROTATION, 3 * Math.PI / 4)
+  assert.equal(DST_MAP_ROTATION_STEP, Math.PI / 4)
+  assert.ok(Math.abs(normalizeMapRotation(DST_OFFICIAL_MAP_ROTATION + 2 * Math.PI) - DST_OFFICIAL_MAP_ROTATION) < Number.EPSILON * 8)
+  assert.equal(normalizeMapRotation(5 * Math.PI / 4), -3 * Math.PI / 4)
+  assert.deepEqual(mapIconPresentation('landmark', 1, false), { visible: true, size: 18 })
+  assert.deepEqual(mapIconPresentation('spawnPoint', 1, false), { visible: true, size: 24 })
+  assert.deepEqual(mapIconPresentation('resource', 2.9, false), { visible: false, size: 0 })
+  assert.deepEqual(mapIconPresentation('resource', 4, false), { visible: true, size: 32 })
+  assert.deepEqual(mapIconPresentation('other', 0, true), { visible: true, size: 38 })
 })
 
 test('map status and stage labels cover every backend state', () => {

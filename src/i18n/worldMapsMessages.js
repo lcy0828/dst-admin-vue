@@ -134,6 +134,8 @@ export const worldMapsMessages = {
         clearSearch: '清除搜索',
         zoomIn: '放大',
         zoomOut: '缩小',
+        rotateMap: '顺时针旋转 45°',
+        resetOrientation: '恢复游戏默认朝向',
         fitMap: '适应地图',
         fullscreen: '全屏',
         exitFullscreen: '退出全屏'
@@ -342,6 +344,8 @@ export const worldMapsMessages = {
         clearSearch: 'Clear search',
         zoomIn: 'Zoom in',
         zoomOut: 'Zoom out',
+        rotateMap: 'Rotate 45° clockwise',
+        resetOrientation: 'Reset to the game default orientation',
         fitMap: 'Fit map',
         fullscreen: 'Fullscreen',
         exitFullscreen: 'Exit fullscreen'

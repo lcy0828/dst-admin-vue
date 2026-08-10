@@ -16,6 +16,12 @@ import ImageStatic from 'ol/source/ImageStatic.js'
 import VectorSource from 'ol/source/Vector.js'
 import View from 'ol/View.js'
 import { Circle as CircleStyle, Fill, Icon as IconStyle, Stroke, Style } from 'ol/style.js'
+import {
+  DST_MAP_ROTATION_STEP,
+  DST_OFFICIAL_MAP_ROTATION,
+  mapIconPresentation,
+  normalizeMapRotation
+} from '@/lib/worldMaps.mjs'
 import 'ol/ol.css'
 
 const props = defineProps({
@@ -75,13 +81,7 @@ function fallbackMarkerStyle(category, selected = false) {
   return style
 }
 
-function minimumIconZoom(category) {
-  if (category === 'resource') return 3
-  if (category === 'other') return 4
-  return -Infinity
-}
-
-function officialIconStyle(payload, selected = false) {
+function officialIconStyle(payload, targetSize, selected = false) {
   const icon = payload?.icon
   if (!props.iconsUrl || !icon) return null
   const x = Number(icon.x)
@@ -90,9 +90,9 @@ function officialIconStyle(payload, selected = false) {
   const height = Number(icon.height)
   if (![x, y, width, height].every(Number.isFinite) || x < 0 || y < 0 || width <= 0 || height <= 0) return null
   const cache = selected ? selectedStyleCache : normalStyleCache
-  const key = `icon:${props.iconsUrl}:${x}:${y}:${width}:${height}`
+  const key = `icon:${props.iconsUrl}:${x}:${y}:${width}:${height}:${targetSize}`
   if (cache.has(key)) return cache.get(key)
-  const baseScale = Math.min(0.58, 36 / Math.max(width, height))
+  const baseScale = Math.min(0.58, targetSize / Math.max(width, height))
   const style = new Style({
     image: new IconStyle({
       src: props.iconsUrl,
@@ -100,7 +100,8 @@ function officialIconStyle(payload, selected = false) {
       offsetOrigin: 'top-left',
       size: [width, height],
       anchor: [0.5, 0.5],
-      scale: baseScale * (selected ? 1.18 : 1)
+      rotateWithView: false,
+      scale: baseScale
     })
   })
   cache.set(key, style)
@@ -111,8 +112,10 @@ function markerStyle(feature, category) {
   const selected = feature.getId() === props.selectedFeatureId
   const zoom = map?.getView()?.getZoom() ?? 0
   const payload = feature.get('payload')
-  const icon = officialIconStyle(payload, selected)
-  if (icon && (selected || zoom >= minimumIconZoom(category))) return selected ? [selectionStyle, icon] : icon
+  const presentation = mapIconPresentation(category, zoom, selected)
+  if (!presentation.visible) return null
+  const icon = officialIconStyle(payload, presentation.size, selected)
+  if (icon) return selected ? [selectionStyle, icon] : icon
   if (selected || zoom >= 5) return fallbackMarkerStyle(category, selected)
   return null
 }
@@ -199,6 +202,8 @@ function buildLayers() {
     center: [dimensions.width / 2, dimensions.height / 2],
     extent: dimensions.extent,
     showFullExtent: true,
+    rotation: DST_OFFICIAL_MAP_ROTATION,
+    constrainRotation: false,
     maxZoom: 10,
     minZoom: -2
   }))
@@ -219,6 +224,16 @@ function zoomIn() {
 
 function zoomOut() {
   map?.getView().animate({ zoom: (map.getView().getZoom() || 0) - 1, duration: 140 })
+}
+
+function rotateClockwise() {
+  const view = map?.getView()
+  if (!view) return
+  view.animate({ rotation: normalizeMapRotation(view.getRotation() + DST_MAP_ROTATION_STEP), duration: 180 })
+}
+
+function resetOrientation() {
+  map?.getView().animate({ rotation: DST_OFFICIAL_MAP_ROTATION, duration: 180 })
 }
 
 function focusFeature(featureId) {
@@ -256,7 +271,7 @@ onBeforeUnmount(() => {
   map = null
 })
 
-defineExpose({ fit, focusFeature, zoomIn, zoomOut })
+defineExpose({ fit, focusFeature, resetOrientation, rotateClockwise, zoomIn, zoomOut })
 </script>
 
 <style scoped>
@@ -270,7 +285,7 @@ defineExpose({ fit, focusFeature, zoomIn, zoomOut })
 .dst-map-root {
   position: relative;
   overflow: hidden;
-  background: var(--muted);
+  background: rgb(27 29 26);
 }
 
 .dst-map-target :deep(.ol-viewport) {

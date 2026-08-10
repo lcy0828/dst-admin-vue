@@ -118,6 +118,8 @@
                   <div class="map-tools">
                     <Tooltip><TooltipTrigger as-child><UiButton variant="outline" size="icon-sm" :aria-label="t('worldMaps.actions.zoomOut')" @click="mapCanvas?.zoomOut()"><ZoomOut /></UiButton></TooltipTrigger><TooltipContent>{{ t('worldMaps.actions.zoomOut') }}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger as-child><UiButton variant="outline" size="icon-sm" :aria-label="t('worldMaps.actions.zoomIn')" @click="mapCanvas?.zoomIn()"><ZoomIn /></UiButton></TooltipTrigger><TooltipContent>{{ t('worldMaps.actions.zoomIn') }}</TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger as-child><UiButton variant="outline" size="icon-sm" :aria-label="t('worldMaps.actions.rotateMap')" @click="mapCanvas?.rotateClockwise()"><RotateCw /></UiButton></TooltipTrigger><TooltipContent>{{ t('worldMaps.actions.rotateMap') }}</TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger as-child><UiButton variant="outline" size="icon-sm" :aria-label="t('worldMaps.actions.resetOrientation')" @click="mapCanvas?.resetOrientation()"><Compass /></UiButton></TooltipTrigger><TooltipContent>{{ t('worldMaps.actions.resetOrientation') }}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger as-child><UiButton variant="outline" size="icon-sm" :aria-label="t('worldMaps.actions.fitMap')" @click="mapCanvas?.fit()"><Scan /></UiButton></TooltipTrigger><TooltipContent>{{ t('worldMaps.actions.fitMap') }}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger as-child><UiButton variant="outline" size="icon-sm" :aria-label="mapViewerFullscreen ? t('worldMaps.actions.exitFullscreen') : t('worldMaps.actions.fullscreen')" @click="toggleMapFullscreen"><Minimize2 v-if="mapViewerFullscreen" /><Maximize2 v-else /></UiButton></TooltipTrigger><TooltipContent>{{ mapViewerFullscreen ? t('worldMaps.actions.exitFullscreen') : t('worldMaps.actions.fullscreen') }}</TooltipContent></Tooltip>
                   </div>
@@ -365,6 +367,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import {
   CircleCheck,
+  Compass,
   Download,
   Eye,
   FileArchive,
@@ -377,6 +380,7 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
+  RotateCw,
   Scan,
   Search,
   TriangleAlert,
