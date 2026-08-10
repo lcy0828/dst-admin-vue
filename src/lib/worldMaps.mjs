@@ -13,8 +13,7 @@ export const WORLD_MAP_CATEGORIES = Object.freeze([
   { id: 'other', defaultVisible: false }
 ])
 
-// DST's default 45-degree camera heading is offset by the minimap's 90-degree axes.
-export const DST_OFFICIAL_MAP_ROTATION = 3 * Math.PI / 4
+export const DST_DEFAULT_MAP_ROTATION = 0
 export const DST_MAP_ROTATION_STEP = Math.PI / 4
 
 const categoryOrder = new Map(WORLD_MAP_CATEGORIES.map((category, index) => [category.id, index]))
@@ -22,7 +21,7 @@ const categoryOrder = new Map(WORLD_MAP_CATEGORIES.map((category, index) => [cat
 export function normalizeMapRotation(rotation) {
   const fullTurn = 2 * Math.PI
   let normalized = Number(rotation) % fullTurn
-  if (!Number.isFinite(normalized)) return DST_OFFICIAL_MAP_ROTATION
+  if (!Number.isFinite(normalized)) return DST_DEFAULT_MAP_ROTATION
   if (normalized > Math.PI) normalized -= fullTurn
   if (normalized <= -Math.PI) normalized += fullTurn
   return normalized

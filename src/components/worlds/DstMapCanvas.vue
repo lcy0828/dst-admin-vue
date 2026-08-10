@@ -17,8 +17,8 @@ import VectorSource from 'ol/source/Vector.js'
 import View from 'ol/View.js'
 import { Circle as CircleStyle, Fill, Icon as IconStyle, Stroke, Style } from 'ol/style.js'
 import {
+  DST_DEFAULT_MAP_ROTATION,
   DST_MAP_ROTATION_STEP,
-  DST_OFFICIAL_MAP_ROTATION,
   mapIconPresentation,
   normalizeMapRotation
 } from '@/lib/worldMaps.mjs'
@@ -48,6 +48,7 @@ const rootElement = ref(null)
 const mapElement = ref(null)
 let map = null
 let resizeObserver = null
+let fitFrame = null
 let imageLayer = null
 let featureLayers = new Map()
 let featuresById = new Map()
@@ -161,7 +162,10 @@ function buildLayers() {
     projection,
     imageExtent: dimensions.extent
   })
-  imageSource.on('imageloadend', () => emit('image-loaded'))
+  imageSource.on('imageloadend', () => {
+    emit('image-loaded')
+    scheduleFit(0)
+  })
   imageSource.on('imageloaderror', () => emit('image-error'))
   imageLayer = new ImageLayer({ source: imageSource })
   imageLayer.setZIndex(0)
@@ -202,20 +206,31 @@ function buildLayers() {
     center: [dimensions.width / 2, dimensions.height / 2],
     extent: dimensions.extent,
     showFullExtent: true,
-    rotation: DST_OFFICIAL_MAP_ROTATION,
+    rotation: DST_DEFAULT_MAP_ROTATION,
     constrainRotation: false,
     maxZoom: 10,
     minZoom: -2
   }))
   applyCategoryVisibility()
-  nextTick(() => fit())
+  scheduleFit(0)
 }
 
-function fit() {
+function fit(duration = 180) {
   const dimensions = mapDimensions()
   if (!map || !dimensions) return
   map.updateSize()
-  map.getView().fit(dimensions.extent, { padding: [24, 24, 24, 24], duration: 180, maxZoom: 2 })
+  map.getView().fit(dimensions.extent, { padding: [24, 24, 24, 24], duration, maxZoom: 2 })
+}
+
+function scheduleFit(duration = 0) {
+  nextTick(() => {
+    if (!map) return
+    if (fitFrame !== null) cancelAnimationFrame(fitFrame)
+    fitFrame = requestAnimationFrame(() => {
+      fitFrame = null
+      fit(duration)
+    })
+  })
 }
 
 function zoomIn() {
@@ -233,7 +248,10 @@ function rotateClockwise() {
 }
 
 function resetOrientation() {
-  map?.getView().animate({ rotation: DST_OFFICIAL_MAP_ROTATION, duration: 180 })
+  const view = map?.getView()
+  if (!view) return
+  view.setRotation(DST_DEFAULT_MAP_ROTATION)
+  fit()
 }
 
 function focusFeature(featureId) {
@@ -252,7 +270,7 @@ function handleMapClick(event) {
 onMounted(() => {
   map = new OlMap({ target: mapElement.value, controls: [], interactions: undefined })
   map.on('singleclick', handleMapClick)
-  resizeObserver = new ResizeObserver(() => map?.updateSize())
+  resizeObserver = new ResizeObserver(() => scheduleFit(0))
   resizeObserver.observe(rootElement.value)
   buildLayers()
 })
@@ -263,6 +281,7 @@ watch(() => props.selectedFeatureId, refreshSelection)
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
+  if (fitFrame !== null) cancelAnimationFrame(fitFrame)
   if (map) {
     map.un('singleclick', handleMapClick)
     clearLayers()
