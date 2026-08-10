@@ -38,6 +38,29 @@ async function getBinary(path, accept) {
   return response.blob()
 }
 
+async function getJSONArtifact(path) {
+  const response = await fetch(`${baseURL}${path}`, {
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      'X-DST-Runtime-Target': getActiveRuntimeTarget().id
+    }
+  })
+  if (!response.ok) {
+    const envelope = await response.json().catch(() => null)
+    throw new APIError(
+      response.status,
+      envelope?.error || { code: 'BINARY_REQUEST_FAILED', message: `Resource request failed (HTTP ${response.status}).` },
+      envelope?.meta?.requestId || response.headers.get('X-Request-Id') || ''
+    )
+  }
+  const artifact = await response.json().catch(() => null)
+  if (!artifact || typeof artifact !== 'object') {
+    throw new APIError(response.status, { code: 'INVALID_RESPONSE', message: 'The server returned an invalid JSON artifact.' })
+  }
+  return artifact
+}
+
 const client = axios.create({
   baseURL,
   timeout: apiConfig.TIMEOUT,
@@ -189,6 +212,8 @@ export const worldMapsV2API = {
   ),
   generate: (roomId, input) => client.post(`/rooms/${encode(roomId)}/maps/actions/generate`, input),
   imageBlob: (mapId, layer) => getBinary(`/maps/${encode(mapId)}/images/${encode(layer)}`, 'image/png'),
+  manifest: mapId => getJSONArtifact(`/maps/${encode(mapId)}/manifest`),
+  features: mapId => getJSONArtifact(`/maps/${encode(mapId)}/features`),
   sessionBlob: sessionId => getBinary(`/sessions/${encode(sessionId)}/download`, 'application/octet-stream')
 }
 

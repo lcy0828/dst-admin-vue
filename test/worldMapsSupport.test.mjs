@@ -3,23 +3,44 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
 import {
+  defaultFeatureCategories,
   formatMapBytes,
+  mapFeatureCounts,
   mapJobFailure,
   mapStageLabel,
   mapStatusMeta,
-  normalizeMapLayers
+  normalizeFeatureCategories,
+  normalizeMapLayers,
+  searchMapFeatures
 } from '../src/lib/worldMaps.mjs'
 
 const source = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('map layers reject unknown values, remove duplicates, and keep terrain below overlays', () => {
+test('map layers use the renderer v1 structured artifact order and upgrade legacy records', () => {
   assert.deepEqual(normalizeMapLayers([
-    'players',
+    'worldState',
     'terrain',
     'unknown',
-    'spawnPoints',
+    'features',
     'terrain'
-  ]), ['terrain', 'spawnPoints', 'players'])
+  ]), ['terrain', 'features', 'worldState'])
+  assert.deepEqual(normalizeMapLayers(['players', 'spawnPoints']), ['terrain', 'features', 'worldState'])
+  assert.deepEqual(normalizeMapLayers(['terrain', 'players']), ['terrain', 'features', 'worldState'])
+})
+
+test('feature categories remain stable, searchable, and counted without dropping MOD prefabs', () => {
+  const features = [
+    { id: 'multiplayer_portal:1', prefab: 'multiplayer_portal', category: 'spawnPoint' },
+    { id: 'myth_tree:1', prefab: 'myth_tree', category: 'resource' },
+    { id: 'mod_unknown:1', prefab: 'mod_unknown', category: 'custom' }
+  ]
+  assert.deepEqual(defaultFeatureCategories(), ['spawnPoint', 'player', 'walrusCamp', 'landmark'])
+  assert.deepEqual(normalizeFeatureCategories(['other', 'spawnPoint', 'other', 'bad']), ['spawnPoint', 'other'])
+  assert.deepEqual(mapFeatureCounts(features), {
+    spawnPoint: 1, player: 0, walrusCamp: 0, landmark: 0, resource: 1, other: 1
+  })
+  assert.deepEqual(searchMapFeatures(features, 'MYTH').map(item => item.id), ['myth_tree:1'])
+  assert.deepEqual(searchMapFeatures(features, 'mod_unknown').map(item => item.id), ['mod_unknown:1'])
 })
 
 test('map status and stage labels cover every backend state', () => {
@@ -27,6 +48,7 @@ test('map status and stage labels cover every backend state', () => {
   assert.deepEqual(mapStatusMeta('succeeded'), { label: '可用', variant: 'default' })
   assert.deepEqual(mapStatusMeta('failed'), { label: '失败', variant: 'destructive' })
   assert.equal(mapStageLabel('validate'), '校验图片')
+  assert.equal(mapStageLabel('snapshot'), '复制快照')
   assert.equal(mapStageLabel('interrupted'), '服务中断')
 })
 
@@ -57,6 +79,8 @@ test('formal map route and page use the authenticated v2 map contract', async ()
   assert.match(navigation, /to:\s*'\/worlds\/maps'/)
   assert.match(page, /worldMapsV2API\.generate/)
   assert.match(api, /'X-DST-Runtime-Target': getActiveRuntimeTarget\(\)\.id/)
+  assert.match(page, /worldMapsV2API\.manifest/)
+  assert.match(page, /worldMapsV2API\.features/)
   assert.match(page, /worldMapsV2API\.imageBlob/)
   assert.match(page, /worldMapsV2API\.sessionBlob/)
   assert.doesNotMatch(page, /sessionDownloadURL|imageURL/)

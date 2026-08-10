@@ -2,10 +2,20 @@ import { mapJobFailure, mapStatusMeta } from '../lib/worldMaps.mjs'
 
 const LAYER_KEYS = Object.freeze({
   terrain: 'terrain',
+  features: 'features',
   walrusCamps: 'walrusCamps',
   spawnPoints: 'spawnPoints',
   players: 'players',
   worldState: 'worldState'
+})
+
+const FEATURE_CATEGORY_KEYS = Object.freeze({
+  spawnPoint: 'spawnPoint',
+  player: 'player',
+  walrusCamp: 'walrusCamp',
+  landmark: 'landmark',
+  resource: 'resource',
+  other: 'other'
 })
 
 const STATUS_KEYS = Object.freeze({
@@ -16,6 +26,7 @@ const STATUS_KEYS = Object.freeze({
 })
 
 const STAGE_KEYS = Object.freeze({
+  snapshot: 'snapshot',
   renderer: 'renderer',
   staging: 'staging',
   validate: 'validate',
@@ -52,6 +63,10 @@ function translatedValue(value, keys, namespace, translate, emptyKey = 'worldMap
 
 export function worldMapLayerLabel(layer, translate) {
   return translatedValue(layer, LAYER_KEYS, 'worldMaps.layers', translate)
+}
+
+export function worldMapFeatureCategoryLabel(category, translate) {
+  return translatedValue(category, FEATURE_CATEGORY_KEYS, 'worldMaps.categories', translate)
 }
 
 export function worldMapStatusMeta(status, translate) {
@@ -118,7 +133,13 @@ export const worldMapsMessages = {
         downloadSessionAria: '下载 Session {file}',
         viewMap: '查看地图',
         viewDiagnostic: '查看诊断',
-        viewDiagnosticAria: '查看地图失败诊断'
+        viewDiagnosticAria: '查看地图失败诊断',
+        clearSearch: '清除搜索',
+        zoomIn: '放大',
+        zoomOut: '缩小',
+        fitMap: '适应地图',
+        fullscreen: '全屏',
+        exitFullscreen: '退出全屏'
       },
       source: {
         title: '世界来源',
@@ -130,6 +151,8 @@ export const worldMapsMessages = {
         selectWorld: '选择世界'
       },
       renderer: {
+        protocol: 'Renderer v{version}',
+        unavailableBadge: 'Renderer 不可用',
         unavailableTitle: '地图渲染器未就绪',
         unavailableDescription: '当前节点未找到可执行的 dst-map-renderer。已有地图查看和 Session 下载不受影响，新地图生成暂不可用。',
         readyTitle: '地图渲染器已就绪',
@@ -150,6 +173,8 @@ export const worldMapsMessages = {
         snapshotMetadata: '{size} · {count} 位玩家数据 · {time}',
         layers: '地图图层',
         layersDescription: '地形层始终生成，可叠加位置和世界状态图层。',
+        output: '固定产物',
+        outputDescription: 'Renderer v1 每次生成完整地形、实体和世界状态。',
         diagnosticSnapshots: '{count} 个可诊断快照'
       },
       sessions: {
@@ -172,6 +197,21 @@ export const worldMapsMessages = {
         description: '选择或生成一个可用地图版本。',
         layerAlt: '{world} {layer}图层',
         partialLayersFailed: '部分地图图层加载失败',
+        searchPlaceholder: '搜索 prefab 或实体 ID',
+        searchResults: '{count} 个匹配实体',
+        noSearchResults: '没有匹配的实体',
+        categoryFilters: '实体图层',
+        artifactLoadFailedTitle: '地图产物加载失败',
+        terrainLoadFailedTitle: '地形图加载失败',
+        terrainLoadFailedDescription: '地形图片无法解码或已不可用，请查看其他地图版本。',
+        legacyTitle: '旧版地图',
+        legacyDescription: '该版本没有结构化实体和世界状态，仍可查看地形。重新生成即可升级为 Renderer v1。',
+        statistics: {
+          tiles: '地形块',
+          features: '实体',
+          unknownTiles: '扩展 Tile',
+          warnings: '警告'
+        },
         emptyTitle: '还没有可用地图',
         emptyRendererReady: '选择 Session 后生成第一个地图版本。',
         emptyRendererUnavailable: '配置地图渲染器后即可从 Session 生成地图。'
@@ -187,6 +227,8 @@ export const worldMapsMessages = {
           status: '状态',
           stage: '阶段',
           layers: '图层',
+          features: '实体',
+          warnings: '警告',
           actions: '操作'
         },
         emptyTitle: '没有地图版本',
@@ -199,12 +241,35 @@ export const worldMapsMessages = {
         rendererOutput: '渲染器输出',
         noLogs: '渲染器没有返回日志。'
       },
+      worldState: {
+        title: '世界快照',
+        description: '从当前 Session 提取的持久化世界状态。',
+        emptyTitle: '没有世界状态',
+        emptyDescription: '旧版地图或当前 Session 未包含可读取的世界状态。',
+        warningsTitle: '{count} 条渲染警告'
+      },
+      feature: {
+        title: '实体详情',
+        worldCoordinates: '世界坐标 X / Z',
+        pixelCoordinates: '图片坐标 X / Y',
+        properties: '存档属性',
+        noProperties: '该实体没有可展示的附加属性。'
+      },
       layers: {
         terrain: '地形',
+        features: '实体',
         walrusCamps: '海象营地',
         spawnPoints: '出生点',
         players: '玩家',
         worldState: '世界状态'
+      },
+      categories: {
+        spawnPoint: '出生点',
+        player: '玩家',
+        walrusCamp: '海象营地',
+        landmark: '地标',
+        resource: '资源',
+        other: '其他 / MOD'
       },
       statuses: {
         running: '生成中',
@@ -213,9 +278,10 @@ export const worldMapsMessages = {
         canceled: '已取消'
       },
       stages: {
+        snapshot: '复制快照',
         renderer: '渲染',
         staging: '准备目录',
-        validate: '校验图片',
+        validate: '校验产物',
         publish: '发布',
         interrupted: '服务中断',
         complete: '完成'
@@ -226,6 +292,7 @@ export const worldMapsMessages = {
         worldsLoadFailed: '无法读取世界列表：{error}',
         mapsLoadFailed: '无法读取地图版本：{error}',
         sessionsLoadFailed: '无法读取 Session 快照：{error}',
+        artifactsLoadFailed: '无法读取地图产物：{error}',
         withRequestId: '{message}（请求 ID：{requestId}）',
         codes: {
           invalidJson: '地图生成配置无效',
@@ -279,7 +346,13 @@ export const worldMapsMessages = {
         downloadSessionAria: 'Download Session {file}',
         viewMap: 'View map',
         viewDiagnostic: 'View diagnostics',
-        viewDiagnosticAria: 'View map generation failure diagnostics'
+        viewDiagnosticAria: 'View map generation failure diagnostics',
+        clearSearch: 'Clear search',
+        zoomIn: 'Zoom in',
+        zoomOut: 'Zoom out',
+        fitMap: 'Fit map',
+        fullscreen: 'Fullscreen',
+        exitFullscreen: 'Exit fullscreen'
       },
       source: {
         title: 'World source',
@@ -291,6 +364,8 @@ export const worldMapsMessages = {
         selectWorld: 'Select a world'
       },
       renderer: {
+        protocol: 'Renderer v{version}',
+        unavailableBadge: 'Renderer unavailable',
         unavailableTitle: 'Map renderer not ready',
         unavailableDescription: 'No executable dst-map-renderer was found on this node. Existing maps and Session downloads remain available, but new maps cannot be generated yet.',
         readyTitle: 'Map renderer ready',
@@ -311,6 +386,8 @@ export const worldMapsMessages = {
         snapshotMetadata: '{size} · {count} player records · {time}',
         layers: 'Map layers',
         layersDescription: 'Terrain is always generated. Location and world-state overlays are optional.',
+        output: 'Fixed artifacts',
+        outputDescription: 'Renderer v1 always emits complete terrain, entity, and world-state data.',
         diagnosticSnapshots: '{count} diagnostic snapshots'
       },
       sessions: {
@@ -333,6 +410,21 @@ export const worldMapsMessages = {
         description: 'Select or generate an available map version.',
         layerAlt: '{world} {layer} layer',
         partialLayersFailed: 'Some map layers could not be loaded',
+        searchPlaceholder: 'Search prefab or entity ID',
+        searchResults: '{count} matching entities',
+        noSearchResults: 'No matching entities',
+        categoryFilters: 'Entity layers',
+        artifactLoadFailedTitle: 'Could not load map artifacts',
+        terrainLoadFailedTitle: 'Could not load terrain',
+        terrainLoadFailedDescription: 'The terrain image could not be decoded or is no longer available. Select another map version.',
+        legacyTitle: 'Legacy map',
+        legacyDescription: 'This version has no structured entity or world-state data, but its terrain remains available. Generate it again to upgrade to Renderer v1.',
+        statistics: {
+          tiles: 'Tiles',
+          features: 'Entities',
+          unknownTiles: 'Extended tiles',
+          warnings: 'Warnings'
+        },
         emptyTitle: 'No maps available',
         emptyRendererReady: 'Select a Session to generate the first map version.',
         emptyRendererUnavailable: 'Configure the map renderer to generate maps from Sessions.'
@@ -348,6 +440,8 @@ export const worldMapsMessages = {
           status: 'Status',
           stage: 'Stage',
           layers: 'Layers',
+          features: 'Entities',
+          warnings: 'Warnings',
           actions: 'Actions'
         },
         emptyTitle: 'No map versions',
@@ -360,12 +454,35 @@ export const worldMapsMessages = {
         rendererOutput: 'Renderer output',
         noLogs: 'The renderer did not return any logs.'
       },
+      worldState: {
+        title: 'World snapshot',
+        description: 'Persistent world state extracted from the current Session.',
+        emptyTitle: 'No world state',
+        emptyDescription: 'The legacy map or current Session has no readable world state.',
+        warningsTitle: '{count} renderer warnings'
+      },
+      feature: {
+        title: 'Entity details',
+        worldCoordinates: 'World coordinates X / Z',
+        pixelCoordinates: 'Image coordinates X / Y',
+        properties: 'Save properties',
+        noProperties: 'This entity has no additional properties to display.'
+      },
       layers: {
         terrain: 'Terrain',
+        features: 'Entities',
         walrusCamps: 'Walrus camps',
         spawnPoints: 'Spawn points',
         players: 'Players',
         worldState: 'World state'
+      },
+      categories: {
+        spawnPoint: 'Spawn points',
+        player: 'Players',
+        walrusCamp: 'Walrus camps',
+        landmark: 'Landmarks',
+        resource: 'Resources',
+        other: 'Other / MOD'
       },
       statuses: {
         running: 'Generating',
@@ -374,9 +491,10 @@ export const worldMapsMessages = {
         canceled: 'Canceled'
       },
       stages: {
+        snapshot: 'Copying snapshot',
         renderer: 'Rendering',
         staging: 'Preparing directory',
-        validate: 'Validating images',
+        validate: 'Validating artifacts',
         publish: 'Publishing',
         interrupted: 'Service interrupted',
         complete: 'Complete'
@@ -387,6 +505,7 @@ export const worldMapsMessages = {
         worldsLoadFailed: 'Could not read worlds: {error}',
         mapsLoadFailed: 'Could not read map versions: {error}',
         sessionsLoadFailed: 'Could not read Session snapshots: {error}',
+        artifactsLoadFailed: 'Could not read map artifacts: {error}',
         withRequestId: '{message} (request ID: {requestId})',
         codes: {
           invalidJson: 'The map generation configuration is invalid',

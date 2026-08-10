@@ -1,22 +1,68 @@
 export const WORLD_MAP_LAYERS = Object.freeze([
-  { id: 'terrain', label: '地形' },
-  { id: 'walrusCamps', label: '海象营地' },
-  { id: 'spawnPoints', label: '出生点' },
-  { id: 'players', label: '玩家' },
-  { id: 'worldState', label: '世界状态' }
+  { id: 'terrain' },
+  { id: 'features' },
+  { id: 'worldState' }
 ])
 
 const layerOrder = new Map(WORLD_MAP_LAYERS.map((layer, index) => [layer.id, index]))
+const legacyLayers = new Set(['walrusCamps', 'spawnPoints', 'players'])
+
+export const WORLD_MAP_CATEGORIES = Object.freeze([
+  { id: 'spawnPoint', defaultVisible: true },
+  { id: 'player', defaultVisible: true },
+  { id: 'walrusCamp', defaultVisible: true },
+  { id: 'landmark', defaultVisible: true },
+  { id: 'resource', defaultVisible: false },
+  { id: 'other', defaultVisible: false }
+])
+
+const categoryOrder = new Map(WORLD_MAP_CATEGORIES.map((category, index) => [category.id, index]))
 
 export function normalizeMapLayers(layers) {
   if (!Array.isArray(layers)) return []
-  return [...new Set(layers)]
+  if (layers.some(layer => legacyLayers.has(layer))) return WORLD_MAP_LAYERS.map(layer => layer.id)
+  const normalized = [...new Set(layers)]
     .filter(layer => layerOrder.has(layer))
     .sort((left, right) => layerOrder.get(left) - layerOrder.get(right))
+  return normalized
+}
+
+export function normalizeFeatureCategories(categories) {
+  if (!Array.isArray(categories)) return []
+  return [...new Set(categories)]
+    .filter(category => categoryOrder.has(category))
+    .sort((left, right) => categoryOrder.get(left) - categoryOrder.get(right))
+}
+
+export function defaultFeatureCategories() {
+  return WORLD_MAP_CATEGORIES.filter(category => category.defaultVisible).map(category => category.id)
+}
+
+export function mapFeatureCounts(features) {
+  const counts = Object.fromEntries(WORLD_MAP_CATEGORIES.map(category => [category.id, 0]))
+  for (const feature of Array.isArray(features) ? features : []) {
+    const category = categoryOrder.has(feature?.category) ? feature.category : 'other'
+    counts[category] += 1
+  }
+  return counts
+}
+
+export function searchMapFeatures(features, query, limit = 80) {
+  const needle = String(query || '').trim().toLocaleLowerCase()
+  if (!needle) return []
+  const result = []
+  for (const feature of Array.isArray(features) ? features : []) {
+    const prefab = String(feature?.prefab || '')
+    const id = String(feature?.id || '')
+    if (!prefab.toLocaleLowerCase().includes(needle) && !id.toLocaleLowerCase().includes(needle)) continue
+    result.push(feature)
+    if (result.length >= Math.max(1, Number(limit) || 80)) break
+  }
+  return result
 }
 
 export function mapLayerLabel(layer) {
-  return WORLD_MAP_LAYERS.find(item => item.id === layer)?.label || layer
+  return WORLD_MAP_LAYERS.find(item => item.id === layer)?.id || layer
 }
 
 export function mapStatusMeta(status) {
@@ -29,6 +75,7 @@ export function mapStatusMeta(status) {
 
 export function mapStageLabel(stage) {
   return {
+    snapshot: '复制快照',
     renderer: '渲染',
     staging: '准备目录',
     validate: '校验图片',

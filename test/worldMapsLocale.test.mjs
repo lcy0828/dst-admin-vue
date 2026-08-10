@@ -6,6 +6,7 @@ import {
   formatWorldMapTime,
   worldMapDiagnosticError,
   worldMapErrorDetail,
+  worldMapFeatureCategoryLabel,
   worldMapJobFailure,
   worldMapLayerLabel,
   worldMapsMessages,
@@ -44,7 +45,9 @@ test('world map labels translate known protocol values without rewriting unknown
   assert.equal(worldMapLayerLabel('customOverlay', en), 'customOverlay')
   assert.deepEqual(worldMapStatusMeta('succeeded', en), { label: 'Available', variant: 'default' })
   assert.equal(worldMapStatusMeta('custom_status', en).label, 'custom_status')
-  assert.equal(worldMapStageLabel('validate', en), 'Validating images')
+  assert.equal(worldMapStageLabel('validate', en), 'Validating artifacts')
+  assert.equal(worldMapFeatureCategoryLabel('resource', zh), '资源')
+  assert.equal(worldMapFeatureCategoryLabel('customCategory', en), 'customCategory')
   assert.equal(worldMapStageLabel('custom_stage', zh), 'custom_stage')
 })
 
