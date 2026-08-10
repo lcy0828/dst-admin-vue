@@ -13,7 +13,9 @@ export const WORLD_MAP_CATEGORIES = Object.freeze([
   { id: 'other', defaultVisible: false }
 ])
 
-export const DST_DEFAULT_MAP_ROTATION = 0
+// DST starts at a 45-degree camera heading. OpenLayers uses the inverse view
+// rotation to present the same world orientation on screen.
+export const DST_DEFAULT_MAP_ROTATION = -Math.PI / 4
 export const DST_MAP_ROTATION_STEP = Math.PI / 4
 
 const categoryOrder = new Map(WORLD_MAP_CATEGORIES.map((category, index) => [category.id, index]))
