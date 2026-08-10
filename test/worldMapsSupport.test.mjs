@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 
 import {
+  WORLD_MAP_LAYERS,
   defaultFeatureCategories,
   formatMapBytes,
   mapFeatureCounts,
@@ -10,22 +11,13 @@ import {
   mapStageLabel,
   mapStatusMeta,
   normalizeFeatureCategories,
-  normalizeMapLayers,
   searchMapFeatures
 } from '../src/lib/worldMaps.mjs'
 
 const source = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
-test('map layers use the renderer v1 structured artifact order and upgrade legacy records', () => {
-  assert.deepEqual(normalizeMapLayers([
-    'worldState',
-    'terrain',
-    'unknown',
-    'features',
-    'terrain'
-  ]), ['terrain', 'features', 'worldState'])
-  assert.deepEqual(normalizeMapLayers(['players', 'spawnPoints']), ['terrain', 'features', 'worldState'])
-  assert.deepEqual(normalizeMapLayers(['terrain', 'players']), ['terrain', 'features', 'worldState'])
+test('map layers expose only the renderer v1 structured artifact order', () => {
+  assert.deepEqual(WORLD_MAP_LAYERS.map(layer => layer.id), ['terrain', 'features', 'worldState'])
 })
 
 test('feature categories remain stable, searchable, and counted without dropping MOD prefabs', () => {
@@ -84,5 +76,6 @@ test('formal map route and page use the authenticated v2 map contract', async ()
   assert.match(page, /worldMapsV2API\.imageBlob/)
   assert.match(page, /worldMapsV2API\.sessionBlob/)
   assert.doesNotMatch(page, /sessionDownloadURL|imageURL/)
+  assert.doesNotMatch(page, /legacyManifest|legacyMap/)
   assert.doesNotMatch(page, /mock|demo|Math\.random/)
 })

@@ -40,8 +40,8 @@ test('world map labels translate known protocol values without rewriting unknown
   const zh = translator('zh-CN')
   const en = translator('en-US')
 
-  assert.equal(worldMapLayerLabel('walrusCamps', zh), '海象营地')
-  assert.equal(worldMapLayerLabel('walrusCamps', en), 'Walrus camps')
+  assert.equal(worldMapLayerLabel('features', zh), '实体')
+  assert.equal(worldMapLayerLabel('features', en), 'Entities')
   assert.equal(worldMapLayerLabel('customOverlay', en), 'customOverlay')
   assert.deepEqual(worldMapStatusMeta('succeeded', en), { label: 'Available', variant: 'default' })
   assert.equal(worldMapStatusMeta('custom_status', en).label, 'custom_status')

@@ -178,12 +178,6 @@
                 <AlertTitle>{{ t('worldMaps.viewer.terrainLoadFailedTitle') }}</AlertTitle>
                 <AlertDescription>{{ t('worldMaps.viewer.terrainLoadFailedDescription') }}</AlertDescription>
               </Alert>
-              <Alert v-else-if="legacyMap">
-                <TriangleAlert />
-                <AlertTitle>{{ t('worldMaps.viewer.legacyTitle') }}</AlertTitle>
-                <AlertDescription>{{ t('worldMaps.viewer.legacyDescription') }}</AlertDescription>
-              </Alert>
-
               <div v-if="manifest" class="map-statistics">
                 <div><span>{{ t('worldMaps.viewer.statistics.tiles') }}</span><strong>{{ manifest.statistics?.tileCount ?? '--' }}</strong></div>
                 <Separator orientation="vertical" />
@@ -461,7 +455,6 @@ const manifest = ref(null)
 const mapFeatures = ref([])
 const mapArtifactLoading = ref(false)
 const mapArtifactFailure = ref(null)
-const legacyMap = ref(false)
 const mapCanvas = ref(null)
 const mapViewerCard = ref(null)
 const mapViewerFullscreen = ref(false)
@@ -571,7 +564,6 @@ function clearMapArtifacts() {
   manifest.value = null
   mapFeatures.value = []
   mapArtifactFailure.value = null
-  legacyMap.value = false
   selectedFeature.value = null
   featurePanelOpen.value = false
   featureSearch.value = ''
@@ -579,54 +571,28 @@ function clearMapArtifacts() {
   mapArtifactLoading.value = false
 }
 
-function legacyManifest(map) {
-  const width = Number(map?.width)
-  const height = Number(map?.height)
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null
-  return {
-    protocolVersion: 'legacy',
-    map: { imageWidth: width, imageHeight: height },
-    statistics: { tileCount: 0, unknownTileCount: 0, featureCount: 0 },
-    worldState: {},
-    warnings: []
-  }
-}
-
 async function loadMapArtifacts(map) {
   clearMapArtifacts()
   if (!map?.id) return
   const token = artifactEpoch
   mapArtifactLoading.value = true
-  const [imageResult, manifestResult, featuresResult] = await Promise.allSettled([
-    worldMapsV2API.imageBlob(map.id, 'terrain'),
-    worldMapsV2API.manifest(map.id),
-    worldMapsV2API.features(map.id)
-  ])
-  if (destroyed || token !== artifactEpoch) return
   try {
-    if (imageResult.status === 'rejected') throw imageResult.reason
-    let nextManifest
-    let nextFeatures
-    if (manifestResult.status === 'fulfilled' && featuresResult.status === 'fulfilled') {
-      nextManifest = manifestResult.value
-      nextFeatures = featuresResult.value?.features
-      if (nextManifest?.protocolVersion !== '1' || !Array.isArray(nextFeatures)) throw { code: 'INVALID_RESPONSE' }
-    } else if (manifestResult.reason?.status === 404 && featuresResult.reason?.status === 404) {
-      nextManifest = legacyManifest(map)
-      nextFeatures = []
-      legacyMap.value = true
-      if (!nextManifest) throw { code: 'INVALID_RESPONSE' }
-    } else {
-      throw manifestResult.status === 'rejected' ? manifestResult.reason : featuresResult.reason
-    }
+    const [imageBlob, nextManifest, featureCollection] = await Promise.all([
+      worldMapsV2API.imageBlob(map.id, 'terrain'),
+      worldMapsV2API.manifest(map.id),
+      worldMapsV2API.features(map.id)
+    ])
+    if (destroyed || token !== artifactEpoch) return
+    const nextFeatures = featureCollection?.features
+    if (nextManifest?.protocolVersion !== '1' || !Array.isArray(nextFeatures)) throw { code: 'INVALID_RESPONSE' }
     const width = Number(nextManifest?.map?.imageWidth)
     const height = Number(nextManifest?.map?.imageHeight)
     if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) throw { code: 'INVALID_RESPONSE' }
     if (map.sourceSha256 && nextManifest.sourceSha256 !== map.sourceSha256) throw { code: 'INVALID_RESPONSE' }
-    if (!legacyMap.value && Number(nextManifest?.statistics?.featureCount) !== nextFeatures.length) throw { code: 'INVALID_RESPONSE' }
+    if (Number(nextManifest?.statistics?.featureCount) !== nextFeatures.length) throw { code: 'INVALID_RESPONSE' }
     manifest.value = nextManifest
     mapFeatures.value = nextFeatures
-    terrainURL.value = URL.createObjectURL(imageResult.value)
+    terrainURL.value = URL.createObjectURL(imageBlob)
   } catch (error) {
     mapArtifactFailure.value = { key: 'worldMaps.errors.artifactsLoadFailed', error }
   } finally {

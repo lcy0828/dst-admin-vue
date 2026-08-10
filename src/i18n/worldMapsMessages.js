@@ -3,9 +3,6 @@ import { mapJobFailure, mapStatusMeta } from '../lib/worldMaps.mjs'
 const LAYER_KEYS = Object.freeze({
   terrain: 'terrain',
   features: 'features',
-  walrusCamps: 'walrusCamps',
-  spawnPoints: 'spawnPoints',
-  players: 'players',
   worldState: 'worldState'
 })
 
@@ -204,8 +201,6 @@ export const worldMapsMessages = {
         artifactLoadFailedTitle: '地图产物加载失败',
         terrainLoadFailedTitle: '地形图加载失败',
         terrainLoadFailedDescription: '地形图片无法解码或已不可用，请查看其他地图版本。',
-        legacyTitle: '旧版地图',
-        legacyDescription: '该版本没有结构化实体和世界状态，仍可查看地形。重新生成即可升级为 Renderer v1。',
         statistics: {
           tiles: '地形块',
           features: '实体',
@@ -245,7 +240,7 @@ export const worldMapsMessages = {
         title: '世界快照',
         description: '从当前 Session 提取的持久化世界状态。',
         emptyTitle: '没有世界状态',
-        emptyDescription: '旧版地图或当前 Session 未包含可读取的世界状态。',
+        emptyDescription: '当前 Session 未包含可读取的世界状态。',
         warningsTitle: '{count} 条渲染警告'
       },
       feature: {
@@ -258,9 +253,6 @@ export const worldMapsMessages = {
       layers: {
         terrain: '地形',
         features: '实体',
-        walrusCamps: '海象营地',
-        spawnPoints: '出生点',
-        players: '玩家',
         worldState: '世界状态'
       },
       categories: {
@@ -417,8 +409,6 @@ export const worldMapsMessages = {
         artifactLoadFailedTitle: 'Could not load map artifacts',
         terrainLoadFailedTitle: 'Could not load terrain',
         terrainLoadFailedDescription: 'The terrain image could not be decoded or is no longer available. Select another map version.',
-        legacyTitle: 'Legacy map',
-        legacyDescription: 'This version has no structured entity or world-state data, but its terrain remains available. Generate it again to upgrade to Renderer v1.',
         statistics: {
           tiles: 'Tiles',
           features: 'Entities',
@@ -458,7 +448,7 @@ export const worldMapsMessages = {
         title: 'World snapshot',
         description: 'Persistent world state extracted from the current Session.',
         emptyTitle: 'No world state',
-        emptyDescription: 'The legacy map or current Session has no readable world state.',
+        emptyDescription: 'The current Session has no readable world state.',
         warningsTitle: '{count} renderer warnings'
       },
       feature: {
@@ -471,9 +461,6 @@ export const worldMapsMessages = {
       layers: {
         terrain: 'Terrain',
         features: 'Entities',
-        walrusCamps: 'Walrus camps',
-        spawnPoints: 'Spawn points',
-        players: 'Players',
         worldState: 'World state'
       },
       categories: {

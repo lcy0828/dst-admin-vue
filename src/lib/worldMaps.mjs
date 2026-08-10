@@ -4,9 +4,6 @@ export const WORLD_MAP_LAYERS = Object.freeze([
   { id: 'worldState' }
 ])
 
-const layerOrder = new Map(WORLD_MAP_LAYERS.map((layer, index) => [layer.id, index]))
-const legacyLayers = new Set(['walrusCamps', 'spawnPoints', 'players'])
-
 export const WORLD_MAP_CATEGORIES = Object.freeze([
   { id: 'spawnPoint', defaultVisible: true },
   { id: 'player', defaultVisible: true },
@@ -17,15 +14,6 @@ export const WORLD_MAP_CATEGORIES = Object.freeze([
 ])
 
 const categoryOrder = new Map(WORLD_MAP_CATEGORIES.map((category, index) => [category.id, index]))
-
-export function normalizeMapLayers(layers) {
-  if (!Array.isArray(layers)) return []
-  if (layers.some(layer => legacyLayers.has(layer))) return WORLD_MAP_LAYERS.map(layer => layer.id)
-  const normalized = [...new Set(layers)]
-    .filter(layer => layerOrder.has(layer))
-    .sort((left, right) => layerOrder.get(left) - layerOrder.get(right))
-  return normalized
-}
 
 export function normalizeFeatureCategories(categories) {
   if (!Array.isArray(categories)) return []
