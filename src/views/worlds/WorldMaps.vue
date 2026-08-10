@@ -158,6 +158,7 @@
                   v-if="terrainURL && manifest"
                   ref="mapCanvas"
                   :terrain-url="terrainURL"
+                  :icons-url="iconsURL"
                   :manifest="manifest"
                   :features="mapFeatures"
                   :visible-categories="visibleCategories"
@@ -449,6 +450,7 @@ const mapFailure = ref(null)
 const sessionFailure = ref(null)
 
 const terrainURL = ref('')
+const iconsURL = ref('')
 const terrainLoaded = ref(false)
 const terrainFailed = ref(false)
 const manifest = ref(null)
@@ -558,7 +560,9 @@ function updateRouteSelection() {
 function clearMapArtifacts() {
   artifactEpoch += 1
   if (terrainURL.value) URL.revokeObjectURL(terrainURL.value)
+  if (iconsURL.value) URL.revokeObjectURL(iconsURL.value)
   terrainURL.value = ''
+  iconsURL.value = ''
   terrainLoaded.value = false
   terrainFailed.value = false
   manifest.value = null
@@ -577,22 +581,27 @@ async function loadMapArtifacts(map) {
   const token = artifactEpoch
   mapArtifactLoading.value = true
   try {
-    const [imageBlob, nextManifest, featureCollection] = await Promise.all([
+    const [imageBlob, iconsBlob, nextManifest, featureCollection] = await Promise.all([
       worldMapsV2API.imageBlob(map.id, 'terrain'),
+      worldMapsV2API.imageBlob(map.id, 'icons'),
       worldMapsV2API.manifest(map.id),
       worldMapsV2API.features(map.id)
     ])
     if (destroyed || token !== artifactEpoch) return
     const nextFeatures = featureCollection?.features
     if (nextManifest?.protocolVersion !== '1' || !Array.isArray(nextFeatures)) throw { code: 'INVALID_RESPONSE' }
+    const iconLayer = nextManifest?.layers?.find(layer => layer?.id === 'icons' && layer?.kind === 'sprite' && layer?.file === 'icons.png')
+    if (!iconLayer) throw { code: 'INVALID_RESPONSE' }
     const width = Number(nextManifest?.map?.imageWidth)
     const height = Number(nextManifest?.map?.imageHeight)
     if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) throw { code: 'INVALID_RESPONSE' }
     if (map.sourceSha256 && nextManifest.sourceSha256 !== map.sourceSha256) throw { code: 'INVALID_RESPONSE' }
     if (Number(nextManifest?.statistics?.featureCount) !== nextFeatures.length) throw { code: 'INVALID_RESPONSE' }
+    if (Number(nextManifest?.statistics?.iconFeatureCount) !== nextFeatures.filter(feature => feature?.icon).length) throw { code: 'INVALID_RESPONSE' }
     manifest.value = nextManifest
     mapFeatures.value = nextFeatures
     terrainURL.value = URL.createObjectURL(imageBlob)
+    iconsURL.value = URL.createObjectURL(iconsBlob)
   } catch (error) {
     mapArtifactFailure.value = { key: 'worldMaps.errors.artifactsLoadFailed', error }
   } finally {

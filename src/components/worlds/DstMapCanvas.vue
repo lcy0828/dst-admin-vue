@@ -15,11 +15,12 @@ import Projection from 'ol/proj/Projection.js'
 import ImageStatic from 'ol/source/ImageStatic.js'
 import VectorSource from 'ol/source/Vector.js'
 import View from 'ol/View.js'
-import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style.js'
+import { Circle as CircleStyle, Fill, Icon as IconStyle, Stroke, Style } from 'ol/style.js'
 import 'ol/ol.css'
 
 const props = defineProps({
   terrainUrl: { type: String, default: '' },
+  iconsUrl: { type: String, default: '' },
   manifest: { type: Object, default: null },
   features: { type: Array, default: () => [] },
   visibleCategories: { type: Array, default: () => [] },
@@ -47,23 +48,73 @@ let featuresById = new Map()
 
 const normalStyleCache = new Map()
 const selectedStyleCache = new Map()
+const selectionStyle = new Style({
+  image: new CircleStyle({
+    radius: 18,
+    fill: new Fill({ color: 'rgba(255,255,255,0.18)' }),
+    stroke: new Stroke({ color: '#ffffff', width: 2 })
+  })
+})
 
 function normalizedCategory(category) {
   return Object.hasOwn(categoryColors, category) ? category : 'other'
 }
 
-function markerStyle(category, selected = false) {
+function fallbackMarkerStyle(category, selected = false) {
   const cache = selected ? selectedStyleCache : normalStyleCache
-  if (cache.has(category)) return cache.get(category)
+  const key = `fallback:${category}`
+  if (cache.has(key)) return cache.get(key)
   const style = new Style({
     image: new CircleStyle({
-      radius: selected ? 7 : category === 'resource' || category === 'other' ? 3 : 5,
+      radius: selected ? 6 : 3,
       fill: new Fill({ color: categoryColors[category] }),
       stroke: new Stroke({ color: selected ? '#ffffff' : 'rgba(255,255,255,0.82)', width: selected ? 3 : 1 })
     })
   })
-  cache.set(category, style)
+  cache.set(key, style)
   return style
+}
+
+function minimumIconZoom(category) {
+  if (category === 'resource') return 3
+  if (category === 'other') return 4
+  return -Infinity
+}
+
+function officialIconStyle(payload, selected = false) {
+  const icon = payload?.icon
+  if (!props.iconsUrl || !icon) return null
+  const x = Number(icon.x)
+  const y = Number(icon.y)
+  const width = Number(icon.width)
+  const height = Number(icon.height)
+  if (![x, y, width, height].every(Number.isFinite) || x < 0 || y < 0 || width <= 0 || height <= 0) return null
+  const cache = selected ? selectedStyleCache : normalStyleCache
+  const key = `icon:${props.iconsUrl}:${x}:${y}:${width}:${height}`
+  if (cache.has(key)) return cache.get(key)
+  const baseScale = Math.min(0.58, 36 / Math.max(width, height))
+  const style = new Style({
+    image: new IconStyle({
+      src: props.iconsUrl,
+      offset: [x, y],
+      offsetOrigin: 'top-left',
+      size: [width, height],
+      anchor: [0.5, 0.5],
+      scale: baseScale * (selected ? 1.18 : 1)
+    })
+  })
+  cache.set(key, style)
+  return style
+}
+
+function markerStyle(feature, category) {
+  const selected = feature.getId() === props.selectedFeatureId
+  const zoom = map?.getView()?.getZoom() ?? 0
+  const payload = feature.get('payload')
+  const icon = officialIconStyle(payload, selected)
+  if (icon && (selected || zoom >= minimumIconZoom(category))) return selected ? [selectionStyle, icon] : icon
+  if (selected || zoom >= 5) return fallbackMarkerStyle(category, selected)
+  return null
 }
 
 function clearLayers() {
@@ -136,7 +187,7 @@ function buildLayers() {
       renderBuffer: 32,
       updateWhileAnimating: false,
       updateWhileInteracting: false,
-      style: feature => markerStyle(category, feature.getId() === props.selectedFeatureId)
+      style: feature => markerStyle(feature, category)
     })
     layer.setZIndex(index + 1)
     featureLayers.set(category, layer)
@@ -191,7 +242,7 @@ onMounted(() => {
   buildLayers()
 })
 
-watch(() => [props.terrainUrl, props.manifest, props.features], buildLayers)
+watch(() => [props.terrainUrl, props.iconsUrl, props.manifest, props.features], buildLayers)
 watch(() => props.visibleCategories, applyCategoryVisibility, { deep: true })
 watch(() => props.selectedFeatureId, refreshSelection)
 
