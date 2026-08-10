@@ -5,8 +5,9 @@ import {
   structuredLogsV2API
 } from './v2'
 import { buildStructuredLogFilter, inspectStructuredLogRefreshJob, normalizeStructuredLogList } from '../lib/logQuerySupport.mjs'
+import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 
-const success = (data, msg = '操作成功') => ({ status: 200, data, msg })
+const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg)
 let archiveCatalog = []
 
 function resolveArchive(reference) {
@@ -14,7 +15,7 @@ function resolveArchive(reference) {
     ? reference.room_id || reference.roomId || reference.archive_name || reference.archive
     : reference
   const room = archiveCatalog.find(item => item.id === value || item.name === value)
-  if (!room) throw new Error('没有找到所选存档，请重新选择')
+  if (!room) throw adapterError('ROOM_NOT_FOUND', { context: { reference: value || '' } })
   return room
 }
 
@@ -23,12 +24,12 @@ function resolveWorld(room, reference) {
     ? reference.world_id || reference.worldId || reference.world_name || reference.world
     : reference
   const world = room.worlds.find(item => item.id === value || item.name === value)
-  if (!world) throw new Error('没有找到所选世界，请重新选择')
+  if (!world) throw adapterError('WORLD_NOT_FOUND', { context: { reference: value || '' } })
   return world
 }
 
 async function waitForJob(job, timeoutMs = 120000) {
-  if (!job?.id) throw new Error('后端没有返回任务 ID')
+  if (!job?.id) throw adapterError('JOB_ID_MISSING')
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const current = await jobsV2API.get(job.id)
@@ -37,10 +38,10 @@ async function waitForJob(job, timeoutMs = 120000) {
       await new Promise(resolve => setTimeout(resolve, 500))
       continue
     }
-    if (!result.usable) throw new Error(result.errorMessage)
+    if (!result.usable) throw adapterError('LOG_REFRESH_FAILED', { detail: result.errorMessage })
     return current
   }
-  throw new Error('日志刷新任务超时，请到任务记录中查看最终状态')
+  throw adapterError('LOG_REFRESH_TIMEOUT')
 }
 
 function mapRule(rule) {
@@ -97,7 +98,7 @@ export const realLogApi = {
         control_available: world.controlAvailable !== false,
         status_message: world.statusMessage || ''
       })))
-    return success(parsers, '运行中世界已刷新')
+    return success(parsers, 'active_worlds_loaded')
   },
 
   async getArchivesWithLogs() {
@@ -124,14 +125,14 @@ export const realLogApi = {
         world_name: world.name,
         directory_name: world.directory_name
       }))
-    })), '日志房间列表已刷新')
+    })), 'log_rooms_loaded')
   },
 
   async getLogsData(params) {
     const room = resolveArchive(params)
     const world = params.world || params.world_id ? resolveWorld(room, params) : null
     const response = await structuredLogsV2API.list(room.id, buildStructuredLogFilter(params, world?.id))
-    return success(normalizeStructuredLogList(response), '日志查询完成')
+    return success(normalizeStructuredLogList(response), 'logs_loaded')
   },
 
   async getRoomOptions() {
@@ -147,23 +148,23 @@ export const realLogApi = {
   },
 
   async refresh(roomReference) {
-    if (!roomReference) throw new Error('请先选择存档')
+    if (!roomReference) throw adapterError('ROOM_REQUIRED')
     const room = resolveArchive(roomReference)
     const job = await structuredLogsV2API.refresh(room.id)
-    return success(await waitForJob(job), '日志解析刷新完成')
+    return success(await waitForJob(job), 'log_refresh_completed')
   },
 
   async cleanupLog(data) {
     const room = resolveArchive(data)
     const world = resolveWorld(room, data)
     const result = await structuredLogsV2API.clear(room.id, world.id)
-    return success(result, `已清空 ${result.deleted || 0} 条解析日志`)
+    return success(result, 'logs_cleared')
   }
 }
 
 export const realRuleManagementApi = {
   async getRulesList(roomReference) {
-    if (!roomReference) throw new Error('请先选择存档')
+    if (!roomReference) throw adapterError('ROOM_REQUIRED')
     const room = resolveArchive(roomReference)
     const response = await logRulesV2API.list(room.id)
     return success((response.items || []).map(mapRule))
@@ -171,17 +172,17 @@ export const realRuleManagementApi = {
 
   async addRule(roomReference, data) {
     const room = resolveArchive(roomReference)
-    return success(mapRule(await logRulesV2API.create(room.id, ruleInput(data))), '添加解析规则成功')
+    return success(mapRule(await logRulesV2API.create(room.id, ruleInput(data))), 'log_rule_created')
   },
 
   async updateRule(roomReference, ruleId, data) {
     const room = resolveArchive(roomReference)
-    return success(mapRule(await logRulesV2API.update(room.id, ruleId, ruleInput(data))), '编辑解析规则成功')
+    return success(mapRule(await logRulesV2API.update(room.id, ruleId, ruleInput(data))), 'log_rule_updated')
   },
 
   async deleteRule(roomReference, ruleId) {
     const room = resolveArchive(roomReference)
-    return success(await logRulesV2API.delete(room.id, ruleId), '删除解析规则成功')
+    return success(await logRulesV2API.delete(room.id, ruleId), 'log_rule_deleted')
   },
 
   async testRule(roomReference, data, sample) {

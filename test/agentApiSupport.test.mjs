@@ -9,9 +9,11 @@ import {
 test('Agent command timeout follows the backend 5 to 300 second contract', () => {
   assert.equal(normalizeAgentCommandTimeout(5), 5)
   assert.equal(normalizeAgentCommandTimeout('300'), 300)
-  assert.throws(() => normalizeAgentCommandTimeout(4), /5 至 300/)
-  assert.throws(() => normalizeAgentCommandTimeout(301), /5 至 300/)
-  assert.throws(() => normalizeAgentCommandTimeout(10.5), /整数/)
+  assert.throws(() => normalizeAgentCommandTimeout(4), error => (
+    error.code === 'INVALID_AGENT_TIMEOUT' && /5 to 300/.test(error.message)
+  ))
+  assert.throws(() => normalizeAgentCommandTimeout(301), { code: 'INVALID_AGENT_TIMEOUT' })
+  assert.throws(() => normalizeAgentCommandTimeout(10.5), { code: 'INVALID_AGENT_TIMEOUT' })
 })
 
 test('completed, failed and canceled commands are terminal', () => {

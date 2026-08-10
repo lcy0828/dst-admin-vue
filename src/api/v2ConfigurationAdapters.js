@@ -1,6 +1,7 @@
 import { configurationV2API, jobsV2API, roomsV2API } from './v2'
+import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 
-const success = (data, msg = '操作成功') => ({ status: 200, data, msg })
+const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg)
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled'])
 
 function delay(milliseconds) {
@@ -10,19 +11,22 @@ function delay(milliseconds) {
 function jobError(job) {
   if (job.error?.message) return job.error.message
   const failed = (job.targets || []).find(target => target.error?.message)
-  return failed?.error?.message || `任务${job.status === 'canceled' ? '已取消' : '执行失败'}`
+  return failed?.error?.message || ''
 }
 
 export async function waitForV2Job(job, timeout = 60000) {
-  if (!job?.id) throw new Error('后端没有返回任务 ID')
+  if (!job?.id) throw adapterError('JOB_ID_MISSING')
   const deadline = Date.now() + timeout
   let current = job
   while (!TERMINAL_JOB_STATES.has(current.status)) {
-    if (Date.now() >= deadline) throw new Error('等待任务完成超时，请到任务列表确认最终结果')
+    if (Date.now() >= deadline) throw adapterError('JOB_TIMEOUT', { context: { jobId: job.id } })
     await delay(300)
     current = await jobsV2API.get(job.id)
   }
-  if (current.status !== 'succeeded') throw new Error(jobError(current))
+  if (current.status !== 'succeeded') {
+    const code = current.status === 'canceled' ? 'JOB_CANCELED' : 'JOB_FAILED'
+    throw adapterError(code, { detail: jobError(current), context: { jobId: current.id } })
+  }
   return current
 }
 
@@ -31,7 +35,7 @@ export async function resolveV2Room(value) {
   const room = (response.items || []).find(item =>
     item.id === value || item.name === value || item.directoryName === value
   )
-  if (!room) throw new Error(`未找到房间：${value}`)
+  if (!room) throw adapterError('ROOM_NOT_FOUND', { context: { reference: value || '' } })
   return room
 }
 
@@ -40,7 +44,7 @@ export async function resolveV2World(room, value) {
   const world = (response.items || []).find(item =>
     item.id === value || item.name === value || item.directoryName === value
   )
-  if (!world) throw new Error(`未找到世界：${value}`)
+  if (!world) throw adapterError('WORLD_NOT_FOUND', { context: { reference: value || '' } })
   return world
 }
 
@@ -170,12 +174,12 @@ export const legacyRoomConfigApi = {
   async getRoomConfig(roomValue) {
     const room = await resolveV2Room(roomValue)
     const configuration = await configurationV2API.room(room.id)
-    return success(legacyRoomSections(configuration.values), '配置加载成功')
+    return success(legacyRoomSections(configuration.values), 'room_configuration_loaded')
   },
   async saveRoomConfig(roomValue, config) {
     const room = await resolveV2Room(roomValue)
     const job = await applyRoomConfiguration(room, config)
-    return success(job, job ? '房间配置已应用' : '配置没有变化')
+    return success(job, job ? 'room_configuration_applied' : 'no_configuration_changes')
   },
   async createRoom(directoryName, config, token = '') {
     const values = roomValuesFromLegacy(config, {
@@ -224,17 +228,22 @@ export const legacyRoomConfigApi = {
       try {
         await roomsV2API.deleteRoom(room.id, room.name)
       } catch (rollbackError) {
-        throw new Error(`${error.message}；回滚新房间失败：${rollbackError.message}`)
+        throw adapterError('ROOM_CREATE_ROLLBACK_FAILED', {
+          detail: [error.detail || error.message, rollbackError.detail || rollbackError.message]
+            .filter(Boolean)
+            .join('; rollback failed: '),
+          context: { roomId: room.id }
+        })
       }
       throw error
     }
-    return success(room, '房间已创建并应用配置')
+    return success(room, 'room_created_and_configured')
   },
   async importRoomConfig() {
-    throw new Error('真实 v2 后端暂未提供 cluster.ini 文件导入接口，未执行任何操作')
+    throw adapterError('ROOM_CONFIGURATION_IMPORT_UNAVAILABLE')
   },
   async exportRoomConfig() {
-    throw new Error('真实 v2 后端暂未提供 cluster.ini 文件导出接口')
+    throw adapterError('ROOM_CONFIGURATION_EXPORT_UNAVAILABLE')
   }
 }
 
@@ -255,28 +264,28 @@ export const legacyAccessApi = {
     return success(access.whitelist || [])
   },
   async updateAdminList(roomValue, list, confirmed = false) {
-    return success(await accessUpdate(roomValue, { admins: list }, confirmed), '管理员名单已应用')
+    return success(await accessUpdate(roomValue, { admins: list }, confirmed), 'admin_list_applied')
   },
   async updateBlockList(roomValue, list, confirmed = false) {
-    return success(await accessUpdate(roomValue, { blocked: list }, confirmed), '黑名单已应用')
+    return success(await accessUpdate(roomValue, { blocked: list }, confirmed), 'block_list_applied')
   },
   async updateWhiteList(roomValue, list, confirmed = false) {
-    return success(await accessUpdate(roomValue, { whitelist: list }, confirmed), '白名单已应用')
+    return success(await accessUpdate(roomValue, { whitelist: list }, confirmed), 'whitelist_applied')
   },
   async getServerToken(roomValue) {
     const room = await resolveV2Room(roomValue)
     const status = await configurationV2API.tokenStatus(room.id)
-    return success(status.maskedValue || '', status.configured ? '令牌状态已读取' : '尚未配置令牌')
+    return success(status.maskedValue || '', status.configured ? 'server_token_status_loaded' : 'server_token_not_configured')
   },
   async getServerTokenStatus(roomValue) {
     const room = await resolveV2Room(roomValue)
     const status = await configurationV2API.tokenStatus(room.id)
-    return success({ ...status, roomName: room.name }, status.configured ? '令牌状态已读取' : '尚未配置令牌')
+    return success({ ...status, roomName: room.name }, status.configured ? 'server_token_status_loaded' : 'server_token_not_configured')
   },
   async revealServerToken(roomValue, confirmation) {
     const room = await resolveV2Room(roomValue)
     const revealed = await configurationV2API.revealToken(room.id, confirmation)
-    return success(revealed.token, '令牌已显示')
+    return success(revealed.token, 'server_token_revealed')
   },
   async updateServerToken(roomValue, token, confirmation) {
     const room = await resolveV2Room(roomValue)
@@ -288,7 +297,7 @@ export const legacyAccessApi = {
     }
     await configurationV2API.previewToken(room.id, request)
     const job = await waitForV2Job(await configurationV2API.applyToken(room.id, request))
-    return success(job, '服务器令牌已应用')
+    return success(job, 'server_token_applied')
   }
 }
 
@@ -308,15 +317,15 @@ export const legacyWorldConfigurationApi = {
     try {
       await configurationV2API.previewWorld(room.id, world.id, request)
     } catch (error) {
-      if (error.code === 'NO_CONFIGURATION_CHANGES') return success(null, '配置没有变化')
+      if (error.code === 'NO_CONFIGURATION_CHANGES') return success(null, 'no_configuration_changes')
       throw error
     }
     const job = await waitForV2Job(await configurationV2API.applyWorld(room.id, world.id, request))
-    return success(job, '世界配置已应用')
+    return success(job, 'world_configuration_applied')
   },
   async getWorldOverrides(roomValue, worldValue) {
     const { configuration } = await this.get(roomValue, worldValue)
-    return success(configuration.overrides || {}, '世界配置已读取')
+    return success(configuration.overrides || {}, 'world_configuration_loaded')
   },
   async getServerIni(roomValue, worldValue) {
     const { configuration } = await this.get(roomValue, worldValue)
@@ -333,7 +342,7 @@ export const legacyWorldConfigurationApi = {
         master_server_port: server.masterServerPort,
         authentication_port: server.authenticationPort
       }
-    }, 'server.ini 已读取')
+    }, 'server_ini_loaded')
   },
   async saveServerIni(input) {
     const config = input.config || {}
@@ -371,13 +380,18 @@ export const legacyWorldConfigurationApi = {
           try {
             await roomsV2API.deleteWorld(room.id, world.id, room.name)
           } catch (rollbackError) {
-            throw new Error(`${error.message}；回滚新世界失败：${rollbackError.message}`)
+            throw adapterError('WORLD_CREATE_ROLLBACK_FAILED', {
+              detail: [error.detail || error.message, rollbackError.detail || rollbackError.message]
+                .filter(Boolean)
+                .join('; rollback failed: '),
+              context: { roomId: room.id, worldId: world.id }
+            })
           }
         }
         throw error
       }
     }
-    return success(world, created ? '世界已创建并应用配置' : '世界配置已应用')
+    return success(world, created ? 'world_created_and_configured' : 'world_configuration_applied')
   },
   forestWorld(input) {
     return this.createOrApplyWorld(input, 'forest')
@@ -389,6 +403,6 @@ export const legacyWorldConfigurationApi = {
     const room = await resolveV2Room(input.savename)
     const world = await resolveV2World(room, input.worldname)
     const result = await roomsV2API.deleteWorld(room.id, world.id, input.confirmation)
-    return success(result, '世界已移入可恢复目录')
+    return success(result, 'world_moved_to_recovery')
   }
 }

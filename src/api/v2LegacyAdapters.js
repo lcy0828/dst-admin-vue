@@ -9,6 +9,7 @@ import {
   worldStatesV2API
 } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
+import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
 import { announcementTypeId } from '@/lib/systemDataIdentifiers.mjs'
 
@@ -19,14 +20,16 @@ const BACKUP_JOB_TIMEOUT = 5 * 60 * 1000
 
 const roomCatalogCache = createAsyncResourceCache({ ttlMs: 750 })
 
-const success = (data, msg = '操作成功') => ({ status: 200, data, msg })
+const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg)
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 
 function announcementInput(input = {}) {
   const rawExpireTime = String(input.expireTime || '').trim()
   const expiresAt = new Date(rawExpireTime.includes('T') ? rawExpireTime : rawExpireTime.replace(' ', 'T'))
-  if (!rawExpireTime || Number.isNaN(expiresAt.getTime())) throw new Error('公告过期时间无效')
+  if (!rawExpireTime || Number.isNaN(expiresAt.getTime())) {
+    throw adapterError('INVALID_ANNOUNCEMENT_EXPIRY', { context: { value: rawExpireTime } })
+  }
   return {
     title: String(input.title || '').trim(),
     content: String(input.content || '').trim(),
@@ -187,7 +190,7 @@ async function loadRoomCatalog() {
 async function resolveRoom(value) {
   const rooms = await loadRoomCatalog()
   const room = rooms.find(item => item.id === value || item.name === value || item.savename === value)
-  if (!room) throw new Error(`未找到房间：${value}`)
+  if (!room) throw adapterError('ROOM_NOT_FOUND', { context: { reference: value || '' } })
   return room
 }
 
@@ -205,7 +208,7 @@ function selectedWorldIDs(room, input = {}) {
     const world = room.worlds.find(item =>
       item.id === value || item.name === value || item.worldName === value
     )
-    if (!world) throw new Error(`未找到世界：${value}`)
+    if (!world) throw adapterError('WORLD_NOT_FOUND', { context: { reference: value || '' } })
     return world.id
   })
 }
@@ -305,16 +308,16 @@ function mapBackup(backup, roomName) {
 
 export const legacyRoomApi = {
   async getRoomList() {
-    return success(await loadRoomCatalog(), '房间列表已刷新')
+    return success(await loadRoomCatalog(), 'rooms_loaded')
   },
   async getRoomDetail(id) {
     return success(await resolveRoom(id))
   },
   async createRoom(data) {
-    return success(await roomsV2API.create(data), '房间已创建')
+    return success(await roomsV2API.create(data), 'room_created')
   },
   async updateRoom() {
-    throw new Error('真实 v2 后端暂未提供房间基本信息更新接口')
+    throw adapterError('ROOM_UPDATE_UNAVAILABLE')
   },
   async getRoomWorlds(roomValue) {
     const room = await resolveRoom(roomValue)
@@ -327,7 +330,7 @@ export const legacyRoomApi = {
       ROOM_JOB_TIMEOUT
     )
     roomCatalogCache.invalidate()
-    return success(job, '启动完成')
+    return success(job, 'room_started')
   },
   async stopRoom(input) {
     const room = await resolveRoom(roomReference(input))
@@ -337,19 +340,19 @@ export const legacyRoomApi = {
       ROOM_JOB_TIMEOUT
     )
     roomCatalogCache.invalidate()
-    return success(job, '停止完成')
+    return success(job, 'room_stopped')
   },
   async backupRoom(roomValue, name = '') {
     const room = await resolveRoom(roomValue)
     const job = await waitForV2Job(await backupsV2API.create(room.id, name), BACKUP_JOB_TIMEOUT)
-    return success(job, '备份已创建')
+    return success(job, 'backup_created')
   },
   async deleteRoom(input = {}) {
     const room = await resolveRoom(roomReference(input))
     const confirmation = input && typeof input === 'object' ? input.confirmation : ''
     const result = await roomsV2API.deleteRoom(room.id, confirmation)
     roomCatalogCache.invalidate()
-    return success(result, '房间已移入可恢复目录')
+    return success(result, 'room_moved_to_recovery')
   },
   async regenerateWorld(input = {}) {
     const room = await resolveRoom(roomReference(input))
@@ -361,81 +364,90 @@ export const legacyRoomApi = {
     })
     const deadline = Date.now() + ROOM_JOB_TIMEOUT
     while (run.status === 'sending') {
-      if (Date.now() >= deadline) throw new Error('等待重新生成命令完成超时，请到命令历史确认最终结果')
+      if (Date.now() >= deadline) {
+        throw adapterError('REGENERATE_COMMAND_TIMEOUT', { context: { runId: run.id } })
+      }
       await new Promise(resolve => setTimeout(resolve, 300))
       run = await consoleV2API.run(room.id, run.id)
     }
     if (run.status !== 'sent') {
-      throw new Error(run.errorMessage || run.message || '重新生成命令执行失败')
+      throw adapterError('REGENERATE_COMMAND_FAILED', {
+        detail: run.errorMessage || run.message || '',
+        context: { runId: run.id }
+      })
     }
     roomCatalogCache.invalidate()
-    return success(run, '重新生成命令已发送到世界进程')
+    return success(run, 'regenerate_command_sent')
   },
   async deleteWorld(input = {}) {
     const room = await resolveRoom(roomReference(input))
     const [worldId] = selectedWorldIDs(room, input)
     const result = await roomsV2API.deleteWorld(room.id, worldId, input.confirmation || '')
     roomCatalogCache.invalidate()
-    return success(result, '世界已移入可恢复目录')
+    return success(result, 'world_moved_to_recovery')
   },
   async saveWorldSettings() {
-    throw new Error('请使用 v2 房间配置预览与应用接口，旧世界设置接口未执行')
+    throw adapterError('LEGACY_WORLD_SETTINGS_UNAVAILABLE')
   }
 }
 
 export const legacyWorldApi = {
   async getWorldList() {
-    return success(await loadRoomCatalog(), '世界列表已刷新')
+    return success(await loadRoomCatalog(), 'worlds_loaded')
   },
   async getWorldState(params = {}) {
     const room = await resolveRoom(roomReference(params))
     const worldIDs = selectedWorldIDs(room, params)
     const response = await worldStatesV2API.list(room.id)
     const snapshot = (response.items || []).find(item => item.worldId === worldIDs[0])
-    if (!snapshot) throw new Error('没有找到该世界的真实状态快照，请确认世界已运行并完成状态采样')
-    return success(mapWorldState(snapshot, room), '世界状态已刷新')
+    if (!snapshot) {
+      throw adapterError('WORLD_STATE_NOT_FOUND', {
+        context: { roomId: room.id, worldId: worldIDs[0] || '' }
+      })
+    }
+    return success(mapWorldState(snapshot, room), 'world_state_loaded')
   },
   async forestWorld() {
-    throw new Error('真实 v2 后端暂未提供独立创建地表世界接口，未执行任何操作')
+    throw adapterError('FOREST_WORLD_CREATE_UNAVAILABLE')
   },
   async caveWorld() {
-    throw new Error('真实 v2 后端暂未提供独立创建洞穴世界接口，未执行任何操作')
+    throw adapterError('CAVE_WORLD_CREATE_UNAVAILABLE')
   },
   async getServerIni() {
-    throw new Error('世界 server.ini 读取将在 v2 配置接口接入后可用')
+    throw adapterError('SERVER_INI_READ_UNAVAILABLE')
   },
   async saveServerIni() {
-    throw new Error('世界 server.ini 保存将在 v2 配置接口接入后可用，未执行任何操作')
+    throw adapterError('SERVER_INI_WRITE_UNAVAILABLE')
   },
   async deleteWorld() {
-    throw new Error('真实 v2 后端暂未提供世界删除接口，未执行任何操作')
+    throw adapterError('WORLD_DELETE_UNAVAILABLE')
   }
 }
 
 export const legacySystemApi = {
   async getDashboardStatus() {
-    return success(legacySystemStatus(await systemV2API.status()), '系统状态已刷新')
+    return success(legacySystemStatus(await systemV2API.status()), 'system_status_loaded')
   },
   async getTmuxServers() {
-    return success(legacyServers(await loadRoomCatalog()), '服务器状态已刷新')
+    return success(legacyServers(await loadRoomCatalog()), 'servers_loaded')
   },
   async getSystemStatus() {
     return this.getDashboardStatus()
   },
   async createBackup() {
-    throw new Error('系统级备份在 v2 中已改为按房间备份，未执行任何操作')
+    throw adapterError('SYSTEM_BACKUP_CREATE_UNAVAILABLE')
   },
   async getBackupList() {
-    throw new Error('系统级备份在 v2 中已改为按房间查询')
+    throw adapterError('SYSTEM_BACKUP_LIST_UNAVAILABLE')
   },
   async restoreFromBackup() {
-    throw new Error('系统级恢复在 v2 中已改为按房间恢复，未执行任何操作')
+    throw adapterError('SYSTEM_BACKUP_RESTORE_UNAVAILABLE')
   },
   async deleteBackup() {
-    throw new Error('系统级备份删除在 v2 中已改为按房间删除，未执行任何操作')
+    throw adapterError('SYSTEM_BACKUP_DELETE_UNAVAILABLE')
   },
   async updateSystemConfig() {
-    throw new Error('请使用 v2 系统设置预览与应用接口，旧配置接口未执行')
+    throw adapterError('SYSTEM_CONFIGURATION_UPDATE_UNAVAILABLE')
   },
   async stopTmuxServer(params) {
     const rooms = await loadRoomCatalog()
@@ -443,13 +455,13 @@ export const legacySystemApi = {
       item.session_name === params.session_name ||
       (item.archive_name === params.archive_name && item.world_name === params.world_name)
     )
-    if (!server) throw new Error('未找到要停止的世界')
+    if (!server) throw adapterError('WORLD_STOP_TARGET_NOT_FOUND')
     const job = await waitForV2Job(
       await roomsV2API.action(server.room_id, 'stop', [server.world_id]),
       ROOM_JOB_TIMEOUT
     )
     roomCatalogCache.invalidate()
-    return success(job, '停止完成')
+    return success(job, 'world_stopped')
   },
   async restartTmuxServer(params) {
     const rooms = await loadRoomCatalog()
@@ -457,13 +469,13 @@ export const legacySystemApi = {
       item.session_name === params.session_name ||
       (item.archive_name === params.archive_name && item.world_name === params.world_name)
     )
-    if (!server) throw new Error('未找到要重启的世界')
+    if (!server) throw adapterError('WORLD_RESTART_TARGET_NOT_FOUND')
     const job = await waitForV2Job(
       await roomsV2API.action(server.room_id, 'restart', [server.world_id]),
       ROOM_JOB_TIMEOUT
     )
     roomCatalogCache.invalidate()
-    return success(job, '重启完成')
+    return success(job, 'world_restarted')
   },
   async getGameVersion() {
     const version = await gameV2API.version()
@@ -498,7 +510,7 @@ export const legacySystemApi = {
       steamcmd_path: version.steamcmdPath || null,
       check_error: checkError,
       checked_at: version.checkedAt || null
-    }, '游戏版本状态已刷新')
+    }, 'game_version_status_loaded')
   },
   async getLocalVersion() {
     const version = await gameV2API.version()
@@ -513,7 +525,7 @@ export const legacySystemApi = {
       steamcmd_available: capabilities.steamcmdAvailable,
       checked_at: version.checkedAt,
       check_error: version.checkError || null
-    }, '本地版本已读取')
+    }, 'local_game_version_loaded')
   },
   async getLatestVersion() {
     const version = await gameV2API.version()
@@ -530,11 +542,11 @@ export const legacySystemApi = {
       steamcmd_available: capabilities.steamcmdAvailable,
       checked_at: version.checkedAt,
       check_error: version.checkError || null
-    }, '最新版本已读取')
+    }, 'latest_game_version_loaded')
   },
   async updateDstServer() {
     const job = await gameV2API.update({ confirmation: '更新游戏', restartRunning: true, cleanCache: false })
-    return success({ ...job, session_name: job.id }, '更新任务已提交')
+    return success({ ...job, session_name: job.id }, 'game_update_submitted')
   },
   async getDstUpdateStatus(jobId) {
     const run = await gameV2API.updateRun(jobId)
@@ -544,7 +556,8 @@ export const legacySystemApi = {
       is_completed: run.status === 'succeeded',
       progress: run.status === 'succeeded' ? 100 : null,
       last_output: run.log || '',
-      error: run.status === 'failed' ? (run.errorMessage || '更新失败') : ''
+      error: run.status === 'failed' ? (run.errorMessage || 'Game update failed') : '',
+      error_code: run.status === 'failed' ? 'GAME_UPDATE_FAILED' : ''
     })
   },
   async getAnnouncements() {
@@ -565,25 +578,25 @@ export const legacySystemApi = {
   },
   async getDockerContainers() {
     const list = await containersV2API.list()
-    return success(list.items || [], '容器列表已刷新')
+    return success(list.items || [], 'containers_loaded')
   },
   async startDockerContainer(containerId) {
     const job = await waitForV2Job(await containersV2API.action(containerId, 'start'), ROOM_JOB_TIMEOUT)
-    return success(job, '容器启动完成')
+    return success(job, 'container_started')
   },
   async stopDockerContainer(containerId) {
     const job = await waitForV2Job(await containersV2API.action(containerId, 'stop'), ROOM_JOB_TIMEOUT)
-    return success(job, '容器停止完成')
+    return success(job, 'container_stopped')
   },
   async deleteDockerContainer(containerId) {
     const list = await containersV2API.list()
     const container = (list.items || []).find(item => item.id === containerId)
-    if (!container) throw new Error('未找到要删除的容器')
+    if (!container) throw adapterError('CONTAINER_NOT_FOUND', { context: { containerId } })
     const job = await waitForV2Job(
       await containersV2API.action(containerId, 'remove', container.name),
       ROOM_JOB_TIMEOUT
     )
-    return success(job, '容器删除完成')
+    return success(job, 'container_removed')
   }
 }
 
@@ -595,38 +608,42 @@ export const legacyBackupApi = {
       const response = await backupsV2API.list(room.id)
       grouped[room.name] = (response.items || []).map(item => mapBackup(item, room.name))
     }))
-    return success(grouped, '备份列表已刷新')
+    return success(grouped, 'backups_loaded')
   },
   async createBackup(archive) {
     const room = await resolveRoom(archive)
     const job = await waitForV2Job(await backupsV2API.create(room.id), BACKUP_JOB_TIMEOUT)
-    return success(job, '备份已创建')
+    return success(job, 'backup_created')
   },
   async restoreBackup(archive, backupName, targetName) {
-    if (targetName) throw new Error('真实 v2 后端暂不支持恢复到新房间')
+    if (targetName) {
+      throw adapterError('BACKUP_RESTORE_TO_NEW_ROOM_UNAVAILABLE', {
+        context: { targetName }
+      })
+    }
     const room = await resolveRoom(archive)
     const response = await backupsV2API.list(room.id)
     const backup = (response.items || []).find(item => item.name === backupName || item.id === backupName)
-    if (!backup) throw new Error(`未找到备份：${backupName}`)
+    if (!backup) throw adapterError('BACKUP_NOT_FOUND', { context: { backupName } })
     const job = await waitForV2Job(
       await backupsV2API.restore(backup.id, room.name),
       BACKUP_JOB_TIMEOUT
     )
     roomCatalogCache.invalidate()
-    return success(job, '备份恢复完成')
+    return success(job, 'backup_restored')
   },
   async deleteBackup(archive, backupName) {
     const room = await resolveRoom(archive)
     const response = await backupsV2API.list(room.id)
     const backup = (response.items || []).find(item => item.name === backupName || item.id === backupName)
-    if (!backup) throw new Error(`未找到备份：${backupName}`)
-    return success(await backupsV2API.delete(backup.id, backup.name), '备份已删除')
+    if (!backup) throw adapterError('BACKUP_NOT_FOUND', { context: { backupName } })
+    return success(await backupsV2API.delete(backup.id, backup.name), 'backup_deleted')
   },
   async downloadBackup(archive, backupName) {
     const room = await resolveRoom(archive)
     const response = await backupsV2API.list(room.id)
     const backup = (response.items || []).find(item => item.name === backupName || item.id === backupName)
-    if (!backup) throw new Error(`未找到备份：${backupName}`)
+    if (!backup) throw adapterError('BACKUP_NOT_FOUND', { context: { backupName } })
     return backupsV2API.downloadURL(backup.id)
   }
 }

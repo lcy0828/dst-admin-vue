@@ -1,12 +1,11 @@
 import { agentsV2API } from './v2'
 import { isLegacyCommandTerminal, normalizeAgentCommandTimeout } from './agentApiSupport.mjs'
+import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 
-const success = (data, msg = '获取成功') => ({
-  code: 200,
-  data,
-  msg,
-  message: msg,
-  success: true
+const success = (data, msg = 'data_loaded') => adapterSuccess(data, msg, {
+  numericCode: true,
+  messageAlias: true,
+  successFlag: true
 })
 
 function seconds(value) {
@@ -116,10 +115,10 @@ function actionFromLegacy(input = {}) {
 async function submitCommand(input) {
   const action = actionFromLegacy(input)
   if (!action) {
-    throw new Error('当前生产接口只允许“刷新系统信息”和“检查磁盘”两个领域动作')
+    throw adapterError('INVALID_AGENT_ACTION', { context: { action: input.action || '' } })
   }
   const agentId = input.agent_id || input.agentId
-  if (!agentId) throw new Error('请选择 Agent')
+  if (!agentId) throw adapterError('AGENT_REQUIRED')
   const job = await agentsV2API.runCommand(agentId, {
     action,
     timeoutSeconds: normalizeAgentCommandTimeout(input.timeout ?? input.timeoutSeconds ?? 30)
@@ -130,7 +129,7 @@ async function submitCommand(input) {
     command_id: command?.id || '',
     job_id: job.id,
     status: job.status
-  }, '命令已提交')
+  }, 'agent_command_submitted')
 }
 
 async function commandHistory(agentId, params = {}) {
@@ -154,7 +153,7 @@ export const realAgentApi = {
     return success(legacyAgent(await agentsV2API.get(agentId)))
   },
   async forgetAgent(agentId) {
-    return success(await agentsV2API.forget(agentId), 'Agent 记录已移除')
+    return success(await agentsV2API.forget(agentId), 'agent_forgotten')
   },
   async getActions() {
     const value = await agentsV2API.actions()
@@ -166,7 +165,7 @@ export const realAgentApi = {
   },
   async generateNewKey() {
     const value = await agentsV2API.rotateKey('ROTATE AGENT KEY')
-    return success({ ...value, key: value.newKey, revealed: true }, '新密钥已生成，请立即保存')
+    return success({ ...value, key: value.newKey, revealed: true }, 'agent_security_key_rotated')
   },
   executeCommand: submitCommand,
   async getCommandResult(commandId) {

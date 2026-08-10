@@ -4,12 +4,13 @@ import {
   roomsV2API
 } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
+import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 import {
   isSystemAutomationGroup,
   SYSTEM_AUTOMATION_GROUP_IDS
 } from '@/lib/systemDataIdentifiers.mjs'
 
-const success = (data, msg = '操作成功') => ({ status: 200, code: 200, data, msg })
+const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg, { numericCode: true })
 
 async function loadCatalog() {
   const response = await roomsV2API.list()
@@ -48,7 +49,7 @@ function sessionsFromCatalog(catalog) {
 async function resolveRoom(value, catalog = null) {
   const rooms = catalog || await loadCatalog()
   const room = rooms.find(item => roomMatches(item, value))
-  if (!room) throw new Error(`未找到已接管的存档：${value || '未选择'}`)
+  if (!room) throw adapterError('ROOM_NOT_MANAGED', { context: { reference: value || '' } })
   return room
 }
 
@@ -57,7 +58,7 @@ async function resolveSession(value, catalog = null) {
   const session = sessionsFromCatalog(rooms).find(item =>
     item.key === value || item.name === value
   )
-  if (!session) throw new Error(`未找到游戏世界：${value || '未选择'}`)
+  if (!session) throw adapterError('RESOURCE_NOT_FOUND', { context: { reference: value || '' } })
   return { session, room: await resolveRoom(session.room_id, rooms) }
 }
 
@@ -155,7 +156,7 @@ async function listPlayers(params = {}, paginate = true) {
 
 async function actionContext(player, selectedSession) {
   if (!player || typeof player !== 'object' || !player.user_id || !player.room_id) {
-    throw new Error('玩家操作缺少真实的房间或玩家标识')
+    throw adapterError('INVALID_PLAYER_INPUT')
   }
   const catalog = await loadCatalog()
   const room = await resolveRoom(player.room_id, catalog)
@@ -163,12 +164,14 @@ async function actionContext(player, selectedSession) {
   if (selectedSession) {
     const selected = await resolveSession(selectedSession, catalog)
     if (selected.room.id !== room.id) {
-      throw new Error(`所选世界属于存档“${selected.room.name}”，玩家属于存档“${room.name}”`)
+      throw adapterError('INVALID_PLAYER_INPUT', {
+        context: { selectedRoom: selected.room.name, playerRoom: room.name }
+      })
     }
     worldId = selected.session.world_id
   }
   if (!room.worlds.some(world => world.id === worldId)) {
-    throw new Error('玩家所在世界已不存在，请先手动更新玩家列表')
+    throw adapterError('RESOURCE_NOT_FOUND', { context: { worldId } })
   }
   return { room, worldId, playerId: player.user_id }
 }
@@ -179,14 +182,14 @@ async function runAction(player, selectedSession, action, input = {}) {
     worldId: target.worldId,
     ...input
   })
-  return success(await waitForV2Job(job), '玩家操作已完成')
+  return success(await waitForV2Job(job), 'player_action_completed')
 }
 
 function normalizeSchedule(value) {
   const fields = String(value || '').trim().split(/\s+/).filter(Boolean)
   if (fields.length === 6 && fields[0] === '0') return fields.slice(1).join(' ')
   if (fields.length === 5) return fields.join(' ')
-  throw new Error('执行计划必须是五段 Cron，或以 0 秒开头的六段 Cron')
+  throw adapterError('INVALID_PLAYER_INPUT', { context: { field: 'schedule' } })
 }
 
 async function ensurePlayerGroup(roomId) {
@@ -250,7 +253,7 @@ export const playerApi = {
   },
 
   async getPlayerDetail(player) {
-    if (!player?.room_id || !player?.user_id) throw new Error('玩家详情缺少真实标识')
+    if (!player?.room_id || !player?.user_id) throw adapterError('INVALID_PLAYER_INPUT')
     const catalog = await loadCatalog()
     const room = await resolveRoom(player.room_id, catalog)
     return success(legacyPlayer(await playersV2API.get(room.id, player.user_id), room))
@@ -263,11 +266,13 @@ export const playerApi = {
     const requestedWorld = typeof data === 'object' ? data.world_name : ''
     if (requestedWorld) {
       const world = room.worlds.find(item => worldMatches(item, requestedWorld))
-      if (!world) throw new Error(`存档“${room.name}”中没有找到所选世界`)
+      if (!world) throw adapterError('RESOURCE_NOT_FOUND', {
+        context: { room: room.name, world: requestedWorld }
+      })
       worldIds.push(world.id)
     }
     const job = await playersV2API.refresh(room.id, worldIds)
-    return success(await waitForV2Job(job, 120000), '玩家列表更新成功')
+    return success(await waitForV2Job(job, 120000), 'players_refreshed')
   },
 
   kickPlayer(player, selectedSession, confirmation) {
@@ -282,7 +287,7 @@ export const playerApi = {
         reason: data.reason,
         duration: data.duration
       })
-    ).then(job => waitForV2Job(job)).then(job => success(job, '玩家已封禁'))
+    ).then(job => waitForV2Job(job)).then(job => success(job, 'player_banned'))
   },
 
   unbanPlayer(player, confirmation) {
@@ -291,7 +296,7 @@ export const playerApi = {
         worldId: target.worldId,
         confirmation
       })
-    ).then(job => waitForV2Job(job)).then(job => success(job, '已解除玩家封禁'))
+    ).then(job => waitForV2Job(job)).then(job => success(job, 'player_unbanned'))
   },
 
   sendMessage(player, message, selectedSession) {
@@ -349,7 +354,7 @@ export const playerApi = {
       timeoutSeconds: 300,
       expectedRevision: ''
     })
-    return success(task, '定时更新任务添加成功')
+    return success(task, 'player_refresh_schedule_created')
   },
 
   async exportPlayers(params = {}) {
@@ -358,7 +363,7 @@ export const playerApi = {
   },
 
   executeCommand() {
-    throw new Error('玩家页面不允许执行任意 Lua，请使用受控玩家操作')
+    throw adapterError('INVALID_PLAYER_ACTION', { context: { action: 'raw_lua' } })
   }
 }
 

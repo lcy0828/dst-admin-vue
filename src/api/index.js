@@ -7,6 +7,7 @@ import { realAgentApi } from './agentApi';
 import { authAPI as authV2API } from './v2';
 import { legacyBackupApi, legacyRoomApi, legacySystemApi, legacyWorldApi } from './v2LegacyAdapters';
 import { legacyAccessApi, legacyRoomConfigApi, legacyWorldConfigurationApi } from './v2ConfigurationAdapters';
+import { adapterError } from './adapterProtocol.mjs';
 
 // 服务器相关API
 export const serverApi = {
@@ -54,7 +55,7 @@ export const roomApi = legacyRoomApi;
 
 export const playerApi = realPlayerApi;
 
-const unavailableItemAPI = () => Promise.reject(new Error('当前真实后端未提供物品目录与生成接口'));
+const unavailableItemAPI = () => Promise.reject(adapterError('ITEM_API_UNAVAILABLE'));
 
 // 物品相关API
 export const itemApi = {

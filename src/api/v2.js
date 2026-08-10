@@ -7,8 +7,8 @@ let csrfToken = ''
 
 export class APIError extends Error {
   constructor(status, body = {}, requestId = '') {
-    const message = body.message || '服务器返回了无效响应'
-    super(requestId ? `${message}（请求 ID：${requestId}）` : message)
+    const message = body.message || 'The server returned an invalid response.'
+    super(requestId ? `${message} (request ID: ${requestId})` : message)
     this.name = 'APIError'
     this.status = status
     this.code = body.code || 'UNKNOWN_ERROR'
@@ -31,7 +31,7 @@ async function getBinary(path, accept) {
     const envelope = await response.json().catch(() => null)
     throw new APIError(
       response.status,
-      envelope?.error || { code: 'BINARY_REQUEST_FAILED', message: `资源读取失败（HTTP ${response.status}）` },
+      envelope?.error || { code: 'BINARY_REQUEST_FAILED', message: `Resource request failed (HTTP ${response.status}).` },
       envelope?.meta?.requestId || response.headers.get('X-Request-Id') || ''
     )
   }
@@ -71,13 +71,13 @@ client.interceptors.response.use(response => {
   if (!response) {
     return Promise.reject(new APIError(0, {
       code: 'BACKEND_UNAVAILABLE',
-      message: '无法连接真实后端，请检查服务是否已启动'
+      message: 'Unable to connect to the backend service.'
     }))
   }
   const envelope = response.data
   return Promise.reject(new APIError(
     response.status,
-    envelope?.error || { code: 'INVALID_RESPONSE', message: '服务器返回了无效响应' },
+    envelope?.error || { code: 'INVALID_RESPONSE', message: 'The server returned an invalid response.' },
     envelope?.meta?.requestId || response.headers?.['x-request-id']
   ))
 })
