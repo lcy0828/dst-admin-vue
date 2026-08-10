@@ -74,11 +74,12 @@ test('map job failures preserve the target renderer error', () => {
 })
 
 test('formal map route and page use the authenticated v2 map contract', async () => {
-  const [api, router, navigation, page] = await Promise.all([
+  const [api, router, navigation, page, canvas] = await Promise.all([
     source('src/api/v2.js'),
     source('src/router/index.js'),
     source('src/v2/navigation.js'),
-    source('src/views/worlds/WorldMaps.vue')
+    source('src/views/worlds/WorldMaps.vue'),
+    source('src/components/worlds/DstMapCanvas.vue')
   ])
 
   assert.match(api, /\/rooms\/\$\{encode\(roomId\)\}\/maps\/actions\/generate/)
@@ -94,4 +95,5 @@ test('formal map route and page use the authenticated v2 map contract', async ()
   assert.doesNotMatch(page, /sessionDownloadURL|imageURL/)
   assert.doesNotMatch(page, /legacyManifest|legacyMap/)
   assert.doesNotMatch(page, /mock|demo|Math\.random/)
+  assert.match(canvas, /rotateWithView:\s*true/)
 })

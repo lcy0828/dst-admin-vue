@@ -100,7 +100,7 @@ function officialIconStyle(payload, targetSize, selected = false) {
       offsetOrigin: 'top-left',
       size: [width, height],
       anchor: [0.5, 0.5],
-      rotateWithView: false,
+      rotateWithView: true,
       scale: baseScale
     })
   })
