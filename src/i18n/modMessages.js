@@ -90,6 +90,7 @@ export const modMessages = {
       },
       actions: {
         refresh: '刷新',
+        refreshing: '刷新中',
         add: '添加模组',
         addToRoom: '添加到房间',
         removeFromRoom: '从房间移除',
@@ -136,7 +137,8 @@ export const modMessages = {
         uninstall: '卸载模组失败',
         configFile: '获取配置文件失败',
         saveConfig: '保存模组配置失败',
-        download: '下载模组失败'
+        download: '下载模组失败',
+        refresh: '刷新模组状态失败'
       },
       installed: {
         title: '房间模组',
@@ -252,7 +254,8 @@ export const modMessages = {
           downloading: '正在下载到当前节点...',
           updating: '正在更新节点文件...',
           downloaded: '模组 {name} 已下载到当前节点',
-          updated: '模组 {name} 的节点文件已更新'
+          updated: '模组 {name} 的节点文件已更新',
+          refreshed: '已刷新模组 {name} 的版本和本地状态'
         }
       },
       addToRoom: {
@@ -315,7 +318,8 @@ export const modMessages = {
           selectRoom: '请先选择房间',
           downloading: '正在下载模组，请耐心等待...',
           updated: '更新成功',
-          downloaded: '已下载到当前节点'
+          downloaded: '已下载到当前节点',
+          refreshed: '已刷新版本和本地状态'
         },
         downloadStatus: {
           queuedTitle: '下载任务已提交',
@@ -411,6 +415,7 @@ export const modMessages = {
       },
       actions: {
         refresh: 'Refresh',
+        refreshing: 'Refreshing',
         add: 'Add Mod',
         addToRoom: 'Add to Room',
         removeFromRoom: 'Remove from Room',
@@ -457,7 +462,8 @@ export const modMessages = {
         uninstall: 'Could not uninstall the mod',
         configFile: 'Could not load the configuration file',
         saveConfig: 'Could not save the mod configuration',
-        download: 'Could not download the mod'
+        download: 'Could not download the mod',
+        refresh: 'Could not refresh the mod status'
       },
       installed: {
         title: 'Room Mods',
@@ -573,7 +579,8 @@ export const modMessages = {
           downloading: 'Downloading to the active node...',
           updating: 'Updating node files...',
           downloaded: 'Downloaded mod {name} to the active node',
-          updated: 'Updated node files for mod {name}'
+          updated: 'Updated node files for mod {name}',
+          refreshed: 'Refreshed version and local status for mod {name}'
         }
       },
       addToRoom: {
@@ -636,7 +643,8 @@ export const modMessages = {
           selectRoom: 'Select a room first',
           downloading: 'Downloading the mod. This may take a while...',
           updated: 'Mod updated',
-          downloaded: 'Downloaded to the active node'
+          downloaded: 'Downloaded to the active node',
+          refreshed: 'Version and local status refreshed'
         },
         downloadStatus: {
           queuedTitle: 'Download queued',

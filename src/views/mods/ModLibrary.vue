@@ -145,11 +145,12 @@
                     <Info data-icon="inline-start" />
                     {{ $t('mods.actions.details') }}
                   </UiButton>
-                  <UiButton size="sm" variant="outline" :disabled="isBusy(mod)" @click="downloadOrUpdate(mod)">
+                  <UiButton size="sm" variant="outline" :disabled="isBusy(mod)" @click="handlePrimaryAction(mod)">
                     <Spinner v-if="isBusy(mod)" data-icon="inline-start" />
-                    <RefreshCw v-else-if="mod.downloaded" data-icon="inline-start" />
-                    <Download v-else data-icon="inline-start" />
-                    {{ $t(mod.downloaded ? 'mods.actions.update' : 'mods.actions.download') }}
+                    <Download v-else-if="!mod.downloaded" data-icon="inline-start" />
+                    <CircleArrowUp v-else-if="mod.updateAvailable" data-icon="inline-start" />
+                    <RefreshCw v-else data-icon="inline-start" />
+                    {{ $t(primaryActionLabel(mod)) }}
                   </UiButton>
                   <UiButton size="sm" :disabled="!mod.downloaded || isBusy(mod)" @click="openAddDialog(mod)">
                     <PackagePlus data-icon="inline-start" />
@@ -178,13 +179,13 @@
     </Empty>
 
     <AddModToRoomDialog v-model:open="addDialogOpen" :mod="selectedMod" @added="loadLibrary" />
-    <ModDetailsDialog v-model:open="detailsOpen" :mod="detailsMod" :loading="detailsLoading" :busy="isBusy(detailsMod)" @download="downloadOrUpdate" @add-to-room="openAddDialog" />
+    <ModDetailsDialog v-model:open="detailsOpen" :mod="detailsMod" :loading="detailsLoading" :busy="isBusy(detailsMod)" @download="downloadOrUpdate" @refresh="refreshLibraryMod" @add-to-room="openAddDialog" />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Download, ImageIcon, Info, PackageOpen, PackagePlus, RefreshCw, Search, Star, TriangleAlert, Users } from '@lucide/vue'
+import { CircleArrowUp, Download, ImageIcon, Info, PackageOpen, PackagePlus, RefreshCw, Search, Star, TriangleAlert, Users } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import AddModToRoomDialog from './AddModToRoomDialog.vue'
 import ModDetailsDialog from './ModDetailsDialog.vue'
@@ -237,8 +238,8 @@ const filteredMods = computed(() => {
 
 onMounted(loadLibrary)
 
-async function loadLibrary() {
-  loading.value = true
+async function loadLibrary(silent = false) {
+  if (!silent) loading.value = true
   loadFailure.value = null
   try {
     const response = await modApi.getLibrary()
@@ -246,12 +247,14 @@ async function loadLibrary() {
     if (detailsMod.value) {
       detailsMod.value = mods.value.find(mod => mod.id === detailsMod.value.id) || detailsMod.value
     }
+    return true
   } catch (error) {
-    mods.value = []
+    if (!silent) mods.value = []
     loadFailure.value = createModFailure('mods.errors.library', error)
     toast.error(loadError.value)
+    return false
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -259,24 +262,50 @@ function isBusy(mod) {
   return Boolean(busyMods.value[mod?.id])
 }
 
-function setBusy(mod, busy) {
-  busyMods.value = { ...busyMods.value, [mod.id]: busy }
+function setBusy(mod, action) {
+  busyMods.value = { ...busyMods.value, [mod.id]: action }
+}
+
+function primaryActionLabel(mod) {
+  if (busyMods.value[mod?.id] === 'refresh') return 'mods.actions.refreshing'
+  if (mod?.updateAvailable) return 'mods.actions.update'
+  return mod?.downloaded ? 'mods.actions.refresh' : 'mods.actions.download'
+}
+
+function handlePrimaryAction(mod) {
+  if (mod?.downloaded && !mod.updateAvailable) {
+    refreshLibraryMod(mod)
+    return
+  }
+  downloadOrUpdate(mod)
+}
+
+async function refreshLibraryMod(mod) {
+  if (!mod || isBusy(mod)) return
+  setBusy(mod, 'refresh')
+  try {
+    const refreshed = await loadLibrary(true)
+    if (refreshed) toast.success(translate('mods.library.feedback.refreshed', { name: mod.name || mod.id }))
+  } finally {
+    setBusy(mod, false)
+  }
 }
 
 async function downloadOrUpdate(mod) {
-  if (isBusy(mod)) return
-  setBusy(mod, true)
-  const pendingToast = toast.loading(translate(mod.downloaded ? 'mods.library.feedback.updating' : 'mods.library.feedback.downloading'))
+  if (!mod || isBusy(mod) || (mod.downloaded && !mod.updateAvailable)) return
+  const wasDownloaded = Boolean(mod.downloaded)
+  setBusy(mod, wasDownloaded ? 'update' : 'download')
+  const pendingToast = toast.loading(translate(wasDownloaded ? 'mods.library.feedback.updating' : 'mods.library.feedback.downloading'))
   try {
     await modApi.downloadMod({
       id: mod.id,
-      downloaded: mod.downloaded,
+      downloaded: wasDownloaded,
       includeDependencies: true
     })
     await loadLibrary()
-    toast.success(translate(mod.downloaded ? 'mods.library.feedback.updated' : 'mods.library.feedback.downloaded', { name: mod.name || mod.id }))
+    toast.success(translate(wasDownloaded ? 'mods.library.feedback.updated' : 'mods.library.feedback.downloaded', { name: mod.name || mod.id }))
   } catch (error) {
-    toast.error(formatModFailure(translate, createModFailure(mod.downloaded ? 'mods.errors.update' : 'mods.errors.download', error)))
+    toast.error(formatModFailure(translate, createModFailure(wasDownloaded ? 'mods.errors.update' : 'mods.errors.download', error)))
   } finally {
     toast.dismiss(pendingToast)
     setBusy(mod, false)

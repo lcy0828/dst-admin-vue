@@ -40,6 +40,23 @@ test('Workshop search downloads to the node without requiring a room', async () 
   assert.match(search, /modApi\.getModDetails\(mod\)/)
 })
 
+test('downloaded mods separate status refresh from file updates', async () => {
+  const [search, library, details] = await Promise.all([
+    source('../src/views/mods/ModSearch.vue'),
+    source('../src/views/mods/ModLibrary.vue'),
+    source('../src/views/mods/ModDetailsDialog.vue')
+  ])
+
+  assert.match(search, /updateAvailable: Boolean\(localMod\?\.updateAvailable\)/)
+  assert.match(search, /mod\.isDownloaded && !mod\.updateAvailable/)
+  assert.match(library, /mod\.downloaded && !mod\.updateAvailable/)
+  assert.match(search, /refreshModStatus\(mod\)/)
+  assert.match(library, /refreshLibraryMod\(mod\)/)
+  assert.match(details, /v-if="downloaded && !updateAvailable"/)
+  assert.match(details, /\$emit\('refresh', mod\)/)
+  assert.match(details, /v-else-if="updateAvailable"/)
+})
+
 test('every mod details entry refreshes Workshop metadata before presentation', async () => {
   const pages = await Promise.all([
     source('../src/views/mods/ModSearch.vue'),

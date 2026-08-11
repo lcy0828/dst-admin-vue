@@ -95,11 +95,16 @@
           </div>
           <slot name="actions" :mod="mod">
             <div v-if="actions" class="flex flex-wrap gap-2">
-              <UiButton :disabled="busy" @click="$emit('download', mod)">
+              <UiButton v-if="downloaded && !updateAvailable" variant="outline" :disabled="busy" @click="$emit('refresh', mod)">
                 <Spinner v-if="busy" data-icon="inline-start" />
-                <RefreshCw v-else-if="downloaded" data-icon="inline-start" />
+                <RefreshCw v-else data-icon="inline-start" />
+                {{ $t(busy ? 'mods.actions.refreshing' : 'mods.actions.refresh') }}
+              </UiButton>
+              <UiButton v-else :disabled="busy" @click="$emit('download', mod)">
+                <Spinner v-if="busy" data-icon="inline-start" />
+                <CircleArrowUp v-else-if="updateAvailable" data-icon="inline-start" />
                 <Download v-else data-icon="inline-start" />
-                {{ $t(downloaded ? 'mods.actions.updateMod' : 'mods.actions.downloadMod') }}
+                {{ $t(updateAvailable ? 'mods.actions.updateMod' : 'mods.actions.downloadMod') }}
               </UiButton>
               <UiButton v-if="downloaded" :disabled="busy" @click="$emit('add-to-room', mod)">
                 <PackagePlus data-icon="inline-start" />
@@ -115,7 +120,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { CalendarDays, Clock3, Download, ExternalLink, Eye, FileText, HardDrive, Heart, ImageIcon, PackagePlus, RefreshCw, Star, Tag, Users } from '@lucide/vue'
+import { CalendarDays, CircleArrowUp, Clock3, Download, ExternalLink, Eye, FileText, HardDrive, Heart, ImageIcon, PackagePlus, RefreshCw, Star, Tag, Users } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -132,7 +137,7 @@ const props = defineProps({
   actions: { type: Boolean, default: true }
 })
 
-defineEmits(['update:open', 'download', 'add-to-room'])
+defineEmits(['update:open', 'download', 'refresh', 'add-to-room'])
 
 const categoryKeys = Object.freeze({
   character: 'character',
@@ -156,6 +161,7 @@ const categoryKeys = Object.freeze({
 })
 
 const downloaded = computed(() => Boolean(props.mod?.downloaded || props.mod?.isDownloaded))
+const updateAvailable = computed(() => Boolean(props.mod?.updateAvailable))
 const displayTags = computed(() => (props.mod?.tags || []).filter(tag => !String(tag).toLowerCase().startsWith('version:')))
 const ratingLabel = computed(() => {
   if (props.mod?.rating === null || props.mod?.rating === undefined) return i18n.global.t('mods.workshop.noRatings')

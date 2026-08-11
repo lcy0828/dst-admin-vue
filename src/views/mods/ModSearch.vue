@@ -154,11 +154,12 @@
             </Alert>
           </CardContent>
           <CardFooter class="mod-actions">
-            <UiButton size="sm" :variant="mod.isDownloaded ? 'outline' : 'default'" :disabled="downloadingMods[mod.id]" @click="handleDownloadMod(mod)">
-              <Spinner v-if="downloadingMods[mod.id]" data-icon="inline-start" />
-              <RefreshCw v-else-if="mod.isDownloaded" data-icon="inline-start" />
+            <UiButton size="sm" :variant="mod.isDownloaded ? 'outline' : 'default'" :disabled="isModActionBusy(mod)" @click="handlePrimaryAction(mod)">
+              <Spinner v-if="isModActionBusy(mod)" data-icon="inline-start" />
+              <RefreshCw v-else-if="mod.isDownloaded && !mod.updateAvailable" data-icon="inline-start" />
+              <CircleArrowUp v-else-if="mod.updateAvailable" data-icon="inline-start" />
               <Download v-else data-icon="inline-start" />
-              {{ $t(downloadingMods[mod.id] ? 'mods.actions.downloading' : mod.isDownloaded ? 'mods.actions.update' : 'mods.actions.download') }}
+              {{ $t(primaryActionLabel(mod)) }}
             </UiButton>
             <UiButton v-if="mod.isDownloaded" size="sm" @click="openAddDialog(mod)"><PackagePlus data-icon="inline-start" />{{ $t('mods.actions.addToRoom') }}</UiButton>
             <UiButton variant="ghost" size="sm" @click="showModDetails(mod)"><Info data-icon="inline-start" />{{ $t('mods.actions.details') }}</UiButton>
@@ -190,14 +191,14 @@
       >
     </Empty>
 
-    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :busy="Boolean(downloadingMods[currentModInfo?.id])" @download="handleDownloadMod" @add-to-room="openAddDialog" />
+    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :busy="isModActionBusy(currentModInfo)" @download="handleDownloadMod" @refresh="refreshModStatus" @add-to-room="openAddDialog" />
 
     <AddModToRoomDialog v-model:open="addDialogOpen" :mod="addTarget" />
   </div>
 </template>
 
 <script>
-import { ArrowLeft, CircleCheck, Clock, Download, ImageIcon, Info, PackagePlus, RefreshCw, Search, SearchX, Star, TriangleAlert, Users } from '@lucide/vue'
+import { ArrowLeft, CircleArrowUp, CircleCheck, Clock, Download, ImageIcon, Info, PackagePlus, RefreshCw, Search, SearchX, Star, TriangleAlert, Users } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import AddModToRoomDialog from './AddModToRoomDialog.vue'
 import ModDetailsDialog from './ModDetailsDialog.vue'
@@ -233,6 +234,7 @@ export default {
     CardFooter,
     CardHeader,
     CardTitle,
+    CircleArrowUp,
     CircleCheck,
     Clock,
     Download,
@@ -291,6 +293,7 @@ export default {
       currentPage: 1,
       defaultImage: '',
       downloadingMods: {}, // 跟踪正在下载的模组
+      refreshingMods: {},
       downloadStates: {},
       libraryMods: [],
       loadingLibrary: false,
@@ -376,8 +379,8 @@ export default {
       }
     },
 
-    isModDownloaded(modId) {
-      return this.libraryMods.some(mod => mod.modid === modId && mod.downloaded)
+    findLibraryMod(modId) {
+      return this.libraryMods.find(mod => String(mod.modid || mod.id) === String(modId))
     },
 
     startSearch() {
@@ -415,10 +418,14 @@ export default {
           pageSize: this.pageSize
         })
         if (requestId !== this.searchRequestId) return
-        this.searchResults = (data.items || []).map(mod => ({
-          ...mod,
-          isDownloaded: this.isModDownloaded(mod.id)
-        }))
+        this.searchResults = (data.items || []).map(mod => {
+          const localMod = this.findLibraryMod(mod.id)
+          return {
+            ...mod,
+            isDownloaded: Boolean(localMod?.downloaded),
+            updateAvailable: Boolean(localMod?.updateAvailable)
+          }
+        })
         this.totalResults = data.total || 0
       } catch (error) {
         if (requestId !== this.searchRequestId) return
@@ -430,14 +437,57 @@ export default {
         if (requestId === this.searchRequestId) this.searching = false
       }
     },
+    isModActionBusy(mod) {
+      return Boolean(mod?.id && (this.downloadingMods[mod.id] || this.refreshingMods[mod.id]))
+    },
+
+    primaryActionLabel(mod) {
+      if (this.downloadingMods[mod?.id]) return 'mods.actions.downloading'
+      if (this.refreshingMods[mod?.id]) return 'mods.actions.refreshing'
+      if (mod?.updateAvailable) return 'mods.actions.update'
+      return mod?.isDownloaded ? 'mods.actions.refresh' : 'mods.actions.download'
+    },
+
+    handlePrimaryAction(mod) {
+      if (mod?.isDownloaded && !mod.updateAvailable) {
+        this.refreshModStatus(mod)
+        return
+      }
+      this.handleDownloadMod(mod)
+    },
+
     handleDownloadMod(mod) {
-      if (mod) this.downloadMod(mod)
+      if (mod && (!mod.isDownloaded || mod.updateAvailable)) this.downloadMod(mod)
+    },
+
+    async refreshModStatus(mod) {
+      if (!mod?.id || this.isModActionBusy(mod)) return
+      this.refreshingMods[mod.id] = true
+      try {
+        const response = await modApi.getLibrary()
+        this.libraryMods = response.items || []
+        const localMod = this.findLibraryMod(mod.id)
+        const localState = {
+          downloaded: Boolean(localMod?.downloaded),
+          isDownloaded: Boolean(localMod?.downloaded),
+          updateAvailable: Boolean(localMod?.updateAvailable)
+        }
+        Object.assign(mod, localState)
+        const details = await modApi.getModDetails({ ...mod, ...localState })
+        Object.assign(mod, details, localState)
+        toast.success(this.$t('mods.search.feedback.refreshed'))
+      } catch (error) {
+        toast.error(this.localizedFailure(this.failure('mods.errors.refresh', error)))
+      } finally {
+        this.refreshingMods[mod.id] = false
+      }
     },
 
     // 实际执行下载的方法
     async downloadMod(mod) {
+      if (!mod || this.downloadingMods[mod.id] || (mod.isDownloaded && !mod.updateAvailable)) return
       const id = mod.id
-      const wasDownloaded = mod.isDownloaded
+      const wasDownloaded = Boolean(mod.isDownloaded)
 
       // 显示下载中消息
       const loadingMessage = toast.loading(this.$t('mods.search.feedback.downloading'))
@@ -459,6 +509,7 @@ export default {
           }
         })
         mod.isDownloaded = true
+        mod.updateAvailable = false
         await this.getLibraryMods()
         this.downloadStates[id] = {
           status: 'succeeded',
