@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import Projection from 'ol/proj/Projection.js'
+import View from 'ol/View.js'
 
 import {
   DST_DEFAULT_MAP_ROTATION,
@@ -40,7 +42,7 @@ test('feature categories remain stable, searchable, and counted without dropping
 })
 
 test('map presentation matches the default game camera and reduces icon clutter', () => {
-  assert.equal(DST_DEFAULT_MAP_ROTATION, -Math.PI / 4)
+  assert.equal(DST_DEFAULT_MAP_ROTATION, 3 * Math.PI / 4)
   assert.equal(DST_MAP_ROTATION_STEP, Math.PI / 4)
   assert.ok(Math.abs(normalizeMapRotation(DST_DEFAULT_MAP_ROTATION + 2 * Math.PI) - DST_DEFAULT_MAP_ROTATION) < Number.EPSILON * 8)
   assert.equal(normalizeMapRotation(Number.NaN), DST_DEFAULT_MAP_ROTATION)
@@ -50,6 +52,26 @@ test('map presentation matches the default game camera and reduces icon clutter'
   assert.deepEqual(mapIconPresentation('resource', 2.9, false), { visible: false, size: 0 })
   assert.deepEqual(mapIconPresentation('resource', 4, false), { visible: true, size: 32 })
   assert.deepEqual(mapIconPresentation('other', 0, true), { visible: true, size: 38 })
+})
+
+test('rotated map fit keeps the complete square inside a wide viewer', () => {
+  const extent = [0, 0, 3400, 3400]
+  const viewport = [742, 435]
+  const padding = [24, 24, 24, 24]
+  const projection = new Projection({ code: 'DST-MAP-TEST', units: 'pixels', extent })
+  const view = new View({
+    projection,
+    center: [1700, 1700],
+    rotation: DST_DEFAULT_MAP_ROTATION,
+    constrainRotation: false,
+    maxZoom: 10,
+    minZoom: -2
+  })
+  view.setViewportSize(viewport)
+  view.fit(extent, { padding, maxZoom: 2 })
+
+  const rotatedDiagonal = 3400 * Math.SQRT2 / view.getResolution()
+  assert.ok(rotatedDiagonal <= viewport[1] - padding[0] - padding[2] + Number.EPSILON * 16)
 })
 
 test('map status and stage labels cover every backend state', () => {
@@ -98,6 +120,7 @@ test('formal map route and page use the authenticated v2 map contract', async ()
   assert.doesNotMatch(page, /mock|demo|Math\.random/)
   assert.match(canvas, /rotateWithView:\s*false/)
   assert.match(canvas, /rotation:\s*DST_DEFAULT_MAP_ROTATION/)
+  assert.doesNotMatch(canvas, /map\.setView\(new View\(\{[\s\S]*?extent:\s*dimensions\.extent/)
   assert.match(canvas, /imageloadend[\s\S]+scheduleFit\(0\)/)
   assert.match(canvas, /ResizeObserver\(\(\)\s*=>\s*scheduleFit\(0\)\)/)
 })

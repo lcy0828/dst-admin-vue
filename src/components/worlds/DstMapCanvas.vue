@@ -204,8 +204,6 @@ function buildLayers() {
   map.setView(new View({
     projection,
     center: [dimensions.width / 2, dimensions.height / 2],
-    extent: dimensions.extent,
-    showFullExtent: true,
     rotation: DST_DEFAULT_MAP_ROTATION,
     constrainRotation: false,
     maxZoom: 10,
