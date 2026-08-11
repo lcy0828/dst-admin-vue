@@ -40,8 +40,8 @@ test('feature categories remain stable, searchable, and counted without dropping
   assert.deepEqual(searchMapFeatures(features, 'mod_unknown').map(item => item.id), ['mod_unknown:1'])
 })
 
-test('map presentation matches the default game camera and reduces icon clutter', () => {
-  assert.equal(DST_DEFAULT_MAP_ROTATION, 3 * Math.PI / 4)
+test('map presentation follows the 45-degree game camera and reduces icon clutter', () => {
+  assert.equal(DST_DEFAULT_MAP_ROTATION, Math.PI / 4)
   assert.equal(DST_MAP_ROTATION_STEP, Math.PI / 4)
   assert.ok(Math.abs(normalizeMapRotation(DST_DEFAULT_MAP_ROTATION + 2 * Math.PI) - DST_DEFAULT_MAP_ROTATION) < Number.EPSILON * 8)
   assert.equal(normalizeMapRotation(Number.NaN), DST_DEFAULT_MAP_ROTATION)
@@ -106,6 +106,7 @@ test('formal map route and page use the authenticated v2 map contract', async ()
   assert.doesNotMatch(page, /sessionDownloadURL|imageURL/)
   assert.doesNotMatch(page, /legacyManifest|legacyMap/)
   assert.doesNotMatch(page, /mock|demo|Math\.random/)
+  // Terrain rotates with the view while sprite icons remain upright on screen.
   assert.match(canvas, /rotateWithView:\s*false/)
   assert.match(canvas, /rotation:\s*DST_DEFAULT_MAP_ROTATION/)
   assert.doesNotMatch(canvas, /map\.setView\(new View\(\{[\s\S]*?extent:\s*dimensions\.extent/)
