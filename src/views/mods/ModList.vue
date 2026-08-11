@@ -114,7 +114,7 @@
 
     <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :is-new-mod="false" @config-updated="handleConfigUpdated" />
 
-    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :actions="false">
+    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :actions="false">
       <template #actions="{ mod }">
         <UiButton :disabled="!selectedWorldId" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />{{ $t('mods.actions.configure') }}</UiButton>
       </template>
@@ -258,6 +258,8 @@ export default {
       currentModInfo: null,
       // 详情对话框
       detailsDialogVisible: false,
+      detailsLoading: false,
+      detailsRequestId: 0,
       // 卸载对话框
       uninstallDialogVisible: false,
       uninstalling: false,
@@ -553,9 +555,21 @@ export default {
     },
     
     // 显示模组详情
-    showModDetails(mod) {
+    async showModDetails(mod) {
+      const requestId = ++this.detailsRequestId;
       this.currentModInfo = mod;
       this.detailsDialogVisible = true;
+      this.detailsLoading = true;
+      try {
+        const details = await modApi.getModDetails(mod);
+        if (requestId === this.detailsRequestId) this.currentModInfo = details;
+      } catch (error) {
+        if (requestId === this.detailsRequestId) {
+          toast.error(this.localizedFailure(this.failure('mods.errors.details', error)));
+        }
+      } finally {
+        if (requestId === this.detailsRequestId) this.detailsLoading = false;
+      }
     },
     
     // 更新模组

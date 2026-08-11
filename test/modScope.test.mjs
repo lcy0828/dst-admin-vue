@@ -36,6 +36,21 @@ test('Workshop search downloads to the node without requiring a room', async () 
   assert.match(adapter, /days,/)
   assert.match(adapter, /tags: Array\.isArray\(tags\)/)
   assert.doesNotMatch(adapter, /requireValue\(keyword/)
+  assert.match(adapter, /modsV2API\.details\(modId\)/)
+  assert.match(search, /modApi\.getModDetails\(mod\)/)
+})
+
+test('every mod details entry refreshes Workshop metadata before presentation', async () => {
+  const pages = await Promise.all([
+    source('../src/views/mods/ModSearch.vue'),
+    source('../src/views/mods/ModLibrary.vue'),
+    source('../src/views/mods/ModList.vue')
+  ])
+
+  for (const page of pages) {
+    assert.match(page, /modApi\.getModDetails\(mod\)/)
+    assert.match(page, /:loading="detailsLoading"/)
+  }
 })
 
 test('adding a downloaded mod explicitly selects room worlds', async () => {

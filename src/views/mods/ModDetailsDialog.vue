@@ -3,7 +3,10 @@
     <DialogContent class="max-w-4xl">
       <DialogHeader>
         <DialogTitle>{{ $t('mods.workshop.detailsTitle') }}</DialogTitle>
-        <DialogDescription>{{ $t('mods.workshop.detailsDescription') }}</DialogDescription>
+        <DialogDescription class="flex items-center gap-2">
+          <Spinner v-if="loading" />
+          <span>{{ $t('mods.workshop.detailsDescription') }}</span>
+        </DialogDescription>
       </DialogHeader>
 
       <template v-if="mod">
@@ -124,6 +127,7 @@ import { i18n } from '@/i18n'
 const props = defineProps({
   open: { type: Boolean, default: false },
   mod: { type: Object, default: null },
+  loading: { type: Boolean, default: false },
   busy: { type: Boolean, default: false },
   actions: { type: Boolean, default: true }
 })

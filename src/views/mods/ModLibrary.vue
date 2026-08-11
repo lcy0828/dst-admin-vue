@@ -178,7 +178,7 @@
     </Empty>
 
     <AddModToRoomDialog v-model:open="addDialogOpen" :mod="selectedMod" @added="loadLibrary" />
-    <ModDetailsDialog v-model:open="detailsOpen" :mod="detailsMod" :busy="isBusy(detailsMod)" @download="downloadOrUpdate" @add-to-room="openAddDialog" />
+    <ModDetailsDialog v-model:open="detailsOpen" :mod="detailsMod" :loading="detailsLoading" :busy="isBusy(detailsMod)" @download="downloadOrUpdate" @add-to-room="openAddDialog" />
   </div>
 </template>
 
@@ -214,6 +214,8 @@ const addDialogOpen = ref(false)
 const selectedMod = ref(null)
 const detailsOpen = ref(false)
 const detailsMod = ref(null)
+const detailsLoading = ref(false)
+let detailsRequestId = 0
 
 const translate = (...args) => i18n.global.t(...args)
 const loadError = computed(() => formatModFailure(translate, loadFailure.value))
@@ -287,9 +289,21 @@ function openAddDialog(mod) {
   detailsOpen.value = false
 }
 
-function openDetails(mod) {
+async function openDetails(mod) {
+  const requestId = ++detailsRequestId
   detailsMod.value = mod
   detailsOpen.value = true
+  detailsLoading.value = true
+  try {
+    const details = await modApi.getModDetails(mod)
+    if (requestId === detailsRequestId) detailsMod.value = details
+  } catch (error) {
+    if (requestId === detailsRequestId) {
+      toast.error(formatModFailure(translate, createModFailure('mods.errors.details', error)))
+    }
+  } finally {
+    if (requestId === detailsRequestId) detailsLoading.value = false
+  }
 }
 
 function compareMods(left, right, field) {

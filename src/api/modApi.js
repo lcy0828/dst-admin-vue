@@ -182,6 +182,26 @@ async function searchMods({ keyword = '', sort = 'trend', days = 7, tags = [], p
   }
 }
 
+async function getModDetails(mod) {
+  const modId = requireValue(mod?.id || mod?.modid, 'MOD_ID_REQUIRED')
+  const details = mapSearchMod(await modsV2API.details(modId))
+  return {
+    ...mod,
+    ...details,
+    modid: mod.modid || details.id,
+    downloaded: Boolean(mod.downloaded || mod.isDownloaded),
+    isDownloaded: Boolean(mod.isDownloaded || mod.downloaded),
+    configured: Boolean(mod.configured),
+    installed: Boolean(mod.installed),
+    loaded: Boolean(mod.loaded),
+    enabled: Boolean(mod.enabled),
+    configuredWorlds: mod.configuredWorlds || [],
+    enabledWorlds: mod.enabledWorlds || [],
+    installedWorlds: mod.installedWorlds || [],
+    loadedWorlds: mod.loadedWorlds || []
+  }
+}
+
 async function downloadMod(input) {
   const modId = requireValue(input.modid || input.id, 'MOD_ID_REQUIRED')
   const alreadyDownloaded = input.downloaded ?? input.installed
@@ -301,6 +321,7 @@ export const realModApi = {
   getLibrary,
   getServerList,
   searchMods,
+  getModDetails,
   downloadMod,
   addModToRoom,
   getModConfig,

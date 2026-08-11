@@ -190,7 +190,7 @@
       >
     </Empty>
 
-    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :busy="Boolean(downloadingMods[currentModInfo?.id])" @download="handleDownloadMod" @add-to-room="openAddDialog" />
+    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :busy="Boolean(downloadingMods[currentModInfo?.id])" @download="handleDownloadMod" @add-to-room="openAddDialog" />
 
     <AddModToRoomDialog v-model:open="addDialogOpen" :mod="addTarget" />
   </div>
@@ -296,6 +296,8 @@ export default {
       loadingLibrary: false,
       detailsDialogVisible: false, // 详情对话框可见性
       currentModInfo: null, // 当前查看的模组
+      detailsLoading: false,
+      detailsRequestId: 0,
       addDialogOpen: false,
       addTarget: null
     }
@@ -506,9 +508,21 @@ export default {
       this.detailsDialogVisible = false
     },
 
-    showModDetails(mod) {
+    async showModDetails(mod) {
+      const requestId = ++this.detailsRequestId
       this.currentModInfo = mod
       this.detailsDialogVisible = true
+      this.detailsLoading = true
+      try {
+        const details = await modApi.getModDetails(mod)
+        if (requestId === this.detailsRequestId) this.currentModInfo = details
+      } catch (error) {
+        if (requestId === this.detailsRequestId) {
+          toast.error(this.localizedFailure(this.failure('mods.errors.details', error)))
+        }
+      } finally {
+        if (requestId === this.detailsRequestId) this.detailsLoading = false
+      }
     },
 
     // 提取星级评分
