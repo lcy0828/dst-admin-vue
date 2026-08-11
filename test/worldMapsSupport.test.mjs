@@ -1,8 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import Projection from 'ol/proj/Projection.js'
-import View from 'ol/View.js'
 
 import {
   DST_DEFAULT_MAP_ROTATION,
@@ -10,6 +8,7 @@ import {
   WORLD_MAP_LAYERS,
   defaultFeatureCategories,
   formatMapBytes,
+  mapFitState,
   mapIconPresentation,
   mapFeatureCounts,
   mapJobFailure,
@@ -55,23 +54,12 @@ test('map presentation matches the default game camera and reduces icon clutter'
 })
 
 test('rotated map fit keeps the complete square inside a wide viewer', () => {
-  const extent = [0, 0, 3400, 3400]
   const viewport = [742, 435]
-  const padding = [24, 24, 24, 24]
-  const projection = new Projection({ code: 'DST-MAP-TEST', units: 'pixels', extent })
-  const view = new View({
-    projection,
-    center: [1700, 1700],
-    rotation: DST_DEFAULT_MAP_ROTATION,
-    constrainRotation: false,
-    maxZoom: 10,
-    minZoom: -2
-  })
-  view.setViewportSize(viewport)
-  view.fit(extent, { padding, maxZoom: 2 })
-
-  const rotatedDiagonal = 3400 * Math.SQRT2 / view.getResolution()
-  assert.ok(rotatedDiagonal <= viewport[1] - padding[0] - padding[2] + Number.EPSILON * 16)
+  const state = mapFitState(3400, 3400, DST_DEFAULT_MAP_ROTATION, viewport)
+  const visibleDiagonal = 3400 * Math.SQRT2 / state.resolution
+  assert.deepEqual(state.center, [1700, 1700])
+  assert.ok(Math.abs(visibleDiagonal - (viewport[1] - 48)) < Number.EPSILON * 32)
+  assert.equal(mapFitState(3400, 3400, 0, [0, 435]), null)
 })
 
 test('map status and stage labels cover every backend state', () => {
@@ -121,6 +109,9 @@ test('formal map route and page use the authenticated v2 map contract', async ()
   assert.match(canvas, /rotateWithView:\s*false/)
   assert.match(canvas, /rotation:\s*DST_DEFAULT_MAP_ROTATION/)
   assert.doesNotMatch(canvas, /map\.setView\(new View\(\{[\s\S]*?extent:\s*dimensions\.extent/)
+  assert.match(canvas, /getBoundingClientRect\(\)/)
+  assert.match(canvas, /mapFitState\(/)
+  assert.doesNotMatch(canvas, /getView\(\)\.fit\(/)
   assert.match(canvas, /imageloadend[\s\S]+scheduleFit\(0\)/)
   assert.match(canvas, /ResizeObserver\(\(\)\s*=>\s*scheduleFit\(0\)\)/)
 })

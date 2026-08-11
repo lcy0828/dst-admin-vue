@@ -19,6 +19,7 @@ import { Circle as CircleStyle, Fill, Icon as IconStyle, Stroke, Style } from 'o
 import {
   DST_DEFAULT_MAP_ROTATION,
   DST_MAP_ROTATION_STEP,
+  mapFitState,
   mapIconPresentation,
   normalizeMapRotation
 } from '@/lib/worldMaps.mjs'
@@ -215,9 +216,20 @@ function buildLayers() {
 
 function fit(duration = 180) {
   const dimensions = mapDimensions()
-  if (!map || !dimensions) return
+  const target = mapElement.value
+  if (!map || !dimensions || !target) return
   map.updateSize()
-  map.getView().fit(dimensions.extent, { padding: [24, 24, 24, 24], duration, maxZoom: 2 })
+  const bounds = target.getBoundingClientRect()
+  const view = map.getView()
+  const state = mapFitState(dimensions.width, dimensions.height, view.getRotation(), [bounds.width, bounds.height])
+  if (!state) return
+  view.cancelAnimations()
+  if (duration > 0) {
+    view.animate({ center: state.center, resolution: state.resolution, duration })
+  } else {
+    view.setCenter(state.center)
+    view.setResolution(state.resolution)
+  }
 }
 
 function scheduleFit(duration = 0) {

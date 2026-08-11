@@ -29,6 +29,30 @@ export function normalizeMapRotation(rotation) {
   return normalized
 }
 
+export function mapFitState(width, height, rotation, viewport, padding = [24, 24, 24, 24]) {
+  const imageWidth = Number(width)
+  const imageHeight = Number(height)
+  const viewportWidth = Number(viewport?.[0])
+  const viewportHeight = Number(viewport?.[1])
+  if (![imageWidth, imageHeight, viewportWidth, viewportHeight].every(value => Number.isFinite(value) && value > 0)) {
+    return null
+  }
+
+  const inset = Array.from({ length: 4 }, (_, index) => Math.max(0, Number(padding?.[index]) || 0))
+  const availableWidth = Math.max(1, viewportWidth - inset[1] - inset[3])
+  const availableHeight = Math.max(1, viewportHeight - inset[0] - inset[2])
+  const angle = normalizeMapRotation(rotation)
+  const cosine = Math.abs(Math.cos(angle))
+  const sine = Math.abs(Math.sin(angle))
+  const rotatedWidth = imageWidth * cosine + imageHeight * sine
+  const rotatedHeight = imageWidth * sine + imageHeight * cosine
+
+  return {
+    center: [imageWidth / 2, imageHeight / 2],
+    resolution: Math.max(rotatedWidth / availableWidth, rotatedHeight / availableHeight)
+  }
+}
+
 export function mapIconPresentation(category, zoom, selected = false) {
   const normalizedCategory = categoryOrder.has(category) ? category : 'other'
   const normalizedZoom = Number.isFinite(Number(zoom)) ? Number(zoom) : 0
