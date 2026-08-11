@@ -28,11 +28,7 @@
             <FieldLabel for="library-keyword">{{ $t('mods.library.filters.keyword') }}</FieldLabel>
             <InputGroup>
               <InputGroupAddon><Search /></InputGroupAddon>
-              <InputGroupInput
-                id="library-keyword"
-                v-model="keyword"
-                :placeholder="$t('mods.library.filters.keywordPlaceholder')"
-              />
+              <InputGroupInput id="library-keyword" v-model="keyword" :placeholder="$t('mods.library.filters.keywordPlaceholder')" />
             </InputGroup>
           </Field>
           <Field>
@@ -44,6 +40,22 @@
                   <SelectItem value="all">{{ $t('mods.library.filters.statuses.all') }}</SelectItem>
                   <SelectItem value="downloaded">{{ $t('mods.library.filters.statuses.downloaded') }}</SelectItem>
                   <SelectItem value="attention">{{ $t('mods.library.filters.statuses.attention') }}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+          </Field>
+          <Field>
+            <FieldLabel for="library-sort">{{ $t('mods.library.filters.sort') }}</FieldLabel>
+            <UiSelect v-model="sortBy">
+              <SelectTrigger id="library-sort"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="updatedAt">{{ $t('mods.library.filters.sorts.updatedAt') }}</SelectItem>
+                  <SelectItem value="name">{{ $t('mods.library.filters.sorts.name') }}</SelectItem>
+                  <SelectItem value="author">{{ $t('mods.library.filters.sorts.author') }}</SelectItem>
+                  <SelectItem value="version">{{ $t('mods.library.filters.sorts.version') }}</SelectItem>
+                  <SelectItem value="subscriptions">{{ $t('mods.library.filters.sorts.subscriptions') }}</SelectItem>
+                  <SelectItem value="rating">{{ $t('mods.library.filters.sorts.rating') }}</SelectItem>
                 </SelectGroup>
               </SelectContent>
             </UiSelect>
@@ -81,6 +93,7 @@
           <TableHeader>
             <TableRow>
               <TableHead>{{ $t('mods.library.table.mod') }}</TableHead>
+              <TableHead>{{ $t('mods.library.table.workshop') }}</TableHead>
               <TableHead>{{ $t('mods.library.table.status') }}</TableHead>
               <TableHead>{{ $t('mods.library.table.updatedAt') }}</TableHead>
               <TableHead class="text-right">{{ $t('mods.library.table.actions') }}</TableHead>
@@ -95,9 +108,23 @@
                     <img v-if="mod.image" :src="mod.image" :alt="mod.name" loading="lazy" @error="hideImage" />
                   </div>
                   <div class="min-w-0">
-                    <p class="truncate font-medium" :title="mod.name">{{ mod.name || `Workshop ${mod.id}` }}</p>
-                    <p class="text-muted-foreground text-xs">{{ mod.author || $t('mods.values.unknownAuthor') }} · {{ mod.id }}</p>
+                    <div class="flex min-w-0 items-center gap-2">
+                      <p class="truncate font-medium" :title="mod.name">
+                        {{ mod.name || `Workshop ${mod.id}` }}
+                      </p>
+                      <Badge v-if="mod.version" variant="secondary">v{{ mod.version }}</Badge>
+                    </div>
+                    <p class="text-muted-foreground text-xs">
+                      {{ mod.author || $t('mods.values.unknownAuthor') }} ·
+                      {{ mod.id }}
+                    </p>
                   </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div class="workshop-stats">
+                  <span><Star />{{ formatRating(mod.rating) }}</span>
+                  <span><Users />{{ formatNumber(mod.subscriptions) }}</span>
                 </div>
               </TableCell>
               <TableCell>
@@ -114,12 +141,11 @@
               <TableCell>{{ formatDate(mod.updatedAt || mod.localUpdatedAt) }}</TableCell>
               <TableCell>
                 <div class="row-actions">
-                  <UiButton
-                    size="sm"
-                    variant="outline"
-                    :disabled="isBusy(mod)"
-                    @click="downloadOrUpdate(mod)"
-                  >
+                  <UiButton size="sm" variant="ghost" @click="openDetails(mod)">
+                    <Info data-icon="inline-start" />
+                    {{ $t('mods.actions.details') }}
+                  </UiButton>
+                  <UiButton size="sm" variant="outline" :disabled="isBusy(mod)" @click="downloadOrUpdate(mod)">
                     <Spinner v-if="isBusy(mod)" data-icon="inline-start" />
                     <RefreshCw v-else-if="mod.downloaded" data-icon="inline-start" />
                     <Download v-else data-icon="inline-start" />
@@ -152,14 +178,16 @@
     </Empty>
 
     <AddModToRoomDialog v-model:open="addDialogOpen" :mod="selectedMod" @added="loadLibrary" />
+    <ModDetailsDialog v-model:open="detailsOpen" :mod="detailsMod" :busy="isBusy(detailsMod)" @download="downloadOrUpdate" @add-to-room="openAddDialog" />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Download, ImageIcon, PackageOpen, PackagePlus, RefreshCw, Search, TriangleAlert } from '@lucide/vue'
+import { Download, ImageIcon, Info, PackageOpen, PackagePlus, RefreshCw, Search, Star, TriangleAlert, Users } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import AddModToRoomDialog from './AddModToRoomDialog.vue'
+import ModDetailsDialog from './ModDetailsDialog.vue'
 import { modApi } from '@/api'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -178,24 +206,31 @@ import { i18n } from '@/i18n'
 const mods = ref([])
 const keyword = ref('')
 const status = ref('all')
+const sortBy = ref('updatedAt')
 const loading = ref(false)
 const loadFailure = ref(null)
 const busyMods = ref({})
 const addDialogOpen = ref(false)
 const selectedMod = ref(null)
+const detailsOpen = ref(false)
+const detailsMod = ref(null)
 
 const translate = (...args) => i18n.global.t(...args)
 const loadError = computed(() => formatModFailure(translate, loadFailure.value))
 const filteredMods = computed(() => {
   const normalized = keyword.value.trim().toLowerCase()
-  return mods.value.filter(mod => {
-    const matchesKeyword = !normalized || [mod.name, mod.author, mod.id, mod.description]
-      .some(value => String(value || '').toLowerCase().includes(normalized))
-    const matchesStatus = status.value === 'all' ||
-      (status.value === 'downloaded' && mod.downloaded) ||
-      (status.value === 'attention' && (!mod.downloaded || mod.health !== 'healthy'))
+  const result = mods.value.filter(mod => {
+    const matchesKeyword =
+      !normalized ||
+      [mod.name, mod.author, mod.id, mod.description].some(value =>
+        String(value || '')
+          .toLowerCase()
+          .includes(normalized)
+      )
+    const matchesStatus = status.value === 'all' || (status.value === 'downloaded' && mod.downloaded) || (status.value === 'attention' && (!mod.downloaded || mod.health !== 'healthy'))
     return matchesKeyword && matchesStatus
   })
+  return result.sort((left, right) => compareMods(left, right, sortBy.value))
 })
 
 onMounted(loadLibrary)
@@ -206,6 +241,9 @@ async function loadLibrary() {
   try {
     const response = await modApi.getLibrary()
     mods.value = response.items || []
+    if (detailsMod.value) {
+      detailsMod.value = mods.value.find(mod => mod.id === detailsMod.value.id) || detailsMod.value
+    }
   } catch (error) {
     mods.value = []
     loadFailure.value = createModFailure('mods.errors.library', error)
@@ -228,7 +266,11 @@ async function downloadOrUpdate(mod) {
   setBusy(mod, true)
   const pendingToast = toast.loading(translate(mod.downloaded ? 'mods.library.feedback.updating' : 'mods.library.feedback.downloading'))
   try {
-    await modApi.downloadMod({ id: mod.id, downloaded: mod.downloaded, includeDependencies: true })
+    await modApi.downloadMod({
+      id: mod.id,
+      downloaded: mod.downloaded,
+      includeDependencies: true
+    })
     await loadLibrary()
     toast.success(translate(mod.downloaded ? 'mods.library.feedback.updated' : 'mods.library.feedback.downloaded', { name: mod.name || mod.id }))
   } catch (error) {
@@ -242,6 +284,36 @@ async function downloadOrUpdate(mod) {
 function openAddDialog(mod) {
   selectedMod.value = mod
   addDialogOpen.value = true
+  detailsOpen.value = false
+}
+
+function openDetails(mod) {
+  detailsMod.value = mod
+  detailsOpen.value = true
+}
+
+function compareMods(left, right, field) {
+  if (field === 'name' || field === 'author' || field === 'version') {
+    return String(left[field] || '').localeCompare(String(right[field] || ''), undefined, { numeric: true })
+  }
+  if (field === 'subscriptions' || field === 'rating') {
+    return (Number(right[field]) || 0) - (Number(left[field]) || 0)
+  }
+  return new Date(right.updatedAt || right.localUpdatedAt || 0).getTime() - new Date(left.updatedAt || left.localUpdatedAt || 0).getTime()
+}
+
+function formatNumber(value) {
+  const locale = i18n.global.locale.value === 'en-US' ? 'en-US' : 'zh-CN'
+  return new Intl.NumberFormat(locale, {
+    notation: 'compact',
+    maximumFractionDigits: 1
+  }).format(Number(value) || 0)
+}
+
+function formatRating(value) {
+  if (value === null || value === undefined) return '--'
+  const score = Number(value)
+  return `${(score <= 1 ? score * 5 : score).toFixed(1)} / 5`
 }
 
 function formatDate(value) {
@@ -306,9 +378,29 @@ function hideImage(event) {
 
 .filter-form {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr);
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(160px, 1fr));
   align-items: end;
   gap: 12px;
+}
+
+.workshop-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.workshop-stats span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workshop-stats svg {
+  width: 14px;
+  height: 14px;
+  color: var(--muted-foreground);
 }
 
 .mod-preview {

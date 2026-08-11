@@ -256,8 +256,8 @@ export const playersV2API = {
 }
 
 export const modsV2API = {
-  search: (query, page = 1, pageSize = 20) => client.get('/mods/search', {
-    params: { query, page, pageSize }
+  search: (params = {}) => client.get('/mods/search', {
+    params
   }),
   library: () => client.get('/mods/library', {
     headers: { 'Cache-Control': 'no-store' }

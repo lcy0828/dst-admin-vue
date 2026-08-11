@@ -88,6 +88,7 @@ test('mod pages delegate visible copy to i18n without translating mod-owned data
     '../src/views/mods/ModLibrary.vue',
     '../src/views/mods/ModList.vue',
     '../src/views/mods/ModSearch.vue',
+    '../src/views/mods/ModDetailsDialog.vue',
     '../src/views/mods/ModConfigDialog.vue',
     '../src/views/mods/AddModToRoomDialog.vue'
   ]
@@ -101,10 +102,10 @@ test('mod pages delegate visible copy to i18n without translating mod-owned data
 
   assert.match(pages[1], /\{\{ mod\.name \}\}/)
   assert.match(pages[1], /\{\{ mod\.author \|\| \$t\(/)
-  assert.match(pages[2], /\{\{ currentModInfo\.describe \}\}/)
-  assert.match(pages[3], /\{\{ option\.label \}\}/)
-  assert.match(pages[3], /:value="opt\.data"/)
-  assert.match(pages[3], /this\.configForm\[option\.name\] = value/)
+  assert.match(pages[3], /mod\.description/)
+  assert.match(pages[4], /\{\{ option\.label \}\}/)
+  assert.match(pages[4], /:value="opt\.data"/)
+  assert.match(pages[4], /this\.configForm\[option\.name\] = value/)
 })
 
 test('mod messages are registered statically in the global catalog', async () => {
@@ -121,4 +122,14 @@ test('mod API leaves timestamps raw so locale formatting stays in the view layer
   assert.match(api, /time: mod\.updatedAt \|\| ''/)
   assert.match(api, /update_time: mod\.updatedAt \|\| ''/)
   assert.match(api, /installedAt: mod\.localUpdatedAt \|\| ''/)
+})
+
+test('mod API preserves Workshop detail metadata for every mod view', async () => {
+  const api = await readFile(new URL('../src/api/modApi.js', import.meta.url), 'utf8')
+
+  for (const field of ['author', 'version', 'createdAt', 'ratingCount', 'favorites', 'views', 'fileSize']) {
+    assert.match(api, new RegExp(`${field}:`), field)
+  }
+  assert.match(api, /workshopUrl:/)
+  assert.match(api, /changelogUrl:/)
 })

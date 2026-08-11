@@ -61,6 +61,33 @@ export const modMessages = {
         source: { configured: '手动配置', path: '环境路径', standard: '标准位置' },
         fieldType: { boolean: '布尔值', number: '数字', string: '字符串', text: '文本', select: '选项', json: 'JSON 数据' }
       },
+      workshop: {
+        detailsTitle: '模组详情',
+        detailsDescription: 'Steam Workshop 与本地模组文件提供的完整信息。',
+        description: '模组描述',
+        noDescription: '该模组暂无描述。',
+        workshopId: 'Workshop ID',
+        version: '版本',
+        author: '作者',
+        rating: '评分',
+        ratingCount: '{count} 个评价',
+        noRatings: '暂无评分',
+        subscriptions: '订阅',
+        favorites: '收藏',
+        views: '浏览',
+        fileSize: '文件大小',
+        publishedAt: '发布时间',
+        updatedAt: '更新时间',
+        tags: '分类标签',
+        steamPage: 'Steam 详情',
+        changelog: '更新说明',
+        categories: {
+          all: '全部分类', character: '角色', item: '物品', pet: '宠物', creature: '生物',
+          environment: '环境', interface: '界面', utility: '工具', art: '美术', worldgen: '世界生成',
+          tweak: '玩法调整', scenario: '场景', language: '语言', other: '其他', tutorial: '教程',
+          clientOnly: '仅客户端', serverOnly: '仅服务端', allClientsRequire: '所有客户端必装', serverAdmin: '服务器管理'
+        }
+      },
       actions: {
         refresh: '刷新',
         add: '添加模组',
@@ -200,13 +227,16 @@ export const modMessages = {
           keyword: '关键词',
           keywordPlaceholder: '搜索名称、作者或 Workshop ID',
           status: '本地状态',
-          statuses: { all: '全部', downloaded: '已下载', attention: '需要处理' }
+          statuses: { all: '全部', downloaded: '已下载', attention: '需要处理' },
+          sort: '排序',
+          sorts: { updatedAt: '最近更新', name: '名称', author: '作者', version: '版本', subscriptions: '订阅数', rating: '评分' }
         },
         loadFailedTitle: '节点模组库加载失败',
         table: {
           title: '当前节点',
           total: '显示 {count} 个模组',
           mod: '模组',
+          workshop: 'Workshop 数据',
           status: '状态',
           updatedAt: '更新时间',
           actions: '操作'
@@ -254,13 +284,23 @@ export const modMessages = {
           loadingRooms: '正在加载房间',
           selectRoom: '请选择房间',
           name: '模组名称或 Workshop ID',
-          namePlaceholder: '输入模组名称或 Workshop ID'
+          namePlaceholder: '输入名称或 ID，留空浏览热门模组',
+          sort: '排序',
+          category: '分类',
+          days: '时间范围',
+          pageSize: '每页数量'
         },
+        sorts: {
+          relevance: '相关度', trend: '热门趋势', mostRecent: '最新发布', lastUpdated: '最近更新',
+          mostSubscribed: '订阅最多', topRated: '评分最高'
+        },
+        days: { one: '今天', seven: '最近 7 天', thirty: '最近 30 天', ninety: '最近 90 天', year: '最近一年', all: '全部时间' },
+        results: '{count} 个结果',
         loadFailedTitle: '模组数据加载失败',
         empty: {
           noResults: '没有找到匹配的模组',
-          noResultsDescription: '尝试使用其他关键词。',
-          notSearched: '尚未搜索模组'
+          noResultsDescription: '尝试调整关键词、排序、分类或时间范围。',
+          notSearched: '正在准备 Workshop 浏览数据'
         },
         details: {
           title: '模组详情',
@@ -340,6 +380,33 @@ export const modMessages = {
         repairAction: { repair: 'Repair', restart: 'Restart', update: 'Update', configure: 'Configure' },
         source: { configured: 'Configured', path: 'PATH', standard: 'Standard location' },
         fieldType: { boolean: 'Boolean', number: 'Number', string: 'String', text: 'Text', select: 'Select', json: 'JSON data' }
+      },
+      workshop: {
+        detailsTitle: 'Mod Details',
+        detailsDescription: 'Complete information from Steam Workshop and the local mod package.',
+        description: 'Mod Description',
+        noDescription: 'This mod does not have a description.',
+        workshopId: 'Workshop ID',
+        version: 'Version',
+        author: 'Author',
+        rating: 'Rating',
+        ratingCount: '{count} ratings',
+        noRatings: 'Not rated yet',
+        subscriptions: 'Subscribers',
+        favorites: 'Favorites',
+        views: 'Views',
+        fileSize: 'File Size',
+        publishedAt: 'Published',
+        updatedAt: 'Updated',
+        tags: 'Categories',
+        steamPage: 'Steam Details',
+        changelog: 'Change Notes',
+        categories: {
+          all: 'All Categories', character: 'Character', item: 'Item', pet: 'Pet', creature: 'Creature',
+          environment: 'Environment', interface: 'Interface', utility: 'Utility', art: 'Art', worldgen: 'World Generation',
+          tweak: 'Tweak', scenario: 'Scenario', language: 'Language', other: 'Other', tutorial: 'Tutorial',
+          clientOnly: 'Client Only', serverOnly: 'Server Only', allClientsRequire: 'All Clients Require', serverAdmin: 'Server Admin'
+        }
       },
       actions: {
         refresh: 'Refresh',
@@ -480,13 +547,16 @@ export const modMessages = {
           keyword: 'Keyword',
           keywordPlaceholder: 'Search name, author, or Workshop ID',
           status: 'Local State',
-          statuses: { all: 'All', downloaded: 'Downloaded', attention: 'Needs attention' }
+          statuses: { all: 'All', downloaded: 'Downloaded', attention: 'Needs attention' },
+          sort: 'Sort',
+          sorts: { updatedAt: 'Recently Updated', name: 'Name', author: 'Author', version: 'Version', subscriptions: 'Subscribers', rating: 'Rating' }
         },
         loadFailedTitle: 'Failed to Load Node Mod Library',
         table: {
           title: 'Active Node',
           total: 'Showing {count} mods',
           mod: 'Mod',
+          workshop: 'Workshop Data',
           status: 'Status',
           updatedAt: 'Updated',
           actions: 'Actions'
@@ -534,13 +604,23 @@ export const modMessages = {
           loadingRooms: 'Loading rooms',
           selectRoom: 'Select a room',
           name: 'Mod Name or Workshop ID',
-          namePlaceholder: 'Enter a mod name or Workshop ID'
+          namePlaceholder: 'Enter a name or ID, or leave blank to browse popular mods',
+          sort: 'Sort',
+          category: 'Category',
+          days: 'Time Range',
+          pageSize: 'Page Size'
         },
+        sorts: {
+          relevance: 'Relevance', trend: 'Trending', mostRecent: 'Newest', lastUpdated: 'Recently Updated',
+          mostSubscribed: 'Most Subscribed', topRated: 'Top Rated'
+        },
+        days: { one: 'Today', seven: 'Last 7 Days', thirty: 'Last 30 Days', ninety: 'Last 90 Days', year: 'Last Year', all: 'All Time' },
+        results: '{count} results',
         loadFailedTitle: 'Failed to Load Mod Data',
         empty: {
           noResults: 'No matching mods found',
-          noResultsDescription: 'Try a different keyword.',
-          notSearched: 'No mod search yet'
+          noResultsDescription: 'Try another keyword, sort order, category, or time range.',
+          notSearched: 'Preparing Workshop browsing data'
         },
         details: {
           title: 'Mod Details',

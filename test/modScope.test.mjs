@@ -22,12 +22,20 @@ test('node library API is independent from room configuration APIs', async () =>
 })
 
 test('Workshop search downloads to the node without requiring a room', async () => {
-  const search = await source('../src/views/mods/ModSearch.vue')
+  const [search, adapter] = await Promise.all([
+    source('../src/views/mods/ModSearch.vue'),
+    source('../src/api/modApi.js')
+  ])
 
   assert.match(search, /modApi\.getLibrary\(\)/)
   assert.match(search, /downloaded: wasDownloaded/)
   assert.doesNotMatch(search, /selectedRoomId/)
   assert.doesNotMatch(search, /modApi\.getServerList/)
+  assert.match(adapter, /keyword = ''/)
+  assert.match(adapter, /sort,/)
+  assert.match(adapter, /days,/)
+  assert.match(adapter, /tags: Array\.isArray\(tags\)/)
+  assert.doesNotMatch(adapter, /requireValue\(keyword/)
 })
 
 test('adding a downloaded mod explicitly selects room worlds', async () => {

@@ -86,9 +86,9 @@
                 <span v-if="mod.version"><Tag />{{ mod.version }}</span>
                 <span v-if="mod.update_time"><Clock />{{ formatDate(mod.update_time) }}</span>
                 <span v-if="mod.subscribers"><Users />{{ mod.subscribers }} {{ $t('mods.values.subscriptions') }}</span>
-                <span v-if="mod.rating !== null"><Star />{{ mod.rating }} {{ $t('mods.values.rating') }}</span>
+                <span v-if="mod.rating !== null"><Star />{{ formatRating(mod.rating) }}</span>
               </div>
-              <div v-if="mod.tags && mod.tags.length" class="mod-tags"><Badge v-for="tag in mod.tags" :key="tag" variant="secondary">{{ tag }}</Badge></div>
+              <div v-if="displayTags(mod).length" class="mod-tags"><Badge v-for="tag in displayTags(mod)" :key="tag" variant="secondary">{{ tagLabel(tag) }}</Badge></div>
             </CardContent>
             <CardFooter class="mod-actions">
               <UiButton size="sm" :disabled="!isConfiguredInSelectedWorld(mod) || isModBusy(mod)" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />{{ $t('mods.actions.configure') }}</UiButton>
@@ -114,28 +114,11 @@
 
     <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :is-new-mod="false" @config-updated="handleConfigUpdated" />
 
-    <Sheet v-model:open="detailsDialogVisible">
-      <SheetContent side="right" class="mod-details-sheet">
-        <SheetHeader><SheetTitle>{{ $t('mods.installed.details.title') }}</SheetTitle><SheetDescription>{{ $t('mods.installed.details.description') }}</SheetDescription></SheetHeader>
-        <ScrollArea class="mod-details-scroll">
-          <div v-if="currentModInfo" class="mod-details-content">
-            <div class="mod-details-header">
-              <div class="mod-details-image"><ImageIcon /><img v-if="currentModInfo.image || defaultIcon" :src="currentModInfo.image || defaultIcon" :alt="currentModInfo.name" @error="handleImageError" /></div>
-              <div><h3>{{ currentModInfo.name }}</h3><p>{{ currentModInfo.author || $t('mods.values.unknownAuthor') }}</p><Badge :variant="currentModInfo.enabled ? 'default' : 'secondary'">{{ $t(currentModInfo.enabled ? 'mods.values.enabled' : 'mods.values.disabled') }}</Badge></div>
-            </div>
-            <Separator />
-            <section><h4>{{ $t('mods.installed.details.modDescription') }}</h4><p class="description-content">{{ currentModInfo.description || $t('mods.installed.details.noDescription') }}</p></section>
-            <section v-if="currentModInfo.compatibility"><h4>{{ $t('mods.installed.details.compatibility') }}</h4><div class="compatibility-tags">
-              <Badge v-if="currentModInfo.compatibility.dst">{{ $t('mods.installed.details.compatibilityValues.dst') }}</Badge><Badge v-if="currentModInfo.compatibility.ds" variant="outline">{{ $t('mods.installed.details.compatibilityValues.ds') }}</Badge><Badge v-if="currentModInfo.compatibility.rog" variant="secondary">{{ $t('mods.installed.details.compatibilityValues.rog') }}</Badge><Badge v-if="currentModInfo.compatibility.sw" variant="secondary">{{ $t('mods.installed.details.compatibilityValues.sw') }}</Badge><Badge v-if="currentModInfo.compatibility.hamlet" variant="outline">{{ $t('mods.installed.details.compatibilityValues.hamlet') }}</Badge>
-            </div></section>
-            <section><h4>{{ $t('mods.installed.details.fileInfo') }}</h4><dl class="file-info-list">
-              <div><dt>{{ $t('mods.installed.details.modId') }}</dt><dd>{{ currentModInfo.modid || $t('mods.values.unknown') }}</dd></div><div><dt>{{ $t('mods.installed.details.installPath') }}</dt><dd>{{ currentModInfo.path || $t('mods.values.unknown') }}</dd></div><div><dt>{{ $t('mods.installed.details.fileSize') }}</dt><dd>{{ currentModInfo.size || $t('mods.values.unknown') }}</dd></div><div><dt>{{ $t('mods.installed.details.installedAt') }}</dt><dd>{{ formatDate(currentModInfo.time || currentModInfo.installedAt, $t('mods.values.unknown')) }}</dd></div>
-            </dl></section>
-          </div>
-        </ScrollArea>
-        <SheetFooter><UiButton variant="outline" @click="detailsDialogVisible = false">{{ $t('mods.actions.close') }}</UiButton><UiButton @click="openConfigDialog(currentModInfo)" :disabled="!currentModInfo || !selectedWorldId">{{ $t('mods.actions.configure') }}</UiButton></SheetFooter>
-      </SheetContent>
-    </Sheet>
+    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :actions="false">
+      <template #actions="{ mod }">
+        <UiButton :disabled="!selectedWorldId" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />{{ $t('mods.actions.configure') }}</UiButton>
+      </template>
+    </ModDetailsDialog>
 
     <UiDialog v-model:open="uninstallDialogVisible">
       <DialogContent>
@@ -161,6 +144,7 @@
 import { Clock, Download, FileCode2, ImageIcon, MoreHorizontal, PackageOpen, Plus, RefreshCw, Search, Settings2, Star, Tag, TriangleAlert, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import ModConfigDialog from './ModConfigDialog.vue';
+import ModDetailsDialog from './ModDetailsDialog.vue';
 import { modApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -172,13 +156,18 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { createModFailure, formatModDate, formatModFailure } from '@/i18n/modMessages';
+
+const MOD_TAG_KEYS = Object.freeze({
+  character: 'character', item: 'item', pet: 'pet', creature: 'creature', environment: 'environment',
+  interface: 'interface', utility: 'utility', art: 'art', worldgen: 'worldgen', tweak: 'tweak',
+  scenario: 'scenario', language: 'language', other: 'other', tutorial: 'tutorial',
+  client_only_mod: 'clientOnly', server_only_mod: 'serverOnly',
+  all_clients_require_mod: 'allClientsRequire', server_admin: 'serverAdmin'
+});
 
 export default {
   name: 'ModList',
@@ -222,25 +211,18 @@ export default {
     InputGroupAddon,
     InputGroupInput,
     ModConfigDialog,
+    ModDetailsDialog,
     MoreHorizontal,
     PackageOpen,
     Plus,
     RefreshCw,
-    ScrollArea,
     Search,
     SelectContent,
     SelectGroup,
     SelectItem,
     SelectTrigger,
     SelectValue,
-    Separator,
     Settings2,
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
     Spinner,
     Star,
     Tag,
@@ -453,6 +435,20 @@ export default {
       if (!value) return fallback;
       return formatModDate(value, this.$i18n.locale);
     },
+
+    formatRating(value) {
+      const score = Number(value);
+      return `${(score <= 1 ? score * 5 : score).toFixed(1)} / 5`;
+    },
+
+    displayTags(mod) {
+      return (mod.tags || []).filter(tag => !String(tag).toLowerCase().startsWith('version:'));
+    },
+
+    tagLabel(value) {
+      const key = MOD_TAG_KEYS[String(value).trim().toLowerCase()];
+      return key ? this.$t(`mods.workshop.categories.${key}`) : value;
+    },
     
     // 应用筛选
     applyFilter() {
@@ -484,6 +480,7 @@ export default {
         toast.warning(this.$t('mods.installed.feedback.selectConfigWorld'));
         return;
       }
+      this.detailsDialogVisible = false;
       // 先重置当前模组信息
       this.currentModInfo = null;
       this.loading = true;
@@ -693,8 +690,7 @@ export default {
 .mod-actions,
 .filter-actions,
 .loading-state,
-.mod-meta span,
-.mod-details-header {
+.mod-meta span {
   display: flex;
   align-items: center;
 }
@@ -760,8 +756,7 @@ export default {
   overflow: hidden;
 }
 
-.mod-image,
-.mod-details-image {
+.mod-image {
   position: relative;
   display: flex;
   align-items: center;
@@ -777,14 +772,12 @@ export default {
   border-bottom: 1px solid var(--border);
 }
 
-.mod-image > svg,
-.mod-details-image > svg {
+.mod-image > svg {
   width: 28px;
   height: 28px;
 }
 
-.mod-image img,
-.mod-details-image img {
+.mod-image img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -821,8 +814,7 @@ export default {
   height: 14px;
 }
 
-.mod-tags,
-.compatibility-tags {
+.mod-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -832,71 +824,6 @@ export default {
 .mod-actions {
   justify-content: space-between;
   margin-top: auto;
-}
-
-.mod-details-sheet {
-  width: min(680px, 96vw);
-  max-width: min(680px, 96vw);
-}
-
-.mod-details-scroll {
-  height: calc(100vh - 150px);
-  padding: 0 18px 18px;
-}
-
-.mod-details-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.mod-details-header {
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.mod-details-image {
-  width: 120px;
-  aspect-ratio: 1;
-  flex: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.mod-details-header h3 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.mod-details-header p {
-  margin: 4px 0 10px;
-  color: var(--muted-foreground);
-}
-
-.description-content {
-  white-space: pre-line;
-}
-
-.file-info-list {
-  margin: 0;
-}
-
-.file-info-list > div {
-  display: grid;
-  grid-template-columns: 100px minmax(0, 1fr);
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.file-info-list dt {
-  color: var(--muted-foreground);
-}
-
-.file-info-list dd {
-  min-width: 0;
-  margin: 0;
-  overflow-wrap: anywhere;
 }
 
 .lua-code {
@@ -921,11 +848,6 @@ export default {
 
   .filter-form {
     grid-template-columns: 1fr;
-  }
-
-  .mod-details-sheet {
-    width: 100vw;
-    max-width: 100vw;
   }
 }
 </style>

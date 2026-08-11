@@ -14,27 +14,42 @@ function requireValue(value, code, context = {}) {
 }
 
 function mapSearchMod(mod) {
+  const rating = Number(mod.ratingCount) > 0 || Number(mod.score) > 0 ? Number(mod.score) : null
+  const subscriptions = Number(mod.subscriptions) || 0
   return {
     id: mod.id,
     name: mod.name || '',
     auth: mod.author || '',
+    author: mod.author || '',
     img: mod.previewUrl || '',
-    sub: String(mod.subscriptions ?? ''),
+    image: mod.previewUrl || '',
+    sub: String(subscriptions),
+    subscriptions,
     time: mod.updatedAt || '',
     updatedAt: mod.updatedAt || '',
-    version: '',
+    createdAt: mod.createdAt || '',
+    version: mod.version || '',
     describe: mod.description || '',
-    rating: Number.isFinite(mod.score) ? mod.score : null,
+    description: mod.description || '',
+    rating,
+    ratingCount: Number(mod.ratingCount) || 0,
+    favorites: Number(mod.favorites) || 0,
+    views: Number(mod.views) || 0,
+    fileSize: Number(mod.fileSize) || 0,
     tags: mod.tags || [],
     downloaded: Boolean(mod.downloaded),
     configured: Boolean(mod.configured),
     installed: Boolean(mod.installed),
     loaded: Boolean(mod.loaded),
-    dependencies: mod.dependencies || []
+    dependencies: mod.dependencies || [],
+    workshopUrl: `https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.id}`,
+    changelogUrl: `https://steamcommunity.com/sharedfiles/filedetails/changelog/${mod.id}`
   }
 }
 
 function mapInstalledMod(mod) {
+  const rating = Number(mod.ratingCount) > 0 || Number(mod.score) > 0 ? Number(mod.score) : null
+  const subscriptions = Number(mod.subscriptions) || 0
   return {
     id: mod.id,
     modid: mod.id,
@@ -42,11 +57,17 @@ function mapInstalledMod(mod) {
     author: mod.author || '',
     description: mod.description || '',
     image: mod.previewUrl || '',
-    version: '',
+    version: mod.version || '',
     update_time: mod.updatedAt || '',
     updatedAt: mod.updatedAt || '',
-    subscribers: String(mod.subscriptions ?? ''),
-    rating: Number.isFinite(mod.score) ? mod.score : null,
+    createdAt: mod.createdAt || '',
+    subscribers: String(subscriptions),
+    subscriptions,
+    rating,
+    ratingCount: Number(mod.ratingCount) || 0,
+    favorites: Number(mod.favorites) || 0,
+    views: Number(mod.views) || 0,
+    fileSize: Number(mod.fileSize) || 0,
     tags: mod.tags || [],
     downloaded: Boolean(mod.downloaded),
     configured: Boolean(mod.configured),
@@ -69,7 +90,9 @@ function mapInstalledMod(mod) {
     installedAt: mod.localUpdatedAt || '',
     localUpdatedAt: mod.localUpdatedAt || '',
     path: '',
-    size: ''
+    size: Number(mod.fileSize) || 0,
+    workshopUrl: `https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.id}`,
+    changelogUrl: `https://steamcommunity.com/sharedfiles/filedetails/changelog/${mod.id}`
   }
 }
 
@@ -144,8 +167,15 @@ async function getLibrary() {
   }
 }
 
-async function searchMods({ keyword, page = 1, pageSize = 20 }) {
-  const response = await modsV2API.search(requireValue(keyword?.trim(), 'MOD_KEYWORD_REQUIRED'), page, pageSize)
+async function searchMods({ keyword = '', sort = 'trend', days = 7, tags = [], page = 1, pageSize = 20 }) {
+  const response = await modsV2API.search({
+    query: keyword.trim(),
+    sort,
+    days,
+    tags: Array.isArray(tags) ? tags.join(',') : tags,
+    page,
+    pageSize
+  })
   return {
     ...response,
     items: (response.items || []).map(mapSearchMod)
