@@ -106,8 +106,8 @@ test('formal map route and page use the authenticated v2 map contract', async ()
   assert.doesNotMatch(page, /sessionDownloadURL|imageURL/)
   assert.doesNotMatch(page, /legacyManifest|legacyMap/)
   assert.doesNotMatch(page, /mock|demo|Math\.random/)
-  // Terrain rotates with the view while sprite icons remain upright on screen.
-  assert.match(canvas, /rotateWithView:\s*false/)
+  // The sprite atlas is upside down; correct it once and keep icons upright on screen.
+  assert.match(canvas, /rotation:\s*Math\.PI,[\s\S]*?rotateWithView:\s*false/)
   assert.match(canvas, /rotation:\s*DST_DEFAULT_MAP_ROTATION/)
   assert.doesNotMatch(canvas, /map\.setView\(new View\(\{[\s\S]*?extent:\s*dimensions\.extent/)
   assert.match(canvas, /getBoundingClientRect\(\)/)
