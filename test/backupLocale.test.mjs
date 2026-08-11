@@ -19,18 +19,40 @@ test('backup locale catalogs expose matching keys', () => {
 
 test('backup page localizes presentation without changing backup identifiers', () => {
   const page = fs.readFileSync(new URL('../src/views/Backups.vue', import.meta.url), 'utf8')
+  const importPanel = fs.readFileSync(new URL('../src/views/backups/SaveImportsPanel.vue', import.meta.url), 'utf8')
   const adapters = fs.readFileSync(new URL('../src/api/v2LegacyAdapters.js', import.meta.url), 'utf8')
   const globalMessages = fs.readFileSync(new URL('../src/i18n/messages.js', import.meta.url), 'utf8')
   const template = page.slice(page.indexOf('<template>'), page.indexOf('</template>'))
+  const importTemplate = importPanel.slice(importPanel.indexOf('<template>'), importPanel.indexOf('</template>'))
 
   assert.doesNotMatch(template, /[\u3400-\u9fff]/)
+  assert.doesNotMatch(importTemplate, /[\u3400-\u9fff]/)
   assert.match(template, /SelectItem value="__all__"/)
+  assert.match(template, /TabsTrigger value="room-backups"/)
+  assert.match(template, /TabsTrigger value="save-imports"/)
   assert.match(page, /backup\.archive_name/)
   assert.match(page, /backup\.name/)
   assert.match(page, /this\.\$i18n\?\.locale/)
+  assert.match(importPanel, /saveImportStatusKey\(item\.status\)/)
+  assert.match(importPanel, /saveImportCompatibilityKey\(candidate\.compatibility\)/)
+  assert.match(importPanel, /runtimeTarget\.value\?\.kind === 'local'/)
   assert.doesNotMatch(page, /toast\.success\(res\.msg/)
   assert.match(adapters, /create_time: backup\.createdAt \|\| ''/)
   assert.match(globalMessages, /\.\.\.backupMessages\['en-US'\]/)
+})
+
+test('save import API exposes the complete local workflow', () => {
+  const api = fs.readFileSync(new URL('../src/api/v2.js', import.meta.url), 'utf8')
+  const config = fs.readFileSync(new URL('../src/api/config.js', import.meta.url), 'utf8')
+
+  assert.match(api, /export const saveImportsV2API/)
+  assert.match(api, /client\.get\('\/save-imports'/)
+  assert.match(api, /client\.post\('\/save-imports\/upload'/)
+  assert.match(api, /`\/save-imports\/\$\{encode\(importId\)\}\/actions\/analyze`/)
+  assert.match(api, /`\/save-imports\/\$\{encode\(importId\)\}\/actions\/apply`/)
+  assert.match(api, /client\.delete\(`\/save-imports\/\$\{encode\(importId\)\}`/)
+  assert.match(api, /timeout: apiConfig\.UPLOAD_TIMEOUT/)
+  assert.match(config, /UPLOAD_TIMEOUT: 7200000/)
 })
 
 test('English backup messages contain no Chinese display text', () => {

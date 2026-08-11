@@ -411,4 +411,27 @@ export const backupsV2API = {
   savePolicy: (roomId, input) => client.put(`/rooms/${encode(roomId)}/backup-policy`, input)
 }
 
+export const saveImportsV2API = {
+  list: () => client.get('/save-imports', {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  get: importId => client.get(`/save-imports/${encode(importId)}`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  upload: (file, name = '', onUploadProgress) => {
+    const body = new FormData()
+    body.set('file', file)
+    if (name) body.set('name', name)
+    return client.post('/save-imports/upload', body, {
+      timeout: apiConfig.UPLOAD_TIMEOUT,
+      onUploadProgress
+    })
+  },
+  analyze: importId => client.post(`/save-imports/${encode(importId)}/actions/analyze`),
+  apply: (importId, input) => client.post(`/save-imports/${encode(importId)}/actions/apply`, input),
+  delete: (importId, confirmation) => client.delete(`/save-imports/${encode(importId)}`, {
+    data: { confirmation }
+  })
+}
+
 export default client

@@ -5,29 +5,40 @@
         <h1>{{ $t('backups.title') }}</h1>
         <p>{{ $t('backups.subtitle') }}</p>
       </div>
-      <div class="header-actions">
+      <div v-if="activeTab === 'room-backups'" class="header-actions">
         <UiButton @click="showCreateBackupDialog"><PlusIcon data-icon="inline-start" />{{ $t('backups.actions.create') }}</UiButton>
         <UiButton variant="outline" :disabled="loading" @click="refreshBackups"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCwIcon v-else data-icon="inline-start" />{{ $t('backups.actions.refresh') }}</UiButton>
       </div>
     </header>
-    <Alert v-if="loadError" variant="destructive" class="load-error-alert">
-      <TriangleAlertIcon />
-      <AlertTitle>{{ $t('backups.list.loadFailed') }}</AlertTitle>
-      <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton variant="outline" size="sm" @click="refreshBackups">
-        <RefreshCwIcon data-icon="inline-start" />{{ $t('backups.actions.reload') }}
-      </UiButton></AlertAction>
-    </Alert>
-    <Card v-if="!loadError || backupsList.length" class="backups-card">
-      <CardHeader><CardTitle>{{ $t('backups.list.title') }}</CardTitle><CardDescription>{{ $t('backups.list.description') }}</CardDescription>
-        <CardAction><UiSelect v-model="selectedFilter"><SelectTrigger class="archive-filter"><SelectValue :placeholder="$t('backups.list.archivePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="__all__">{{ $t('backups.list.allArchives') }}</SelectItem><SelectItem v-for="archive in archiveOptions" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></CardAction>
-      </CardHeader>
-      <CardContent><div class="table-wrap"><ShadcnTable><TableHeader><TableRow><TableHead>{{ $t('backups.list.columns.name') }}</TableHead><TableHead>{{ $t('backups.list.columns.archive') }}</TableHead><TableHead>{{ $t('backups.list.columns.size') }}</TableHead><TableHead>{{ $t('backups.list.columns.createdAt') }}</TableHead><TableHead class="actions-column">{{ $t('backups.list.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
-        <TableRow v-for="backup in filteredBackups" :key="`${backup.archive_name}-${backup.name}`"><TableCell><div class="backup-name"><FileArchiveIcon />{{ backup.name }}</div></TableCell><TableCell>{{ backup.archive_name }}</TableCell><TableCell>{{ backup.size_formatted }}</TableCell><TableCell>{{ formatDate(backup.createdAt || backup.create_time) }}</TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><DownloadIcon data-icon="inline-start" />{{ $t('backups.actions.download') }}</UiButton><UiButton size="sm" @click="showRestoreDialog(backup)">{{ $t('backups.actions.restore') }}</UiButton><UiButton variant="destructive" size="sm" @click="confirmDeleteBackup(backup)">{{ $t('backups.actions.delete') }}</UiButton></div></TableCell></TableRow>
-        <TableEmpty v-if="loading" :colspan="5"><div class="table-skeleton" :aria-label="$t('backups.list.loading')"><Skeleton v-for="row in 4" :key="row" class="h-10 w-full" /></div></TableEmpty>
-        <TableEmpty v-else-if="!loadError && filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>{{ $t('backups.list.empty') }}</EmptyTitle><EmptyDescription>{{ $t('backups.list.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty></TableEmpty>
-      </TableBody></ShadcnTable></div></CardContent>
-    </Card>
+    <Tabs v-model="activeTab" class="backups-tabs">
+      <TabsList>
+        <TabsTrigger value="room-backups"><FileArchiveIcon />{{ $t('backups.tabs.roomBackups') }}</TabsTrigger>
+        <TabsTrigger value="save-imports"><UploadIcon />{{ $t('backups.tabs.saveImports') }}</TabsTrigger>
+      </TabsList>
+      <TabsContent value="room-backups" class="tab-content">
+        <Alert v-if="loadError" variant="destructive" class="load-error-alert">
+          <TriangleAlertIcon />
+          <AlertTitle>{{ $t('backups.list.loadFailed') }}</AlertTitle>
+          <AlertDescription>{{ loadError }}</AlertDescription>
+          <AlertAction><UiButton variant="outline" size="sm" @click="refreshBackups">
+            <RefreshCwIcon data-icon="inline-start" />{{ $t('backups.actions.reload') }}
+          </UiButton></AlertAction>
+        </Alert>
+        <Card v-if="!loadError || backupsList.length" class="backups-card">
+          <CardHeader><CardTitle>{{ $t('backups.list.title') }}</CardTitle><CardDescription>{{ $t('backups.list.description') }}</CardDescription>
+            <CardAction><UiSelect v-model="selectedFilter"><SelectTrigger class="archive-filter"><SelectValue :placeholder="$t('backups.list.archivePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="__all__">{{ $t('backups.list.allArchives') }}</SelectItem><SelectItem v-for="archive in archiveOptions" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></CardAction>
+          </CardHeader>
+          <CardContent><div class="table-wrap"><ShadcnTable><TableHeader><TableRow><TableHead>{{ $t('backups.list.columns.name') }}</TableHead><TableHead>{{ $t('backups.list.columns.archive') }}</TableHead><TableHead>{{ $t('backups.list.columns.size') }}</TableHead><TableHead>{{ $t('backups.list.columns.createdAt') }}</TableHead><TableHead class="actions-column">{{ $t('backups.list.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
+            <TableRow v-for="backup in filteredBackups" :key="`${backup.archive_name}-${backup.name}`"><TableCell><div class="backup-name"><FileArchiveIcon />{{ backup.name }}</div></TableCell><TableCell>{{ backup.archive_name }}</TableCell><TableCell>{{ backup.size_formatted }}</TableCell><TableCell>{{ formatDate(backup.createdAt || backup.create_time) }}</TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" @click="downloadBackup(backup)"><DownloadIcon data-icon="inline-start" />{{ $t('backups.actions.download') }}</UiButton><UiButton size="sm" @click="showRestoreDialog(backup)">{{ $t('backups.actions.restore') }}</UiButton><UiButton variant="destructive" size="sm" @click="confirmDeleteBackup(backup)">{{ $t('backups.actions.delete') }}</UiButton></div></TableCell></TableRow>
+            <TableEmpty v-if="loading" :colspan="5"><div class="table-skeleton" :aria-label="$t('backups.list.loading')"><Skeleton v-for="row in 4" :key="row" class="h-10 w-full" /></div></TableEmpty>
+            <TableEmpty v-else-if="!loadError && filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>{{ $t('backups.list.empty') }}</EmptyTitle><EmptyDescription>{{ $t('backups.list.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty></TableEmpty>
+          </TableBody></ShadcnTable></div></CardContent>
+        </Card>
+      </TabsContent>
+      <TabsContent value="save-imports" class="tab-content">
+        <SaveImportsPanel @rooms-changed="refreshBackups" />
+      </TabsContent>
+    </Tabs>
 
     <UiDialog v-model:open="createDialogVisible"><DialogContent><DialogHeader><DialogTitle>{{ $t('backups.createDialog.title') }}</DialogTitle><DialogDescription>{{ $t('backups.createDialog.description') }}</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel>{{ $t('backups.createDialog.archive') }}</FieldLabel><UiSelect v-model="selectedArchive"><SelectTrigger><SelectValue :placeholder="$t('backups.createDialog.archivePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archivesList" :key="archive" :value="archive">{{ archive }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup><DialogFooter><UiButton variant="outline" @click="createDialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton><UiButton :disabled="createLoading" @click="createBackup"><Spinner v-if="createLoading" data-icon="inline-start" />{{ $t('backups.actions.confirmCreate') }}</UiButton></DialogFooter></DialogContent></UiDialog>
 
@@ -49,7 +60,7 @@
 </template>
 
 <script>
-import { DownloadIcon, FileArchiveIcon, PlusIcon, RefreshCwIcon, TriangleAlertIcon } from '@lucide/vue'
+import { DownloadIcon, FileArchiveIcon, PlusIcon, RefreshCwIcon, TriangleAlertIcon, UploadIcon } from '@lucide/vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -61,6 +72,8 @@ import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import SaveImportsPanel from '@/views/backups/SaveImportsPanel.vue'
 import { confirmAction } from '@/lib/feedback'
 import { BACKEND_CAPABILITIES, buildBackupCatalog, roomNamesFromResponse } from '@/lib/legacySupport.mjs'
 import { toast } from 'vue-sonner'
@@ -101,6 +114,7 @@ export default {
     SelectTrigger,
     SelectValue,
     Separator,
+    SaveImportsPanel,
     ShadcnTable,
     Skeleton,
     Spinner,
@@ -111,12 +125,18 @@ export default {
     TableHeader,
     TableRow,
     TriangleAlertIcon,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
     UiButton,
     UiDialog,
-    UiSelect
+    UiSelect,
+    UploadIcon
   },
   data() {
     return {
+      activeTab: 'room-backups',
       loading: false,
       loadFailure: null,
       createLoading: false,
@@ -385,6 +405,19 @@ export default {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.backups-tabs,
+.tab-content {
+  min-width: 0;
+  width: 100%;
+}
+
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
 }
 
 .backup-name {
