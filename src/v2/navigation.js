@@ -61,7 +61,8 @@ export const V2_NAVIGATION = [
         labelKey: 'navigation.mods',
         icon: Blocks,
         children: [
-          { labelKey: 'navigation.downloadedMods', to: '/mods/list' },
+          { labelKey: 'navigation.nodeModLibrary', to: '/mods/library' },
+          { labelKey: 'navigation.roomMods', to: '/mods/list' },
           { labelKey: 'navigation.modSearch', to: '/mods/search' }
         ]
       },

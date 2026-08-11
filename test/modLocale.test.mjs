@@ -85,9 +85,11 @@ test('mod failures keep a stable message key and untouched technical detail', ()
 
 test('mod pages delegate visible copy to i18n without translating mod-owned data', async () => {
   const paths = [
+    '../src/views/mods/ModLibrary.vue',
     '../src/views/mods/ModList.vue',
     '../src/views/mods/ModSearch.vue',
-    '../src/views/mods/ModConfigDialog.vue'
+    '../src/views/mods/ModConfigDialog.vue',
+    '../src/views/mods/AddModToRoomDialog.vue'
   ]
   const pages = await Promise.all(paths.map(path => readFile(new URL(path, import.meta.url), 'utf8')))
 
@@ -97,12 +99,12 @@ test('mod pages delegate visible copy to i18n without translating mod-owned data
     assert.doesNotMatch(page, /installModMessages/)
   }
 
-  assert.match(pages[0], /\{\{ mod\.name \}\}/)
-  assert.match(pages[0], /\{\{ mod\.author \|\| \$t\(/)
-  assert.match(pages[1], /\{\{ currentModInfo\.describe \}\}/)
-  assert.match(pages[2], /\{\{ option\.label \}\}/)
-  assert.match(pages[2], /:value="opt\.data"/)
-  assert.match(pages[2], /this\.configForm\[option\.name\] = value/)
+  assert.match(pages[1], /\{\{ mod\.name \}\}/)
+  assert.match(pages[1], /\{\{ mod\.author \|\| \$t\(/)
+  assert.match(pages[2], /\{\{ currentModInfo\.describe \}\}/)
+  assert.match(pages[3], /\{\{ option\.label \}\}/)
+  assert.match(pages[3], /:value="opt\.data"/)
+  assert.match(pages[3], /this\.configForm\[option\.name\] = value/)
 })
 
 test('mod messages are registered statically in the global catalog', async () => {

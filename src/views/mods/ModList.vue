@@ -65,7 +65,20 @@
           <Card v-for="mod in filteredMods" :key="mod.id" class="mod-card">
             <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultIcon" :src="mod.image || defaultIcon" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
             <CardHeader>
-              <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><UiSwitch v-model="mod.enabled" :disabled="isModBusy(mod) || selectedRoomWorlds.length === 0" :aria-label="$t('mods.installed.aria.toggle', { name: mod.name })" @update:model-value="value => toggleModStatus(mod, value)" /></div>
+              <div class="mod-title-row">
+                <CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle>
+                <div class="mod-world-state">
+                  <Badge :variant="isConfiguredInSelectedWorld(mod) ? (isEnabledInSelectedWorld(mod) ? 'default' : 'secondary') : 'outline'">
+                    {{ selectedWorldStateLabel(mod) }}
+                  </Badge>
+                  <UiSwitch
+                    :model-value="isEnabledInSelectedWorld(mod)"
+                    :disabled="isModBusy(mod) || !isConfiguredInSelectedWorld(mod)"
+                    :aria-label="$t('mods.installed.aria.toggle', { name: mod.name })"
+                    @update:model-value="value => toggleModStatus(mod, value)"
+                  />
+                </div>
+              </div>
               <CardDescription>{{ mod.author || $t('mods.values.unknownAuthor') }}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -78,7 +91,7 @@
               <div v-if="mod.tags && mod.tags.length" class="mod-tags"><Badge v-for="tag in mod.tags" :key="tag" variant="secondary">{{ tag }}</Badge></div>
             </CardContent>
             <CardFooter class="mod-actions">
-              <UiButton size="sm" :disabled="!selectedWorldId || isModBusy(mod)" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />{{ $t('mods.actions.configure') }}</UiButton>
+              <UiButton size="sm" :disabled="!isConfiguredInSelectedWorld(mod) || isModBusy(mod)" @click="openConfigDialog(mod)"><Settings2 data-icon="inline-start" />{{ $t('mods.actions.configure') }}</UiButton>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" :aria-label="$t('mods.installed.aria.openMenu', { name: mod.name })" :title="$t('mods.installed.aria.menuTitle')"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -87,7 +100,7 @@
                     <DropdownMenuItem v-if="mod.updateAvailable" :disabled="isModBusy(mod)" @select="updateMod(mod)">{{ $t('mods.actions.updateMod') }}</DropdownMenuItem>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />
-                  <DropdownMenuGroup><DropdownMenuItem variant="destructive" :disabled="isModBusy(mod)" @select="uninstallMod(mod)">{{ $t('mods.actions.uninstall') }}</DropdownMenuItem></DropdownMenuGroup>
+                  <DropdownMenuGroup><DropdownMenuItem variant="destructive" :disabled="isModBusy(mod)" @select="uninstallMod(mod)">{{ $t('mods.actions.removeFromRoom') }}</DropdownMenuItem></DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
             </CardFooter>
@@ -129,7 +142,7 @@
         <DialogHeader><DialogTitle>{{ $t('mods.installed.uninstall.title') }}</DialogTitle><DialogDescription>{{ $t('mods.installed.uninstall.description') }}</DialogDescription></DialogHeader>
         <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ currentModInfo ? currentModInfo.name : '' }}</AlertTitle><AlertDescription>{{ $t('mods.installed.uninstall.confirmationDescription') }}</AlertDescription></Alert>
         <FieldGroup><Field><FieldLabel for="uninstall-confirmation">{{ $t('mods.installed.uninstall.roomName') }}</FieldLabel><UiInput id="uninstall-confirmation" v-model="uninstallConfirmation" :placeholder="currentRoom ? $t('mods.installed.uninstall.placeholder', { name: currentRoom.name }) : $t('mods.installed.uninstall.fallbackPlaceholder')" /></Field></FieldGroup>
-        <DialogFooter><UiButton variant="outline" @click="uninstallDialogVisible = false">{{ $t('mods.actions.cancel') }}</UiButton><UiButton variant="destructive" @click="confirmUninstall" :disabled="uninstalling"><Spinner v-if="uninstalling" data-icon="inline-start" />{{ $t('mods.actions.confirmUninstall') }}</UiButton></DialogFooter>
+        <DialogFooter><UiButton variant="outline" @click="uninstallDialogVisible = false">{{ $t('mods.actions.cancel') }}</UiButton><UiButton variant="destructive" @click="confirmUninstall" :disabled="uninstalling"><Spinner v-if="uninstalling" data-icon="inline-start" />{{ $t('mods.actions.confirmRemoveFromRoom') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
 
@@ -409,6 +422,20 @@ export default {
       return Boolean(this.modActionState[mod?.modid]);
     },
 
+    isConfiguredInSelectedWorld(mod) {
+      return Boolean(this.selectedWorldId && mod?.configuredWorlds?.includes(this.selectedWorldId));
+    },
+
+    isEnabledInSelectedWorld(mod) {
+      return Boolean(this.selectedWorldId && mod?.enabledWorlds?.includes(this.selectedWorldId));
+    },
+
+    selectedWorldStateLabel(mod) {
+      if (!this.selectedWorldId) return this.$t('mods.installed.worldState.selectWorld');
+      if (!this.isConfiguredInSelectedWorld(mod)) return this.$t('mods.installed.worldState.notConfigured');
+      return this.$t(this.isEnabledInSelectedWorld(mod) ? 'mods.values.enabled' : 'mods.values.disabled');
+    },
+
     setModBusy(mod, busy) {
       if (!mod?.modid) return;
       this.modActionState = { ...this.modActionState, [mod.modid]: busy };
@@ -491,9 +518,8 @@ export default {
     // 切换模组状态
     async toggleModStatus(mod, status) {
       if (this.isModBusy(mod)) return;
-      if (this.selectedRoomWorlds.length === 0) {
-        mod.enabled = !status;
-        toast.warning(this.$t('mods.installed.feedback.noWorlds'));
+      if (!this.isConfiguredInSelectedWorld(mod)) {
+        toast.warning(this.$t('mods.installed.feedback.selectConfiguredWorld'));
         return;
       }
       this.setModBusy(mod, true);
@@ -501,16 +527,13 @@ export default {
         await modApi.toggleMod({
           roomId: this.selectedRoomId,
           modid: mod.modid,
-          worldIds: mod.configuredWorlds.length > 0
-            ? mod.configuredWorlds
-            : this.selectedRoomWorlds.map(world => world.id),
+          worldIds: [this.selectedWorldId],
           enabled: status
         });
         await this.fetchModsList(true);
         toast.success(this.$t(status ? 'mods.installed.feedback.enabled' : 'mods.installed.feedback.disabled', { name: mod.name }));
       } catch (err) {
         console.error(err);
-        mod.enabled = !status;
         toast.error(this.localizedFailure(this.failure(status ? 'mods.errors.toggleEnable' : 'mods.errors.toggleDisable', err)));
       } finally {
         this.setModBusy(mod, false);
@@ -543,7 +566,7 @@ export default {
       if (this.isModBusy(mod)) return;
       this.setModBusy(mod, true);
       try {
-        await modApi.updateMod({ roomId: this.selectedRoomId, modid: mod.modid });
+        await modApi.updateMod({ modid: mod.modid });
         await this.fetchModsList(true);
         toast.success(this.$t('mods.installed.feedback.updated', { name: mod.name }));
       } catch (error) {
@@ -573,12 +596,11 @@ export default {
       // 使用新的接口卸载模组
       const modName = this.currentModInfo.name;
       try {
-        await modApi.deleteMod({
+        await modApi.removeModFromRoom({
           roomId: this.selectedRoomId,
           modid: this.currentModInfo.modid,
           worldIds: this.selectedRoomWorlds.map(world => world.id),
-          confirmation: this.uninstallConfirmation,
-          removeFiles: true
+          confirmation: this.uninstallConfirmation
         });
         await this.fetchModsList(true);
         toast.success(this.$t('mods.installed.feedback.uninstalled', { name: modName }));
@@ -595,7 +617,7 @@ export default {
     
     // 导航到搜索页面
     goToSearch() {
-      this.$router.push({ path: '/mods/search', query: { roomId: this.selectedRoomId || undefined } });
+      this.$router.push('/mods/search');
     },
 
     // 获取配置文件
@@ -772,6 +794,13 @@ export default {
 
 .mod-title-row {
   justify-content: space-between;
+  gap: 8px;
+}
+
+.mod-world-state {
+  display: flex;
+  align-items: center;
+  flex: none;
   gap: 8px;
 }
 

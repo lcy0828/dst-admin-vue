@@ -2,22 +2,13 @@
   <div class="page-container">
     <header class="page-heading">
       <div><h1>{{ $t('mods.search.title') }}</h1><p>{{ $t('mods.search.subtitle') }}</p></div>
-      <UiButton variant="outline" size="sm" @click="goToModList"><ArrowLeft data-icon="inline-start" />{{ $t('mods.actions.backToInstalled') }}</UiButton>
+      <UiButton variant="outline" size="sm" @click="goToLibrary"><ArrowLeft data-icon="inline-start" />{{ $t('mods.actions.backToLibrary') }}</UiButton>
     </header>
 
     <Card class="search-panel">
       <CardHeader><div><CardTitle>{{ $t('mods.search.form.title') }}</CardTitle><CardDescription>{{ $t('mods.search.form.description') }}</CardDescription></div></CardHeader>
       <CardContent>
         <FieldGroup class="search-form">
-          <Field>
-            <FieldLabel for="workshop-room">{{ $t('mods.search.form.room') }}</FieldLabel>
-            <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
-              <SelectTrigger id="workshop-room"><SelectValue :placeholder="$t(loadingRooms ? 'mods.search.form.loadingRooms' : 'mods.search.form.selectRoom')" /></SelectTrigger>
-              <SelectContent>
-                <SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup>
-              </SelectContent>
-            </UiSelect>
-          </Field>
           <Field>
             <FieldLabel for="mod-search-keyword">{{ $t('mods.search.form.name') }}</FieldLabel>
             <InputGroup>
@@ -59,7 +50,7 @@
                 <img v-if="mod.img || defaultImage" :src="mod.img || defaultImage" :alt="mod.name" loading="lazy" @error="handleImageError" />
               </div>
               <CardHeader>
-                <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><Badge v-if="mod.isInstalled">{{ $t('mods.values.installed') }}</Badge></div>
+                <div class="mod-title-row"><CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle><Badge v-if="mod.isDownloaded">{{ $t('mods.values.downloaded') }}</Badge></div>
                 <CardDescription>{{ mod.auth || $t('mods.values.unknownAuthor') }}</CardDescription>
               </CardHeader>
               <CardContent class="mod-meta">
@@ -79,15 +70,16 @@
               <CardFooter class="mod-actions">
                 <UiButton
                   size="sm"
-                  :variant="mod.isInstalled ? 'outline' : 'default'"
-                  :disabled="!selectedRoomId || downloadingMods[mod.id]"
+                  :variant="mod.isDownloaded ? 'outline' : 'default'"
+                  :disabled="downloadingMods[mod.id]"
                   @click="handleDownloadMod(mod)"
                 >
                   <Spinner v-if="downloadingMods[mod.id]" data-icon="inline-start" />
-                  <RefreshCw v-else-if="mod.isInstalled" data-icon="inline-start" />
+                  <RefreshCw v-else-if="mod.isDownloaded" data-icon="inline-start" />
                   <Download v-else data-icon="inline-start" />
-                  {{ $t(downloadingMods[mod.id] ? 'mods.actions.downloading' : mod.isInstalled ? 'mods.actions.update' : 'mods.actions.download') }}
+                  {{ $t(downloadingMods[mod.id] ? 'mods.actions.downloading' : mod.isDownloaded ? 'mods.actions.update' : 'mods.actions.download') }}
                 </UiButton>
+                <UiButton v-if="mod.isDownloaded" size="sm" @click="openAddDialog(mod)"><PackagePlus data-icon="inline-start" />{{ $t('mods.actions.addToRoom') }}</UiButton>
                 <UiButton variant="ghost" size="sm" @click="showModDetails(mod)">{{ $t('mods.actions.details') }}</UiButton>
               </CardFooter>
             </Card>
@@ -127,7 +119,7 @@
                 <span v-if="currentModInfo.sub"><Users />{{ currentModInfo.sub }} {{ $t('mods.values.subscriptions') }}</span>
                 <span v-if="currentModInfo.rating !== null"><Star />{{ formatRating(currentModInfo.rating) }} {{ $t('mods.values.rating') }}</span>
               </div>
-              <Badge v-if="currentModInfo.isInstalled">{{ $t('mods.values.installed') }}</Badge>
+              <Badge v-if="currentModInfo.isDownloaded">{{ $t('mods.values.downloaded') }}</Badge>
             </div>
           </div>
           <Separator />
@@ -143,19 +135,25 @@
         </div>
         <DialogFooter>
           <UiButton variant="outline" @click="detailsDialogVisible = false">{{ $t('mods.actions.close') }}</UiButton>
-          <UiButton :disabled="!selectedRoomId || downloadingMods[currentModInfo?.id]" @click="handleDownloadMod(currentModInfo)">
+          <UiButton :disabled="downloadingMods[currentModInfo?.id]" @click="handleDownloadMod(currentModInfo)">
             <Spinner v-if="downloadingMods[currentModInfo?.id]" data-icon="inline-start" />
-            {{ $t(currentModInfo?.isInstalled ? 'mods.actions.updateMod' : 'mods.actions.downloadMod') }}
+            <RefreshCw v-else-if="currentModInfo?.isDownloaded" data-icon="inline-start" />
+            <Download v-else data-icon="inline-start" />
+            {{ $t(currentModInfo?.isDownloaded ? 'mods.actions.updateMod' : 'mods.actions.downloadMod') }}
           </UiButton>
+          <UiButton v-if="currentModInfo?.isDownloaded" @click="openAddDialog(currentModInfo)"><PackagePlus data-icon="inline-start" />{{ $t('mods.actions.addToRoom') }}</UiButton>
         </DialogFooter>
       </DialogContent>
     </UiDialog>
+
+    <AddModToRoomDialog v-model:open="addDialogOpen" :mod="addTarget" />
   </div>
 </template>
 
 <script>
-import { ArrowLeft, CircleCheck, Clock, Download, ImageIcon, RefreshCw, Search, SearchX, Star, Tag, TriangleAlert, User, Users } from '@lucide/vue';
+import { ArrowLeft, CircleCheck, Clock, Download, ImageIcon, PackagePlus, RefreshCw, Search, SearchX, Star, Tag, TriangleAlert, User, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
+import AddModToRoomDialog from './AddModToRoomDialog.vue';
 import { modApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -167,16 +165,15 @@ import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Progress as UiProgress } from '@/components/ui/progress';
-import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { createModFailure, formatModDate, formatModFailure } from '@/i18n/modMessages';
-import { confirmAction } from '@/lib/feedback';
 
 export default {
   name: 'ModSearch',
   components: {
+    AddModToRoomDialog,
     ArrowLeft,
     Alert,
     AlertAction,
@@ -215,14 +212,10 @@ export default {
     PaginationItem,
     PaginationNext,
     PaginationPrevious,
+    PackagePlus,
     RefreshCw,
     Search,
     SearchX,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
     Separator,
     Skeleton,
     Spinner,
@@ -232,7 +225,6 @@ export default {
     UiButton,
     UiDialog,
     UiProgress,
-    UiSelect,
     User,
     Users
   },
@@ -251,14 +243,12 @@ export default {
       defaultImage: '',
       downloadingMods: {}, // 跟踪正在下载的模组
       downloadStates: {},
-      installedMods: [], // 存储已安装的模组信息
-      loadingInstalledMods: false, // 加载已安装模组的状态
-      loadingRooms: false,
-      roomOptions: [],
-      selectedRoomId: '',
-      selectedRoomWorlds: [],
+      libraryMods: [],
+      loadingLibrary: false,
       detailsDialogVisible: false, // 详情对话框可见性
-      currentModInfo: null // 当前查看的模组
+      currentModInfo: null, // 当前查看的模组
+      addDialogOpen: false,
+      addTarget: null
     };
   },
   computed: {
@@ -267,7 +257,7 @@ export default {
     }
   },
   async created() {
-    await this.initializeContext();
+    await this.getLibraryMods();
     const keyword = this.$route.query.keyword;
     if (typeof keyword === 'string' && keyword.trim()) {
       this.searchForm.keyword = keyword;
@@ -278,66 +268,23 @@ export default {
     handleImageError(event) {
       event.currentTarget.hidden = true;
     },
-    async initializeContext() {
-      this.loadingRooms = true;
+    async getLibraryMods() {
+      this.loadingLibrary = true;
       this.loadFailure = null;
       try {
-        const context = await modApi.getContext({ roomId: this.$route.query.roomId || '' });
-        this.roomOptions = context.rooms;
-        this.selectedRoomId = context.room?.id || '';
-        this.selectedRoomWorlds = context.worlds;
-        if (this.selectedRoomId) await this.getInstalledMods();
+        const response = await modApi.getLibrary();
+        this.libraryMods = response.items || [];
       } catch (error) {
-        this.loadFailure = this.failure('mods.errors.context', error);
+        this.libraryMods = [];
+        this.loadFailure = this.failure('mods.errors.library', error);
         toast.error(this.loadError);
       } finally {
-        this.loadingRooms = false;
+        this.loadingLibrary = false;
       }
     },
 
-    async handleRoomChange(roomId) {
-      this.loadFailure = null;
-      this.downloadStates = {};
-      try {
-        const context = await modApi.getContext({ roomId });
-        this.selectedRoomWorlds = context.worlds;
-        await this.$router.replace({
-          path: this.$route.path,
-          query: { ...this.$route.query, roomId }
-        });
-        await this.getInstalledMods();
-        this.searchResults = this.searchResults.map(mod => ({
-          ...mod,
-          isInstalled: this.isModInstalled(mod.id)
-        }));
-      } catch (error) {
-        this.loadFailure = this.failure('mods.errors.roomSwitch', error);
-        toast.error(this.loadError);
-      }
-    },
-
-    // 获取已安装模组列表
-    async getInstalledMods() {
-      if (!this.selectedRoomId) {
-        this.installedMods = [];
-        return;
-      }
-      this.loadingInstalledMods = true;
-      this.loadFailure = null;
-      try {
-        this.installedMods = await modApi.getServerList({ roomId: this.selectedRoomId });
-      } catch (error) {
-        this.installedMods = [];
-        this.loadFailure = this.failure('mods.errors.installedList', error);
-        toast.error(this.loadError);
-      } finally {
-        this.loadingInstalledMods = false;
-      }
-    },
-    
-    // 检查模组是否已安装
-    isModInstalled(modId) {
-      return this.installedMods.some(mod => mod.modid === modId);
+    isModDownloaded(modId) {
+      return this.libraryMods.some(mod => mod.modid === modId && mod.downloaded);
     },
     
     startSearch() {
@@ -367,7 +314,7 @@ export default {
         });
         this.searchResults = (data.items || []).map(mod => ({
           ...mod,
-          isInstalled: this.isModInstalled(mod.id)
+          isDownloaded: this.isModDownloaded(mod.id)
         }));
         this.totalResults = data.total || 0;
       } catch (error) {
@@ -380,33 +327,13 @@ export default {
       }
     },
     handleDownloadMod(mod) {
-      const { name } = mod;
-      
-      // 如果模组已安装，询问是否要更新
-      if (mod.isInstalled) {
-        confirmAction(this.$t('mods.search.feedback.installedConfirm', { name }), this.$t('mods.search.feedback.updateTitle'), {
-          confirmButtonText: this.$t('mods.actions.update'),
-          cancelButtonText: this.$t('mods.actions.cancel'),
-          type: 'warning'
-        }).then(() => {
-          this.downloadMod(mod);
-        }).catch(() => {
-          // 用户取消，不执行任何操作
-        });
-      } else {
-        // 直接下载
-        this.downloadMod(mod);
-      }
+      if (mod) this.downloadMod(mod);
     },
     
     // 实际执行下载的方法
     async downloadMod(mod) {
-      if (!this.selectedRoomId) {
-        toast.warning(this.$t('mods.search.feedback.selectRoom'));
-        return;
-      }
       const id = mod.id;
-      const wasInstalled = mod.isInstalled;
+      const wasDownloaded = mod.isDownloaded;
       
       // 显示下载中消息
       const loadingMessage = toast.loading(this.$t('mods.search.feedback.downloading'));
@@ -416,11 +343,8 @@ export default {
       
       try {
         await modApi.downloadMod({
-          roomId: this.selectedRoomId,
-          worldIds: this.selectedRoomWorlds.map(world => world.id),
           id,
-          installed: wasInstalled,
-          enabled: true,
+          downloaded: wasDownloaded,
           includeDependencies: true,
           onProgress: job => {
             this.downloadStates[id] = {
@@ -430,12 +354,12 @@ export default {
             };
           }
         });
-        mod.isInstalled = true;
-        await this.getInstalledMods();
+        mod.isDownloaded = true;
+        await this.getLibraryMods();
         this.downloadStates[id] = { status: 'succeeded', progress: 100, detail: '' };
-        toast.success(this.$t(wasInstalled ? 'mods.search.feedback.updated' : 'mods.search.feedback.downloaded'));
+        toast.success(this.$t(wasDownloaded ? 'mods.search.feedback.updated' : 'mods.search.feedback.downloaded'));
       } catch (error) {
-        const detail = this.localizedFailure(this.failure(wasInstalled ? 'mods.errors.update' : 'mods.errors.download', error));
+        const detail = this.localizedFailure(this.failure(wasDownloaded ? 'mods.errors.update' : 'mods.errors.download', error));
         this.downloadStates[id] = { status: 'failed', progress: 100, detail };
         toast.error(detail);
       } finally {
@@ -455,9 +379,9 @@ export default {
     },
 
     retryLoad() {
-      if (!this.roomOptions.length) return this.initializeContext();
+      if (!this.libraryMods.length) return this.getLibraryMods();
       if (this.hasSearched) return this.searchMods();
-      return this.getInstalledMods();
+      return this.getLibraryMods();
     },
     
     handlePageChange(page) {
@@ -465,8 +389,14 @@ export default {
       this.searchMods();
     },
 
-    goToModList() {
-      this.$router.push({ path: '/mods/list', query: { roomId: this.selectedRoomId || undefined } });
+    goToLibrary() {
+      this.$router.push('/mods/library');
+    },
+
+    openAddDialog(mod) {
+      this.addTarget = mod;
+      this.addDialogOpen = true;
+      this.detailsDialogVisible = false;
     },
 
     showModDetails(mod) {

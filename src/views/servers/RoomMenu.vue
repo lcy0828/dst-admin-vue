@@ -220,7 +220,7 @@ const ROOM_SECTIONS = [
   { path: '/rooms/settings', title: '基本设置', description: '配置房间信息和启动参数', icon: Settings, features: ['房间名称', '存档目录', '启动配置'] },
   { path: '/rooms/special-lists', title: '权限设置', description: '管理管理员、黑名单和白名单', icon: Lock, features: ['管理员', '黑名单', '白名单'] },
   { path: '/worlds/settings', title: '游戏设置', description: '调整世界规则和生成选项', icon: Gamepad2, features: ['游戏模式', '世界规则', '生成参数'] },
-  { path: '/mods/list', title: '模组设置', description: '管理已下载模组和房间配置', icon: PackageOpen, features: ['模组列表', '配置项', '兼容信息'] },
+  { path: '/mods/list', title: '房间模组', description: '管理当前房间引用的模组和分世界配置', icon: PackageOpen, features: ['房间模组', '分世界配置', '兼容信息'] },
   { path: '/worlds/state', title: '世界状态', description: '查看季节、天数和世界运行状态', icon: Sun, features: ['季节', '天数', '状态快照'] },
   { path: '/worlds/list', title: '世界管理', description: '查看并控制真实世界分片', icon: Globe2, features: ['地表', '洞穴', '自定义分片'] }
 ];

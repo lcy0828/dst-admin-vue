@@ -26,6 +26,10 @@ function mapSearchMod(mod) {
     describe: mod.description || '',
     rating: Number.isFinite(mod.score) ? mod.score : null,
     tags: mod.tags || [],
+    downloaded: Boolean(mod.downloaded),
+    configured: Boolean(mod.configured),
+    installed: Boolean(mod.installed),
+    loaded: Boolean(mod.loaded),
     dependencies: mod.dependencies || []
   }
 }
@@ -44,6 +48,10 @@ function mapInstalledMod(mod) {
     subscribers: String(mod.subscriptions ?? ''),
     rating: Number.isFinite(mod.score) ? mod.score : null,
     tags: mod.tags || [],
+    downloaded: Boolean(mod.downloaded),
+    configured: Boolean(mod.configured),
+    installed: Boolean(mod.installed),
+    loaded: Boolean(mod.loaded),
     enabled: Boolean(mod.enabled),
     updateAvailable: mod.health === 'update_available',
     health: mod.health,
@@ -118,6 +126,24 @@ async function getServerList({ roomId } = {}) {
   return (response.items || []).map(mapInstalledMod)
 }
 
+async function getManagedRooms() {
+  const response = await roomsV2API.list()
+  return (response.items || []).filter(room => room.managed)
+}
+
+async function getRoomWorlds(roomId) {
+  const response = await roomsV2API.worlds(requireValue(roomId, 'ROOM_REQUIRED'))
+  return response.items || []
+}
+
+async function getLibrary() {
+  const response = await modsV2API.library()
+  return {
+    ...response,
+    items: (response.items || []).map(mapInstalledMod)
+  }
+}
+
 async function searchMods({ keyword, page = 1, pageSize = 20 }) {
   const response = await modsV2API.search(requireValue(keyword?.trim(), 'MOD_KEYWORD_REQUIRED'), page, pageSize)
   return {
@@ -127,17 +153,25 @@ async function searchMods({ keyword, page = 1, pageSize = 20 }) {
 }
 
 async function downloadMod(input) {
-  const roomId = requireValue(input.roomId, 'ROOM_REQUIRED')
   const modId = requireValue(input.modid || input.id, 'MOD_ID_REQUIRED')
-  const worldIds = input.worldIds || []
-  const job = input.installed
-    ? await modsV2API.update(roomId, modId)
-    : await modsV2API.install(roomId, {
+  const alreadyDownloaded = input.downloaded ?? input.installed
+  const job = alreadyDownloaded
+    ? await modsV2API.updateLibrary(modId)
+    : await modsV2API.download({
       modId,
-      worldIds,
-      enabled: input.enabled !== false,
       includeDependencies: input.includeDependencies !== false
     })
+  return waitForV2Job(job, MOD_JOB_TIMEOUT, input.onProgress)
+}
+
+async function addModToRoom(input) {
+  const roomId = requireValue(input.roomId, 'ROOM_REQUIRED')
+  const modId = requireValue(input.modid || input.id, 'MOD_ID_REQUIRED')
+  const job = await modsV2API.addToRoom(roomId, modId, {
+    worldIds: input.worldIds || [],
+    enabled: input.enabled !== false,
+    includeDependencies: input.includeDependencies !== false
+  })
   return waitForV2Job(job, MOD_JOB_TIMEOUT, input.onProgress)
 }
 
@@ -203,10 +237,7 @@ async function toggleMod(input) {
 }
 
 async function updateMod(input) {
-  const job = await modsV2API.update(
-    requireValue(input.roomId, 'ROOM_REQUIRED'),
-    requireValue(input.modid, 'MOD_ID_REQUIRED')
-  )
+  const job = await modsV2API.updateLibrary(requireValue(input.modid, 'MOD_ID_REQUIRED'))
   return waitForV2Job(job, MOD_JOB_TIMEOUT)
 }
 
@@ -217,11 +248,13 @@ async function deleteMod(input) {
     {
       worldIds: input.worldIds || [],
       confirmation: requireValue(input.confirmation, 'MOD_UNINSTALL_CONFIRMATION_REQUIRED'),
-      removeFiles: input.removeFiles !== false
+      removeFiles: false
     }
   )
   return waitForV2Job(job, MOD_JOB_TIMEOUT)
 }
+
+const removeModFromRoom = deleteMod
 
 async function getAllModConfigFile({ roomId, worldId }) {
   const file = await modsV2API.configurationFile(
@@ -233,14 +266,19 @@ async function getAllModConfigFile({ roomId, worldId }) {
 
 export const realModApi = {
   getContext,
+  getManagedRooms,
+  getRoomWorlds,
+  getLibrary,
   getServerList,
   searchMods,
   downloadMod,
+  addModToRoom,
   getModConfig,
   getModCustomConfig,
   saveModCustomConfig,
   toggleMod,
   updateMod,
+  removeModFromRoom,
   deleteMod,
   getAllModConfigFile
 }

@@ -280,15 +280,21 @@ export const constantRoutes = [
   {
     path: '/mods',
     component: MainLayoutV2,
-    redirect: '/mods/list',
+    redirect: '/mods/library',
     name: 'Mods',
     meta: { title: '模组管理', titleKey: 'navigation.mods', icon: 'component' },
     children: [
       {
+        path: 'library',
+        component: () => import('@/views/mods/ModLibrary.vue'),
+        name: 'ModLibrary',
+        meta: { title: '节点模组库', titleKey: 'navigation.nodeModLibrary', icon: 'archive' }
+      },
+      {
         path: 'list',
         component: () => import('@/views/mods/ModList.vue'),
         name: 'ModList',
-        meta: { title: '已下载模组', titleKey: 'navigation.downloadedMods', icon: 'list' }
+        meta: { title: '房间模组', titleKey: 'navigation.roomMods', icon: 'list' }
       },
       {
         path: 'search',

@@ -259,11 +259,22 @@ export const modsV2API = {
   search: (query, page = 1, pageSize = 20) => client.get('/mods/search', {
     params: { query, page, pageSize }
   }),
+  library: () => client.get('/mods/library', {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  download: input => client.post('/mods/library/actions/download', input),
+  updateLibrary: modId => client.post(
+    `/mods/library/${encode(modId)}/actions/update`
+  ),
   details: modId => client.get(`/mods/${encode(modId)}`),
   list: roomId => client.get(`/rooms/${encode(roomId)}/mods`, {
     headers: { 'Cache-Control': 'no-store' }
   }),
   install: (roomId, input) => client.post(`/rooms/${encode(roomId)}/mods/actions/install`, input),
+  addToRoom: (roomId, modId, input) => client.post(
+    `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/add`,
+    input
+  ),
   checkUpdates: roomId => client.post(`/rooms/${encode(roomId)}/mods/actions/check-updates`),
   update: (roomId, modId) => client.post(
     `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/update`

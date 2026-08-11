@@ -499,7 +499,8 @@ const NAVIGATION_SECTIONS = [
         label: '模组管理',
         icon: Blocks,
         children: [
-          { label: '已下载模组', to: '/mods/list' },
+          { label: '节点模组库', to: '/mods/library' },
+          { label: '房间模组', to: '/mods/list' },
           { label: '模组搜索', to: '/mods/search' }
         ]
       },

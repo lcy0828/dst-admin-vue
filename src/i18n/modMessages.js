@@ -38,6 +38,8 @@ export const modMessages = {
         unknown: '未知',
         unknownAuthor: '未知作者',
         installed: '已安装',
+        downloaded: '已下载',
+        notDownloaded: '未下载',
         enabled: '已启用',
         disabled: '已禁用',
         on: '开启',
@@ -62,6 +64,10 @@ export const modMessages = {
       actions: {
         refresh: '刷新',
         add: '添加模组',
+        addToRoom: '添加到房间',
+        removeFromRoom: '从房间移除',
+        confirmRemoveFromRoom: '确认移除',
+        searchWorkshop: '搜索 Workshop',
         getConfigFile: '获取配置文件',
         filter: '筛选',
         reset: '重置',
@@ -82,11 +88,14 @@ export const modMessages = {
         saveConfig: '保存配置',
         resetDefaults: '重置为默认配置',
         backToInstalled: '返回已下载模组',
+        backToLibrary: '返回节点模组库',
         search: '搜索'
       },
       errors: {
         withDetail: '{message}：{detail}',
         context: '加载模组上下文失败',
+        library: '获取节点模组库失败',
+        addToRoom: '添加模组到房间失败',
         roomSwitch: '切换房间失败',
         list: '获取模组列表失败',
         installedList: '获取已安装模组失败',
@@ -102,11 +111,11 @@ export const modMessages = {
         download: '下载模组失败'
       },
       installed: {
-        title: '已下载模组',
-        subtitle: '管理房间内已安装模组及各世界配置。',
+        title: '房间模组',
+        subtitle: '管理房间引用的模组；地面与洞穴的启用状态和参数互相独立。',
         filters: {
           title: '筛选模组',
-          description: '选择房间和世界后管理真实模组配置。',
+          description: '先选择房间，再选择具体世界编辑其启用状态和配置。',
           room: '房间',
           selectRoom: '请选择房间',
           world: '世界',
@@ -120,6 +129,10 @@ export const modMessages = {
         },
         loadFailedTitle: '模组列表加载失败',
         loading: '正在加载模组列表',
+        worldState: {
+          selectWorld: '请选择世界',
+          notConfigured: '当前世界未使用'
+        },
         aria: {
           toggle: '切换 {name}',
           openMenu: '打开 {name} 操作菜单',
@@ -151,9 +164,9 @@ export const modMessages = {
           installedAt: '安装时间'
         },
         uninstall: {
-          title: '卸载模组',
-          description: '此操作会永久删除模组文件和配置。',
-          confirmationDescription: '输入完整房间名确认卸载。',
+          title: '从房间移除模组',
+          description: '此操作只删除该房间各世界中的模组引用和配置，不会删除节点上的 Workshop 文件。',
+          confirmationDescription: '输入完整房间名确认从该房间移除。',
           roomName: '完整房间名',
           placeholder: '请输入 {name}',
           fallbackPlaceholder: '请输入完整房间名'
@@ -166,23 +179,77 @@ export const modMessages = {
           selectConfigWorld: '请先选择要配置的世界',
           configUpdated: '模组 {id} 配置已更新！',
           noWorlds: '当前房间没有可配置的世界',
+          selectConfiguredWorld: '请先选择一个已使用该模组的世界',
           enabled: '已启用模组 {name}',
           disabled: '已禁用模组 {name}',
           updated: '模组 {name} 已更新',
-          confirmRoomName: '请输入完整房间名确认卸载',
-          uninstalled: '模组 {name} 已成功卸载',
+          confirmRoomName: '请输入完整房间名确认移除',
+          uninstalled: '模组 {name} 已从房间移除，节点文件仍然保留',
           selectViewWorld: '请先选择要查看的世界',
           configFileMissing: '该世界还没有 modoverrides.lua 文件',
           noDownloadContent: '没有可下载的配置内容',
           configFileDownloaded: '模组配置文件已成功下载'
         }
       },
+      library: {
+        title: '节点模组库',
+        subtitle: '管理当前运行节点下载的 Workshop 文件；节点库不隶属于任何房间。',
+        filters: {
+          title: '筛选节点模组',
+          description: '按名称、作者、Workshop ID 或本地状态查找模组。',
+          keyword: '关键词',
+          keywordPlaceholder: '搜索名称、作者或 Workshop ID',
+          status: '本地状态',
+          statuses: { all: '全部', downloaded: '已下载', attention: '需要处理' }
+        },
+        loadFailedTitle: '节点模组库加载失败',
+        table: {
+          title: '当前节点',
+          total: '显示 {count} 个模组',
+          mod: '模组',
+          status: '状态',
+          updatedAt: '更新时间',
+          actions: '操作'
+        },
+        empty: {
+          noMods: '节点上还没有 Workshop 模组',
+          noModsDescription: '从 Workshop 搜索并下载后，模组会出现在这里。',
+          noMatches: '没有匹配的节点模组',
+          noMatchesDescription: '调整关键词或状态筛选后重试。'
+        },
+        feedback: {
+          downloading: '正在下载到当前节点...',
+          updating: '正在更新节点文件...',
+          downloaded: '模组 {name} 已下载到当前节点',
+          updated: '模组 {name} 的节点文件已更新'
+        }
+      },
+      addToRoom: {
+        title: '添加模组到房间',
+        description: '为“{name}”选择房间和世界。不同世界可以使用不同配置。',
+        loadFailedTitle: '房间信息加载失败',
+        room: '房间',
+        loadingRooms: '正在加载房间',
+        selectRoom: '请选择房间',
+        roomDescription: '下载文件属于当前节点；这里只决定哪个房间引用该模组。',
+        noRoomsTitle: '没有可管理的房间',
+        noRoomsDescription: '请先创建或接管房间。',
+        worlds: '应用到世界',
+        worldsDescription: '默认选择该房间的全部世界，也可以只选择地面或洞穴。',
+        noWorlds: '该房间没有可配置的世界。',
+        enabled: '立即启用',
+        enabledDescription: '关闭后仍会写入配置，但所选世界暂不加载该模组。',
+        dependencies: '同时配置依赖模组',
+        dependenciesDescription: '依赖文件必须已经下载到当前节点。',
+        adding: '正在添加',
+        added: '模组 {name} 已添加到所选房间世界'
+      },
       search: {
         title: '搜索模组',
-        subtitle: '从创意工坊检索并安装到指定房间。',
+        subtitle: '从创意工坊检索并下载到当前运行节点。',
         form: {
           title: '搜索条件',
-          description: '选择目标房间并输入创意工坊模组名称或 Workshop ID。',
+          description: '输入创意工坊模组名称或 Workshop ID；下载不修改任何房间配置。',
           room: '房间',
           loadingRooms: '正在加载房间',
           selectRoom: '请选择房间',
@@ -202,20 +269,20 @@ export const modMessages = {
         },
         feedback: {
           enterKeyword: '请输入搜索关键词',
-          installedConfirm: '模组“{name}”已安装，是否要更新？',
+          installedConfirm: '模组“{name}”已下载，是否要更新？',
           updateTitle: '更新模组',
           selectRoom: '请先选择房间',
           downloading: '正在下载模组，请耐心等待...',
           updated: '更新成功',
-          downloaded: '下载成功'
+          downloaded: '已下载到当前节点'
         },
         downloadStatus: {
           queuedTitle: '下载任务已提交',
           queuedDescription: '正在等待 SteamCMD 开始处理。',
           runningTitle: '正在下载模组',
           runningDescription: 'SteamCMD 正在下载并校验 Workshop 文件。',
-          succeededTitle: '模组已安装',
-          succeededDescription: '文件与房间配置已经更新。',
+          succeededTitle: '节点下载完成',
+          succeededDescription: 'Workshop 文件已保存到当前节点，尚未修改任何房间配置。',
           failedTitle: '下载失败',
           failedDescription: '下载任务没有完成，可以重新尝试。'
         }
@@ -251,6 +318,8 @@ export const modMessages = {
         unknown: 'Unknown',
         unknownAuthor: 'Unknown author',
         installed: 'Installed',
+        downloaded: 'Downloaded',
+        notDownloaded: 'Not downloaded',
         enabled: 'Enabled',
         disabled: 'Disabled',
         on: 'On',
@@ -275,6 +344,10 @@ export const modMessages = {
       actions: {
         refresh: 'Refresh',
         add: 'Add Mod',
+        addToRoom: 'Add to Room',
+        removeFromRoom: 'Remove from Room',
+        confirmRemoveFromRoom: 'Confirm Removal',
+        searchWorkshop: 'Search Workshop',
         getConfigFile: 'Get Configuration File',
         filter: 'Filter',
         reset: 'Reset',
@@ -295,11 +368,14 @@ export const modMessages = {
         saveConfig: 'Save Configuration',
         resetDefaults: 'Reset to Defaults',
         backToInstalled: 'Back to Installed Mods',
+        backToLibrary: 'Back to Node Library',
         search: 'Search'
       },
       errors: {
         withDetail: '{message}: {detail}',
         context: 'Could not load the mod context',
+        library: 'Could not load the node mod library',
+        addToRoom: 'Could not add the mod to the room',
         roomSwitch: 'Could not switch rooms',
         list: 'Could not load the mod list',
         installedList: 'Could not load installed mods',
@@ -315,11 +391,11 @@ export const modMessages = {
         download: 'Could not download the mod'
       },
       installed: {
-        title: 'Installed Mods',
-        subtitle: 'Manage installed mods and per-world configuration for a room.',
+        title: 'Room Mods',
+        subtitle: 'Manage mods referenced by a room. Surface and caves keep independent state and settings.',
         filters: {
           title: 'Filter Mods',
-          description: 'Select a room and world to manage the live mod configuration.',
+          description: 'Select a room, then choose the exact world whose state and settings you want to edit.',
           room: 'Room',
           selectRoom: 'Select a room',
           world: 'World',
@@ -333,6 +409,10 @@ export const modMessages = {
         },
         loadFailedTitle: 'Failed to Load Mods',
         loading: 'Loading mods',
+        worldState: {
+          selectWorld: 'Select a world',
+          notConfigured: 'Not used in this world'
+        },
         aria: {
           toggle: 'Toggle {name}',
           openMenu: 'Open actions for {name}',
@@ -364,9 +444,9 @@ export const modMessages = {
           installedAt: 'Installed At'
         },
         uninstall: {
-          title: 'Uninstall Mod',
-          description: 'This permanently deletes the mod files and configuration.',
-          confirmationDescription: 'Enter the full room name to confirm the uninstall.',
+          title: 'Remove Mod from Room',
+          description: 'This removes the mod reference and settings from this room only. Workshop files remain in the node library.',
+          confirmationDescription: 'Enter the full room name to confirm removal from this room.',
           roomName: 'Full Room Name',
           placeholder: 'Enter {name}',
           fallbackPlaceholder: 'Enter the full room name'
@@ -379,23 +459,77 @@ export const modMessages = {
           selectConfigWorld: 'Select the world to configure first',
           configUpdated: 'Configuration updated for mod {id}.',
           noWorlds: 'This room has no configurable worlds',
+          selectConfiguredWorld: 'Select a world that uses this mod first',
           enabled: 'Enabled mod {name}',
           disabled: 'Disabled mod {name}',
           updated: 'Updated mod {name}',
-          confirmRoomName: 'Enter the full room name to confirm the uninstall',
-          uninstalled: 'Successfully uninstalled mod {name}',
+          confirmRoomName: 'Enter the full room name to confirm removal',
+          uninstalled: 'Removed mod {name} from the room; node files were retained',
           selectViewWorld: 'Select the world to view first',
           configFileMissing: 'This world does not have a modoverrides.lua file yet',
           noDownloadContent: 'There is no configuration content to download',
           configFileDownloaded: 'Mod configuration file downloaded'
         }
       },
+      library: {
+        title: 'Node Mod Library',
+        subtitle: 'Manage Workshop files downloaded on the active runtime node. The library does not belong to any room.',
+        filters: {
+          title: 'Filter Node Mods',
+          description: 'Find mods by name, author, Workshop ID, or local state.',
+          keyword: 'Keyword',
+          keywordPlaceholder: 'Search name, author, or Workshop ID',
+          status: 'Local State',
+          statuses: { all: 'All', downloaded: 'Downloaded', attention: 'Needs attention' }
+        },
+        loadFailedTitle: 'Failed to Load Node Mod Library',
+        table: {
+          title: 'Active Node',
+          total: 'Showing {count} mods',
+          mod: 'Mod',
+          status: 'Status',
+          updatedAt: 'Updated',
+          actions: 'Actions'
+        },
+        empty: {
+          noMods: 'No Workshop mods on this node',
+          noModsDescription: 'Mods appear here after they are downloaded from the Workshop.',
+          noMatches: 'No matching node mods',
+          noMatchesDescription: 'Adjust the keyword or status filter and try again.'
+        },
+        feedback: {
+          downloading: 'Downloading to the active node...',
+          updating: 'Updating node files...',
+          downloaded: 'Downloaded mod {name} to the active node',
+          updated: 'Updated node files for mod {name}'
+        }
+      },
+      addToRoom: {
+        title: 'Add Mod to Room',
+        description: 'Choose the room and worlds for “{name}”. Each world can keep different settings.',
+        loadFailedTitle: 'Failed to Load Rooms',
+        room: 'Room',
+        loadingRooms: 'Loading rooms',
+        selectRoom: 'Select a room',
+        roomDescription: 'Downloaded files belong to the active node. This only controls which room references the mod.',
+        noRoomsTitle: 'No Manageable Rooms',
+        noRoomsDescription: 'Create or adopt a room first.',
+        worlds: 'Apply to Worlds',
+        worldsDescription: 'All worlds are selected by default. You can choose only surface or caves instead.',
+        noWorlds: 'This room has no configurable worlds.',
+        enabled: 'Enable Immediately',
+        enabledDescription: 'When off, settings are written but selected worlds do not load the mod yet.',
+        dependencies: 'Configure Dependencies Too',
+        dependenciesDescription: 'Dependency files must already be downloaded on the active node.',
+        adding: 'Adding',
+        added: 'Added mod {name} to the selected room worlds'
+      },
       search: {
         title: 'Search Mods',
-        subtitle: 'Find Workshop mods and install them into a room.',
+        subtitle: 'Find Workshop mods and download them to the active runtime node.',
         form: {
           title: 'Search',
-          description: 'Select a target room and enter a Steam Workshop mod name or Workshop ID.',
+          description: 'Enter a Workshop mod name or ID. Downloading does not change any room configuration.',
           room: 'Room',
           loadingRooms: 'Loading rooms',
           selectRoom: 'Select a room',
@@ -415,20 +549,20 @@ export const modMessages = {
         },
         feedback: {
           enterKeyword: 'Enter a search keyword',
-          installedConfirm: '“{name}” is already installed. Update it?',
+          installedConfirm: '“{name}” is already downloaded. Update it?',
           updateTitle: 'Update Mod',
           selectRoom: 'Select a room first',
           downloading: 'Downloading the mod. This may take a while...',
           updated: 'Mod updated',
-          downloaded: 'Mod downloaded'
+          downloaded: 'Downloaded to the active node'
         },
         downloadStatus: {
           queuedTitle: 'Download queued',
           queuedDescription: 'Waiting for SteamCMD to start.',
           runningTitle: 'Downloading mod',
           runningDescription: 'SteamCMD is downloading and verifying the Workshop files.',
-          succeededTitle: 'Mod installed',
-          succeededDescription: 'The files and room configuration are up to date.',
+          succeededTitle: 'Node download complete',
+          succeededDescription: 'Workshop files are stored on the active node. No room configuration was changed.',
           failedTitle: 'Download failed',
           failedDescription: 'The download did not finish. You can try again.'
         }
