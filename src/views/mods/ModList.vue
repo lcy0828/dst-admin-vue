@@ -22,16 +22,16 @@
           </Field>
           <Field>
             <FieldLabel for="installed-mod-world">{{ $t('mods.installed.filters.world') }}</FieldLabel>
-            <UiSelect v-model="selectedWorldId" :disabled="!selectedRoomId" @update:model-value="handleWorldChange">
-              <SelectTrigger id="installed-mod-world"><SelectValue :placeholder="$t('mods.installed.filters.selectWorld')" /></SelectTrigger>
-              <SelectContent><SelectGroup><SelectItem v-for="world in selectedRoomWorlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent>
-            </UiSelect>
+            <ToggleGroup id="installed-mod-world" type="single" variant="outline" size="sm" class="w-full" :model-value="selectedWorldId" :disabled="!selectedRoomId" @update:model-value="handleWorldChange">
+              <ToggleGroupItem v-for="world in selectedRoomWorlds" :key="world.id" :value="world.id" class="min-w-0 flex-1"><span class="truncate">{{ world.name }}</span></ToggleGroupItem>
+            </ToggleGroup>
+            <FieldDescription v-if="selectedRoomId && selectedRoomWorlds.length === 0">{{ $t('mods.installed.feedback.noWorlds') }}</FieldDescription>
           </Field>
           <Field>
             <FieldLabel for="installed-mod-status">{{ $t('mods.installed.filters.status') }}</FieldLabel>
             <UiSelect v-model="filterForm.status">
               <SelectTrigger id="installed-mod-status"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectGroup><SelectItem value="all">{{ $t('mods.installed.filters.statuses.all') }}</SelectItem><SelectItem value="enabled">{{ $t('mods.installed.filters.statuses.enabled') }}</SelectItem><SelectItem value="disabled">{{ $t('mods.installed.filters.statuses.disabled') }}</SelectItem></SelectGroup></SelectContent>
+              <SelectContent><SelectGroup><SelectItem value="all">{{ $t('mods.installed.filters.statuses.all') }}</SelectItem><SelectItem value="enabled">{{ $t('mods.installed.filters.statuses.enabled') }}</SelectItem><SelectItem value="disabled">{{ $t('mods.installed.filters.statuses.disabled') }}</SelectItem><SelectItem value="notConfigured">{{ $t('mods.installed.filters.statuses.notConfigured') }}</SelectItem></SelectGroup></SelectContent>
             </UiSelect>
           </Field>
           <Field>
@@ -112,7 +112,7 @@
       <EmptyContent v-if="selectedRoomId"><UiButton @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton></EmptyContent>
     </Empty>
 
-    <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :is-new-mod="false" @config-updated="handleConfigUpdated" />
+    <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :is-new-mod="false" @config-updated="handleConfigUpdated" />
 
     <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :actions="false">
       <template #actions="{ mod }">
@@ -153,12 +153,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { createModFailure, formatModDate, formatModFailure } from '@/i18n/modMessages';
 
 const MOD_TAG_KEYS = Object.freeze({
@@ -203,6 +204,7 @@ export default {
     EmptyMedia,
     EmptyTitle,
     Field,
+    FieldDescription,
     FieldGroup,
     FieldLabel,
     FileCode2,
@@ -226,6 +228,8 @@ export default {
     Spinner,
     Star,
     Tag,
+    ToggleGroup,
+    ToggleGroupItem,
     TriangleAlert,
     UiButton,
     UiDialog,
@@ -280,12 +284,19 @@ export default {
     currentRoom() {
       return this.roomOptions.find(room => room.id === this.selectedRoomId) || null;
     },
+    currentWorld() {
+      return this.selectedRoomWorlds.find(world => world.id === this.selectedWorldId) || null;
+    },
     // 筛选后的模组列表
     filteredMods() {
       let result = [...this.modsList];
       if (this.filterForm.status && this.filterForm.status !== 'all') {
-        const isEnabled = this.filterForm.status === 'enabled';
-        result = result.filter(mod => mod.enabled === isEnabled);
+        if (this.filterForm.status === 'notConfigured') {
+          result = result.filter(mod => !this.isConfiguredInSelectedWorld(mod));
+        } else {
+          const isEnabled = this.filterForm.status === 'enabled';
+          result = result.filter(mod => this.isConfiguredInSelectedWorld(mod) && this.isEnabledInSelectedWorld(mod) === isEnabled);
+        }
       }
       if (this.filterForm.keyword) {
         const keyword = this.filterForm.keyword.toLowerCase();
@@ -344,8 +355,11 @@ export default {
         this.roomOptions = context.rooms;
         this.selectedRoomId = context.room?.id || '';
         this.selectedRoomWorlds = context.worlds;
-        this.selectedWorldId = context.world?.id || '';
-        if (this.selectedRoomId) await this.fetchModsList();
+        this.selectedWorldId = this.preferredWorldId(context.worlds, context.world?.id);
+        if (this.selectedRoomId) {
+          await this.syncRouteContext();
+          await this.fetchModsList();
+        }
       } catch (error) {
         this.loadFailure = this.failure('mods.errors.context', error);
         toast.error(this.loadError);
@@ -359,7 +373,7 @@ export default {
       try {
         const context = await modApi.getContext({ roomId });
         this.selectedRoomWorlds = context.worlds;
-        this.selectedWorldId = context.world?.id || '';
+        this.selectedWorldId = this.preferredWorldId(context.worlds, context.world?.id);
         await this.syncRouteContext();
         await this.fetchModsList();
       } catch (error) {
@@ -368,8 +382,16 @@ export default {
       }
     },
 
-    async handleWorldChange() {
+    async handleWorldChange(worldId) {
+      if (!worldId || worldId === this.selectedWorldId) return;
+      this.selectedWorldId = worldId;
       await this.syncRouteContext();
+    },
+
+    preferredWorldId(worlds, requestedId = '') {
+      if (requestedId && worlds.some(world => world.id === requestedId)) return requestedId;
+      const master = worlds.find(world => world.isMaster || world.is_master);
+      return master?.id || worlds[0]?.id || '';
     },
 
     async syncRouteContext() {

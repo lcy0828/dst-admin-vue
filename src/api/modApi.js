@@ -251,6 +251,7 @@ async function getModCustomConfig({ roomId, worldId, modid }) {
     status: 200,
     modinfo: {
       configuration_options: configuration.values || {},
+      overridden_configuration_options: configuration.overrides || {},
       unknown_configuration_options: configuration.unknownValues || {},
       enabled: configuration.enabled,
       revision: configuration.revision,

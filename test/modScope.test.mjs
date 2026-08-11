@@ -79,6 +79,24 @@ test('adding a downloaded mod explicitly selects room worlds', async () => {
   assert.match(dialog, /worldIds: selectedWorldIds\.value/)
 })
 
+test('room mod controls and configuration target one explicit world', async () => {
+  const [list, dialog, adapter] = await Promise.all([
+    source('../src/views/mods/ModList.vue'),
+    source('../src/views/mods/ModConfigDialog.vue'),
+    source('../src/api/modApi.js')
+  ])
+
+  assert.match(list, /<ToggleGroup[^>]+type="single"/)
+  assert.match(list, /worldIds: \[this\.selectedWorldId\]/)
+  assert.match(list, /this\.isConfiguredInSelectedWorld\(mod\) && this\.isEnabledInSelectedWorld\(mod\)/)
+  assert.match(list, /:world-name="currentWorld\?\.name \|\| ''"/)
+  assert.match(dialog, /<UiDialog/)
+  assert.doesNotMatch(dialog, /<Sheet/)
+  assert.match(dialog, /Object\.keys\(this\.customOverrides\)/)
+  assert.match(dialog, /\.map\(key => \[key, null\]\)/)
+  assert.match(adapter, /overridden_configuration_options: configuration\.overrides \|\| \{\}/)
+})
+
 test('mod navigation exposes separate node library and room views', async () => {
   const [router, navigation] = await Promise.all([
     source('../src/router/index.js'),

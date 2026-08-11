@@ -1,10 +1,10 @@
 <template>
-  <Sheet :open="dialogVisible" @update:open="handleSheetOpenChange">
-    <SheetContent side="right" class="mod-config-sheet">
-      <SheetHeader>
-        <SheetTitle>{{ $t('mods.config.title', { name: modInfo ? modInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</SheetTitle>
-        <SheetDescription>{{ $t('mods.config.description') }}</SheetDescription>
-      </SheetHeader>
+  <UiDialog :open="dialogVisible" @update:open="handleDialogOpenChange">
+    <DialogContent class="mod-config-dialog sm:max-w-4xl">
+      <DialogHeader>
+        <DialogTitle>{{ $t('mods.config.title', { name: modInfo ? modInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</DialogTitle>
+        <DialogDescription>{{ $t('mods.config.description', { world: worldName || worldId }) }}</DialogDescription>
+      </DialogHeader>
 
       <ScrollArea class="config-scroll-area">
         <div v-if="loading" class="loading-container"><Spinner /><p>{{ $t('mods.config.loading') }}</p></div>
@@ -85,14 +85,14 @@
         </Empty>
       </ScrollArea>
 
-      <SheetFooter>
+      <DialogFooter>
         <UiButton variant="outline" @click="handleClose">{{ $t('mods.actions.cancel') }}</UiButton>
         <UiButton @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !modInfo">
           <Spinner v-if="saving" data-icon="inline-start" />{{ $t('mods.actions.saveConfig') }}
         </UiButton>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>
+      </DialogFooter>
+    </DialogContent>
+  </UiDialog>
 </template>
 
 <script>
@@ -101,12 +101,12 @@ import { toast } from 'vue-sonner';
 import { modApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -121,6 +121,11 @@ export default {
     AlertDescription,
     AlertTitle,
     CircleHelp,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
     Empty,
     EmptyDescription,
     EmptyHeader,
@@ -138,18 +143,13 @@ export default {
     SelectItem,
     SelectTrigger,
     SelectValue,
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
     Spinner,
     Tooltip,
     TooltipContent,
     TooltipTrigger,
     TriangleAlert,
     UiButton,
+    UiDialog,
     UiInput,
     UiSelect,
     UiSwitch
@@ -178,6 +178,10 @@ export default {
     worldId: {
       type: String,
       default: ''
+    },
+    worldName: {
+      type: String,
+      default: ''
     }
   },
   data() {
@@ -190,10 +194,11 @@ export default {
       originalConfig: {},
       defaultConfig: {},
       userCustomConfig: {},
+      customOverrides: {},
+      resetRequested: false,
       configRevision: '',
       configuredEnabled: true,
-      isInitialized: false,
-      keepAliveInterval: null
+      isInitialized: false
     };
   },
   computed: {
@@ -226,18 +231,12 @@ export default {
           if (this.modInfo) {
             this.initializeConfig();
           }
-          this.setupKeepAliveTimer();
         });
-      } else {
-        this.clearKeepAliveTimer();
       }
     },
     dialogVisible(newVal) {
       if (!newVal) {
         this.$emit('update:modelValue', false);
-        this.clearKeepAliveTimer();
-      } else {
-        this.setupKeepAliveTimer();
       }
     },
     modInfo: {
@@ -252,7 +251,7 @@ export default {
     }
   },
   methods: {
-    handleSheetOpenChange(open) {
+    handleDialogOpenChange(open) {
       if (open) {
         this.dialogVisible = true;
         return;
@@ -269,28 +268,10 @@ export default {
       this.originalConfig = {};
       this.defaultConfig = {};
       this.userCustomConfig = {};
+      this.customOverrides = {};
+      this.resetRequested = false;
       this.configRevision = '';
       this.configuredEnabled = true;
-      // 清除定时器
-      this.clearKeepAliveTimer();
-    },
-    
-    // 设置保持对话框活跃的定时器
-    setupKeepAliveTimer() {
-      this.clearKeepAliveTimer();
-      this.keepAliveInterval = setInterval(() => {
-        if (!this.dialogVisible) {
-          this.clearKeepAliveTimer();
-        }
-      }, 5000);
-    },
-    
-    // 清除定时器
-    clearKeepAliveTimer() {
-      if (this.keepAliveInterval) {
-        clearInterval(this.keepAliveInterval);
-        this.keepAliveInterval = null;
-      }
     },
     
     // 初始化配置
@@ -306,6 +287,8 @@ export default {
       this.originalConfig = {};
       this.defaultConfig = {};
       this.userCustomConfig = {};
+      this.customOverrides = {};
+      this.resetRequested = false;
       
       try {
         await this.getUserCustomConfig();
@@ -334,6 +317,7 @@ export default {
         .then(res => {
           if (res && res.modinfo && res.modinfo.configuration_options) {
             this.userCustomConfig = res.modinfo.configuration_options;
+            this.customOverrides = res.modinfo.overridden_configuration_options || {};
             this.configRevision = res.modinfo.revision;
             this.configuredEnabled = res.modinfo.enabled;
           }
@@ -433,27 +417,35 @@ export default {
     
     // 重置为默认配置
     resetToDefault() {
-      confirmAction(this.$t('mods.config.feedback.resetConfirm'), this.$t('mods.config.feedback.resetTitle'), {
-        confirmButtonText: this.$t('mods.actions.confirm'),
-        cancelButtonText: this.$t('mods.actions.cancel'),
-        type: 'warning'
-      }).then(() => {
-        this.configForm = JSON.parse(JSON.stringify(this.defaultConfig));
-        toast.success(this.$t('mods.config.feedback.resetSuccess'));
-      }).catch(() => {});
+      this.configForm = JSON.parse(JSON.stringify(this.defaultConfig));
+      this.resetRequested = true;
+      toast.success(this.$t('mods.config.feedback.resetSuccess'));
     },
     
     // 保存配置
     async saveConfig() {
       if (this.saving) return;
       const prepared = this.prepareConfigForSubmit(this.configForm);
-      const changedConfig = Object.fromEntries(
+      let changedConfig = Object.fromEntries(
         Object.entries(prepared).filter(([key, value]) =>
           JSON.stringify(value) !== JSON.stringify(this.originalConfig[key])
         )
       );
+      if (this.resetRequested) {
+        changedConfig = Object.fromEntries(
+          Object.keys(this.customOverrides)
+            .filter(key => this.findOptionByName(key))
+            .map(key => [key, null])
+        );
+        for (const [key, value] of Object.entries(prepared)) {
+          if (JSON.stringify(value) !== JSON.stringify(this.defaultConfig[key])) {
+            changedConfig[key] = value;
+          }
+        }
+      }
       const enabled = this.modInfo?.configuration?.enabled ?? this.configuredEnabled;
       if (Object.keys(changedConfig).length === 0 && enabled === this.configuredEnabled) {
+        this.resetRequested = false;
         toast.info(this.$t('mods.config.feedback.noChanges'));
         return;
       }
@@ -473,6 +465,7 @@ export default {
         await modApi.saveModCustomConfig(customConfigData);
         await this.getUserCustomConfig();
         this.originalConfig = JSON.parse(JSON.stringify(this.configForm));
+        this.resetRequested = false;
 
         this.$emit('config-updated', {
           modId: this.modId,
@@ -517,19 +510,17 @@ export default {
     handleConfigChange(optionName) {
       return this.configForm[optionName];
     },
+
+    hasUnsavedChanges() {
+      if (this.resetRequested && Object.keys(this.customOverrides).some(key => this.findOptionByName(key))) return true;
+      return Object.keys(this.configForm).some(key =>
+        JSON.stringify(this.configForm[key]) !== JSON.stringify(this.originalConfig[key])
+      );
+    },
     
     // 关闭对话框
     handleClose(done) {
-      let hasChanges = false;
-      
-      for (const key in this.configForm) {
-        if (this.configForm[key] !== this.originalConfig[key]) {
-          hasChanges = true;
-          break;
-        }
-      }
-      
-      if (hasChanges) {
+      if (this.hasUnsavedChanges()) {
         confirmAction(this.$t('mods.config.feedback.unsavedConfirm'), this.$t('mods.config.feedback.closeTitle'), {
           confirmButtonText: this.$t('mods.actions.confirm'),
           cancelButtonText: this.$t('mods.actions.cancel'),
@@ -537,12 +528,10 @@ export default {
         }).then(() => {
           if (typeof done === 'function') done();
           else this.dialogVisible = false;
-          this.clearKeepAliveTimer();
         }).catch(() => {});
       } else {
         if (typeof done === 'function') done();
         else this.dialogVisible = false;
-        this.clearKeepAliveTimer();
       }
     }
   },
@@ -553,14 +542,16 @@ export default {
 </script>
 
 <style scoped>
-.mod-config-sheet {
-  width: min(680px, 96vw);
-  max-width: min(680px, 96vw);
+.mod-config-dialog {
+  display: grid;
+  max-height: min(90vh, 900px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .config-scroll-area {
-  height: calc(100vh - 150px);
-  padding: 0 18px 18px;
+  min-height: 220px;
+  max-height: min(68vh, 680px);
+  padding-right: 12px;
 }
 
 .loading-container {
@@ -580,6 +571,9 @@ export default {
 }
 
 .config-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
   margin-top: 16px;
 }
 
@@ -589,10 +583,10 @@ export default {
   gap: 4px;
 }
 
-@media (max-width: 640px) {
-  .mod-config-sheet {
-    width: 100vw;
-    max-width: 100vw;
+@media (max-width: 768px) {
+  .config-form {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
+
 </style>
