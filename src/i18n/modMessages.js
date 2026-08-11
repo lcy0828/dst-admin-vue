@@ -182,12 +182,12 @@ export const modMessages = {
         subtitle: '从创意工坊检索并安装到指定房间。',
         form: {
           title: '搜索条件',
-          description: '选择目标房间并输入创意工坊模组名称。',
+          description: '选择目标房间并输入创意工坊模组名称或 Workshop ID。',
           room: '房间',
           loadingRooms: '正在加载房间',
           selectRoom: '请选择房间',
-          name: '模组名称',
-          namePlaceholder: '输入模组名称搜索'
+          name: '模组名称或 Workshop ID',
+          namePlaceholder: '输入模组名称或 Workshop ID'
         },
         loadFailedTitle: '模组数据加载失败',
         empty: {
@@ -385,12 +385,12 @@ export const modMessages = {
         subtitle: 'Find Workshop mods and install them into a room.',
         form: {
           title: 'Search',
-          description: 'Select a target room and enter a Steam Workshop mod name.',
+          description: 'Select a target room and enter a Steam Workshop mod name or Workshop ID.',
           room: 'Room',
           loadingRooms: 'Loading rooms',
           selectRoom: 'Select a room',
-          name: 'Mod Name',
-          namePlaceholder: 'Enter a mod name'
+          name: 'Mod Name or Workshop ID',
+          namePlaceholder: 'Enter a mod name or Workshop ID'
         },
         loadFailedTitle: 'Failed to Load Mod Data',
         empty: {
