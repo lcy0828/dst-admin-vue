@@ -67,6 +67,14 @@
                 <span><Clock />{{ formatDate(mod.time) }}</span>
                 <span><Users />{{ mod.sub || 0 }} {{ $t('mods.values.subscriptions') }}</span>
                 <span v-if="mod.rating !== null"><Star />{{ formatRating(mod.rating) }} {{ $t('mods.values.rating') }}</span>
+                <Alert v-if="downloadStates[mod.id]" :variant="downloadStateVariant(downloadStates[mod.id])" class="mod-download-status">
+                  <Spinner v-if="isDownloadActive(downloadStates[mod.id])" />
+                  <CircleCheck v-else-if="downloadStates[mod.id].status === 'succeeded'" />
+                  <TriangleAlert v-else />
+                  <AlertTitle>{{ downloadStateTitle(downloadStates[mod.id]) }}</AlertTitle>
+                  <AlertDescription>{{ downloadStateDescription(downloadStates[mod.id]) }}</AlertDescription>
+                  <UiProgress v-if="isDownloadActive(downloadStates[mod.id])" :model-value="downloadStates[mod.id].progress" class="col-span-full mt-2" />
+                </Alert>
               </CardContent>
               <CardFooter class="mod-actions">
                 <UiButton
@@ -124,6 +132,14 @@
           </div>
           <Separator />
           <div v-if="currentModInfo.describe"><h4>{{ $t('mods.search.details.modDescription') }}</h4><p class="description-content">{{ currentModInfo.describe }}</p></div>
+          <Alert v-if="downloadStates[currentModInfo.id]" :variant="downloadStateVariant(downloadStates[currentModInfo.id])">
+            <Spinner v-if="isDownloadActive(downloadStates[currentModInfo.id])" />
+            <CircleCheck v-else-if="downloadStates[currentModInfo.id].status === 'succeeded'" />
+            <TriangleAlert v-else />
+            <AlertTitle>{{ downloadStateTitle(downloadStates[currentModInfo.id]) }}</AlertTitle>
+            <AlertDescription>{{ downloadStateDescription(downloadStates[currentModInfo.id]) }}</AlertDescription>
+            <UiProgress v-if="isDownloadActive(downloadStates[currentModInfo.id])" :model-value="downloadStates[currentModInfo.id].progress" class="col-span-full mt-2" />
+          </Alert>
         </div>
         <DialogFooter>
           <UiButton variant="outline" @click="detailsDialogVisible = false">{{ $t('mods.actions.close') }}</UiButton>
@@ -138,7 +154,7 @@
 </template>
 
 <script>
-import { ArrowLeft, Clock, Download, ImageIcon, RefreshCw, Search, SearchX, Star, Tag, TriangleAlert, User, Users } from '@lucide/vue';
+import { ArrowLeft, CircleCheck, Clock, Download, ImageIcon, RefreshCw, Search, SearchX, Star, Tag, TriangleAlert, User, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { modApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -150,6 +166,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Progress as UiProgress } from '@/components/ui/progress';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -172,6 +189,7 @@ export default {
     CardFooter,
     CardHeader,
     CardTitle,
+    CircleCheck,
     Clock,
     DialogContent,
     DialogDescription,
@@ -213,6 +231,7 @@ export default {
     TriangleAlert,
     UiButton,
     UiDialog,
+    UiProgress,
     UiSelect,
     User,
     Users
@@ -231,6 +250,7 @@ export default {
       currentPage: 1,
       defaultImage: '',
       downloadingMods: {}, // 跟踪正在下载的模组
+      downloadStates: {},
       installedMods: [], // 存储已安装的模组信息
       loadingInstalledMods: false, // 加载已安装模组的状态
       loadingRooms: false,
@@ -277,6 +297,7 @@ export default {
 
     async handleRoomChange(roomId) {
       this.loadFailure = null;
+      this.downloadStates = {};
       try {
         const context = await modApi.getContext({ roomId });
         this.selectedRoomWorlds = context.worlds;
@@ -391,6 +412,7 @@ export default {
       const loadingMessage = toast.loading(this.$t('mods.search.feedback.downloading'));
       
       this.downloadingMods[id] = true;
+      this.downloadStates[id] = { status: 'queued', progress: 0, detail: '' };
       
       try {
         await modApi.downloadMod({
@@ -399,13 +421,23 @@ export default {
           id,
           installed: wasInstalled,
           enabled: true,
-          includeDependencies: true
+          includeDependencies: true,
+          onProgress: job => {
+            this.downloadStates[id] = {
+              status: job.status || 'running',
+              progress: Number.isFinite(Number(job.progress)) ? Number(job.progress) : 0,
+              detail: ''
+            };
+          }
         });
         mod.isInstalled = true;
         await this.getInstalledMods();
+        this.downloadStates[id] = { status: 'succeeded', progress: 100, detail: '' };
         toast.success(this.$t(wasInstalled ? 'mods.search.feedback.updated' : 'mods.search.feedback.downloaded'));
       } catch (error) {
-        toast.error(this.localizedFailure(this.failure(wasInstalled ? 'mods.errors.update' : 'mods.errors.download', error)));
+        const detail = this.localizedFailure(this.failure(wasInstalled ? 'mods.errors.update' : 'mods.errors.download', error));
+        this.downloadStates[id] = { status: 'failed', progress: 100, detail };
+        toast.error(detail);
       } finally {
         toast.dismiss(loadingMessage);
         this.downloadingMods[id] = false;
@@ -457,6 +489,25 @@ export default {
 
     localizedFailure(failure) {
       return formatModFailure(this.$t, failure);
+    },
+
+    isDownloadActive(state) {
+      return state?.status === 'queued' || state?.status === 'running';
+    },
+
+    downloadStateVariant(state) {
+      return state?.status === 'failed' ? 'destructive' : 'default';
+    },
+
+    downloadStateTitle(state) {
+      const status = ['queued', 'running', 'succeeded', 'failed'].includes(state?.status) ? state.status : 'failed';
+      return this.$t(`mods.search.downloadStatus.${status}Title`);
+    },
+
+    downloadStateDescription(state) {
+      if (state?.status === 'failed' && state.detail) return state.detail;
+      const status = ['queued', 'running', 'succeeded', 'failed'].includes(state?.status) ? state.status : 'failed';
+      return this.$t(`mods.search.downloadStatus.${status}Description`);
     },
     
     // 处理下拉菜单命令
@@ -584,6 +635,10 @@ export default {
   gap: 6px;
   color: var(--muted-foreground);
   font-size: 12px;
+}
+
+.mod-download-status {
+  margin-top: 6px;
 }
 
 .mod-meta span,

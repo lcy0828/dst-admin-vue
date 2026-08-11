@@ -1,5 +1,8 @@
 import { configurationV2API, jobsV2API, roomsV2API } from './v2'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
+import { jobFailure } from './jobFeedback.mjs'
+
+export { jobFailure } from './jobFeedback.mjs'
 
 const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg)
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled'])
@@ -8,24 +11,24 @@ function delay(milliseconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
-function jobError(job) {
-  if (job.error?.message) return job.error.message
-  const failed = (job.targets || []).find(target => target.error?.message)
-  return failed?.error?.message || ''
-}
-
-export async function waitForV2Job(job, timeout = 60000) {
+export async function waitForV2Job(job, timeout = 60000, onUpdate) {
   if (!job?.id) throw adapterError('JOB_ID_MISSING')
   const deadline = Date.now() + timeout
   let current = job
+  if (typeof onUpdate === 'function') onUpdate(current)
   while (!TERMINAL_JOB_STATES.has(current.status)) {
     if (Date.now() >= deadline) throw adapterError('JOB_TIMEOUT', { context: { jobId: job.id } })
     await delay(300)
     current = await jobsV2API.get(job.id)
+    if (typeof onUpdate === 'function') onUpdate(current)
   }
   if (current.status !== 'succeeded') {
     const code = current.status === 'canceled' ? 'JOB_CANCELED' : 'JOB_FAILED'
-    throw adapterError(code, { detail: jobError(current), context: { jobId: current.id } })
+    const failure = jobFailure(current)
+    throw adapterError(code, {
+      detail: failure.message,
+      context: { jobId: current.id, targetErrorCode: failure.code }
+    })
   }
   return current
 }

@@ -208,6 +208,16 @@ export const modMessages = {
           downloading: '正在下载模组，请耐心等待...',
           updated: '更新成功',
           downloaded: '下载成功'
+        },
+        downloadStatus: {
+          queuedTitle: '下载任务已提交',
+          queuedDescription: '正在等待 SteamCMD 开始处理。',
+          runningTitle: '正在下载模组',
+          runningDescription: 'SteamCMD 正在下载并校验 Workshop 文件。',
+          succeededTitle: '模组已安装',
+          succeededDescription: '文件与房间配置已经更新。',
+          failedTitle: '下载失败',
+          failedDescription: '下载任务没有完成，可以重新尝试。'
         }
       },
       config: {
@@ -411,6 +421,16 @@ export const modMessages = {
           downloading: 'Downloading the mod. This may take a while...',
           updated: 'Mod updated',
           downloaded: 'Mod downloaded'
+        },
+        downloadStatus: {
+          queuedTitle: 'Download queued',
+          queuedDescription: 'Waiting for SteamCMD to start.',
+          runningTitle: 'Downloading mod',
+          runningDescription: 'SteamCMD is downloading and verifying the Workshop files.',
+          succeededTitle: 'Mod installed',
+          succeededDescription: 'The files and room configuration are up to date.',
+          failedTitle: 'Download failed',
+          failedDescription: 'The download did not finish. You can try again.'
         }
       },
       config: {

@@ -138,7 +138,7 @@ async function downloadMod(input) {
       enabled: input.enabled !== false,
       includeDependencies: input.includeDependencies !== false
     })
-  return waitForV2Job(job, MOD_JOB_TIMEOUT)
+  return waitForV2Job(job, MOD_JOB_TIMEOUT, input.onProgress)
 }
 
 async function getModConfig({ roomId, worldId, modid, mod = {} }) {
