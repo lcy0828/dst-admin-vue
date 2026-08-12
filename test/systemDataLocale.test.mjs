@@ -20,6 +20,7 @@ test('system-owned values use stable English identifiers and accept legacy Chine
   assert.deepEqual(ANNOUNCEMENT_TYPE_IDS, { IMPORTANT: 'important', NOTICE: 'notice' })
   assert.equal(normalizeSystemAutomationGroup('未分组'), 'ungrouped')
   assert.equal(normalizeSystemAutomationGroup('玩家管理'), 'player-management')
+  assert.equal(normalizeSystemAutomationGroup('player-refresh-system'), 'player-management')
   assert.equal(normalizeSystemAutomationGroup('custom-group'), 'custom-group')
   assert.equal(isSystemAutomationGroup('未分组', SYSTEM_AUTOMATION_GROUP_IDS.UNGROUPED), true)
   assert.equal(announcementTypeId(true), 'important')
