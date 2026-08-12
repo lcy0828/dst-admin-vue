@@ -168,7 +168,7 @@ async function loadLatestDiagnostic() {
     diagnostic.value = await runtimeV2API.latestDiagnostic(props.roomId, props.worldId)
   } catch (cause) {
     diagnostic.value = null
-    if (!['RUNTIME_RESULT_ABSENT', 'RESOURCE_NOT_FOUND'].includes(cause.code)) diagnosticError.value = cause
+    if (!['RUNTIME_RESULT_NOT_FOUND', 'RESOURCE_NOT_FOUND'].includes(cause.code)) diagnosticError.value = cause
   }
 }
 async function captureDiagnostic() {

@@ -6,12 +6,12 @@
         <CardDescription>{{ $t('runtime.description') }}</CardDescription>
       </div>
       <CardAction class="runtime-actions">
-        <UiButton size="sm" variant="outline" :disabled="loading" @click="loadStatus">
+        <UiButton size="sm" variant="outline" :disabled="loading || Boolean(busyKey)" @click="loadStatus">
           <Spinner v-if="loading" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
           {{ $t('runtime.refresh') }}
         </UiButton>
-        <UiButton size="sm" :disabled="loading || managedRooms.length === 0" @click="installAll">
+        <UiButton size="sm" :disabled="loading || Boolean(busyKey) || managedRooms.length === 0" @click="installAll">
           <Wrench data-icon="inline-start" />
           {{ $t('runtime.installAll') }}
         </UiButton>
@@ -65,15 +65,15 @@
               <TableCell>{{ report.version || '--' }}</TableCell>
               <TableCell>
                 <div class="row-actions">
-                  <UiButton v-if="report.state !== 'installed'" size="sm" variant="outline" :disabled="isBusy(report)" @click="installWorld(report)">
+                  <UiButton v-if="report.state !== 'installed'" size="sm" variant="outline" :disabled="Boolean(busyKey)" @click="installWorld(report)">
                     <Spinner v-if="isBusy(report)" data-icon="inline-start" />
                     {{ installActionLabel(report.state) }}
                   </UiButton>
-                  <UiButton v-if="report.state === 'installed' && report.processRunning && report.healthState !== 'ready'" size="sm" variant="outline" :disabled="isBusy(report)" @click="activate(report)">
+                  <UiButton v-if="report.state === 'installed' && report.processRunning && report.healthState !== 'ready'" size="sm" variant="outline" :disabled="Boolean(busyKey)" @click="activate(report)">
                     <Spinner v-if="isBusy(report)" data-icon="inline-start" />
                     {{ $t('runtime.actions.activate') }}
                   </UiButton>
-                  <UiButton v-if="report.state === 'installed' && report.processRunning && report.healthState === 'ready'" size="sm" variant="outline" :disabled="isBusy(report)" @click="reload(report)">
+                  <UiButton v-if="report.state === 'installed' && report.processRunning && report.healthState === 'ready'" size="sm" variant="outline" :disabled="Boolean(busyKey)" @click="reload(report)">
                     <Spinner v-if="isBusy(report)" data-icon="inline-start" />
                     {{ $t('runtime.actions.reload') }}
                   </UiButton>
