@@ -14,6 +14,7 @@ import { serverMessages } from './serverMessages.js'
 import { systemSettingsMessages } from './systemSettingsMessages.js'
 import { roomsMessages } from './roomsMessages.js'
 import { runtimeMessages } from './runtimeMessages.js'
+import { recoveryMessages } from './recoveryMessages.js'
 import { sharedUiMessages } from './sharedUiMessages.js'
 import { worldMapsMessages } from './worldMapsMessages.js'
 import { worldStateMessages } from './worldStateMessages.js'
@@ -36,6 +37,7 @@ export const messages = {
     ...systemSettingsMessages['zh-CN'],
     ...roomsMessages['zh-CN'],
     ...runtimeMessages['zh-CN'],
+    ...recoveryMessages['zh-CN'],
     ...sharedUiMessages['zh-CN'],
     ...worldMapsMessages['zh-CN'],
     ...worldStateMessages['zh-CN'],
@@ -526,6 +528,7 @@ export const messages = {
     ...systemSettingsMessages['en-US'],
     ...roomsMessages['en-US'],
     ...runtimeMessages['en-US'],
+    ...recoveryMessages['en-US'],
     ...sharedUiMessages['en-US'],
     ...worldMapsMessages['en-US'],
     ...worldStateMessages['en-US'],

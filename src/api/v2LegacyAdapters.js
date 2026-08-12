@@ -354,6 +354,28 @@ export const legacyRoomApi = {
     roomCatalogCache.invalidate()
     return success(result, 'room_moved_to_recovery')
   },
+  async getRoomRecoveries() {
+    return success(await roomsV2API.recoveries(), 'room_recoveries_loaded')
+  },
+  async restoreRoomRecovery(recoveryName) {
+    const result = await roomsV2API.restoreRoom(recoveryName)
+    roomCatalogCache.invalidate()
+    return success(result, 'room_recovery_restored')
+  },
+  async purgeRoomRecovery(recoveryName, confirmation) {
+    return success(await roomsV2API.purgeRoomRecovery(recoveryName, confirmation), 'room_recovery_purged')
+  },
+  async getWorldRecoveries(roomId) {
+    return success(await roomsV2API.worldRecoveries(roomId), 'world_recoveries_loaded')
+  },
+  async restoreWorldRecovery(roomId, recoveryName) {
+    const result = await roomsV2API.restoreWorld(roomId, recoveryName)
+    roomCatalogCache.invalidate()
+    return success(result, 'world_recovery_restored')
+  },
+  async purgeWorldRecovery(roomId, recoveryName, confirmation) {
+    return success(await roomsV2API.purgeWorldRecovery(roomId, recoveryName, confirmation), 'world_recovery_purged')
+  },
   async regenerateWorld(input = {}) {
     const room = await resolveRoom(roomReference(input))
     const [worldId] = selectedWorldIDs(room, input)

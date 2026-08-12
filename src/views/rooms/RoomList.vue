@@ -15,6 +15,7 @@
           <RefreshCw v-else data-icon="inline-start" />
           {{ $t('common.actions.refresh') }}
         </UiButton>
+        <UiButton variant="outline" @click="recoveryVisible = true"><ArchiveRestore data-icon="inline-start" />{{ $t('recovery.open') }}</UiButton>
         <UiButton @click="createRoom"><Plus data-icon="inline-start" />{{ $t('rooms.list.create') }}</UiButton>
       </div>
     </header>
@@ -137,11 +138,14 @@
         <StartRoomForm v-if="startDialogVisible" :room="selectedRoom" :startForm="startForm" :loading="startLoading" @confirm="confirmStartRoom" @close="closeStartDialog" />
       </DialogScrollContent>
     </UiDialog>
+
+    <RecoveryDialog v-model:open="recoveryVisible" scope="room" @restored="refreshRooms(true)" />
   </div>
 </template>
 
 <script>
 import {
+  ArchiveRestore,
   ChevronDown,
   CircleAlert,
   Clock,
@@ -171,6 +175,7 @@ import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 import LogViewer from '../servers/LogViewer.vue';
 import StartRoomForm from './StartRoomForm.vue';
+import RecoveryDialog from '@/components/recovery/RecoveryDialog.vue';
 
 export default {
   name: 'RoomList',
@@ -178,6 +183,7 @@ export default {
     Alert,
     AlertDescription,
     AlertTitle,
+    ArchiveRestore,
     Badge,
     Card,
     CardAction,
@@ -219,6 +225,7 @@ export default {
     Play,
     Plus,
     RefreshCw,
+    RecoveryDialog,
     Search,
     Skeleton,
     Spinner,
@@ -249,7 +256,8 @@ export default {
       },
       startLoading: false,
       isRefreshing: false,
-      lastRefreshTime: 0
+      lastRefreshTime: 0,
+      recoveryVisible: false
     }
   },
   computed: {
@@ -482,12 +490,14 @@ export default {
 
       this.loading = true;
       try {
-        await roomApi.deleteRoom({
+        const response = await roomApi.deleteRoom({
           room_id: room.roomId || room.id,
           confirmation
         });
         await this.refreshRooms(true);
-        toast.success(this.$t('rooms.list.feedback.movedToRecovery', { room: room.name }));
+        const recoveryName = response?.data?.recoveryName || '';
+        const message = this.$t('rooms.list.feedback.movedToRecovery', { room: room.name });
+        toast.success(recoveryName ? `${message} · ${this.$t('recovery.deleteLocation', { path: recoveryName })}` : message);
       } catch (error) {
         toast.error(this.$t('rooms.list.feedback.deleteFailed', { error: error.message || this.$t('common.errors.unknown') }));
       } finally {

@@ -10,6 +10,7 @@
           <InputGroupAddon><Search /></InputGroupAddon>
           <InputGroupInput v-model="searchQuery" :placeholder="$t('worlds.list.search')" />
         </InputGroup>
+        <UiButton variant="outline" @click="recoveryVisible = true"><ArchiveRestore data-icon="inline-start" />{{ $t('recovery.open') }}</UiButton>
         <UiButton @click="createWorld"><Plus data-icon="inline-start" />{{ $t('worlds.list.create') }}</UiButton>
       </div>
     </header>
@@ -169,11 +170,13 @@
         </DialogFooter>
       </DialogContent>
     </UiDialog>
+
+    <RecoveryDialog v-model:open="recoveryVisible" scope="world" :rooms="rooms" :initial-room-id="selectedRoom || ''" @restored="refreshWorlds(true)" />
   </div>
 </template>
 
 <script>
-import { CircleAlert, Globe2, Info, MoreHorizontal, Play, Plus, RefreshCw, Search, Square } from '@lucide/vue';
+import { ArchiveRestore, CircleAlert, Globe2, Info, MoreHorizontal, Play, Plus, RefreshCw, Search, Square } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '../../api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -203,6 +206,7 @@ import {
   worldStatusVariant
 } from '@/lib/worldRuntimeStatus.mjs';
 import RoomCategories from '../../components/worlds/RoomCategories.vue';
+import RecoveryDialog from '@/components/recovery/RecoveryDialog.vue';
 
 export default {
   name: 'WorldList',
@@ -211,6 +215,7 @@ export default {
     AlertAction,
     AlertDescription,
     AlertTitle,
+    ArchiveRestore,
     Badge,
     Card,
     CardAction,
@@ -253,6 +258,7 @@ export default {
     RadioGroup,
     RadioGroupItem,
     RefreshCw,
+    RecoveryDialog,
     RoomCategories,
     Search,
     SelectContent,
@@ -286,7 +292,8 @@ export default {
       selectedRoom: null,
       roomSelectDialogVisible: false,
       roomSearchQuery: '',
-      tempSelectedRoom: null
+      tempSelectedRoom: null,
+      recoveryVisible: false
     }
   },
   computed: {
@@ -706,13 +713,15 @@ export default {
 
       this.loading = true;
       try {
-        await roomApi.deleteWorld({
+        const response = await roomApi.deleteWorld({
           room_id: world.roomId,
           world_id: world.id,
           confirmation
         });
         await this.refreshWorlds(true);
-        toast.success(this.$t('worlds.feedback.deleteSucceeded'));
+        const recoveryName = response?.data?.recoveryName || '';
+        const message = this.$t('worlds.feedback.deleteSucceeded');
+        toast.success(recoveryName ? `${message} · ${this.$t('recovery.deleteLocation', { path: recoveryName })}` : message);
       } catch (error) {
         toast.error(this.$t('worlds.feedback.deleteFailed', {
           error: error.message || this.$t('common.errors.unknown')

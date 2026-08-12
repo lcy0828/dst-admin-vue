@@ -150,8 +150,23 @@ export const announcementsV2API = {
 
 export const roomsV2API = {
   list: () => client.get('/rooms'),
+  recoveries: () => client.get('/rooms/recovery', { headers: { 'Cache-Control': 'no-store' } }),
+  restoreRoom: recoveryName => client.post(`/rooms/recovery/${encode(recoveryName)}/actions/restore`),
+  purgeRoomRecovery: (recoveryName, confirmation) => client.delete(`/rooms/recovery/${encode(recoveryName)}`, {
+    data: { confirmation }
+  }),
   get: roomId => client.get(`/rooms/${encode(roomId)}`),
   worlds: roomId => client.get(`/rooms/${encode(roomId)}/worlds`),
+  worldRecoveries: roomId => client.get(`/rooms/${encode(roomId)}/worlds/recovery`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  restoreWorld: (roomId, recoveryName) => client.post(
+    `/rooms/${encode(roomId)}/worlds/recovery/${encode(recoveryName)}/actions/restore`
+  ),
+  purgeWorldRecovery: (roomId, recoveryName, confirmation) => client.delete(
+    `/rooms/${encode(roomId)}/worlds/recovery/${encode(recoveryName)}`,
+    { data: { confirmation } }
+  ),
   create: input => client.post('/rooms', input),
   deleteRoom: (roomId, confirmation) => client.delete(`/rooms/${encode(roomId)}`, {
     data: { confirmation }
