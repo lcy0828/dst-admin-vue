@@ -44,6 +44,8 @@
       </CardContent>
     </Card>
 
+    <RuntimeStatusPanel />
+
     <Card class="table-card">
       <CardHeader class="table-operations">
         <div><CardTitle>{{ $t('players.list.title') }}</CardTitle><CardDescription>{{ $t('players.list.total', { count: pagination.total }) }}</CardDescription></div>
@@ -276,6 +278,7 @@ import {
 } from '@/i18n/playerMessages.js';
 import { promptText } from '@/lib/feedback';
 import SortButton from './SortButton.vue';
+import RuntimeStatusPanel from '@/components/runtime/RuntimeStatusPanel.vue';
 
 export default {
   name: 'PlayerList',
@@ -334,6 +337,7 @@ export default {
     PaginationNext,
     PaginationPrevious,
     RefreshCw,
+    RuntimeStatusPanel,
     ScrollArea,
     Search,
     SelectContent,

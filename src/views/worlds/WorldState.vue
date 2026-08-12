@@ -159,6 +159,8 @@
         </CardContent>
       </Card>
 
+      <RuntimeDiagnosticsPanel :room-id="selectedRoomId" :world-id="selectedWorldId" :world-name="selectedWorld" />
+
       <Collapsible v-model:open="showRawData">
         <Card>
           <CardHeader>
@@ -194,6 +196,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { translateWorldStateValue } from '@/i18n/worldStateMessages';
+import RuntimeDiagnosticsPanel from '@/components/runtime/RuntimeDiagnosticsPanel.vue';
 
 export default {
   name: 'WorldState',
@@ -225,6 +228,7 @@ export default {
     InputGroupAddon,
     InputGroupInput,
     RefreshCw,
+    RuntimeDiagnosticsPanel,
     Search,
     SelectContent,
     SelectGroup,
@@ -288,6 +292,19 @@ export default {
       }
 
       return [];
+    },
+
+    selectedRoom() {
+      return this.archives.find(archive => archive.name === this.selectedArchive || archive.id === this.selectedArchive) || null;
+    },
+
+    selectedRoomId() {
+      return this.selectedRoom?.id || '';
+    },
+
+    selectedWorldId() {
+      const world = this.worldsOfSelectedArchive.find(item => (item.name || item.id || item) === this.selectedWorld);
+      return typeof world === 'object' ? (world.id || '') : '';
     },
 
     // 过滤后的详细信息表格数据

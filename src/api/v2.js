@@ -166,6 +166,34 @@ export const roomsV2API = {
   })
 }
 
+export const runtimeV2API = {
+  status: roomId => client.get(`/rooms/${encode(roomId)}/runtime`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  installRoom: roomId => client.post(`/rooms/${encode(roomId)}/runtime/actions/install`),
+  installWorld: (roomId, worldId) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/actions/install`
+  ),
+  activate: (roomId, worldId) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/actions/activate`
+  ),
+  reload: (roomId, worldId) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/actions/reload`
+  ),
+  events: (roomId, worldId) => client.get(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/events`,
+    { headers: { 'Cache-Control': 'no-store' } }
+  ),
+  latestDiagnostic: (roomId, worldId) => client.get(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/diagnostics/latest`,
+    { headers: { 'Cache-Control': 'no-store' } }
+  ),
+  captureDiagnostic: (roomId, worldId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/diagnostics`,
+    input
+  )
+}
+
 export const configurationV2API = {
   room: roomId => client.get(`/rooms/${encode(roomId)}/configuration`, { headers: { 'Cache-Control': 'no-store' } }),
   previewRoom: (roomId, input) => client.post(`/rooms/${encode(roomId)}/configuration/preview`, input),

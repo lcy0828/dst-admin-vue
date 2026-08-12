@@ -13,6 +13,7 @@ import { playerMessages } from './playerMessages.js'
 import { serverMessages } from './serverMessages.js'
 import { systemSettingsMessages } from './systemSettingsMessages.js'
 import { roomsMessages } from './roomsMessages.js'
+import { runtimeMessages } from './runtimeMessages.js'
 import { sharedUiMessages } from './sharedUiMessages.js'
 import { worldMapsMessages } from './worldMapsMessages.js'
 import { worldStateMessages } from './worldStateMessages.js'
@@ -34,6 +35,7 @@ export const messages = {
     ...serverMessages['zh-CN'],
     ...systemSettingsMessages['zh-CN'],
     ...roomsMessages['zh-CN'],
+    ...runtimeMessages['zh-CN'],
     ...sharedUiMessages['zh-CN'],
     ...worldMapsMessages['zh-CN'],
     ...worldStateMessages['zh-CN'],
@@ -523,6 +525,7 @@ export const messages = {
     ...serverMessages['en-US'],
     ...systemSettingsMessages['en-US'],
     ...roomsMessages['en-US'],
+    ...runtimeMessages['en-US'],
     ...sharedUiMessages['en-US'],
     ...worldMapsMessages['en-US'],
     ...worldStateMessages['en-US'],
