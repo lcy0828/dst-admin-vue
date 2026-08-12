@@ -303,7 +303,7 @@
                       <FieldLabel>{{ t('backups.imports.apply.targetRoom') }}</FieldLabel>
                       <UiSelect v-model="applyPlan.targetRoomId">
                         <SelectTrigger><SelectValue :placeholder="t('backups.imports.apply.selectTargetRoom')" /></SelectTrigger>
-                        <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id" :disabled="room.running">{{ room.name }}<template v-if="room.running"> · {{ t('backups.imports.apply.roomRunning') }}</template></SelectItem></SelectGroup></SelectContent>
+                        <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id" :disabled="room.running !== false">{{ room.name }}<template v-if="room.running === true"> · {{ t('backups.imports.apply.roomRunning') }}</template><template v-else-if="room.running === null"> · {{ t('backups.imports.apply.roomStatusUnknown') }}</template></SelectItem></SelectGroup></SelectContent>
                       </UiSelect>
                       <FieldDescription>{{ t('backups.imports.apply.replaceDescription') }}</FieldDescription>
                     </Field>
@@ -551,6 +551,7 @@ const canApply = computed(() => (
   isLocalTarget.value &&
   ['ready', 'applied'].includes(selectedImport.value?.status) &&
   selectedCandidate.value?.compatibility !== 'blocked' &&
+  (applyPlan.mode !== 'replace' || selectedTargetRoom.value?.running === false) &&
   !selectedJob.value
 ))
 
@@ -650,7 +651,7 @@ async function loadRooms() {
         const worlds = await roomsV2API.worlds(room.id)
         return { ...room, running: (worlds.items || []).some(world => world.status === 'running') }
       } catch {
-        return { ...room, running: false }
+        return { ...room, running: null }
       }
     }))
   } catch {

@@ -58,10 +58,12 @@ test('mode changes remove policies that are invalid outside replacement', () => 
 test('deployment validation requires exact replacement confirmation and token intent', () => {
   const replacement = defaultSaveImportPlan(candidate, 'replace')
   replacement.targetRoomId = 'room-1'
-  assert.equal(validateSaveImportPlan(replacement, candidate, { id: 'room-1', name: 'Existing Room' }), 'confirmationMismatch')
+  const stoppedRoom = { id: 'room-1', name: 'Existing Room', running: false }
+  assert.equal(validateSaveImportPlan(replacement, candidate, stoppedRoom), 'confirmationMismatch')
 
   replacement.confirmation = 'Existing Room'
-  assert.equal(validateSaveImportPlan(replacement, candidate, { id: 'room-1', name: 'Existing Room' }), '')
+  assert.equal(validateSaveImportPlan(replacement, candidate, { ...stoppedRoom, running: null }), 'targetUnavailable')
+  assert.equal(validateSaveImportPlan(replacement, candidate, stoppedRoom), '')
 
   const create = defaultSaveImportPlan(candidate)
   assert.equal(validateSaveImportPlan(create, candidate, null), 'tokenRequired')
