@@ -55,6 +55,8 @@ VITE_API_BASE_URL=/api
 VITE_API_PROXY_TARGET=http://127.0.0.1:8000
 ```
 
+本机长期运行的端口归属、受管重启方式和切换事故记录见 [`docs/local-runtime.md`](docs/local-runtime.md)。重启正式 `5173` 时使用 `./scripts/restart-local-5173.sh`，不要在相邻工作区中直接执行 `npm run dev -- --port 5173`。
+
 ## 质量检查
 
 ```bash
