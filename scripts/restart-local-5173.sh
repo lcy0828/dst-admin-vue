@@ -2,7 +2,7 @@
 
 set -eu
 
-EXPECTED_BRANCH="feature/vue3-in-place"
+EXPECTED_BRANCH="master"
 SESSION_NAME="dst-admin-vue-5173"
 TARGET_PANE="${SESSION_NAME}:0.0"
 HOST="127.0.0.1"

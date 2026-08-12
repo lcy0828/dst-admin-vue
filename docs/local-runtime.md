@@ -6,7 +6,7 @@
 
 | 端口 | 服务 | 正式运行目录 | 分支 | 管理方式 |
 | --- | --- | --- | --- | --- |
-| `5173` | Vue 3 前端 | `/Users/lcy/dst-admin-vue-v3` | `feature/vue3-in-place` | tmux `dst-admin-vue-5173` |
+| `5173` | Vue 3 前端 | `/Users/lcy/dst-admin-vue-v3` | `master` | tmux `dst-admin-vue-5173` |
 | `8000` | Go API | `/Users/lcy/dst-admin-go` | 以后端仓库登记为准 | tmux `dst-admin-api-8000` |
 
 `/Users/lcy/dst-admin-vue` 的 `feature/v2-rebuild` 是另一条重构工作线，不是当前 `5173` 的正式运行目录。不得仅根据目录名、提交时间或测试是否通过，把它切换到 `5173`。
@@ -39,6 +39,7 @@ Vite 开发服务器对 SPA 路径返回入口 HTML，因此 HTTP `200` 只能�
 - 根因：用“提交较新且检查通过”代替产品功能完整性判断；切换前未核对原进程工作目录，也未执行关键路由回归检查。
 - `2026-08-13 01:17:00 +08:00`：`5173` 已切回 `/Users/lcy/dst-admin-vue-v3`，当时 HEAD 为 `e78298100047`，现有未提交工作保持不变。
 - 恢复验收：`/`、`/mods/list?...`、`/servers/commands` 均返回 HTTP `200`；`8000` 和两个 DST 分片 PID 未变化。
+- `2026-08-13`：原始 Vue 2 `master@527c140b66f5` 固定为 `legacy/vue2-original`；完整 Vue 3 主线晋升为新的 `master`。`feature/vue3-in-place` 暂时保留为同一提交的过渡别名。
 
 ## 后续切换规则
 

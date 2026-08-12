@@ -67,4 +67,6 @@ npm run build
 
 当前仓库没有 `api:generate` 或浏览器 `test:e2e` 脚本，不应把它们写入发布命令。真实功能状态、远程边界和人工验收项见 [`docs/DST_ADMIN_FUNCTION_TRUTH.md`](docs/DST_ADMIN_FUNCTION_TRUTH.md)。
 
+仓库主线、旧版保护分支以及 `feature/v2-rebuild` 的功能迁移决策见 [`docs/branch-consolidation.md`](docs/branch-consolidation.md)。
+
 视觉和交互约束记录在 [`design-system/dst-admin-vue-3/MASTER.md`](design-system/dst-admin-vue-3/MASTER.md)。
