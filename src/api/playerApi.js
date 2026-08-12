@@ -5,6 +5,7 @@ import {
 } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
+import { composeRoomResults, throwWhenAllRoomsFailed } from './roomSettlements.mjs'
 import {
   isSystemAutomationGroup,
   SYSTEM_AUTOMATION_GROUP_IDS
@@ -12,12 +13,22 @@ import {
 
 const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg, { numericCode: true })
 
-async function loadCatalog() {
+async function loadRooms() {
   const response = await roomsV2API.list()
-  const rooms = (response.items || []).filter(room => room.managed)
-  return Promise.all(rooms.map(async room => {
-    const worlds = await roomsV2API.worlds(room.id)
-    return { ...room, worlds: worlds.items || [] }
+  return (response.items || []).filter(room => room.managed)
+}
+
+async function loadCatalog() {
+  const rooms = await loadRooms()
+  const settlements = await Promise.allSettled(rooms.map(room => roomsV2API.worlds(room.id)))
+  const { completed, failures } = composeRoomResults(rooms, settlements)
+  throwWhenAllRoomsFailed(rooms.length, failures)
+  const worldsByRoom = new Map(completed.map(({ room, value }) => [room.id, value.items || []]))
+  const failuresByRoom = new Map(failures.map(failure => [failure.room_id, failure.error]))
+  return rooms.map(room => ({
+    ...room,
+    worlds: worldsByRoom.get(room.id) || [],
+    worldsError: failuresByRoom.get(room.id) || null
   }))
 }
 
@@ -79,8 +90,8 @@ function legacyPlayer(player, room) {
     is_host: null,
     is_muted: null,
     net_id: player.netId,
-    net_score: null,
-    performance: player.performance,
+    net_score: player.netScore ?? null,
+    performance: player.performance ?? null,
     first_seen: player.firstSeenAt,
     last_seen: player.lastSeenAt,
     status_change: player.statusChangedAt,
@@ -142,16 +153,19 @@ function sortPlayers(players, sortBy, sortOrder) {
 }
 
 async function listPlayers(params = {}, paginate = true) {
-  const catalog = await loadCatalog()
+  const catalog = await loadRooms()
   const rooms = params.archive_name
     ? [await resolveRoom(params.archive_name, catalog)]
     : catalog
-  const players = (await Promise.all(rooms.map(room => roomPlayers(room, params)))).flat()
+  const settlements = await Promise.allSettled(rooms.map(room => roomPlayers(room, params)))
+  const { completed, failures } = composeRoomResults(rooms, settlements)
+  throwWhenAllRoomsFailed(rooms.length, failures)
+  const players = completed.flatMap(({ value }) => value)
   const sorted = sortPlayers(players, params.sort_by, params.sort_order)
   const page = Math.max(1, Number.parseInt(params.page, 10) || 1)
   const pageSize = Math.max(1, Number.parseInt(params.page_size, 10) || 10)
   const data = paginate ? sorted.slice((page - 1) * pageSize, page * pageSize) : sorted
-  return { data, total: sorted.length, page, size: pageSize }
+  return { data, total: sorted.length, page, size: pageSize, failures }
 }
 
 async function actionContext(player, selectedSession) {
@@ -160,6 +174,7 @@ async function actionContext(player, selectedSession) {
   }
   const catalog = await loadCatalog()
   const room = await resolveRoom(player.room_id, catalog)
+  if (room.worldsError) throw room.worldsError
   let worldId = player.world_id
   if (selectedSession) {
     const selected = await resolveSession(selectedSession, catalog)
@@ -237,7 +252,8 @@ export const playerApi = {
       data: bannedPlayers.slice((page - 1) * pageSize, page * pageSize),
       total: bannedPlayers.length,
       page,
-      size: pageSize
+      size: pageSize,
+      failures: response.failures || []
     }
   },
 
@@ -254,25 +270,33 @@ export const playerApi = {
 
   async getPlayerDetail(player) {
     if (!player?.room_id || !player?.user_id) throw adapterError('INVALID_PLAYER_INPUT')
-    const catalog = await loadCatalog()
+    const catalog = await loadRooms()
     const room = await resolveRoom(player.room_id, catalog)
     return success(legacyPlayer(await playersV2API.get(room.id, player.user_id), room))
   },
 
-  async updatePlayerInfo(data) {
-    const catalog = await loadCatalog()
-    const room = await resolveRoom(typeof data === 'string' ? data : data.archive_name, catalog)
-    const worldIds = []
+  async updatePlayerInfo(data = {}) {
+    const catalog = await loadRooms()
+    const roomReference = typeof data === 'string' ? data : data.archive_name
+    const selectedRooms = roomReference ? [await resolveRoom(roomReference, catalog)] : catalog
     const requestedWorld = typeof data === 'object' ? data.world_name : ''
-    if (requestedWorld) {
-      const world = room.worlds.find(item => worldMatches(item, requestedWorld))
-      if (!world) throw adapterError('RESOURCE_NOT_FOUND', {
-        context: { room: room.name, world: requestedWorld }
-      })
-      worldIds.push(world.id)
-    }
-    const job = await playersV2API.refresh(room.id, worldIds)
-    return success(await waitForV2Job(job, 120000), 'players_refreshed')
+    if (requestedWorld && selectedRooms.length !== 1) throw adapterError('INVALID_PLAYER_INPUT')
+    const settlements = await Promise.allSettled(selectedRooms.map(async room => {
+      const worldIds = []
+      if (requestedWorld) {
+        const worlds = await roomsV2API.worlds(room.id)
+        const world = (worlds.items || []).find(item => worldMatches(item, requestedWorld))
+        if (!world) throw adapterError('RESOURCE_NOT_FOUND', {
+          context: { room: room.name, world: requestedWorld }
+        })
+        worldIds.push(world.id)
+      }
+      const job = await playersV2API.refresh(room.id, worldIds)
+      return waitForV2Job(job, 120000)
+    }))
+    const { completed, failures } = composeRoomResults(selectedRooms, settlements)
+    throwWhenAllRoomsFailed(selectedRooms.length, failures)
+    return success({ results: completed.map(({ value }) => value), failures }, 'players_refreshed')
   },
 
   kickPlayer(player, selectedSession, confirmation) {
@@ -304,7 +328,7 @@ export const playerApi = {
   },
 
   async getArchives() {
-    const catalog = await loadCatalog()
+    const catalog = await loadRooms()
     return success(catalog.map(room => ({
       id: room.id,
       name: room.name,
@@ -359,6 +383,7 @@ export const playerApi = {
 
   async exportPlayers(params = {}) {
     const response = await listPlayers(params, false)
+    if (response.failures.length > 0) throw response.failures[0].error
     return response.data
   },
 

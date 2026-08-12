@@ -288,6 +288,8 @@ export const playerMessages = {
         searchPlaceholder: '搜索玩家名称或 ID',
         total: '共 {count} 名玩家',
         loadFailedTitle: '玩家列表加载失败',
+        partialTitle: '部分房间加载失败',
+        partialDescription: '已显示可用数据；{count} 个房间暂时不可用：{rooms}',
         loading: '正在加载玩家列表',
         emptyTitle: '暂无玩家数据',
         emptyDescription: '选择存档或手动更新玩家列表。',
@@ -353,7 +355,7 @@ export const playerMessages = {
         taskWorldSet: '已设置默认任务世界：{world}', actionLoading: '正在执行操作...', commandFailed: '命令执行失败', killSucceeded: '已杀死玩家 {player}',
         killFailed: '杀死玩家失败：{error}', godModeSucceeded: '已{status}玩家 {player} 的无敌模式', godModeFailed: '设置无敌模式失败：{error}',
         creativeModeSucceeded: '已{status}玩家 {player} 的制作模式', creativeModeFailed: '设置制作模式失败：{error}', resurrectSucceeded: '已复活玩家 {player}',
-        resurrectFailed: '复活玩家失败：{error}', updateSucceeded: '玩家列表更新成功', updateFailed: '更新玩家列表失败：{error}', addFailed: '添加失败'
+        resurrectFailed: '复活玩家失败：{error}', updateSucceeded: '玩家列表更新成功', updatePartial: '可用房间已更新，{count} 个房间更新失败', updateFailed: '更新玩家列表失败：{error}', addFailed: '添加失败'
       },
       export: {
         fileName: '玩家数据_{date}.csv',
@@ -407,7 +409,8 @@ export const playerMessages = {
       list: {
         title: 'Players', subtitle: 'Review player records and online status, then run in-world actions.', taskWorld: 'Task world: {world}', filterTitle: 'Filter players',
         filterDescription: 'Narrow the list by archive, online status, character, or keyword.', allArchives: 'All archives', allStatuses: 'All statuses', allCharacters: 'All characters',
-        searchPlaceholder: 'Search player name or ID', total: '{count} players', loadFailedTitle: 'Could not load players', loading: 'Loading players', emptyTitle: 'No player data',
+        searchPlaceholder: 'Search player name or ID', total: '{count} players', loadFailedTitle: 'Could not load players', partialTitle: 'Some rooms could not be loaded',
+        partialDescription: 'Available data is shown; {count} rooms are unavailable: {rooms}', loading: 'Loading players', emptyTitle: 'No player data',
         emptyDescription: 'Select an archive or update the player list manually.', perPage: 'Per page', perPageAria: 'Players per page', administrator: 'Administrator', friend: 'Friend'
       },
       detail: { title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions' },
@@ -442,7 +445,7 @@ export const playerMessages = {
         worldRequired: 'Select a game world', taskWorldSet: 'Default task world set to {world}', actionLoading: 'Running action...', commandFailed: 'Command failed', killSucceeded: 'Killed {player}',
         killFailed: 'Could not kill player: {error}', godModeSucceeded: '{status} god mode for {player}', godModeFailed: 'Could not set god mode: {error}',
         creativeModeSucceeded: '{status} creative mode for {player}', creativeModeFailed: 'Could not set creative mode: {error}', resurrectSucceeded: 'Resurrected {player}',
-        resurrectFailed: 'Could not resurrect player: {error}', updateSucceeded: 'Player list updated', updateFailed: 'Could not update player list: {error}', addFailed: 'Could not add task'
+        resurrectFailed: 'Could not resurrect player: {error}', updateSucceeded: 'Player list updated', updatePartial: 'Available rooms were updated; {count} rooms failed', updateFailed: 'Could not update player list: {error}', addFailed: 'Could not add task'
       },
       export: {
         fileName: 'players_{date}.csv',

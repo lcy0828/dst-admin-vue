@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="title-container"><h1>{{ $t('players.list.title') }}</h1><p>{{ $t('players.list.subtitle') }}</p></div>
       <div class="action-buttons">
-        <UiButton size="sm" variant="outline" @click="refreshData" :disabled="loading"><RefreshCw data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
+        <UiButton size="sm" variant="outline" @click="refreshPlayerData" :disabled="loading || refreshing"><Spinner v-if="refreshing" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
         <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />{{ $t('players.actions.manualUpdate') }}</UiButton>
         <UiButton size="sm" variant="outline" @click="showSessionSelect"><Globe2 data-icon="inline-start" />{{ $t('players.actions.defaultTaskWorld') }}</UiButton>
         <UiButton size="sm" @click="showScheduleDialog"><Clock3 data-icon="inline-start" />{{ $t('players.actions.addSchedule') }}</UiButton>
@@ -56,6 +56,12 @@
           <AlertDescription>{{ loadErrorText }}</AlertDescription>
           <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">{{ $t('players.actions.retry') }}</UiButton></AlertAction>
         </Alert>
+        <Alert v-else-if="partialFailures.length > 0" class="mb-4">
+          <TriangleAlert />
+          <AlertTitle>{{ $t('players.list.partialTitle') }}</AlertTitle>
+          <AlertDescription>{{ partialFailureText }}</AlertDescription>
+          <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">{{ $t('players.actions.retry') }}</UiButton></AlertAction>
+        </Alert>
         <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('players.list.loading') }}</span></div>
         <div v-else-if="!loadError && playerList.length > 0" class="table-wrap">
           <UiTable>
@@ -69,7 +75,6 @@
                 <TableHead><SortButton :label="$t('players.fields.days')" field="player_age" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
                 <TableHead><SortButton :label="$t('players.fields.status')" field="status" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
                 <TableHead>{{ $t('players.fields.network') }}</TableHead>
-                <TableHead>{{ $t('players.fields.performance') }}</TableHead>
                 <TableHead>Steam ID</TableHead>
                 <TableHead><SortButton :label="$t('players.fields.firstSeen')" field="first_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
                 <TableHead><SortButton :label="$t('players.fields.lastSeen')" field="last_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
@@ -77,7 +82,7 @@
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="player in playerList" :key="player.id">
+              <TableRow v-for="player in playerList" :key="`${player.room_id}:${player.id}`">
                 <TableCell>{{ player.id }}</TableCell>
                 <TableCell>{{ player.archive_name }}</TableCell>
                 <TableCell>
@@ -88,7 +93,6 @@
                 <TableCell>{{ player.player_age }}</TableCell>
                 <TableCell><Badge :variant="getPlayerStatusMeta(player.status).variant">{{ getPlayerStatusMeta(player.status).label }}</Badge></TableCell>
                 <TableCell><Badge v-if="isPlayerOnline(player.status)" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
-                <TableCell><Badge :variant="getPerformanceBadgeVariant(player.performance)">{{ getPerformanceText(player.performance) }}</Badge></TableCell>
                 <TableCell>
                   <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" :title="$t('players.actions.viewOnSteam')" :aria-label="$t('players.actions.viewPlayerOnSteam')" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
                 </TableCell>
@@ -157,7 +161,7 @@
               <div><dt>{{ $t('players.fields.playerName') }}</dt><dd>{{ currentPlayer.player_name }}</dd></div><div><dt>{{ $t('players.fields.archive') }}</dt><dd>{{ currentPlayer.archive_name }}</dd></div>
               <div><dt>{{ $t('players.fields.character') }}</dt><dd>{{ getCharacterName(currentPlayer.prefab) }}</dd></div><div><dt>{{ $t('players.fields.days') }}</dt><dd>{{ currentPlayer.player_age }}</dd></div>
               <div><dt>{{ $t('players.fields.statusChanged') }}</dt><dd>{{ formatDate(currentPlayer.status_change) }}</dd></div><div><dt>Steam ID</dt><dd><UiButton variant="link" size="sm" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</UiButton></dd></div>
-              <div><dt>{{ $t('players.fields.network') }}</dt><dd>{{ isPlayerOnline(currentPlayer.status) ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div><div><dt>{{ $t('players.fields.performanceMetric') }}</dt><dd>{{ getPerformanceText(currentPlayer.performance) }}</dd></div>
+              <div><dt>{{ $t('players.fields.network') }}</dt><dd>{{ isPlayerOnline(currentPlayer.status) ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div>
               <div><dt>{{ $t('players.fields.firstSeen') }}</dt><dd>{{ formatDate(currentPlayer.first_seen) }}</dd></div><div><dt>{{ $t('players.fields.lastSeen') }}</dt><dd>{{ formatDate(currentPlayer.last_seen) }}</dd></div>
               <div><dt>{{ $t('players.fields.createdAt') }}</dt><dd>{{ formatDate(currentPlayer.created_at) }}</dd></div><div><dt>{{ $t('players.fields.updatedAt') }}</dt><dd>{{ formatDate(currentPlayer.updated_at) }}</dd></div>
             </dl>
@@ -267,7 +271,6 @@ import {
   playerCharacterLabel,
   playerErrorDetail,
   playerNetworkLabel,
-  playerPerformanceLabel,
   playerStatusMeta,
   playerWorldStateLabel
 } from '@/i18n/playerMessages.js';
@@ -369,6 +372,7 @@ export default {
       playerList: [],
       loading: false,
       loadError: null,
+      partialFailures: [],
 
       // 分页参数
       pagination: {
@@ -420,6 +424,7 @@ export default {
       },
       worldOptions: [],
       updating: false,
+      refreshing: false,
 
       // 无敌模式
       godModeDialogVisible: false,
@@ -519,6 +524,13 @@ export default {
     activeSessionLabel() {
       const session = this.sessionList.find(item => item.key === this.activeSessionName);
       return session ? session.name : '';
+    },
+
+    partialFailureText() {
+      return this.$t('players.list.partialDescription', {
+        count: this.partialFailures.length,
+        rooms: this.partialFailures.map(failure => failure.room_name).join(', ')
+      });
     }
   },
   methods: {
@@ -574,12 +586,14 @@ export default {
         .then(response => {
           this.playerList = response.data || [];
           this.pagination.total = response.total || 0;
+          this.partialFailures = response.failures || [];
         })
         .catch(error => {
           console.error('获取玩家列表失败:', error);
           this.loadError = error;
           this.playerList = [];
           this.pagination.total = 0;
+          this.partialFailures = [];
           toast.error(this.$t('players.feedback.listLoadFailed', { error: this.loadErrorText }));
         })
         .finally(() => {
@@ -590,6 +604,26 @@ export default {
     // 刷新数据
     refreshData() {
       return this.fetchPlayerList();
+    },
+
+    async refreshPlayerData() {
+      if (this.refreshing) return;
+      this.refreshing = true;
+      try {
+        const response = await playerApi.updatePlayerInfo({ archive_name: this.filterForm.archive_name || '' });
+        await this.fetchPlayerList();
+        const failures = response?.data?.failures || [];
+        if (failures.length > 0) {
+          toast.warning(this.$t('players.feedback.updatePartial', { count: failures.length }));
+        } else {
+          toast.success(this.$t('players.feedback.updateSucceeded'));
+        }
+      } catch (error) {
+        console.error('刷新玩家列表失败:', error);
+        toast.error(this.$t('players.feedback.updateFailed', { error: this.errorDetail(error) }));
+      } finally {
+        this.refreshing = false;
+      }
     },
 
     // 处理筛选
@@ -897,18 +931,6 @@ export default {
       if (netScore === 0) return 'default';
       if (netScore === 1) return 'secondary';
       if (netScore === 2) return 'destructive';
-      return 'outline';
-    },
-
-    // 获取性能指标文本
-    getPerformanceText(performance) {
-      return playerPerformanceLabel(performance, this.$t);
-    },
-
-    getPerformanceBadgeVariant(performance) {
-      if (performance === 0) return 'default';
-      if (performance === 1) return 'secondary';
-      if (performance === 2) return 'destructive';
       return 'outline';
     },
 
@@ -1234,8 +1256,13 @@ export default {
       };
 
       playerApi.updatePlayerInfo(updateParams)
-        .then(() => {
-          toast.success(this.$t('players.feedback.updateSucceeded'));
+        .then(response => {
+          const failures = response?.data?.failures || [];
+          if (failures.length > 0) {
+            toast.warning(this.$t('players.feedback.updatePartial', { count: failures.length }));
+          } else {
+            toast.success(this.$t('players.feedback.updateSucceeded'));
+          }
           this.updateDialogVisible = false;
           this.refreshData();
         })
