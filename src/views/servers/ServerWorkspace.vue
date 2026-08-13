@@ -605,10 +605,11 @@ export default {
         : {}
 
       if (this.selectedRoom) {
-        if (silent && previousRoomId === this.selectedRoomId && this.runningWorlds.length > 0) {
-          await this.refreshPlayerStats()
+        if (silent && previousRoomId === this.selectedRoomId) {
+          if (this.runningWorlds.length > 0) await this.refreshPlayerStats()
+        } else {
+          await this.refreshRoomContext()
         }
-        else await this.refreshRoomContext()
       }
       if (requestSequence === this.refreshSequence) this.loading = false
     },
