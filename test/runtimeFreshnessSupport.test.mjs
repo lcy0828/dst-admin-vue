@@ -23,6 +23,13 @@ test('server workspace stops polling player statistics when every shard is stopp
   assert.match(workspace, /WorldDataFreshnessBadge/)
 })
 
+test('server workspace submits starts immediately and confirms disruptive actions', async () => {
+  const workspace = await source('src/views/servers/ServerWorkspace.vue')
+
+  assert.match(workspace, /if \(worldActionRequiresConfirmation\(action\)\) \{[\s\S]*?await confirmAction/)
+  assert.match(workspace, /this\.worldActionId = world\.id[\s\S]*?toast\.info[\s\S]*?roomApi\.startRoom\(target\)/)
+})
+
 test('world-state details prominently mark stale snapshots with their observation time', async () => {
   const [worldState, freshnessBadge, exitBadge] = await Promise.all([
     source('src/views/worlds/WorldState.vue'),

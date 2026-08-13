@@ -404,6 +404,7 @@ import {
   canRequestStopWorld,
   canStartWorld,
   canStopWorld,
+  worldActionRequiresConfirmation,
   worldPrimaryAction,
   worldStatusLabel,
   worldStatusMessage,
@@ -727,23 +728,29 @@ export default {
       const confirmationTitle = action === 'cleanup'
         ? this.$t('servers.workspace.worlds.cleanupFailedSession')
         : this.$t('servers.workspace.feedback.actionTitle', { action: label })
-      try {
-        await confirmAction(this.$t('servers.workspace.feedback.actionConfirm', {
-          action: label,
-          room: this.selectedRoom.name,
-          world: world.name
-        }), confirmationTitle, {
-          confirmButtonText: action === 'cleanup'
-            ? this.$t('servers.workspace.feedback.cleanupButton')
-            : this.$t('servers.workspace.feedback.actionButton', { action: label }),
-          cancelButtonText: this.$t('common.actions.cancel'),
-          type: action === 'start' ? 'info' : 'warning'
-        })
-      } catch {
-        return
+      if (worldActionRequiresConfirmation(action)) {
+        try {
+          await confirmAction(this.$t('servers.workspace.feedback.actionConfirm', {
+            action: label,
+            room: this.selectedRoom.name,
+            world: world.name
+          }), confirmationTitle, {
+            confirmButtonText: action === 'cleanup'
+              ? this.$t('servers.workspace.feedback.cleanupButton')
+              : this.$t('servers.workspace.feedback.actionButton', { action: label }),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            type: 'warning'
+          })
+        } catch {
+          return
+        }
       }
 
       this.worldActionId = world.id
+      toast.info(this.$t('servers.workspace.feedback.actionSubmitted', {
+        action: label,
+        world: world.name
+      }))
       try {
         const target = { room_id: this.selectedRoom.id, world_id: world.id }
         if (action === 'start') await roomApi.startRoom(target)

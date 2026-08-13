@@ -9,6 +9,7 @@ import {
   canRequestStopWorld,
   canStopWorld,
   isWorldStarting,
+  worldActionRequiresConfirmation,
   worldControlAvailable,
   worldPrimaryAction,
   worldRuntimeStatus,
@@ -70,4 +71,12 @@ test('control capability overrides otherwise valid actions', () => {
   assert.equal(canConfigureWorld({ status: 'stopped', controlAvailable: false }), false)
   assert.equal(worldPrimaryAction({ status: 'running', controlAvailable: false }).disabled, true)
   assert.equal(worldPrimaryAction({ status: 'unknown', controlAvailable: true }).disabled, true)
+})
+
+test('only disruptive world actions require confirmation', () => {
+  assert.equal(worldActionRequiresConfirmation('start'), false)
+  assert.equal(worldActionRequiresConfirmation('stop'), true)
+  assert.equal(worldActionRequiresConfirmation('restart'), true)
+  assert.equal(worldActionRequiresConfirmation('cleanup'), true)
+  assert.equal(worldActionRequiresConfirmation(''), false)
 })

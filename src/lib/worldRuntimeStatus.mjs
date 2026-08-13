@@ -70,6 +70,10 @@ export function canDeleteWorld(world) {
   return worldControlAvailable(world) && worldRuntimeStatus(world) === 'stopped'
 }
 
+export function worldActionRequiresConfirmation(action) {
+  return ['stop', 'restart', 'cleanup'].includes(String(action || '').trim().toLowerCase())
+}
+
 export function worldPrimaryAction(world, translator) {
   const status = worldRuntimeStatus(world)
   const label = (key, fallback) => typeof translator === 'function'
