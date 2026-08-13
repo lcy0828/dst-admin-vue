@@ -177,7 +177,12 @@ export const legacyRoomConfigApi = {
   async getRoomConfig(roomValue) {
     const room = await resolveV2Room(roomValue)
     const configuration = await configurationV2API.room(room.id)
-    return success(legacyRoomSections(configuration.values), 'room_configuration_loaded')
+    return success({
+      ...legacyRoomSections(configuration.values),
+      __schema: configuration.schema || [],
+      __revision: configuration.revision,
+      __modifiedAt: configuration.modifiedAt
+    }, 'room_configuration_loaded')
   },
   async saveRoomConfig(roomValue, config) {
     const room = await resolveV2Room(roomValue)

@@ -65,6 +65,7 @@
               :placeholder="$t('rooms.settings.archiveNamePlaceholder')"
               :aria-invalid="Boolean(saveNameError)"
               autocomplete="off"
+              :maxlength="archiveNameMaxLength"
               @input="clearSaveNameError"
             />
             <FieldDescription>{{ $t('rooms.settings.archiveNameDescription') }}</FieldDescription>
@@ -107,7 +108,7 @@
                   'setting-field',
                   {
                     'setting-field--switch': field.type === 'switch',
-                    'setting-field--wide': field.type === 'textarea'
+                    'setting-field--wide': field.type === 'textarea' || field.wide
                   }
                 ]"
               >
@@ -116,6 +117,10 @@
                     {{ field.label }}<span v-if="field.required" class="required-indicator" aria-hidden="true">*</span>
                   </FieldLabel>
                   <FieldDescription>{{ field.description }}</FieldDescription>
+                  <div v-if="field.constraint" class="field-constraint">
+                    <Badge variant="outline">{{ $t('rooms.settings.constraintLabel') }}</Badge>
+                    <span>{{ field.constraint }}</span>
+                  </div>
                   <FieldError v-if="isFieldInvalid(field.key)">{{ getFieldError(field.key) }}</FieldError>
                 </FieldContent>
 
@@ -137,9 +142,11 @@
                   :id="`room-setting-${field.key}`"
                   v-model="form[field.key]"
                   :rows="field.rows || 3"
+                  :maxlength="field.maxLength"
                   :aria-invalid="isFieldInvalid(field.key)"
                   :disabled="isFieldDisabled(field)"
                   @input="clearFieldError(field.key)"
+                  @blur="validateField(field)"
                 />
 
                 <UiSwitch
@@ -158,10 +165,12 @@
                     :type="revealedFields[field.key] ? 'text' : 'password'"
                     :placeholder="field.placeholder"
                     :autocomplete="field.autocomplete || 'off'"
+                    :maxlength="field.maxLength"
                     :aria-invalid="isFieldInvalid(field.key)"
                     :required="field.required"
                     :disabled="isFieldDisabled(field)"
                     @input="clearFieldError(field.key)"
+                    @blur="validateField(field)"
                   />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton
@@ -182,13 +191,15 @@
                   :type="field.type === 'number' ? 'number' : 'text'"
                   :min="field.min"
                   :max="field.max"
+                  :step="field.type === 'number' ? 1 : undefined"
+                  :maxlength="field.type === 'number' ? undefined : field.maxLength"
                   :placeholder="field.placeholder"
                   :aria-invalid="isFieldInvalid(field.key)"
                   :required="field.required"
                   :autocomplete="field.autocomplete || 'off'"
                   :disabled="isFieldDisabled(field)"
                   @input="clearFieldError(field.key)"
-                  @change="normalizeNumberField(field)"
+                  @blur="validateField(field)"
                 />
               </Field>
             </FieldGroup>
@@ -225,6 +236,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { confirmAction } from '@/lib/feedback';
 import { clusterTokenError } from '@/lib/clusterToken.mjs';
+import {
+  ROOM_ARCHIVE_RULE,
+  frontendRoomFieldKey,
+  roomFieldRule,
+  validateRoomField,
+  validateRoomSettings
+} from '@/lib/roomSettingsValidation.mjs';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 
@@ -246,7 +264,7 @@ const SETTINGS_SECTIONS = [
     icon: Network,
     fields: [
       { key: 'cluster_name', type: 'text', required: true },
-      { key: 'cluster_description', type: 'textarea', rows: 3 },
+      { key: 'cluster_description', type: 'text', wide: true },
       { key: 'cluster_password', type: 'text', sensitive: true, autocomplete: 'new-password' },
       { key: 'cluster_intention', type: 'select', options: ['cooperative', 'competitive', 'social', 'madness'] },
       { key: 'cluster_language', type: 'select', options: ['zh', 'en'] },
@@ -348,6 +366,7 @@ export default {
         savename: ''
       },
       saveNameError: '',
+      archiveNameMaxLength: ROOM_ARCHIVE_RULE.maxLength,
       form: {
         // 游戏模式配置
         game_mode: 'endless',
@@ -401,7 +420,8 @@ export default {
       unsavedChanges: false,
       baselineFingerprint: '',
       saving: false,
-      revealedFields: {}
+      revealedFields: {},
+      roomSchema: []
     }
   },
   computed: {
@@ -414,10 +434,22 @@ export default {
         fields: section.fields.map(field => {
           const fieldKey = `rooms.settings.fields.${field.key}`;
           const placeholderKey = `${fieldKey}.placeholder`;
+          const rule = roomFieldRule(field.key, this.form, this.roomSchema);
+          const constraintKey = `${fieldKey}.constraint`;
           return {
             ...field,
+            ...rule,
             label: this.$t(`${fieldKey}.label`),
             description: this.$t(`${fieldKey}.description`),
+            constraint: this.$te(constraintKey)
+              ? this.$t(constraintKey, {
+                  min: rule.min,
+                  max: rule.max,
+                  maxPlayers: this.form.max_players,
+                  maxLength: rule.maxLength,
+                  maxBytes: rule.maxBytes
+                })
+              : '',
             placeholder: this.$te(placeholderKey) ? this.$t(placeholderKey) : '',
             options: (field.options || []).map(value => ({
               value,
@@ -515,32 +547,52 @@ export default {
     isFieldInvalid(key) {
       return Boolean(this.validationErrors[key]);
     },
-    normalizeNumberField(field) {
-      if (field.type !== 'number') return;
-      const value = Number(this.form[field.key]);
-      if (Number.isNaN(value)) return;
-      const min = field.min ?? Number.NEGATIVE_INFINITY;
-      const max = field.max ?? Number.POSITIVE_INFINITY;
-      this.form[field.key] = Math.min(max, Math.max(min, value));
+    validationMessage(key, error) {
+      if (!error) return '';
+      const field = this.settingsSections.flatMap(section => section.fields).find(item => item.key === key);
+      const label = field?.label || key;
+      return this.$t(`rooms.settings.validation.${error.code}`, { label, ...error });
+    },
+    validateField(field) {
+      if (this.isFieldDisabled(field)) {
+        this.clearFieldError(field.key);
+        return true;
+      }
+      const errors = { ...this.validationErrors };
+      const keys = field.key === 'max_players' ? [field.key, 'whitelist_slots'] : [field.key];
+      keys.forEach(key => {
+        const target = this.settingsSections.flatMap(section => section.fields).find(item => item.key === key);
+        if (!target || this.isFieldDisabled(target)) {
+          delete errors[key];
+          return;
+        }
+        const result = validateRoomField(key, this.form[key], this.form, this.roomSchema);
+        if (result) errors[key] = this.validationMessage(key, result);
+        else delete errors[key];
+      });
+      this.validationErrors = errors;
+      this.formErrors = Object.values(errors);
+      if (this.saveNameError) this.formErrors.unshift(this.saveNameError);
+      return !errors[field.key];
     },
     validateSettings() {
-      const errors = {};
-      const requiredFields = {
-        cluster_name: this.$t('rooms.settings.validation.clusterName')
-      };
-      if (this.form.shard_enabled) {
-        requiredFields.master_port = this.$t('rooms.settings.validation.masterPort');
-        requiredFields.cluster_key = this.$t('rooms.settings.validation.clusterKey');
-      }
-      Object.entries(requiredFields).forEach(([key, message]) => {
-        if (this.form[key] === '' || this.form[key] === null || this.form[key] === undefined) errors[key] = message;
-      });
+      const results = validateRoomSettings(
+        this.form,
+        this.roomSchema,
+        key => {
+          const field = this.settingsSections.flatMap(section => section.fields).find(item => item.key === key);
+          return field ? this.isFieldDisabled(field) : false;
+        }
+      );
+      const errors = Object.fromEntries(
+        Object.entries(results).map(([key, error]) => [key, this.validationMessage(key, error)])
+      );
       this.validationErrors = errors;
 
       this.saveNameError = '';
       if (!this.isEdit) {
         if (!this.saveNameForm.savename) this.saveNameError = this.$t('rooms.settings.validation.archiveName');
-        else if (!/^[a-zA-Z0-9_]+$/.test(this.saveNameForm.savename)) this.saveNameError = this.$t('rooms.settings.validation.archiveNameInvalid');
+        else if (!ROOM_ARCHIVE_RULE.pattern.test(this.saveNameForm.savename)) this.saveNameError = this.$t('rooms.settings.validation.archiveNameInvalid');
       }
 
       const validationMessages = [...Object.values(errors)];
@@ -571,6 +623,7 @@ export default {
         if (response && response.status === 200 && response.data) {
           // 适配新的嵌套数据结构
           const configData = response.data;
+          this.roomSchema = Array.isArray(configData.__schema) ? configData.__schema : [];
           
           // 处理GAMEPLAY部分
           if (configData.GAMEPLAY) {
@@ -749,7 +802,12 @@ export default {
       let errorMessage = error.message || defaultMessage;
 
       if (error.details && error.details.fields) {
-        this.formErrors = Object.values(error.details.fields);
+        const fieldErrors = Object.fromEntries(
+          Object.entries(error.details.fields).map(([key, message]) => [frontendRoomFieldKey(key), message])
+        );
+        this.validationErrors = { ...this.validationErrors, ...fieldErrors };
+        this.formErrors = Object.values(this.validationErrors);
+        this.focusFirstError();
       }
       
       if (error.response) {
@@ -1027,6 +1085,20 @@ export default {
 .required-indicator {
   margin-left: 2px;
   color: var(--destructive);
+}
+
+.field-constraint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.field-constraint :deep([data-slot='badge']) {
+  flex: none;
 }
 
 @media (max-width: 920px) {
