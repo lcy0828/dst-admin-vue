@@ -104,7 +104,11 @@ function mapWorld(world, state) {
     updateTime: world.updatedAt,
     season: state?.season || null,
     day: state?.cycles ?? null,
-    stateObservedAt: state?.observedAt || null
+    stateObservedAt: state?.observedAt || null,
+    stateRuntimeState: state?.runtimeState || world.status || 'unknown',
+    stateFreshness: state?.freshness || 'unavailable',
+    stateAgeSeconds: state?.ageSeconds ?? null,
+    stateStale: state?.stale ?? true
   }
 }
 
@@ -151,6 +155,10 @@ function mapWorldState(snapshot, room) {
     nightmarephase: snapshot.nightmarePhase,
     nightmare_progress: snapshot.nightmareProgress,
     observed_at: snapshot.observedAt,
+    runtime_state: snapshot.runtimeState || 'unknown',
+    freshness: snapshot.freshness || 'unavailable',
+    age_seconds: snapshot.ageSeconds ?? null,
+    stale: snapshot.stale ?? true,
     raw_data: JSON.stringify(snapshot, null, 2)
   }
 
@@ -231,6 +239,12 @@ function legacyServers(rooms) {
     server_mode: null,
     season: world.season,
     day: world.day,
+    state_observed_at: world.stateObservedAt,
+    state_runtime_state: world.stateRuntimeState,
+    state_freshness: world.stateFreshness,
+    state_age_seconds: world.stateAgeSeconds,
+    state_stale: world.stateStale,
+    latest_exit: world.latestExit || null,
     players: null,
     control_available: world.controlAvailable,
     status_message: world.statusMessage || ''

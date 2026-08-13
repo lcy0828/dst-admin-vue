@@ -1,5 +1,21 @@
 export const serverMessages = {
   'zh-CN': {
+    runtimeData: {
+      noObservation: '暂无采集时间',
+      freshness: { live: '实时', delayed: '数据延迟', stopped: '停服前数据', unavailable: '暂无数据' },
+      descriptions: {
+        live: '分片正在运行，数据在两分钟内更新。',
+        delayed: '分片正在启动，或运行中的数据已超过两分钟未更新。',
+        stopped: '分片已停止，显示的是停服前最后一次有效数据。',
+        unavailable: '当前没有世界状态快照，或暂时无法确认分片运行状态。'
+      }
+    },
+    runtimeAudit: {
+      unexpectedExit: '上次异常退出',
+      defaultMessage: '未发现对应的停止、重启或清理请求，分片会话已消失。',
+      source: '来源：{source}',
+      sources: { api: 'Web 操作', automation: '自动化', game_update: '游戏更新', system_monitor: '系统监测', external: '外部或未知' }
+    },
     servers: {
       list: {
         title: '服务器状态',
@@ -144,6 +160,7 @@ export const serverMessages = {
           directoryUnset: '未设置目录',
           day: '天数',
           season: '季节',
+          dataTime: '数据时间',
           control: '控制',
           cleanupFailedSession: '清理失败会话',
           restart: '重启世界',
@@ -310,6 +327,22 @@ export const serverMessages = {
     }
   },
   'en-US': {
+    runtimeData: {
+      noObservation: 'No observation time',
+      freshness: { live: 'Live', delayed: 'Delayed', stopped: 'Pre-stop data', unavailable: 'No data' },
+      descriptions: {
+        live: 'The shard is running and this data was updated within two minutes.',
+        delayed: 'The shard is starting, or its running data has not updated for more than two minutes.',
+        stopped: 'The shard is stopped. This is the last valid snapshot before it stopped.',
+        unavailable: 'No world-state snapshot is available, or the shard runtime state cannot currently be confirmed.'
+      }
+    },
+    runtimeAudit: {
+      unexpectedExit: 'Last exit unexpected',
+      defaultMessage: 'The shard session disappeared without a matching stop, restart, or cleanup request.',
+      source: 'Source: {source}',
+      sources: { api: 'Web action', automation: 'Automation', game_update: 'Game update', system_monitor: 'System monitor', external: 'External or unknown' }
+    },
     servers: {
       list: {
         title: 'Server status',
@@ -454,6 +487,7 @@ export const serverMessages = {
           directoryUnset: 'Directory not set',
           day: 'Day',
           season: 'Season',
+          dataTime: 'Data time',
           control: 'Control',
           cleanupFailedSession: 'Clean up failed session',
           restart: 'Restart world',

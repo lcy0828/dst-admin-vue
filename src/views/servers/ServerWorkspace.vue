@@ -114,6 +114,7 @@
                   <Badge :variant="worldStatusVariant(world)">
                     {{ worldStatusLabel(world) }}
                   </Badge>
+                  <RuntimeExitBadge :event="world.latestExit" />
                 </div>
                 <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || $t('servers.workspace.worlds.directoryUnset') }}</span>
                 <span v-if="worldStatusMessage(world)" class="world-failure">{{ worldStatusMessage(world) }}</span>
@@ -132,6 +133,10 @@
               <div>
                 <dt>{{ $t('servers.workspace.worlds.control') }}</dt>
                 <dd>{{ world.controlAvailable === false ? $t('servers.workspace.states.unavailable') : $t('servers.workspace.states.available') }}</dd>
+              </div>
+              <div>
+                <dt>{{ $t('servers.workspace.worlds.dataTime') }}</dt>
+                <dd><WorldDataFreshnessBadge :freshness="world.stateFreshness" :observed-at="world.stateObservedAt" :age-seconds="world.stateAgeSeconds" /></dd>
               </div>
             </dl>
 
@@ -376,6 +381,8 @@
 
 <script>
 import WorldLog from '@/components/WorldLog.vue'
+import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
+import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import { backupApi, commandApi, playerApi, roomApi, systemApi } from '@/api'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -477,7 +484,9 @@ export default {
     UiSelect,
     UiTextarea,
     User,
-    WorldLog
+    WorldLog,
+    RuntimeExitBadge,
+    WorldDataFreshnessBadge
   },
   data() {
     return {
@@ -596,7 +605,9 @@ export default {
         : {}
 
       if (this.selectedRoom) {
-        if (silent && previousRoomId === this.selectedRoomId) await this.refreshPlayerStats()
+        if (silent && previousRoomId === this.selectedRoomId && this.runningWorlds.length > 0) {
+          await this.refreshPlayerStats()
+        }
         else await this.refreshRoomContext()
       }
       if (requestSequence === this.refreshSequence) this.loading = false

@@ -5,11 +5,19 @@
         <h1>{{ $t('worldState.title') }}</h1>
         <p>{{ $t('worldState.subtitle') }}</p>
       </div>
-      <UiButton @click="refreshData" :disabled="loading || !selectedArchive || !selectedWorld">
-        <Spinner v-if="loading" data-icon="inline-start" />
-        <RefreshCw v-else data-icon="inline-start" />
-        {{ $t('worldState.actions.refresh') }}
-      </UiButton>
+      <div class="header-actions">
+        <WorldDataFreshnessBadge
+          v-if="worldState"
+          :freshness="worldState.freshness"
+          :observed-at="worldState.observed_at"
+          :age-seconds="worldState.age_seconds"
+        />
+        <UiButton @click="refreshData" :disabled="loading || !selectedArchive || !selectedWorld">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          {{ $t('worldState.actions.refresh') }}
+        </UiButton>
+      </div>
     </header>
 
     <Card class="filter-card">
@@ -79,6 +87,12 @@
     </Empty>
 
     <div v-else class="state-content">
+      <Alert v-if="worldState.stale">
+        <TriangleAlert />
+        <AlertTitle>{{ $t('worldState.freshness.staleTitle') }}</AlertTitle>
+        <AlertDescription>{{ $t(`runtimeData.descriptions.${worldState.freshness || 'unavailable'}`) }}</AlertDescription>
+      </Alert>
+
       <div class="state-cards">
         <Card class="state-card">
           <CardHeader><CardTitle>{{ $t('worldState.cards.season') }}</CardTitle><CardDescription>{{ getSeasonDetail() }}</CardDescription><CardAction><span class="state-icon-wrap" aria-hidden="true"><component :is="getSeasonIcon()" class="state-icon" /></span></CardAction></CardHeader>
@@ -197,6 +211,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { translateWorldStateValue } from '@/i18n/worldStateMessages';
 import RuntimeDiagnosticsPanel from '@/components/runtime/RuntimeDiagnosticsPanel.vue';
+import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue';
 
 export default {
   name: 'WorldState',
@@ -246,7 +261,8 @@ export default {
     UiButton,
     UiProgress,
     UiSelect,
-    UiTable
+    UiTable,
+    WorldDataFreshnessBadge
   },
   data() {
     return {
@@ -1157,7 +1173,8 @@ export default {
 }
 
 .page-header,
-.details-filters {
+.details-filters,
+.header-actions {
   display: flex;
   align-items: center;
 }
@@ -1177,6 +1194,12 @@ export default {
   margin: 4px 0 0;
   color: var(--muted-foreground);
   font-size: 14px;
+}
+
+.header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .filter-card {
@@ -1283,6 +1306,16 @@ export default {
 }
 
 @media (max-width: 760px) {
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .filter-grid {
     grid-template-columns: 1fr;
   }

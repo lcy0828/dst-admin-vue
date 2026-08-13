@@ -37,6 +37,9 @@ export const worldStateMessages = {
         selectArchiveAndWorld: '请选择存档和世界',
         loaded: '世界状态已更新'
       },
+      freshness: {
+        staleTitle: '当前展示的不是实时数据'
+      },
       cards: {
         season: '季节',
         worldDays: '世界天数 {days}',
@@ -197,6 +200,9 @@ export const worldStateMessages = {
       feedback: {
         selectArchiveAndWorld: 'Select an archive and world',
         loaded: 'World state updated'
+      },
+      freshness: {
+        staleTitle: 'The displayed data is not live'
       },
       cards: {
         season: 'Season',

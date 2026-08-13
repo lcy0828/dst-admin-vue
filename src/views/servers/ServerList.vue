@@ -56,7 +56,7 @@
         <div v-else-if="filteredServerList.length" class="table-scroll">
         <ShadcnTable>
           <TableHeader><TableRow>
-            <TableHead>{{ $t('servers.list.shards.columns.name') }}</TableHead><TableHead>{{ $t('servers.list.shards.columns.day') }}</TableHead><TableHead>{{ $t('servers.list.shards.columns.season') }}</TableHead>
+            <TableHead>{{ $t('servers.list.shards.columns.name') }}</TableHead><TableHead>{{ $t('servers.list.shards.columns.day') }}</TableHead><TableHead>{{ $t('servers.list.shards.columns.season') }}</TableHead><TableHead>{{ $t('servers.workspace.worlds.dataTime') }}</TableHead>
             <TableHead>{{ $t('servers.list.shards.columns.target') }}</TableHead><TableHead>{{ $t('servers.list.shards.columns.actions') }}</TableHead>
           </TableRow></TableHeader>
           <TableBody><TableRow v-for="server in filteredServerList" :key="server.session_name">
@@ -66,6 +66,7 @@
                 {{ serverStatusLabel(server.status) }}
               </Badge>
               <Badge variant="outline">{{ getWorldTypeName(server.world_type, server.world_name) }}</Badge>
+              <RuntimeExitBadge :event="server.latest_exit" />
               <div>
                 <div class="server-world">{{ server.world_name }}</div>
                 <div class="server-room">{{ server.archive_name }}</div>
@@ -75,6 +76,7 @@
             </TableCell>
             <TableCell>{{ server.day ?? '-' }}</TableCell>
             <TableCell><Badge v-if="server.season" variant="secondary">{{ seasonLabel(server.season) }}</Badge><span v-else>-</span></TableCell>
+            <TableCell><WorldDataFreshnessBadge :freshness="server.state_freshness" :observed-at="server.state_observed_at" :age-seconds="server.state_age_seconds" /></TableCell>
             <TableCell><Badge variant="secondary">{{ runtimeTargetLabel }}</Badge></TableCell>
             <TableCell><div class="operation-buttons">
               <UiButton
@@ -159,6 +161,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirmAction } from '@/lib/feedback';
+import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue';
+import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue';
 import {
   canCleanFailedWorld,
   canConfigureWorld,
@@ -181,7 +185,7 @@ export default {
     FieldLabel, FieldLegend, FieldSet, Play, RefreshCw, SelectContent, SelectGroup, SelectItem,
     SelectTrigger, SelectValue, ServerOff, ShadcnTable, Skeleton, Spinner, Square, TableBody,
     TableCell, TableHead, TableHeader, TableRow, Tabs, TabsList, TabsTrigger, UiButton, UiCheckbox,
-    UiDialog, UiSelect
+    UiDialog, UiSelect, RuntimeExitBadge, WorldDataFreshnessBadge
   },
   data() {
     return {
