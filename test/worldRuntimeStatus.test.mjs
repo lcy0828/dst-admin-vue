@@ -6,6 +6,7 @@ import {
   canConfigureWorld,
   canDeleteWorld,
   canStartWorld,
+  canRequestStopWorld,
   canStopWorld,
   isWorldStarting,
   worldControlAvailable,
@@ -36,14 +37,15 @@ test('world status reads v2 and legacy adapter fields', () => {
   assert.equal(worldControlAvailable({ controlAvailable: true }), true)
 })
 
-test('starting blocks duplicate actions and failed permits retry', () => {
+test('starting blocks duplicate starts but permits a graceful stop request', () => {
   assert.equal(canStartWorld({ status: 'starting', controlAvailable: true }), false)
   assert.equal(canStopWorld({ status: 'starting', controlAvailable: true }), false)
+  assert.equal(canRequestStopWorld({ status: 'starting', controlAvailable: true }), true)
   assert.deepEqual(worldPrimaryAction({ status: 'starting', controlAvailable: true }), {
-    kind: null,
-    label: '启动中',
-    variant: 'secondary',
-    disabled: true
+    kind: 'stop',
+    label: '停止启动',
+    variant: 'destructive',
+    disabled: false
   })
 
   assert.equal(canStartWorld({ status: 'failed', control_available: true }), true)
@@ -62,6 +64,7 @@ test('control capability overrides otherwise valid actions', () => {
   assert.equal(canStartWorld({ status: 'stopped', controlAvailable: false }), false)
   assert.equal(canStartWorld({ status: 'failed', control_available: false }), false)
   assert.equal(canStopWorld({ status: 'running', controlAvailable: false }), false)
+  assert.equal(canRequestStopWorld({ status: 'starting', controlAvailable: false }), false)
   assert.equal(canCleanFailedWorld({ status: 'failed', controlAvailable: false }), false)
   assert.equal(canDeleteWorld({ status: 'stopped', controlAvailable: false }), false)
   assert.equal(canConfigureWorld({ status: 'stopped', controlAvailable: false }), false)

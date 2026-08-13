@@ -36,6 +36,7 @@ export const corePageMessages = {
       },
       actions: {
         stop: '停止',
+        stopStarting: '停止启动',
         start: '启动',
         retry: '重试启动',
         starting: '启动中',
@@ -222,6 +223,7 @@ export const corePageMessages = {
       },
       actions: {
         stop: 'Stop',
+        stopStarting: 'Stop startup',
         start: 'Start',
         retry: 'Retry start',
         starting: 'Starting',

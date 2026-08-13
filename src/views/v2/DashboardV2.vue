@@ -63,7 +63,6 @@ import {
   canCleanFailedWorld,
   canConfigureWorld,
   canStartWorld,
-  isWorldStarting,
   worldPrimaryAction,
   worldStatusLabel,
   worldStatusMessage,
@@ -271,8 +270,8 @@ onMounted(() => {
                   <TableCell>
                     <div class="flex justify-end gap-1.5">
                       <Button size="sm" :variant="worldPrimaryAction(server, t).variant" :disabled="serverLoading || worldPrimaryAction(server, t).disabled" @click="handleServerAction(server)">
-                        <Spinner v-if="isWorldStarting(server)" data-icon="inline-start" />
-                        <Square v-else-if="server.status === 'running'" data-icon="inline-start" />
+                        <Spinner v-if="serverLoading" data-icon="inline-start" />
+                        <Square v-else-if="worldPrimaryAction(server, t).kind === 'stop'" data-icon="inline-start" />
                         <Play v-else-if="worldPrimaryAction(server, t).kind === 'start'" data-icon="inline-start" />
                         {{ worldPrimaryAction(server, t).label }}
                       </Button>

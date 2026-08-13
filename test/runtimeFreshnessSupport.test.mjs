@@ -36,3 +36,17 @@ test('world-state details prominently mark stale snapshots with their observatio
   assert.match(freshnessBadge, /dateStyle: 'medium'/)
   assert.match(exitBadge, /event\?\.type === 'unexpected_exit'/)
 })
+
+test('server surfaces dispatch the primary stop action while a shard is starting', async () => {
+  const [serverList, workspace, dashboard] = await Promise.all([
+    source('src/views/servers/ServerList.vue'),
+    source('src/views/servers/ServerWorkspace.vue'),
+    source('src/composables/useDashboardV2.js')
+  ])
+
+  assert.match(serverList, /isStopping = primaryAction\.kind === 'stop'/)
+  assert.match(serverList, /isStopping \? roomApi\.stopRoom\(request\) : roomApi\.startRoom\(request\)/)
+  assert.match(workspace, /action === 'stop' && !canRequestStopWorld\(world\)/)
+  assert.match(dashboard, /stopping = primaryAction\.kind === 'stop'/)
+  assert.match(dashboard, /stopping \? roomApi\.stopRoom\(input\) : roomApi\.startRoom\(input\)/)
+})

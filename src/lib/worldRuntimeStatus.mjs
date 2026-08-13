@@ -54,6 +54,10 @@ export function canStopWorld(world) {
   return worldControlAvailable(world) && worldRuntimeStatus(world) === 'running'
 }
 
+export function canRequestStopWorld(world) {
+  return worldControlAvailable(world) && ['starting', 'running'].includes(worldRuntimeStatus(world))
+}
+
 export function canCleanFailedWorld(world) {
   return worldControlAvailable(world) && worldRuntimeStatus(world) === 'failed'
 }
@@ -72,7 +76,7 @@ export function worldPrimaryAction(world, translator) {
     ? translator(`worldRuntime.actions.${key}`)
     : fallback
   if (status === 'running') {
-    return { kind: 'stop', label: label('stop', '停止'), variant: 'destructive', disabled: !canStopWorld(world) }
+    return { kind: 'stop', label: label('stop', '停止'), variant: 'destructive', disabled: !canRequestStopWorld(world) }
   }
   if (status === 'stopped') {
     return { kind: 'start', label: label('start', '启动'), variant: 'default', disabled: !canStartWorld(world) }
@@ -81,7 +85,7 @@ export function worldPrimaryAction(world, translator) {
     return { kind: 'start', label: label('retry', '重试启动'), variant: 'default', disabled: !canStartWorld(world) }
   }
   if (status === 'starting') {
-    return { kind: null, label: label('starting', '启动中'), variant: 'secondary', disabled: true }
+    return { kind: 'stop', label: label('stopStarting', '停止启动'), variant: 'destructive', disabled: !canRequestStopWorld(world) }
   }
   if (status === 'stopping') {
     return { kind: null, label: label('stopping', '停止中'), variant: 'secondary', disabled: true }

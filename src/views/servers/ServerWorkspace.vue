@@ -151,8 +151,8 @@
                     :disabled="!canToggleWorld(world) || Boolean(worldActionId)"
                     @click="handleWorldAction(world, worldPrimaryAction(world).kind)"
                   >
-                    <Spinner v-if="worldActionId === world.id || isWorldStarting(world)" />
-                    <Square v-else-if="world.status === 'running'" />
+                    <Spinner v-if="worldActionId === world.id" />
+                    <Square v-else-if="worldPrimaryAction(world).kind === 'stop'" />
                     <Play v-else-if="worldPrimaryAction(world).kind === 'start'" />
                   </UiButton>
                 </TooltipTrigger>
@@ -399,9 +399,9 @@ import { confirmAction, promptText } from '@/lib/feedback'
 import {
   canCleanFailedWorld,
   canConfigureWorld,
+  canRequestStopWorld,
   canStartWorld,
   canStopWorld,
-  isWorldStarting,
   worldPrimaryAction,
   worldStatusLabel,
   worldStatusMessage,
@@ -715,7 +715,8 @@ export default {
       if (!action ||
           (action === 'start' && !canStartWorld(world)) ||
           (action === 'cleanup' && !canCleanFailedWorld(world)) ||
-          (['stop', 'restart'].includes(action) && !canStopWorld(world))) {
+          (action === 'stop' && !canRequestStopWorld(world)) ||
+          (action === 'restart' && !canStopWorld(world))) {
         toast.warning(worldStatusMessage(world) || this.$t('servers.workspace.feedback.actionUnavailable'))
         return
       }
@@ -877,9 +878,6 @@ export default {
     },
     worldPrimaryAction(world) {
       return worldPrimaryAction(world, key => this.$t(key))
-    },
-    isWorldStarting(world) {
-      return isWorldStarting(world)
     },
     canStopWorld(world) {
       return canStopWorld(world)

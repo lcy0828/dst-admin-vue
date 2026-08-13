@@ -94,8 +94,8 @@
                         :disabled="getWorldPrimaryAction(world).disabled || loading"
                         @click="toggleWorldStatus(world)"
                       >
-                        <Spinner v-if="isWorldStarting(world)" data-icon="inline-start" />
-                        <Square v-else-if="world.status === 'running'" data-icon="inline-start" />
+                        <Spinner v-if="loading" data-icon="inline-start" />
+                        <Square v-else-if="getWorldPrimaryAction(world).kind === 'stop'" data-icon="inline-start" />
                         <Play v-else-if="getWorldPrimaryAction(world).kind === 'start'" data-icon="inline-start" />
                         {{ getWorldPrimaryAction(world).label }}
                       </UiButton>
@@ -199,7 +199,6 @@ import {
   canConfigureWorld as canConfigureRuntimeWorld,
   canDeleteWorld as canDeleteRuntimeWorld,
   canStopWorld,
-  isWorldStarting,
   worldPrimaryAction,
   worldStatusLabel,
   worldStatusMessage,
@@ -383,9 +382,6 @@ export default {
     },
     getWorldPrimaryAction(world) {
       return worldPrimaryAction(world, this.$t);
-    },
-    isWorldStarting(world) {
-      return isWorldStarting(world);
     },
     canCleanFailedWorld(world) {
       return canCleanFailedRuntimeWorld(world);

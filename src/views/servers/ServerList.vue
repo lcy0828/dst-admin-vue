@@ -86,8 +86,8 @@
                 :title="!canControlServer(server) ? (serverStatusMessage(server) || $t('servers.list.shards.unavailable')) : ''"
                 @click="handleServerAction(server)"
               >
-                <Spinner v-if="serverActionId === serverKey(server) || isServerStarting(server)" data-icon="inline-start" />
-                <Square v-else-if="server.status === 'running'" data-icon="inline-start" />
+                <Spinner v-if="serverActionId === serverKey(server)" data-icon="inline-start" />
+                <Square v-else-if="serverPrimaryAction(server).kind === 'stop'" data-icon="inline-start" />
                 <Play v-else-if="serverPrimaryAction(server).kind === 'start'" data-icon="inline-start" />
                 {{ serverPrimaryAction(server).label }}
               </UiButton>
@@ -167,7 +167,6 @@ import {
   canCleanFailedWorld,
   canConfigureWorld,
   canStartWorld as canStartRuntimeWorld,
-  isWorldStarting,
   worldPrimaryAction,
   worldStatusLabel,
   worldStatusMessage,
@@ -359,8 +358,9 @@ export default {
         toast.warning(this.serverStatusMessage(server) || this.$t('servers.list.shards.unavailable'));
         return;
       }
-      const isRunning = server.status === 'running';
-      const action = this.$t(`worldRuntime.actions.${isRunning ? 'stop' : 'start'}`);
+      const primaryAction = this.serverPrimaryAction(server);
+      const isStopping = primaryAction.kind === 'stop';
+      const action = primaryAction.label;
       try {
         await confirmAction(this.$t('servers.list.feedback.actionConfirm', {
           action,
@@ -368,7 +368,7 @@ export default {
           world: server.world_name
         }), this.$t('servers.list.feedback.actionTitle', { action }), {
           confirmButtonText: this.$t('servers.list.feedback.actionButton', { action }),
-          type: isRunning ? 'warning' : 'info'
+          type: isStopping ? 'warning' : 'info'
         });
       } catch {
         toast.info(this.$t('servers.list.feedback.actionCanceled', { action }));
@@ -378,7 +378,7 @@ export default {
       this.serverActionId = this.serverKey(server);
       try {
         const request = { room_id: server.room_id, world_id: server.world_id };
-        await (isRunning ? roomApi.stopRoom(request) : roomApi.startRoom(request));
+        await (isStopping ? roomApi.stopRoom(request) : roomApi.startRoom(request));
         await this.fetchData();
         toast.success(this.$t('servers.list.feedback.actionCompleted', { action }));
       } catch (error) {
@@ -443,9 +443,6 @@ export default {
     },
     serverPrimaryAction(server) {
       return worldPrimaryAction(server, key => this.$t(key));
-    },
-    isServerStarting(server) {
-      return isWorldStarting(server);
     },
     handleConfigure(server) {
       this.$router.push({

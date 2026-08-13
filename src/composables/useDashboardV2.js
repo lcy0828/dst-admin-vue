@@ -5,7 +5,6 @@ import { formatDurationSeconds } from '@/lib/localeFormatters.mjs'
 import {
   canCleanFailedWorld,
   canStartWorld,
-  canStopWorld,
   worldPrimaryAction,
   worldStatusMessage
 } from '@/lib/worldRuntimeStatus.mjs'
@@ -167,8 +166,8 @@ export function useDashboardV2() {
       toast.warning(worldStatusMessage(server) || translate('dashboard.feedback.actionUnavailable'))
       return
     }
-    const running = canStopWorld(server)
-    const action = translate(running ? 'worldRuntime.actions.stop' : 'worldRuntime.actions.start')
+    const stopping = primaryAction.kind === 'stop'
+    const action = primaryAction.label
     try {
       await confirmAction(translate('dashboard.feedback.actionConfirm', { action, room: server.archive_name, world: server.world_name }), translate('dashboard.feedback.actionConfirmTitle'), {
         confirmText: translate('dashboard.feedback.actionConfirmButton', { action })
@@ -180,7 +179,7 @@ export function useDashboardV2() {
     serverLoading.value = true
     try {
       const input = { room_id: server.room_id, world_id: server.world_id }
-      await (running ? roomApi.stopRoom(input) : roomApi.startRoom(input))
+      await (stopping ? roomApi.stopRoom(input) : roomApi.startRoom(input))
       toast.success(translate('dashboard.feedback.actionCompleted', { action }))
       await refreshServers()
     } catch (error) {
