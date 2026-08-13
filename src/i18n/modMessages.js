@@ -64,6 +64,9 @@ export const modMessages = {
       workshop: {
         detailsTitle: '模组详情',
         detailsDescription: 'Steam Workshop 与本地模组文件提供的完整信息。',
+        loadingDetails: '正在加载模组详情',
+        summary: 'Workshop 概览',
+        fileAndActivity: '文件与活跃数据',
         description: '模组描述',
         noDescription: '该模组暂无描述。',
         workshopId: 'Workshop ID',
@@ -389,6 +392,9 @@ export const modMessages = {
       workshop: {
         detailsTitle: 'Mod Details',
         detailsDescription: 'Complete information from Steam Workshop and the local mod package.',
+        loadingDetails: 'Loading mod details',
+        summary: 'Workshop Summary',
+        fileAndActivity: 'Files and Activity',
         description: 'Mod Description',
         noDescription: 'This mod does not have a description.',
         workshopId: 'Workshop ID',

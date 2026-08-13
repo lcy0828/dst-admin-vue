@@ -498,35 +498,18 @@ export default {
       else this.initializeContext();
     },
     
-    // 打开配置对话框
     openConfigDialog(mod) {
       if (!this.selectedWorldId) {
         toast.warning(this.$t('mods.installed.feedback.selectConfigWorld'));
         return;
       }
-      this.detailsDialogVisible = false;
-      // 先重置当前模组信息
-      this.currentModInfo = null;
-      this.loading = true;
-      
-      // 先获取模组配置数据
-      modApi.getModConfig({
-        roomId: this.selectedRoomId,
-        worldId: this.selectedWorldId,
-        modid: mod.modid,
-        mod
-      }).then(res => {
-        this.currentModId = mod.modid;
-        this.currentModInfo = res.modinfo;
-        // 获取数据成功后再显示对话框
-        this.$nextTick(() => {
-          this.configDialogVisible = true;
-        });
-      }).catch(err => {
-        console.error(err);
-        toast.error(this.localizedFailure(this.failure('mods.errors.config', err)));
-      }).finally(() => {
-        this.loading = false;
+      this.detailsRequestId += 1;
+      this.detailsLoading = false;
+      this.currentModId = mod.modid || mod.id;
+      this.currentModInfo = mod;
+      this.configDialogVisible = true;
+      this.$nextTick(() => {
+        this.detailsDialogVisible = false;
       });
     },
     

@@ -2,7 +2,7 @@
   <UiDialog :open="dialogVisible" @update:open="handleDialogOpenChange">
     <DialogContent class="mod-config-dialog sm:max-w-4xl">
       <DialogHeader>
-        <DialogTitle>{{ $t('mods.config.title', { name: modInfo ? modInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</DialogTitle>
+        <DialogTitle>{{ $t('mods.config.title', { name: activeModInfo ? activeModInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</DialogTitle>
         <DialogDescription>{{ $t('mods.config.description', { world: worldName || worldId }) }}</DialogDescription>
       </DialogHeader>
 
@@ -16,17 +16,17 @@
           <AlertAction><UiButton size="sm" variant="outline" @click="initializeConfig">{{ $t('mods.actions.retry') }}</UiButton></AlertAction>
         </Alert>
 
-        <template v-else-if="modInfo">
+        <template v-else-if="activeModInfo">
           <div v-if="hasOptions" class="reset-button-container">
             <UiButton size="sm" variant="outline" @click="resetToDefault">
               <RotateCcw data-icon="inline-start" />{{ $t('mods.actions.resetDefaults') }}
             </UiButton>
           </div>
 
-          <Alert v-if="modInfo.description">
+          <Alert v-if="activeModInfo.description">
             <Info />
             <AlertTitle>{{ $t('mods.config.modDescription') }}</AlertTitle>
-            <AlertDescription>{{ modInfo.description }}</AlertDescription>
+            <AlertDescription>{{ activeModInfo.description }}</AlertDescription>
           </Alert>
 
           <FieldGroup v-if="hasOptions" class="config-form">
@@ -198,7 +198,8 @@ export default {
       resetRequested: false,
       configRevision: '',
       configuredEnabled: true,
-      isInitialized: false
+      isInitialized: false,
+      resolvedModInfo: null
     };
   },
   computed: {
@@ -207,15 +208,17 @@ export default {
     },
     // 是否有配置选项
     hasOptions() {
-      return this.modInfo && 
-        this.modInfo.configuration_options && 
-        this.modInfo.configuration_options.length > 0;
+      return this.activeModInfo &&
+        this.activeModInfo.configuration_options &&
+        this.activeModInfo.configuration_options.length > 0;
     },
-    
+    activeModInfo() {
+      return this.resolvedModInfo || this.modInfo;
+    },
     // 所有配置选项(已扁平化)
     allOptions() {
       if (!this.hasOptions) return [];
-      return this.modInfo.configuration_options.filter(option => 
+      return this.activeModInfo.configuration_options.filter(option =>
         option.name && option.name !== "Title" && option.name !== "null"
       );
     }
@@ -272,6 +275,7 @@ export default {
       this.resetRequested = false;
       this.configRevision = '';
       this.configuredEnabled = true;
+      this.resolvedModInfo = null;
     },
     
     // 初始化配置
@@ -291,13 +295,24 @@ export default {
       this.resetRequested = false;
       
       try {
-        await this.getUserCustomConfig();
-        if (this.modInfo.configuration_options) {
-          this.initializeConfigFromData(this.modInfo.configuration_options);
+        const response = await modApi.getModConfig({
+          roomId: this.roomId,
+          worldId: this.worldId,
+          modid: this.modId,
+          mod: this.modInfo
+        });
+        this.resolvedModInfo = response.modinfo;
+        const configuration = response.modinfo.configuration || {};
+        this.userCustomConfig = configuration.values || {};
+        this.customOverrides = configuration.overrides || {};
+        this.configRevision = configuration.revision || '';
+        this.configuredEnabled = configuration.enabled !== false;
+        if (this.activeModInfo.configuration_options) {
+          this.initializeConfigFromData(this.activeModInfo.configuration_options);
         }
       } catch (error) {
         this.isInitialized = false;
-        this.loadFailure = createModFailure('mods.errors.customConfig', error);
+        this.loadFailure = createModFailure('mods.errors.config', error);
       } finally {
         this.loading = false;
       }
@@ -443,7 +458,7 @@ export default {
           }
         }
       }
-      const enabled = this.modInfo?.configuration?.enabled ?? this.configuredEnabled;
+      const enabled = this.activeModInfo?.configuration?.enabled ?? this.configuredEnabled;
       if (Object.keys(changedConfig).length === 0 && enabled === this.configuredEnabled) {
         this.resetRequested = false;
         toast.info(this.$t('mods.config.feedback.noChanges'));
@@ -502,8 +517,8 @@ export default {
     
     // 查找选项定义
     findOptionByName(name) {
-      if (!this.modInfo || !this.modInfo.configuration_options) return null;
-      return this.modInfo.configuration_options.find(option => option.name === name);
+      if (!this.activeModInfo || !this.activeModInfo.configuration_options) return null;
+      return this.activeModInfo.configuration_options.find(option => option.name === name);
     },
     
     // 处理配置变更

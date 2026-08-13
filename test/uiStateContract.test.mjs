@@ -87,3 +87,28 @@ test('settings pages preserve dirty state and only show relevant save actions', 
   assert.match(systemSettings, /class="settings-tab-trigger"/)
   assert.match(systemSettings, /\.settings-tabs\s*\{[^}]*max-width:\s*none/s)
 })
+
+test('room settings exposes constraints and validates instead of clamping values', async () => {
+  const roomSettings = await source('src/views/rooms/RoomSettings.vue')
+
+  assert.match(roomSettings, /class="field-constraint"/)
+  assert.match(roomSettings, /@blur="validateField\(field\)"/)
+  assert.match(roomSettings, /:max="field\.max"/)
+  assert.doesNotMatch(roomSettings, /normalizeNumberField/)
+  assert.doesNotMatch(roomSettings, /Math\.min\(max, Math\.max/)
+})
+
+test('opening mod configuration keeps the list stable and delegates loading to the dialog', async () => {
+  const [modList, modConfig] = await Promise.all([
+    source('src/views/mods/ModList.vue'),
+    source('src/views/mods/ModConfigDialog.vue')
+  ])
+  const openMethodStart = modList.indexOf('    openConfigDialog(mod) {')
+  const openMethod = modList.slice(openMethodStart, modList.indexOf('    handleConfigUpdated(data)', openMethodStart))
+
+  assert.match(openMethod, /this\.configDialogVisible = true/)
+  assert.doesNotMatch(openMethod, /this\.loading = true/)
+  assert.doesNotMatch(openMethod, /modApi\.getModConfig/)
+  assert.match(modConfig, /await modApi\.getModConfig/)
+  assert.match(modConfig, /v-if="loading" class="loading-container"/)
+})
