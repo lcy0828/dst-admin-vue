@@ -185,6 +185,10 @@ export const runtimeV2API = {
   status: roomId => client.get(`/rooms/${encode(roomId)}/runtime`, {
     headers: { 'Cache-Control': 'no-store' }
   }),
+  lifecycleEvents: (roomId, params = {}) => client.get(
+    `/rooms/${encode(roomId)}/runtime-events`,
+    { params, headers: { 'Cache-Control': 'no-store' } }
+  ),
   installRoom: roomId => client.post(`/rooms/${encode(roomId)}/runtime/actions/install`),
   installWorld: (roomId, worldId) => client.post(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/actions/install`

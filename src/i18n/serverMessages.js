@@ -14,7 +14,23 @@ export const serverMessages = {
       unexpectedExit: '上次异常退出',
       defaultMessage: '未发现对应的停止、重启或清理请求，分片会话已消失。',
       source: '来源：{source}',
-      sources: { api: 'Web 操作', automation: '自动化', game_update: '游戏更新', system_monitor: '系统监测', external: '外部或未知' }
+      sources: { api: 'Web 操作', automation: '自动化', game_update: '游戏更新', system_monitor: '系统监测', external: '外部或未知' },
+      history: {
+        title: '运行事件',
+        description: '记录启动、停止、清理和进程退出的来源，便于追查异常退出。',
+        refresh: '刷新运行事件',
+        loadFailed: '运行事件读取失败',
+        empty: '暂无运行事件',
+        emptyDescription: '从现在起发生的启动、停止和异常退出会记录在这里。',
+        columns: { time: '时间', world: '世界', event: '事件', source: '来源', transition: '状态变化', reason: '原因', trace: '关联记录' },
+        events: {
+          start_requested: '请求启动', stop_requested: '请求停止', restart_requested: '请求重启', cleanup_requested: '请求清理',
+          session_started: '会话已创建', running: '运行就绪', failed: '启动失败', stopped: '正常退出', unexpected_exit: '异常退出', unknown: '未知事件'
+        },
+        states: { stopped: '已停止', starting: '启动中', running: '运行中', failed: '启动失败', stopping: '停止中', unknown: '未知' },
+        job: '任务',
+        request: '请求'
+      }
     },
     servers: {
       list: {
@@ -341,7 +357,23 @@ export const serverMessages = {
       unexpectedExit: 'Last exit unexpected',
       defaultMessage: 'The shard session disappeared without a matching stop, restart, or cleanup request.',
       source: 'Source: {source}',
-      sources: { api: 'Web action', automation: 'Automation', game_update: 'Game update', system_monitor: 'System monitor', external: 'External or unknown' }
+      sources: { api: 'Web action', automation: 'Automation', game_update: 'Game update', system_monitor: 'System monitor', external: 'External or unknown' },
+      history: {
+        title: 'Runtime events',
+        description: 'Audit the source of start, stop, cleanup, and process-exit events.',
+        refresh: 'Refresh runtime events',
+        loadFailed: 'Could not load runtime events',
+        empty: 'No runtime events',
+        emptyDescription: 'Start, stop, and unexpected-exit events occurring from now on will appear here.',
+        columns: { time: 'Time', world: 'World', event: 'Event', source: 'Source', transition: 'State change', reason: 'Reason', trace: 'Trace' },
+        events: {
+          start_requested: 'Start requested', stop_requested: 'Stop requested', restart_requested: 'Restart requested', cleanup_requested: 'Cleanup requested',
+          session_started: 'Session created', running: 'Runtime ready', failed: 'Startup failed', stopped: 'Expected exit', unexpected_exit: 'Unexpected exit', unknown: 'Unknown event'
+        },
+        states: { stopped: 'Stopped', starting: 'Starting', running: 'Running', failed: 'Startup failed', stopping: 'Stopping', unknown: 'Unknown' },
+        job: 'Job',
+        request: 'Request'
+      }
     },
     servers: {
       list: {

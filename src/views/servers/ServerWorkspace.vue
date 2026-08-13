@@ -375,12 +375,14 @@
           </Card>
         </aside>
       </div>
+      <RuntimeAuditPanel ref="runtimeAudit" :room-id="selectedRoomId" :worlds="worlds" />
     </template>
   </div>
 </template>
 
 <script>
 import WorldLog from '@/components/WorldLog.vue'
+import RuntimeAuditPanel from '@/components/runtime/RuntimeAuditPanel.vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import { backupApi, commandApi, playerApi, roomApi, systemApi } from '@/api'
@@ -460,6 +462,7 @@ export default {
     Play,
     RefreshCw,
     RotateCw,
+    RuntimeAuditPanel,
     Search,
     SelectContent,
     SelectGroup,
@@ -760,6 +763,7 @@ export default {
         }))
       } finally {
         this.worldActionId = ''
+        await this.$refs.runtimeAudit?.loadEvents()
       }
     },
     async createBackup() {
