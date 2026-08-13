@@ -266,7 +266,7 @@ export default {
 
       this.loading = true;
       try {
-        await roomApi.stopRoom({ room_id: this.roomId, world_id: this.worldId });
+        await roomApi.cleanupRoom({ room_id: this.roomId, world_id: this.worldId });
         await this.loadWorldData();
         toast.success(this.$t('worlds.feedback.cleanupSucceeded'));
       } catch (error) {

@@ -732,7 +732,7 @@ export default {
         const target = { room_id: this.selectedRoom.id, world_id: world.id }
         if (action === 'start') await roomApi.startRoom(target)
         if (action === 'stop') await roomApi.stopRoom(target)
-        if (action === 'cleanup') await roomApi.stopRoom(target)
+        if (action === 'cleanup') await roomApi.cleanupRoom(target)
         if (action === 'restart') await systemApi.restartTmuxServer({
           ...target,
           archive_name: this.selectedRoom.name,

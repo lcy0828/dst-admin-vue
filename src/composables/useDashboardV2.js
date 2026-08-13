@@ -228,7 +228,7 @@ export function useDashboardV2() {
 
     serverLoading.value = true
     try {
-      await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id })
+      await roomApi.cleanupRoom({ room_id: server.room_id, world_id: server.world_id })
       toast.success(translate('dashboard.feedback.cleanupSucceeded'))
       await refreshServers()
     } catch (error) {

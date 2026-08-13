@@ -405,7 +405,7 @@ export default {
 
       this.serverActionId = this.serverKey(server);
       try {
-        await roomApi.stopRoom({ room_id: server.room_id, world_id: server.world_id });
+        await roomApi.cleanupRoom({ room_id: server.room_id, world_id: server.world_id });
         await this.fetchData();
         toast.success(this.$t('servers.list.feedback.cleanupSucceeded'));
       } catch (error) {

@@ -416,7 +416,7 @@ export default {
 
       this.roomActionId = room.id;
       try {
-        const response = await roomApi.stopRoom({
+        const response = await roomApi.cleanupRoom({
           room_id: room.id,
           world_ids: worlds.map(world => world.id)
         });

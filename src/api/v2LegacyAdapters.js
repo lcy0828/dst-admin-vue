@@ -342,6 +342,16 @@ export const legacyRoomApi = {
     roomCatalogCache.invalidate()
     return success(job, 'room_stopped')
   },
+  async cleanupRoom(input) {
+    const room = await resolveRoom(roomReference(input))
+    const worldIds = input && typeof input === 'object' ? selectedWorldIDs(room, input) : []
+    const job = await waitForV2Job(
+      await roomsV2API.action(room.id, 'cleanup', worldIds),
+      ROOM_JOB_TIMEOUT
+    )
+    roomCatalogCache.invalidate()
+    return success(job, 'room_session_cleaned')
+  },
   async backupRoom(roomValue, name = '') {
     const room = await resolveRoom(roomValue)
     const job = await waitForV2Job(await backupsV2API.create(room.id, name), BACKUP_JOB_TIMEOUT)
