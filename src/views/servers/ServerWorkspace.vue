@@ -296,90 +296,113 @@
         </Card>
 
         <aside class="context-rail" :aria-busy="contextLoading">
-          <div v-if="contextLoading" class="panel-loading"><Spinner /><span>{{ $t('servers.workspace.context.loading') }}</span></div>
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle>{{ $t('servers.workspace.players.title') }}</CardTitle>
-              <CardDescription>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.onlineCount', { count: playerStats.online_count }) : $t('servers.workspace.states.statusUnavailable')) }}</CardDescription>
-              <CardAction><UiButton variant="ghost" size="sm" @click="openPlayers">{{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" /></UiButton></CardAction>
+          <Card size="sm" class="context-card">
+            <CardHeader class="sr-only">
+              <CardTitle>{{ $t('servers.workspace.context.title') }}</CardTitle>
+              <CardDescription>{{ $t('servers.workspace.context.description') }}</CardDescription>
             </CardHeader>
-            <CardContent>
-            <div v-if="recentPlayers.length" class="player-list">
-              <UiButton
-                v-for="player in recentPlayers"
-                :key="`${player.room_id}:${player.user_id}`"
-                variant="ghost"
-                class="player-row"
-                @click="openPlayers"
-              >
-                <span class="player-avatar"><User /></span>
-                <span class="player-copy">
-                  <strong>{{ player.player_name || player.user_id }}</strong>
-                  <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || $t('servers.workspace.players.unknownWorld') }}</span>
-                </span>
-                <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
-                  {{ playerStatusLabel(player.status) }}
-                </Badge>
-              </UiButton>
-            </div>
-            <Alert v-else-if="contextErrors.players" variant="destructive">
-              <CircleAlert />
-              <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
-              <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
-            </Alert>
-            <Empty v-else class="rail-empty">
-              <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.players.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.players.emptyDescription') }}</EmptyDescription></EmptyHeader>
-            </Empty>
-            </CardContent>
-          </Card>
-
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle>{{ $t('servers.workspace.backups.latest') }}</CardTitle>
-              <CardDescription>{{ contextErrors.backups ? $t('servers.workspace.states.listReadFailed') : $t('servers.workspace.backups.recordCount', { count: backups.length }) }}</CardDescription>
-              <CardAction><UiButton variant="ghost" size="sm" @click="$router.push('/backups')">{{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" /></UiButton></CardAction>
-            </CardHeader>
-            <CardContent>
-            <div v-if="backups.length" class="backup-list">
-              <div v-for="backup in backups.slice(0, 3)" :key="backup.id || backup.name" class="backup-row">
-                <FileCheck2 />
-                <span>
-                  <strong>{{ backup.name }}</strong>
-                  <small>{{ formatCompactTime(backup.createdAt || backup.create_time) }} · {{ backup.size_formatted || '--' }}</small>
-                </span>
+            <CardContent class="context-card-content">
+              <div v-if="contextLoading" class="context-loading" role="status">
+                <Spinner />
+                <span>{{ $t('servers.workspace.context.loading') }}</span>
               </div>
-            </div>
-            <Alert v-else-if="contextErrors.backups" variant="destructive">
-              <CircleAlert />
-              <AlertTitle>{{ $t('servers.workspace.backups.loadFailed') }}</AlertTitle>
-              <AlertDescription>{{ localizedError(contextErrors.backups) }}</AlertDescription>
-            </Alert>
-            <Empty v-else class="rail-empty">
-              <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.backups.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.backups.emptyDescription') }}</EmptyDescription></EmptyHeader>
-            </Empty>
-            </CardContent>
-          </Card>
 
-          <Card size="sm">
-            <CardHeader><CardTitle>{{ $t('servers.workspace.quickNav.title') }}</CardTitle><CardDescription>{{ $t('servers.workspace.quickNav.description') }}</CardDescription></CardHeader>
-            <CardContent><nav class="quick-nav" :aria-label="$t('servers.workspace.quickNav.label')">
-            <UiButton variant="ghost" @click="openPlayers">
-              <User />
-              <span>{{ $t('servers.workspace.quickNav.players') }}</span>
-            </UiButton>
-            <UiButton variant="ghost" @click="openMods">
-              <PackageOpen />
-              <span>{{ $t('servers.workspace.quickNav.mods') }}</span>
-            </UiButton>
-            <UiButton variant="ghost" @click="openWorldState">
-              <ChartNoAxesCombined />
-              <span>{{ $t('servers.workspace.quickNav.worldState') }}</span>
-            </UiButton>
-            <UiButton variant="ghost" @click="$router.push('/logs/query')">
-              <Search />
-              <span>{{ $t('servers.workspace.quickNav.logQuery') }}</span>
-            </UiButton>
-            </nav></CardContent>
+              <section class="context-section context-section-players" aria-labelledby="workspace-players-title">
+                <header class="context-section-header">
+                  <div class="context-section-heading">
+                    <h2 id="workspace-players-title">{{ $t('servers.workspace.players.title') }}</h2>
+                    <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.onlineCount', { count: playerStats.online_count }) : $t('servers.workspace.states.statusUnavailable')) }}</span>
+                  </div>
+                  <UiButton variant="ghost" size="xs" class="context-section-action" @click="openPlayers">
+                    {{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" />
+                  </UiButton>
+                </header>
+                <div v-if="recentPlayers.length" class="player-list">
+                  <UiButton
+                    v-for="player in recentPlayers"
+                    :key="`${player.room_id}:${player.user_id}`"
+                    variant="ghost"
+                    size="sm"
+                    class="player-row"
+                    @click="openPlayers"
+                  >
+                    <span class="player-avatar"><User /></span>
+                    <span class="player-copy">
+                      <strong :title="player.player_name || player.user_id">{{ player.player_name || player.user_id }}</strong>
+                      <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || $t('servers.workspace.players.unknownWorld') }}</span>
+                    </span>
+                    <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
+                      {{ playerStatusLabel(player.status) }}
+                    </Badge>
+                  </UiButton>
+                </div>
+                <Alert v-else-if="contextErrors.players" variant="destructive">
+                  <CircleAlert />
+                  <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
+                  <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
+                </Alert>
+                <Empty v-else class="rail-empty">
+                  <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.players.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.players.emptyDescription') }}</EmptyDescription></EmptyHeader>
+                </Empty>
+              </section>
+
+              <Separator class="context-separator context-separator-primary" />
+
+              <section class="context-section context-section-backups" aria-labelledby="workspace-backups-title">
+                <header class="context-section-header">
+                  <div class="context-section-heading">
+                    <h2 id="workspace-backups-title">{{ $t('servers.workspace.backups.latest') }}</h2>
+                    <span>{{ contextErrors.backups ? $t('servers.workspace.states.listReadFailed') : $t('servers.workspace.backups.recordCount', { count: backups.length }) }}</span>
+                  </div>
+                  <UiButton variant="ghost" size="xs" class="context-section-action" @click="$router.push('/backups')">
+                    {{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" />
+                  </UiButton>
+                </header>
+                <div v-if="backups.length" class="backup-list">
+                  <div v-for="backup in backups.slice(0, 3)" :key="backup.id || backup.name" class="backup-row">
+                    <FileCheck2 />
+                    <span>
+                      <strong :title="backup.name">{{ backup.name }}</strong>
+                      <small>{{ formatCompactTime(backup.createdAt || backup.create_time) }} · {{ backup.size_formatted || '--' }}</small>
+                    </span>
+                  </div>
+                </div>
+                <Alert v-else-if="contextErrors.backups" variant="destructive">
+                  <CircleAlert />
+                  <AlertTitle>{{ $t('servers.workspace.backups.loadFailed') }}</AlertTitle>
+                  <AlertDescription>{{ localizedError(contextErrors.backups) }}</AlertDescription>
+                </Alert>
+                <Empty v-else class="rail-empty">
+                  <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.backups.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.backups.emptyDescription') }}</EmptyDescription></EmptyHeader>
+                </Empty>
+              </section>
+
+              <Separator class="context-separator context-separator-quick" />
+
+              <section class="context-section context-section-quick" aria-labelledby="workspace-quick-nav-title">
+                <header class="context-section-header context-section-header-plain">
+                  <div class="context-section-heading"><h2 id="workspace-quick-nav-title">{{ $t('servers.workspace.quickNav.title') }}</h2></div>
+                </header>
+                <nav class="quick-nav" :aria-label="$t('servers.workspace.quickNav.label')">
+                  <UiButton variant="ghost" size="sm" @click="openPlayers">
+                    <User data-icon="inline-start" />
+                    <span>{{ $t('servers.workspace.quickNav.players') }}</span>
+                  </UiButton>
+                  <UiButton variant="ghost" size="sm" @click="openMods">
+                    <PackageOpen data-icon="inline-start" />
+                    <span>{{ $t('servers.workspace.quickNav.mods') }}</span>
+                  </UiButton>
+                  <UiButton variant="ghost" size="sm" @click="openWorldState">
+                    <ChartNoAxesCombined data-icon="inline-start" />
+                    <span>{{ $t('servers.workspace.quickNav.worldState') }}</span>
+                  </UiButton>
+                  <UiButton variant="ghost" size="sm" @click="$router.push('/logs/query')">
+                    <Search data-icon="inline-start" />
+                    <span>{{ $t('servers.workspace.quickNav.logQuery') }}</span>
+                  </UiButton>
+                </nav>
+              </section>
+            </CardContent>
           </Card>
         </aside>
       </div>
@@ -1341,25 +1364,84 @@ export default {
 }
 
 .context-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   min-width: 0;
 }
 
-.player-list,
-.backup-list {
-  border-top: 1px solid var(--border);
+.context-card {
+  min-width: 0;
+}
+
+.context-card-content {
+  padding: 0;
+}
+
+.context-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+}
+
+.context-section {
+  min-width: 0;
+  padding: 10px 14px 9px;
+}
+
+.context-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  margin-bottom: 3px;
+}
+
+.context-section-header-plain {
+  min-height: 24px;
+}
+
+.context-section-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.context-section-heading h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.context-section-heading span {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-section-action {
+  margin-right: -6px;
 }
 
 .player-row {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+  height: auto;
   width: 100%;
-  min-height: 50px;
-  padding: 7px 0;
+  min-height: 42px;
+  padding: 5px 0;
   cursor: pointer;
   color: inherit;
   text-align: left;
@@ -1384,12 +1466,17 @@ export default {
 
 .player-avatar {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   color: var(--foreground);
   background: var(--muted);
   border-radius: 4px;
+}
+
+.player-avatar svg {
+  width: 14px;
+  height: 14px;
 }
 
 .player-copy {
@@ -1416,9 +1503,9 @@ export default {
 }
 
 .backup-row {
-  gap: 9px;
-  min-height: 49px;
-  padding: 7px 0;
+  gap: 8px;
+  min-height: 42px;
+  padding: 5px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -1428,6 +1515,12 @@ export default {
 
 .backup-row span {
   min-width: 0;
+}
+
+.backup-row > svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
 }
 
 .backup-row strong,
@@ -1449,9 +1542,13 @@ export default {
 }
 
 .rail-empty {
-  padding: 24px 8px;
+  gap: 2px;
+  min-height: 58px;
+  padding: 8px;
   color: var(--muted-foreground);
   text-align: center;
+  background: transparent;
+  border: 0;
 }
 
 .quick-nav {
@@ -1484,13 +1581,35 @@ export default {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .context-rail {
+  .context-card-content {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
+  }
+
+  .context-loading {
+    grid-column: 1 / -1;
+  }
+
+  .context-section-players {
+    grid-column: 1;
+  }
+
+  .context-separator-primary {
+    grid-column: 2;
+    width: 1px;
+    height: 100%;
+  }
+
+  .context-section-backups {
+    grid-column: 3;
+  }
+
+  .context-separator-quick,
+  .context-section-quick {
+    grid-column: 1 / -1;
   }
 
   .quick-nav {
-    grid-column: 1 / -1;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
@@ -1517,8 +1636,13 @@ export default {
     width: auto;
   }
 
-  .context-rail {
-    grid-template-columns: minmax(0, 1fr);
+  .context-card-content {
+    display: block;
+  }
+
+  .context-separator-primary {
+    width: 100%;
+    height: 1px;
   }
 
   .world-item {
@@ -1550,7 +1674,6 @@ export default {
   }
 
   .quick-nav {
-    grid-column: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

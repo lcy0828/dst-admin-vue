@@ -224,6 +224,8 @@ export const serverMessages = {
           }
         },
         context: {
+          title: '房间概况',
+          description: '当前房间的玩家、备份和快捷入口',
           loading: '正在加载房间信息...'
         },
         players: {
@@ -568,6 +570,8 @@ export const serverMessages = {
           }
         },
         context: {
+          title: 'Room context',
+          description: 'Players, backups, and quick links for the current room',
           loading: 'Loading room details...'
         },
         players: {
