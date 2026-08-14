@@ -13,7 +13,7 @@ class CapacityRiskCanceledError extends Error {
   }
 }
 
-async function executeWithCapacityConfirmation(execute) {
+export async function executeWithCapacityConfirmation(execute) {
   try {
     return await execute(false)
   } catch (error) {

@@ -9,6 +9,10 @@
         <p class="mt-1 text-sm text-muted-foreground">{{ t('topology.subtitle') }}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
+        <UiButton variant="outline" :disabled="loadingRooms || rooms.length === 0" @click="openBatchDialog">
+          <ListChecks data-icon="inline-start" />
+          {{ t('topology.batch.open') }}
+        </UiButton>
         <UiButton variant="outline" :disabled="loading || !selectedRoomId" @click="loadTopology">
           <Spinner v-if="loading" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
@@ -218,6 +222,127 @@
       </section>
     </template>
 
+    <Dialog :open="batchOpen" @update:open="handleBatchOpenChange">
+      <DialogScrollContent class="sm:max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{{ batchResult ? t('topology.batch.resultTitle') : t('topology.batch.title') }}</DialogTitle>
+          <DialogDescription>
+            {{ batchResult ? t('topology.batch.resultDescription') : t('topology.batch.description') }}
+          </DialogDescription>
+        </DialogHeader>
+
+        <template v-if="batchResult">
+          <Alert :variant="batchResult.outcome === 'none' ? 'destructive' : 'default'">
+            <CircleCheck v-if="batchResult.outcome === 'full'" />
+            <TriangleAlert v-else />
+            <AlertTitle>{{ batchResultTitle }}</AlertTitle>
+            <AlertDescription>{{ t('topology.batch.resultSummary', { succeeded: batchSucceeded, failed: batchFailed }) }}</AlertDescription>
+          </Alert>
+          <div class="overflow-hidden rounded-md border">
+            <UiTable>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{{ t('topology.batch.columns.target') }}</TableHead>
+                  <TableHead>{{ t('topology.batch.columns.status') }}</TableHead>
+                  <TableHead>{{ t('topology.batch.columns.message') }}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow v-for="target in batchResult.targets || []" :key="target.targetId">
+                  <TableCell class="font-medium">{{ target.name }}</TableCell>
+                  <TableCell><Badge :variant="batchTargetVariant(target.status)">{{ batchTargetStatus(target.status) }}</Badge></TableCell>
+                  <TableCell class="max-w-sm text-sm text-muted-foreground">{{ target.error?.message || target.message || '--' }}</TableCell>
+                </TableRow>
+              </TableBody>
+            </UiTable>
+          </div>
+        </template>
+
+        <template v-else>
+          <FieldGroup>
+            <Field>
+              <FieldLabel>{{ t('topology.batch.action') }}</FieldLabel>
+              <ToggleGroup type="single" :model-value="batchAction" variant="outline" @update:model-value="setBatchAction">
+                <ToggleGroupItem value="start"><Play data-icon="inline-start" />{{ t('topology.batch.actions.start') }}</ToggleGroupItem>
+                <ToggleGroupItem value="stop"><Square data-icon="inline-start" />{{ t('topology.batch.actions.stop') }}</ToggleGroupItem>
+                <ToggleGroupItem value="restart"><RotateCw data-icon="inline-start" />{{ t('topology.batch.actions.restart') }}</ToggleGroupItem>
+                <ToggleGroupItem value="save"><Save data-icon="inline-start" />{{ t('topology.batch.actions.save') }}</ToggleGroupItem>
+              </ToggleGroup>
+              <FieldDescription>{{ t(`topology.batch.actionDescriptions.${batchAction}`) }}</FieldDescription>
+            </Field>
+
+            <div v-if="batchLoadingRooms" class="flex flex-col gap-2" :aria-label="t('topology.batch.loading')">
+              <Skeleton v-for="index in 4" :key="index" class="h-24 w-full" />
+            </div>
+
+            <FieldSet v-for="room in batchRooms" v-else :key="room.id">
+              <div class="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <FieldLegend>{{ room.name }}</FieldLegend>
+                  <FieldDescription>{{ t('topology.batch.roomSummary', { selected: selectedBatchWorlds(room).length, eligible: eligibleBatchWorlds(room).length }) }}</FieldDescription>
+                </div>
+                <UiButton variant="ghost" size="sm" :disabled="eligibleBatchWorlds(room).length === 0 || batchSubmitting" @click="toggleBatchRoom(room)">
+                  {{ isBatchRoomSelected(room) ? t('topology.batch.clearRoom') : t('topology.batch.selectRoom') }}
+                </UiButton>
+              </div>
+              <Alert v-if="room.loadError" variant="destructive">
+                <CircleAlert />
+                <AlertTitle>{{ t('topology.batch.worldsFailed') }}</AlertTitle>
+                <AlertDescription>{{ room.loadError }}</AlertDescription>
+              </Alert>
+              <FieldGroup v-else class="grid gap-2 sm:grid-cols-2">
+                <Field
+                  v-for="world in room.worlds"
+                  :key="world.id"
+                  orientation="horizontal"
+                  :data-disabled="!isBatchWorldEligible(world) || undefined"
+                >
+                  <Checkbox
+                    :id="`batch-${room.id}-${world.id}`"
+                    :model-value="selectedBatchWorlds(room).includes(world.id)"
+                    :disabled="!isBatchWorldEligible(world) || batchSubmitting"
+                    @update:model-value="toggleBatchWorld(room.id, world.id, $event)"
+                  />
+                  <FieldContent>
+                    <FieldLabel :for="`batch-${room.id}-${world.id}`" class="min-w-0 font-normal">
+                      <span class="truncate">{{ world.name }}</span>
+                      <Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world.status, t) }}</Badge>
+                    </FieldLabel>
+                    <FieldDescription>{{ t('topology.batch.runtimeTarget', { name: world.runtimeTargetName || '--' }) }}</FieldDescription>
+                  </FieldContent>
+                </Field>
+              </FieldGroup>
+            </FieldSet>
+          </FieldGroup>
+
+          <Alert>
+            <Cpu />
+            <AlertTitle>{{ t('topology.batch.capacityTitle') }}</AlertTitle>
+            <AlertDescription>{{ t('topology.batch.capacityDescription') }}</AlertDescription>
+          </Alert>
+        </template>
+
+        <DialogFooter>
+          <template v-if="batchResult">
+            <UiButton variant="outline" :disabled="batchRetrying" @click="handleBatchOpenChange(false)">{{ t('common.actions.close') }}</UiButton>
+            <UiButton :disabled="batchRetrying || batchFailed === 0" @click="retryUnsuccessfulBatchTargets">
+              <Spinner v-if="batchRetrying" data-icon="inline-start" />
+              <RotateCw v-else data-icon="inline-start" />
+              {{ t('topology.batch.retryFailed', { count: batchFailed }) }}
+            </UiButton>
+          </template>
+          <template v-else>
+            <UiButton variant="outline" :disabled="batchSubmitting || batchLoadingRooms" @click="handleBatchOpenChange(false)">{{ t('common.actions.cancel') }}</UiButton>
+            <UiButton :disabled="batchSubmitting || batchLoadingRooms || selectedBatchWorldCount === 0" @click="submitBatchAction">
+              <Spinner v-if="batchSubmitting" data-icon="inline-start" />
+              <component :is="batchActionIcon" v-else data-icon="inline-start" />
+              {{ batchSubmitting ? t('topology.batch.submitting') : t('topology.batch.submit', { rooms: selectedBatchRoomCount, worlds: selectedBatchWorldCount }) }}
+            </UiButton>
+          </template>
+        </DialogFooter>
+      </DialogScrollContent>
+    </Dialog>
+
     <AlertDialog v-model:open="overcommitOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -240,9 +365,10 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { CircleAlert, CircleCheck, Cpu, Info, Network, RefreshCw, Save, ScanSearch, TriangleAlert } from '@lucide/vue'
+import { CircleAlert, CircleCheck, Cpu, Info, ListChecks, Network, Play, RefreshCw, RotateCw, Save, ScanSearch, Square, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { topologyV2API } from '@/api/v2'
+import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -256,12 +382,31 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogScrollContent,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { executeWithCapacityConfirmation, isCapacityRiskCanceled } from '@/lib/startCapacityRisk'
+import { attachBatchWorldTargets, selectedBatchRooms, unsuccessfulBatchSelection } from '@/lib/batchRoomActions.mjs'
+import {
+  canRequestStopWorld,
+  canStartWorld,
+  canStopWorld,
+  worldStatusLabel,
+  worldStatusVariant
+} from '@/lib/worldRuntimeStatus.mjs'
 
 const { locale, t } = useI18n()
 const route = useRoute()
@@ -279,6 +424,14 @@ const loading = ref(false)
 const previewing = ref(false)
 const saving = ref(false)
 const overcommitOpen = ref(false)
+const batchOpen = ref(false)
+const batchLoadingRooms = ref(false)
+const batchSubmitting = ref(false)
+const batchRetrying = ref(false)
+const batchAction = ref('start')
+const batchRooms = ref([])
+const batchSelection = ref({})
+const batchResult = ref(null)
 let requestSequence = 0
 
 const displaySnapshot = computed(() => preview.value || topology.value)
@@ -292,6 +445,15 @@ const completeDraft = computed(() => {
   return topology.value.placements.every(placement => Boolean(draftPlacements.value[placement.worldId]))
 })
 const canSubmit = computed(() => isDirty.value && completeDraft.value && !loading.value && !saving.value)
+const selectedBatchRoomCount = computed(() => batchRooms.value.filter(room => selectedBatchWorlds(room).length > 0).length)
+const selectedBatchWorldCount = computed(() => batchRooms.value.reduce((count, room) => count + selectedBatchWorlds(room).length, 0))
+const batchActionIcon = computed(() => ({ start: Play, stop: Square, restart: RotateCw, save: Save }[batchAction.value] || Play))
+const batchSucceeded = computed(() => (batchResult.value?.targets || []).filter(target => target.status === 'succeeded').length)
+const batchFailed = computed(() => (batchResult.value?.targets || []).filter(target => target.status !== 'succeeded').length)
+const batchResultTitle = computed(() => {
+  const outcome = ['full', 'partial', 'none'].includes(batchResult.value?.outcome) ? batchResult.value.outcome : 'none'
+  return t(`topology.batch.outcomes.${outcome}`)
+})
 
 function setTopology(value) {
   topology.value = value
@@ -487,6 +649,155 @@ function formatTime(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return t('topology.time.unavailable')
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(date)
+}
+
+async function openBatchDialog() {
+  batchOpen.value = true
+  batchResult.value = null
+  batchAction.value = 'start'
+  batchSelection.value = {}
+  await loadBatchWorlds()
+}
+
+async function loadBatchWorlds() {
+  batchLoadingRooms.value = true
+  try {
+    const results = await Promise.allSettled(rooms.value.map(room => Promise.all([
+      topologyV2API.worlds(room.id),
+      topologyV2API.get(room.id),
+    ])))
+    batchRooms.value = rooms.value.map((room, index) => {
+      const result = results[index]
+      if (result.status === 'fulfilled') {
+        const [worldsResponse, topologyResponse] = result.value
+        return {
+          ...room,
+          worlds: attachBatchWorldTargets(worldsResponse.items, topologyResponse),
+          loadError: '',
+        }
+      }
+      return { ...room, worlds: [], loadError: result.reason?.message || t('common.errors.unknown') }
+    })
+  } finally {
+    batchLoadingRooms.value = false
+  }
+}
+
+function handleBatchOpenChange(open) {
+  if (!open && (batchSubmitting.value || batchRetrying.value)) return
+  batchOpen.value = open
+  if (!open) {
+    batchResult.value = null
+    batchRooms.value = []
+    batchSelection.value = {}
+  }
+}
+
+function isBatchWorldEligible(world) {
+  if (batchAction.value === 'start') return canStartWorld(world)
+  if (batchAction.value === 'stop') return canRequestStopWorld(world)
+  if (batchAction.value === 'restart') return canStopWorld(world)
+  return batchAction.value === 'save' && world?.status === 'running'
+}
+
+function eligibleBatchWorlds(room) {
+  return (room.worlds || []).filter(isBatchWorldEligible)
+}
+
+function selectedBatchWorlds(room) {
+  return Array.isArray(batchSelection.value[room.id]) ? batchSelection.value[room.id] : []
+}
+
+function isBatchRoomSelected(room) {
+  const eligible = eligibleBatchWorlds(room)
+  const selected = selectedBatchWorlds(room)
+  return eligible.length > 0 && eligible.every(world => selected.includes(world.id))
+}
+
+function setBatchAction(value) {
+  if (!value || value === batchAction.value) return
+  batchAction.value = value
+  const next = {}
+  for (const room of batchRooms.value) {
+    const eligible = new Set(eligibleBatchWorlds(room).map(world => world.id))
+    next[room.id] = selectedBatchWorlds(room).filter(worldID => eligible.has(worldID))
+  }
+  batchSelection.value = next
+}
+
+function toggleBatchRoom(room) {
+  batchSelection.value = {
+    ...batchSelection.value,
+    [room.id]: isBatchRoomSelected(room) ? [] : eligibleBatchWorlds(room).map(world => world.id)
+  }
+}
+
+function toggleBatchWorld(roomID, worldID, checked) {
+  const selected = Array.isArray(batchSelection.value[roomID]) ? batchSelection.value[roomID] : []
+  batchSelection.value = {
+    ...batchSelection.value,
+    [roomID]: checked
+      ? Array.from(new Set([...selected, worldID]))
+      : selected.filter(id => id !== worldID)
+  }
+}
+
+async function submitBatchAction() {
+  const selectedRooms = selectedBatchRooms(batchRooms.value, batchSelection.value)
+  if (selectedRooms.length === 0 || batchSubmitting.value) return
+  batchSubmitting.value = true
+  try {
+    const submitted = await executeWithCapacityConfirmation(allowCapacityRisk => (
+      topologyV2API.batchAction(batchAction.value, selectedRooms, allowCapacityRisk)
+    ))
+    batchResult.value = await waitForV2Job(submitted, 3 * 60 * 1000, undefined, { allowFailure: true })
+    if (batchResult.value.outcome === 'full') {
+      toast.success(t('topology.batch.feedback.completed'))
+    } else {
+      toast.warning(t('topology.batch.feedback.partial'))
+    }
+    if (selectedRoomId.value) await loadTopology()
+  } catch (error) {
+    if (isCapacityRiskCanceled(error)) return
+    toast.error(t('topology.batch.feedback.failed', { error: error.message || t('common.errors.unknown') }))
+  } finally {
+    batchSubmitting.value = false
+  }
+}
+
+async function retryUnsuccessfulBatchTargets() {
+  if (!batchResult.value || batchRetrying.value) return
+  const previousResult = batchResult.value
+  batchRetrying.value = true
+  toast.info(t('topology.batch.feedback.retrying'))
+  try {
+    await loadBatchWorlds()
+    const retrySelection = unsuccessfulBatchSelection(previousResult, batchRooms.value)
+    for (const room of batchRooms.value) {
+      const eligible = new Set(eligibleBatchWorlds(room).map(world => world.id))
+      retrySelection[room.id] = (retrySelection[room.id] || []).filter(worldId => eligible.has(worldId))
+    }
+    batchSelection.value = retrySelection
+    batchResult.value = null
+    if (selectedBatchWorldCount.value === 0) {
+      toast.warning(t('topology.batch.noRetryableTargets'))
+      return
+    }
+    await submitBatchAction()
+  } finally {
+    batchRetrying.value = false
+  }
+}
+
+function batchTargetVariant(status) {
+  if (status === 'succeeded') return 'secondary'
+  if (status === 'failed') return 'destructive'
+  return 'outline'
+}
+
+function batchTargetStatus(status) {
+  const key = ['succeeded', 'failed', 'canceled'].includes(status) ? status : 'unknown'
+  return t(`topology.batch.statuses.${key}`)
 }
 
 onMounted(loadRooms)

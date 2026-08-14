@@ -13,13 +13,68 @@ export const topologyMessages = {
         save: '保存计划',
         saving: '正在保存'
       },
+      batch: {
+        open: '批量操作',
+        title: '跨房间批量操作',
+        description: '按房间选择世界分片。执行前会合并检查所有节点容量，每个房间使用独立租约。',
+        resultTitle: '批量操作结果',
+        resultDescription: '每个世界保留独立结果；部分房间失败不会隐藏其他房间的成功结果。',
+        action: '操作',
+        actions: {
+          start: '启动',
+          stop: '停止',
+          restart: '重启',
+          save: '保存'
+        },
+        actionDescriptions: {
+          start: '仅显示当前可启动的世界。启动后超出建议容量时需要再次确认。',
+          stop: '停止选中的运行中或启动中的世界，并立即中断同房间的待执行启动。',
+          restart: '依次重启选中的运行中世界；每个房间内部会先完成全量预检。',
+          save: '向选中的运行中世界发送保存命令。'
+        },
+        loading: '正在读取所有房间的世界状态',
+        roomSummary: '已选 {selected} / 可操作 {eligible}',
+        selectRoom: '选择可操作项',
+        clearRoom: '清除此房间',
+        runtimeTarget: '运行节点：{name}',
+        worldsFailed: '世界状态加载失败',
+        capacityTitle: '跨房间合并容量预检',
+        capacityDescription: '同一台服务器可以承载同一房间或不同房间的多层世界；同一节点上的所有运行中 Shard 与本次新增 Shard 会合并计算。建议一颗物理核心最多运行一层世界，并额外预留 1 核；超出只告警并要求确认。',
+        submit: '执行 {rooms} 个房间 / {worlds} 个世界',
+        submitting: '正在执行',
+        resultSummary: '成功 {succeeded} 个，未成功 {failed} 个。',
+        retryFailed: '重试未成功项 ({count})',
+        noRetryableTargets: '未成功项的状态已变化，请重新选择可操作的世界。',
+        columns: {
+          target: '房间 / 世界',
+          status: '结果',
+          message: '说明'
+        },
+        outcomes: {
+          full: '全部操作成功',
+          partial: '部分操作完成',
+          none: '操作未完成'
+        },
+        statuses: {
+          succeeded: '成功',
+          failed: '失败',
+          canceled: '已取消',
+          unknown: '未知'
+        },
+        feedback: {
+          completed: '批量操作已全部完成',
+          partial: '批量操作部分完成，请检查逐世界结果',
+          retrying: '正在重新读取世界状态并重试未成功项',
+          failed: '批量操作失败：{error}'
+        }
+      },
       policy: {
         title: '同机多房间与多层世界容量建议',
         description: '同一服务器可以运行多个房间和多个世界分片。保守建议一颗物理核心最多运行一层世界，并额外为系统、Agent、SteamCMD 与备份至少预留 1 核；超出时可能卡顿。该规则只告警，不是硬限制或性能保证。'
       },
       planning: {
-        title: '远程执行尚未开放',
-        description: '这里保存的是期望运行位置，不会迁移存档、停止当前分片或在远程节点启动进程。完成类型化控制、租约与 fencing 前，实际生效位置保持不变。'
+        title: '放置变更仍需迁移流程',
+        description: '系统已能按当前生效位置控制本机与 Agent 上的分片，但这里保存的期望位置不会直接迁移存档或改变生效位置。只有迁移成功后才会更新当前生效节点。'
       },
       capacity: {
         title: '节点容量',
@@ -131,13 +186,68 @@ export const topologyMessages = {
         save: 'Save plan',
         saving: 'Saving'
       },
+      batch: {
+        open: 'Batch actions',
+        title: 'Cross-room batch action',
+        description: 'Select world Shards by room. Node capacity is evaluated across the entire batch, while each room keeps an independent lease.',
+        resultTitle: 'Batch action results',
+        resultDescription: 'Every world keeps an independent result, and failures in one room do not hide successes in another.',
+        action: 'Action',
+        actions: {
+          start: 'Start',
+          stop: 'Stop',
+          restart: 'Restart',
+          save: 'Save'
+        },
+        actionDescriptions: {
+          start: 'Only startable worlds are shown. Starting beyond recommended capacity requires another confirmation.',
+          stop: 'Stop selected running or starting worlds and immediately interrupt pending starts in the same room.',
+          restart: 'Restart selected running worlds in order after completing each room preflight.',
+          save: 'Send a save command to the selected running worlds.'
+        },
+        loading: 'Loading world state for all rooms',
+        roomSummary: '{selected} selected / {eligible} available',
+        selectRoom: 'Select available',
+        clearRoom: 'Clear room',
+        runtimeTarget: 'Runtime node: {name}',
+        worldsFailed: 'Failed to load world state',
+        capacityTitle: 'Merged cross-room capacity preflight',
+        capacityDescription: 'One server may host multiple Shards from the same room or different rooms. All running Shards and all Shards added by this batch are counted together per node. Run at most one Shard per physical core and reserve one additional core. Exceeding this guidance warns and requires confirmation.',
+        submit: 'Run for {rooms} rooms / {worlds} worlds',
+        submitting: 'Running action',
+        resultSummary: '{succeeded} succeeded and {failed} did not succeed.',
+        retryFailed: 'Retry unsuccessful ({count})',
+        noRetryableTargets: 'The unsuccessful targets changed state. Select the worlds that are still actionable.',
+        columns: {
+          target: 'Room / world',
+          status: 'Result',
+          message: 'Details'
+        },
+        outcomes: {
+          full: 'All actions succeeded',
+          partial: 'Batch partially completed',
+          none: 'Batch did not complete'
+        },
+        statuses: {
+          succeeded: 'Succeeded',
+          failed: 'Failed',
+          canceled: 'Canceled',
+          unknown: 'Unknown'
+        },
+        feedback: {
+          completed: 'The batch action completed',
+          partial: 'The batch partially completed. Review the per-world results.',
+          retrying: 'Refreshing world state and retrying unsuccessful targets',
+          failed: 'Batch action failed: {error}'
+        }
+      },
       policy: {
         title: 'Capacity guidance for multiple rooms and Shards',
         description: 'One server may run multiple rooms and Shards. Conservatively, run at most one Shard per physical core and reserve at least one additional core for the OS, Agent, SteamCMD, and backups. Exceeding this budget may cause lag. This is advisory, not a hard limit or a performance guarantee.'
       },
       planning: {
-        title: 'Remote execution is not enabled',
-        description: 'This page saves desired placement only. It will not migrate saves, stop current Shards, or start remote processes. Applied placement remains unchanged until typed control, leases, and fencing are complete.'
+        title: 'Placement changes still require migration',
+        description: 'The system can control local and Agent-hosted Shards at their applied locations. Desired placement saved here does not migrate saves or change the applied target; the applied location changes only after a migration succeeds.'
       },
       capacity: {
         title: 'Node capacity',

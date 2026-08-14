@@ -11,7 +11,7 @@ function delay(milliseconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
-export async function waitForV2Job(job, timeout = 60000, onUpdate) {
+export async function waitForV2Job(job, timeout = 60000, onUpdate, options = {}) {
   if (!job?.id) throw adapterError('JOB_ID_MISSING')
   const deadline = Date.now() + timeout
   let current = job
@@ -22,7 +22,7 @@ export async function waitForV2Job(job, timeout = 60000, onUpdate) {
     current = await jobsV2API.get(job.id)
     if (typeof onUpdate === 'function') onUpdate(current)
   }
-  if (current.status !== 'succeeded') {
+  if (current.status !== 'succeeded' && options.allowFailure !== true) {
     const code = current.status === 'canceled' ? 'JOB_CANCELED' : 'JOB_FAILED'
     const failure = jobFailure(current)
     throw adapterError(code, {

@@ -183,7 +183,7 @@ export const roomsV2API = {
   action: (roomId, action, worldIds = [], options = {}) => client.post(`/rooms/${encode(roomId)}/actions/${encode(action)}`, {
     worldIds,
     ...(options.allowCapacityRisk === true ? { allowCapacityRisk: true } : {})
-  })
+  }, { runtimeTarget: false })
 }
 
 export const topologyV2API = {
@@ -195,6 +195,14 @@ export const topologyV2API = {
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
+  worlds: roomId => client.get(`/rooms/${encode(roomId)}/worlds`, {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  batchAction: (action, rooms, allowCapacityRisk = false) => client.post(`/rooms/actions/${encode(action)}`, {
+    rooms,
+    ...(allowCapacityRisk === true ? { allowCapacityRisk: true } : {})
+  }, { runtimeTarget: false }),
   preview: (roomId, input) => client.post(`/rooms/${encode(roomId)}/topology/preview`, input, { runtimeTarget: false }),
   update: (roomId, input) => client.put(`/rooms/${encode(roomId)}/topology`, input, { runtimeTarget: false })
 }
