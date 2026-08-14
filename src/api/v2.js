@@ -70,7 +70,11 @@ const client = axios.create({
 
 client.interceptors.request.use(config => {
   const method = (config.method || 'get').toUpperCase()
-  config.headers['X-DST-Runtime-Target'] = getActiveRuntimeTarget().id
+  if (config.runtimeTarget === false) {
+    delete config.headers['X-DST-Runtime-Target']
+  } else {
+    config.headers['X-DST-Runtime-Target'] = getActiveRuntimeTarget().id
+  }
   if (['GET', 'HEAD'].includes(method)) {
     config.headers['Cache-Control'] = 'no-store'
     config.headers.Pragma = 'no-cache'
@@ -179,6 +183,19 @@ export const roomsV2API = {
   action: (roomId, action, worldIds = []) => client.post(`/rooms/${encode(roomId)}/actions/${encode(action)}`, {
     worldIds
   })
+}
+
+export const topologyV2API = {
+  rooms: () => client.get('/rooms', {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  get: roomId => client.get(`/rooms/${encode(roomId)}/topology`, {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  preview: (roomId, input) => client.post(`/rooms/${encode(roomId)}/topology/preview`, input, { runtimeTarget: false }),
+  update: (roomId, input) => client.put(`/rooms/${encode(roomId)}/topology`, input, { runtimeTarget: false })
 }
 
 export const runtimeV2API = {

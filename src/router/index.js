@@ -134,6 +134,12 @@ export const constantRoutes = [
         meta: { title: '房间设置', titleKey: 'navigation.roomSettings', icon: 'setting' }
       },
       {
+        path: 'topology',
+        component: () => import('@/views/rooms/RoomTopology.vue'),
+        name: 'RoomTopology',
+        meta: { title: '运行拓扑', titleKey: 'navigation.roomTopology', icon: 'connection' }
+      },
+      {
         path: 'special-lists',
         component: () => import('@/views/rooms/SpecialLists.vue'),
         name: 'SpecialLists',

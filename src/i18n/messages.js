@@ -12,6 +12,7 @@ import { modMessages } from './modMessages.js'
 import { playerMessages } from './playerMessages.js'
 import { serverMessages } from './serverMessages.js'
 import { systemSettingsMessages } from './systemSettingsMessages.js'
+import { topologyMessages } from './topologyMessages.js'
 import { roomsMessages } from './roomsMessages.js'
 import { runtimeMessages } from './runtimeMessages.js'
 import { recoveryMessages } from './recoveryMessages.js'
@@ -35,6 +36,7 @@ export const messages = {
     ...playerMessages['zh-CN'],
     ...serverMessages['zh-CN'],
     ...systemSettingsMessages['zh-CN'],
+    ...topologyMessages['zh-CN'],
     ...roomsMessages['zh-CN'],
     ...runtimeMessages['zh-CN'],
     ...recoveryMessages['zh-CN'],
@@ -177,6 +179,7 @@ export const messages = {
       rooms: '房间管理',
       roomList: '房间列表',
       roomSettings: '房间设置',
+      roomTopology: '运行拓扑',
       specialLists: '特殊名单',
       serverToken: '服务器令牌',
       agents: 'Agent 管理',
@@ -526,6 +529,7 @@ export const messages = {
     ...playerMessages['en-US'],
     ...serverMessages['en-US'],
     ...systemSettingsMessages['en-US'],
+    ...topologyMessages['en-US'],
     ...roomsMessages['en-US'],
     ...runtimeMessages['en-US'],
     ...recoveryMessages['en-US'],
@@ -668,6 +672,7 @@ export const messages = {
       rooms: 'Rooms',
       roomList: 'Room list',
       roomSettings: 'Room settings',
+      roomTopology: 'Runtime topology',
       specialLists: 'Access lists',
       serverToken: 'Cluster token',
       agents: 'Agents',
