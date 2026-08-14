@@ -65,31 +65,48 @@
 
     <template v-else-if="selectedRoom">
       <section class="status-strip" :aria-label="$t('servers.workspace.overview.label')">
-        <Card>
-          <CardHeader><CardTitle>{{ $t('servers.workspace.overview.worldStatus') }}</CardTitle><CardDescription>{{ $t('servers.workspace.overview.runningShards', { count: runningWorlds.length }) }}</CardDescription></CardHeader>
-          <CardContent class="status-content"><strong>{{ runningWorlds.length }}<span>/ {{ worlds.length }}</span></strong></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>{{ $t('servers.workspace.overview.onlinePlayers') }}</CardTitle><CardDescription>{{ contextErrors.players ? $t('servers.workspace.states.readFailed') : $t('servers.workspace.overview.totalPlayers', { count: playerStats ? playerStats.total_count : '--' }) }}</CardDescription></CardHeader>
-          <CardContent class="status-content"><strong>{{ playerStats ? playerStats.online_count : '--' }}<span>{{ $t('servers.workspace.units.players') }}</span></strong></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>{{ $t('servers.workspace.overview.diskUsage') }}</CardTitle><CardDescription>{{ $t('servers.workspace.overview.diskFree', { value: formatDisk(systemStatus.free_disk) }) }}</CardDescription></CardHeader>
-          <CardContent class="status-content"><strong>{{ formatPercent(systemStatus.disk_usage) }}</strong></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>{{ $t('servers.workspace.backups.latest') }}</CardTitle><CardDescription>{{ contextErrors.backups ? $t('servers.workspace.states.readFailed') : (latestBackup?.size_formatted || $t('servers.workspace.states.noRecords')) }}</CardDescription></CardHeader>
-          <CardContent class="status-content"><strong class="status-time">{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</strong></CardContent>
+        <Card size="sm" class="status-card">
+          <CardHeader class="sr-only"><CardTitle>{{ $t('servers.workspace.overview.label') }}</CardTitle></CardHeader>
+          <CardContent class="status-summary">
+            <div class="status-metric">
+              <span class="status-label">{{ $t('servers.workspace.overview.worldStatus') }}</span>
+              <div class="status-line">
+                <strong>{{ runningWorlds.length }}<span>/ {{ worlds.length }}</span></strong>
+                <span class="status-detail">{{ $t('servers.workspace.overview.runningShards', { count: runningWorlds.length }) }}</span>
+              </div>
+            </div>
+            <div class="status-metric">
+              <span class="status-label">{{ $t('servers.workspace.overview.onlinePlayers') }}</span>
+              <div class="status-line">
+                <strong>{{ playerStats ? playerStats.online_count : '--' }}<span>{{ $t('servers.workspace.units.players') }}</span></strong>
+                <span class="status-detail">{{ contextErrors.players ? $t('servers.workspace.states.readFailed') : $t('servers.workspace.overview.totalPlayers', { count: playerStats ? playerStats.total_count : '--' }) }}</span>
+              </div>
+            </div>
+            <div class="status-metric">
+              <span class="status-label">{{ $t('servers.workspace.overview.diskUsage') }}</span>
+              <div class="status-line">
+                <strong>{{ formatPercent(systemStatus.disk_usage) }}</strong>
+                <span class="status-detail">{{ $t('servers.workspace.overview.diskFree', { value: formatDisk(systemStatus.free_disk) }) }}</span>
+              </div>
+            </div>
+            <div class="status-metric">
+              <span class="status-label">{{ $t('servers.workspace.backups.latest') }}</span>
+              <div class="status-line">
+                <strong>{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</strong>
+                <span class="status-detail">{{ contextErrors.backups ? $t('servers.workspace.states.readFailed') : (latestBackup?.size_formatted || $t('servers.workspace.states.noRecords')) }}</span>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       </section>
 
-      <Card>
+      <Card size="sm" class="world-card">
         <CardHeader>
           <CardTitle>{{ $t('servers.workspace.worlds.title') }}</CardTitle>
           <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || $t('servers.workspace.worlds.description') }}</CardDescription>
           <CardAction><UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />{{ $t('servers.workspace.worlds.roomSettings') }}</UiButton></CardAction>
         </CardHeader>
-        <CardContent>
+        <CardContent class="world-card-content">
 
         <div v-if="worlds.length" class="world-grid">
           <article
@@ -211,7 +228,7 @@
       </Card>
 
       <div class="workspace-grid">
-        <Card>
+        <Card size="sm">
           <CardHeader>
             <CardTitle>{{ $t('servers.workspace.operations.title') }}</CardTitle>
             <CardDescription>{{ $t('servers.workspace.operations.description') }}</CardDescription>
@@ -289,7 +306,7 @@
 
         <aside class="context-rail" :aria-busy="contextLoading">
           <div v-if="contextLoading" class="panel-loading"><Spinner /><span>{{ $t('servers.workspace.context.loading') }}</span></div>
-          <Card>
+          <Card size="sm">
             <CardHeader>
               <CardTitle>{{ $t('servers.workspace.players.title') }}</CardTitle>
               <CardDescription>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.onlineCount', { count: playerStats.online_count }) : $t('servers.workspace.states.statusUnavailable')) }}</CardDescription>
@@ -325,7 +342,7 @@
             </CardContent>
           </Card>
 
-          <Card>
+          <Card size="sm">
             <CardHeader>
               <CardTitle>{{ $t('servers.workspace.backups.latest') }}</CardTitle>
               <CardDescription>{{ contextErrors.backups ? $t('servers.workspace.states.listReadFailed') : $t('servers.workspace.backups.recordCount', { count: backups.length }) }}</CardDescription>
@@ -352,7 +369,7 @@
             </CardContent>
           </Card>
 
-          <Card>
+          <Card size="sm">
             <CardHeader><CardTitle>{{ $t('servers.workspace.quickNav.title') }}</CardTitle><CardDescription>{{ $t('servers.workspace.quickNav.description') }}</CardDescription></CardHeader>
             <CardContent><nav class="quick-nav" :aria-label="$t('servers.workspace.quickNav.label')">
             <UiButton variant="ghost" @click="openPlayers">
@@ -967,7 +984,7 @@ export default {
 .workspace-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   min-width: 0;
 }
 
@@ -1033,33 +1050,69 @@ export default {
 }
 
 .status-strip {
+  min-width: 0;
+}
+
+.status-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  padding: 0;
 }
 
-.status-content {
+.status-metric {
+  min-width: 0;
+  padding: 12px 18px;
+}
+
+.status-metric + .status-metric {
+  border-inline-start: 1px solid var(--border);
+}
+
+.status-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.status-line {
   display: flex;
-  min-height: 64px;
-  align-items: flex-end;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
 }
 
-.status-content strong {
+.status-line strong {
+  flex: 0 0 auto;
   color: var(--foreground);
-  font-size: 30px;
+  font-size: 22px;
+  line-height: 28px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.status-content strong span {
-  margin-left: 6px;
+.status-line strong span {
+  margin-left: 4px;
   color: var(--muted-foreground);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
 }
 
-.status-content .status-time {
-  font-size: 20px;
+.status-detail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.world-card-content {
+  padding-top: 0;
 }
 
 .world-grid {
@@ -1071,11 +1124,11 @@ export default {
 .world-item {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(240px, 0.8fr) auto;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(420px, 1.25fr) auto;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
-  padding: 14px 0;
+  padding: 10px 0;
   cursor: pointer;
   background: transparent;
   border-bottom: 1px solid var(--border);
@@ -1132,11 +1185,12 @@ export default {
 }
 
 .world-name-row {
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
 }
 
 .world-name-row strong {
+  min-width: 0;
   overflow: hidden;
   color: var(--foreground);
   font-size: 14px;
@@ -1164,8 +1218,8 @@ export default {
 
 .world-facts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(72px, 1fr));
+  gap: 12px;
   margin: 0;
 }
 
@@ -1198,7 +1252,7 @@ export default {
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
-  gap: 24px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -1383,8 +1437,31 @@ export default {
 }
 
 @media (max-width: 1100px) {
-  .status-strip {
+  .status-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .status-metric:nth-child(3) {
+    border-inline-start: 0;
+  }
+
+  .status-metric:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+
+  .world-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .world-facts {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-left: 46px;
+  }
+
+  .world-actions {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .workspace-grid {
@@ -1419,10 +1496,6 @@ export default {
     width: auto;
   }
 
-  .status-strip {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .context-rail {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1432,10 +1505,16 @@ export default {
   }
 
   .world-facts {
+    grid-column: auto;
+    grid-row: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 2px 0;
+    padding-left: 46px;
   }
 
   .world-actions {
+    grid-column: auto;
+    grid-row: auto;
     padding-top: 10px;
     border-top: 1px solid var(--border);
   }
@@ -1454,6 +1533,12 @@ export default {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+}
+
+@media (max-width: 520px) {
+  .world-facts {
+    padding-left: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
