@@ -42,3 +42,11 @@ test('server workspace keeps operational summaries inline and world facts on sta
   assert.match(source, /grid-template-columns: repeat\(4, minmax\(72px, 1fr\)\)/)
   assert.doesNotMatch(source, /class="status-card"/)
 })
+
+test('server workspace does not reserve visible space for redundant operation copy', async () => {
+  const source = await readFile(sourceUrl, 'utf8')
+
+  assert.match(source, /<CardHeader class="sr-only">\s*<CardTitle>\{\{ \$t\('servers\.workspace\.operations\.title'\) \}\}<\/CardTitle>/)
+  assert.match(source, /<CardContent class="operation-content"><Tabs/)
+  assert.match(source, /\.operation-content \{\s*padding-top: 12px;/)
+})

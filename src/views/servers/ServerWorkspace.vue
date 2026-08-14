@@ -220,11 +220,11 @@
 
       <div class="workspace-grid">
         <Card size="sm">
-          <CardHeader>
+          <CardHeader class="sr-only">
             <CardTitle>{{ $t('servers.workspace.operations.title') }}</CardTitle>
             <CardDescription>{{ $t('servers.workspace.operations.description') }}</CardDescription>
           </CardHeader>
-          <CardContent><Tabs v-model="activeOperation" class="operation-tabs">
+          <CardContent class="operation-content"><Tabs v-model="activeOperation" class="operation-tabs">
             <TabsList>
               <TabsTrigger value="logs"><FileText />{{ $t('servers.workspace.operations.liveLogs') }}</TabsTrigger>
               <TabsTrigger value="console"><Terminal />{{ $t('servers.workspace.console.title') }}</TabsTrigger>
@@ -1278,6 +1278,10 @@ export default {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   gap: 16px;
   align-items: start;
+}
+
+.operation-content {
+  padding-top: 12px;
 }
 
 .tab-label {
