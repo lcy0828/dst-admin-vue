@@ -526,6 +526,8 @@ export const legacySystemApi = {
   async getGameVersion() {
     const version = await gameV2API.version()
     const checkError = version.checkError || null
+    const officialCheckError = version.officialCheckError || null
+    const officialRelease = version.officialRelease
     const capabilities = gameUpdateCapabilities(version)
     const installed = typeof version.installed === 'boolean'
       ? version.installed
@@ -547,6 +549,16 @@ export const legacySystemApi = {
         checked_at: version.checkedAt || null,
         check_error: checkError
       },
+      official: officialRelease ? {
+        version: officialRelease.version || null,
+        release_id: officialRelease.releaseId || null,
+        published_at: officialRelease.publishedAt || null,
+        update_url: officialRelease.url || null,
+        source: officialRelease.source || null,
+        checked_at: officialRelease.checkedAt || null,
+        stale: officialRelease.stale === true,
+        check_error: officialCheckError
+      } : null,
       installed,
       app_id: version.appId || null,
       install_path: version.installPath || null,
@@ -555,6 +567,7 @@ export const legacySystemApi = {
       steamcmd_available: capabilities.steamcmdAvailable,
       steamcmd_path: version.steamcmdPath || null,
       check_error: checkError,
+      official_check_error: officialCheckError,
       checked_at: version.checkedAt || null
     }, 'game_version_status_loaded')
   },

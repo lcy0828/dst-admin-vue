@@ -4,11 +4,11 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   Activity,
-  ChevronRight,
   CircleAlert,
   CirclePlay,
   Cpu,
   Download,
+  ExternalLink,
   FolderPlus,
   Gauge,
   HardDrive,
@@ -126,6 +126,11 @@ const selectedWorlds = computed(() => (selectedRoom.value?.worlds || []).filter(
   selectedWorldIds.value.includes(String(world.id)) && canStartWorld(world)
 )))
 const canStartRoom = computed(() => Boolean(selectedRoom.value && selectedWorlds.value.length && !serverLoading.value))
+const steamUpdateStatusKey = computed(() => {
+  if (versionInfo.value.latest?.up_to_date === false) return 'dashboard.version.updateAvailable'
+  if (versionInfo.value.latest?.up_to_date === true) return 'dashboard.version.upToDate'
+  return 'dashboard.version.updateStateUnknown'
+})
 
 function openStartDialog() {
   const firstRoom = roomList.value[0]
@@ -368,18 +373,43 @@ onMounted(() => {
           <CardContent class="flex flex-col gap-4 pt-1">
             <Alert v-if="versionError" variant="destructive"><CircleAlert /><AlertTitle>{{ t('dashboard.version.loadFailed') }}</AlertTitle><AlertDescription>{{ versionError }}</AlertDescription></Alert>
             <template v-else>
-              <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-                <div class="flex min-w-0 flex-col gap-1"><span class="text-muted-foreground text-xs">{{ t('dashboard.version.current') }}</span><strong class="truncate tabular-nums">{{ versionInfo.local?.version || '--' }}</strong><Badge :variant="versionInfo.installed ? 'secondary' : 'outline'" class="self-start">{{ t(versionInfo.installed ? 'dashboard.version.installed' : 'dashboard.version.notInstalled') }}</Badge></div>
-                <ChevronRight class="text-muted-foreground size-4" />
-                <div class="flex min-w-0 flex-col gap-1"><span class="text-muted-foreground text-xs">{{ t('dashboard.version.latest') }}</span><strong class="truncate tabular-nums">{{ versionInfo.latest?.version || '--' }}</strong><Badge :variant="isVersionOutdated ? 'destructive' : 'outline'" class="self-start">{{ t(isVersionOutdated ? 'dashboard.version.updateAvailable' : 'dashboard.version.upToDate') }}</Badge></div>
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <span class="text-muted-foreground text-xs">{{ t('dashboard.version.officialGame') }}</span>
+                  <strong class="truncate text-xl font-semibold tabular-nums">{{ versionInfo.official?.version || '--' }}</strong>
+                  <span v-if="versionInfo.official" class="text-muted-foreground text-xs">{{ t('dashboard.version.releaseMeta', { releaseId: versionInfo.official.release_id || '--', time: formatDateTime(versionInfo.official.published_at, locale) }) }}</span>
+                </div>
+                <div v-if="versionInfo.official" class="flex shrink-0 items-center gap-1.5">
+                  <Badge :variant="versionInfo.official?.stale ? 'outline' : 'secondary'">{{ t(versionInfo.official?.stale ? 'dashboard.version.cached' : 'dashboard.version.officialSource') }}</Badge>
+                  <Tooltip v-if="versionInfo.official?.update_url">
+                    <TooltipTrigger as-child><Button variant="ghost" size="icon-sm" as-child><a :href="versionInfo.official.update_url" target="_blank" rel="noopener noreferrer" :aria-label="t('dashboard.version.openRelease')"><ExternalLink /></a></Button></TooltipTrigger>
+                    <TooltipContent>{{ t('dashboard.version.openRelease') }}</TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
+              <Alert v-if="versionInfo.official_check_error"><CircleAlert /><AlertTitle>{{ t('dashboard.version.officialCheckFailed') }}</AlertTitle><AlertDescription>{{ versionInfo.official?.stale ? t('dashboard.version.cachedDescription') : versionInfo.official_check_error }}</AlertDescription></Alert>
+              <Separator />
+              <div class="grid grid-cols-2 gap-4">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <span class="text-muted-foreground text-xs">{{ t('dashboard.version.localSteamBuild') }}</span>
+                  <strong class="truncate tabular-nums">{{ versionInfo.local?.version || '--' }}</strong>
+                  <Badge :variant="versionInfo.installed ? 'secondary' : 'outline'" class="self-start">{{ t(versionInfo.installed ? 'dashboard.version.installed' : 'dashboard.version.notInstalled') }}</Badge>
+                </div>
+                <div class="flex min-w-0 flex-col gap-1">
+                  <span class="text-muted-foreground text-xs">{{ t('dashboard.version.steamUpdateState') }}</span>
+                  <strong>{{ t(steamUpdateStatusKey) }}</strong>
+                  <span class="text-muted-foreground truncate text-xs">{{ t('dashboard.version.steamTargetBuild', { version: versionInfo.latest?.version || '--' }) }}</span>
+                </div>
+              </div>
+              <Alert v-if="versionInfo.check_error"><CircleAlert /><AlertTitle>{{ t('dashboard.version.steamCheckFailed') }}</AlertTitle><AlertDescription>{{ versionInfo.check_error }}</AlertDescription></Alert>
               <p class="text-muted-foreground truncate text-xs" :title="versionInfo.install_path">{{ versionInfo.install_path || t('dashboard.version.installPathMissing') }}</p>
+              <p class="text-muted-foreground text-xs">{{ t('dashboard.version.checkedAt', { time: formatDateTime(versionInfo.checked_at, locale) }) }}</p>
               <Alert v-if="versionInfo.update_method === 'steam-client'"><CircleAlert /><AlertTitle>{{ t('dashboard.version.steamManaged') }}</AlertTitle><AlertDescription>{{ t('dashboard.version.steamManagedDescription') }}</AlertDescription></Alert>
               <Alert v-else-if="versionInfo.installed && !versionInfo.update_supported"><CircleAlert /><AlertTitle>{{ t('dashboard.version.panelUnavailable') }}</AlertTitle><AlertDescription>{{ t(versionInfo.steamcmd_available ? 'dashboard.version.unsupportedInstall' : 'dashboard.version.steamcmdMissing') }}</AlertDescription></Alert>
               <div v-if="updateStatus" class="bg-muted flex flex-col gap-2 rounded-md p-3"><span class="text-sm font-medium">{{ t(updateStatus.is_completed ? 'dashboard.version.updateCompleted' : (updateStatus.is_running ? 'dashboard.version.updating' : 'dashboard.version.waiting')) }}</span><Progress v-if="hasMetric(updateStatus.progress)" :model-value="Number(updateStatus.progress)" /><p v-if="updateStatus.last_output" class="text-muted-foreground break-all text-xs">{{ updateStatus.last_output }}</p><p v-if="updateStatus.error" class="text-destructive text-xs">{{ updateStatus.error }}</p></div>
             </template>
           </CardContent>
-          <CardFooter v-if="canUpdateGame"><Button size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><Download v-else data-icon="inline-start" />{{ t(gameUpdateBusy ? 'dashboard.version.updateButtonBusy' : 'dashboard.version.updateButton') }}</Button></CardFooter>
+          <CardFooter v-if="canUpdateGame && isVersionOutdated"><Button size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><Download v-else data-icon="inline-start" />{{ t(gameUpdateBusy ? 'dashboard.version.updateButtonBusy' : 'dashboard.version.updateButton') }}</Button></CardFooter>
         </Card>
       </aside>
     </div>

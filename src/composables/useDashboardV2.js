@@ -14,6 +14,7 @@ import { toast } from 'vue-sonner'
 const emptyVersion = () => ({
   local: null,
   latest: null,
+  official: null,
   installed: false,
   app_id: null,
   install_path: null,
@@ -21,6 +22,7 @@ const emptyVersion = () => ({
   update_supported: false,
   steamcmd_available: false,
   check_error: null,
+  official_check_error: null,
   checked_at: null
 })
 
@@ -55,13 +57,8 @@ export function useDashboardV2() {
     systemLoading.value || serverLoading.value || playerLoading.value || versionLoading.value
   ))
   const isVersionOutdated = computed(() => {
-    const localValue = String(versionInfo.value.local?.version || '').trim()
-    const latestValue = String(versionInfo.value.latest?.version || '').trim()
-    if (!versionInfo.value.installed || !localValue || !latestValue) return false
-    if (typeof versionInfo.value.latest?.up_to_date === 'boolean') return !versionInfo.value.latest.up_to_date
-    const local = Number(localValue)
-    const latest = Number(latestValue)
-    return Number.isFinite(local) && Number.isFinite(latest) && local < latest
+    if (!versionInfo.value.installed) return false
+    return versionInfo.value.latest?.up_to_date === false
   })
   const canUpdateGame = computed(() => Boolean(
     versionInfo.value.installed &&
