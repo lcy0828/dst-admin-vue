@@ -62,3 +62,14 @@ test('server workspace consolidates room context into one compact card', async (
   assert.match(source, /class="context-section context-section-quick"/)
   assert.doesNotMatch(source, /\$t\('servers\.workspace\.quickNav\.description'\)/)
 })
+
+test('server workspace keeps context lists bounded and uses static realm icons', async () => {
+  const source = await readFile(sourceUrl, 'utf8')
+
+  assert.match(source, /const CONTEXT_PLAYER_LIMIT = 5/)
+  assert.match(source, /const CONTEXT_BACKUP_LIMIT = 3/)
+  assert.match(source, /recent_players\?\.slice\(0, CONTEXT_PLAYER_LIMIT\)/)
+  assert.match(source, /return this\.backups\.slice\(0, CONTEXT_BACKUP_LIMIT\)/)
+  assert.match(source, /\? Pickaxe : TreePine/)
+  assert.doesNotMatch(source, /\? Moon : Sun/)
+})

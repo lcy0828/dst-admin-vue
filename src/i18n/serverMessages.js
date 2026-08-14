@@ -22,7 +22,7 @@ export const serverMessages = {
         loadFailed: '运行事件读取失败',
         empty: '暂无运行事件',
         emptyDescription: '从现在起发生的启动、停止和异常退出会记录在这里。',
-        columns: { time: '时间', world: '世界', event: '事件', source: '来源', transition: '状态变化', reason: '原因', trace: '关联记录' },
+        columns: { time: '时间', world: '世界', event: '事件', source: '来源', transition: '状态变化', context: '世界与来源', lifecycle: '事件与状态', reason: '原因', trace: '关联记录' },
         events: {
           start_requested: '请求启动', stop_requested: '请求停止', restart_requested: '请求重启', cleanup_requested: '请求清理',
           session_started: '会话已创建', running: '运行就绪', failed: '启动失败', stopped: '正常退出', unexpected_exit: '异常退出', unknown: '未知事件'
@@ -368,7 +368,7 @@ export const serverMessages = {
         loadFailed: 'Could not load runtime events',
         empty: 'No runtime events',
         emptyDescription: 'Start, stop, and unexpected-exit events occurring from now on will appear here.',
-        columns: { time: 'Time', world: 'World', event: 'Event', source: 'Source', transition: 'State change', reason: 'Reason', trace: 'Trace' },
+        columns: { time: 'Time', world: 'World', event: 'Event', source: 'Source', transition: 'State change', context: 'World and source', lifecycle: 'Event and state', reason: 'Reason', trace: 'Trace' },
         events: {
           start_requested: 'Start requested', stop_requested: 'Stop requested', restart_requested: 'Restart requested', cleanup_requested: 'Cleanup requested',
           session_started: 'Session created', running: 'Runtime ready', failed: 'Startup failed', stopped: 'Expected exit', unexpected_exit: 'Unexpected exit', unknown: 'Unknown event'

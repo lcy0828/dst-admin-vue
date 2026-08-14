@@ -176,7 +176,7 @@ onBeforeUnmount(() => {
       @logout="logout"
     />
     <SidebarInset class="min-w-0">
-      <header class="bg-background/95 sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
+      <header class="bg-background/95 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
         <SidebarTrigger />
         <Separator orientation="vertical" class="mr-1 h-4" />
         <Breadcrumb class="hidden md:block">

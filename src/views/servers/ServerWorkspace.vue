@@ -359,7 +359,7 @@
                   </UiButton>
                 </header>
                 <div v-if="backups.length" class="backup-list">
-                  <div v-for="backup in backups.slice(0, 3)" :key="backup.id || backup.name" class="backup-row">
+                  <div v-for="backup in visibleBackups" :key="backup.id || backup.name" class="backup-row">
                     <FileCheck2 />
                     <span>
                       <strong :title="backup.name">{{ backup.name }}</strong>
@@ -445,8 +445,8 @@ import {
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
   ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
-  FileText, Globe2, Moon, PackageOpen, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
-  Settings, Square, Sun, Terminal, User
+  FileText, Globe2, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
+  Settings, Square, Terminal, TreePine, User
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
@@ -455,6 +455,9 @@ const KNOWN_CHARACTERS = new Set([
   'waxwell', 'wathgrithr', 'webber', 'winona', 'wortox', 'wormwood', 'warly', 'wurt',
   'walter', 'wanda', 'wonkey'
 ])
+
+const CONTEXT_PLAYER_LIMIT = 5
+const CONTEXT_BACKUP_LIMIT = 3
 
 export default {
   name: 'ServerWorkspace',
@@ -490,8 +493,8 @@ export default {
     FileCheck2,
     FileText,
     Globe2,
-    Moon,
     PackageOpen,
+    Pickaxe,
     Play,
     RefreshCw,
     RotateCw,
@@ -508,7 +511,6 @@ export default {
     Settings,
     Spinner,
     Square,
-    Sun,
     Tabs,
     TabsContent,
     TabsList,
@@ -517,6 +519,7 @@ export default {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
+    TreePine,
     UiButton,
     UiSelect,
     UiTextarea,
@@ -575,7 +578,10 @@ export default {
       return this.worlds.filter(world => world.status === 'running')
     },
     recentPlayers() {
-      return this.playerStats?.recent_players?.slice(0, 5) || []
+      return this.playerStats?.recent_players?.slice(0, CONTEXT_PLAYER_LIMIT) || []
+    },
+    visibleBackups() {
+      return this.backups.slice(0, CONTEXT_BACKUP_LIMIT)
     },
     latestBackup() {
       return this.backups[0] || null
@@ -899,7 +905,7 @@ export default {
       })
     },
     worldIcon(world) {
-      return ['cave', 'caves'].includes(world.type || world.role) ? Moon : Sun
+      return ['cave', 'caves'].includes(world.type || world.role) ? Pickaxe : TreePine
     },
     worldTone(world) {
       return ['cave', 'caves'].includes(world.type || world.role) ? 'cave' : 'forest'

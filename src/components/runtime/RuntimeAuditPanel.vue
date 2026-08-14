@@ -62,6 +62,13 @@ function worldLabel(event) {
   return world?.name || event.worldDirectory || event.worldId || '--'
 }
 
+function traceItems(event) {
+  return [
+    event.jobId ? { label: t('runtimeAudit.history.job'), value: event.jobId } : null,
+    event.requestId ? { label: t('runtimeAudit.history.request'), value: event.requestId } : null
+  ].filter(Boolean)
+}
+
 function formatTime(value) {
   if (!value) return '--'
   const date = new Date(value)
@@ -96,7 +103,7 @@ defineExpose({ loadEvents })
 </script>
 
 <template>
-  <Card>
+  <Card size="sm" class="min-w-0">
     <CardHeader>
       <CardTitle>{{ t('runtimeAudit.history.title') }}</CardTitle>
       <CardDescription>{{ t('runtimeAudit.history.description') }}</CardDescription>
@@ -107,55 +114,95 @@ defineExpose({ loadEvents })
         </UiButton>
       </CardAction>
     </CardHeader>
-    <CardContent>
-      <Alert v-if="error" variant="destructive">
+    <CardContent class="min-w-0 p-0">
+      <Alert v-if="error" class="m-4" variant="destructive">
         <TriangleAlert />
         <AlertTitle>{{ t('runtimeAudit.history.loadFailed') }}</AlertTitle>
         <AlertDescription>{{ error.message }}</AlertDescription>
       </Alert>
-      <div v-else-if="loading && events.length === 0" class="flex flex-col gap-2" aria-busy="true">
+      <div v-else-if="loading && events.length === 0" class="flex flex-col gap-2 p-4" aria-busy="true">
         <Skeleton v-for="index in 3" :key="index" class="h-10 w-full" />
       </div>
-      <Empty v-else-if="events.length === 0">
+      <Empty v-else-if="events.length === 0" class="m-4">
         <EmptyHeader>
           <EmptyMedia variant="icon"><ListTree /></EmptyMedia>
           <EmptyTitle>{{ t('runtimeAudit.history.empty') }}</EmptyTitle>
           <EmptyDescription>{{ t('runtimeAudit.history.emptyDescription') }}</EmptyDescription>
         </EmptyHeader>
       </Empty>
-      <UiTable v-else>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{{ t('runtimeAudit.history.columns.time') }}</TableHead>
-            <TableHead>{{ t('runtimeAudit.history.columns.world') }}</TableHead>
-            <TableHead>{{ t('runtimeAudit.history.columns.event') }}</TableHead>
-            <TableHead>{{ t('runtimeAudit.history.columns.source') }}</TableHead>
-            <TableHead>{{ t('runtimeAudit.history.columns.transition') }}</TableHead>
-            <TableHead>{{ t('runtimeAudit.history.columns.reason') }}</TableHead>
-            <TableHead>{{ t('runtimeAudit.history.columns.trace') }}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="event in events" :key="event.id">
-            <TableCell class="whitespace-nowrap">{{ formatTime(event.occurredAt) }}</TableCell>
-            <TableCell>{{ worldLabel(event) }}</TableCell>
-            <TableCell><Badge :variant="eventVariant(event.type)">{{ eventLabel(event.type) }}</Badge></TableCell>
-            <TableCell>{{ sourceLabel(event.source) }}</TableCell>
-            <TableCell class="whitespace-nowrap">{{ transitionLabel(event) }}</TableCell>
-            <TableCell class="max-w-80 break-words">
-              <span>{{ event.message || '--' }}</span>
-              <code v-if="event.reasonCode" class="block">{{ event.reasonCode }}</code>
-            </TableCell>
-            <TableCell>
-              <div class="flex max-w-56 flex-col gap-1 break-all">
-                <code v-if="event.jobId">{{ t('runtimeAudit.history.job') }}: {{ event.jobId }}</code>
-                <code v-if="event.requestId">{{ t('runtimeAudit.history.request') }}: {{ event.requestId }}</code>
-                <span v-if="!event.jobId && !event.requestId">--</span>
+      <template v-else>
+        <div class="runtime-table-scroll hidden min-w-0 max-h-[520px] overflow-auto md:block">
+          <UiTable class="min-w-[920px] table-fixed">
+            <TableHeader class="bg-card sticky top-0 z-10">
+              <TableRow>
+                <TableHead class="w-44">{{ t('runtimeAudit.history.columns.time') }}</TableHead>
+                <TableHead class="w-40">{{ t('runtimeAudit.history.columns.context') }}</TableHead>
+                <TableHead class="w-48">{{ t('runtimeAudit.history.columns.lifecycle') }}</TableHead>
+                <TableHead>{{ t('runtimeAudit.history.columns.reason') }}</TableHead>
+                <TableHead class="w-64">{{ t('runtimeAudit.history.columns.trace') }}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="event in events" :key="event.id">
+                <TableCell class="whitespace-nowrap tabular-nums">{{ formatTime(event.occurredAt) }}</TableCell>
+                <TableCell class="whitespace-normal">
+                  <div class="flex min-w-0 flex-col gap-1">
+                    <strong class="truncate font-medium" :title="worldLabel(event)">{{ worldLabel(event) }}</strong>
+                    <span class="text-muted-foreground truncate text-xs" :title="sourceLabel(event.source)">{{ sourceLabel(event.source) }}</span>
+                  </div>
+                </TableCell>
+                <TableCell class="whitespace-normal">
+                  <div class="flex min-w-0 flex-col items-start gap-1.5">
+                    <Badge :variant="eventVariant(event.type)">{{ eventLabel(event.type) }}</Badge>
+                    <span class="text-muted-foreground truncate text-xs" :title="transitionLabel(event)">{{ transitionLabel(event) }}</span>
+                  </div>
+                </TableCell>
+                <TableCell class="whitespace-normal">
+                  <p v-if="event.message" class="line-clamp-2 leading-5" :title="event.message">{{ event.message }}</p>
+                  <code v-if="event.reasonCode" class="text-muted-foreground mt-1 block truncate text-xs" :title="event.reasonCode">{{ event.reasonCode }}</code>
+                  <span v-if="!event.message && !event.reasonCode">--</span>
+                </TableCell>
+                <TableCell class="whitespace-normal">
+                  <div v-if="traceItems(event).length" class="flex min-w-0 flex-col gap-1">
+                    <code v-for="item in traceItems(event)" :key="item.label" class="text-muted-foreground block truncate text-xs" :title="`${item.label}: ${item.value}`">{{ item.label }}: {{ item.value }}</code>
+                  </div>
+                  <span v-else>--</span>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </UiTable>
+        </div>
+
+        <div class="max-h-[560px] divide-y overflow-y-auto md:hidden">
+          <article v-for="event in events" :key="event.id" class="flex min-w-0 flex-col gap-2.5 p-4">
+            <header class="flex min-w-0 items-start justify-between gap-3">
+              <div class="flex min-w-0 flex-col gap-0.5">
+                <strong class="truncate font-medium" :title="worldLabel(event)">{{ worldLabel(event) }}</strong>
+                <time class="text-muted-foreground text-xs tabular-nums" :datetime="event.occurredAt">{{ formatTime(event.occurredAt) }}</time>
               </div>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </UiTable>
+              <Badge class="shrink-0" :variant="eventVariant(event.type)">{{ eventLabel(event.type) }}</Badge>
+            </header>
+            <div class="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+              <span>{{ sourceLabel(event.source) }}</span>
+              <span aria-hidden="true">·</span>
+              <span>{{ transitionLabel(event) }}</span>
+            </div>
+            <div v-if="event.message || event.reasonCode" class="min-w-0">
+              <p v-if="event.message" class="line-clamp-2 text-sm leading-5" :title="event.message">{{ event.message }}</p>
+              <code v-if="event.reasonCode" class="text-muted-foreground mt-1 block truncate text-xs" :title="event.reasonCode">{{ event.reasonCode }}</code>
+            </div>
+            <div v-if="traceItems(event).length" class="flex min-w-0 flex-col gap-1">
+              <code v-for="item in traceItems(event)" :key="item.label" class="text-muted-foreground block truncate text-xs" :title="`${item.label}: ${item.value}`">{{ item.label }}: {{ item.value }}</code>
+            </div>
+          </article>
+        </div>
+      </template>
     </CardContent>
   </Card>
 </template>
+
+<style scoped>
+.runtime-table-scroll :deep([data-slot='table-container']) {
+  overflow: visible;
+}
+</style>

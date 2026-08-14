@@ -456,6 +456,8 @@ export default {
 
 <style scoped>
 .world-log-container {
+  position: relative;
+  z-index: 0;
   display: flex;
   height: 100%;
   min-width: 0;
@@ -463,6 +465,7 @@ export default {
   flex-direction: column;
   gap: 12px;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .log-toolbar {
@@ -498,6 +501,8 @@ export default {
 }
 
 .log-content {
+  position: relative;
+  z-index: 0;
   flex: 1;
   min-height: 0;
   padding: 10px;
