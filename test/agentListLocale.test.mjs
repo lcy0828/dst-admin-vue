@@ -42,3 +42,20 @@ test('Agent errors and time values recompute from stable state in the active loc
   assert.match(source, /const localeState = this\.\$i18n\?\.locale/)
   assert.match(source, /date\.toLocaleString\(locale\)/)
 })
+
+test('Agent topology uses the typed inventory job and one-core-per-Shard capacity guidance', async () => {
+  const [view, api, adapter] = await Promise.all([
+    readFile(new URL('../src/views/agents/AgentList.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/api/v2.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/api/agentApi.js', import.meta.url), 'utf8')
+  ])
+
+  assert.match(api, /\/agents\/\$\{encode\(agentId\)\}\/inventory`/)
+  assert.match(api, /\/inventory\/actions\/refresh`/)
+  assert.match(view, /waitForV2Job\(job, 45000\)/)
+  assert.match(view, /runtime\.inventory\.read/)
+  assert.match(view, /capacityForAgent\(agent\)\.runningShards/)
+  assert.match(adapter, /recommendedShardLimit: capacity\.recommendedShardLimit/)
+  assert.match(agentMessages['zh-CN'].agents.list.capacity.policyDescription, /每个运行中的 Shard 至少预留 1 个物理核心/)
+  assert.match(agentMessages['en-US'].agents.list.capacity.policyDescription, /one physical core for every running Shard/i)
+})

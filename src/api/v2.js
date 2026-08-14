@@ -380,6 +380,8 @@ export const automationV2API = {
 export const agentsV2API = {
 	list: () => client.get('/agents', { headers: { 'Cache-Control': 'no-store' } }),
 	get: agentId => client.get(`/agents/${encode(agentId)}`, { headers: { 'Cache-Control': 'no-store' } }),
+	inventory: agentId => client.get(`/agents/${encode(agentId)}/inventory`, { headers: { 'Cache-Control': 'no-store' } }),
+	refreshInventory: agentId => client.post(`/agents/${encode(agentId)}/inventory/actions/refresh`),
 	forget: agentId => client.delete(`/agents/${encode(agentId)}`),
 	actions: () => client.get('/agents/actions'),
 	commands: (params = {}) => client.get('/agents/commands', { params }),

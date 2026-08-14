@@ -17,6 +17,7 @@ function seconds(value) {
 function legacyAgent(agent = {}) {
   const details = agent.details || {}
   const metrics = agent.metrics || {}
+  const capacity = agent.capacity || {}
   const user = details.user && typeof details.user === 'object'
     ? details.user
     : { name: details.username || details.user || '' }
@@ -35,10 +36,30 @@ function legacyAgent(agent = {}) {
     last_heartbeat: seconds(agent.lastHeartbeat),
     last_report_at: seconds(agent.lastReportAt),
     cpu_count: metrics.cpuCount || 0,
+    logical_processors: metrics.logicalProcessors || metrics.cpuCount || 0,
+    physical_cores: metrics.physicalCores || 0,
+    physical_core_source: metrics.physicalCoreSource || '',
+    physical_core_estimated: Boolean(metrics.physicalCoreEstimated),
+    running_shard_count: metrics.runningShardCount || capacity.runningShards || 0,
     memory: {
       allocated: metrics.memoryUsed || 0,
-      system: metrics.memoryTotal || 0
+      system: metrics.memoryTotal || 0,
+      available: metrics.memoryAvailable || 0
     },
+    capacity: {
+      state: capacity.state || 'unknown',
+      logicalProcessors: capacity.logicalProcessors || metrics.logicalProcessors || metrics.cpuCount || 0,
+      physicalCores: capacity.physicalCores || metrics.physicalCores || 0,
+      physicalCoreEstimated: Boolean(capacity.physicalCoreEstimated ?? metrics.physicalCoreEstimated),
+      reservedPhysicalCores: capacity.reservedPhysicalCores || 0,
+      recommendedShardLimit: capacity.recommendedShardLimit || 0,
+      runningShards: capacity.runningShards || metrics.runningShardCount || 0,
+      availableSlots: capacity.availableSlots || 0,
+      message: capacity.message || ''
+    },
+    metrics_stale: Boolean(agent.metricsStale),
+    stale_reason: agent.staleReason || '',
+    metrics_observed_at: metrics.observedAt || agent.lastReportAt || '',
     uptime_seconds: metrics.uptimeSeconds || 0,
     user,
     current_dir: details.current_dir || details.currentDir || '',

@@ -11,34 +11,126 @@ export const agentMessages = {
           total: 'Agent 总数',
           totalDescription: '已注册的远程节点',
           operatingSystems: '操作系统',
-          operatingSystemsDescription: '已接入的系统类型'
+          operatingSystemsDescription: '已接入的系统类型',
+          summaryAria: '节点运行摘要',
+          onlineSummary: '{online}/{total} 个节点在线',
+          shardSummary: '运行中世界 {count}',
+          capacitySummary: '{count} 个容量提醒'
         },
         actions: {
           details: '详情',
           runtimeConfig: '运行时配置',
           configureRuntime: '配置远程运行时',
           executeCommand: '执行命令',
-          remove: '移除'
+          remove: '移除',
+          refreshInventory: '刷新节点清单',
+          expandTopology: '展开房间和世界',
+          collapseTopology: '收起房间和世界'
         },
         fields: {
           system: '系统',
           ipAddress: 'IP 地址',
           cpuCores: '{count} 核心',
+          topology: '拓扑',
+          node: '节点',
+          worldCapacity: '世界进程 / 建议上限',
+          cpu: 'CPU',
           memory: '内存',
+          memoryAvailable: '可用 {value}',
           uptime: '运行时间',
           user: '用户',
           path: '路径',
           lastHeartbeat: '最后心跳',
+          observedAt: '数据时间',
+          actions: '操作',
+          physicalCores: '{count} 个物理核心',
+          logicalProcessors: '{count} 个逻辑处理器',
+          installation: 'DST 安装',
+          savePath: '存档路径',
+          serverPath: '服务端路径',
+          inventoryReceivedAt: '控制端接收时间',
+          masterPort: 'Master 端口 {port}',
+          shard: '世界分片',
+          role: '角色',
+          ports: '端口',
+          process: '进程',
+          processResources: '进程资源',
           memoryUsage: '内存使用',
           memoryUsageAria: '{name} 内存使用率'
         },
         values: {
-          notAvailable: '不可用'
+          notAvailable: '不可用',
+          unknown: '未知',
+          unknownNode: '未命名节点',
+          estimated: '估算',
+          available: '可用',
+          missing: '缺失',
+          clusterKeyReady: 'Cluster Key 已配置',
+          clusterKeyMissing: 'Cluster Key 缺失',
+          running: '运行中',
+          stopped: '未运行'
         },
         duration: {
           daysHours: '{days} 天 {hours} 小时',
           hoursMinutes: '{hours} 小时 {minutes} 分钟',
           minutes: '{minutes} 分钟'
+        },
+        capacity: {
+          policyTitle: '同机多世界容量建议',
+          policyDescription: '同一服务器可以运行多个房间和多个世界分片。每个运行中的 Shard 至少预留 1 个物理核心，并额外为系统、Agent、SteamCMD 与备份任务保留 1 核；这是保守提醒，不是强制限制或性能保证。',
+          progressAria: '{name} 的世界分片容量使用率',
+          states: {
+            available: '可用',
+            full: '已满载',
+            overcommitted: '已超配',
+            unknown: '未知'
+          },
+          available: '运行 {running}/{limit}，还可安排 {available} 层',
+          full: '运行 {running}/{limit}，已达到建议上限',
+          overcommitted: '运行 {running}/{limit}，同一核心承载多层世界可能卡顿',
+          unknown: '缺少新鲜的物理核心或世界进程数据'
+        },
+        inventory: {
+          loading: '读取中',
+          current: '数据正常',
+          stale: '数据已过期',
+          waiting: '等待采集',
+          configured: '运行时已配置',
+          notConfigured: '未配置运行时',
+          upgradeRequired: '需升级 Agent',
+          agentOffline: 'Agent 离线，无法刷新',
+          configureFirst: '请先配置远程运行时路径',
+          upgradeFirst: '请先升级远程 Agent',
+          oldAgentTitle: '当前 Agent 不支持运行时清单',
+          oldAgentDescription: '升级到 2.1.0 或更高版本后，才能识别节点上的房间、世界进程和物理核心容量。',
+          loadFailedTitle: '节点清单读取失败',
+          notConfiguredTitle: '先配置该节点的 DST 路径',
+          notConfiguredDescription: '清单采集只读取明确配置的存档目录和服务端目录，不会自动扫描整台服务器。',
+          waitingTitle: '尚未收到节点清单',
+          waitingDescription: '在线节点会定期自动上报，也可以点击本行的刷新按钮立即采集。',
+          warningTitle: '节点扫描提示',
+          staleReasons: {
+            agent_offline: 'Agent 已离线，保留的是最后一次快照',
+            clock_skew: 'Agent 与控制端时钟偏差过大',
+            report_expired: '快照超过有效时间窗口',
+            report_missing: '节点尚未提供观测时间',
+            unknown: '快照当前不可作为实时数据'
+          }
+        },
+        topology: {
+          title: '{name} 的 DST 拓扑',
+          description: '按房间列出该节点识别到的 Shard、端口和对应专服进程。',
+          emptyTitle: '没有识别到房间',
+          emptyDescription: '已配置的存档路径中没有可识别的 Cluster 和 Shard。',
+          roles: {
+            master: '主世界',
+            secondary: '从世界',
+            unknown: '未识别'
+          },
+          serverPort: '游戏 {port}',
+          masterServerPort: 'Master {port}',
+          authenticationPort: '认证 {port}',
+          processResources: 'CPU {cpu}% / 内存 {memory}'
         },
         empty: {
           title: '暂无 Agent 连接',
@@ -95,6 +187,8 @@ export const agentMessages = {
           agentRemoveTitle: '移除 Agent',
           agentRemoved: 'Agent 记录已移除',
           agentRemoveFailed: '移除 Agent 失败：{error}',
+          inventoryRefreshed: '“{name}”的节点清单已刷新',
+          inventoryRefreshFailed: '刷新节点清单失败：{error}',
           errorWithDetail: '{message}：{detail}'
         }
       },
@@ -310,34 +404,126 @@ export const agentMessages = {
           total: 'Total Agents',
           totalDescription: 'Registered remote nodes',
           operatingSystems: 'Operating systems',
-          operatingSystemsDescription: 'Connected operating system types'
+          operatingSystemsDescription: 'Connected operating system types',
+          summaryAria: 'Node runtime summary',
+          onlineSummary: '{online}/{total} nodes online',
+          shardSummary: '{count} worlds running',
+          capacitySummary: '{count} capacity notices'
         },
         actions: {
           details: 'Details',
           runtimeConfig: 'Runtime configuration',
           configureRuntime: 'Configure remote runtime',
           executeCommand: 'Run command',
-          remove: 'Remove'
+          remove: 'Remove',
+          refreshInventory: 'Refresh node inventory',
+          expandTopology: 'Expand rooms and worlds',
+          collapseTopology: 'Collapse rooms and worlds'
         },
         fields: {
           system: 'System',
           ipAddress: 'IP address',
           cpuCores: '{count} cores',
+          topology: 'Topology',
+          node: 'Node',
+          worldCapacity: 'World processes / suggested limit',
+          cpu: 'CPU',
           memory: 'Memory',
+          memoryAvailable: '{value} available',
           uptime: 'Uptime',
           user: 'User',
           path: 'Path',
           lastHeartbeat: 'Last heartbeat',
+          observedAt: 'Observed at',
+          actions: 'Actions',
+          physicalCores: '{count} physical cores',
+          logicalProcessors: '{count} logical processors',
+          installation: 'DST installation',
+          savePath: 'Save path',
+          serverPath: 'Server path',
+          inventoryReceivedAt: 'Received by controller',
+          masterPort: 'Master port {port}',
+          shard: 'World shard',
+          role: 'Role',
+          ports: 'Ports',
+          process: 'Process',
+          processResources: 'Process resources',
           memoryUsage: 'Memory usage',
           memoryUsageAria: '{name} memory usage'
         },
         values: {
-          notAvailable: 'N/A'
+          notAvailable: 'N/A',
+          unknown: 'Unknown',
+          unknownNode: 'Unnamed node',
+          estimated: 'estimated',
+          available: 'Available',
+          missing: 'Missing',
+          clusterKeyReady: 'Cluster key configured',
+          clusterKeyMissing: 'Cluster key missing',
+          running: 'Running',
+          stopped: 'Not running'
         },
         duration: {
           daysHours: '{days}d {hours}h',
           hoursMinutes: '{hours}h {minutes}m',
           minutes: '{minutes}m'
+        },
+        capacity: {
+          policyTitle: 'Capacity guidance for multiple worlds per node',
+          policyDescription: 'One server may run multiple rooms and world shards. Reserve at least one physical core for every running Shard and one additional core for the OS, Agent, SteamCMD, and backups. This is conservative guidance, not a hard limit or performance guarantee.',
+          progressAria: 'World shard capacity usage for {name}',
+          states: {
+            available: 'Available',
+            full: 'At capacity',
+            overcommitted: 'Overcommitted',
+            unknown: 'Unknown'
+          },
+          available: '{running}/{limit} running, {available} suggested slots available',
+          full: '{running}/{limit} running, at the suggested limit',
+          overcommitted: '{running}/{limit} running; sharing one core across worlds may cause lag',
+          unknown: 'Fresh physical-core or world-process data is unavailable'
+        },
+        inventory: {
+          loading: 'Loading',
+          current: 'Current',
+          stale: 'Stale',
+          waiting: 'Awaiting inventory',
+          configured: 'Runtime configured',
+          notConfigured: 'Runtime not configured',
+          upgradeRequired: 'Agent upgrade required',
+          agentOffline: 'The Agent is offline and cannot refresh',
+          configureFirst: 'Configure the remote runtime paths first',
+          upgradeFirst: 'Upgrade the remote Agent first',
+          oldAgentTitle: 'This Agent does not support runtime inventory',
+          oldAgentDescription: 'Upgrade to version 2.1.0 or later to discover rooms, world processes, and physical-core capacity on this node.',
+          loadFailedTitle: 'Failed to load node inventory',
+          notConfiguredTitle: 'Configure the DST paths for this node',
+          notConfiguredDescription: 'Inventory collection only reads explicitly configured save and server directories. It does not scan the entire server.',
+          waitingTitle: 'No node inventory received yet',
+          waitingDescription: 'Online nodes report periodically. Use the refresh action on this row to collect immediately.',
+          warningTitle: 'Node scan notice',
+          staleReasons: {
+            agent_offline: 'The Agent is offline; this is the last saved snapshot',
+            clock_skew: 'The Agent and controller clocks differ too much',
+            report_expired: 'The snapshot is outside the freshness window',
+            report_missing: 'The node did not provide an observation time',
+            unknown: 'This snapshot cannot be treated as live data'
+          }
+        },
+        topology: {
+          title: 'DST topology on {name}',
+          description: 'Rooms, Shards, ports, and their dedicated server processes discovered on this node.',
+          emptyTitle: 'No rooms discovered',
+          emptyDescription: 'No recognizable Clusters or Shards were found under the configured save path.',
+          roles: {
+            master: 'Master world',
+            secondary: 'Secondary world',
+            unknown: 'Unknown'
+          },
+          serverPort: 'Game {port}',
+          masterServerPort: 'Master {port}',
+          authenticationPort: 'Auth {port}',
+          processResources: 'CPU {cpu}% / memory {memory}'
         },
         empty: {
           title: 'No Agents connected',
@@ -394,6 +580,8 @@ export const agentMessages = {
           agentRemoveTitle: 'Remove Agent',
           agentRemoved: 'Agent record removed',
           agentRemoveFailed: 'Failed to remove Agent: {error}',
+          inventoryRefreshed: 'Node inventory refreshed for “{name}”',
+          inventoryRefreshFailed: 'Failed to refresh node inventory: {error}',
           errorWithDetail: '{message}: {detail}'
         }
       },
