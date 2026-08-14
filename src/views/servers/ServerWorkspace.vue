@@ -9,7 +9,32 @@
             {{ runningWorlds.length > 0 ? $t('worldRuntime.statuses.running') : $t('worldRuntime.statuses.stopped') }}
           </Badge>
         </div>
-        <p>{{ selectedRoom ? $t('servers.workspace.roomSummary', { name: selectedRoom.name, count: worlds.length }) : $t('servers.workspace.noRoomSelected') }}</p>
+        <div v-if="selectedRoom" class="workspace-overview">
+          <span class="workspace-room-summary">{{ $t('servers.workspace.roomSummary', { name: selectedRoom.name, count: worlds.length }) }}</span>
+          <Separator class="overview-separator" orientation="vertical" />
+          <div class="status-summary" role="list" :aria-label="$t('servers.workspace.overview.label')">
+            <div class="status-metric" role="listitem">
+              <span class="status-label">{{ $t('servers.workspace.overview.worldStatus') }}</span>
+              <span class="status-value">{{ runningWorlds.length }}<span>/{{ worlds.length }}</span></span>
+            </div>
+            <Separator class="status-separator" orientation="vertical" />
+            <div class="status-metric" role="listitem">
+              <span class="status-label">{{ $t('servers.workspace.overview.onlinePlayers') }}</span>
+              <span class="status-value">{{ playerStats ? playerStats.online_count : '--' }}<span>/{{ playerStats ? playerStats.total_count : '--' }}</span></span>
+            </div>
+            <Separator class="status-separator" orientation="vertical" />
+            <div class="status-metric" role="listitem">
+              <span class="status-label">{{ $t('servers.workspace.overview.diskUsage') }}</span>
+              <span class="status-value">{{ formatPercent(systemStatus.disk_usage) }}</span>
+            </div>
+            <Separator class="status-separator" orientation="vertical" />
+            <div class="status-metric" role="listitem">
+              <span class="status-label">{{ $t('servers.workspace.backups.latest') }}</span>
+              <span class="status-value">{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</span>
+            </div>
+          </div>
+        </div>
+        <p v-else>{{ $t('servers.workspace.noRoomSelected') }}</p>
       </div>
 
       <div class="workspace-toolbar">
@@ -64,47 +89,13 @@
     </Empty>
 
     <template v-else-if="selectedRoom">
-      <section class="status-strip" :aria-label="$t('servers.workspace.overview.label')">
-        <Card size="sm" class="status-card">
-          <CardHeader class="sr-only"><CardTitle>{{ $t('servers.workspace.overview.label') }}</CardTitle></CardHeader>
-          <CardContent class="status-summary">
-            <div class="status-metric">
-              <span class="status-label">{{ $t('servers.workspace.overview.worldStatus') }}</span>
-              <div class="status-line">
-                <strong>{{ runningWorlds.length }}<span>/ {{ worlds.length }}</span></strong>
-                <span class="status-detail">{{ $t('servers.workspace.overview.runningShards', { count: runningWorlds.length }) }}</span>
-              </div>
-            </div>
-            <div class="status-metric">
-              <span class="status-label">{{ $t('servers.workspace.overview.onlinePlayers') }}</span>
-              <div class="status-line">
-                <strong>{{ playerStats ? playerStats.online_count : '--' }}<span>{{ $t('servers.workspace.units.players') }}</span></strong>
-                <span class="status-detail">{{ contextErrors.players ? $t('servers.workspace.states.readFailed') : $t('servers.workspace.overview.totalPlayers', { count: playerStats ? playerStats.total_count : '--' }) }}</span>
-              </div>
-            </div>
-            <div class="status-metric">
-              <span class="status-label">{{ $t('servers.workspace.overview.diskUsage') }}</span>
-              <div class="status-line">
-                <strong>{{ formatPercent(systemStatus.disk_usage) }}</strong>
-                <span class="status-detail">{{ $t('servers.workspace.overview.diskFree', { value: formatDisk(systemStatus.free_disk) }) }}</span>
-              </div>
-            </div>
-            <div class="status-metric">
-              <span class="status-label">{{ $t('servers.workspace.backups.latest') }}</span>
-              <div class="status-line">
-                <strong>{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</strong>
-                <span class="status-detail">{{ contextErrors.backups ? $t('servers.workspace.states.readFailed') : (latestBackup?.size_formatted || $t('servers.workspace.states.noRecords')) }}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
       <Card size="sm" class="world-card">
-        <CardHeader>
-          <CardTitle>{{ $t('servers.workspace.worlds.title') }}</CardTitle>
-          <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || $t('servers.workspace.worlds.description') }}</CardDescription>
-          <CardAction><UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />{{ $t('servers.workspace.worlds.roomSettings') }}</UiButton></CardAction>
+        <CardHeader class="gap-0">
+          <div class="world-card-heading">
+            <CardTitle>{{ $t('servers.workspace.worlds.title') }}</CardTitle>
+            <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || $t('servers.workspace.worlds.description') }}</CardDescription>
+          </div>
+          <CardAction class="row-span-1 self-center"><UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />{{ $t('servers.workspace.worlds.roomSettings') }}</UiButton></CardAction>
         </CardHeader>
         <CardContent class="world-card-content">
 
@@ -409,6 +400,7 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Separator } from '@/components/ui/separator'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -487,6 +479,7 @@ export default {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    Separator,
     Send,
     ServerOff,
     Settings,
@@ -984,7 +977,7 @@ export default {
 .workspace-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   min-width: 0;
 }
 
@@ -1035,6 +1028,33 @@ export default {
   line-height: 20px;
 }
 
+.workspace-overview,
+.status-summary,
+.status-metric,
+.world-card-heading {
+  display: flex;
+  align-items: baseline;
+}
+
+.workspace-overview {
+  gap: 10px;
+  min-width: 0;
+  margin-top: 3px;
+  overflow: hidden;
+}
+
+.workspace-room-summary {
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.overview-separator {
+  height: 14px;
+  align-self: center;
+}
+
 .workspace-toolbar {
   justify-content: flex-end;
   gap: 8px;
@@ -1049,70 +1069,70 @@ export default {
   margin: 0;
 }
 
-.status-strip {
+.status-summary {
+  flex: 1 1 auto;
   min-width: 0;
+  margin: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
 }
 
-.status-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 0;
+.status-summary::-webkit-scrollbar {
+  display: none;
 }
 
 .status-metric {
-  min-width: 0;
-  padding: 12px 18px;
+  flex: 0 0 auto;
+  gap: 5px;
+  padding: 0 10px;
 }
 
-.status-metric + .status-metric {
-  border-inline-start: 1px solid var(--border);
+.status-metric:first-child {
+  padding-left: 0;
 }
 
 .status-label {
-  display: block;
-  margin-bottom: 4px;
   color: var(--muted-foreground);
   font-size: 12px;
-  line-height: 16px;
+  line-height: 20px;
 }
 
-.status-line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
-}
-
-.status-line strong {
-  flex: 0 0 auto;
+.status-value {
   color: var(--foreground);
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 13px;
+  line-height: 20px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.status-line strong span {
-  margin-left: 4px;
+.status-value span {
+  margin-left: 2px;
   color: var(--muted-foreground);
   font-size: 12px;
   font-weight: 400;
 }
 
-.status-detail {
+.status-separator {
+  height: 12px;
+  align-self: center;
+}
+
+.world-card-heading {
+  gap: 8px;
+  min-width: 0;
+}
+
+.world-card-heading > [data-slot='card-description'] {
   min-width: 0;
   overflow: hidden;
-  color: var(--muted-foreground);
-  font-size: 12px;
-  line-height: 16px;
-  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .world-card-content {
   padding-top: 0;
+  padding-bottom: 0;
 }
 
 .world-grid {
@@ -1128,7 +1148,7 @@ export default {
   align-items: center;
   gap: 14px;
   min-width: 0;
-  padding: 10px 0;
+  padding: 8px 0;
   cursor: pointer;
   background: transparent;
   border-bottom: 1px solid var(--border);
@@ -1143,6 +1163,10 @@ export default {
 
 .world-item.selected {
   background: var(--accent);
+}
+
+.world-item:last-child {
+  border-bottom: 0;
 }
 
 .world-item.running::before {
@@ -1437,18 +1461,6 @@ export default {
 }
 
 @media (max-width: 1100px) {
-  .status-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .status-metric:nth-child(3) {
-    border-inline-start: 0;
-  }
-
-  .status-metric:nth-child(n + 3) {
-    border-top: 1px solid var(--border);
-  }
-
   .world-item {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -1484,6 +1496,11 @@ export default {
   .workspace-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .workspace-heading,
+  .workspace-overview {
+    width: 100%;
   }
 
   .workspace-toolbar {

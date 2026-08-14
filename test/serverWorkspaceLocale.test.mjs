@@ -33,12 +33,12 @@ test('server workspace formats dates with the active locale', async () => {
   assert.match(source, /toLocaleDateString\(locale,/)
 })
 
-test('server workspace keeps operational summaries compact and world facts on stable columns', async () => {
+test('server workspace keeps operational summaries inline and world facts on stable columns', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
-  assert.match(source, /<Card size="sm" class="status-card">/)
-  assert.match(source, /class="status-summary"/)
-  assert.match(source, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/)
+  assert.match(source, /class="workspace-overview"/)
+  assert.match(source, /class="status-summary" role="list"/)
+  assert.match(source, /<Separator class="status-separator" orientation="vertical"/)
   assert.match(source, /grid-template-columns: repeat\(4, minmax\(72px, 1fr\)\)/)
-  assert.doesNotMatch(source, /class="status-content"/)
+  assert.doesNotMatch(source, /class="status-card"/)
 })
