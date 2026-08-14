@@ -194,6 +194,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction, promptText } from '@/lib/feedback';
+import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import {
   canCleanFailedWorld as canCleanFailedRuntimeWorld,
   canConfigureWorld as canConfigureRuntimeWorld,
@@ -552,13 +553,14 @@ export default {
         };
         const operation = primaryAction.kind === 'stop'
           ? roomApi.stopRoom(request)
-          : roomApi.startRoom(request);
+          : startRoomWithCapacityRisk(request);
         operation
           .then(async () => {
             await this.refreshWorlds(true);
             toast.success(this.$t('worlds.feedback.actionCompleted', { action }));
           })
           .catch(error => {
+            if (isCapacityRiskCanceled(error)) return;
             toast.error(this.$t('worlds.feedback.actionFailed', {
               action,
               error: error.message || this.$t('common.errors.unknown')

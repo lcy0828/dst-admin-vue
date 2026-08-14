@@ -1,6 +1,7 @@
 import { agentMessages } from './agentMessages.js'
 import { announcementMessages } from './announcementMessages.js'
 import { backupMessages } from './backupMessages.js'
+import { capacityRiskMessages } from './capacityRiskMessages.js'
 import { commandMessages } from './commandMessages.js'
 import { corePageMessages } from './corePages.js'
 import { cronGroupMessages } from './cronGroupMessages.js'
@@ -26,6 +27,7 @@ export const messages = {
     ...agentMessages['zh-CN'],
     ...announcementMessages['zh-CN'],
     ...backupMessages['zh-CN'],
+    ...capacityRiskMessages['zh-CN'],
     ...commandMessages['zh-CN'],
     ...corePageMessages['zh-CN'],
     ...cronGroupMessages['zh-CN'],
@@ -519,6 +521,7 @@ export const messages = {
     ...agentMessages['en-US'],
     ...announcementMessages['en-US'],
     ...backupMessages['en-US'],
+    ...capacityRiskMessages['en-US'],
     ...commandMessages['en-US'],
     ...corePageMessages['en-US'],
     ...cronGroupMessages['en-US'],

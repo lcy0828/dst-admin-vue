@@ -180,8 +180,9 @@ export const roomsV2API = {
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}`,
     { data: { confirmation } }
   ),
-  action: (roomId, action, worldIds = []) => client.post(`/rooms/${encode(roomId)}/actions/${encode(action)}`, {
-    worldIds
+  action: (roomId, action, worldIds = [], options = {}) => client.post(`/rooms/${encode(roomId)}/actions/${encode(action)}`, {
+    worldIds,
+    ...(options.allowCapacityRisk === true ? { allowCapacityRisk: true } : {})
   })
 }
 

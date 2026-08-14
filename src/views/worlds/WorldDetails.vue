@@ -110,6 +110,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { confirmAction, promptText } from '@/lib/feedback';
+import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import {
   canCleanFailedWorld as canCleanFailedRuntimeWorld,
   canConfigureWorld as canConfigureRuntimeWorld,
@@ -231,16 +232,19 @@ export default {
         const request = { room_id: this.roomId, world_id: this.worldId };
         const operation = primaryAction.kind === 'stop'
           ? roomApi.stopRoom(request)
-          : roomApi.startRoom(request);
+          : startRoomWithCapacityRisk(request);
         operation
           .then(async () => {
             await this.loadWorldData();
             toast.success(this.$t('worlds.feedback.actionCompleted', { action }));
           })
-          .catch(error => toast.error(this.$t('worlds.feedback.actionFailed', {
-            action,
-            error: error.message || this.$t('common.errors.unknown')
-          })))
+          .catch(error => {
+            if (isCapacityRiskCanceled(error)) return;
+            toast.error(this.$t('worlds.feedback.actionFailed', {
+              action,
+              error: error.message || this.$t('common.errors.unknown')
+            }));
+          })
           .finally(() => { this.loading = false; });
       }).catch(() => {
         toast.info(this.$t('worlds.feedback.canceled'));

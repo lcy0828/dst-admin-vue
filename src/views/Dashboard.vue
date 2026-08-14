@@ -596,6 +596,7 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { confirmAction } from '@/lib/feedback';
+import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import { toast } from 'vue-sonner';
 import {
   Activity,
@@ -880,13 +881,14 @@ export default {
       }
 
       const request = { room_id: server.room_id, world_id: server.world_id };
-      const operation = isRunning ? roomApi.stopRoom(request) : roomApi.startRoom(request);
+      const operation = isRunning ? roomApi.stopRoom(request) : startRoomWithCapacityRisk(request);
       this.serverLoading = true;
       try {
         const response = await operation;
         await this.refreshServerData();
         toast.success(response.msg || `${action}完成`);
       } catch (error) {
+        if (isCapacityRiskCanceled(error)) return;
         toast.error(`${action}失败：${error.message || '未知错误'}`);
       } finally {
         this.serverLoading = false;
@@ -1335,7 +1337,7 @@ export default {
 
       this.startRoomLoading = true;
       try {
-        const response = await roomApi.startRoom({
+        const response = await startRoomWithCapacityRisk({
           room_id: selectedRoom.id,
           world_ids: worldsToStart.map(world => world.id)
         });
@@ -1343,6 +1345,7 @@ export default {
         toast.success(response.msg || `房间 ${selectedRoom.name} 已启动`);
         this.startRoomDialogVisible = false;
       } catch (error) {
+        if (isCapacityRiskCanceled(error)) return;
         toast.error(`启动房间失败: ${error.message || '未知错误'}`);
       } finally {
         this.startRoomLoading = false;

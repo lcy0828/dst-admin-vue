@@ -2,6 +2,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { playerApi, roomApi, systemApi } from '@/api/index'
 import { confirmAction } from '@/lib/feedback'
 import { formatDurationSeconds } from '@/lib/localeFormatters.mjs'
+import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk'
 import {
   canCleanFailedWorld,
   canStartWorld,
@@ -176,10 +177,11 @@ export function useDashboardV2() {
     serverLoading.value = true
     try {
       const input = { room_id: server.room_id, world_id: server.world_id }
-      await (stopping ? roomApi.stopRoom(input) : roomApi.startRoom(input))
+      await (stopping ? roomApi.stopRoom(input) : startRoomWithCapacityRisk(input))
       toast.success(translate('dashboard.feedback.actionCompleted', { action }))
       await refreshServers()
     } catch (error) {
+      if (isCapacityRiskCanceled(error)) return
       toast.error(translate('dashboard.feedback.actionFailed', { action, error: error.message || translate('common.errors.unknown') }))
     } finally {
       serverLoading.value = false
@@ -194,7 +196,7 @@ export function useDashboardV2() {
     }
     serverLoading.value = true
     try {
-      await roomApi.startRoom({
+      await startRoomWithCapacityRisk({
         room_id: room.id,
         world_ids: startableWorlds.map(world => world.id)
       })
@@ -202,6 +204,7 @@ export function useDashboardV2() {
       await refreshServers()
       return true
     } catch (error) {
+      if (isCapacityRiskCanceled(error)) return false
       toast.error(translate('dashboard.feedback.roomStartFailed', { error: error.message || translate('common.errors.unknown') }))
       return false
     } finally {

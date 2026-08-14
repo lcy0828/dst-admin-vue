@@ -171,6 +171,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { confirmAction, promptText } from '@/lib/feedback';
+import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 import LogViewer from '../servers/LogViewer.vue';
@@ -383,7 +384,7 @@ export default {
           if (selectedWorlds.length === 0) {
             throw new Error(this.$t('rooms.list.feedback.noMatchingWorld'));
           }
-          return roomApi.startRoom({
+          return startRoomWithCapacityRisk({
             room_id: roomId,
             world_ids: selectedWorlds.map(world => world.id)
           });
@@ -394,6 +395,7 @@ export default {
           toast.success(this.$t('rooms.list.feedback.started', { room: this.selectedRoom.name }));
         })
         .catch(error => {
+          if (isCapacityRiskCanceled(error)) return;
           toast.error(this.$t('rooms.list.feedback.startFailed', { error: error.message || this.$t('common.errors.unknown') }));
         })
         .finally(() => {

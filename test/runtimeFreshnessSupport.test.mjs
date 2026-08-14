@@ -27,7 +27,7 @@ test('server workspace submits starts immediately and confirms disruptive action
   const workspace = await source('src/views/servers/ServerWorkspace.vue')
 
   assert.match(workspace, /if \(worldActionRequiresConfirmation\(action\)\) \{[\s\S]*?await confirmAction/)
-  assert.match(workspace, /this\.worldActionId = world\.id[\s\S]*?toast\.info[\s\S]*?roomApi\.startRoom\(target\)/)
+  assert.match(workspace, /this\.worldActionId = world\.id[\s\S]*?toast\.info[\s\S]*?startRoomWithCapacityRisk\(target\)/)
 })
 
 test('world-state details prominently mark stale snapshots with their observation time', async () => {
@@ -52,10 +52,10 @@ test('server surfaces dispatch the primary stop action while a shard is starting
   ])
 
   assert.match(serverList, /isStopping = primaryAction\.kind === 'stop'/)
-  assert.match(serverList, /isStopping \? roomApi\.stopRoom\(request\) : roomApi\.startRoom\(request\)/)
+  assert.match(serverList, /isStopping \? roomApi\.stopRoom\(request\) : startRoomWithCapacityRisk\(request\)/)
   assert.match(workspace, /action === 'stop' && !canRequestStopWorld\(world\)/)
   assert.match(dashboard, /stopping = primaryAction\.kind === 'stop'/)
-  assert.match(dashboard, /stopping \? roomApi\.stopRoom\(input\) : roomApi\.startRoom\(input\)/)
+  assert.match(dashboard, /stopping \? roomApi\.stopRoom\(input\) : startRoomWithCapacityRisk\(input\)/)
 })
 
 test('server workspace exposes full runtime lifecycle auditing without polling it', async () => {

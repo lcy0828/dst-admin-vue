@@ -205,6 +205,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
+import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import {
   canCleanFailedWorld,
   canConfigureWorld,
@@ -385,7 +386,7 @@ export default {
       this.startLoading = true;
       this.roomActionId = this.currentRoom.id;
       try {
-        const response = await roomApi.startRoom({
+        const response = await startRoomWithCapacityRisk({
           room_id: this.currentRoom.id,
           world_ids: worldIds
         });
@@ -393,6 +394,7 @@ export default {
         this.startRoomDialogVisible = false;
         toast.success(response?.msg || '所选世界分片已启动');
       } catch (error) {
+        if (isCapacityRiskCanceled(error)) return;
         toast.error(`启动失败：${error.message || '未知错误'}`);
       } finally {
         this.startLoading = false;

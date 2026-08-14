@@ -340,7 +340,9 @@ export const legacyRoomApi = {
   async startRoom(params) {
     const room = await resolveRoom(roomReference(params))
     const job = await waitForV2Job(
-      await roomsV2API.action(room.id, 'start', selectedWorldIDs(room, params)),
+      await roomsV2API.action(room.id, 'start', selectedWorldIDs(room, params), {
+        allowCapacityRisk: params?.allow_capacity_risk === true || params?.allowCapacityRisk === true
+      }),
       ROOM_JOB_TIMEOUT
     )
     roomCatalogCache.invalidate()
@@ -517,7 +519,9 @@ export const legacySystemApi = {
     )
     if (!server) throw adapterError('WORLD_RESTART_TARGET_NOT_FOUND')
     const job = await waitForV2Job(
-      await roomsV2API.action(server.room_id, 'restart', [server.world_id]),
+      await roomsV2API.action(server.room_id, 'restart', [server.world_id], {
+        allowCapacityRisk: params?.allow_capacity_risk === true || params?.allowCapacityRisk === true
+      }),
       ROOM_JOB_TIMEOUT
     )
     roomCatalogCache.invalidate()

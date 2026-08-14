@@ -38,6 +38,10 @@ export function confirmAction(message, title = '', options = {}) {
   return requestFeedback('confirm', message, title, options)
 }
 
+export function confirmCapacityRisk(preview) {
+  return requestFeedback('capacity-risk', '', '', { preview })
+}
+
 export function promptText(message, title = '', options = {}) {
   return requestFeedback('prompt', message, title, options)
 }

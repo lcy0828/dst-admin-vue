@@ -431,6 +431,11 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { confirmAction, promptText } from '@/lib/feedback'
 import {
+  isCapacityRiskCanceled,
+  restartWorldWithCapacityRisk,
+  startRoomWithCapacityRisk,
+} from '@/lib/startCapacityRisk'
+import {
   canCleanFailedWorld,
   canConfigureWorld,
   canRequestStopWorld,
@@ -792,10 +797,10 @@ export default {
       }))
       try {
         const target = { room_id: this.selectedRoom.id, world_id: world.id }
-        if (action === 'start') await roomApi.startRoom(target)
+        if (action === 'start') await startRoomWithCapacityRisk(target)
         if (action === 'stop') await roomApi.stopRoom(target)
         if (action === 'cleanup') await roomApi.cleanupRoom(target)
-        if (action === 'restart') await systemApi.restartTmuxServer({
+        if (action === 'restart') await restartWorldWithCapacityRisk({
           ...target,
           archive_name: this.selectedRoom.name,
           world_name: world.name
@@ -803,6 +808,7 @@ export default {
         toast.success(this.$t('servers.workspace.feedback.actionCompleted', { action: label }))
         await this.refreshWorkspace(true)
       } catch (error) {
+        if (isCapacityRiskCanceled(error)) return
         toast.error(this.$t('servers.workspace.feedback.actionFailed', {
           action: label,
           error: error.message || this.$t('common.errors.unknown')

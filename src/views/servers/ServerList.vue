@@ -161,6 +161,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirmAction } from '@/lib/feedback';
+import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue';
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue';
 import {
@@ -338,7 +339,7 @@ export default {
 
       this.startRoomLoading = true;
       try {
-        await roomApi.startRoom({
+        await startRoomWithCapacityRisk({
           room_id: this.selectedStartRoom.id,
           world_ids: worldIds
         });
@@ -346,6 +347,7 @@ export default {
         this.startRoomDialogVisible = false;
         toast.success(this.$t('servers.list.feedback.roomStarted'));
       } catch (error) {
+        if (isCapacityRiskCanceled(error)) return;
         toast.error(this.$t('servers.list.feedback.roomStartFailed', {
           error: error.message || this.$t('common.errors.unknown')
         }));
@@ -378,10 +380,11 @@ export default {
       this.serverActionId = this.serverKey(server);
       try {
         const request = { room_id: server.room_id, world_id: server.world_id };
-        await (isStopping ? roomApi.stopRoom(request) : roomApi.startRoom(request));
+        await (isStopping ? roomApi.stopRoom(request) : startRoomWithCapacityRisk(request));
         await this.fetchData();
         toast.success(this.$t('servers.list.feedback.actionCompleted', { action }));
       } catch (error) {
+        if (isCapacityRiskCanceled(error)) return;
         toast.error(this.$t('servers.list.feedback.actionFailed', {
           action,
           error: error.message || this.$t('common.errors.unknown')
