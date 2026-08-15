@@ -226,6 +226,26 @@ export const topologyV2API = {
   )
 }
 
+export const kubernetesRuntimeV2API = {
+  /** @returns {Promise<import('./distributedManagement').KubernetesRuntimeService>} */
+  status: () => client.get('/runtime-providers/kubernetes', {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  /** @returns {Promise<import('./distributedManagement').KubernetesObservation>} */
+  observe: (providerId, input) => client.post(
+    `/runtime-providers/kubernetes/${encode(providerId)}/shards/observe`,
+    input,
+    { runtimeTarget: false }
+  ),
+  /** @returns {Promise<import('./distributedManagement').KubernetesPreview>} */
+  preflight: (providerId, input) => client.post(
+    `/runtime-providers/kubernetes/${encode(providerId)}/shards/preflight`,
+    input,
+    { runtimeTarget: false }
+  )
+}
+
 export const runtimeV2API = {
   status: roomId => client.get(`/rooms/${encode(roomId)}/runtime`, {
     headers: { 'Cache-Control': 'no-store' }

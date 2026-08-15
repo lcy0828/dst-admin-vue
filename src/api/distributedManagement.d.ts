@@ -103,6 +103,100 @@ export interface RuntimeInfrastructure {
   observedAt: string
 }
 
+export type KubernetesProviderStatus = 'disabled' | 'configuration_required' | 'available'
+
+export interface KubernetesFeature {
+  id: 'observe' | 'preflight' | 'typed_plan' | 'apply' | 'lifecycle' | 'console' | 'mods' | 'backup_restore'
+  available: boolean
+  code?: string
+}
+
+export interface KubernetesSafetyGate {
+  id: 'lease_fencing_admission' | 'lease_aware_supervisor' | 'pod_uid_ownership' | 'pvc_uid_ownership' | 'network_policy' | 'secondary_master_dns' | 'published_udp' | 'exclusive_cpu'
+  satisfied: boolean
+}
+
+export interface KubernetesStorageProfile {
+  id: string
+  storageClassName: string
+  accessMode: 'ReadWriteOnce' | 'ReadWriteOncePod'
+  reclaimPolicy: 'Retain'
+  bindingMode: 'Immediate' | 'WaitForFirstConsumer'
+  dynamicProvisioning: boolean
+  minimumGiB: number
+  maximumGiB: number
+  snapshotCapable: boolean
+}
+
+export interface KubernetesComputeProfile {
+  id: string
+  nodeSelector?: Record<string, string>
+}
+
+export interface KubernetesProviderSummary {
+  id: string
+  namespace: string
+  runtimeImage: string
+  maximumObservationSeconds: number
+  capabilities: Record<string, boolean>
+  storageProfiles: KubernetesStorageProfile[]
+  computeProfiles: KubernetesComputeProfile[]
+}
+
+export interface KubernetesRuntimeService {
+  release: 'experimental'
+  enabled: boolean
+  configured: boolean
+  status: KubernetesProviderStatus
+  applyAllowed: false
+  errorCode?: string
+  errorMessage?: string
+  provider?: KubernetesProviderSummary
+  features: KubernetesFeature[]
+  safetyGates: KubernetesSafetyGate[]
+}
+
+export interface KubernetesShardRef {
+  providerId: string
+  roomId: string
+  worldId: string
+}
+
+export interface KubernetesResourceObservation {
+  exists: boolean
+  uid?: string
+  resourceVersion?: string
+  labels?: Record<string, string>
+  annotations?: Record<string, string>
+}
+
+export interface KubernetesObservation {
+  ref: KubernetesShardRef
+  statefulSet: KubernetesResourceObservation
+  pod: KubernetesResourceObservation & { phase?: string; deletionTimestamp?: string }
+  pvc: KubernetesResourceObservation & { phase?: string; storageClassName?: string; accessModes?: string[]; reclaimPolicy?: string; capacityGiB?: number }
+  service: KubernetesResourceObservation
+  publishedService: KubernetesResourceObservation
+  networkPolicy: KubernetesResourceObservation
+  cpu: { computeProfileId: string; observedAt: string; stale: boolean; [key: string]: string | number | boolean }
+  observedAt: string
+  stale: boolean
+}
+
+export interface KubernetesPreflightReport {
+  release: 'experimental'
+  ready: boolean
+  issues: Array<{ code: string; field?: string; message: string }>
+  warnings: Array<{ code: string; field?: string; message: string }>
+}
+
+export interface KubernetesPreview {
+  observation: KubernetesObservation
+  preflight: KubernetesPreflightReport
+  mutation?: Record<string, unknown>
+  applyAllowed: false
+}
+
 export interface DistributedBackupPart {
   id: string
   setId: string

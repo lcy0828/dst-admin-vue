@@ -18,6 +18,8 @@
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
 
+    <KubernetesProviderPanel :heading-level="3" />
+
     <div v-if="loading && !snapshot" class="flex flex-col gap-2" :aria-label="t('distributed.infrastructure.loading')">
       <Skeleton v-for="index in 3" :key="index" class="h-14 w-full" />
     </div>
@@ -247,6 +249,7 @@ import { useI18n } from 'vue-i18n'
 import { CircleAlert, Cpu, Network, RefreshCw, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { topologyV2API } from '@/api/v2'
+import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'

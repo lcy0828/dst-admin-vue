@@ -10,7 +10,8 @@ export const BACKEND_CAPABILITIES = Object.freeze({
     networkProfiles: true,
     cpuAllocation: true,
     consistentBackupSets: true,
-    placementAwareDiagnostics: true
+    placementAwareDiagnostics: true,
+    experimentalKubernetesProvider: true
   })
 })
 

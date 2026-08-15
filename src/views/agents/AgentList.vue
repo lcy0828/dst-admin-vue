@@ -23,6 +23,8 @@
       <AlertDescription>{{ $t('agents.list.capacity.policyDescription') }}</AlertDescription>
     </Alert>
 
+    <KubernetesProviderPanel :heading-level="2" />
+
     <Alert v-if="loadError" variant="destructive">
       <CircleAlert />
       <AlertTitle>{{ $t('agents.list.feedback.loadFailedTitle') }}</AlertTitle>
@@ -306,6 +308,7 @@ import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
 import { agentsV2API, runtimeTargetsV2API } from '@/api/v2';
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters';
+import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -351,7 +354,7 @@ export default {
     AlertTitle, Apple, Badge, ChevronDown, ChevronRight, CircleAlert, Clock3, Cpu, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription,
     EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldError, FieldGroup, FieldLabel, Layers3,
-    Monitor, Network, RefreshCw, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
+    KubernetesProviderPanel, Monitor, Network, RefreshCw, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
     TableCell, TableHead, TableHeader, TableRow, Terminal, ToggleGroup, ToggleGroupItem, Tooltip,
     TooltipContent, TooltipTrigger, Trash2, TriangleAlert, UiButton, UiDialog, UiInput, UiProgress
   },

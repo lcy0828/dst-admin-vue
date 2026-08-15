@@ -35,6 +35,33 @@ test('control-plane APIs expose runtime observability, resources, migration, and
   assert.match(api, /controlPlaneList:[\s\S]*runtimeTarget:\s*false/)
 })
 
+test('experimental Kubernetes Provider APIs remain control-plane scoped and read-only', async () => {
+  const api = await source('src/api/v2.js')
+  const start = api.indexOf('export const kubernetesRuntimeV2API')
+  const section = api.slice(start, api.indexOf('export const runtimeV2API', start))
+  assert.ok(start >= 0)
+  assert.match(section, /status:[\s\S]*\/runtime-providers\/kubernetes[\s\S]*runtimeTarget:\s*false/)
+  assert.match(section, /observe:[\s\S]*\/shards\/observe[\s\S]*runtimeTarget:\s*false/)
+  assert.match(section, /preflight:[\s\S]*\/shards\/preflight[\s\S]*runtimeTarget:\s*false/)
+  assert.doesNotMatch(section, /\bapply\s*:/)
+})
+
+test('Kubernetes Provider state is visible in infrastructure and node views without mutation UI', async () => {
+  const [panel, infrastructure, agents] = await Promise.all([
+    source('src/components/runtime/KubernetesProviderPanel.vue'),
+    source('src/components/runtime/RuntimeInfrastructurePanel.vue'),
+    source('src/views/agents/AgentList.vue')
+  ])
+  assert.match(infrastructure, /<KubernetesProviderPanel/)
+  assert.match(agents, /<KubernetesProviderPanel/)
+  assert.match(panel, /kubernetesRuntimeV2API\.status/)
+  assert.match(panel, /distributed\.kubernetes\.experimental/)
+  assert.match(panel, /distributed\.kubernetes\.readOnly\.description/)
+  assert.match(panel, /state\.features/)
+  assert.match(panel, /state\.safetyGates/)
+  assert.doesNotMatch(panel, /kubernetesRuntimeV2API\.(?:apply|start|stop)/)
+})
+
 test('runtime overview delegates resumable streams to the shared manager', async () => {
   const panel = await source('src/components/runtime/RuntimeOverviewPanel.vue')
   assert.match(panel, /createRuntimeEventStreamManager/)
@@ -151,7 +178,8 @@ test('distributed capability manifest and declarations cover the implemented con
     networkProfiles: true,
     cpuAllocation: true,
     consistentBackupSets: true,
-    placementAwareDiagnostics: true
+    placementAwareDiagnostics: true,
+    experimentalKubernetesProvider: true
   })
 
   const declarations = await source('src/api/distributedManagement.d.ts')
@@ -161,7 +189,10 @@ test('distributed capability manifest and declarations cover the implemented con
     'RuntimeInfrastructure',
     'CPUInventory',
     'DistributedBackupSet',
-    'DistributedBackupPart'
+    'DistributedBackupPart',
+    'KubernetesRuntimeService',
+    'KubernetesObservation',
+    'KubernetesPreview'
   ]) {
     assert.match(declarations, new RegExp(`export interface ${contract}`))
   }

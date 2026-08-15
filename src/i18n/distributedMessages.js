@@ -104,6 +104,44 @@ export const distributedMessages = {
           saved: 'CPU 分配已更新'
         }
       },
+      kubernetes: {
+        title: 'Kubernetes Provider',
+        description: '查看 Kubernetes 实验运行边界、只读能力和生产化安全门禁。',
+        experimental: '实验能力',
+        available: '可用',
+        unavailable: '不可用',
+        verified: '已验证',
+        unverified: '未验证',
+        loadFailed: 'Kubernetes Provider 状态加载失败',
+        status: { disabled: '默认关闭', configuration_required: '需要配置', available: '配置可用' },
+        disabled: {
+          title: 'Kubernetes Provider 默认关闭',
+          description: '启用并完成受信配置后，仅开放资源观察、预检和类型化计划预览。'
+        },
+        configuration: {
+          title: 'Kubernetes Provider 尚未完成配置',
+          description: '检查 Provider 配置、HTTPS API Server、CA 和 bearer token 文件。'
+        },
+        readOnly: {
+          title: '当前仅提供只读观察与预检',
+          description: 'Apply 始终关闭；生命周期、Console、Mod 发布和备份恢复尚未开放。SQLite 控制面仍须单副本运行。'
+        },
+        provider: {
+          provider: 'Provider', namespace: 'Namespace', image: '固定摘要镜像', profiles: '受信 Profile', freshness: '最大观测时效',
+          profileCount: '{storage} 个存储 / {compute} 个计算', freshnessValue: '{seconds} 秒'
+        },
+        columns: { capability: '能力', gate: '安全门禁', state: '状态' },
+        features: {
+          title: 'Provider 能力', observe: '受管资源观察', preflight: 'Shard 安全预检', typed_plan: '类型化计划预览',
+          apply: '应用 Kubernetes 变更', lifecycle: 'Shard 生命周期', console: 'Console 通道', mods: 'Mod 分发',
+          backup_restore: '一致性备份与恢复', unknown: '未知能力'
+        },
+        gates: {
+          title: '生产化门禁', lease_fencing_admission: 'Lease / fencing admission', lease_aware_supervisor: 'Lease 感知 Supervisor',
+          pod_uid_ownership: 'Pod UID 所有权', pvc_uid_ownership: 'PVC UID 所有权', network_policy: 'NetworkPolicy 强制执行',
+          secondary_master_dns: 'Secondary 到 Master DNS', published_udp: '公网 UDP / Steam', exclusive_cpu: '独占物理核心', unknown: '未知门禁'
+        }
+      },
       backups: {
         tab: '一致性备份',
         title: '跨节点一致性备份',
@@ -206,6 +244,44 @@ export const distributedMessages = {
         cpuUnbound: 'Scheduled by the OS', logicalCPUSelection: 'Logical CPUs: {cpus}',
         networkDialog: { title: 'Edit network profile', description: 'The bind address belongs to the process; the advertised address must be reachable by other Shards or players.', name: 'Name', bindAddress: 'Bind address', bindDescription: 'An empty value defaults to 0.0.0.0. Do not use loopback for cross-node communication.', advertiseAddress: 'Advertised address', advertiseDescription: 'Leave empty for a local single-node setup, or use an IP or hostname reachable from the other servers.', required: 'This field is required', saved: 'Network profile updated' },
         cpuDialog: { title: 'Configure CPU for {world}', description: 'Capacity guidance, quotas, and exclusive pinning are separate capabilities. This form configures CPU placement only.', policy: 'CPU policy', logicalCPUs: 'Logical CPUs', logicalCPUDescription: 'Exclusive mode must include every SMT sibling of a selected physical core.', topologyMissingTitle: 'Physical CPU topology was not reported', topologyMissingDescription: 'Shared logical-CPU limits remain available, but exclusive physical-core pinning is unsafe until the Agent inventory includes complete topology.', coreIdentity: 'Package {package} / physical core {core}', logicalCPUOnly: 'Physical-core and SMT relationship unavailable', allowSMTRisk: 'Allow incomplete SMT sibling selection', allowSMTRiskDescription: 'Compatibility escape hatch for operators who understand the contention risk.', invalidTitle: 'Invalid CPU allocation', saved: 'CPU allocation updated' }
+      },
+      kubernetes: {
+        title: 'Kubernetes Provider',
+        description: 'Inspect the experimental Kubernetes runtime boundary, read-only capabilities, and production safety gates.',
+        experimental: 'Experimental',
+        available: 'Available',
+        unavailable: 'Unavailable',
+        verified: 'Verified',
+        unverified: 'Unverified',
+        loadFailed: 'Failed to load Kubernetes Provider state',
+        status: { disabled: 'Default off', configuration_required: 'Configuration required', available: 'Configured' },
+        disabled: {
+          title: 'Kubernetes Provider is off by default',
+          description: 'After trusted configuration, only observation, preflight, and typed plan preview become available.'
+        },
+        configuration: {
+          title: 'Kubernetes Provider configuration is incomplete',
+          description: 'Check the Provider configuration, HTTPS API Server, CA, and bearer token files.'
+        },
+        readOnly: {
+          title: 'Observation and preflight only',
+          description: 'Apply remains disabled. Lifecycle, Console, Mod publication, and backup/restore are unavailable. The SQLite control plane remains single-replica.'
+        },
+        provider: {
+          provider: 'Provider', namespace: 'Namespace', image: 'Digest-pinned image', profiles: 'Trusted profiles', freshness: 'Observation age limit',
+          profileCount: '{storage} storage / {compute} compute', freshnessValue: '{seconds} seconds'
+        },
+        columns: { capability: 'Capability', gate: 'Safety gate', state: 'State' },
+        features: {
+          title: 'Provider capabilities', observe: 'Managed resource observation', preflight: 'Shard safety preflight', typed_plan: 'Typed plan preview',
+          apply: 'Apply Kubernetes changes', lifecycle: 'Shard lifecycle', console: 'Console transport', mods: 'Mod distribution',
+          backup_restore: 'Consistent backup and restore', unknown: 'Unknown capability'
+        },
+        gates: {
+          title: 'Production gates', lease_fencing_admission: 'Lease / fencing admission', lease_aware_supervisor: 'Lease-aware supervisor',
+          pod_uid_ownership: 'Pod UID ownership', pvc_uid_ownership: 'PVC UID ownership', network_policy: 'Enforced NetworkPolicy',
+          secondary_master_dns: 'Secondary-to-Master DNS', published_udp: 'Published UDP / Steam', exclusive_cpu: 'Exclusive physical core', unknown: 'Unknown gate'
+        }
       },
       backups: {
         tab: 'Consistent backups', title: 'Cross-node consistent backups', description: 'Capture every world of a room across nodes as one logical backup set and verify each part.', room: 'Room', selectRoom: 'Select a managed room', create: 'Create consistent backup', restore: 'Restore', details: 'Details',
