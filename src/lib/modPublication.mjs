@@ -15,6 +15,17 @@ const TERMINAL_STATES = new Set([
   'succeeded'
 ])
 
+const ACTIVE_ACTIVATION_STATES = new Set(['pending', 'restarting', 'confirming'])
+
+const ACTIVATION_STATUS_KEYS = Object.freeze({
+  skipped: 'skipped',
+  pending: 'pending',
+  restarting: 'restarting',
+  confirming: 'confirming',
+  succeeded: 'succeeded',
+  failed: 'failed'
+})
+
 const STATUS_KEYS = Object.freeze({
   queued: 'queued',
   running: 'running',
@@ -139,6 +150,28 @@ export function publicationTargetPhase(target) {
 
 export function publicationIsTerminal(value) {
   return TERMINAL_STATES.has(String(value?.status || '').trim().toLowerCase())
+}
+
+export function publicationActivationStatusKey(status) {
+  return ACTIVATION_STATUS_KEYS[String(status || '').trim().toLowerCase()] || 'unknown'
+}
+
+export function publicationActivationStatusVariant(status) {
+  const key = publicationActivationStatusKey(status)
+  if (key === 'failed') return 'destructive'
+  if (key === 'succeeded') return 'default'
+  if (ACTIVE_ACTIVATION_STATES.has(key)) return 'secondary'
+  return 'outline'
+}
+
+export function publicationNeedsPolling(value) {
+  return !publicationIsTerminal(value) || ACTIVE_ACTIVATION_STATES.has(String(value?.activation?.status || '').trim().toLowerCase())
+}
+
+export function publicationCanActivate(value) {
+  const status = String(value?.status || '').trim().toLowerCase()
+  const activation = String(value?.activation?.status || '').trim().toLowerCase()
+  return status === 'succeeded' && value?.commitDecision === true && value?.restartRequired === true && !ACTIVE_ACTIVATION_STATES.has(activation)
 }
 
 export function publicationTargetWorlds(target) {

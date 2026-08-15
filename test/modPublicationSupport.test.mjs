@@ -3,8 +3,12 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
   isModPublicationUnavailable,
+  publicationActivationStatusKey,
+  publicationActivationStatusVariant,
   publicationBlockerKey,
+  publicationCanActivate,
   publicationIsTerminal,
+  publicationNeedsPolling,
   publicationOutcomeKey,
   publicationPhaseKey,
   publicationProgress,
@@ -25,7 +29,8 @@ test('mod publication control-plane API never inherits the manual runtime target
   assert.match(publicationAPI, /mod-publications\/preview/)
   assert.match(publicationAPI, /\/mod-publications\/\$\{encode\(publicationId\)\}/)
   assert.match(publicationAPI, /retry-failed/)
-  assert.equal(publicationAPI.match(/runtimeTarget:\s*false/g)?.length, 5)
+  assert.match(publicationAPI, /actions\/activate/)
+  assert.equal(publicationAPI.match(/runtimeTarget:\s*false/g)?.length, 6)
 })
 
 test('installed mod mapping does not invent per-mod publication state', async () => {
@@ -70,6 +75,12 @@ test('publication presentation helpers normalize backend states without inventin
   assert.equal(publicationProgress({ status: 'custom-state' }), 0)
   assert.equal(publicationIsTerminal({ status: 'committed' }), false)
   assert.equal(publicationIsTerminal({ status: 'succeeded' }), true)
+  assert.equal(publicationActivationStatusKey('confirming'), 'confirming')
+  assert.equal(publicationActivationStatusVariant('failed'), 'destructive')
+  assert.equal(publicationNeedsPolling({ status: 'succeeded', activation: { status: 'confirming' } }), true)
+  assert.equal(publicationNeedsPolling({ status: 'succeeded', activation: { status: 'succeeded' } }), false)
+  assert.equal(publicationCanActivate({ status: 'succeeded', commitDecision: true, restartRequired: true, activation: { status: 'skipped' } }), true)
+  assert.equal(publicationCanActivate({ status: 'succeeded', commitDecision: true, restartRequired: true, activation: { status: 'restarting' } }), false)
   assert.equal(publicationTargetPhase({ cacheEnsured: true, status: 'preparing' }), 'download')
   assert.equal(publicationTargetPhase({ prepared: true, cacheEnsured: true }), 'stage')
   assert.equal(publicationTargetPhase({ rolledBack: true, completed: true }), 'rollback')
@@ -89,5 +100,7 @@ test('room publication panel uses accessible shadcn status composition', async (
   assert.match(panel, /<Badge/)
   assert.match(panel, /modApi\.previewModPublication/)
   assert.match(panel, /modApi\.createModPublication/)
+  assert.match(panel, /modApi\.activateModPublication/)
+  assert.match(panel, /<ToggleGroup/)
   assert.doesNotMatch(panel, /bg-(blue|purple|orange|slate)-/)
 })

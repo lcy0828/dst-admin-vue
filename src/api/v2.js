@@ -445,6 +445,11 @@ export const modPublicationsV2API = {
     `/mod-publications/${encode(publicationId)}/actions/retry-failed`,
     {},
     { runtimeTarget: false }
+  ),
+  activate: (publicationId, input) => client.post(
+    `/mod-publications/${encode(publicationId)}/actions/activate`,
+    input,
+    { runtimeTarget: false }
   )
 }
 

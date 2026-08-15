@@ -256,6 +256,18 @@ async function retryModPublication(publicationId, options = {}) {
   return finishModPublication(roomId, job, options.onProgress, inPlace ? resolvedPublicationId : '')
 }
 
+async function activateModPublication(publicationId, options = {}) {
+  const resolvedPublicationId = requireValue(publicationId, 'MOD_PUBLICATION_ID_REQUIRED')
+  const current = await modPublicationsV2API.get(resolvedPublicationId)
+  const roomId = requireValue(current?.roomId, 'ROOM_REQUIRED', { publicationId: resolvedPublicationId })
+  const job = await modPublicationsV2API.activate(resolvedPublicationId, {
+    mode: 'restart',
+    loadConfirmation: 'logs',
+    timeoutSeconds: options.timeoutSeconds || 300
+  })
+  return finishModPublication(roomId, job, options.onProgress, resolvedPublicationId)
+}
+
 async function getLibrary() {
   const response = await modsV2API.library()
   return {
@@ -436,6 +448,7 @@ export const realModApi = {
   listModPublications,
   getModPublication,
   retryModPublication,
+  activateModPublication,
   toggleMod,
   updateMod,
   removeModFromRoom,

@@ -160,7 +160,7 @@ export const modMessages = {
         loadFailedTitle: '发布状态加载失败',
         actions: {
           preview: '预览发布', publish: '确认发布', retryFailed: '重试失败节点',
-          cancel: '取消发布', viewStatus: '查看发布状态'
+          cancel: '取消发布', viewStatus: '查看发布状态', activate: '重启并确认加载'
         },
         fields: {
           topologyRevision: '拓扑版本', target: '目标节点', worlds: '世界', mods: '模组',
@@ -177,6 +177,29 @@ export const modMessages = {
         statusDialog: {
           title: '模组发布状态',
           description: '发布 {id} 在各目标节点和世界上的实际执行结果。'
+        },
+        activation: {
+          field: '生效方式',
+          manual: '仅发布，稍后重启',
+          restart: '发布后协调重启',
+          descriptions: {
+            manual: '先原子发布文件和配置，不中断正在运行的游戏；需要稍后重启分片才会完整生效。',
+            restart: '发布成功后按洞穴优先停止、地面优先启动，并从新日志中确认每个分片已完成加载。'
+          },
+          restartTitle: '这会短暂中断当前房间',
+          restartDescription: '系统只重启发布计划中的运行中分片；原本停服的分片保持停服。任何分片未确认加载都会保留失败状态和恢复入口。',
+          badge: '生效：{status}',
+          failedTitle: '模组激活失败',
+          requiredTitle: '已发布，仍需重启分片',
+          requiredDescription: '文件与配置已经提交，但运行中的 DST 仍在使用旧状态。可以现在协调重启并按日志确认加载。',
+          statuses: {
+            skipped: '等待手动重启', pending: '等待重启', restarting: '正在协调重启',
+            confirming: '正在确认加载', succeeded: '已加载确认', failed: '激活失败', unknown: '状态未知'
+          },
+          columns: {
+            world: '世界', target: '目标节点', status: '激活状态', runtime: '运行状态',
+            evidence: '加载证据', observedAt: '确认时间'
+          }
         },
         states: {
           queued: '排队中', running: '执行中', succeeded: '已成功', failed: '失败', skipped: '已跳过',
@@ -210,7 +233,8 @@ export const modMessages = {
           previewReady: '发布计划已生成，请核对目标节点和世界',
           previewFailed: '生成发布计划失败：{error}', submitted: '模组发布已提交',
           publishFailed: '提交模组发布失败：{error}', retrySubmitted: '失败节点已重新提交',
-          retryFailed: '重试失败节点失败：{error}'
+          retryFailed: '重试失败节点失败：{error}', activationSubmitted: '分片重启和加载确认已完成',
+          activationFailed: '模组激活失败：{error}'
         }
       },
       installed: {
@@ -556,7 +580,7 @@ export const modMessages = {
         loadFailedTitle: 'Failed to Load Publication Status',
         actions: {
           preview: 'Preview Publication', publish: 'Confirm Publication', retryFailed: 'Retry Failed Nodes',
-          cancel: 'Cancel Publication', viewStatus: 'View Publication Status'
+          cancel: 'Cancel Publication', viewStatus: 'View Publication Status', activate: 'Restart and Confirm Load'
         },
         fields: {
           topologyRevision: 'Topology Revision', target: 'Target Node', worlds: 'Worlds', mods: 'Mods',
@@ -573,6 +597,29 @@ export const modMessages = {
         statusDialog: {
           title: 'Mod Publication Status',
           description: 'Actual target-node and world results for publication {id}.'
+        },
+        activation: {
+          field: 'Activation Mode',
+          manual: 'Publish Only, Restart Later',
+          restart: 'Restart After Publication',
+          descriptions: {
+            manual: 'Publish files and configuration atomically without interrupting the running game. Restart the shards later to fully activate the changes.',
+            restart: 'After publication, stop secondary shards first, start the master first, and confirm every shard from newly written load logs.'
+          },
+          restartTitle: 'This briefly interrupts the current room',
+          restartDescription: 'Only running shards in the publication plan are restarted. Shards that were stopped remain stopped. Any unconfirmed shard retains a failed state and recovery path.',
+          badge: 'Activation: {status}',
+          failedTitle: 'Mod Activation Failed',
+          requiredTitle: 'Published, Shard Restart Still Required',
+          requiredDescription: 'Files and configuration are committed, but running DST processes still use the previous state. Restart now and confirm loading from fresh logs.',
+          statuses: {
+            skipped: 'Awaiting Manual Restart', pending: 'Restart Pending', restarting: 'Coordinating Restart',
+            confirming: 'Confirming Load', succeeded: 'Load Confirmed', failed: 'Activation Failed', unknown: 'Unknown Status'
+          },
+          columns: {
+            world: 'World', target: 'Target Node', status: 'Activation', runtime: 'Runtime',
+            evidence: 'Load Evidence', observedAt: 'Confirmed At'
+          }
         },
         states: {
           queued: 'Queued', running: 'Running', succeeded: 'Succeeded', failed: 'Failed', skipped: 'Skipped',
@@ -606,7 +653,8 @@ export const modMessages = {
           previewReady: 'Publication plan generated. Review the target nodes and worlds.',
           previewFailed: 'Could not generate the publication plan: {error}', submitted: 'Mod publication submitted',
           publishFailed: 'Could not submit the mod publication: {error}', retrySubmitted: 'Failed nodes were resubmitted',
-          retryFailed: 'Could not retry failed nodes: {error}'
+          retryFailed: 'Could not retry failed nodes: {error}', activationSubmitted: 'Shard restart and load confirmation completed',
+          activationFailed: 'Could not activate the published mods: {error}'
         }
       },
       installed: {

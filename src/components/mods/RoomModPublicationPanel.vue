@@ -43,6 +43,23 @@
       </div>
 
       <template v-else-if="availability !== 'unavailable'">
+        <FieldGroup>
+          <Field>
+            <FieldLabel>{{ t('mods.publication.activation.field') }}</FieldLabel>
+            <ToggleGroup type="single" variant="outline" :model-value="activationMode" @update:model-value="setActivationMode">
+              <ToggleGroupItem value="manual" class="flex-1">{{ t('mods.publication.activation.manual') }}</ToggleGroupItem>
+              <ToggleGroupItem value="restart" class="flex-1">{{ t('mods.publication.activation.restart') }}</ToggleGroupItem>
+            </ToggleGroup>
+            <FieldDescription>{{ t(`mods.publication.activation.descriptions.${activationMode}`) }}</FieldDescription>
+          </Field>
+        </FieldGroup>
+
+        <Alert v-if="activationMode === 'restart'">
+          <RotateCw />
+          <AlertTitle>{{ t('mods.publication.activation.restartTitle') }}</AlertTitle>
+          <AlertDescription>{{ t('mods.publication.activation.restartDescription') }}</AlertDescription>
+        </Alert>
+
         <div class="flex flex-wrap items-center gap-2">
           <Badge variant="outline">
             {{ t('mods.publication.fields.topologyRevision') }}:
@@ -144,6 +161,9 @@
             {{ statusLabel(selectedPublication.status) }}
           </Badge>
           <Badge variant="outline">{{ outcomeLabel(selectedPublication.outcome) }}</Badge>
+          <Badge :variant="publicationActivationStatusVariant(selectedPublication.activation?.status)">
+            {{ t('mods.publication.activation.badge', { status: activationStatusLabel(selectedPublication.activation?.status) }) }}
+          </Badge>
           <span class="text-sm text-muted-foreground">
             {{ t('mods.publication.fields.topologyRevision') }}:
             {{ selectedPublication.plan?.topologyRevision || '--' }}
@@ -156,6 +176,25 @@
           <TriangleAlert />
           <AlertTitle>{{ selectedPublication.errorCode || t('mods.publication.states.failed') }}</AlertTitle>
           <AlertDescription>{{ selectedPublication.errorMessage }}</AlertDescription>
+        </Alert>
+
+        <Alert v-if="selectedPublication.activation?.errorMessage" variant="destructive">
+          <TriangleAlert />
+          <AlertTitle>{{ selectedPublication.activation.errorCode || t('mods.publication.activation.failedTitle') }}</AlertTitle>
+          <AlertDescription>{{ selectedPublication.activation.errorMessage }}</AlertDescription>
+        </Alert>
+
+        <Alert v-else-if="selectedPublication.restartRequired">
+          <CircleAlert />
+          <AlertTitle>{{ t('mods.publication.activation.requiredTitle') }}</AlertTitle>
+          <AlertDescription>{{ t('mods.publication.activation.requiredDescription') }}</AlertDescription>
+          <AlertAction>
+            <UiButton size="sm" :disabled="!canActivateSelected || activating" @click="activateSelected">
+              <Spinner v-if="activating" data-icon="inline-start" />
+              <RotateCw v-else data-icon="inline-start" />
+              {{ t('mods.publication.actions.activate') }}
+            </UiButton>
+          </AlertAction>
         </Alert>
 
         <div class="overflow-x-auto rounded-md border">
@@ -187,6 +226,31 @@
             </TableBody>
           </Table>
         </div>
+
+        <div v-if="selectedPublication.activation?.shards?.length" class="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{{ t('mods.publication.activation.columns.world') }}</TableHead>
+                <TableHead>{{ t('mods.publication.activation.columns.target') }}</TableHead>
+                <TableHead>{{ t('mods.publication.activation.columns.status') }}</TableHead>
+                <TableHead>{{ t('mods.publication.activation.columns.runtime') }}</TableHead>
+                <TableHead>{{ t('mods.publication.activation.columns.evidence') }}</TableHead>
+                <TableHead>{{ t('mods.publication.activation.columns.observedAt') }}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="shard in selectedPublication.activation.shards" :key="`${shard.roomId}:${shard.worldId}`">
+                <TableCell class="font-medium">{{ activationWorldName(shard) }}</TableCell>
+                <TableCell>{{ shard.targetId || '--' }}</TableCell>
+                <TableCell><Badge :variant="publicationActivationStatusVariant(shard.status)">{{ activationStatusLabel(shard.status) }}</Badge></TableCell>
+                <TableCell>{{ shard.runtimeState || '--' }}</TableCell>
+                <TableCell>{{ shard.loadMarker || shard.errorMessage || '--' }}</TableCell>
+                <TableCell>{{ formatTime(shard.loadConfirmedAt || shard.updatedAt) }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <DialogFooter>
@@ -213,15 +277,20 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription } from '@/components/ui/empty'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   isModPublicationUnavailable,
+  publicationActivationStatusKey,
+  publicationActivationStatusVariant,
   publicationBlockerKey,
-  publicationIsTerminal,
+  publicationCanActivate,
+  publicationNeedsPolling,
   publicationOutcomeKey,
   publicationPhaseKey,
   publicationProgress,
@@ -246,6 +315,8 @@ const loading = ref(false)
 const previewing = ref(false)
 const publishing = ref(false)
 const retrying = ref(false)
+const activating = ref(false)
+const activationMode = ref('manual')
 const errorMessage = ref('')
 const topology = ref(null)
 const plan = ref(null)
@@ -263,6 +334,7 @@ const displayedRevision = computed(() => plan.value?.topologyRevision || topolog
 const canPreview = computed(() => availability.value !== 'unavailable' && Boolean(props.roomId) && props.worlds.length > 0 && !loading.value && !previewing.value && !publishing.value)
 const canPublish = computed(() => Boolean(plan.value?.ready && plan.value?.planHash) && !publishing.value && !previewing.value)
 const canRetrySelected = computed(() => ['failed', 'recovery_required', 'rolled_back'].includes(String(selectedPublication.value?.status || '').toLowerCase()))
+const canActivateSelected = computed(() => publicationCanActivate(selectedPublication.value))
 
 watch(() => props.roomId, () => {
   plan.value = null
@@ -290,8 +362,17 @@ function publicationInput() {
     modIds: props.mods.map(mod => mod.modid || mod.id).filter(Boolean),
     worldIds: props.worlds.map(world => world.id).filter(Boolean),
     includeDependencies: true,
+    activation: activationMode.value === 'restart'
+      ? { mode: 'restart', loadConfirmation: 'logs', timeoutSeconds: 300 }
+      : { mode: 'manual', loadConfirmation: 'none', timeoutSeconds: 300 },
     ...(revision ? { expectedTopologyRevision: revision } : {})
   }
+}
+
+function setActivationMode(value) {
+  if (!['manual', 'restart'].includes(value) || value === activationMode.value) return
+  activationMode.value = value
+  plan.value = null
 }
 
 async function loadPublicationState() {
@@ -382,7 +463,7 @@ function openStatus(publication) {
 
 function startPolling(publication) {
   stopPolling()
-  if (!publication?.id || publicationIsTerminal(publication)) return
+  if (!publication?.id || !publicationNeedsPolling(publication)) return
   pollTimer = window.setTimeout(refreshSelectedPublication, 1500)
 }
 
@@ -420,6 +501,22 @@ async function retryFailed() {
   }
 }
 
+async function activateSelected() {
+  if (!canActivateSelected.value || activating.value) return
+  activating.value = true
+  try {
+    const publication = normalizePublication(await modApi.activateModPublication(selectedPublication.value.id))
+    selectedPublication.value = publication
+    publications.value = [publication, ...publications.value.filter(item => item.id !== publication.id)]
+    startPolling(publication)
+    toast.success(t('mods.publication.feedback.activationSubmitted'))
+  } catch (error) {
+    toast.error(t('mods.publication.feedback.activationFailed', { error: error.message || t('mods.publication.errors.unknown') }))
+  } finally {
+    activating.value = false
+  }
+}
+
 function statusLabel(status) {
   return t(`mods.publication.states.${publicationStatusKey(status)}`)
 }
@@ -430,6 +527,15 @@ function phaseLabel(phase) {
 
 function outcomeLabel(outcome) {
   return t(`mods.publication.outcomes.${publicationOutcomeKey(outcome)}`)
+}
+
+function activationStatusLabel(status) {
+  return t(`mods.publication.activation.statuses.${publicationActivationStatusKey(status)}`)
+}
+
+function activationWorldName(shard) {
+  const world = props.worlds.find(item => item.id === shard.worldId)
+  return world?.name || world?.displayName || world?.directoryName || shard.worldId || '--'
 }
 
 function blockerLabel(blocker) {
