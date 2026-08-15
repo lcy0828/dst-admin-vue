@@ -176,6 +176,7 @@ test('formal layout keeps remote selection in topology instead of switching the 
     source('src/views/rooms/RoomTopology.vue')
   ])
   assert.doesNotMatch(layout, /RuntimeTargetSelectV2|remoteContextBlocked|RUNTIME_TARGET_CHANGED_EVENT/)
+  assert.match(layout, /setActiveRuntimeTarget\(\)/)
   assert.match(layout, /<RouterView\s*\/>/)
   assert.match(topology, /draftPlacements\[placement\.worldId\]/)
   assert.match(topology, /topologyV2API\.applyPlacement/)

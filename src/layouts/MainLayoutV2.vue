@@ -31,8 +31,11 @@ import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { setActiveRuntimeTarget } from '@/utils/runtimeTarget'
 import { getSystemPreferences } from '@/utils/systemPreferences'
 import { toast } from 'vue-sonner'
+
+setActiveRuntimeTarget()
 
 const router = useRouter()
 const route = useRoute()
