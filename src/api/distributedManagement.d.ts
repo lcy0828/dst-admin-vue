@@ -98,7 +98,30 @@ export interface RuntimeInfrastructure {
   environments: Array<{ id: string; providerId: string; targetId: string; kind: 'native' | 'container'; driver: string; networkProfileId: string; cpu: CPUInventory; observedAt?: string }>
   networkProfiles: Array<{ id: string; environmentId: string; name: string; mode: 'host' | 'bridge'; scopeId: string; bindAddress: string; advertiseAddress: string }>
   portReservations: Array<{ id: string; environmentId: string; networkProfileId: string; scopeId: string; targetId: string; roomId?: string; worldId?: string; purpose: string; protocol: string; port: number; managed: boolean }>
-  cpuAllocations: Array<{ id: string; environmentId: string; targetId: string; roomId: string; worldId: string; policy: 'none' | 'shared' | 'exclusive'; logicalCpuIds: number[]; allowSmtSiblingRisk: boolean; warnings: string[] }>
+  cpuAllocations: Array<{
+    id: string
+    environmentId: string
+    targetId: string
+    roomId: string
+    worldId: string
+    policy: 'none' | 'shared' | 'exclusive'
+    logicalCpuIds: number[]
+    allowSmtSiblingRisk: boolean
+    warnings: string[]
+    executionState: 'desired' | 'prepared' | 'applied' | 'released' | 'failed'
+    executionError?: string
+    observed?: {
+      policy: 'none' | 'shared' | 'exclusive'
+      logical_cpu_ids: number[]
+      effective_cpu_ids: number[]
+      state: 'unknown' | 'prepared' | 'applied' | 'released'
+      runtime_kind: 'native' | 'container'
+      instance_id?: string
+      enforced: boolean
+      instance_running: boolean
+      observed_at: string
+    }
+  }>
   preflight: { ready: boolean; warnings: string[]; conflicts: Array<{ code: string; message: string; roomId?: string; worldId?: string }> }
   observedAt: string
 }

@@ -77,6 +77,8 @@ export const distributedMessages = {
         },
         cpuUnbound: '由系统调度',
         logicalCPUSelection: '逻辑 CPU：{cpus}',
+        cpuExecutionStates: { desired: '等待执行', prepared: '已准备', applied: '已生效', released: '已释放', failed: '执行失败', unknown: '未观测' },
+        cpuObserved: '实际 CPU：{cpus} · {time}',
         networkDialog: {
           title: '编辑网络 Profile',
           description: '监听地址属于进程，公布地址必须能被其他分片或玩家实际访问。',
@@ -242,6 +244,8 @@ export const distributedMessages = {
         cpuPolicies: { none: 'Unbound', shared: 'Shared CPUs', exclusive: 'Exclusive physical core' },
         cpuPolicyDescriptions: { none: 'Let the OS schedule this world and retain advisory capacity checks only.', shared: 'Constrain the world to selected logical CPUs while allowing sharing.', exclusive: 'Reserve complete non-overlapping physical cores for this world.' },
         cpuUnbound: 'Scheduled by the OS', logicalCPUSelection: 'Logical CPUs: {cpus}',
+        cpuExecutionStates: { desired: 'Pending execution', prepared: 'Prepared', applied: 'Applied', released: 'Released', failed: 'Execution failed', unknown: 'Not observed' },
+        cpuObserved: 'Effective CPUs: {cpus} · {time}',
         networkDialog: { title: 'Edit network profile', description: 'The bind address belongs to the process; the advertised address must be reachable by other Shards or players.', name: 'Name', bindAddress: 'Bind address', bindDescription: 'An empty value defaults to 0.0.0.0. Do not use loopback for cross-node communication.', advertiseAddress: 'Advertised address', advertiseDescription: 'Leave empty for a local single-node setup, or use an IP or hostname reachable from the other servers.', required: 'This field is required', saved: 'Network profile updated' },
         cpuDialog: { title: 'Configure CPU for {world}', description: 'Capacity guidance, quotas, and exclusive pinning are separate capabilities. This form configures CPU placement only.', policy: 'CPU policy', logicalCPUs: 'Logical CPUs', logicalCPUDescription: 'Exclusive mode must include every SMT sibling of a selected physical core.', topologyMissingTitle: 'Physical CPU topology was not reported', topologyMissingDescription: 'Shared logical-CPU limits remain available, but exclusive physical-core pinning is unsafe until the Agent inventory includes complete topology.', coreIdentity: 'Package {package} / physical core {core}', logicalCPUOnly: 'Physical-core and SMT relationship unavailable', allowSMTRisk: 'Allow incomplete SMT sibling selection', allowSMTRiskDescription: 'Compatibility escape hatch for operators who understand the contention risk.', invalidTitle: 'Invalid CPU allocation', saved: 'CPU allocation updated' }
       },

@@ -127,8 +127,13 @@
                 </TableCell>
                 <TableCell>
                   <div class="flex min-w-44 flex-col gap-1">
-                    <Badge variant="outline">{{ cpuPolicyLabel(allocationFor(placement.worldId)?.policy) }}</Badge>
+                    <div class="flex flex-wrap gap-1.5">
+                      <Badge variant="outline">{{ cpuPolicyLabel(allocationFor(placement.worldId)?.policy) }}</Badge>
+                      <Badge :variant="cpuExecutionVariant(allocationFor(placement.worldId))">{{ cpuExecutionLabel(allocationFor(placement.worldId)) }}</Badge>
+                    </div>
                     <span class="text-xs text-muted-foreground">{{ cpuSelectionLabel(allocationFor(placement.worldId)) }}</span>
+                    <span v-if="allocationFor(placement.worldId)?.observed" class="text-xs text-muted-foreground">{{ cpuObservedLabel(allocationFor(placement.worldId)) }}</span>
+                    <span v-if="allocationFor(placement.worldId)?.executionError" class="text-xs text-destructive">{{ allocationFor(placement.worldId).executionError }}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -361,6 +366,29 @@ function cpuSelectionLabel(allocation) {
   return t('distributed.infrastructure.logicalCPUSelection', { cpus: allocation.logicalCpuIds.join(', ') })
 }
 
+function cpuExecutionKey(allocation) {
+  const state = allocation?.executionState
+  return ['desired', 'prepared', 'applied', 'released', 'failed'].includes(state) ? state : 'unknown'
+}
+
+function cpuExecutionLabel(allocation) {
+  return t(`distributed.infrastructure.cpuExecutionStates.${cpuExecutionKey(allocation)}`)
+}
+
+function cpuExecutionVariant(allocation) {
+  const state = cpuExecutionKey(allocation)
+  if (state === 'failed') return 'destructive'
+  if (state === 'applied' || state === 'released') return 'secondary'
+  return 'outline'
+}
+
+function cpuObservedLabel(allocation) {
+  const observed = allocation?.observed
+  const cpus = observed?.effective_cpu_ids?.join(', ') || observed?.effectiveCpuIds?.join(', ') || '--'
+  const observedAt = observed?.observed_at || observed?.observedAt
+  return t('distributed.infrastructure.cpuObserved', { cpus, time: formatTime(observedAt) })
+}
+
 function openNetworkDialog(environment) {
   const profile = networkFor(environment)
   if (!profile) return
@@ -453,6 +481,7 @@ async function saveCPU() {
     cpuDialogOpen.value = false
     toast.success(t('distributed.infrastructure.cpuDialog.saved'))
   } catch (cause) {
+    await loadInfrastructure()
     cpuError.value = cause.details?.fields
       ? Object.values(cause.details.fields).join('；')
       : (cause.message || t('common.errors.unknown'))

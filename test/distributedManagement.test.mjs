@@ -198,6 +198,8 @@ test('distributed capability manifest and declarations cover the implemented con
   }
   assert.match(declarations, /logical_processors:\s*number/)
   assert.match(declarations, /logicalCpuIds:\s*number\[\]/)
+  assert.match(declarations, /executionState:\s*'desired'\s*\|\s*'prepared'\s*\|\s*'applied'/)
+  assert.match(declarations, /effective_cpu_ids:\s*number\[\]/)
 })
 
 test('topology exposes confirmed migration and typed resource forms', async () => {
@@ -215,6 +217,9 @@ test('topology exposes confirmed migration and typed resource forms', async () =
   assert.match(infrastructure, /allowSmtSiblingRisk/)
   assert.doesNotMatch(infrastructure, /allowSMTSiblingRisk/)
   assert.match(infrastructure, /logical_processors/)
+  assert.match(infrastructure, /executionState/)
+  assert.match(infrastructure, /executionError/)
+  assert.match(infrastructure, /effective_cpu_ids/)
 })
 
 test('backup UI waits for coordinated create and restore jobs', async () => {
