@@ -70,7 +70,7 @@
             <TableHeader>
               <TableRow>
                 <TableHead><SortButton label="ID" field="id" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead><SortButton :label="$t('players.fields.archive')" field="archive_name" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead><SortButton :label="$t('players.fields.roomAndWorld')" field="archive_name" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
                 <TableHead>{{ $t('players.fields.playerName') }}</TableHead>
                 <TableHead>KU ID</TableHead>
                 <TableHead>{{ $t('players.fields.character') }}</TableHead>
@@ -86,14 +86,29 @@
             <TableBody>
               <TableRow v-for="player in playerList" :key="`${player.room_id}:${player.id}`">
                 <TableCell>{{ player.id }}</TableCell>
-                <TableCell>{{ player.archive_name }}</TableCell>
+                <TableCell>
+                  <div class="flex min-w-36 flex-col gap-1">
+                    <span>{{ player.archive_name }}</span>
+                    <div class="flex flex-wrap items-center gap-1">
+                      <span class="text-xs text-muted-foreground">{{ player.world_name || $t('players.values.unknownWorld') }}</span>
+                      <TooltipProvider v-if="player.presence_conflict">
+                        <Tooltip>
+                          <TooltipTrigger as-child>
+                            <Badge variant="destructive"><TriangleAlert />{{ $t('players.list.presenceConflict') }}</Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>{{ $t('players.list.presenceConflictDescription', { worlds: player.observed_world_ids.join(', ') }) }}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" :title="$t('players.list.administrator')" /><UserRoundCheck v-if="player.is_friend" :title="$t('players.list.friend')" /></div>
                 </TableCell>
                 <TableCell class="mono-cell">{{ player.user_id }}</TableCell>
                 <TableCell><Badge variant="outline">{{ getCharacterName(player.prefab) }}</Badge></TableCell>
                 <TableCell>{{ player.player_age }}</TableCell>
-                <TableCell><Badge :variant="getPlayerStatusMeta(player.status).variant">{{ getPlayerStatusMeta(player.status).label }}</Badge></TableCell>
+                <TableCell><div class="flex min-w-28 flex-col gap-1"><Badge :variant="getPlayerStatusMeta(player.status).variant">{{ getPlayerStatusMeta(player.status).label }}</Badge><span class="text-xs text-muted-foreground">{{ formatDate(player.last_refreshed_at) }}</span></div></TableCell>
                 <TableCell><Badge v-if="isPlayerOnline(player.status)" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
                 <TableCell>
                   <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" :title="$t('players.actions.viewOnSteam')" :aria-label="$t('players.actions.viewPlayerOnSteam')" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
@@ -158,6 +173,11 @@
               <Avatar size="lg"><AvatarFallback>{{ getPlayerInitials(currentPlayer) }}</AvatarFallback></Avatar>
               <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="getPlayerStatusMeta(currentPlayer.status).variant">{{ getPlayerStatusMeta(currentPlayer.status).label }}</Badge></div><span>{{ getCharacterName(currentPlayer.prefab) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || $t('players.values.unknownWorld') }}</span></div>
             </div>
+            <Alert v-if="currentPlayer.presence_conflict" variant="destructive">
+              <TriangleAlert />
+              <AlertTitle>{{ $t('players.detail.presenceConflictTitle') }}</AlertTitle>
+              <AlertDescription>{{ $t('players.detail.presenceConflictDescription', { worlds: currentPlayer.observed_world_ids.join(', ') }) }}</AlertDescription>
+            </Alert>
             <dl class="player-description-grid">
               <div><dt>{{ $t('players.fields.playerId') }}</dt><dd>{{ currentPlayer.id }}</dd></div><div><dt>KU ID</dt><dd>{{ currentPlayer.user_id }}</dd></div>
               <div><dt>{{ $t('players.fields.playerName') }}</dt><dd>{{ currentPlayer.player_name }}</dd></div><div><dt>{{ $t('players.fields.archive') }}</dt><dd>{{ currentPlayer.archive_name }}</dd></div>
@@ -165,7 +185,7 @@
               <div><dt>{{ $t('players.fields.statusChanged') }}</dt><dd>{{ formatDate(currentPlayer.status_change) }}</dd></div><div><dt>Steam ID</dt><dd><UiButton variant="link" size="sm" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</UiButton></dd></div>
               <div><dt>{{ $t('players.fields.network') }}</dt><dd>{{ isPlayerOnline(currentPlayer.status) ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div>
               <div><dt>{{ $t('players.fields.firstSeen') }}</dt><dd>{{ formatDate(currentPlayer.first_seen) }}</dd></div><div><dt>{{ $t('players.fields.lastSeen') }}</dt><dd>{{ formatDate(currentPlayer.last_seen) }}</dd></div>
-              <div><dt>{{ $t('players.fields.createdAt') }}</dt><dd>{{ formatDate(currentPlayer.created_at) }}</dd></div><div><dt>{{ $t('players.fields.updatedAt') }}</dt><dd>{{ formatDate(currentPlayer.updated_at) }}</dd></div>
+              <div><dt>{{ $t('players.fields.createdAt') }}</dt><dd>{{ formatDate(currentPlayer.created_at) }}</dd></div><div><dt>{{ $t('players.fields.lastRefreshed') }}</dt><dd>{{ formatDate(currentPlayer.last_refreshed_at) }}</dd></div>
             </dl>
             <Separator />
             <section><h3>{{ $t('players.detail.gameActions') }}</h3><div class="detail-action-grid">
@@ -264,6 +284,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   formatPlayerDate,
   isPlayerOnline,
@@ -359,6 +380,10 @@ export default {
     TableHeader,
     TableRow,
     TriangleAlert,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
     UiButton,
     UiDialog,
     UiInput,

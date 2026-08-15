@@ -34,6 +34,16 @@ export const distributedMessages = {
         selectWorldTitle: '选择一个世界开始诊断',
         selectWorldDescription: '上方列表同时展示本机和远程世界；只有运行中且节点在线的世界可以执行诊断。'
       },
+      roomLogs: {
+        title: '房间实时日志',
+        description: '按生效 Placement 同时读取所有分片；单个节点异常不会隐藏其他世界的日志。',
+        query: '日志关键词', queryPlaceholder: '搜索所有世界的日志', loadFailed: '房间日志加载失败',
+        partialTitle: '部分世界日志不可用', partialDescription: '{count} 个世界读取失败，其他可用日志仍已显示。',
+        available: '{available} / {total} 可用', availableStatus: '可用', unavailable: '不可用', readAt: '读取于 {time}',
+        emptyTitle: '房间还没有世界', emptyDescription: '创建世界后可在这里集中检查实时日志。',
+        file: '文件', size: '大小', updatedAt: '文件更新时间', noMatchesTitle: '没有匹配日志',
+        noMatchesDescription: '当前关键词在该世界最近的日志中没有匹配项。', roles: { master: '主世界', caves: '洞穴', custom: '自定义分片' }
+      },
       infrastructure: {
         title: '运行基础设施',
         description: '统一查看 Runtime Provider、执行环境、网络作用域、端口租约和 CPU 分配。',
@@ -159,6 +169,16 @@ export const distributedMessages = {
         selectedDescription: 'The control plane sends requests to the applied target {target}.',
         selectWorldTitle: 'Select a world to begin',
         selectWorldDescription: 'The table above includes local and remote worlds. Diagnostics are available only while the world is running and its target is online.'
+      },
+      roomLogs: {
+        title: 'Room live logs',
+        description: 'Read every Shard through its applied Placement while retaining available logs when one target fails.',
+        query: 'Log query', queryPlaceholder: 'Search logs across all worlds', loadFailed: 'Failed to load room logs',
+        partialTitle: 'Some world logs are unavailable', partialDescription: '{count} worlds failed while all available logs remain visible.',
+        available: '{available} / {total} available', availableStatus: 'Available', unavailable: 'Unavailable', readAt: 'Read at {time}',
+        emptyTitle: 'This room has no worlds', emptyDescription: 'Create a world to inspect its live logs here.',
+        file: 'File', size: 'Size', updatedAt: 'File updated', noMatchesTitle: 'No matching logs',
+        noMatchesDescription: 'The current query did not match the recent logs for this world.', roles: { master: 'Master', caves: 'Caves', custom: 'Custom Shard' }
       },
       infrastructure: {
         title: 'Runtime infrastructure', description: 'Inspect Runtime providers, execution environments, network scopes, port leases, and CPU allocations.', loading: 'Loading runtime infrastructure', loadFailed: 'Failed to load runtime infrastructure',

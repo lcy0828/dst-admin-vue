@@ -249,6 +249,7 @@ export const playerMessages = {
         statusChanged: '状态变更',
         createdAt: '创建时间',
         updatedAt: '更新时间',
+        lastRefreshed: '最近采样时间',
         world: '世界名称',
         roomAndWorld: '房间 / 世界',
         action: '操作',
@@ -296,13 +297,17 @@ export const playerMessages = {
         perPage: '每页',
         perPageAria: '每页显示数量',
         administrator: '管理员',
-        friend: '好友'
+        friend: '好友',
+        presenceConflict: '分片冲突',
+        presenceConflictDescription: '同一轮采样在以下世界同时发现该玩家：{worlds}'
       },
       detail: {
         title: '玩家详情',
         description: '身份、连接状态和服务器操作。',
         gameActions: '游戏操作',
-        dangerousActions: '危险操作'
+        dangerousActions: '危险操作',
+        presenceConflictTitle: '玩家位置存在冲突',
+        presenceConflictDescription: '以下分片同时报告该 KU ID 在线：{worlds}。操作前请刷新玩家数据并检查分片连接。'
       },
       operations: {
         godMode: '无敌模式', creativeMode: '制作模式', resurrect: '复活玩家', changeCharacter: '重选人物',
@@ -393,7 +398,7 @@ export const playerMessages = {
       fields: {
         archive: 'Archive', status: 'Player status', character: 'Character', keyword: 'Keyword', playerId: 'Player ID', playerName: 'Player name', days: 'Days', network: 'Network quality',
         performance: 'Performance', performanceMetric: 'Performance metric', firstSeen: 'First seen', lastSeen: 'Last seen', statusChanged: 'Status changed', createdAt: 'Created at',
-        updatedAt: 'Updated at', world: 'World', roomAndWorld: 'Room / World', action: 'Actions', banReason: 'Ban reason', banDuration: 'Ban duration', bannedAt: 'Banned at',
+        updatedAt: 'Updated at', lastRefreshed: 'Last sampled', world: 'World', roomAndWorld: 'Room / World', action: 'Actions', banReason: 'Ban reason', banDuration: 'Ban duration', bannedAt: 'Banned at',
         expiresAt: 'Expires at', fullRoomName: 'Full room name', gameWorld: 'Game world', taskName: 'Task name', schedule: 'Schedule', taskDescription: 'Task description'
       },
       statuses: { online: 'Online', offline: 'Offline' },
@@ -411,9 +416,13 @@ export const playerMessages = {
         filterDescription: 'Narrow the list by archive, online status, character, or keyword.', allArchives: 'All archives', allStatuses: 'All statuses', allCharacters: 'All characters',
         searchPlaceholder: 'Search player name or ID', total: '{count} players', loadFailedTitle: 'Could not load players', partialTitle: 'Some rooms could not be loaded',
         partialDescription: 'Available data is shown; {count} rooms are unavailable: {rooms}', loading: 'Loading players', emptyTitle: 'No player data',
-        emptyDescription: 'Select an archive or update the player list manually.', perPage: 'Per page', perPageAria: 'Players per page', administrator: 'Administrator', friend: 'Friend'
+        emptyDescription: 'Select an archive or update the player list manually.', perPage: 'Per page', perPageAria: 'Players per page', administrator: 'Administrator', friend: 'Friend',
+        presenceConflict: 'Shard conflict', presenceConflictDescription: 'This player was observed in these worlds during the same sampling window: {worlds}'
       },
-      detail: { title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions' },
+      detail: {
+        title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions',
+        presenceConflictTitle: 'Player location conflict', presenceConflictDescription: 'These Shards simultaneously reported the same KU ID online: {worlds}. Refresh player data and inspect Shard connectivity before acting.'
+      },
       operations: {
         godMode: 'God mode', creativeMode: 'Creative mode', resurrect: 'Resurrect player', changeCharacter: 'Reselect character', kick: 'Kick player', kickShort: 'Kick',
         ban: 'Ban player', banShort: 'Ban', kill: 'Kill player', killShort: 'Kill'

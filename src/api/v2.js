@@ -320,6 +320,10 @@ export const worldMapsV2API = {
 }
 
 export const worldLogsV2API = {
+  roomSnapshot: (roomId, params = {}) => client.get(
+    `/rooms/${encode(roomId)}/logs`,
+    { params, runtimeTarget: false }
+  ),
   snapshot: (roomId, worldId, params = {}) => client.get(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/logs`,
     { params }

@@ -56,6 +56,8 @@
         @diagnose="selectShard"
       />
 
+      <RoomLogOverviewPanel :room-id="selectedRoomId" />
+
       <template v-if="selectedShard">
         <Alert>
           <RadioTower />
@@ -94,6 +96,7 @@ import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigg
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import RuntimeDiagnosticsPanel from '@/components/runtime/RuntimeDiagnosticsPanel.vue'
+import RoomLogOverviewPanel from '@/components/runtime/RoomLogOverviewPanel.vue'
 import RuntimeOverviewPanel from '@/components/runtime/RuntimeOverviewPanel.vue'
 
 const { t } = useI18n()
