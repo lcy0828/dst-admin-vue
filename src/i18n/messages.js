@@ -3,6 +3,7 @@ import { announcementMessages } from './announcementMessages.js'
 import { backupMessages } from './backupMessages.js'
 import { capacityRiskMessages } from './capacityRiskMessages.js'
 import { commandMessages } from './commandMessages.js'
+import { distributedMessages } from './distributedMessages.js'
 import { corePageMessages } from './corePages.js'
 import { cronGroupMessages } from './cronGroupMessages.js'
 import { cronLogMessages } from './cronLogMessages.js'
@@ -29,6 +30,7 @@ export const messages = {
     ...backupMessages['zh-CN'],
     ...capacityRiskMessages['zh-CN'],
     ...commandMessages['zh-CN'],
+    ...distributedMessages['zh-CN'],
     ...corePageMessages['zh-CN'],
     ...cronGroupMessages['zh-CN'],
     ...cronLogMessages['zh-CN'],
@@ -182,6 +184,7 @@ export const messages = {
       roomList: '房间列表',
       roomSettings: '房间设置',
       roomTopology: '运行拓扑',
+      roomDiagnostics: '集中诊断',
       specialLists: '特殊名单',
       serverToken: '服务器令牌',
       agents: 'Agent 管理',
@@ -523,6 +526,7 @@ export const messages = {
     ...backupMessages['en-US'],
     ...capacityRiskMessages['en-US'],
     ...commandMessages['en-US'],
+    ...distributedMessages['en-US'],
     ...corePageMessages['en-US'],
     ...cronGroupMessages['en-US'],
     ...cronLogMessages['en-US'],
@@ -676,6 +680,7 @@ export const messages = {
       roomList: 'Room list',
       roomSettings: 'Room settings',
       roomTopology: 'Runtime topology',
+      roomDiagnostics: 'Centralized diagnostics',
       specialLists: 'Access lists',
       serverToken: 'Cluster token',
       agents: 'Agents',

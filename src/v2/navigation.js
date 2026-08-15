@@ -39,6 +39,7 @@ export const V2_NAVIGATION = [
           { labelKey: 'navigation.roomList', to: '/rooms/list' },
           { labelKey: 'navigation.roomSettings', to: '/rooms/settings' },
           { labelKey: 'navigation.roomTopology', to: '/rooms/topology' },
+          { labelKey: 'navigation.roomDiagnostics', to: '/rooms/diagnostics' },
           { labelKey: 'navigation.specialLists', to: '/rooms/special-lists' },
           { labelKey: 'navigation.serverToken', to: '/rooms/token' }
         ]

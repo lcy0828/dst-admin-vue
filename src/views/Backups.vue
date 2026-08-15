@@ -13,6 +13,7 @@
     <Tabs v-model="activeTab" class="backups-tabs">
       <TabsList>
         <TabsTrigger value="room-backups"><FileArchiveIcon />{{ $t('backups.tabs.roomBackups') }}</TabsTrigger>
+        <TabsTrigger value="distributed-backups"><DatabaseBackupIcon />{{ $t('distributed.backups.tab') }}</TabsTrigger>
         <TabsTrigger value="save-imports"><UploadIcon />{{ $t('backups.tabs.saveImports') }}</TabsTrigger>
       </TabsList>
       <TabsContent value="room-backups" class="tab-content">
@@ -34,6 +35,9 @@
             <TableEmpty v-else-if="!loadError && filteredBackups.length === 0" :colspan="5"><Empty><EmptyHeader><EmptyTitle>{{ $t('backups.list.empty') }}</EmptyTitle><EmptyDescription>{{ $t('backups.list.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty></TableEmpty>
           </TableBody></ShadcnTable></div></CardContent>
         </Card>
+      </TabsContent>
+      <TabsContent value="distributed-backups" class="tab-content">
+        <DistributedBackupPanel />
       </TabsContent>
       <TabsContent value="save-imports" class="tab-content">
         <SaveImportsPanel @rooms-changed="refreshBackups" />
@@ -60,7 +64,7 @@
 </template>
 
 <script>
-import { DownloadIcon, FileArchiveIcon, PlusIcon, RefreshCwIcon, TriangleAlertIcon, UploadIcon } from '@lucide/vue'
+import { DatabaseBackupIcon, DownloadIcon, FileArchiveIcon, PlusIcon, RefreshCwIcon, TriangleAlertIcon, UploadIcon } from '@lucide/vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -74,6 +78,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import SaveImportsPanel from '@/views/backups/SaveImportsPanel.vue'
+import DistributedBackupPanel from '@/views/backups/DistributedBackupPanel.vue'
 import { confirmAction } from '@/lib/feedback'
 import { BACKEND_CAPABILITIES, buildBackupCatalog, roomNamesFromResponse } from '@/lib/legacySupport.mjs'
 import { toast } from 'vue-sonner'
@@ -97,6 +102,8 @@ export default {
     DialogHeader,
     DialogScrollContent,
     DialogTitle,
+    DistributedBackupPanel,
+    DatabaseBackupIcon,
     DownloadIcon,
     Empty,
     EmptyDescription,

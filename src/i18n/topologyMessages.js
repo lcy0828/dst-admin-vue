@@ -6,7 +6,7 @@ export const topologyMessages = {
       room: '房间',
       selectRoom: '选择已接管房间',
       loadingRooms: '正在读取房间',
-      planningBadge: '仅规划',
+      planningBadge: '规划与迁移',
       actions: {
         preview: '预览计划',
         previewing: '正在预览',
@@ -73,8 +73,8 @@ export const topologyMessages = {
         description: '同一服务器可以运行多个房间和多个世界分片。保守建议一颗物理核心最多运行一层世界，并额外为系统、Agent、SteamCMD 与备份至少预留 1 核；超出时可能卡顿。该规则只告警，不是硬限制或性能保证。'
       },
       planning: {
-        title: '放置变更仍需迁移流程',
-        description: '系统已能按当前生效位置控制本机与 Agent 上的分片，但这里保存的期望位置不会直接迁移存档或改变生效位置。只有迁移成功后才会更新当前生效节点。'
+        title: '先保存期望位置，再逐世界迁移',
+        description: '保存计划只更新期望位置，不移动文件。停止对应世界后，使用“迁移”执行校验、传输、原子切换和源端可恢复保留；成功后才更新当前生效节点。'
       },
       capacity: {
         title: '节点容量',
@@ -104,7 +104,7 @@ export const topologyMessages = {
       },
       placements: {
         title: '世界放置',
-        description: '离线但已配置的节点可以提前选择；保存后仍不会自动迁移。',
+        description: '离线但已配置的节点可以提前选择；保存后，在每个待迁移世界上执行迁移。',
         columns: {
           world: '世界',
           role: '角色',
@@ -116,7 +116,7 @@ export const topologyMessages = {
         offlineSuffix: '离线',
         states: {
           aligned: '位置一致',
-          planned: '等待迁移能力',
+          planned: '等待执行迁移',
           target_offline: '目标离线',
           inventory_stale: '清单已过期',
           inventory_missing: '缺少清单',
@@ -130,6 +130,20 @@ export const topologyMessages = {
           custom: '自定义世界',
           unknown: '未知'
         }
+      },
+      migration: {
+        action: '迁移',
+        title: '迁移 {world}',
+        description: '系统会校验源端与目标端、复制存档并原子切换生效 Placement；失败时不会回落控制器本机路径。',
+        stoppedTitle: '世界必须已停止',
+        stoppedDescription: '迁移期间不得有进程写入存档。若世界仍在运行，后端会拒绝执行且不会修改文件。',
+        source: '当前节点',
+        target: '目标节点',
+        confirmation: '房间名确认',
+        confirmationDescription: '输入“{room}”确认迁移。',
+        confirm: '开始迁移',
+        completed: '世界迁移完成，生效 Placement 已更新',
+        failed: '世界迁移失败：{error}'
       },
       target: {
         local: '本机',
@@ -145,7 +159,7 @@ export const topologyMessages = {
         title: '检查结果',
         description: '保存前需要关注以下容量、文件或运行状态。',
         emptyTitle: '没有发现阻塞性问题',
-        emptyDescription: '当前计划仍只用于规划，实际迁移能力尚未启用。'
+        emptyDescription: '当前计划未发现容量、文件或运行状态阻塞。'
       },
       empty: {
         title: '没有可规划的房间',
@@ -179,7 +193,7 @@ export const topologyMessages = {
       room: 'Room',
       selectRoom: 'Select a managed room',
       loadingRooms: 'Loading rooms',
-      planningBadge: 'Planning only',
+      planningBadge: 'Plan and migrate',
       actions: {
         preview: 'Preview plan',
         previewing: 'Previewing',
@@ -246,8 +260,8 @@ export const topologyMessages = {
         description: 'One server may run multiple rooms and Shards. Conservatively, run at most one Shard per physical core and reserve at least one additional core for the OS, Agent, SteamCMD, and backups. Exceeding this budget may cause lag. This is advisory, not a hard limit or a performance guarantee.'
       },
       planning: {
-        title: 'Placement changes still require migration',
-        description: 'The system can control local and Agent-hosted Shards at their applied locations. Desired placement saved here does not migrate saves or change the applied target; the applied location changes only after a migration succeeds.'
+        title: 'Save desired placement, then migrate each world',
+        description: 'Saving updates desired placement without moving files. Stop the world and use Migrate to validate, transfer, atomically activate, and retain recoverable source data. Applied placement changes only after success.'
       },
       capacity: {
         title: 'Node capacity',
@@ -277,7 +291,7 @@ export const topologyMessages = {
       },
       placements: {
         title: 'Shard placement',
-        description: 'Configured offline nodes may be selected in advance. Saving still does not migrate anything.',
+        description: 'Configured offline nodes may be selected in advance. After saving, run migration for each pending world.',
         columns: {
           world: 'World',
           role: 'Role',
@@ -289,7 +303,7 @@ export const topologyMessages = {
         offlineSuffix: 'offline',
         states: {
           aligned: 'Placement aligned',
-          planned: 'Waiting for migration support',
+          planned: 'Waiting to migrate',
           target_offline: 'Target offline',
           inventory_stale: 'Inventory stale',
           inventory_missing: 'Inventory missing',
@@ -303,6 +317,20 @@ export const topologyMessages = {
           custom: 'Custom Shard',
           unknown: 'Unknown'
         }
+      },
+      migration: {
+        action: 'Migrate',
+        title: 'Migrate {world}',
+        description: 'The system validates both targets, copies the save, and atomically activates the placement. Failure never falls back to a similarly named controller-local path.',
+        stoppedTitle: 'The world must be stopped',
+        stoppedDescription: 'No process may write the save during migration. The backend rejects a running world without changing files.',
+        source: 'Current target',
+        target: 'Destination',
+        confirmation: 'Room-name confirmation',
+        confirmationDescription: 'Enter "{room}" to confirm migration.',
+        confirm: 'Start migration',
+        completed: 'World migrated and applied placement updated',
+        failed: 'World migration failed: {error}'
       },
       target: {
         local: 'Local',
@@ -318,7 +346,7 @@ export const topologyMessages = {
         title: 'Checks',
         description: 'Review these capacity, file, or runtime conditions before saving.',
         emptyTitle: 'No blocking issue detected',
-        emptyDescription: 'The current plan is still planning-only; runtime migration is not enabled.'
+        emptyDescription: 'No capacity, file, or runtime-state blocker was detected.'
       },
       empty: {
         title: 'No room is available for planning',

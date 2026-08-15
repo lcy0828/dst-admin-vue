@@ -140,6 +140,12 @@ export const constantRoutes = [
         meta: { title: '运行拓扑', titleKey: 'navigation.roomTopology', icon: 'connection' }
       },
       {
+        path: 'diagnostics',
+        component: () => import('@/views/rooms/RoomDiagnostics.vue'),
+        name: 'RoomDiagnostics',
+        meta: { title: '集中诊断', titleKey: 'navigation.roomDiagnostics', icon: 'activity' }
+      },
+      {
         path: 'special-lists',
         component: () => import('@/views/rooms/SpecialLists.vue'),
         name: 'SpecialLists',

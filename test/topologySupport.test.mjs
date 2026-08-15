@@ -39,7 +39,7 @@ test('distributed topology is wired through API, router, navigation and i18n', a
   assert.match(topologyMessages, /one Shard per physical core/)
 })
 
-test('topology page uses shadcn-vue controls and keeps execution planning-only', async () => {
+test('topology page uses shadcn-vue controls and separates planning from confirmed migration', async () => {
   const page = await source('src/views/rooms/RoomTopology.vue')
 
   assert.match(page, /<SelectGroup>/)
@@ -48,5 +48,7 @@ test('topology page uses shadcn-vue controls and keeps execution planning-only',
   assert.match(page, /requiresOvercommitConfirmation/)
   assert.match(page, /target\.configured/)
   assert.match(page, /topology\.planning\.description/)
+  assert.match(page, /topologyV2API\.applyPlacement/)
+  assert.match(page, /migrationConfirmation/)
   assert.doesNotMatch(page, /bg-(blue|purple|orange|slate)-/)
 })

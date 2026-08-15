@@ -154,6 +154,10 @@ export const announcementsV2API = {
 
 export const roomsV2API = {
   list: () => client.get('/rooms'),
+  controlPlaneList: () => client.get('/rooms', {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
   recoveries: () => client.get('/rooms/recovery', { headers: { 'Cache-Control': 'no-store' } }),
   restoreRoom: recoveryName => client.post(`/rooms/recovery/${encode(recoveryName)}/actions/restore`),
   purgeRoomRecovery: (recoveryName, confirmation) => client.delete(`/rooms/recovery/${encode(recoveryName)}`, {
@@ -187,10 +191,7 @@ export const roomsV2API = {
 }
 
 export const topologyV2API = {
-  rooms: () => client.get('/rooms', {
-    runtimeTarget: false,
-    headers: { 'Cache-Control': 'no-store' }
-  }),
+  rooms: roomsV2API.controlPlaneList,
   get: roomId => client.get(`/rooms/${encode(roomId)}/topology`, {
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
@@ -203,8 +204,26 @@ export const topologyV2API = {
     rooms,
     ...(allowCapacityRisk === true ? { allowCapacityRisk: true } : {})
   }, { runtimeTarget: false }),
+  /** @returns {Promise<import('./distributedManagement').RuntimeInfrastructure>} */
+  infrastructure: () => client.get('/runtime-infrastructure', {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  updateNetworkProfile: (profileId, input) => client.put(
+    `/runtime-infrastructure/network-profiles/${encode(profileId)}`,
+    input,
+    { runtimeTarget: false }
+  ),
+  updateCPUAllocation: input => client.put('/runtime-infrastructure/cpu-allocations', input, {
+    runtimeTarget: false
+  }),
   preview: (roomId, input) => client.post(`/rooms/${encode(roomId)}/topology/preview`, input, { runtimeTarget: false }),
-  update: (roomId, input) => client.put(`/rooms/${encode(roomId)}/topology`, input, { runtimeTarget: false })
+  update: (roomId, input) => client.put(`/rooms/${encode(roomId)}/topology`, input, { runtimeTarget: false }),
+  applyPlacement: (roomId, input) => client.post(
+    `/rooms/${encode(roomId)}/topology/actions/apply`,
+    input,
+    { runtimeTarget: false }
+  )
 }
 
 export const runtimeV2API = {
@@ -215,6 +234,15 @@ export const runtimeV2API = {
     `/rooms/${encode(roomId)}/runtime-events`,
     { params, headers: { 'Cache-Control': 'no-store' } }
   ),
+  /** @returns {Promise<import('./distributedManagement').RuntimeOverview>} */
+  overview: roomId => client.get(`/rooms/${encode(roomId)}/runtime/overview`, {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  eventStreamURL: (roomId, worldId, cursor = '') => {
+    const path = `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/events/stream`
+    return cursor ? `${baseURL}${path}?cursor=${encode(cursor)}` : `${baseURL}${path}`
+  },
   installRoom: roomId => client.post(`/rooms/${encode(roomId)}/runtime/actions/install`),
   installWorld: (roomId, worldId) => client.post(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/actions/install`
@@ -227,15 +255,16 @@ export const runtimeV2API = {
   ),
   events: (roomId, worldId) => client.get(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/events`,
-    { headers: { 'Cache-Control': 'no-store' } }
+    { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
   ),
   latestDiagnostic: (roomId, worldId) => client.get(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/diagnostics/latest`,
-    { headers: { 'Cache-Control': 'no-store' } }
+    { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
   ),
   captureDiagnostic: (roomId, worldId, input) => client.post(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/diagnostics`,
-    input
+    input,
+    { runtimeTarget: false }
   )
 }
 
@@ -484,6 +513,29 @@ export const backupsV2API = {
   downloadURL: backupId => `${baseURL}/backups/${encode(backupId)}/download`,
   policy: roomId => client.get(`/rooms/${encode(roomId)}/backup-policy`),
   savePolicy: (roomId, input) => client.put(`/rooms/${encode(roomId)}/backup-policy`, input)
+}
+
+export const backupSetsV2API = {
+  /** @returns {Promise<{items: import('./distributedManagement').DistributedBackupSet[], total: number}>} */
+  list: roomId => client.get(`/rooms/${encode(roomId)}/backup-sets`, {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  /** @returns {Promise<import('./distributedManagement').DistributedBackupSet>} */
+  get: backupSetId => client.get(`/backup-sets/${encode(backupSetId)}`, {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  create: (roomId, name = '') => client.post(
+    `/rooms/${encode(roomId)}/backup-sets`,
+    name ? { name } : {},
+    { runtimeTarget: false }
+  ),
+  restore: (backupSetId, confirmation) => client.post(
+    `/backup-sets/${encode(backupSetId)}/actions/restore`,
+    { confirmation },
+    { runtimeTarget: false }
+  )
 }
 
 export const saveImportsV2API = {

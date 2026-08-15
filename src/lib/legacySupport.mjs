@@ -2,6 +2,15 @@ export const BACKEND_CAPABILITIES = Object.freeze({
   backups: Object.freeze({
     restoreToOriginalRoom: true,
     restoreToNewRoom: false
+  }),
+  distributedManagement: Object.freeze({
+    runtimeOverview: true,
+    resumableRuntimeEvents: true,
+    placementMigration: true,
+    networkProfiles: true,
+    cpuAllocation: true,
+    consistentBackupSets: true,
+    placementAwareDiagnostics: true
   })
 })
 

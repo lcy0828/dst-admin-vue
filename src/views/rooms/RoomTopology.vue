@@ -93,6 +93,8 @@
         <AlertDescription>{{ t('topology.planning.description') }}</AlertDescription>
       </Alert>
 
+      <RuntimeOverviewPanel :room-id="selectedRoomId" />
+
       <section class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-capacity-title">
         <div>
           <h2 id="topology-capacity-title" class="text-base font-semibold">{{ t('topology.capacity.title') }}</h2>
@@ -166,6 +168,7 @@
                 <TableHead>{{ t('topology.placements.columns.desired') }}</TableHead>
                 <TableHead>{{ t('topology.placements.columns.applied') }}</TableHead>
                 <TableHead>{{ t('topology.placements.columns.state') }}</TableHead>
+                <TableHead class="text-right">{{ t('common.fields.actions') }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -192,11 +195,28 @@
                   <div class="mt-1 font-mono text-xs text-muted-foreground">{{ placement.appliedTargetId }}</div>
                 </TableCell>
                 <TableCell><Badge :variant="placementVariant(placement.state)">{{ placementStateLabel(placement.state) }}</Badge></TableCell>
+                <TableCell>
+                  <div class="flex justify-end">
+                    <UiButton
+                      v-if="placement.desiredTargetId !== placement.appliedTargetId"
+                      size="sm"
+                      variant="outline"
+                      :disabled="isDirty || migrationRunning"
+                      @click="openMigrationDialog(placement)"
+                    >
+                      <MoveRight data-icon="inline-start" />
+                      {{ t('topology.migration.action') }}
+                    </UiButton>
+                    <span v-else class="text-sm text-muted-foreground">--</span>
+                  </div>
+                </TableCell>
               </TableRow>
             </TableBody>
           </UiTable>
         </div>
       </section>
+
+      <RuntimeInfrastructurePanel :room-id="selectedRoomId" :topology-snapshot="topology" />
 
       <section class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-issues-title">
         <div>
@@ -343,6 +363,39 @@
       </DialogScrollContent>
     </Dialog>
 
+    <Dialog v-model:open="migrationDialogOpen">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ t('topology.migration.title', { world: migrationPlacement?.worldName || '--' }) }}</DialogTitle>
+          <DialogDescription>{{ t('topology.migration.description') }}</DialogDescription>
+        </DialogHeader>
+        <Alert>
+          <TriangleAlert />
+          <AlertTitle>{{ t('topology.migration.stoppedTitle') }}</AlertTitle>
+          <AlertDescription>{{ t('topology.migration.stoppedDescription') }}</AlertDescription>
+        </Alert>
+        <dl class="grid gap-3 text-sm sm:grid-cols-2">
+          <div><dt class="text-muted-foreground">{{ t('topology.migration.source') }}</dt><dd class="mt-1 font-medium">{{ targetName(migrationPlacement?.appliedTargetId) }}</dd></div>
+          <div><dt class="text-muted-foreground">{{ t('topology.migration.target') }}</dt><dd class="mt-1 font-medium">{{ targetName(migrationPlacement?.desiredTargetId) }}</dd></div>
+        </dl>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(migrationConfirmation) && migrationConfirmation !== selectedRoom?.name">
+            <FieldLabel for="migration-confirmation">{{ t('topology.migration.confirmation') }}</FieldLabel>
+            <UiInput id="migration-confirmation" v-model="migrationConfirmation" autocomplete="off" :placeholder="selectedRoom?.name || ''" :aria-invalid="Boolean(migrationConfirmation) && migrationConfirmation !== selectedRoom?.name" />
+            <FieldDescription>{{ t('topology.migration.confirmationDescription', { room: selectedRoom?.name || '--' }) }}</FieldDescription>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" :disabled="migrationRunning" @click="migrationDialogOpen = false">{{ t('common.actions.cancel') }}</UiButton>
+          <UiButton :disabled="migrationRunning || migrationConfirmation !== selectedRoom?.name" @click="applyMigration">
+            <Spinner v-if="migrationRunning" data-icon="inline-start" />
+            <MoveRight v-else data-icon="inline-start" />
+            {{ t('topology.migration.confirm') }}
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <AlertDialog v-model:open="overcommitOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -365,7 +418,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { CircleAlert, CircleCheck, Cpu, Info, ListChecks, Network, Play, RefreshCw, RotateCw, Save, ScanSearch, Square, TriangleAlert } from '@lucide/vue'
+import { CircleAlert, CircleCheck, Cpu, Info, ListChecks, MoveRight, Network, Play, RefreshCw, RotateCw, Save, ScanSearch, Square, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { topologyV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
@@ -385,6 +438,7 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
+  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -393,11 +447,14 @@ import {
 } from '@/components/ui/dialog'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import { Input as UiInput } from '@/components/ui/input'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import RuntimeInfrastructurePanel from '@/components/runtime/RuntimeInfrastructurePanel.vue'
+import RuntimeOverviewPanel from '@/components/runtime/RuntimeOverviewPanel.vue'
 import { executeWithCapacityConfirmation, isCapacityRiskCanceled } from '@/lib/startCapacityRisk'
 import { attachBatchWorldTargets, selectedBatchRooms, unsuccessfulBatchSelection } from '@/lib/batchRoomActions.mjs'
 import {
@@ -423,6 +480,10 @@ const loadingRooms = ref(false)
 const loading = ref(false)
 const previewing = ref(false)
 const saving = ref(false)
+const migrationDialogOpen = ref(false)
+const migrationPlacement = ref(null)
+const migrationConfirmation = ref('')
+const migrationRunning = ref(false)
 const overcommitOpen = ref(false)
 const batchOpen = ref(false)
 const batchLoadingRooms = ref(false)
@@ -436,6 +497,7 @@ let requestSequence = 0
 
 const displaySnapshot = computed(() => preview.value || topology.value)
 const configuredTargets = computed(() => (topology.value?.targets || []).filter(target => target.configured))
+const selectedRoom = computed(() => rooms.value.find(room => String(room.id) === selectedRoomId.value))
 const isDirty = computed(() => {
   if (!topology.value) return false
   return topology.value.placements.some(placement => draftPlacements.value[placement.worldId] !== placement.desiredTargetId)
@@ -578,6 +640,34 @@ async function persistPlan(allowOvercommit) {
     toast.error(topologyError.value)
   } finally {
     saving.value = false
+  }
+}
+
+function openMigrationDialog(placement) {
+  if (isDirty.value || placement.desiredTargetId === placement.appliedTargetId) return
+  migrationPlacement.value = placement
+  migrationConfirmation.value = ''
+  migrationDialogOpen.value = true
+}
+
+async function applyMigration() {
+  if (!topology.value || !migrationPlacement.value || migrationRunning.value || migrationConfirmation.value !== selectedRoom.value?.name) return
+  migrationRunning.value = true
+  try {
+    const submitted = await topologyV2API.applyPlacement(selectedRoomId.value, {
+      worldId: migrationPlacement.value.worldId,
+      expectedRevision: topology.value.revision,
+      confirmation: migrationConfirmation.value
+    })
+    await waitForV2Job(submitted, 10 * 60 * 1000)
+    migrationDialogOpen.value = false
+    await loadTopology()
+    toast.success(t('topology.migration.completed'))
+  } catch (error) {
+    if (error.code === 'TOPOLOGY_REVISION_CONFLICT') await loadTopology()
+    toast.error(t('topology.migration.failed', { error: error.message || t('common.errors.unknown') }))
+  } finally {
+    migrationRunning.value = false
   }
 }
 
