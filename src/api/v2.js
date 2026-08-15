@@ -547,6 +547,25 @@ export const gameV2API = {
   updateRun: jobId => client.get(`/game/update-runs/${encode(jobId)}`)
 }
 
+export const gameReleasesV2API = {
+  preview: input => client.post('/game/releases/preview', input, { runtimeTarget: false }),
+  create: input => client.post('/game/releases', input, { runtimeTarget: false }),
+  list: (params = {}) => client.get('/game/releases', {
+    params,
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  get: releaseId => client.get(`/game/releases/${encode(releaseId)}`, {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  retry: releaseId => client.post(
+    `/game/releases/${encode(releaseId)}/actions/retry`,
+    {},
+    { runtimeTarget: false }
+  )
+}
+
 export const containersV2API = {
   list: () => client.get('/containers'),
   action: (containerId, action, confirmation = '') => client.post(

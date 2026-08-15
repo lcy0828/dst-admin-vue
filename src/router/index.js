@@ -79,6 +79,12 @@ export const constantRoutes = [
         component: () => import('@/views/servers/CommandManager.vue'),
         name: 'CommandManager',
         meta: { title: '命令设置', titleKey: 'navigation.commandSettings', icon: 'terminal' }
+      },
+      {
+        path: 'releases',
+        component: () => import('@/views/servers/GameReleases.vue'),
+        name: 'GameReleases',
+        meta: { title: '游戏版本发布', titleKey: 'navigation.gameReleases', icon: 'package' }
       }
     ]
   },

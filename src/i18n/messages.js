@@ -9,6 +9,7 @@ import { cronGroupMessages } from './cronGroupMessages.js'
 import { cronLogMessages } from './cronLogMessages.js'
 import { cronTaskMessages } from './cronTaskMessages.js'
 import { globalFeedbackMessages } from './globalFeedbackMessages.js'
+import { gameReleaseMessages } from './gameReleaseMessages.js'
 import { logToolsMessages } from './logToolsMessages.js'
 import { modMessages } from './modMessages.js'
 import { playerMessages } from './playerMessages.js'
@@ -35,6 +36,7 @@ export const messages = {
     ...cronGroupMessages['zh-CN'],
     ...cronLogMessages['zh-CN'],
     ...globalFeedbackMessages['zh-CN'],
+    ...gameReleaseMessages['zh-CN'],
     ...logToolsMessages['zh-CN'],
     ...modMessages['zh-CN'],
     ...playerMessages['zh-CN'],
@@ -176,6 +178,7 @@ export const messages = {
       serverWorkspace: '服务器工作台',
       serverList: '服务器列表',
       commandSettings: '命令设置',
+      gameReleases: '游戏版本发布',
       logs: '日志管理器',
       logQuery: '日志查询',
       logRules: '规则管理',
@@ -531,6 +534,7 @@ export const messages = {
     ...cronGroupMessages['en-US'],
     ...cronLogMessages['en-US'],
     ...globalFeedbackMessages['en-US'],
+    ...gameReleaseMessages['en-US'],
     ...logToolsMessages['en-US'],
     ...modMessages['en-US'],
     ...playerMessages['en-US'],
@@ -672,6 +676,7 @@ export const messages = {
       serverWorkspace: 'Server workspace',
       serverList: 'Server list',
       commandSettings: 'Command settings',
+      gameReleases: 'Game releases',
       logs: 'Logs',
       logQuery: 'Log search',
       logRules: 'Log rules',

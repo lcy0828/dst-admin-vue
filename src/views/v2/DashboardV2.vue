@@ -7,7 +7,6 @@ import {
   CircleAlert,
   CirclePlay,
   Cpu,
-  Download,
   ExternalLink,
   FolderPlus,
   Gauge,
@@ -108,8 +107,6 @@ const {
   totalWorldCount,
   dashboardLoading,
   isVersionOutdated,
-  canUpdateGame,
-  gameUpdateBusy,
   refreshDashboard,
   refreshSystem,
   refreshServers,
@@ -117,7 +114,6 @@ const {
   handleServerAction,
   cleanupFailedServer,
   startRoom,
-  updateGame,
   resumeUpdatePolling
 } = useDashboardV2()
 
@@ -403,7 +399,7 @@ onMounted(() => {
               <div v-if="updateStatus" class="bg-muted flex flex-col gap-2 rounded-md p-3"><span class="text-sm font-medium">{{ t(updateStatus.is_completed ? 'dashboard.version.updateCompleted' : (updateStatus.is_running ? 'dashboard.version.updating' : 'dashboard.version.waiting')) }}</span><Progress v-if="hasMetric(updateStatus.progress)" :model-value="Number(updateStatus.progress)" /><p v-if="updateStatus.last_output" class="text-muted-foreground break-all text-xs">{{ updateStatus.last_output }}</p><p v-if="updateStatus.error" class="text-destructive text-xs">{{ updateStatus.error }}</p></div>
             </template>
           </CardContent>
-          <CardFooter v-if="canUpdateGame && isVersionOutdated"><Button size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><Download v-else data-icon="inline-start" />{{ t(gameUpdateBusy ? 'dashboard.version.updateButtonBusy' : 'dashboard.version.updateButton') }}</Button></CardFooter>
+          <CardFooter v-if="versionInfo.installed || isVersionOutdated"><Button size="sm" @click="router.push('/servers/releases')"><PackageCheck data-icon="inline-start" />{{ t('gameReleases.actions.open') }}</Button></CardFooter>
         </Card>
       </aside>
     </div>
