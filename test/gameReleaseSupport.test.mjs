@@ -45,6 +45,16 @@ test('game release API is always addressed through the control plane', async () 
   assert.equal(releaseAPI.match(/runtimeTarget:\s*false/g)?.length, 5)
 })
 
+test('game release declarations cover plans, installation results, and shard evidence', async () => {
+  const declarations = await source('../src/api/distributedManagement.d.ts')
+  for (const name of ['GameReleasePlan', 'GameReleaseInstallationPlan', 'GameReleaseInstallationResult', 'GameReleaseShardResult', 'GameRelease']) {
+    assert.match(declarations, new RegExp(`export interface ${name}`))
+  }
+  assert.match(declarations, /loadMarker\?:\s*string/)
+  assert.match(declarations, /protectionBackupIds:\s*string\[\]/)
+  assert.match(declarations, /'recovery_required'/)
+})
+
 test('game release workspace uses accessible shadcn composition and real APIs', async () => {
   const view = await source('../src/views/servers/GameReleases.vue')
   assert.match(view, /<DialogTitle>/)

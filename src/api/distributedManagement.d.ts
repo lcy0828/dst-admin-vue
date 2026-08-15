@@ -126,6 +126,113 @@ export interface RuntimeInfrastructure {
   observedAt: string
 }
 
+export type GameReleaseStage = 'previewed' | 'protecting' | 'stopping' | 'staged' | 'updating' | 'verified' | 'restarting' | 'confirming' | 'succeeded' | 'failed' | 'recovery_required'
+
+export interface GameReleaseBlocker {
+  code: string
+  message: string
+  targetId?: string
+  installationId?: string
+  roomId?: string
+  worldId?: string
+}
+
+export interface GameReleaseShardPlan {
+  roomId: string
+  roomName: string
+  roomDirectory: string
+  worldId: string
+  worldName: string
+  worldDirectory: string
+  isMaster: boolean
+  targetId: string
+  installationId: string
+  topologyRevision: string
+  runtimeState?: string
+  wasRunning: boolean
+}
+
+export interface GameReleaseInstallationPlan {
+  targetId: string
+  targetName: string
+  installationId: string
+  online: boolean
+  inventoryFresh: boolean
+  capabilities: string[]
+  installed: boolean
+  currentVersion?: string
+  desiredVersion: string
+  upToDate: boolean
+  availableBytes: number
+  requiredBytes: number
+  steamcmdAvailable: boolean
+  updateSupported: boolean
+  runningShards: number
+  shards: GameReleaseShardPlan[]
+  blockers: GameReleaseBlocker[]
+}
+
+export interface GameReleasePlan {
+  version: number
+  desiredVersion: string
+  topologyRevision: string
+  planHash: string
+  policy: { cleanCache: boolean; restartRunning: boolean; loadConfirmation: 'logs' | 'none'; timeoutSeconds: number }
+  affectedRoomIds: string[]
+  installations: GameReleaseInstallationPlan[]
+  blockers: GameReleaseBlocker[]
+  ready: boolean
+  updateRequired: boolean
+  createdAt: string
+}
+
+export interface GameReleaseInstallationResult {
+  targetId: string
+  installationId: string
+  stage: GameReleaseStage
+  beforeVersion?: string
+  afterVersion?: string
+  log?: string
+  errorCode?: string
+  errorMessage?: string
+  startedAt?: string
+  finishedAt?: string
+  updatedAt: string
+}
+
+export interface GameReleaseShardResult {
+  roomId: string
+  worldId: string
+  targetId: string
+  installationId: string
+  isMaster: boolean
+  wasRunning: boolean
+  stage: GameReleaseStage
+  runtimeState?: string
+  loadMarker?: string
+  errorCode?: string
+  errorMessage?: string
+  stoppedAt?: string
+  startedAt?: string
+  loadConfirmedAt?: string
+  updatedAt: string
+}
+
+export interface GameRelease {
+  id: string
+  sourceJobId?: string
+  stage: GameReleaseStage
+  plan: GameReleasePlan
+  protectionBackupIds: string[]
+  errorCode?: string
+  errorMessage?: string
+  installations: GameReleaseInstallationResult[]
+  shards: GameReleaseShardResult[]
+  createdAt: string
+  updatedAt: string
+  finishedAt?: string
+}
+
 export type KubernetesProviderStatus = 'disabled' | 'configuration_required' | 'available'
 
 export interface KubernetesFeature {

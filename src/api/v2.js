@@ -548,17 +548,22 @@ export const gameV2API = {
 }
 
 export const gameReleasesV2API = {
+  /** @returns {Promise<import('./distributedManagement').GameReleasePlan>} */
   preview: input => client.post('/game/releases/preview', input, { runtimeTarget: false }),
+  /** @returns {Promise<{id: string, kind: string, status: string, progress: number}>} */
   create: input => client.post('/game/releases', input, { runtimeTarget: false }),
+  /** @returns {Promise<{items: import('./distributedManagement').GameRelease[], total: number, limit: number, offset: number}>} */
   list: (params = {}) => client.get('/game/releases', {
     params,
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
+  /** @returns {Promise<import('./distributedManagement').GameRelease>} */
   get: releaseId => client.get(`/game/releases/${encode(releaseId)}`, {
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
+  /** @returns {Promise<{id: string, kind: string, status: string, progress: number}>} */
   retry: releaseId => client.post(
     `/game/releases/${encode(releaseId)}/actions/retry`,
     {},
