@@ -2,14 +2,11 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Eye, EyeOff, GitFork, KeyRound, Settings, TriangleAlert } from '@lucide/vue'
+import { Eye, EyeOff, GitFork, KeyRound } from '@lucide/vue'
 import { authAPI } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
-import RuntimeTargetSelectV2 from '@/components/v2/RuntimeTargetSelectV2.vue'
 import ThemeSwitch from '@/components/ThemeSwitch.vue'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,7 +16,6 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogClose,
@@ -35,12 +31,6 @@ import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  getActiveRuntimeTarget,
-  LOCAL_RUNTIME_TARGET_ID,
-  RUNTIME_TARGET_CHANGED_EVENT,
-  setActiveRuntimeTarget
-} from '@/utils/runtimeTarget'
 import { getSystemPreferences } from '@/utils/systemPreferences'
 import { toast } from 'vue-sonner'
 
@@ -49,7 +39,6 @@ const route = useRoute()
 const { t } = useI18n()
 const systemName = ref(getSystemPreferences().systemName)
 const currentUser = ref({})
-const runtimeTarget = ref(getActiveRuntimeTarget())
 const profileOpen = ref(false)
 const passwordOpen = ref(false)
 const passwordSaving = ref(false)
@@ -57,8 +46,6 @@ const passwordsVisible = ref(false)
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 
-const remoteContextBlocked = computed(() => runtimeTarget.value.id !== LOCAL_RUNTIME_TARGET_ID
-  && !route.path.startsWith('/agents'))
 const userInitial = computed(() => (currentUser.value.username || t('app.administrator')).trim().slice(0, 1).toUpperCase())
 const breadcrumbs = computed(() => {
   if (route.path === '/dashboard') return [{ label: t('navigation.dashboard') }]
@@ -76,18 +63,6 @@ const breadcrumbs = computed(() => {
 
 function updateSystemName(event) {
   systemName.value = event.detail?.systemName || getSystemPreferences().systemName
-}
-
-function handleRuntimeTarget(target) {
-  runtimeTarget.value = target
-}
-
-function handleRuntimeTargetEvent(event) {
-  runtimeTarget.value = event.detail || getActiveRuntimeTarget()
-}
-
-function switchToLocalRuntime() {
-  runtimeTarget.value = setActiveRuntimeTarget()
 }
 
 async function loadCurrentUser() {
@@ -155,14 +130,12 @@ async function changePassword() {
 onMounted(() => {
   document.body.dataset.uiVersion = 'v2'
   window.addEventListener('system-preferences-updated', updateSystemName)
-  window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, handleRuntimeTargetEvent)
   loadCurrentUser()
 })
 
 onBeforeUnmount(() => {
   if (document.body.dataset.uiVersion === 'v2') delete document.body.dataset.uiVersion
   window.removeEventListener('system-preferences-updated', updateSystemName)
-  window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, handleRuntimeTargetEvent)
 })
 </script>
 
@@ -192,7 +165,6 @@ onBeforeUnmount(() => {
           </BreadcrumbList>
         </Breadcrumb>
         <div class="ml-auto flex min-w-0 items-center gap-1.5">
-          <RuntimeTargetSelectV2 @change="handleRuntimeTarget" />
           <ThemeSwitch />
           <Tooltip>
             <TooltipTrigger as-child>
@@ -209,30 +181,7 @@ onBeforeUnmount(() => {
 
       <div class="bg-muted/30 min-h-0 flex-1 overflow-auto">
         <main id="main-content-v2" class="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-6 lg:px-8 lg:py-8" tabindex="-1">
-          <Card v-if="remoteContextBlocked" class="mx-auto mt-8 max-w-3xl">
-            <CardHeader>
-              <CardTitle class="flex items-center gap-2"><Settings />{{ runtimeTarget.name }}</CardTitle>
-              <CardDescription>{{ t('app.remote.selectedDescription') }}</CardDescription>
-            </CardHeader>
-            <CardContent class="flex flex-col gap-4">
-              <Alert>
-                <TriangleAlert />
-                <AlertTitle>{{ t('app.remote.disabledTitle') }}</AlertTitle>
-                <AlertDescription>{{ t('app.remote.disabledDescription') }}</AlertDescription>
-              </Alert>
-              <dl class="grid gap-3 sm:grid-cols-2">
-                <div class="rounded-md border p-3"><dt class="text-muted-foreground text-xs">{{ t('app.remote.host') }}</dt><dd class="mt-1 font-medium">{{ runtimeTarget.hostname || '--' }}</dd></div>
-                <div class="rounded-md border p-3"><dt class="text-muted-foreground text-xs">{{ t('app.remote.status') }}</dt><dd class="mt-1"><Badge :variant="runtimeTarget.online ? 'secondary' : 'destructive'">{{ runtimeTarget.online ? t('app.remote.agentOnline') : t('app.remote.agentOffline') }}</Badge></dd></div>
-                <div class="rounded-md border p-3"><dt class="text-muted-foreground text-xs">{{ t('app.remote.archivePath') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ runtimeTarget.config?.savePath || t('common.states.unconfigured') }}</dd></div>
-                <div class="rounded-md border p-3"><dt class="text-muted-foreground text-xs">{{ t('app.remote.serverPath') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ runtimeTarget.config?.serverPath || t('common.states.unconfigured') }}</dd></div>
-              </dl>
-              <div class="flex flex-wrap gap-2">
-                <Button @click="router.push('/agents/list')"><Settings data-icon="inline-start" />{{ t('app.remote.configure') }}</Button>
-                <Button variant="outline" @click="switchToLocalRuntime">{{ t('app.remote.switchLocal') }}</Button>
-              </div>
-            </CardContent>
-          </Card>
-          <RouterView v-else />
+          <RouterView />
         </main>
       </div>
     </SidebarInset>

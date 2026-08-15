@@ -170,6 +170,17 @@ test('central diagnostics route and placement-aware APIs bypass the manual targe
   assert.match(view, /roomsV2API\.controlPlaneList/)
 })
 
+test('formal layout keeps remote selection in topology instead of switching the whole application', async () => {
+  const [layout, topology] = await Promise.all([
+    source('src/layouts/MainLayoutV2.vue'),
+    source('src/views/rooms/RoomTopology.vue')
+  ])
+  assert.doesNotMatch(layout, /RuntimeTargetSelectV2|remoteContextBlocked|RUNTIME_TARGET_CHANGED_EVENT/)
+  assert.match(layout, /<RouterView\s*\/>/)
+  assert.match(topology, /draftPlacements\[placement\.worldId\]/)
+  assert.match(topology, /topologyV2API\.applyPlacement/)
+})
+
 test('distributed capability manifest and declarations cover the implemented contracts', async () => {
   assert.deepEqual(BACKEND_CAPABILITIES.distributedManagement, {
     runtimeOverview: true,
