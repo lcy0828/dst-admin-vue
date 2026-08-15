@@ -31,7 +31,7 @@ export function useDashboardV2() {
   const systemStatus = ref({})
   const serverList = ref([])
   const roomList = ref([])
-  const playerSummary = ref({ total: 0, online: 0, loadedRooms: 0, failedRooms: 0 })
+  const playerSummary = ref({ total: 0, online: 0, staleOnline: 0, loadedRooms: 0, failedRooms: 0 })
   const versionInfo = ref(emptyVersion())
   const updateStatus = ref(null)
   const lastRefreshedAt = ref(null)
@@ -85,7 +85,7 @@ export function useDashboardV2() {
   async function refreshPlayers() {
     playerLoading.value = true
     playerError.value = ''
-    playerSummary.value = { total: 0, online: 0, loadedRooms: 0, failedRooms: 0 }
+    playerSummary.value = { total: 0, online: 0, staleOnline: 0, loadedRooms: 0, failedRooms: 0 }
     try {
       if (roomError.value) {
         playerError.value = translate('dashboard.feedback.playersBlocked')
@@ -102,6 +102,7 @@ export function useDashboardV2() {
         const value = result.value?.data || {}
         playerSummary.value.total += Number(value.total_count) || 0
         playerSummary.value.online += Number(value.online_count) || 0
+        playerSummary.value.staleOnline += Number(value.stale_online_count) || 0
         playerSummary.value.loadedRooms += 1
       }
       if (playerSummary.value.failedRooms > 0) {

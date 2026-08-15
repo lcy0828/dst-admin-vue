@@ -74,6 +74,10 @@ async function resolveSession(value, catalog = null) {
 }
 
 function legacyPlayer(player, room) {
+  const presenceStatus = player.presenceStatus || player.fields?.online?.status || 'unavailable'
+  const status = !player.online
+    ? 'offline'
+    : (presenceStatus === 'live' ? 'online' : 'stale')
   return {
     id: player.id,
     room_id: room.id,
@@ -84,7 +88,7 @@ function legacyPlayer(player, room) {
     player_name: player.name,
     player_age: player.age,
     prefab: player.prefab,
-    status: player.online ? 'online' : 'offline',
+    status,
     is_admin: player.admin,
     is_friend: null,
     is_host: null,
@@ -96,6 +100,8 @@ function legacyPlayer(player, room) {
     last_seen: player.lastSeenAt,
     status_change: player.statusChangedAt,
     last_refreshed_at: player.lastRefreshedAt,
+    presence_status: presenceStatus,
+    presence_observed_at: player.presenceObservedAt || player.fields?.online?.observedAt || null,
     presence_conflict: Boolean(player.presenceConflict),
     observed_world_ids: Array.isArray(player.observedWorldIds) ? player.observedWorldIds : [],
     field_states: player.fields || {},
@@ -120,13 +126,14 @@ async function roomPlayers(room, params) {
   do {
     const response = await playersV2API.list(room.id, {
       query: params.keyword || '',
-      status: params.status || '',
+      status: params.status === 'stale' ? 'online' : (params.status || ''),
       prefab: params.prefab || '',
       limit: 100,
       offset
     })
     const page = response.items || []
-    items.push(...page.map(player => legacyPlayer(player, room)))
+    const mapped = page.map(player => legacyPlayer(player, room))
+    items.push(...(params.status ? mapped.filter(player => player.status === params.status) : mapped))
     total = response.total || 0
     offset += page.length
     if (page.length === 0) break
@@ -264,10 +271,12 @@ export const playerApi = {
   async getPlayerStats(archiveName) {
     const response = await listPlayers({ archive_name: archiveName }, false)
     const online = response.data.filter(player => player.status === 'online').length
+    const staleOnline = response.data.filter(player => player.status === 'stale').length
     return success({
       total_count: response.total,
       online_count: online,
-      offline_count: response.total - online,
+      stale_online_count: staleOnline,
+      offline_count: response.total - online - staleOnline,
       recent_players: response.data.slice(0, 10)
     })
   },

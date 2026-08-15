@@ -1,7 +1,9 @@
 const PLAYER_STATUS_KEYS = Object.freeze({
   online: 'online',
+  stale: 'stale',
   offline: 'offline',
   '在线': 'online',
+  '最后已知在线': 'stale',
   '离线': 'offline'
 })
 
@@ -122,7 +124,7 @@ export function playerStatusMeta(status, translate) {
   const key = PLAYER_STATUS_KEYS[status]
   return {
     label: key ? translate(`players.statuses.${key}`) : status || translate('players.values.unknownStatus'),
-    variant: key === 'online' ? 'default' : 'secondary'
+    variant: key === 'online' ? 'default' : (key === 'stale' ? 'outline' : 'secondary')
   }
 }
 
@@ -250,6 +252,7 @@ export const playerMessages = {
         createdAt: '创建时间',
         updatedAt: '更新时间',
         lastRefreshed: '最近采样时间',
+        presenceObservedAt: '最后确认在线',
         world: '世界名称',
         roomAndWorld: '房间 / 世界',
         action: '操作',
@@ -263,7 +266,7 @@ export const playerMessages = {
         schedule: '执行计划',
         taskDescription: '任务描述'
       },
-      statuses: { online: '在线', offline: '离线' },
+      statuses: { online: '在线', stale: '最后已知在线', offline: '离线' },
       worldStates: { running: '运行中', stopped: '已停止', starting: '启动中', stopping: '停止中', failed: '失败' },
       network: { excellent: '极佳', fair: '中等', poor: '很差' },
       performance: { good: '性能良好', fair: '性能一般', poor: '性能差' },
@@ -298,6 +301,8 @@ export const playerMessages = {
         perPageAria: '每页显示数量',
         administrator: '管理员',
         friend: '好友',
+        sampledAt: '采样于 {time}',
+        staleObservedAt: '最后确认于 {time}',
         presenceConflict: '分片冲突',
         presenceConflictDescription: '同一轮采样在以下世界同时发现该玩家：{worlds}'
       },
@@ -306,6 +311,8 @@ export const playerMessages = {
         description: '身份、连接状态和服务器操作。',
         gameActions: '游戏操作',
         dangerousActions: '危险操作',
+        staleTitle: '在线状态已过期',
+        staleDescription: '该玩家最后于 {time} 确认在线，最新采集失败。刷新成功前，实时游戏操作已禁用。',
         presenceConflictTitle: '玩家位置存在冲突',
         presenceConflictDescription: '以下分片同时报告该 KU ID 在线：{worlds}。操作前请刷新玩家数据并检查分片连接。'
       },
@@ -398,10 +405,10 @@ export const playerMessages = {
       fields: {
         archive: 'Archive', status: 'Player status', character: 'Character', keyword: 'Keyword', playerId: 'Player ID', playerName: 'Player name', days: 'Days', network: 'Network quality',
         performance: 'Performance', performanceMetric: 'Performance metric', firstSeen: 'First seen', lastSeen: 'Last seen', statusChanged: 'Status changed', createdAt: 'Created at',
-        updatedAt: 'Updated at', lastRefreshed: 'Last sampled', world: 'World', roomAndWorld: 'Room / World', action: 'Actions', banReason: 'Ban reason', banDuration: 'Ban duration', bannedAt: 'Banned at',
+        updatedAt: 'Updated at', lastRefreshed: 'Last sampled', presenceObservedAt: 'Last confirmed online', world: 'World', roomAndWorld: 'Room / World', action: 'Actions', banReason: 'Ban reason', banDuration: 'Ban duration', bannedAt: 'Banned at',
         expiresAt: 'Expires at', fullRoomName: 'Full room name', gameWorld: 'Game world', taskName: 'Task name', schedule: 'Schedule', taskDescription: 'Task description'
       },
-      statuses: { online: 'Online', offline: 'Offline' },
+      statuses: { online: 'Online', stale: 'Last known online', offline: 'Offline' },
       worldStates: { running: 'Running', stopped: 'Stopped', starting: 'Starting', stopping: 'Stopping', failed: 'Failed' },
       network: { excellent: 'Excellent', fair: 'Fair', poor: 'Poor' },
       performance: { good: 'Good', fair: 'Fair', poor: 'Poor' },
@@ -417,10 +424,12 @@ export const playerMessages = {
         searchPlaceholder: 'Search player name or ID', total: '{count} players', loadFailedTitle: 'Could not load players', partialTitle: 'Some rooms could not be loaded',
         partialDescription: 'Available data is shown; {count} rooms are unavailable: {rooms}', loading: 'Loading players', emptyTitle: 'No player data',
         emptyDescription: 'Select an archive or update the player list manually.', perPage: 'Per page', perPageAria: 'Players per page', administrator: 'Administrator', friend: 'Friend',
+        sampledAt: 'Sampled at {time}', staleObservedAt: 'Last confirmed at {time}',
         presenceConflict: 'Shard conflict', presenceConflictDescription: 'This player was observed in these worlds during the same sampling window: {worlds}'
       },
       detail: {
         title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions',
+        staleTitle: 'Presence data is stale', staleDescription: 'This player was last confirmed online at {time}. The latest observation failed, so live game actions are disabled until a successful refresh.',
         presenceConflictTitle: 'Player location conflict', presenceConflictDescription: 'These Shards simultaneously reported the same KU ID online: {worlds}. Refresh player data and inspect Shard connectivity before acting.'
       },
       operations: {

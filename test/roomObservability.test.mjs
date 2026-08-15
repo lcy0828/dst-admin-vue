@@ -26,12 +26,17 @@ test('player adapter and surfaces expose sampling freshness and shard presence c
   ])
 
   assert.match(adapter, /last_refreshed_at:\s*player\.lastRefreshedAt/)
+  assert.match(adapter, /presence_status:\s*presenceStatus/)
+  assert.match(adapter, /presence_observed_at:\s*player\.presenceObservedAt/)
+  assert.match(adapter, /stale_online_count:\s*staleOnline/)
   assert.match(adapter, /presence_conflict:\s*Boolean\(player\.presenceConflict\)/)
   assert.match(adapter, /observed_world_ids:\s*Array\.isArray\(player\.observedWorldIds\)/)
   assert.match(adapter, /field_states:\s*player\.fields \|\| \{\}/)
   assert.match(list, /player\.presence_conflict/)
   assert.match(list, /player\.observed_world_ids\.join/)
   assert.match(list, /player\.last_refreshed_at/)
+  assert.match(list, /player\.status === 'stale'/)
+  assert.match(list, /players\.detail\.staleDescription/)
 })
 
 test('room diagnostics keep world-state aggregation on the control plane', async () => {

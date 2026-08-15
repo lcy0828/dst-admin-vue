@@ -25,7 +25,7 @@
           <Field>
             <FieldLabel for="player-status-filter">{{ $t('players.fields.status') }}</FieldLabel>
             <NativeSelect id="player-status-filter" v-model="filterForm.status" @change="handleFilter">
-              <NativeSelectOption value="">{{ $t('players.list.allStatuses') }}</NativeSelectOption><NativeSelectOption value="online">{{ $t('players.statuses.online') }}</NativeSelectOption><NativeSelectOption value="offline">{{ $t('players.statuses.offline') }}</NativeSelectOption>
+              <NativeSelectOption value="">{{ $t('players.list.allStatuses') }}</NativeSelectOption><NativeSelectOption value="online">{{ $t('players.statuses.online') }}</NativeSelectOption><NativeSelectOption value="stale">{{ $t('players.statuses.stale') }}</NativeSelectOption><NativeSelectOption value="offline">{{ $t('players.statuses.offline') }}</NativeSelectOption>
             </NativeSelect>
           </Field>
           <Field>
@@ -108,7 +108,7 @@
                 <TableCell class="mono-cell">{{ player.user_id }}</TableCell>
                 <TableCell><Badge variant="outline">{{ getCharacterName(player.prefab) }}</Badge></TableCell>
                 <TableCell>{{ player.player_age }}</TableCell>
-                <TableCell><div class="flex min-w-28 flex-col gap-1"><Badge :variant="getPlayerStatusMeta(player.status).variant">{{ getPlayerStatusMeta(player.status).label }}</Badge><span class="text-xs text-muted-foreground">{{ formatDate(player.last_refreshed_at) }}</span></div></TableCell>
+                <TableCell><div class="flex min-w-32 flex-col gap-1"><Badge :variant="getPlayerStatusMeta(player.status).variant">{{ getPlayerStatusMeta(player.status).label }}</Badge><span class="text-xs text-muted-foreground">{{ player.status === 'stale' ? $t('players.list.staleObservedAt', { time: formatDate(player.presence_observed_at) }) : $t('players.list.sampledAt', { time: formatDate(player.last_refreshed_at) }) }}</span></div></TableCell>
                 <TableCell><Badge v-if="isPlayerOnline(player.status)" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
                 <TableCell>
                   <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" :title="$t('players.actions.viewOnSteam')" :aria-label="$t('players.actions.viewPlayerOnSteam')" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
@@ -178,6 +178,11 @@
               <AlertTitle>{{ $t('players.detail.presenceConflictTitle') }}</AlertTitle>
               <AlertDescription>{{ $t('players.detail.presenceConflictDescription', { worlds: currentPlayer.observed_world_ids.join(', ') }) }}</AlertDescription>
             </Alert>
+            <Alert v-if="currentPlayer.status === 'stale'">
+              <Clock3 />
+              <AlertTitle>{{ $t('players.detail.staleTitle') }}</AlertTitle>
+              <AlertDescription>{{ $t('players.detail.staleDescription', { time: formatDate(currentPlayer.presence_observed_at) }) }}</AlertDescription>
+            </Alert>
             <dl class="player-description-grid">
               <div><dt>{{ $t('players.fields.playerId') }}</dt><dd>{{ currentPlayer.id }}</dd></div><div><dt>KU ID</dt><dd>{{ currentPlayer.user_id }}</dd></div>
               <div><dt>{{ $t('players.fields.playerName') }}</dt><dd>{{ currentPlayer.player_name }}</dd></div><div><dt>{{ $t('players.fields.archive') }}</dt><dd>{{ currentPlayer.archive_name }}</dd></div>
@@ -186,6 +191,7 @@
               <div><dt>{{ $t('players.fields.network') }}</dt><dd>{{ isPlayerOnline(currentPlayer.status) ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div>
               <div><dt>{{ $t('players.fields.firstSeen') }}</dt><dd>{{ formatDate(currentPlayer.first_seen) }}</dd></div><div><dt>{{ $t('players.fields.lastSeen') }}</dt><dd>{{ formatDate(currentPlayer.last_seen) }}</dd></div>
               <div><dt>{{ $t('players.fields.createdAt') }}</dt><dd>{{ formatDate(currentPlayer.created_at) }}</dd></div><div><dt>{{ $t('players.fields.lastRefreshed') }}</dt><dd>{{ formatDate(currentPlayer.last_refreshed_at) }}</dd></div>
+              <div><dt>{{ $t('players.fields.presenceObservedAt') }}</dt><dd>{{ formatDate(currentPlayer.presence_observed_at) }}</dd></div>
             </dl>
             <Separator />
             <section><h3>{{ $t('players.detail.gameActions') }}</h3><div class="detail-action-grid">

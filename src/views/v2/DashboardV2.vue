@@ -201,7 +201,10 @@ onMounted(() => {
         <CardContent class="flex items-end justify-between gap-3 pb-4 pt-0">
           <Skeleton v-if="playerLoading" class="h-8 w-20" />
           <strong v-else class="text-2xl font-semibold tabular-nums">{{ playerSummary.online }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">{{ t('dashboard.summary.people') }}</span></strong>
-          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.recordedPlayers', { count: playerSummary.total }) }}</span>
+          <div class="flex flex-col items-end gap-1">
+            <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.recordedPlayers', { count: playerSummary.total }) }}</span>
+            <Badge v-if="playerSummary.staleOnline" variant="outline">{{ t('dashboard.summary.stalePlayers', { count: playerSummary.staleOnline }) }}</Badge>
+          </div>
         </CardContent>
       </Card>
       <Card size="sm">

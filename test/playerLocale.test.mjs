@@ -42,7 +42,9 @@ test('known player status and legacy Chinese values follow the selected locale',
 
   assert.equal(isPlayerOnline('online'), true)
   assert.equal(isPlayerOnline('在线'), true)
+  assert.equal(isPlayerOnline('stale'), false)
   assert.deepEqual(playerStatusMeta('online', en), { label: 'Online', variant: 'default' })
+  assert.deepEqual(playerStatusMeta('stale', en), { label: 'Last known online', variant: 'outline' })
   assert.deepEqual(playerStatusMeta('在线', zh), { label: '在线', variant: 'default' })
   assert.equal(playerStatusMeta('mod_spectating', en).label, 'mod_spectating')
 })

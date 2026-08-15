@@ -311,7 +311,7 @@
                 <header class="context-section-header">
                   <div class="context-section-heading">
                     <h2 id="workspace-players-title">{{ $t('servers.workspace.players.title') }}</h2>
-                    <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.onlineCount', { count: playerStats.online_count }) : $t('servers.workspace.states.statusUnavailable')) }}</span>
+                    <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.presenceSummary', { online: playerStats.online_count, stale: playerStats.stale_online_count || 0 }) : $t('servers.workspace.states.statusUnavailable')) }}</span>
                   </div>
                   <UiButton variant="ghost" size="xs" class="context-section-action" @click="openPlayers">
                     {{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" />
@@ -968,6 +968,7 @@ export default {
     },
     playerStatusLabel(status) {
       const normalized = String(status || '').trim().toLowerCase()
+      if (normalized === 'stale') return this.$t('players.statuses.stale')
       if (['online', 'offline'].includes(normalized)) {
         return this.$t(`common.states.${normalized}`)
       }

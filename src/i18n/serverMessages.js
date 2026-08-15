@@ -231,6 +231,7 @@ export const serverMessages = {
         players: {
           title: '玩家',
           onlineCount: '{count} 人在线',
+          presenceSummary: '{online} 人在线 · {stale} 人状态已过期',
           unknownWorld: '未知世界',
           loadFailed: '玩家数据读取失败',
           empty: '暂无玩家记录',
@@ -577,6 +578,7 @@ export const serverMessages = {
         players: {
           title: 'Players',
           onlineCount: '{count} online',
+          presenceSummary: '{online} online · {stale} stale',
           unknownWorld: 'Unknown world',
           loadFailed: 'Failed to load players',
           empty: 'No player records',
