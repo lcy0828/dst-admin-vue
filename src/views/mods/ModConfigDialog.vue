@@ -6,6 +6,13 @@
         <DialogDescription>{{ $t('mods.config.description', { world: worldName || worldId }) }}</DialogDescription>
       </DialogHeader>
 
+      <div class="flex flex-wrap items-center gap-2">
+        <Badge variant="outline">
+          <Server />
+          {{ configTargetLabel }}
+        </Badge>
+      </div>
+
       <ScrollArea class="config-scroll-area">
         <div v-if="loading" class="loading-container"><Spinner /><p>{{ $t('mods.config.loading') }}</p></div>
 
@@ -97,10 +104,12 @@
 
 <script>
 import { CircleHelp, Info, RotateCcw, TriangleAlert } from '@lucide/vue';
+import { Server } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { modApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -120,6 +129,7 @@ export default {
     AlertAction,
     AlertDescription,
     AlertTitle,
+    Badge,
     CircleHelp,
     DialogContent,
     DialogDescription,
@@ -138,6 +148,7 @@ export default {
     Info,
     RotateCcw,
     ScrollArea,
+    Server,
     SelectContent,
     SelectGroup,
     SelectItem,
@@ -182,6 +193,14 @@ export default {
     worldName: {
       type: String,
       default: ''
+    },
+    targetId: {
+      type: String,
+      default: ''
+    },
+    targetName: {
+      type: String,
+      default: ''
     }
   },
   data() {
@@ -198,6 +217,9 @@ export default {
       resetRequested: false,
       configRevision: '',
       configuredEnabled: true,
+      topologyRevision: '',
+      resolvedTargetId: '',
+      resolvedTargetName: '',
       isInitialized: false,
       resolvedModInfo: null
     };
@@ -214,6 +236,12 @@ export default {
     },
     activeModInfo() {
       return this.resolvedModInfo || this.modInfo;
+    },
+    configTargetLabel() {
+      const target = this.targetName || this.resolvedTargetName || this.targetId || this.resolvedTargetId;
+      return target
+        ? this.$t('mods.config.target', { target })
+        : this.$t('mods.config.targetUnknown');
     },
     // 所有配置选项(已扁平化)
     allOptions() {
@@ -275,6 +303,9 @@ export default {
       this.resetRequested = false;
       this.configRevision = '';
       this.configuredEnabled = true;
+      this.topologyRevision = '';
+      this.resolvedTargetId = '';
+      this.resolvedTargetName = '';
       this.resolvedModInfo = null;
     },
     
@@ -295,6 +326,16 @@ export default {
       this.resetRequested = false;
       
       try {
+        try {
+          const topology = await modApi.getRoomTopology(this.roomId);
+          this.topologyRevision = topology?.revision || topology?.topologyRevision || '';
+          const placement = (topology?.placements || []).find(item => item.worldId === this.worldId);
+          const target = (topology?.targets || []).find(item => item.id === placement?.appliedTargetId);
+          this.resolvedTargetId = placement?.appliedTargetId || '';
+          this.resolvedTargetName = target?.name || '';
+        } catch {
+          // Older local backends do not expose topology metadata.
+        }
         const response = await modApi.getModConfig({
           roomId: this.roomId,
           worldId: this.worldId,
@@ -477,8 +518,8 @@ export default {
       
       // 只使用新接口保存用户自定义配置
       try {
-        await modApi.saveModCustomConfig(customConfigData);
-        await this.getUserCustomConfig();
+        const result = await this.persistConfig(customConfigData);
+        if (result.mode === 'legacy') await this.getUserCustomConfig();
         this.originalConfig = JSON.parse(JSON.stringify(this.configForm));
         this.resetRequested = false;
 
@@ -488,12 +529,38 @@ export default {
         });
 
         this.dialogVisible = false;
-        toast.success(this.$t('mods.config.feedback.saved'));
+        toast.success(this.$t(result.mode === 'publication' ? 'mods.config.feedback.publicationSubmitted' : 'mods.config.feedback.saved'));
       } catch (error) {
         toast.error(formatModFailure(this.$t, createModFailure('mods.errors.saveConfig', error)));
       } finally {
         this.saving = false;
       }
+    },
+
+    async persistConfig(customConfigData) {
+      const publicationInput = {
+        roomId: this.roomId,
+        action: 'configure',
+        modId: this.modId,
+        worldIds: [this.worldId],
+        enabled: customConfigData.enabled,
+        expectedConfigurationRevision: customConfigData.expectedRevision,
+        patch: customConfigData.configuration_options,
+        ...(this.topologyRevision ? { expectedTopologyRevision: this.topologyRevision } : {})
+      };
+      const response = await modApi.previewModPublication(publicationInput);
+      const plan = response?.plan || response;
+      if (!plan?.ready || !plan?.planHash) {
+        const detail = (plan?.blockers || []).map(blocker => blocker.message || blocker.code).filter(Boolean).join('; ');
+        throw new Error(detail || this.$t('mods.addToRoom.planBlocked'));
+      }
+      const publication = await modApi.createModPublication({
+        ...publicationInput,
+        planHash: plan.planHash,
+        expectedTopologyRevision: plan.topologyRevision || this.topologyRevision,
+        confirmation: plan.planHash
+      });
+      return { mode: 'publication', publication };
     },
     
     // 准备提交数据

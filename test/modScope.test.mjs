@@ -6,10 +6,12 @@ async function source(path) {
   return readFile(new URL(path, import.meta.url), 'utf8')
 }
 
-test('node library API is independent from room configuration APIs', async () => {
-  const [client, adapter] = await Promise.all([
+test('controller content library API is independent from room publication APIs', async () => {
+  const [client, adapter, library, messages] = await Promise.all([
     source('../src/api/v2.js'),
-    source('../src/api/modApi.js')
+    source('../src/api/modApi.js'),
+    source('../src/views/mods/ModLibrary.vue'),
+    source('../src/i18n/modMessages.js')
   ])
 
   assert.match(client, /client\.get\('\/mods\/library'/)
@@ -18,10 +20,17 @@ test('node library API is independent from room configuration APIs', async () =>
   assert.match(client, /`\/rooms\/\$\{encode\(roomId\)\}\/mods\/\$\{encode\(modId\)\}\/actions\/add`/)
   assert.match(adapter, /async function getLibrary\(\)/)
   assert.match(adapter, /async function addModToRoom\(input\)/)
-  assert.match(adapter, /removeFiles: false/)
+  assert.match(adapter, /async function publishPreparedModMutation\(input\)/)
+  assert.match(adapter, /action: 'remove'/)
+  assert.match(adapter, /action: 'reconcile'/)
+  const libraryBlock = client.slice(client.indexOf('export const modsV2API'), client.indexOf('export const modPublicationsV2API'))
+  assert.equal(libraryBlock.match(/runtimeTarget:\s*false/g)?.length, 9)
+  assert.doesNotMatch(library, /RuntimeTargetSelectV2|handleRuntimeTargetChange|getActiveRuntimeTarget/)
+  assert.match(messages, /Workshop 内容由控制器统一下载和管理/)
+  assert.match(messages, /The controller downloads and manages Workshop content centrally/)
 })
 
-test('Workshop search downloads to the node without requiring a room', async () => {
+test('Workshop search downloads to the controller content library without requiring a room', async () => {
   const [search, adapter] = await Promise.all([
     source('../src/views/mods/ModSearch.vue'),
     source('../src/api/modApi.js')
@@ -75,7 +84,9 @@ test('adding a downloaded mod explicitly selects room worlds', async () => {
 
   assert.match(dialog, /modApi\.getManagedRooms\(\)/)
   assert.match(dialog, /modApi\.getRoomWorlds\(roomId\)/)
-  assert.match(dialog, /modApi\.addModToRoom/)
+  assert.match(dialog, /modApi\.previewModPublication/)
+  assert.match(dialog, /modApi\.createModPublication/)
+  assert.doesNotMatch(dialog, /modApi\.addModToRoom/)
   assert.match(dialog, /worldIds: selectedWorldIds\.value/)
 })
 
@@ -97,7 +108,7 @@ test('room mod controls and configuration target one explicit world', async () =
   assert.match(adapter, /overridden_configuration_options: configuration\.overrides \|\| \{\}/)
 })
 
-test('mod navigation exposes separate node library and room views', async () => {
+test('mod navigation exposes separate content library and room publication views', async () => {
   const [router, navigation] = await Promise.all([
     source('../src/router/index.js'),
     source('../src/v2/navigation.js')

@@ -31,6 +31,17 @@ const MOD_VALUE_KEYS = Object.freeze({
   })
 })
 
+const MOD_FAILURE_CODE_KEYS = Object.freeze({
+  MOD_PUBLICATION_RESULT_MISSING: 'mods.publication.errors.resultMissing',
+  MOD_PUBLICATION_PREVIEW_BLOCKED: 'mods.publication.errors.previewBlocked',
+  PREVIEW_BLOCKED: 'mods.publication.errors.previewBlocked',
+  MOD_PUBLICATION_REQUIRED: 'mods.publication.errors.publicationRequired',
+  PLAN_CHANGED: 'mods.publication.errors.planChanged',
+  TOPOLOGY_CHANGED: 'mods.publication.errors.topologyChanged',
+  REMOTE_RUNTIME_ACTION_UNAVAILABLE: 'mods.publication.errors.remoteActionUnavailable',
+  REMOTE_RUNTIME_MUTATION_UNAVAILABLE: 'mods.publication.errors.remoteMutationUnavailable'
+})
+
 export const modMessages = {
   'zh-CN': {
     mods: {
@@ -119,13 +130,13 @@ export const modMessages = {
         saveConfig: '保存配置',
         resetDefaults: '恢复默认值',
         backToInstalled: '返回已下载模组',
-        backToLibrary: '返回节点模组库',
+        backToLibrary: '返回模组内容库',
         search: '搜索'
       },
       errors: {
         withDetail: '{message}：{detail}',
         context: '加载模组上下文失败',
-        library: '获取节点模组库失败',
+        library: '获取模组内容库失败',
         addToRoom: '添加模组到房间失败',
         roomSwitch: '切换房间失败',
         list: '获取模组列表失败',
@@ -142,6 +153,65 @@ export const modMessages = {
         saveConfig: '保存模组配置失败',
         download: '下载模组失败',
         refresh: '刷新模组状态失败'
+      },
+      publication: {
+        title: '房间模组发布',
+        description: '按当前 Placement 将模组文件和每个世界的独立配置发布到对应节点。',
+        loadFailedTitle: '发布状态加载失败',
+        actions: {
+          preview: '预览发布', publish: '确认发布', retryFailed: '重试失败节点',
+          cancel: '取消发布', viewStatus: '查看发布状态'
+        },
+        fields: {
+          topologyRevision: '拓扑版本', target: '目标节点', worlds: '世界', mods: '模组',
+          requiredBytes: '所需空间', currentVersion: '当前版本', desiredVersion: '目标版本',
+          status: '状态', phase: '阶段', progress: '进度', message: '信息'
+        },
+        values: { ready: '可以发布', blocked: '发布受阻', warning: '发布警告', offline: '节点离线', unavailable: '尚不可用' },
+        summary: { warnings: '{count} 条警告', blockers: '{count} 个阻塞项' },
+        unavailable: {
+          title: '后端尚未提供跨节点模组发布',
+          description: '当前仍保留原有本地模组操作；远程或混合 Placement 不会伪装成本地成功。'
+        },
+        latest: { title: '最近一次发布', empty: '当前房间还没有发布记录。先预览计划，再确认发布。' },
+        statusDialog: {
+          title: '模组发布状态',
+          description: '发布 {id} 在各目标节点和世界上的实际执行结果。'
+        },
+        states: {
+          queued: '排队中', running: '执行中', succeeded: '已成功', failed: '失败', skipped: '已跳过',
+          canceled: '已取消', rolledBack: '已回滚', recoveryRequired: '需要恢复', previewed: '已预览',
+          preparing: '准备中', prepared: '已准备', publishing: '发布中', committed: '已提交',
+          completing: '收尾中', unknown: '未知状态'
+        },
+        phases: {
+          preflight: '预检', stage: '暂存', download: '下载', verify: '校验', backup: '保护备份',
+          configure: '写入配置', publish: '发布', reconcile: '状态对齐', rollback: '回滚',
+          complete: '完成', unknown: '等待阶段信息'
+        },
+        outcomes: { full: '全部成功', partial: '部分成功', none: '未生效', unknown: '结果待确认' },
+        blockers: {
+          nodeOffline: '目标节点离线', placementChanged: '世界 Placement 已变化', topologyChanged: '房间拓扑已变化',
+          insufficientDisk: '节点磁盘空间不足', missingMod: '缺少模组文件', checksumMismatch: '模组文件校验失败',
+          backupFailure: '保护备份失败', capabilityMissing: '节点缺少发布能力', versionConflict: '模组版本冲突',
+          unknown: '发布预检未通过'
+        },
+        errors: {
+          resultMissing: '发布任务已完成，但没有找到对应的发布记录，请刷新发布历史后重试',
+          previewBlocked: '发布预检未通过，请查看目标节点的阻断项并处理后重试',
+          publicationRequired: '房间模组必须通过 Placement 发布，不能使用旧的本地写入接口',
+          planChanged: '模组或目标状态已变化，请重新预览发布计划',
+          topologyChanged: '房间拓扑已变化，请刷新页面并重新预览发布计划',
+          remoteActionUnavailable: '当前远程节点不支持这项模组读取操作',
+          remoteMutationUnavailable: '当前 Placement 不支持直接写入模组，请使用房间发布',
+          unknown: '未知错误'
+        },
+        feedback: {
+          previewReady: '发布计划已生成，请核对目标节点和世界',
+          previewFailed: '生成发布计划失败：{error}', submitted: '模组发布已提交',
+          publishFailed: '提交模组发布失败：{error}', retrySubmitted: '失败节点已重新提交',
+          retryFailed: '重试失败节点失败：{error}'
+        }
       },
       installed: {
         title: '房间模组',
@@ -225,21 +295,21 @@ export const modMessages = {
         }
       },
       library: {
-        title: '节点模组库',
-        subtitle: '管理当前运行节点下载的 Workshop 文件；节点库不隶属于任何房间。',
+        title: '模组内容库',
+        subtitle: 'Workshop 内容由控制器统一下载和管理；添加到房间后，再按世界 Placement 发布到对应节点。',
         filters: {
-          title: '筛选节点模组',
-          description: '按名称、作者、Workshop ID 或本地状态查找模组。',
+          title: '筛选内容库模组',
+          description: '按名称、作者、Workshop ID 或内容库状态查找模组。',
           keyword: '关键词',
           keywordPlaceholder: '搜索名称、作者或 Workshop ID',
-          status: '本地状态',
+          status: '内容状态',
           statuses: { all: '全部', downloaded: '已下载', attention: '需要处理' },
           sort: '排序',
           sorts: { updatedAt: '最近更新', name: '名称', author: '作者', version: '版本', subscriptions: '订阅数', rating: '评分' }
         },
-        loadFailedTitle: '节点模组库加载失败',
+        loadFailedTitle: '模组内容库加载失败',
         table: {
-          title: '当前节点',
+          title: '控制器内容库',
           total: '显示 {count} 个模组',
           mod: '模组',
           workshop: 'Workshop 数据',
@@ -248,16 +318,16 @@ export const modMessages = {
           actions: '操作'
         },
         empty: {
-          noMods: '节点上还没有 Workshop 模组',
-          noModsDescription: '从 Workshop 搜索并下载后，模组会出现在这里。',
-          noMatches: '没有匹配的节点模组',
+          noMods: '内容库中还没有 Workshop 模组',
+          noModsDescription: '从 Workshop 搜索并下载后，文件会由控制器统一管理。',
+          noMatches: '没有匹配的内容库模组',
           noMatchesDescription: '调整关键词或状态筛选后重试。'
         },
         feedback: {
-          downloading: '正在下载到当前节点...',
-          updating: '正在更新节点文件...',
-          downloaded: '模组 {name} 已下载到当前节点',
-          updated: '模组 {name} 的节点文件已更新',
+          downloading: '正在下载到控制器内容库...',
+          updating: '正在更新控制器内容库文件...',
+          downloaded: '模组 {name} 已下载到控制器内容库',
+          updated: '模组 {name} 的控制器内容已更新',
           refreshed: '已刷新模组 {name} 的版本和本地状态'
         }
       },
@@ -268,7 +338,7 @@ export const modMessages = {
         room: '房间',
         loadingRooms: '正在加载房间',
         selectRoom: '请选择房间',
-        roomDescription: '下载文件属于当前节点；这里只决定哪个房间引用该模组。',
+        roomDescription: '房间发布会按世界的 Placement 把文件和配置送到对应节点。',
         noRoomsTitle: '没有可管理的房间',
         noRoomsDescription: '请先创建或接管房间。',
         worlds: '应用到世界',
@@ -277,13 +347,19 @@ export const modMessages = {
         enabled: '立即启用',
         enabledDescription: '关闭后仍会写入配置，但所选世界暂不加载该模组。',
         dependencies: '同时配置依赖模组',
-        dependenciesDescription: '依赖文件必须已经下载到当前节点。',
+        dependenciesDescription: '发布计划会把依赖文件一并准备到所选世界对应的节点。',
+        targets: '发布目标',
+        targetsDescription: '所选世界按当前生效的 Placement 分组。',
+        unknownTarget: 'Placement 尚未应用',
+        planReady: '发布计划已就绪，请核对后确认发布。',
+        planBlocked: '发布计划存在阻塞项，暂时不能提交。',
+        legacyFallback: '后端不支持跨节点发布，已使用原有本地添加方式。',
         adding: '正在添加',
         added: '模组 {name} 已添加到所选房间世界'
       },
       search: {
         title: '搜索模组',
-        subtitle: '从创意工坊检索并下载到当前运行节点。',
+        subtitle: '从创意工坊检索并下载到控制器内容库，再按房间 Placement 发布。',
         form: {
           title: '搜索条件',
           description: '输入创意工坊模组名称或 Workshop ID；下载不修改任何房间配置。',
@@ -321,7 +397,7 @@ export const modMessages = {
           selectRoom: '请先选择房间',
           downloading: '正在下载模组，请耐心等待...',
           updated: '更新成功',
-          downloaded: '已下载到当前节点',
+          downloaded: '已下载到控制器内容库',
           refreshed: '已刷新版本和本地状态'
         },
         downloadStatus: {
@@ -330,7 +406,7 @@ export const modMessages = {
           runningTitle: '正在下载模组',
           runningDescription: 'SteamCMD 正在下载并校验 Workshop 文件。',
           succeededTitle: '节点下载完成',
-          succeededDescription: 'Workshop 文件已保存到当前节点，尚未修改任何房间配置。',
+          succeededDescription: 'Workshop 文件已保存到控制器内容库，尚未发布到任何房间。',
           failedTitle: '下载失败',
           failedDescription: '下载任务没有完成，可以重新尝试。'
         }
@@ -340,6 +416,8 @@ export const modMessages = {
         unnamed: '未命名模组',
         loadingName: '加载中...',
         description: '正在编辑“{world}”世界的独立模组配置。',
+        target: '配置发布目标：{target}',
+        targetUnknown: '尚未获取该世界的 Placement',
         loading: '加载模组配置中...',
         loadFailedTitle: '模组配置加载失败',
         modDescription: '模组描述',
@@ -354,6 +432,7 @@ export const modMessages = {
           resetSuccess: '已载入模组默认值，保存后生效',
           noChanges: '没有需要保存的配置变更',
           saved: '配置已保存',
+          publicationSubmitted: '配置发布已提交',
           unsavedConfirm: '您有未保存的配置更改，确定要关闭吗？',
           closeTitle: '关闭模组配置'
         }
@@ -447,13 +526,13 @@ export const modMessages = {
         saveConfig: 'Save Configuration',
         resetDefaults: 'Restore Defaults',
         backToInstalled: 'Back to Installed Mods',
-        backToLibrary: 'Back to Node Library',
+        backToLibrary: 'Back to Mod Content Library',
         search: 'Search'
       },
       errors: {
         withDetail: '{message}: {detail}',
         context: 'Could not load the mod context',
-        library: 'Could not load the node mod library',
+        library: 'Could not load the mod content library',
         addToRoom: 'Could not add the mod to the room',
         roomSwitch: 'Could not switch rooms',
         list: 'Could not load the mod list',
@@ -470,6 +549,65 @@ export const modMessages = {
         saveConfig: 'Could not save the mod configuration',
         download: 'Could not download the mod',
         refresh: 'Could not refresh the mod status'
+      },
+      publication: {
+        title: 'Room Mod Publication',
+        description: 'Publish mod files and each world\'s independent configuration to the nodes selected by the active Placement.',
+        loadFailedTitle: 'Failed to Load Publication Status',
+        actions: {
+          preview: 'Preview Publication', publish: 'Confirm Publication', retryFailed: 'Retry Failed Nodes',
+          cancel: 'Cancel Publication', viewStatus: 'View Publication Status'
+        },
+        fields: {
+          topologyRevision: 'Topology Revision', target: 'Target Node', worlds: 'Worlds', mods: 'Mods',
+          requiredBytes: 'Required Space', currentVersion: 'Current Version', desiredVersion: 'Desired Version',
+          status: 'Status', phase: 'Phase', progress: 'Progress', message: 'Message'
+        },
+        values: { ready: 'Ready to Publish', blocked: 'Publication Blocked', warning: 'Publication Warning', offline: 'Node Offline', unavailable: 'Unavailable' },
+        summary: { warnings: '{count} warnings', blockers: '{count} blockers' },
+        unavailable: {
+          title: 'Cross-node mod publication is not available from this backend',
+          description: 'Existing local mod actions remain available. Remote or mixed Placements will not be reported as local successes.'
+        },
+        latest: { title: 'Latest Publication', empty: 'This room has no publication history. Preview a plan before publishing.' },
+        statusDialog: {
+          title: 'Mod Publication Status',
+          description: 'Actual target-node and world results for publication {id}.'
+        },
+        states: {
+          queued: 'Queued', running: 'Running', succeeded: 'Succeeded', failed: 'Failed', skipped: 'Skipped',
+          canceled: 'Canceled', rolledBack: 'Rolled Back', recoveryRequired: 'Recovery Required', previewed: 'Previewed',
+          preparing: 'Preparing', prepared: 'Prepared', publishing: 'Publishing', committed: 'Committed',
+          completing: 'Completing', unknown: 'Unknown Status'
+        },
+        phases: {
+          preflight: 'Preflight', stage: 'Stage', download: 'Download', verify: 'Verify', backup: 'Protection Backup',
+          configure: 'Configure', publish: 'Publish', reconcile: 'Reconcile', rollback: 'Rollback',
+          complete: 'Complete', unknown: 'Awaiting Phase Data'
+        },
+        outcomes: { full: 'Full Success', partial: 'Partial Success', none: 'No Changes Applied', unknown: 'Outcome Pending' },
+        blockers: {
+          nodeOffline: 'Target node is offline', placementChanged: 'World Placement has changed', topologyChanged: 'Room topology has changed',
+          insufficientDisk: 'Insufficient disk space on the node', missingMod: 'Mod files are missing', checksumMismatch: 'Mod file checksum mismatch',
+          backupFailure: 'Protection backup failed', capabilityMissing: 'Node publication capability is missing', versionConflict: 'Mod version conflict',
+          unknown: 'Publication preflight did not pass'
+        },
+        errors: {
+          resultMissing: 'The publication job completed, but its publication record could not be found. Refresh the publication history and try again.',
+          previewBlocked: 'Publication preflight did not pass. Resolve the target blockers and try again.',
+          publicationRequired: 'Room mods must be changed through Placement-aware publication, not the legacy local write API.',
+          planChanged: 'The mod content or target state changed. Preview the publication plan again.',
+          topologyChanged: 'The room topology changed. Refresh the page and preview the publication plan again.',
+          remoteActionUnavailable: 'This remote node does not support the requested mod read operation',
+          remoteMutationUnavailable: 'The active Placement cannot be modified directly; use room publication',
+          unknown: 'Unknown error'
+        },
+        feedback: {
+          previewReady: 'Publication plan generated. Review the target nodes and worlds.',
+          previewFailed: 'Could not generate the publication plan: {error}', submitted: 'Mod publication submitted',
+          publishFailed: 'Could not submit the mod publication: {error}', retrySubmitted: 'Failed nodes were resubmitted',
+          retryFailed: 'Could not retry failed nodes: {error}'
+        }
       },
       installed: {
         title: 'Room Mods',
@@ -526,7 +664,7 @@ export const modMessages = {
         },
         uninstall: {
           title: 'Remove Mod from Room',
-          description: 'This removes the mod reference and settings from this room only. Workshop files remain in the node library.',
+          description: 'This removes the mod reference and settings from this room only. Workshop files remain in the controller content library.',
           confirmationDescription: 'Enter the full room name to confirm removal from this room.',
           roomName: 'Full Room Name',
           placeholder: 'Enter {name}',
@@ -553,21 +691,21 @@ export const modMessages = {
         }
       },
       library: {
-        title: 'Node Mod Library',
-        subtitle: 'Manage Workshop files downloaded on the active runtime node. The library does not belong to any room.',
+        title: 'Mod Content Library',
+        subtitle: 'The controller downloads and manages Workshop content centrally. Room publication then distributes it by each world\'s Placement.',
         filters: {
-          title: 'Filter Node Mods',
-          description: 'Find mods by name, author, Workshop ID, or local state.',
+          title: 'Filter Content Library',
+          description: 'Find mods by name, author, Workshop ID, or content-library state.',
           keyword: 'Keyword',
           keywordPlaceholder: 'Search name, author, or Workshop ID',
-          status: 'Local State',
+          status: 'Content State',
           statuses: { all: 'All', downloaded: 'Downloaded', attention: 'Needs attention' },
           sort: 'Sort',
           sorts: { updatedAt: 'Recently Updated', name: 'Name', author: 'Author', version: 'Version', subscriptions: 'Subscribers', rating: 'Rating' }
         },
-        loadFailedTitle: 'Failed to Load Node Mod Library',
+        loadFailedTitle: 'Failed to Load Mod Content Library',
         table: {
-          title: 'Active Node',
+          title: 'Controller Content Library',
           total: 'Showing {count} mods',
           mod: 'Mod',
           workshop: 'Workshop Data',
@@ -576,16 +714,16 @@ export const modMessages = {
           actions: 'Actions'
         },
         empty: {
-          noMods: 'No Workshop mods on this node',
-          noModsDescription: 'Mods appear here after they are downloaded from the Workshop.',
-          noMatches: 'No matching node mods',
+          noMods: 'No Workshop mods in the content library',
+          noModsDescription: 'The controller manages files here after they are downloaded from the Workshop.',
+          noMatches: 'No matching content-library mods',
           noMatchesDescription: 'Adjust the keyword or status filter and try again.'
         },
         feedback: {
-          downloading: 'Downloading to the active node...',
-          updating: 'Updating node files...',
-          downloaded: 'Downloaded mod {name} to the active node',
-          updated: 'Updated node files for mod {name}',
+          downloading: 'Downloading to the controller content library...',
+          updating: 'Updating controller content files...',
+          downloaded: 'Downloaded mod {name} to the controller content library',
+          updated: 'Updated controller content for mod {name}',
           refreshed: 'Refreshed version and local status for mod {name}'
         }
       },
@@ -596,7 +734,7 @@ export const modMessages = {
         room: 'Room',
         loadingRooms: 'Loading rooms',
         selectRoom: 'Select a room',
-        roomDescription: 'Downloaded files belong to the active node. This only controls which room references the mod.',
+        roomDescription: 'Room publication sends files and configuration to each world\'s applied Placement target.',
         noRoomsTitle: 'No Manageable Rooms',
         noRoomsDescription: 'Create or adopt a room first.',
         worlds: 'Apply to Worlds',
@@ -605,13 +743,19 @@ export const modMessages = {
         enabled: 'Enable Immediately',
         enabledDescription: 'When off, settings are written but selected worlds do not load the mod yet.',
         dependencies: 'Configure Dependencies Too',
-        dependenciesDescription: 'Dependency files must already be downloaded on the active node.',
+        dependenciesDescription: 'The publication plan prepares dependencies on every node targeted by the selected worlds.',
+        targets: 'Publication Targets',
+        targetsDescription: 'Selected worlds grouped by their currently applied Placement.',
+        unknownTarget: 'Placement not applied',
+        planReady: 'The publication plan is ready. Review it before confirming publication.',
+        planBlocked: 'The publication plan has blockers and cannot be submitted.',
+        legacyFallback: 'Cross-node publication is unavailable; the existing local add operation was used.',
         adding: 'Adding',
         added: 'Added mod {name} to the selected room worlds'
       },
       search: {
         title: 'Search Mods',
-        subtitle: 'Find Workshop mods and download them to the active runtime node.',
+        subtitle: 'Find Workshop mods, download them to the controller content library, then publish them by room Placement.',
         form: {
           title: 'Search',
           description: 'Enter a Workshop mod name or ID. Downloading does not change any room configuration.',
@@ -649,7 +793,7 @@ export const modMessages = {
           selectRoom: 'Select a room first',
           downloading: 'Downloading the mod. This may take a while...',
           updated: 'Mod updated',
-          downloaded: 'Downloaded to the active node',
+          downloaded: 'Downloaded to the controller content library',
           refreshed: 'Version and local status refreshed'
         },
         downloadStatus: {
@@ -658,7 +802,7 @@ export const modMessages = {
           runningTitle: 'Downloading mod',
           runningDescription: 'SteamCMD is downloading and verifying the Workshop files.',
           succeededTitle: 'Node download complete',
-          succeededDescription: 'Workshop files are stored on the active node. No room configuration was changed.',
+          succeededDescription: 'Workshop files are stored in the controller content library and have not been published to a room.',
           failedTitle: 'Download failed',
           failedDescription: 'The download did not finish. You can try again.'
         }
@@ -668,6 +812,8 @@ export const modMessages = {
         unnamed: 'Unnamed mod',
         loadingName: 'Loading...',
         description: 'Editing the independent mod configuration for world “{world}”.',
+        target: 'Configuration publication target: {target}',
+        targetUnknown: 'The world Placement is not available yet',
         loading: 'Loading mod configuration...',
         loadFailedTitle: 'Failed to Load Mod Configuration',
         modDescription: 'Mod Description',
@@ -682,6 +828,7 @@ export const modMessages = {
           resetSuccess: 'Mod defaults loaded; save to apply them',
           noChanges: 'There are no configuration changes to save',
           saved: 'Configuration saved',
+          publicationSubmitted: 'Configuration publication submitted',
           unsavedConfirm: 'You have unsaved configuration changes. Close anyway?',
           closeTitle: 'Close Mod Configuration'
         }
@@ -714,15 +861,19 @@ export function formatModDate(value, locale = 'zh-CN') {
 }
 
 export function createModFailure(key, error) {
+  const code = String(error?.code || '').trim()
+  const localizedAdapterError = error?.name === 'AdapterProtocolError' && MOD_FAILURE_CODE_KEYS[code]
   return {
     key,
-    detail: String(error?.detail || error?.message || '').trim()
+    detail: String(error?.detail || (localizedAdapterError ? '' : error?.message) || '').trim(),
+    ...(code ? { code } : {}),
+    ...(error?.requestId ? { requestId: String(error.requestId) } : {})
   }
 }
 
 export function formatModFailure(translate, failure) {
   if (!failure) return ''
-  const message = translate(failure.key)
+  const message = translate(MOD_FAILURE_CODE_KEYS[failure.code] || failure.key)
   return failure.detail
     ? translate('mods.errors.withDetail', { message, detail: failure.detail })
     : message

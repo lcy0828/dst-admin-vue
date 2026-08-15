@@ -8,6 +8,7 @@ import {
   modMessages,
   translateModBuiltinValue
 } from '../src/i18n/modMessages.js'
+import { adapterError } from '../src/api/adapterProtocol.mjs'
 
 function leafPaths(value, prefix = '') {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return [prefix]
@@ -80,6 +81,33 @@ test('mod failures keep a stable message key and untouched technical detail', ()
   assert.equal(
     formatModFailure(translator('zh-CN'), failure),
     '获取模组配置失败：Lua fallback: module socket not found'
+  )
+})
+
+test('mod failures preserve stable backend codes for localized remote errors', () => {
+  const error = new Error('remote mutation unavailable')
+  error.code = 'REMOTE_RUNTIME_MUTATION_UNAVAILABLE'
+  error.requestId = 'request-1'
+  const failure = createModFailure('mods.errors.saveConfig', error)
+
+  assert.equal(failure.code, 'REMOTE_RUNTIME_MUTATION_UNAVAILABLE')
+  assert.equal(failure.requestId, 'request-1')
+  assert.equal(
+    formatModFailure(translator('en-US'), failure),
+    'The active Placement cannot be modified directly; use room publication: remote mutation unavailable'
+  )
+})
+
+test('localized adapter publication errors do not append their English default in Chinese', () => {
+  const failure = createModFailure(
+    'mods.errors.addToRoom',
+    adapterError('MOD_PUBLICATION_RESULT_MISSING')
+  )
+
+  assert.equal(failure.detail, '')
+  assert.equal(
+    formatModFailure(translator('zh-CN'), failure),
+    '发布任务已完成，但没有找到对应的发布记录，请刷新发布历史后重试'
   )
 })
 

@@ -47,10 +47,17 @@
             <FieldLabel for="installed-mod-search">{{ $t('mods.installed.filters.keyword') }}</FieldLabel>
             <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="installed-mod-search" v-model="filterForm.keyword" :placeholder="$t('mods.installed.filters.keywordPlaceholder')" /></InputGroup>
           </Field>
-          <div class="filter-actions"><UiButton @click="applyFilter">{{ $t('mods.actions.filter') }}</UiButton><UiButton variant="outline" @click="resetFilter">{{ $t('mods.actions.reset') }}</UiButton></div>
+          <Field class="filter-actions"><UiButton @click="applyFilter">{{ $t('mods.actions.filter') }}</UiButton><UiButton variant="outline" @click="resetFilter">{{ $t('mods.actions.reset') }}</UiButton></Field>
         </FieldGroup>
       </CardContent>
     </Card>
+
+    <RoomModPublicationPanel
+      :room-id="selectedRoomId"
+      :worlds="selectedRoomWorlds"
+      :mods="modsList"
+      @published="fetchModsList(true)"
+    />
 
     <Alert v-if="loadError" variant="destructive">
       <TriangleAlert />
@@ -112,7 +119,7 @@
       <EmptyContent v-if="selectedRoomId"><UiButton @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton></EmptyContent>
     </Empty>
 
-    <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :is-new-mod="false" @config-updated="handleConfigUpdated" />
+    <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :target-id="currentWorld?.appliedTargetId || ''" :target-name="currentWorld?.appliedTargetName || ''" :is-new-mod="false" @config-updated="handleConfigUpdated" />
 
     <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :actions="false">
       <template #actions="{ mod }">
@@ -145,6 +152,7 @@ import { Clock, Download, FileCode2, ImageIcon, MoreHorizontal, PackageOpen, Plu
 import { toast } from 'vue-sonner';
 import ModConfigDialog from './ModConfigDialog.vue';
 import ModDetailsDialog from './ModDetailsDialog.vue';
+import RoomModPublicationPanel from '@/components/mods/RoomModPublicationPanel.vue';
 import { modApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -218,6 +226,7 @@ export default {
     PackageOpen,
     Plus,
     RefreshCw,
+    RoomModPublicationPanel,
     Search,
     SelectContent,
     SelectGroup,
@@ -582,7 +591,7 @@ export default {
       if (this.isModBusy(mod)) return;
       this.setModBusy(mod, true);
       try {
-        await modApi.updateMod({ modid: mod.modid });
+        await modApi.updateMod({ roomId: this.selectedRoomId, modid: mod.modid });
         await this.fetchModsList(true);
         toast.success(this.$t('mods.installed.feedback.updated', { name: mod.name }));
       } catch (error) {
