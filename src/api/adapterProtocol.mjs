@@ -25,6 +25,7 @@ const ERROR_DEFAULT_MESSAGES = Object.freeze({
   MOD_ID_REQUIRED: 'A mod ID is required.',
   MOD_KEYWORD_REQUIRED: 'Enter a mod search keyword.',
   MOD_MANAGED_ROOM_REQUIRED: 'No managed room is available for mod management.',
+  MOD_PUBLICATION_RESULT_MISSING: 'The completed job did not produce a mod publication record.',
   MOD_RAW_DATA_REQUIRED: 'Raw mod data is required.',
   MOD_UNINSTALL_CONFIRMATION_REQUIRED: 'Enter the full room name to confirm uninstalling the mod.',
   REGENERATE_COMMAND_FAILED: 'The regenerate command failed.',

@@ -1,8 +1,18 @@
-import { modsV2API, roomsV2API } from './v2'
+import { modPublicationsV2API, modsV2API, roomsV2API, topologyV2API } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError } from './adapterProtocol.mjs'
+import { resolveModPublicationJob } from './modPublicationJob.mjs'
 
 const MOD_JOB_TIMEOUT = 15 * 60 * 1000
+const IN_PLACE_PUBLICATION_RETRY_STATES = new Set([
+  'previewed',
+  'preparing',
+  'prepared',
+  'publishing',
+  'committed',
+  'completing',
+  'recovery_required'
+])
 
 function matchResource(item, value) {
   return item.id === value || item.name === value || item.directoryName === value
@@ -112,7 +122,7 @@ function legacyConfigurationField(field) {
 }
 
 async function getContext({ roomId = '', worldId = '' } = {}) {
-  const response = await roomsV2API.list()
+  const response = await roomsV2API.controlPlaneList()
   const rooms = (response.items || []).filter(room => room.managed)
   if (rooms.length === 0) throw adapterError('MOD_MANAGED_ROOM_REQUIRED')
 
@@ -127,8 +137,7 @@ async function getContext({ roomId = '', worldId = '' } = {}) {
   let worlds = []
   let world = null
   if (room) {
-    const worldResponse = await roomsV2API.worlds(room.id)
-    worlds = worldResponse.items || []
+    worlds = await getRoomWorlds(room.id)
     if (worldId) {
       world = worlds.find(item => matchResource(item, worldId))
       if (!world) {
@@ -150,13 +159,101 @@ async function getServerList({ roomId } = {}) {
 }
 
 async function getManagedRooms() {
-  const response = await roomsV2API.list()
+  const response = await roomsV2API.controlPlaneList()
   return (response.items || []).filter(room => room.managed)
 }
 
 async function getRoomWorlds(roomId) {
-  const response = await roomsV2API.worlds(requireValue(roomId, 'ROOM_REQUIRED'))
-  return response.items || []
+  const resolvedRoomId = requireValue(roomId, 'ROOM_REQUIRED')
+  const response = await topologyV2API.worlds(resolvedRoomId)
+  const worlds = response.items || []
+  try {
+    const topology = await topologyV2API.get(resolvedRoomId)
+    const placements = new Map((topology.placements || []).map(item => [item.worldId, item]))
+    const targets = new Map((topology.targets || []).map(item => [item.id, item]))
+    return worlds.map(world => {
+      const placement = placements.get(world.id)
+      const targetId = placement?.appliedTargetId || ''
+      return {
+        ...world,
+        appliedTargetId: targetId,
+        appliedTargetName: targets.get(targetId)?.name || targetId,
+        placement: placement || null
+      }
+    })
+  } catch {
+    return worlds
+  }
+}
+
+async function getRoomTopology(roomId) {
+  return topologyV2API.get(requireValue(roomId, 'ROOM_REQUIRED'))
+}
+
+function publicationRequest(input = {}) {
+  const { roomId, onProgress, ...request } = input
+  return {
+    roomId: requireValue(roomId, 'ROOM_REQUIRED'),
+    onProgress,
+    request
+  }
+}
+
+function finishModPublication(roomId, job, onProgress, existingPublicationId = '') {
+  return resolveModPublicationJob({
+    roomId,
+    job,
+    timeout: MOD_JOB_TIMEOUT,
+    onProgress,
+    waitForJob: waitForV2Job,
+    listPublications: params => modPublicationsV2API.list(roomId, params),
+    existingPublicationId,
+    getPublication: id => modPublicationsV2API.get(id)
+  })
+}
+
+async function previewModPublication(input) {
+  const { roomId, request } = publicationRequest(input)
+  return modPublicationsV2API.preview(roomId, request)
+}
+
+async function createModPublication(input) {
+  const { roomId, onProgress, request } = publicationRequest(input)
+  const job = await modPublicationsV2API.create(roomId, request)
+  return finishModPublication(roomId, job, onProgress)
+}
+
+async function publishPreparedModMutation(input) {
+  const plan = await previewModPublication(input)
+  const resolvedPlan = plan?.plan || plan
+  if (!resolvedPlan?.ready || !resolvedPlan?.planHash) {
+    throw adapterError('MOD_PUBLICATION_PREVIEW_BLOCKED', {
+      context: { blockers: resolvedPlan?.blockers || [] }
+    })
+  }
+  return createModPublication({
+    ...input,
+    planHash: resolvedPlan.planHash,
+    expectedTopologyRevision: resolvedPlan.topologyRevision || input.expectedTopologyRevision,
+    confirmation: resolvedPlan.planHash
+  })
+}
+
+async function listModPublications({ roomId, ...params } = {}) {
+  return modPublicationsV2API.list(requireValue(roomId, 'ROOM_REQUIRED'), params)
+}
+
+async function getModPublication(publicationId) {
+  return modPublicationsV2API.get(requireValue(publicationId, 'MOD_PUBLICATION_ID_REQUIRED'))
+}
+
+async function retryModPublication(publicationId, options = {}) {
+  const resolvedPublicationId = requireValue(publicationId, 'MOD_PUBLICATION_ID_REQUIRED')
+  const current = await modPublicationsV2API.get(resolvedPublicationId)
+  const roomId = requireValue(current?.roomId, 'ROOM_REQUIRED', { publicationId: resolvedPublicationId })
+  const job = await modPublicationsV2API.retry(resolvedPublicationId)
+  const inPlace = IN_PLACE_PUBLICATION_RETRY_STATES.has(String(current?.status || '').toLowerCase())
+  return finishModPublication(roomId, job, options.onProgress, inPlace ? resolvedPublicationId : '')
 }
 
 async function getLibrary() {
@@ -279,30 +376,35 @@ async function saveModCustomConfig(input) {
 }
 
 async function toggleMod(input) {
-  const job = await modsV2API.enable(
-    requireValue(input.roomId, 'ROOM_REQUIRED'),
-    requireValue(input.modid, 'MOD_ID_REQUIRED'),
-    { worldIds: input.worldIds || [], enabled: Boolean(input.enabled) }
-  )
-  return waitForV2Job(job, MOD_JOB_TIMEOUT)
+  return publishPreparedModMutation({
+    roomId: requireValue(input.roomId, 'ROOM_REQUIRED'),
+    action: 'enable',
+    modId: requireValue(input.modid, 'MOD_ID_REQUIRED'),
+    worldIds: input.worldIds || [],
+    enabled: Boolean(input.enabled),
+    onProgress: input.onProgress
+  })
 }
 
 async function updateMod(input) {
   const job = await modsV2API.updateLibrary(requireValue(input.modid, 'MOD_ID_REQUIRED'))
-  return waitForV2Job(job, MOD_JOB_TIMEOUT)
+  await waitForV2Job(job, MOD_JOB_TIMEOUT, input.onProgress)
+  return publishPreparedModMutation({
+    roomId: requireValue(input.roomId, 'ROOM_REQUIRED'),
+    action: 'reconcile',
+    onProgress: input.onProgress
+  })
 }
 
 async function deleteMod(input) {
-  const job = await modsV2API.uninstall(
-    requireValue(input.roomId, 'ROOM_REQUIRED'),
-    requireValue(input.modid, 'MOD_ID_REQUIRED'),
-    {
-      worldIds: input.worldIds || [],
-      confirmation: requireValue(input.confirmation, 'MOD_UNINSTALL_CONFIRMATION_REQUIRED'),
-      removeFiles: false
-    }
-  )
-  return waitForV2Job(job, MOD_JOB_TIMEOUT)
+  requireValue(input.confirmation, 'MOD_UNINSTALL_CONFIRMATION_REQUIRED')
+  return publishPreparedModMutation({
+    roomId: requireValue(input.roomId, 'ROOM_REQUIRED'),
+    action: 'remove',
+    modId: requireValue(input.modid, 'MOD_ID_REQUIRED'),
+    worldIds: input.worldIds || [],
+    onProgress: input.onProgress
+  })
 }
 
 const removeModFromRoom = deleteMod
@@ -319,6 +421,7 @@ export const realModApi = {
   getContext,
   getManagedRooms,
   getRoomWorlds,
+  getRoomTopology,
   getLibrary,
   getServerList,
   searchMods,
@@ -328,6 +431,11 @@ export const realModApi = {
   getModConfig,
   getModCustomConfig,
   saveModCustomConfig,
+  previewModPublication,
+  createModPublication,
+  listModPublications,
+  getModPublication,
+  retryModPublication,
   toggleMod,
   updateMod,
   removeModFromRoom,

@@ -359,17 +359,22 @@ export const playersV2API = {
 
 export const modsV2API = {
   search: (params = {}) => client.get('/mods/search', {
-    params
+    params,
+    runtimeTarget: false
   }),
   library: () => client.get('/mods/library', {
+    runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
-  download: input => client.post('/mods/library/actions/download', input),
+  download: input => client.post('/mods/library/actions/download', input, { runtimeTarget: false }),
   updateLibrary: modId => client.post(
-    `/mods/library/${encode(modId)}/actions/update`
+    `/mods/library/${encode(modId)}/actions/update`,
+    {},
+    { runtimeTarget: false }
   ),
-  details: modId => client.get(`/mods/${encode(modId)}`),
+  details: modId => client.get(`/mods/${encode(modId)}`, { runtimeTarget: false }),
   list: roomId => client.get(`/rooms/${encode(roomId)}/mods`, {
+    runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
   install: (roomId, input) => client.post(`/rooms/${encode(roomId)}/mods/actions/install`, input),
@@ -395,19 +400,46 @@ export const modsV2API = {
   ),
   configurationFile: (roomId, worldId) => client.get(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/configuration-file`,
-    { headers: { 'Cache-Control': 'no-store' } }
+    { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
   ),
   configuration: (roomId, worldId, modId) => client.get(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/${encode(modId)}/configuration`,
-    { headers: { 'Cache-Control': 'no-store' } }
+    { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
   ),
   previewConfiguration: (roomId, worldId, modId, input) => client.post(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/${encode(modId)}/configuration/preview`,
-    input
+    input,
+    { runtimeTarget: false }
   ),
   applyConfiguration: (roomId, worldId, modId, input) => client.post(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/${encode(modId)}/configuration/actions/apply`,
     input
+  )
+}
+
+export const modPublicationsV2API = {
+  preview: (roomId, input) => client.post(
+    `/rooms/${encode(roomId)}/mod-publications/preview`,
+    input,
+    { runtimeTarget: false }
+  ),
+  create: (roomId, input) => client.post(
+    `/rooms/${encode(roomId)}/mod-publications`,
+    input,
+    { runtimeTarget: false }
+  ),
+  list: (roomId, params = {}) => client.get(
+    `/rooms/${encode(roomId)}/mod-publications`,
+    { params, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
+  ),
+  get: publicationId => client.get(
+    `/mod-publications/${encode(publicationId)}`,
+    { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
+  ),
+  retry: publicationId => client.post(
+    `/mod-publications/${encode(publicationId)}/actions/retry-failed`,
+    {},
+    { runtimeTarget: false }
   )
 }
 
