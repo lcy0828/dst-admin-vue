@@ -352,12 +352,13 @@ export const logRulesV2API = {
 }
 
 export const playersV2API = {
-  list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/players`, { params }),
-  get: (roomId, playerId) => client.get(`/rooms/${encode(roomId)}/players/${encode(playerId)}`),
-  refresh: (roomId, worldIds = []) => client.post(`/rooms/${encode(roomId)}/players/actions/refresh`, { worldIds }),
+  list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/players`, { params, runtimeTarget: false }),
+  get: (roomId, playerId) => client.get(`/rooms/${encode(roomId)}/players/${encode(playerId)}`, { runtimeTarget: false }),
+  refresh: (roomId, worldIds = []) => client.post(`/rooms/${encode(roomId)}/players/actions/refresh`, { worldIds }, { runtimeTarget: false }),
   action: (roomId, playerId, action, input = {}) => client.post(
     `/rooms/${encode(roomId)}/players/${encode(playerId)}/actions/${encode(action)}`,
-    input
+    input,
+    { runtimeTarget: false }
   )
 }
 
@@ -512,7 +513,7 @@ export const consoleV2API = {
 }
 
 export const worldStatesV2API = {
-  list: roomId => client.get(`/rooms/${encode(roomId)}/world-states`)
+  list: roomId => client.get(`/rooms/${encode(roomId)}/world-states`, { runtimeTarget: false })
 }
 
 export const gameV2API = {

@@ -44,6 +44,13 @@ export const distributedMessages = {
         file: '文件', size: '大小', updatedAt: '文件更新时间', noMatchesTitle: '没有匹配日志',
         noMatchesDescription: '当前关键词在该世界最近的日志中没有匹配项。', roles: { master: '主世界', caves: '洞穴', custom: '自定义分片' }
       },
+      worldStates: {
+        title: '房间世界状态', description: '同时展示所有分片的季节、时间与数据新鲜度；未采样世界也不会从列表消失。',
+        total: '{count} 个世界', loadFailed: '房间世界状态加载失败', emptyTitle: '房间还没有世界',
+        emptyDescription: '创建世界后可在这里集中检查状态。', notObserved: '尚未采样', cycles: '已完成 {count} 个昼夜循环',
+        columns: { world: '世界', runtime: '进程', season: '季节 / 天数', phase: '时间阶段', temperature: '温度', freshness: '数据时间' },
+        roles: { master: '主世界', caves: '洞穴', custom: '自定义分片' }
+      },
       infrastructure: {
         title: '运行基础设施',
         description: '统一查看 Runtime Provider、执行环境、网络作用域、端口租约和 CPU 分配。',
@@ -179,6 +186,13 @@ export const distributedMessages = {
         emptyTitle: 'This room has no worlds', emptyDescription: 'Create a world to inspect its live logs here.',
         file: 'File', size: 'Size', updatedAt: 'File updated', noMatchesTitle: 'No matching logs',
         noMatchesDescription: 'The current query did not match the recent logs for this world.', roles: { master: 'Master', caves: 'Caves', custom: 'Custom Shard' }
+      },
+      worldStates: {
+        title: 'Room world state', description: 'Show season, phase, and freshness for every Shard without dropping worlds that have not been sampled.',
+        total: '{count} worlds', loadFailed: 'Failed to load room world state', emptyTitle: 'This room has no worlds',
+        emptyDescription: 'Create a world to inspect its state here.', notObserved: 'Not sampled', cycles: '{count} completed day-night cycles',
+        columns: { world: 'World', runtime: 'Process', season: 'Season / days', phase: 'Phase', temperature: 'Temperature', freshness: 'Observed at' },
+        roles: { master: 'Master', caves: 'Caves', custom: 'Custom Shard' }
       },
       infrastructure: {
         title: 'Runtime infrastructure', description: 'Inspect Runtime providers, execution environments, network scopes, port leases, and CPU allocations.', loading: 'Loading runtime infrastructure', loadFailed: 'Failed to load runtime infrastructure',

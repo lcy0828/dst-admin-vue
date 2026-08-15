@@ -56,6 +56,8 @@
         @diagnose="selectShard"
       />
 
+      <RoomWorldStatePanel :room-id="selectedRoomId" />
+
       <RoomLogOverviewPanel :room-id="selectedRoomId" />
 
       <template v-if="selectedShard">
@@ -97,6 +99,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import RuntimeDiagnosticsPanel from '@/components/runtime/RuntimeDiagnosticsPanel.vue'
 import RoomLogOverviewPanel from '@/components/runtime/RoomLogOverviewPanel.vue'
+import RoomWorldStatePanel from '@/components/runtime/RoomWorldStatePanel.vue'
 import RuntimeOverviewPanel from '@/components/runtime/RuntimeOverviewPanel.vue'
 
 const { t } = useI18n()

@@ -33,3 +33,18 @@ test('player adapter and surfaces expose sampling freshness and shard presence c
   assert.match(list, /player\.observed_world_ids\.join/)
   assert.match(list, /player\.last_refreshed_at/)
 })
+
+test('room diagnostics keep world-state aggregation on the control plane', async () => {
+  const [api, diagnostics, panel] = await Promise.all([
+    source('src/api/v2.js'),
+    source('src/views/rooms/RoomDiagnostics.vue'),
+    source('src/components/runtime/RoomWorldStatePanel.vue')
+  ])
+
+  assert.match(api, /worldStatesV2API[\s\S]*?world-states[\s\S]*?runtimeTarget:\s*false/)
+  assert.match(api, /playersV2API[\s\S]*?runtimeTarget:\s*false/)
+  assert.match(diagnostics, /<RoomWorldStatePanel :room-id="selectedRoomId"/)
+  assert.match(panel, /WorldDataFreshnessBadge/)
+  assert.match(panel, /worldStatesV2API\.list/)
+  assert.match(panel, /validObservedAt/)
+})
