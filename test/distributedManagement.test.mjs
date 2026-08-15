@@ -220,6 +220,9 @@ test('topology exposes confirmed migration and typed resource forms', async () =
   assert.match(infrastructure, /executionState/)
   assert.match(infrastructure, /executionError/)
   assert.match(infrastructure, /effective_cpu_ids/)
+  assert.match(infrastructure, /snapshot\.preflight\?\.conflicts/)
+  assert.match(infrastructure, /conflict\.code/)
+  assert.match(infrastructure, /conflict\.targetId/)
 })
 
 test('backup UI waits for coordinated create and restore jobs', async () => {

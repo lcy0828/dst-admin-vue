@@ -122,7 +122,7 @@ export interface RuntimeInfrastructure {
       observed_at: string
     }
   }>
-  preflight: { ready: boolean; warnings: string[]; conflicts: Array<{ code: string; message: string; roomId?: string; worldId?: string }> }
+  preflight: { ready: boolean; warnings: string[]; conflicts: Array<{ code: string; message: string; scopeId?: string; port?: number; targetId?: string; roomId?: string; worldId?: string }> }
   observedAt: string
 }
 

@@ -28,7 +28,16 @@
       <Alert v-if="!snapshot.preflight?.ready" variant="destructive">
         <TriangleAlert />
         <AlertTitle>{{ t('distributed.infrastructure.conflictTitle') }}</AlertTitle>
-        <AlertDescription>{{ t('distributed.infrastructure.conflictDescription', { count: snapshot.preflight?.conflicts?.length || 0 }) }}</AlertDescription>
+        <AlertDescription class="flex flex-col gap-1">
+          <span>{{ t('distributed.infrastructure.conflictDescription', { count: snapshot.preflight?.conflicts?.length || 0 }) }}</span>
+          <span v-for="(conflict, index) in snapshot.preflight?.conflicts || []" :key="`${conflict.code}:${conflict.targetId}:${conflict.worldId}:${conflict.port}:${index}`">
+            <span class="font-mono">{{ conflict.code }}</span>
+            <template v-if="conflict.targetId"> · {{ conflict.targetId }}</template>
+            <template v-if="conflict.worldId"> / {{ conflict.worldId }}</template>
+            <template v-if="conflict.port"> : {{ conflict.port }}/udp</template>
+            · {{ conflict.message }}
+          </span>
+        </AlertDescription>
       </Alert>
 
       <div class="overflow-x-auto rounded-lg border">
