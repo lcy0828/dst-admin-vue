@@ -368,3 +368,20 @@ export interface DistributedBackupSet {
   updatedAt: string
   parts: DistributedBackupPart[]
 }
+
+export interface DistributedBackupOperation {
+  id: string
+  setId: string
+  protectionSetId?: string
+  roomId: string
+  kind: 'create' | 'restore'
+  phase: string
+  status: 'running' | 'succeeded' | 'rolled_back' | 'recovery_required' | 'failed'
+  topologyRevision: string
+  leaseId?: string
+  fencingToken: number
+  originalRunningWorlds: string[]
+  failure?: string
+  createdAt: string
+  updatedAt: string
+}

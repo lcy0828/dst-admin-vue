@@ -46,6 +46,18 @@
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
 
+    <Alert v-if="operationsError">
+      <CircleAlert />
+      <AlertTitle>{{ t('distributed.backups.operationsLoadFailed') }}</AlertTitle>
+      <AlertDescription>{{ operationsError }}</AlertDescription>
+    </Alert>
+
+    <Alert v-if="recoveryOperations.length" variant="destructive">
+      <TriangleAlert />
+      <AlertTitle>{{ t('distributed.backups.recoveryRequiredTitle', { count: recoveryOperations.length }) }}</AlertTitle>
+      <AlertDescription>{{ t('distributed.backups.recoveryRequiredDescription') }}</AlertDescription>
+    </Alert>
+
     <div v-if="loading && sets.length === 0" class="flex flex-col gap-2" :aria-label="t('distributed.backups.loading')">
       <Skeleton v-for="index in 4" :key="index" class="h-12 w-full" />
     </div>
@@ -82,7 +94,16 @@
             <TableCell>
               <div class="flex min-w-32 flex-col items-start gap-1">
                 <Badge :variant="setStatusVariant(backupSet.status)">{{ setStatusLabel(backupSet.status) }}</Badge>
+                <Badge v-if="latestOperation(backupSet.id)" :variant="operationStatusVariant(latestOperation(backupSet.id).status)">
+                  {{ operationStatusLabel(latestOperation(backupSet.id).status) }}
+                </Badge>
                 <span v-if="backupSet.failure" class="text-xs text-destructive">{{ backupSet.failure }}</span>
+                <span v-if="latestOperation(backupSet.id)?.failure" class="max-w-64 text-xs text-destructive">{{ latestOperation(backupSet.id).failure }}</span>
+                <UiButton v-if="latestOperation(backupSet.id)?.status === 'recovery_required'" size="xs" variant="outline" :disabled="operationRunning" @click="recoverOperation(latestOperation(backupSet.id))">
+                  <Spinner v-if="recoveringOperationId === latestOperation(backupSet.id).id" data-icon="inline-start" />
+                  <History v-else data-icon="inline-start" />
+                  {{ t('distributed.backups.retryRecovery') }}
+                </UiButton>
               </div>
             </TableCell>
             <TableCell>{{ t('distributed.backups.partCount', { verified: verifiedParts(backupSet), total: backupSet.parts?.length || 0 }) }}</TableCell>
@@ -144,11 +165,18 @@
           <Skeleton v-for="index in 4" :key="index" class="h-12 w-full" />
         </div>
         <template v-else-if="selectedSet">
+          <Alert v-if="selectedOperation" :variant="selectedOperation.status === 'recovery_required' || selectedOperation.status === 'failed' ? 'destructive' : 'default'">
+            <History />
+            <AlertTitle>{{ t('distributed.backups.operationSummary', { kind: operationKindLabel(selectedOperation.kind), status: operationStatusLabel(selectedOperation.status) }) }}</AlertTitle>
+            <AlertDescription>{{ selectedOperation.failure || t('distributed.backups.operationUpdatedAt', { time: formatTime(selectedOperation.updatedAt) }) }}</AlertDescription>
+          </Alert>
           <dl class="grid gap-3 text-sm sm:grid-cols-3">
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.manifest') }}</dt><dd class="mt-1 font-medium">v{{ selectedSet.manifestVersion }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.columns.size') }}</dt><dd class="mt-1 font-medium">{{ formatBytes(selectedSet.size) }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.files') }}</dt><dd class="mt-1 font-medium">{{ selectedSet.fileCount }}</dd></div>
             <div class="sm:col-span-3"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.topologyRevision') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedSet.topologyRevision }}</dd></div>
+            <div v-if="selectedOperation"><dt class="text-muted-foreground">{{ t('distributed.backups.operationPhase') }}</dt><dd class="mt-1 font-medium">{{ operationPhaseLabel(selectedOperation.phase) }}</dd></div>
+            <div v-if="selectedOperation?.protectionSetId" class="sm:col-span-2"><dt class="text-muted-foreground">{{ t('distributed.backups.protectionSet') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedOperation.protectionSetId }}</dd></div>
           </dl>
           <div class="overflow-x-auto rounded-lg border">
             <UiTable class="min-w-[720px]">
@@ -200,7 +228,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, DatabaseBackup, Eye, History, RefreshCw, Snowflake, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
@@ -222,18 +250,24 @@ const { locale, t } = useI18n()
 const rooms = ref([])
 const selectedRoomId = ref('')
 const sets = ref([])
+const operations = ref([])
 const selectedSet = ref(null)
 const loadingRooms = ref(false)
 const loading = ref(false)
 const detailsLoading = ref(false)
 const operationRunning = ref(false)
 const error = ref('')
+const operationsError = ref('')
 const createDialogOpen = ref(false)
 const detailsDialogOpen = ref(false)
 const restoreDialogOpen = ref(false)
 const backupName = ref('')
 const restoreConfirmation = ref('')
+const recoveringOperationId = ref('')
 let requestSequence = 0
+
+const recoveryOperations = computed(() => operations.value.filter(operation => operation.status === 'recovery_required'))
+const selectedOperation = computed(() => selectedSet.value ? latestOperation(selectedSet.value.id) : null)
 
 async function loadRooms() {
   loadingRooms.value = true
@@ -256,18 +290,32 @@ async function loadRooms() {
 async function loadSets() {
   if (!selectedRoomId.value) {
     sets.value = []
+    operations.value = []
+    operationsError.value = ''
     return
   }
   const sequence = ++requestSequence
   loading.value = true
   error.value = ''
+  operationsError.value = ''
   try {
-    const response = await backupSetsV2API.list(selectedRoomId.value)
+    const [setsResult, operationsResult] = await Promise.allSettled([
+      backupSetsV2API.list(selectedRoomId.value),
+      backupSetsV2API.operations(selectedRoomId.value)
+    ])
     if (sequence !== requestSequence) return
-    sets.value = response.items || []
+    if (setsResult.status === 'rejected') throw setsResult.reason
+    sets.value = setsResult.value.items || []
+    if (operationsResult.status === 'fulfilled') {
+      operations.value = operationsResult.value.items || []
+    } else {
+      operations.value = []
+      operationsError.value = operationsResult.reason?.message || t('common.errors.unknown')
+    }
   } catch (cause) {
     if (sequence !== requestSequence) return
     sets.value = []
+    operations.value = []
     error.value = cause.message || t('common.errors.unknown')
   } finally {
     if (sequence === requestSequence) loading.value = false
@@ -322,12 +370,61 @@ async function restoreSet() {
     await waitForV2Job(job, 15 * 60 * 1000)
     restoreDialogOpen.value = false
     await loadSets()
-    toast.success(t('distributed.backups.feedback.restored'))
+    const operation = latestOperation(selectedSet.value.id)
+    if (operationsError.value || !operation) toast.warning(t('distributed.backups.feedback.operationStateUnknown'))
+    else if (operation.status === 'recovery_required') toast.warning(t('distributed.backups.feedback.recoveryPending'))
+    else toast.success(t('distributed.backups.feedback.restored'))
   } catch (cause) {
     toast.error(t('distributed.backups.feedback.restoreFailed', { error: cause.message || t('common.errors.unknown') }))
   } finally {
     operationRunning.value = false
   }
+}
+
+async function recoverOperation(operation) {
+  if (!operation?.id || operationRunning.value) return
+  operationRunning.value = true
+  recoveringOperationId.value = operation.id
+  try {
+    const job = await backupSetsV2API.recoverOperation(operation.id)
+    await waitForV2Job(job, 15 * 60 * 1000)
+    await loadSets()
+    const refreshed = operations.value.find(item => item.id === operation.id)
+    if (operationsError.value || !refreshed) toast.warning(t('distributed.backups.feedback.operationStateUnknown'))
+    else if (refreshed.status === 'recovery_required') toast.warning(t('distributed.backups.feedback.recoveryPending'))
+    else toast.success(t('distributed.backups.feedback.recovered'))
+  } catch (cause) {
+    await loadSets()
+    toast.error(t('distributed.backups.feedback.recoverFailed', { error: cause.message || t('common.errors.unknown') }))
+  } finally {
+    operationRunning.value = false
+    recoveringOperationId.value = ''
+  }
+}
+
+function latestOperation(setID) {
+  return operations.value.find(operation => operation.setId === setID) || null
+}
+
+function operationStatusLabel(value) {
+  const known = ['running', 'succeeded', 'rolled_back', 'recovery_required', 'failed']
+  return t(`distributed.backups.operationStatuses.${known.includes(value) ? value : 'unknown'}`)
+}
+
+function operationKindLabel(value) {
+  const known = ['create', 'restore']
+  return t(`distributed.backups.operationKinds.${known.includes(value) ? value : 'unknown'}`)
+}
+
+function operationStatusVariant(value) {
+  if (value === 'succeeded') return 'secondary'
+  if (value === 'failed' || value === 'recovery_required') return 'destructive'
+  return 'outline'
+}
+
+function operationPhaseLabel(value) {
+  const known = ['planned', 'stopping', 'staging', 'protecting', 'preparing', 'prepared', 'publishing', 'published', 'completing', 'completed', 'failed', 'rolled_back', 'recovered']
+  return t(`distributed.backups.operationPhases.${known.includes(value) ? value : 'unknown'}`)
 }
 
 function setStatusLabel(value) {

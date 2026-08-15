@@ -621,6 +621,15 @@ export const backupSetsV2API = {
     `/backup-sets/${encode(backupSetId)}/actions/restore`,
     { confirmation },
     { runtimeTarget: false }
+  ),
+  operations: roomId => client.get(`/rooms/${encode(roomId)}/backup-operations`, {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  recoverOperation: operationId => client.post(
+    `/backup-operations/${encode(operationId)}/actions/recover`,
+    {},
+    { runtimeTarget: false }
   )
 }
 

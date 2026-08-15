@@ -156,6 +156,7 @@ export const distributedMessages = {
         coldTitle: '当前使用 Cold-consistent 模式',
         coldDescription: '创建备份时按 Secondary → Master 停止全部分片，完成校验后按 Master → Secondary 恢复原运行状态。固定等待不会被当成热备份证据。',
         loadFailed: '一致性备份加载失败',
+        operationsLoadFailed: '备份操作记录加载失败',
         loading: '正在读取一致性备份',
         emptyTitle: '还没有一致性备份',
         emptyDescription: '创建第一份备份集后，可在这里检查每个世界的校验结果。',
@@ -163,7 +164,17 @@ export const distributedMessages = {
         partCount: '{verified} / {total} 已校验',
         statuses: { creating: '创建中', verified: '已校验', partial: '部分完成', failed: '失败', corrupt: '已损坏', unknown: '未知' },
         partStatuses: { pending: '等待中', staging: '暂存中', verified: '已校验', failed: '失败', unknown: '未知' },
+        operationKinds: { create: '创建备份', restore: '恢复存档', unknown: '备份操作' },
+        operationStatuses: { running: '操作进行中', succeeded: '操作完成', rolled_back: '已安全回滚', recovery_required: '需要恢复', failed: '操作失败', unknown: '状态未知' },
+        operationPhases: { planned: '已规划', stopping: '正在停服', staging: '正在暂存备份', protecting: '正在创建保护备份', preparing: '正在准备恢复', prepared: '恢复内容已准备', publishing: '正在发布存档', published: '存档已发布', completing: '正在完成清理', completed: '已完成', failed: '已失败', rolled_back: '已回滚', recovered: '已恢复或回滚', unknown: '未知阶段' },
         partColumns: { world: '世界', target: '节点', status: '状态' },
+        recoveryRequiredTitle: '{count} 个备份操作需要恢复',
+        recoveryRequiredDescription: '备份创建或存档恢复的清理、回滚、原运行状态恢复尚未完成。系统会后台重试，也可以立即手动重试。',
+        retryRecovery: '立即重试恢复',
+        operationSummary: '最近{kind}操作：{status}',
+        operationUpdatedAt: '操作状态更新于 {time}',
+        operationPhase: '操作阶段',
+        protectionSet: '恢复前保护备份',
         createDialog: {
           title: '创建一致性备份',
           description: '控制中心会协调所有生效节点，不读取或修改控制器上的同名远程路径。',
@@ -184,7 +195,7 @@ export const distributedMessages = {
           confirmationDescription: '输入“{room}”确认恢复。',
           confirm: '创建保护备份并恢复'
         },
-        feedback: { created: '一致性备份已创建并校验', createFailed: '创建一致性备份失败：{error}', detailsFailed: '读取备份集详情失败：{error}', restored: '一致性备份恢复完成', restoreFailed: '恢复一致性备份失败：{error}' }
+        feedback: { created: '一致性备份已创建并校验', createFailed: '创建一致性备份失败：{error}', detailsFailed: '读取备份集详情失败：{error}', restored: '一致性备份恢复完成', restoreFailed: '恢复一致性备份失败：{error}', recoveryPending: '存档已发布，但仍有恢复清理待完成', operationStateUnknown: '任务已结束，但未能确认持久化操作状态，请刷新后复核', recovered: '恢复清理已完成', recoverFailed: '恢复清理仍未完成：{error}' }
       }
     }
   },
@@ -289,13 +300,19 @@ export const distributedMessages = {
       },
       backups: {
         tab: 'Consistent backups', title: 'Cross-node consistent backups', description: 'Capture every world of a room across nodes as one logical backup set and verify each part.', room: 'Room', selectRoom: 'Select a managed room', create: 'Create consistent backup', restore: 'Restore', details: 'Details',
-        coldTitle: 'Cold-consistent mode is active', coldDescription: 'Backups stop Secondary Shards before Master, verify all parts, then restore the previous state by starting Master before Secondary. A fixed delay is never treated as hot-backup evidence.', loadFailed: 'Failed to load consistent backups', loading: 'Loading consistent backups', emptyTitle: 'No consistent backup yet', emptyDescription: 'Create a backup set to inspect verification for every world.',
+        coldTitle: 'Cold-consistent mode is active', coldDescription: 'Backups stop Secondary Shards before Master, verify all parts, then restore the previous state by starting Master before Secondary. A fixed delay is never treated as hot-backup evidence.', loadFailed: 'Failed to load consistent backups', operationsLoadFailed: 'Failed to load backup operations', loading: 'Loading consistent backups', emptyTitle: 'No consistent backup yet', emptyDescription: 'Create a backup set to inspect verification for every world.',
         columns: { name: 'Backup set', status: 'Status', parts: 'Shard verification', size: 'Compressed size', running: 'Previously running', createdAt: 'Created at' }, partCount: '{verified} / {total} verified',
-        statuses: { creating: 'Creating', verified: 'Verified', partial: 'Partial', failed: 'Failed', corrupt: 'Corrupt', unknown: 'Unknown' }, partStatuses: { pending: 'Pending', staging: 'Staging', verified: 'Verified', failed: 'Failed', unknown: 'Unknown' }, partColumns: { world: 'World', target: 'Target', status: 'Status' },
+        statuses: { creating: 'Creating', verified: 'Verified', partial: 'Partial', failed: 'Failed', corrupt: 'Corrupt', unknown: 'Unknown' }, partStatuses: { pending: 'Pending', staging: 'Staging', verified: 'Verified', failed: 'Failed', unknown: 'Unknown' },
+        operationKinds: { create: 'backup creation', restore: 'save restore', unknown: 'backup' },
+        operationStatuses: { running: 'Operation running', succeeded: 'Operation complete', rolled_back: 'Safely rolled back', recovery_required: 'Recovery required', failed: 'Operation failed', unknown: 'Unknown status' },
+        operationPhases: { planned: 'Planned', stopping: 'Stopping Shards', staging: 'Staging backup', protecting: 'Creating protection backup', preparing: 'Preparing restore', prepared: 'Restore prepared', publishing: 'Publishing saves', published: 'Saves published', completing: 'Completing cleanup', completed: 'Completed', failed: 'Failed', rolled_back: 'Rolled back', recovered: 'Recovered or rolled back', unknown: 'Unknown phase' },
+        partColumns: { world: 'World', target: 'Target', status: 'Status' },
+        recoveryRequiredTitle: '{count} backup operations need recovery', recoveryRequiredDescription: 'Cleanup, rollback, or prior runtime restoration remains incomplete for a backup creation or save restore. The system retries in the background, and you can retry immediately.', retryRecovery: 'Retry recovery now',
+        operationSummary: 'Latest {kind} operation: {status}', operationUpdatedAt: 'Operation status updated at {time}', operationPhase: 'Operation phase', protectionSet: 'Pre-restore protection set',
         createDialog: { title: 'Create consistent backup', description: 'The controller coordinates applied targets and never touches similarly named local paths for remote Shards.', interruptionTitle: 'The room will stop briefly', interruptionDescription: 'The operation acquires the room lease, stops all worlds, creates and verifies every part, then restores previously running worlds.', name: 'Backup name', namePlaceholder: 'Leave empty to use the current time', nameDescription: 'Maximum 128 characters.', confirm: 'Stop and create' },
         detailsDialog: { title: 'Backup set details', description: 'Manifest and per-Shard verification summaries.', manifest: 'Manifest version', files: 'Files', topologyRevision: 'Topology revision' },
         restoreDialog: { title: 'Restore consistent backup', description: 'A protection set is created before all worlds are atomically published and their previous runtime state is restored.', overwriteTitle: 'This overwrites the current room save', overwriteDescription: 'Topology, integrity, or target failures stop the restore and enter an auditable recovery path.', confirmation: 'Room-name confirmation', confirmationDescription: 'Enter "{room}" to confirm restore.', confirm: 'Protect and restore' },
-        feedback: { created: 'Consistent backup created and verified', createFailed: 'Failed to create consistent backup: {error}', detailsFailed: 'Failed to load backup-set details: {error}', restored: 'Consistent backup restored', restoreFailed: 'Failed to restore consistent backup: {error}' }
+        feedback: { created: 'Consistent backup created and verified', createFailed: 'Failed to create consistent backup: {error}', detailsFailed: 'Failed to load backup-set details: {error}', restored: 'Consistent backup restored', restoreFailed: 'Failed to restore consistent backup: {error}', recoveryPending: 'Save data was published, but recovery cleanup is still pending', operationStateUnknown: 'The job finished, but its durable operation state could not be confirmed. Refresh and verify before continuing.', recovered: 'Recovery cleanup completed', recoverFailed: 'Recovery cleanup is still incomplete: {error}' }
       }
     }
   }
