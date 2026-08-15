@@ -15,8 +15,11 @@ const catalog = {
       actions: { install: '安装', repair: '修复', upgrade: '升级', activate: '激活', reload: '热重载' },
       messages: {
         actionSucceeded: '{action}已完成',
+        actionSucceededRefreshFailed: '{action}已完成，但最新 Runtime 状态读取失败，当前继续显示上次数据',
+        actionRefreshFailed: '操作已完成，但最新 Runtime 状态读取失败，当前继续显示上次数据',
         actionFailed: '{action}失败：{error}',
         roomInstallSucceeded: '房间 Runtime 已安装或修复',
+        roomInstallPartial: '可用房间的 Runtime 已处理，{count} 个房间失败',
         roomInstallFailed: '房间 Runtime 安装失败：{error}'
       },
       diagnostics: {
@@ -65,8 +68,11 @@ const catalog = {
       actions: { install: 'Install', repair: 'Repair', upgrade: 'Upgrade', activate: 'Activate', reload: 'Hot Reload' },
       messages: {
         actionSucceeded: '{action} completed',
+        actionSucceededRefreshFailed: '{action} completed, but the latest Runtime status could not be loaded. The previous data remains visible.',
+        actionRefreshFailed: 'The operation completed, but the latest Runtime status could not be loaded. The previous data remains visible.',
         actionFailed: '{action} failed: {error}',
         roomInstallSucceeded: 'Room runtime installed or repaired',
+        roomInstallPartial: 'Runtime was updated for available rooms; {count} room(s) failed',
         roomInstallFailed: 'Room runtime installation failed: {error}'
       },
       diagnostics: {

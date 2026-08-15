@@ -63,7 +63,7 @@
         <Badge v-for="type in populatedLogTypes" :key="type.type" variant="outline">{{ type.name }} {{ type.count }}</Badge>
       </div>
       <CardContent>
-        <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('logs.query.querying') }}</span></div>
+        <div v-if="loading && logData.length === 0" class="loading-state"><Spinner /><span>{{ $t('logs.query.querying') }}</span></div>
         <div v-else-if="logData.length" class="table-wrap">
           <ShadcnTable><TableHeader><TableRow><TableHead>{{ $t('logs.query.columns.time') }}</TableHead><TableHead>{{ $t('logs.query.columns.type') }}</TableHead><TableHead>{{ $t('logs.query.columns.content') }}</TableHead><TableHead>{{ $t('logs.query.columns.world') }}</TableHead><TableHead class="action-column">{{ $t('logs.query.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
             <TableRow v-for="log in logData" :key="log.id || `${log.timestamp}-${log.world_name}-${log.content}`"><TableCell>{{ formatDate(log.timestamp) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(log.log_type)" :title="log.log_type">{{ getLogTypeText(log.log_type) }}</Badge></TableCell><TableCell><div class="log-content">{{ log.content }}</div></TableCell><TableCell>{{ log.world_name }}</TableCell><TableCell class="action-column"><UiButton variant="ghost" size="sm" @click="createRuleFromLog(log)">{{ $t('logs.query.createRule') }}</UiButton></TableCell></TableRow>
@@ -342,6 +342,9 @@ export default {
       this.snapshotUpdatedAt = null;
       this.lastRefreshedAt = null;
       this.typeMetadataError = '';
+      this.sourceLoading = false;
+      this.worldsLoading = false;
+      this.loading = false;
       this.refreshLoading = false;
       this.refreshStatus = null;
       this.bootstrapAttemptedKeys = [];
@@ -369,10 +372,6 @@ export default {
         await this.getWorlds(this.queryParams.archive);
       } catch (error) {
         if (requestSequence !== this.sourceRequestSequence) return;
-        this.archives = [];
-        this.worlds = [];
-        this.queryParams.archive = '';
-        this.queryParams.world = '';
         this.sourceError = error.message || this.$t('logs.query.feedback.archiveLoadFailed');
         toast.error(this.sourceError);
       } finally {
@@ -533,12 +532,6 @@ export default {
         if (requestSequence !== this.queryRequestSequence) return;
         this.queryError = error.message || this.$t('common.errors.unknown');
         toast.error(this.$t('logs.query.feedback.queryFailedToast', { error: this.queryError }));
-        this.logData = [];
-        this.total = 0;
-        this.counts = {};
-        this.snapshotState = 'uninitialized';
-        this.snapshotUpdatedAt = null;
-        this.lastRefreshedAt = null;
       } finally {
         if (requestSequence === this.queryRequestSequence) this.loading = false;
       }

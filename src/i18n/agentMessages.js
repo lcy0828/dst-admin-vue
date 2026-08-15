@@ -188,6 +188,7 @@ export const agentMessages = {
           agentRemoved: 'Agent 记录已移除',
           agentRemoveFailed: '移除 Agent 失败：{error}',
           inventoryRefreshed: '“{name}”的节点清单已刷新',
+          inventoryRefreshedLoadFailed: '“{name}”的节点清单刷新任务已完成，但最新清单读取失败，当前继续显示上次数据',
           inventoryRefreshFailed: '刷新节点清单失败：{error}',
           errorWithDetail: '{message}：{detail}'
         }
@@ -581,6 +582,7 @@ export const agentMessages = {
           agentRemoved: 'Agent record removed',
           agentRemoveFailed: 'Failed to remove Agent: {error}',
           inventoryRefreshed: 'Node inventory refreshed for “{name}”',
+          inventoryRefreshedLoadFailed: 'The inventory refresh completed for “{name}”, but the latest inventory could not be read. The previous data remains visible.',
           inventoryRefreshFailed: 'Failed to refresh node inventory: {error}',
           errorWithDetail: '{message}: {detail}'
         }

@@ -367,7 +367,7 @@ export const playerMessages = {
         taskWorldSet: '已设置默认任务世界：{world}', actionLoading: '正在执行操作...', commandFailed: '命令执行失败', killSucceeded: '已杀死玩家 {player}',
         killFailed: '杀死玩家失败：{error}', godModeSucceeded: '已{status}玩家 {player} 的无敌模式', godModeFailed: '设置无敌模式失败：{error}',
         creativeModeSucceeded: '已{status}玩家 {player} 的制作模式', creativeModeFailed: '设置制作模式失败：{error}', resurrectSucceeded: '已复活玩家 {player}',
-        resurrectFailed: '复活玩家失败：{error}', updateSucceeded: '玩家列表更新成功', updatePartial: '可用房间已更新，{count} 个房间更新失败', updateFailed: '更新玩家列表失败：{error}', addFailed: '添加失败'
+        resurrectFailed: '复活玩家失败：{error}', updateSucceeded: '玩家列表更新成功', updateSucceededReloadFailed: '玩家采集任务已完成，但最新列表读取失败，当前继续显示上次数据', updatePartial: '可用房间已更新，{count} 个房间更新失败', updateFailed: '更新玩家列表失败：{error}', addFailed: '添加失败'
       },
       export: {
         fileName: '玩家数据_{date}.csv',
@@ -463,7 +463,7 @@ export const playerMessages = {
         worldRequired: 'Select a game world', taskWorldSet: 'Default task world set to {world}', actionLoading: 'Running action...', commandFailed: 'Command failed', killSucceeded: 'Killed {player}',
         killFailed: 'Could not kill player: {error}', godModeSucceeded: '{status} god mode for {player}', godModeFailed: 'Could not set god mode: {error}',
         creativeModeSucceeded: '{status} creative mode for {player}', creativeModeFailed: 'Could not set creative mode: {error}', resurrectSucceeded: 'Resurrected {player}',
-        resurrectFailed: 'Could not resurrect player: {error}', updateSucceeded: 'Player list updated', updatePartial: 'Available rooms were updated; {count} rooms failed', updateFailed: 'Could not update player list: {error}', addFailed: 'Could not add task'
+        resurrectFailed: 'Could not resurrect player: {error}', updateSucceeded: 'Player list updated', updateSucceededReloadFailed: 'Player collection completed, but the latest list could not be loaded. The previous data remains visible.', updatePartial: 'Available rooms were updated; {count} rooms failed', updateFailed: 'Could not update player list: {error}', addFailed: 'Could not add task'
       },
       export: {
         fileName: 'players_{date}.csv',

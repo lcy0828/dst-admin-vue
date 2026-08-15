@@ -56,6 +56,7 @@ export const distributedMessages = {
         description: '统一查看 Runtime Provider、执行环境、网络作用域、端口租约和 CPU 分配。',
         loading: '正在读取运行基础设施',
         loadFailed: '运行基础设施加载失败',
+        savedRefreshFailed: '配置已保存，但最新基础设施状态读取失败，当前继续显示上次数据',
         conflictTitle: '资源预检发现冲突',
         conflictDescription: '当前存在 {count} 个端口或 CPU 冲突，相关世界启动前会被阻止。',
         roomResourcesTitle: '当前房间资源',
@@ -195,7 +196,7 @@ export const distributedMessages = {
           confirmationDescription: '输入“{room}”确认恢复。',
           confirm: '创建保护备份并恢复'
         },
-        feedback: { created: '一致性备份已创建并校验', createFailed: '创建一致性备份失败：{error}', detailsFailed: '读取备份集详情失败：{error}', restored: '一致性备份恢复完成', restoreFailed: '恢复一致性备份失败：{error}', recoveryPending: '存档已发布，但仍有恢复清理待完成', operationStateUnknown: '任务已结束，但未能确认持久化操作状态，请刷新后复核', recovered: '恢复清理已完成', recoverFailed: '恢复清理仍未完成：{error}' }
+        feedback: { created: '一致性备份已创建并校验', createdRefreshFailed: '一致性备份任务已完成，但最新备份列表读取失败，当前继续显示上次数据', createFailed: '创建一致性备份失败：{error}', detailsFailed: '读取备份集详情失败：{error}', restored: '一致性备份恢复完成', restoreFailed: '恢复一致性备份失败：{error}', recoveryPending: '存档已发布，但仍有恢复清理待完成', operationStateUnknown: '任务已结束，但未能确认持久化操作状态，请刷新后复核', recovered: '恢复清理已完成', recoverFailed: '恢复清理仍未完成：{error}' }
       }
     }
   },
@@ -246,7 +247,7 @@ export const distributedMessages = {
         roles: { master: 'Master', caves: 'Caves', custom: 'Custom Shard' }
       },
       infrastructure: {
-        title: 'Runtime infrastructure', description: 'Inspect Runtime providers, execution environments, network scopes, port leases, and CPU allocations.', loading: 'Loading runtime infrastructure', loadFailed: 'Failed to load runtime infrastructure',
+        title: 'Runtime infrastructure', description: 'Inspect Runtime providers, execution environments, network scopes, port leases, and CPU allocations.', loading: 'Loading runtime infrastructure', loadFailed: 'Failed to load runtime infrastructure', savedRefreshFailed: 'The configuration was saved, but the latest infrastructure state could not be loaded. The previous data remains visible.',
         conflictTitle: 'Resource preflight found conflicts', conflictDescription: '{count} port or CPU conflicts currently block related worlds from starting.', roomResourcesTitle: 'Current room resources', roomResourcesDescription: 'Ports conflict within their network scope. CPU is unbound by default; exclusive mode must select a complete physical core.',
         columns: { provider: 'Provider', environment: 'Environment', network: 'Network', cpu: 'CPU topology', observedAt: 'Observed at', world: 'World', ports: 'Port leases', cpuPolicy: 'CPU policy' },
         providerKinds: { local: 'Local', agent: 'Agent' }, environmentKinds: { native: 'Native', container: 'Container' },
@@ -312,7 +313,7 @@ export const distributedMessages = {
         createDialog: { title: 'Create consistent backup', description: 'The controller coordinates applied targets and never touches similarly named local paths for remote Shards.', interruptionTitle: 'The room will stop briefly', interruptionDescription: 'The operation acquires the room lease, stops all worlds, creates and verifies every part, then restores previously running worlds.', name: 'Backup name', namePlaceholder: 'Leave empty to use the current time', nameDescription: 'Maximum 128 characters.', confirm: 'Stop and create' },
         detailsDialog: { title: 'Backup set details', description: 'Manifest and per-Shard verification summaries.', manifest: 'Manifest version', files: 'Files', topologyRevision: 'Topology revision' },
         restoreDialog: { title: 'Restore consistent backup', description: 'A protection set is created before all worlds are atomically published and their previous runtime state is restored.', overwriteTitle: 'This overwrites the current room save', overwriteDescription: 'Topology, integrity, or target failures stop the restore and enter an auditable recovery path.', confirmation: 'Room-name confirmation', confirmationDescription: 'Enter "{room}" to confirm restore.', confirm: 'Protect and restore' },
-        feedback: { created: 'Consistent backup created and verified', createFailed: 'Failed to create consistent backup: {error}', detailsFailed: 'Failed to load backup-set details: {error}', restored: 'Consistent backup restored', restoreFailed: 'Failed to restore consistent backup: {error}', recoveryPending: 'Save data was published, but recovery cleanup is still pending', operationStateUnknown: 'The job finished, but its durable operation state could not be confirmed. Refresh and verify before continuing.', recovered: 'Recovery cleanup completed', recoverFailed: 'Recovery cleanup is still incomplete: {error}' }
+        feedback: { created: 'Consistent backup created and verified', createdRefreshFailed: 'The consistent backup completed, but the latest backup list could not be loaded. The previous data remains visible.', createFailed: 'Failed to create consistent backup: {error}', detailsFailed: 'Failed to load backup-set details: {error}', restored: 'Consistent backup restored', restoreFailed: 'Failed to restore consistent backup: {error}', recoveryPending: 'Save data was published, but recovery cleanup is still pending', operationStateUnknown: 'The job finished, but its durable operation state could not be confirmed. Refresh and verify before continuing.', recovered: 'Recovery cleanup completed', recoverFailed: 'Recovery cleanup is still incomplete: {error}' }
       }
     }
   }

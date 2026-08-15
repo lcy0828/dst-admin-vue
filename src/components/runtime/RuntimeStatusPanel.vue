@@ -109,6 +109,7 @@ const failures = ref([])
 const rooms = ref([])
 const reports = ref([])
 const busyKey = ref('')
+let requestSequence = 0
 const managedRooms = computed(() => rooms.value.filter(room => room.managed))
 
 const rowKey = report => `${report.roomId}:${report.worldId}`
@@ -120,37 +121,51 @@ const installVariant = state => state === 'installed' ? 'secondary' : state === 
 const healthVariant = state => state === 'ready' ? 'default' : state === 'degraded' ? 'destructive' : 'outline'
 
 async function loadStatus() {
+  const sequence = ++requestSequence
   loading.value = true
   error.value = null
   failures.value = []
   try {
     const roomResponse = await roomsV2API.list()
-    rooms.value = roomResponse.items || []
-    const settled = await Promise.allSettled(managedRooms.value.map(async room => {
+    if (sequence !== requestSequence) return { ok: false, partial: false }
+    const nextRooms = roomResponse.items || []
+    const nextManagedRooms = nextRooms.filter(room => room.managed)
+    const settled = await Promise.allSettled(nextManagedRooms.map(async room => {
       const response = await runtimeV2API.status(room.id)
       return (response.items || []).map(item => ({ ...item, roomName: room.name }))
     }))
-    reports.value = settled.filter(item => item.status === 'fulfilled').flatMap(item => item.value)
-    failures.value = settled.filter(item => item.status === 'rejected')
-    if (reports.value.length === 0 && failures.value.length > 0) throw failures.value[0].reason
+    if (sequence !== requestSequence) return { ok: false, partial: false }
+    const nextFailures = settled.flatMap((item, index) => item.status === 'rejected'
+      ? [{ room: nextManagedRooms[index], reason: item.reason }]
+      : [])
+    const failedRoomIds = new Set(nextFailures.map(item => item.room.id))
+    const successfulReports = settled.filter(item => item.status === 'fulfilled').flatMap(item => item.value)
+    const retainedReports = reports.value.filter(report => failedRoomIds.has(report.roomId))
+    rooms.value = nextRooms
+    failures.value = nextFailures
+    reports.value = [...successfulReports, ...retainedReports]
+    if (successfulReports.length === 0 && nextFailures.length > 0) throw nextFailures[0].reason
+    return { ok: true, partial: nextFailures.length > 0 }
   } catch (cause) {
+    if (sequence !== requestSequence) return { ok: false, partial: false }
     error.value = cause
-    reports.value = []
+    return { ok: false, partial: false }
   } finally {
-    loading.value = false
+    if (sequence === requestSequence) loading.value = false
   }
 }
 
 async function installAll() {
-  if (busyKey.value) return
+  if (busyKey.value || managedRooms.value.length === 0) return
   busyKey.value = 'all'
   try {
     const settled = await Promise.allSettled(managedRooms.value.map(room => runtimeV2API.installRoom(room.id)))
     const failed = settled.filter(item => item.status === 'rejected')
     if (failed.length === settled.length && failed[0]) throw failed[0].reason
-    toast.success(t('runtime.messages.roomInstallSucceeded'))
-    if (failed.length) toast.warning(t('runtime.partialFailed', { count: failed.length }))
-    await loadStatus()
+    if (failed.length) toast.warning(t('runtime.messages.roomInstallPartial', { count: failed.length }))
+    else toast.success(t('runtime.messages.roomInstallSucceeded'))
+    const refreshed = await loadStatus()
+    if (!refreshed.ok) toast.warning(t('runtime.messages.actionRefreshFailed'))
   } catch (cause) {
     toast.error(t('runtime.messages.roomInstallFailed', { error: cause.message }))
   } finally {
@@ -163,8 +178,9 @@ async function runWorldAction(report, action, actionKey) {
   busyKey.value = rowKey(report)
   try {
     await action(report.roomId, report.worldId)
-    toast.success(t('runtime.messages.actionSucceeded', { action: t(`runtime.actions.${actionKey}`) }))
-    await loadStatus()
+    const refreshed = await loadStatus()
+    if (refreshed.ok) toast.success(t('runtime.messages.actionSucceeded', { action: t(`runtime.actions.${actionKey}`) }))
+    else toast.warning(t('runtime.messages.actionSucceededRefreshFailed', { action: t(`runtime.actions.${actionKey}`) }))
   } catch (cause) {
     toast.error(t('runtime.messages.actionFailed', { action: t(`runtime.actions.${actionKey}`), error: cause.message }))
   } finally {

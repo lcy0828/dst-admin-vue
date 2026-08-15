@@ -492,7 +492,10 @@ export default {
 
       // 会话选择
       selectedSessionName: '',
-      sessionSelectDialogVisible: false
+      sessionSelectDialogVisible: false,
+      playerRequestSequence: 0,
+      archiveRequestSequence: 0,
+      sessionRequestSequence: 0
     };
   },
   created() {
@@ -601,7 +604,8 @@ export default {
       actions[command.action]?.call(this, command.player);
     },
     // 获取玩家列表
-    fetchPlayerList() {
+    async fetchPlayerList() {
+      const requestSequence = ++this.playerRequestSequence;
       this.loading = true;
       this.loadError = null;
 
@@ -617,23 +621,22 @@ export default {
         params.sort_order = this.sortParams.order === 'ascending' ? 'asc' : 'desc';
       }
 
-      return playerApi.getAllPlayers(params)
-        .then(response => {
-          this.playerList = response.data || [];
-          this.pagination.total = response.total || 0;
-          this.partialFailures = response.failures || [];
-        })
-        .catch(error => {
-          console.error('获取玩家列表失败:', error);
-          this.loadError = error;
-          this.playerList = [];
-          this.pagination.total = 0;
-          this.partialFailures = [];
-          toast.error(this.$t('players.feedback.listLoadFailed', { error: this.loadErrorText }));
-        })
-        .finally(() => {
-          this.loading = false;
-        });
+      try {
+        const response = await playerApi.getAllPlayers(params);
+        if (requestSequence !== this.playerRequestSequence) return false;
+        this.playerList = response.data || [];
+        this.pagination.total = response.total || 0;
+        this.partialFailures = response.failures || [];
+        return true;
+      } catch (error) {
+        if (requestSequence !== this.playerRequestSequence) return false;
+        console.error('获取玩家列表失败:', error);
+        this.loadError = error;
+        toast.error(this.$t('players.feedback.listLoadFailed', { error: this.loadErrorText }));
+        return false;
+      } finally {
+        if (requestSequence === this.playerRequestSequence) this.loading = false;
+      }
     },
 
     // 刷新数据
@@ -646,9 +649,11 @@ export default {
       this.refreshing = true;
       try {
         const response = await playerApi.updatePlayerInfo({ archive_name: this.filterForm.archive_name || '' });
-        await this.fetchPlayerList();
+        const reloaded = await this.fetchPlayerList();
         const failures = response?.data?.failures || [];
-        if (failures.length > 0) {
+        if (!reloaded) {
+          toast.warning(this.$t('players.feedback.updateSucceededReloadFailed'));
+        } else if (failures.length > 0) {
           toast.warning(this.$t('players.feedback.updatePartial', { count: failures.length }));
         } else {
           toast.success(this.$t('players.feedback.updateSucceeded'));
@@ -1045,42 +1050,48 @@ export default {
     },
 
     // 获取存档列表
-    fetchArchives() {
-      playerApi.getArchives()
-        .then(response => {
-          if (response.data && Array.isArray(response.data)) {
-            this.archiveOptions = response.data.map(archive => ({
-              label: archive.name || archive.archive_name || archive,
-              value: archive.id || archive.name || archive.archive_name || archive
-            }));
-          }
-        })
-        .catch(error => {
-          console.error('获取存档列表失败:', error);
-          this.archiveOptions = [];
-          toast.error(this.$t('players.feedback.archivesLoadFailed', { error: this.errorDetail(error) }));
-        });
+    async fetchArchives() {
+      const requestSequence = ++this.archiveRequestSequence;
+      try {
+        const response = await playerApi.getArchives();
+        if (requestSequence !== this.archiveRequestSequence) return false;
+        if (response.data && Array.isArray(response.data)) {
+          this.archiveOptions = response.data.map(archive => ({
+            label: archive.name || archive.archive_name || archive,
+            value: archive.id || archive.name || archive.archive_name || archive
+          }));
+        }
+        return true;
+      } catch (error) {
+        if (requestSequence !== this.archiveRequestSequence) return false;
+        console.error('获取存档列表失败:', error);
+        toast.error(this.$t('players.feedback.archivesLoadFailed', { error: this.errorDetail(error) }));
+        return false;
+      }
     },
 
     // 获取会话列表
-    fetchSessions() {
-      playerApi.getSessions()
-        .then(response => {
-          if (response.data && Array.isArray(response.data)) {
-            this.sessionList = response.data;
-            // 如果有运行中的会话，默认选择第一个
-            if (this.sessionList.length > 0) {
-              this.updateForm.session_name = this.sessionList[0].name;
-              // 设置默认选中的会话
-              this.selectedSessionName = this.defaultSessionName;
-            }
+    async fetchSessions() {
+      const requestSequence = ++this.sessionRequestSequence;
+      try {
+        const response = await playerApi.getSessions();
+        if (requestSequence !== this.sessionRequestSequence) return false;
+        if (response.data && Array.isArray(response.data)) {
+          this.sessionList = response.data;
+          // 如果有运行中的会话，默认选择第一个
+          if (this.sessionList.length > 0) {
+            this.updateForm.session_name = this.sessionList[0].name;
+            // 设置默认选中的会话
+            this.selectedSessionName = this.defaultSessionName;
           }
-        })
-        .catch(error => {
-          console.error('获取会话列表失败:', error);
-          this.sessionList = [];
-          toast.error(this.$t('players.feedback.worldsLoadFailed', { error: this.errorDetail(error) }));
-        });
+        }
+        return true;
+      } catch (error) {
+        if (requestSequence !== this.sessionRequestSequence) return false;
+        console.error('获取会话列表失败:', error);
+        toast.error(this.$t('players.feedback.worldsLoadFailed', { error: this.errorDetail(error) }));
+        return false;
+      }
     },
 
     // 显示会话选择对话框

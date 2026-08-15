@@ -62,7 +62,14 @@
       <AlertAction><UiButton size="sm" variant="outline" @click="loadRooms">{{ t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
-    <template v-if="loading">
+    <Alert v-if="topologyError" variant="destructive">
+      <CircleAlert />
+      <AlertTitle>{{ t('topology.feedback.topologyFailedTitle') }}</AlertTitle>
+      <AlertDescription>{{ topologyError }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="loadTopology">{{ t('common.actions.retry') }}</UiButton></AlertAction>
+    </Alert>
+
+    <template v-if="loading && !displaySnapshot">
       <div class="flex flex-col gap-2" :aria-label="t('topology.loading')">
         <Skeleton v-for="index in 5" :key="index" class="h-14 w-full" />
       </div>
@@ -78,13 +85,6 @@
         <UiButton variant="outline" @click="router.push('/rooms/list')">{{ t('navigation.roomList') }}</UiButton>
       </EmptyContent>
     </Empty>
-
-    <Alert v-else-if="topologyError" variant="destructive">
-      <CircleAlert />
-      <AlertTitle>{{ t('topology.feedback.topologyFailedTitle') }}</AlertTitle>
-      <AlertDescription>{{ topologyError }}</AlertDescription>
-      <AlertAction><UiButton size="sm" variant="outline" @click="loadTopology">{{ t('common.actions.retry') }}</UiButton></AlertAction>
-    </Alert>
 
     <template v-else-if="displaySnapshot">
       <Alert>
@@ -494,6 +494,8 @@ const batchRooms = ref([])
 const batchSelection = ref({})
 const batchResult = ref(null)
 let requestSequence = 0
+let roomRequestSequence = 0
+let previewRequestSequence = 0
 
 const displaySnapshot = computed(() => preview.value || topology.value)
 const configuredTargets = computed(() => (topology.value?.targets || []).filter(target => target.configured))
@@ -506,7 +508,7 @@ const completeDraft = computed(() => {
   if (!topology.value?.placements?.length) return false
   return topology.value.placements.every(placement => Boolean(draftPlacements.value[placement.worldId]))
 })
-const canSubmit = computed(() => isDirty.value && completeDraft.value && !loading.value && !saving.value)
+const canSubmit = computed(() => isDirty.value && completeDraft.value && !loading.value && !previewing.value && !saving.value)
 const selectedBatchRoomCount = computed(() => batchRooms.value.filter(room => selectedBatchWorlds(room).length > 0).length)
 const selectedBatchWorldCount = computed(() => batchRooms.value.reduce((count, room) => count + selectedBatchWorlds(room).length, 0))
 const batchActionIcon = computed(() => ({ start: Play, stop: Square, restart: RotateCw, save: Save }[batchAction.value] || Play))
@@ -543,10 +545,12 @@ function selectRoom(value) {
 }
 
 async function loadRooms() {
+  const sequence = ++roomRequestSequence
   loadingRooms.value = true
   roomsError.value = ''
   try {
     const response = await topologyV2API.rooms()
+    if (sequence !== roomRequestSequence) return false
     rooms.value = (response.items || []).filter(room => room.managed)
     const queryRoomId = String(route.query.roomId || '')
     const selected = rooms.value.find(room => String(room.id) === queryRoomId) || rooms.value[0]
@@ -557,13 +561,13 @@ async function loadRooms() {
     } else {
       setTopology(null)
     }
+    return true
   } catch (error) {
-    rooms.value = []
-    selectedRoomId.value = ''
-    setTopology(null)
+    if (sequence !== roomRequestSequence) return false
     roomsError.value = error.message || t('common.errors.unknown')
+    return false
   } finally {
-    loadingRooms.value = false
+    if (sequence === roomRequestSequence) loadingRooms.value = false
   }
 }
 
@@ -576,34 +580,40 @@ async function loadTopology() {
     const value = await topologyV2API.get(selectedRoomId.value)
     if (sequence !== requestSequence) return
     setTopology(value)
+    return true
   } catch (error) {
     if (sequence !== requestSequence) return
-    setTopology(null)
     topologyError.value = error.message || t('common.errors.unknown')
+    return false
   } finally {
     if (sequence === requestSequence) loading.value = false
   }
 }
 
 function clearPreview() {
+  previewRequestSequence += 1
+  previewing.value = false
   preview.value = null
 }
 
 async function previewPlan({ quiet = false } = {}) {
   if (!canSubmit.value) return null
+  const sequence = ++previewRequestSequence
   previewing.value = true
   topologyError.value = ''
   try {
     const value = await topologyV2API.preview(selectedRoomId.value, placementInput(false))
+    if (sequence !== previewRequestSequence) return null
     preview.value = value
     if (!quiet) toast.success(t('topology.feedback.previewReady'))
     return value
   } catch (error) {
+    if (sequence !== previewRequestSequence) return null
     topologyError.value = t('topology.feedback.previewFailed', { error: error.message || t('common.errors.unknown') })
     if (!quiet) toast.error(topologyError.value)
     return null
   } finally {
-    previewing.value = false
+    if (sequence === previewRequestSequence) previewing.value = false
   }
 }
 
@@ -661,8 +671,9 @@ async function applyMigration() {
     })
     await waitForV2Job(submitted, 10 * 60 * 1000)
     migrationDialogOpen.value = false
-    await loadTopology()
-    toast.success(t('topology.migration.completed'))
+    const refreshed = await loadTopology()
+    if (refreshed) toast.success(t('topology.migration.completed'))
+    else toast.warning(t('topology.migration.completedRefreshFailed'))
   } catch (error) {
     if (error.code === 'TOPOLOGY_REVISION_CONFLICT') await loadTopology()
     toast.error(t('topology.migration.failed', { error: error.message || t('common.errors.unknown') }))

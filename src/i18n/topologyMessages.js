@@ -143,6 +143,7 @@ export const topologyMessages = {
         confirmationDescription: '输入“{room}”确认迁移。',
         confirm: '开始迁移',
         completed: '世界迁移完成，生效 Placement 已更新',
+        completedRefreshFailed: '世界迁移任务已完成，但最新拓扑读取失败，当前继续显示上次数据',
         failed: '世界迁移失败：{error}'
       },
       target: {
@@ -330,6 +331,7 @@ export const topologyMessages = {
         confirmationDescription: 'Enter "{room}" to confirm migration.',
         confirm: 'Start migration',
         completed: 'World migrated and applied placement updated',
+        completedRefreshFailed: 'The world migration completed, but the latest topology could not be loaded. The previous data remains visible.',
         failed: 'World migration failed: {error}'
       },
       target: {

@@ -231,9 +231,9 @@ export const modMessages = {
         },
         feedback: {
           previewReady: '发布计划已生成，请核对目标节点和世界',
-          previewFailed: '生成发布计划失败：{error}', submitted: '模组发布已提交',
+          previewFailed: '生成发布计划失败：{error}', topologyLoadFailed: '房间拓扑读取失败：{error}', submitted: '模组发布已提交',
           publishFailed: '提交模组发布失败：{error}', retrySubmitted: '失败节点已重新提交',
-          retryFailed: '重试失败节点失败：{error}', activationSubmitted: '分片重启和加载确认已完成',
+          retryFailed: '重试失败节点失败：{error}', activationSubmitted: '分片重启和加载确认任务已提交',
           activationFailed: '模组激活失败：{error}'
         }
       },
@@ -651,9 +651,9 @@ export const modMessages = {
         },
         feedback: {
           previewReady: 'Publication plan generated. Review the target nodes and worlds.',
-          previewFailed: 'Could not generate the publication plan: {error}', submitted: 'Mod publication submitted',
+          previewFailed: 'Could not generate the publication plan: {error}', topologyLoadFailed: 'Could not load room topology: {error}', submitted: 'Mod publication submitted',
           publishFailed: 'Could not submit the mod publication: {error}', retrySubmitted: 'Failed nodes were resubmitted',
-          retryFailed: 'Could not retry failed nodes: {error}', activationSubmitted: 'Shard restart and load confirmation completed',
+          retryFailed: 'Could not retry failed nodes: {error}', activationSubmitted: 'Shard restart and load confirmation submitted',
           activationFailed: 'Could not activate the published mods: {error}'
         }
       },

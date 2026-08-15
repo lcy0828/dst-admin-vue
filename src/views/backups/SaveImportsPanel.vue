@@ -174,6 +174,16 @@
           <Skeleton class="h-56 w-full" />
         </div>
         <div v-else-if="selectedImport" class="flex min-w-0 flex-col gap-5">
+          <Alert v-if="detailError" variant="destructive">
+            <TriangleAlert />
+            <AlertTitle>{{ t('backups.imports.details.loadFailed') }}</AlertTitle>
+            <AlertDescription>{{ detailError }}</AlertDescription>
+          </Alert>
+          <Alert v-if="roomsLoadError">
+            <TriangleAlert />
+            <AlertTitle>{{ t('backups.imports.apply.roomsLoadFailedTitle') }}</AlertTitle>
+            <AlertDescription>{{ roomsLoadError }}</AlertDescription>
+          </Alert>
           <Alert v-if="selectedImport.status === 'invalid'" variant="destructive">
             <TriangleAlert />
             <AlertTitle>{{ t('backups.imports.details.invalidTitle') }}</AlertTitle>
@@ -516,6 +526,7 @@ const imports = ref([])
 const rooms = ref([])
 const loading = ref(false)
 const loadError = ref('')
+const roomsLoadError = ref('')
 const uploadFile = ref(null)
 const uploadName = ref('')
 const uploading = ref(false)
@@ -524,6 +535,7 @@ const fileInput = ref(null)
 const jobsByImport = ref({})
 const detailsOpen = ref(false)
 const detailLoading = ref(false)
+const detailError = ref('')
 const selectedImport = ref(null)
 const selectedCandidateId = ref('')
 const applying = ref(false)
@@ -535,6 +547,11 @@ const runtimeTarget = ref(getActiveRuntimeTarget())
 const applyPlan = reactive(defaultSaveImportPlan(null))
 let disposed = false
 let refreshTimer = null
+let importRequestSequence = 0
+let importLoadingSequence = 0
+let roomRequestSequence = 0
+let detailRequestSequence = 0
+let runtimeGeneration = 0
 
 const isLocalTarget = computed(() => runtimeTarget.value?.kind === 'local')
 const selectedCandidate = computed(() => (
@@ -622,10 +639,15 @@ function ensureCandidateSelection(item) {
 
 async function loadImports({ quiet = false } = {}) {
   if (!isLocalTarget.value) return
-  if (!quiet) loading.value = true
-  if (!quiet) loadError.value = ''
+  const sequence = ++importRequestSequence
+  if (!quiet) {
+    importLoadingSequence = sequence
+    loading.value = true
+  }
+  loadError.value = ''
   try {
     const response = await saveImportsV2API.list()
+    if (sequence !== importRequestSequence) return false
     imports.value = response.items || []
     if (selectedImport.value) {
       const updated = imports.value.find(item => item.id === selectedImport.value.id)
@@ -634,19 +656,24 @@ async function loadImports({ quiet = false } = {}) {
         ensureCandidateSelection(updated)
       }
     }
+    return true
   } catch (error) {
-    if (!quiet) loadError.value = error.message || t('backups.imports.list.loadFailed')
+    if (sequence !== importRequestSequence) return false
+    loadError.value = error.message || t('backups.imports.list.loadFailed')
+    return false
   } finally {
-    if (!quiet) loading.value = false
+    if (!quiet && importLoadingSequence === sequence) loading.value = false
   }
 }
 
 async function loadRooms() {
   if (!isLocalTarget.value) return
+  const sequence = ++roomRequestSequence
+  roomsLoadError.value = ''
   try {
     const response = await roomsV2API.list()
     const managed = (response.items || []).filter(room => room.managed)
-    rooms.value = await Promise.all(managed.map(async room => {
+    const nextRooms = await Promise.all(managed.map(async room => {
       try {
         const worlds = await roomsV2API.worlds(room.id)
         return { ...room, running: (worlds.items || []).some(world => world.status === 'running') }
@@ -654,8 +681,13 @@ async function loadRooms() {
         return { ...room, running: null }
       }
     }))
-  } catch {
-    rooms.value = []
+    if (sequence !== roomRequestSequence) return false
+    rooms.value = nextRooms
+    return true
+  } catch (error) {
+    if (sequence !== roomRequestSequence) return false
+    roomsLoadError.value = error.message || t('backups.imports.apply.roomsLoadFailed')
+    return false
   }
 }
 
@@ -672,12 +704,16 @@ function selectUploadFile(event) {
 
 async function uploadArchive() {
   if (!uploadFile.value || !isLocalTarget.value) return
+  const generation = runtimeGeneration
   uploading.value = true
   uploadProgress.value = 0
   try {
     const result = await saveImportsV2API.upload(uploadFile.value, uploadName.value.trim(), event => {
-      if (event.total) uploadProgress.value = Math.min(99, Math.round(event.loaded * 100 / event.total))
+      if (generation === runtimeGeneration && event.total) {
+        uploadProgress.value = Math.min(99, Math.round(event.loaded * 100 / event.total))
+      }
     })
+    if (generation !== runtimeGeneration) return
     uploadProgress.value = 100
     imports.value = [result.import, ...imports.value.filter(item => item.id !== result.import.id)]
     uploadFile.value = null
@@ -686,15 +722,17 @@ async function uploadArchive() {
     toast.success(t('backups.imports.feedback.uploaded'))
     if (result.job) void trackJob(result.job, result.import.id, 'analyze')
   } catch (error) {
+    if (generation !== runtimeGeneration) return
     toast.error(t('backups.imports.feedback.uploadFailed', { error: error.message || t('common.errors.unknown') }))
   } finally {
-    uploading.value = false
+    if (generation === runtimeGeneration) uploading.value = false
   }
 }
 
-async function refreshImport(importId) {
+async function refreshImport(importId, generation = runtimeGeneration) {
   try {
     const item = await saveImportsV2API.get(importId)
+    if (disposed || generation !== runtimeGeneration) return null
     imports.value = imports.value.map(current => current.id === item.id ? item : current)
     if (selectedImport.value?.id === item.id) {
       selectedImport.value = item
@@ -702,36 +740,53 @@ async function refreshImport(importId) {
     }
     return item
   } catch {
-    await loadImports({ quiet: true })
-    return null
+    if (disposed || generation !== runtimeGeneration) return null
+    const loaded = await loadImports({ quiet: true })
+    if (disposed || generation !== runtimeGeneration) return null
+    return loaded ? (imports.value.find(item => item.id === importId) || null) : null
   }
 }
 
 async function trackJob(initialJob, importId, purpose) {
   if (!initialJob?.id || jobsByImport.value[importId]?.id === initialJob.id) return
+  const generation = runtimeGeneration
   let job = initialJob
+  let pollingFailure = null
   jobsByImport.value = { ...jobsByImport.value, [importId]: job }
-  for (let attempt = 0; attempt < 1800 && !disposed; attempt += 1) {
+  for (let attempt = 0; attempt < 1800 && !disposed && generation === runtimeGeneration; attempt += 1) {
     if (SAVE_IMPORT_TERMINAL_JOB_STATES.has(job.status)) break
     await sleep(1000)
-    if (disposed) return
+    if (disposed || generation !== runtimeGeneration) return
     try {
       job = await jobsV2API.get(job.id)
       jobsByImport.value = { ...jobsByImport.value, [importId]: job }
     } catch (error) {
-      toast.error(t('backups.imports.feedback.jobFailed', { error: localizedError(error.code, error.message) }))
+      pollingFailure = error
       break
     }
   }
-  if (disposed) return
+  if (disposed || generation !== runtimeGeneration) return
   const nextJobs = { ...jobsByImport.value }
   delete nextJobs[importId]
   jobsByImport.value = nextJobs
-  await refreshImport(importId)
+  const pollingTimedOut = !pollingFailure && !SAVE_IMPORT_TERMINAL_JOB_STATES.has(job.status)
+  const refreshedImport = await refreshImport(importId, generation)
+  if (disposed || generation !== runtimeGeneration) return
+  if (pollingFailure) {
+    toast.error(t('backups.imports.feedback.jobStatusFailed', { error: localizedError(pollingFailure.code, pollingFailure.message) }))
+    return
+  }
+  if (pollingTimedOut) {
+    toast.warning(t('backups.imports.feedback.jobStatusTimedOut'))
+    return
+  }
   if (job.status === 'succeeded') {
-    toast.success(t(`backups.imports.feedback.${purpose === 'apply' ? 'applied' : 'analyzed'}`))
+    if (refreshedImport) toast.success(t(`backups.imports.feedback.${purpose === 'apply' ? 'applied' : 'analyzed'}`))
+    else toast.warning(t('backups.imports.feedback.completedRefreshFailed'))
     if (purpose === 'apply') {
-      await loadRooms()
+      const roomsLoaded = await loadRooms()
+      if (disposed || generation !== runtimeGeneration) return
+      if (!roomsLoaded) toast.warning(t('backups.imports.feedback.roomsRefreshFailed'))
       emit('rooms-changed')
     }
     return
@@ -741,30 +796,38 @@ async function trackJob(initialJob, importId, purpose) {
 }
 
 async function reanalyze(item) {
+  const generation = runtimeGeneration
   try {
     const job = await saveImportsV2API.analyze(item.id)
+    if (disposed || generation !== runtimeGeneration) return
     imports.value = imports.value.map(current => current.id === item.id ? { ...current, status: 'analyzing' } : current)
     toast.success(t('backups.imports.feedback.analysisStarted'))
     void trackJob(job, item.id, 'analyze')
   } catch (error) {
+    if (disposed || generation !== runtimeGeneration) return
     toast.error(t('backups.imports.feedback.analysisFailed', { error: error.message || t('common.errors.unknown') }))
   }
 }
 
 async function openDetails(item) {
+  const sequence = ++detailRequestSequence
   detailsOpen.value = true
   detailLoading.value = true
+  detailError.value = ''
   selectedImport.value = item
   try {
-    selectedImport.value = await saveImportsV2API.get(item.id)
+    const value = await saveImportsV2API.get(item.id)
+    if (sequence !== detailRequestSequence) return
+    selectedImport.value = value
     selectedCandidateId.value = ''
     ensureCandidateSelection(selectedImport.value)
     await loadRooms()
   } catch (error) {
+    if (sequence !== detailRequestSequence) return
+    detailError.value = error.message || t('common.errors.unknown')
     toast.error(t('backups.imports.feedback.detailsFailed', { error: error.message || t('common.errors.unknown') }))
-    detailsOpen.value = false
   } finally {
-    detailLoading.value = false
+    if (sequence === detailRequestSequence) detailLoading.value = false
   }
 }
 
@@ -788,6 +851,8 @@ async function applyImport() {
     toast.warning(t(`backups.imports.apply.validation.${validation}`))
     return
   }
+  const generation = runtimeGeneration
+  const importId = selectedImport.value.id
   applying.value = true
   try {
     const payload = {
@@ -796,15 +861,19 @@ async function applyImport() {
       roomName: applyPlan.roomName.trim(),
       clusterToken: applyPlan.clusterToken.trim()
     }
-    const job = await saveImportsV2API.apply(selectedImport.value.id, payload)
-    selectedImport.value = { ...selectedImport.value, status: 'applying' }
-    imports.value = imports.value.map(item => item.id === selectedImport.value.id ? selectedImport.value : item)
+    const job = await saveImportsV2API.apply(importId, payload)
+    if (disposed || generation !== runtimeGeneration) return
+    imports.value = imports.value.map(item => item.id === importId ? { ...item, status: 'applying' } : item)
+    if (selectedImport.value?.id === importId) {
+      selectedImport.value = { ...selectedImport.value, status: 'applying' }
+    }
     toast.success(t('backups.imports.feedback.applyStarted'))
-    void trackJob(job, selectedImport.value.id, 'apply')
+    void trackJob(job, importId, 'apply')
   } catch (error) {
+    if (disposed || generation !== runtimeGeneration) return
     toast.error(t('backups.imports.feedback.applyFailed', { error: error.message || t('common.errors.unknown') }))
   } finally {
-    applying.value = false
+    if (generation === runtimeGeneration) applying.value = false
   }
 }
 
@@ -816,26 +885,49 @@ function openDelete(item) {
 
 async function deleteImport() {
   if (!deleteTarget.value || deleteConfirmation.value !== deleteTarget.value.name) return
+  const generation = runtimeGeneration
+  const targetId = deleteTarget.value.id
   deleting.value = true
   try {
-    await saveImportsV2API.delete(deleteTarget.value.id, deleteConfirmation.value)
-    imports.value = imports.value.filter(item => item.id !== deleteTarget.value.id)
-    if (selectedImport.value?.id === deleteTarget.value.id) detailsOpen.value = false
-    deleteOpen.value = false
+    await saveImportsV2API.delete(targetId, deleteConfirmation.value)
+    if (disposed || generation !== runtimeGeneration) return
+    imports.value = imports.value.filter(item => item.id !== targetId)
+    if (selectedImport.value?.id === targetId) detailsOpen.value = false
+    if (deleteTarget.value?.id === targetId) deleteOpen.value = false
     toast.success(t('backups.imports.feedback.deleted'))
   } catch (error) {
+    if (disposed || generation !== runtimeGeneration) return
     toast.error(t('backups.imports.feedback.deleteFailed', { error: error.message || t('common.errors.unknown') }))
   } finally {
-    deleting.value = false
+    if (generation === runtimeGeneration) deleting.value = false
   }
 }
 
 function handleRuntimeTargetChanged(event) {
+  runtimeGeneration += 1
+  importRequestSequence += 1
+  roomRequestSequence += 1
+  detailRequestSequence += 1
   runtimeTarget.value = event.detail || getActiveRuntimeTarget()
   imports.value = []
   rooms.value = []
+  jobsByImport.value = {}
+  loading.value = false
+  uploading.value = false
+  uploadProgress.value = 0
+  detailLoading.value = false
+  applying.value = false
+  deleting.value = false
   loadError.value = ''
+  roomsLoadError.value = ''
+  detailError.value = ''
   detailsOpen.value = false
+  deleteOpen.value = false
+  deleteTarget.value = null
+  deleteConfirmation.value = ''
+  selectedImport.value = null
+  selectedCandidateId.value = ''
+  Object.assign(applyPlan, defaultSaveImportPlan(null))
   if (isLocalTarget.value) {
     void loadImports()
     void loadRooms()
@@ -857,6 +949,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   disposed = true
+  runtimeGeneration += 1
+  importRequestSequence += 1
+  roomRequestSequence += 1
+  detailRequestSequence += 1
   window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, handleRuntimeTargetChanged)
   if (refreshTimer) window.clearInterval(refreshTimer)
 })

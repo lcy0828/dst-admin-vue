@@ -324,9 +324,11 @@ async function loadInfrastructure() {
     const value = await topologyV2API.infrastructure()
     if (sequence !== requestSequence) return
     snapshot.value = value
+    return true
   } catch (cause) {
     if (sequence !== requestSequence) return
     error.value = cause.message || t('common.errors.unknown')
+    return false
   } finally {
     if (sequence === requestSequence) loading.value = false
   }
@@ -427,9 +429,10 @@ async function saveNetwork() {
       bindAddress: networkForm.value.bindAddress.trim(),
       advertiseAddress: networkForm.value.advertiseAddress.trim()
     })
-    await loadInfrastructure()
+    const refreshed = await loadInfrastructure()
     networkDialogOpen.value = false
-    toast.success(t('distributed.infrastructure.networkDialog.saved'))
+    if (refreshed) toast.success(t('distributed.infrastructure.networkDialog.saved'))
+    else toast.warning(t('distributed.infrastructure.savedRefreshFailed'))
   } catch (cause) {
     const fields = cause.details?.fields
     if (fields) networkErrors.value = fields
@@ -486,9 +489,10 @@ async function saveCPU() {
       logicalCpuIds: cpuForm.value.logicalCpuIds,
       allowSmtSiblingRisk: cpuForm.value.allowSmtSiblingRisk
     })
-    await loadInfrastructure()
+    const refreshed = await loadInfrastructure()
     cpuDialogOpen.value = false
-    toast.success(t('distributed.infrastructure.cpuDialog.saved'))
+    if (refreshed) toast.success(t('distributed.infrastructure.cpuDialog.saved'))
+    else toast.warning(t('distributed.infrastructure.savedRefreshFailed'))
   } catch (cause) {
     await loadInfrastructure()
     cpuError.value = cause.details?.fields

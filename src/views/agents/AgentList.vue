@@ -38,7 +38,7 @@
       <AlertAction><UiButton size="sm" variant="outline" @click="fetchRuntimeTargets">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
-    <div v-if="loading" class="flex flex-col gap-2" :aria-label="$t('agents.list.loadingAria')">
+    <div v-if="loading && agentList.length === 0" class="flex flex-col gap-2" :aria-label="$t('agents.list.loadingAria')">
       <Skeleton v-for="index in 4" :key="index" class="h-14 w-full" />
     </div>
 
@@ -378,7 +378,10 @@ export default {
       runtimeConfigured: false,
       runtimeAgent: null,
       runtimeForm: emptyRuntimeConfig(),
-      runtimeErrors: {}
+      runtimeErrors: {},
+      agentRequestSequence: 0,
+      runtimeRequestSequence: 0,
+      inventoryRequestSequences: {}
     };
   },
   computed: {
@@ -406,35 +409,42 @@ export default {
   },
   methods: {
     async fetchAgentList() {
+      const sequence = ++this.agentRequestSequence;
       this.loading = true;
       this.loadFailure = null;
       try {
         const response = await agentApi.getAgentList();
+        if (sequence !== this.agentRequestSequence) return false;
         this.agentData = response.data || [];
         this.agentList = Array.isArray(this.agentData) ? this.agentData : Object.values(this.agentData);
         await this.fetchRuntimeTargets();
+        if (sequence !== this.agentRequestSequence) return false;
         await this.fetchInventories();
+        return sequence === this.agentRequestSequence;
       } catch (error) {
-        this.agentList = [];
+        if (sequence !== this.agentRequestSequence) return false;
         this.loadFailure = this.failureState('agents.list.feedback.loadFailed', error);
         toast.error(this.loadError);
+        return false;
       } finally {
-        this.loading = false;
+        if (sequence === this.agentRequestSequence) this.loading = false;
       }
     },
     refreshData() {
-      this.fetchAgentList();
+      return this.fetchAgentList();
     },
     async fetchRuntimeTargets() {
+      const sequence = ++this.runtimeRequestSequence;
       this.runtimeLoadFailure = null;
       try {
         const value = await runtimeTargetsV2API.list();
+        if (sequence !== this.runtimeRequestSequence) return false;
         this.runtimeByAgent = Object.fromEntries(
           (value.items || []).filter(item => item.kind === 'agent').map(item => [item.agentId, item])
         );
         return true;
       } catch (error) {
-        this.runtimeByAgent = {};
+        if (sequence !== this.runtimeRequestSequence) return false;
         this.runtimeLoadFailure = this.failureState('agents.list.feedback.runtimeLoadFailed', error);
         return false;
       }
@@ -446,29 +456,38 @@ export default {
       }));
     },
     async fetchInventory(agent) {
-      if (!this.runtimeFor(agent).configured || this.isOldAgent(agent)) return;
+      if (!this.runtimeFor(agent).configured || this.isOldAgent(agent)) return false;
+      const sequence = (this.inventoryRequestSequences[agent.id] || 0) + 1;
+      this.inventoryRequestSequences[agent.id] = sequence;
       this.inventoryLoading[agent.id] = true;
       this.inventoryFailures[agent.id] = '';
       try {
-        this.inventories[agent.id] = await agentsV2API.inventory(agent.id);
+        const inventory = await agentsV2API.inventory(agent.id);
+        if (sequence !== this.inventoryRequestSequences[agent.id]) return false;
+        this.inventories[agent.id] = inventory;
+        return true;
       } catch (error) {
+        if (sequence !== this.inventoryRequestSequences[agent.id]) return false;
         if (error?.status === 404) {
           delete this.inventories[agent.id];
+          return true;
         } else {
           this.inventoryFailures[agent.id] = error?.message || this.$t('common.errors.unknown');
         }
+        return false;
       } finally {
-        this.inventoryLoading[agent.id] = false;
+        if (sequence === this.inventoryRequestSequences[agent.id]) this.inventoryLoading[agent.id] = false;
       }
     },
     async refreshInventory(agent) {
-      if (!this.canRefreshInventory(agent)) return;
+      if (!this.canRefreshInventory(agent) || this.inventoryRefreshing[agent.id]) return;
       this.inventoryRefreshing[agent.id] = true;
       try {
         const job = await agentsV2API.refreshInventory(agent.id);
         await waitForV2Job(job, 45000);
-        await this.fetchInventory(agent);
-        toast.success(this.$t('agents.list.feedback.inventoryRefreshed', { name: agent.hostname }));
+        const refreshed = await this.fetchInventory(agent);
+        if (refreshed) toast.success(this.$t('agents.list.feedback.inventoryRefreshed', { name: agent.hostname }));
+        else toast.warning(this.$t('agents.list.feedback.inventoryRefreshedLoadFailed', { name: agent.hostname }));
       } catch (error) {
         toast.error(this.$t('agents.list.feedback.inventoryRefreshFailed', {
           error: error?.message || this.$t('common.errors.unknown')

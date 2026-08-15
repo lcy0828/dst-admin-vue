@@ -108,6 +108,7 @@ export const backupMessages = {
         details: {
           title: '存档兼容报告',
           description: '核对压缩包内容，并为选定候选房间配置本地部署方案。',
+          loadFailed: '兼容报告刷新失败',
           invalidTitle: '此压缩包当前无法导入',
           lastFailureTitle: '上一次操作未完成',
           summary: '压缩包摘要',
@@ -148,6 +149,8 @@ export const backupMessages = {
         apply: {
           title: '部署方案',
           description: '部署始终在临时目录完成校验后原子发布；替换房间前会自动创建保护备份。',
+          roomsLoadFailedTitle: '目标房间状态读取失败',
+          roomsLoadFailed: '无法读取目标房间运行状态，替换操作已禁用。',
           action: '开始部署',
           mode: {
             label: '部署方式',
@@ -248,6 +251,10 @@ export const backupMessages = {
           applied: '存档已安全部署到本机房间。',
           applyFailed: '无法启动存档部署：{error}',
           jobFailed: '存档任务失败：{error}',
+          jobStatusFailed: '存档任务状态读取失败：{error}',
+          jobStatusTimedOut: '存档任务状态确认超时，任务可能仍在后台运行。页面会继续自动刷新，也可稍后手动刷新复核。',
+          completedRefreshFailed: '存档任务已完成，但最新导入状态读取失败，当前继续显示上次数据。',
+          roomsRefreshFailed: '存档已部署，但目标房间状态读取失败，请刷新后复核。',
           deleted: '导入记录已删除。',
           deleteFailed: '删除导入记录失败：{error}'
         }
@@ -430,6 +437,7 @@ export const backupMessages = {
         details: {
           title: 'Save compatibility report',
           description: 'Review archive contents and configure a local deployment plan for the selected room candidate.',
+          loadFailed: 'Could not refresh the compatibility report',
           invalidTitle: 'This archive cannot currently be imported',
           lastFailureTitle: 'The previous operation did not complete',
           summary: 'Archive summary',
@@ -470,6 +478,8 @@ export const backupMessages = {
         apply: {
           title: 'Deployment plan',
           description: 'Every deployment is validated in a staging directory and published atomically. Replacements receive a protection backup first.',
+          roomsLoadFailedTitle: 'Could not load target room state',
+          roomsLoadFailed: 'Target room runtime state is unavailable, so replacement is disabled.',
           action: 'Start deployment',
           mode: {
             label: 'Deployment mode',
@@ -570,6 +580,10 @@ export const backupMessages = {
           applied: 'The save was safely deployed to a local room.',
           applyFailed: 'Could not start save deployment: {error}',
           jobFailed: 'Save job failed: {error}',
+          jobStatusFailed: 'Could not read save job status: {error}',
+          jobStatusTimedOut: 'Save job status confirmation timed out. The job may still be running in the background. This page will keep refreshing automatically, or you can refresh it manually later.',
+          completedRefreshFailed: 'The save job completed, but the latest import state could not be loaded. The previous data remains visible.',
+          roomsRefreshFailed: 'The save was deployed, but target room state could not be loaded. Refresh and verify it.',
           deleted: 'The import record was deleted.',
           deleteFailed: 'Could not delete the import record: {error}'
         }

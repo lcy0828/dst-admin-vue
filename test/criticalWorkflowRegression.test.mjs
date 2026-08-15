@@ -34,7 +34,7 @@ test('job-based workflows synchronize their owning view after completion', async
   ])
 
   assert.match(imports, /SAVE_IMPORT_TERMINAL_JOB_STATES\.has\(job\.status\)/)
-  assert.match(imports, /await refreshImport\(importId\)/)
+  assert.match(imports, /await refreshImport\(importId, generation\)/)
   assert.match(imports, /purpose === 'apply'[\s\S]*?emit\('rooms-changed'\)/)
   assert.match(mods, /await modApi\.toggleMod[\s\S]*?await this\.fetchModsList\(true\)/)
   assert.match(mods, /await modApi\.updateMod[\s\S]*?await this\.fetchModsList\(true\)/)

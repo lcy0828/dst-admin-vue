@@ -265,34 +265,49 @@ const backupName = ref('')
 const restoreConfirmation = ref('')
 const recoveringOperationId = ref('')
 let requestSequence = 0
+let roomRequestSequence = 0
+let detailsRequestSequence = 0
+let loadedSetsRoomId = ''
 
 const recoveryOperations = computed(() => operations.value.filter(operation => operation.status === 'recovery_required'))
 const selectedOperation = computed(() => selectedSet.value ? latestOperation(selectedSet.value.id) : null)
 
 async function loadRooms() {
+  const sequence = ++roomRequestSequence
   loadingRooms.value = true
   error.value = ''
   try {
     const response = await roomsV2API.controlPlaneList()
+    if (sequence !== roomRequestSequence) return false
     rooms.value = (response.items || []).filter(room => room.managed)
     if (!rooms.value.some(room => String(room.id) === selectedRoomId.value)) {
       selectedRoomId.value = rooms.value[0] ? String(rooms.value[0].id) : ''
     }
+    return true
   } catch (cause) {
-    rooms.value = []
-    selectedRoomId.value = ''
+    if (sequence !== roomRequestSequence) return false
     error.value = cause.message || t('common.errors.unknown')
+    return false
   } finally {
-    loadingRooms.value = false
+    if (sequence === roomRequestSequence) loadingRooms.value = false
   }
 }
 
 async function loadSets() {
   if (!selectedRoomId.value) {
+    requestSequence += 1
     sets.value = []
     operations.value = []
     operationsError.value = ''
-    return
+    loading.value = false
+    loadedSetsRoomId = ''
+    return { setsLoaded: true, operationsLoaded: true }
+  }
+  const roomId = selectedRoomId.value
+  if (loadedSetsRoomId !== roomId) {
+    sets.value = []
+    operations.value = []
+    selectedSet.value = null
   }
   const sequence = ++requestSequence
   loading.value = true
@@ -300,23 +315,23 @@ async function loadSets() {
   operationsError.value = ''
   try {
     const [setsResult, operationsResult] = await Promise.allSettled([
-      backupSetsV2API.list(selectedRoomId.value),
-      backupSetsV2API.operations(selectedRoomId.value)
+      backupSetsV2API.list(roomId),
+      backupSetsV2API.operations(roomId)
     ])
     if (sequence !== requestSequence) return
     if (setsResult.status === 'rejected') throw setsResult.reason
     sets.value = setsResult.value.items || []
+    loadedSetsRoomId = roomId
     if (operationsResult.status === 'fulfilled') {
       operations.value = operationsResult.value.items || []
     } else {
-      operations.value = []
       operationsError.value = operationsResult.reason?.message || t('common.errors.unknown')
     }
+    return { setsLoaded: true, operationsLoaded: operationsResult.status === 'fulfilled' }
   } catch (cause) {
     if (sequence !== requestSequence) return
-    sets.value = []
-    operations.value = []
     error.value = cause.message || t('common.errors.unknown')
+    return { setsLoaded: false, operationsLoaded: false }
   } finally {
     if (sequence === requestSequence) loading.value = false
   }
@@ -334,8 +349,9 @@ async function createSet() {
     const job = await backupSetsV2API.create(selectedRoomId.value, backupName.value.trim())
     await waitForV2Job(job, 10 * 60 * 1000)
     createDialogOpen.value = false
-    await loadSets()
-    toast.success(t('distributed.backups.feedback.created'))
+    const refreshed = await loadSets()
+    if (refreshed?.setsLoaded) toast.success(t('distributed.backups.feedback.created'))
+    else toast.warning(t('distributed.backups.feedback.createdRefreshFailed'))
   } catch (cause) {
     toast.error(t('distributed.backups.feedback.createFailed', { error: cause.message || t('common.errors.unknown') }))
   } finally {
@@ -344,15 +360,18 @@ async function createSet() {
 }
 
 async function openDetails(backupSet) {
+  const sequence = ++detailsRequestSequence
   selectedSet.value = backupSet
   detailsDialogOpen.value = true
   detailsLoading.value = true
   try {
-    selectedSet.value = await backupSetsV2API.get(backupSet.id)
+    const value = await backupSetsV2API.get(backupSet.id)
+    if (sequence === detailsRequestSequence) selectedSet.value = value
   } catch (cause) {
+    if (sequence !== detailsRequestSequence) return
     toast.error(t('distributed.backups.feedback.detailsFailed', { error: cause.message || t('common.errors.unknown') }))
   } finally {
-    detailsLoading.value = false
+    if (sequence === detailsRequestSequence) detailsLoading.value = false
   }
 }
 
@@ -369,9 +388,9 @@ async function restoreSet() {
     const job = await backupSetsV2API.restore(selectedSet.value.id, restoreConfirmation.value)
     await waitForV2Job(job, 15 * 60 * 1000)
     restoreDialogOpen.value = false
-    await loadSets()
+    const refreshedState = await loadSets()
     const operation = latestOperation(selectedSet.value.id)
-    if (operationsError.value || !operation) toast.warning(t('distributed.backups.feedback.operationStateUnknown'))
+    if (!refreshedState?.setsLoaded || !refreshedState.operationsLoaded || !operation) toast.warning(t('distributed.backups.feedback.operationStateUnknown'))
     else if (operation.status === 'recovery_required') toast.warning(t('distributed.backups.feedback.recoveryPending'))
     else toast.success(t('distributed.backups.feedback.restored'))
   } catch (cause) {
@@ -388,9 +407,9 @@ async function recoverOperation(operation) {
   try {
     const job = await backupSetsV2API.recoverOperation(operation.id)
     await waitForV2Job(job, 15 * 60 * 1000)
-    await loadSets()
+    const refreshedState = await loadSets()
     const refreshed = operations.value.find(item => item.id === operation.id)
-    if (operationsError.value || !refreshed) toast.warning(t('distributed.backups.feedback.operationStateUnknown'))
+    if (!refreshedState?.setsLoaded || !refreshedState.operationsLoaded || !refreshed) toast.warning(t('distributed.backups.feedback.operationStateUnknown'))
     else if (refreshed.status === 'recovery_required') toast.warning(t('distributed.backups.feedback.recoveryPending'))
     else toast.success(t('distributed.backups.feedback.recovered'))
   } catch (cause) {

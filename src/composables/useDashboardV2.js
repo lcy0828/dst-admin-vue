@@ -48,6 +48,11 @@ export function useDashboardV2() {
   const playerError = ref('')
   const versionError = ref('')
   let updateTimer = null
+  let systemRequestSequence = 0
+  let serverRequestSequence = 0
+  let playerRequestSequence = 0
+  let versionRequestSequence = 0
+  let updatePollInFlight = false
 
   const runningServerCount = computed(() => serverList.value.filter(server => server.status === 'running').length)
   const totalWorldCount = computed(() => roomList.value.reduce(
@@ -69,51 +74,61 @@ export function useDashboardV2() {
   const gameUpdateBusy = computed(() => updateStarting.value || Boolean(updateStatus.value?.is_running))
 
   async function refreshSystem() {
+    const sequence = ++systemRequestSequence
     systemLoading.value = true
     systemError.value = ''
     try {
       const response = await systemApi.getDashboardStatus()
       if (response?.status !== 200 || !response.data) throw new Error(response?.msg || translate('dashboard.feedback.invalidSystemResponse'))
+      if (sequence !== systemRequestSequence) return false
       systemStatus.value = response.data
+      return true
     } catch (error) {
+      if (sequence !== systemRequestSequence) return false
       systemError.value = error.message || translate('dashboard.feedback.systemLoadFailed')
+      return false
     } finally {
-      systemLoading.value = false
+      if (sequence === systemRequestSequence) systemLoading.value = false
     }
   }
 
   async function refreshPlayers() {
+    const sequence = ++playerRequestSequence
     playerLoading.value = true
     playerError.value = ''
-    playerSummary.value = { total: 0, online: 0, staleOnline: 0, loadedRooms: 0, failedRooms: 0 }
     try {
       if (roomError.value) {
         playerError.value = translate('dashboard.feedback.playersBlocked')
-        return
+        return false
       }
+      const summary = { total: 0, online: 0, staleOnline: 0, loadedRooms: 0, failedRooms: 0 }
       const results = await Promise.allSettled(
         roomList.value.map(room => playerApi.getPlayerStats(room.name))
       )
+      if (sequence !== playerRequestSequence) return false
       for (const result of results) {
         if (result.status === 'rejected') {
-          playerSummary.value.failedRooms += 1
+          summary.failedRooms += 1
           continue
         }
         const value = result.value?.data || {}
-        playerSummary.value.total += Number(value.total_count) || 0
-        playerSummary.value.online += Number(value.online_count) || 0
-        playerSummary.value.staleOnline += Number(value.stale_online_count) || 0
-        playerSummary.value.loadedRooms += 1
+        summary.total += Number(value.total_count) || 0
+        summary.online += Number(value.online_count) || 0
+        summary.staleOnline += Number(value.stale_online_count) || 0
+        summary.loadedRooms += 1
       }
-      if (playerSummary.value.failedRooms > 0) {
-        playerError.value = translate('dashboard.feedback.playerRoomsFailed', { count: playerSummary.value.failedRooms })
+      if (summary.failedRooms > 0) {
+        playerError.value = translate('dashboard.feedback.playerRoomsFailed', { count: summary.failedRooms })
       }
+      if (summary.loadedRooms > 0 || roomList.value.length === 0) playerSummary.value = summary
+      return summary.failedRooms === 0
     } finally {
-      playerLoading.value = false
+      if (sequence === playerRequestSequence) playerLoading.value = false
     }
   }
 
   async function refreshServers() {
+    const sequence = ++serverRequestSequence
     serverLoading.value = true
     serverError.value = ''
     roomError.value = ''
@@ -121,42 +136,48 @@ export function useDashboardV2() {
       systemApi.getTmuxServers(),
       roomApi.getRoomList()
     ])
+    if (sequence !== serverRequestSequence) return false
 
     if (servers.status === 'fulfilled' && servers.value?.status === 200) {
       serverList.value = Array.isArray(servers.value.data) ? servers.value.data : []
     } else {
-      serverList.value = []
-      serverError.value = servers.reason?.message || translate('dashboard.feedback.serverLoadFailed')
+      serverError.value = servers.reason?.message || servers.value?.msg || translate('dashboard.feedback.serverLoadFailed')
     }
 
     if (rooms.status === 'fulfilled' && rooms.value?.status === 200) {
       roomList.value = Array.isArray(rooms.value.data) ? rooms.value.data : []
     } else {
-      roomList.value = []
-      roomError.value = rooms.reason?.message || translate('dashboard.feedback.roomLoadFailed')
+      roomError.value = rooms.reason?.message || rooms.value?.msg || translate('dashboard.feedback.roomLoadFailed')
     }
 
-    serverLoading.value = false
     await refreshPlayers()
+    if (sequence === serverRequestSequence) serverLoading.value = false
+    return servers.status === 'fulfilled' && servers.value?.status === 200 && rooms.status === 'fulfilled' && rooms.value?.status === 200
   }
 
   async function refreshVersion() {
+    const sequence = ++versionRequestSequence
     versionLoading.value = true
     versionError.value = ''
     try {
       const response = await systemApi.getGameVersion()
       if (response?.status !== 200 || !response.data) throw new Error(response?.msg || translate('dashboard.feedback.invalidVersionResponse'))
+      if (sequence !== versionRequestSequence) return false
       versionInfo.value = response.data
+      return true
     } catch (error) {
+      if (sequence !== versionRequestSequence) return false
       versionError.value = error.message || translate('dashboard.feedback.versionLoadFailed')
+      return false
     } finally {
-      versionLoading.value = false
+      if (sequence === versionRequestSequence) versionLoading.value = false
     }
   }
 
   async function refreshDashboard() {
-    await Promise.allSettled([refreshSystem(), refreshServers(), refreshVersion()])
-    lastRefreshedAt.value = new Date()
+    const results = await Promise.all([refreshSystem(), refreshServers(), refreshVersion()])
+    if (results.some(Boolean)) lastRefreshedAt.value = new Date()
+    return results.every(Boolean)
   }
 
   async function handleServerAction(server) {
@@ -179,8 +200,9 @@ export function useDashboardV2() {
     try {
       const input = { room_id: server.room_id, world_id: server.world_id }
       await (stopping ? roomApi.stopRoom(input) : startRoomWithCapacityRisk(input))
-      toast.success(translate('dashboard.feedback.actionCompleted', { action }))
-      await refreshServers()
+      const refreshed = await refreshServers()
+      if (refreshed) toast.success(translate('dashboard.feedback.actionCompleted', { action }))
+      else toast.warning(translate('dashboard.feedback.actionCompletedRefreshFailed', { action }))
     } catch (error) {
       if (isCapacityRiskCanceled(error)) return
       toast.error(translate('dashboard.feedback.actionFailed', { action, error: error.message || translate('common.errors.unknown') }))
@@ -201,8 +223,9 @@ export function useDashboardV2() {
         room_id: room.id,
         world_ids: startableWorlds.map(world => world.id)
       })
-      toast.success(translate('dashboard.feedback.roomStarted', { room: room.name }))
-      await refreshServers()
+      const refreshed = await refreshServers()
+      if (refreshed) toast.success(translate('dashboard.feedback.roomStarted', { room: room.name }))
+      else toast.warning(translate('dashboard.feedback.roomStartedRefreshFailed', { room: room.name }))
       return true
     } catch (error) {
       if (isCapacityRiskCanceled(error)) return false
@@ -229,8 +252,9 @@ export function useDashboardV2() {
     serverLoading.value = true
     try {
       await roomApi.cleanupRoom({ room_id: server.room_id, world_id: server.world_id })
-      toast.success(translate('dashboard.feedback.cleanupSucceeded'))
-      await refreshServers()
+      const refreshed = await refreshServers()
+      if (refreshed) toast.success(translate('dashboard.feedback.cleanupSucceeded'))
+      else toast.warning(translate('dashboard.feedback.cleanupSucceededRefreshFailed'))
     } catch (error) {
       toast.error(translate('dashboard.feedback.cleanupFailed', { error: error.message || translate('common.errors.unknown') }))
     } finally {
@@ -244,17 +268,24 @@ export function useDashboardV2() {
   }
 
   async function pollUpdateStatus(jobId) {
+    if (updatePollInFlight) return false
+    updatePollInFlight = true
     try {
       const response = await systemApi.getDstUpdateStatus(jobId)
+      if (response?.status !== 200 || !response.data) throw new Error(response?.msg || translate('dashboard.feedback.updateStatusFailed'))
       updateStatus.value = response.data
       if (updateStatus.value?.is_completed || updateStatus.value?.error) {
         stopUpdatePolling()
         sessionStorage.removeItem('dstUpdateSessionName')
         if (updateStatus.value.is_completed && !updateStatus.value.error) await refreshVersion()
       }
+      return true
     } catch (error) {
       stopUpdatePolling()
       toast.error(error.message || translate('dashboard.feedback.updateStatusFailed'))
+      return false
+    } finally {
+      updatePollInFlight = false
     }
   }
 
@@ -275,8 +306,9 @@ export function useDashboardV2() {
       if (!jobId) throw new Error(response.msg || translate('dashboard.feedback.invalidUpdateResponse'))
       sessionStorage.setItem('dstUpdateSessionName', jobId)
       toast.success(translate('dashboard.feedback.updateSubmitted'))
-      await pollUpdateStatus(jobId)
-      if (!updateStatus.value?.is_completed && !updateStatus.value?.error) {
+      const pollingReady = await pollUpdateStatus(jobId)
+      if (pollingReady && !updateStatus.value?.is_completed && !updateStatus.value?.error) {
+        stopUpdatePolling()
         updateTimer = setInterval(() => pollUpdateStatus(jobId), 3000)
       }
     } catch (error) {
@@ -289,8 +321,9 @@ export function useDashboardV2() {
   async function resumeUpdatePolling() {
     const jobId = sessionStorage.getItem('dstUpdateSessionName')
     if (!jobId) return
-    await pollUpdateStatus(jobId)
-    if (!updateStatus.value?.is_completed && !updateStatus.value?.error) {
+    const pollingReady = await pollUpdateStatus(jobId)
+    if (pollingReady && !updateStatus.value?.is_completed && !updateStatus.value?.error) {
+      stopUpdatePolling()
       updateTimer = setInterval(() => pollUpdateStatus(jobId), 3000)
     }
   }

@@ -67,7 +67,8 @@ export const gameReleaseMessages = {
       feedback: {
         historyFailed: '读取发布记录失败：{error}', previewReady: '发布计划已生成', previewFailed: '生成发布计划失败：{error}',
         submitted: '版本发布任务已提交', submitFailed: '提交版本发布失败：{error}', retrySubmitted: '重试任务已提交',
-        retryFailed: '提交重试失败：{error}', detailsFailed: '读取发布详情失败：{error}', taskFailed: '发布任务失败：{error}'
+        retryFailed: '提交重试失败：{error}', detailsFailed: '读取发布详情失败：{error}', taskFailed: '发布任务失败：{error}',
+        invalidJobResponse: '后端未返回可跟踪的发布任务', completionUnconfirmed: '发布任务已结束，但连续多次未能读取对应发布记录；请刷新发布历史并核对恢复状态'
       }
     }
   },
@@ -139,7 +140,8 @@ export const gameReleaseMessages = {
       feedback: {
         historyFailed: 'Failed to load release history: {error}', previewReady: 'Release plan created', previewFailed: 'Failed to build release plan: {error}',
         submitted: 'Game release job submitted', submitFailed: 'Failed to submit game release: {error}', retrySubmitted: 'Retry job submitted',
-        retryFailed: 'Failed to submit retry: {error}', detailsFailed: 'Failed to load release details: {error}', taskFailed: 'Release job failed: {error}'
+        retryFailed: 'Failed to submit retry: {error}', detailsFailed: 'Failed to load release details: {error}', taskFailed: 'Release job failed: {error}',
+        invalidJobResponse: 'The backend did not return a trackable release job', completionUnconfirmed: 'The release job ended, but its release record could not be read after repeated attempts. Refresh release history and verify recovery state.'
       }
     }
   }

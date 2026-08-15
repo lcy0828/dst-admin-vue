@@ -59,6 +59,12 @@ const taskError = ref('')
 const confirmOpen = ref(false)
 let pollTimer = 0
 let requestSequence = 0
+let historyLoadingSequence = 0
+let previewRequestSequence = 0
+let detailsRequestSequence = 0
+let pollGeneration = 0
+let pollReadFailures = 0
+let pollConfirmationMisses = 0
 
 const planInstallations = computed(() => plan.value?.installations || [])
 const planBlockers = computed(() => plan.value?.blockers || [])
@@ -69,6 +75,8 @@ const canPreview = computed(() => !previewing.value && !publishing.value && !act
 const canPublish = computed(() => Boolean(plan.value?.ready && plan.value?.updateRequired && plan.value?.planHash) && !publishing.value && !activeJobRunning.value)
 
 watch([desiredVersion, () => policy.cleanCache, () => policy.restartRunning, () => policy.loadConfirmation, () => policy.timeoutSeconds], () => {
+  previewRequestSequence += 1
+  previewing.value = false
   plan.value = null
 })
 
@@ -149,34 +157,42 @@ function releaseError(job) {
 
 async function loadHistory(options = {}) {
   const sequence = ++requestSequence
-  if (!options.quiet) loading.value = true
-  loadError.value = ''
+  if (!options.quiet) {
+    historyLoadingSequence = sequence
+    loading.value = true
+  }
   try {
     const response = await gameReleasesV2API.list({ limit: 50, offset: 0 })
     if (sequence !== requestSequence) return releases.value
     releases.value = Array.isArray(response?.items) ? response.items : []
+    loadError.value = ''
     return releases.value
   } catch (error) {
     if (sequence === requestSequence) loadError.value = error.message || t('common.errors.unknown')
     if (!options.quiet) toast.error(t('gameReleases.feedback.historyFailed', { error: error.message || t('common.errors.unknown') }))
     return releases.value
   } finally {
-    if (!options.quiet && sequence === requestSequence) loading.value = false
+    if (!options.quiet && historyLoadingSequence === sequence) loading.value = false
   }
 }
 
 async function previewRelease() {
   if (!canPreview.value) return
+  const sequence = ++previewRequestSequence
+  const request = releaseRequest()
   previewing.value = true
   taskError.value = ''
   try {
-    plan.value = await gameReleasesV2API.preview(releaseRequest())
+    const value = await gameReleasesV2API.preview(request)
+    if (sequence !== previewRequestSequence) return
+    plan.value = value
     toast.success(t('gameReleases.feedback.previewReady'))
   } catch (error) {
+    if (sequence !== previewRequestSequence) return
     taskError.value = error.message || t('common.errors.unknown')
     toast.error(t('gameReleases.feedback.previewFailed', { error: taskError.value }))
   } finally {
-    previewing.value = false
+    if (sequence === previewRequestSequence) previewing.value = false
   }
 }
 
@@ -194,6 +210,7 @@ async function publishRelease() {
       planHash: plan.value.planHash,
       confirmation: plan.value.planHash
     })
+    if (!job?.id) throw new Error(t('gameReleases.feedback.invalidJobResponse'))
     confirmOpen.value = false
     toast.success(t('gameReleases.feedback.submitted'))
     startPolling(job)
@@ -207,13 +224,16 @@ async function publishRelease() {
 
 async function openDetails(release) {
   if (!release?.id) return
+  const sequence = ++detailsRequestSequence
   detailsLoading.value = true
   try {
-    selectedRelease.value = await gameReleasesV2API.get(release.id)
+    const value = await gameReleasesV2API.get(release.id)
+    if (sequence === detailsRequestSequence) selectedRelease.value = value
   } catch (error) {
+    if (sequence !== detailsRequestSequence) return
     toast.error(t('gameReleases.feedback.detailsFailed', { error: error.message || t('common.errors.unknown') }))
   } finally {
-    detailsLoading.value = false
+    if (sequence === detailsRequestSequence) detailsLoading.value = false
   }
 }
 
@@ -223,6 +243,7 @@ async function retryRelease() {
   taskError.value = ''
   try {
     const job = await gameReleasesV2API.retry(selectedRelease.value.id)
+    if (!job?.id) throw new Error(t('gameReleases.feedback.invalidJobResponse'))
     toast.success(t('gameReleases.feedback.retrySubmitted'))
     startPolling(job, selectedRelease.value.id)
   } catch (error) {
@@ -236,15 +257,23 @@ async function retryRelease() {
 function startPolling(job, releaseId = '') {
   if (!job?.id) return
   stopPolling()
+  const generation = ++pollGeneration
+  pollReadFailures = 0
+  pollConfirmationMisses = 0
   activeJob.value = job
   sessionStorage.setItem(ACTIVE_RELEASE_KEY, JSON.stringify({ jobId: job.id, releaseId }))
-  pollActivity(job.id, releaseId)
+  void pollActivity(job.id, releaseId, generation)
 }
 
 function resumePolling() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(ACTIVE_RELEASE_KEY) || '{}')
-    if (saved.jobId) pollActivity(saved.jobId, saved.releaseId || '')
+    if (saved.jobId) {
+      const generation = ++pollGeneration
+      pollReadFailures = 0
+      pollConfirmationMisses = 0
+      void pollActivity(saved.jobId, saved.releaseId || '', generation)
+    }
   } catch {
     sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
   }
@@ -253,19 +282,38 @@ function resumePolling() {
 function stopPolling() {
   if (pollTimer) window.clearTimeout(pollTimer)
   pollTimer = 0
+  pollGeneration += 1
 }
 
-async function pollActivity(jobId, releaseId = '') {
-  stopPolling()
+function schedulePoll(jobId, releaseId, generation) {
+  if (generation !== pollGeneration) return
+  if (pollTimer) window.clearTimeout(pollTimer)
+  pollTimer = window.setTimeout(() => pollActivity(jobId, releaseId, generation), 1500)
+}
+
+async function pollActivity(jobId, releaseId = '', generation = pollGeneration) {
+  if (generation !== pollGeneration) return
+  if (pollTimer) window.clearTimeout(pollTimer)
+  pollTimer = 0
   try {
-    activeJob.value = await jobsV2API.get(jobId)
+    const job = await jobsV2API.get(jobId)
+    if (generation !== pollGeneration) return
+    activeJob.value = job
     const history = await loadHistory({ quiet: true })
+    if (generation !== pollGeneration) return
     const associated = releaseId
       ? history.find(item => item.id === releaseId)
       : gameReleaseFindByJob(history, jobId)
-    if (associated?.id) selectedRelease.value = await gameReleasesV2API.get(associated.id)
+    let associatedRelease = null
+    if (associated?.id) {
+      associatedRelease = await gameReleasesV2API.get(associated.id)
+      if (generation !== pollGeneration) return
+      selectedRelease.value = associatedRelease
+    }
 
-    const releaseDone = selectedRelease.value && gameReleaseIsTerminal(selectedRelease.value)
+    pollReadFailures = 0
+    taskError.value = ''
+    const releaseDone = associatedRelease && gameReleaseIsTerminal(associatedRelease)
     const jobDone = gameReleaseJobIsTerminal(activeJob.value)
     if (jobDone && (releaseDone || gameReleaseJobFailed(activeJob.value))) {
       sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
@@ -275,12 +323,26 @@ async function pollActivity(jobId, releaseId = '') {
       }
       return
     }
+    if (jobDone) {
+      pollConfirmationMisses += 1
+      if (pollConfirmationMisses >= 10) {
+        sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
+        taskError.value = t('gameReleases.feedback.completionUnconfirmed')
+        return
+      }
+    } else {
+      pollConfirmationMisses = 0
+    }
   } catch (error) {
+    if (generation !== pollGeneration) return
+    pollReadFailures += 1
     taskError.value = error.message || t('common.errors.unknown')
-    sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
-    return
+    if (pollReadFailures >= 5) {
+      sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
+      return
+    }
   }
-  pollTimer = window.setTimeout(() => pollActivity(jobId, releaseId), 1500)
+  schedulePoll(jobId, releaseId, generation)
 }
 </script>
 

@@ -37,7 +37,7 @@
         </AlertAction>
       </Alert>
 
-      <div v-if="loading" class="flex flex-col gap-3">
+      <div v-if="loading && !latestPublication && !plan" class="flex flex-col gap-3">
         <Skeleton class="h-5 w-48" />
         <Skeleton class="h-16 w-full" />
       </div>
@@ -325,24 +325,43 @@ const selectedPublication = ref(null)
 const statusDialogOpen = ref(false)
 let pollTimer = 0
 let requestSequence = 0
+let previewRequestSequence = 0
+let pollRequestSequence = 0
 
 const latestPublication = computed(() => publications.value[0] || null)
 const planTargets = computed(() => plan.value?.targets || [])
 const planWarnings = computed(() => plan.value?.warnings || [])
 const planBlockers = computed(() => plan.value?.blockers || [])
 const displayedRevision = computed(() => plan.value?.topologyRevision || topology.value?.revision || topology.value?.topologyRevision || latestPublication.value?.plan?.topologyRevision || '')
-const canPreview = computed(() => availability.value !== 'unavailable' && Boolean(props.roomId) && props.worlds.length > 0 && !loading.value && !previewing.value && !publishing.value)
+const canPreview = computed(() => availability.value !== 'unavailable' && Boolean(props.roomId) && Boolean(topology.value) && props.worlds.length > 0 && !loading.value && !previewing.value && !publishing.value)
 const canPublish = computed(() => Boolean(plan.value?.ready && plan.value?.planHash) && !publishing.value && !previewing.value)
 const canRetrySelected = computed(() => ['failed', 'recovery_required', 'rolled_back'].includes(String(selectedPublication.value?.status || '').toLowerCase()))
 const canActivateSelected = computed(() => publicationCanActivate(selectedPublication.value))
 
 watch(() => props.roomId, () => {
+  requestSequence += 1
+  previewRequestSequence += 1
+  previewing.value = false
   plan.value = null
+  publications.value = []
+  topology.value = null
+  availability.value = 'unknown'
+  errorMessage.value = ''
+  loading.value = false
   selectedPublication.value = null
   statusDialogOpen.value = false
   stopPolling()
   loadPublicationState()
 }, { immediate: true })
+
+watch([
+  () => props.worlds.map(world => world.id).join(','),
+  () => props.mods.map(mod => mod.modid || mod.id).join(','),
+], () => {
+  previewRequestSequence += 1
+  previewing.value = false
+  plan.value = null
+})
 
 onBeforeUnmount(stopPolling)
 
@@ -385,36 +404,54 @@ async function loadPublicationState() {
   }
   loading.value = true
   errorMessage.value = ''
-  const [listResult, topologyResult] = await Promise.allSettled([
-    modApi.listModPublications({ roomId: props.roomId, limit: 10 }),
-    modApi.getRoomTopology(props.roomId)
-  ])
-  if (sequence !== requestSequence) return
-  if (topologyResult.status === 'fulfilled') topology.value = topologyResult.value
-  if (listResult.status === 'fulfilled') {
-    availability.value = 'available'
-    const value = listResult.value
-    publications.value = Array.isArray(value) ? value : value.items || value.publications || []
-  } else if (isModPublicationUnavailable(listResult.reason)) {
-    availability.value = 'unavailable'
-    publications.value = []
-  } else {
-    availability.value = 'available'
-    errorMessage.value = listResult.reason?.message || t('mods.publication.errors.unknown')
+  try {
+    const [listResult, topologyResult] = await Promise.allSettled([
+      modApi.listModPublications({ roomId: props.roomId, limit: 10 }),
+      modApi.getRoomTopology(props.roomId)
+    ])
+    if (sequence !== requestSequence) return false
+    const failures = []
+    if (topologyResult.status === 'fulfilled') topology.value = topologyResult.value
+    else failures.push(t('mods.publication.feedback.topologyLoadFailed', {
+      error: topologyResult.reason?.message || t('mods.publication.errors.unknown')
+    }))
+    if (listResult.status === 'fulfilled') {
+      availability.value = 'available'
+      const value = listResult.value
+      publications.value = Array.isArray(value) ? value : value.items || value.publications || []
+    } else if (isModPublicationUnavailable(listResult.reason)) {
+      availability.value = 'unavailable'
+      publications.value = []
+    } else {
+      availability.value = 'available'
+      failures.push(listResult.reason?.message || t('mods.publication.errors.unknown'))
+    }
+    errorMessage.value = failures.join('; ')
+    return failures.length === 0
+  } catch (error) {
+    if (sequence !== requestSequence) return false
+    errorMessage.value = error.message || t('mods.publication.errors.unknown')
+    return false
+  } finally {
+    if (sequence === requestSequence) loading.value = false
   }
-  loading.value = false
 }
 
 async function previewPublication() {
   if (!canPreview.value) return null
+  const sequence = ++previewRequestSequence
+  const input = publicationInput()
   previewing.value = true
   errorMessage.value = ''
   try {
-    plan.value = normalizePlan(await modApi.previewModPublication(publicationInput()))
+    const value = normalizePlan(await modApi.previewModPublication(input))
+    if (sequence !== previewRequestSequence) return null
+    plan.value = value
     availability.value = 'available'
     toast.success(t('mods.publication.feedback.previewReady'))
     return plan.value
   } catch (error) {
+    if (sequence !== previewRequestSequence) return null
     if (isModPublicationUnavailable(error)) {
       availability.value = 'unavailable'
       return null
@@ -423,7 +460,7 @@ async function previewPublication() {
     toast.error(t('mods.publication.feedback.previewFailed', { error: errorMessage.value }))
     return null
   } finally {
-    previewing.value = false
+    if (sequence === previewRequestSequence) previewing.value = false
   }
 }
 
@@ -438,12 +475,11 @@ async function publishPlan() {
       expectedTopologyRevision: plan.value.topologyRevision || displayedRevision.value,
       confirmation: plan.value.planHash
     }))
-    if (publication) {
-      selectedPublication.value = publication
-      publications.value = [publication, ...publications.value.filter(item => item.id !== publication.id)]
-      statusDialogOpen.value = true
-      startPolling(publication)
-    }
+    if (!publication?.id) throw new Error(t('mods.publication.errors.resultMissing'))
+    selectedPublication.value = publication
+    publications.value = [publication, ...publications.value.filter(item => item.id !== publication.id)]
+    statusDialogOpen.value = true
+    startPolling(publication)
     plan.value = null
     emit('published', publication)
     toast.success(t('mods.publication.feedback.submitted'))
@@ -468,6 +504,7 @@ function startPolling(publication) {
 }
 
 function stopPolling() {
+  pollRequestSequence += 1
   if (pollTimer) window.clearTimeout(pollTimer)
   pollTimer = 0
 }
@@ -475,12 +512,16 @@ function stopPolling() {
 async function refreshSelectedPublication() {
   const publicationId = selectedPublication.value?.id
   if (!publicationId) return
+  const sequence = ++pollRequestSequence
   try {
     const publication = normalizePublication(await modApi.getModPublication(publicationId))
+    if (sequence !== pollRequestSequence || selectedPublication.value?.id !== publicationId) return
+    if (!publication?.id) throw new Error(t('mods.publication.errors.resultMissing'))
     selectedPublication.value = publication
     publications.value = [publication, ...publications.value.filter(item => item.id !== publication.id)]
     startPolling(publication)
   } catch (error) {
+    if (sequence !== pollRequestSequence) return
     errorMessage.value = error.message || t('mods.publication.errors.unknown')
   }
 }
@@ -490,6 +531,7 @@ async function retryFailed() {
   retrying.value = true
   try {
     const publication = normalizePublication(await modApi.retryModPublication(selectedPublication.value.id))
+    if (!publication?.id) throw new Error(t('mods.publication.errors.resultMissing'))
     selectedPublication.value = publication
     publications.value = [publication, ...publications.value.filter(item => item.id !== publication.id)]
     startPolling(publication)
@@ -506,6 +548,7 @@ async function activateSelected() {
   activating.value = true
   try {
     const publication = normalizePublication(await modApi.activateModPublication(selectedPublication.value.id))
+    if (!publication?.id) throw new Error(t('mods.publication.errors.resultMissing'))
     selectedPublication.value = publication
     publications.value = [publication, ...publications.value.filter(item => item.id !== publication.id)]
     startPolling(publication)

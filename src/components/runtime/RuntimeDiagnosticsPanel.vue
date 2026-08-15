@@ -134,6 +134,8 @@ const eventsError = ref(null)
 const diagnostic = ref(null)
 const diagnosticError = ref(null)
 const capturing = ref(false)
+let eventsRequestSequence = 0
+let diagnosticRequestSequence = 0
 const profiles = ['summary', 'prefab', 'performance']
 const form = reactive({ profile: 'summary', prefab: '', sampleLimit: 10, durationSeconds: 3 })
 const events = computed(() => eventBatch.value?.events || [])
@@ -150,46 +152,58 @@ function compactJSON(value) {
 }
 async function loadEvents() {
   if (!props.roomId || !props.worldId) return
+  const sequence = ++eventsRequestSequence
   eventsLoading.value = true
   eventsError.value = null
   try {
-    eventBatch.value = await runtimeV2API.events(props.roomId, props.worldId)
+    const value = await runtimeV2API.events(props.roomId, props.worldId)
+    if (sequence === eventsRequestSequence) eventBatch.value = value
   } catch (cause) {
-    eventsError.value = cause
-    eventBatch.value = null
+    if (sequence === eventsRequestSequence) eventsError.value = cause
   } finally {
-    eventsLoading.value = false
+    if (sequence === eventsRequestSequence) eventsLoading.value = false
   }
 }
 async function loadLatestDiagnostic() {
   if (!props.roomId || !props.worldId) return
+  const sequence = ++diagnosticRequestSequence
   diagnosticError.value = null
   try {
-    diagnostic.value = await runtimeV2API.latestDiagnostic(props.roomId, props.worldId)
+    const value = await runtimeV2API.latestDiagnostic(props.roomId, props.worldId)
+    if (sequence === diagnosticRequestSequence) diagnostic.value = value
   } catch (cause) {
-    diagnostic.value = null
-    if (!['RUNTIME_RESULT_NOT_FOUND', 'RESOURCE_NOT_FOUND'].includes(cause.code)) diagnosticError.value = cause
+    if (sequence !== diagnosticRequestSequence) return
+    if (['RUNTIME_RESULT_NOT_FOUND', 'RESOURCE_NOT_FOUND'].includes(cause.code)) diagnostic.value = null
+    else diagnosticError.value = cause
   }
 }
 async function captureDiagnostic() {
   if (!canCapture.value) return
+  const sequence = ++diagnosticRequestSequence
   capturing.value = true
   diagnosticError.value = null
   try {
     const input = { profile: form.profile }
     if (form.profile === 'prefab') Object.assign(input, { prefab: form.prefab.trim(), sampleLimit: Number(form.sampleLimit) })
     if (form.profile === 'performance') input.durationSeconds = Number(form.durationSeconds)
-    diagnostic.value = await runtimeV2API.captureDiagnostic(props.roomId, props.worldId, input)
+    const value = await runtimeV2API.captureDiagnostic(props.roomId, props.worldId, input)
+    if (sequence !== diagnosticRequestSequence) return
+    diagnostic.value = value
     toast.success(t('runtime.diagnostics.captureSucceeded'))
   } catch (cause) {
+    if (sequence !== diagnosticRequestSequence) return
     diagnosticError.value = cause
     toast.error(t('runtime.diagnostics.captureFailed', { error: cause.message }))
   } finally {
-    capturing.value = false
+    if (sequence === diagnosticRequestSequence) capturing.value = false
   }
 }
 
 watch(() => [props.roomId, props.worldId], ([roomId, worldId]) => {
+  eventsRequestSequence += 1
+  diagnosticRequestSequence += 1
+  eventsLoading.value = false
+  capturing.value = false
   eventBatch.value = null
   diagnostic.value = null
   eventsError.value = null

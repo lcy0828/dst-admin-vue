@@ -92,7 +92,6 @@ async function loadEvents() {
   } catch (cause) {
     if (sequence !== loadSequence || props.roomId !== roomId) return
     error.value = cause
-    result.value = { items: [], total: 0 }
   } finally {
     if (sequence === loadSequence) loading.value = false
   }

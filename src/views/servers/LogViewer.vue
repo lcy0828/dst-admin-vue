@@ -6,8 +6,9 @@
         <span class="log-subtitle">{{ subtitle }}</span>
       </div>
       <div class="log-actions">
-        <UiButton size="sm" @click="refreshLogs">
-          <RefreshCw data-icon="inline-start" />
+        <UiButton size="sm" :disabled="loading" @click="refreshLogs">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
           {{ $t('common.actions.refresh') }}
         </UiButton>
         <UiButton size="sm" variant="outline" @click="downloadLogs">
@@ -55,7 +56,7 @@
       </Empty>
       
       <div v-else class="log-content" ref="logContent">
-        <div v-if="loading" class="log-loading">
+        <div v-if="loading && logs.length === 0" class="log-loading">
           <Spinner />
           <span>{{ $t('servers.liveLogs.viewer.connecting') }}</span>
         </div>
@@ -135,6 +136,7 @@ export default {
       eventSource: null,
       resolvedRoomId: '',
       resolvedWorldId: '',
+      displayedTargetKey: '',
       requestSequence: 0
     };
   },
@@ -155,7 +157,9 @@ export default {
     handleRuntimeTargetChange() {
       this.requestSequence += 1;
       this.closeEventSource();
+      this.loading = false;
       this.logs = [];
+      this.displayedTargetKey = '';
       this.refreshLogs();
     },
     formatWorldType(type) {
@@ -191,17 +195,22 @@ export default {
       }
 
       const requestSequence = ++this.requestSequence;
+      const requestedTargetKey = `${this.archiveName}:${this.selectedWorld}`;
+      const targetChanged = requestedTargetKey !== this.displayedTargetKey;
       this.loading = true;
       this.streamError = '';
-      this.logs = [];
-      this.resolvedRoomId = '';
-      this.resolvedWorldId = '';
+      if (targetChanged) {
+        this.logs = [];
+        this.resolvedRoomId = '';
+        this.resolvedWorldId = '';
+      }
       this.closeEventSource();
 
       try {
         const target = await this.resolveLogTarget();
         const snapshot = await worldLogsV2API.snapshot(target.roomId, target.worldId, { limit: 300 });
         if (requestSequence !== this.requestSequence) return;
+        this.displayedTargetKey = requestedTargetKey;
         this.renderSnapshot(snapshot);
         this.connectEventSource(target.roomId, target.worldId, requestSequence);
       } catch (error) {
