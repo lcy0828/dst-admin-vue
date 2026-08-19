@@ -13,7 +13,7 @@
           <ListChecks data-icon="inline-start" />
           {{ t('topology.batch.open') }}
         </UiButton>
-        <UiButton variant="outline" :disabled="loading || !selectedRoomId" @click="loadTopology">
+        <UiButton variant="outline" :disabled="loading || provisionRunning || !selectedRoomId" @click="loadTopology">
           <Spinner v-if="loading" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
           {{ t('common.actions.refresh') }}
@@ -198,10 +198,20 @@
                 <TableCell>
                   <div class="flex justify-end">
                     <UiButton
-                      v-if="placement.desiredTargetId !== placement.appliedTargetId"
+                      v-if="isProvisionPlacement(placement)"
                       size="sm"
                       variant="outline"
-                      :disabled="isDirty || migrationRunning"
+                      :disabled="isDirty || migrationRunning || provisionRunning || !canProvision"
+                      @click="openProvisionDialog"
+                    >
+                      <Upload data-icon="inline-start" />
+                      {{ t('topology.provision.action') }}
+                    </UiButton>
+                    <UiButton
+                      v-else-if="placement.desiredTargetId !== placement.appliedTargetId"
+                      size="sm"
+                      variant="outline"
+                      :disabled="isDirty || migrationRunning || provisionRunning"
                       @click="openMigrationDialog(placement)"
                     >
                       <MoveRight data-icon="inline-start" />
@@ -210,6 +220,63 @@
                     <span v-else class="text-sm text-muted-foreground">--</span>
                   </div>
                 </TableCell>
+              </TableRow>
+            </TableBody>
+          </UiTable>
+        </div>
+      </section>
+
+      <Alert v-if="provisionOperationsError">
+        <CircleAlert />
+        <AlertTitle>{{ t('topology.provision.operationsLoadFailedTitle') }}</AlertTitle>
+        <AlertDescription>{{ provisionOperationsError }}</AlertDescription>
+      </Alert>
+
+      <section v-if="latestProvisionOperation" class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-provision-operation-title">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 id="topology-provision-operation-title" class="text-base font-semibold">{{ t('topology.provision.operationTitle') }}</h2>
+              <Badge :variant="provisionStatusVariant(latestProvisionOperation.status)">{{ provisionStatusLabel(latestProvisionOperation.status) }}</Badge>
+              <Badge variant="outline">{{ provisionPhaseLabel(latestProvisionOperation.phase) }}</Badge>
+            </div>
+            <p class="mt-0.5 text-sm text-muted-foreground">{{ t('topology.provision.operationDescription', { time: formatTime(latestProvisionOperation.updatedAt) }) }}</p>
+          </div>
+          <UiButton
+            v-if="latestProvisionOperation.status === 'recovery_required'"
+            size="sm"
+            variant="outline"
+            :disabled="provisionRunning || migrationRunning"
+            @click="recoverProvision(latestProvisionOperation)"
+          >
+            <Spinner v-if="recoveringProvisionId === latestProvisionOperation.id" data-icon="inline-start" />
+            <History v-else data-icon="inline-start" />
+            {{ t('topology.provision.recover') }}
+          </UiButton>
+        </div>
+        <Alert v-if="latestProvisionOperation.failure" :variant="latestProvisionOperation.status === 'recovery_required' || latestProvisionOperation.status === 'failed' ? 'destructive' : 'default'">
+          <TriangleAlert />
+          <AlertTitle>{{ t('topology.provision.operationFailure') }}</AlertTitle>
+          <AlertDescription>{{ latestProvisionOperation.failure }}</AlertDescription>
+        </Alert>
+        <div class="overflow-x-auto rounded-lg border">
+          <UiTable class="min-w-[860px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>{{ t('topology.provision.columns.world') }}</TableHead>
+                <TableHead>{{ t('topology.provision.columns.target') }}</TableHead>
+                <TableHead>{{ t('topology.provision.columns.phase') }}</TableHead>
+                <TableHead>{{ t('topology.provision.columns.size') }}</TableHead>
+                <TableHead>{{ t('topology.provision.columns.updatedAt') }}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow v-for="step in latestProvisionOperation.steps || []" :key="step.id">
+                <TableCell><div class="flex min-w-40 flex-col gap-1"><span class="font-medium">{{ step.worldName }}</span><span class="font-mono text-xs text-muted-foreground">{{ step.shard }}</span></div></TableCell>
+                <TableCell><div class="flex min-w-44 flex-col gap-1"><span>{{ targetName(step.targetId) }}</span><span class="font-mono text-xs text-muted-foreground">{{ step.targetId }}</span></div></TableCell>
+                <TableCell><div class="flex min-w-32 flex-col items-start gap-1"><Badge :variant="provisionStepVariant(step.phase)">{{ provisionStepLabel(step.phase) }}</Badge><span v-if="step.failure" class="text-xs text-destructive">{{ step.failure }}</span></div></TableCell>
+                <TableCell class="tabular-nums">{{ formatBytes(step.size) }}</TableCell>
+                <TableCell class="min-w-40 text-xs text-muted-foreground">{{ formatTime(step.updatedAt) }}</TableCell>
               </TableRow>
             </TableBody>
           </UiTable>
@@ -396,6 +463,40 @@
       </DialogContent>
     </Dialog>
 
+    <Dialog v-model:open="provisionDialogOpen">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ t('topology.provision.title') }}</DialogTitle>
+          <DialogDescription>{{ t('topology.provision.description', { count: provisionablePlacements.length }) }}</DialogDescription>
+        </DialogHeader>
+        <Alert>
+          <Upload />
+          <AlertTitle>{{ t('topology.provision.scopeTitle') }}</AlertTitle>
+          <AlertDescription>{{ t('topology.provision.scopeDescription') }}</AlertDescription>
+        </Alert>
+        <Alert>
+          <TriangleAlert />
+          <AlertTitle>{{ t('topology.provision.stoppedTitle') }}</AlertTitle>
+          <AlertDescription>{{ t('topology.provision.stoppedDescription') }}</AlertDescription>
+        </Alert>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(provisionConfirmation) && provisionConfirmation !== selectedRoom?.name">
+            <FieldLabel for="provision-confirmation">{{ t('topology.provision.confirmation') }}</FieldLabel>
+            <UiInput id="provision-confirmation" v-model="provisionConfirmation" autocomplete="off" :placeholder="selectedRoom?.name || ''" :aria-invalid="Boolean(provisionConfirmation) && provisionConfirmation !== selectedRoom?.name" />
+            <FieldDescription>{{ t('topology.provision.confirmationDescription', { room: selectedRoom?.name || '--' }) }}</FieldDescription>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" :disabled="provisionRunning" @click="provisionDialogOpen = false">{{ t('common.actions.cancel') }}</UiButton>
+          <UiButton :disabled="provisionRunning || provisionConfirmation !== selectedRoom?.name || !canProvision" @click="provisionRoom">
+            <Spinner v-if="provisionRunning" data-icon="inline-start" />
+            <Upload v-else data-icon="inline-start" />
+            {{ t('topology.provision.confirm') }}
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     <AlertDialog v-model:open="overcommitOpen">
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -418,7 +519,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { CircleAlert, CircleCheck, Cpu, Info, ListChecks, MoveRight, Network, Play, RefreshCw, RotateCw, Save, ScanSearch, Square, TriangleAlert } from '@lucide/vue'
+import { CircleAlert, CircleCheck, Cpu, History, Info, ListChecks, MoveRight, Network, Play, RefreshCw, RotateCw, Save, ScanSearch, Square, TriangleAlert, Upload } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { topologyV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
@@ -484,6 +585,12 @@ const migrationDialogOpen = ref(false)
 const migrationPlacement = ref(null)
 const migrationConfirmation = ref('')
 const migrationRunning = ref(false)
+const provisionDialogOpen = ref(false)
+const provisionConfirmation = ref('')
+const provisionRunning = ref(false)
+const provisionOperations = ref([])
+const provisionOperationsError = ref('')
+const recoveringProvisionId = ref('')
 const overcommitOpen = ref(false)
 const batchOpen = ref(false)
 const batchLoadingRooms = ref(false)
@@ -509,6 +616,17 @@ const completeDraft = computed(() => {
   return topology.value.placements.every(placement => Boolean(draftPlacements.value[placement.worldId]))
 })
 const canSubmit = computed(() => isDirty.value && completeDraft.value && !loading.value && !previewing.value && !saving.value)
+const pendingPlacements = computed(() => (topology.value?.placements || []).filter(placement => placement.desiredTargetId !== placement.appliedTargetId))
+const provisionablePlacements = computed(() => pendingPlacements.value.filter(isProvisionPlacement))
+const canProvision = computed(() => (
+  !isDirty.value &&
+  pendingPlacements.value.length > 0 &&
+  pendingPlacements.value.length === provisionablePlacements.value.length &&
+  !loading.value &&
+  !migrationRunning.value &&
+  !provisionRunning.value
+))
+const latestProvisionOperation = computed(() => provisionOperations.value[0] || null)
 const selectedBatchRoomCount = computed(() => batchRooms.value.filter(room => selectedBatchWorlds(room).length > 0).length)
 const selectedBatchWorldCount = computed(() => batchRooms.value.reduce((count, room) => count + selectedBatchWorlds(room).length, 0))
 const batchActionIcon = computed(() => ({ start: Play, stop: Square, restart: RotateCw, save: Save }[batchAction.value] || Play))
@@ -560,6 +678,8 @@ async function loadRooms() {
       await loadTopology()
     } else {
       setTopology(null)
+      provisionOperations.value = []
+      provisionOperationsError.value = ''
     }
     return true
   } catch (error) {
@@ -573,13 +693,24 @@ async function loadRooms() {
 
 async function loadTopology() {
   if (!selectedRoomId.value) return
+  const roomId = selectedRoomId.value
   const sequence = ++requestSequence
   loading.value = true
   topologyError.value = ''
+  provisionOperationsError.value = ''
   try {
-    const value = await topologyV2API.get(selectedRoomId.value)
+    const [topologyResult, operationsResult] = await Promise.allSettled([
+      topologyV2API.get(roomId),
+      topologyV2API.provisionOperations(roomId)
+    ])
     if (sequence !== requestSequence) return
-    setTopology(value)
+    if (operationsResult.status === 'fulfilled') {
+      provisionOperations.value = operationsResult.value.items || []
+    } else {
+      provisionOperationsError.value = operationsResult.reason?.message || t('common.errors.unknown')
+    }
+    if (topologyResult.status === 'rejected') throw topologyResult.reason
+    setTopology(topologyResult.value)
     return true
   } catch (error) {
     if (sequence !== requestSequence) return
@@ -658,6 +789,66 @@ function openMigrationDialog(placement) {
   migrationPlacement.value = placement
   migrationConfirmation.value = ''
   migrationDialogOpen.value = true
+}
+
+function isLocalTarget(targetId) {
+  return (topology.value?.targets || []).find(target => target.id === targetId)?.kind === 'local'
+}
+
+function isProvisionPlacement(placement) {
+  return Boolean(
+    placement &&
+    placement.desiredTargetId !== placement.appliedTargetId &&
+    isLocalTarget(placement.appliedTargetId) &&
+    !isLocalTarget(placement.desiredTargetId) &&
+    placement.state === 'shard_missing'
+  )
+}
+
+function openProvisionDialog() {
+  if (!canProvision.value) return
+  provisionConfirmation.value = ''
+  provisionDialogOpen.value = true
+}
+
+async function provisionRoom() {
+  if (!topology.value || !canProvision.value || provisionRunning.value || provisionConfirmation.value !== selectedRoom.value?.name) return
+  provisionRunning.value = true
+  try {
+    const submitted = await topologyV2API.provision(selectedRoomId.value, {
+      expectedRevision: topology.value.revision,
+      confirmation: provisionConfirmation.value
+    })
+    await waitForV2Job(submitted, 10 * 60 * 1000)
+    provisionDialogOpen.value = false
+    const refreshed = await loadTopology()
+    if (refreshed) toast.success(t('topology.provision.completed'))
+    else toast.warning(t('topology.provision.completedRefreshFailed'))
+  } catch (error) {
+    await loadTopology()
+    toast.error(t('topology.provision.failed', { error: error.message || t('common.errors.unknown') }))
+  } finally {
+    provisionRunning.value = false
+  }
+}
+
+async function recoverProvision(operation) {
+  if (!operation?.id || provisionRunning.value || migrationRunning.value) return
+  provisionRunning.value = true
+  recoveringProvisionId.value = operation.id
+  try {
+    const submitted = await topologyV2API.recoverProvisionOperation(operation.id)
+    await waitForV2Job(submitted, 10 * 60 * 1000)
+    const refreshed = await loadTopology()
+    if (refreshed) toast.success(t('topology.provision.recovered'))
+    else toast.warning(t('topology.provision.completedRefreshFailed'))
+  } catch (error) {
+    await loadTopology()
+    toast.error(t('topology.provision.recoverFailed', { error: error.message || t('common.errors.unknown') }))
+  } finally {
+    recoveringProvisionId.value = ''
+    provisionRunning.value = false
+  }
 }
 
 async function applyMigration() {
@@ -740,6 +931,32 @@ function placementVariant(state) {
   return 'outline'
 }
 
+function provisionStatusLabel(status) {
+  const key = ['running', 'succeeded', 'rolled_back', 'recovery_required', 'failed'].includes(status) ? status : 'unknown'
+  return t(`topology.provision.statuses.${key}`)
+}
+
+function provisionStatusVariant(status) {
+  if (status === 'succeeded') return 'secondary'
+  if (status === 'failed' || status === 'recovery_required') return 'destructive'
+  return 'outline'
+}
+
+function provisionPhaseLabel(phase) {
+  const key = ['planned', 'uploading', 'commit_decided', 'topology_committed', 'completed', 'rolled_back'].includes(phase) ? phase : 'unknown'
+  return t(`topology.provision.phases.${key}`)
+}
+
+function provisionStepLabel(phase) {
+  const key = ['not_started', 'planned', 'uploading', 'published', 'existing', 'completed', 'rolled_back'].includes(phase) ? phase : 'unknown'
+  return t(`topology.provision.stepPhases.${key}`)
+}
+
+function provisionStepVariant(phase) {
+  if (phase === 'completed' || phase === 'existing') return 'secondary'
+  return 'outline'
+}
+
 function roleLabel(role) {
   const key = ['master', 'caves', 'custom'].includes(role) ? role : 'unknown'
   return t(`topology.placements.roles.${key}`)
@@ -750,6 +967,19 @@ function formatTime(value) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return t('topology.time.unavailable')
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(date)
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0
+  if (bytes < 1024) return `${bytes} B`
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let amount = bytes
+  let index = -1
+  do {
+    amount /= 1024
+    index++
+  } while (amount >= 1024 && index < units.length - 1)
+  return `${amount.toFixed(amount >= 10 ? 1 : 2)} ${units[index]}`
 }
 
 async function openBatchDialog() {

@@ -35,9 +35,9 @@
     </FieldGroup>
 
     <Alert>
-      <Snowflake />
-      <AlertTitle>{{ t('distributed.backups.coldTitle') }}</AlertTitle>
-      <AlertDescription>{{ t('distributed.backups.coldDescription') }}</AlertDescription>
+      <DatabaseBackup />
+      <AlertTitle>{{ t('distributed.backups.modesTitle') }}</AlertTitle>
+      <AlertDescription>{{ t('distributed.backups.modesDescription') }}</AlertDescription>
     </Alert>
 
     <Alert v-if="error" variant="destructive">
@@ -71,11 +71,12 @@
     </Empty>
 
     <div v-else class="overflow-x-auto rounded-lg border">
-      <UiTable class="min-w-[980px]">
+      <UiTable class="min-w-[1080px]">
         <TableHeader>
           <TableRow>
             <TableHead>{{ t('distributed.backups.columns.name') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.status') }}</TableHead>
+            <TableHead>{{ t('distributed.backups.columns.mode') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.parts') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.size') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.running') }}</TableHead>
@@ -106,6 +107,7 @@
                 </UiButton>
               </div>
             </TableCell>
+            <TableCell><Badge variant="outline">{{ backupModeLabel(backupSet.mode) }}</Badge></TableCell>
             <TableCell>{{ t('distributed.backups.partCount', { verified: verifiedParts(backupSet), total: backupSet.parts?.length || 0 }) }}</TableCell>
             <TableCell>{{ formatBytes(backupSet.size) }}</TableCell>
             <TableCell>{{ backupSet.originalRunningWorlds?.length || 0 }}</TableCell>
@@ -133,23 +135,38 @@
           <DialogTitle>{{ t('distributed.backups.createDialog.title') }}</DialogTitle>
           <DialogDescription>{{ t('distributed.backups.createDialog.description') }}</DialogDescription>
         </DialogHeader>
-        <Alert>
-          <TriangleAlert />
-          <AlertTitle>{{ t('distributed.backups.createDialog.interruptionTitle') }}</AlertTitle>
-          <AlertDescription>{{ t('distributed.backups.createDialog.interruptionDescription') }}</AlertDescription>
-        </Alert>
         <FieldGroup>
+          <Field>
+            <FieldLabel>{{ t('distributed.backups.createDialog.mode') }}</FieldLabel>
+            <ToggleGroup type="single" :model-value="backupMode" variant="outline" class="grid grid-cols-2" @update:model-value="setBackupMode">
+              <ToggleGroupItem value="cold-consistent" class="w-full">
+                <Snowflake data-icon="inline-start" />
+                {{ t('distributed.backups.modes.cold') }}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="hot-consistent" class="w-full">
+                <Flame data-icon="inline-start" />
+                {{ t('distributed.backups.modes.hot') }}
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <FieldDescription>{{ t(`distributed.backups.createDialog.modeDescriptions.${backupModeKey}`) }}</FieldDescription>
+          </Field>
           <Field>
             <FieldLabel for="distributed-backup-name">{{ t('distributed.backups.createDialog.name') }}</FieldLabel>
             <UiInput id="distributed-backup-name" v-model="backupName" maxlength="128" :placeholder="t('distributed.backups.createDialog.namePlaceholder')" />
             <FieldDescription>{{ t('distributed.backups.createDialog.nameDescription') }}</FieldDescription>
           </Field>
         </FieldGroup>
+        <Alert>
+          <TriangleAlert v-if="backupMode === 'cold-consistent'" />
+          <Flame v-else />
+          <AlertTitle>{{ t(`distributed.backups.createDialog.requirementTitles.${backupModeKey}`) }}</AlertTitle>
+          <AlertDescription>{{ t(`distributed.backups.createDialog.requirementDescriptions.${backupModeKey}`) }}</AlertDescription>
+        </Alert>
         <DialogFooter>
           <UiButton variant="outline" :disabled="operationRunning" @click="createDialogOpen = false">{{ t('common.actions.cancel') }}</UiButton>
           <UiButton :disabled="operationRunning" @click="createSet">
             <Spinner v-if="operationRunning" data-icon="inline-start" />
-            {{ t('distributed.backups.createDialog.confirm') }}
+            {{ t(`distributed.backups.createDialog.confirm.${backupModeKey}`) }}
           </UiButton>
         </DialogFooter>
       </DialogContent>
@@ -171,21 +188,32 @@
             <AlertDescription>{{ selectedOperation.failure || t('distributed.backups.operationUpdatedAt', { time: formatTime(selectedOperation.updatedAt) }) }}</AlertDescription>
           </Alert>
           <dl class="grid gap-3 text-sm sm:grid-cols-3">
+            <div><dt class="text-muted-foreground">{{ t('distributed.backups.columns.mode') }}</dt><dd class="mt-1 font-medium">{{ backupModeLabel(selectedSet.mode) }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.manifest') }}</dt><dd class="mt-1 font-medium">v{{ selectedSet.manifestVersion }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.columns.size') }}</dt><dd class="mt-1 font-medium">{{ formatBytes(selectedSet.size) }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.files') }}</dt><dd class="mt-1 font-medium">{{ selectedSet.fileCount }}</dd></div>
             <div class="sm:col-span-3"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.topologyRevision') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedSet.topologyRevision }}</dd></div>
+            <div v-if="selectedSet.mode === 'hot-consistent'" class="sm:col-span-2"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.barrierId') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedSet.barrierId || '--' }}</dd></div>
+            <div v-if="selectedSet.mode === 'hot-consistent'"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.snapshot') }}</dt><dd class="mt-1 font-medium tabular-nums">{{ selectedSet.snapshot ?? '--' }}</dd></div>
             <div v-if="selectedOperation"><dt class="text-muted-foreground">{{ t('distributed.backups.operationPhase') }}</dt><dd class="mt-1 font-medium">{{ operationPhaseLabel(selectedOperation.phase) }}</dd></div>
             <div v-if="selectedOperation?.protectionSetId" class="sm:col-span-2"><dt class="text-muted-foreground">{{ t('distributed.backups.protectionSet') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedOperation.protectionSetId }}</dd></div>
           </dl>
           <div class="overflow-x-auto rounded-lg border">
-            <UiTable class="min-w-[720px]">
-              <TableHeader><TableRow><TableHead>{{ t('distributed.backups.partColumns.world') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.target') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.status') }}</TableHead><TableHead>{{ t('distributed.backups.columns.size') }}</TableHead><TableHead>SHA-256</TableHead></TableRow></TableHeader>
+            <UiTable class="min-w-[980px]">
+              <TableHeader><TableRow><TableHead>{{ t('distributed.backups.partColumns.world') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.target') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.status') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.barrier') }}</TableHead><TableHead>{{ t('distributed.backups.columns.size') }}</TableHead><TableHead>SHA-256</TableHead></TableRow></TableHeader>
               <TableBody>
                 <TableRow v-for="part in selectedSet.parts || []" :key="part.id">
                   <TableCell><div class="flex min-w-40 flex-col gap-1"><span class="font-medium">{{ part.worldName }}</span><span class="text-xs text-muted-foreground">{{ part.shard }}</span></div></TableCell>
                   <TableCell>{{ part.targetId }}</TableCell>
                   <TableCell><Badge :variant="partStatusVariant(part.status)">{{ partStatusLabel(part.status) }}</Badge></TableCell>
+                  <TableCell>
+                    <div v-if="selectedSet.mode === 'hot-consistent'" class="flex min-w-64 flex-col gap-1 text-xs">
+                      <span>{{ t('distributed.backups.detailsDialog.snapshotTransition', { before: part.snapshotBefore ?? '--', after: part.snapshotAfter ?? '--' }) }}</span>
+                      <span class="font-mono text-muted-foreground">{{ part.barrierSessionId || '--' }} · {{ part.barrierInstanceId || '--' }}</span>
+                      <span class="text-muted-foreground">{{ formatTime(part.barrierCompletedAt) }}</span>
+                    </div>
+                    <span v-else class="text-muted-foreground">--</span>
+                  </TableCell>
                   <TableCell>{{ formatBytes(part.size) }}</TableCell>
                   <TableCell class="max-w-56 truncate font-mono text-xs" :title="part.sha256">{{ part.sha256 || '--' }}</TableCell>
                 </TableRow>
@@ -230,7 +258,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CircleAlert, DatabaseBackup, Eye, History, RefreshCw, Snowflake, TriangleAlert } from '@lucide/vue'
+import { CircleAlert, DatabaseBackup, Eye, Flame, History, RefreshCw, Snowflake, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { backupSetsV2API, roomsV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
@@ -245,6 +273,7 @@ import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigg
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 const { locale, t } = useI18n()
 const rooms = ref([])
@@ -262,6 +291,7 @@ const createDialogOpen = ref(false)
 const detailsDialogOpen = ref(false)
 const restoreDialogOpen = ref(false)
 const backupName = ref('')
+const backupMode = ref('cold-consistent')
 const restoreConfirmation = ref('')
 const recoveringOperationId = ref('')
 let requestSequence = 0
@@ -270,6 +300,7 @@ let detailsRequestSequence = 0
 let loadedSetsRoomId = ''
 
 const recoveryOperations = computed(() => operations.value.filter(operation => operation.status === 'recovery_required'))
+const backupModeKey = computed(() => backupMode.value === 'hot-consistent' ? 'hot' : 'cold')
 const selectedOperation = computed(() => selectedSet.value ? latestOperation(selectedSet.value.id) : null)
 
 async function loadRooms() {
@@ -339,14 +370,19 @@ async function loadSets() {
 
 function openCreateDialog() {
   backupName.value = ''
+  backupMode.value = 'cold-consistent'
   createDialogOpen.value = true
+}
+
+function setBackupMode(value) {
+  if (value === 'cold-consistent' || value === 'hot-consistent') backupMode.value = value
 }
 
 async function createSet() {
   if (!selectedRoomId.value || operationRunning.value) return
   operationRunning.value = true
   try {
-    const job = await backupSetsV2API.create(selectedRoomId.value, backupName.value.trim())
+    const job = await backupSetsV2API.create(selectedRoomId.value, backupName.value.trim(), backupMode.value)
     await waitForV2Job(job, 10 * 60 * 1000)
     createDialogOpen.value = false
     const refreshed = await loadSets()
@@ -442,8 +478,12 @@ function operationStatusVariant(value) {
 }
 
 function operationPhaseLabel(value) {
-  const known = ['planned', 'stopping', 'staging', 'protecting', 'preparing', 'prepared', 'publishing', 'published', 'completing', 'completed', 'failed', 'rolled_back', 'recovered']
+  const known = ['planned', 'barrier_preparing', 'barrier_committing', 'barrier_waiting', 'stopping', 'staging', 'protecting', 'preparing', 'prepared', 'publishing', 'published', 'completing', 'completed', 'failed', 'rolled_back', 'recovered']
   return t(`distributed.backups.operationPhases.${known.includes(value) ? value : 'unknown'}`)
+}
+
+function backupModeLabel(value) {
+  return t(`distributed.backups.modes.${value === 'hot-consistent' ? 'hot' : 'cold'}`)
 }
 
 function setStatusLabel(value) {

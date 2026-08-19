@@ -223,6 +223,20 @@ export const topologyV2API = {
     `/rooms/${encode(roomId)}/topology/actions/apply`,
     input,
     { runtimeTarget: false }
+  ),
+  provision: (roomId, input) => client.post(
+    `/rooms/${encode(roomId)}/topology/actions/provision`,
+    input,
+    { runtimeTarget: false }
+  ),
+  provisionOperations: roomId => client.get(`/rooms/${encode(roomId)}/provision-operations`, {
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  recoverProvisionOperation: operationId => client.post(
+    `/provision-operations/${encode(operationId)}/actions/recover`,
+    {},
+    { runtimeTarget: false }
   )
 }
 
@@ -612,9 +626,9 @@ export const backupSetsV2API = {
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
-  create: (roomId, name = '') => client.post(
+  create: (roomId, name = '', mode = 'cold-consistent') => client.post(
     `/rooms/${encode(roomId)}/backup-sets`,
-    name ? { name } : {},
+    { ...(name ? { name } : {}), mode },
     { runtimeTarget: false }
   ),
   restore: (backupSetId, confirmation) => client.post(

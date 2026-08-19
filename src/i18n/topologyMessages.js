@@ -73,8 +73,8 @@ export const topologyMessages = {
         description: '同一服务器可以运行多个房间和多个世界分片。保守建议一颗物理核心最多运行一层世界，并额外为系统、Agent、SteamCMD 与备份至少预留 1 核；超出时可能卡顿。该规则只告警，不是硬限制或性能保证。'
       },
       planning: {
-        title: '先保存期望位置，再逐世界迁移',
-        description: '保存计划只更新期望位置，不移动文件。停止对应世界后，使用“迁移”执行校验、传输、原子切换和源端可恢复保留；成功后才更新当前生效节点。'
+        title: '先保存期望位置，再投放或迁移',
+        description: '保存计划只更新期望位置，不移动文件。首次把本机已接管房间放到远程节点时使用“投放配置”；已有远程分片换节点必须使用“迁移”。两者都只在校验和原子发布成功后更新当前生效节点。'
       },
       capacity: {
         title: '节点容量',
@@ -104,7 +104,7 @@ export const topologyMessages = {
       },
       placements: {
         title: '世界放置',
-        description: '离线但已配置的节点可以提前选择；保存后，在每个待迁移世界上执行迁移。',
+        description: '离线但已配置的节点可以提前选择。保存后，本机首次部署到缺少文件的远程节点使用“投放配置”；已有远程存档换节点使用“迁移”。',
         columns: {
           world: '世界',
           role: '角色',
@@ -145,6 +145,32 @@ export const topologyMessages = {
         completed: '世界迁移完成，生效 Placement 已更新',
         completedRefreshFailed: '世界迁移任务已完成，但最新拓扑读取失败，当前继续显示上次数据',
         failed: '世界迁移失败：{error}'
+      },
+      provision: {
+        action: '投放配置',
+        title: '向远程节点投放房间配置',
+        description: '将为当前房间的 {count} 个待投放分片创建目录与受管配置。',
+        scopeTitle: '只投放固定白名单配置',
+        scopeDescription: '仅包含 cluster.ini、Cluster Token、特殊名单、server.ini、世界生成配置、Mod 配置、customcommands.lua 与 DST Runtime 文件；不提供任意路径写入、任意文件上传或远程 Shell。传输采用分块哈希校验和原子发布。',
+        stoppedTitle: '房间全部世界必须已停止',
+        stoppedDescription: '投放会统一生成跨节点 cluster.ini，并在全部目标发布成功后一次性提交生效 Placement。任一分片仍在运行、目标已有同名分片或拓扑发生变化时都会拒绝执行。',
+        confirmation: '房间名确认',
+        confirmationDescription: '输入“{room}”确认投放整个房间的待执行配置。',
+        confirm: '开始投放',
+        operationTitle: '最近配置投放',
+        operationDescription: '持久化操作状态更新于 {time}。',
+        operationFailure: '投放未正常完成',
+        operationsLoadFailedTitle: '配置投放记录加载失败',
+        recover: '继续恢复',
+        columns: { world: '世界', target: '目标节点', phase: '阶段', size: '传输大小', updatedAt: '更新时间' },
+        statuses: { running: '执行中', succeeded: '已完成', rolled_back: '已回滚', recovery_required: '需要恢复', failed: '失败', unknown: '未知' },
+        phases: { planned: '已规划', uploading: '正在投放', commit_decided: '已决定提交', topology_committed: '拓扑已提交', completed: '已完成', rolled_back: '已回滚', unknown: '未知阶段' },
+        stepPhases: { not_started: '尚未派发', planned: '等待 Agent 确认', uploading: '正在上传', published: '已原子发布', existing: '已在生效节点', completed: '已完成清理', rolled_back: '已回滚', unknown: '未知阶段' },
+        completed: '房间配置已投放，生效 Placement 已统一更新',
+        completedRefreshFailed: '投放任务已结束，但最新拓扑或持久化操作状态读取失败，请刷新后复核',
+        failed: '配置投放失败：{error}',
+        recovered: '配置投放恢复已完成',
+        recoverFailed: '配置投放恢复仍未完成：{error}'
       },
       target: {
         local: '本机',
@@ -261,8 +287,8 @@ export const topologyMessages = {
         description: 'One server may run multiple rooms and Shards. Conservatively, run at most one Shard per physical core and reserve at least one additional core for the OS, Agent, SteamCMD, and backups. Exceeding this budget may cause lag. This is advisory, not a hard limit or a performance guarantee.'
       },
       planning: {
-        title: 'Save desired placement, then migrate each world',
-        description: 'Saving updates desired placement without moving files. Stop the world and use Migrate to validate, transfer, atomically activate, and retain recoverable source data. Applied placement changes only after success.'
+        title: 'Save desired placement, then provision or migrate',
+        description: 'Saving changes desired placement without moving files. Use Provision configuration for the first deployment of a locally managed room to remote nodes. Existing remote Shards must use Migrate. Applied placement changes only after verified atomic publication.'
       },
       capacity: {
         title: 'Node capacity',
@@ -292,7 +318,7 @@ export const topologyMessages = {
       },
       placements: {
         title: 'Shard placement',
-        description: 'Configured offline nodes may be selected in advance. After saving, run migration for each pending world.',
+        description: 'Configured offline nodes may be selected in advance. After saving, use Provision configuration for a first local-to-remote deployment with missing files, and Migrate for an existing remote save.',
         columns: {
           world: 'World',
           role: 'Role',
@@ -333,6 +359,32 @@ export const topologyMessages = {
         completed: 'World migrated and applied placement updated',
         completedRefreshFailed: 'The world migration completed, but the latest topology could not be loaded. The previous data remains visible.',
         failed: 'World migration failed: {error}'
+      },
+      provision: {
+        action: 'Provision configuration',
+        title: 'Provision room configuration to remote nodes',
+        description: 'Create directories and managed configuration for {count} pending Shards in this room.',
+        scopeTitle: 'Fixed configuration allowlist only',
+        scopeDescription: 'Only cluster.ini, the Cluster Token, special lists, server.ini, world-generation settings, Mod settings, customcommands.lua, and DST Runtime files are included. This does not expose arbitrary path writes, arbitrary uploads, or a remote shell. Transfers use chunk hashes and atomic publication.',
+        stoppedTitle: 'Every world in the room must be stopped',
+        stoppedDescription: 'Provisioning renders one cross-node cluster.ini and commits applied placement only after every target publishes successfully. A running Shard, an existing target Shard, or a topology change blocks the operation.',
+        confirmation: 'Room-name confirmation',
+        confirmationDescription: 'Enter "{room}" to provision all pending configuration for this room.',
+        confirm: 'Start provisioning',
+        operationTitle: 'Latest configuration provision',
+        operationDescription: 'Durable operation state updated at {time}.',
+        operationFailure: 'Provisioning did not complete normally',
+        operationsLoadFailedTitle: 'Failed to load provision operations',
+        recover: 'Continue recovery',
+        columns: { world: 'World', target: 'Target node', phase: 'Phase', size: 'Transfer size', updatedAt: 'Updated at' },
+        statuses: { running: 'Running', succeeded: 'Completed', rolled_back: 'Rolled back', recovery_required: 'Recovery required', failed: 'Failed', unknown: 'Unknown' },
+        phases: { planned: 'Planned', uploading: 'Provisioning', commit_decided: 'Commit decided', topology_committed: 'Topology committed', completed: 'Completed', rolled_back: 'Rolled back', unknown: 'Unknown phase' },
+        stepPhases: { not_started: 'Not dispatched', planned: 'Awaiting Agent confirmation', uploading: 'Uploading', published: 'Atomically published', existing: 'Already on applied target', completed: 'Cleanup complete', rolled_back: 'Rolled back', unknown: 'Unknown phase' },
+        completed: 'Room configuration provisioned and applied placement committed together',
+        completedRefreshFailed: 'The provision job ended, but the latest topology or durable operation state could not be loaded. Refresh and verify.',
+        failed: 'Configuration provisioning failed: {error}',
+        recovered: 'Configuration provisioning recovery completed',
+        recoverFailed: 'Configuration provisioning recovery is still incomplete: {error}'
       },
       target: {
         local: 'Local',

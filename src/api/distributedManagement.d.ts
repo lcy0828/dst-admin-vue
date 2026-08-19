@@ -64,6 +64,40 @@ export interface TopologyTarget {
   configured: boolean
 }
 
+export interface RoomProvisionStep {
+  id: string
+  operationId: string
+  worldId: string
+  worldName: string
+  targetId: string
+  installationId: string
+  cluster: string
+  shard: string
+  migrationId?: string
+  phase: 'not_started' | 'planned' | 'uploading' | 'published' | 'existing' | 'completed' | 'rolled_back'
+  size: number
+  sha256?: string
+  failure?: string
+  updatedAt: string
+}
+
+export interface RoomProvisionOperation {
+  id: string
+  roomId: string
+  roomName: string
+  topologyRevision: string
+  appliedRevision?: string
+  leaseId?: string
+  fencingToken: number
+  phase: string
+  status: 'running' | 'succeeded' | 'rolled_back' | 'recovery_required' | 'failed'
+  failure?: string
+  sourceJobId?: string
+  createdAt: string
+  updatedAt: string
+  steps: RoomProvisionStep[]
+}
+
 export interface RuntimeHealth {
   producerVersion: string
   producerInstanceId: string
@@ -337,6 +371,12 @@ export interface DistributedBackupPart {
   installationId: string
   cluster: string
   shard: string
+  barrierSessionId?: string
+  barrierShardId?: string
+  barrierInstanceId?: string
+  snapshotBefore?: number
+  snapshotAfter?: number
+  barrierCompletedAt?: string
   status: 'pending' | 'staging' | 'verified' | 'failed'
   size: number
   contentSize: number
@@ -351,9 +391,11 @@ export interface DistributedBackupSet {
   roomName: string
   name: string
   kind: 'manual' | 'protection'
-  mode: 'cold-consistent'
+  mode: 'cold-consistent' | 'hot-consistent'
   manifestVersion: number
   topologyRevision: string
+  barrierId?: string
+  snapshot?: number
   sharedSha256?: string
   status: 'creating' | 'verified' | 'partial' | 'failed' | 'corrupt'
   size: number
