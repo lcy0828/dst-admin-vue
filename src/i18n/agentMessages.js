@@ -146,8 +146,22 @@ export const agentMessages = {
         },
         runtime: {
           title: '远程运行时配置',
-          description: '保存此 Agent 的 DST 路径和兼容运行时。当前版本尚未开放房间、日志、备份等远程领域操作。',
+          description: '选择 Agent 已登记的 DST 安装，供房间投放、分片控制、日志、模组、更新和备份等远程操作使用。',
           scope: '配置作用域：仅此 Agent',
+          installation: 'DST 安装实例',
+          installationPlaceholder: '选择 Agent 上已登记的安装',
+          trustedInstallationDescription: '安装 ID 与路径由 Agent 配置提供并锁定；如需修改，请先更新 Agent 配置并重启 Agent。',
+          manualInstallationDescription: '旧版 Agent 未提供受信安装清单；升级前可手工填写，安装 ID 必须与 Agent 配置一致。',
+          noInstallationsTitle: 'Agent 未登记 DST 安装',
+          noInstallationsDescription: '该 Agent 已支持受信安装清单，但当前清单为空。请先在 Agent 配置中添加 runtime 安装并重启 Agent。',
+          legacyTitle: '兼容旧版 Agent 的手工配置',
+          legacyDescription: '当前 Agent 尚未上报受信安装清单。可继续手工配置，但建议升级到 2.5.2 或更高版本，以避免安装 ID 或路径不一致。',
+          staleInstallationTitle: '原配置与 Agent 清单不一致',
+          staleInstallationDescription: '原安装 ID 已不存在或路径发生变化。请重新选择已登记的安装并确认后保存。',
+          drivers: {
+            native: '裸机',
+            container: '容器'
+          },
           displayName: '显示名称',
           serverMode: '服务端模式',
           mode64: '64 位',
@@ -165,6 +179,7 @@ export const agentMessages = {
           saveConfig: '保存配置'
         },
         validation: {
+          installationId: '请选择或填写有效的 DST 安装实例',
           displayName: '请输入显示名称',
           savePath: '请输入远程存档路径',
           serverPath: '请输入远程服务端路径',
@@ -175,7 +190,7 @@ export const agentMessages = {
           loadFailed: '获取 Agent 列表失败',
           runtimeLoadFailedTitle: '远程运行时配置加载失败',
           runtimeLoadFailed: '无法读取远程运行时配置',
-          runtimeSaved: '远程路径配置已保存；远程领域操作尚未开放',
+          runtimeSaved: '远程运行时配置已保存',
           runtimeSavedRefreshFailed: '远程路径配置已保存，但刷新配置状态失败',
           runtimeSaveFailed: '保存远程运行时配置失败：{error}',
           runtimeRemoveConfirm: '确定移除“{name}”的远程运行时配置吗？',
@@ -540,8 +555,22 @@ export const agentMessages = {
         },
         runtime: {
           title: 'Remote runtime configuration',
-          description: 'Save this Agent\'s DST paths and compatible runtime. Remote room, log, and backup operations are not available yet.',
+          description: 'Select a DST installation registered by this Agent for remote provisioning, Shard control, logs, mods, updates, and backups.',
           scope: 'Scope: this Agent only',
+          installation: 'DST installation',
+          installationPlaceholder: 'Select a registered Agent installation',
+          trustedInstallationDescription: 'The Agent configuration owns and locks the installation ID and paths. Update the Agent configuration and restart it to change them.',
+          manualInstallationDescription: 'This older Agent does not provide a trusted installation registry. Manual values remain available until upgrade and must match its configuration.',
+          noInstallationsTitle: 'No DST installation is registered',
+          noInstallationsDescription: 'This Agent supports the trusted installation registry, but its registry is empty. Add a runtime installation to the Agent configuration and restart the Agent.',
+          legacyTitle: 'Manual compatibility for an older Agent',
+          legacyDescription: 'This Agent does not report a trusted installation registry yet. Manual configuration remains available, but upgrade to version 2.5.2 or later to prevent installation ID or path mismatches.',
+          staleInstallationTitle: 'The saved installation no longer matches',
+          staleInstallationDescription: 'The previous installation ID was removed or its paths changed. Select a registered installation, review it, and save again.',
+          drivers: {
+            native: 'Native',
+            container: 'Container'
+          },
           displayName: 'Display name',
           serverMode: 'Server mode',
           mode64: '64-bit',
@@ -559,6 +588,7 @@ export const agentMessages = {
           saveConfig: 'Save configuration'
         },
         validation: {
+          installationId: 'Select or enter a valid DST installation',
           displayName: 'Enter a display name',
           savePath: 'Enter the remote archive path',
           serverPath: 'Enter the remote server path',
@@ -569,7 +599,7 @@ export const agentMessages = {
           loadFailed: 'Unable to load the Agent list',
           runtimeLoadFailedTitle: 'Failed to load remote runtime configuration',
           runtimeLoadFailed: 'Unable to load remote runtime configuration',
-          runtimeSaved: 'Remote paths saved. Remote domain operations are not available yet.',
+          runtimeSaved: 'Remote runtime configuration saved',
           runtimeSavedRefreshFailed: 'Remote paths were saved, but the configuration status could not be refreshed.',
           runtimeSaveFailed: 'Failed to save remote runtime configuration: {error}',
           runtimeRemoveConfirm: 'Remove the remote runtime configuration for “{name}”?',

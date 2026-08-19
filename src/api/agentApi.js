@@ -1,5 +1,9 @@
 import { agentsV2API } from './v2'
-import { isLegacyCommandTerminal, normalizeAgentCommandTimeout } from './agentApiSupport.mjs'
+import {
+  isLegacyCommandTerminal,
+  normalizeAgentCommandTimeout,
+  normalizeAgentRuntimeInstallations
+} from './agentApiSupport.mjs'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 
 const success = (data, msg = 'data_loaded') => adapterSuccess(data, msg, {
@@ -59,6 +63,8 @@ function legacyAgent(agent = {}) {
     },
     metrics_stale: Boolean(agent.metricsStale),
     stale_reason: agent.staleReason || '',
+    installation_registry_supported: Boolean(agent.installationRegistrySupported),
+    installations: normalizeAgentRuntimeInstallations(agent.installations),
     metrics_observed_at: metrics.observedAt || agent.lastReportAt || '',
     uptime_seconds: metrics.uptimeSeconds || 0,
     user,

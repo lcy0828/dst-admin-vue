@@ -275,16 +275,54 @@
           <div class="flex min-w-0 items-baseline gap-2"><strong class="truncate">{{ runtimeAgent.hostname }}</strong><span class="text-xs text-muted-foreground">{{ runtimeAgent.os }} {{ runtimeAgent.arch }}</span></div>
           <Badge variant="outline">{{ $t('agents.list.runtime.scope') }}</Badge>
         </div>
+        <Alert v-if="runtimeRegistrySupported && runtimeInstallations.length === 0" variant="destructive">
+          <CircleAlert />
+          <AlertTitle>{{ $t('agents.list.runtime.noInstallationsTitle') }}</AlertTitle>
+          <AlertDescription>{{ $t('agents.list.runtime.noInstallationsDescription') }}</AlertDescription>
+        </Alert>
+        <Alert v-else-if="!runtimeRegistrySupported">
+          <TriangleAlert />
+          <AlertTitle>{{ $t('agents.list.runtime.legacyTitle') }}</AlertTitle>
+          <AlertDescription>{{ $t('agents.list.runtime.legacyDescription') }}</AlertDescription>
+        </Alert>
+        <Alert v-else-if="runtimeConfigured && !selectedRuntimeInstallation" variant="destructive">
+          <CircleAlert />
+          <AlertTitle>{{ $t('agents.list.runtime.staleInstallationTitle') }}</AlertTitle>
+          <AlertDescription>{{ $t('agents.list.runtime.staleInstallationDescription') }}</AlertDescription>
+        </Alert>
         <FieldGroup class="grid gap-4 sm:grid-cols-2">
+          <Field class="sm:col-span-2" :data-invalid="Boolean(runtimeErrors.installationId)">
+            <FieldLabel for="runtime-installation">{{ $t('agents.list.runtime.installation') }}</FieldLabel>
+            <UiSelect
+              v-if="runtimeRegistrySupported"
+              :model-value="runtimeForm.installationId"
+              :disabled="runtimeInstallations.length === 0"
+              @update:model-value="selectRuntimeInstallation"
+            >
+              <SelectTrigger id="runtime-installation" class="w-full" :aria-invalid="Boolean(runtimeErrors.installationId)">
+                <SelectValue :placeholder="$t('agents.list.runtime.installationPlaceholder')" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem v-for="installation in runtimeInstallations" :key="installation.id" :value="installation.id">
+                    {{ installation.id }} · {{ installationDriverLabel(installation.driver) }}
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
+            <UiInput v-else id="runtime-installation" v-model="runtimeForm.installationId" maxlength="64" :aria-invalid="Boolean(runtimeErrors.installationId)" />
+            <FieldDescription>{{ runtimeRegistrySupported ? $t('agents.list.runtime.trustedInstallationDescription') : $t('agents.list.runtime.manualInstallationDescription') }}</FieldDescription>
+            <FieldError v-if="runtimeErrors.installationId">{{ $t(runtimeErrors.installationId) }}</FieldError>
+          </Field>
           <Field :data-invalid="Boolean(runtimeErrors.displayName)"><FieldLabel for="runtime-name">{{ $t('agents.list.runtime.displayName') }}</FieldLabel><UiInput id="runtime-name" v-model="runtimeForm.displayName" maxlength="100" :aria-invalid="Boolean(runtimeErrors.displayName)" /><FieldError v-if="runtimeErrors.displayName">{{ $t(runtimeErrors.displayName) }}</FieldError></Field>
-          <Field><FieldLabel>{{ $t('agents.list.runtime.serverMode') }}</FieldLabel><ToggleGroup v-model="runtimeForm.serverMode" type="single"><ToggleGroupItem value="64">{{ $t('agents.list.runtime.mode64') }}</ToggleGroupItem><ToggleGroupItem value="32">{{ $t('agents.list.runtime.mode32') }}</ToggleGroupItem><ToggleGroupItem value="luajit">LuaJIT</ToggleGroupItem></ToggleGroup></Field>
-          <Field class="sm:col-span-2" :data-invalid="Boolean(runtimeErrors.savePath)"><FieldLabel for="runtime-save">{{ $t('agents.list.runtime.savePath') }}</FieldLabel><UiInput id="runtime-save" v-model="runtimeForm.savePath" :placeholder="pathPlaceholder('save')" :aria-invalid="Boolean(runtimeErrors.savePath)" /><FieldError v-if="runtimeErrors.savePath">{{ $t(runtimeErrors.savePath) }}</FieldError></Field>
-          <Field class="sm:col-span-2" :data-invalid="Boolean(runtimeErrors.serverPath)"><FieldLabel for="runtime-server">{{ $t('agents.list.runtime.serverPath') }}</FieldLabel><UiInput id="runtime-server" v-model="runtimeForm.serverPath" :placeholder="pathPlaceholder('server')" :aria-invalid="Boolean(runtimeErrors.serverPath)" /><FieldError v-if="runtimeErrors.serverPath">{{ $t(runtimeErrors.serverPath) }}</FieldError></Field>
+          <Field :data-disabled="runtimeRegistrySupported || undefined"><FieldLabel>{{ $t('agents.list.runtime.serverMode') }}</FieldLabel><ToggleGroup v-model="runtimeForm.serverMode" type="single" :disabled="runtimeRegistrySupported"><ToggleGroupItem value="64">{{ $t('agents.list.runtime.mode64') }}</ToggleGroupItem><ToggleGroupItem value="32">{{ $t('agents.list.runtime.mode32') }}</ToggleGroupItem><ToggleGroupItem value="luajit">LuaJIT</ToggleGroupItem></ToggleGroup></Field>
+          <Field class="sm:col-span-2" :data-disabled="runtimeRegistrySupported || undefined" :data-invalid="Boolean(runtimeErrors.savePath)"><FieldLabel for="runtime-save">{{ $t('agents.list.runtime.savePath') }}</FieldLabel><UiInput id="runtime-save" v-model="runtimeForm.savePath" :placeholder="pathPlaceholder('save')" :disabled="runtimeRegistrySupported" :aria-invalid="Boolean(runtimeErrors.savePath)" /><FieldError v-if="runtimeErrors.savePath">{{ $t(runtimeErrors.savePath) }}</FieldError></Field>
+          <Field class="sm:col-span-2" :data-disabled="runtimeRegistrySupported || undefined" :data-invalid="Boolean(runtimeErrors.serverPath)"><FieldLabel for="runtime-server">{{ $t('agents.list.runtime.serverPath') }}</FieldLabel><UiInput id="runtime-server" v-model="runtimeForm.serverPath" :placeholder="pathPlaceholder('server')" :disabled="runtimeRegistrySupported" :aria-invalid="Boolean(runtimeErrors.serverPath)" /><FieldError v-if="runtimeErrors.serverPath">{{ $t(runtimeErrors.serverPath) }}</FieldError></Field>
           <Field class="sm:col-span-2"><FieldLabel for="runtime-backup">{{ $t('agents.list.runtime.backupPath') }}</FieldLabel><UiInput id="runtime-backup" v-model="runtimeForm.backupPath" :placeholder="pathPlaceholder('backup')" /></Field>
           <Accordion type="single" collapsible class="sm:col-span-2"><AccordionItem value="advanced"><AccordionTrigger>{{ $t('agents.list.runtime.advanced') }}</AccordionTrigger><AccordionContent><FieldGroup>
-            <Field><FieldLabel for="runtime-ugc">{{ $t('agents.list.runtime.ugcPath') }}</FieldLabel><UiInput id="runtime-ugc" v-model="runtimeForm.ugcPath" /></Field>
-            <Field><FieldLabel for="runtime-steamcmd">{{ $t('agents.list.runtime.steamcmdPath') }}</FieldLabel><UiInput id="runtime-steamcmd" v-model="runtimeForm.steamcmdPath" /></Field>
-            <Field><FieldLabel for="runtime-workshop">{{ $t('agents.list.runtime.workshopPath') }}</FieldLabel><UiInput id="runtime-workshop" v-model="runtimeForm.workshopContentPath" /></Field>
+            <Field :data-disabled="runtimeRegistrySupported || undefined"><FieldLabel for="runtime-ugc">{{ $t('agents.list.runtime.ugcPath') }}</FieldLabel><UiInput id="runtime-ugc" v-model="runtimeForm.ugcPath" :disabled="runtimeRegistrySupported" /></Field>
+            <Field :data-disabled="runtimeRegistrySupported || undefined"><FieldLabel for="runtime-steamcmd">{{ $t('agents.list.runtime.steamcmdPath') }}</FieldLabel><UiInput id="runtime-steamcmd" v-model="runtimeForm.steamcmdPath" :disabled="runtimeRegistrySupported" /></Field>
+            <Field :data-disabled="runtimeRegistrySupported || undefined"><FieldLabel for="runtime-workshop">{{ $t('agents.list.runtime.workshopPath') }}</FieldLabel><UiInput id="runtime-workshop" v-model="runtimeForm.workshopContentPath" :disabled="runtimeRegistrySupported" /></Field>
             <Field><FieldLabel for="runtime-lua">{{ $t('agents.list.runtime.luaCommand') }}</FieldLabel><UiInput id="runtime-lua" v-model="runtimeForm.luaBinary" placeholder="lua" /></Field>
             <Field><FieldLabel for="runtime-lua-fallback">{{ $t('agents.list.runtime.luaFallbackPath') }}</FieldLabel><UiInput id="runtime-lua-fallback" v-model="runtimeForm.luaFallbackPath" /></Field>
           </FieldGroup></AccordionContent></AccordionItem></Accordion>
@@ -292,7 +330,7 @@
         <DialogFooter class="flex-wrap sm:justify-end">
           <UiButton v-if="runtimeConfigured" class="sm:mr-auto" variant="destructive" @click="removeRuntimeConfig">{{ $t('agents.list.runtime.removeConfig') }}</UiButton>
           <UiButton variant="outline" @click="runtimeVisible = false">{{ $t('common.actions.cancel') }}</UiButton>
-          <UiButton :disabled="runtimeSaving" @click="saveRuntimeConfig"><Spinner v-if="runtimeSaving" data-icon="inline-start" />{{ $t('agents.list.runtime.saveConfig') }}</UiButton>
+          <UiButton :disabled="runtimeSaving || (runtimeRegistrySupported && runtimeInstallations.length === 0)" @click="saveRuntimeConfig"><Spinner v-if="runtimeSaving" data-icon="inline-start" />{{ $t('agents.list.runtime.saveConfig') }}</UiButton>
         </DialogFooter>
       </DialogContent>
     </UiDialog>
@@ -306,6 +344,7 @@ import {
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
+import { bindAgentRuntimeInstallation } from '@/api/agentApiSupport.mjs';
 import { agentsV2API, runtimeTargetsV2API } from '@/api/v2';
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters';
 import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue';
@@ -315,10 +354,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Progress as UiProgress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -330,6 +370,7 @@ import { announceRuntimeTargetsUpdated } from '@/utils/runtimeTarget';
 const INVENTORY_CAPABILITY = 'runtime.inventory.read';
 
 const emptyRuntimeConfig = agent => ({
+  installationId: 'default',
   displayName: agent?.hostname || '',
   savePath: '',
   backupPath: '',
@@ -353,10 +394,11 @@ export default {
     Accordion, AccordionContent, AccordionItem, AccordionTrigger, Alert, AlertAction, AlertDescription,
     AlertTitle, Apple, Badge, ChevronDown, ChevronRight, CircleAlert, Clock3, Cpu, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription,
-    EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldError, FieldGroup, FieldLabel, Layers3,
+    EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldDescription, FieldError, FieldGroup, FieldLabel, Layers3,
     KubernetesProviderPanel, Monitor, Network, RefreshCw, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
-    TableCell, TableHead, TableHeader, TableRow, Terminal, ToggleGroup, ToggleGroupItem, Tooltip,
-    TooltipContent, TooltipTrigger, Trash2, TriangleAlert, UiButton, UiDialog, UiInput, UiProgress
+    SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, TableCell, TableHead, TableHeader, TableRow,
+    Terminal, ToggleGroup, ToggleGroupItem, Tooltip, TooltipContent, TooltipTrigger, Trash2, TriangleAlert, UiButton,
+    UiDialog, UiInput, UiProgress, UiSelect
   },
   data() {
     return {
@@ -402,6 +444,15 @@ export default {
     },
     capacityAlerts() {
       return this.agentList.filter(agent => ['full', 'overcommitted'].includes(this.capacityForAgent(agent).state)).length;
+    },
+    runtimeInstallations() {
+      return Array.isArray(this.runtimeAgent?.installations) ? this.runtimeAgent.installations : [];
+    },
+    runtimeRegistrySupported() {
+      return Boolean(this.runtimeAgent?.installation_registry_supported);
+    },
+    selectedRuntimeInstallation() {
+      return this.runtimeInstallations.find(installation => installation.id === this.runtimeForm.installationId) || null;
     }
   },
   created() {
@@ -659,11 +710,33 @@ export default {
       this.runtimeAgent = agent;
       this.runtimeConfigured = target.configured;
       this.runtimeErrors = {};
-      this.runtimeForm = editableRuntimeConfig(agent, target.config);
+      let form = editableRuntimeConfig(agent, target.config);
+      if (agent.installation_registry_supported) {
+        let installation = (agent.installations || []).find(item => item.id === form.installationId);
+        if (!installation && !target.configured) installation = (agent.installations || [])[0];
+        form = installation ? bindAgentRuntimeInstallation(form, installation) : { ...form, installationId: '' };
+      }
+      this.runtimeForm = form;
       this.runtimeVisible = true;
+    },
+    selectRuntimeInstallation(installationId) {
+      const installation = this.runtimeInstallations.find(item => item.id === installationId);
+      if (!installation) {
+        this.runtimeForm.installationId = '';
+        return;
+      }
+      this.runtimeForm = bindAgentRuntimeInstallation(this.runtimeForm, installation);
+      const remainingErrors = { ...this.runtimeErrors };
+      delete remainingErrors.installationId;
+      this.runtimeErrors = remainingErrors;
+    },
+    installationDriverLabel(driver) {
+      const key = driver === 'container' ? 'container' : 'native';
+      return this.$t(`agents.list.runtime.drivers.${key}`);
     },
     async saveRuntimeConfig() {
       const errors = {};
+      if (!this.runtimeForm.installationId.trim() || (this.runtimeRegistrySupported && !this.selectedRuntimeInstallation)) errors.installationId = 'agents.list.validation.installationId';
       if (!this.runtimeForm.displayName.trim()) errors.displayName = 'agents.list.validation.displayName';
       if (!this.runtimeForm.savePath.trim()) errors.savePath = 'agents.list.validation.savePath';
       if (!this.runtimeForm.serverPath.trim()) errors.serverPath = 'agents.list.validation.serverPath';
