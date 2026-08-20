@@ -27,7 +27,21 @@ test('server workspace submits starts immediately and confirms disruptive action
   const workspace = await source('src/views/servers/ServerWorkspace.vue')
 
   assert.match(workspace, /if \(worldActionRequiresConfirmation\(action\)\) \{[\s\S]*?await confirmAction/)
-  assert.match(workspace, /this\.worldActionId = world\.id[\s\S]*?toast\.info[\s\S]*?startRoomWithCapacityRisk\(target\)/)
+  assert.match(workspace, /this\.setWorldActionPending\(roomId, world\.id, true\)[\s\S]*?toast\.info[\s\S]*?startRoomWithCapacityRisk\(target\)/)
+  assert.match(workspace, /finally \{[\s\S]*?this\.setWorldActionPending\(roomId, world\.id, false\)/)
+})
+
+test('server workspace supports room-wide actions without blocking sibling shard controls', async () => {
+  const workspace = await source('src/views/servers/ServerWorkspace.vue')
+
+  assert.match(workspace, /servers\.workspace\.worlds\.startAll/)
+  assert.match(workspace, /servers\.workspace\.worlds\.stopAll/)
+  assert.match(workspace, /pendingWorldActions: \[\]/)
+  assert.match(workspace, /isWorldActionPending\(world\.id\) \|\| Boolean\(roomActionKind\)/)
+  assert.doesNotMatch(workspace, /Boolean\(worldActionId\)/)
+  assert.match(workspace, /world_ids: worlds\.map\(world => world\.id\)/)
+  assert.match(workspace, /if \(action === 'start'\) await startRoomWithCapacityRisk\(target\)/)
+  assert.match(workspace, /if \(action === 'stop'\) await roomApi\.stopRoom\(target\)/)
 })
 
 test('world-state details prominently mark stale snapshots with their observation time', async () => {

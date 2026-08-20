@@ -95,7 +95,34 @@
             <CardTitle>{{ $t('servers.workspace.worlds.title') }}</CardTitle>
             <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || $t('servers.workspace.worlds.description') }}</CardDescription>
           </div>
-          <CardAction class="row-span-1 self-center"><UiButton variant="ghost" @click="openRoomSettings"><Settings data-icon="inline-start" />{{ $t('servers.workspace.worlds.roomSettings') }}</UiButton></CardAction>
+          <CardAction class="world-card-actions row-span-1 flex flex-wrap items-center justify-end gap-2 self-center">
+            <UiButton
+              type="button"
+              size="sm"
+              variant="outline"
+              :disabled="roomStartWorlds.length === 0 || roomActionsBusy"
+              @click="handleRoomAction('start')"
+            >
+              <Spinner v-if="roomActionKind === 'start'" data-icon="inline-start" />
+              <Play v-else data-icon="inline-start" />
+              {{ $t('servers.workspace.worlds.startAll') }}
+            </UiButton>
+            <UiButton
+              type="button"
+              size="sm"
+              variant="destructive"
+              :disabled="roomStopWorlds.length === 0 || roomActionsBusy"
+              @click="handleRoomAction('stop')"
+            >
+              <Spinner v-if="roomActionKind === 'stop'" data-icon="inline-start" />
+              <Square v-else data-icon="inline-start" />
+              {{ $t('servers.workspace.worlds.stopAll') }}
+            </UiButton>
+            <UiButton type="button" size="sm" variant="ghost" :disabled="Boolean(roomActionKind)" @click="openRoomSettings">
+              <Settings data-icon="inline-start" />
+              {{ $t('servers.workspace.worlds.roomSettings') }}
+            </UiButton>
+          </CardAction>
         </CardHeader>
         <CardContent class="world-card-content">
 
@@ -156,10 +183,10 @@
                     :variant="worldPrimaryAction(world).variant"
                     :aria-label="worldActionLabel(world)"
                     :title="worldActionLabel(world)"
-                    :disabled="!canToggleWorld(world) || Boolean(worldActionId)"
+                    :disabled="!canToggleWorld(world) || isWorldActionPending(world.id) || Boolean(roomActionKind)"
                     @click="handleWorldAction(world, worldPrimaryAction(world).kind)"
                   >
-                    <Spinner v-if="worldActionId === world.id" />
+                    <Spinner v-if="isWorldActionPending(world.id)" />
                     <Square v-else-if="worldPrimaryAction(world).kind === 'stop'" />
                     <Play v-else-if="worldPrimaryAction(world).kind === 'start'" />
                   </UiButton>
@@ -173,7 +200,7 @@
                     variant="outline"
                     :aria-label="$t('servers.workspace.worlds.cleanupFailedSession')"
                     :title="$t('servers.workspace.worlds.cleanupFailedSession')"
-                    :disabled="!canCleanFailedWorld(world) || Boolean(worldActionId)"
+                    :disabled="!canCleanFailedWorld(world) || isWorldActionPending(world.id) || Boolean(roomActionKind)"
                     @click="handleWorldAction(world, 'cleanup')"
                   >
                     <Square />
@@ -188,7 +215,7 @@
                     variant="outline"
                     :aria-label="$t('servers.workspace.worlds.restart')"
                     :title="$t('servers.workspace.worlds.restart')"
-                    :disabled="!canStopWorld(world) || Boolean(worldActionId)"
+                    :disabled="!canStopWorld(world) || isWorldActionPending(world.id) || Boolean(roomActionKind)"
                     @click="handleWorldAction(world, 'restart')"
                   >
                     <RotateCw />
@@ -203,7 +230,7 @@
                     variant="ghost"
                     :aria-label="$t('servers.workspace.worlds.configure')"
                     :title="$t('servers.workspace.worlds.configure')"
-                    :disabled="!canConfigureWorld(world)"
+                    :disabled="!canConfigureWorld(world) || isWorldActionPending(world.id) || Boolean(roomActionKind)"
                     @click="openWorldSettings(world)"
                   >
                     <Settings />
@@ -550,7 +577,8 @@ export default {
         backups: null,
         console: null
       },
-      worldActionId: '',
+      pendingWorldActions: [],
+      pendingRoomActions: [],
       backupCreating: false,
       activeOperation: 'logs',
       consoleServer: '',
@@ -581,6 +609,18 @@ export default {
     },
     runningWorlds() {
       return this.worlds.filter(world => world.status === 'running')
+    },
+    roomStartWorlds() {
+      return this.worlds.filter(world => canStartWorld(world))
+    },
+    roomStopWorlds() {
+      return this.worlds.filter(world => canRequestStopWorld(world))
+    },
+    roomActionKind() {
+      return this.pendingRoomActions.find(action => action.roomId === this.selectedRoomId)?.kind || ''
+    },
+    roomActionsBusy() {
+      return Boolean(this.roomActionKind) || this.pendingWorldActions.some(action => action.roomId === this.selectedRoomId)
     },
     recentPlayers() {
       return this.playerStats?.recent_players?.slice(0, CONTEXT_PLAYER_LIMIT) || []
@@ -759,8 +799,93 @@ export default {
         query: { ...this.$route.query, roomId, worldId }
       }).catch(() => {})
     },
+    isWorldActionPending(worldId, roomId = this.selectedRoomId) {
+      return this.pendingWorldActions.some(pending => pending.roomId === roomId && pending.worldId === worldId)
+    },
+    setWorldActionPending(roomId, worldId, pending) {
+      if (pending) {
+        if (!this.isWorldActionPending(worldId, roomId)) {
+          this.pendingWorldActions = [...this.pendingWorldActions, { roomId, worldId }]
+        }
+        return
+      }
+      this.pendingWorldActions = this.pendingWorldActions.filter(action =>
+        action.roomId !== roomId || action.worldId !== worldId
+      )
+    },
+    isRoomActionPending(roomId = this.selectedRoomId) {
+      return this.pendingRoomActions.some(pending => pending.roomId === roomId)
+    },
+    setRoomActionPending(roomId, kind, pending) {
+      if (pending) {
+        if (!this.isRoomActionPending(roomId)) {
+          this.pendingRoomActions = [...this.pendingRoomActions, { roomId, kind }]
+        }
+        return
+      }
+      this.pendingRoomActions = this.pendingRoomActions.filter(action => action.roomId !== roomId)
+    },
+    async handleRoomAction(action) {
+      if (!this.selectedRoom || !['start', 'stop'].includes(action) || this.roomActionsBusy) return
+
+      const roomId = this.selectedRoom.id
+      const roomName = this.selectedRoom.name
+      const worlds = action === 'start' ? [...this.roomStartWorlds] : [...this.roomStopWorlds]
+      if (worlds.length === 0) {
+        toast.warning(this.$t('servers.workspace.feedback.roomActionUnavailable'))
+        return
+      }
+
+      const label = this.$t(`servers.workspace.actions.${action}`)
+      this.setRoomActionPending(roomId, action, true)
+      let submitted = false
+      try {
+        if (action === 'stop') {
+          try {
+            await confirmAction(this.$t('servers.workspace.feedback.roomActionConfirm', {
+              action: label,
+              room: roomName,
+              count: worlds.length
+            }), this.$t('servers.workspace.feedback.roomActionTitle', { action: label }), {
+              confirmButtonText: this.$t('servers.workspace.feedback.roomActionButton', { action: label }),
+              cancelButtonText: this.$t('common.actions.cancel'),
+              type: 'warning'
+            })
+          } catch {
+            return
+          }
+        }
+
+        submitted = true
+        toast.info(this.$t('servers.workspace.feedback.roomActionSubmitted', {
+          action: label,
+          count: worlds.length
+        }))
+        const target = {
+          room_id: roomId,
+          world_ids: worlds.map(world => world.id)
+        }
+        if (action === 'start') await startRoomWithCapacityRisk(target)
+        if (action === 'stop') await roomApi.stopRoom(target)
+        toast.success(this.$t('servers.workspace.feedback.roomActionCompleted', { action: label }))
+        await this.refreshWorkspace(true)
+      } catch (error) {
+        if (isCapacityRiskCanceled(error)) return
+        toast.error(this.$t('servers.workspace.feedback.roomActionFailed', {
+          action: label,
+          error: error.message || this.$t('common.errors.unknown')
+        }))
+      } finally {
+        this.setRoomActionPending(roomId, action, false)
+        if (submitted && this.selectedRoomId === roomId) await this.$refs.runtimeAudit?.loadEvents()
+      }
+    },
     async handleWorldAction(world, action) {
+      const roomId = this.selectedRoom?.id
       if (!action ||
+          !roomId ||
+          this.isRoomActionPending(roomId) ||
+          this.isWorldActionPending(world.id, roomId) ||
           (action === 'start' && !canStartWorld(world)) ||
           (action === 'cleanup' && !canCleanFailedWorld(world)) ||
           (action === 'stop' && !canRequestStopWorld(world)) ||
@@ -768,41 +893,44 @@ export default {
         toast.warning(worldStatusMessage(world) || this.$t('servers.workspace.feedback.actionUnavailable'))
         return
       }
+      const roomName = this.selectedRoom.name
       const label = this.$t(`servers.workspace.actions.${action}`)
       const confirmationTitle = action === 'cleanup'
         ? this.$t('servers.workspace.worlds.cleanupFailedSession')
         : this.$t('servers.workspace.feedback.actionTitle', { action: label })
-      if (worldActionRequiresConfirmation(action)) {
-        try {
-          await confirmAction(this.$t('servers.workspace.feedback.actionConfirm', {
-            action: label,
-            room: this.selectedRoom.name,
-            world: world.name
-          }), confirmationTitle, {
-            confirmButtonText: action === 'cleanup'
-              ? this.$t('servers.workspace.feedback.cleanupButton')
-              : this.$t('servers.workspace.feedback.actionButton', { action: label }),
-            cancelButtonText: this.$t('common.actions.cancel'),
-            type: 'warning'
-          })
-        } catch {
-          return
-        }
-      }
-
-      this.worldActionId = world.id
-      toast.info(this.$t('servers.workspace.feedback.actionSubmitted', {
-        action: label,
-        world: world.name
-      }))
+      this.setWorldActionPending(roomId, world.id, true)
+      let submitted = false
       try {
-        const target = { room_id: this.selectedRoom.id, world_id: world.id }
+        if (worldActionRequiresConfirmation(action)) {
+          try {
+            await confirmAction(this.$t('servers.workspace.feedback.actionConfirm', {
+              action: label,
+              room: roomName,
+              world: world.name
+            }), confirmationTitle, {
+              confirmButtonText: action === 'cleanup'
+                ? this.$t('servers.workspace.feedback.cleanupButton')
+                : this.$t('servers.workspace.feedback.actionButton', { action: label }),
+              cancelButtonText: this.$t('common.actions.cancel'),
+              type: 'warning'
+            })
+          } catch {
+            return
+          }
+        }
+
+        submitted = true
+        toast.info(this.$t('servers.workspace.feedback.actionSubmitted', {
+          action: label,
+          world: world.name
+        }))
+        const target = { room_id: roomId, world_id: world.id }
         if (action === 'start') await startRoomWithCapacityRisk(target)
         if (action === 'stop') await roomApi.stopRoom(target)
         if (action === 'cleanup') await roomApi.cleanupRoom(target)
         if (action === 'restart') await restartWorldWithCapacityRisk({
           ...target,
-          archive_name: this.selectedRoom.name,
+          archive_name: roomName,
           world_name: world.name
         })
         toast.success(this.$t('servers.workspace.feedback.actionCompleted', { action: label }))
@@ -814,8 +942,8 @@ export default {
           error: error.message || this.$t('common.errors.unknown')
         }))
       } finally {
-        this.worldActionId = ''
-        await this.$refs.runtimeAudit?.loadEvents()
+        this.setWorldActionPending(roomId, world.id, false)
+        if (submitted && this.selectedRoomId === roomId) await this.$refs.runtimeAudit?.loadEvents()
       }
     },
     async createBackup() {
@@ -1647,6 +1775,22 @@ export default {
   .room-select {
     flex: 1 1 180px;
     width: auto;
+  }
+
+  .world-card-heading {
+    grid-column: 1 / -1;
+  }
+
+  .world-card-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .world-card-actions :deep([data-slot='button']) {
+    flex: 1 1 auto;
   }
 
   .context-card-content {
