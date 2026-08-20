@@ -51,12 +51,13 @@
         <AlertDialogCancel @click="cancelRequest">
           {{ isCapacityRisk ? t('capacityRisk.cancel') : activeRequest?.options?.cancelButtonText || t('common.actions.cancel') }}
         </AlertDialogCancel>
-        <AlertDialogAction
+        <Button
+          type="button"
           :variant="isDestructive ? 'destructive' : 'default'"
           @click="confirmRequest"
         >
           {{ isCapacityRisk ? t('capacityRisk.confirm') : activeRequest?.options?.confirmButtonText || t('common.actions.confirm') }}
-        </AlertDialogAction>
+        </Button>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
@@ -98,7 +99,6 @@ import { Cpu } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
