@@ -107,12 +107,14 @@ function openRoomControl() {
   const room = firstRoom.value
   if (!room) return
   const world = Array.isArray(room.worlds) ? room.worlds[0] : null
-  router.push({
-    path: '/servers/workspace',
+  router.replace({
+    path: '/dashboard',
     query: {
       roomId: String(room.id),
       ...(world?.id ? { worldId: String(world.id) } : {})
     }
+  }).finally(() => {
+    document.getElementById('room-operations')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   })
 }
 </script>

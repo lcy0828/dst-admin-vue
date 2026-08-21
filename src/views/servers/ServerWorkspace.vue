@@ -1,10 +1,12 @@
 <template>
-  <div class="workspace-page">
+  <div class="workspace-page" :class="{ embedded }">
     <header class="workspace-header">
       <div class="workspace-heading">
-        <span class="workspace-kicker">{{ $t('servers.workspace.kicker') }}</span>
+        <span v-if="!embedded" class="workspace-kicker">{{ $t('servers.workspace.kicker') }}</span>
         <div class="workspace-title-row">
-          <h1>{{ $t('servers.workspace.title') }}</h1>
+          <component :is="embedded ? 'h2' : 'h1'" class="workspace-title">
+            {{ $t(embedded ? 'servers.workspace.dashboardTitle' : 'servers.workspace.title') }}
+          </component>
           <Badge v-if="selectedRoom" :variant="runningWorlds.length > 0 ? 'secondary' : 'outline'">
             {{ runningWorlds.length > 0 ? $t('worldRuntime.statuses.running') : $t('worldRuntime.statuses.stopped') }}
           </Badge>
@@ -252,11 +254,52 @@
             <CardDescription>{{ $t('servers.workspace.operations.description') }}</CardDescription>
           </CardHeader>
           <CardContent class="operation-content"><Tabs v-model="activeOperation" class="operation-tabs">
-            <TabsList>
+            <TabsList class="operation-tabs-list">
+              <TabsTrigger value="players"><UsersRound />{{ $t('servers.workspace.players.title') }}</TabsTrigger>
               <TabsTrigger value="logs"><FileText />{{ $t('servers.workspace.operations.liveLogs') }}</TabsTrigger>
               <TabsTrigger value="chat"><MessagesSquare />{{ $t('servers.workspace.operations.chatLogs') }}</TabsTrigger>
               <TabsTrigger value="console"><Terminal />{{ $t('servers.workspace.console.title') }}</TabsTrigger>
             </TabsList>
+            <TabsContent value="players">
+              <section class="players-panel" aria-labelledby="workspace-players-title">
+                <header class="context-section-header">
+                  <div class="context-section-heading">
+                    <h2 id="workspace-players-title">{{ $t('servers.workspace.players.title') }}</h2>
+                    <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.presenceSummary', { online: playerStats.online_count, stale: playerStats.stale_online_count || 0 }) : $t('servers.workspace.states.statusUnavailable')) }}</span>
+                  </div>
+                  <UiButton variant="ghost" size="xs" class="context-section-action" @click="openPlayers">
+                    {{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" />
+                  </UiButton>
+                </header>
+                <div v-if="recentPlayers.length" class="player-list players-list-expanded">
+                  <UiButton
+                    v-for="player in recentPlayers"
+                    :key="`${player.room_id}:${player.user_id}`"
+                    variant="ghost"
+                    size="sm"
+                    class="player-row"
+                    @click="openPlayers"
+                  >
+                    <span class="player-avatar"><User /></span>
+                    <span class="player-copy">
+                      <strong :title="player.player_name || player.user_id">{{ player.player_name || player.user_id }}</strong>
+                      <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || $t('servers.workspace.players.unknownWorld') }}</span>
+                    </span>
+                    <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
+                      {{ playerStatusLabel(player.status) }}
+                    </Badge>
+                  </UiButton>
+                </div>
+                <Alert v-else-if="contextErrors.players" variant="destructive">
+                  <CircleAlert />
+                  <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
+                  <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
+                </Alert>
+                <Empty v-else class="players-empty">
+                  <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.players.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.players.emptyDescription') }}</EmptyDescription></EmptyHeader>
+                </Empty>
+              </section>
+            </TabsContent>
             <TabsContent value="logs">
               <world-log
                 v-if="selectedWorld"
@@ -343,47 +386,6 @@
                 <span>{{ $t('servers.workspace.context.loading') }}</span>
               </div>
 
-              <section class="context-section context-section-players" aria-labelledby="workspace-players-title">
-                <header class="context-section-header">
-                  <div class="context-section-heading">
-                    <h2 id="workspace-players-title">{{ $t('servers.workspace.players.title') }}</h2>
-                    <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.presenceSummary', { online: playerStats.online_count, stale: playerStats.stale_online_count || 0 }) : $t('servers.workspace.states.statusUnavailable')) }}</span>
-                  </div>
-                  <UiButton variant="ghost" size="xs" class="context-section-action" @click="openPlayers">
-                    {{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" />
-                  </UiButton>
-                </header>
-                <div v-if="recentPlayers.length" class="player-list">
-                  <UiButton
-                    v-for="player in recentPlayers"
-                    :key="`${player.room_id}:${player.user_id}`"
-                    variant="ghost"
-                    size="sm"
-                    class="player-row"
-                    @click="openPlayers"
-                  >
-                    <span class="player-avatar"><User /></span>
-                    <span class="player-copy">
-                      <strong :title="player.player_name || player.user_id">{{ player.player_name || player.user_id }}</strong>
-                      <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || $t('servers.workspace.players.unknownWorld') }}</span>
-                    </span>
-                    <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
-                      {{ playerStatusLabel(player.status) }}
-                    </Badge>
-                  </UiButton>
-                </div>
-                <Alert v-else-if="contextErrors.players" variant="destructive">
-                  <CircleAlert />
-                  <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
-                  <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
-                </Alert>
-                <Empty v-else class="rail-empty">
-                  <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.players.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.players.emptyDescription') }}</EmptyDescription></EmptyHeader>
-                </Empty>
-              </section>
-
-              <Separator class="context-separator context-separator-primary" />
-
               <section class="context-section context-section-backups" aria-labelledby="workspace-backups-title">
                 <header class="context-section-header">
                   <div class="context-section-heading">
@@ -442,7 +444,6 @@
           </Card>
         </aside>
       </div>
-      <RuntimeAuditPanel ref="runtimeAudit" :room-id="selectedRoomId" :worlds="worlds" />
     </template>
   </div>
 </template>
@@ -450,7 +451,6 @@
 <script>
 import WorldLog from '@/components/WorldLog.vue'
 import RoomChatPanel from '@/components/RoomChatPanel.vue'
-import RuntimeAuditPanel from '@/components/runtime/RuntimeAuditPanel.vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import { backupApi, commandApi, playerApi, roomApi } from '@/api'
@@ -489,7 +489,7 @@ import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
   ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
   FileText, Globe2, MessagesSquare, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
-  Settings, Square, Terminal, TreePine, User
+  Settings, Square, Terminal, TreePine, User, UsersRound
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
@@ -504,6 +504,9 @@ const CONTEXT_BACKUP_LIMIT = 3
 
 export default {
   name: 'ServerWorkspace',
+  props: {
+    embedded: { type: Boolean, default: false }
+  },
   components: {
     Alert,
     AlertAction,
@@ -543,7 +546,6 @@ export default {
     RefreshCw,
     RotateCw,
     RoomChatPanel,
-    RuntimeAuditPanel,
     Search,
     SelectContent,
     SelectGroup,
@@ -569,6 +571,7 @@ export default {
     UiSelect,
     UiTextarea,
     User,
+    UsersRound,
     WorldLog,
     RuntimeExitBadge,
     WorldDataFreshnessBadge
@@ -592,7 +595,7 @@ export default {
       pendingWorldActions: [],
       pendingRoomActions: [],
       backupCreating: false,
-      activeOperation: 'logs',
+      activeOperation: 'players',
       consoleServer: '',
       rawCommand: '',
       commandExecuting: false,
@@ -853,7 +856,6 @@ export default {
 
       const label = this.$t(`servers.workspace.actions.${action}`)
       this.setRoomActionPending(roomId, action, true)
-      let submitted = false
       try {
         if (action === 'stop') {
           try {
@@ -871,7 +873,6 @@ export default {
           }
         }
 
-        submitted = true
         toast.info(this.$t('servers.workspace.feedback.roomActionSubmitted', {
           action: label,
           count: worlds.length
@@ -892,7 +893,6 @@ export default {
         }))
       } finally {
         this.setRoomActionPending(roomId, action, false)
-        if (submitted && this.selectedRoomId === roomId) await this.$refs.runtimeAudit?.loadEvents()
       }
     },
     async handleWorldAction(world, action) {
@@ -914,7 +914,6 @@ export default {
         ? this.$t('servers.workspace.worlds.cleanupFailedSession')
         : this.$t('servers.workspace.feedback.actionTitle', { action: label })
       this.setWorldActionPending(roomId, world.id, true)
-      let submitted = false
       try {
         if (worldActionRequiresConfirmation(action)) {
           try {
@@ -934,7 +933,6 @@ export default {
           }
         }
 
-        submitted = true
         toast.info(this.$t('servers.workspace.feedback.actionSubmitted', {
           action: label,
           world: world.name
@@ -958,7 +956,6 @@ export default {
         }))
       } finally {
         this.setWorldActionPending(roomId, world.id, false)
-        if (submitted && this.selectedRoomId === roomId) await this.$refs.runtimeAudit?.loadEvents()
       }
     },
     async createBackup() {
@@ -1186,7 +1183,7 @@ export default {
   gap: 10px;
 }
 
-.workspace-title-row h1 {
+.workspace-title {
   margin: 0;
   color: var(--foreground);
   font-size: 24px;
@@ -1455,6 +1452,27 @@ export default {
 
 .operation-content {
   padding-top: 12px;
+}
+
+.operation-tabs-list {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.players-panel {
+  min-height: 440px;
+  padding-top: 12px;
+}
+
+.players-list-expanded {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 18px;
+}
+
+.players-empty {
+  min-height: 180px;
+  border: 0;
 }
 
 .tab-label {
@@ -1740,23 +1758,18 @@ export default {
     grid-column: 1 / -1;
   }
 
-  .context-section-players {
+  .context-section-backups {
     grid-column: 1;
   }
 
-  .context-separator-primary {
+  .context-separator-quick {
     grid-column: 2;
     width: 1px;
     height: 100%;
   }
 
-  .context-section-backups {
-    grid-column: 3;
-  }
-
-  .context-separator-quick,
   .context-section-quick {
-    grid-column: 1 / -1;
+    grid-column: 3;
   }
 
   .quick-nav {
@@ -1806,7 +1819,7 @@ export default {
     display: block;
   }
 
-  .context-separator-primary {
+  .context-separator-quick {
     width: 100%;
     height: 1px;
   }
@@ -1841,6 +1854,10 @@ export default {
 
   .quick-nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .players-list-expanded {
+    grid-template-columns: minmax(0, 1fr);
   }
 
 }

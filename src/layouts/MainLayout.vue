@@ -463,7 +463,6 @@ const NAVIGATION_SECTIONS = [
         label: '服务器管理',
         icon: ServerCog,
         children: [
-          { label: '服务器工作台', to: '/servers/workspace' },
           { label: '服务器列表', to: '/servers/list' },
           { label: '命令设置', to: '/servers/commands' }
         ]

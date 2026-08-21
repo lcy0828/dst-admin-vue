@@ -60,6 +60,8 @@
 
       <RoomLogOverviewPanel :room-id="selectedRoomId" />
 
+      <RuntimeAuditPanel :room-id="selectedRoomId" :worlds="selectedRoomWorlds" />
+
       <template v-if="selectedShard">
         <Alert>
           <RadioTower />
@@ -85,7 +87,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Activity, CircleAlert, RadioTower, RefreshCw, Stethoscope } from '@lucide/vue'
@@ -98,6 +100,7 @@ import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigg
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import RuntimeDiagnosticsPanel from '@/components/runtime/RuntimeDiagnosticsPanel.vue'
+import RuntimeAuditPanel from '@/components/runtime/RuntimeAuditPanel.vue'
 import RoomLogOverviewPanel from '@/components/runtime/RoomLogOverviewPanel.vue'
 import RoomWorldStatePanel from '@/components/runtime/RoomWorldStatePanel.vue'
 import RuntimeOverviewPanel from '@/components/runtime/RuntimeOverviewPanel.vue'
@@ -110,6 +113,10 @@ const selectedRoomId = ref('')
 const selectedShard = ref(null)
 const loadingRooms = ref(false)
 const roomsError = ref('')
+const selectedRoomWorlds = computed(() => {
+  const room = rooms.value.find(item => String(item.id) === selectedRoomId.value)
+  return Array.isArray(room?.worlds) ? room.worlds : []
+})
 
 async function loadRooms() {
   loadingRooms.value = true

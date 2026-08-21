@@ -58,19 +58,19 @@ export const constantRoutes = [
   {
     path: '/servers',
     component: MainLayoutV2,
-    redirect: '/servers/workspace',
+    redirect: to => ({ path: '/dashboard', query: to.query, hash: to.hash }),
     name: 'Servers',
     meta: { title: '服务器管理', titleKey: 'navigation.servers', icon: 'server' },
     children: [
       {
         path: 'workspace',
-        component: () => import('@/views/servers/ServerWorkspace.vue'),
+        redirect: to => ({ path: '/dashboard', query: to.query, hash: to.hash }),
         name: 'ServerWorkspace',
-        meta: { title: '房间控制', titleKey: 'navigation.serverWorkspace', icon: 'monitor' }
+        meta: { title: '服务总览', titleKey: 'navigation.dashboard', icon: 'monitor', hidden: true }
       },
       {
         path: 'list',
-        redirect: to => ({ path: '/servers/workspace', query: to.query, hash: to.hash }),
+        redirect: to => ({ path: '/dashboard', query: to.query, hash: to.hash }),
         meta: { hidden: true }
       },
       {

@@ -113,9 +113,9 @@ export const corePageMessages = {
           },
           start: {
             title: '启动房间',
-            ready: '进入房间控制启动 Master 和 Caves，系统会按当前部署方式运行。',
+            ready: '在下方房间与分片区域启动 Master 和 Caves，系统会按当前部署方式运行。',
             done: '已有 {count} 个世界正在运行。',
-            action: '进入房间控制'
+            action: '前往房间与分片'
           }
         },
         blocked: {
@@ -402,9 +402,9 @@ export const corePageMessages = {
           },
           start: {
             title: 'Start the room',
-            ready: 'Open room control and start Master and Caves using the current deployment mode.',
+            ready: 'Start Master and Caves in the rooms and shards section below using the current deployment mode.',
             done: '{count} worlds are running.',
-            action: 'Open room control'
+            action: 'Go to rooms and shards'
           }
         },
         blocked: {

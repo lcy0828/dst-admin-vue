@@ -1,14 +1,12 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   Activity,
-  ArrowRight,
   CircleAlert,
   Cpu,
   ExternalLink,
-  FolderPlus,
   Gauge,
   HardDrive,
   House,
@@ -18,25 +16,17 @@ import {
   RefreshCw,
   UsersRound
 } from '@lucide/vue'
-import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import DashboardOnboarding from '@/components/dashboard/DashboardOnboarding.vue'
+import ServerWorkspace from '@/views/servers/ServerWorkspace.vue'
 import { normalizePackaging } from '@/lib/dashboardOnboarding.mjs'
 import {
   formatDateTime,
@@ -54,6 +44,7 @@ const router = useRouter()
 const { locale, t } = useI18n()
 const RUNTIME_REFRESH_INTERVAL_MS = 10_000
 let runtimeRefreshTimer = null
+const roomOperations = ref(null)
 
 const {
   systemStatus,
@@ -71,8 +62,6 @@ const {
   versionLoading,
   guidanceLoading,
   systemError,
-  serverError,
-  roomError,
   playerError,
   versionError,
   guidanceError,
@@ -83,7 +72,6 @@ const {
   gameUpdateBusy,
   refreshDashboard,
   refreshSystem,
-  refreshServers,
   refreshRuntimeServers,
   refreshVersion,
   refreshGuidance,
@@ -95,47 +83,17 @@ const deploymentPackaging = computed(() => capabilities.value?.deployment
   ? normalizePackaging(capabilities.value.deployment.packaging)
   : '')
 
-const roomSummaries = computed(() => roomList.value.map(room => {
-  const worlds = Array.isArray(room.worlds) ? room.worlds : []
-  const running = worlds.filter(world => world.status === 'running').length
-  const failed = worlds.filter(world => world.status === 'failed').length
-  const preferredWorld = worlds.find(world => world.status === 'running') || worlds[0]
-  return {
-    id: String(room.id),
-    name: room.name,
-    running,
-    failed,
-    total: worlds.length,
-    worldId: preferredWorld ? String(preferredWorld.id) : ''
-  }
-}))
 const steamUpdateStatusKey = computed(() => {
   if (versionInfo.value.latest?.up_to_date === false) return 'dashboard.version.updateAvailable'
   if (versionInfo.value.latest?.up_to_date === true) return 'dashboard.version.upToDate'
   return 'dashboard.version.updateStateUnknown'
 })
 
-function roomStatusKey(room) {
-  if (room.failed > 0) return 'dashboard.roomsOverview.statuses.attention'
-  if (room.total > 0 && room.running === room.total) return 'dashboard.roomsOverview.statuses.running'
-  if (room.running > 0) return 'dashboard.roomsOverview.statuses.partial'
-  return 'dashboard.roomsOverview.statuses.stopped'
-}
-
-function roomStatusVariant(room) {
-  if (room.failed > 0) return 'destructive'
-  if (room.total > 0 && room.running === room.total) return 'secondary'
-  return 'outline'
-}
-
-function openRoomControl(room) {
-  router.push({
-    path: '/servers/workspace',
-    query: {
-      roomId: room.id,
-      ...(room.worldId ? { worldId: room.worldId } : {})
-    }
-  })
+async function refreshAll() {
+  await Promise.all([
+    refreshDashboard(),
+    roomOperations.value?.refreshWorkspace?.()
+  ])
 }
 
 async function refreshRuntimeStatus() {
@@ -168,7 +126,7 @@ onBeforeUnmount(() => {
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <Badge v-if="deploymentPackaging" variant="outline">{{ t(`dashboard.onboarding.packaging.${deploymentPackaging}`) }}</Badge>
-        <Button variant="outline" size="sm" :disabled="dashboardLoading" @click="refreshDashboard">
+        <Button variant="outline" size="sm" :disabled="dashboardLoading" @click="refreshAll">
           <Spinner v-if="dashboardLoading" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
           {{ t('dashboard.refreshAll') }}
@@ -247,59 +205,10 @@ onBeforeUnmount(() => {
       <AlertDescription>{{ playerError }}</AlertDescription>
     </Alert>
 
-    <div class="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)]">
-      <div class="flex min-w-0 flex-col gap-4">
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle class="flex items-center gap-2"><Activity />{{ t('dashboard.roomsOverview.title') }}</CardTitle>
-            <CardDescription>{{ t('dashboard.roomsOverview.description', { count: roomSummaries.length }) }}</CardDescription>
-            <CardAction>
-              <Button variant="outline" size="sm" :disabled="serverLoading" @click="refreshServers">
-                <Spinner v-if="serverLoading" data-icon="inline-start" />
-                <RefreshCw v-else data-icon="inline-start" />{{ t('common.actions.refresh') }}
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent class="pt-0">
-            <Table v-if="roomSummaries.length && !serverError && !roomError">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{{ t('dashboard.roomsOverview.columns.room') }}</TableHead>
-                  <TableHead>{{ t('dashboard.roomsOverview.columns.status') }}</TableHead>
-                  <TableHead>{{ t('dashboard.roomsOverview.columns.shards') }}</TableHead>
-                  <TableHead class="text-right">{{ t('dashboard.roomsOverview.columns.action') }}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="room in roomSummaries" :key="room.id">
-                  <TableCell class="font-medium">{{ room.name }}</TableCell>
-                  <TableCell><Badge :variant="roomStatusVariant(room)">{{ t(roomStatusKey(room)) }}</Badge></TableCell>
-                  <TableCell class="text-muted-foreground tabular-nums">{{ t('dashboard.roomsOverview.shardCount', { running: room.running, total: room.total }) }}</TableCell>
-                  <TableCell class="text-right">
-                    <Button variant="outline" size="sm" @click="openRoomControl(room)">
-                      {{ t('dashboard.roomsOverview.openControl') }}
-                      <ArrowRight data-icon="inline-end" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
+    <ServerWorkspace id="room-operations" ref="roomOperations" embedded />
 
-            <Alert v-else-if="serverError || roomError" variant="destructive">
-              <CircleAlert /><AlertTitle>{{ t('dashboard.servers.loadFailed') }}</AlertTitle><AlertDescription>{{ serverError || roomError }}</AlertDescription>
-              <AlertAction><Button size="sm" variant="outline" @click="refreshServers">{{ t('common.actions.retry') }}</Button></AlertAction>
-            </Alert>
-
-            <Empty v-else-if="!roomList.length" class="min-h-44 py-6">
-              <EmptyHeader><EmptyMedia variant="icon"><FolderPlus /></EmptyMedia><EmptyTitle>{{ t('dashboard.servers.noRooms') }}</EmptyTitle><EmptyDescription>{{ t('dashboard.servers.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
-              <EmptyContent><Button size="sm" @click="router.push('/rooms/settings')">{{ t('dashboard.servers.createRoom') }}</Button></EmptyContent>
-            </Empty>
-          </CardContent>
-        </Card>
-      </div>
-
-      <aside class="flex min-w-0 flex-col gap-4">
-        <Card size="sm">
+    <div class="grid min-w-0 items-start gap-4 lg:grid-cols-2">
+      <Card size="sm">
           <CardHeader>
             <CardTitle class="flex items-center gap-2"><Gauge />{{ t('dashboard.resources.title') }}</CardTitle>
             <CardDescription>{{ systemStatus.os_info || t('dashboard.summary.waitingSystem') }}</CardDescription>
@@ -333,9 +242,9 @@ onBeforeUnmount(() => {
             </div>
           </CardContent>
           <CardFooter class="text-muted-foreground flex-wrap justify-between gap-2 text-xs"><span>{{ t('dashboard.resources.uptime', { value: formatSystemUptime(systemStatus, t) }) }}</span><span>{{ formatDateTime(systemStatus.current_time, locale) }}</span></CardFooter>
-        </Card>
+      </Card>
 
-        <Card size="sm">
+      <Card size="sm">
           <CardHeader>
             <CardTitle class="flex items-center gap-2"><PackageCheck />{{ t('dashboard.version.title') }}</CardTitle>
             <CardDescription>{{ t('dashboard.version.description') }}</CardDescription>
@@ -387,8 +296,7 @@ onBeforeUnmount(() => {
             <Button v-if="canInstallGame" size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><PackageOpen v-else data-icon="inline-start" />{{ t(gameUpdateBusy ? 'dashboard.version.installButtonBusy' : 'dashboard.version.installButton') }}</Button>
             <Button v-else size="sm" @click="router.push('/servers/releases')"><PackageCheck data-icon="inline-start" />{{ t('gameReleases.actions.open') }}</Button>
           </CardFooter>
-        </Card>
-      </aside>
+      </Card>
     </div>
 
   </div>

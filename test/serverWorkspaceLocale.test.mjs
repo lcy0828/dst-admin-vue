@@ -60,15 +60,17 @@ test('server workspace does not reserve visible space for redundant operation co
   assert.match(source, /\.operation-content \{\s*padding-top: 12px;/)
 })
 
-test('server workspace consolidates room context into one compact card', async () => {
+test('server workspace promotes players to operations and keeps supporting context compact', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
   assert.match(source, /<Card size="sm" class="context-card">/)
   assert.match(source, /<CardContent class="context-card-content">/)
-  assert.equal((source.match(/<Separator class="context-separator/g) || []).length, 2)
-  assert.match(source, /class="context-section context-section-players"/)
+  assert.equal((source.match(/<Separator class="context-separator/g) || []).length, 1)
+  assert.match(source, /<TabsTrigger value="players">/)
+  assert.match(source, /class="players-panel"/)
   assert.match(source, /class="context-section context-section-backups"/)
   assert.match(source, /class="context-section context-section-quick"/)
+  assert.doesNotMatch(source, /class="context-section context-section-players"/)
   assert.doesNotMatch(source, /\$t\('servers\.workspace\.quickNav\.description'\)/)
 })
 

@@ -6,10 +6,12 @@ const dashboard = fs.readFileSync(new URL('../src/views/v2/DashboardV2.vue', imp
 
 test('dashboard keeps room operations in one control surface and only exposes first-time game installation', () => {
   assert.match(dashboard, /grid gap-3 sm:grid-cols-2 xl:grid-cols-4/)
-  assert.equal((dashboard.match(/<Card size="sm">/g) || []).length, 7)
+  assert.equal((dashboard.match(/<Card size="sm">/g) || []).length, 6)
   assert.match(dashboard, /grid min-w-0 grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2/)
-  assert.match(dashboard, /dashboard\.roomsOverview\.openControl/)
-  assert.match(dashboard, /path: '\/servers\/workspace'/)
+  assert.match(dashboard, /<ServerWorkspace id="room-operations" ref="roomOperations" embedded/)
+  assert.match(dashboard, /roomOperations\.value\?\.refreshWorkspace\?\.\(\)/)
+  assert.doesNotMatch(dashboard, /dashboard\.roomsOverview\.openControl/)
+  assert.doesNotMatch(dashboard, /path: '\/servers\/workspace'/)
   assert.match(dashboard, /router\.push\('\/servers\/releases'\)/)
   assert.match(dashboard, /gameReleases\.actions\.open/)
   assert.match(dashboard, /v-if="canInstallGame"/)

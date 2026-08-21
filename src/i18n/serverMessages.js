@@ -120,6 +120,7 @@ export const serverMessages = {
       workspace: {
         kicker: '当前房间',
         title: '房间控制',
+        dashboardTitle: '房间与分片',
         roomSummary: '{name} · {count} 个世界',
         noRoomSelected: '尚未选择房间',
         roomSelect: '选择房间',
@@ -514,6 +515,7 @@ export const serverMessages = {
       workspace: {
         kicker: 'Current room',
         title: 'Room control',
+        dashboardTitle: 'Rooms and shards',
         roomSummary: '{name} · {count} worlds',
         noRoomSelected: 'No room selected',
         roomSelect: 'Select a room',

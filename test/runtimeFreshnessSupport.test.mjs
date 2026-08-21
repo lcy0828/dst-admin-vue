@@ -72,17 +72,18 @@ test('server surfaces dispatch the primary stop action while a shard is starting
   assert.match(dashboard, /stopping \? roomApi\.stopRoom\(input\) : startRoomWithCapacityRisk\(input\)/)
 })
 
-test('server workspace exposes full runtime lifecycle auditing without polling it', async () => {
-  const [api, workspace, auditPanel] = await Promise.all([
+test('central diagnostics exposes full runtime lifecycle auditing without polling it', async () => {
+  const [api, workspace, diagnostics, auditPanel] = await Promise.all([
     source('src/api/v2.js'),
     source('src/views/servers/ServerWorkspace.vue'),
+    source('src/views/rooms/RoomDiagnostics.vue'),
     source('src/components/runtime/RuntimeAuditPanel.vue')
   ])
 
   assert.match(api, /lifecycleEvents: \(roomId, params = \{\}\) => client\.get/)
   assert.match(api, /`\/rooms\/\$\{encode\(roomId\)\}\/runtime-events`/)
-  assert.match(workspace, /<RuntimeAuditPanel ref="runtimeAudit"/)
-  assert.match(workspace, /this\.\$refs\.runtimeAudit\?\.loadEvents\(\)/)
+  assert.doesNotMatch(workspace, /<RuntimeAuditPanel/)
+  assert.match(diagnostics, /<RuntimeAuditPanel :room-id="selectedRoomId" :worlds="selectedRoomWorlds"/)
   assert.match(auditPanel, /event\.reasonCode/)
   assert.match(auditPanel, /event\.jobId/)
   assert.match(auditPanel, /event\.requestId/)
