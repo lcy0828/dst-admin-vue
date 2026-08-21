@@ -117,7 +117,7 @@ test('Cron task catalog is static and protocol identifiers remain intact', async
 
   for (const actionId of [
     'room.start', 'room.stop', 'room.restart', 'backup.create', 'backup.prune',
-    'command.execute', 'player.refresh', 'log.structured.refresh', 'world.state.refresh'
+    'command.execute', 'notification.send', 'player.refresh', 'log.structured.refresh', 'world.state.refresh'
   ]) {
     assert.ok(catalog.includes(`'${actionId}'`), actionId)
   }

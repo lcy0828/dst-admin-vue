@@ -382,7 +382,7 @@
       <header class="section-header">
         <div>
           <h2 id="game-data-title">游戏数据</h2>
-          <p>玩家概况与近期公告</p>
+          <p>玩家概况与近期游戏通知</p>
         </div>
       </header>
       <div class="secondary-grid">
@@ -426,8 +426,8 @@
 
         <Card size="sm">
           <CardHeader>
-            <CardTitle class="card-title-with-icon"><Megaphone aria-hidden="true" />近期公告</CardTitle>
-            <CardDescription>发布给玩家的运营消息</CardDescription>
+            <CardTitle class="card-title-with-icon"><Megaphone aria-hidden="true" />近期游戏通知</CardTitle>
+            <CardDescription>实际发送到运行中世界的游戏内消息</CardDescription>
             <CardAction>
               <UiButton variant="ghost" size="sm" @click="gotoAnnouncement">
                 更多
@@ -438,29 +438,29 @@
           <CardContent class="announcement-list">
             <Alert v-if="announcementsError" variant="destructive">
               <CircleAlert />
-              <AlertTitle>公告读取失败</AlertTitle>
+              <AlertTitle>游戏通知读取失败</AlertTitle>
               <AlertDescription>{{ announcementsError }}</AlertDescription>
             </Alert>
             <Empty v-else-if="announcements.length === 0" class="announcement-empty">
               <EmptyHeader>
                 <EmptyMedia variant="icon"><Megaphone /></EmptyMedia>
-                <EmptyTitle>暂无公告</EmptyTitle>
-                <EmptyDescription>创建公告后会显示在这里。</EmptyDescription>
+                <EmptyTitle>暂无游戏通知</EmptyTitle>
+                <EmptyDescription>发送游戏内消息后会显示在这里。</EmptyDescription>
               </EmptyHeader>
-              <EmptyContent><UiButton size="sm" @click="gotoAnnouncement">管理公告</UiButton></EmptyContent>
+              <EmptyContent><UiButton size="sm" @click="gotoAnnouncement">打开游戏通知</UiButton></EmptyContent>
             </Empty>
             <template v-else>
               <article v-for="(item, index) in announcements" :key="index" class="announcement-item">
                 <div class="announcement-title">
-                  <Badge variant="outline">{{ item.type }}</Badge>
+                  <Badge variant="outline">{{ notificationSourceLabel(item.type) }}</Badge>
                   <strong>{{ item.title }}</strong>
                 </div>
                 <p>{{ item.content }}</p>
                 <footer>
-                  <span>{{ item.time }}</span>
+                  <span>{{ formatNotificationTime(item.time) }}</span>
                   <div>
                     <UiButton variant="ghost" size="sm" @click="gotoAnnouncement">
-                      <ArrowRight data-icon="inline-start" />管理公告
+                      <ArrowRight data-icon="inline-start" />查看游戏通知
                     </UiButton>
                   </div>
                 </footer>
@@ -912,6 +912,18 @@ export default {
 
     gotoAnnouncement() {
       this.$router.push('/announcements');
+    },
+
+    notificationSourceLabel(source) {
+      const known = ['manual', 'room_stop', 'room_restart', 'game_update', 'mod_sync', 'automation'];
+      return known.includes(source) ? this.$t(`announcements.sources.${source}`) : (source || '未知来源');
+    },
+
+    formatNotificationTime(value) {
+      return formatSystemDateTime(value, {
+        locale: 'zh-CN', fallback: '--', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      });
     },
 
     refreshSystemStatus() {

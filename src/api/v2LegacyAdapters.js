@@ -1,8 +1,8 @@
 import {
-  announcementsV2API,
   backupsV2API,
   containersV2API,
   consoleV2API,
+  gameNotificationsV2API,
   gameV2API,
   roomsV2API,
   systemV2API,
@@ -11,7 +11,6 @@ import {
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
-import { announcementTypeId } from '@/lib/systemDataIdentifiers.mjs'
 
 const MEBIBYTE = 1024 * 1024
 const GIBIBYTE = 1024 * 1024 * 1024
@@ -24,27 +23,14 @@ const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg)
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 
-function announcementInput(input = {}) {
-  const rawExpireTime = String(input.expireTime || '').trim()
-  const expiresAt = new Date(rawExpireTime.includes('T') ? rawExpireTime : rawExpireTime.replace(' ', 'T'))
-  if (!rawExpireTime || Number.isNaN(expiresAt.getTime())) {
-    throw adapterError('INVALID_ANNOUNCEMENT_EXPIRY', { context: { value: rawExpireTime } })
-  }
-  return {
-    title: String(input.title || '').trim(),
-    content: String(input.content || '').trim(),
-    expireTime: expiresAt.toISOString(),
-    target: input.target || 'all',
-    important: input.important === true
-  }
-}
-
-function legacyAnnouncement(value) {
-  const publishedAt = new Date(value.publishTime)
+function legacyGameNotification(value) {
+  const createdAt = new Date(value.createdAt)
   return {
     ...value,
-    type: announcementTypeId(value.important),
-    time: Number.isNaN(publishedAt.getTime()) ? '' : publishedAt.toISOString()
+    type: value.source || 'manual',
+    title: value.roomName || '',
+    content: value.message || '',
+    time: Number.isNaN(createdAt.getTime()) ? '' : createdAt.toISOString()
   }
 }
 
@@ -624,20 +610,8 @@ export const legacySystemApi = {
     })
   },
   async getAnnouncements() {
-    const items = await announcementsV2API.list()
-    return (Array.isArray(items) ? items : []).map(legacyAnnouncement)
-  },
-  async createAnnouncement(input) {
-    return legacyAnnouncement(await announcementsV2API.create(announcementInput(input)))
-  },
-  async updateAnnouncement(announcementId, input) {
-    return legacyAnnouncement(await announcementsV2API.update(announcementId, announcementInput(input)))
-  },
-  async deleteAnnouncement(announcementId) {
-    return announcementsV2API.delete(announcementId)
-  },
-  async getAnnouncementDetail(announcementId) {
-    return legacyAnnouncement(await announcementsV2API.get(announcementId))
+    const result = await gameNotificationsV2API.list('', 3, 0)
+    return (result.items || []).map(legacyGameNotification)
   },
   async getDockerContainers() {
     const list = await containersV2API.list()

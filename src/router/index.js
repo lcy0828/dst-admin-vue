@@ -51,7 +51,7 @@ export const constantRoutes = [
         path: 'announcements',
         component: () => import('@/views/Announcements.vue'),
         name: 'Announcements',
-        meta: { title: '公告管理', titleKey: 'navigation.announcements', icon: 'announcement' }
+        meta: { title: '游戏通知', titleKey: 'navigation.announcements', icon: 'announcement' }
       }
     ]
   },

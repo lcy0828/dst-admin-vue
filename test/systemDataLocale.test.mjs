@@ -64,7 +64,7 @@ test('legacy adapters no longer persist or return localized enum values', () => 
   assert.match(cronApi, /executor: SYSTEM_EXECUTOR_ID/)
   assert.match(cronApi, /name: SYSTEM_AUTOMATION_GROUP_IDS\.UNGROUPED/)
   assert.match(playerApi, /name: SYSTEM_AUTOMATION_GROUP_IDS\.PLAYER_MANAGEMENT/)
-  assert.match(adapters, /type: announcementTypeId\(value\.important\)/)
+  assert.match(adapters, /type: value\.source \|\| 'manual'/)
   assert.doesNotMatch(adapters, /toLocaleString\('zh-CN'\)/)
   assert.doesNotMatch(adapters, /type: value\.important \? '重要' : '通知'/)
 })

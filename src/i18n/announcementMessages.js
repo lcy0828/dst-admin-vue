@@ -1,171 +1,221 @@
 export const announcementMessages = {
   'zh-CN': {
     announcements: {
-      title: '公告管理',
-      subtitle: '发布并维护面向玩家和管理员的系统公告。',
+      title: '游戏通知',
+      subtitle: '向运行中的世界发送游戏内消息，并管理维护操作前的玩家提醒。',
       actions: {
-        publish: '发布公告',
-        refresh: '刷新',
-        reload: '重新加载',
-        view: '查看',
-        edit: '编辑',
-        delete: '删除',
-        close: '关闭',
-        save: '保存',
-        submit: '确定'
+        send: '发送通知',
+        details: '查看投递详情'
       },
-      list: {
-        loadFailed: '公告列表加载失败',
-        title: '公告列表',
-        description: '管理面向玩家和管理员的系统公告。',
-        filterPlaceholder: '状态筛选',
+      emptyRooms: {
+        title: '没有可用房间',
+        description: '接管房间后才能发送游戏通知和配置操作提醒。'
+      },
+      composer: {
+        title: '即时通知',
+        description: '消息会发送到所选房间内当前运行中的每个世界。',
+        room: '房间',
+        roomPlaceholder: '选择房间',
+        roomDescription: '选择需要接收消息的游戏房间。',
+        worlds: '世界状态',
+        worldDescription: '已停止的世界会被跳过，并记录在发送历史中。',
+        runningCount: '{running} / {total} 个世界运行中',
+        message: '通知内容',
+        messagePlaceholder: '输入要在游戏内显示的消息',
+        messageCount: '{count} / 500 个字符'
+      },
+      policy: {
+        title: '操作前通知',
+        description: '控制停止、重启、游戏更新和 Mod 重启生效前的游戏内倒计时提醒。',
+        enabled: '启用倒计时通知',
+        enabledDescription: '仅在检测到在线玩家时等待倒计时。',
+        countdown: '提前通知时间',
+        countdownDescription: '系统会在起始时间、30 秒和 10 秒节点提醒。',
+        seconds: '{count} 秒',
+        behaviorTitle: '不会阻断管理操作',
+        behaviorDescription: '通知投递失败会保留记录，但不会阻止停止或重启；取消任务会同时取消倒计时。'
+      },
+      history: {
+        title: '发送历史',
+        description: '保留手动通知和系统操作提醒的实际分片投递结果。',
         columns: {
-          title: '标题',
-          publishedAt: '发布时间',
-          expiresAt: '过期时间',
-          status: '状态',
-          actions: '操作'
+          time: '发送时间',
+          source: '触发来源',
+          message: '通知内容',
+          result: '投递结果',
+          details: '详情'
         },
-        loading: '正在加载公告',
-        empty: '暂无公告',
-        emptyDescription: '当前筛选条件下没有公告记录。'
+        counts: '成功 {success} · 失败 {failed} · 跳过 {skipped}',
+        empty: '还没有发送记录',
+        emptyDescription: '发送即时通知、自动化通知或执行带倒计时的维护操作后，记录会显示在这里。',
+        total: '共 {count} 条记录'
+      },
+      detail: {
+        title: '投递详情',
+        description: '{room} · {time}',
+        localTarget: '本机',
+        agentTarget: 'Agent · {agent}',
+        noTarget: '未投递',
+        columns: {
+          world: '世界',
+          target: '运行目标',
+          status: '状态',
+          message: '结果',
+          time: '观测时间'
+        }
+      },
+      sources: {
+        manual: '手动发送',
+        room_stop: '停止房间',
+        room_restart: '重启房间',
+        game_update: '游戏更新',
+        mod_sync: '模组同步',
+        automation: '自动化任务'
       },
       statuses: {
-        all: '全部',
-        active: '有效',
-        expired: '已过期'
+        queued: '等待发送',
+        sending: '发送中',
+        succeeded: '发送成功',
+        partial: '部分成功',
+        failed: '发送失败',
+        skipped: '未发送',
+        canceled: '已取消'
       },
-      important: '重要',
-      detail: {
-        title: '公告详情',
-        description: '查看公告内容和生效时间。',
-        publishedAt: '发布时间：{time}',
-        expiresAt: '过期时间：{time}'
+      deliveryStatuses: {
+        queued: '等待发送',
+        succeeded: '发送成功',
+        failed: '发送失败',
+        skipped: '世界未运行',
+        canceled: '已取消'
       },
-      form: {
-        createTitle: '创建公告',
-        editTitle: '编辑公告',
-        description: '设置公告内容、接收对象和过期时间。',
-        title: '标题',
-        titlePlaceholder: '请输入公告标题',
-        content: '内容',
-        contentPlaceholder: '请输入公告内容',
-        expiresAt: '过期时间',
-        target: '发送对象',
-        targets: {
-          all: '所有玩家',
-          online: '在线玩家',
-          admins: '管理员'
-        },
-        important: '重要公告',
-        importantDescription: '重要公告将在列表中突出显示。'
+      worldStatuses: {
+        running: '运行中',
+        starting: '启动中',
+        stopped: '已停止',
+        failed: '异常',
+        unknown: '未知'
       },
       validation: {
-        titleRequired: '请输入公告标题',
-        titleLength: '长度在 2 到 50 个字符',
-        contentRequired: '请输入公告内容',
-        expiresAtInvalid: '请选择有效的过期时间',
-        expiresAtFuture: '过期时间必须晚于当前时间'
+        messageRequired: '请输入通知内容',
+        messageLength: '通知内容不能超过 500 个字符'
       },
       feedback: {
-        unavailable: '无法连接公告服务',
-        withDetail: '{message}：{detail}',
-        listFailed: '获取公告列表失败：{error}',
-        created: '创建公告成功',
-        updated: '更新公告成功',
-        createFailed: '创建公告失败：{error}',
-        updateFailed: '更新公告失败：{error}',
-        deleteConfirm: '确定要删除公告“{title}”吗？',
-        deleteTitle: '删除公告',
-        deleteButton: '删除',
-        deleted: '删除公告成功',
-        deleteCanceled: '已取消删除',
-        deleteFailed: '删除公告失败：{error}'
+        loadFailed: '加载游戏通知失败',
+        sent: '已向 {count} 个世界发送通知',
+        noRunningWorlds: '当前没有运行中的世界，未发送通知',
+        sendFailed: '游戏通知发送失败，请查看投递详情',
+        policySaved: '操作通知策略已保存',
+        policySaveFailed: '操作通知策略保存失败'
       }
     }
   },
   'en-US': {
     announcements: {
-      title: 'Announcements',
-      subtitle: 'Publish and maintain system notices for players and administrators.',
+      title: 'Game notifications',
+      subtitle: 'Send in-game messages and manage player warnings before maintenance operations.',
       actions: {
-        publish: 'Publish announcement',
-        refresh: 'Refresh',
-        reload: 'Reload',
-        view: 'View',
-        edit: 'Edit',
-        delete: 'Delete',
-        close: 'Close',
-        save: 'Save',
-        submit: 'Confirm'
+        send: 'Send notification',
+        details: 'View delivery details'
       },
-      list: {
-        loadFailed: 'Could not load announcements',
-        title: 'Announcement list',
-        description: 'Manage system notices for players and administrators.',
-        filterPlaceholder: 'Filter by status',
+      emptyRooms: {
+        title: 'No available rooms',
+        description: 'Adopt a room before sending game notifications or configuring operation warnings.'
+      },
+      composer: {
+        title: 'Immediate notification',
+        description: 'The message is sent to every running Shard in the selected room.',
+        room: 'Room',
+        roomPlaceholder: 'Select a room',
+        roomDescription: 'Select the game room that should receive this message.',
+        worlds: 'World status',
+        worldDescription: 'Stopped worlds are skipped and retained in delivery history.',
+        runningCount: '{running} of {total} worlds running',
+        message: 'Message',
+        messagePlaceholder: 'Enter the message to display in game',
+        messageCount: '{count} / 500 characters'
+      },
+      policy: {
+        title: 'Pre-operation notification',
+        description: 'Control in-game countdown warnings before stops, restarts, game updates, and Mod activation restarts.',
+        enabled: 'Enable countdown notifications',
+        enabledDescription: 'The countdown only waits when online players are detected.',
+        countdown: 'Advance warning',
+        countdownDescription: 'Warnings are sent at the initial, 30-second, and 10-second checkpoints.',
+        seconds: '{count} seconds',
+        behaviorTitle: 'Management actions remain available',
+        behaviorDescription: 'Delivery failures are recorded but do not block stop or restart. Canceling the Job also cancels the countdown.'
+      },
+      history: {
+        title: 'Delivery history',
+        description: 'Actual per-Shard results for manual messages and operation warnings.',
         columns: {
-          title: 'Title',
-          publishedAt: 'Published',
-          expiresAt: 'Expires',
-          status: 'Status',
-          actions: 'Actions'
+          time: 'Sent at',
+          source: 'Source',
+          message: 'Message',
+          result: 'Result',
+          details: 'Details'
         },
-        loading: 'Loading announcements',
-        empty: 'No announcements',
-        emptyDescription: 'No announcements match the current filter.'
+        counts: '{success} sent · {failed} failed · {skipped} skipped',
+        empty: 'No delivery history',
+        emptyDescription: 'Immediate messages, automated notifications, and maintenance countdown warnings appear here after they are sent.',
+        total: '{count} records'
+      },
+      detail: {
+        title: 'Delivery details',
+        description: '{room} · {time}',
+        localTarget: 'Local',
+        agentTarget: 'Agent · {agent}',
+        noTarget: 'Not delivered',
+        columns: {
+          world: 'World',
+          target: 'Runtime target',
+          status: 'Status',
+          message: 'Result',
+          time: 'Observed at'
+        }
+      },
+      sources: {
+        manual: 'Manual',
+        room_stop: 'Room stop',
+        room_restart: 'Room restart',
+        game_update: 'Game update',
+        mod_sync: 'Mod sync',
+        automation: 'Automation'
       },
       statuses: {
-        all: 'All',
-        active: 'Active',
-        expired: 'Expired'
+        queued: 'Queued',
+        sending: 'Sending',
+        succeeded: 'Sent',
+        partial: 'Partially sent',
+        failed: 'Failed',
+        skipped: 'Not sent',
+        canceled: 'Canceled'
       },
-      important: 'Important',
-      detail: {
-        title: 'Announcement details',
-        description: 'Review the announcement content and active period.',
-        publishedAt: 'Published: {time}',
-        expiresAt: 'Expires: {time}'
+      deliveryStatuses: {
+        queued: 'Queued',
+        succeeded: 'Sent',
+        failed: 'Failed',
+        skipped: 'World stopped',
+        canceled: 'Canceled'
       },
-      form: {
-        createTitle: 'Create announcement',
-        editTitle: 'Edit announcement',
-        description: 'Set the content, recipients, and expiration time.',
-        title: 'Title',
-        titlePlaceholder: 'Enter an announcement title',
-        content: 'Content',
-        contentPlaceholder: 'Enter announcement content',
-        expiresAt: 'Expiration time',
-        target: 'Recipients',
-        targets: {
-          all: 'All players',
-          online: 'Online players',
-          admins: 'Administrators'
-        },
-        important: 'Important announcement',
-        importantDescription: 'Important announcements are highlighted in the list.'
+      worldStatuses: {
+        running: 'Running',
+        starting: 'Starting',
+        stopped: 'Stopped',
+        failed: 'Failed',
+        unknown: 'Unknown'
       },
       validation: {
-        titleRequired: 'Enter an announcement title',
-        titleLength: 'Use between 2 and 50 characters',
-        contentRequired: 'Enter announcement content',
-        expiresAtInvalid: 'Select a valid expiration time',
-        expiresAtFuture: 'Expiration time must be in the future'
+        messageRequired: 'Enter a notification message',
+        messageLength: 'The message cannot exceed 500 characters'
       },
       feedback: {
-        unavailable: 'The announcement service is unavailable',
-        withDetail: '{message}: {detail}',
-        listFailed: 'Could not load announcements: {error}',
-        created: 'Announcement created',
-        updated: 'Announcement updated',
-        createFailed: 'Could not create announcement: {error}',
-        updateFailed: 'Could not update announcement: {error}',
-        deleteConfirm: 'Delete announcement "{title}"?',
-        deleteTitle: 'Delete announcement',
-        deleteButton: 'Delete',
-        deleted: 'Announcement deleted',
-        deleteCanceled: 'Deletion canceled',
-        deleteFailed: 'Could not delete announcement: {error}'
+        loadFailed: 'Could not load game notifications',
+        sent: 'Notification sent to {count} worlds',
+        noRunningWorlds: 'No worlds are running, so no message was sent',
+        sendFailed: 'The game notification failed. Review delivery details.',
+        policySaved: 'Operation notification policy saved',
+        policySaveFailed: 'Could not save the operation notification policy'
       }
     }
   }

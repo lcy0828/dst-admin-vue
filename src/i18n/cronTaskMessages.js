@@ -49,6 +49,7 @@ export const cronTaskMessages = Object.freeze({
       backupCreate: { name: '创建快照', description: '创建一致性房间快照' },
       backupPrune: { name: '清理快照', description: '按保留数量清理旧快照' },
       commandExecute: { name: '执行内建命令', description: '执行低或中风险参数化命令' },
+      notificationSend: { name: '发送游戏通知', description: '向房间内当前运行中的所有分片发送游戏内消息' },
       playerRefresh: { name: '刷新玩家', description: '采样分片玩家状态' },
       structuredLogRefresh: { name: '刷新结构化日志', description: '刷新分片结构化日志快照' },
       worldStateRefresh: { name: '刷新世界状态', description: '采样分片世界状态' }
@@ -214,6 +215,7 @@ export const cronTaskMessages = Object.freeze({
       backupCreate: { name: 'Create snapshot', description: 'Create a consistent room snapshot' },
       backupPrune: { name: 'Prune snapshots', description: 'Remove old snapshots according to the retention count' },
       commandExecute: { name: 'Run built-in command', description: 'Run a parameterized low- or medium-risk command' },
+      notificationSend: { name: 'Send game notification', description: 'Send an in-game message to every running Shard in the room' },
       playerRefresh: { name: 'Refresh players', description: 'Sample player state from the shards' },
       structuredLogRefresh: { name: 'Refresh structured logs', description: 'Refresh the structured log snapshot for each shard' },
       worldStateRefresh: { name: 'Refresh world state', description: 'Sample world state from the shards' }
@@ -356,6 +358,7 @@ const TRIGGER_KEYS = Object.freeze({
 const ACTION_KEYS = Object.freeze({
   'room.start': 'roomStart', 'room.stop': 'roomStop', 'room.restart': 'roomRestart',
   'backup.create': 'backupCreate', 'backup.prune': 'backupPrune', 'command.execute': 'commandExecute',
+  'notification.send': 'notificationSend',
   'player.refresh': 'playerRefresh', 'log.structured.refresh': 'structuredLogRefresh', 'world.state.refresh': 'worldStateRefresh'
 })
 

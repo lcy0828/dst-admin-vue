@@ -524,7 +524,7 @@ const NAVIGATION_SECTIONS = [
           { label: '日志解析器', to: '/logs/parser' }
         ]
       },
-      { key: 'announcements', label: '公告管理', to: '/announcements', icon: Megaphone },
+      { key: 'announcements', label: '游戏通知', to: '/announcements', icon: Megaphone },
       { key: 'backups', label: '备份管理', to: '/backups', icon: ArchiveRestore },
       {
         key: 'scheduled',

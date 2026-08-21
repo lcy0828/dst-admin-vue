@@ -143,14 +143,16 @@ export const systemV2API = {
   testEmail: input => client.post('/system/settings/actions/test-email', input)
 }
 
-export const announcementsV2API = {
-  list: () => client.get('/announcements', { headers: { 'Cache-Control': 'no-store' } }),
-  get: announcementId => client.get(`/announcements/${encode(announcementId)}`, {
+export const gameNotificationsV2API = {
+  list: (roomId = '', limit = 25, offset = 0) => client.get('/game-notifications', {
+    params: { ...(roomId ? { roomId } : {}), limit, offset },
     headers: { 'Cache-Control': 'no-store' }
   }),
-  create: input => client.post('/announcements', input),
-  update: (announcementId, input) => client.put(`/announcements/${encode(announcementId)}`, input),
-  delete: announcementId => client.delete(`/announcements/${encode(announcementId)}`)
+  send: input => client.post('/game-notifications', input),
+  policy: roomId => client.get(`/rooms/${encode(roomId)}/game-notification-policy`, {
+    headers: { 'Cache-Control': 'no-store' }
+  }),
+  savePolicy: (roomId, input) => client.put(`/rooms/${encode(roomId)}/game-notification-policy`, input)
 }
 
 export const roomsV2API = {

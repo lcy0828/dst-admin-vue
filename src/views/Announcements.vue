@@ -1,512 +1,524 @@
-<template>
-  <div class="announcements-page">
-    <header class="page-header">
-      <div>
-        <h1>{{ $t('announcements.title') }}</h1>
-        <p>{{ $t('announcements.subtitle') }}</p>
-      </div>
-      <div class="header-actions">
-        <UiButton @click="createAnnouncement"><PlusIcon data-icon="inline-start" />{{ $t('announcements.actions.publish') }}</UiButton>
-        <UiButton variant="outline" :disabled="loading" @click="refreshAnnouncements">
-          <Spinner v-if="loading" data-icon="inline-start" />
-          <RefreshCwIcon v-else data-icon="inline-start" />
-          {{ $t('announcements.actions.refresh') }}
-        </UiButton>
-      </div>
-    </header>
-    <Alert v-if="loadError" variant="destructive">
-      <CircleAlertIcon />
-      <AlertTitle>{{ $t('announcements.list.loadFailed') }}</AlertTitle>
-      <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction><UiButton variant="outline" size="sm" @click="refreshAnnouncements">
-        <RefreshCwIcon data-icon="inline-start" />{{ $t('announcements.actions.reload') }}
-      </UiButton></AlertAction>
-    </Alert>
-    <Card v-if="!loadError || announcements.length" class="announcements-card">
-      <CardHeader>
-        <CardTitle>{{ $t('announcements.list.title') }}</CardTitle>
-        <CardDescription>{{ $t('announcements.list.description') }}</CardDescription>
-        <CardAction><UiSelect v-model="statusFilter">
-          <SelectTrigger class="status-filter"><SelectValue :placeholder="$t('announcements.list.filterPlaceholder')" /></SelectTrigger>
-          <SelectContent><SelectGroup>
-            <SelectItem value="all">{{ $t('announcements.statuses.all') }}</SelectItem>
-            <SelectItem value="active">{{ $t('announcements.statuses.active') }}</SelectItem>
-            <SelectItem value="expired">{{ $t('announcements.statuses.expired') }}</SelectItem>
-          </SelectGroup></SelectContent>
-        </UiSelect></CardAction>
-      </CardHeader>
-      <CardContent>
-        <div class="table-wrap"><ShadcnTable>
-          <TableHeader><TableRow>
-            <TableHead>{{ $t('announcements.list.columns.title') }}</TableHead><TableHead>{{ $t('announcements.list.columns.publishedAt') }}</TableHead><TableHead>{{ $t('announcements.list.columns.expiresAt') }}</TableHead><TableHead>{{ $t('announcements.list.columns.status') }}</TableHead><TableHead class="actions-column">{{ $t('announcements.list.columns.actions') }}</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            <TableRow v-for="announcement in filteredAnnouncements" :key="announcement.id">
-              <TableCell><div class="announcement-title"><Badge v-if="announcement.important" variant="destructive">{{ $t('announcements.important') }}</Badge>{{ announcement.title }}</div></TableCell>
-              <TableCell>{{ formatDate(announcement.publishTime) }}</TableCell>
-              <TableCell>{{ formatDate(announcement.expireTime) }}</TableCell>
-              <TableCell><Badge :variant="announcementStatusVariant(announcement.status)">{{ announcementStatusLabel(announcement.status) }}</Badge></TableCell>
-              <TableCell><div class="row-actions">
-                <UiButton variant="ghost" size="sm" @click="viewAnnouncement(announcement)">{{ $t('announcements.actions.view') }}</UiButton>
-                <UiButton variant="outline" size="sm" @click="editAnnouncement(announcement)">{{ $t('announcements.actions.edit') }}</UiButton>
-                <UiButton variant="destructive" size="sm" @click="deleteAnnouncement(announcement)">{{ $t('announcements.actions.delete') }}</UiButton>
-              </div></TableCell>
-            </TableRow>
-            <TableEmpty v-if="!loading && !loadError && filteredAnnouncements.length === 0" :colspan="5">
-              <Empty><EmptyHeader><EmptyTitle>{{ $t('announcements.list.empty') }}</EmptyTitle><EmptyDescription>{{ $t('announcements.list.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
-            </TableEmpty>
-            <TableEmpty v-if="loading" :colspan="5"><div class="table-skeleton" :aria-label="$t('announcements.list.loading')"><Skeleton v-for="row in 4" :key="row" class="h-10 w-full" /></div></TableEmpty>
-          </TableBody>
-        </ShadcnTable></div>
-      </CardContent>
-    </Card>
-
-    <UiDialog v-model:open="dialogVisible">
-      <DialogScrollContent class="sm:max-w-2xl">
-        <DialogHeader><DialogTitle>{{ $t('announcements.detail.title') }}</DialogTitle><DialogDescription>{{ $t('announcements.detail.description') }}</DialogDescription></DialogHeader>
-        <template v-if="currentAnnouncement">
-        <div class="announcement-detail">
-          <div class="announcement-header">
-            <h3>{{ currentAnnouncement.title }}</h3>
-            <div class="announcement-meta">
-              <span>{{ $t('announcements.detail.publishedAt', { time: formatDate(currentAnnouncement.publishTime) }) }}</span>
-              <span>{{ $t('announcements.detail.expiresAt', { time: formatDate(currentAnnouncement.expireTime) }) }}</span>
-              <Badge v-if="currentAnnouncement.important" variant="destructive">{{ $t('announcements.important') }}</Badge>
-            </div>
-          </div>
-          <div class="announcement-content" v-text="currentAnnouncement.content"></div>
-        </div>
-        </template>
-        <DialogFooter>
-        <UiButton variant="outline" @click="dialogVisible = false">{{ $t('announcements.actions.close') }}</UiButton>
-        <template v-if="dialogMode === 'view'">
-          <UiButton @click="editCurrentAnnouncement">{{ $t('announcements.actions.edit') }}</UiButton>
-        </template>
-        <template v-else>
-          <UiButton @click="saveAnnouncement">{{ $t('announcements.actions.save') }}</UiButton>
-        </template>
-        </DialogFooter>
-      </DialogScrollContent>
-    </UiDialog>
-
-    <UiDialog v-model:open="formVisible">
-      <DialogScrollContent class="sm:max-w-3xl">
-        <DialogHeader><DialogTitle>{{ formTitle }}</DialogTitle><DialogDescription>{{ $t('announcements.form.description') }}</DialogDescription></DialogHeader>
-        <FieldGroup>
-          <Field :data-invalid="Boolean(formErrors.title)"><FieldLabel for="announcement-title">{{ $t('announcements.form.title') }}</FieldLabel><UiInput id="announcement-title" v-model="announcementForm.title" :aria-invalid="Boolean(formErrors.title)" maxlength="50" :placeholder="$t('announcements.form.titlePlaceholder')" /><FieldError v-if="formErrors.title">{{ formError('title') }}</FieldError></Field>
-          <Field :data-invalid="Boolean(formErrors.content)"><FieldLabel for="announcement-content">{{ $t('announcements.form.content') }}</FieldLabel><UiTextarea id="announcement-content" v-model="announcementForm.content" :aria-invalid="Boolean(formErrors.content)" maxlength="10000" rows="8" :placeholder="$t('announcements.form.contentPlaceholder')" /><FieldError v-if="formErrors.content">{{ formError('content') }}</FieldError></Field>
-          <Field :data-invalid="Boolean(formErrors.expireTime)"><FieldLabel for="announcement-expire">{{ $t('announcements.form.expiresAt') }}</FieldLabel><UiInput id="announcement-expire" type="datetime-local" :model-value="toDateTimeLocal(announcementForm.expireTime)" :aria-invalid="Boolean(formErrors.expireTime)" @update:model-value="setExpireTime" /><FieldError v-if="formErrors.expireTime">{{ formError('expireTime') }}</FieldError></Field>
-          <FieldSet><FieldLegend variant="label">{{ $t('announcements.form.target') }}</FieldLegend><RadioGroup v-model="announcementForm.target"><Field v-for="target in targetOptions" :key="target.value" orientation="horizontal"><RadioGroupItem :id="`target-${target.value}`" :value="target.value" /><FieldLabel :for="`target-${target.value}`">{{ target.label }}</FieldLabel></Field></RadioGroup></FieldSet>
-          <Field orientation="horizontal"><FieldContent><FieldLabel for="announcement-important">{{ $t('announcements.form.important') }}</FieldLabel><FieldDescription>{{ $t('announcements.form.importantDescription') }}</FieldDescription></FieldContent><UiSwitch id="announcement-important" v-model="announcementForm.important" /></Field>
-        </FieldGroup>
-        <DialogFooter><UiButton variant="outline" @click="formVisible = false">{{ $t('common.actions.cancel') }}</UiButton><UiButton :disabled="loading" @click="submitAnnouncementForm"><Spinner v-if="loading" data-icon="inline-start" />{{ $t('announcements.actions.submit') }}</UiButton></DialogFooter>
-      </DialogScrollContent>
-    </UiDialog>
-  </div>
-</template>
-
-<script>
-import { CircleAlertIcon, PlusIcon, RefreshCwIcon } from '@lucide/vue'
-import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+<script setup>
+import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
+import { BellRing, CircleAlert, Eye, RefreshCw, Send, ShieldCheck } from '@lucide/vue'
+import { gameNotificationsV2API, roomsV2API } from '@/api/v2'
+import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Button as UiButton } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
-import { Input as UiInput } from '@/components/ui/input'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Spinner } from '@/components/ui/spinner'
+import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogScrollContent,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Switch as UiSwitch } from '@/components/ui/switch'
-import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Textarea as UiTextarea } from '@/components/ui/textarea'
-import { confirmAction } from '@/lib/feedback'
+import { Spinner } from '@/components/ui/spinner'
+import { Switch } from '@/components/ui/switch'
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { toast } from 'vue-sonner'
 
-export default {
-  name: 'AnnouncementsView',
-  components: {
-    Alert,
-    AlertAction,
-    AlertDescription,
-    AlertTitle,
-    Badge,
-    Card,
-    CardAction,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-    CircleAlertIcon,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogScrollContent,
-    DialogTitle,
-    Empty,
-    EmptyDescription,
-    EmptyHeader,
-    EmptyTitle,
-    Field,
-    FieldContent,
-    FieldDescription,
-    FieldError,
-    FieldGroup,
-    FieldLabel,
-    FieldLegend,
-    FieldSet,
-    PlusIcon,
-    RadioGroup,
-    RadioGroupItem,
-    RefreshCwIcon,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-    ShadcnTable,
-    Skeleton,
-    Spinner,
-    TableBody,
-    TableCell,
-    TableEmpty,
-    TableHead,
-    TableHeader,
-    TableRow,
-    UiButton,
-    UiDialog,
-    UiInput,
-    UiSelect,
-    UiSwitch,
-    UiTextarea
-  },
-  data() {
-    return {
-      loading: false,
-      loadFailure: null,
-      statusFilter: 'all',
-      announcements: [],
-      dialogVisible: false,
-      dialogMode: 'view',
-      currentAnnouncement: null,
-      formVisible: false,
-      announcementForm: {
-        title: '',
-        content: '',
-        expireTime: '',
-        target: 'all',
-        important: false
-      },
-      formErrors: { title: '', content: '', expireTime: '' }
-    }
-  },
-  computed: {
-    loadError() {
-      if (!this.loadFailure) return ''
-      const message = this.$t(this.loadFailure.key)
-      return this.loadFailure.detail
-        ? this.$t('announcements.feedback.withDetail', { message, detail: this.loadFailure.detail })
-        : message
-    },
-    formTitle() {
-      return this.$t(this.announcementForm.id ? 'announcements.form.editTitle' : 'announcements.form.createTitle')
-    },
-    targetOptions() {
-      return ['all', 'online', 'admins'].map(value => ({
-        value,
-        label: this.$t(`announcements.form.targets.${value}`)
-      }))
-    },
-    filteredAnnouncements() {
-      if (this.statusFilter === 'all') {
-        return this.announcements;
-      } else {
-        return this.announcements.filter(item => item.status === this.statusFilter);
-      }
-    }
-  },
-  methods: {
-    refreshAnnouncements() {
-      this.loading = true;
-      this.loadFailure = null;
-      return this.$api.systemApi.getAnnouncements()
-        .then(res => {
-          this.announcements = Array.isArray(res) ? res : [];
-        })
-        .catch(err => {
-          this.loadFailure = {
-            key: 'announcements.feedback.unavailable',
-            detail: String(err?.message || '').trim()
-          };
-          toast.error(this.$t('announcements.feedback.listFailed', { error: this.loadError }));
-        })
-        .finally(() => {
-          this.loading = false;
-        });
-    },
-    viewAnnouncement(announcement) {
-      this.currentAnnouncement = { ...announcement };
-      this.dialogMode = 'view';
-      this.dialogVisible = true;
-    },
-    editCurrentAnnouncement() {
-      this.dialogVisible = false;
-      this.editAnnouncement(this.currentAnnouncement);
-    },
-    createAnnouncement() {
-      this.announcementForm = {
-        title: '',
-        content: '',
-        expireTime: this.getDefaultExpireTime(),
-        target: 'all',
-        important: false
-      };
-      this.formErrors = { title: '', content: '', expireTime: '' }
-      this.formVisible = true;
-    },
-    editAnnouncement(announcement) {
-      this.announcementForm = {
-        id: announcement.id,
-        title: announcement.title,
-        content: announcement.content,
-        expireTime: announcement.expireTime,
-        target: announcement.target || 'all',
-        important: announcement.important
-      };
-      this.formErrors = { title: '', content: '', expireTime: '' }
-      this.formVisible = true;
-    },
-    validateAnnouncementForm() {
-      const titleLength = this.announcementForm.title.trim().length
-      this.formErrors.title = titleLength === 0
-        ? 'announcements.validation.titleRequired'
-        : (titleLength < 2 || titleLength > 50 ? 'announcements.validation.titleLength' : '')
-      this.formErrors.content = this.announcementForm.content.trim()
-        ? ''
-        : 'announcements.validation.contentRequired'
-      const expiresAt = new Date(this.announcementForm.expireTime)
-      this.formErrors.expireTime = !this.announcementForm.expireTime || Number.isNaN(expiresAt.getTime())
-        ? 'announcements.validation.expiresAtInvalid'
-        : (expiresAt <= new Date() ? 'announcements.validation.expiresAtFuture' : '')
-      return !Object.values(this.formErrors).some(Boolean)
-    },
-    formError(field) {
-      const key = this.formErrors[field]
-      return key ? this.$t(key) : ''
-    },
-    async submitAnnouncementForm() {
-      if (!this.validateAnnouncementForm()) return
+defineOptions({ name: 'GameNotificationsView' })
 
-      this.loading = true
-      const isEdit = Boolean(this.announcementForm.id)
-      try {
-        if (isEdit) {
-          await this.$api.systemApi.updateAnnouncement(this.announcementForm.id, this.announcementForm)
-        } else {
-          await this.$api.systemApi.createAnnouncement(this.announcementForm)
-        }
-        toast.success(this.$t(isEdit ? 'announcements.feedback.updated' : 'announcements.feedback.created'))
-        this.formVisible = false
-        await this.refreshAnnouncements()
-      } catch (error) {
-        toast.error(this.$t(isEdit ? 'announcements.feedback.updateFailed' : 'announcements.feedback.createFailed', {
-          error: error?.message || this.$t('common.errors.unknown')
-        }))
-      } finally {
-        this.loading = false
-      }
-    },
-    async deleteAnnouncement(announcement) {
-      try {
-        await confirmAction(
-          this.$t('announcements.feedback.deleteConfirm', { title: announcement.title }),
-          this.$t('announcements.feedback.deleteTitle'), {
-          confirmButtonText: this.$t('announcements.feedback.deleteButton'),
-          cancelButtonText: this.$t('common.actions.cancel'),
-          type: 'warning'
-        })
-        this.loading = true
-        await this.$api.systemApi.deleteAnnouncement(announcement.id)
-        this.announcements = this.announcements.filter(item => item.id !== announcement.id)
-        toast.success(this.$t('announcements.feedback.deleted'))
-      } catch (error) {
-        if (error === 'cancel') toast.info(this.$t('announcements.feedback.deleteCanceled'))
-        else toast.error(this.$t('announcements.feedback.deleteFailed', {
-          error: error?.message || this.$t('common.errors.unknown')
-        }))
-      } finally {
-        this.loading = false
-      }
-    },
-    saveAnnouncement() {
-      this.dialogVisible = false;
-      this.editAnnouncement(this.currentAnnouncement);
-    },
-    announcementStatusLabel(status) {
-      if (status === 'active' || status === 'expired') return this.$t(`announcements.statuses.${status}`)
-      return status || this.$t('common.states.unknown')
-    },
-    announcementStatusVariant(status) {
-      if (status === 'active') return 'default'
-      if (status === 'expired') return 'secondary'
-      return 'outline'
-    },
-    formatDate(dateString) {
-      const localeState = this.$i18n?.locale
-      const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN')
-      return formatSystemDateTime(dateString, {
-        locale,
-        fallback: '-',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-    },
-    getDefaultExpireTime() {
-      const date = new Date();
-      date.setDate(date.getDate() + 7);
-      return date.toISOString();
-    },
-    toDateTimeLocal(value) {
-      const date = new Date(value)
-      if (!value || Number.isNaN(date.getTime())) return ''
-      return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-    },
-    setExpireTime(value) {
-      const date = new Date(value)
-      this.announcementForm.expireTime = value && !Number.isNaN(date.getTime()) ? date.toISOString() : ''
-    }
-  },
-  mounted() {
-    this.refreshAnnouncements();
+const route = useRoute()
+const router = useRouter()
+const { locale, t } = useI18n()
+
+const rooms = ref([])
+const selectedRoomId = ref('')
+const worlds = ref([])
+const message = ref('')
+const messageError = ref('')
+const policy = ref({ enabled: true, countdownSeconds: 60 })
+const notifications = ref([])
+const notificationTotal = ref(0)
+const historyOffset = ref(0)
+const pageSize = 25
+const loading = ref(false)
+const roomLoading = ref(false)
+const sending = ref(false)
+const savingPolicy = ref(false)
+const historyLoading = ref(false)
+const loadError = ref('')
+const detailOpen = ref(false)
+const selectedNotification = ref(null)
+let roomLoadSequence = 0
+let roomWatchReady = false
+
+const selectedRoom = computed(() => rooms.value.find(room => room.id === selectedRoomId.value) || null)
+const runningWorlds = computed(() => worlds.value.filter(world => world.status === 'running'))
+const messageLength = computed(() => Array.from(message.value.trim()).length)
+const canSend = computed(() => Boolean(selectedRoomId.value && messageLength.value > 0 && messageLength.value <= 500 && !sending.value))
+const hasPreviousPage = computed(() => historyOffset.value > 0)
+const hasNextPage = computed(() => historyOffset.value + pageSize < notificationTotal.value)
+
+function localeValue() {
+  return typeof locale.value === 'string' ? locale.value : 'zh-CN'
+}
+
+function formatDate(value) {
+  return formatSystemDateTime(value, { locale: localeValue() })
+}
+
+function statusVariant(status) {
+  if (status === 'succeeded') return 'default'
+  if (status === 'failed') return 'destructive'
+  if (status === 'partial' || status === 'sending') return 'secondary'
+  return 'outline'
+}
+
+function worldStatusVariant(status) {
+  if (status === 'running') return 'default'
+  if (status === 'failed') return 'destructive'
+  if (status === 'starting') return 'secondary'
+  return 'outline'
+}
+
+function statusLabel(status) {
+  const known = ['queued', 'sending', 'succeeded', 'partial', 'failed', 'skipped', 'canceled']
+  return known.includes(status) ? t(`announcements.statuses.${status}`) : t('common.states.unknown')
+}
+
+function deliveryStatusLabel(status) {
+  const known = ['queued', 'succeeded', 'failed', 'skipped', 'canceled']
+  return known.includes(status) ? t(`announcements.deliveryStatuses.${status}`) : t('common.states.unknown')
+}
+
+function sourceLabel(source) {
+  const known = ['manual', 'room_stop', 'room_restart', 'game_update', 'mod_sync', 'automation']
+  return known.includes(source) ? t(`announcements.sources.${source}`) : source
+}
+
+function worldStatusLabel(status) {
+  const known = ['running', 'starting', 'stopped', 'failed', 'unknown']
+  return t(`announcements.worldStatuses.${known.includes(status) ? status : 'unknown'}`)
+}
+
+function deliveryTarget(delivery) {
+  if (delivery.agentId) return t('announcements.detail.agentTarget', { agent: delivery.agentId })
+  if (delivery.targetId) return delivery.targetId === 'local' ? t('announcements.detail.localTarget') : delivery.targetId
+  return t('announcements.detail.noTarget')
+}
+
+async function loadRooms() {
+  const result = await roomsV2API.list()
+  rooms.value = (result.items || []).filter(room => room.managed)
+  const requestedRoomId = String(route.query.roomId || '')
+  if (rooms.value.some(room => room.id === requestedRoomId)) {
+    selectedRoomId.value = requestedRoomId
+  } else if (!rooms.value.some(room => room.id === selectedRoomId.value)) {
+    selectedRoomId.value = rooms.value[0]?.id || ''
   }
 }
+
+async function loadHistory() {
+  if (!selectedRoomId.value) {
+    notifications.value = []
+    notificationTotal.value = 0
+    return
+  }
+  historyLoading.value = true
+  try {
+    const result = await gameNotificationsV2API.list(selectedRoomId.value, pageSize, historyOffset.value)
+    notifications.value = result.items || []
+    notificationTotal.value = Number(result.total) || 0
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+async function loadRoomContext() {
+  const roomId = selectedRoomId.value
+  if (!roomId) {
+    worlds.value = []
+    notifications.value = []
+    notificationTotal.value = 0
+    return
+  }
+  const sequence = ++roomLoadSequence
+  roomLoading.value = true
+  loadError.value = ''
+  try {
+    const [worldResult, policyResult] = await Promise.all([
+      roomsV2API.worlds(roomId),
+      gameNotificationsV2API.policy(roomId)
+    ])
+    if (sequence !== roomLoadSequence) return
+    worlds.value = worldResult.items || []
+    policy.value = {
+      enabled: policyResult.enabled !== false,
+      countdownSeconds: Number(policyResult.countdownSeconds) || 60
+    }
+    await loadHistory()
+  } catch (error) {
+    if (sequence === roomLoadSequence) loadError.value = error?.message || t('announcements.feedback.loadFailed')
+  } finally {
+    if (sequence === roomLoadSequence) roomLoading.value = false
+  }
+}
+
+async function refreshPage() {
+  loading.value = true
+  loadError.value = ''
+  try {
+    await loadRooms()
+    await loadRoomContext()
+  } catch (error) {
+    loadError.value = error?.message || t('announcements.feedback.loadFailed')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function sendNotification() {
+  messageError.value = ''
+  if (messageLength.value === 0) {
+    messageError.value = t('announcements.validation.messageRequired')
+    return
+  }
+  if (messageLength.value > 500) {
+    messageError.value = t('announcements.validation.messageLength')
+    return
+  }
+  sending.value = true
+  try {
+    const submitted = await gameNotificationsV2API.send({
+      roomId: selectedRoomId.value,
+      message: message.value.trim()
+    })
+    const completed = await waitForV2Job(submitted, 5 * 60 * 1000, undefined, { allowFailure: true })
+    historyOffset.value = 0
+    await loadHistory()
+    const sent = notifications.value.find(item => item.jobId === completed.id)
+    if (sent?.successCount > 0) {
+      toast.success(t('announcements.feedback.sent', { count: sent.successCount }))
+      message.value = ''
+    } else if (sent?.status === 'skipped') {
+      toast.warning(t('announcements.feedback.noRunningWorlds'))
+    } else {
+      toast.error(t('announcements.feedback.sendFailed'))
+    }
+  } catch (error) {
+    toast.error(error?.message || t('announcements.feedback.sendFailed'))
+    await loadHistory().catch(() => {})
+  } finally {
+    sending.value = false
+  }
+}
+
+async function savePolicy() {
+  savingPolicy.value = true
+  try {
+    const saved = await gameNotificationsV2API.savePolicy(selectedRoomId.value, {
+      enabled: policy.value.enabled,
+      countdownSeconds: Number(policy.value.countdownSeconds)
+    })
+    policy.value = { enabled: saved.enabled, countdownSeconds: saved.countdownSeconds }
+    toast.success(t('announcements.feedback.policySaved'))
+  } catch (error) {
+    toast.error(error?.message || t('announcements.feedback.policySaveFailed'))
+  } finally {
+    savingPolicy.value = false
+  }
+}
+
+function openDetails(notification) {
+  selectedNotification.value = notification
+  detailOpen.value = true
+}
+
+async function changePage(direction) {
+  const next = Math.max(0, historyOffset.value + direction * pageSize)
+  if (next === historyOffset.value) return
+  historyOffset.value = next
+  try {
+    await loadHistory()
+  } catch (error) {
+    toast.error(error?.message || t('announcements.feedback.loadFailed'))
+  }
+}
+
+async function refreshHistory() {
+  try {
+    await loadHistory()
+  } catch (error) {
+    toast.error(error?.message || t('announcements.feedback.loadFailed'))
+  }
+}
+
+watch(selectedRoomId, async (roomId, previous) => {
+  if (!roomWatchReady || !roomId || roomId === previous) return
+  historyOffset.value = 0
+  await router.replace({ query: { ...route.query, roomId } })
+  await loadRoomContext()
+})
+
+onMounted(async () => {
+  await refreshPage()
+  roomWatchReady = true
+})
 </script>
 
-<style scoped>
-.announcements-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-  min-width: 0;
-}
+<template>
+  <div class="flex min-w-0 flex-col gap-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0">
+        <h1 class="text-2xl font-semibold tracking-normal">{{ t('announcements.title') }}</h1>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('announcements.subtitle') }}</p>
+      </div>
+      <Button variant="outline" size="sm" :disabled="loading || roomLoading" @click="refreshPage">
+        <Spinner v-if="loading || roomLoading" data-icon="inline-start" />
+        <RefreshCw v-else data-icon="inline-start" />
+        {{ t('common.actions.refresh') }}
+      </Button>
+    </header>
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
+    <Alert v-if="loadError" variant="destructive">
+      <CircleAlert />
+      <AlertTitle>{{ t('announcements.feedback.loadFailed') }}</AlertTitle>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+    </Alert>
 
-.page-header h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-}
+    <div v-if="loading && rooms.length === 0" class="grid gap-4 xl:grid-cols-2">
+      <Skeleton class="h-96 w-full" />
+      <Skeleton class="h-96 w-full" />
+    </div>
 
-.page-header p {
-  margin: 4px 0 0;
-  color: var(--muted-foreground);
-  font-size: 14px;
-}
+    <Empty v-else-if="rooms.length === 0">
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><BellRing /></EmptyMedia>
+        <EmptyTitle>{{ t('announcements.emptyRooms.title') }}</EmptyTitle>
+        <EmptyDescription>{{ t('announcements.emptyRooms.description') }}</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
 
-.header-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+    <template v-else>
+      <div class="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
+        <Card>
+          <CardHeader>
+            <CardTitle>{{ t('announcements.composer.title') }}</CardTitle>
+            <CardDescription>{{ t('announcements.composer.description') }}</CardDescription>
+            <CardAction>
+              <Badge :variant="runningWorlds.length ? 'secondary' : 'outline'">
+                {{ t('announcements.composer.runningCount', { running: runningWorlds.length, total: worlds.length }) }}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <Field>
+                <FieldLabel for="notification-room">{{ t('announcements.composer.room') }}</FieldLabel>
+                <Select v-model="selectedRoomId" :disabled="sending">
+                  <SelectTrigger id="notification-room"><SelectValue :placeholder="t('announcements.composer.roomPlaceholder')" /></SelectTrigger>
+                  <SelectContent><SelectGroup>
+                    <SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
+                  </SelectGroup></SelectContent>
+                </Select>
+                <FieldDescription>{{ selectedRoom?.description || t('announcements.composer.roomDescription') }}</FieldDescription>
+              </Field>
 
-.status-filter {
-  width: 132px;
-}
+              <Field>
+                <FieldTitle>{{ t('announcements.composer.worlds') }}</FieldTitle>
+                <div v-if="roomLoading" class="flex flex-wrap gap-2"><Skeleton v-for="index in 2" :key="index" class="h-6 w-24" /></div>
+                <div v-else class="flex flex-wrap gap-2">
+                  <Badge v-for="world in worlds" :key="world.id" :variant="worldStatusVariant(world.status)">
+                    {{ world.name }} · {{ worldStatusLabel(world.status) }}
+                  </Badge>
+                </div>
+                <FieldDescription>{{ t('announcements.composer.worldDescription') }}</FieldDescription>
+              </Field>
 
-.actions-column {
-  width: 220px;
-  text-align: right;
-}
+              <Field :data-invalid="Boolean(messageError)">
+                <FieldLabel for="notification-message">{{ t('announcements.composer.message') }}</FieldLabel>
+                <Textarea
+                  id="notification-message"
+                  v-model="message"
+                  :aria-invalid="Boolean(messageError)"
+                  :placeholder="t('announcements.composer.messagePlaceholder')"
+                  maxlength="500"
+                  rows="7"
+                  @input="messageError = ''"
+                />
+                <FieldDescription>{{ t('announcements.composer.messageCount', { count: messageLength }) }}</FieldDescription>
+                <FieldError v-if="messageError">{{ messageError }}</FieldError>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+          <CardFooter class="justify-end">
+            <Button :disabled="!canSend" @click="sendNotification">
+              <Spinner v-if="sending" data-icon="inline-start" />
+              <Send v-else data-icon="inline-start" />
+              {{ t('announcements.actions.send') }}
+            </Button>
+          </CardFooter>
+        </Card>
 
-.row-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
+        <Card>
+          <CardHeader>
+            <CardTitle>{{ t('announcements.policy.title') }}</CardTitle>
+            <CardDescription>{{ t('announcements.policy.description') }}</CardDescription>
+          </CardHeader>
+          <CardContent class="flex flex-col gap-5">
+            <FieldGroup>
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldLabel for="operation-notification-enabled">{{ t('announcements.policy.enabled') }}</FieldLabel>
+                  <FieldDescription>{{ t('announcements.policy.enabledDescription') }}</FieldDescription>
+                </FieldContent>
+                <Switch id="operation-notification-enabled" v-model="policy.enabled" />
+              </Field>
+              <Field orientation="responsive" :data-disabled="!policy.enabled">
+                <FieldContent>
+                  <FieldLabel for="operation-countdown">{{ t('announcements.policy.countdown') }}</FieldLabel>
+                  <FieldDescription>{{ t('announcements.policy.countdownDescription') }}</FieldDescription>
+                </FieldContent>
+                <Select v-model="policy.countdownSeconds" :disabled="!policy.enabled">
+                  <SelectTrigger id="operation-countdown" class="w-full sm:w-44"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectGroup>
+                    <SelectItem :value="30">{{ t('announcements.policy.seconds', { count: 30 }) }}</SelectItem>
+                    <SelectItem :value="60">{{ t('announcements.policy.seconds', { count: 60 }) }}</SelectItem>
+                    <SelectItem :value="120">{{ t('announcements.policy.seconds', { count: 120 }) }}</SelectItem>
+                    <SelectItem :value="300">{{ t('announcements.policy.seconds', { count: 300 }) }}</SelectItem>
+                    <SelectItem :value="600">{{ t('announcements.policy.seconds', { count: 600 }) }}</SelectItem>
+                  </SelectGroup></SelectContent>
+                </Select>
+              </Field>
+            </FieldGroup>
+            <Alert>
+              <ShieldCheck />
+              <AlertTitle>{{ t('announcements.policy.behaviorTitle') }}</AlertTitle>
+              <AlertDescription>{{ t('announcements.policy.behaviorDescription') }}</AlertDescription>
+            </Alert>
+          </CardContent>
+          <CardFooter class="justify-end">
+            <Button :disabled="savingPolicy || roomLoading" @click="savePolicy">
+              <Spinner v-if="savingPolicy" data-icon="inline-start" />
+              {{ t('common.actions.save') }}
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
 
-.table-wrap {
-  width: 100%;
-  overflow-x: auto;
-}
+      <Card>
+        <CardHeader>
+          <CardTitle>{{ t('announcements.history.title') }}</CardTitle>
+          <CardDescription>{{ t('announcements.history.description') }}</CardDescription>
+          <CardAction>
+            <Button variant="ghost" size="sm" :disabled="historyLoading" @click="refreshHistory">
+              <Spinner v-if="historyLoading" data-icon="inline-start" />
+              <RefreshCw v-else data-icon="inline-start" />
+              {{ t('common.actions.refresh') }}
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <div class="min-w-0 overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>{{ t('announcements.history.columns.time') }}</TableHead>
+                <TableHead>{{ t('announcements.history.columns.source') }}</TableHead>
+                <TableHead>{{ t('announcements.history.columns.message') }}</TableHead>
+                <TableHead>{{ t('announcements.history.columns.result') }}</TableHead>
+                <TableHead class="w-14"><span class="sr-only">{{ t('announcements.history.columns.details') }}</span></TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                <TableRow v-for="item in notifications" :key="item.id">
+                  <TableCell class="whitespace-nowrap">{{ formatDate(item.createdAt) }}</TableCell>
+                  <TableCell><Badge variant="outline">{{ sourceLabel(item.source) }}</Badge></TableCell>
+                  <TableCell><p class="max-w-xl truncate">{{ item.message }}</p></TableCell>
+                  <TableCell>
+                    <div class="flex flex-col items-start gap-1">
+                      <Badge :variant="statusVariant(item.status)">{{ statusLabel(item.status) }}</Badge>
+                      <span class="whitespace-nowrap text-xs text-muted-foreground">
+                        {{ t('announcements.history.counts', { success: item.successCount, failed: item.failureCount, skipped: item.skippedCount }) }}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <Button variant="ghost" size="icon-sm" :aria-label="t('announcements.actions.details')" @click="openDetails(item)"><Eye /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{{ t('announcements.actions.details') }}</TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+                <TableEmpty v-if="historyLoading" :colspan="5">
+                  <div class="flex flex-col gap-2 py-3"><Skeleton v-for="index in 4" :key="index" class="h-10 w-full" /></div>
+                </TableEmpty>
+                <TableEmpty v-else-if="notifications.length === 0" :colspan="5">
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon"><BellRing /></EmptyMedia>
+                      <EmptyTitle>{{ t('announcements.history.empty') }}</EmptyTitle>
+                      <EmptyDescription>{{ t('announcements.history.emptyDescription') }}</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                </TableEmpty>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+        <CardFooter v-if="notificationTotal > pageSize" class="justify-between">
+          <span class="text-sm text-muted-foreground">{{ t('announcements.history.total', { count: notificationTotal }) }}</span>
+          <div class="flex gap-2">
+            <Button variant="outline" size="sm" :disabled="!hasPreviousPage || historyLoading" @click="changePage(-1)">{{ t('common.pagination.previous') }}</Button>
+            <Button variant="outline" size="sm" :disabled="!hasNextPage || historyLoading" @click="changePage(1)">{{ t('common.pagination.next') }}</Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </template>
 
-.table-skeleton {
-  display: flex;
-  min-width: 520px;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 0;
-}
-
-.announcement-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.important-badge {
-  margin-right: 0;
-}
-
-.announcement-detail {
-  padding: 0;
-}
-
-.announcement-header {
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 15px;
-}
-
-.announcement-header h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-}
-
-.announcement-meta {
-  display: flex;
-  gap: 8px 16px;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  color: var(--muted-foreground);
-  font-size: 14px;
-}
-
-.announcement-content {
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-@media (max-width: 640px) {
-  .page-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .header-actions {
-    width: 100%;
-  }
-
-  .status-filter {
-    width: 100%;
-  }
-
-  .row-actions {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-}
-</style>
+    <Dialog v-model:open="detailOpen">
+      <DialogScrollContent class="sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{{ t('announcements.detail.title') }}</DialogTitle>
+          <DialogDescription v-if="selectedNotification">
+            {{ t('announcements.detail.description', { room: selectedNotification.roomName, time: formatDate(selectedNotification.createdAt) }) }}
+          </DialogDescription>
+        </DialogHeader>
+        <template v-if="selectedNotification">
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{{ sourceLabel(selectedNotification.source) }}</Badge>
+              <Badge :variant="statusVariant(selectedNotification.status)">{{ statusLabel(selectedNotification.status) }}</Badge>
+            </div>
+            <p class="whitespace-pre-wrap text-sm leading-6">{{ selectedNotification.message }}</p>
+            <div class="overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>{{ t('announcements.detail.columns.world') }}</TableHead>
+                  <TableHead>{{ t('announcements.detail.columns.target') }}</TableHead>
+                  <TableHead>{{ t('announcements.detail.columns.status') }}</TableHead>
+                  <TableHead>{{ t('announcements.detail.columns.message') }}</TableHead>
+                  <TableHead>{{ t('announcements.detail.columns.time') }}</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  <TableRow v-for="delivery in selectedNotification.deliveries" :key="delivery.id">
+                    <TableCell>{{ delivery.worldName }}</TableCell>
+                    <TableCell>{{ deliveryTarget(delivery) }}</TableCell>
+                    <TableCell><Badge :variant="statusVariant(delivery.status)">{{ deliveryStatusLabel(delivery.status) }}</Badge></TableCell>
+                    <TableCell>{{ delivery.errorMessage || delivery.message || '--' }}</TableCell>
+                    <TableCell class="whitespace-nowrap">{{ formatDate(delivery.observedAt || delivery.sentAt) }}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </template>
+        <DialogFooter><Button variant="outline" @click="detailOpen = false">{{ t('common.actions.close') }}</Button></DialogFooter>
+      </DialogScrollContent>
+    </Dialog>
+  </div>
+</template>
