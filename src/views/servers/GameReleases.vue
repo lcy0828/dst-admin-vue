@@ -80,6 +80,19 @@ const currentVersionLabel = computed(() => {
   if (versions.length === 1) return versions[0]
   return t('gameReleases.simple.mixedVersions', { count: versions.length })
 })
+const latestVersionLabel = computed(() => {
+  const versions = [...new Set(planInstallations.value.map(item => item.desiredVersion).filter(Boolean))]
+  if (!versions.length) return plan.value?.desiredVersion || '--'
+  if (versions.length === 1) return versions[0]
+  return t('gameReleases.simple.mixedVersions', { count: versions.length })
+})
+const planStateKey = computed(() => {
+  if (!plan.value?.ready) return 'blocked'
+  return plan.value?.updateRequired ? 'ready' : 'checked'
+})
+const steamClientManagedOnly = computed(() => (
+  planInstallations.value.length > 0 && planInstallations.value.every(item => item.updateMethod === 'steam-client')
+))
 const activeProgress = computed(() => gameReleaseJobProgress(activeJob.value))
 const activeJobRunning = computed(() => Boolean(activeJob.value && !gameReleaseJobIsTerminal(activeJob.value)))
 const canPreview = computed(() => !previewing.value && !publishing.value && !activeJobRunning.value && Number(policy.timeoutSeconds) >= 30 && Number(policy.timeoutSeconds) <= 900)
@@ -158,8 +171,15 @@ function targetName(target) {
 
 function targetStatus(target) {
   if ((target?.blockers || []).length) return { key: 'blocked', variant: 'destructive' }
+  if (target?.upToDate && target?.updateMethod === 'steam-client') return { key: 'steamManaged', variant: 'outline' }
   if (target?.upToDate) return { key: 'upToDate', variant: 'secondary' }
   return { key: 'ready', variant: 'outline' }
+}
+
+function updateMethodLabel(target) {
+  if (target?.updateMethod === 'steam-client') return t('gameReleases.values.steamClient')
+  if (target?.updateMethod === 'steamcmd') return t('gameReleases.values.steamcmd')
+  return t('gameReleases.values.unknownUpdateMethod')
 }
 
 function releaseError(job) {
@@ -400,7 +420,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <h2 class="text-base font-semibold">{{ t('gameReleases.simple.resultTitle') }}</h2>
-                <Badge :variant="plan.ready ? 'secondary' : 'destructive'">{{ t(plan.ready ? 'gameReleases.plan.ready' : 'gameReleases.plan.blocked') }}</Badge>
+                <Badge :variant="plan.ready ? 'secondary' : 'destructive'">{{ t(`gameReleases.plan.${planStateKey}`) }}</Badge>
                 <Badge variant="outline">{{ t(plan.updateRequired ? 'gameReleases.plan.updateRequired' : 'gameReleases.plan.upToDate') }}</Badge>
               </div>
               <p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.simple.resultDescription') }}</p>
@@ -412,7 +432,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
 
           <div class="grid grid-cols-2 gap-x-5 gap-y-3 rounded-lg border px-4 py-3 lg:grid-cols-4">
             <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.currentVersion') }}</span><strong class="truncate text-lg font-semibold tabular-nums" :title="currentVersionLabel">{{ currentVersionLabel }}</strong></div>
-            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.latestVersion') }}</span><strong class="truncate text-lg font-semibold tabular-nums">{{ plan.desiredVersion || '--' }}</strong></div>
+            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.latestVersion') }}</span><strong class="truncate text-lg font-semibold tabular-nums" :title="latestVersionLabel">{{ latestVersionLabel }}</strong></div>
             <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.affectedNodes') }}</span><strong class="text-lg font-semibold tabular-nums">{{ planInstallations.length }}</strong></div>
             <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.affectedRoomsAndWorlds') }}</span><strong class="text-lg font-semibold tabular-nums">{{ plan.affectedRoomIds?.length || 0 }}<span class="ml-1 text-xs font-normal text-muted-foreground">/ {{ affectedShardCount }}</span></strong></div>
           </div>
@@ -429,7 +449,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
           <Alert v-else-if="!plan.updateRequired">
             <CircleCheck />
             <AlertTitle>{{ t('gameReleases.plan.noUpdateTitle') }}</AlertTitle>
-            <AlertDescription>{{ t('gameReleases.plan.noUpdateDescription') }}</AlertDescription>
+            <AlertDescription>{{ t(steamClientManagedOnly ? 'gameReleases.plan.steamManagedDescription' : 'gameReleases.plan.noUpdateDescription') }}</AlertDescription>
           </Alert>
 
           <Alert v-else>
@@ -456,7 +476,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
                   <TableBody>
                     <TableRow v-for="target in planInstallations" :key="`${target.targetId}:${target.installationId}`">
                       <TableCell><div class="flex min-w-0 flex-col gap-1"><span class="font-medium">{{ targetName(target) }}</span><span class="text-xs text-muted-foreground">{{ target.online ? t('gameReleases.values.online') : t('gameReleases.values.offline') }}</span></div></TableCell>
-                      <TableCell class="font-mono text-xs">{{ target.installationId }}</TableCell>
+                      <TableCell><div class="flex min-w-0 flex-col gap-1"><span class="font-mono text-xs">{{ target.installationId }}</span><span class="text-xs text-muted-foreground">{{ updateMethodLabel(target) }}<template v-if="target.appId"> · App {{ target.appId }}</template></span></div></TableCell>
                       <TableCell class="tabular-nums">{{ target.currentVersion || '--' }} → {{ target.desiredVersion || plan.desiredVersion }}</TableCell>
                       <TableCell class="tabular-nums">{{ formatBytes(target.availableBytes) }} / {{ formatBytes(target.requiredBytes) }}</TableCell>
                       <TableCell>{{ t('gameReleases.values.runningShards', { running: target.runningShards || 0, total: target.shards?.length || 0 }) }}</TableCell>

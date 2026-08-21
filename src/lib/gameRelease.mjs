@@ -22,6 +22,7 @@ const BLOCKER_KEYS = Object.freeze({
   INSTALLATION_IDENTITY_INVALID: 'installationIdentityInvalid',
   INSTALLATION_MISSING: 'installationMissing',
   STEAMCMD_UNAVAILABLE: 'steamcmdUnavailable',
+  STEAM_CLIENT_UPDATE_REQUIRED: 'steamClientUpdateRequired',
   UPDATE_UNSUPPORTED: 'updateUnsupported',
   DISK_INSUFFICIENT: 'diskInsufficient',
   VERSION_OBSERVE_FAILED: 'versionObserveFailed',

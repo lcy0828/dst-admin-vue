@@ -36,10 +36,11 @@ export const gameReleaseMessages = {
       },
       plan: {
         title: '更新范围', description: '{installations} 个安装目标，影响 {rooms} 个房间。',
-        ready: '可以更新', blocked: '更新受阻', upToDate: '全部已是最新版本', updateRequired: '需要更新',
+        ready: '可以更新', checked: '检查完成', blocked: '更新受阻', upToDate: '全部已是最新版本', updateRequired: '需要更新',
         topology: '拓扑版本', planHash: '计划哈希', targetVersion: '目标 build',
         blockerTitle: '更新检查未通过', blockerDescription: '处理以下问题后重新检查更新范围。',
-        noUpdateTitle: '所有安装目标均为最新版本', noUpdateDescription: '不需要执行停服、备份或更新。'
+        noUpdateTitle: '所有安装目标均为最新版本', noUpdateDescription: '不需要执行停服、备份或更新。',
+        steamManagedDescription: '本机游戏已是最新版本。该安装由 Steam 客户端维护，面板不会修改 Steam 管理的游戏文件。'
       },
       columns: {
         target: '运行目标', installation: '安装实例', versions: '当前 → 目标', disk: '可用 / 要求',
@@ -47,7 +48,8 @@ export const gameReleaseMessages = {
         stage: '阶段', beforeAfter: '更新前 → 更新后', evidence: '加载证据', updatedAt: '更新时间'
       },
       values: {
-        local: '本机', online: '在线', offline: '离线', ready: '待更新', blocked: '阻断', upToDate: '已是最新',
+        local: '本机', online: '在线', offline: '离线', ready: '待更新', blocked: '阻断', upToDate: '已是最新', steamManaged: 'Steam 已是最新',
+        steamClient: 'Steam 客户端管理', steamcmd: '面板自动更新', unknownUpdateMethod: '更新方式未知',
         runningShards: '{running} / {total} 运行', master: 'Master', secondary: 'Secondary', noEvidence: '暂无证据'
       },
       stages: {
@@ -58,7 +60,7 @@ export const gameReleaseMessages = {
       blockers: {
         targetOffline: '目标节点离线', inventoryStale: '节点运行清单缺失或过期', capabilityMissing: '节点不支持版本更新协议',
         installationIdentityInvalid: '安装实例标识无效', installationMissing: '未发现 DST 专用服务器安装',
-        steamcmdUnavailable: 'SteamCMD 不可用', updateUnsupported: '该安装方式不支持面板更新', diskInsufficient: '磁盘可用空间不足',
+        steamcmdUnavailable: 'SteamCMD 不可用', steamClientUpdateRequired: '请先在 Steam 客户端中更新本机游戏', updateUnsupported: '该安装方式不支持面板更新', diskInsufficient: '磁盘可用空间不足',
         versionObserveFailed: '读取安装版本失败', shardInventoryMissing: '运行清单中未发现分片', shardStatusFailed: '读取分片状态失败', unknown: '未知阻断项'
       },
       job: {
@@ -123,10 +125,11 @@ export const gameReleaseMessages = {
       },
       plan: {
         title: 'Update scope', description: '{installations} installations across {rooms} rooms.',
-        ready: 'Ready to update', blocked: 'Update blocked', upToDate: 'Everything is current', updateRequired: 'Update required',
+        ready: 'Ready to update', checked: 'Check complete', blocked: 'Update blocked', upToDate: 'Everything is current', updateRequired: 'Update required',
         topology: 'Topology revision', planHash: 'Plan hash', targetVersion: 'Desired build',
         blockerTitle: 'Update check failed', blockerDescription: 'Resolve these blockers and check again.',
-        noUpdateTitle: 'Every installation is current', noUpdateDescription: 'No stop, backup, or update operation is required.'
+        noUpdateTitle: 'Every installation is current', noUpdateDescription: 'No stop, backup, or update operation is required.',
+        steamManagedDescription: 'The local game is current. Steam manages this installation, so the panel will not modify its game files.'
       },
       columns: {
         target: 'Runtime target', installation: 'Installation', versions: 'Current → desired', disk: 'Available / required',
@@ -134,7 +137,8 @@ export const gameReleaseMessages = {
         stage: 'Stage', beforeAfter: 'Before → after', evidence: 'Load evidence', updatedAt: 'Updated'
       },
       values: {
-        local: 'Local', online: 'Online', offline: 'Offline', ready: 'Pending update', blocked: 'Blocked', upToDate: 'Current',
+        local: 'Local', online: 'Online', offline: 'Offline', ready: 'Pending update', blocked: 'Blocked', upToDate: 'Current', steamManaged: 'Current in Steam',
+        steamClient: 'Managed by Steam', steamcmd: 'Panel-managed', unknownUpdateMethod: 'Unknown update method',
         runningShards: '{running} / {total} running', master: 'Master', secondary: 'Secondary', noEvidence: 'No evidence'
       },
       stages: {
@@ -145,7 +149,7 @@ export const gameReleaseMessages = {
       blockers: {
         targetOffline: 'Target is offline', inventoryStale: 'Runtime inventory is missing or stale', capabilityMissing: 'Target lacks the update protocol',
         installationIdentityInvalid: 'Installation identity is invalid', installationMissing: 'DST dedicated-server installation not found',
-        steamcmdUnavailable: 'SteamCMD is unavailable', updateUnsupported: 'This installation cannot be updated by the panel', diskInsufficient: 'Insufficient free disk space',
+        steamcmdUnavailable: 'SteamCMD is unavailable', steamClientUpdateRequired: 'Update the local game in Steam first', updateUnsupported: 'This installation cannot be updated by the panel', diskInsufficient: 'Insufficient free disk space',
         versionObserveFailed: 'Failed to observe the installed version', shardInventoryMissing: 'Shard missing from runtime inventory', shardStatusFailed: 'Failed to read shard state', unknown: 'Unknown blocker'
       },
       job: {
