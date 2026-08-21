@@ -36,11 +36,12 @@ import {
   SidebarMenuSubItem,
   SidebarRail
 } from '@/components/ui/sidebar'
-import { V2_NAVIGATION } from '@/v2/navigation'
+import { navigationForFeatures } from '@/v2/navigation'
 
 const props = defineProps({
   systemName: { type: String, default: '' },
-  user: { type: Object, default: () => ({}) }
+  user: { type: Object, default: () => ({}) },
+  features: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['profile', 'password', 'logout'])
@@ -49,6 +50,7 @@ const { t } = useI18n()
 
 const displaySystemName = computed(() => props.systemName?.trim() || t('app.defaultName'))
 const userInitial = computed(() => (props.user.username || t('app.administrator')).trim().slice(0, 1).toUpperCase())
+const navigationSections = computed(() => navigationForFeatures(props.features))
 
 function isActive(path) {
   if (path === '/dashboard') return route.path === path
@@ -84,7 +86,7 @@ function isGroupActive(item) {
     </SidebarHeader>
 
     <SidebarContent>
-      <SidebarGroup v-for="section in V2_NAVIGATION" :key="section.labelKey">
+      <SidebarGroup v-for="section in navigationSections" :key="section.labelKey">
         <SidebarGroupLabel>{{ t(section.labelKey) }}</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>

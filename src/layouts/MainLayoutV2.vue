@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff, GitFork, KeyRound } from '@lucide/vue'
-import { authAPI } from '@/api/v2'
+import { authAPI, systemV2API } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
 import ThemeSwitch from '@/components/ThemeSwitch.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -42,6 +42,7 @@ const route = useRoute()
 const { t } = useI18n()
 const systemName = ref(getSystemPreferences().systemName)
 const currentUser = ref({})
+const runtimeFeatures = ref({})
 const profileOpen = ref(false)
 const passwordOpen = ref(false)
 const passwordSaving = ref(false)
@@ -74,6 +75,15 @@ async function loadCurrentUser() {
     currentUser.value = session.user || {}
   } catch {
     currentUser.value = {}
+  }
+}
+
+async function loadRuntimeFeatures() {
+  try {
+    const capabilities = await systemV2API.capabilities()
+    runtimeFeatures.value = capabilities?.features || {}
+  } catch {
+    runtimeFeatures.value = {}
   }
 }
 
@@ -134,6 +144,7 @@ onMounted(() => {
   document.body.dataset.uiVersion = 'v2'
   window.addEventListener('system-preferences-updated', updateSystemName)
   loadCurrentUser()
+  loadRuntimeFeatures()
 })
 
 onBeforeUnmount(() => {
@@ -147,6 +158,7 @@ onBeforeUnmount(() => {
     <AppSidebarV2
       :system-name="systemName"
       :user="currentUser"
+      :features="runtimeFeatures"
       @profile="profileOpen = true"
       @password="passwordOpen = true"
       @logout="logout"
