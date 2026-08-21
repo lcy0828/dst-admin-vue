@@ -1,14 +1,14 @@
 <template>
-  <section class="flex min-w-0 flex-col gap-4" aria-labelledby="distributed-backup-title">
+  <section class="flex min-w-0 flex-col gap-4" aria-labelledby="backup-catalog-title">
     <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div>
-        <h2 id="distributed-backup-title" class="text-base font-semibold">{{ t('distributed.backups.title') }}</h2>
-        <p class="mt-0.5 text-sm text-muted-foreground">{{ t('distributed.backups.description') }}</p>
+        <h2 id="backup-catalog-title" class="text-base font-semibold">{{ t('backups.catalog.title') }}</h2>
+        <p class="mt-0.5 text-sm text-muted-foreground">{{ t('backups.catalog.description') }}</p>
       </div>
       <div class="flex flex-wrap gap-2">
         <UiButton :disabled="!selectedRoomId || loading || operationRunning" @click="openCreateDialog">
           <DatabaseBackup data-icon="inline-start" />
-          {{ t('distributed.backups.create') }}
+          {{ t('backups.actions.create') }}
         </UiButton>
         <UiButton variant="outline" :disabled="!selectedRoomId || loading" @click="loadSets">
           <Spinner v-if="loading" data-icon="inline-start" />
@@ -36,14 +36,20 @@
 
     <Alert>
       <DatabaseBackup />
-      <AlertTitle>{{ t('distributed.backups.modesTitle') }}</AlertTitle>
-      <AlertDescription>{{ t('distributed.backups.modesDescription') }}</AlertDescription>
+      <AlertTitle>{{ t('backups.catalog.consistencyTitle') }}</AlertTitle>
+      <AlertDescription>{{ t('backups.catalog.consistencyDescription') }}</AlertDescription>
     </Alert>
 
     <Alert v-if="error" variant="destructive">
       <CircleAlert />
       <AlertTitle>{{ t('distributed.backups.loadFailed') }}</AlertTitle>
       <AlertDescription>{{ error }}</AlertDescription>
+    </Alert>
+
+    <Alert v-if="partialLoadError">
+      <CircleAlert />
+      <AlertTitle>{{ t('backups.catalog.partialLoadTitle') }}</AlertTitle>
+      <AlertDescription>{{ partialLoadError }}</AlertDescription>
     </Alert>
 
     <Alert v-if="operationsError">
@@ -58,11 +64,11 @@
       <AlertDescription>{{ t('distributed.backups.recoveryRequiredDescription') }}</AlertDescription>
     </Alert>
 
-    <div v-if="loading && sets.length === 0" class="flex flex-col gap-2" :aria-label="t('distributed.backups.loading')">
+    <div v-if="loading && backupItems.length === 0" class="flex flex-col gap-2" :aria-label="t('distributed.backups.loading')">
       <Skeleton v-for="index in 4" :key="index" class="h-12 w-full" />
     </div>
 
-    <Empty v-else-if="!loading && sets.length === 0">
+    <Empty v-else-if="!loading && backupItems.length === 0">
       <EmptyHeader>
         <EmptyMedia variant="icon"><DatabaseBackup /></EmptyMedia>
         <EmptyTitle>{{ t('distributed.backups.emptyTitle') }}</EmptyTitle>
@@ -71,32 +77,30 @@
     </Empty>
 
     <div v-else class="overflow-x-auto rounded-lg border">
-      <UiTable class="min-w-[1080px]">
+      <UiTable class="min-w-[920px]">
         <TableHeader>
           <TableRow>
             <TableHead>{{ t('distributed.backups.columns.name') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.status') }}</TableHead>
-            <TableHead>{{ t('distributed.backups.columns.mode') }}</TableHead>
-            <TableHead>{{ t('distributed.backups.columns.parts') }}</TableHead>
+            <TableHead>{{ t('backups.catalog.columns.worlds') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.size') }}</TableHead>
-            <TableHead>{{ t('distributed.backups.columns.running') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.createdAt') }}</TableHead>
             <TableHead class="text-right">{{ t('common.fields.actions') }}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="backupSet in sets" :key="backupSet.id">
+          <TableRow v-for="backupSet in backupItems" :key="`${backupSet.source}-${backupSet.id}`">
             <TableCell>
               <div class="flex min-w-56 flex-col gap-1">
                 <span class="font-medium">{{ backupSet.name }}</span>
-                <span class="font-mono text-xs text-muted-foreground">{{ backupSet.id }}</span>
+                <span class="text-xs text-muted-foreground">{{ backupSet.source === 'legacy' ? t('backups.catalog.historyRecord') : t('backups.catalog.completeRoom') }}</span>
               </div>
             </TableCell>
             <TableCell>
               <div class="flex min-w-32 flex-col items-start gap-1">
                 <Badge :variant="setStatusVariant(backupSet.status)">{{ setStatusLabel(backupSet.status) }}</Badge>
-                <Badge :variant="backupSet.restorable ? 'secondary' : 'destructive'">{{ contentKindLabel(backupSet) }}</Badge>
-                <Badge v-if="latestOperation(backupSet.id)" :variant="operationStatusVariant(latestOperation(backupSet.id).status)">
+                <Badge v-if="backupSet.source !== 'legacy'" :variant="backupSet.restorable ? 'secondary' : 'destructive'">{{ contentKindLabel(backupSet) }}</Badge>
+                <Badge v-if="backupSet.source !== 'legacy' && latestOperation(backupSet.id)" :variant="operationStatusVariant(latestOperation(backupSet.id).status)">
                   {{ operationStatusLabel(latestOperation(backupSet.id).status) }}
                 </Badge>
                 <span v-if="backupSet.failure" class="text-xs text-destructive">{{ backupSet.failure }}</span>
@@ -109,20 +113,27 @@
                 </UiButton>
               </div>
             </TableCell>
-            <TableCell><Badge variant="outline">{{ backupModeLabel(backupSet.mode) }}</Badge></TableCell>
-            <TableCell>{{ t('distributed.backups.partCount', { verified: verifiedParts(backupSet), total: backupSet.parts?.length || 0 }) }}</TableCell>
+            <TableCell>{{ backupSet.source === 'legacy' ? t('backups.catalog.completeRoom') : t('backups.catalog.worldCount', { verified: verifiedParts(backupSet), total: backupSet.parts?.length || 0 }) }}</TableCell>
             <TableCell>{{ formatBytes(backupSet.size) }}</TableCell>
-            <TableCell>{{ backupSet.originalRunningWorlds?.length || 0 }}</TableCell>
             <TableCell class="min-w-44 text-xs text-muted-foreground">{{ formatTime(backupSet.createdAt) }}</TableCell>
             <TableCell>
               <div class="flex justify-end gap-1">
-                <UiButton size="sm" variant="outline" @click="openDetails(backupSet)">
+                <UiButton v-if="backupSet.source !== 'legacy'" size="sm" variant="outline" @click="openDetails(backupSet)">
                   <Eye data-icon="inline-start" />
                   {{ t('distributed.backups.details') }}
                 </UiButton>
                 <UiButton size="sm" :disabled="backupSet.status !== 'verified' || !backupSet.restorable || operationRunning" :title="!backupSet.restorable ? t('distributed.backups.notRestorable') : undefined" @click="openRestoreDialog(backupSet)">
                   <History data-icon="inline-start" />
                   {{ t('distributed.backups.restore') }}
+                </UiButton>
+                <UiButton v-if="backupSet.source === 'legacy'" size="icon-sm" variant="outline" :title="t('backups.actions.download')" :disabled="downloadingBackupId === backupSet.id" @click="downloadLegacyBackup(backupSet)">
+                  <Spinner v-if="downloadingBackupId === backupSet.id" data-icon="inline-start" />
+                  <Download v-else data-icon="inline-start" />
+                  <span class="sr-only">{{ t('backups.actions.download') }}</span>
+                </UiButton>
+                <UiButton v-if="backupSet.source === 'legacy'" size="icon-sm" variant="destructive" :title="t('backups.actions.delete')" :disabled="operationRunning" @click="deleteLegacyBackup(backupSet)">
+                  <Trash2 data-icon="inline-start" />
+                  <span class="sr-only">{{ t('backups.actions.delete') }}</span>
                 </UiButton>
               </div>
             </TableCell>
@@ -277,10 +288,11 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CircleAlert, DatabaseBackup, Eye, Flame, History, RefreshCw, Snowflake, TriangleAlert } from '@lucide/vue'
+import { CircleAlert, DatabaseBackup, Download, Eye, Flame, History, RefreshCw, Snowflake, Trash2, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import { backupSetsV2API, roomsV2API } from '@/api/v2'
+import { backupsV2API, backupSetsV2API, roomsV2API } from '@/api/v2'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import { confirmAction } from '@/lib/feedback'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -299,6 +311,7 @@ const { locale, t } = useI18n()
 const rooms = ref([])
 const selectedRoomId = ref('')
 const sets = ref([])
+const legacyBackups = ref([])
 const operations = ref([])
 const selectedSet = ref(null)
 const loadingRooms = ref(false)
@@ -306,7 +319,9 @@ const loading = ref(false)
 const detailsLoading = ref(false)
 const operationRunning = ref(false)
 const error = ref('')
+const partialLoadError = ref('')
 const operationsError = ref('')
+const downloadingBackupId = ref('')
 const createDialogOpen = ref(false)
 const detailsDialogOpen = ref(false)
 const restoreDialogOpen = ref(false)
@@ -322,6 +337,16 @@ let loadedSetsRoomId = ''
 const recoveryOperations = computed(() => operations.value.filter(operation => operation.status === 'recovery_required'))
 const backupModeKey = computed(() => backupMode.value === 'hot-consistent' ? 'hot' : 'cold')
 const selectedOperation = computed(() => selectedSet.value ? latestOperation(selectedSet.value.id) : null)
+const selectedRoom = computed(() => rooms.value.find(room => String(room.id) === selectedRoomId.value) || null)
+const backupItems = computed(() => [
+  ...sets.value.map(item => ({ ...item, source: 'set' })),
+  ...legacyBackups.value.map(item => ({
+    ...item,
+    source: 'legacy',
+    roomName: selectedRoom.value?.name || '',
+    restorable: item.status === 'verified'
+  }))
+].sort((left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime()))
 
 async function loadRooms() {
   const sequence = ++roomRequestSequence
@@ -348,7 +373,9 @@ async function loadSets() {
   if (!selectedRoomId.value) {
     requestSequence += 1
     sets.value = []
+    legacyBackups.value = []
     operations.value = []
+    partialLoadError.value = ''
     operationsError.value = ''
     loading.value = false
     loadedSetsRoomId = ''
@@ -357,32 +384,41 @@ async function loadSets() {
   const roomId = selectedRoomId.value
   if (loadedSetsRoomId !== roomId) {
     sets.value = []
+    legacyBackups.value = []
     operations.value = []
     selectedSet.value = null
   }
   const sequence = ++requestSequence
   loading.value = true
   error.value = ''
+  partialLoadError.value = ''
   operationsError.value = ''
   try {
-    const [setsResult, operationsResult] = await Promise.allSettled([
+    const [setsResult, legacyResult, operationsResult] = await Promise.allSettled([
       backupSetsV2API.list(roomId),
+      backupsV2API.list(roomId),
       backupSetsV2API.operations(roomId)
     ])
     if (sequence !== requestSequence) return
-    if (setsResult.status === 'rejected') throw setsResult.reason
-    sets.value = setsResult.value.items || []
+
+    const setsLoaded = setsResult.status === 'fulfilled'
+    const legacyLoaded = legacyResult.status === 'fulfilled'
+    sets.value = setsLoaded ? (setsResult.value.items || []) : []
+    legacyBackups.value = legacyLoaded ? (legacyResult.value.items || []) : []
     loadedSetsRoomId = roomId
+
+    const catalogFailures = [setsResult, legacyResult]
+      .filter(result => result.status === 'rejected')
+      .map(result => result.reason?.message || t('common.errors.unknown'))
+    if (!setsLoaded && !legacyLoaded) error.value = catalogFailures.join('; ')
+    else partialLoadError.value = catalogFailures.join('; ')
+
     if (operationsResult.status === 'fulfilled') {
       operations.value = operationsResult.value.items || []
     } else {
       operationsError.value = operationsResult.reason?.message || t('common.errors.unknown')
     }
-    return { setsLoaded: true, operationsLoaded: operationsResult.status === 'fulfilled' }
-  } catch (cause) {
-    if (sequence !== requestSequence) return
-    error.value = cause.message || t('common.errors.unknown')
-    return { setsLoaded: false, operationsLoaded: false }
+    return { setsLoaded, catalogLoaded: setsLoaded || legacyLoaded, operationsLoaded: operationsResult.status === 'fulfilled' }
   } finally {
     if (sequence === requestSequence) loading.value = false
   }
@@ -445,16 +481,68 @@ async function restoreSet() {
   if (!selectedSet.value || restoreConfirmation.value !== selectedSet.value.roomName || operationRunning.value) return
   operationRunning.value = true
   try {
-    const job = await backupSetsV2API.restore(selectedSet.value.id, restoreConfirmation.value)
+    const job = selectedSet.value.source === 'legacy'
+      ? await backupsV2API.restore(selectedSet.value.id, restoreConfirmation.value)
+      : await backupSetsV2API.restore(selectedSet.value.id, restoreConfirmation.value)
     await waitForV2Job(job, 15 * 60 * 1000)
     restoreDialogOpen.value = false
     const refreshedState = await loadSets()
-    const operation = latestOperation(selectedSet.value.id)
-    if (!refreshedState?.setsLoaded || !refreshedState.operationsLoaded || !operation) toast.warning(t('distributed.backups.feedback.operationStateUnknown'))
+    const operation = selectedSet.value.source === 'legacy' ? null : latestOperation(selectedSet.value.id)
+    if (selectedSet.value.source === 'legacy') toast.success(t('distributed.backups.feedback.restored'))
+    else if (!refreshedState?.setsLoaded || !refreshedState.operationsLoaded || !operation) toast.warning(t('distributed.backups.feedback.operationStateUnknown'))
     else if (operation.status === 'recovery_required') toast.warning(t('distributed.backups.feedback.recoveryPending'))
     else toast.success(t('distributed.backups.feedback.restored'))
   } catch (cause) {
     toast.error(t('distributed.backups.feedback.restoreFailed', { error: cause.message || t('common.errors.unknown') }))
+  } finally {
+    operationRunning.value = false
+  }
+}
+
+async function downloadLegacyBackup(backup) {
+  if (!backup?.id || downloadingBackupId.value) return
+  downloadingBackupId.value = backup.id
+  let objectURL = ''
+  try {
+    const blob = await backupsV2API.downloadBlob(backup.id)
+    objectURL = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectURL
+    link.download = `${backup.name}.zip`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    toast.success(t('backups.feedback.downloading', { name: backup.name }))
+  } catch (cause) {
+    toast.error(t('backups.feedback.downloadFailed', { error: cause.message || t('common.errors.unknown') }))
+  } finally {
+    if (objectURL) URL.revokeObjectURL(objectURL)
+    downloadingBackupId.value = ''
+  }
+}
+
+async function deleteLegacyBackup(backup) {
+  if (operationRunning.value) return
+  try {
+    await confirmAction(
+      t('backups.feedback.deleteConfirm', { name: backup.name }),
+      t('backups.feedback.deleteTitle'),
+      {
+        confirmButtonText: t('backups.feedback.deleteButton'),
+        cancelButtonText: t('common.actions.cancel'),
+        type: 'warning'
+      }
+    )
+  } catch {
+    return
+  }
+  operationRunning.value = true
+  try {
+    await backupsV2API.delete(backup.id, backup.name)
+    await loadSets()
+    toast.success(t('backups.feedback.deleted'))
+  } catch (cause) {
+    toast.error(t('backups.feedback.deleteFailed', { error: cause.message || t('common.errors.unknown') }))
   } finally {
     operationRunning.value = false
   }

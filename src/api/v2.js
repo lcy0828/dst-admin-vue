@@ -616,6 +616,7 @@ export const backupsV2API = {
   }),
   restore: (backupId, confirmation) => client.post(`/backups/${encode(backupId)}/actions/restore`, { confirmation }),
   downloadURL: backupId => `${baseURL}/backups/${encode(backupId)}/download`,
+  downloadBlob: backupId => getBinary(`/backups/${encode(backupId)}/download`, 'application/zip'),
   policy: roomId => client.get(`/rooms/${encode(roomId)}/backup-policy`),
   savePolicy: (roomId, input) => client.put(`/rooms/${encode(roomId)}/backup-policy`, input)
 }

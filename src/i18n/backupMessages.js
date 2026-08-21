@@ -2,10 +2,22 @@ export const backupMessages = {
   'zh-CN': {
     backups: {
       title: '备份管理',
-      subtitle: '管理房间备份，并安全检查和导入本地 DST 存档。',
+      subtitle: '创建、恢复和导入完整房间存档；本机与远程世界使用同一套流程。',
       tabs: {
         roomBackups: '房间备份',
         saveImports: '存档导入'
+      },
+      catalog: {
+        title: '房间备份',
+        description: '按房间查看全部备份。新备份会自动包含房间内的所有世界，无需区分运行位置。',
+        consistencyTitle: '每次备份都包含完整房间',
+        consistencyDescription: '系统会协调房间内的所有世界并逐一校验；历史版本创建的单文件备份也会保留在同一列表中。',
+        partialLoadTitle: '部分备份记录暂时无法加载',
+        columns: { worlds: '备份内容' },
+        types: { history: '历史备份' },
+        historyRecord: '旧版本创建的单文件备份',
+        completeRoom: '完整房间',
+        worldCount: '已校验 {verified}/{total} 个世界'
       },
       imports: {
         localOnly: {
@@ -261,6 +273,8 @@ export const backupMessages = {
       },
       actions: {
         create: '创建备份',
+        import: '导入存档',
+        backToBackups: '返回备份管理',
         refresh: '刷新',
         reload: '重新加载',
         download: '下载',
@@ -331,10 +345,22 @@ export const backupMessages = {
   'en-US': {
     backups: {
       title: 'Backups',
-      subtitle: 'Manage room backups and safely inspect and import local DST saves.',
+      subtitle: 'Create, restore, and import complete room saves through one workflow for local and remote worlds.',
       tabs: {
         roomBackups: 'Room backups',
         saveImports: 'Save imports'
+      },
+      catalog: {
+        title: 'Room backups',
+        description: 'View every backup by room. New backups include every world automatically, regardless of where it runs.',
+        consistencyTitle: 'Every new backup covers the complete room',
+        consistencyDescription: 'The system coordinates and verifies each world. Single-file backups created by older versions remain available in the same list.',
+        partialLoadTitle: 'Some backup records are temporarily unavailable',
+        columns: { worlds: 'Contents' },
+        types: { history: 'Legacy backup' },
+        historyRecord: 'Single-file backup created by an older version',
+        completeRoom: 'Complete room',
+        worldCount: '{verified}/{total} worlds verified'
       },
       imports: {
         localOnly: {
@@ -590,6 +616,8 @@ export const backupMessages = {
       },
       actions: {
         create: 'Create backup',
+        import: 'Import save',
+        backToBackups: 'Back to backups',
         refresh: 'Refresh',
         reload: 'Reload',
         download: 'Download',
