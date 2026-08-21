@@ -1,5 +1,6 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { playerApi, roomApi, systemApi } from '@/api/index'
+import { systemV2API } from '@/api/v2'
 import { confirmAction } from '@/lib/feedback'
 import { formatDurationSeconds } from '@/lib/localeFormatters.mjs'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
@@ -28,12 +29,26 @@ const emptyVersion = () => ({
   checked_at: null
 })
 
+const emptyCapabilities = () => ({
+  deployment: null,
+  tools: {},
+  paths: {},
+  features: {}
+})
+
+const emptyReadiness = () => ({
+  ready: false,
+  checks: []
+})
+
 export function useDashboardV2() {
   const systemStatus = ref({})
   const serverList = ref([])
   const roomList = ref([])
   const playerSummary = ref({ total: 0, online: 0, staleOnline: 0, loadedRooms: 0, failedRooms: 0 })
   const versionInfo = ref(emptyVersion())
+  const capabilities = ref(emptyCapabilities())
+  const setupReadiness = ref(emptyReadiness())
   const updateStatus = ref(null)
   const lastRefreshedAt = ref(null)
 
@@ -41,6 +56,7 @@ export function useDashboardV2() {
   const serverLoading = ref(false)
   const playerLoading = ref(false)
   const versionLoading = ref(false)
+  const guidanceLoading = ref(true)
   const updateStarting = ref(false)
 
   const systemError = ref('')
@@ -48,11 +64,13 @@ export function useDashboardV2() {
   const roomError = ref('')
   const playerError = ref('')
   const versionError = ref('')
+  const guidanceError = ref('')
   let updateTimer = null
   let systemRequestSequence = 0
   let serverRequestSequence = 0
   let playerRequestSequence = 0
   let versionRequestSequence = 0
+  let guidanceRequestSequence = 0
   let updatePollInFlight = false
   let runtimePollInFlight = false
 
@@ -62,7 +80,7 @@ export function useDashboardV2() {
     0
   ))
   const dashboardLoading = computed(() => (
-    systemLoading.value || serverLoading.value || playerLoading.value || versionLoading.value
+    systemLoading.value || serverLoading.value || playerLoading.value || versionLoading.value || guidanceLoading.value
   ))
   const isVersionOutdated = computed(() => {
     if (!versionInfo.value.installed) return false
@@ -207,10 +225,33 @@ export function useDashboardV2() {
     }
   }
 
+  async function refreshGuidance() {
+    const sequence = ++guidanceRequestSequence
+    guidanceLoading.value = true
+    guidanceError.value = ''
+    const [capabilityResult, readinessResult] = await Promise.allSettled([
+      systemV2API.capabilities(),
+      systemV2API.setupChecks()
+    ])
+    if (sequence !== guidanceRequestSequence) return false
+
+    if (capabilityResult.status === 'fulfilled') {
+      capabilities.value = capabilityResult.value || emptyCapabilities()
+    }
+    if (readinessResult.status === 'fulfilled') {
+      setupReadiness.value = readinessResult.value || emptyReadiness()
+    }
+    if (capabilityResult.status === 'rejected' || readinessResult.status === 'rejected') {
+      guidanceError.value = capabilityResult.reason?.message || readinessResult.reason?.message || translate('dashboard.onboarding.loadFailed')
+    }
+    guidanceLoading.value = false
+    return capabilityResult.status === 'fulfilled'
+  }
+
   async function refreshDashboard() {
-    const results = await Promise.all([refreshSystem(), refreshServers(), refreshVersion()])
+    const results = await Promise.all([refreshSystem(), refreshServers(), refreshVersion(), refreshGuidance()])
     if (results.some(Boolean)) lastRefreshedAt.value = new Date()
-    return results.every(Boolean)
+    return results.slice(0, 3).every(Boolean)
   }
 
   async function handleServerAction(server) {
@@ -370,17 +411,21 @@ export function useDashboardV2() {
     roomList,
     playerSummary,
     versionInfo,
+    capabilities,
+    setupReadiness,
     updateStatus,
     lastRefreshedAt,
     systemLoading,
     serverLoading,
     playerLoading,
     versionLoading,
+    guidanceLoading,
     systemError,
     serverError,
     roomError,
     playerError,
     versionError,
+    guidanceError,
     runningServerCount,
     totalWorldCount,
     dashboardLoading,
@@ -393,6 +438,7 @@ export function useDashboardV2() {
     refreshServers,
     refreshRuntimeServers,
     refreshVersion,
+    refreshGuidance,
     handleServerAction,
     cleanupFailedServer,
     startRoom,

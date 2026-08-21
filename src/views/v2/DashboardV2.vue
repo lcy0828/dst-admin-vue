@@ -36,6 +36,8 @@ import {
   TableRow
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import DashboardOnboarding from '@/components/dashboard/DashboardOnboarding.vue'
+import { normalizePackaging } from '@/lib/dashboardOnboarding.mjs'
 import {
   formatDateTime,
   formatDecimal,
@@ -59,17 +61,21 @@ const {
   roomList,
   playerSummary,
   versionInfo,
+  capabilities,
+  setupReadiness,
   updateStatus,
   lastRefreshedAt,
   systemLoading,
   serverLoading,
   playerLoading,
   versionLoading,
+  guidanceLoading,
   systemError,
   serverError,
   roomError,
   playerError,
   versionError,
+  guidanceError,
   runningServerCount,
   totalWorldCount,
   dashboardLoading,
@@ -80,9 +86,14 @@ const {
   refreshServers,
   refreshRuntimeServers,
   refreshVersion,
+  refreshGuidance,
   updateGame,
   resumeUpdatePolling
 } = useDashboardV2()
+
+const deploymentPackaging = computed(() => capabilities.value?.deployment
+  ? normalizePackaging(capabilities.value.deployment.packaging)
+  : '')
 
 const roomSummaries = computed(() => roomList.value.map(room => {
   const worlds = Array.isArray(room.worlds) ? room.worlds : []
@@ -155,12 +166,30 @@ onBeforeUnmount(() => {
           {{ t('dashboard.lastUpdated', { time: formatDateTime(lastRefreshedAt, locale) }) }}
         </p>
       </div>
-      <Button variant="outline" size="sm" :disabled="dashboardLoading" @click="refreshDashboard">
-        <Spinner v-if="dashboardLoading" data-icon="inline-start" />
-        <RefreshCw v-else data-icon="inline-start" />
-        {{ t('dashboard.refreshAll') }}
-      </Button>
+      <div class="flex flex-wrap items-center gap-2">
+        <Badge v-if="deploymentPackaging" variant="outline">{{ t(`dashboard.onboarding.packaging.${deploymentPackaging}`) }}</Badge>
+        <Button variant="outline" size="sm" :disabled="dashboardLoading" @click="refreshDashboard">
+          <Spinner v-if="dashboardLoading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          {{ t('dashboard.refreshAll') }}
+        </Button>
+      </div>
     </header>
+
+    <DashboardOnboarding
+      :capabilities="capabilities"
+      :readiness="setupReadiness"
+      :installed="versionInfo.installed"
+      :installing="gameUpdateBusy"
+      :can-install="canInstallGame"
+      :rooms="roomList"
+      :running-shards="runningServerCount"
+      :cpu-cores="Number(systemStatus.cpu_cores) || 0"
+      :loading="guidanceLoading || versionLoading || serverLoading"
+      :error="guidanceError"
+      @install="updateGame"
+      @refresh="refreshGuidance"
+    />
 
     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Card size="sm">

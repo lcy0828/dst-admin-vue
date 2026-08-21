@@ -74,6 +74,66 @@ export const corePageMessages = {
         memory: '内存 {value}'
       },
       playersUnavailable: '部分玩家数据不可用',
+      onboarding: {
+        title: '首次开服引导',
+        current: '当前步骤',
+        progress: '已完成 {completed}/{total}',
+        loadFailed: '开服环境自检暂时不可用',
+        packaging: {
+          native: '裸机本地',
+          all_in_one: 'All-in-One',
+          container: 'Docker 独立世界',
+          control_plane: '集中管理端'
+        },
+        deployments: {
+          native: '当前管理服务直接控制本机 DST，适合最常见的裸机部署。',
+          all_in_one: '当前管理服务和 DST 运行在同一容器中，所有数据保存在宿主机目录。',
+          all_in_oneCompact: '当前为 All-in-One，适合常见 2C4G 主机；建议先运行 Master 和 Caves。',
+          container: '当前每个世界使用独立容器，可分别启停和限制 CPU；建议在 4 核及以上主机使用。',
+          control_plane: '当前仅作为集中管理端运行，本机不启动 DST，需要先接入远程节点。'
+        },
+        remote: {
+          title: '先接入运行节点',
+          description: '当前实例没有本地执行器。请添加远程 Agent，再为房间选择运行节点。',
+          action: '管理节点'
+        },
+        steps: {
+          game: {
+            title: '安装游戏服务端',
+            ready: '通过 SteamCMD 安装一份所有本机世界共用的 DST 服务端。',
+            installing: '安装任务正在执行，完成后会自动进入下一步。',
+            unavailable: '当前不能从面板安装，请检查 SteamCMD 或右侧版本卡片中的提示。',
+            done: 'DST 游戏服务端已经安装。'
+          },
+          room: {
+            title: '创建房间',
+            ready: '创建时一次配置 Cluster Token、Master 和 Caves。',
+            done: '已有 {rooms} 个房间、{worlds} 个世界。',
+            action: '创建房间'
+          },
+          start: {
+            title: '启动房间',
+            ready: '进入房间控制启动 Master 和 Caves，系统会按当前部署方式运行。',
+            done: '已有 {count} 个世界正在运行。',
+            action: '进入房间控制'
+          }
+        },
+        blocked: {
+          title: '启动前需要处理环境问题',
+          description: '未通过检查：{checks}',
+          separator: '、',
+          action: '打开系统设置'
+        },
+        checks: {
+          savePath: '存档目录',
+          backupPath: '备份目录',
+          tmux: 'tmux 运行控制',
+          serverExecutable: 'DST 服务端文件',
+          diskSpace: '磁盘空间',
+          docker: 'Docker 控制',
+          unknown: '未知必要检查'
+        }
+      },
       roomsOverview: {
         title: '房间运行概览',
         description: '共 {count} 个房间，具体操作统一在房间控制中完成',
@@ -303,6 +363,66 @@ export const corePageMessages = {
         memory: 'Memory {value}'
       },
       playersUnavailable: 'Some player data is unavailable',
+      onboarding: {
+        title: 'First server setup',
+        current: 'Current step',
+        progress: '{completed}/{total} complete',
+        loadFailed: 'Server readiness checks are temporarily unavailable',
+        packaging: {
+          native: 'Local native',
+          all_in_one: 'All-in-One',
+          container: 'Container Shards',
+          control_plane: 'Controller only'
+        },
+        deployments: {
+          native: 'The management service controls DST directly on this host, which is the standard native setup.',
+          all_in_one: 'The management service and DST run in one container, with persistent data stored on the host.',
+          all_in_oneCompact: 'This All-in-One setup suits a typical 2 vCPU / 4 GiB host. Start with Master and Caves.',
+          container: 'Each world uses its own container for independent lifecycle and CPU controls. A host with at least 4 cores is recommended.',
+          control_plane: 'This instance is controller-only and does not run DST locally. Connect a remote node first.'
+        },
+        remote: {
+          title: 'Connect a runtime node first',
+          description: 'This instance has no local executor. Add a remote Agent, then select a runtime node for the room.',
+          action: 'Manage nodes'
+        },
+        steps: {
+          game: {
+            title: 'Install the game server',
+            ready: 'Install one shared DST server with SteamCMD for all local worlds.',
+            installing: 'The installation job is running. The next step becomes available when it finishes.',
+            unavailable: 'Installation from the panel is unavailable. Check SteamCMD or the version card for details.',
+            done: 'The DST game server is installed.'
+          },
+          room: {
+            title: 'Create a room',
+            ready: 'Configure the Cluster Token, Master, and Caves together during room creation.',
+            done: '{rooms} rooms and {worlds} worlds are configured.',
+            action: 'Create room'
+          },
+          start: {
+            title: 'Start the room',
+            ready: 'Open room control and start Master and Caves using the current deployment mode.',
+            done: '{count} worlds are running.',
+            action: 'Open room control'
+          }
+        },
+        blocked: {
+          title: 'Resolve environment issues before starting',
+          description: 'Failed checks: {checks}',
+          separator: ', ',
+          action: 'Open system settings'
+        },
+        checks: {
+          savePath: 'save directory',
+          backupPath: 'backup directory',
+          tmux: 'tmux runtime control',
+          serverExecutable: 'DST server files',
+          diskSpace: 'disk space',
+          docker: 'Docker control',
+          unknown: 'unknown required check'
+        }
+      },
       roomsOverview: {
         title: 'Room overview',
         description: '{count} rooms. Open room control for all runtime actions.',

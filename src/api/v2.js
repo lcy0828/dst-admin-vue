@@ -136,6 +136,7 @@ const encode = value => encodeURIComponent(String(value))
 
 export const systemV2API = {
   capabilities: () => client.get('/system/capabilities'),
+  setupChecks: () => client.get('/system/setup-checks', { headers: { 'Cache-Control': 'no-store' } }),
   status: () => client.get('/system/status'),
   settings: () => client.get('/system/settings', { headers: { 'Cache-Control': 'no-store' } }),
   previewSettings: input => client.post('/system/settings/preview', input),
