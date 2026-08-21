@@ -171,6 +171,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { confirmAction, promptText } from '@/lib/feedback';
+import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
@@ -294,9 +295,12 @@ export default {
   },
   methods: {
     formatDate(timestamp) {
-      if (!timestamp) return '';
-      const date = new Date(timestamp);
-      return date.toLocaleString(this.$i18n.locale);
+      return formatSystemDateTime(timestamp, {
+        locale: this.$i18n.locale,
+        fallback: '',
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit'
+      });
     },
     refreshRooms(force = false) {
       // 如果正在刷新或者距离上次刷新不足2秒，则不进行刷新
@@ -343,7 +347,10 @@ export default {
             }
 
             toast.success(this.$t('rooms.list.feedback.refreshed'));
-            console.log('Refreshed rooms and server status at', new Date().toLocaleTimeString());
+            console.log('Refreshed rooms and server status at', formatSystemDateTime(new Date(), {
+              locale: this.$i18n.locale,
+              hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }));
           } else {
             throw new Error(this.$t('rooms.list.feedback.listFailed'));
           }

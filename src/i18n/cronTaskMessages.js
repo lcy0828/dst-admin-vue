@@ -2,6 +2,7 @@ import {
   normalizeSystemAutomationGroup,
   SYSTEM_AUTOMATION_GROUP_IDS
 } from '../lib/systemDataIdentifiers.mjs'
+import { formatSystemDateTime } from '../lib/dateTime.mjs'
 
 const DEFAULT_CRON_TASK_LOCALE = 'zh-CN'
 
@@ -423,9 +424,12 @@ export function cronTaskFailureText(failure, locale) {
 
 export function formatCronTaskDate(value, locale) {
   if (!value || value === '0001-01-01T00:00:00Z') return cronTaskText('common.values.notScheduled', locale)
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  return date.toLocaleString(normalizeCronTaskLocale(locale), { hour12: false })
+  return formatSystemDateTime(value, {
+    locale: normalizeCronTaskLocale(locale),
+    fallback: String(value),
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false
+  })
 }
 
 export function formatCronTaskMilliseconds(value, locale) {

@@ -395,6 +395,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { confirmAction } from '@/lib/feedback';
 import { formatDurationSeconds } from '@/lib/localeFormatters.mjs';
+import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 import { DEFAULT_THEME_ID, THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
 import { applySystemPreferences, previewSystemLanguage, previewSystemTheme } from '@/utils/systemPreferences';
 import { getActiveRuntimeTarget } from '@/utils/runtimeTarget';
@@ -1021,12 +1022,13 @@ export default {
       return `${(value / 1024 ** 3).toFixed(1)} GB`;
     },
     formatDateTime(value) {
-      if (!value) return '';
-      return new Intl.DateTimeFormat(this.settings.language || 'zh-CN', {
+      return formatSystemDateTime(value, {
+        locale: this.settings.language || 'zh-CN',
+        fallback: '',
         timeZone: this.settings.timezone,
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-      }).format(new Date(value)).replaceAll('/', '-');
+      }).replaceAll('/', '-');
     },
     formatMemory(memory) {
       const value = Number(memory) || 0;

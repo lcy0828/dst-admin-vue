@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import {
   CircleAlert,
   CircleCheck,
@@ -134,10 +135,11 @@ function formatBytes(bytes) {
 }
 
 function formatDate(value) {
-  if (!value) return '--'
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return '--'
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(parsed)
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  })
 }
 
 function targetName(target) {

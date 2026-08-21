@@ -2,6 +2,7 @@ import {
   normalizeSystemAutomationGroup,
   SYSTEM_AUTOMATION_GROUP_IDS
 } from '../lib/systemDataIdentifiers.mjs'
+import { formatSystemDateTime } from '../lib/dateTime.mjs'
 
 const GROUP_TYPE_KEYS = Object.freeze({
   system: 'system',
@@ -508,9 +509,12 @@ export function formatCronGroupDuration(value, locale, translate) {
 export function formatCronGroupDate(value, locale) {
   if (!value) return '--'
   const source = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T00:00:00` : value
-  const date = new Date(source)
-  if (Number.isNaN(date.getTime())) return String(value)
-  return new Intl.DateTimeFormat(localeCode(locale), { month: 'short', day: 'numeric' }).format(date)
+  return formatSystemDateTime(source, {
+    locale: localeCode(locale),
+    fallback: String(value),
+    month: 'short',
+    day: 'numeric'
+  })
 }
 
 export function cronGroupErrorDetail(value) {

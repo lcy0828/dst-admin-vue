@@ -596,6 +596,7 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { confirmAction } from '@/lib/feedback';
+import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import { toast } from 'vue-sonner';
 import {
@@ -1067,9 +1068,12 @@ export default {
     },
 
     formatCheckedAt(value) {
-      if (!value) return '--';
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-CN', { hour12: false });
+      return formatSystemDateTime(value, {
+        locale: 'zh-CN',
+        fallback: value || '--',
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false
+      });
     },
 
     // 更新饥荒服务器

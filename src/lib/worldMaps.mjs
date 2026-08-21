@@ -138,12 +138,15 @@ export function formatMapBytes(value) {
 }
 
 export function formatMapTime(value) {
-  if (!value) return '--'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? '--' : date.toLocaleString('zh-CN', { hour12: false })
+  return formatSystemDateTime(value, {
+    locale: 'zh-CN',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false
+  })
 }
 
 export function mapJobFailure(job) {
   const failed = (job?.targets || []).find(target => target.status === 'failed')
   return failed?.error?.message || job?.error?.message || '地图生成任务未成功完成'
 }
+import { formatSystemDateTime } from './dateTime.mjs'

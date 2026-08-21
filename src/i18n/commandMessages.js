@@ -1,4 +1,5 @@
 import { normalizeCommandCategory } from '../lib/commandCategories.mjs'
+import { formatSystemDateTime } from '../lib/dateTime.mjs'
 
 export const commandMessages = {
   'zh-CN': {
@@ -397,11 +398,12 @@ export function translateCommandStatus(translate, hasTranslation, value) {
 }
 
 export function formatCommandTime(value, locale = 'zh-CN') {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '--'
   const activeLocale = typeof locale === 'string' ? locale : locale?.value
-  return date.toLocaleString(activeLocale === 'en-US' ? 'en-US' : 'zh-CN', { hour12: false })
+  return formatSystemDateTime(value, {
+    locale: activeLocale === 'en-US' ? 'en-US' : 'zh-CN',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false
+  })
 }
 
 export function localizeCommandError(translate, hasTranslation, error, fallbackKey = 'commands.errors.operation') {

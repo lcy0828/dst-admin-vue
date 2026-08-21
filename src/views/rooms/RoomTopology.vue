@@ -522,6 +522,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { CircleAlert, CircleCheck, Cpu, History, Info, ListChecks, MoveRight, Network, Play, RefreshCw, RotateCw, Save, ScanSearch, Square, TriangleAlert, Upload } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { topologyV2API } from '@/api/v2'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -963,10 +964,12 @@ function roleLabel(role) {
 }
 
 function formatTime(value) {
-  if (!value) return t('topology.time.unavailable')
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return t('topology.time.unavailable')
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(date)
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    fallback: t('topology.time.unavailable'),
+    dateStyle: 'short',
+    timeStyle: 'medium'
+  })
 }
 
 function formatBytes(value) {

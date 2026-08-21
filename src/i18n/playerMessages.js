@@ -166,10 +166,9 @@ export function playerPerformanceLabel(performance, translate) {
 }
 
 export function formatPlayerDate(value, locale) {
-  if (!value) return '-'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleString(localeCode(locale), {
+  return formatSystemDateTime(value, {
+    locale: localeCode(locale),
+    fallback: '-',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -486,3 +485,4 @@ export const playerMessages = {
     }
   }
 }
+import { formatSystemDateTime } from '../lib/dateTime.mjs'

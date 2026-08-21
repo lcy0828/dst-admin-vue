@@ -190,11 +190,13 @@ export function cronExecutorLabel(executor, translate) {
 }
 
 export function formatCronLogDate(value, locale = 'zh-CN') {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
   const activeLocale = typeof locale === 'string' ? locale : locale?.value
-  return date.toLocaleString(activeLocale === 'en-US' ? 'en-US' : 'zh-CN', { hour12: false })
+  return formatSystemDateTime(value, {
+    locale: activeLocale === 'en-US' ? 'en-US' : 'zh-CN',
+    fallback: value ? String(value) : '--',
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false
+  })
 }
 
 export function formatCronLogDuration(value, locale, translate) {
@@ -218,3 +220,4 @@ export function formatCronLogFailure(failure, translate) {
     ? translate('cronLogs.common.errorWithDetail', { message, detail: failure.detail })
     : message
 }
+import { formatSystemDateTime } from '../lib/dateTime.mjs'

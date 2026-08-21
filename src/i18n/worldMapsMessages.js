@@ -1,4 +1,5 @@
 import { mapJobFailure, mapStatusMeta } from '../lib/worldMaps.mjs'
+import { formatSystemDateTime } from '../lib/dateTime.mjs'
 
 const LAYER_KEYS = Object.freeze({
   terrain: 'terrain',
@@ -79,10 +80,16 @@ export function worldMapStageLabel(stage, translate) {
 }
 
 export function formatWorldMapTime(value, locale = 'zh-CN') {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '--'
-  return date.toLocaleString(locale === 'en-US' ? 'en-US' : 'zh-CN', { hour12: false })
+  return formatSystemDateTime(value, {
+    locale: locale === 'en-US' ? 'en-US' : 'zh-CN',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
 }
 
 export function worldMapErrorDetail(error, translate) {

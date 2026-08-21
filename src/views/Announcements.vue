@@ -123,6 +123,7 @@ import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { confirmAction } from '@/lib/feedback'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { toast } from 'vue-sonner'
 
 export default {
@@ -354,11 +355,11 @@ export default {
       return 'outline'
     },
     formatDate(dateString) {
-      const date = new Date(dateString);
-      if (Number.isNaN(date.getTime())) return '-';
       const localeState = this.$i18n?.locale
       const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN')
-      return date.toLocaleString(locale, {
+      return formatSystemDateTime(dateString, {
+        locale,
+        fallback: '-',
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
