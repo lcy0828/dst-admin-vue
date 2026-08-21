@@ -83,7 +83,7 @@ export const constantRoutes = [
         path: 'releases',
         component: () => import('@/views/servers/GameReleases.vue'),
         name: 'GameReleases',
-        meta: { title: '游戏版本发布', titleKey: 'navigation.gameReleases', icon: 'package' }
+        meta: { title: '游戏服务端更新', titleKey: 'navigation.gameReleases', icon: 'package' }
       }
     ]
   },

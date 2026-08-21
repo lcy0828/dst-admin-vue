@@ -1,18 +1,18 @@
 export const gameReleaseMessages = {
   'zh-CN': {
     gameReleases: {
-      title: '游戏版本发布',
+      title: '游戏服务端更新',
       subtitle: '在控制面统一检查并更新本机与远程节点上的 DST 专用服务器。',
       actions: {
-        open: '管理版本发布', refresh: '刷新发布记录', preview: '生成发布计划', previewing: '正在检查',
-        publish: '确认并开始发布', retry: '重试失败发布', view: '查看详情'
+        open: '管理游戏更新', refresh: '刷新更新记录', preview: '检查更新范围', previewing: '正在检查',
+        publish: '备份并开始更新', retry: '重试失败更新', view: '查看详情'
       },
       notice: {
-        title: '发布按整个运行拓扑执行',
-        description: '系统先创建每个受影响房间的保护备份，再按 Secondary → Master 停止分片，逐节点更新并精确校验 Steam build，最后按 Master → Secondary 恢复原运行状态。'
+        title: '更新期间会自动保护并恢复房间',
+        description: '系统会先备份受影响的房间并安全停止世界，更新和校验 Steam build 后，再恢复更新前正在运行的世界。多节点房间会自动按正确顺序处理。'
       },
       form: {
-        title: '发布策略', description: '先生成只读计划；计划哈希、拓扑或目标版本变化后必须重新确认。',
+        title: '更新选项', description: '先检查本次更新影响的节点、房间和世界；检查结果变化后需要重新确认。',
         desiredVersion: '目标 Steam build', desiredPlaceholder: '留空使用 Steam 最新 build',
         desiredDescription: '手动填写时只能使用当前 Steam 最新 build，不能发布未经验证的任意版本。',
         cleanCache: '更新前清理 SteamCMD 下载缓存', cleanCacheDescription: '磁盘空间紧张或缓存损坏时启用；会增加下载时间。',
@@ -22,10 +22,10 @@ export const gameReleaseMessages = {
         timeout: '单阶段超时（秒）', timeoutDescription: '允许 30 至 900 秒，默认 300 秒。'
       },
       plan: {
-        title: '版本矩阵', description: '{installations} 个安装目标，影响 {rooms} 个房间。',
-        ready: '可以发布', blocked: '发布受阻', upToDate: '全部已是最新版本', updateRequired: '需要更新',
+        title: '更新范围', description: '{installations} 个安装目标，影响 {rooms} 个房间。',
+        ready: '可以更新', blocked: '更新受阻', upToDate: '全部已是最新版本', updateRequired: '需要更新',
         topology: '拓扑版本', planHash: '计划哈希', targetVersion: '目标 build',
-        blockerTitle: '发布预检未通过', blockerDescription: '处理以下阻断项后重新生成计划。',
+        blockerTitle: '更新检查未通过', blockerDescription: '处理以下问题后重新检查更新范围。',
         noUpdateTitle: '所有安装目标均为最新版本', noUpdateDescription: '不需要执行停服、备份或更新。'
       },
       columns: {
@@ -49,43 +49,43 @@ export const gameReleaseMessages = {
         versionObserveFailed: '读取安装版本失败', shardInventoryMissing: '运行清单中未发现分片', shardStatusFailed: '读取分片状态失败', unknown: '未知阻断项'
       },
       job: {
-        title: '发布任务', queued: '等待执行', running: '正在执行', succeeded: '任务完成', failed: '任务失败', canceled: '任务已取消', unknown: '未知任务状态'
+        title: '更新任务', queued: '等待执行', running: '正在执行', succeeded: '任务完成', failed: '任务失败', canceled: '任务已取消', unknown: '未知任务状态'
       },
       history: {
-        title: '发布记录', description: '保留每次计划、保护备份、安装结果和分片加载证据。',
-        loading: '正在读取发布记录', emptyTitle: '还没有版本发布记录', emptyDescription: '生成并确认第一份发布计划后，执行记录会显示在这里。'
+        title: '更新记录', description: '保留每次检查、保护备份、安装结果和世界恢复状态。',
+        loading: '正在读取更新记录', emptyTitle: '还没有游戏更新记录', emptyDescription: '执行第一次游戏服务端更新后，记录会显示在这里。'
       },
       details: {
-        title: '发布详情', description: '发布 {id} 的真实执行阶段与逐目标结果。', backups: '保护备份',
+        title: '更新详情', description: '更新任务 {id} 的真实执行阶段与逐目标结果。', backups: '保护备份',
         installationResults: '安装结果', shardResults: '分片恢复与加载确认', noSelection: '选择一条发布记录查看完整证据。'
       },
       confirm: {
-        title: '确认中断并发布', description: '确认后将锁定受影响房间，创建保护备份并停止正在运行的分片。',
-        warningTitle: '这是跨节点停服操作', warningDescription: '发布会影响 {rooms} 个房间和 {shards} 个分片。失败时系统保留恢复状态和审计记录，不会把部分成功伪装成完成。',
-        submit: '创建保护备份并发布'
+        title: '确认备份并更新', description: '确认后将保护受影响的房间，创建备份并停止正在运行的世界。',
+        warningTitle: '更新期间房间会暂时停止', warningDescription: '本次更新会影响 {rooms} 个房间和 {shards} 个分片。失败时系统会保留恢复状态和完整记录。',
+        submit: '创建备份并更新'
       },
       feedback: {
-        historyFailed: '读取发布记录失败：{error}', previewReady: '发布计划已生成', previewFailed: '生成发布计划失败：{error}',
-        submitted: '版本发布任务已提交', submitFailed: '提交版本发布失败：{error}', retrySubmitted: '重试任务已提交',
-        retryFailed: '提交重试失败：{error}', detailsFailed: '读取发布详情失败：{error}', taskFailed: '发布任务失败：{error}',
-        invalidJobResponse: '后端未返回可跟踪的发布任务', completionUnconfirmed: '发布任务已结束，但连续多次未能读取对应发布记录；请刷新发布历史并核对恢复状态'
+        historyFailed: '读取更新记录失败：{error}', previewReady: '更新范围已检查', previewFailed: '检查更新范围失败：{error}',
+        submitted: '游戏更新任务已提交', submitFailed: '提交游戏更新失败：{error}', retrySubmitted: '重试任务已提交',
+        retryFailed: '提交重试失败：{error}', detailsFailed: '读取更新详情失败：{error}', taskFailed: '更新任务失败：{error}',
+        invalidJobResponse: '后端未返回可跟踪的更新任务', completionUnconfirmed: '更新任务已结束，但连续多次未能读取对应记录；请刷新更新历史并核对恢复状态'
       }
     }
   },
   'en-US': {
     gameReleases: {
-      title: 'Game releases',
+      title: 'Game server updates',
       subtitle: 'Inspect and update DST dedicated-server installations across local and remote targets from the control plane.',
       actions: {
-        open: 'Manage releases', refresh: 'Refresh releases', preview: 'Build release plan', previewing: 'Checking',
-        publish: 'Confirm and publish', retry: 'Retry failed release', view: 'View details'
+        open: 'Manage game updates', refresh: 'Refresh update history', preview: 'Check update scope', previewing: 'Checking',
+        publish: 'Back up and update', retry: 'Retry failed update', view: 'View details'
       },
       notice: {
-        title: 'A release covers the complete runtime topology',
-        description: 'The system creates protection backups, stops Secondary shards before Master, updates and verifies every Steam build, then restores Master before Secondary to the previous runtime state.'
+        title: 'Rooms are protected and restored automatically',
+        description: 'The system backs up affected rooms, safely stops worlds, updates and verifies each Steam build, then restores the worlds that were running before the update. Multi-node rooms are handled in the correct order.'
       },
       form: {
-        title: 'Release policy', description: 'Build a read-only plan first. A changed plan hash, topology, or desired version requires a new confirmation.',
+        title: 'Update options', description: 'Check affected nodes, rooms, and worlds first. Changes to the result require a new confirmation.',
         desiredVersion: 'Desired Steam build', desiredPlaceholder: 'Leave empty for the latest Steam build',
         desiredDescription: 'A manual value must still match the current latest Steam build. Arbitrary unverified versions are rejected.',
         cleanCache: 'Clear SteamCMD download cache first', cleanCacheDescription: 'Use for low disk space or a damaged cache. It increases download time.',
@@ -95,8 +95,8 @@ export const gameReleaseMessages = {
         timeout: 'Per-stage timeout (seconds)', timeoutDescription: 'Allowed range: 30 to 900 seconds. Default: 300.'
       },
       plan: {
-        title: 'Version matrix', description: '{installations} installations across {rooms} rooms.',
-        ready: 'Ready to publish', blocked: 'Release blocked', upToDate: 'Everything is current', updateRequired: 'Update required',
+        title: 'Update scope', description: '{installations} installations across {rooms} rooms.',
+        ready: 'Ready to update', blocked: 'Update blocked', upToDate: 'Everything is current', updateRequired: 'Update required',
         topology: 'Topology revision', planHash: 'Plan hash', targetVersion: 'Desired build',
         blockerTitle: 'Release preflight failed', blockerDescription: 'Resolve these blockers and build a new plan.',
         noUpdateTitle: 'Every installation is current', noUpdateDescription: 'No stop, backup, or update operation is required.'
