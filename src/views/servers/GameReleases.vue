@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import {
+  ChevronDown,
   CircleAlert,
   CircleCheck,
   PackageCheck,
@@ -18,7 +19,8 @@ import { gameReleasesV2API, jobsV2API } from '@/api/v2'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -58,6 +60,8 @@ const detailsLoading = ref(false)
 const loadError = ref('')
 const taskError = ref('')
 const confirmOpen = ref(false)
+const advancedOpen = ref(false)
+const technicalOpen = ref(false)
 let pollTimer = 0
 let requestSequence = 0
 let historyLoadingSequence = 0
@@ -70,6 +74,12 @@ let pollConfirmationMisses = 0
 const planInstallations = computed(() => plan.value?.installations || [])
 const planBlockers = computed(() => plan.value?.blockers || [])
 const affectedShardCount = computed(() => planInstallations.value.reduce((total, item) => total + (item.shards || []).length, 0))
+const currentVersionLabel = computed(() => {
+  const versions = [...new Set(planInstallations.value.map(item => item.currentVersion).filter(Boolean))]
+  if (!versions.length) return '--'
+  if (versions.length === 1) return versions[0]
+  return t('gameReleases.simple.mixedVersions', { count: versions.length })
+})
 const activeProgress = computed(() => gameReleaseJobProgress(activeJob.value))
 const activeJobRunning = computed(() => Boolean(activeJob.value && !gameReleaseJobIsTerminal(activeJob.value)))
 const canPreview = computed(() => !previewing.value && !publishing.value && !activeJobRunning.value && Number(policy.timeoutSeconds) >= 30 && Number(policy.timeoutSeconds) <= 900)
@@ -350,7 +360,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
 
 <template>
   <div class="flex min-w-0 flex-col gap-5">
-    <header class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+    <header class="min-w-0">
       <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-2">
           <h1 class="text-2xl font-semibold tracking-normal">{{ t('gameReleases.title') }}</h1>
@@ -358,18 +368,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
         </div>
         <p class="mt-1 text-sm text-muted-foreground">{{ t('gameReleases.subtitle') }}</p>
       </div>
-      <UiButton variant="outline" :disabled="loading" @click="loadHistory">
-        <Spinner v-if="loading" data-icon="inline-start" />
-        <RefreshCw v-else data-icon="inline-start" />
-        {{ t('gameReleases.actions.refresh') }}
-      </UiButton>
     </header>
-
-    <Alert>
-      <ShieldCheck />
-      <AlertTitle>{{ t('gameReleases.notice.title') }}</AlertTitle>
-      <AlertDescription>{{ t('gameReleases.notice.description') }}</AlertDescription>
-    </Alert>
 
     <Alert v-if="taskError" variant="destructive">
       <CircleAlert />
@@ -378,103 +377,144 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
     </Alert>
 
     <Card size="sm">
-      <CardHeader>
-        <CardTitle>{{ t('gameReleases.form.title') }}</CardTitle>
-        <CardDescription>{{ t('gameReleases.form.description') }}</CardDescription>
-        <CardAction>
-          <UiButton variant="outline" :disabled="!canPreview" @click="previewRelease">
-            <Spinner v-if="previewing" data-icon="inline-start" />
-            <ScanSearch v-else data-icon="inline-start" />
-            {{ t(previewing ? 'gameReleases.actions.previewing' : 'gameReleases.actions.preview') }}
-          </UiButton>
-        </CardAction>
+      <CardHeader class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <CardTitle>{{ t('gameReleases.simple.title') }}</CardTitle>
+          <CardDescription class="mt-1.5">{{ t('gameReleases.simple.description') }}</CardDescription>
+        </div>
+        <UiButton class="shrink-0" :disabled="!canPreview" @click="previewRelease">
+          <Spinner v-if="previewing" data-icon="inline-start" />
+          <ScanSearch v-else data-icon="inline-start" />
+          {{ t(previewing ? 'gameReleases.actions.checking' : 'gameReleases.actions.check') }}
+        </UiButton>
       </CardHeader>
-      <CardContent>
-        <FieldGroup>
-          <div class="grid gap-4 lg:grid-cols-2">
-            <Field>
-              <FieldLabel for="release-desired-version">{{ t('gameReleases.form.desiredVersion') }}</FieldLabel>
-              <Input id="release-desired-version" v-model="desiredVersion" inputmode="numeric" :placeholder="t('gameReleases.form.desiredPlaceholder')" />
-              <FieldDescription>{{ t('gameReleases.form.desiredDescription') }}</FieldDescription>
-            </Field>
-            <Field :data-invalid="Number(policy.timeoutSeconds) < 30 || Number(policy.timeoutSeconds) > 900 || undefined">
-              <FieldLabel for="release-timeout">{{ t('gameReleases.form.timeout') }}</FieldLabel>
-              <Input id="release-timeout" v-model.number="policy.timeoutSeconds" type="number" min="30" max="900" aria-describedby="release-timeout-description" :aria-invalid="Number(policy.timeoutSeconds) < 30 || Number(policy.timeoutSeconds) > 900" />
-              <FieldDescription id="release-timeout-description">{{ t('gameReleases.form.timeoutDescription') }}</FieldDescription>
-            </Field>
+      <CardContent class="flex min-w-0 flex-col gap-4 pt-0">
+        <Alert v-if="!plan">
+          <ScanSearch />
+          <AlertTitle>{{ t('gameReleases.simple.notChecked') }}</AlertTitle>
+          <AlertDescription>{{ t('gameReleases.simple.notCheckedDescription') }}</AlertDescription>
+        </Alert>
+
+        <template v-else>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-base font-semibold">{{ t('gameReleases.simple.resultTitle') }}</h2>
+                <Badge :variant="plan.ready ? 'secondary' : 'destructive'">{{ t(plan.ready ? 'gameReleases.plan.ready' : 'gameReleases.plan.blocked') }}</Badge>
+                <Badge variant="outline">{{ t(plan.updateRequired ? 'gameReleases.plan.updateRequired' : 'gameReleases.plan.upToDate') }}</Badge>
+              </div>
+              <p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.simple.resultDescription') }}</p>
+            </div>
+            <UiButton v-if="plan.updateRequired" :disabled="!canPublish" @click="openConfirmation">
+              <PackageCheck data-icon="inline-start" />{{ t('gameReleases.actions.publish') }}
+            </UiButton>
           </div>
-          <Field>
-            <FieldLabel>{{ t('gameReleases.form.loadConfirmation') }}</FieldLabel>
-            <ToggleGroup :model-value="policy.loadConfirmation" type="single" variant="outline" class="justify-start" @update:model-value="selectLoadConfirmation">
-              <ToggleGroupItem value="logs">{{ t('gameReleases.form.loadLogs') }}</ToggleGroupItem>
-              <ToggleGroupItem value="none">{{ t('gameReleases.form.loadNone') }}</ToggleGroupItem>
-            </ToggleGroup>
-            <FieldDescription>{{ t(`gameReleases.form.loadDescriptions.${policy.loadConfirmation}`) }}</FieldDescription>
-          </Field>
-          <div class="grid gap-4 lg:grid-cols-2">
-            <Field orientation="horizontal">
-              <FieldContent><FieldLabel for="release-clean-cache">{{ t('gameReleases.form.cleanCache') }}</FieldLabel><FieldDescription>{{ t('gameReleases.form.cleanCacheDescription') }}</FieldDescription></FieldContent>
-              <Switch id="release-clean-cache" v-model="policy.cleanCache" />
-            </Field>
-            <Field orientation="horizontal">
-              <FieldContent><FieldLabel for="release-restart">{{ t('gameReleases.form.restartRunning') }}</FieldLabel><FieldDescription>{{ t('gameReleases.form.restartRunningDescription') }}</FieldDescription></FieldContent>
-              <Switch id="release-restart" v-model="policy.restartRunning" />
-            </Field>
+
+          <div class="grid grid-cols-2 gap-x-5 gap-y-3 rounded-lg border px-4 py-3 lg:grid-cols-4">
+            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.currentVersion') }}</span><strong class="truncate text-lg font-semibold tabular-nums" :title="currentVersionLabel">{{ currentVersionLabel }}</strong></div>
+            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.latestVersion') }}</span><strong class="truncate text-lg font-semibold tabular-nums">{{ plan.desiredVersion || '--' }}</strong></div>
+            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.affectedNodes') }}</span><strong class="text-lg font-semibold tabular-nums">{{ planInstallations.length }}</strong></div>
+            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.affectedRoomsAndWorlds') }}</span><strong class="text-lg font-semibold tabular-nums">{{ plan.affectedRoomIds?.length || 0 }}<span class="ml-1 text-xs font-normal text-muted-foreground">/ {{ affectedShardCount }}</span></strong></div>
           </div>
-        </FieldGroup>
+
+          <Alert v-if="planBlockers.length" variant="destructive">
+            <TriangleAlert />
+            <AlertTitle>{{ t('gameReleases.plan.blockerTitle') }}</AlertTitle>
+            <AlertDescription class="flex flex-col gap-1">
+              <span>{{ t('gameReleases.plan.blockerDescription') }}</span>
+              <span v-for="(blocker, index) in planBlockers" :key="`${blocker.code}:${blocker.targetId}:${blocker.worldId}:${index}`">{{ blockerLabel(blocker) }}<template v-if="blocker.targetId"> · {{ blocker.targetId }}</template><template v-if="blocker.worldId"> / {{ blocker.worldId }}</template></span>
+            </AlertDescription>
+          </Alert>
+
+          <Alert v-else-if="!plan.updateRequired">
+            <CircleCheck />
+            <AlertTitle>{{ t('gameReleases.plan.noUpdateTitle') }}</AlertTitle>
+            <AlertDescription>{{ t('gameReleases.plan.noUpdateDescription') }}</AlertDescription>
+          </Alert>
+
+          <Alert v-else>
+            <ShieldCheck />
+            <AlertTitle>{{ t('gameReleases.notice.title') }}</AlertTitle>
+            <AlertDescription>{{ t('gameReleases.notice.description') }}</AlertDescription>
+          </Alert>
+
+          <Collapsible v-model:open="technicalOpen">
+            <CollapsibleTrigger as-child>
+              <UiButton variant="ghost" class="group w-full justify-between">
+                <span class="text-left"><span class="block">{{ t('gameReleases.technical.title') }}</span><span class="block text-xs font-normal text-muted-foreground">{{ t('gameReleases.technical.description') }}</span></span>
+                <ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" />
+              </UiButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent class="flex min-w-0 flex-col gap-3 pt-3">
+              <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                <span class="min-w-0 truncate" :title="plan.topologyRevision">{{ t('gameReleases.plan.topology') }}: {{ plan.topologyRevision }}</span>
+                <span class="min-w-0 truncate" :title="plan.planHash">{{ t('gameReleases.plan.planHash') }}: {{ plan.planHash }}</span>
+              </div>
+              <div class="overflow-x-auto rounded-lg border">
+                <Table class="min-w-[900px]">
+                  <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.installation') }}</TableHead><TableHead>{{ t('gameReleases.columns.versions') }}</TableHead><TableHead>{{ t('gameReleases.columns.disk') }}</TableHead><TableHead>{{ t('gameReleases.columns.shards') }}</TableHead><TableHead>{{ t('gameReleases.columns.status') }}</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    <TableRow v-for="target in planInstallations" :key="`${target.targetId}:${target.installationId}`">
+                      <TableCell><div class="flex min-w-0 flex-col gap-1"><span class="font-medium">{{ targetName(target) }}</span><span class="text-xs text-muted-foreground">{{ target.online ? t('gameReleases.values.online') : t('gameReleases.values.offline') }}</span></div></TableCell>
+                      <TableCell class="font-mono text-xs">{{ target.installationId }}</TableCell>
+                      <TableCell class="tabular-nums">{{ target.currentVersion || '--' }} → {{ target.desiredVersion || plan.desiredVersion }}</TableCell>
+                      <TableCell class="tabular-nums">{{ formatBytes(target.availableBytes) }} / {{ formatBytes(target.requiredBytes) }}</TableCell>
+                      <TableCell>{{ t('gameReleases.values.runningShards', { running: target.runningShards || 0, total: target.shards?.length || 0 }) }}</TableCell>
+                      <TableCell><Badge :variant="targetStatus(target).variant">{{ t(`gameReleases.values.${targetStatus(target).key}`) }}</Badge></TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </template>
+
+        <Separator />
+
+        <Collapsible v-model:open="advancedOpen">
+          <CollapsibleTrigger as-child>
+            <UiButton variant="ghost" class="group w-full justify-between">
+              <span class="text-left"><span class="block">{{ t('gameReleases.advanced.title') }}</span><span class="block text-xs font-normal text-muted-foreground">{{ t('gameReleases.advanced.description') }}</span></span>
+              <ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" />
+            </UiButton>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-4">
+            <FieldGroup>
+              <div class="grid gap-4 lg:grid-cols-2">
+                <Field>
+                  <FieldLabel for="release-desired-version">{{ t('gameReleases.form.desiredVersion') }}</FieldLabel>
+                  <Input id="release-desired-version" v-model="desiredVersion" inputmode="numeric" :placeholder="t('gameReleases.form.desiredPlaceholder')" />
+                  <FieldDescription>{{ t('gameReleases.form.desiredDescription') }}</FieldDescription>
+                </Field>
+                <Field :data-invalid="Number(policy.timeoutSeconds) < 30 || Number(policy.timeoutSeconds) > 900 || undefined">
+                  <FieldLabel for="release-timeout">{{ t('gameReleases.form.timeout') }}</FieldLabel>
+                  <Input id="release-timeout" v-model.number="policy.timeoutSeconds" type="number" min="30" max="900" aria-describedby="release-timeout-description" :aria-invalid="Number(policy.timeoutSeconds) < 30 || Number(policy.timeoutSeconds) > 900" />
+                  <FieldDescription id="release-timeout-description">{{ t('gameReleases.form.timeoutDescription') }}</FieldDescription>
+                </Field>
+              </div>
+              <Field>
+                <FieldLabel>{{ t('gameReleases.form.loadConfirmation') }}</FieldLabel>
+                <ToggleGroup :model-value="policy.loadConfirmation" type="single" variant="outline" class="justify-start" @update:model-value="selectLoadConfirmation">
+                  <ToggleGroupItem value="logs">{{ t('gameReleases.form.loadLogs') }}</ToggleGroupItem>
+                  <ToggleGroupItem value="none">{{ t('gameReleases.form.loadNone') }}</ToggleGroupItem>
+                </ToggleGroup>
+                <FieldDescription>{{ t(`gameReleases.form.loadDescriptions.${policy.loadConfirmation}`) }}</FieldDescription>
+              </Field>
+              <div class="grid gap-4 lg:grid-cols-2">
+                <Field orientation="horizontal">
+                  <FieldContent><FieldLabel for="release-clean-cache">{{ t('gameReleases.form.cleanCache') }}</FieldLabel><FieldDescription>{{ t('gameReleases.form.cleanCacheDescription') }}</FieldDescription></FieldContent>
+                  <Switch id="release-clean-cache" v-model="policy.cleanCache" />
+                </Field>
+                <Field orientation="horizontal">
+                  <FieldContent><FieldLabel for="release-restart">{{ t('gameReleases.form.restartRunning') }}</FieldLabel><FieldDescription>{{ t('gameReleases.form.restartRunningDescription') }}</FieldDescription></FieldContent>
+                  <Switch id="release-restart" v-model="policy.restartRunning" />
+                </Field>
+              </div>
+            </FieldGroup>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
-
-    <section v-if="plan" class="flex min-w-0 flex-col gap-3" aria-labelledby="release-plan-title">
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div class="flex flex-wrap items-center gap-2">
-            <h2 id="release-plan-title" class="text-base font-semibold">{{ t('gameReleases.plan.title') }}</h2>
-            <Badge :variant="plan.ready ? 'secondary' : 'destructive'">{{ t(plan.ready ? 'gameReleases.plan.ready' : 'gameReleases.plan.blocked') }}</Badge>
-            <Badge variant="outline">{{ t(plan.updateRequired ? 'gameReleases.plan.updateRequired' : 'gameReleases.plan.upToDate') }}</Badge>
-          </div>
-          <p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.plan.description', { installations: planInstallations.length, rooms: plan.affectedRoomIds?.length || 0 }) }}</p>
-        </div>
-        <UiButton :disabled="!canPublish" @click="openConfirmation"><PackageCheck data-icon="inline-start" />{{ t('gameReleases.actions.publish') }}</UiButton>
-      </div>
-
-      <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-        <span>{{ t('gameReleases.plan.targetVersion') }}: <strong class="text-foreground">{{ plan.desiredVersion }}</strong></span>
-        <span class="min-w-0 truncate" :title="plan.topologyRevision">{{ t('gameReleases.plan.topology') }}: {{ plan.topologyRevision }}</span>
-        <span class="min-w-0 truncate" :title="plan.planHash">{{ t('gameReleases.plan.planHash') }}: {{ plan.planHash }}</span>
-      </div>
-
-      <Alert v-if="planBlockers.length" variant="destructive">
-        <TriangleAlert />
-        <AlertTitle>{{ t('gameReleases.plan.blockerTitle') }}</AlertTitle>
-        <AlertDescription class="flex flex-col gap-1">
-          <span>{{ t('gameReleases.plan.blockerDescription') }}</span>
-          <span v-for="(blocker, index) in planBlockers" :key="`${blocker.code}:${blocker.targetId}:${blocker.worldId}:${index}`">{{ blockerLabel(blocker) }}<template v-if="blocker.targetId"> · {{ blocker.targetId }}</template><template v-if="blocker.worldId"> / {{ blocker.worldId }}</template></span>
-        </AlertDescription>
-      </Alert>
-
-      <Alert v-else-if="!plan.updateRequired">
-        <CircleCheck />
-        <AlertTitle>{{ t('gameReleases.plan.noUpdateTitle') }}</AlertTitle>
-        <AlertDescription>{{ t('gameReleases.plan.noUpdateDescription') }}</AlertDescription>
-      </Alert>
-
-      <div class="overflow-x-auto rounded-lg border">
-        <Table class="min-w-[900px]">
-          <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.installation') }}</TableHead><TableHead>{{ t('gameReleases.columns.versions') }}</TableHead><TableHead>{{ t('gameReleases.columns.disk') }}</TableHead><TableHead>{{ t('gameReleases.columns.shards') }}</TableHead><TableHead>{{ t('gameReleases.columns.status') }}</TableHead></TableRow></TableHeader>
-          <TableBody>
-            <TableRow v-for="target in planInstallations" :key="`${target.targetId}:${target.installationId}`">
-              <TableCell><div class="flex min-w-0 flex-col gap-1"><span class="font-medium">{{ targetName(target) }}</span><span class="text-xs text-muted-foreground">{{ target.online ? t('gameReleases.values.online') : t('gameReleases.values.offline') }}</span></div></TableCell>
-              <TableCell class="font-mono text-xs">{{ target.installationId }}</TableCell>
-              <TableCell class="tabular-nums">{{ target.currentVersion || '--' }} → {{ target.desiredVersion || plan.desiredVersion }}</TableCell>
-              <TableCell class="tabular-nums">{{ formatBytes(target.availableBytes) }} / {{ formatBytes(target.requiredBytes) }}</TableCell>
-              <TableCell>{{ t('gameReleases.values.runningShards', { running: target.runningShards || 0, total: target.shards?.length || 0 }) }}</TableCell>
-              <TableCell><Badge :variant="targetStatus(target).variant">{{ t(`gameReleases.values.${targetStatus(target).key}`) }}</Badge></TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </section>
 
     <Alert v-if="activeJob">
       <ServerCog />
@@ -486,7 +526,14 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
     </Alert>
 
     <section class="flex min-w-0 flex-col gap-3" aria-labelledby="release-history-title">
-      <div><h2 id="release-history-title" class="text-base font-semibold">{{ t('gameReleases.history.title') }}</h2><p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.history.description') }}</p></div>
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div><h2 id="release-history-title" class="text-base font-semibold">{{ t('gameReleases.history.title') }}</h2><p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.history.description') }}</p></div>
+        <UiButton variant="outline" size="sm" :disabled="loading" @click="loadHistory">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          {{ t('gameReleases.actions.refresh') }}
+        </UiButton>
+      </div>
       <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ t('gameReleases.history.title') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
       <div v-if="loading && !releases.length" class="flex flex-col gap-2" :aria-label="t('gameReleases.history.loading')"><Skeleton v-for="index in 4" :key="index" class="h-12 w-full" /></div>
       <Empty v-else-if="!releases.length && !loadError"><EmptyHeader><EmptyMedia variant="icon"><PackageCheck /></EmptyMedia><EmptyTitle>{{ t('gameReleases.history.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ t('gameReleases.history.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
