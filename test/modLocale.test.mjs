@@ -113,6 +113,7 @@ test('localized adapter publication errors do not append their English default i
 
 test('mod pages delegate visible copy to i18n without translating mod-owned data', async () => {
   const paths = [
+    '../src/views/mods/ModManagement.vue',
     '../src/views/mods/ModLibrary.vue',
     '../src/views/mods/ModList.vue',
     '../src/views/mods/ModSearch.vue',
@@ -128,12 +129,12 @@ test('mod pages delegate visible copy to i18n without translating mod-owned data
     assert.doesNotMatch(page, /installModMessages/)
   }
 
-  assert.match(pages[1], /\{\{ mod\.name \}\}/)
-  assert.match(pages[1], /\{\{ mod\.author \|\| \$t\(/)
-  assert.match(pages[3], /mod\.description/)
-  assert.match(pages[4], /\{\{ option\.label \}\}/)
-  assert.match(pages[4], /:value="opt\.data"/)
-  assert.match(pages[4], /this\.configForm\[option\.name\] = value/)
+  assert.match(pages[2], /\{\{ mod\.name \}\}/)
+  assert.match(pages[2], /\{\{ mod\.author \|\| \$t\(/)
+  assert.match(pages[4], /mod\.description/)
+  assert.match(pages[5], /\{\{ option\.label \}\}/)
+  assert.match(pages[5], /:value="opt\.data"/)
+  assert.match(pages[5], /this\.configForm\[option\.name\] = value/)
 })
 
 test('mod messages are registered statically in the global catalog', async () => {

@@ -63,11 +63,7 @@ export const V2_NAVIGATION = [
       {
         labelKey: 'navigation.mods',
         icon: Blocks,
-        children: [
-          { labelKey: 'navigation.nodeModLibrary', to: '/mods/library' },
-          { labelKey: 'navigation.roomMods', to: '/mods/list' },
-          { labelKey: 'navigation.modSearch', to: '/mods/search' }
-        ]
+        to: '/mods'
       },
       {
         labelKey: 'navigation.players',
@@ -123,3 +119,10 @@ export const V2_NAVIGATION = [
     ]
   }
 ]
+
+export function navigationForFeatures(features = {}) {
+  return V2_NAVIGATION.map(section => ({
+    ...section,
+    items: section.items.filter(item => !item.requiresFeature || features[item.requiresFeature] !== false)
+  }))
+}

@@ -1,6 +1,6 @@
 <template>
   <div class="page-container">
-    <header class="page-heading">
+    <header v-if="!embedded" class="page-heading">
       <div>
         <h1>{{ $t('mods.library.title') }}</h1>
         <p>{{ $t('mods.library.subtitle') }}</p>
@@ -10,7 +10,7 @@
           <RefreshCw data-icon="inline-start" />
           {{ $t('mods.actions.refresh') }}
         </UiButton>
-        <UiButton size="sm" @click="$router.push('/mods/search')">
+        <UiButton size="sm" @click="browseWorkshop">
           <Search data-icon="inline-start" />
           {{ $t('mods.actions.searchWorkshop') }}
         </UiButton>
@@ -23,7 +23,7 @@
         <CardDescription>{{ $t('mods.library.filters.description') }}</CardDescription>
       </CardHeader>
       <CardContent>
-        <FieldGroup class="filter-form">
+        <FieldGroup class="filter-form" :data-embedded="embedded || undefined">
           <Field>
             <FieldLabel for="library-keyword">{{ $t('mods.library.filters.keyword') }}</FieldLabel>
             <InputGroup>
@@ -31,7 +31,7 @@
               <InputGroupInput id="library-keyword" v-model="keyword" :placeholder="$t('mods.library.filters.keywordPlaceholder')" />
             </InputGroup>
           </Field>
-          <Field>
+          <Field v-if="!embedded">
             <FieldLabel for="library-status">{{ $t('mods.library.filters.status') }}</FieldLabel>
             <UiSelect v-model="status">
               <SelectTrigger id="library-status"><SelectValue /></SelectTrigger>
@@ -171,7 +171,7 @@
         <EmptyDescription>{{ $t(keyword || status !== 'all' ? 'mods.library.empty.noMatchesDescription' : 'mods.library.empty.noModsDescription') }}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <UiButton @click="$router.push('/mods/search')">
+        <UiButton @click="browseWorkshop">
           <Search data-icon="inline-start" />
           {{ $t('mods.actions.searchWorkshop') }}
         </UiButton>
@@ -184,7 +184,8 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { CircleArrowUp, Download, ImageIcon, Info, PackageOpen, PackagePlus, RefreshCw, Search, Star, TriangleAlert, Users } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import AddModToRoomDialog from './AddModToRoomDialog.vue'
@@ -204,9 +205,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { createModFailure, formatModDate, formatModFailure, translateModBuiltinValue } from '@/i18n/modMessages'
 import { i18n } from '@/i18n'
 
+const props = defineProps({
+  embedded: { type: Boolean, default: false },
+  initialStatus: { type: String, default: 'all' }
+})
+const emit = defineEmits(['browse-workshop'])
+const router = useRouter()
+
 const mods = ref([])
 const keyword = ref('')
-const status = ref('all')
+const status = ref(props.initialStatus === 'updates' ? 'updates' : props.initialStatus)
 const sortBy = ref('updatedAt')
 const loading = ref(false)
 const loadFailure = ref(null)
@@ -230,13 +238,28 @@ const filteredMods = computed(() => {
           .toLowerCase()
           .includes(normalized)
       )
-    const matchesStatus = status.value === 'all' || (status.value === 'downloaded' && mod.downloaded) || (status.value === 'attention' && (!mod.downloaded || mod.health !== 'healthy'))
+    const matchesStatus = status.value === 'all' ||
+      (status.value === 'downloaded' && mod.downloaded) ||
+      (status.value === 'updates' && mod.updateAvailable) ||
+      (status.value === 'attention' && (!mod.downloaded || mod.health !== 'healthy'))
     return matchesKeyword && matchesStatus
   })
   return result.sort((left, right) => compareMods(left, right, sortBy.value))
 })
 
 onMounted(loadLibrary)
+
+watch(() => props.initialStatus, value => {
+  status.value = value === 'updates' ? 'updates' : value
+})
+
+function browseWorkshop() {
+  if (props.embedded) {
+    emit('browse-workshop')
+    return
+  }
+  router.push('/mods')
+}
 
 async function loadLibrary(silent = false) {
   if (!silent) loading.value = true
@@ -424,6 +447,10 @@ function hideImage(event) {
   grid-template-columns: minmax(0, 2fr) repeat(2, minmax(160px, 1fr));
   align-items: end;
   gap: 12px;
+}
+
+.filter-form[data-embedded] {
+  grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr);
 }
 
 .workshop-stats {

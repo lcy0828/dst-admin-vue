@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
-    <header class="page-heading">
-      <div><h1>{{ $t('mods.installed.title') }}</h1><p>{{ $t('mods.installed.subtitle') }}</p></div>
+    <header class="page-heading" :class="{ 'page-heading-embedded': embedded }">
+      <div v-if="!embedded"><h1>{{ $t('mods.installed.title') }}</h1><p>{{ $t('mods.installed.subtitle') }}</p></div>
       <div class="header-actions">
         <UiButton size="sm" variant="outline" @click="refreshModList" :disabled="loading || !selectedRoomId"><RefreshCw data-icon="inline-start" />{{ $t('mods.actions.refresh') }}</UiButton>
         <UiButton size="sm" @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton>
@@ -51,13 +51,6 @@
         </FieldGroup>
       </CardContent>
     </Card>
-
-    <RoomModPublicationPanel
-      :room-id="selectedRoomId"
-      :worlds="selectedRoomWorlds"
-      :mods="modsList"
-      @published="fetchModsList(true)"
-    />
 
     <Alert v-if="loadError" variant="destructive">
       <TriangleAlert />
@@ -152,7 +145,6 @@ import { Clock, Download, FileCode2, ImageIcon, MoreHorizontal, PackageOpen, Plu
 import { toast } from 'vue-sonner';
 import ModConfigDialog from './ModConfigDialog.vue';
 import ModDetailsDialog from './ModDetailsDialog.vue';
-import RoomModPublicationPanel from '@/components/mods/RoomModPublicationPanel.vue';
 import { modApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -180,6 +172,10 @@ const MOD_TAG_KEYS = Object.freeze({
 
 export default {
   name: 'ModList',
+  props: {
+    embedded: { type: Boolean, default: false }
+  },
+  emits: ['browse-workshop'],
   components: {
     Alert,
     AlertAction,
@@ -226,7 +222,6 @@ export default {
     PackageOpen,
     Plus,
     RefreshCw,
-    RoomModPublicationPanel,
     Search,
     SelectContent,
     SelectGroup,
@@ -642,7 +637,11 @@ export default {
     
     // 导航到搜索页面
     goToSearch() {
-      this.$router.push('/mods/search');
+      if (this.embedded) {
+        this.$emit('browse-workshop');
+        return;
+      }
+      this.$router.push('/mods');
     },
 
     // 获取配置文件
@@ -728,6 +727,10 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+.page-heading-embedded {
+  justify-content: flex-end;
 }
 
 .page-heading h1 {

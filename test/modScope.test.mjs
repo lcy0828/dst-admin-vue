@@ -80,14 +80,18 @@ test('every mod details entry refreshes Workshop metadata before presentation', 
 })
 
 test('adding a downloaded mod explicitly selects room worlds', async () => {
-  const dialog = await source('../src/views/mods/AddModToRoomDialog.vue')
+  const [dialog, adapter] = await Promise.all([
+    source('../src/views/mods/AddModToRoomDialog.vue'),
+    source('../src/api/modApi.js')
+  ])
 
   assert.match(dialog, /modApi\.getManagedRooms\(\)/)
   assert.match(dialog, /modApi\.getRoomWorlds\(roomId\)/)
-  assert.match(dialog, /modApi\.previewModPublication/)
-  assert.match(dialog, /modApi\.createModPublication/)
-  assert.doesNotMatch(dialog, /modApi\.addModToRoom/)
+  assert.match(dialog, /modApi\.addModToRoom/)
+  assert.doesNotMatch(dialog, /modApi\.previewModPublication/)
+  assert.doesNotMatch(dialog, /modApi\.createModPublication/)
   assert.match(dialog, /worldIds: selectedWorldIds\.value/)
+  assert.match(adapter, /async function addModToRoom\(input\)[\s\S]*?publishPreparedModMutation/)
 })
 
 test('room mod controls and configuration target one explicit world', async () => {
@@ -108,14 +112,21 @@ test('room mod controls and configuration target one explicit world', async () =
   assert.match(adapter, /overridden_configuration_options: configuration\.overrides \|\| \{\}/)
 })
 
-test('mod navigation exposes separate content library and room publication views', async () => {
-  const [router, navigation] = await Promise.all([
+test('mod navigation exposes one management page and preserves legacy URLs', async () => {
+  const [router, navigation, management] = await Promise.all([
     source('../src/router/index.js'),
-    source('../src/v2/navigation.js')
+    source('../src/v2/navigation.js'),
+    source('../src/views/mods/ModManagement.vue')
   ])
 
-  assert.match(router, /redirect: '\/mods\/library'/)
-  assert.match(router, /path: 'library'/)
-  assert.match(navigation, /navigation\.nodeModLibrary/)
-  assert.match(navigation, /navigation\.roomMods/)
+  assert.match(router, /path: ''[\s\S]*?views\/mods\/ModManagement\.vue/)
+  assert.match(router, /path: 'library'[\s\S]*?scope: 'downloaded'/)
+  assert.match(router, /path: 'list'[\s\S]*?tab: 'room'/)
+  assert.match(router, /path: 'search'[\s\S]*?query: \{ \.\.\.to\.query \}/)
+  assert.match(navigation, /labelKey: 'navigation\.mods'[\s\S]*?to: '\/mods'/)
+  assert.doesNotMatch(navigation, /navigation\.nodeModLibrary|navigation\.roomMods|navigation\.modSearch/)
+  assert.match(management, /<TabsTrigger value="library">/)
+  assert.match(management, /<TabsTrigger value="room">/)
+  assert.match(management, /value="downloaded"/)
+  assert.match(management, /value="updates"/)
 })

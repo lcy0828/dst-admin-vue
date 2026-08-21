@@ -498,11 +498,7 @@ const NAVIGATION_SECTIONS = [
         key: 'mods',
         label: '模组管理',
         icon: Blocks,
-        children: [
-          { label: '节点模组库', to: '/mods/library' },
-          { label: '房间模组', to: '/mods/list' },
-          { label: '模组搜索', to: '/mods/search' }
-        ]
+        to: '/mods'
       },
       {
         key: 'players',

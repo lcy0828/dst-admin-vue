@@ -1,6 +1,6 @@
 <template>
   <div class="page-container">
-    <header class="page-heading">
+    <header v-if="!embedded" class="page-heading">
       <div>
         <h1>{{ $t('mods.search.title') }}</h1>
         <p>{{ $t('mods.search.subtitle') }}</p>
@@ -219,6 +219,9 @@ import { createModFailure, formatModDate, formatModFailure } from '@/i18n/modMes
 
 export default {
   name: 'ModSearch',
+  props: {
+    embedded: { type: Boolean, default: false }
+  },
   components: {
     AddModToRoomDialog,
     ModDetailsDialog,
@@ -550,7 +553,7 @@ export default {
     },
 
     goToLibrary() {
-      this.$router.push('/mods/library')
+      this.$router.push({ path: '/mods', query: { scope: 'downloaded' } })
     },
 
     openAddDialog(mod) {

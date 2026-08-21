@@ -298,27 +298,26 @@ export const constantRoutes = [
   {
     path: '/mods',
     component: MainLayoutV2,
-    redirect: '/mods/library',
     name: 'Mods',
     meta: { title: '模组管理', titleKey: 'navigation.mods', icon: 'component' },
     children: [
       {
+        path: '',
+        component: () => import('@/views/mods/ModManagement.vue'),
+        name: 'ModManagement',
+        meta: { title: '模组管理', titleKey: 'navigation.mods', icon: 'component' }
+      },
+      {
         path: 'library',
-        component: () => import('@/views/mods/ModLibrary.vue'),
-        name: 'ModLibrary',
-        meta: { title: '节点模组库', titleKey: 'navigation.nodeModLibrary', icon: 'archive' }
+        redirect: to => ({ path: '/mods', query: { ...to.query, scope: 'downloaded' } })
       },
       {
         path: 'list',
-        component: () => import('@/views/mods/ModList.vue'),
-        name: 'ModList',
-        meta: { title: '房间模组', titleKey: 'navigation.roomMods', icon: 'list' }
+        redirect: to => ({ path: '/mods', query: { ...to.query, tab: 'room' } })
       },
       {
         path: 'search',
-        component: () => import('@/views/mods/ModSearch.vue'),
-        name: 'ModSearch',
-        meta: { title: '搜索模组', titleKey: 'navigation.searchMods', icon: 'search' }
+        redirect: to => ({ path: '/mods', query: { ...to.query } })
       }
     ]
   },

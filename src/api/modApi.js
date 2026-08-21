@@ -324,14 +324,15 @@ async function downloadMod(input) {
 }
 
 async function addModToRoom(input) {
-  const roomId = requireValue(input.roomId, 'ROOM_REQUIRED')
-  const modId = requireValue(input.modid || input.id, 'MOD_ID_REQUIRED')
-  const job = await modsV2API.addToRoom(roomId, modId, {
+  return publishPreparedModMutation({
+    roomId: requireValue(input.roomId, 'ROOM_REQUIRED'),
+    action: 'add',
+    modId: requireValue(input.modid || input.id, 'MOD_ID_REQUIRED'),
     worldIds: input.worldIds || [],
     enabled: input.enabled !== false,
-    includeDependencies: input.includeDependencies !== false
+    includeDependencies: input.includeDependencies !== false,
+    onProgress: input.onProgress
   })
-  return waitForV2Job(job, MOD_JOB_TIMEOUT, input.onProgress)
 }
 
 async function getModConfig({ roomId, worldId, modid, mod = {} }) {

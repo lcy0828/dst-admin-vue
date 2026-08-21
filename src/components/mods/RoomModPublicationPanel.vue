@@ -271,6 +271,7 @@ import { useI18n } from 'vue-i18n'
 import { CircleAlert, ListTree, RotateCw, ScanSearch, Send, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { modApi } from '@/api'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -610,9 +611,10 @@ function formatBytes(value) {
 }
 
 function formatTime(value) {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '--'
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(date)
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    dateStyle: 'short',
+    timeStyle: 'medium'
+  })
 }
 </script>

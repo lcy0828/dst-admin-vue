@@ -731,7 +731,7 @@ export default {
     },
     openWorldMods(world) {
       this.$router.push({
-        path: '/mods/list',
+        path: '/mods?tab=room',
         query: {
           roomId: this.roomId || this.$route.query.roomId || undefined,
           worldId: world?.id || undefined

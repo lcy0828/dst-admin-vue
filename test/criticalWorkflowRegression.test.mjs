@@ -8,9 +8,11 @@ const exists = path => access(new URL(`../${path}`, import.meta.url))
 test('critical mod and command routes remain registered with their real pages', async () => {
   const router = await source('src/router/index.js')
 
-  assert.match(router, /path:\s*'\/mods'[\s\S]*?path:\s*'list'[\s\S]*?views\/mods\/ModList\.vue/)
+  assert.match(router, /path:\s*'\/mods'[\s\S]*?path:\s*''[\s\S]*?views\/mods\/ModManagement\.vue/)
+  assert.match(router, /path:\s*'list'[\s\S]*?tab:\s*'room'/)
   assert.match(router, /path:\s*'\/servers'[\s\S]*?path:\s*'commands'[\s\S]*?views\/servers\/CommandManager\.vue/)
   await Promise.all([
+    exists('src/views/mods/ModManagement.vue'),
     exists('src/views/mods/ModList.vue'),
     exists('src/views/servers/CommandManager.vue')
   ])

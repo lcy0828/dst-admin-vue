@@ -1,3 +1,5 @@
+import { formatSystemDateTime } from '../lib/dateTime.mjs'
+
 const MOD_VALUE_KEYS = Object.freeze({
   health: Object.freeze({
     healthy: 'healthy',
@@ -45,6 +47,16 @@ const MOD_FAILURE_CODE_KEYS = Object.freeze({
 export const modMessages = {
   'zh-CN': {
     mods: {
+      management: {
+        title: '模组管理',
+        subtitle: '在一个页面完成 Workshop 浏览、下载和房间启用配置。',
+        tabs: { library: '浏览与下载', room: '房间启用' },
+        library: {
+          title: '模组库',
+          description: '搜索新模组，或查看已下载内容与可用更新。'
+        },
+        scopes: { workshop: 'Workshop', downloaded: '已下载', updates: '可更新' }
+      },
       values: {
         unknown: '未知',
         unknownAuthor: '未知作者',
@@ -362,7 +374,7 @@ export const modMessages = {
         room: '房间',
         loadingRooms: '正在加载房间',
         selectRoom: '请选择房间',
-        roomDescription: '房间发布会按世界的 Placement 把文件和配置送到对应节点。',
+        roomDescription: '系统会自动把模组文件和配置应用到所选世界。',
         noRoomsTitle: '没有可管理的房间',
         noRoomsDescription: '请先创建或接管房间。',
         worlds: '应用到世界',
@@ -371,13 +383,15 @@ export const modMessages = {
         enabled: '立即启用',
         enabledDescription: '关闭后仍会写入配置，但所选世界暂不加载该模组。',
         dependencies: '同时配置依赖模组',
-        dependenciesDescription: '发布计划会把依赖文件一并准备到所选世界对应的节点。',
+        dependenciesDescription: '系统会自动下载并应用该模组所需的依赖。',
         targets: '发布目标',
         targetsDescription: '所选世界按当前生效的 Placement 分组。',
         unknownTarget: 'Placement 尚未应用',
         planReady: '发布计划已就绪，请核对后确认发布。',
         planBlocked: '发布计划存在阻塞项，暂时不能提交。',
         legacyFallback: '后端不支持跨节点发布，已使用原有本地添加方式。',
+        apply: '添加并应用',
+        applying: '正在应用',
         adding: '正在添加',
         added: '模组 {name} 已添加到所选房间世界'
       },
@@ -465,6 +479,16 @@ export const modMessages = {
   },
   'en-US': {
     mods: {
+      management: {
+        title: 'Mod Management',
+        subtitle: 'Browse Workshop, download mods, and configure room usage from one page.',
+        tabs: { library: 'Browse & Download', room: 'Room Usage' },
+        library: {
+          title: 'Mod Library',
+          description: 'Discover new mods or review downloaded content and available updates.'
+        },
+        scopes: { workshop: 'Workshop', downloaded: 'Downloaded', updates: 'Updates' }
+      },
       values: {
         unknown: 'Unknown',
         unknownAuthor: 'Unknown author',
@@ -782,7 +806,7 @@ export const modMessages = {
         room: 'Room',
         loadingRooms: 'Loading rooms',
         selectRoom: 'Select a room',
-        roomDescription: 'Room publication sends files and configuration to each world\'s applied Placement target.',
+        roomDescription: 'The system automatically applies mod files and configuration to the selected worlds.',
         noRoomsTitle: 'No Manageable Rooms',
         noRoomsDescription: 'Create or adopt a room first.',
         worlds: 'Apply to Worlds',
@@ -791,13 +815,15 @@ export const modMessages = {
         enabled: 'Enable Immediately',
         enabledDescription: 'When off, settings are written but selected worlds do not load the mod yet.',
         dependencies: 'Configure Dependencies Too',
-        dependenciesDescription: 'The publication plan prepares dependencies on every node targeted by the selected worlds.',
+        dependenciesDescription: 'The system automatically downloads and applies required dependencies.',
         targets: 'Publication Targets',
         targetsDescription: 'Selected worlds grouped by their currently applied Placement.',
         unknownTarget: 'Placement not applied',
         planReady: 'The publication plan is ready. Review it before confirming publication.',
         planBlocked: 'The publication plan has blockers and cannot be submitted.',
         legacyFallback: 'Cross-node publication is unavailable; the existing local add operation was used.',
+        apply: 'Add and Apply',
+        applying: 'Applying',
         adding: 'Adding',
         added: 'Added mod {name} to the selected room worlds'
       },
@@ -893,11 +919,10 @@ export function translateModBuiltinValue(translate, kind, value) {
 }
 
 export function formatModDate(value, locale = 'zh-CN') {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
   const activeLocale = typeof locale === 'string' ? locale : locale?.value
-  return new Intl.DateTimeFormat(activeLocale === 'en-US' ? 'en-US' : 'zh-CN', {
+  return formatSystemDateTime(value, {
+    locale: activeLocale === 'en-US' ? 'en-US' : 'zh-CN',
+    fallback: value ? String(value) : '--',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -905,7 +930,7 @@ export function formatModDate(value, locale = 'zh-CN') {
     minute: '2-digit',
     second: '2-digit',
     hour12: false
-  }).format(date)
+  })
 }
 
 export function createModFailure(key, error) {
