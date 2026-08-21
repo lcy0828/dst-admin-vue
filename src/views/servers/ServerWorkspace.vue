@@ -1455,8 +1455,16 @@ export default {
 }
 
 .operation-tabs-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 32px;
+  height: auto;
   width: 100%;
-  overflow-x: auto;
+  overflow: hidden;
+}
+
+.operation-tabs-list :deep([data-slot='tabs-trigger']) {
+  min-width: 0;
 }
 
 .players-panel {
@@ -1863,6 +1871,10 @@ export default {
 }
 
 @media (max-width: 520px) {
+  .operation-tabs-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .world-facts {
     padding-left: 0;
   }

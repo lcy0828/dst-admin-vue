@@ -60,6 +60,14 @@ test('server workspace does not reserve visible space for redundant operation co
   assert.match(source, /\.operation-content \{\s*padding-top: 12px;/)
 })
 
+test('server workspace operation tabs use a fixed responsive grid without horizontal scrolling', async () => {
+  const source = await readFile(sourceUrl, 'utf8')
+
+  assert.match(source, /\.operation-tabs-list \{[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/)
+  assert.match(source, /@media \(max-width: 520px\) \{[\s\S]*\.operation-tabs-list \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)
+  assert.doesNotMatch(source, /\.operation-tabs-list \{[^}]*overflow-x: auto;/)
+})
+
 test('server workspace promotes players to operations and keeps supporting context compact', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 

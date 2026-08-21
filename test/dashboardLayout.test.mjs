@@ -5,8 +5,9 @@ import test from 'node:test'
 const dashboard = fs.readFileSync(new URL('../src/views/v2/DashboardV2.vue', import.meta.url), 'utf8')
 
 test('dashboard keeps room operations in one control surface and only exposes first-time game installation', () => {
-  assert.match(dashboard, /grid gap-3 sm:grid-cols-2 xl:grid-cols-4/)
-  assert.equal((dashboard.match(/<Card size="sm">/g) || []).length, 6)
+  assert.match(dashboard, /grid grid-cols-2 gap-x-5 gap-y-3 px-4 py-2\.5 sm:grid-cols-4/)
+  assert.match(dashboard, /<CardHeader class="sr-only">/)
+  assert.equal((dashboard.match(/<Card size="sm">/g) || []).length, 3)
   assert.match(dashboard, /grid min-w-0 grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2/)
   assert.match(dashboard, /<ServerWorkspace id="room-operations" ref="roomOperations" embedded/)
   assert.match(dashboard, /roomOperations\.value\?\.refreshWorkspace\?\.\(\)/)

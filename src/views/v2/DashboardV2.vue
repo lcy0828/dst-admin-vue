@@ -3,18 +3,15 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  Activity,
   CircleAlert,
   Cpu,
   ExternalLink,
   Gauge,
   HardDrive,
-  House,
   MemoryStick,
   PackageOpen,
   PackageCheck,
-  RefreshCw,
-  UsersRound
+  RefreshCw
 } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -149,55 +146,47 @@ onBeforeUnmount(() => {
       @refresh="refreshGuidance"
     />
 
-    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Card size="sm">
-        <CardHeader class="pb-2">
-          <CardTitle>{{ t('dashboard.summary.runningShards') }}</CardTitle>
-          <CardAction><span class="bg-muted text-muted-foreground flex size-8 items-center justify-center rounded-md"><Activity /></span></CardAction>
-        </CardHeader>
-        <CardContent class="flex items-end justify-between gap-3 pb-4 pt-0">
-          <Skeleton v-if="serverLoading" class="h-8 w-20" />
-          <strong v-else class="text-2xl font-semibold tabular-nums">{{ runningServerCount }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">/ {{ serverList.length }}</span></strong>
-          <Badge :variant="runningServerCount ? 'secondary' : 'outline'">{{ t(runningServerCount ? 'dashboard.summary.running' : 'dashboard.summary.notRunning') }}</Badge>
-        </CardContent>
-      </Card>
-      <Card size="sm">
-        <CardHeader class="pb-2">
-          <CardTitle>{{ t('dashboard.summary.onlinePlayers') }}</CardTitle>
-          <CardAction><span class="bg-muted text-muted-foreground flex size-8 items-center justify-center rounded-md"><UsersRound /></span></CardAction>
-        </CardHeader>
-        <CardContent class="flex items-end justify-between gap-3 pb-4 pt-0">
-          <Skeleton v-if="playerLoading" class="h-8 w-20" />
-          <strong v-else class="text-2xl font-semibold tabular-nums">{{ playerSummary.online }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">{{ t('dashboard.summary.people') }}</span></strong>
-          <div class="flex flex-col items-end gap-1">
-            <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.recordedPlayers', { count: playerSummary.total }) }}</span>
-            <Badge v-if="playerSummary.staleOnline" variant="outline">{{ t('dashboard.summary.stalePlayers', { count: playerSummary.staleOnline }) }}</Badge>
+    <Card size="sm">
+      <CardHeader class="sr-only">
+        <CardTitle>{{ t('dashboard.title') }}</CardTitle>
+        <CardDescription>{{ t('dashboard.subtitle') }}</CardDescription>
+      </CardHeader>
+      <CardContent class="grid grid-cols-2 gap-x-5 gap-y-3 px-4 py-2.5 sm:grid-cols-4">
+        <div class="flex min-w-0 flex-col gap-0.5 py-1">
+          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.runningShards') }}</span>
+          <div class="flex min-w-0 items-center gap-2">
+            <Skeleton v-if="serverLoading" class="h-6 w-14" />
+            <strong v-else class="text-lg font-semibold tabular-nums">{{ runningServerCount }}<span class="text-muted-foreground ml-1 text-xs font-normal">/ {{ serverList.length }}</span></strong>
+            <Badge class="shrink-0" :variant="runningServerCount ? 'secondary' : 'outline'">{{ t(runningServerCount ? 'dashboard.summary.running' : 'dashboard.summary.notRunning') }}</Badge>
           </div>
-        </CardContent>
-      </Card>
-      <Card size="sm">
-        <CardHeader class="pb-2">
-          <CardTitle>{{ t('dashboard.summary.roomsAndWorlds') }}</CardTitle>
-          <CardAction><span class="bg-muted text-muted-foreground flex size-8 items-center justify-center rounded-md"><House /></span></CardAction>
-        </CardHeader>
-        <CardContent class="flex items-end justify-between gap-3 pb-4 pt-0">
-          <Skeleton v-if="serverLoading" class="h-8 w-20" />
-          <strong v-else class="text-2xl font-semibold tabular-nums">{{ roomList.length }}<span class="text-muted-foreground ml-1.5 text-sm font-normal">{{ t('dashboard.summary.roomUnit') }}</span></strong>
-          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.worlds', { count: totalWorldCount }) }}</span>
-        </CardContent>
-      </Card>
-      <Card size="sm">
-        <CardHeader class="pb-2">
-          <CardTitle>{{ t('dashboard.summary.hostLoad') }}</CardTitle>
-          <CardAction><span class="bg-muted text-muted-foreground flex size-8 items-center justify-center rounded-md"><Cpu /></span></CardAction>
-        </CardHeader>
-        <CardContent class="flex items-end justify-between gap-3 pb-4 pt-0">
-          <Skeleton v-if="systemLoading" class="h-8 w-20" />
-          <strong v-else class="text-2xl font-semibold tabular-nums">{{ hasMetric(systemStatus.cpu_usage) ? `${percentage(systemStatus.cpu_usage)}%` : '--' }}</strong>
-          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.memory', { value: hasMetric(systemStatus.memory_usage) ? `${percentage(systemStatus.memory_usage)}%` : '--' }) }}</span>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+        <div class="flex min-w-0 flex-col gap-0.5 py-1">
+          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.onlinePlayers') }}</span>
+          <div class="flex min-w-0 items-baseline gap-2">
+            <Skeleton v-if="playerLoading" class="h-6 w-14" />
+            <strong v-else class="text-lg font-semibold tabular-nums">{{ playerSummary.online }}<span class="text-muted-foreground ml-1 text-xs font-normal">{{ t('dashboard.summary.people') }}</span></strong>
+            <span class="text-muted-foreground truncate text-xs">{{ t('dashboard.summary.recordedPlayers', { count: playerSummary.total }) }}</span>
+          </div>
+          <Badge v-if="playerSummary.staleOnline" variant="outline" class="self-start">{{ t('dashboard.summary.stalePlayers', { count: playerSummary.staleOnline }) }}</Badge>
+        </div>
+        <div class="flex min-w-0 flex-col gap-0.5 py-1">
+          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.roomsAndWorlds') }}</span>
+          <div class="flex min-w-0 items-baseline gap-2">
+            <Skeleton v-if="serverLoading" class="h-6 w-14" />
+            <strong v-else class="text-lg font-semibold tabular-nums">{{ roomList.length }}<span class="text-muted-foreground ml-1 text-xs font-normal">{{ t('dashboard.summary.roomUnit') }}</span></strong>
+            <span class="text-muted-foreground truncate text-xs">{{ t('dashboard.summary.worlds', { count: totalWorldCount }) }}</span>
+          </div>
+        </div>
+        <div class="flex min-w-0 flex-col gap-0.5 py-1">
+          <span class="text-muted-foreground text-xs">{{ t('dashboard.summary.hostLoad') }}</span>
+          <div class="flex min-w-0 items-baseline gap-2">
+            <Skeleton v-if="systemLoading" class="h-6 w-14" />
+            <strong v-else class="text-lg font-semibold tabular-nums">{{ hasMetric(systemStatus.cpu_usage) ? `${percentage(systemStatus.cpu_usage)}%` : '--' }}</strong>
+            <span class="text-muted-foreground truncate text-xs">{{ t('dashboard.summary.memory', { value: hasMetric(systemStatus.memory_usage) ? `${percentage(systemStatus.memory_usage)}%` : '--' }) }}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
     <Alert v-if="playerError">
       <CircleAlert />
