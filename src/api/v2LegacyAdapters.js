@@ -599,14 +599,16 @@ export const legacySystemApi = {
   },
   async getDstUpdateStatus(jobId) {
     const run = await gameV2API.updateRun(jobId)
+    const canceled = run.status === 'canceled'
+    const active = run.status === 'queued' || run.status === 'running'
     return success({
       ...run,
-      is_running: run.status === 'running',
+      is_running: active,
       is_completed: run.status === 'succeeded',
       progress: run.status === 'succeeded' ? 100 : null,
       last_output: run.log || '',
-      error: run.status === 'failed' ? (run.errorMessage || 'Game update failed') : '',
-      error_code: run.status === 'failed' ? 'GAME_UPDATE_FAILED' : ''
+      error: run.status === 'failed' ? (run.errorMessage || 'Game update failed') : (canceled ? (run.errorMessage || 'Game update canceled') : ''),
+      error_code: run.status === 'failed' ? 'GAME_UPDATE_FAILED' : (canceled ? 'GAME_UPDATE_CANCELED' : '')
     })
   },
   async getAnnouncements() {

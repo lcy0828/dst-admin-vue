@@ -182,7 +182,7 @@ function roleLabel(role) {
 }
 
 function packagingLabel(value) {
-  const known = ['native', 'all_in_one', 'control_plane']
+  const known = ['native', 'all_in_one', 'container', 'control_plane']
   return t(`agents.profile.packaging.${known.includes(value) ? value : 'native'}`)
 }
 

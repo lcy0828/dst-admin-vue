@@ -4,7 +4,7 @@ import test from 'node:test'
 
 const dashboard = fs.readFileSync(new URL('../src/views/v2/DashboardV2.vue', import.meta.url), 'utf8')
 
-test('dashboard stays read-only and links each room to the single control surface', () => {
+test('dashboard keeps room operations in one control surface and only exposes first-time game installation', () => {
   assert.match(dashboard, /grid gap-3 sm:grid-cols-2 xl:grid-cols-4/)
   assert.equal((dashboard.match(/<Card size="sm">/g) || []).length, 7)
   assert.match(dashboard, /grid min-w-0 grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2/)
@@ -12,7 +12,8 @@ test('dashboard stays read-only and links each room to the single control surfac
   assert.match(dashboard, /path: '\/servers\/workspace'/)
   assert.match(dashboard, /router\.push\('\/servers\/releases'\)/)
   assert.match(dashboard, /gameReleases\.actions\.open/)
-  assert.doesNotMatch(dashboard, /@click="updateGame"/)
+  assert.match(dashboard, /v-if="canInstallGame"/)
+  assert.match(dashboard, /@click="updateGame"/)
   assert.doesNotMatch(dashboard, /<WorldLog|components\/WorldLog/)
   assert.doesNotMatch(dashboard, /handleServerAction|cleanupFailedServer|openStartDialog|startDialogOpen/)
   assert.doesNotMatch(dashboard, /dashboard\.summary\.serverProcesses/)

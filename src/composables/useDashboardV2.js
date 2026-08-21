@@ -69,10 +69,10 @@ export function useDashboardV2() {
     return versionInfo.value.latest?.up_to_date === false
   })
   const canUpdateGame = computed(() => Boolean(
-    versionInfo.value.installed &&
     versionInfo.value.update_supported &&
-    versionInfo.value.local?.version
+    versionInfo.value.steamcmd_available
   ))
+  const canInstallGame = computed(() => !versionInfo.value.installed && canUpdateGame.value)
   const gameUpdateBusy = computed(() => updateStarting.value || Boolean(updateStatus.value?.is_running))
 
   async function refreshSystem() {
@@ -324,9 +324,10 @@ export function useDashboardV2() {
 
   async function updateGame() {
     if (!canUpdateGame.value) return
+    const installing = !versionInfo.value.installed
     try {
-      await confirmAction(translate('dashboard.feedback.updateConfirm'), translate('dashboard.feedback.updateConfirmTitle'), {
-        confirmText: translate('dashboard.feedback.updateConfirmButton')
+      await confirmAction(translate(installing ? 'dashboard.feedback.installConfirm' : 'dashboard.feedback.updateConfirm'), translate(installing ? 'dashboard.feedback.installConfirmTitle' : 'dashboard.feedback.updateConfirmTitle'), {
+        confirmText: translate(installing ? 'dashboard.feedback.installConfirmButton' : 'dashboard.feedback.updateConfirmButton')
       })
     } catch {
       return
@@ -338,7 +339,7 @@ export function useDashboardV2() {
       const jobId = response.data?.session_name
       if (!jobId) throw new Error(response.msg || translate('dashboard.feedback.invalidUpdateResponse'))
       sessionStorage.setItem('dstUpdateSessionName', jobId)
-      toast.success(translate('dashboard.feedback.updateSubmitted'))
+      toast.success(translate(installing ? 'dashboard.feedback.installSubmitted' : 'dashboard.feedback.updateSubmitted'))
       const pollingReady = await pollUpdateStatus(jobId)
       if (pollingReady && !updateStatus.value?.is_completed && !updateStatus.value?.error) {
         stopUpdatePolling()
@@ -385,6 +386,7 @@ export function useDashboardV2() {
     dashboardLoading,
     isVersionOutdated,
     canUpdateGame,
+    canInstallGame,
     gameUpdateBusy,
     refreshDashboard,
     refreshSystem,

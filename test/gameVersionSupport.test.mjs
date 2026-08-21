@@ -21,11 +21,17 @@ test('dashboard labels official game versions and Steam builds independently', (
   assert.match(dashboard, /versionInfo\.official\.update_url/)
   assert.match(dashboard, /router\.push\('\/servers\/releases'\)/)
   assert.match(dashboard, /gameReleases\.actions\.open/)
-  assert.doesNotMatch(dashboard, /@click="updateGame"/)
+  assert.match(dashboard, /v-if="canInstallGame"/)
+  assert.match(dashboard, /@click="updateGame"/)
 })
 
 test('update availability only follows the Steam API boolean result', () => {
   assert.match(composable, /latest\?\.up_to_date === false/)
   assert.doesNotMatch(composable, /Number\(localValue\)/)
   assert.doesNotMatch(composable, /local < latest/)
+})
+
+test('queued game installation remains busy until the job becomes terminal', () => {
+  assert.match(adapters, /run\.status === 'queued' \|\| run\.status === 'running'/)
+  assert.match(adapters, /is_running: active/)
 })

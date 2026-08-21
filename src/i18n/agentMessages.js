@@ -10,6 +10,7 @@ export const agentMessages = {
         packaging: {
           native: '裸机部署',
           all_in_one: 'All-in-One',
+          container: 'Docker 独立世界',
           control_plane: '独立控制端'
         },
         roles: {
@@ -490,6 +491,7 @@ export const agentMessages = {
         packaging: {
           native: 'Native',
           all_in_one: 'All-in-One',
+          container: 'Container shards',
           control_plane: 'Control plane'
         },
         roles: {

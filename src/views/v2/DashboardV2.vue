@@ -13,6 +13,7 @@ import {
   HardDrive,
   House,
   MemoryStick,
+  PackageOpen,
   PackageCheck,
   RefreshCw,
   UsersRound
@@ -72,12 +73,14 @@ const {
   runningServerCount,
   totalWorldCount,
   dashboardLoading,
-  isVersionOutdated,
+  canInstallGame,
+  gameUpdateBusy,
   refreshDashboard,
   refreshSystem,
   refreshServers,
   refreshRuntimeServers,
   refreshVersion,
+  updateGame,
   resumeUpdatePolling
 } = useDashboardV2()
 
@@ -346,11 +349,15 @@ onBeforeUnmount(() => {
                 <p class="text-muted-foreground shrink-0 text-xs">{{ t('dashboard.version.checkedAt', { time: formatDateTime(versionInfo.checked_at, locale) }) }}</p>
               </div>
               <Alert v-if="versionInfo.update_method === 'steam-client'"><CircleAlert /><AlertTitle>{{ t('dashboard.version.steamManaged') }}</AlertTitle><AlertDescription>{{ t('dashboard.version.steamManagedDescription') }}</AlertDescription></Alert>
-              <Alert v-else-if="versionInfo.installed && !versionInfo.update_supported"><CircleAlert /><AlertTitle>{{ t('dashboard.version.panelUnavailable') }}</AlertTitle><AlertDescription>{{ t(versionInfo.steamcmd_available ? 'dashboard.version.unsupportedInstall' : 'dashboard.version.steamcmdMissing') }}</AlertDescription></Alert>
-              <div v-if="updateStatus" class="bg-muted flex flex-col gap-2 rounded-md p-3"><span class="text-sm font-medium">{{ t(updateStatus.is_completed ? 'dashboard.version.updateCompleted' : (updateStatus.is_running ? 'dashboard.version.updating' : 'dashboard.version.waiting')) }}</span><Progress v-if="hasMetric(updateStatus.progress)" :model-value="Number(updateStatus.progress)" /><p v-if="updateStatus.last_output" class="text-muted-foreground break-all text-xs">{{ updateStatus.last_output }}</p><p v-if="updateStatus.error" class="text-destructive text-xs">{{ updateStatus.error }}</p></div>
+              <Alert v-else-if="!versionInfo.update_supported"><CircleAlert /><AlertTitle>{{ t('dashboard.version.panelUnavailable') }}</AlertTitle><AlertDescription>{{ t(versionInfo.steamcmd_available ? 'dashboard.version.unsupportedInstall' : 'dashboard.version.steamcmdMissing') }}</AlertDescription></Alert>
+              <Alert v-else-if="!versionInfo.installed"><PackageOpen /><AlertTitle>{{ t('dashboard.version.installReady') }}</AlertTitle><AlertDescription>{{ t('dashboard.version.installReadyDescription') }}</AlertDescription></Alert>
+              <div v-if="updateStatus" class="bg-muted flex flex-col gap-2 rounded-md p-3"><span class="text-sm font-medium">{{ t(updateStatus.is_completed ? 'dashboard.version.updateCompleted' : (updateStatus.is_running ? (versionInfo.installed ? 'dashboard.version.updating' : 'dashboard.version.installing') : 'dashboard.version.waiting')) }}</span><Progress v-if="hasMetric(updateStatus.progress)" :model-value="Number(updateStatus.progress)" /><p v-if="updateStatus.last_output" class="text-muted-foreground break-all text-xs">{{ updateStatus.last_output }}</p><p v-if="updateStatus.error" class="text-destructive text-xs">{{ updateStatus.error }}</p></div>
             </template>
           </CardContent>
-          <CardFooter v-if="versionInfo.installed || isVersionOutdated"><Button size="sm" @click="router.push('/servers/releases')"><PackageCheck data-icon="inline-start" />{{ t('gameReleases.actions.open') }}</Button></CardFooter>
+          <CardFooter v-if="canInstallGame || versionInfo.installed">
+            <Button v-if="canInstallGame" size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><PackageOpen v-else data-icon="inline-start" />{{ t(gameUpdateBusy ? 'dashboard.version.installButtonBusy' : 'dashboard.version.installButton') }}</Button>
+            <Button v-else size="sm" @click="router.push('/servers/releases')"><PackageCheck data-icon="inline-start" />{{ t('gameReleases.actions.open') }}</Button>
+          </CardFooter>
         </Card>
       </aside>
     </div>
