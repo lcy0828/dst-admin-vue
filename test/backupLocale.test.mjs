@@ -39,15 +39,18 @@ test('backup page localizes presentation without changing backup identifiers', (
   assert.match(catalogPanel, /backupsV2API\.downloadBlob/)
   assert.match(importPanel, /saveImportStatusKey\(item\.status\)/)
   assert.match(importPanel, /saveImportCompatibilityKey\(candidate\.compatibility\)/)
-  assert.match(importPanel, /runtimeTarget\.value\?\.kind === 'local'/)
+  assert.match(importPanel, /roomsV2API\.controlPlaneList\(\)/)
+  assert.doesNotMatch(importPanel, /getActiveRuntimeTarget|RUNTIME_TARGET_CHANGED_EVENT/)
+  assert.doesNotMatch(importPanel, /roomsV2API\.worlds\(/)
   assert.doesNotMatch(page, /toast\.success\(res\.msg/)
   assert.match(adapters, /create_time: backup\.createdAt \|\| ''/)
   assert.match(globalMessages, /\.\.\.backupMessages\['en-US'\]/)
 })
 
-test('save import API exposes the complete local workflow', () => {
+test('save import API exposes a control-plane workflow independent of the selected runtime', () => {
   const api = fs.readFileSync(new URL('../src/api/v2.js', import.meta.url), 'utf8')
   const config = fs.readFileSync(new URL('../src/api/config.js', import.meta.url), 'utf8')
+  const saveImports = api.slice(api.indexOf('export const saveImportsV2API'))
 
   assert.match(api, /export const saveImportsV2API/)
   assert.match(api, /client\.get\('\/save-imports'/)
@@ -55,8 +58,10 @@ test('save import API exposes the complete local workflow', () => {
   assert.match(api, /`\/save-imports\/\$\{encode\(importId\)\}\/actions\/analyze`/)
   assert.match(api, /`\/save-imports\/\$\{encode\(importId\)\}\/actions\/apply`/)
   assert.match(api, /client\.delete\(`\/save-imports\/\$\{encode\(importId\)\}`/)
+  assert.match(api, /controlPlaneGet: jobId => client\.get\(`\/jobs\/\$\{encode\(jobId\)\}`,[\s\S]*?runtimeTarget: false/)
   assert.match(api, /timeout: apiConfig\.UPLOAD_TIMEOUT/)
   assert.match(config, /UPLOAD_TIMEOUT: 7200000/)
+  assert.equal((saveImports.match(/runtimeTarget: false/g) || []).length, 6)
 })
 
 test('English backup messages contain no Chinese display text', () => {

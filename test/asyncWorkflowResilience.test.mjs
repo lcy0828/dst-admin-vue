@@ -84,7 +84,7 @@ test('distributed jobs distinguish completion from state reload and bound pollin
   assert.match(imports, /jobStatusTimedOut/)
   assert.match(imports, /completedRefreshFailed/)
   assert.match(imports, /roomsLoadError/)
-  assert.match(imports, /generation !== runtimeGeneration/)
+  assert.match(imports, /generation !== lifecycleGeneration/)
 
   assert.match(releases, /historyLoadingSequence/)
   assert.match(releases, /pollReadFailures >= 5/)

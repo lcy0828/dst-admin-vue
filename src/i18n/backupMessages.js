@@ -20,10 +20,6 @@ export const backupMessages = {
         worldCount: '已校验 {verified}/{total} 个世界'
       },
       imports: {
-        localOnly: {
-          title: '存档导入仅支持本机',
-          description: '远程节点导入尚未启用。请切换到本机后上传和部署存档。'
-        },
         upload: {
           title: '上传本地存档',
           description: '上传后会先深度检查目录、分片、端口、Token 和 Workshop 模组，不会直接覆盖现有房间。',
@@ -115,11 +111,12 @@ export const backupMessages = {
           CONFIRMATION_REQUIRED: '操作确认内容不匹配。',
           ROOM_NOT_MANAGED: '目标房间尚未纳入本系统管理。',
           PARTIAL_IMPORT_CONFIRMATION_REQUIRED: '缺少主世界的分片导入需要明确确认。',
+          WORLD_TOPOLOGY_MISMATCH: '存档中的世界数量或身份与目标房间不一致。请选择结构一致的房间，或先调整房间世界。',
           unknown: '操作未完成，请查看任务错误详情。'
         },
         details: {
           title: '存档兼容报告',
-          description: '核对压缩包内容，并为选定候选房间配置本地部署方案。',
+          description: '核对压缩包内容，并为选定候选房间配置部署方案。',
           loadFailed: '兼容报告刷新失败',
           invalidTitle: '此压缩包当前无法导入',
           lastFailureTitle: '上一次操作未完成',
@@ -139,8 +136,8 @@ export const backupMessages = {
           worlds: '分片与端口',
           mods: 'Workshop 模组',
           missingMods: '缺少 {count} 个',
-          downloaded: '本机已下载',
-          notDownloaded: '本机未下载',
+          downloaded: '已下载',
+          notDownloaded: '未下载',
           noMods: '该候选房间没有引用 Workshop 模组。',
           diagnostics: '兼容性说明',
           notReady: '正在准备兼容报告',
@@ -155,29 +152,29 @@ export const backupMessages = {
           modColumns: {
             id: 'Workshop ID',
             worlds: '使用分片',
-            status: '本机状态'
+            status: '资源库状态'
           }
         },
         apply: {
           title: '部署方案',
-          description: '部署始终在临时目录完成校验后原子发布；替换房间前会自动创建保护备份。',
+          description: '替换现有房间时，系统会保留 Token、端口和各世界当前的运行位置，并在发布前创建保护备份。',
           roomsLoadFailedTitle: '目标房间状态读取失败',
-          roomsLoadFailed: '无法读取目标房间运行状态，替换操作已禁用。',
+          roomsLoadFailed: '无法读取目标房间列表，替换操作暂不可用。',
           action: '开始部署',
           mode: {
             label: '部署方式',
             new: '新建房间',
-            newDescription: '使用存档建议目录创建一个新房间。',
+            newDescription: '在管理中心本机创建一个新房间。',
             replace: '替换现有房间',
-            replaceDescription: '停止分片后覆盖目标，并先创建保护备份。',
+            replaceDescription: '支持本机、远程或混合房间，自动停服并恢复运行状态。',
             clone: '克隆为新房间',
-            cloneDescription: '保留来源内容，用新的目录和房间名称发布副本。'
+            cloneDescription: '在管理中心本机用新目录发布副本。'
           },
+          newLocalOnlyTitle: '新房间只创建在本机',
+          newLocalOnlyDescription: '当前新建和克隆不会直接创建到远程节点；如需导入远程或混合房间，请选择“替换现有房间”。',
           targetRoom: '目标房间',
-          selectTargetRoom: '选择已停止的本机房间',
-          roomRunning: '运行中',
-          roomStatusUnknown: '状态未知',
-          replaceDescription: '运行中的房间不可替换；部署期间会保留回滚副本。',
+          selectTargetRoom: '选择要替换的房间',
+          replaceDescription: '房间可以正在运行。系统会自动停止全部世界，按原位置完成恢复，再重新启动原先运行的世界。',
           confirmation: '替换确认',
           confirmationPlaceholder: '输入完整目标房间名称',
           confirmationDescription: '请输入“{name}”确认覆盖。',
@@ -226,12 +223,11 @@ export const backupMessages = {
           allowMissingToken: '确认暂时不配置 Token',
           allowMissingTokenDescription: '没有 Token 的专服通常无法被玩家正常发现或加入。',
           replaceWarningTitle: '目标房间将被替换',
-          replaceWarningDescription: '必须先停止目标房间全部分片。系统会创建保护备份，并在发布失败时自动回滚。',
+          replaceWarningDescription: '系统会先创建完整保护备份，再自动停止房间内全部世界并统一恢复。失败时会回滚，成功后恢复原先的运行状态。',
           validation: {
             candidateRequired: '请选择一个候选房间。',
             candidateBlocked: '该候选房间存在阻止部署的兼容问题。',
             targetRequired: '请选择要替换的目标房间。',
-            targetUnavailable: '目标房间正在运行或当前无法确认运行状态。',
             confirmationMismatch: '替换确认必须与目标房间名称完全一致。',
             directoryInvalid: '新房间目录格式无效或超过 64 个字符。',
             tokenRequired: '请输入有效的服务器 Token。',
@@ -260,7 +256,7 @@ export const backupMessages = {
           analyzed: '存档兼容性分析完成。',
           detailsFailed: '读取兼容报告失败：{error}',
           applyStarted: '部署任务已启动。',
-          applied: '存档已安全部署到本机房间。',
+          applied: '存档已安全部署到目标房间。',
           applyFailed: '无法启动存档部署：{error}',
           jobFailed: '存档任务失败：{error}',
           jobStatusFailed: '存档任务状态读取失败：{error}',
@@ -363,10 +359,6 @@ export const backupMessages = {
         worldCount: '{verified}/{total} worlds verified'
       },
       imports: {
-        localOnly: {
-          title: 'Save import is local only',
-          description: 'Remote node import is not enabled yet. Switch to the local target to upload and deploy saves.'
-        },
         upload: {
           title: 'Upload a local save',
           description: 'The archive is inspected for directories, shards, ports, tokens, and Workshop mods before anything can replace an existing room.',
@@ -458,11 +450,12 @@ export const backupMessages = {
           CONFIRMATION_REQUIRED: 'The operation confirmation does not match.',
           ROOM_NOT_MANAGED: 'The target room is not managed by this system.',
           PARTIAL_IMPORT_CONFIRMATION_REQUIRED: 'Importing shards without a master world requires explicit confirmation.',
+          WORLD_TOPOLOGY_MISMATCH: 'The worlds in this save do not match the target room. Select a room with the same layout or adjust its worlds first.',
           unknown: 'The operation did not complete. Review the job error for details.'
         },
         details: {
           title: 'Save compatibility report',
-          description: 'Review archive contents and configure a local deployment plan for the selected room candidate.',
+          description: 'Review archive contents and configure a deployment plan for the selected room candidate.',
           loadFailed: 'Could not refresh the compatibility report',
           invalidTitle: 'This archive cannot currently be imported',
           lastFailureTitle: 'The previous operation did not complete',
@@ -482,8 +475,8 @@ export const backupMessages = {
           worlds: 'Shards and ports',
           mods: 'Workshop mods',
           missingMods: '{count} missing',
-          downloaded: 'Downloaded locally',
-          notDownloaded: 'Not downloaded locally',
+          downloaded: 'Downloaded',
+          notDownloaded: 'Not downloaded',
           noMods: 'This room candidate does not reference Workshop mods.',
           diagnostics: 'Compatibility notes',
           notReady: 'Preparing the compatibility report',
@@ -498,29 +491,29 @@ export const backupMessages = {
           modColumns: {
             id: 'Workshop ID',
             worlds: 'Used by',
-            status: 'Local status'
+            status: 'Library status'
           }
         },
         apply: {
           title: 'Deployment plan',
-          description: 'Every deployment is validated in a staging directory and published atomically. Replacements receive a protection backup first.',
+          description: 'Replacing a room preserves its token, ports, and current world locations, and creates a protection backup before publication.',
           roomsLoadFailedTitle: 'Could not load target room state',
-          roomsLoadFailed: 'Target room runtime state is unavailable, so replacement is disabled.',
+          roomsLoadFailed: 'The target room list is unavailable, so replacement is temporarily disabled.',
           action: 'Start deployment',
           mode: {
             label: 'Deployment mode',
             new: 'Create room',
-            newDescription: 'Create a new room with the suggested archive directory.',
+            newDescription: 'Create a new room on the controller host.',
             replace: 'Replace room',
-            replaceDescription: 'Replace a stopped target after creating a protection backup.',
+            replaceDescription: 'Supports local, remote, or mixed rooms and restores their prior running state.',
             clone: 'Clone as new room',
-            cloneDescription: 'Publish a copy under a new directory and in-game room name.'
+            cloneDescription: 'Publish a copy under a new directory on the controller host.'
           },
+          newLocalOnlyTitle: 'New rooms are created locally',
+          newLocalOnlyDescription: 'Create and clone do not place a new room on a remote node yet. Choose Replace room to import into an existing remote or mixed room.',
           targetRoom: 'Target room',
-          selectTargetRoom: 'Select a stopped local room',
-          roomRunning: 'Running',
-          roomStatusUnknown: 'Status unavailable',
-          replaceDescription: 'Running rooms cannot be replaced. A rollback copy is retained during deployment.',
+          selectTargetRoom: 'Select a room to replace',
+          replaceDescription: 'The room may be running. The system stops every world, restores each one at its current location, then restarts the worlds that were running before.',
           confirmation: 'Replacement confirmation',
           confirmationPlaceholder: 'Enter the complete target room name',
           confirmationDescription: 'Enter "{name}" to confirm replacement.',
@@ -569,12 +562,11 @@ export const backupMessages = {
           allowMissingToken: 'Confirm deployment without a token',
           allowMissingTokenDescription: 'A dedicated server without a token normally cannot be discovered or joined by players.',
           replaceWarningTitle: 'The target room will be replaced',
-          replaceWarningDescription: 'Stop every target shard first. A protection backup is created and publication failures roll back automatically.',
+          replaceWarningDescription: 'A complete protection backup is created first. The system then stops every world and restores them together. Failures roll back, and success restores the previous running state.',
           validation: {
             candidateRequired: 'Select a room candidate.',
             candidateBlocked: 'This candidate has compatibility errors that block deployment.',
             targetRequired: 'Select a target room to replace.',
-            targetUnavailable: 'The target room is running or its runtime status cannot currently be confirmed.',
             confirmationMismatch: 'Replacement confirmation must exactly match the target room name.',
             directoryInvalid: 'The new room directory is invalid or exceeds 64 characters.',
             tokenRequired: 'Provide a valid server token.',
@@ -603,7 +595,7 @@ export const backupMessages = {
           analyzed: 'Save compatibility analysis completed.',
           detailsFailed: 'Could not load the compatibility report: {error}',
           applyStarted: 'The deployment job started.',
-          applied: 'The save was safely deployed to a local room.',
+          applied: 'The save was safely deployed to the target room.',
           applyFailed: 'Could not start save deployment: {error}',
           jobFailed: 'Save job failed: {error}',
           jobStatusFailed: 'Could not read save job status: {error}',

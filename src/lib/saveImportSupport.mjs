@@ -100,7 +100,6 @@ export function validateSaveImportPlan(plan, candidate, targetRoom) {
   if (candidate.compatibility === 'blocked') return 'candidateBlocked'
   if (plan.mode === 'replace') {
     if (!targetRoom) return 'targetRequired'
-    if (targetRoom.running !== false) return 'targetUnavailable'
     if (plan.confirmation !== targetRoom.name) return 'confirmationMismatch'
   } else if (!DIRECTORY_PATTERN.test(String(plan.directoryName || ''))) {
     return 'directoryInvalid'

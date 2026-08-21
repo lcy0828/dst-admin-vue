@@ -1,11 +1,5 @@
 <template>
   <div class="flex min-w-0 flex-col gap-4">
-    <Alert v-if="!isLocalTarget" variant="destructive">
-      <ServerOff />
-      <AlertTitle>{{ t('backups.imports.localOnly.title') }}</AlertTitle>
-      <AlertDescription>{{ t('backups.imports.localOnly.description') }}</AlertDescription>
-    </Alert>
-
     <Card>
       <CardHeader>
         <CardTitle>{{ t('backups.imports.upload.title') }}</CardTitle>
@@ -20,7 +14,7 @@
               ref="fileInput"
               type="file"
               accept=".zip,.tar,.tar.gz,.tgz,application/zip,application/x-tar,application/gzip"
-              :disabled="uploading || !isLocalTarget"
+              :disabled="uploading"
               @change="selectUploadFile"
             />
             <FieldDescription>{{ t('backups.imports.upload.fileDescription') }}</FieldDescription>
@@ -32,7 +26,7 @@
               v-model="uploadName"
               maxlength="128"
               :placeholder="t('backups.imports.upload.namePlaceholder')"
-              :disabled="uploading || !isLocalTarget"
+              :disabled="uploading"
             />
             <FieldDescription>{{ t('backups.imports.upload.nameDescription') }}</FieldDescription>
           </Field>
@@ -46,7 +40,7 @@
         </FieldGroup>
       </CardContent>
       <CardFooter class="justify-end">
-        <UiButton :disabled="!uploadFile || uploading || !isLocalTarget" @click="uploadArchive">
+        <UiButton :disabled="!uploadFile || uploading" @click="uploadArchive">
           <Spinner v-if="uploading" data-icon="inline-start" />
           <Upload v-else data-icon="inline-start" />
           {{ uploading ? t('backups.imports.upload.uploading') : t('backups.imports.upload.action') }}
@@ -71,7 +65,7 @@
         <CardTitle>{{ t('backups.imports.list.title') }}</CardTitle>
         <CardDescription>{{ t('backups.imports.list.description') }}</CardDescription>
         <CardAction>
-          <UiButton variant="outline" size="sm" :disabled="loading || !isLocalTarget" @click="loadImports">
+          <UiButton variant="outline" size="sm" :disabled="loading" @click="loadImports">
             <Spinner v-if="loading" data-icon="inline-start" />
             <RefreshCw v-else data-icon="inline-start" />
             {{ t('backups.actions.refresh') }}
@@ -122,7 +116,7 @@
                     <UiButton
                       variant="ghost"
                       size="icon-sm"
-                      :disabled="isImportBusy(item) || !isLocalTarget"
+                      :disabled="isImportBusy(item)"
                       :title="t('backups.imports.actions.analyze')"
                       :aria-label="t('backups.imports.actions.analyze')"
                       @click="reanalyze(item)"
@@ -132,7 +126,7 @@
                     <UiButton
                       variant="ghost"
                       size="icon-sm"
-                      :disabled="isImportBusy(item) || !isLocalTarget"
+                      :disabled="isImportBusy(item)"
                       :title="t('backups.imports.actions.delete')"
                       :aria-label="t('backups.imports.actions.delete')"
                       @click="openDelete(item)"
@@ -307,13 +301,19 @@
                   </RadioGroup>
                 </FieldSet>
 
+                <Alert v-if="applyPlan.mode !== 'replace'">
+                  <HardDrive />
+                  <AlertTitle>{{ t('backups.imports.apply.newLocalOnlyTitle') }}</AlertTitle>
+                  <AlertDescription>{{ t('backups.imports.apply.newLocalOnlyDescription') }}</AlertDescription>
+                </Alert>
+
                 <FieldGroup>
                   <template v-if="applyPlan.mode === 'replace'">
                     <Field>
                       <FieldLabel>{{ t('backups.imports.apply.targetRoom') }}</FieldLabel>
                       <UiSelect v-model="applyPlan.targetRoomId">
                         <SelectTrigger><SelectValue :placeholder="t('backups.imports.apply.selectTargetRoom')" /></SelectTrigger>
-                        <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id" :disabled="room.running !== false">{{ room.name }}<template v-if="room.running === true"> · {{ t('backups.imports.apply.roomRunning') }}</template><template v-else-if="room.running === null"> · {{ t('backups.imports.apply.roomStatusUnknown') }}</template></SelectItem></SelectGroup></SelectContent>
+                        <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
                       </UiSelect>
                       <FieldDescription>{{ t('backups.imports.apply.replaceDescription') }}</FieldDescription>
                     </Field>
@@ -465,10 +465,10 @@ import {
   ArchiveRestore,
   Eye,
   FileArchive,
+  HardDrive,
   Info,
   RefreshCw,
   ScanSearch,
-  ServerOff,
   Trash2,
   TriangleAlert,
   Upload
@@ -512,7 +512,6 @@ import {
   saveImportStatusVariant,
   validateSaveImportPlan
 } from '@/lib/saveImportSupport.mjs'
-import { getActiveRuntimeTarget, RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 
 const emit = defineEmits(['rooms-changed'])
 const { locale, te, t } = useI18n()
@@ -544,7 +543,6 @@ const deleteOpen = ref(false)
 const deleteTarget = ref(null)
 const deleteConfirmation = ref('')
 const deleting = ref(false)
-const runtimeTarget = ref(getActiveRuntimeTarget())
 const applyPlan = reactive(defaultSaveImportPlan(null))
 let disposed = false
 let refreshTimer = null
@@ -552,9 +550,8 @@ let importRequestSequence = 0
 let importLoadingSequence = 0
 let roomRequestSequence = 0
 let detailRequestSequence = 0
-let runtimeGeneration = 0
+let lifecycleGeneration = 0
 
-const isLocalTarget = computed(() => runtimeTarget.value?.kind === 'local')
 const selectedCandidate = computed(() => (
   selectedImport.value?.manifest?.candidates?.find(candidate => candidate.id === selectedCandidateId.value) || null
 ))
@@ -566,10 +563,8 @@ const allDiagnostics = computed(() => [
 const selectedTargetRoom = computed(() => rooms.value.find(room => room.id === applyPlan.targetRoomId) || null)
 const selectedJob = computed(() => selectedImport.value ? jobsByImport.value[selectedImport.value.id] || null : null)
 const canApply = computed(() => (
-  isLocalTarget.value &&
   ['ready', 'applied'].includes(selectedImport.value?.status) &&
   selectedCandidate.value?.compatibility !== 'blocked' &&
-  (applyPlan.mode !== 'replace' || selectedTargetRoom.value?.running === false) &&
   !selectedJob.value
 ))
 
@@ -646,7 +641,6 @@ function ensureCandidateSelection(item) {
 }
 
 async function loadImports({ quiet = false } = {}) {
-  if (!isLocalTarget.value) return
   const sequence = ++importRequestSequence
   if (!quiet) {
     importLoadingSequence = sequence
@@ -675,22 +669,12 @@ async function loadImports({ quiet = false } = {}) {
 }
 
 async function loadRooms() {
-  if (!isLocalTarget.value) return
   const sequence = ++roomRequestSequence
   roomsLoadError.value = ''
   try {
-    const response = await roomsV2API.list()
-    const managed = (response.items || []).filter(room => room.managed)
-    const nextRooms = await Promise.all(managed.map(async room => {
-      try {
-        const worlds = await roomsV2API.worlds(room.id)
-        return { ...room, running: (worlds.items || []).some(world => world.status === 'running') }
-      } catch {
-        return { ...room, running: null }
-      }
-    }))
+    const response = await roomsV2API.controlPlaneList()
     if (sequence !== roomRequestSequence) return false
-    rooms.value = nextRooms
+    rooms.value = (response.items || []).filter(room => room.managed)
     return true
   } catch (error) {
     if (sequence !== roomRequestSequence) return false
@@ -711,17 +695,17 @@ function selectUploadFile(event) {
 }
 
 async function uploadArchive() {
-  if (!uploadFile.value || !isLocalTarget.value) return
-  const generation = runtimeGeneration
+  if (!uploadFile.value) return
+  const generation = lifecycleGeneration
   uploading.value = true
   uploadProgress.value = 0
   try {
     const result = await saveImportsV2API.upload(uploadFile.value, uploadName.value.trim(), event => {
-      if (generation === runtimeGeneration && event.total) {
+      if (generation === lifecycleGeneration && event.total) {
         uploadProgress.value = Math.min(99, Math.round(event.loaded * 100 / event.total))
       }
     })
-    if (generation !== runtimeGeneration) return
+    if (generation !== lifecycleGeneration) return
     uploadProgress.value = 100
     imports.value = [result.import, ...imports.value.filter(item => item.id !== result.import.id)]
     uploadFile.value = null
@@ -730,17 +714,17 @@ async function uploadArchive() {
     toast.success(t('backups.imports.feedback.uploaded'))
     if (result.job) void trackJob(result.job, result.import.id, 'analyze')
   } catch (error) {
-    if (generation !== runtimeGeneration) return
+    if (generation !== lifecycleGeneration) return
     toast.error(t('backups.imports.feedback.uploadFailed', { error: error.message || t('common.errors.unknown') }))
   } finally {
-    if (generation === runtimeGeneration) uploading.value = false
+    if (generation === lifecycleGeneration) uploading.value = false
   }
 }
 
-async function refreshImport(importId, generation = runtimeGeneration) {
+async function refreshImport(importId, generation = lifecycleGeneration) {
   try {
     const item = await saveImportsV2API.get(importId)
-    if (disposed || generation !== runtimeGeneration) return null
+    if (disposed || generation !== lifecycleGeneration) return null
     imports.value = imports.value.map(current => current.id === item.id ? item : current)
     if (selectedImport.value?.id === item.id) {
       selectedImport.value = item
@@ -748,38 +732,38 @@ async function refreshImport(importId, generation = runtimeGeneration) {
     }
     return item
   } catch {
-    if (disposed || generation !== runtimeGeneration) return null
+    if (disposed || generation !== lifecycleGeneration) return null
     const loaded = await loadImports({ quiet: true })
-    if (disposed || generation !== runtimeGeneration) return null
+    if (disposed || generation !== lifecycleGeneration) return null
     return loaded ? (imports.value.find(item => item.id === importId) || null) : null
   }
 }
 
 async function trackJob(initialJob, importId, purpose) {
   if (!initialJob?.id || jobsByImport.value[importId]?.id === initialJob.id) return
-  const generation = runtimeGeneration
+  const generation = lifecycleGeneration
   let job = initialJob
   let pollingFailure = null
   jobsByImport.value = { ...jobsByImport.value, [importId]: job }
-  for (let attempt = 0; attempt < 1800 && !disposed && generation === runtimeGeneration; attempt += 1) {
+  for (let attempt = 0; attempt < 1800 && !disposed && generation === lifecycleGeneration; attempt += 1) {
     if (SAVE_IMPORT_TERMINAL_JOB_STATES.has(job.status)) break
     await sleep(1000)
-    if (disposed || generation !== runtimeGeneration) return
+    if (disposed || generation !== lifecycleGeneration) return
     try {
-      job = await jobsV2API.get(job.id)
+      job = await jobsV2API.controlPlaneGet(job.id)
       jobsByImport.value = { ...jobsByImport.value, [importId]: job }
     } catch (error) {
       pollingFailure = error
       break
     }
   }
-  if (disposed || generation !== runtimeGeneration) return
+  if (disposed || generation !== lifecycleGeneration) return
   const nextJobs = { ...jobsByImport.value }
   delete nextJobs[importId]
   jobsByImport.value = nextJobs
   const pollingTimedOut = !pollingFailure && !SAVE_IMPORT_TERMINAL_JOB_STATES.has(job.status)
   const refreshedImport = await refreshImport(importId, generation)
-  if (disposed || generation !== runtimeGeneration) return
+  if (disposed || generation !== lifecycleGeneration) return
   if (pollingFailure) {
     toast.error(t('backups.imports.feedback.jobStatusFailed', { error: localizedError(pollingFailure.code, pollingFailure.message) }))
     return
@@ -793,7 +777,7 @@ async function trackJob(initialJob, importId, purpose) {
     else toast.warning(t('backups.imports.feedback.completedRefreshFailed'))
     if (purpose === 'apply') {
       const roomsLoaded = await loadRooms()
-      if (disposed || generation !== runtimeGeneration) return
+      if (disposed || generation !== lifecycleGeneration) return
       if (!roomsLoaded) toast.warning(t('backups.imports.feedback.roomsRefreshFailed'))
       emit('rooms-changed')
     }
@@ -804,15 +788,15 @@ async function trackJob(initialJob, importId, purpose) {
 }
 
 async function reanalyze(item) {
-  const generation = runtimeGeneration
+  const generation = lifecycleGeneration
   try {
     const job = await saveImportsV2API.analyze(item.id)
-    if (disposed || generation !== runtimeGeneration) return
+    if (disposed || generation !== lifecycleGeneration) return
     imports.value = imports.value.map(current => current.id === item.id ? { ...current, status: 'analyzing' } : current)
     toast.success(t('backups.imports.feedback.analysisStarted'))
     void trackJob(job, item.id, 'analyze')
   } catch (error) {
-    if (disposed || generation !== runtimeGeneration) return
+    if (disposed || generation !== lifecycleGeneration) return
     toast.error(t('backups.imports.feedback.analysisFailed', { error: error.message || t('common.errors.unknown') }))
   }
 }
@@ -859,7 +843,7 @@ async function applyImport() {
     toast.warning(t(`backups.imports.apply.validation.${validation}`))
     return
   }
-  const generation = runtimeGeneration
+  const generation = lifecycleGeneration
   const importId = selectedImport.value.id
   applying.value = true
   try {
@@ -870,7 +854,7 @@ async function applyImport() {
       clusterToken: applyPlan.clusterToken.trim()
     }
     const job = await saveImportsV2API.apply(importId, payload)
-    if (disposed || generation !== runtimeGeneration) return
+    if (disposed || generation !== lifecycleGeneration) return
     imports.value = imports.value.map(item => item.id === importId ? { ...item, status: 'applying' } : item)
     if (selectedImport.value?.id === importId) {
       selectedImport.value = { ...selectedImport.value, status: 'applying' }
@@ -878,10 +862,10 @@ async function applyImport() {
     toast.success(t('backups.imports.feedback.applyStarted'))
     void trackJob(job, importId, 'apply')
   } catch (error) {
-    if (disposed || generation !== runtimeGeneration) return
+    if (disposed || generation !== lifecycleGeneration) return
     toast.error(t('backups.imports.feedback.applyFailed', { error: error.message || t('common.errors.unknown') }))
   } finally {
-    if (generation === runtimeGeneration) applying.value = false
+    if (generation === lifecycleGeneration) applying.value = false
   }
 }
 
@@ -893,63 +877,29 @@ function openDelete(item) {
 
 async function deleteImport() {
   if (!deleteTarget.value || deleteConfirmation.value !== deleteTarget.value.name) return
-  const generation = runtimeGeneration
+  const generation = lifecycleGeneration
   const targetId = deleteTarget.value.id
   deleting.value = true
   try {
     await saveImportsV2API.delete(targetId, deleteConfirmation.value)
-    if (disposed || generation !== runtimeGeneration) return
+    if (disposed || generation !== lifecycleGeneration) return
     imports.value = imports.value.filter(item => item.id !== targetId)
     if (selectedImport.value?.id === targetId) detailsOpen.value = false
     if (deleteTarget.value?.id === targetId) deleteOpen.value = false
     toast.success(t('backups.imports.feedback.deleted'))
   } catch (error) {
-    if (disposed || generation !== runtimeGeneration) return
+    if (disposed || generation !== lifecycleGeneration) return
     toast.error(t('backups.imports.feedback.deleteFailed', { error: error.message || t('common.errors.unknown') }))
   } finally {
-    if (generation === runtimeGeneration) deleting.value = false
-  }
-}
-
-function handleRuntimeTargetChanged(event) {
-  runtimeGeneration += 1
-  importRequestSequence += 1
-  roomRequestSequence += 1
-  detailRequestSequence += 1
-  runtimeTarget.value = event.detail || getActiveRuntimeTarget()
-  imports.value = []
-  rooms.value = []
-  jobsByImport.value = {}
-  loading.value = false
-  uploading.value = false
-  uploadProgress.value = 0
-  detailLoading.value = false
-  applying.value = false
-  deleting.value = false
-  loadError.value = ''
-  roomsLoadError.value = ''
-  detailError.value = ''
-  detailsOpen.value = false
-  deleteOpen.value = false
-  deleteTarget.value = null
-  deleteConfirmation.value = ''
-  selectedImport.value = null
-  selectedCandidateId.value = ''
-  Object.assign(applyPlan, defaultSaveImportPlan(null))
-  if (isLocalTarget.value) {
-    void loadImports()
-    void loadRooms()
+    if (generation === lifecycleGeneration) deleting.value = false
   }
 }
 
 onMounted(() => {
-  window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, handleRuntimeTargetChanged)
-  if (isLocalTarget.value) {
-    void loadImports()
-    void loadRooms()
-  }
+  void loadImports()
+  void loadRooms()
   refreshTimer = window.setInterval(() => {
-    if (isLocalTarget.value && imports.value.some(item => ['uploaded', 'analyzing', 'applying'].includes(item.status))) {
+    if (imports.value.some(item => ['uploaded', 'analyzing', 'applying'].includes(item.status))) {
       void loadImports({ quiet: true })
     }
   }, 3000)
@@ -957,11 +907,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   disposed = true
-  runtimeGeneration += 1
+  lifecycleGeneration += 1
   importRequestSequence += 1
   roomRequestSequence += 1
   detailRequestSequence += 1
-  window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, handleRuntimeTargetChanged)
   if (refreshTimer) window.clearInterval(refreshTimer)
 })
 </script>

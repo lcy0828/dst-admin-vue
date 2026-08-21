@@ -330,6 +330,7 @@ export const configurationV2API = {
 
 export const jobsV2API = {
   get: jobId => client.get(`/jobs/${encode(jobId)}`),
+  controlPlaneGet: jobId => client.get(`/jobs/${encode(jobId)}`, { runtimeTarget: false }),
   cancel: jobId => client.post(`/jobs/${encode(jobId)}/cancel`)
 }
 
@@ -655,9 +656,11 @@ export const backupSetsV2API = {
 
 export const saveImportsV2API = {
   list: () => client.get('/save-imports', {
+    runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
   get: importId => client.get(`/save-imports/${encode(importId)}`, {
+    runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
   upload: (file, name = '', onUploadProgress) => {
@@ -665,14 +668,20 @@ export const saveImportsV2API = {
     body.set('file', file)
     if (name) body.set('name', name)
     return client.post('/save-imports/upload', body, {
+      runtimeTarget: false,
       timeout: apiConfig.UPLOAD_TIMEOUT,
       onUploadProgress
     })
   },
-  analyze: importId => client.post(`/save-imports/${encode(importId)}/actions/analyze`),
-  apply: (importId, input) => client.post(`/save-imports/${encode(importId)}/actions/apply`, input),
+  analyze: importId => client.post(`/save-imports/${encode(importId)}/actions/analyze`, {}, {
+    runtimeTarget: false
+  }),
+  apply: (importId, input) => client.post(`/save-imports/${encode(importId)}/actions/apply`, input, {
+    runtimeTarget: false
+  }),
   delete: (importId, confirmation) => client.delete(`/save-imports/${encode(importId)}`, {
-    data: { confirmation }
+    data: { confirmation },
+    runtimeTarget: false
   })
 }
 
