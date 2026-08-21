@@ -43,6 +43,15 @@ test('server workspace keeps operational summaries inline and world facts on sta
   assert.doesNotMatch(source, /class="status-card"/)
 })
 
+test('room control only shows room-scoped summary data', async () => {
+  const source = await readFile(sourceUrl, 'utf8')
+
+  assert.match(source, /servers\.workspace\.overview\.attentionWorlds/)
+  assert.match(source, /attentionWorldCount\(\)/)
+  assert.doesNotMatch(source, /servers\.workspace\.overview\.diskUsage/)
+  assert.doesNotMatch(source, /systemApi\.getDashboardStatus/)
+})
+
 test('server workspace does not reserve visible space for redundant operation copy', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 

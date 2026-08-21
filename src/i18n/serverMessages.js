@@ -118,8 +118,8 @@ export const serverMessages = {
         }
       },
       workspace: {
-        kicker: '当前管理目标',
-        title: '服务器工作台',
+        kicker: '当前房间',
+        title: '房间控制',
         roomSummary: '{name} · {count} 个世界',
         noRoomSelected: '尚未选择房间',
         roomSelect: '选择房间',
@@ -157,8 +157,8 @@ export const serverMessages = {
           runningShards: '{count} 个分片运行中',
           onlinePlayers: '在线玩家',
           totalPlayers: '共 {count} 人',
-          diskUsage: '磁盘使用',
-          diskFree: '剩余 {value}'
+          attentionWorlds: '异常世界',
+          attentionCount: '{count} 个'
         },
         backups: {
           latest: '最近备份',
@@ -512,8 +512,8 @@ export const serverMessages = {
         }
       },
       workspace: {
-        kicker: 'Current management target',
-        title: 'Server workspace',
+        kicker: 'Current room',
+        title: 'Room control',
         roomSummary: '{name} · {count} worlds',
         noRoomSelected: 'No room selected',
         roomSelect: 'Select a room',
@@ -551,8 +551,8 @@ export const serverMessages = {
           runningShards: '{count} shards running',
           onlinePlayers: 'Online players',
           totalPlayers: '{count} players total',
-          diskUsage: 'Disk usage',
-          diskFree: '{value} free'
+          attentionWorlds: 'Worlds needing attention',
+          attentionCount: '{count}'
         },
         backups: {
           latest: 'Latest backup',

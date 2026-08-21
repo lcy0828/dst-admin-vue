@@ -66,13 +66,12 @@ export const constantRoutes = [
         path: 'workspace',
         component: () => import('@/views/servers/ServerWorkspace.vue'),
         name: 'ServerWorkspace',
-        meta: { title: '服务器工作台', titleKey: 'navigation.serverWorkspace', icon: 'monitor' }
+        meta: { title: '房间控制', titleKey: 'navigation.serverWorkspace', icon: 'monitor' }
       },
       {
         path: 'list',
-        component: () => import('@/views/servers/ServerList.vue'),
-        name: 'ServerList',
-        meta: { title: '服务器列表', titleKey: 'navigation.serverList', icon: 'list' }
+        redirect: to => ({ path: '/servers/workspace', query: to.query, hash: to.hash }),
+        meta: { hidden: true }
       },
       {
         path: 'commands',

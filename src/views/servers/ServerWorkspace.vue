@@ -24,8 +24,8 @@
             </div>
             <Separator class="status-separator" orientation="vertical" />
             <div class="status-metric" role="listitem">
-              <span class="status-label">{{ $t('servers.workspace.overview.diskUsage') }}</span>
-              <span class="status-value">{{ formatPercent(systemStatus.disk_usage) }}</span>
+              <span class="status-label">{{ $t('servers.workspace.overview.attentionWorlds') }}</span>
+              <span class="status-value">{{ $t('servers.workspace.overview.attentionCount', { count: attentionWorldCount }) }}</span>
             </div>
             <Separator class="status-separator" orientation="vertical" />
             <div class="status-metric" role="listitem">
@@ -453,7 +453,7 @@ import RoomChatPanel from '@/components/RoomChatPanel.vue'
 import RuntimeAuditPanel from '@/components/runtime/RuntimeAuditPanel.vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
-import { backupApi, commandApi, playerApi, roomApi, systemApi } from '@/api'
+import { backupApi, commandApi, playerApi, roomApi } from '@/api'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -581,7 +581,6 @@ export default {
       rooms: [],
       selectedRoomId: this.$route.query.roomId || '',
       selectedWorldId: this.$route.query.worldId || '',
-      systemStatus: {},
       playerStats: null,
       backups: [],
       consoleServers: [],
@@ -622,6 +621,9 @@ export default {
     },
     runningWorlds() {
       return this.worlds.filter(world => world.status === 'running')
+    },
+    attentionWorldCount() {
+      return this.worlds.filter(world => world.status === 'failed').length
     },
     roomStartWorlds() {
       return this.worlds.filter(world => canStartWorld(world))
@@ -694,10 +696,7 @@ export default {
       if (!silent) this.loading = true
       this.loadError = null
       const previousRoomId = this.selectedRoomId
-      const [roomsResult, systemResult] = await Promise.allSettled([
-        roomApi.getRoomList(),
-        systemApi.getDashboardStatus()
-      ])
+      const [roomsResult] = await Promise.allSettled([roomApi.getRoomList()])
       if (requestSequence !== this.refreshSequence) return
 
       if (roomsResult.status === 'rejected') {
@@ -707,10 +706,6 @@ export default {
         this.rooms = this.unwrapList(roomsResult.value)
         this.resolveSelection()
       }
-
-      this.systemStatus = systemResult.status === 'fulfilled'
-        ? (systemResult.value?.data || {})
-        : {}
 
       if (this.selectedRoom) {
         if (silent && previousRoomId === this.selectedRoomId) {
@@ -1134,12 +1129,6 @@ export default {
     },
     metricValue(value) {
       return value === null || value === undefined || value === '' ? '--' : value
-    },
-    formatPercent(value) {
-      return Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)}%` : '--'
-    },
-    formatDisk(value) {
-      return Number.isFinite(Number(value)) ? `${Number(value).toFixed(1)} GB` : '--'
     },
     formatCompactTime(value) {
       if (!value) return '--'

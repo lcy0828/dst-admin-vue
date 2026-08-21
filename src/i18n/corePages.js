@@ -74,6 +74,24 @@ export const corePageMessages = {
         memory: '内存 {value}'
       },
       playersUnavailable: '部分玩家数据不可用',
+      roomsOverview: {
+        title: '房间运行概览',
+        description: '共 {count} 个房间，具体操作统一在房间控制中完成',
+        columns: {
+          room: '房间',
+          status: '状态',
+          shards: '世界分片',
+          action: '入口'
+        },
+        statuses: {
+          running: '全部运行',
+          partial: '部分运行',
+          stopped: '未运行',
+          attention: '需要处理'
+        },
+        shardCount: '{running} / {total} 运行中',
+        openControl: '进入房间控制'
+      },
       servers: {
         title: '服务器状态',
         description: '{total} 个分片，{running} 个运行中',
@@ -276,6 +294,24 @@ export const corePageMessages = {
         memory: 'Memory {value}'
       },
       playersUnavailable: 'Some player data is unavailable',
+      roomsOverview: {
+        title: 'Room overview',
+        description: '{count} rooms. Open room control for all runtime actions.',
+        columns: {
+          room: 'Room',
+          status: 'Status',
+          shards: 'World shards',
+          action: 'Open'
+        },
+        statuses: {
+          running: 'All running',
+          partial: 'Partially running',
+          stopped: 'Not running',
+          attention: 'Needs attention'
+        },
+        shardCount: '{running} / {total} running',
+        openControl: 'Open room control'
+      },
       servers: {
         title: 'Server status',
         description: '{total} shards, {running} running',

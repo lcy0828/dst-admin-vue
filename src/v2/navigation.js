@@ -28,7 +28,6 @@ export const V2_NAVIGATION = [
         icon: ServerCog,
         children: [
           { labelKey: 'navigation.serverWorkspace', to: '/servers/workspace' },
-          { labelKey: 'navigation.serverList', to: '/servers/list' },
           { labelKey: 'navigation.commandSettings', to: '/servers/commands' },
           { labelKey: 'navigation.gameReleases', to: '/servers/releases' }
         ]

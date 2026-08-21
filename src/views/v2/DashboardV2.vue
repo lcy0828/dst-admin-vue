@@ -1,11 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
   Activity,
+  ArrowRight,
   CircleAlert,
-  CirclePlay,
   Cpu,
   ExternalLink,
   FolderPlus,
@@ -14,38 +14,15 @@ import {
   House,
   MemoryStick,
   PackageCheck,
-  Play,
   RefreshCw,
-  ScrollText,
-  Settings,
-  Square,
   UsersRound
 } from '@lucide/vue'
-import WorldLog from '@/components/WorldLog.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Progress } from '@/components/ui/progress'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
@@ -59,20 +36,10 @@ import {
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
-  canCleanFailedWorld,
-  canConfigureWorld,
-  canStartWorld,
-  worldPrimaryAction,
-  worldStatusLabel,
-  worldStatusMessage,
-  worldStatusVariant
-} from '@/lib/worldRuntimeStatus.mjs'
-import {
   formatDateTime,
   formatDecimal,
   formatDisk,
   formatMemory,
-  formatServerUptime,
   formatSystemUptime,
   hasMetric,
   loadPercentage,
@@ -82,9 +49,6 @@ import {
 
 const router = useRouter()
 const { locale, t } = useI18n()
-const startDialogOpen = ref(false)
-const selectedRoomId = ref('')
-const selectedWorldIds = ref([])
 const RUNTIME_REFRESH_INTERVAL_MS = 10_000
 let runtimeRefreshTimer = null
 
@@ -114,50 +78,50 @@ const {
   refreshServers,
   refreshRuntimeServers,
   refreshVersion,
-  handleServerAction,
-  cleanupFailedServer,
-  startRoom,
   resumeUpdatePolling
 } = useDashboardV2()
 
-const selectedRoom = computed(() => roomList.value.find(room => String(room.id) === selectedRoomId.value) || null)
-const selectedWorlds = computed(() => (selectedRoom.value?.worlds || []).filter(world => (
-  selectedWorldIds.value.includes(String(world.id)) && canStartWorld(world)
-)))
-const canStartRoom = computed(() => Boolean(selectedRoom.value && selectedWorlds.value.length && !serverLoading.value))
+const roomSummaries = computed(() => roomList.value.map(room => {
+  const worlds = Array.isArray(room.worlds) ? room.worlds : []
+  const running = worlds.filter(world => world.status === 'running').length
+  const failed = worlds.filter(world => world.status === 'failed').length
+  const preferredWorld = worlds.find(world => world.status === 'running') || worlds[0]
+  return {
+    id: String(room.id),
+    name: room.name,
+    running,
+    failed,
+    total: worlds.length,
+    worldId: preferredWorld ? String(preferredWorld.id) : ''
+  }
+}))
 const steamUpdateStatusKey = computed(() => {
   if (versionInfo.value.latest?.up_to_date === false) return 'dashboard.version.updateAvailable'
   if (versionInfo.value.latest?.up_to_date === true) return 'dashboard.version.upToDate'
   return 'dashboard.version.updateStateUnknown'
 })
 
-function openStartDialog() {
-  const firstRoom = roomList.value[0]
-  selectedRoomId.value = firstRoom ? String(firstRoom.id) : ''
-  selectedWorldIds.value = (firstRoom?.worlds || []).filter(canStartWorld).map(world => String(world.id))
-  startDialogOpen.value = true
+function roomStatusKey(room) {
+  if (room.failed > 0) return 'dashboard.roomsOverview.statuses.attention'
+  if (room.total > 0 && room.running === room.total) return 'dashboard.roomsOverview.statuses.running'
+  if (room.running > 0) return 'dashboard.roomsOverview.statuses.partial'
+  return 'dashboard.roomsOverview.statuses.stopped'
 }
 
-function handleRoomSelection(value) {
-  selectedRoomId.value = value
-  const room = roomList.value.find(item => String(item.id) === value)
-  selectedWorldIds.value = (room?.worlds || []).filter(canStartWorld).map(world => String(world.id))
+function roomStatusVariant(room) {
+  if (room.failed > 0) return 'destructive'
+  if (room.total > 0 && room.running === room.total) return 'secondary'
+  return 'outline'
 }
 
-function toggleWorld(worldId, checked) {
-  const value = String(worldId)
-  if (checked && !selectedWorldIds.value.includes(value)) selectedWorldIds.value.push(value)
-  if (!checked) selectedWorldIds.value = selectedWorldIds.value.filter(id => id !== value)
-}
-
-async function submitStartRoom() {
-  if (!canStartRoom.value) return
-  const started = await startRoom(selectedRoom.value, selectedWorlds.value)
-  if (started) startDialogOpen.value = false
-}
-
-function worldTypeLabel(type) {
-  return t(`worldRuntime.types.${['forest', 'cave'].includes(type) ? type : 'unknown'}`)
+function openRoomControl(room) {
+  router.push({
+    path: '/servers/workspace',
+    query: {
+      roomId: room.id,
+      ...(room.worldId ? { worldId: room.worldId } : {})
+    }
+  })
 }
 
 async function refreshRuntimeStatus() {
@@ -255,10 +219,9 @@ onBeforeUnmount(() => {
       <div class="flex min-w-0 flex-col gap-4">
         <Card size="sm">
           <CardHeader>
-            <CardTitle class="flex items-center gap-2"><Activity />{{ t('dashboard.servers.title') }}</CardTitle>
-            <CardDescription>{{ t('dashboard.servers.description', { total: serverList.length, running: runningServerCount }) }}</CardDescription>
-            <CardAction class="flex gap-1.5">
-              <Button v-if="roomList.length" size="sm" @click="openStartDialog"><Play data-icon="inline-start" />{{ t('dashboard.servers.startRoom') }}</Button>
+            <CardTitle class="flex items-center gap-2"><Activity />{{ t('dashboard.roomsOverview.title') }}</CardTitle>
+            <CardDescription>{{ t('dashboard.roomsOverview.description', { count: roomSummaries.length }) }}</CardDescription>
+            <CardAction>
               <Button variant="outline" size="sm" :disabled="serverLoading" @click="refreshServers">
                 <Spinner v-if="serverLoading" data-icon="inline-start" />
                 <RefreshCw v-else data-icon="inline-start" />{{ t('common.actions.refresh') }}
@@ -266,32 +229,25 @@ onBeforeUnmount(() => {
             </CardAction>
           </CardHeader>
           <CardContent class="pt-0">
-            <Table v-if="serverList.length && !serverError">
+            <Table v-if="roomSummaries.length && !serverError && !roomError">
               <TableHeader>
                 <TableRow>
-                  <TableHead>{{ t('dashboard.servers.columns.status') }}</TableHead><TableHead>{{ t('dashboard.servers.columns.room') }}</TableHead><TableHead>{{ t('dashboard.servers.columns.world') }}</TableHead><TableHead>{{ t('dashboard.servers.columns.uptime') }}</TableHead><TableHead class="text-right">{{ t('dashboard.servers.columns.actions') }}</TableHead>
+                  <TableHead>{{ t('dashboard.roomsOverview.columns.room') }}</TableHead>
+                  <TableHead>{{ t('dashboard.roomsOverview.columns.status') }}</TableHead>
+                  <TableHead>{{ t('dashboard.roomsOverview.columns.shards') }}</TableHead>
+                  <TableHead class="text-right">{{ t('dashboard.roomsOverview.columns.action') }}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow v-for="server in serverList" :key="`${server.room_id}-${server.world_id}`">
-                  <TableCell>
-                    <Badge :variant="worldStatusVariant(server)">{{ worldStatusLabel(server, t) }}</Badge>
-                    <p v-if="worldStatusMessage(server)" class="text-destructive mt-1 max-w-64 break-words text-xs">{{ worldStatusMessage(server) }}</p>
-                  </TableCell>
-                  <TableCell class="font-medium">{{ server.archive_name }}</TableCell>
-                  <TableCell>{{ server.world_name }}</TableCell>
-                  <TableCell class="text-muted-foreground">{{ formatServerUptime(server.start_time, t) }}</TableCell>
-                  <TableCell>
-                    <div class="flex justify-end gap-1.5">
-                      <Button size="sm" :variant="worldPrimaryAction(server, t).variant" :disabled="serverLoading || worldPrimaryAction(server, t).disabled" @click="handleServerAction(server)">
-                        <Spinner v-if="serverLoading" data-icon="inline-start" />
-                        <Square v-else-if="worldPrimaryAction(server, t).kind === 'stop'" data-icon="inline-start" />
-                        <Play v-else-if="worldPrimaryAction(server, t).kind === 'start'" data-icon="inline-start" />
-                        {{ worldPrimaryAction(server, t).label }}
-                      </Button>
-                      <Button v-if="server.status === 'failed'" variant="outline" size="sm" :disabled="serverLoading || !canCleanFailedWorld(server)" @click="cleanupFailedServer(server)"><Square data-icon="inline-start" />{{ t('dashboard.servers.cleanupSession') }}</Button>
-                      <Button variant="outline" size="sm" :disabled="!canConfigureWorld(server)" :title="!canConfigureWorld(server) ? t('dashboard.servers.configureDisabled') : ''" @click="router.push({ path: '/worlds/settings', query: { roomId: server.room_id, worldId: server.world_id } })"><Settings data-icon="inline-start" />{{ t('dashboard.servers.configure') }}</Button>
-                    </div>
+                <TableRow v-for="room in roomSummaries" :key="room.id">
+                  <TableCell class="font-medium">{{ room.name }}</TableCell>
+                  <TableCell><Badge :variant="roomStatusVariant(room)">{{ t(roomStatusKey(room)) }}</Badge></TableCell>
+                  <TableCell class="text-muted-foreground tabular-nums">{{ t('dashboard.roomsOverview.shardCount', { running: room.running, total: room.total }) }}</TableCell>
+                  <TableCell class="text-right">
+                    <Button variant="outline" size="sm" @click="openRoomControl(room)">
+                      {{ t('dashboard.roomsOverview.openControl') }}
+                      <ArrowRight data-icon="inline-end" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -305,28 +261,6 @@ onBeforeUnmount(() => {
             <Empty v-else-if="!roomList.length" class="min-h-44 py-6">
               <EmptyHeader><EmptyMedia variant="icon"><FolderPlus /></EmptyMedia><EmptyTitle>{{ t('dashboard.servers.noRooms') }}</EmptyTitle><EmptyDescription>{{ t('dashboard.servers.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
               <EmptyContent><Button size="sm" @click="router.push('/rooms/settings')">{{ t('dashboard.servers.createRoom') }}</Button></EmptyContent>
-            </Empty>
-
-            <Empty v-else class="min-h-44 py-6">
-              <EmptyHeader><EmptyMedia variant="icon"><CirclePlay /></EmptyMedia><EmptyTitle>{{ t('dashboard.servers.notStarted') }}</EmptyTitle><EmptyDescription>{{ t('dashboard.servers.notStartedDescription') }}</EmptyDescription></EmptyHeader>
-              <EmptyContent><Button size="sm" @click="openStartDialog">{{ t('dashboard.servers.startRoom') }}</Button></EmptyContent>
-            </Empty>
-          </CardContent>
-        </Card>
-
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle class="flex items-center gap-2"><ScrollText />{{ t('dashboard.logs.title') }}</CardTitle>
-            <CardDescription>{{ t('dashboard.logs.description') }}</CardDescription>
-          </CardHeader>
-          <CardContent v-if="roomList.length" class="h-[400px] min-h-[320px] pt-0"><WorldLog /></CardContent>
-          <CardContent v-else class="pt-0">
-            <Empty class="min-h-48 py-8">
-              <EmptyHeader>
-                <EmptyMedia variant="icon"><ScrollText /></EmptyMedia>
-                <EmptyTitle>{{ t('dashboard.logs.empty') }}</EmptyTitle>
-                <EmptyDescription>{{ t('dashboard.logs.emptyDescription') }}</EmptyDescription>
-              </EmptyHeader>
             </Empty>
           </CardContent>
         </Card>
@@ -421,15 +355,5 @@ onBeforeUnmount(() => {
       </aside>
     </div>
 
-    <Dialog v-model:open="startDialogOpen">
-      <DialogContent class="sm:max-w-lg">
-        <DialogHeader><DialogTitle>{{ t('dashboard.startDialog.title') }}</DialogTitle><DialogDescription>{{ t('dashboard.startDialog.description') }}</DialogDescription></DialogHeader>
-        <FieldGroup>
-          <Field><FieldLabel for="v2-room">{{ t('dashboard.startDialog.room') }}</FieldLabel><Select :model-value="selectedRoomId" @update:model-value="handleRoomSelection"><SelectTrigger id="v2-room"><SelectValue :placeholder="t('dashboard.startDialog.selectRoom')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomList" :key="room.id" :value="String(room.id)">{{ room.name }}</SelectItem></SelectGroup></SelectContent></Select></Field>
-          <FieldSet><FieldLegend variant="label">{{ t('dashboard.startDialog.worlds') }}</FieldLegend><FieldGroup v-if="selectedRoom?.worlds?.length" class="gap-3"><Field v-for="world in selectedRoom.worlds" :key="world.id" orientation="horizontal" :data-disabled="!canStartWorld(world) || undefined"><Checkbox :id="`v2-world-${world.id}`" :model-value="selectedWorldIds.includes(String(world.id))" :disabled="!canStartWorld(world) || serverLoading" @update:model-value="toggleWorld(world.id, $event)" /><FieldLabel :for="`v2-world-${world.id}`" class="flex flex-1 flex-wrap items-center justify-between gap-2"><span>{{ world.name }}</span><span class="flex items-center gap-2"><Badge variant="outline">{{ worldTypeLabel(world.type) }}</Badge><Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world, t) }}</Badge></span><span v-if="worldStatusMessage(world)" class="text-destructive basis-full text-xs">{{ worldStatusMessage(world) }}</span></FieldLabel></Field></FieldGroup><Alert v-else><CircleAlert /><AlertTitle>{{ t('dashboard.startDialog.noWorlds') }}</AlertTitle><AlertDescription>{{ t('dashboard.startDialog.noWorldsDescription') }}</AlertDescription></Alert></FieldSet>
-        </FieldGroup>
-        <DialogFooter><Button variant="outline" @click="startDialogOpen = false">{{ t('common.actions.cancel') }}</Button><Button :disabled="!canStartRoom" @click="submitStartRoom"><Spinner v-if="serverLoading" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{ t('dashboard.startDialog.submit') }}</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
   </div>
 </template>
