@@ -98,6 +98,20 @@ test('room settings exposes constraints and validates instead of clamping values
   assert.doesNotMatch(roomSettings, /Math\.min\(max, Math\.max/)
 })
 
+test('world settings uses a direct mod action and one select indicator', async () => {
+  const [worldSettings, settingItem, selectItem] = await Promise.all([
+    source('src/views/worlds/WorldSettings.vue'),
+    source('src/components/worlds/SettingItem.vue'),
+    source('src/components/ui/select/SelectItem.vue')
+  ])
+
+  assert.match(worldSettings, /worlds\.settingsPage\.manageMods/)
+  assert.match(worldSettings, /path:\s*'\/mods',[\s\S]*?tab:\s*'room'/)
+  assert.doesNotMatch(worldSettings, /TabsTrigger value="mods"/)
+  assert.doesNotMatch(settingItem, /worlds\.settingsUi\.defaultOption|<Badge/)
+  assert.match(selectItem, /<CheckIcon/)
+})
+
 test('opening mod configuration keeps the list stable and delegates loading to the dialog', async () => {
   const [modList, modConfig] = await Promise.all([
     source('src/views/mods/ModList.vue'),

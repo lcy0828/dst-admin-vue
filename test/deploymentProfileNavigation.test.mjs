@@ -12,3 +12,12 @@ test('all deployment profiles expose centralized node management', () => {
     assert.equal(navigationItems(features).some(item => item.labelKey === 'navigation.agents'), true)
   }
 })
+
+test('room navigation only exposes room-level destinations', () => {
+  const rooms = navigationItems({}).find(item => item.labelKey === 'navigation.rooms')
+
+  assert.deepEqual(
+    rooms.children.map(item => item.to),
+    ['/rooms/list', '/rooms/topology', '/rooms/diagnostics']
+  )
+})

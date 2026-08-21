@@ -25,8 +25,7 @@
               :key="descKey"
               :value="descKey"
             >
-              <span>{{ descText }}</span>
-              <Badge v-if="isDefaultOption(descKey)" variant="secondary">{{ $t('worlds.settingsUi.defaultOption') }}</Badge>
+              {{ descText }}
             </SelectItem>
           </SelectGroup>
         </SelectContent>
@@ -45,7 +44,6 @@
 
 <script>
 import { CircleHelpIcon } from '@lucide/vue'
-import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -53,7 +51,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 export default {
   name: 'SettingItem',
   components: {
-    Badge,
     CircleHelpIcon,
     SelectContent,
     SelectGroup,
@@ -178,11 +175,6 @@ export default {
       // 保存到缓存
       this.descriptionCache[cacheKey] = desc;
       return desc;
-    },
-    
-    isDefaultOption(descKey) {
-      // 检查是否为默认选项
-      return descKey === 'default';
     },
     
     handleSelectChange(value) {

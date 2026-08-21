@@ -149,7 +149,6 @@ export const worldsMessages = {
         worldgenGroup: '世界生成组',
         worldSettingsGroup: '世界设置组',
         selectItem: '选择{item}',
-        defaultOption: '默认',
         viewDescription: '查看设置说明',
         currentValue: '{item}：当前值为【{value}】',
         descriptions: {
@@ -185,7 +184,8 @@ export const worldsMessages = {
       settingsPage: {
         title: '世界设置',
         titleWithRoom: '世界设置 - {room}',
-        subtitle: '管理世界生成、运行参数和模组配置。',
+        subtitle: '管理世界生成、游戏规则和分片基础配置。',
+        manageMods: '管理当前世界模组',
         refresh: '刷新设置',
         addWorld: '新增世界',
         stopAllWorlds: '请先停止房间中的所有世界',
@@ -197,13 +197,12 @@ export const worldsMessages = {
         deleteCurrent: '删除当前世界',
         stopCurrent: '请先停止当前世界',
         worldHeading: '{name} {type}世界',
-        worldDescription: '配置地形、资源、危险、分片参数和模组。',
+        worldDescription: '配置地形、资源、危险和分片参数。',
         sectionAria: '世界配置分类',
         sections: {
           worldgen: '世界生成',
           rules: '世界规则',
-          serverIni: '基础配置',
-          mods: '模组配置'
+          serverIni: '基础配置'
         },
         noWorldgen: '暂无{type}世界生成数据',
         noRules: '暂无{type}世界设置数据',
@@ -220,8 +219,6 @@ export const worldsMessages = {
           save: '保存配置',
           empty: '暂无基础配置数据'
         },
-        modsDescription: '管理当前世界的模组启用状态与配置。',
-        openMods: '打开模组配置',
         noWorlds: '当前房间没有世界',
         noWorldsDescription: '创建森林或洞穴世界后即可配置。',
         chooseRoom: '请选择房间',
@@ -444,7 +441,6 @@ export const worldsMessages = {
         worldgenGroup: 'World generation',
         worldSettingsGroup: 'World rules',
         selectItem: 'Select {item}',
-        defaultOption: 'Default',
         viewDescription: 'View setting description',
         currentValue: '{item}: current value is [{value}]',
         descriptions: {
@@ -480,7 +476,8 @@ export const worldsMessages = {
       settingsPage: {
         title: 'World settings',
         titleWithRoom: 'World settings - {room}',
-        subtitle: 'Manage world generation, runtime parameters, and mod configuration.',
+        subtitle: 'Manage world generation, game rules, and shard configuration.',
+        manageMods: 'Manage mods for this world',
         refresh: 'Refresh settings',
         addWorld: 'Add world',
         stopAllWorlds: 'Stop every world in the room first',
@@ -492,13 +489,12 @@ export const worldsMessages = {
         deleteCurrent: 'Delete current world',
         stopCurrent: 'Stop the current world first',
         worldHeading: '{name} {type} world',
-        worldDescription: 'Configure terrain, resources, hazards, shard parameters, and mods.',
+        worldDescription: 'Configure terrain, resources, hazards, and shard parameters.',
         sectionAria: 'World configuration categories',
         sections: {
           worldgen: 'World generation',
           rules: 'World rules',
-          serverIni: 'Basic configuration',
-          mods: 'Mod configuration'
+          serverIni: 'Basic configuration'
         },
         noWorldgen: 'No {type} world generation data',
         noRules: 'No {type} world rule data',
@@ -515,8 +511,6 @@ export const worldsMessages = {
           save: 'Save configuration',
           empty: 'No basic configuration data'
         },
-        modsDescription: 'Manage enabled mods and configuration for the current world.',
-        openMods: 'Open mod configuration',
         noWorlds: 'This room has no worlds',
         noWorldsDescription: 'Create a forest or cave world to begin configuring it.',
         chooseRoom: 'Select a room',

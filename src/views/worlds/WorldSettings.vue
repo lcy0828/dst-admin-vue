@@ -7,6 +7,10 @@
           <p>{{ $t('worlds.settingsPage.subtitle') }}</p>
         </div>
         <div class="header-actions">
+          <UiButton v-if="currentWorld" variant="outline" size="sm" @click="openWorldMods(currentWorld)">
+            <Package data-icon="inline-start" />
+            {{ $t('worlds.settingsPage.manageMods') }}
+          </UiButton>
           <UiButton variant="outline" size="sm" @click="reloadSettings" :disabled="loading || loadingRooms">
             <Spinner v-if="loading || loadingRooms" data-icon="inline-start" />
             <RefreshCw v-else data-icon="inline-start" />
@@ -89,7 +93,6 @@
                   <TabsTrigger value="worldgen"><Sparkles />{{ $t('worlds.settingsPage.sections.worldgen') }}</TabsTrigger>
                   <TabsTrigger value="worldsettings"><SlidersHorizontal />{{ $t('worlds.settingsPage.sections.rules') }}</TabsTrigger>
                   <TabsTrigger value="server-ini"><ServerCog />{{ $t('worlds.settingsPage.sections.serverIni') }}</TabsTrigger>
-                  <TabsTrigger value="mods"><Package />{{ $t('worlds.settingsPage.sections.mods') }}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="worldgen">
@@ -175,14 +178,6 @@
                   </Empty>
                 </TabsContent>
 
-                <TabsContent value="mods">
-                  <Alert>
-                    <Package />
-                    <AlertTitle>{{ roomName }} / {{ world.name }}</AlertTitle>
-                    <AlertDescription>{{ $t('worlds.settingsPage.modsDescription') }}</AlertDescription>
-                    <AlertAction><UiButton @click="openWorldMods(world)">{{ $t('worlds.settingsPage.openMods') }}</UiButton></AlertAction>
-                  </Alert>
-                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
@@ -731,8 +726,9 @@ export default {
     },
     openWorldMods(world) {
       this.$router.push({
-        path: '/mods?tab=room',
+        path: '/mods',
         query: {
+          tab: 'room',
           roomId: this.roomId || this.$route.query.roomId || undefined,
           worldId: world?.id || undefined
         }

@@ -1046,8 +1046,8 @@ export default {
     },
     openMods() {
       this.$router.push({
-        path: '/mods?tab=room',
-        query: { roomId: this.selectedRoomId, worldId: this.selectedWorldId || undefined }
+        path: '/mods',
+        query: { tab: 'room', roomId: this.selectedRoomId, worldId: this.selectedWorldId || undefined }
       })
     },
     worldIcon(world) {
