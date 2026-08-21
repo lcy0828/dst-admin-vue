@@ -1,6 +1,7 @@
 import axios from 'axios'
 import apiConfig from './config'
 import { getActiveRuntimeTarget } from '@/utils/runtimeTarget'
+import { createIdempotencyKey } from '@/lib/idempotencyKey.mjs'
 
 const baseURL = `${apiConfig.BASE_URL.replace(/\/$/, '')}/v2`
 let csrfToken = ''
@@ -81,7 +82,7 @@ client.interceptors.request.use(config => {
   }
   if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     config.headers['X-CSRF-Token'] = csrfToken
-    if (!config.headers['Idempotency-Key']) config.headers['Idempotency-Key'] = crypto.randomUUID()
+    if (!config.headers['Idempotency-Key']) config.headers['Idempotency-Key'] = createIdempotencyKey()
   }
   return config
 })
@@ -336,6 +337,10 @@ export const structuredLogsV2API = {
   list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/structured-logs`, { params }),
   refresh: roomId => client.post(`/rooms/${encode(roomId)}/structured-logs/actions/refresh`),
   clear: (roomId, worldId) => client.post(`/rooms/${encode(roomId)}/structured-logs/actions/clear`, { worldId })
+}
+
+export const chatLogsV2API = {
+  list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/chat-logs`, { params })
 }
 
 export const worldMapsV2API = {

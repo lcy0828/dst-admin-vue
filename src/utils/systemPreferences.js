@@ -137,6 +137,11 @@ function notifyPreferencesUpdated() {
   window.dispatchEvent(new CustomEvent('system-preferences-updated', { detail: { ...current } }))
 }
 
+function applyTimePreferences() {
+  document.documentElement.dataset.systemTimezone = current.timezone || DEFAULTS.timezone
+  document.documentElement.dataset.systemDateFormat = current.dateFormat || DEFAULTS.dateFormat
+}
+
 export function applySystemPreferences(settings) {
   const theme = normalizeThemeColor(fieldValue(settings, 'ui.theme', DEFAULTS.theme))
   const preset = resolveThemePreset(theme)
@@ -151,6 +156,7 @@ export function applySystemPreferences(settings) {
 
   current.language = setLocale(current.language)
   applyThemeVariables(current.theme)
+  applyTimePreferences()
   notifyPreferencesUpdated()
   return { ...current }
 }

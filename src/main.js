@@ -10,6 +10,8 @@ import './utils/themeManager'
 import 'xterm/css/xterm.css'
 
 document.documentElement.lang = i18n.global.locale.value
+document.documentElement.dataset.systemTimezone = getSystemPreferences().timezone
+document.documentElement.dataset.systemDateFormat = getSystemPreferences().dateFormat
 
 function loginRedirect(value, fallback = '/dashboard') {
   return typeof value === 'string' && value.startsWith('/') && !value.startsWith('//')

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
 import { formatDurationSeconds } from '../src/lib/localeFormatters.mjs'
+import { formatSystemDateTime, formatSystemUnixTime } from '../src/lib/dateTime.mjs'
 import {
   ANNOUNCEMENT_TYPE_IDS,
   announcementTypeId,
@@ -45,6 +46,14 @@ test('durations are formatted by the active locale catalog', () => {
   assert.equal(formatDurationSeconds(3661, translator(en)), '1 hours 1 minutes')
   assert.equal(formatDurationSeconds(0, translator(en)), '0 minutes')
   assert.equal(formatDurationSeconds('invalid', translator(en)), '--')
+})
+
+test('system date formatting uses the configured IANA timezone', () => {
+  const value = '2026-08-21T00:00:00Z'
+  const options = { locale: 'en-CA', timeZone: 'Asia/Shanghai', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }
+  assert.match(formatSystemDateTime(value, options), /08:00/)
+  assert.match(formatSystemUnixTime(Date.parse(value) / 1000, options), /08:00/)
+  assert.equal(formatSystemDateTime('invalid', { fallback: '--' }), '--')
 })
 
 test('legacy adapters no longer persist or return localized enum values', () => {
