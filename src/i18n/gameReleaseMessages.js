@@ -78,6 +78,7 @@ export const gameReleaseMessages = {
         submit: '创建备份并更新'
       },
       feedback: {
+        operationFailedTitle: '检查或更新失败',
         historyFailed: '读取更新记录失败：{error}', previewReady: '更新范围已检查', previewFailed: '检查更新范围失败：{error}',
         submitted: '游戏更新任务已提交', submitFailed: '提交游戏更新失败：{error}', retrySubmitted: '重试任务已提交',
         retryFailed: '提交重试失败：{error}', detailsFailed: '读取更新详情失败：{error}', taskFailed: '更新任务失败：{error}',
@@ -164,6 +165,7 @@ export const gameReleaseMessages = {
         submit: 'Back up and update'
       },
       feedback: {
+        operationFailedTitle: 'Check or update failed',
         historyFailed: 'Failed to load update history: {error}', previewReady: 'Update check completed', previewFailed: 'Failed to check for updates: {error}',
         submitted: 'Game update job submitted', submitFailed: 'Failed to submit game update: {error}', retrySubmitted: 'Retry job submitted',
         retryFailed: 'Failed to submit retry: {error}', detailsFailed: 'Failed to load update details: {error}', taskFailed: 'Update job failed: {error}',

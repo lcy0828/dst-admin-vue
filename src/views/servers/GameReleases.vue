@@ -372,7 +372,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
 
     <Alert v-if="taskError" variant="destructive">
       <CircleAlert />
-      <AlertTitle>{{ t('gameReleases.job.failed') }}</AlertTitle>
+      <AlertTitle>{{ t('gameReleases.feedback.operationFailedTitle') }}</AlertTitle>
       <AlertDescription>{{ taskError }}</AlertDescription>
     </Alert>
 
