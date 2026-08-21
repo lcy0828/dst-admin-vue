@@ -141,6 +141,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
+import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled']);
 
@@ -424,8 +425,11 @@ export default {
       return `${value.toFixed(unit === 0 ? 0 : 1)}${units[unit]}`;
     },
     formatDate(value) {
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? '--' : date.toLocaleString('zh-CN', { hour12: false });
+      return formatSystemDateTime(value, {
+        locale: 'zh-CN',
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: false
+      });
     }
   }
 };

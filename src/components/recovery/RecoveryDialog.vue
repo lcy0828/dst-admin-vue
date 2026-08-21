@@ -63,6 +63,7 @@ import { ArchiveRestore, Trash2, TriangleAlert } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { roomsV2API } from '@/api/v2'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button as UiButton } from '@/components/ui/button'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
@@ -93,7 +94,11 @@ const confirmation = ref('')
 const purgeError = ref('')
 
 function formatDate(value) {
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  })
 }
 async function load() {
   if (!props.open || (props.scope === 'world' && !selectedRoomId.value)) {

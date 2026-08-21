@@ -381,6 +381,12 @@ export interface DistributedBackupPart {
   size: number
   contentSize: number
   fileCount: number
+  contentKind: 'game-save' | 'configuration-only' | 'unknown'
+  restorable: boolean
+  sessionId?: string
+  latestSnapshot?: string
+  hasShardIndex: boolean
+  validationError?: string
   sha256?: string
   failure?: string
 }
@@ -401,6 +407,9 @@ export interface DistributedBackupSet {
   size: number
   contentSize: number
   fileCount: number
+  contentKind: 'game-save' | 'configuration-only' | 'unknown'
+  restorable: boolean
+  validationError?: string
   originalRunningWorlds: string[]
   manifestSha256?: string
   failure?: string

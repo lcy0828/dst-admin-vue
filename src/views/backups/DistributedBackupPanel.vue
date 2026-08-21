@@ -95,10 +95,12 @@
             <TableCell>
               <div class="flex min-w-32 flex-col items-start gap-1">
                 <Badge :variant="setStatusVariant(backupSet.status)">{{ setStatusLabel(backupSet.status) }}</Badge>
+                <Badge :variant="backupSet.restorable ? 'secondary' : 'destructive'">{{ contentKindLabel(backupSet) }}</Badge>
                 <Badge v-if="latestOperation(backupSet.id)" :variant="operationStatusVariant(latestOperation(backupSet.id).status)">
                   {{ operationStatusLabel(latestOperation(backupSet.id).status) }}
                 </Badge>
                 <span v-if="backupSet.failure" class="text-xs text-destructive">{{ backupSet.failure }}</span>
+                <span v-if="backupSet.validationError" class="max-w-64 text-xs text-destructive">{{ backupSet.validationError }}</span>
                 <span v-if="latestOperation(backupSet.id)?.failure" class="max-w-64 text-xs text-destructive">{{ latestOperation(backupSet.id).failure }}</span>
                 <UiButton v-if="latestOperation(backupSet.id)?.status === 'recovery_required'" size="xs" variant="outline" :disabled="operationRunning" @click="recoverOperation(latestOperation(backupSet.id))">
                   <Spinner v-if="recoveringOperationId === latestOperation(backupSet.id).id" data-icon="inline-start" />
@@ -118,7 +120,7 @@
                   <Eye data-icon="inline-start" />
                   {{ t('distributed.backups.details') }}
                 </UiButton>
-                <UiButton size="sm" :disabled="backupSet.status !== 'verified' || operationRunning" @click="openRestoreDialog(backupSet)">
+                <UiButton size="sm" :disabled="backupSet.status !== 'verified' || !backupSet.restorable || operationRunning" :title="!backupSet.restorable ? t('distributed.backups.notRestorable') : undefined" @click="openRestoreDialog(backupSet)">
                   <History data-icon="inline-start" />
                   {{ t('distributed.backups.restore') }}
                 </UiButton>
@@ -182,6 +184,11 @@
           <Skeleton v-for="index in 4" :key="index" class="h-12 w-full" />
         </div>
         <template v-else-if="selectedSet">
+          <Alert v-if="!selectedSet.restorable" variant="destructive">
+            <TriangleAlert />
+            <AlertTitle>{{ t('distributed.backups.notRestorableTitle') }}</AlertTitle>
+            <AlertDescription>{{ selectedSet.validationError || t('distributed.backups.notRestorable') }}</AlertDescription>
+          </Alert>
           <Alert v-if="selectedOperation" :variant="selectedOperation.status === 'recovery_required' || selectedOperation.status === 'failed' ? 'destructive' : 'default'">
             <History />
             <AlertTitle>{{ t('distributed.backups.operationSummary', { kind: operationKindLabel(selectedOperation.kind), status: operationStatusLabel(selectedOperation.status) }) }}</AlertTitle>
@@ -192,6 +199,7 @@
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.manifest') }}</dt><dd class="mt-1 font-medium">v{{ selectedSet.manifestVersion }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.columns.size') }}</dt><dd class="mt-1 font-medium">{{ formatBytes(selectedSet.size) }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.files') }}</dt><dd class="mt-1 font-medium">{{ selectedSet.fileCount }}</dd></div>
+            <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.contentKind') }}</dt><dd class="mt-1"><Badge :variant="selectedSet.restorable ? 'secondary' : 'destructive'">{{ contentKindLabel(selectedSet) }}</Badge></dd></div>
             <div class="sm:col-span-3"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.topologyRevision') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedSet.topologyRevision }}</dd></div>
             <div v-if="selectedSet.mode === 'hot-consistent'" class="sm:col-span-2"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.barrierId') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedSet.barrierId || '--' }}</dd></div>
             <div v-if="selectedSet.mode === 'hot-consistent'"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.snapshot') }}</dt><dd class="mt-1 font-medium tabular-nums">{{ selectedSet.snapshot ?? '--' }}</dd></div>
@@ -203,7 +211,18 @@
               <TableHeader><TableRow><TableHead>{{ t('distributed.backups.partColumns.world') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.target') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.status') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.barrier') }}</TableHead><TableHead>{{ t('distributed.backups.columns.size') }}</TableHead><TableHead>SHA-256</TableHead></TableRow></TableHeader>
               <TableBody>
                 <TableRow v-for="part in selectedSet.parts || []" :key="part.id">
-                  <TableCell><div class="flex min-w-40 flex-col gap-1"><span class="font-medium">{{ part.worldName }}</span><span class="text-xs text-muted-foreground">{{ part.shard }}</span></div></TableCell>
+                  <TableCell>
+                    <div class="flex min-w-56 flex-col items-start gap-1">
+                      <span class="font-medium">{{ part.worldName }}</span>
+                      <span class="text-xs text-muted-foreground">{{ part.shard }}</span>
+                      <template v-if="part.restorable">
+                        <span class="font-mono text-xs text-muted-foreground">{{ t('distributed.backups.saveEvidence.session', { value: part.sessionId }) }}</span>
+                        <span class="font-mono text-xs text-muted-foreground">{{ t('distributed.backups.saveEvidence.latestSnapshot', { value: part.latestSnapshot }) }}</span>
+                        <Badge variant="outline">{{ part.hasShardIndex ? t('distributed.backups.saveEvidence.shardIndexPresent') : t('distributed.backups.saveEvidence.shardIndexMissing') }}</Badge>
+                      </template>
+                      <span v-else class="text-xs text-destructive">{{ part.validationError || t('distributed.backups.notRestorable') }}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>{{ part.targetId }}</TableCell>
                   <TableCell><Badge :variant="partStatusVariant(part.status)">{{ partStatusLabel(part.status) }}</Badge></TableCell>
                   <TableCell>
@@ -261,6 +280,7 @@ import { useI18n } from 'vue-i18n'
 import { CircleAlert, DatabaseBackup, Eye, Flame, History, RefreshCw, Snowflake, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { backupSetsV2API, roomsV2API } from '@/api/v2'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -412,6 +432,10 @@ async function openDetails(backupSet) {
 }
 
 function openRestoreDialog(backupSet) {
+  if (!backupSet?.restorable) {
+    toast.error(backupSet?.validationError || t('distributed.backups.notRestorable'))
+    return
+  }
   selectedSet.value = backupSet
   restoreConfirmation.value = ''
   restoreDialogOpen.value = true
@@ -486,6 +510,11 @@ function backupModeLabel(value) {
   return t(`distributed.backups.modes.${value === 'hot-consistent' ? 'hot' : 'cold'}`)
 }
 
+function contentKindLabel(value) {
+  const kind = value?.restorable ? 'gameSave' : value?.contentKind === 'configuration-only' ? 'configurationOnly' : 'unknown'
+  return t(`distributed.backups.contentKinds.${kind}`)
+}
+
 function setStatusLabel(value) {
   const known = ['creating', 'verified', 'partial', 'failed', 'corrupt']
   return t(`distributed.backups.statuses.${known.includes(value) ? value : 'unknown'}`)
@@ -526,10 +555,11 @@ function formatBytes(value) {
 }
 
 function formatTime(value) {
-  if (!value) return '--'
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return '--'
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(parsed)
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    dateStyle: 'short',
+    timeStyle: 'medium'
+  })
 }
 
 watch(selectedRoomId, () => { void loadSets() })

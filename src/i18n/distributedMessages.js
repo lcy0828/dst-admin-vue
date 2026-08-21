@@ -154,6 +154,10 @@ export const distributedMessages = {
         create: '创建一致性备份',
         restore: '恢复',
         details: '详情',
+        notRestorableTitle: '这不是可恢复的世界存档',
+        notRestorable: '该记录仅包含配置或缺少 Session 存档证据，不能恢复世界。',
+        contentKinds: { gameSave: '世界存档', configurationOnly: '仅配置', unknown: '未确认内容' },
+        saveEvidence: { session: 'Session：{value}', latestSnapshot: '最新快照：{value}', shardIndexPresent: 'shardindex 已校验', shardIndexMissing: '缺少 shardindex' },
         modesTitle: '按场景选择一致性级别',
         modesDescription: '冷一致备份会短暂停服，适合所有房间；热一致备份保持服务在线，但要求每个分片安装并激活支持保存屏障的 Runtime。',
         modes: { cold: '冷一致', hot: '热一致' },
@@ -199,7 +203,7 @@ export const distributedMessages = {
           nameDescription: '最多 128 个字符。',
           confirm: { cold: '停服并创建', hot: '在线创建' }
         },
-        detailsDialog: { title: '备份集详情', description: 'Manifest、分片校验摘要与可验证的热备份屏障证据。', manifest: 'Manifest 版本', files: '文件数', topologyRevision: '拓扑版本', barrierId: '屏障 ID', snapshot: '统一快照序号', snapshotTransition: '快照 {before} → {after}' },
+        detailsDialog: { title: '备份集详情', description: 'Manifest、分片校验摘要与可验证的热备份屏障证据。', manifest: 'Manifest 版本', files: '文件数', contentKind: '备份内容', topologyRevision: '拓扑版本', barrierId: '屏障 ID', snapshot: '统一快照序号', snapshotTransition: '快照 {before} → {after}' },
         restoreDialog: {
           title: '恢复一致性备份',
           description: '系统会先创建保护备份，再原子发布所有世界并恢复原运行状态。',
@@ -314,6 +318,8 @@ export const distributedMessages = {
       },
       backups: {
         tab: 'Consistent backups', title: 'Cross-node consistent backups', description: 'Capture every world of a room across nodes as one logical backup set and verify each part.', room: 'Room', selectRoom: 'Select a managed room', create: 'Create consistent backup', restore: 'Restore', details: 'Details',
+        notRestorableTitle: 'This is not a restorable world save', notRestorable: 'This record contains configuration only or lacks Session save evidence and cannot restore a world.', contentKinds: { gameSave: 'World save', configurationOnly: 'Configuration only', unknown: 'Unconfirmed content' },
+        saveEvidence: { session: 'Session: {value}', latestSnapshot: 'Latest snapshot: {value}', shardIndexPresent: 'shardindex verified', shardIndexMissing: 'shardindex missing' },
         modesTitle: 'Choose consistency for the maintenance window', modesDescription: 'Cold-consistent backups briefly stop the room and work everywhere. Hot-consistent backups keep it online but require an active snapshot-barrier Runtime on every Shard.', modes: { cold: 'Cold-consistent', hot: 'Hot-consistent' },
         coldTitle: 'Cold-consistent mode is active', coldDescription: 'Backups stop Secondary Shards before Master, verify all parts, then restore the previous state by starting Master before Secondary. A fixed delay is never treated as hot-backup evidence.', loadFailed: 'Failed to load consistent backups', operationsLoadFailed: 'Failed to load backup operations', loading: 'Loading consistent backups', emptyTitle: 'No consistent backup yet', emptyDescription: 'Create a backup set to inspect verification for every world.',
         columns: { name: 'Backup set', status: 'Status', mode: 'Consistency', parts: 'Shard verification', size: 'Compressed size', running: 'Previously running', createdAt: 'Created at' }, partCount: '{verified} / {total} verified',
@@ -325,7 +331,7 @@ export const distributedMessages = {
         recoveryRequiredTitle: '{count} backup operations need recovery', recoveryRequiredDescription: 'Cleanup, rollback, or prior runtime restoration remains incomplete for a backup creation or save restore. The system retries in the background, and you can retry immediately.', retryRecovery: 'Retry recovery now',
         operationSummary: 'Latest {kind} operation: {status}', operationUpdatedAt: 'Operation status updated at {time}', operationPhase: 'Operation phase', protectionSet: 'Pre-restore protection set',
         createDialog: { title: 'Create consistent backup', description: 'The controller coordinates applied targets and never touches similarly named local paths for remote Shards.', mode: 'Backup mode', modeDescriptions: { cold: 'Stop every Shard before packaging for maximum compatibility.', hot: 'Keep every Shard running and package only after the same real save callback completes.' }, interruptionTitle: 'The room will stop briefly', interruptionDescription: 'The operation acquires the room lease, stops all worlds, creates and verifies every part, then restores previously running worlds.', requirementTitles: { cold: 'The room will stop briefly', hot: 'Every Shard Runtime must be ready' }, requirementDescriptions: { cold: 'The operation acquires the room lease, stops Secondary Shards before Master, verifies every part, then starts Master before Secondary to restore prior runtime state.', hot: 'The operation continues only when every running Shard reports the same snapshot and barrier with save_current_callback proof. Missing proof fails the operation instead of degrading to an ordinary online archive.' }, name: 'Backup name', namePlaceholder: 'Leave empty to use the current time', nameDescription: 'Maximum 128 characters.', confirm: { cold: 'Stop and create', hot: 'Create online' } },
-        detailsDialog: { title: 'Backup set details', description: 'Manifest, per-Shard verification, and auditable hot-backup barrier proof.', manifest: 'Manifest version', files: 'Files', topologyRevision: 'Topology revision', barrierId: 'Barrier ID', snapshot: 'Coordinated snapshot', snapshotTransition: 'Snapshot {before} → {after}' },
+        detailsDialog: { title: 'Backup set details', description: 'Manifest, per-Shard verification, and auditable hot-backup barrier proof.', manifest: 'Manifest version', files: 'Files', contentKind: 'Backup content', topologyRevision: 'Topology revision', barrierId: 'Barrier ID', snapshot: 'Coordinated snapshot', snapshotTransition: 'Snapshot {before} → {after}' },
         restoreDialog: { title: 'Restore consistent backup', description: 'A protection set is created before all worlds are atomically published and their previous runtime state is restored.', overwriteTitle: 'This overwrites the current room save', overwriteDescription: 'Topology, integrity, or target failures stop the restore and enter an auditable recovery path.', confirmation: 'Room-name confirmation', confirmationDescription: 'Enter "{room}" to confirm restore.', confirm: 'Protect and restore' },
         feedback: { created: 'Consistent backup created and verified', createdRefreshFailed: 'The consistent backup completed, but the latest backup list could not be loaded. The previous data remains visible.', createFailed: 'Failed to create consistent backup: {error}', detailsFailed: 'Failed to load backup-set details: {error}', restored: 'Consistent backup restored', restoreFailed: 'Failed to restore consistent backup: {error}', recoveryPending: 'Save data was published, but recovery cleanup is still pending', operationStateUnknown: 'The job finished, but its durable operation state could not be confirmed. Refresh and verify before continuing.', recovered: 'Recovery cleanup completed', recoverFailed: 'Recovery cleanup is still incomplete: {error}' }
       }

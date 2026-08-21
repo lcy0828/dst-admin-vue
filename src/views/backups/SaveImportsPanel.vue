@@ -473,6 +473,7 @@ import {
   TriangleAlert,
   Upload
 } from '@lucide/vue'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
@@ -591,10 +592,17 @@ function formatBytes(value) {
 }
 
 function formatDate(value) {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  return date.toLocaleString(locale.value, { hour12: false })
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    fallback: value ? String(value) : '--',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
 }
 
 function jobFor(importId) {

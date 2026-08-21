@@ -255,3 +255,19 @@ test('backup UI waits for coordinated create and restore jobs', async () => {
   assert.match(panel, /operationKindLabel/)
   assert.match(panel, /operationStateUnknown/)
 })
+
+test('backup UI blocks configuration-only archives and exposes save evidence', async () => {
+  const [panel, declarations] = await Promise.all([
+    source('src/views/backups/DistributedBackupPanel.vue'),
+    source('src/api/distributedManagement.d.ts')
+  ])
+
+  assert.match(panel, /backupSet\.status !== 'verified' \|\| !backupSet\.restorable \|\| operationRunning/)
+  assert.match(panel, /value\?\.contentKind === 'configuration-only'/)
+  assert.match(panel, /part\.sessionId/)
+  assert.match(panel, /part\.latestSnapshot/)
+  assert.match(panel, /part\.hasShardIndex/)
+  assert.match(declarations, /contentKind: 'game-save' \| 'configuration-only' \| 'unknown'/)
+  assert.match(declarations, /restorable: boolean/)
+  assert.match(declarations, /hasShardIndex: boolean/)
+})

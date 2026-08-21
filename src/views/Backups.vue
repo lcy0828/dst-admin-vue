@@ -80,6 +80,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import SaveImportsPanel from '@/views/backups/SaveImportsPanel.vue'
 import DistributedBackupPanel from '@/views/backups/DistributedBackupPanel.vue'
 import { confirmAction } from '@/lib/feedback'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { BACKEND_CAPABILITIES, buildBackupCatalog, roomNamesFromResponse } from '@/lib/legacySupport.mjs'
 import { toast } from 'vue-sonner'
 
@@ -366,12 +367,19 @@ export default {
         });
     },
     formatDate(value) {
-      if (!value) return '--'
-      const date = new Date(value)
-      if (Number.isNaN(date.getTime())) return String(value)
       const localeState = this.$i18n?.locale
       const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN')
-      return date.toLocaleString(locale, { hour12: false })
+      return formatSystemDateTime(value, {
+        locale,
+        fallback: value ? String(value) : '--',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      })
     }
   },
   mounted() {
