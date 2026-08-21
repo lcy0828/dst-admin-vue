@@ -5,17 +5,23 @@ import test from 'node:test'
 const root = new URL('../', import.meta.url)
 const source = path => readFile(new URL(path, root), 'utf8')
 
-test('hot-consistent backups send an explicit mode and display barrier proof', async () => {
-  const [api, panel, declarations] = await Promise.all([
+test('hot-consistent backups are the safe default and display barrier proof', async () => {
+  const [api, panel, declarations, messages] = await Promise.all([
     source('src/api/v2.js'),
     source('src/views/backups/DistributedBackupPanel.vue'),
-    source('src/api/distributedManagement.d.ts')
+    source('src/api/distributedManagement.d.ts'),
+    source('src/i18n/distributedMessages.js')
   ])
 
-  assert.match(api, /create:\s*\(roomId, name = '', mode = 'cold-consistent'\)/)
+  assert.match(api, /create:\s*\(roomId, name = '', mode = 'hot-consistent'\)/)
   assert.match(api, /\{ \.\.\.\(name \? \{ name \} : \{\}\), mode \}/)
-  assert.match(panel, /<ToggleGroup[\s\S]*value="cold-consistent"[\s\S]*value="hot-consistent"/)
+  assert.match(panel, /<ToggleGroup[\s\S]*value="hot-consistent"[\s\S]*value="cold-consistent"/)
+  assert.match(panel, /const backupMode = ref\('hot-consistent'\)/)
+  assert.match(panel, /function openCreateDialog\(\)[\s\S]*backupMode\.value = 'hot-consistent'/)
   assert.match(panel, /backupSetsV2API\.create\(selectedRoomId\.value, backupName\.value\.trim\(\), backupMode\.value\)/)
+  assert.match(panel, /BACKUP_HOT_UNAVAILABLE/)
+  assert.match(messages, /不停服备份（默认）/)
+  assert.match(messages, /房间没有停服，请改选“停止后备份”后重试/)
   assert.match(panel, /barrierId/)
   assert.match(panel, /barrierSessionId/)
   assert.match(panel, /barrierInstanceId/)

@@ -633,7 +633,7 @@ export const backupSetsV2API = {
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
-  create: (roomId, name = '', mode = 'cold-consistent') => client.post(
+  create: (roomId, name = '', mode = 'hot-consistent') => client.post(
     `/rooms/${encode(roomId)}/backup-sets`,
     { ...(name ? { name } : {}), mode },
     { runtimeTarget: false }

@@ -158,8 +158,8 @@ export const distributedMessages = {
         notRestorable: '该记录仅包含配置或缺少 Session 存档证据，不能恢复世界。',
         contentKinds: { gameSave: '世界存档', configurationOnly: '仅配置', unknown: '未确认内容' },
         saveEvidence: { session: 'Session：{value}', latestSnapshot: '最新快照：{value}', shardIndexPresent: 'shardindex 已校验', shardIndexMissing: '缺少 shardindex' },
-        modesTitle: '选择是否停服',
-        modesDescription: '停止后备份兼容性最高；不停服备份要求所有运行中的世界都支持同步保存。',
+        modesTitle: '默认不停服备份',
+        modesDescription: '默认保持玩家在线；只有运行环境不支持同步保存时，才需要手动改为停止后备份。',
         modes: { cold: '停止后备份', hot: '不停服备份' },
         coldTitle: '当前使用 Cold-consistent 模式',
         coldDescription: '创建备份时按 Secondary → Master 停止全部分片，完成校验后按 Master → Secondary 恢复原运行状态。固定等待不会被当成热备份证据。',
@@ -187,22 +187,24 @@ export const distributedMessages = {
           title: '创建房间备份',
           description: '系统会自动备份房间内的全部世界，无需选择世界所在机器。',
           mode: '备份方式',
+          modeOptions: { cold: '停止后备份', hot: '不停服备份（默认）' },
           modeDescriptions: {
             cold: '暂时停止全部世界后备份，兼容性最高。',
-            hot: '保持房间运行，并在所有世界完成同一次保存后备份。'
+            hot: '默认方式。保持房间运行，并在所有世界完成同一次保存后备份。'
           },
           interruptionTitle: '房间会短暂停服',
           interruptionDescription: '操作将获取房间租约，停止所有世界，逐节点生成并校验备份，最后恢复原先运行中的世界。',
-          requirementTitles: { cold: '房间会短暂停服', hot: '需要所有世界支持不停服备份' },
+          requirementTitles: { cold: '房间会短暂停服', hot: '默认保持房间运行' },
           requirementDescriptions: {
             cold: '系统会依次停止全部世界，完成备份和校验后自动恢复原来的运行状态。',
-            hot: '系统会等待所有运行中的世界完成同一次保存；任一世界无法确认时都会停止操作，不会生成不完整备份。'
+            hot: '系统会等待所有运行中的世界完成同一次保存；任一世界无法确认时都会终止备份，不会停服、不会生成不完整备份。此时可手动改选停止后备份。'
           },
           name: '备份名称',
           namePlaceholder: '留空则使用当前时间',
           nameDescription: '最多 128 个字符。',
           confirm: { cold: '停服并创建', hot: '在线创建' }
         },
+        errors: { hotUnavailable: '当前房间无法确认所有世界已完成同一次保存。房间没有停服，请改选“停止后备份”后重试。' },
         detailsDialog: { title: '备份集详情', description: 'Manifest、分片校验摘要与可验证的热备份屏障证据。', manifest: 'Manifest 版本', files: '文件数', contentKind: '备份内容', topologyRevision: '拓扑版本', barrierId: '屏障 ID', snapshot: '统一快照序号', snapshotTransition: '快照 {before} → {after}' },
         restoreDialog: {
           title: '恢复一致性备份',
@@ -320,7 +322,7 @@ export const distributedMessages = {
         tab: 'Room backups', title: 'Room backups', description: 'Save every world in a room as one complete backup.', room: 'Room', selectRoom: 'Select a managed room', create: 'Create backup', restore: 'Restore', details: 'Details',
         notRestorableTitle: 'This is not a restorable world save', notRestorable: 'This record contains configuration only or lacks Session save evidence and cannot restore a world.', contentKinds: { gameSave: 'World save', configurationOnly: 'Configuration only', unknown: 'Unconfirmed content' },
         saveEvidence: { session: 'Session: {value}', latestSnapshot: 'Latest snapshot: {value}', shardIndexPresent: 'shardindex verified', shardIndexMissing: 'shardindex missing' },
-        modesTitle: 'Choose whether to stop the room', modesDescription: 'Stopped backups have the widest compatibility. Online backups require coordinated saving in every running world.', modes: { cold: 'Stop, then back up', hot: 'Back up while online' },
+        modesTitle: 'Online backup by default', modesDescription: 'Players stay online by default. Choose a stopped backup manually only when the runtime cannot coordinate online saves.', modes: { cold: 'Stop, then back up', hot: 'Back up online' },
         coldTitle: 'Stopped backup mode is active', coldDescription: 'Backups stop Secondary Shards before Master, verify all parts, then restore the previous state by starting Master before Secondary. A fixed delay is never treated as online-backup evidence.', loadFailed: 'Failed to load backups', operationsLoadFailed: 'Failed to load backup operations', loading: 'Loading backups', emptyTitle: 'No backups yet', emptyDescription: 'Create your first backup to restore every world in the room together.',
         columns: { name: 'Backup name', status: 'Status', mode: 'Backup method', parts: 'World verification', size: 'Compressed size', running: 'Previously running', createdAt: 'Created at' }, partCount: '{verified} / {total} verified',
         statuses: { creating: 'Creating', verified: 'Verified', partial: 'Partial', failed: 'Failed', corrupt: 'Corrupt', unknown: 'Unknown' }, partStatuses: { pending: 'Pending', staging: 'Staging', verified: 'Verified', failed: 'Failed', unknown: 'Unknown' },
@@ -330,7 +332,8 @@ export const distributedMessages = {
         partColumns: { world: 'World', target: 'Target', status: 'Status', barrier: 'Save-barrier proof' },
         recoveryRequiredTitle: '{count} backup operations need recovery', recoveryRequiredDescription: 'Cleanup, rollback, or prior runtime restoration remains incomplete for a backup creation or save restore. The system retries in the background, and you can retry immediately.', retryRecovery: 'Retry recovery now',
         operationSummary: 'Latest {kind} operation: {status}', operationUpdatedAt: 'Operation status updated at {time}', operationPhase: 'Operation phase', protectionSet: 'Pre-restore protection set',
-        createDialog: { title: 'Create room backup', description: 'The system includes every world automatically, regardless of where it runs.', mode: 'Backup method', modeDescriptions: { cold: 'Temporarily stop every world for maximum compatibility.', hot: 'Keep the room running and back up after every world completes the same save.' }, interruptionTitle: 'The room will stop briefly', interruptionDescription: 'The operation stops all worlds, creates and verifies the backup, then restores the previous running state.', requirementTitles: { cold: 'The room will stop briefly', hot: 'Every world must support online backup' }, requirementDescriptions: { cold: 'The system stops every world in order, verifies the backup, and automatically restores the previous running state.', hot: 'The system waits for every running world to complete the same save. If any world cannot be confirmed, the operation stops without creating an incomplete backup.' }, name: 'Backup name', namePlaceholder: 'Leave empty to use the current time', nameDescription: 'Maximum 128 characters.', confirm: { cold: 'Stop and create', hot: 'Create online' } },
+        createDialog: { title: 'Create room backup', description: 'The system includes every world automatically, regardless of where it runs.', mode: 'Backup method', modeOptions: { cold: 'Stop, then back up', hot: 'Online backup (default)' }, modeDescriptions: { cold: 'Temporarily stop every world for maximum compatibility.', hot: 'Default method. Keep the room running and back up after every world completes the same save.' }, interruptionTitle: 'The room will stop briefly', interruptionDescription: 'The operation stops all worlds, creates and verifies the backup, then restores the previous running state.', requirementTitles: { cold: 'The room will stop briefly', hot: 'Keep the room running by default' }, requirementDescriptions: { cold: 'The system stops every world in order, verifies the backup, and automatically restores the previous running state.', hot: 'The system waits for every running world to complete the same save. If any world cannot be confirmed, the backup ends without stopping the room or creating an incomplete backup. You can then choose a stopped backup manually.' }, name: 'Backup name', namePlaceholder: 'Leave empty to use the current time', nameDescription: 'Maximum 128 characters.', confirm: { cold: 'Stop and create', hot: 'Create online' } },
+        errors: { hotUnavailable: 'The system could not confirm that every world completed the same save. The room stayed online; choose “Stop, then back up” and retry.' },
         detailsDialog: { title: 'Backup set details', description: 'Manifest, per-Shard verification, and auditable hot-backup barrier proof.', manifest: 'Manifest version', files: 'Files', contentKind: 'Backup content', topologyRevision: 'Topology revision', barrierId: 'Barrier ID', snapshot: 'Coordinated snapshot', snapshotTransition: 'Snapshot {before} → {after}' },
         restoreDialog: { title: 'Restore consistent backup', description: 'A protection set is created before all worlds are atomically published and their previous runtime state is restored.', overwriteTitle: 'This overwrites the current room save', overwriteDescription: 'Topology, integrity, or target failures stop the restore and enter an auditable recovery path.', confirmation: 'Room-name confirmation', confirmationDescription: 'Enter "{room}" to confirm restore.', confirm: 'Protect and restore' },
         feedback: { created: 'Consistent backup created and verified', createdRefreshFailed: 'The consistent backup completed, but the latest backup list could not be loaded. The previous data remains visible.', createFailed: 'Failed to create consistent backup: {error}', detailsFailed: 'Failed to load backup-set details: {error}', restored: 'Consistent backup restored', restoreFailed: 'Failed to restore consistent backup: {error}', recoveryPending: 'Save data was published, but recovery cleanup is still pending', operationStateUnknown: 'The job finished, but its durable operation state could not be confirmed. Refresh and verify before continuing.', recovered: 'Recovery cleanup completed', recoverFailed: 'Recovery cleanup is still incomplete: {error}' }

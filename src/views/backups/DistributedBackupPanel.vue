@@ -151,14 +151,14 @@
         <FieldGroup>
           <Field>
             <FieldLabel>{{ t('distributed.backups.createDialog.mode') }}</FieldLabel>
-            <ToggleGroup type="single" :model-value="backupMode" variant="outline" class="grid grid-cols-2" @update:model-value="setBackupMode">
-              <ToggleGroupItem value="cold-consistent" class="w-full">
-                <Snowflake data-icon="inline-start" />
-                {{ t('distributed.backups.modes.cold') }}
-              </ToggleGroupItem>
+            <ToggleGroup type="single" :model-value="backupMode" variant="outline" class="grid w-full grid-cols-1 sm:grid-cols-2" @update:model-value="setBackupMode">
               <ToggleGroupItem value="hot-consistent" class="w-full">
                 <Flame data-icon="inline-start" />
-                {{ t('distributed.backups.modes.hot') }}
+                {{ t('distributed.backups.createDialog.modeOptions.hot') }}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="cold-consistent" class="w-full">
+                <Snowflake data-icon="inline-start" />
+                {{ t('distributed.backups.createDialog.modeOptions.cold') }}
               </ToggleGroupItem>
             </ToggleGroup>
             <FieldDescription>{{ t(`distributed.backups.createDialog.modeDescriptions.${backupModeKey}`) }}</FieldDescription>
@@ -326,7 +326,7 @@ const createDialogOpen = ref(false)
 const detailsDialogOpen = ref(false)
 const restoreDialogOpen = ref(false)
 const backupName = ref('')
-const backupMode = ref('cold-consistent')
+const backupMode = ref('hot-consistent')
 const restoreConfirmation = ref('')
 const recoveringOperationId = ref('')
 let requestSequence = 0
@@ -426,7 +426,7 @@ async function loadSets() {
 
 function openCreateDialog() {
   backupName.value = ''
-  backupMode.value = 'cold-consistent'
+  backupMode.value = 'hot-consistent'
   createDialogOpen.value = true
 }
 
@@ -445,10 +445,18 @@ async function createSet() {
     if (refreshed?.setsLoaded) toast.success(t('distributed.backups.feedback.created'))
     else toast.warning(t('distributed.backups.feedback.createdRefreshFailed'))
   } catch (cause) {
-    toast.error(t('distributed.backups.feedback.createFailed', { error: cause.message || t('common.errors.unknown') }))
+    toast.error(t('distributed.backups.feedback.createFailed', { error: createBackupError(cause) }))
   } finally {
     operationRunning.value = false
   }
+}
+
+function createBackupError(cause) {
+  const code = cause?.context?.targetErrorCode
+  if (code === 'BACKUP_HOT_UNAVAILABLE' || code === 'BACKUP_SNAPSHOT_BARRIER_FAILED') {
+    return t('distributed.backups.errors.hotUnavailable')
+  }
+  return cause?.message || t('common.errors.unknown')
 }
 
 async function openDetails(backupSet) {
