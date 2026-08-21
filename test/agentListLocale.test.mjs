@@ -43,7 +43,7 @@ test('Agent errors and time values recompute from stable state in the active loc
   assert.match(source, /errors\.displayName = 'agents\.list\.validation\.displayName'/)
   assert.match(source, /this\.\$t\('agents\.list\.duration\.daysHours'/)
   assert.match(source, /const localeState = this\.\$i18n\?\.locale/)
-  assert.match(source, /date\.toLocaleString\(locale\)/)
+  assert.match(source, /formatSystemDateTime\(date, \{/)
 })
 
 test('Agent topology uses the typed inventory job and one-core-per-Shard capacity guidance', async () => {

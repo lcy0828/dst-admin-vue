@@ -17,6 +17,8 @@
       </UiButton>
     </header>
 
+    <FleetProfilePanel />
+
     <Alert>
       <Cpu />
       <AlertTitle>{{ $t('agents.list.capacity.policyTitle') }}</AlertTitle>
@@ -347,6 +349,7 @@ import { agentApi } from '@/api/index';
 import { bindAgentRuntimeInstallation } from '@/api/agentApiSupport.mjs';
 import { agentsV2API, runtimeTargetsV2API } from '@/api/v2';
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters';
+import FleetProfilePanel from '@/components/agents/FleetProfilePanel.vue';
 import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -365,6 +368,7 @@ import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRo
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { confirmAction } from '@/lib/feedback';
+import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 import { announceRuntimeTargetsUpdated } from '@/utils/runtimeTarget';
 
 const INVENTORY_CAPABILITY = 'runtime.inventory.read';
@@ -394,8 +398,8 @@ export default {
     Accordion, AccordionContent, AccordionItem, AccordionTrigger, Alert, AlertAction, AlertDescription,
     AlertTitle, Apple, Badge, ChevronDown, ChevronRight, CircleAlert, Clock3, Cpu, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription,
-    EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldDescription, FieldError, FieldGroup, FieldLabel, Layers3,
-    KubernetesProviderPanel, Monitor, Network, RefreshCw, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
+    EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FleetProfilePanel,
+    Layers3, KubernetesProviderPanel, Monitor, Network, RefreshCw, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
     SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, TableCell, TableHead, TableHeader, TableRow,
     Terminal, ToggleGroup, ToggleGroupItem, Tooltip, TooltipContent, TooltipTrigger, Trash2, TriangleAlert, UiButton,
     UiDialog, UiInput, UiProgress, UiSelect
@@ -855,7 +859,10 @@ export default {
       const date = typeof numeric === 'number' ? new Date(numeric < 1000000000000 ? numeric * 1000 : numeric) : new Date(numeric);
       const localeState = this.$i18n?.locale;
       const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN');
-      return Number.isNaN(date.getTime()) ? this.$t('agents.list.values.notAvailable') : date.toLocaleString(locale);
+      return formatSystemDateTime(date, {
+        locale,
+        fallback: this.$t('agents.list.values.notAvailable')
+      });
     },
     failureState(key, error) {
       return { key, detail: String(error?.message || '').trim() };

@@ -180,7 +180,7 @@ export default {
       const configured = String(import.meta.env.VITE_AGENT_SERVER_URL || '').trim();
       if (configured) return configured;
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${protocol}//${window.location.hostname}:8081/agent`;
+      return `${protocol}//${window.location.host}/agent`;
     }
   },
   methods: {

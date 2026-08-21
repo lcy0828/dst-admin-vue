@@ -1,9 +1,80 @@
 export const agentMessages = {
   'zh-CN': {
     agents: {
+      profile: {
+        title: '部署角色',
+        description: '当前实例既能管理本机，也能按需接入多台裸机或 All-in-One 节点。',
+        loading: '正在读取部署配置',
+        roleLabel: '管理角色',
+        roleDescription: '部署封装不变，只调整本机执行器与集中管理连接。',
+        packaging: {
+          native: '裸机部署',
+          all_in_one: 'All-in-One',
+          control_plane: '独立控制端'
+        },
+        roles: {
+          standalone: {
+            label: '仅管理本机',
+            description: '直接控制本机 DST，不开放节点接入。'
+          },
+          controller_worker: {
+            label: '本机 + 集中管理',
+            description: '管理本机，同时接入其他裸机或 All-in-One。'
+          },
+          managed_worker: {
+            label: '加入管理中心',
+            description: '本机 DST 由一个上级管理中心统一控制。'
+          },
+          controller_only: {
+            label: '仅集中管理',
+            description: '不控制本机 DST，只管理已接入节点。'
+          }
+        },
+        connection: {
+          connected: '已连接上级',
+          disconnected: '上级未连接'
+        },
+        controllerUrl: {
+          label: '上级管理中心地址',
+          description: '使用 ws:// 或 wss:// 地址，并指向管理中心的 /agent。'
+        },
+        memberKey: {
+          label: '节点连接密钥',
+          description: '填写上级管理中心“安全配置”中生成的通信密钥；已保存的密钥不会回显。',
+          placeholder: '粘贴节点连接密钥',
+          configuredPlaceholder: '已配置，留空保持不变'
+        },
+        environmentManaged: {
+          title: '角色由环境变量管理',
+          description: '当前部署锁定了一个或多个角色开关，请修改部署环境后重启。'
+        },
+        restart: {
+          title: '配置等待重启生效',
+          description: '页面展示的运行角色仍是当前进程状态；重启管理服务后才会切换。'
+        },
+        unsupported: {
+          title: '后端尚不支持统一部署角色',
+          description: '请先升级后端，再配置集中管理。'
+        },
+        validation: {
+          controllerUrlRequired: '请输入上级管理中心地址',
+          memberKeyRequired: '首次加入管理中心必须填写节点连接密钥'
+        },
+        actions: {
+          save: '保存角色'
+        },
+        saveHint: '角色变化需要重启当前管理服务，不会自动重启 DST 世界。',
+        feedback: {
+          loadFailed: '部署配置加载失败',
+          invalid: '部署配置校验失败',
+          unchanged: '部署角色没有变化',
+          saved: '部署角色已保存，请重启管理服务使其生效',
+          saveFailed: '保存部署角色失败'
+        }
+      },
       list: {
-        title: 'Agent 管理中心',
-        subtitle: '管理远程节点、运行时配置与资源状态。',
+        title: '节点与集中管理',
+        subtitle: '查看已接入节点、运行时配置与资源状态。',
         loadingAria: '正在读取 Agent 状态',
         metrics: {
           online: '在线 Agent',
@@ -410,9 +481,80 @@ export const agentMessages = {
   },
   'en-US': {
     agents: {
+      profile: {
+        title: 'Deployment role',
+        description: 'This instance can manage its local DST runtime and optionally coordinate native or All-in-One nodes.',
+        loading: 'Loading deployment configuration',
+        roleLabel: 'Management role',
+        roleDescription: 'The packaging stays unchanged; only the local executor and centralized connections are adjusted.',
+        packaging: {
+          native: 'Native',
+          all_in_one: 'All-in-One',
+          control_plane: 'Control plane'
+        },
+        roles: {
+          standalone: {
+            label: 'Local only',
+            description: 'Control the local DST runtime without accepting nodes.'
+          },
+          controller_worker: {
+            label: 'Local + centralized',
+            description: 'Control the local runtime and additional native or All-in-One nodes.'
+          },
+          managed_worker: {
+            label: 'Join a controller',
+            description: 'Let one upstream controller manage this local DST runtime.'
+          },
+          controller_only: {
+            label: 'Centralized only',
+            description: 'Manage connected nodes without controlling a local DST runtime.'
+          }
+        },
+        connection: {
+          connected: 'Upstream connected',
+          disconnected: 'Upstream disconnected'
+        },
+        controllerUrl: {
+          label: 'Upstream controller URL',
+          description: 'Use a ws:// or wss:// URL that points to the controller /agent endpoint.'
+        },
+        memberKey: {
+          label: 'Node connection key',
+          description: 'Use the communication key generated under the upstream controller Security page. Stored keys are never revealed.',
+          placeholder: 'Paste the node connection key',
+          configuredPlaceholder: 'Configured; leave blank to keep it'
+        },
+        environmentManaged: {
+          title: 'Role managed by environment variables',
+          description: 'One or more role switches are locked by this deployment. Update its environment and restart instead.'
+        },
+        restart: {
+          title: 'Configuration is waiting for restart',
+          description: 'The displayed runtime role is still the current process state and changes after the management service restarts.'
+        },
+        unsupported: {
+          title: 'The backend does not support unified deployment roles',
+          description: 'Upgrade the backend before configuring centralized management.'
+        },
+        validation: {
+          controllerUrlRequired: 'Enter the upstream controller URL',
+          memberKeyRequired: 'A node connection key is required when joining for the first time'
+        },
+        actions: {
+          save: 'Save role'
+        },
+        saveHint: 'Role changes require a management service restart and never restart DST worlds automatically.',
+        feedback: {
+          loadFailed: 'Failed to load deployment configuration',
+          invalid: 'Deployment configuration is invalid',
+          unchanged: 'The deployment role is unchanged',
+          saved: 'Deployment role saved. Restart the management service to apply it',
+          saveFailed: 'Failed to save deployment role'
+        }
+      },
       list: {
-        title: 'Agent management',
-        subtitle: 'Manage remote nodes, runtime configuration, and resource status.',
+        title: 'Nodes and centralized management',
+        subtitle: 'Inspect connected nodes, runtime configuration, and resource status.',
         loadingAria: 'Loading Agent status',
         metrics: {
           online: 'Online Agents',
@@ -866,10 +1008,12 @@ export function formatAgentCommandTime(timestamp, locale, translate) {
   if (!timestamp) return translate('agents.command.values.notAvailable')
   const numeric = typeof timestamp === 'string' && /^\d+$/.test(timestamp) ? Number(timestamp) : timestamp
   const value = typeof numeric === 'number' && numeric < 1000000000000 ? numeric * 1000 : numeric
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? translate('agents.command.values.notAvailable')
-    : date.toLocaleString(locale)
+  return formatSystemDateTime(value, {
+    locale,
+    fallback: translate('agents.command.values.notAvailable'),
+    year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit'
+  })
 }
 
 export function formatAgentCommandDuration(durationMs, locale, translate) {
@@ -881,3 +1025,4 @@ export function formatAgentCommandDuration(durationMs, locale, translate) {
   const seconds = (duration / 1000).toLocaleString(locale, { maximumFractionDigits: 2 })
   return translate('agents.command.units.seconds', { value: seconds })
 }
+import { formatSystemDateTime } from '../lib/dateTime.mjs'
