@@ -174,7 +174,7 @@ export const distributedMessages = {
         partStatuses: { pending: '等待中', staging: '暂存中', verified: '已校验', failed: '失败', unknown: '未知' },
         operationKinds: { create: '创建备份', restore: '恢复存档', unknown: '备份操作' },
         operationStatuses: { running: '操作进行中', succeeded: '操作完成', rolled_back: '已安全回滚', recovery_required: '需要恢复', failed: '操作失败', unknown: '状态未知' },
-        operationPhases: { planned: '已规划', barrier_preparing: '正在准备分片屏障', barrier_committing: '正在触发统一保存', barrier_waiting: '正在等待保存回执', stopping: '正在停服', staging: '正在暂存备份', protecting: '正在创建保护备份', preparing: '正在准备恢复', prepared: '恢复内容已准备', publishing: '正在发布存档', published: '存档已发布', completing: '正在完成清理', completed: '已完成', failed: '已失败', rolled_back: '已回滚', recovered: '已恢复或回滚', unknown: '未知阶段' },
+        operationPhases: { planned: '已规划', barrier_preparing: '正在准备分片屏障', barrier_committing: '正在触发统一保存', barrier_waiting: '正在等待保存回执', stopping: '正在停服', staging: '正在暂存备份', protecting: '正在创建系统快照', preparing: '正在准备恢复', prepared: '恢复内容已准备', publishing: '正在写入存档', published: '存档已写入', completing: '正在完成清理', completed: '已完成', failed: '已失败', rolled_back: '已回滚', recovered: '已恢复或回滚', unknown: '未知阶段' },
         partColumns: { world: '世界', target: '节点', status: '状态', barrier: '保存屏障证据' },
         recoveryRequiredTitle: '{count} 个备份操作需要恢复',
         recoveryRequiredDescription: '备份创建或存档恢复的清理、回滚、原运行状态恢复尚未完成。系统会后台重试，也可以立即手动重试。',
@@ -182,7 +182,7 @@ export const distributedMessages = {
         operationSummary: '最近{kind}操作：{status}',
         operationUpdatedAt: '操作状态更新于 {time}',
         operationPhase: '操作阶段',
-        protectionSet: '恢复前保护备份',
+        protectionSet: '恢复前系统快照',
         createDialog: {
           title: '创建房间备份',
           description: '系统会自动备份房间内的全部世界，无需选择世界所在机器。',
@@ -205,17 +205,17 @@ export const distributedMessages = {
           confirm: { cold: '停服并创建', hot: '在线创建' }
         },
         errors: { hotUnavailable: '当前房间无法确认所有世界已完成同一次保存。房间没有停服，请改选“停止后备份”后重试。' },
-        detailsDialog: { title: '备份集详情', description: 'Manifest、分片校验摘要与可验证的热备份屏障证据。', manifest: 'Manifest 版本', files: '文件数', contentKind: '备份内容', topologyRevision: '拓扑版本', barrierId: '屏障 ID', snapshot: '统一快照序号', snapshotTransition: '快照 {before} → {after}' },
+        detailsDialog: { title: '备份详情', description: '查看各世界的文件校验结果和不停服备份保存证据。', manifest: '校验清单版本', files: '文件数', contentKind: '备份内容', topologyRevision: '拓扑版本', barrierId: '保存批次 ID', snapshot: '统一快照序号', snapshotTransition: '快照 {before} → {after}' },
         restoreDialog: {
           title: '恢复一致性备份',
-          description: '系统会先创建保护备份，再原子发布所有世界并恢复原运行状态。',
+          description: '系统会先创建保护快照，再安全写入所有世界并恢复原运行状态。',
           overwriteTitle: '这会覆盖当前房间存档',
           overwriteDescription: '拓扑版本、文件完整性或目标节点不满足条件时，恢复会停止并进入可审计的恢复流程。',
           confirmation: '房间名确认',
           confirmationDescription: '输入“{room}”确认恢复。',
-          confirm: '创建保护备份并恢复'
+          confirm: '创建保护快照并恢复'
         },
-        feedback: { created: '一致性备份已创建并校验', createdRefreshFailed: '一致性备份任务已完成，但最新备份列表读取失败，当前继续显示上次数据', createFailed: '创建一致性备份失败：{error}', detailsFailed: '读取备份集详情失败：{error}', restored: '一致性备份恢复完成', restoreFailed: '恢复一致性备份失败：{error}', recoveryPending: '存档已发布，但仍有恢复清理待完成', operationStateUnknown: '任务已结束，但未能确认持久化操作状态，请刷新后复核', recovered: '恢复清理已完成', recoverFailed: '恢复清理仍未完成：{error}' }
+        feedback: { created: '存档备份已创建并校验', createdRefreshFailed: '备份任务已完成，但最新备份列表读取失败，当前继续显示上次数据', createFailed: '创建存档备份失败：{error}', detailsFailed: '读取备份详情失败：{error}', restored: '存档恢复完成', restoreFailed: '恢复存档失败：{error}', recoveryPending: '存档已写入，但仍有恢复清理待完成', operationStateUnknown: '任务已结束，但未能确认持久化操作状态，请刷新后复核', recovered: '恢复清理已完成', recoverFailed: '恢复清理仍未完成：{error}' }
       }
     }
   },
@@ -328,15 +328,15 @@ export const distributedMessages = {
         statuses: { creating: 'Creating', verified: 'Verified', partial: 'Partial', failed: 'Failed', corrupt: 'Corrupt', unknown: 'Unknown' }, partStatuses: { pending: 'Pending', staging: 'Staging', verified: 'Verified', failed: 'Failed', unknown: 'Unknown' },
         operationKinds: { create: 'backup creation', restore: 'save restore', unknown: 'backup' },
         operationStatuses: { running: 'Operation running', succeeded: 'Operation complete', rolled_back: 'Safely rolled back', recovery_required: 'Recovery required', failed: 'Operation failed', unknown: 'Unknown status' },
-        operationPhases: { planned: 'Planned', barrier_preparing: 'Preparing Shard barriers', barrier_committing: 'Triggering coordinated save', barrier_waiting: 'Waiting for save receipts', stopping: 'Stopping Shards', staging: 'Staging backup', protecting: 'Creating protection backup', preparing: 'Preparing restore', prepared: 'Restore prepared', publishing: 'Publishing saves', published: 'Saves published', completing: 'Completing cleanup', completed: 'Completed', failed: 'Failed', rolled_back: 'Rolled back', recovered: 'Recovered or rolled back', unknown: 'Unknown phase' },
+        operationPhases: { planned: 'Planned', barrier_preparing: 'Preparing Shard barriers', barrier_committing: 'Triggering coordinated save', barrier_waiting: 'Waiting for save receipts', stopping: 'Stopping Shards', staging: 'Staging backup', protecting: 'Creating system snapshot', preparing: 'Preparing restore', prepared: 'Restore prepared', publishing: 'Writing saves', published: 'Saves written', completing: 'Completing cleanup', completed: 'Completed', failed: 'Failed', rolled_back: 'Rolled back', recovered: 'Recovered or rolled back', unknown: 'Unknown phase' },
         partColumns: { world: 'World', target: 'Target', status: 'Status', barrier: 'Save-barrier proof' },
         recoveryRequiredTitle: '{count} backup operations need recovery', recoveryRequiredDescription: 'Cleanup, rollback, or prior runtime restoration remains incomplete for a backup creation or save restore. The system retries in the background, and you can retry immediately.', retryRecovery: 'Retry recovery now',
-        operationSummary: 'Latest {kind} operation: {status}', operationUpdatedAt: 'Operation status updated at {time}', operationPhase: 'Operation phase', protectionSet: 'Pre-restore protection set',
+        operationSummary: 'Latest {kind} operation: {status}', operationUpdatedAt: 'Operation status updated at {time}', operationPhase: 'Operation phase', protectionSet: 'Pre-restore system snapshot',
         createDialog: { title: 'Create room backup', description: 'The system includes every world automatically, regardless of where it runs.', mode: 'Backup method', modeOptions: { cold: 'Stop, then back up', hot: 'Online backup (default)' }, modeDescriptions: { cold: 'Temporarily stop every world for maximum compatibility.', hot: 'Default method. Keep the room running and back up after every world completes the same save.' }, interruptionTitle: 'The room will stop briefly', interruptionDescription: 'The operation stops all worlds, creates and verifies the backup, then restores the previous running state.', requirementTitles: { cold: 'The room will stop briefly', hot: 'Keep the room running by default' }, requirementDescriptions: { cold: 'The system stops every world in order, verifies the backup, and automatically restores the previous running state.', hot: 'The system waits for every running world to complete the same save. If any world cannot be confirmed, the backup ends without stopping the room or creating an incomplete backup. You can then choose a stopped backup manually.' }, name: 'Backup name', namePlaceholder: 'Leave empty to use the current time', nameDescription: 'Maximum 128 characters.', confirm: { cold: 'Stop and create', hot: 'Create online' } },
         errors: { hotUnavailable: 'The system could not confirm that every world completed the same save. The room stayed online; choose “Stop, then back up” and retry.' },
-        detailsDialog: { title: 'Backup set details', description: 'Manifest, per-Shard verification, and auditable hot-backup barrier proof.', manifest: 'Manifest version', files: 'Files', contentKind: 'Backup content', topologyRevision: 'Topology revision', barrierId: 'Barrier ID', snapshot: 'Coordinated snapshot', snapshotTransition: 'Snapshot {before} → {after}' },
-        restoreDialog: { title: 'Restore consistent backup', description: 'A protection set is created before all worlds are atomically published and their previous runtime state is restored.', overwriteTitle: 'This overwrites the current room save', overwriteDescription: 'Topology, integrity, or target failures stop the restore and enter an auditable recovery path.', confirmation: 'Room-name confirmation', confirmationDescription: 'Enter "{room}" to confirm restore.', confirm: 'Protect and restore' },
-        feedback: { created: 'Consistent backup created and verified', createdRefreshFailed: 'The consistent backup completed, but the latest backup list could not be loaded. The previous data remains visible.', createFailed: 'Failed to create consistent backup: {error}', detailsFailed: 'Failed to load backup-set details: {error}', restored: 'Consistent backup restored', restoreFailed: 'Failed to restore consistent backup: {error}', recoveryPending: 'Save data was published, but recovery cleanup is still pending', operationStateUnknown: 'The job finished, but its durable operation state could not be confirmed. Refresh and verify before continuing.', recovered: 'Recovery cleanup completed', recoverFailed: 'Recovery cleanup is still incomplete: {error}' }
+        detailsDialog: { title: 'Backup details', description: 'Review file verification for every world and the save evidence for online backups.', manifest: 'Verification format', files: 'Files', contentKind: 'Backup content', topologyRevision: 'Topology revision', barrierId: 'Save batch ID', snapshot: 'Coordinated snapshot', snapshotTransition: 'Snapshot {before} → {after}' },
+        restoreDialog: { title: 'Restore save backup', description: 'A protection snapshot is created before every world save is written safely and its previous runtime state is restored.', overwriteTitle: 'This overwrites the current room save', overwriteDescription: 'Topology, integrity, or target failures stop the restore and enter an auditable recovery path.', confirmation: 'Room-name confirmation', confirmationDescription: 'Enter "{room}" to confirm restore.', confirm: 'Create snapshot and restore' },
+        feedback: { created: 'Save backup created and verified', createdRefreshFailed: 'The backup completed, but the latest backup list could not be loaded. The previous data remains visible.', createFailed: 'Failed to create save backup: {error}', detailsFailed: 'Failed to load backup details: {error}', restored: 'Save restored', restoreFailed: 'Failed to restore save: {error}', recoveryPending: 'Save data was written, but recovery cleanup is still pending', operationStateUnknown: 'The job finished, but its durable operation state could not be confirmed. Refresh and verify before continuing.', recovered: 'Recovery cleanup completed', recoverFailed: 'Recovery cleanup is still incomplete: {error}' }
       }
     }
   }

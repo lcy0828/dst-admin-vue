@@ -2,20 +2,42 @@ export const backupMessages = {
   'zh-CN': {
     backups: {
       title: '备份管理',
-      subtitle: '创建、恢复和导入完整房间存档；本机与远程世界使用同一套流程。',
+      subtitle: '管理房间存档备份、系统自动快照和存档导入；本机与远程世界使用同一套流程。',
       tabs: {
         roomBackups: '房间备份',
-        saveImports: '存档导入'
+        saveImports: '存档导入',
+        saveBackups: '存档备份',
+        systemSnapshots: '系统快照'
       },
       catalog: {
-        title: '房间备份',
-        description: '按房间查看全部备份。新备份会自动包含房间内的所有世界，无需区分运行位置。',
+        categories: {
+          saves: {
+            title: '存档备份',
+            description: '按房间查看手动备份、定时备份和导入存档。每份新备份会自动包含房间内的所有世界。',
+            noticeTitle: '默认不停服备份',
+            noticeDescription: '手动备份默认保持玩家在线，系统会协调所有世界完成同一次保存并逐一校验。',
+            emptyTitle: '还没有存档备份',
+            emptyDescription: '可以立即创建一份手动备份，定时任务生成的备份也会显示在这里。'
+          },
+          system: {
+            title: '系统快照',
+            description: '查看系统在恢复、游戏更新、模组或房间配置变更前自动保留的保护快照。',
+            noticeTitle: '系统按需自动创建',
+            noticeDescription: '系统快照用于操作失败时保护原存档，无需手动创建；需要时可以从这里恢复。',
+            emptyTitle: '还没有系统快照',
+            emptyDescription: '执行需要保护现有存档的操作时，系统会自动在这里生成快照。'
+          }
+        },
         consistencyTitle: '每次备份都包含完整房间',
         consistencyDescription: '新建备份默认不停服，系统会协调房间内的所有世界完成同一次保存并逐一校验；历史版本创建的单文件备份也会保留在同一列表中。',
         partialLoadTitle: '部分备份记录暂时无法加载',
-        columns: { worlds: '备份内容' },
+        columns: { source: '来源', worlds: '备份内容' },
+        sources: {
+          manual: '手动备份', snapshot: '定时备份', protection: '系统自动',
+          upload: '导入存档', imported: '导入存档', import: '导入存档', other: '其他来源'
+        },
         types: { history: '历史备份' },
-        historyRecord: '旧版本创建的单文件备份',
+        historyRecord: '单文件房间存档',
         completeRoom: '完整房间',
         worldCount: '已校验 {verified}/{total} 个世界'
       },
@@ -157,7 +179,7 @@ export const backupMessages = {
         },
         apply: {
           title: '部署方案',
-          description: '替换现有房间时，系统会保留 Token、端口和各世界当前的运行位置，并在发布前创建保护备份。',
+          description: '替换现有房间时，系统会保留 Token、端口和各世界当前的运行位置，并在写入前创建系统快照。',
           roomsLoadFailedTitle: '目标房间状态读取失败',
           roomsLoadFailed: '无法读取目标房间列表，替换操作暂不可用。',
           action: '开始部署',
@@ -168,7 +190,7 @@ export const backupMessages = {
             replace: '替换现有房间',
             replaceDescription: '支持本机、远程或混合房间，自动停服并恢复运行状态。',
             clone: '克隆为新房间',
-            cloneDescription: '在管理中心本机用新目录发布副本。'
+            cloneDescription: '在管理中心本机用新目录创建副本。'
           },
           newLocalOnlyTitle: '新房间只创建在本机',
           newLocalOnlyDescription: '当前新建和克隆不会直接创建到远程节点；如需导入远程或混合房间，请选择“替换现有房间”。',
@@ -341,20 +363,42 @@ export const backupMessages = {
   'en-US': {
     backups: {
       title: 'Backups',
-      subtitle: 'Create, restore, and import complete room saves through one workflow for local and remote worlds.',
+      subtitle: 'Manage room save backups, automatic system snapshots, and save imports through one workflow for local and remote worlds.',
       tabs: {
         roomBackups: 'Room backups',
-        saveImports: 'Save imports'
+        saveImports: 'Save imports',
+        saveBackups: 'Save backups',
+        systemSnapshots: 'System snapshots'
       },
       catalog: {
-        title: 'Room backups',
-        description: 'View every backup by room. New backups include every world automatically, regardless of where it runs.',
+        categories: {
+          saves: {
+            title: 'Save backups',
+            description: 'View manual backups, scheduled backups, and imported saves by room. Every new backup automatically includes all worlds in the room.',
+            noticeTitle: 'Online backup by default',
+            noticeDescription: 'Manual backups keep players online by default while the system coordinates and verifies the same save across every world.',
+            emptyTitle: 'No save backups yet',
+            emptyDescription: 'Create a manual backup now. Backups created by a schedule will also appear here.'
+          },
+          system: {
+            title: 'System snapshots',
+            description: 'View protection snapshots created automatically before restores, game updates, mod changes, or room configuration changes.',
+            noticeTitle: 'Created automatically when needed',
+            noticeDescription: 'System snapshots protect the previous save if an operation fails. They are not created manually and can be restored here when needed.',
+            emptyTitle: 'No system snapshots yet',
+            emptyDescription: 'The system creates a snapshot here before an operation that needs to protect the current save.'
+          }
+        },
         consistencyTitle: 'Every new backup covers the complete room',
         consistencyDescription: 'New backups keep the room online by default. The system coordinates the same save across every world and verifies each one. Single-file backups created by older versions remain available in the same list.',
         partialLoadTitle: 'Some backup records are temporarily unavailable',
-        columns: { worlds: 'Contents' },
+        columns: { source: 'Source', worlds: 'Contents' },
+        sources: {
+          manual: 'Manual backup', snapshot: 'Scheduled backup', protection: 'System automatic',
+          upload: 'Imported save', imported: 'Imported save', import: 'Imported save', other: 'Other source'
+        },
         types: { history: 'Legacy backup' },
-        historyRecord: 'Single-file backup created by an older version',
+        historyRecord: 'Single-file room save',
         completeRoom: 'Complete room',
         worldCount: '{verified}/{total} worlds verified'
       },
@@ -496,7 +540,7 @@ export const backupMessages = {
         },
         apply: {
           title: 'Deployment plan',
-          description: 'Replacing a room preserves its token, ports, and current world locations, and creates a protection backup before publication.',
+          description: 'Replacing a room preserves its token, ports, and current world locations, and creates a system snapshot before writing the save.',
           roomsLoadFailedTitle: 'Could not load target room state',
           roomsLoadFailed: 'The target room list is unavailable, so replacement is temporarily disabled.',
           action: 'Start deployment',
@@ -507,7 +551,7 @@ export const backupMessages = {
             replace: 'Replace room',
             replaceDescription: 'Supports local, remote, or mixed rooms and restores their prior running state.',
             clone: 'Clone as new room',
-            cloneDescription: 'Publish a copy under a new directory on the controller host.'
+            cloneDescription: 'Create a copy under a new directory on the controller host.'
           },
           newLocalOnlyTitle: 'New rooms are created locally',
           newLocalOnlyDescription: 'Create and clone do not place a new room on a remote node yet. Choose Replace room to import into an existing remote or mixed room.',

@@ -2,11 +2,11 @@
   <section class="flex min-w-0 flex-col gap-4" aria-labelledby="backup-catalog-title">
     <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div>
-        <h2 id="backup-catalog-title" class="text-base font-semibold">{{ t('backups.catalog.title') }}</h2>
-        <p class="mt-0.5 text-sm text-muted-foreground">{{ t('backups.catalog.description') }}</p>
+        <h2 id="backup-catalog-title" class="text-base font-semibold">{{ t(categoryMessage('title')) }}</h2>
+        <p class="mt-0.5 text-sm text-muted-foreground">{{ t(categoryMessage('description')) }}</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <UiButton :disabled="!selectedRoomId || loading || operationRunning" @click="openCreateDialog">
+        <UiButton v-if="!isSystemCategory" :disabled="!selectedRoomId || loading || operationRunning" @click="openCreateDialog">
           <DatabaseBackup data-icon="inline-start" />
           {{ t('backups.actions.create') }}
         </UiButton>
@@ -35,9 +35,10 @@
     </FieldGroup>
 
     <Alert>
-      <DatabaseBackup />
-      <AlertTitle>{{ t('backups.catalog.consistencyTitle') }}</AlertTitle>
-      <AlertDescription>{{ t('backups.catalog.consistencyDescription') }}</AlertDescription>
+      <ShieldCheck v-if="isSystemCategory" />
+      <DatabaseBackup v-else />
+      <AlertTitle>{{ t(categoryMessage('noticeTitle')) }}</AlertTitle>
+      <AlertDescription>{{ t(categoryMessage('noticeDescription')) }}</AlertDescription>
     </Alert>
 
     <Alert v-if="error" variant="destructive">
@@ -64,23 +65,24 @@
       <AlertDescription>{{ t('distributed.backups.recoveryRequiredDescription') }}</AlertDescription>
     </Alert>
 
-    <div v-if="loading && backupItems.length === 0" class="flex flex-col gap-2" :aria-label="t('distributed.backups.loading')">
+    <div v-if="loading && visibleBackupItems.length === 0" class="flex flex-col gap-2" :aria-label="t('distributed.backups.loading')">
       <Skeleton v-for="index in 4" :key="index" class="h-12 w-full" />
     </div>
 
-    <Empty v-else-if="!loading && backupItems.length === 0">
+    <Empty v-else-if="!loading && visibleBackupItems.length === 0">
       <EmptyHeader>
-        <EmptyMedia variant="icon"><DatabaseBackup /></EmptyMedia>
-        <EmptyTitle>{{ t('distributed.backups.emptyTitle') }}</EmptyTitle>
-        <EmptyDescription>{{ t('distributed.backups.emptyDescription') }}</EmptyDescription>
+        <EmptyMedia variant="icon"><ShieldCheck v-if="isSystemCategory" /><DatabaseBackup v-else /></EmptyMedia>
+        <EmptyTitle>{{ t(categoryMessage('emptyTitle')) }}</EmptyTitle>
+        <EmptyDescription>{{ t(categoryMessage('emptyDescription')) }}</EmptyDescription>
       </EmptyHeader>
     </Empty>
 
     <div v-else class="overflow-x-auto rounded-lg border">
-      <UiTable class="min-w-[920px]">
+      <UiTable class="min-w-[1040px]">
         <TableHeader>
           <TableRow>
             <TableHead>{{ t('distributed.backups.columns.name') }}</TableHead>
+            <TableHead>{{ t('backups.catalog.columns.source') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.status') }}</TableHead>
             <TableHead>{{ t('backups.catalog.columns.worlds') }}</TableHead>
             <TableHead>{{ t('distributed.backups.columns.size') }}</TableHead>
@@ -89,12 +91,15 @@
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="backupSet in backupItems" :key="`${backupSet.source}-${backupSet.id}`">
+          <TableRow v-for="backupSet in visibleBackupItems" :key="`${backupSet.source}-${backupSet.id}`">
             <TableCell>
               <div class="flex min-w-56 flex-col gap-1">
                 <span class="font-medium">{{ backupSet.name }}</span>
                 <span class="text-xs text-muted-foreground">{{ backupSet.source === 'legacy' ? t('backups.catalog.historyRecord') : t('backups.catalog.completeRoom') }}</span>
               </div>
+            </TableCell>
+            <TableCell>
+              <Badge variant="outline">{{ backupSourceLabel(backupSet.kind) }}</Badge>
             </TableCell>
             <TableCell>
               <div class="flex min-w-32 flex-col items-start gap-1">
@@ -288,7 +293,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CircleAlert, DatabaseBackup, Download, Eye, Flame, History, RefreshCw, Snowflake, Trash2, TriangleAlert } from '@lucide/vue'
+import { CircleAlert, DatabaseBackup, Download, Eye, Flame, History, RefreshCw, ShieldCheck, Snowflake, Trash2, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { backupsV2API, backupSetsV2API, roomsV2API } from '@/api/v2'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
@@ -308,6 +313,13 @@ import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRo
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 const { locale, t } = useI18n()
+const props = defineProps({
+  category: {
+    type: String,
+    default: 'saves',
+    validator: value => ['saves', 'system'].includes(value)
+  }
+})
 const rooms = ref([])
 const selectedRoomId = ref('')
 const sets = ref([])
@@ -338,6 +350,7 @@ const recoveryOperations = computed(() => operations.value.filter(operation => o
 const backupModeKey = computed(() => backupMode.value === 'hot-consistent' ? 'hot' : 'cold')
 const selectedOperation = computed(() => selectedSet.value ? latestOperation(selectedSet.value.id) : null)
 const selectedRoom = computed(() => rooms.value.find(room => String(room.id) === selectedRoomId.value) || null)
+const isSystemCategory = computed(() => props.category === 'system')
 const backupItems = computed(() => [
   ...sets.value.map(item => ({ ...item, source: 'set' })),
   ...legacyBackups.value.map(item => ({
@@ -347,6 +360,23 @@ const backupItems = computed(() => [
     restorable: item.status === 'verified'
   }))
 ].sort((left, right) => new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime()))
+const visibleBackupItems = computed(() => backupItems.value.filter(item => (
+  isSystemCategory.value ? backupCategory(item.kind) === 'system' : backupCategory(item.kind) === 'saves'
+)))
+
+function backupCategory(kind) {
+  return String(kind || '').trim().toLowerCase() === 'protection' ? 'system' : 'saves'
+}
+
+function backupSourceLabel(kind) {
+  const normalized = String(kind || '').trim().toLowerCase()
+  const known = ['manual', 'snapshot', 'protection', 'upload', 'imported', 'import']
+  return t(`backups.catalog.sources.${known.includes(normalized) ? normalized : 'other'}`)
+}
+
+function categoryMessage(name) {
+  return `backups.catalog.categories.${isSystemCategory.value ? 'system' : 'saves'}.${name}`
+}
 
 async function loadRooms() {
   const sequence = ++roomRequestSequence

@@ -396,7 +396,7 @@ export interface DistributedBackupSet {
   roomId: string
   roomName: string
   name: string
-  kind: 'manual' | 'protection'
+  kind: 'manual' | 'snapshot' | 'protection' | 'import' | string
   mode: 'cold-consistent' | 'hot-consistent'
   manifestVersion: number
   topologyRevision: string

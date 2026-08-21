@@ -28,13 +28,20 @@ test('backup page localizes presentation without changing backup identifiers', (
 
   assert.doesNotMatch(template, /[\u3400-\u9fff]/)
   assert.doesNotMatch(importTemplate, /[\u3400-\u9fff]/)
-  assert.match(template, /DistributedBackupPanel v-if="workspace === 'backups'"/)
+  assert.match(template, /<Tabs v-if="workspace === 'backups'"/)
+  assert.match(template, /<TabsTrigger value="saves"/)
+  assert.match(template, /<TabsTrigger value="system"/)
+  assert.match(template, /<DistributedBackupPanel :category="backupCategory"/)
   assert.match(template, /SaveImportsPanel v-else/)
-  assert.doesNotMatch(template, /TabsTrigger/)
   assert.match(catalogPanel, /backupSetsV2API\.list\(roomId\)/)
   assert.match(catalogPanel, /backupsV2API\.list\(roomId\)/)
   assert.match(catalogPanel, /backupSetsV2API\.create/)
   assert.match(catalogPanel, /source: 'legacy'/)
+  assert.match(catalogPanel, /visibleBackupItems/)
+  assert.match(catalogPanel, /=== 'protection' \? 'system' : 'saves'/)
+  assert.match(catalogPanel, /\['manual', 'snapshot', 'protection', 'upload', 'imported', 'import'\]/)
+  assert.match(catalogPanel, /backupSourceLabel\(backupSet\.kind\)/)
+  assert.match(catalogPanel, /v-if="!isSystemCategory"/)
   assert.match(catalogPanel, /Promise\.allSettled/)
   assert.match(catalogPanel, /backupsV2API\.downloadBlob/)
   assert.match(importPanel, /saveImportStatusKey\(item\.status\)/)
@@ -45,6 +52,20 @@ test('backup page localizes presentation without changing backup identifiers', (
   assert.doesNotMatch(page, /toast\.success\(res\.msg/)
   assert.match(adapters, /create_time: backup\.createdAt \|\| ''/)
   assert.match(globalMessages, /\.\.\.backupMessages\['en-US'\]/)
+})
+
+test('backup catalogs distinguish save triggers from automatic system snapshots', () => {
+  const zh = backupMessages['zh-CN'].backups
+  const en = backupMessages['en-US'].backups
+
+  assert.equal(zh.tabs.saveBackups, '存档备份')
+  assert.equal(zh.tabs.systemSnapshots, '系统快照')
+  assert.equal(zh.catalog.sources.manual, '手动备份')
+  assert.equal(zh.catalog.sources.snapshot, '定时备份')
+  assert.equal(zh.catalog.sources.protection, '系统自动')
+  assert.equal(en.catalog.sources.manual, 'Manual backup')
+  assert.equal(en.catalog.sources.snapshot, 'Scheduled backup')
+  assert.equal(en.catalog.sources.protection, 'System automatic')
 })
 
 test('save import API exposes a control-plane workflow independent of the selected runtime', () => {
