@@ -167,42 +167,42 @@ export const modMessages = {
         refresh: '刷新模组状态失败'
       },
       publication: {
-        title: '房间模组发布',
-        description: '按当前 Placement 将模组文件和每个世界的独立配置发布到对应节点。',
-        loadFailedTitle: '发布状态加载失败',
+        title: '房间模组同步',
+        description: '按当前运行位置，把模组文件和每个世界的独立配置同步到对应节点。',
+        loadFailedTitle: '同步状态加载失败',
         actions: {
-          preview: '预览发布', publish: '确认发布', retryFailed: '重试失败节点',
-          cancel: '取消发布', viewStatus: '查看发布状态', activate: '重启并确认加载'
+          preview: '检查变更', publish: '应用到房间', retryFailed: '重试失败节点',
+          cancel: '取消同步', viewStatus: '查看同步状态', activate: '重启并确认加载'
         },
         fields: {
           topologyRevision: '拓扑版本', target: '目标节点', worlds: '世界', mods: '模组',
           requiredBytes: '所需空间', currentVersion: '当前版本', desiredVersion: '目标版本',
           status: '状态', phase: '阶段', progress: '进度', message: '信息'
         },
-        values: { ready: '可以发布', blocked: '发布受阻', warning: '发布警告', offline: '节点离线', unavailable: '尚不可用' },
+        values: { ready: '可以应用', blocked: '同步受阻', warning: '同步警告', offline: '节点离线', unavailable: '尚不可用' },
         summary: { warnings: '{count} 条警告', blockers: '{count} 个阻塞项' },
         unavailable: {
-          title: '后端尚未提供跨节点模组发布',
+          title: '后端尚未提供跨节点模组同步',
           description: '当前仍保留原有本地模组操作；远程或混合 Placement 不会伪装成本地成功。'
         },
-        latest: { title: '最近一次发布', empty: '当前房间还没有发布记录。先预览计划，再确认发布。' },
+        latest: { title: '最近一次同步', empty: '当前房间还没有同步记录。先检查变更，再应用到房间。' },
         statusDialog: {
-          title: '模组发布状态',
-          description: '发布 {id} 在各目标节点和世界上的实际执行结果。'
+          title: '模组同步状态',
+          description: '同步任务 {id} 在各目标节点和世界上的实际执行结果。'
         },
         activation: {
           field: '生效方式',
-          manual: '仅发布，稍后重启',
-          restart: '发布后协调重启',
+          manual: '保存，稍后重启',
+          restart: '保存并重启生效',
           descriptions: {
-            manual: '先原子发布文件和配置，不中断正在运行的游戏；需要稍后重启分片才会完整生效。',
-            restart: '发布成功后按洞穴优先停止、地面优先启动，并从新日志中确认每个分片已完成加载。'
+            manual: '先安全写入文件和配置，不中断正在运行的游戏；需要稍后重启分片才会完整生效。',
+            restart: '同步成功后按洞穴优先停止、地面优先启动，并从新日志中确认每个分片已完成加载。'
           },
           restartTitle: '这会短暂中断当前房间',
-          restartDescription: '系统只重启发布计划中的运行中分片；原本停服的分片保持停服。任何分片未确认加载都会保留失败状态和恢复入口。',
+          restartDescription: '系统只重启本次变更涉及的运行中分片；原本停服的分片保持停服。任何分片未确认加载都会保留失败状态和恢复入口。',
           badge: '生效：{status}',
           failedTitle: '模组激活失败',
-          requiredTitle: '已发布，仍需重启分片',
+          requiredTitle: '已同步，仍需重启分片',
           requiredDescription: '文件与配置已经提交，但运行中的 DST 仍在使用旧状态。可以现在协调重启并按日志确认加载。',
           statuses: {
             skipped: '等待手动重启', pending: '等待重启', restarting: '正在协调重启',
@@ -216,35 +216,35 @@ export const modMessages = {
         states: {
           queued: '排队中', running: '执行中', succeeded: '已成功', failed: '失败', skipped: '已跳过',
           canceled: '已取消', rolledBack: '已回滚', recoveryRequired: '需要恢复', previewed: '已预览',
-          preparing: '准备中', prepared: '已准备', publishing: '发布中', committed: '已提交',
+          preparing: '准备中', prepared: '已准备', publishing: '同步中', committed: '已提交',
           completing: '收尾中', unknown: '未知状态'
         },
         phases: {
           preflight: '预检', stage: '暂存', download: '下载', verify: '校验', backup: '保护备份',
-          configure: '写入配置', publish: '发布', reconcile: '状态对齐', rollback: '回滚',
+          configure: '写入配置', publish: '同步文件', reconcile: '状态对齐', rollback: '回滚',
           complete: '完成', unknown: '等待阶段信息'
         },
         outcomes: { full: '全部成功', partial: '部分成功', none: '未生效', unknown: '结果待确认' },
         blockers: {
           nodeOffline: '目标节点离线', placementChanged: '世界 Placement 已变化', topologyChanged: '房间拓扑已变化',
           insufficientDisk: '节点磁盘空间不足', missingMod: '缺少模组文件', checksumMismatch: '模组文件校验失败',
-          backupFailure: '保护备份失败', capabilityMissing: '节点缺少发布能力', versionConflict: '模组版本冲突',
-          unknown: '发布预检未通过'
+          backupFailure: '保护快照失败', capabilityMissing: '节点缺少模组同步能力', versionConflict: '模组版本冲突',
+          unknown: '同步检查未通过'
         },
         errors: {
-          resultMissing: '发布任务已完成，但没有找到对应的发布记录，请刷新发布历史后重试',
-          previewBlocked: '发布预检未通过，请查看目标节点的阻断项并处理后重试',
-          publicationRequired: '房间模组必须通过 Placement 发布，不能使用旧的本地写入接口',
-          planChanged: '模组或目标状态已变化，请重新预览发布计划',
-          topologyChanged: '房间拓扑已变化，请刷新页面并重新预览发布计划',
+          resultMissing: '同步任务已完成，但没有找到对应记录，请刷新同步状态后重试',
+          previewBlocked: '同步检查未通过，请查看目标节点的阻断项并处理后重试',
+          publicationRequired: '房间模组必须通过当前运行位置同步，不能使用旧的本地写入接口',
+          planChanged: '模组或目标状态已变化，请重新检查变更',
+          topologyChanged: '房间拓扑已变化，请刷新页面并重新检查变更',
           remoteActionUnavailable: '当前远程节点不支持这项模组读取操作',
-          remoteMutationUnavailable: '当前 Placement 不支持直接写入模组，请使用房间发布',
+          remoteMutationUnavailable: '当前运行位置不支持直接写入模组，请使用房间模组同步',
           unknown: '未知错误'
         },
         feedback: {
-          previewReady: '发布计划已生成，请核对目标节点和世界',
-          previewFailed: '生成发布计划失败：{error}', topologyLoadFailed: '房间拓扑读取失败：{error}', submitted: '模组发布已提交',
-          publishFailed: '提交模组发布失败：{error}', retrySubmitted: '失败节点已重新提交',
+          previewReady: '变更检查已完成，请核对目标节点和世界',
+          previewFailed: '检查模组变更失败：{error}', topologyLoadFailed: '房间拓扑读取失败：{error}', submitted: '模组同步已提交',
+          publishFailed: '提交模组同步失败：{error}', retrySubmitted: '失败节点已重新提交',
           retryFailed: '重试失败节点失败：{error}', activationSubmitted: '分片重启和加载确认任务已提交',
           activationFailed: '模组激活失败：{error}'
         }
@@ -332,7 +332,7 @@ export const modMessages = {
       },
       library: {
         title: '模组内容库',
-        subtitle: 'Workshop 内容由控制器统一下载和管理；添加到房间后，再按世界 Placement 发布到对应节点。',
+        subtitle: 'Workshop 内容由控制器统一下载和管理；添加到房间后，系统会按每个世界的运行位置同步到对应节点。',
         filters: {
           title: '筛选内容库模组',
           description: '按名称、作者、Workshop ID 或内容库状态查找模组。',
@@ -384,12 +384,12 @@ export const modMessages = {
         enabledDescription: '关闭后仍会写入配置，但所选世界暂不加载该模组。',
         dependencies: '同时配置依赖模组',
         dependenciesDescription: '系统会自动下载并应用该模组所需的依赖。',
-        targets: '发布目标',
+        targets: '应用节点',
         targetsDescription: '所选世界按当前生效的 Placement 分组。',
         unknownTarget: 'Placement 尚未应用',
-        planReady: '发布计划已就绪，请核对后确认发布。',
-        planBlocked: '发布计划存在阻塞项，暂时不能提交。',
-        legacyFallback: '后端不支持跨节点发布，已使用原有本地添加方式。',
+        planReady: '变更检查已完成，请核对后应用到房间。',
+        planBlocked: '同步计划存在阻塞项，暂时不能提交。',
+        legacyFallback: '后端不支持跨节点同步，已使用原有本地添加方式。',
         apply: '添加并应用',
         applying: '正在应用',
         adding: '正在添加',
@@ -397,7 +397,7 @@ export const modMessages = {
       },
       search: {
         title: '搜索模组',
-        subtitle: '从创意工坊检索并下载到控制器内容库，再按房间 Placement 发布。',
+        subtitle: '从创意工坊检索并下载到控制器内容库，需要时再添加到房间。',
         form: {
           title: '搜索条件',
           description: '输入创意工坊模组名称或 Workshop ID；下载不修改任何房间配置。',
@@ -444,7 +444,7 @@ export const modMessages = {
           runningTitle: '正在下载模组',
           runningDescription: 'SteamCMD 正在下载并校验 Workshop 文件。',
           succeededTitle: '节点下载完成',
-          succeededDescription: 'Workshop 文件已保存到控制器内容库，尚未发布到任何房间。',
+          succeededDescription: 'Workshop 文件已保存到控制器内容库，尚未添加到任何房间。',
           failedTitle: '下载失败',
           failedDescription: '下载任务没有完成，可以重新尝试。'
         }
@@ -454,7 +454,7 @@ export const modMessages = {
         unnamed: '未命名模组',
         loadingName: '加载中...',
         description: '正在编辑“{world}”世界的独立模组配置。',
-        target: '配置发布目标：{target}',
+        target: '配置应用位置：{target}',
         targetUnknown: '尚未获取该世界的 Placement',
         loading: '加载模组配置中...',
         loadFailedTitle: '模组配置加载失败',
@@ -470,7 +470,7 @@ export const modMessages = {
           resetSuccess: '已载入模组默认值，保存后生效',
           noChanges: '没有需要保存的配置变更',
           saved: '配置已保存',
-          publicationSubmitted: '配置发布已提交',
+          publicationSubmitted: '配置同步已提交',
           unsavedConfirm: '您有未保存的配置更改，确定要关闭吗？',
           closeTitle: '关闭模组配置'
         }
@@ -599,42 +599,42 @@ export const modMessages = {
         refresh: 'Could not refresh the mod status'
       },
       publication: {
-        title: 'Room Mod Publication',
-        description: 'Publish mod files and each world\'s independent configuration to the nodes selected by the active Placement.',
-        loadFailedTitle: 'Failed to Load Publication Status',
+        title: 'Room Mod Sync',
+        description: 'Sync mod files and each world\'s independent configuration to the nodes where those worlds run.',
+        loadFailedTitle: 'Failed to Load Sync Status',
         actions: {
-          preview: 'Preview Publication', publish: 'Confirm Publication', retryFailed: 'Retry Failed Nodes',
-          cancel: 'Cancel Publication', viewStatus: 'View Publication Status', activate: 'Restart and Confirm Load'
+          preview: 'Check Changes', publish: 'Apply to Room', retryFailed: 'Retry Failed Nodes',
+          cancel: 'Cancel Sync', viewStatus: 'View Sync Status', activate: 'Restart and Confirm Load'
         },
         fields: {
           topologyRevision: 'Topology Revision', target: 'Target Node', worlds: 'Worlds', mods: 'Mods',
           requiredBytes: 'Required Space', currentVersion: 'Current Version', desiredVersion: 'Desired Version',
           status: 'Status', phase: 'Phase', progress: 'Progress', message: 'Message'
         },
-        values: { ready: 'Ready to Publish', blocked: 'Publication Blocked', warning: 'Publication Warning', offline: 'Node Offline', unavailable: 'Unavailable' },
+        values: { ready: 'Ready to Apply', blocked: 'Sync Blocked', warning: 'Sync Warning', offline: 'Node Offline', unavailable: 'Unavailable' },
         summary: { warnings: '{count} warnings', blockers: '{count} blockers' },
         unavailable: {
-          title: 'Cross-node mod publication is not available from this backend',
+          title: 'Cross-node mod sync is not available from this backend',
           description: 'Existing local mod actions remain available. Remote or mixed Placements will not be reported as local successes.'
         },
-        latest: { title: 'Latest Publication', empty: 'This room has no publication history. Preview a plan before publishing.' },
+        latest: { title: 'Latest Sync', empty: 'This room has no sync history. Check changes before applying them to the room.' },
         statusDialog: {
-          title: 'Mod Publication Status',
-          description: 'Actual target-node and world results for publication {id}.'
+          title: 'Mod Sync Status',
+          description: 'Actual target-node and world results for sync task {id}.'
         },
         activation: {
           field: 'Activation Mode',
-          manual: 'Publish Only, Restart Later',
-          restart: 'Restart After Publication',
+          manual: 'Save and Restart Later',
+          restart: 'Save and Restart Now',
           descriptions: {
-            manual: 'Publish files and configuration atomically without interrupting the running game. Restart the shards later to fully activate the changes.',
-            restart: 'After publication, stop secondary shards first, start the master first, and confirm every shard from newly written load logs.'
+            manual: 'Write files and configuration safely without interrupting the running game. Restart the shards later to fully activate the changes.',
+            restart: 'After syncing, stop secondary shards first, start the master first, and confirm every shard from newly written load logs.'
           },
           restartTitle: 'This briefly interrupts the current room',
-          restartDescription: 'Only running shards in the publication plan are restarted. Shards that were stopped remain stopped. Any unconfirmed shard retains a failed state and recovery path.',
+          restartDescription: 'Only running shards affected by these changes are restarted. Shards that were stopped remain stopped. Any unconfirmed shard retains a failed state and recovery path.',
           badge: 'Activation: {status}',
           failedTitle: 'Mod Activation Failed',
-          requiredTitle: 'Published, Shard Restart Still Required',
+          requiredTitle: 'Synced, Shard Restart Still Required',
           requiredDescription: 'Files and configuration are committed, but running DST processes still use the previous state. Restart now and confirm loading from fresh logs.',
           statuses: {
             skipped: 'Awaiting Manual Restart', pending: 'Restart Pending', restarting: 'Coordinating Restart',
@@ -648,37 +648,37 @@ export const modMessages = {
         states: {
           queued: 'Queued', running: 'Running', succeeded: 'Succeeded', failed: 'Failed', skipped: 'Skipped',
           canceled: 'Canceled', rolledBack: 'Rolled Back', recoveryRequired: 'Recovery Required', previewed: 'Previewed',
-          preparing: 'Preparing', prepared: 'Prepared', publishing: 'Publishing', committed: 'Committed',
+          preparing: 'Preparing', prepared: 'Prepared', publishing: 'Syncing', committed: 'Committed',
           completing: 'Completing', unknown: 'Unknown Status'
         },
         phases: {
           preflight: 'Preflight', stage: 'Stage', download: 'Download', verify: 'Verify', backup: 'Protection Backup',
-          configure: 'Configure', publish: 'Publish', reconcile: 'Reconcile', rollback: 'Rollback',
+          configure: 'Configure', publish: 'Sync Files', reconcile: 'Reconcile', rollback: 'Rollback',
           complete: 'Complete', unknown: 'Awaiting Phase Data'
         },
         outcomes: { full: 'Full Success', partial: 'Partial Success', none: 'No Changes Applied', unknown: 'Outcome Pending' },
         blockers: {
           nodeOffline: 'Target node is offline', placementChanged: 'World Placement has changed', topologyChanged: 'Room topology has changed',
           insufficientDisk: 'Insufficient disk space on the node', missingMod: 'Mod files are missing', checksumMismatch: 'Mod file checksum mismatch',
-          backupFailure: 'Protection backup failed', capabilityMissing: 'Node publication capability is missing', versionConflict: 'Mod version conflict',
-          unknown: 'Publication preflight did not pass'
+          backupFailure: 'Protection snapshot failed', capabilityMissing: 'Node mod-sync capability is missing', versionConflict: 'Mod version conflict',
+          unknown: 'Sync check did not pass'
         },
         errors: {
-          resultMissing: 'The publication job completed, but its publication record could not be found. Refresh the publication history and try again.',
-          previewBlocked: 'Publication preflight did not pass. Resolve the target blockers and try again.',
-          publicationRequired: 'Room mods must be changed through Placement-aware publication, not the legacy local write API.',
-          planChanged: 'The mod content or target state changed. Preview the publication plan again.',
-          topologyChanged: 'The room topology changed. Refresh the page and preview the publication plan again.',
+          resultMissing: 'The sync job completed, but its record could not be found. Refresh the sync status and try again.',
+          previewBlocked: 'The sync check did not pass. Resolve the target blockers and try again.',
+          publicationRequired: 'Room mods must be synced to their current runtime locations instead of using the legacy local write API.',
+          planChanged: 'The mod content or target state changed. Check the changes again.',
+          topologyChanged: 'The room topology changed. Refresh the page and check the changes again.',
           remoteActionUnavailable: 'This remote node does not support the requested mod read operation',
-          remoteMutationUnavailable: 'The active Placement cannot be modified directly; use room publication',
+          remoteMutationUnavailable: 'The active runtime location cannot be modified directly; use room mod sync',
           unknown: 'Unknown error'
         },
         feedback: {
-          previewReady: 'Publication plan generated. Review the target nodes and worlds.',
-          previewFailed: 'Could not generate the publication plan: {error}', topologyLoadFailed: 'Could not load room topology: {error}', submitted: 'Mod publication submitted',
-          publishFailed: 'Could not submit the mod publication: {error}', retrySubmitted: 'Failed nodes were resubmitted',
+          previewReady: 'Change check completed. Review the target nodes and worlds.',
+          previewFailed: 'Could not check mod changes: {error}', topologyLoadFailed: 'Could not load room topology: {error}', submitted: 'Mod sync submitted',
+          publishFailed: 'Could not submit mod sync: {error}', retrySubmitted: 'Failed nodes were resubmitted',
           retryFailed: 'Could not retry failed nodes: {error}', activationSubmitted: 'Shard restart and load confirmation submitted',
-          activationFailed: 'Could not activate the published mods: {error}'
+          activationFailed: 'Could not activate the synced mods: {error}'
         }
       },
       installed: {
@@ -764,7 +764,7 @@ export const modMessages = {
       },
       library: {
         title: 'Mod Content Library',
-        subtitle: 'The controller downloads and manages Workshop content centrally. Room publication then distributes it by each world\'s Placement.',
+        subtitle: 'The controller downloads and manages Workshop content centrally, then syncs room mods to the node where each world runs.',
         filters: {
           title: 'Filter Content Library',
           description: 'Find mods by name, author, Workshop ID, or content-library state.',
@@ -816,12 +816,12 @@ export const modMessages = {
         enabledDescription: 'When off, settings are written but selected worlds do not load the mod yet.',
         dependencies: 'Configure Dependencies Too',
         dependenciesDescription: 'The system automatically downloads and applies required dependencies.',
-        targets: 'Publication Targets',
+        targets: 'Apply to Nodes',
         targetsDescription: 'Selected worlds grouped by their currently applied Placement.',
         unknownTarget: 'Placement not applied',
-        planReady: 'The publication plan is ready. Review it before confirming publication.',
-        planBlocked: 'The publication plan has blockers and cannot be submitted.',
-        legacyFallback: 'Cross-node publication is unavailable; the existing local add operation was used.',
+        planReady: 'The change check is complete. Review it before applying to the room.',
+        planBlocked: 'The sync plan has blockers and cannot be submitted.',
+        legacyFallback: 'Cross-node sync is unavailable; the existing local add operation was used.',
         apply: 'Add and Apply',
         applying: 'Applying',
         adding: 'Adding',
@@ -829,7 +829,7 @@ export const modMessages = {
       },
       search: {
         title: 'Search Mods',
-        subtitle: 'Find Workshop mods, download them to the controller content library, then publish them by room Placement.',
+        subtitle: 'Find Workshop mods, download them to the controller content library, and add them to a room when needed.',
         form: {
           title: 'Search',
           description: 'Enter a Workshop mod name or ID. Downloading does not change any room configuration.',
@@ -876,7 +876,7 @@ export const modMessages = {
           runningTitle: 'Downloading mod',
           runningDescription: 'SteamCMD is downloading and verifying the Workshop files.',
           succeededTitle: 'Node download complete',
-          succeededDescription: 'Workshop files are stored in the controller content library and have not been published to a room.',
+          succeededDescription: 'Workshop files are stored in the controller content library and have not been added to a room.',
           failedTitle: 'Download failed',
           failedDescription: 'The download did not finish. You can try again.'
         }
@@ -886,7 +886,7 @@ export const modMessages = {
         unnamed: 'Unnamed mod',
         loadingName: 'Loading...',
         description: 'Editing the independent mod configuration for world “{world}”.',
-        target: 'Configuration publication target: {target}',
+        target: 'Configuration location: {target}',
         targetUnknown: 'The world Placement is not available yet',
         loading: 'Loading mod configuration...',
         loadFailedTitle: 'Failed to Load Mod Configuration',
@@ -902,7 +902,7 @@ export const modMessages = {
           resetSuccess: 'Mod defaults loaded; save to apply them',
           noChanges: 'There are no configuration changes to save',
           saved: 'Configuration saved',
-          publicationSubmitted: 'Configuration publication submitted',
+          publicationSubmitted: 'Configuration sync submitted',
           unsavedConfirm: 'You have unsaved configuration changes. Close anyway?',
           closeTitle: 'Close Mod Configuration'
         }

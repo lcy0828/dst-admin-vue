@@ -127,7 +127,7 @@ export const distributedMessages = {
         },
         readOnly: {
           title: '当前仅提供只读观察与预检',
-          description: 'Apply 始终关闭；生命周期、Console、Mod 发布和备份恢复尚未开放。SQLite 控制面仍须单副本运行。'
+          description: 'Apply 始终关闭；生命周期、Console、Mod 同步和备份恢复尚未开放。SQLite 控制面仍须单副本运行。'
         },
         provider: {
           provider: 'Provider', namespace: 'Namespace', image: '固定摘要镜像', profiles: '受信 Profile', freshness: '最大观测时效',
@@ -300,7 +300,7 @@ export const distributedMessages = {
         },
         readOnly: {
           title: 'Observation and preflight only',
-          description: 'Apply remains disabled. Lifecycle, Console, Mod publication, and backup/restore are unavailable. The SQLite control plane remains single-replica.'
+          description: 'Apply remains disabled. Lifecycle, Console, Mod sync, and backup/restore are unavailable. The SQLite control plane remains single-replica.'
         },
         provider: {
           provider: 'Provider', namespace: 'Namespace', image: 'Digest-pinned image', profiles: 'Trusted profiles', freshness: 'Observation age limit',

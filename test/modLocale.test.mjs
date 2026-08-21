@@ -94,11 +94,11 @@ test('mod failures preserve stable backend codes for localized remote errors', (
   assert.equal(failure.requestId, 'request-1')
   assert.equal(
     formatModFailure(translator('en-US'), failure),
-    'The active Placement cannot be modified directly; use room publication: remote mutation unavailable'
+    'The active runtime location cannot be modified directly; use room mod sync: remote mutation unavailable'
   )
 })
 
-test('localized adapter publication errors do not append their English default in Chinese', () => {
+test('localized adapter mod-sync errors do not append their English default in Chinese', () => {
   const failure = createModFailure(
     'mods.errors.addToRoom',
     adapterError('MOD_PUBLICATION_RESULT_MISSING')
@@ -107,8 +107,20 @@ test('localized adapter publication errors do not append their English default i
   assert.equal(failure.detail, '')
   assert.equal(
     formatModFailure(translator('zh-CN'), failure),
-    '发布任务已完成，但没有找到对应的发布记录，请刷新发布历史后重试'
+    '同步任务已完成，但没有找到对应记录，请刷新同步状态后重试'
   )
+})
+
+test('room mod workflow avoids publication terminology in user-facing copy', () => {
+  const zhValues = leafPaths(modMessages['zh-CN'].mods.publication)
+    .map(path => readPath(modMessages['zh-CN'].mods.publication, path))
+  const enValues = leafPaths(modMessages['en-US'].mods.publication)
+    .map(path => readPath(modMessages['en-US'].mods.publication, path))
+
+  assert.doesNotMatch(zhValues.join('\n'), /发布/)
+  assert.doesNotMatch(enValues.join('\n'), /\b(?:publication|publish|published|publishing)\b/i)
+  assert.equal(modMessages['zh-CN'].mods.publication.title, '房间模组同步')
+  assert.equal(modMessages['zh-CN'].mods.publication.actions.publish, '应用到房间')
 })
 
 test('mod pages delegate visible copy to i18n without translating mod-owned data', async () => {
