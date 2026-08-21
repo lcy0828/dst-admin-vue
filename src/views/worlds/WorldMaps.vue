@@ -670,8 +670,10 @@ async function loadMaps(epoch, resumeJob = true) {
     const response = await worldMapsV2API.list(selectedRoomId.value)
     if (destroyed || epoch !== loadEpoch) return
     maps.value = response.items || []
-    renderer.value = response.renderer || {
-      available: Boolean(response.rendererAvailable), path: response.rendererPath || '', protocolVersion: '', version: '', artifacts: [], error: ''
+    if (!selectedWorldId.value) {
+      renderer.value = response.renderer || {
+        available: Boolean(response.rendererAvailable), path: response.rendererPath || '', protocolVersion: '', version: '', artifacts: [], error: ''
+      }
     }
     const available = worldMaps.value.filter(map => map.status === 'succeeded')
     if (!available.some(map => map.id === selectedMapId.value)) selectMap(available[0] || null)
@@ -694,12 +696,14 @@ async function loadSessions(epoch) {
     const response = await worldMapsV2API.sessions(selectedRoomId.value, selectedWorldId.value)
     if (destroyed || epoch !== loadEpoch) return
     sessions.value = response.items || []
+    renderer.value = response.renderer || { available: false, path: '', protocolVersion: '', version: '', artifacts: [], error: '' }
     if (!sessions.value.some(session => session.id === selectedSessionId.value)) selectedSessionId.value = sessions.value.find(session => session.latest)?.id || sessions.value[0]?.id || ''
   } catch (error) {
     if (destroyed || epoch !== loadEpoch) return
     sessionFailure.value = { key: 'worldMaps.errors.sessionsLoadFailed', error }
     sessions.value = []
     selectedSessionId.value = ''
+    renderer.value = { available: false, path: '', protocolVersion: '', version: '', artifacts: [], error: '' }
   } finally {
     if (!destroyed && epoch === loadEpoch) sessionsLoading.value = false
   }
