@@ -31,6 +31,22 @@
           </UiSelect>
         </Field>
 
+        <Field>
+          <FieldLabel for="world-log-time-mode">{{ $t('servers.liveLogs.fields.timeDisplay') }}</FieldLabel>
+          <UiSelect
+            v-model="timeDisplayMode"
+            @update:model-value="handleTimeDisplayModeChange"
+          >
+            <SelectTrigger id="world-log-time-mode">
+              <SelectValue :placeholder="$t('servers.liveLogs.fields.timeDisplayPlaceholder')" />
+            </SelectTrigger>
+            <SelectContent><SelectGroup>
+              <SelectItem value="wallclock">{{ $t('servers.liveLogs.fields.timeModes.wallclock') }}</SelectItem>
+              <SelectItem value="runtime">{{ $t('servers.liveLogs.fields.timeModes.runtime') }}</SelectItem>
+            </SelectGroup></SelectContent>
+          </UiSelect>
+        </Field>
+
         <Field orientation="horizontal" class="toggle-field">
           <FieldContent>
             <FieldLabel for="world-log-follow">{{ $t('servers.liveLogs.fields.follow') }}</FieldLabel>
@@ -88,6 +104,7 @@ import { FitAddon } from 'xterm-addon-fit'
 import 'xterm/css/xterm.css'
 import { roomApi } from '@/api/index'
 import { worldLogsV2API } from '@/api/v2'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -153,13 +170,20 @@ export default {
       loading: false,
       followLog: true,
       autoScroll: true,
+      timeDisplayMode: 'wallclock',
+      logStartedAt: null,
+      rawLogLines: [],
+      logSnapshot: null,
       eventSource: null,
       manuallyClosedEventSource: false,
       streamState: 'idle',
       loadError: '',
       resizeObserver: null,
       archiveRequestSequence: 0,
-      logRequestSequence: 0
+      logRequestSequence: 0,
+      retryTimer: null,
+      retryAttempt: 0,
+      destroyed: false
     }
   },
   computed: {
@@ -184,6 +208,7 @@ export default {
     }
   },
   async mounted() {
+    this.destroyed = false
     this.initTerminal()
     window.addEventListener('resize', this.onResize)
     window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
@@ -194,9 +219,11 @@ export default {
     await this.loadArchives()
   },
   beforeUnmount() {
+    this.destroyed = true
     window.removeEventListener('resize', this.onResize)
     window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
     this.resizeObserver?.disconnect()
+    this.clearLogRetry(true)
     this.closeEventSource()
     this.terminal?.dispose()
   },
@@ -245,6 +272,7 @@ export default {
       }
     },
     handleRuntimeTargetChange() {
+      this.clearLogRetry(true)
       this.closeEventSource()
       this.logRequestSequence += 1
       this.selectedRoomId = ''
@@ -268,7 +296,9 @@ export default {
       this.selectedWorldId = selectedWorld?.id || ''
     },
     handleRoomChange() {
+      this.clearLogRetry(true)
       this.closeEventSource()
+      this.resetLogMetadata()
       const worlds = this.currentRoomWorlds
       this.selectedWorldId = (worlds.find(world => world.status === 'running') || worlds[0])?.id || ''
       if (this.selectedWorldId) this.loadLog()
@@ -279,7 +309,11 @@ export default {
       }
     },
     handleWorldChange() {
+      this.clearLogRetry(true)
       this.loadLog()
+    },
+    handleTimeDisplayModeChange() {
+      if (this.logSnapshot || this.rawLogLines.length > 0) this.redrawTerminal()
     },
     formatWorldType(type) {
       if (type === 'forest' || type === 'master') return this.$t('servers.list.worldTypes.forest')
@@ -294,9 +328,11 @@ export default {
       if (!this.selectedRoomId || !this.selectedWorldId || !this.terminal) return
 
       const requestSequence = ++this.logRequestSequence
+      this.clearLogRetry(false)
       this.loading = true
       this.loadError = ''
       this.closeEventSource()
+      this.resetLogMetadata()
       this.terminal.clear()
       this.terminal.writeln(`\x1B[1;33m${this.currentRoom?.name || '-'} / ${this.currentWorld?.name || '-'}\x1B[0m`)
 
@@ -304,6 +340,7 @@ export default {
         const snapshot = await worldLogsV2API.snapshot(this.selectedRoomId, this.selectedWorldId, { limit: 300 })
         if (requestSequence !== this.logRequestSequence) return
         this.renderSnapshot(snapshot)
+        this.retryAttempt = 0
         if (this.followLog) this.connectEventSource()
         else this.streamState = 'paused'
       } catch (error) {
@@ -311,6 +348,7 @@ export default {
         this.streamState = 'error'
         this.loadError = error.message || this.$t('servers.liveLogs.terminal.loadFailed')
         this.writeErrorLine(this.loadError)
+        this.scheduleLogRetry(requestSequence)
       } finally {
         if (requestSequence === this.logRequestSequence) this.loading = false
       }
@@ -324,6 +362,7 @@ export default {
       source.addEventListener('connected', event => {
         if (this.eventSource !== source) return
         const payload = this.parseEvent(event)
+        this.clearLogRetry(true)
         this.streamState = 'connected'
         this.loadError = ''
         if (payload?.snapshot) this.renderSnapshot(payload.snapshot)
@@ -336,10 +375,22 @@ export default {
       source.addEventListener('reset', event => {
         if (this.eventSource !== source) return
         const payload = this.parseEvent(event)
+        this.resetLogMetadata()
+        if (payload?.snapshot) {
+          this.logStartedAt = this.normalizeStartedAt(payload.snapshot.startedAt)
+          this.logSnapshot = {
+            fileName: payload.snapshot.fileName || 'server_log.txt',
+            truncated: false
+          }
+        }
         this.terminal.clear()
+        this.terminal.writeln(`\x1B[1;33m${this.currentRoom?.name || '-'} / ${this.currentWorld?.name || '-'}\x1B[0m`)
         this.writeSystemLine(this.$t('servers.liveLogs.terminal.rotated', {
           file: payload?.snapshot?.fileName || 'server_log.txt'
         }))
+        if (payload?.snapshot?.lines) {
+          payload.snapshot.lines.forEach(line => this.writeLogLine(typeof line === 'string' ? line : line?.text))
+        }
       })
       source.addEventListener('heartbeat', () => {
         if (this.eventSource === source && this.streamState !== 'connected') this.streamState = 'connected'
@@ -352,6 +403,7 @@ export default {
           this.loadError = payload.message
           this.writeErrorLine(this.loadError)
           this.closeEventSource()
+          this.scheduleLogRetry(this.logRequestSequence)
           return
         }
         if (this.streamState !== 'reconnecting') this.writeSystemLine(this.$t('servers.liveLogs.terminal.reconnecting'))
@@ -369,16 +421,71 @@ export default {
     },
     renderSnapshot(snapshot) {
       if (!snapshot) return
-      this.terminal.clear()
-      this.terminal.writeln(`\x1B[90m${this.$t('servers.liveLogs.terminal.snapshot', {
-        file: snapshot.fileName || 'server_log.txt',
-        count: snapshot.lines?.length || 0
-      })}\x1B[0m`)
-      ;(snapshot.lines || []).forEach(line => this.writeLogLine(line.text))
-      if (this.autoScroll) this.terminal.scrollToBottom()
+      this.logStartedAt = this.normalizeStartedAt(snapshot.startedAt)
+      this.logSnapshot = {
+        fileName: snapshot.fileName || 'server_log.txt',
+        truncated: Boolean(snapshot.truncated)
+      }
+      this.rawLogLines = (snapshot.lines || [])
+        .map(line => typeof line === 'string' ? line : line?.text)
+        .filter(line => line !== undefined && line !== null)
+        .map(line => String(line))
+        .slice(-5000)
+      this.redrawTerminal()
     },
     writeLogLine(line) {
-      this.terminal.writeln(String(line ?? ''))
+      const value = String(line ?? '')
+      this.rawLogLines.push(value)
+      if (this.rawLogLines.length > 5000) this.rawLogLines.splice(0, this.rawLogLines.length - 5000)
+      this.terminal.writeln(this.formatLogLine(value))
+      if (this.autoScroll) this.terminal.scrollToBottom()
+    },
+    resetLogMetadata() {
+      this.logStartedAt = null
+      this.rawLogLines = []
+      this.logSnapshot = null
+    },
+    normalizeStartedAt(value) {
+      if (!value) return null
+      const parsed = new Date(value)
+      return Number.isNaN(parsed.getTime()) ? null : parsed
+    },
+    formatLogLine(line) {
+      const value = String(line ?? '')
+      if (this.timeDisplayMode !== 'wallclock' || !this.logStartedAt) return value
+
+      const match = value.match(/^(\[)(\d{2,}):(\d{2}):(\d{2})(\])/)
+      if (!match) return value
+      const hours = Number(match[2])
+      const minutes = Number(match[3])
+      const seconds = Number(match[4])
+      if (minutes > 59 || seconds > 59) return value
+
+      const elapsed = ((hours * 60 + minutes) * 60) + seconds
+      const timestamp = new Date(this.logStartedAt.getTime() + elapsed * 1000)
+      const formatted = formatSystemDateTime(timestamp, {
+        locale: 'sv-SE',
+        fallback: '',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      })
+      if (!formatted) return value
+      return `${match[1]}${formatted}${match[5]}${value.slice(match[0].length)}`
+    },
+    redrawTerminal() {
+      if (!this.terminal) return
+      this.terminal.clear()
+      this.terminal.writeln(`\x1B[1;33m${this.currentRoom?.name || '-'} / ${this.currentWorld?.name || '-'}\x1B[0m`)
+      if (!this.logSnapshot) {
+        if (this.loading) this.writeSystemLine(this.$t('servers.liveLogs.terminal.loading'))
+        else this.writeSystemLine(this.$t('servers.liveLogs.terminal.selectTarget'))
+        return
+      }
+      this.terminal.writeln(`\x1B[90m${this.$t('servers.liveLogs.terminal.snapshot', {
+        file: this.logSnapshot.fileName,
+        count: this.rawLogLines.length
+      })}\x1B[0m`)
+      this.rawLogLines.forEach(line => this.terminal.writeln(this.formatLogLine(line)))
       if (this.autoScroll) this.terminal.scrollToBottom()
     },
     writeSystemLine(message) {
@@ -388,6 +495,7 @@ export default {
       this.terminal?.writeln(`\x1B[31m${this.$t('servers.liveLogs.terminal.errorPrefix')}\x1B[0m ${message}`)
     },
     retryLoad() {
+      this.clearLogRetry(true)
       if (this.archives.length > 0 && this.selectedWorldId) return this.refreshLog()
       return this.loadArchives()
     },
@@ -395,9 +503,26 @@ export default {
       if (enabled) {
         if (this.selectedWorldId) this.connectEventSource()
       } else {
+        this.clearLogRetry(true)
         this.closeEventSource()
         this.streamState = 'paused'
       }
+    },
+    scheduleLogRetry(requestSequence) {
+      if (this.destroyed || !this.followLog || !this.selectedRoomId || !this.selectedWorldId) return
+      this.clearLogRetry(false)
+      const delay = Math.min(30_000, 3_000 * (2 ** Math.min(this.retryAttempt, 3)))
+      this.retryAttempt += 1
+      this.retryTimer = window.setTimeout(() => {
+        this.retryTimer = null
+        if (this.destroyed || requestSequence !== this.logRequestSequence) return
+        this.loadLog()
+      }, delay)
+    },
+    clearLogRetry(resetAttempts = false) {
+      if (this.retryTimer) window.clearTimeout(this.retryTimer)
+      this.retryTimer = null
+      if (resetAttempts) this.retryAttempt = 0
     },
     closeEventSource() {
       if (!this.eventSource) return
@@ -480,7 +605,7 @@ export default {
   display: grid;
   flex: 1;
   min-width: 0;
-  grid-template-columns: repeat(2, minmax(150px, 1fr)) repeat(2, minmax(108px, auto));
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) repeat(2, minmax(108px, auto));
   align-items: end;
   gap: 10px;
 }

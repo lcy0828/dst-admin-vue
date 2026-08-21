@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 
 const props = defineProps({
   event: { type: Object, default: null }
@@ -17,10 +18,12 @@ const sourceKey = computed(() => {
     : 'external'
 })
 const occurredAt = computed(() => {
-  if (!props.event?.occurredAt) return ''
-  const date = new Date(props.event.occurredAt)
-  if (!Number.isFinite(date.getTime())) return props.event.occurredAt
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'medium' }).format(date)
+  return formatSystemDateTime(props.event?.occurredAt, {
+    locale: locale.value,
+    fallback: props.event?.occurredAt || '',
+    dateStyle: 'medium',
+    timeStyle: 'medium'
+  })
 })
 </script>
 

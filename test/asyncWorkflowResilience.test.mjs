@@ -34,10 +34,11 @@ test('node and player refreshes preserve usable data and reject obsolete respons
 })
 
 test('log and dashboard refreshes retain previous snapshots on transient failures', async () => {
-  const [query, viewer, dashboard] = await Promise.all([
+  const [query, viewer, dashboard, dashboardView] = await Promise.all([
     source('src/views/LogQueryView.vue'),
     source('src/views/servers/LogViewer.vue'),
-    source('src/composables/useDashboardV2.js')
+    source('src/composables/useDashboardV2.js'),
+    source('src/views/v2/DashboardV2.vue')
   ])
 
   const logQuery = section(query, 'async queryLogs(', '// 格式化日期')
@@ -50,9 +51,14 @@ test('log and dashboard refreshes retain previous snapshots on transient failure
   assert.match(dashboard, /serverRequestSequence/)
   assert.match(dashboard, /playerRequestSequence/)
   assert.match(dashboard, /versionRequestSequence/)
+  assert.match(dashboard, /async function refreshRuntimeServers\(\)/)
+  assert.match(dashboard, /observedSequence !== serverRequestSequence/)
   assert.doesNotMatch(section(dashboard, 'async function refreshServers()', 'async function refreshVersion()'), /(?:serverList|roomList)\.value\s*=\s*\[\]/)
   assert.match(dashboard, /updatePollInFlight/)
   assert.match(dashboard, /pollingReady && !updateStatus/)
+  assert.match(dashboardView, /RUNTIME_REFRESH_INTERVAL_MS = 10_000/)
+  assert.match(dashboardView, /document\.visibilityState === 'hidden'/)
+  assert.match(dashboardView, /onBeforeUnmount\([\s\S]*?clearInterval/)
 })
 
 test('distributed jobs distinguish completion from state reload and bound polling', async () => {

@@ -263,6 +263,7 @@ import { useI18n } from 'vue-i18n'
 import { CircleAlert, Cpu, Network, RefreshCw, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { topologyV2API } from '@/api/v2'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -504,10 +505,11 @@ async function saveCPU() {
 }
 
 function formatTime(value) {
-  if (!value) return '--'
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return '--'
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(parsed)
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    dateStyle: 'short',
+    timeStyle: 'medium'
+  })
 }
 
 watch(() => props.roomId, () => { void loadInfrastructure() }, { immediate: true })

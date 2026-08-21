@@ -185,6 +185,11 @@ test('live log views reconnect transient streams and validate downloads', async 
 
   assert.match(terminalSource, /streamState = 'reconnecting'/)
   assert.match(terminalSource, /if \(payload\?\.message\)/)
+  assert.match(terminalSource, /scheduleLogRetry\(requestSequence\)/)
+  assert.match(terminalSource, /Math\.min\(30_000, 3_000/)
+  assert.match(terminalSource, /clearLogRetry\(true\)/)
+  assert.match(terminalSource, /\\d\{2,\}/)
+  assert.match(terminalSource, /formatSystemDateTime\(timestamp, \{/)
   assert.match(viewerSource, /servers\.liveLogs\.feedback\.reconnecting/)
   assert.match(viewerSource, /worldLogsV2API\.downloadBlob/)
   assert.match(viewerSource, /this\.logs\.length > 5000/)

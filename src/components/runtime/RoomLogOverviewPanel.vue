@@ -103,6 +103,7 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, RefreshCw, ScrollText, Search, TriangleAlert } from '@lucide/vue'
 import { worldLogsV2API } from '@/api/v2'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -146,9 +147,11 @@ function worldRoleLabel(role) {
 }
 
 function formatTime(value) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '--'
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(date)
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    dateStyle: 'short',
+    timeStyle: 'medium'
+  })
 }
 
 function formatBytes(value) {

@@ -29,8 +29,8 @@ test('server workspace formats dates with the active locale', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
   assert.match(source, /const localeState = this\.\$i18n\?\.locale/)
-  assert.match(source, /toLocaleTimeString\(locale,/)
-  assert.match(source, /toLocaleDateString\(locale,/)
+  assert.match(source, /formatSystemDateTime\(date, \{ locale, hour: '2-digit', minute: '2-digit' \}\)/)
+  assert.match(source, /formatSystemDateTime\(date, \{ locale, month: '2-digit', day: '2-digit' \}\)/)
 })
 
 test('server workspace keeps operational summaries inline and world facts on stable columns', async () => {

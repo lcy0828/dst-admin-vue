@@ -2,6 +2,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { playerApi, roomApi, systemApi } from '@/api/index'
 import { confirmAction } from '@/lib/feedback'
 import { formatDurationSeconds } from '@/lib/localeFormatters.mjs'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk'
 import {
   canCleanFailedWorld,
@@ -53,6 +54,7 @@ export function useDashboardV2() {
   let playerRequestSequence = 0
   let versionRequestSequence = 0
   let updatePollInFlight = false
+  let runtimePollInFlight = false
 
   const runningServerCount = computed(() => serverList.value.filter(server => server.status === 'running').length)
   const totalWorldCount = computed(() => roomList.value.reduce(
@@ -153,6 +155,37 @@ export function useDashboardV2() {
     await refreshPlayers()
     if (sequence === serverRequestSequence) serverLoading.value = false
     return servers.status === 'fulfilled' && servers.value?.status === 200 && rooms.status === 'fulfilled' && rooms.value?.status === 200
+  }
+
+  async function refreshRuntimeServers() {
+    if (serverLoading.value || runtimePollInFlight) return false
+    runtimePollInFlight = true
+    const observedSequence = serverRequestSequence
+    try {
+      const [servers, rooms] = await Promise.allSettled([
+        systemApi.getTmuxServers(),
+        roomApi.getRoomList()
+      ])
+      if (observedSequence !== serverRequestSequence) return false
+
+      const serversReady = servers.status === 'fulfilled' && servers.value?.status === 200
+      const roomsReady = rooms.status === 'fulfilled' && rooms.value?.status === 200
+      if (serversReady) {
+        serverList.value = Array.isArray(servers.value.data) ? servers.value.data : []
+        serverError.value = ''
+      } else if (serverList.value.length === 0) {
+        serverError.value = servers.reason?.message || servers.value?.msg || translate('dashboard.feedback.serverLoadFailed')
+      }
+      if (roomsReady) {
+        roomList.value = Array.isArray(rooms.value.data) ? rooms.value.data : []
+        roomError.value = ''
+      } else if (roomList.value.length === 0) {
+        roomError.value = rooms.reason?.message || rooms.value?.msg || translate('dashboard.feedback.roomLoadFailed')
+      }
+      return serversReady && roomsReady
+    } finally {
+      runtimePollInFlight = false
+    }
   }
 
   async function refreshVersion() {
@@ -356,6 +389,7 @@ export function useDashboardV2() {
     refreshDashboard,
     refreshSystem,
     refreshServers,
+    refreshRuntimeServers,
     refreshVersion,
     handleServerAction,
     cleanupFailedServer,
@@ -394,9 +428,17 @@ export function formatDecimal(value) {
 }
 
 export function formatDateTime(value, locale = i18n.global.locale.value) {
-  if (!value) return '--'
-  const date = value instanceof Date ? value : new Date(value)
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString(locale, { hour12: false })
+  return formatSystemDateTime(value, {
+    locale,
+    fallback: value ? String(value) : '--',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
 }
 
 export function formatServerUptime(value, translator = translate) {

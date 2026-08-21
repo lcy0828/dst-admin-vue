@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -85,6 +85,8 @@ const { locale, t } = useI18n()
 const startDialogOpen = ref(false)
 const selectedRoomId = ref('')
 const selectedWorldIds = ref([])
+const RUNTIME_REFRESH_INTERVAL_MS = 10_000
+let runtimeRefreshTimer = null
 
 const {
   systemStatus,
@@ -110,6 +112,7 @@ const {
   refreshDashboard,
   refreshSystem,
   refreshServers,
+  refreshRuntimeServers,
   refreshVersion,
   handleServerAction,
   cleanupFailedServer,
@@ -157,9 +160,20 @@ function worldTypeLabel(type) {
   return t(`worldRuntime.types.${['forest', 'cave'].includes(type) ? type : 'unknown'}`)
 }
 
-onMounted(() => {
-  refreshDashboard()
+async function refreshRuntimeStatus() {
+  if (document.visibilityState === 'hidden') return
+  if (await refreshRuntimeServers()) lastRefreshedAt.value = new Date()
+}
+
+onMounted(async () => {
+  await refreshDashboard()
   resumeUpdatePolling()
+  runtimeRefreshTimer = window.setInterval(refreshRuntimeStatus, RUNTIME_REFRESH_INTERVAL_MS)
+})
+
+onBeforeUnmount(() => {
+  if (runtimeRefreshTimer) window.clearInterval(runtimeRefreshTimer)
+  runtimeRefreshTimer = null
 })
 </script>
 

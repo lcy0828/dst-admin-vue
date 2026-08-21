@@ -117,6 +117,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, RefreshCw, Stethoscope, TriangleAlert } from '@lucide/vue'
 import { runtimeV2API } from '@/api/v2'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { createRuntimeEventStreamManager } from '@/lib/runtimeEventStreams.mjs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -244,10 +245,11 @@ function latestObservedAt(shard) {
 }
 
 function formatTime(value) {
-  if (!value) return '--'
-  const parsed = new Date(value)
-  if (Number.isNaN(parsed.getTime())) return '--'
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'short', timeStyle: 'medium' }).format(parsed)
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    dateStyle: 'short',
+    timeStyle: 'medium'
+  })
 }
 
 watch(() => props.roomId, () => {

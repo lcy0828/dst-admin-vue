@@ -254,6 +254,7 @@
           <CardContent class="operation-content"><Tabs v-model="activeOperation" class="operation-tabs">
             <TabsList>
               <TabsTrigger value="logs"><FileText />{{ $t('servers.workspace.operations.liveLogs') }}</TabsTrigger>
+              <TabsTrigger value="chat"><MessagesSquare />{{ $t('servers.workspace.operations.chatLogs') }}</TabsTrigger>
               <TabsTrigger value="console"><Terminal />{{ $t('servers.workspace.console.title') }}</TabsTrigger>
             </TabsList>
             <TabsContent value="logs">
@@ -268,6 +269,14 @@
                 class="workspace-log"
               />
               <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>{{ $t('servers.workspace.empty.selectWorld') }}</EmptyTitle></EmptyHeader></Empty>
+            </TabsContent>
+
+            <TabsContent value="chat">
+              <RoomChatPanel
+                :key="selectedRoomId"
+                :room-id="selectedRoomId"
+                :worlds="worlds"
+              />
             </TabsContent>
 
             <TabsContent value="console">
@@ -440,6 +449,7 @@
 
 <script>
 import WorldLog from '@/components/WorldLog.vue'
+import RoomChatPanel from '@/components/RoomChatPanel.vue'
 import RuntimeAuditPanel from '@/components/runtime/RuntimeAuditPanel.vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
@@ -457,6 +467,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { confirmAction, promptText } from '@/lib/feedback'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import {
   isCapacityRiskCanceled,
   restartWorldWithCapacityRisk,
@@ -477,7 +488,7 @@ import {
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
   ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
-  FileText, Globe2, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
+  FileText, Globe2, MessagesSquare, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
   Settings, Square, Terminal, TreePine, User
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
@@ -525,11 +536,13 @@ export default {
     FileCheck2,
     FileText,
     Globe2,
+    MessagesSquare,
     PackageOpen,
     Pickaxe,
     Play,
     RefreshCw,
     RotateCw,
+    RoomChatPanel,
     RuntimeAuditPanel,
     Search,
     SelectContent,
@@ -1034,7 +1047,7 @@ export default {
     },
     openMods() {
       this.$router.push({
-        path: '/mods/list',
+        path: '/mods?tab=room',
         query: { roomId: this.selectedRoomId, worldId: this.selectedWorldId || undefined }
       })
     },
@@ -1127,11 +1140,11 @@ export default {
       if (!Number.isFinite(date.getTime())) return String(value)
       const localeState = this.$i18n?.locale
       const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN')
-      const now = new Date()
-      if (date.toDateString() === now.toDateString()) {
-        return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
+      const dayOptions = { locale, year: 'numeric', month: '2-digit', day: '2-digit' }
+      if (formatSystemDateTime(date, dayOptions) === formatSystemDateTime(new Date(), dayOptions)) {
+        return formatSystemDateTime(date, { locale, hour: '2-digit', minute: '2-digit' })
       }
-      return date.toLocaleDateString(locale, { month: '2-digit', day: '2-digit' })
+      return formatSystemDateTime(date, { locale, month: '2-digit', day: '2-digit' })
     }
   }
 }

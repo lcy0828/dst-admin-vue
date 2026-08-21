@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 
 const props = defineProps({
   freshness: { type: String, default: 'unavailable' },
@@ -25,13 +26,12 @@ const variant = computed(() => {
 })
 
 const absoluteTime = computed(() => {
-  if (!props.observedAt) return t('runtimeData.noObservation')
-  const date = new Date(props.observedAt)
-  if (!Number.isFinite(date.getTime())) return props.observedAt
-  return new Intl.DateTimeFormat(locale.value, {
+  return formatSystemDateTime(props.observedAt, {
+    locale: locale.value,
+    fallback: props.observedAt || t('runtimeData.noObservation'),
     dateStyle: 'medium',
     timeStyle: 'medium'
-  }).format(date)
+  })
 })
 
 const relativeTime = computed(() => {

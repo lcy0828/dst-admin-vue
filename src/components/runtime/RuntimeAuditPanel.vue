@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { ListTree, RefreshCw, TriangleAlert } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { runtimeV2API } from '@/api/v2'
+import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -70,10 +71,12 @@ function traceItems(event) {
 }
 
 function formatTime(value) {
-  if (!value) return '--'
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) return value
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'medium' }).format(date)
+  return formatSystemDateTime(value, {
+    locale: locale.value,
+    fallback: value ? String(value) : '--',
+    dateStyle: 'medium',
+    timeStyle: 'medium'
+  })
 }
 
 async function loadEvents() {

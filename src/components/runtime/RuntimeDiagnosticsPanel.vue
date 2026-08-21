@@ -110,6 +110,7 @@ import { Activity, Gauge, ListTree, RefreshCw, TriangleAlert } from '@lucide/vue
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { runtimeV2API } from '@/api/v2'
+import { formatSystemUnixTime } from '@/lib/dateTime.mjs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -143,8 +144,11 @@ const formattedResult = computed(() => JSON.stringify(diagnostic.value?.result |
 const canCapture = computed(() => form.profile !== 'prefab' || /^[a-z0-9_]{1,80}$/.test(form.prefab.trim()))
 
 function formatTimestamp(value) {
-  if (!value) return '--'
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'medium' }).format(new Date(Number(value) * 1000))
+  return formatSystemUnixTime(value, {
+    locale: locale.value,
+    dateStyle: 'medium',
+    timeStyle: 'medium'
+  })
 }
 function compactJSON(value) {
   const text = JSON.stringify(value || {})
