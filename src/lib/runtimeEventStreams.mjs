@@ -66,6 +66,7 @@ export function createRuntimeEventStreamManager({
 
   let roomId = ''
   let disposed = false
+  let active = true
   const entries = new Map()
 
   function publishState() {
@@ -85,7 +86,7 @@ export function createRuntimeEventStreamManager({
   }
 
   function openEntry(entry) {
-    if (disposed || entries.get(entry.worldId) !== entry || !roomId) return
+    if (disposed || !active || entries.get(entry.worldId) !== entry || !roomId) return
     entry.retryHandle = null
     entry.state = 'connecting'
     publishState()
@@ -152,7 +153,7 @@ export function createRuntimeEventStreamManager({
       entries.delete(worldId)
     }
 
-    if (!roomId || typeof eventSourceFactory !== 'function') {
+    if (!roomId || !active || typeof eventSourceFactory !== 'function') {
       publishState()
       return
     }
@@ -173,6 +174,25 @@ export function createRuntimeEventStreamManager({
     publishState()
   }
 
+  function setActive(nextActive) {
+    if (disposed) return
+    const normalized = Boolean(nextActive)
+    if (active === normalized) return
+    active = normalized
+    if (!active) {
+      for (const entry of entries.values()) {
+        stopEntry(entry)
+        entry.state = 'connecting'
+      }
+      publishState()
+      return
+    }
+    for (const entry of entries.values()) {
+      if (!entry.source && entry.retryHandle === null) openEntry(entry)
+    }
+    publishState()
+  }
+
   function close() {
     disposed = true
     for (const entry of entries.values()) stopEntry(entry)
@@ -187,5 +207,5 @@ export function createRuntimeEventStreamManager({
     }]))
   }
 
-  return { close, snapshot, sync }
+  return { close, setActive, snapshot, sync }
 }

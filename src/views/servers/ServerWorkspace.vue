@@ -653,16 +653,23 @@ export default {
   },
   async created() {
     await this.refreshWorkspace()
-    this.refreshTimer = window.setInterval(() => this.refreshWorkspace(true), 30000)
+    this.refreshTimer = window.setInterval(() => {
+      if (document.visibilityState !== 'hidden') this.refreshWorkspace(true)
+    }, 30000)
   },
   mounted() {
     window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
+    document.addEventListener('visibilitychange', this.handleVisibilityChange)
   },
   beforeUnmount() {
     if (this.refreshTimer) window.clearInterval(this.refreshTimer)
     window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
   },
   methods: {
+    handleVisibilityChange() {
+      if (document.visibilityState !== 'hidden') this.refreshWorkspace(true)
+    },
     handleRuntimeTargetChange() {
       this.contextSequence += 1
       this.selectedRoomId = ''

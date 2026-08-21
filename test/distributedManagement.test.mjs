@@ -153,6 +153,34 @@ test('runtime stream manager closes removed worlds and reports partial connectiv
   manager.close()
 })
 
+test('runtime stream manager suspends hidden pages and resumes every world', () => {
+  const sources = []
+  const manager = createRuntimeEventStreamManager({
+    buildURL: (roomId, worldId) => `/${roomId}/${worldId}`,
+    eventSourceFactory: url => {
+      const source = {
+        url,
+        closed: false,
+        addEventListener() {},
+        close() { this.closed = true }
+      }
+      sources.push(source)
+      return source
+    },
+    storage: null
+  })
+
+  manager.sync('room-a', ['master', 'caves'])
+  manager.setActive(false)
+  assert.equal(sources[0].closed, true)
+  assert.equal(sources[1].closed, true)
+  manager.setActive(true)
+  assert.equal(sources.length, 4)
+  assert.equal(sources[2].url, '/room-a/master')
+  assert.equal(sources[3].url, '/room-a/caves')
+  manager.close()
+})
+
 test('central diagnostics route and placement-aware APIs bypass the manual target', async () => {
   const [api, router, navigation, view] = await Promise.all([
     source('src/api/v2.js'),
