@@ -1,5 +1,5 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { playerApi, roomApi, systemApi } from '@/api/index'
+import { roomApi, systemApi } from '@/api/index'
 import { systemV2API } from '@/api/v2'
 import { confirmAction } from '@/lib/feedback'
 import { formatDurationSeconds } from '@/lib/localeFormatters.mjs'
@@ -45,7 +45,6 @@ export function useDashboardV2() {
   const systemStatus = ref({})
   const serverList = ref([])
   const roomList = ref([])
-  const playerSummary = ref({ total: 0, online: 0, staleOnline: 0, loadedRooms: 0, failedRooms: 0 })
   const versionInfo = ref(emptyVersion())
   const capabilities = ref(emptyCapabilities())
   const setupReadiness = ref(emptyReadiness())
@@ -54,7 +53,6 @@ export function useDashboardV2() {
 
   const systemLoading = ref(false)
   const serverLoading = ref(false)
-  const playerLoading = ref(false)
   const versionLoading = ref(false)
   const guidanceLoading = ref(true)
   const updateStarting = ref(false)
@@ -62,25 +60,19 @@ export function useDashboardV2() {
   const systemError = ref('')
   const serverError = ref('')
   const roomError = ref('')
-  const playerError = ref('')
   const versionError = ref('')
   const guidanceError = ref('')
   let updateTimer = null
   let systemRequestSequence = 0
   let serverRequestSequence = 0
-  let playerRequestSequence = 0
   let versionRequestSequence = 0
   let guidanceRequestSequence = 0
   let updatePollInFlight = false
   let runtimePollInFlight = false
 
   const runningServerCount = computed(() => serverList.value.filter(server => server.status === 'running').length)
-  const totalWorldCount = computed(() => roomList.value.reduce(
-    (total, room) => total + (Array.isArray(room.worlds) ? room.worlds.length : 0),
-    0
-  ))
   const dashboardLoading = computed(() => (
-    systemLoading.value || serverLoading.value || playerLoading.value || versionLoading.value || guidanceLoading.value
+    systemLoading.value || serverLoading.value || versionLoading.value || guidanceLoading.value
   ))
   const isVersionOutdated = computed(() => {
     if (!versionInfo.value.installed) return false
@@ -112,41 +104,6 @@ export function useDashboardV2() {
     }
   }
 
-  async function refreshPlayers() {
-    const sequence = ++playerRequestSequence
-    playerLoading.value = true
-    playerError.value = ''
-    try {
-      if (roomError.value) {
-        playerError.value = translate('dashboard.feedback.playersBlocked')
-        return false
-      }
-      const summary = { total: 0, online: 0, staleOnline: 0, loadedRooms: 0, failedRooms: 0 }
-      const results = await Promise.allSettled(
-        roomList.value.map(room => playerApi.getPlayerStats(room.name))
-      )
-      if (sequence !== playerRequestSequence) return false
-      for (const result of results) {
-        if (result.status === 'rejected') {
-          summary.failedRooms += 1
-          continue
-        }
-        const value = result.value?.data || {}
-        summary.total += Number(value.total_count) || 0
-        summary.online += Number(value.online_count) || 0
-        summary.staleOnline += Number(value.stale_online_count) || 0
-        summary.loadedRooms += 1
-      }
-      if (summary.failedRooms > 0) {
-        playerError.value = translate('dashboard.feedback.playerRoomsFailed', { count: summary.failedRooms })
-      }
-      if (summary.loadedRooms > 0 || roomList.value.length === 0) playerSummary.value = summary
-      return summary.failedRooms === 0
-    } finally {
-      if (sequence === playerRequestSequence) playerLoading.value = false
-    }
-  }
-
   async function refreshServers() {
     const sequence = ++serverRequestSequence
     serverLoading.value = true
@@ -170,7 +127,6 @@ export function useDashboardV2() {
       roomError.value = rooms.reason?.message || rooms.value?.msg || translate('dashboard.feedback.roomLoadFailed')
     }
 
-    await refreshPlayers()
     if (sequence === serverRequestSequence) serverLoading.value = false
     return servers.status === 'fulfilled' && servers.value?.status === 200 && rooms.status === 'fulfilled' && rooms.value?.status === 200
   }
@@ -409,7 +365,6 @@ export function useDashboardV2() {
     systemStatus,
     serverList,
     roomList,
-    playerSummary,
     versionInfo,
     capabilities,
     setupReadiness,
@@ -417,17 +372,14 @@ export function useDashboardV2() {
     lastRefreshedAt,
     systemLoading,
     serverLoading,
-    playerLoading,
     versionLoading,
     guidanceLoading,
     systemError,
     serverError,
     roomError,
-    playerError,
     versionError,
     guidanceError,
     runningServerCount,
-    totalWorldCount,
     dashboardLoading,
     isVersionOutdated,
     canUpdateGame,

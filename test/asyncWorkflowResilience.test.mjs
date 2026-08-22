@@ -49,8 +49,8 @@ test('log and dashboard refreshes retain previous snapshots on transient failure
 
   assert.match(dashboard, /systemRequestSequence/)
   assert.match(dashboard, /serverRequestSequence/)
-  assert.match(dashboard, /playerRequestSequence/)
   assert.match(dashboard, /versionRequestSequence/)
+  assert.doesNotMatch(dashboard, /playerApi|getPlayerStats|refreshPlayers/)
   assert.match(dashboard, /async function refreshRuntimeServers\(\)/)
   assert.match(dashboard, /observedSequence !== serverRequestSequence/)
   assert.doesNotMatch(section(dashboard, 'async function refreshServers()', 'async function refreshVersion()'), /(?:serverList|roomList)\.value\s*=\s*\[\]/)
