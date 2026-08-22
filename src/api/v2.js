@@ -332,9 +332,14 @@ export const configurationV2API = {
 }
 
 export const jobsV2API = {
+  list: (params = {}) => client.get('/jobs', { params }),
+  controlPlaneList: (params = {}) => client.get('/jobs', { params, runtimeTarget: false }),
   get: jobId => client.get(`/jobs/${encode(jobId)}`),
   controlPlaneGet: jobId => client.get(`/jobs/${encode(jobId)}`, { runtimeTarget: false }),
-  cancel: jobId => client.post(`/jobs/${encode(jobId)}/cancel`)
+  cancel: jobId => client.post(`/jobs/${encode(jobId)}/cancel`),
+  eventsURL: (after = '') => (
+    after ? `${baseURL}/jobs/events?after=${encode(after)}` : `${baseURL}/jobs/events`
+  )
 }
 
 export const structuredLogsV2API = {

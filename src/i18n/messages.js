@@ -9,6 +9,7 @@ import { cronGroupMessages } from './cronGroupMessages.js'
 import { cronLogMessages } from './cronLogMessages.js'
 import { cronTaskMessages } from './cronTaskMessages.js'
 import { globalFeedbackMessages } from './globalFeedbackMessages.js'
+import { globalJobMessages } from './globalJobMessages.js'
 import { gameReleaseMessages } from './gameReleaseMessages.js'
 import { logToolsMessages } from './logToolsMessages.js'
 import { modMessages } from './modMessages.js'
@@ -36,6 +37,7 @@ export const messages = {
     ...cronGroupMessages['zh-CN'],
     ...cronLogMessages['zh-CN'],
     ...globalFeedbackMessages['zh-CN'],
+    ...globalJobMessages['zh-CN'],
     ...gameReleaseMessages['zh-CN'],
     ...logToolsMessages['zh-CN'],
     ...modMessages['zh-CN'],
@@ -534,6 +536,7 @@ export const messages = {
     ...cronGroupMessages['en-US'],
     ...cronLogMessages['en-US'],
     ...globalFeedbackMessages['en-US'],
+    ...globalJobMessages['en-US'],
     ...gameReleaseMessages['en-US'],
     ...logToolsMessages['en-US'],
     ...modMessages['en-US'],

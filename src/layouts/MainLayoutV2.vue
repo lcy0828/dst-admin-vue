@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff, GitFork, KeyRound } from '@lucide/vue'
 import { authAPI, systemV2API } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
+import GlobalJobStatus from '@/components/layout/GlobalJobStatus.vue'
 import LanguageSwitch from '@/components/layout/LanguageSwitch.vue'
 import SystemResourceStatus from '@/components/layout/SystemResourceStatus.vue'
 import ThemeSwitch from '@/components/ThemeSwitch.vue'
@@ -183,6 +184,7 @@ onBeforeUnmount(() => {
         </Breadcrumb>
         <SystemResourceStatus class="ml-auto" />
         <div class="flex min-w-0 items-center gap-1.5">
+          <GlobalJobStatus />
           <LanguageSwitch />
           <ThemeSwitch />
           <Tooltip>
