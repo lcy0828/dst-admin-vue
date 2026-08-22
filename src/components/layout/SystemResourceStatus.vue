@@ -111,7 +111,7 @@ onBeforeUnmount(stopSystemResourcePolling)
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" :side-offset="8" class="relative w-[min(24rem,calc(100vw-2rem))] gap-3 p-3">
+      <PopoverContent align="end" :side-offset="8" class="relative max-h-[min(42rem,calc(100vh-2rem))] w-[min(32rem,calc(100vw-2rem))] gap-3 overflow-y-auto p-3">
         <PopoverHeader class="pr-8">
           <PopoverTitle>{{ t('dashboard.resources.title') }}</PopoverTitle>
           <PopoverDescription>{{ status.os_info || t('dashboard.summary.waitingSystem') }}</PopoverDescription>
@@ -187,6 +187,34 @@ onBeforeUnmount(stopSystemResourcePolling)
               </span>
             </div>
           </div>
+
+          <template v-if="status.cpu_core_usage?.length">
+            <Separator />
+            <section class="flex flex-col gap-2" :aria-label="t('dashboard.resources.perCore')">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-sm font-medium">{{ t('dashboard.resources.perCore') }}</h3>
+                <span class="text-muted-foreground text-xs">
+                  {{ t('dashboard.resources.logicalCoreCount', { count: status.cpu_core_usage.length }) }}
+                </span>
+              </div>
+              <div class="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
+                <div
+                  v-for="(usage, index) in status.cpu_core_usage"
+                  :key="index"
+                  class="flex min-w-0 flex-col gap-1"
+                >
+                  <div class="flex items-center justify-between gap-2 text-xs">
+                    <span class="text-muted-foreground">{{ t('dashboard.resources.coreLabel', { index: index + 1 }) }}</span>
+                    <strong :class="usageClass(usage)">{{ formatPercent(usage) }}</strong>
+                  </div>
+                  <Progress
+                    :model-value="percentage(usage)"
+                    :aria-label="t('dashboard.resources.coreUsageAria', { index: index + 1 })"
+                  />
+                </div>
+              </div>
+            </section>
+          </template>
 
           <Separator />
           <div class="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-xs">

@@ -36,6 +36,8 @@ test('system resources stay visible in the global header without duplicate dashb
   assert.match(resourceStatus, /dashboard\.resources\.loadWindow/)
   assert.match(resourceStatus, /busiestCPUCore\(status\.value\.cpu_core_usage\)/)
   assert.match(resourceStatus, /primaryCPUUsage/)
+  assert.match(resourceStatus, /v-for="\(usage, index\) in status\.cpu_core_usage"/)
+  assert.match(resourceStatus, /dashboard\.resources\.coreUsageAria/)
   assert.doesNotMatch(resourceStatus, /useDashboardV2/)
   assert.doesNotMatch(layout, /<Separator orientation="vertical"/)
   assert.doesNotMatch(resourceStatus, /<Separator orientation="vertical"/)
