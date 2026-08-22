@@ -92,7 +92,7 @@
 
     <template v-else-if="selectedRoom">
       <Card size="sm" class="world-card">
-        <CardHeader class="gap-0">
+        <CardHeader class="world-card-header gap-0">
           <div class="world-card-heading">
             <CardTitle>{{ $t('servers.workspace.worlds.title') }}</CardTitle>
             <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || $t('servers.workspace.worlds.description') }}</CardDescription>
@@ -1445,6 +1445,10 @@ export default {
   white-space: nowrap;
 }
 
+.world-card-header {
+  padding-block: 10px;
+}
+
 .world-card-content {
   padding-top: 0;
   padding-bottom: 0;
@@ -1557,9 +1561,18 @@ export default {
 
 .world-facts {
   display: grid;
-  grid-template-columns: repeat(7, minmax(58px, 1fr));
-  gap: 10px;
+  grid-template-columns:
+    minmax(70px, 0.7fr)
+    minmax(76px, 0.75fr)
+    minmax(86px, 0.9fr)
+    minmax(86px, 0.9fr)
+    minmax(130px, 1.35fr)
+    minmax(86px, 0.9fr)
+    minmax(120px, 1.2fr);
+  gap: 8px;
   margin: 0;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
 }
 
 .world-facts div {
@@ -1896,6 +1909,7 @@ export default {
     grid-column: 1 / -1;
     grid-row: 2;
     padding-left: 46px;
+    border-left: 0;
   }
 
   .world-actions {

@@ -33,13 +33,16 @@ test('server workspace formats dates with the active locale', async () => {
   assert.match(source, /formatSystemDateTime\(date, \{ locale, month: '2-digit', day: '2-digit' \}\)/)
 })
 
-test('server workspace keeps operational summaries inline and world facts on stable columns', async () => {
+test('server workspace keeps operational summaries inline and world facts on compact weighted columns', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
   assert.match(source, /class="workspace-overview"/)
   assert.match(source, /class="status-summary" role="list"/)
   assert.match(source, /<Separator class="status-separator" orientation="vertical"/)
-  assert.match(source, /grid-template-columns: repeat\(7, minmax\(58px, 1fr\)\)/)
+  assert.match(source, /minmax\(70px, 0\.7fr\)[\s\S]*minmax\(130px, 1\.35fr\)[\s\S]*minmax\(120px, 1\.2fr\)/)
+  assert.match(source, /\.world-card-header \{\s*padding-block: 10px;/)
+  assert.match(source, /\.world-facts \{[\s\S]*padding-left: 14px;\s*border-left: 1px solid var\(--border\);/)
+  assert.match(source, /@media \(max-width: 1100px\) \{[\s\S]*\.world-facts \{[\s\S]*border-left: 0;/)
   assert.doesNotMatch(source, /class="status-card"/)
 })
 
