@@ -5,6 +5,9 @@ import { readFile } from 'node:fs/promises'
 import {
   formatBanExpiry,
   formatPlayerDate,
+  formatPlayerPercentage,
+  formatPlayerTemperature,
+  isLivePlayerMetric,
   isPlayerOnline,
   PLAYER_BAN_DURATION_IDS,
   playerBanDurationLabel,
@@ -47,6 +50,19 @@ test('known player status and legacy Chinese values follow the selected locale',
   assert.deepEqual(playerStatusMeta('stale', en), { label: 'Last known online', variant: 'outline' })
   assert.deepEqual(playerStatusMeta('在线', zh), { label: '在线', variant: 'default' })
   assert.equal(playerStatusMeta('mod_spectating', en).label, 'mod_spectating')
+})
+
+test('live survival metrics reject cached values and format bounded readings', () => {
+  const online = { status: 'online', field_states: { healthPercent: { status: 'live' } } }
+  const staleMetric = { status: 'online', field_states: { healthPercent: { status: 'stale' } } }
+
+  assert.equal(isLivePlayerMetric(online, 'healthPercent', 0), true)
+  assert.equal(isLivePlayerMetric(staleMetric, 'healthPercent', 75), false)
+  assert.equal(isLivePlayerMetric({ status: 'offline' }, 'healthPercent', 75), false)
+  assert.equal(isLivePlayerMetric({ status: 'online' }, 'healthPercent', null), false)
+  assert.equal(formatPlayerPercentage(75.6), '76%')
+  assert.equal(formatPlayerPercentage(105), '100%')
+  assert.equal(formatPlayerTemperature(23.45, 'zh-CN'), '23.5 °C')
 })
 
 test('character and ban duration labels preserve unknown mod values', () => {

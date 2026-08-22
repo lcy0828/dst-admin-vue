@@ -122,6 +122,30 @@ export function isPlayerOnline(status) {
   return normalizePlayerStatus(status) === 'online'
 }
 
+export function isLivePlayerMetric(player, field, value) {
+  if (!isPlayerOnline(player?.status)) return false
+  if (value === null || value === undefined || value === '') return false
+  if (!Number.isFinite(Number(value))) return false
+  const fieldState = player?.field_states?.[field]
+  return !fieldState?.status || fieldState.status === 'live'
+}
+
+export function formatPlayerPercentage(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '--'
+  return `${Math.round(Math.max(0, Math.min(100, numeric)))}%`
+}
+
+export function formatPlayerTemperature(value, locale) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '--'
+  const formatted = new Intl.NumberFormat(localeCode(locale), {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1
+  }).format(numeric)
+  return `${formatted} °C`
+}
+
 export function playerStatusMeta(status, translate) {
   const key = PLAYER_STATUS_KEYS[status]
   return {

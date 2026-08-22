@@ -11,8 +11,9 @@ test('server workspace translates known protocol values and preserves unknown va
   assert.match(source, /worldPrimaryAction\(world, key => this\.\$t\(key\)\)/)
   assert.match(source, /\['autumn', 'winter', 'spring', 'summer'\]\.includes\(normalized\)/)
   assert.match(source, /return season \|\| '--'/)
-  assert.match(source, /import \{ playerCharacterLabel \} from '@\/i18n\/playerMessages\.js'/)
+  assert.match(source, /playerCharacterLabel\s*\n\} from '@\/i18n\/playerMessages\.js'/)
   assert.match(source, /return playerCharacterLabel\(prefab, this\.\$t\)/)
+  assert.match(source, /normalizePlayerStatus\(player\?\.status\)/)
   assert.match(source, /return rawRole \|\| this\.\$t\('servers\.workspace\.worlds\.roles\.custom'\)/)
 })
 
@@ -104,6 +105,20 @@ test('server workspace promotes players to operations and keeps supporting conte
   assert.match(source, /class="context-section context-section-quick"/)
   assert.doesNotMatch(source, /class="context-section context-section-players"/)
   assert.doesNotMatch(source, /\$t\('servers\.workspace\.quickNav\.description'\)/)
+})
+
+test('server workspace shows only live survival metrics and labels cached player locations', async () => {
+  const source = await readFile(sourceUrl, 'utf8')
+
+  assert.match(source, /playerVitals\(player\)/)
+  assert.match(source, /isLivePlayerMetric\(player, metric\.field, metric\.raw\)/)
+  assert.match(source, /health_percent/)
+  assert.match(source, /hunger_percent/)
+  assert.match(source, /sanity_percent/)
+  assert.match(source, /formatPlayerTemperature/)
+  assert.match(source, /servers\.workspace\.players\.lastWorld/)
+  assert.match(source, /\.players-panel \{\s*min-height: 220px;/)
+  assert.doesNotMatch(source, /\.players-panel \{\s*min-height: 440px;/)
 })
 
 test('server workspace keeps context lists bounded and uses static realm icons', async () => {

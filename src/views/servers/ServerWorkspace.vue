@@ -307,10 +307,22 @@
                     class="player-row"
                   >
                     <CharacterAvatar :prefab="player.prefab" :name="player.player_name" size="lg" />
-                    <span class="player-copy">
+                    <div class="player-copy">
                       <strong :title="player.player_name || player.user_id">{{ player.player_name || player.user_id }}</strong>
-                      <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || $t('servers.workspace.players.unknownWorld') }}</span>
-                    </span>
+                      <span class="player-context">{{ playerContextLabel(player) }}</span>
+                      <div v-if="playerIsOnline(player) && playerVitals(player).length" class="player-vitals">
+                        <Tooltip v-for="metric in playerVitals(player)" :key="metric.key">
+                          <TooltipTrigger as-child>
+                            <span class="player-metric" tabindex="0" :aria-label="$t('servers.workspace.players.metricValue', metric)">
+                              <component :is="metric.icon" />
+                              {{ metric.value }}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>{{ $t('servers.workspace.players.metricValue', metric) }}</TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <span v-else class="player-observation">{{ playerObservationLabel(player) }}</span>
+                    </div>
                     <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
                       {{ playerStatusLabel(player.status) }}
                     </Badge>
@@ -502,7 +514,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
 import { confirmAction, promptText } from '@/lib/feedback'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
-import { playerCharacterLabel } from '@/i18n/playerMessages.js'
+import {
+  formatPlayerPercentage,
+  formatPlayerTemperature,
+  isLivePlayerMetric,
+  isPlayerOnline,
+  normalizePlayerStatus,
+  playerCharacterLabel
+} from '@/i18n/playerMessages.js'
 import { translateWorldStateValue } from '@/i18n/worldStateMessages.js'
 import {
   isCapacityRiskCanceled,
@@ -523,9 +542,9 @@ import {
 } from '@/lib/worldRuntimeStatus.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
-  ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
-  FileText, Globe2, MessagesSquare, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
-  Settings, Square, Terminal, TreePine, User, UsersRound
+  ArrowRight, Brain, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
+  FileText, Globe2, HeartPulse, MessagesSquare, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send,
+  ServerOff, Settings, Square, Terminal, Thermometer, TreePine, User, UsersRound, Utensils
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
@@ -1281,12 +1300,49 @@ export default {
       return playerCharacterLabel(prefab, this.$t)
     },
     playerStatusLabel(status) {
-      const normalized = String(status || '').trim().toLowerCase()
+      const normalized = normalizePlayerStatus(status)
       if (normalized === 'stale') return this.$t('players.statuses.stale')
       if (['online', 'offline'].includes(normalized)) {
         return this.$t(`common.states.${normalized}`)
       }
       return status || this.$t('common.states.unknown')
+    },
+    playerIsOnline(player) {
+      return isPlayerOnline(player?.status)
+    },
+    playerContextLabel(player) {
+      const status = normalizePlayerStatus(player?.status)
+      const parameters = {
+        character: this.characterLabel(player?.prefab),
+        world: player?.world_name || this.$t('servers.workspace.players.unknownWorld')
+      }
+      if (status === 'online') return this.$t('servers.workspace.players.currentWorld', parameters)
+      if (status === 'stale') return this.$t('servers.workspace.players.lastKnownWorld', parameters)
+      return this.$t('servers.workspace.players.lastWorld', parameters)
+    },
+    playerObservationLabel(player) {
+      if (this.playerIsOnline(player)) return this.$t('servers.workspace.players.metricsUnavailable')
+      const stale = normalizePlayerStatus(player?.status) === 'stale'
+      const observedAt = stale ? player?.presence_observed_at : player?.last_seen
+      return this.$t(
+        stale ? 'servers.workspace.players.lastConfirmedAt' : 'servers.workspace.players.lastSeenAt',
+        { time: this.formatCompactTime(observedAt) }
+      )
+    },
+    playerVitals(player) {
+      const localeState = this.$i18n?.locale
+      const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN')
+      return [
+        { key: 'health', field: 'healthPercent', raw: player?.health_percent, icon: HeartPulse, format: formatPlayerPercentage },
+        { key: 'hunger', field: 'hungerPercent', raw: player?.hunger_percent, icon: Utensils, format: formatPlayerPercentage },
+        { key: 'sanity', field: 'sanityPercent', raw: player?.sanity_percent, icon: Brain, format: formatPlayerPercentage },
+        { key: 'temperature', field: 'temperature', raw: player?.temperature, icon: Thermometer, format: value => formatPlayerTemperature(value, locale) }
+      ].filter(metric => isLivePlayerMetric(player, metric.field, metric.raw)).map(metric => ({
+        key: metric.key,
+        icon: metric.icon,
+        label: this.$t(`servers.workspace.players.metrics.${metric.key}`),
+        value: metric.format(metric.raw)
+      }))
     },
     errorState(key, error) {
       return { key, detail: String(error?.message || '').trim() }
@@ -1660,7 +1716,7 @@ export default {
 }
 
 .players-panel {
-  min-height: 440px;
+  min-height: 220px;
   padding-top: 12px;
 }
 
@@ -1808,8 +1864,8 @@ export default {
   align-items: center;
   height: auto;
   width: 100%;
-  min-height: 50px;
-  padding: 5px 0;
+  min-height: 72px;
+  padding: 8px 0;
   color: inherit;
   text-align: left;
   background: transparent;
@@ -1822,11 +1878,15 @@ export default {
 }
 
 .player-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
 }
 
-.player-copy strong,
-.player-copy span {
+.player-copy > strong,
+.player-context,
+.player-observation {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1838,9 +1898,44 @@ export default {
   font-size: 13px;
 }
 
-.player-copy span {
+.player-context,
+.player-observation {
   color: var(--muted-foreground);
   font-size: 11px;
+}
+
+.player-vitals {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-top: 3px;
+}
+
+.player-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--foreground);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.player-metric > svg {
+  width: 13px;
+  height: 13px;
+  color: var(--muted-foreground);
+}
+
+.player-metric:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.player-observation {
+  margin-top: 3px;
 }
 
 .backup-row {
