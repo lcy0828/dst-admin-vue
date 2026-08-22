@@ -8,6 +8,8 @@ const PLAYER_STATUS_KEYS = Object.freeze({
 })
 
 const PLAYER_CHARACTER_ALIASES = Object.freeze({
+  maxwell: 'waxwell',
+  wigfrid: 'wathgrithr',
   '威尔逊': 'wilson',
   '薇洛': 'willow',
   '沃尔夫冈': 'wolfgang',
@@ -130,10 +132,19 @@ export function playerStatusMeta(status, translate) {
 
 export function playerCharacterLabel(prefab, translate) {
   if (!prefab) return translate('players.values.unknownCharacter')
-  const normalized = PLAYER_CHARACTER_ALIASES[prefab] || prefab
+  const normalized = normalizePlayerCharacterPrefab(prefab)
   return PLAYER_CHARACTER_IDS.includes(normalized)
     ? translate(`players.characters.${normalized}`)
     : prefab
+}
+
+export function normalizePlayerCharacterPrefab(prefab) {
+  const original = String(prefab || '').trim()
+  if (!original) return ''
+  const lowered = original.toLowerCase()
+  const normalized = PLAYER_CHARACTER_ALIASES[original] || PLAYER_CHARACTER_ALIASES[lowered] || lowered
+  if (PLAYER_CHARACTER_IDS.includes(normalized)) return normalized
+  return PLAYER_CHARACTER_IDS.find(character => normalized.startsWith(`${character}_`)) || ''
 }
 
 export function playerBanDurationLabel(duration, translate) {

@@ -103,7 +103,10 @@
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" :title="$t('players.list.administrator')" /><UserRoundCheck v-if="player.is_friend" :title="$t('players.list.friend')" /></div>
+                  <UiButton class="max-w-56 justify-start px-1" variant="ghost" size="sm" @click="viewPlayerDetail(player)">
+                    <CharacterAvatar :prefab="player.prefab" :name="player.player_name" />
+                    <span class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" :title="$t('players.list.administrator')" /><UserRoundCheck v-if="player.is_friend" :title="$t('players.list.friend')" /></span>
+                  </UiButton>
                 </TableCell>
                 <TableCell class="mono-cell">{{ player.user_id }}</TableCell>
                 <TableCell><Badge variant="outline">{{ getCharacterName(player.prefab) }}</Badge></TableCell>
@@ -164,13 +167,13 @@
       </CardFooter>
     </Card>
 
-    <Sheet v-model:open="playerDetailVisible">
+    <Sheet v-model:open="playerDetailVisible" @update:open="handlePlayerDetailOpenChange">
       <SheetContent side="right" class="player-detail-sheet">
         <SheetHeader><SheetTitle>{{ $t('players.detail.title') }}</SheetTitle><SheetDescription>{{ $t('players.detail.description') }}</SheetDescription></SheetHeader>
         <ScrollArea class="player-detail-scroll">
           <div v-if="currentPlayer" class="player-detail">
             <div class="player-detail-heading">
-              <Avatar size="lg"><AvatarFallback>{{ getPlayerInitials(currentPlayer) }}</AvatarFallback></Avatar>
+              <CharacterAvatar :prefab="currentPlayer.prefab" :name="currentPlayer.player_name" size="lg" />
               <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="getPlayerStatusMeta(currentPlayer.status).variant">{{ getPlayerStatusMeta(currentPlayer.status).label }}</Badge></div><span>{{ getCharacterName(currentPlayer.prefab) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || $t('players.values.unknownWorld') }}</span></div>
             </div>
             <Alert v-if="currentPlayer.presence_conflict" variant="destructive">
@@ -270,7 +273,6 @@ import { Clock3, Crown, Download, ExternalLink, Globe2, MoreHorizontal, RefreshC
 import { toast } from 'vue-sonner';
 import { playerApi } from '@/api/playerApi';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -306,6 +308,7 @@ import {
 import { promptText } from '@/lib/feedback';
 import SortButton from './SortButton.vue';
 import RuntimeStatusPanel from '@/components/runtime/RuntimeStatusPanel.vue';
+import CharacterAvatar from '@/components/players/CharacterAvatar.vue';
 
 export default {
   name: 'PlayerList',
@@ -314,8 +317,6 @@ export default {
     AlertAction,
     AlertDescription,
     AlertTitle,
-    Avatar,
-    AvatarFallback,
     Badge,
     Card,
     CardAction,
@@ -324,6 +325,7 @@ export default {
     CardFooter,
     CardHeader,
     CardTitle,
+    CharacterAvatar,
     Clock3,
     Crown,
     DialogContent,
@@ -421,7 +423,7 @@ export default {
         archive_name: this.$route.query.archive || '',
         status: '',
         prefab: '',
-        keyword: ''
+        keyword: this.$route.query.playerId || ''
       },
 
       // 存档选项
@@ -627,6 +629,7 @@ export default {
         this.playerList = response.data || [];
         this.pagination.total = response.total || 0;
         this.partialFailures = response.failures || [];
+        this.openRequestedPlayer();
         return true;
       } catch (error) {
         if (requestSequence !== this.playerRequestSequence) return false;
@@ -706,9 +709,36 @@ export default {
     },
 
     // 查看玩家详情
-    viewPlayerDetail(player) {
+    viewPlayerDetail(player, { syncRoute = true } = {}) {
       this.currentPlayer = { ...player };
       this.playerDetailVisible = true;
+      if (!syncRoute || this.$route.query.playerId === player.user_id) return;
+      this.$router.replace({
+        query: {
+          ...this.$route.query,
+          archive: player.archive_name || this.$route.query.archive,
+          roomId: player.room_id || undefined,
+          playerId: player.user_id
+        }
+      });
+    },
+
+    openRequestedPlayer() {
+      const playerId = String(this.$route.query.playerId || '').trim();
+      if (!playerId || this.playerDetailVisible) return;
+      const roomId = String(this.$route.query.roomId || '').trim();
+      const player = this.playerList.find(item => (
+        item.user_id === playerId && (!roomId || item.room_id === roomId)
+      ));
+      if (player) this.viewPlayerDetail(player, { syncRoute: false });
+    },
+
+    handlePlayerDetailOpenChange(open) {
+      if (open || !this.$route.query.playerId) return;
+      const query = { ...this.$route.query };
+      delete query.playerId;
+      delete query.roomId;
+      this.$router.replace({ query });
     },
 
     async confirmPlayerAction(player, title, description) {
@@ -972,11 +1002,6 @@ export default {
       if (netScore === 1) return 'secondary';
       if (netScore === 2) return 'destructive';
       return 'outline';
-    },
-
-    getPlayerInitials(player) {
-      const name = (player?.player_name || player?.user_id || '?').trim();
-      return Array.from(name).slice(0, 2).join('').toUpperCase();
     },
 
     // 从会话名称中提取世界名称

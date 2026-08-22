@@ -11,7 +11,8 @@ test('server workspace translates known protocol values and preserves unknown va
   assert.match(source, /worldPrimaryAction\(world, key => this\.\$t\(key\)\)/)
   assert.match(source, /\['autumn', 'winter', 'spring', 'summer'\]\.includes\(normalized\)/)
   assert.match(source, /return season \|\| '--'/)
-  assert.match(source, /return prefab \|\| this\.\$t\('servers\.workspace\.players\.unknownCharacter'\)/)
+  assert.match(source, /import \{ playerCharacterLabel \} from '@\/i18n\/playerMessages\.js'/)
+  assert.match(source, /return playerCharacterLabel\(prefab, this\.\$t\)/)
   assert.match(source, /return rawRole \|\| this\.\$t\('servers\.workspace\.worlds\.roles\.custom'\)/)
 })
 

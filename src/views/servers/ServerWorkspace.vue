@@ -307,9 +307,10 @@
                     variant="ghost"
                     size="sm"
                     class="player-row"
-                    @click="openPlayers"
+                    :aria-label="$t('servers.workspace.players.openPlayer', { player: player.player_name || player.user_id })"
+                    @click="openPlayer(player)"
                   >
-                    <span class="player-avatar"><User /></span>
+                    <CharacterAvatar :prefab="player.prefab" :name="player.player_name" size="lg" />
                     <span class="player-copy">
                       <strong :title="player.player_name || player.user_id">{{ player.player_name || player.user_id }}</strong>
                       <span>{{ characterLabel(player.prefab) }} · {{ player.world_name || $t('servers.workspace.players.unknownWorld') }}</span>
@@ -317,6 +318,7 @@
                     <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
                       {{ playerStatusLabel(player.status) }}
                     </Badge>
+                    <ChevronRight />
                   </UiButton>
                 </div>
                 <Alert v-else-if="contextErrors.players" variant="destructive">
@@ -483,6 +485,7 @@ import RoomChatPanel from '@/components/RoomChatPanel.vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import RoomRefreshIntervalSelect from '@/components/layout/RoomRefreshIntervalSelect.vue'
+import CharacterAvatar from '@/components/players/CharacterAvatar.vue'
 import { backupApi, commandApi, playerApi, roomApi } from '@/api'
 import { worldStatesV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -501,6 +504,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
 import { confirmAction, promptText } from '@/lib/feedback'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import { playerCharacterLabel } from '@/i18n/playerMessages.js'
 import { translateWorldStateValue } from '@/i18n/worldStateMessages.js'
 import {
   isCapacityRiskCanceled,
@@ -521,17 +525,11 @@ import {
 } from '@/lib/worldRuntimeStatus.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
-  ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
+  ArrowRight, ChartNoAxesCombined, ChevronDown, ChevronRight, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
   FileText, Globe2, MessagesSquare, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
   Settings, Square, Terminal, TreePine, User, UsersRound
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-
-const KNOWN_CHARACTERS = new Set([
-  'wilson', 'willow', 'wolfgang', 'wendy', 'wx78', 'wickerbottom', 'woodie', 'wes',
-  'waxwell', 'wathgrithr', 'webber', 'winona', 'wortox', 'wormwood', 'warly', 'wurt',
-  'walter', 'wanda', 'wonkey'
-])
 
 const CONTEXT_PLAYER_LIMIT = 5
 const CONTEXT_BACKUP_LIMIT = 3
@@ -557,11 +555,13 @@ export default {
     CardDescription,
     CardHeader,
     CardTitle,
+    CharacterAvatar,
     CircleAlert,
     CircleCheck,
     ArrowRight,
     ChartNoAxesCombined,
     ChevronDown,
+    ChevronRight,
     DatabaseBackup,
     DropdownMenu,
     DropdownMenuContent,
@@ -1143,6 +1143,16 @@ export default {
     openPlayers() {
       this.$router.push({ path: '/players/list', query: { archive: this.selectedRoom?.name } })
     },
+    openPlayer(player) {
+      this.$router.push({
+        path: '/players/list',
+        query: {
+          archive: this.selectedRoom?.name,
+          roomId: player.room_id || this.selectedRoomId,
+          playerId: player.user_id
+        }
+      })
+    },
     openMods() {
       this.$router.push({
         path: '/mods',
@@ -1280,11 +1290,7 @@ export default {
       return Number.isFinite(value) ? `${value}%` : '--'
     },
     characterLabel(prefab) {
-      const normalized = String(prefab || '').trim().toLowerCase()
-      if (KNOWN_CHARACTERS.has(normalized)) {
-        return this.$t(`servers.workspace.players.characters.${normalized}`)
-      }
-      return prefab || this.$t('servers.workspace.players.unknownCharacter')
+      return playerCharacterLabel(prefab, this.$t)
     },
     playerStatusLabel(status) {
       const normalized = String(status || '').trim().toLowerCase()
@@ -1809,12 +1815,12 @@ export default {
 
 .player-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto 16px;
   gap: 8px;
   align-items: center;
   height: auto;
   width: 100%;
-  min-height: 42px;
+  min-height: 50px;
   padding: 5px 0;
   cursor: pointer;
   color: inherit;
@@ -1836,21 +1842,6 @@ export default {
 .player-row:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
-}
-
-.player-avatar {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  color: var(--foreground);
-  background: var(--muted);
-  border-radius: 4px;
-}
-
-.player-avatar svg {
-  width: 14px;
-  height: 14px;
 }
 
 .player-copy {
