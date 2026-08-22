@@ -1463,7 +1463,7 @@ export default {
 .world-item {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   min-width: 0;

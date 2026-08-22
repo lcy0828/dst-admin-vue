@@ -60,7 +60,7 @@ test('server workspace reuses cached world-state snapshots without forcing Lua r
 test('server workspace keeps player count aligned with the world facts', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
-  assert.match(source, /grid-template-columns: minmax\(220px, 320px\) minmax\(0, 1fr\) auto/)
+  assert.match(source, /grid-template-columns: minmax\(180px, 240px\) minmax\(0, 1fr\) auto/)
   assert.match(source, /worldOnlinePlayerLabel\(world\)/)
   assert.match(source, /online_by_world/)
   assert.doesNotMatch(source, /class="world-presence"/)
