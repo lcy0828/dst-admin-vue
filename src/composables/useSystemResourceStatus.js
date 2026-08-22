@@ -2,7 +2,8 @@ import { ref } from 'vue'
 import { systemApi } from '@/api/index'
 import { translate } from '@/i18n'
 
-export const SYSTEM_RESOURCE_REFRESH_INTERVAL_MS = 10_000
+export const SYSTEM_RESOURCE_REFRESH_INTERVAL_MS = 5_000
+export const SYSTEM_RESOURCE_DETAIL_REFRESH_INTERVAL_MS = 1_000
 
 const status = ref({})
 const loading = ref(false)
@@ -10,14 +11,16 @@ const error = ref('')
 const lastUpdatedAt = ref(null)
 
 let activePollingConsumers = 0
+let detailedPollingConsumers = 0
 let refreshPromise = null
 let refreshTimer = null
 let visibilityListenerAttached = false
 
-async function refreshSystemResourceStatus() {
+async function refreshSystemResourceStatus(options = {}) {
   if (refreshPromise) return refreshPromise
 
-  loading.value = true
+  const silent = options?.silent === true
+  if (!silent) loading.value = true
   error.value = ''
   const request = (async () => {
     try {
@@ -39,7 +42,7 @@ async function refreshSystemResourceStatus() {
     return await request
   } finally {
     if (refreshPromise === request) {
-      loading.value = false
+      if (!silent) loading.value = false
       refreshPromise = null
     }
   }
@@ -54,7 +57,13 @@ function startRefreshTimer() {
   stopRefreshTimer()
   if (activePollingConsumers <= 0 || typeof window === 'undefined') return
   if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-  refreshTimer = window.setInterval(refreshSystemResourceStatus, SYSTEM_RESOURCE_REFRESH_INTERVAL_MS)
+  const interval = detailedPollingConsumers > 0
+    ? SYSTEM_RESOURCE_DETAIL_REFRESH_INTERVAL_MS
+    : SYSTEM_RESOURCE_REFRESH_INTERVAL_MS
+  refreshTimer = window.setInterval(
+    () => refreshSystemResourceStatus({ silent: true }),
+    interval
+  )
 }
 
 function handleVisibilityChange() {
@@ -62,7 +71,7 @@ function handleVisibilityChange() {
     stopRefreshTimer()
     return
   }
-  refreshSystemResourceStatus()
+  refreshSystemResourceStatus({ silent: true })
   startRefreshTimer()
 }
 
@@ -74,7 +83,7 @@ function startSystemResourcePolling() {
     document.addEventListener('visibilitychange', handleVisibilityChange)
     visibilityListenerAttached = true
   }
-  refreshSystemResourceStatus()
+  refreshSystemResourceStatus({ silent: true })
   startRefreshTimer()
 }
 
@@ -82,11 +91,26 @@ function stopSystemResourcePolling() {
   activePollingConsumers = Math.max(0, activePollingConsumers - 1)
   if (activePollingConsumers > 0) return
 
+  detailedPollingConsumers = 0
   stopRefreshTimer()
   if (typeof document !== 'undefined' && visibilityListenerAttached) {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
     visibilityListenerAttached = false
   }
+}
+
+function startSystemResourceDetailedPolling() {
+  detailedPollingConsumers += 1
+  if (detailedPollingConsumers > 1) return
+
+  refreshSystemResourceStatus({ silent: true })
+  startRefreshTimer()
+}
+
+function stopSystemResourceDetailedPolling() {
+  detailedPollingConsumers = Math.max(0, detailedPollingConsumers - 1)
+  if (detailedPollingConsumers > 0) return
+  startRefreshTimer()
 }
 
 export function useSystemResourceStatus() {
@@ -97,6 +121,8 @@ export function useSystemResourceStatus() {
     lastUpdatedAt,
     refreshSystemResourceStatus,
     startSystemResourcePolling,
-    stopSystemResourcePolling
+    stopSystemResourcePolling,
+    startSystemResourceDetailedPolling,
+    stopSystemResourceDetailedPolling
   }
 }

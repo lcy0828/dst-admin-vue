@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Activity, CircleAlert, Cpu, HardDrive, MemoryStick, RefreshCw } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -38,10 +38,13 @@ const {
   lastUpdatedAt,
   refreshSystemResourceStatus,
   startSystemResourcePolling,
-  stopSystemResourcePolling
+  stopSystemResourcePolling,
+  startSystemResourceDetailedPolling,
+  stopSystemResourceDetailedPolling
 } = useSystemResourceStatus()
 
 const CPU_CORE_ALERT_THRESHOLD = 80
+const popoverOpen = ref(false)
 const hasStatus = computed(() => Object.keys(status.value || {}).length > 0)
 const loadCapacity = computed(() => status.value.cpu_threads || status.value.cpu_cores)
 const busiestCore = computed(() => busiestCPUCore(status.value.cpu_core_usage))
@@ -93,13 +96,28 @@ function sampledAt() {
   return formatResourceDateTime(status.value.current_time || lastUpdatedAt.value, locale.value)
 }
 
+function handlePopoverOpenChange(open) {
+  if (popoverOpen.value === open) return
+  popoverOpen.value = open
+  if (open) {
+    startSystemResourceDetailedPolling()
+    return
+  }
+  stopSystemResourceDetailedPolling()
+}
+
+function stopPolling() {
+  if (popoverOpen.value) stopSystemResourceDetailedPolling()
+  stopSystemResourcePolling()
+}
+
 onMounted(startSystemResourcePolling)
-onBeforeUnmount(stopSystemResourcePolling)
+onBeforeUnmount(stopPolling)
 </script>
 
 <template>
   <div class="flex min-w-0 shrink-0 items-center">
-    <Popover>
+    <Popover :open="popoverOpen" @update:open="handlePopoverOpenChange">
       <PopoverTrigger as-child>
         <Button
           variant="ghost"

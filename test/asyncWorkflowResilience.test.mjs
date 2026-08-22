@@ -49,7 +49,7 @@ test('log and dashboard refreshes retain previous snapshots on transient failure
   assert.match(viewer, /loading && logs\.length === 0/)
 
   assert.match(systemResources, /if \(refreshPromise\) return refreshPromise/)
-  assert.doesNotMatch(section(systemResources, 'async function refreshSystemResourceStatus()', 'function stopRefreshTimer()'), /status\.value\s*=\s*\{\}/)
+  assert.doesNotMatch(section(systemResources, 'async function refreshSystemResourceStatus(options = {})', 'function stopRefreshTimer()'), /status\.value\s*=\s*\{\}/)
   assert.match(dashboard, /serverRequestSequence/)
   assert.match(dashboard, /versionRequestSequence/)
   assert.doesNotMatch(dashboard, /playerApi|getPlayerStats|refreshPlayers/)
