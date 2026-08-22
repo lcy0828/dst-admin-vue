@@ -318,7 +318,7 @@
                     <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
                       {{ playerStatusLabel(player.status) }}
                     </Badge>
-                    <ChevronRight />
+                    <PanelRightOpen />
                   </UiButton>
                 </div>
                 <Alert v-else-if="contextErrors.players" variant="destructive">
@@ -476,6 +476,12 @@
         </aside>
       </div>
     </template>
+
+    <PlayerActionSheet
+      v-model:open="playerActionOpen"
+      :player="selectedPlayer"
+      @updated="refreshPlayerStats"
+    />
   </div>
 </template>
 
@@ -486,6 +492,7 @@ import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import RoomRefreshIntervalSelect from '@/components/layout/RoomRefreshIntervalSelect.vue'
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue'
+import PlayerActionSheet from '@/components/players/PlayerActionSheet.vue'
 import { backupApi, commandApi, playerApi, roomApi } from '@/api'
 import { worldStatesV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -525,9 +532,9 @@ import {
 } from '@/lib/worldRuntimeStatus.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
-  ArrowRight, ChartNoAxesCombined, ChevronDown, ChevronRight, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
+  ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
   FileText, Globe2, MessagesSquare, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
-  Settings, Square, Terminal, TreePine, User, UsersRound
+  PanelRightOpen, Settings, Square, Terminal, TreePine, User, UsersRound
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
@@ -561,7 +568,6 @@ export default {
     ArrowRight,
     ChartNoAxesCombined,
     ChevronDown,
-    ChevronRight,
     DatabaseBackup,
     DropdownMenu,
     DropdownMenuContent,
@@ -579,7 +585,9 @@ export default {
     Globe2,
     MessagesSquare,
     PackageOpen,
+    PanelRightOpen,
     Pickaxe,
+    PlayerActionSheet,
     Play,
     UiProgress,
     RefreshCw,
@@ -624,6 +632,8 @@ export default {
       rooms: [],
       selectedRoomId: this.$route.query.roomId || '',
       selectedWorldId: this.$route.query.worldId || '',
+      selectedPlayer: null,
+      playerActionOpen: false,
       playerStats: null,
       worldStateSnapshots: [],
       backups: [],
@@ -742,6 +752,8 @@ export default {
       this.worldStateSequence += 1
       this.selectedRoomId = ''
       this.selectedWorldId = ''
+      this.selectedPlayer = null
+      this.playerActionOpen = false
       this.rooms = []
       this.playerStats = null
       this.worldStateSnapshots = []
@@ -806,6 +818,8 @@ export default {
       this.syncRouteContext()
     },
     async handleRoomChange() {
+      this.selectedPlayer = null
+      this.playerActionOpen = false
       this.selectedWorldId = (this.worlds.find(world => world.status === 'running') || this.worlds[0])?.id || ''
       this.syncConsoleTarget()
       this.syncRouteContext()
@@ -1144,14 +1158,8 @@ export default {
       this.$router.push({ path: '/players/list', query: { archive: this.selectedRoom?.name } })
     },
     openPlayer(player) {
-      this.$router.push({
-        path: '/players/list',
-        query: {
-          archive: this.selectedRoom?.name,
-          roomId: player.room_id || this.selectedRoomId,
-          playerId: player.user_id
-        }
-      })
+      this.selectedPlayer = { ...player }
+      this.playerActionOpen = true
     },
     openMods() {
       this.$router.push({

@@ -30,7 +30,7 @@ test('character avatars normalize aliases and base characters while preserving m
   assert.equal(normalizePlayerCharacterPrefab('custom_mod_character'), '')
 })
 
-test('workspace player rows open the exact actionable player details', async () => {
+test('workspace player rows open local actions without leaving the dashboard', async () => {
   const [avatar, workspace, playerList] = await Promise.all([
     source('src/components/players/CharacterAvatar.vue'),
     source('src/views/servers/ServerWorkspace.vue'),
@@ -43,8 +43,10 @@ test('workspace player rows open the exact actionable player details', async () 
 
   assert.match(workspace, /v-for="player in recentPlayers"[\s\S]*?<CharacterAvatar/)
   assert.match(workspace, /@click="openPlayer\(player\)"/)
-  assert.match(workspace, /playerId: player\.user_id/)
-  assert.match(workspace, /roomId: player\.room_id \|\| this\.selectedRoomId/)
+  assert.match(workspace, /<PlayerActionSheet[\s\S]*?v-model:open="playerActionOpen"/)
+  assert.match(workspace, /this\.selectedPlayer = \{ \.\.\.player \}/)
+  assert.match(workspace, /this\.playerActionOpen = true/)
+  assert.doesNotMatch(workspace, /openPlayer\(player\) \{[\s\S]*?path: '\/players\/list'/)
 
   assert.match(playerList, /<CharacterAvatar :prefab="player\.prefab"/)
   assert.match(playerList, /<CharacterAvatar :prefab="currentPlayer\.prefab"/)
@@ -54,4 +56,20 @@ test('workspace player rows open the exact actionable player details', async () 
   assert.match(playerList, /players\.operations\.godMode/)
   assert.match(playerList, /players\.operations\.kick/)
   assert.match(playerList, /players\.operations\.ban/)
+})
+
+test('local player actions preserve every existing management operation and confirmation', async () => {
+  const actions = await source('src/components/players/PlayerActionSheet.vue')
+
+  assert.match(actions, /<SheetTitle>\{\{ t\('players\.detail\.title'\) \}\}<\/SheetTitle>/)
+  assert.match(actions, /playerApi\.getPlayerDetail\(props\.player\)/)
+  assert.match(actions, /playerApi\.kickPlayer\(activePlayer\.value, null, confirmation\)/)
+  assert.match(actions, /playerApi\.banPlayer\(activePlayer\.value/)
+  assert.match(actions, /playerApi\.killPlayer\(activePlayer\.value, null, confirmation\)/)
+  assert.match(actions, /playerApi\.resurrectPlayer\(activePlayer\.value, null, confirmation\)/)
+  assert.match(actions, /playerApi\.changeCharacter\(activePlayer\.value, null, confirmation\)/)
+  assert.match(actions, /playerApi\.setGodMode\(activePlayer\.value, modeEnabled\.value, null\)/)
+  assert.match(actions, /playerApi\.setCreativeMode\(activePlayer\.value, modeEnabled\.value, null\)/)
+  assert.match(actions, /inputValidator: value => value === activePlayer\.value\.user_id/)
+  assert.match(actions, /banForm\.confirmation !== activePlayer\.value\?\.archive_name/)
 })
