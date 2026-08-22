@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSystemResourceStatus } from '@/composables/useSystemResourceStatus'
+import { busiestCPUCore } from '@/lib/cpuMetrics.mjs'
 import {
   formatDecimal,
   formatDisk,
@@ -42,6 +43,23 @@ const {
 
 const hasStatus = computed(() => Object.keys(status.value || {}).length > 0)
 const loadCapacity = computed(() => status.value.cpu_threads || status.value.cpu_cores)
+const busiestCore = computed(() => busiestCPUCore(status.value.cpu_core_usage))
+const primaryCPUUsage = computed(() => busiestCore.value?.usage ?? status.value.cpu_usage)
+const cpuMetricLabel = computed(() => busiestCore.value
+  ? t('dashboard.resources.singleCore')
+  : t('dashboard.resources.cpuAverage'))
+const cpuMetricSummary = computed(() => {
+  if (!busiestCore.value) {
+    return `${status.value.cpu_model || '--'} · ${t('dashboard.resources.coresThreads', {
+      cores: status.value.cpu_cores || '--',
+      threads: status.value.cpu_threads || '--'
+    })}`
+  }
+  return t('dashboard.resources.busiestCoreSummary', {
+    index: busiestCore.value.index + 1,
+    average: formatPercent(status.value.cpu_usage)
+  })
+})
 
 function formatPercent(value) {
   return hasMetric(value) ? `${percentage(value)}%` : '--'
@@ -71,8 +89,8 @@ onBeforeUnmount(stopSystemResourcePolling)
         >
           <span class="flex items-center gap-1">
             <Cpu class="text-muted-foreground" />
-            <span class="hidden 2xl:inline">CPU</span>
-            <strong :class="usageClass(status.cpu_usage)">{{ formatPercent(status.cpu_usage) }}</strong>
+            <span class="hidden 2xl:inline">{{ cpuMetricLabel }}</span>
+            <strong :class="usageClass(primaryCPUUsage)">{{ formatPercent(primaryCPUUsage) }}</strong>
           </span>
           <span class="flex items-center gap-1">
             <MemoryStick class="text-muted-foreground" />
@@ -127,12 +145,12 @@ onBeforeUnmount(stopSystemResourcePolling)
           <div class="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4">
             <div class="flex min-w-0 flex-col gap-2">
               <div class="flex items-center justify-between gap-2 text-sm">
-                <span class="flex items-center gap-1.5"><Cpu class="text-muted-foreground size-4" />CPU</span>
-                <strong :class="usageClass(status.cpu_usage)">{{ formatPercent(status.cpu_usage) }}</strong>
+                <span class="flex items-center gap-1.5"><Cpu class="text-muted-foreground size-4" />{{ cpuMetricLabel }}</span>
+                <strong :class="usageClass(primaryCPUUsage)">{{ formatPercent(primaryCPUUsage) }}</strong>
               </div>
-              <Progress :model-value="percentage(status.cpu_usage)" />
-              <span class="text-muted-foreground truncate text-xs" :title="`${status.cpu_model || '--'} · ${t('dashboard.resources.coresThreads', { cores: status.cpu_cores || '--', threads: status.cpu_threads || '--' })}`">
-                {{ status.cpu_model || '--' }} · {{ t('dashboard.resources.coresThreads', { cores: status.cpu_cores || '--', threads: status.cpu_threads || '--' }) }}
+              <Progress :model-value="percentage(primaryCPUUsage)" :aria-label="cpuMetricLabel" />
+              <span class="text-muted-foreground truncate text-xs" :title="`${cpuMetricSummary} · ${status.cpu_model || '--'}`">
+                {{ cpuMetricSummary }}
               </span>
             </div>
 
