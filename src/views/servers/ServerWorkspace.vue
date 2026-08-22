@@ -144,7 +144,7 @@
           >
             <div class="world-main">
               <div class="world-symbol" :class="worldTone(world)">
-                <component :is="worldIcon(world)" />
+                <component :is="worldIcon(world)" aria-hidden="true" />
               </div>
               <div class="world-identity">
                 <div class="world-name-row">
@@ -170,7 +170,12 @@
               </div>
               <div class="world-fact-progress">
                 <dt>{{ $t('servers.workspace.worlds.season') }}</dt>
-                <dd>{{ worldSeasonLabel(world) }}</dd>
+                <dd>
+                  <span class="world-fact-value" :title="worldSeasonLabel(world)">
+                    <component v-if="worldSeasonIcon(world)" :is="worldSeasonIcon(world)" aria-hidden="true" />
+                    <span>{{ worldSeasonLabel(world) }}</span>
+                  </span>
+                </dd>
                 <UiProgress
                   v-if="worldSeasonProgress(world) !== null"
                   :model-value="worldSeasonProgress(world)"
@@ -179,7 +184,12 @@
               </div>
               <div class="world-fact-progress">
                 <dt>{{ $t('servers.workspace.worlds.phase') }}</dt>
-                <dd>{{ worldPhaseLabel(world) }}</dd>
+                <dd>
+                  <span class="world-fact-value" :title="worldPhaseLabel(world)">
+                    <component v-if="worldPhaseIcon(world)" :is="worldPhaseIcon(world)" aria-hidden="true" />
+                    <span>{{ worldPhaseLabel(world) }}</span>
+                  </span>
+                </dd>
                 <UiProgress
                   v-if="worldPhaseProgress(world) !== null"
                   :model-value="worldPhaseProgress(world)"
@@ -543,8 +553,9 @@ import {
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
   ArrowRight, Brain, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
-  FileText, Globe2, HeartPulse, MessagesSquare, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send,
-  ServerOff, Settings, Square, Terminal, Thermometer, TreePine, User, UsersRound, Utensils
+  FileText, Globe2, HeartPulse, Leaf, MessagesSquare, Moon, Mountain, PackageOpen, Play, RefreshCw, RotateCw,
+  Search, Send, ServerOff, Settings, Snowflake, Sprout, Square, Sun, Sunset, Terminal, Thermometer, Trees, User,
+  UsersRound, Utensils
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
@@ -593,9 +604,11 @@ export default {
     FileCheck2,
     FileText,
     Globe2,
+    Leaf,
     MessagesSquare,
+    Moon,
+    Mountain,
     PackageOpen,
-    Pickaxe,
     PlayerActionMenu,
     Play,
     UiProgress,
@@ -613,8 +626,12 @@ export default {
     Send,
     ServerOff,
     Settings,
+    Snowflake,
     Spinner,
+    Sprout,
     Square,
+    Sun,
+    Sunset,
     Tabs,
     TabsContent,
     TabsList,
@@ -623,7 +640,7 @@ export default {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
-    TreePine,
+    Trees,
     UiButton,
     UiSelect,
     UiTextarea,
@@ -1167,10 +1184,14 @@ export default {
       })
     },
     worldIcon(world) {
-      return ['cave', 'caves'].includes(world.type || world.role) ? Pickaxe : TreePine
+      return ['cave', 'caves'].includes(String(world.type || world.role || '').trim().toLowerCase())
+        ? Mountain
+        : Trees
     },
     worldTone(world) {
-      return ['cave', 'caves'].includes(world.type || world.role) ? 'cave' : 'forest'
+      return ['cave', 'caves'].includes(String(world.type || world.role || '').trim().toLowerCase())
+        ? 'cave'
+        : 'forest'
     },
     worldRoleLabel(world) {
       const rawRole = world.type || world.role
@@ -1235,11 +1256,28 @@ export default {
     worldSeasonLabel(world) {
       return this.seasonLabel(this.worldStateFor(world)?.season || world.season)
     },
+    worldSeasonIcon(world) {
+      const season = String(this.worldStateFor(world)?.season || world.season || '').trim().toLowerCase()
+      return {
+        autumn: Leaf,
+        winter: Snowflake,
+        spring: Sprout,
+        summer: Sun
+      }[season] || null
+    },
     worldSeasonProgress(world) {
       return this.progressValue(this.worldStateFor(world)?.seasonProgress)
     },
     worldPhaseLabel(world) {
       return this.protocolLabel('phases', this.worldStateFor(world)?.phase)
+    },
+    worldPhaseIcon(world) {
+      const phase = String(this.worldStateFor(world)?.phase || '').trim().toLowerCase()
+      return {
+        day: Sun,
+        dusk: Sunset,
+        night: Moon
+      }[phase] || null
     },
     worldPhaseProgress(world) {
       return this.progressValue(this.worldStateFor(world)?.phaseProgress)
@@ -1595,16 +1633,21 @@ export default {
   height: 36px;
   place-items: center;
   border-radius: 4px;
+  background: var(--muted);
 }
 
 .world-symbol.forest {
-  color: var(--warning-color);
-  background: color-mix(in srgb, var(--warning-color) 12%, var(--card));
+  color: var(--foreground);
 }
 
 .world-symbol.cave {
   color: var(--muted-foreground);
-  background: var(--muted);
+}
+
+.world-symbol svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 1.8;
 }
 
 .world-identity {
@@ -1677,6 +1720,26 @@ export default {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.world-fact-value {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 5px;
+}
+
+.world-fact-value svg {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--muted-foreground);
+  stroke-width: 1.8;
+}
+
+.world-fact-value span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .world-fact-progress [data-slot='progress'] {

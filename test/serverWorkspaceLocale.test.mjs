@@ -121,13 +121,16 @@ test('server workspace shows only live survival metrics and labels cached player
   assert.doesNotMatch(source, /\.players-panel \{\s*min-height: 440px;/)
 })
 
-test('server workspace keeps context lists bounded and uses static realm icons', async () => {
+test('server workspace keeps context lists bounded and uses explicit world-state icons', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
   assert.match(source, /const CONTEXT_PLAYER_LIMIT = 5/)
   assert.match(source, /const CONTEXT_BACKUP_LIMIT = 3/)
   assert.match(source, /recent_players\?\.slice\(0, CONTEXT_PLAYER_LIMIT\)/)
   assert.match(source, /return this\.backups\.slice\(0, CONTEXT_BACKUP_LIMIT\)/)
-  assert.match(source, /\? Pickaxe : TreePine/)
-  assert.doesNotMatch(source, /\? Moon : Sun/)
+  assert.match(source, /\? Mountain\s*: Trees/)
+  assert.match(source, /autumn: Leaf,[\s\S]*winter: Snowflake,[\s\S]*spring: Sprout,[\s\S]*summer: Sun/)
+  assert.match(source, /day: Sun,[\s\S]*dusk: Sunset,[\s\S]*night: Moon/)
+  assert.match(source, /class="world-fact-value"/)
+  assert.doesNotMatch(source, /Pickaxe|TreePine/)
 })
