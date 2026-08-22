@@ -55,7 +55,7 @@ test('dashboard onboarding uses real capabilities, checks, and shadcn controls',
   assert.match(api, /setupChecks: \(\) => client\.get\('\/system\/setup-checks'/)
   assert.match(dashboard, /<DashboardOnboarding/)
   assert.match(dashboard, /:capabilities="capabilities"/)
-  assert.match(dashboard, /dashboard\.onboarding\.packaging/)
+  assert.match(onboarding, /dashboard\.onboarding\.packaging/)
   assert.match(onboarding, /<Progress :model-value="state\.progress"/)
   assert.match(onboarding, /<Alert v-if="blockers\.length"/)
   assert.match(onboarding, /router\.push\('\/agents\/list'\)/)

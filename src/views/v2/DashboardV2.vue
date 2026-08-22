@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -21,7 +21,6 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import DashboardOnboarding from '@/components/dashboard/DashboardOnboarding.vue'
 import ServerWorkspace from '@/views/servers/ServerWorkspace.vue'
-import { normalizePackaging } from '@/lib/dashboardOnboarding.mjs'
 import {
   formatDateTime,
   formatDecimal,
@@ -38,7 +37,6 @@ const router = useRouter()
 const { locale, t } = useI18n()
 const RUNTIME_REFRESH_INTERVAL_MS = 10_000
 let runtimeRefreshTimer = null
-const roomOperations = ref(null)
 
 const {
   systemStatus,
@@ -47,7 +45,6 @@ const {
   capabilities,
   setupReadiness,
   updateStatus,
-  lastRefreshedAt,
   systemLoading,
   serverLoading,
   versionLoading,
@@ -56,7 +53,6 @@ const {
   versionError,
   guidanceError,
   runningServerCount,
-  dashboardLoading,
   canInstallGame,
   canUpdateGame,
   gameUpdateBusy,
@@ -69,10 +65,6 @@ const {
   updateGame,
   resumeUpdatePolling
 } = useDashboardV2()
-
-const deploymentPackaging = computed(() => capabilities.value?.deployment
-  ? normalizePackaging(capabilities.value.deployment.packaging)
-  : '')
 
 const gameUpdateState = computed(() => {
   if (!versionInfo.value.installed) {
@@ -91,16 +83,9 @@ const gameUpdateState = computed(() => {
   return { key: 'updateStateUnknown', descriptionKey: 'updateStateUnknownDescription', variant: 'outline' }
 })
 
-async function refreshAll() {
-  await Promise.all([
-    refreshDashboard(),
-    roomOperations.value?.refreshWorkspace?.()
-  ])
-}
-
 async function refreshRuntimeStatus() {
   if (document.visibilityState === 'hidden') return
-  if (await refreshRuntimeServers()) lastRefreshedAt.value = new Date()
+  await refreshRuntimeServers()
 }
 
 onMounted(async () => {
@@ -117,25 +102,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex min-w-0 flex-col gap-5">
-    <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div class="min-w-0">
-        <h1 class="text-2xl font-semibold tracking-normal">{{ t('dashboard.title') }}</h1>
-        <p class="text-muted-foreground mt-1 text-sm">
-          {{ t('dashboard.subtitle') }}
-          <span class="mx-1.5">·</span>
-          {{ t('dashboard.lastUpdated', { time: formatDateTime(lastRefreshedAt, locale) }) }}
-        </p>
-      </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <Badge v-if="deploymentPackaging" variant="outline">{{ t(`dashboard.onboarding.packaging.${deploymentPackaging}`) }}</Badge>
-        <Button variant="outline" size="sm" :disabled="dashboardLoading" @click="refreshAll">
-          <Spinner v-if="dashboardLoading" data-icon="inline-start" />
-          <RefreshCw v-else data-icon="inline-start" />
-          {{ t('dashboard.refreshAll') }}
-        </Button>
-      </div>
-    </header>
-
     <DashboardOnboarding
       :capabilities="capabilities"
       :readiness="setupReadiness"
@@ -151,7 +117,7 @@ onBeforeUnmount(() => {
       @refresh="refreshGuidance"
     />
 
-    <ServerWorkspace id="room-operations" ref="roomOperations" embedded />
+    <ServerWorkspace id="room-operations" embedded />
 
     <div class="grid min-w-0 items-start gap-4 lg:grid-cols-2">
       <Card size="sm">
