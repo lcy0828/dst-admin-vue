@@ -74,9 +74,9 @@ export const agentMessages = {
         }
       },
       list: {
-        title: '节点与集中管理',
-        subtitle: '查看已接入节点、运行时配置与资源状态。',
-        loadingAria: '正在读取 Agent 状态',
+        title: '机器管理',
+        subtitle: '统一管理本机和已接入的远程机器；机器名称可自定义，主机名保持不变。',
+        loadingAria: '正在读取机器状态',
         metrics: {
           online: '在线 Agent',
           onlineDescription: '当前保持连接的节点',
@@ -85,12 +85,14 @@ export const agentMessages = {
           operatingSystems: '操作系统',
           operatingSystemsDescription: '已接入的系统类型',
           summaryAria: '节点运行摘要',
-          onlineSummary: '{online}/{total} 个节点在线',
-          shardSummary: '运行中世界 {count}',
-          capacitySummary: '{count} 个容量提醒'
+          onlineSummary: '{online}/{total} 台机器在线',
+          shardSummary: '远程运行世界 {count}',
+          capacitySummary: '{count} 个远程容量提醒'
         },
         actions: {
           details: '详情',
+          rename: '重命名机器',
+          systemSettings: '系统设置',
           runtimeConfig: '运行时配置',
           configureRuntime: '配置远程运行时',
           executeCommand: '执行命令',
@@ -104,8 +106,8 @@ export const agentMessages = {
           ipAddress: 'IP 地址',
           cpuCores: '{count} 核心',
           topology: '拓扑',
-          node: '节点',
-          worldCapacity: '世界进程 / 建议上限',
+          node: '机器',
+          worldCapacity: '运行环境 / 世界容量',
           cpu: 'CPU',
           memory: '内存',
           memoryAvailable: '可用 {value}',
@@ -134,6 +136,8 @@ export const agentMessages = {
           notAvailable: '不可用',
           unknown: '未知',
           unknownNode: '未命名节点',
+          localMachine: '本机',
+          defaultRuntime: '本机 DST',
           estimated: '估算',
           available: '可用',
           missing: '缺失',
@@ -150,6 +154,7 @@ export const agentMessages = {
         capacity: {
           policyTitle: '同机多世界容量建议',
           policyDescription: '同一服务器可以运行多个房间和多个世界分片。每个运行中的 Shard 至少预留 1 个物理核心，并额外为系统、Agent、SteamCMD 与备份任务保留 1 核；这是保守提醒，不是强制限制或性能保证。',
+          localRecommendation: '按物理核心建议最多运行 {count} 层世界',
           progressAria: '{name} 的世界分片容量使用率',
           states: {
             available: '可用',
@@ -205,9 +210,18 @@ export const agentMessages = {
           processResources: 'CPU {cpu}% / 内存 {memory}'
         },
         empty: {
-          title: '暂无 Agent 连接',
-          description: '配置安全密钥并启动 Agent 后，节点会显示在这里。',
+          title: '暂无可管理机器',
+          description: '当前未启用本机运行环境，也没有远程 Agent 连接。',
           add: '添加 Agent'
+        },
+        rename: {
+          title: '重命名机器',
+          description: '使用容易识别的名称。主机名和节点 ID 不会被修改。',
+          displayName: '机器名称',
+          hostname: '主机名：{hostname}',
+          validation: '请输入 1–100 个字符的机器名称，不能包含控制字符',
+          saved: '机器已重命名为“{name}”',
+          saveFailed: '机器重命名失败：{error}'
         },
         details: {
           title: 'Agent 详情',
@@ -555,9 +569,9 @@ export const agentMessages = {
         }
       },
       list: {
-        title: 'Nodes and centralized management',
-        subtitle: 'Inspect connected nodes, runtime configuration, and resource status.',
-        loadingAria: 'Loading Agent status',
+        title: 'Machine management',
+        subtitle: 'Manage the local machine and connected remote machines together. Display names are editable while hostnames stay unchanged.',
+        loadingAria: 'Loading machine status',
         metrics: {
           online: 'Online Agents',
           onlineDescription: 'Nodes that are currently connected',
@@ -566,12 +580,14 @@ export const agentMessages = {
           operatingSystems: 'Operating systems',
           operatingSystemsDescription: 'Connected operating system types',
           summaryAria: 'Node runtime summary',
-          onlineSummary: '{online}/{total} nodes online',
-          shardSummary: '{count} worlds running',
-          capacitySummary: '{count} capacity notices'
+          onlineSummary: '{online}/{total} machines online',
+          shardSummary: '{count} remote worlds running',
+          capacitySummary: '{count} remote capacity notices'
         },
         actions: {
           details: 'Details',
+          rename: 'Rename machine',
+          systemSettings: 'System settings',
           runtimeConfig: 'Runtime configuration',
           configureRuntime: 'Configure remote runtime',
           executeCommand: 'Run command',
@@ -585,8 +601,8 @@ export const agentMessages = {
           ipAddress: 'IP address',
           cpuCores: '{count} cores',
           topology: 'Topology',
-          node: 'Node',
-          worldCapacity: 'World processes / suggested limit',
+          node: 'Machine',
+          worldCapacity: 'Runtime / world capacity',
           cpu: 'CPU',
           memory: 'Memory',
           memoryAvailable: '{value} available',
@@ -615,6 +631,8 @@ export const agentMessages = {
           notAvailable: 'N/A',
           unknown: 'Unknown',
           unknownNode: 'Unnamed node',
+          localMachine: 'Local',
+          defaultRuntime: 'Local DST',
           estimated: 'estimated',
           available: 'Available',
           missing: 'Missing',
@@ -631,6 +649,7 @@ export const agentMessages = {
         capacity: {
           policyTitle: 'Capacity guidance for multiple worlds per node',
           policyDescription: 'One server may run multiple rooms and world shards. Reserve at least one physical core for every running Shard and one additional core for the OS, Agent, SteamCMD, and backups. This is conservative guidance, not a hard limit or performance guarantee.',
+          localRecommendation: 'Up to {count} worlds recommended by physical core count',
           progressAria: 'World shard capacity usage for {name}',
           states: {
             available: 'Available',
@@ -686,9 +705,18 @@ export const agentMessages = {
           processResources: 'CPU {cpu}% / memory {memory}'
         },
         empty: {
-          title: 'No Agents connected',
-          description: 'Nodes will appear here after you configure the security key and start an Agent.',
+          title: 'No manageable machines',
+          description: 'The local runtime is disabled and no remote Agent is connected.',
           add: 'Add Agent'
+        },
+        rename: {
+          title: 'Rename machine',
+          description: 'Choose a recognizable display name. The hostname and node ID will not change.',
+          displayName: 'Machine name',
+          hostname: 'Hostname: {hostname}',
+          validation: 'Enter a machine name from 1 to 100 characters without control characters',
+          saved: 'Machine renamed to “{name}”',
+          saveFailed: 'Failed to rename machine: {error}'
         },
         details: {
           title: 'Agent details',

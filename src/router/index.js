@@ -169,13 +169,13 @@ export const constantRoutes = [
     component: MainLayoutV2,
     redirect: '/agents/list',
     name: 'Agents',
-    meta: { title: 'Agent管理', titleKey: 'navigation.agents', icon: 'connection' },
+    meta: { title: '机器与连接', titleKey: 'navigation.agents', icon: 'connection' },
     children: [
       {
         path: 'list',
         component: () => import('@/views/agents/AgentList.vue'),
         name: 'AgentList',
-        meta: { title: 'Agent列表', titleKey: 'navigation.agentList', icon: 'list' }
+        meta: { title: '机器管理', titleKey: 'navigation.agentList', icon: 'list' }
       },
       {
         path: 'command',

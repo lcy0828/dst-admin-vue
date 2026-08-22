@@ -539,6 +539,7 @@ export const agentsV2API = {
 
 export const runtimeTargetsV2API = {
 	list: () => client.get('/runtime-targets', { headers: { 'Cache-Control': 'no-store' } }),
+	rename: (targetId, displayName) => client.patch(`/runtime-targets/${encode(targetId)}`, { displayName }),
 	get: agentId => client.get(`/runtime-targets/agents/${encode(agentId)}`, { headers: { 'Cache-Control': 'no-store' } }),
 	save: (agentId, input) => client.put(`/runtime-targets/agents/${encode(agentId)}`, input),
 	remove: agentId => client.delete(`/runtime-targets/agents/${encode(agentId)}`)

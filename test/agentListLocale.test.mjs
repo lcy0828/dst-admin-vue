@@ -64,3 +64,21 @@ test('Agent topology uses the typed inventory job and one-core-per-Shard capacit
   assert.match(agentMessages['zh-CN'].agents.list.capacity.policyDescription, /每个运行中的 Shard 至少预留 1 个物理核心/)
   assert.match(agentMessages['en-US'].agents.list.capacity.policyDescription, /one physical core for every running Shard/i)
 })
+
+test('machine management includes local runtime and persistent target renaming', async () => {
+  const [view, api, navigation] = await Promise.all([
+    readFile(new URL('../src/views/agents/AgentList.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/api/v2.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/v2/navigation.js', import.meta.url), 'utf8')
+  ])
+
+  assert.match(api, /rename: \(targetId, displayName\) => client\.patch\(`\/runtime-targets\/\$\{encode\(targetId\)\}`/)
+  assert.match(view, /localRuntimeTarget/)
+  assert.match(view, /systemV2API\.status\(\)/)
+  assert.match(view, /runtimeTargetsV2API\.rename\(this\.renameTarget\.id, displayName\)/)
+  assert.match(view, /machineName\(agent\)/)
+  assert.match(view, /agents\.list\.rename\.hostname/)
+  assert.match(navigation, /navigation\.agentList/)
+  assert.equal(agentMessages['zh-CN'].agents.list.title, '机器管理')
+  assert.equal(agentMessages['en-US'].agents.list.title, 'Machine management')
+})

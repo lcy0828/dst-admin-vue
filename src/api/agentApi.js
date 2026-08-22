@@ -29,6 +29,7 @@ function legacyAgent(agent = {}) {
     ...details,
     id: agent.id,
     agent_uuid: agent.id,
+    display_name: agent.displayName || agent.hostname,
     hostname: agent.hostname,
     os: agent.os,
     arch: agent.arch,

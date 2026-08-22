@@ -545,12 +545,12 @@ const NAVIGATION_SECTIONS = [
     items: [
       {
         key: 'agents',
-        label: 'Agent 管理',
+        label: '机器与连接',
         icon: RadioTower,
         children: [
-          { label: 'Agent 列表', to: '/agents/list' },
-          { label: '命令管理', to: '/agents/command' },
-          { label: '安全设置', to: '/agents/security' }
+          { label: '机器管理', to: '/agents/list' },
+          { label: '远程命令', to: '/agents/command' },
+          { label: 'Agent 接入', to: '/agents/security' }
         ]
       },
       { key: 'system', label: '系统设置', to: '/system', icon: Settings2 }

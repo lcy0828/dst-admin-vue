@@ -5,7 +5,7 @@
         <h1 class="text-2xl font-semibold tracking-normal">{{ $t('agents.list.title') }}</h1>
         <p class="mt-1 text-sm text-muted-foreground">{{ $t('agents.list.subtitle') }}</p>
         <div class="mt-3 flex flex-wrap gap-2" :aria-label="$t('agents.list.metrics.summaryAria')">
-          <Badge variant="outline">{{ $t('agents.list.metrics.onlineSummary', { online: connectedAgents, total: totalAgents }) }}</Badge>
+          <Badge variant="outline">{{ $t('agents.list.metrics.onlineSummary', { online: onlineMachines, total: totalMachines }) }}</Badge>
           <Badge variant="outline">{{ $t('agents.list.metrics.shardSummary', { count: runningShardsTotal }) }}</Badge>
           <Badge :variant="capacityAlerts > 0 ? 'destructive' : 'secondary'">{{ $t('agents.list.metrics.capacitySummary', { count: capacityAlerts }) }}</Badge>
         </div>
@@ -40,11 +40,11 @@
       <AlertAction><UiButton size="sm" variant="outline" @click="fetchRuntimeTargets">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
-    <div v-if="loading && agentList.length === 0" class="flex flex-col gap-2" :aria-label="$t('agents.list.loadingAria')">
+    <div v-if="loading && totalMachines === 0" class="flex flex-col gap-2" :aria-label="$t('agents.list.loadingAria')">
       <Skeleton v-for="index in 4" :key="index" class="h-14 w-full" />
     </div>
 
-    <div v-else-if="agentList.length > 0" class="overflow-hidden rounded-lg border">
+    <div v-else-if="totalMachines > 0" class="overflow-hidden rounded-lg border">
       <UiTable class="min-w-[1040px]">
         <TableHeader>
           <TableRow>
@@ -58,6 +58,60 @@
           </TableRow>
         </TableHeader>
         <TableBody>
+          <TableRow v-if="localRuntimeTarget">
+            <TableCell><span class="block size-8" aria-hidden="true" /></TableCell>
+            <TableCell>
+              <div class="flex min-w-52 items-start gap-2.5">
+                <Monitor class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="max-w-48 truncate font-medium">{{ localRuntimeTarget.name }}</span>
+                    <Badge variant="secondary">{{ $t('common.states.online') }}</Badge>
+                    <Badge variant="outline">{{ $t('agents.list.values.localMachine') }}</Badge>
+                  </div>
+                  <div class="mt-1 max-w-64 truncate text-xs text-muted-foreground">{{ localRuntimeTarget.hostname || $t('agents.list.values.notAvailable') }}</div>
+                  <div class="mt-1 text-xs text-muted-foreground">{{ localRuntimeTarget.os }} / {{ localRuntimeTarget.arch }}</div>
+                </div>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div class="flex min-w-44 flex-col gap-1.5">
+                <div class="flex items-center justify-between gap-3">
+                  <span class="font-medium">{{ localRuntimeTarget.config?.displayName || $t('agents.list.values.defaultRuntime') }}</span>
+                  <Badge :variant="localRuntimeTarget.configured ? 'outline' : 'destructive'">{{ localRuntimeTarget.configured ? $t('agents.list.inventory.configured') : $t('agents.list.inventory.notConfigured') }}</Badge>
+                </div>
+                <span class="text-xs text-muted-foreground">{{ localCPU.physical > 0 ? $t('agents.list.capacity.localRecommendation', { count: localCapacityLimit }) : $t('agents.list.capacity.unknown') }}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div class="min-w-32">
+                <div class="font-medium tabular-nums">{{ $t('agents.list.fields.physicalCores', { count: localCPU.physical }) }}</div>
+                <div class="mt-1 text-xs text-muted-foreground">{{ $t('agents.list.fields.logicalProcessors', { count: localCPU.logical }) }}</div>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div class="flex min-w-36 flex-col gap-1.5">
+                <div class="flex justify-between gap-2 text-xs tabular-nums">
+                  <span>{{ formatBytes(localMemory.used) }}</span>
+                  <span class="text-muted-foreground">{{ formatBytes(localMemory.total) }}</span>
+                </div>
+                <UiProgress :model-value="localMemory.usage" :aria-label="$t('agents.list.fields.memoryUsageAria', { name: localRuntimeTarget.name })" />
+                <span class="text-xs text-muted-foreground">{{ $t('agents.list.fields.memoryAvailable', { value: formatBytes(localMemory.available) }) }}</span>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div class="min-w-40">
+                <Badge :variant="localSystemStatus.observedAt ? 'secondary' : 'outline'">{{ localSystemStatus.observedAt ? $t('agents.list.inventory.current') : $t('agents.list.inventory.waiting') }}</Badge>
+                <div class="mt-1.5 text-xs text-muted-foreground">{{ formatTime(localSystemStatus.observedAt) }}</div>
+              </div>
+            </TableCell>
+            <TableCell>
+              <div class="flex min-w-48 justify-end gap-1">
+                <Tooltip><TooltipTrigger as-child><UiButton size="icon-sm" variant="ghost" :aria-label="$t('agents.list.actions.rename')" @click="openRename(localRuntimeTarget)"><Pencil /></UiButton></TooltipTrigger><TooltipContent>{{ $t('agents.list.actions.rename') }}</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger as-child><UiButton size="icon-sm" variant="ghost" :aria-label="$t('agents.list.actions.systemSettings')" @click="navigateToSystemSettings"><Settings /></UiButton></TooltipTrigger><TooltipContent>{{ $t('agents.list.actions.systemSettings') }}</TooltipContent></Tooltip>
+              </div>
+            </TableCell>
+          </TableRow>
           <template v-for="agent in agentList" :key="agent.id">
             <TableRow :aria-expanded="isExpanded(agent)">
               <TableCell>
@@ -81,10 +135,11 @@
                   <component :is="getOsIcon(agent.os)" class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-1.5">
-                      <span class="max-w-48 truncate font-medium">{{ agent.hostname || $t('agents.list.values.unknownNode') }}</span>
+                      <span class="max-w-48 truncate font-medium">{{ machineName(agent) }}</span>
                       <Badge :variant="agent.connected ? 'secondary' : 'destructive'">{{ agent.connected ? $t('common.states.online') : $t('common.states.offline') }}</Badge>
                       <Badge v-if="isOldAgent(agent)" variant="destructive">{{ $t('agents.list.inventory.upgradeRequired') }}</Badge>
                     </div>
+                    <div class="mt-1 max-w-64 truncate text-xs text-muted-foreground">{{ agent.hostname || $t('agents.list.values.notAvailable') }}</div>
                     <div class="mt-1 max-w-64 truncate font-mono text-xs text-muted-foreground">{{ agent.agent_uuid }}</div>
                     <div class="mt-1 text-xs text-muted-foreground">{{ agent.os || $t('agents.list.values.notAvailable') }} / {{ agent.arch || $t('agents.list.values.notAvailable') }} / v{{ agent.version || $t('agents.list.values.notAvailable') }}</div>
                   </div>
@@ -137,6 +192,7 @@
               </TableCell>
               <TableCell>
                 <div class="flex min-w-48 justify-end gap-1">
+                  <Tooltip><TooltipTrigger as-child><span><UiButton size="icon-sm" variant="ghost" :disabled="Boolean(runtimeLoadError)" :aria-label="$t('agents.list.actions.rename')" @click="openRename(runtimeFor(agent))"><Pencil /></UiButton></span></TooltipTrigger><TooltipContent>{{ $t('agents.list.actions.rename') }}</TooltipContent></Tooltip>
                   <Tooltip>
                     <TooltipTrigger as-child>
                       <span>
@@ -167,7 +223,7 @@
                 <div class="flex min-w-0 flex-col gap-4">
                   <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h2 class="font-medium">{{ $t('agents.list.topology.title', { name: agent.hostname }) }}</h2>
+                      <h2 class="font-medium">{{ $t('agents.list.topology.title', { name: machineName(agent) }) }}</h2>
                       <p class="text-xs text-muted-foreground">{{ $t('agents.list.topology.description') }}</p>
                     </div>
                     <Badge :variant="runtimeFor(agent).configured ? 'outline' : 'destructive'">{{ runtimeFor(agent).configured ? $t('agents.list.inventory.configured') : $t('agents.list.inventory.notConfigured') }}</Badge>
@@ -252,6 +308,30 @@
       <EmptyHeader><EmptyMedia variant="icon"><Network /></EmptyMedia><EmptyTitle>{{ $t('agents.list.empty.title') }}</EmptyTitle><EmptyDescription>{{ $t('agents.list.empty.description') }}</EmptyDescription></EmptyHeader>
       <EmptyContent><UiButton @click="navigateToSecurity">{{ $t('agents.list.empty.add') }}</UiButton></EmptyContent>
     </Empty>
+
+    <UiDialog v-model:open="renameVisible">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{{ $t('agents.list.rename.title') }}</DialogTitle>
+          <DialogDescription>{{ $t('agents.list.rename.description') }}</DialogDescription>
+        </DialogHeader>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(renameError)">
+            <FieldLabel for="machine-display-name">{{ $t('agents.list.rename.displayName') }}</FieldLabel>
+            <UiInput id="machine-display-name" v-model="renameForm.displayName" maxlength="100" :aria-invalid="Boolean(renameError)" @keyup.enter="saveMachineName" />
+            <FieldDescription v-if="renameTarget?.hostname">{{ $t('agents.list.rename.hostname', { hostname: renameTarget.hostname }) }}</FieldDescription>
+            <FieldError v-if="renameError">{{ $t(renameError) }}</FieldError>
+          </Field>
+        </FieldGroup>
+        <DialogFooter>
+          <UiButton variant="outline" @click="renameVisible = false">{{ $t('common.actions.cancel') }}</UiButton>
+          <UiButton :disabled="renameSaving" @click="saveMachineName">
+            <Spinner v-if="renameSaving" data-icon="inline-start" />
+            {{ $t('common.actions.save') }}
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
 
     <UiDialog v-model:open="detailVisible">
       <DialogContent class="sm:max-w-2xl">
@@ -342,12 +422,12 @@
 <script>
 import {
   Apple, ChevronDown, ChevronRight, CircleAlert, Clock3, Cpu, Eye, Layers3, Monitor,
-  Network, RefreshCw, Server, Settings, Terminal, Trash2, TriangleAlert
+  Network, Pencil, RefreshCw, Server, Settings, Terminal, Trash2, TriangleAlert
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
 import { bindAgentRuntimeInstallation } from '@/api/agentApiSupport.mjs';
-import { agentsV2API, runtimeTargetsV2API } from '@/api/v2';
+import { agentsV2API, runtimeTargetsV2API, systemV2API } from '@/api/v2';
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters';
 import FleetProfilePanel from '@/components/agents/FleetProfilePanel.vue';
 import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue';
@@ -399,7 +479,7 @@ export default {
     AlertTitle, Apple, Badge, ChevronDown, ChevronRight, CircleAlert, Clock3, Cpu, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription,
     EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FleetProfilePanel,
-    Layers3, KubernetesProviderPanel, Monitor, Network, RefreshCw, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
+    Layers3, KubernetesProviderPanel, Monitor, Network, Pencil, RefreshCw, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
     SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, TableCell, TableHead, TableHeader, TableRow,
     Terminal, ToggleGroup, ToggleGroupItem, Tooltip, TooltipContent, TooltipTrigger, Trash2, TriangleAlert, UiButton,
     UiDialog, UiInput, UiProgress, UiSelect
@@ -418,7 +498,14 @@ export default {
       expandedAgents: {},
       detailVisible: false,
       selectedAgent: null,
+      runtimeTargetList: [],
       runtimeByAgent: {},
+      localSystemStatus: {},
+      renameVisible: false,
+      renameSaving: false,
+      renameTarget: null,
+      renameForm: { displayName: '' },
+      renameError: '',
       runtimeVisible: false,
       runtimeSaving: false,
       runtimeConfigured: false,
@@ -437,11 +524,33 @@ export default {
     runtimeLoadError() {
       return this.localizedFailure(this.runtimeLoadFailure);
     },
-    totalAgents() {
-      return this.agentList.length;
+    localRuntimeTarget() {
+      return this.runtimeTargetList.find(target => target.kind === 'local') || null;
     },
-    connectedAgents() {
-      return this.agentList.filter(agent => agent.connected).length;
+    totalMachines() {
+      return this.agentList.length + (this.localRuntimeTarget ? 1 : 0);
+    },
+    onlineMachines() {
+      return this.agentList.filter(agent => agent.connected).length + (this.localRuntimeTarget?.online ? 1 : 0);
+    },
+    localCPU() {
+      const cpu = this.localSystemStatus.cpu || {};
+      return {
+        physical: Number(cpu.cores) || 0,
+        logical: Number(cpu.threads) || 0
+      };
+    },
+    localCapacityLimit() {
+      return Math.max(0, this.localCPU.physical - 1);
+    },
+    localMemory() {
+      const memory = this.localSystemStatus.memory || {};
+      return {
+        used: Number(memory.usedBytes) || 0,
+        total: Number(memory.totalBytes) || 0,
+        available: Number(memory.availableBytes) || 0,
+        usage: Number(memory.usage) || 0
+      };
     },
     runningShardsTotal() {
       return this.agentList.reduce((total, agent) => total + this.capacityForAgent(agent).runningShards, 0);
@@ -474,6 +583,8 @@ export default {
         this.agentList = Array.isArray(this.agentData) ? this.agentData : Object.values(this.agentData);
         await this.fetchRuntimeTargets();
         if (sequence !== this.agentRequestSequence) return false;
+        await this.fetchLocalSystemStatus();
+        if (sequence !== this.agentRequestSequence) return false;
         await this.fetchInventories();
         return sequence === this.agentRequestSequence;
       } catch (error) {
@@ -494,13 +605,27 @@ export default {
       try {
         const value = await runtimeTargetsV2API.list();
         if (sequence !== this.runtimeRequestSequence) return false;
+        this.runtimeTargetList = Array.isArray(value.items) ? value.items : [];
         this.runtimeByAgent = Object.fromEntries(
-          (value.items || []).filter(item => item.kind === 'agent').map(item => [item.agentId, item])
+          this.runtimeTargetList.filter(item => item.kind === 'agent').map(item => [item.agentId, item])
         );
         return true;
       } catch (error) {
         if (sequence !== this.runtimeRequestSequence) return false;
         this.runtimeLoadFailure = this.failureState('agents.list.feedback.runtimeLoadFailed', error);
+        return false;
+      }
+    },
+    async fetchLocalSystemStatus() {
+      if (!this.localRuntimeTarget) {
+        this.localSystemStatus = {};
+        return true;
+      }
+      try {
+        this.localSystemStatus = await systemV2API.status();
+        return true;
+      } catch {
+        this.localSystemStatus = {};
         return false;
       }
     },
@@ -553,6 +678,44 @@ export default {
     },
     runtimeFor(agent) {
       return this.runtimeByAgent[agent.id] || { configured: false, status: 'configuration_required', config: {} };
+    },
+    machineName(agent) {
+      return this.runtimeFor(agent).name || agent.display_name || agent.hostname || this.$t('agents.list.values.unknownNode');
+    },
+    openRename(target) {
+      if (!target?.id) return;
+      this.renameTarget = target;
+      this.renameForm = { displayName: target.name || target.hostname || '' };
+      this.renameError = '';
+      this.renameVisible = true;
+    },
+    async saveMachineName() {
+      if (!this.renameTarget || this.renameSaving) return;
+      const displayName = this.renameForm.displayName.trim();
+      const containsControlCharacter = Array.from(displayName).some(character => {
+        const codePoint = character.codePointAt(0);
+        return codePoint < 32 || (codePoint >= 127 && codePoint <= 159);
+      });
+      if (!displayName || Array.from(displayName).length > 100 || containsControlCharacter) {
+        this.renameError = 'agents.list.rename.validation';
+        return;
+      }
+      this.renameError = '';
+      this.renameSaving = true;
+      try {
+        const updated = await runtimeTargetsV2API.rename(this.renameTarget.id, displayName);
+        this.runtimeTargetList = this.runtimeTargetList.map(target => target.id === updated.id ? updated : target);
+        if (updated.kind === 'agent' && updated.agentId) this.runtimeByAgent[updated.agentId] = updated;
+        this.renameVisible = false;
+        announceRuntimeTargetsUpdated();
+        toast.success(this.$t('agents.list.rename.saved', { name: displayName }));
+      } catch (error) {
+        toast.error(this.$t('agents.list.rename.saveFailed', {
+          error: error?.message || this.$t('common.errors.unknown')
+        }));
+      } finally {
+        this.renameSaving = false;
+      }
     },
     inventoryFor(agent) {
       return this.inventories[agent.id] || null;
@@ -805,6 +968,9 @@ export default {
     },
     navigateToSecurity() {
       this.$router.push('/agents/security');
+    },
+    navigateToSystemSettings() {
+      this.$router.push('/system/settings');
     },
     navigateToCommand(id) {
       this.$router.push({ path: '/agents/command', query: { id } });

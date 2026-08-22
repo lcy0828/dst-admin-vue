@@ -17,10 +17,10 @@
       <CardContent>
           <FieldGroup>
             <Field v-if="!batchMode"><FieldLabel for="command-agent">{{ $t('agents.command.execute.agentId') }}</FieldLabel><UiSelect v-model="commandForm.agent_id" @update:open="handleAgentSelectVisibleChange"><SelectTrigger id="command-agent" class="w-full"><SelectValue :placeholder="$t('agents.command.execute.selectAgent')" /></SelectTrigger><SelectContent><SelectGroup>
-              <SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id" :disabled="agent.status !== 'online'">{{ agent.hostname || $t('agents.command.values.unknownHost') }} ({{ agent.id || $t('agents.command.values.unknown') }})<template v-if="agent.status !== 'online'"> · {{ $t('agents.command.values.offline') }}</template></SelectItem>
+              <SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id" :disabled="agent.status !== 'online'">{{ agent.displayName || $t('agents.command.values.unknownHost') }} ({{ agent.id || $t('agents.command.values.unknown') }})<template v-if="agent.status !== 'online'"> · {{ $t('agents.command.values.offline') }}</template></SelectItem>
             </SelectGroup></SelectContent></UiSelect></Field>
             <FieldSet v-else><FieldLegend variant="label">{{ $t('agents.command.execute.agentId') }}</FieldLegend><FieldDescription>{{ $t('agents.command.execute.selectOnlineAgents') }}</FieldDescription><FieldGroup class="agent-checkboxes">
-              <Field v-for="agent in agentList" :key="agent.id" orientation="horizontal"><UiCheckbox :id="`command-agent-${agent.id}`" :disabled="agent.status !== 'online'" :model-value="isBatchAgentSelected(agent.id)" @update:model-value="toggleBatchAgent(agent.id, $event)" /><FieldLabel :for="`command-agent-${agent.id}`" class="font-normal">{{ agent.hostname || $t('agents.command.values.unknownHost') }} · {{ agent.id || $t('agents.command.values.unknown') }}<template v-if="agent.status !== 'online'"> · {{ $t('agents.command.values.offline') }}</template></FieldLabel></Field>
+              <Field v-for="agent in agentList" :key="agent.id" orientation="horizontal"><UiCheckbox :id="`command-agent-${agent.id}`" :disabled="agent.status !== 'online'" :model-value="isBatchAgentSelected(agent.id)" @update:model-value="toggleBatchAgent(agent.id, $event)" /><FieldLabel :for="`command-agent-${agent.id}`" class="font-normal">{{ agent.displayName || $t('agents.command.values.unknownHost') }} · {{ agent.id || $t('agents.command.values.unknown') }}<template v-if="agent.status !== 'online'"> · {{ $t('agents.command.values.offline') }}</template></FieldLabel></Field>
             </FieldGroup></FieldSet>
             <Field :data-invalid="Boolean(actionLoadError)"><FieldLabel for="agent-command-action">{{ $t('agents.command.execute.controlledAction') }}</FieldLabel><UiSelect v-model="commandForm.action" :disabled="actionLoading || allowedActions.length === 0"><SelectTrigger id="agent-command-action" class="w-full" :aria-invalid="Boolean(actionLoadError)"><SelectValue :placeholder="$t(actionLoading ? 'agents.command.execute.loadingActions' : 'agents.command.execute.selectAction')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="action in allowedActions" :key="action.id" :value="action.id">{{ actionName(action) }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>{{ selectedActionDescription }}</FieldDescription></Field>
             <Field><FieldLabel for="agent-command-timeout">{{ $t('agents.command.execute.timeout') }}</FieldLabel><UiInput id="agent-command-timeout" v-model.number="commandForm.timeout" type="number" min="5" max="300" step="5" /></Field>
@@ -33,7 +33,7 @@
       <CardHeader><CardTitle class="flex items-center gap-2"><History />{{ $t('agents.command.history.title') }}</CardTitle><CardDescription>{{ $t('agents.command.history.description') }}</CardDescription><CardAction class="flex flex-wrap gap-2"><UiButton size="sm" variant="outline" :disabled="historyLoading" @click="refreshHistory"><Spinner v-if="historyLoading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('agents.command.actions.refresh') }}</UiButton><UiButton size="sm" variant="ghost" @click="getAllHistory">{{ $t('agents.command.actions.resetFilters') }}</UiButton></CardAction></CardHeader>
       <CardContent class="flex flex-col gap-4">
           <FieldGroup class="history-filter">
-            <Field><FieldLabel for="history-agent">{{ $t('agents.command.history.filters.agent') }}</FieldLabel><UiSelect v-model="historyFilter.agent_id" @update:model-value="onAgentFilterChange"><SelectTrigger id="history-agent"><SelectValue :placeholder="$t('agents.command.history.filters.selectAgent')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('agents.command.history.filters.allAgents') }}</SelectItem><SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.hostname || $t('agents.command.values.unknownHost') }} ({{ agent.id }})</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field><FieldLabel for="history-agent">{{ $t('agents.command.history.filters.agent') }}</FieldLabel><UiSelect v-model="historyFilter.agent_id" @update:model-value="onAgentFilterChange"><SelectTrigger id="history-agent"><SelectValue :placeholder="$t('agents.command.history.filters.selectAgent')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('agents.command.history.filters.allAgents') }}</SelectItem><SelectItem v-for="agent in agentList" :key="agent.id" :value="agent.id">{{ agent.displayName || $t('agents.command.values.unknownHost') }} ({{ agent.id }})</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
             <Field><FieldLabel for="history-status">{{ $t('agents.command.history.filters.status') }}</FieldLabel><UiSelect v-model="historyFilter.status" @update:model-value="onStatusFilterChange"><SelectTrigger id="history-status"><SelectValue :placeholder="$t('agents.command.history.filters.commandStatus')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('agents.command.history.filters.allStatuses') }}</SelectItem><SelectItem v-for="status in commandStatuses" :key="status.value" :value="status.value">{{ status.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
             <Field><FieldLabel for="history-search">{{ $t('agents.command.history.filters.keyword') }}</FieldLabel><UiInput id="history-search" v-model="historyFilter.search" :placeholder="$t('agents.command.history.filters.searchPlaceholder')" @input="onSearchChange" /></Field>
             <Field><FieldLabel for="history-start">{{ $t('agents.command.history.filters.startDate') }}</FieldLabel><UiInput id="history-start" v-model="historyFilter.date_range[0]" type="date" @change="onDateRangeChange" /></Field>
@@ -204,7 +204,8 @@ export default {
           if (typeof agentData === 'object' && !Array.isArray(agentData)) {
             this.agentList = Object.values(agentData).map(agent => ({
                 id: agent.agent_uuid,  // 使用agent_uuid作为id
-                hostname: agent.hostname || agent.name || '',  // 尝试多个可能的名称字段
+                displayName: agent.display_name || agent.hostname || agent.name || '',
+                hostname: agent.hostname || '',
                 ip: agent.ip_addresses ? agent.ip_addresses[0] : agent.ip || '',  // 尝试多种IP字段
                 os: agent.os || agent.system || '',  // 操作系统信息
                 status: agent.connected ? 'online' : 'offline'  // 连接状态
@@ -213,7 +214,8 @@ export default {
             // 数组格式，直接映射
             this.agentList = agentData.map(agent => ({
               id: agent.agent_uuid || agent.id,
-              hostname: agent.hostname || agent.name || '',
+              displayName: agent.display_name || agent.hostname || agent.name || '',
+              hostname: agent.hostname || '',
               ip: agent.ip_addresses ? agent.ip_addresses[0] : agent.ip || '',
               os: agent.os || agent.system || '',
               status: agent.connected === true || agent.status === 'online' ? 'online' : 'offline'
