@@ -39,7 +39,7 @@ test('server workspace keeps operational summaries inline and world facts on sta
   assert.match(source, /class="workspace-overview"/)
   assert.match(source, /class="status-summary" role="list"/)
   assert.match(source, /<Separator class="status-separator" orientation="vertical"/)
-  assert.match(source, /grid-template-columns: repeat\(6, minmax\(58px, 1fr\)\)/)
+  assert.match(source, /grid-template-columns: repeat\(7, minmax\(58px, 1fr\)\)/)
   assert.doesNotMatch(source, /class="status-card"/)
 })
 
@@ -54,13 +54,13 @@ test('server workspace reuses cached world-state snapshots without forcing Lua r
   assert.doesNotMatch(source, /world-states\/actions\/refresh/)
 })
 
-test('server workspace fills the identity gap with a fixed per-world online count', async () => {
+test('server workspace keeps player count aligned with the world facts', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
-  assert.match(source, /class="world-presence"/)
+  assert.match(source, /grid-template-columns: minmax\(220px, 320px\) minmax\(0, 1fr\) auto/)
   assert.match(source, /worldOnlinePlayerLabel\(world\)/)
   assert.match(source, /online_by_world/)
-  assert.match(source, /\.world-presence \{[\s\S]*flex: 0 0 82px;/)
+  assert.doesNotMatch(source, /class="world-presence"/)
 })
 
 test('room control only shows room-scoped summary data', async () => {

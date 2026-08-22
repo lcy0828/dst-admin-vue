@@ -156,15 +156,13 @@
                 <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || $t('servers.workspace.worlds.directoryUnset') }}</span>
                 <span v-if="worldStatusMessage(world)" class="world-failure">{{ worldStatusMessage(world) }}</span>
               </div>
-              <dl class="world-presence">
-                <div>
-                  <dt>{{ $t('servers.workspace.worlds.players') }}</dt>
-                  <dd>{{ worldOnlinePlayerLabel(world) }}</dd>
-                </div>
-              </dl>
             </div>
 
             <dl class="world-facts">
+              <div>
+                <dt>{{ $t('servers.workspace.worlds.players') }}</dt>
+                <dd>{{ worldOnlinePlayerLabel(world) }}</dd>
+              </div>
               <div>
                 <dt>{{ $t('servers.workspace.worlds.day') }}</dt>
                 <dd>{{ worldDayLabel(world) }}</dd>
@@ -1461,7 +1459,7 @@ export default {
 .world-item {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(240px, 0.9fr) minmax(420px, 1.25fr) auto;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   min-width: 0;
@@ -1557,28 +1555,9 @@ export default {
   overflow-wrap: anywhere;
 }
 
-.world-presence {
-  flex: 0 0 82px;
-  margin: 0;
-  text-align: right;
-}
-
-.world-presence dt {
-  color: var(--muted-foreground);
-  font-size: 11px;
-}
-
-.world-presence dd {
-  margin: 2px 0 0;
-  color: var(--foreground);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
 .world-facts {
   display: grid;
-  grid-template-columns: repeat(6, minmax(58px, 1fr));
+  grid-template-columns: repeat(7, minmax(58px, 1fr));
   gap: 10px;
   margin: 0;
 }
