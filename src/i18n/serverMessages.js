@@ -143,8 +143,7 @@ export const serverMessages = {
           available: '可用',
           notSelected: '未选择',
           dataReadFailed: '数据读取失败',
-          statusUnavailable: '状态不可用',
-          listReadFailed: '列表读取失败'
+          statusUnavailable: '状态不可用'
         },
         empty: {
           noRooms: '当前目标没有已接管的房间',
@@ -162,13 +161,9 @@ export const serverMessages = {
           attentionCount: '{count} 个'
         },
         backups: {
-          latest: '最近备份',
+          latest: '上次备份',
           creating: '正在创建',
-          create: '创建备份',
-          recordCount: '{count} 个记录',
-          loadFailed: '备份列表读取失败',
-          empty: '暂无备份记录',
-          emptyDescription: '创建房间备份后会显示在这里。'
+          create: '创建备份'
         },
         worlds: {
           title: '世界',
@@ -278,11 +273,6 @@ export const serverMessages = {
             announce: '发送公告'
           }
         },
-        context: {
-          title: '房间概况',
-          description: '当前房间的玩家、备份和快捷入口',
-          loading: '正在加载房间信息...'
-        },
         players: {
           title: '玩家',
           onlineCount: '{count} 人在线',
@@ -323,20 +313,10 @@ export const serverMessages = {
             wonkey: '芜猴'
           }
         },
-        quickNav: {
-          title: '快捷入口',
-          description: '打开当前房间的常用管理页面。',
-          label: '服务器快捷入口',
-          players: '玩家管理',
-          mods: '模组管理',
-          worldState: '世界状态',
-          logQuery: '日志查询'
-        },
         feedback: {
           loadFailedTitle: '工作台加载失败',
           loadFailed: '无法读取房间和世界状态',
           playersLoadFailed: '玩家数据读取失败',
-          backupsLoadFailed: '备份列表读取失败',
           consoleTargetsLoadFailed: '控制台目标读取失败',
           worldStatesLoadFailed: '世界状态快照读取失败',
           actionUnavailable: '当前世界状态不可执行该操作',
@@ -566,8 +546,7 @@ export const serverMessages = {
           available: 'Available',
           notSelected: 'Not selected',
           dataReadFailed: 'Failed to read data',
-          statusUnavailable: 'Status unavailable',
-          listReadFailed: 'Failed to read list'
+          statusUnavailable: 'Status unavailable'
         },
         empty: {
           noRooms: 'No managed rooms on the current target',
@@ -585,13 +564,9 @@ export const serverMessages = {
           attentionCount: '{count}'
         },
         backups: {
-          latest: 'Latest backup',
+          latest: 'Last backup',
           creating: 'Creating',
-          create: 'Create backup',
-          recordCount: '{count} records',
-          loadFailed: 'Failed to load backups',
-          empty: 'No backups',
-          emptyDescription: 'Room backups will appear here after they are created.'
+          create: 'Create backup'
         },
         worlds: {
           title: 'Worlds',
@@ -701,11 +676,6 @@ export const serverMessages = {
             announce: 'Send announcement'
           }
         },
-        context: {
-          title: 'Room context',
-          description: 'Players, backups, and quick links for the current room',
-          loading: 'Loading room details...'
-        },
         players: {
           title: 'Players',
           onlineCount: '{count} online',
@@ -746,20 +716,10 @@ export const serverMessages = {
             wonkey: 'Wonkey'
           }
         },
-        quickNav: {
-          title: 'Quick links',
-          description: 'Open common management pages for the current room.',
-          label: 'Server quick links',
-          players: 'Players',
-          mods: 'Mods',
-          worldState: 'World state',
-          logQuery: 'Log query'
-        },
         feedback: {
           loadFailedTitle: 'Failed to load workspace',
           loadFailed: 'Unable to load room and world status',
           playersLoadFailed: 'Failed to load player data',
-          backupsLoadFailed: 'Failed to load backups',
           consoleTargetsLoadFailed: 'Failed to load console targets',
           worldStatesLoadFailed: 'Failed to load world state snapshots',
           actionUnavailable: 'This action is unavailable in the current world state',

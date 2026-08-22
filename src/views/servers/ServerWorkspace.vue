@@ -32,7 +32,7 @@
             <Separator class="status-separator" orientation="vertical" />
             <div class="status-metric" role="listitem">
               <span class="status-label">{{ $t('servers.workspace.backups.latest') }}</span>
-              <span class="status-value">{{ latestBackup ? formatCompactTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</span>
+              <span class="status-value">{{ latestBackup ? formatBackupTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</span>
             </div>
           </div>
         </div>
@@ -314,8 +314,7 @@
         </CardContent>
       </Card>
 
-      <div class="workspace-grid">
-        <Card size="sm">
+      <Card size="sm">
           <CardHeader class="sr-only">
             <CardTitle>{{ $t('servers.workspace.operations.title') }}</CardTitle>
             <CardDescription>{{ $t('servers.workspace.operations.description') }}</CardDescription>
@@ -329,12 +328,12 @@
             </TabsList>
             <TabsContent value="players">
               <section class="players-panel" aria-labelledby="workspace-players-title">
-                <header class="context-section-header">
-                  <div class="context-section-heading">
+                <header class="players-panel-header">
+                  <div class="players-panel-heading">
                     <h2 id="workspace-players-title">{{ $t('servers.workspace.players.title') }}</h2>
                     <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.presenceSummary', { online: playerStats.online_count, stale: playerStats.stale_online_count || 0 }) : $t('servers.workspace.states.statusUnavailable')) }}</span>
                   </div>
-                  <UiButton variant="ghost" size="xs" class="context-section-action" @click="openPlayers">
+                  <UiButton variant="ghost" size="xs" class="players-panel-action" @click="openPlayers">
                     {{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" />
                   </UiButton>
                 </header>
@@ -449,78 +448,7 @@
               </div>
             </TabsContent>
           </Tabs></CardContent>
-        </Card>
-
-        <aside class="context-rail" :aria-busy="contextLoading">
-          <Card size="sm" class="context-card">
-            <CardHeader class="sr-only">
-              <CardTitle>{{ $t('servers.workspace.context.title') }}</CardTitle>
-              <CardDescription>{{ $t('servers.workspace.context.description') }}</CardDescription>
-            </CardHeader>
-            <CardContent class="context-card-content">
-              <div v-if="contextLoading" class="context-loading" role="status">
-                <Spinner />
-                <span>{{ $t('servers.workspace.context.loading') }}</span>
-              </div>
-
-              <section class="context-section context-section-backups" aria-labelledby="workspace-backups-title">
-                <header class="context-section-header">
-                  <div class="context-section-heading">
-                    <h2 id="workspace-backups-title">{{ $t('servers.workspace.backups.latest') }}</h2>
-                    <span>{{ contextErrors.backups ? $t('servers.workspace.states.listReadFailed') : $t('servers.workspace.backups.recordCount', { count: backups.length }) }}</span>
-                  </div>
-                  <UiButton variant="ghost" size="xs" class="context-section-action" @click="$router.push('/backups')">
-                    {{ $t('servers.workspace.actions.all') }}<ArrowRight data-icon="inline-end" />
-                  </UiButton>
-                </header>
-                <div v-if="backups.length" class="backup-list">
-                  <div v-for="backup in visibleBackups" :key="backup.id || backup.name" class="backup-row">
-                    <FileCheck2 />
-                    <span>
-                      <strong :title="backup.name">{{ backup.name }}</strong>
-                      <small>{{ formatCompactTime(backup.createdAt || backup.create_time) }} · {{ backup.size_formatted || '--' }}</small>
-                    </span>
-                  </div>
-                </div>
-                <Alert v-else-if="contextErrors.backups" variant="destructive">
-                  <CircleAlert />
-                  <AlertTitle>{{ $t('servers.workspace.backups.loadFailed') }}</AlertTitle>
-                  <AlertDescription>{{ localizedError(contextErrors.backups) }}</AlertDescription>
-                </Alert>
-                <Empty v-else class="rail-empty">
-                  <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.backups.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.backups.emptyDescription') }}</EmptyDescription></EmptyHeader>
-                </Empty>
-              </section>
-
-              <Separator class="context-separator context-separator-quick" />
-
-              <section class="context-section context-section-quick" aria-labelledby="workspace-quick-nav-title">
-                <header class="context-section-header context-section-header-plain">
-                  <div class="context-section-heading"><h2 id="workspace-quick-nav-title">{{ $t('servers.workspace.quickNav.title') }}</h2></div>
-                </header>
-                <nav class="quick-nav" :aria-label="$t('servers.workspace.quickNav.label')">
-                  <UiButton variant="ghost" size="sm" @click="openPlayers">
-                    <User data-icon="inline-start" />
-                    <span>{{ $t('servers.workspace.quickNav.players') }}</span>
-                  </UiButton>
-                  <UiButton variant="ghost" size="sm" @click="openMods">
-                    <PackageOpen data-icon="inline-start" />
-                    <span>{{ $t('servers.workspace.quickNav.mods') }}</span>
-                  </UiButton>
-                  <UiButton variant="ghost" size="sm" @click="openWorldState">
-                    <ChartNoAxesCombined data-icon="inline-start" />
-                    <span>{{ $t('servers.workspace.quickNav.worldState') }}</span>
-                  </UiButton>
-                  <UiButton variant="ghost" size="sm" @click="$router.push('/logs/query')">
-                    <Search data-icon="inline-start" />
-                    <span>{{ $t('servers.workspace.quickNav.logQuery') }}</span>
-                  </UiButton>
-                </nav>
-              </section>
-            </CardContent>
-          </Card>
-        </aside>
-      </div>
+      </Card>
     </template>
 
   </div>
@@ -581,15 +509,13 @@ import {
 } from '@/lib/worldRuntimeStatus.mjs'
 import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
-  ArrowRight, Brain, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
-  FileText, Globe2, HeartPulse, Leaf, MessagesSquare, Moon, Mountain, PackageOpen, Play, RefreshCw, RotateCw,
-  Search, Send, ServerOff, Settings, Shapes, Snowflake, Sprout, Square, Sun, Sunset, Terminal, Thermometer, Trees,
-  User, UsersRound, Utensils
+  ArrowRight, Brain, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileText, Globe2, HeartPulse, Leaf,
+  MessagesSquare, Moon, Mountain, Play, RefreshCw, RotateCw, Send, ServerOff, Settings, Shapes, Snowflake, Sprout,
+  Square, Sun, Sunset, Terminal, Thermometer, Trees, UsersRound, Utensils
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
 const CONTEXT_PLAYER_LIMIT = 5
-const CONTEXT_BACKUP_LIMIT = 3
 
 export default {
   name: 'ServerWorkspace',
@@ -616,7 +542,6 @@ export default {
     CircleAlert,
     CircleCheck,
     ArrowRight,
-    ChartNoAxesCombined,
     ChevronDown,
     DatabaseBackup,
     DropdownMenu,
@@ -630,14 +555,12 @@ export default {
     EmptyHeader,
     EmptyMedia,
     EmptyTitle,
-    FileCheck2,
     FileText,
     Globe2,
     Leaf,
     MessagesSquare,
     Moon,
     Mountain,
-    PackageOpen,
     PlayerActionMenu,
     Play,
     Popover,
@@ -651,7 +574,6 @@ export default {
     RotateCw,
     RoomRefreshIntervalSelect,
     RoomChatPanel,
-    Search,
     SelectContent,
     SelectGroup,
     SelectItem,
@@ -680,7 +602,6 @@ export default {
     UiButton,
     UiSelect,
     UiTextarea,
-    User,
     UsersRound,
     WorldLog,
     RuntimeExitBadge,
@@ -700,7 +621,6 @@ export default {
       consoleServers: [],
       contextErrors: {
         players: null,
-        backups: null,
         console: null,
         worldStates: null
       },
@@ -756,9 +676,6 @@ export default {
     },
     recentPlayers() {
       return this.playerStats?.recent_players?.slice(0, CONTEXT_PLAYER_LIMIT) || []
-    },
-    visibleBackups() {
-      return this.backups.slice(0, CONTEXT_BACKUP_LIMIT)
     },
     latestBackup() {
       return this.backups[0] || null
@@ -851,7 +768,7 @@ export default {
       this.consoleServer = ''
       this.commandResult = null
       this.loadError = null
-      this.contextErrors = { players: null, backups: null, console: null, worldStates: null }
+      this.contextErrors = { players: null, console: null, worldStates: null }
       this.contextLoading = false
       this.refreshWorkspace()
     },
@@ -923,7 +840,7 @@ export default {
       this.backups = []
       this.consoleServers = []
       this.consoleServer = ''
-      this.contextErrors = { players: null, backups: null, console: null, worldStates: null }
+      this.contextErrors = { players: null, console: null, worldStates: null }
       const worldStateRequestSequence = ++this.worldStateSequence
       const [playersResult, backupsResult, consoleResult, worldStatesResult] = await Promise.allSettled([
         playerApi.getPlayerStats(roomName),
@@ -946,9 +863,6 @@ export default {
           return rightTime - leftTime
         })
         : []
-      this.contextErrors.backups = backupsResult.status === 'rejected'
-        ? this.errorState('servers.workspace.feedback.backupsLoadFailed', backupsResult.reason)
-        : null
       this.consoleServers = consoleResult.status === 'fulfilled' ? consoleResult.value : []
       this.contextErrors.console = consoleResult.status === 'rejected'
         ? this.errorState('servers.workspace.feedback.consoleTargetsLoadFailed', consoleResult.reason)
@@ -1230,25 +1144,8 @@ export default {
         }
       })
     },
-    openWorldState() {
-      this.$router.push({
-        path: '/worlds/state',
-        query: {
-          roomId: this.selectedRoomId,
-          roomName: this.selectedRoom?.name,
-          worldId: this.selectedWorldId,
-          worldName: this.selectedWorld?.name
-        }
-      })
-    },
     openPlayers() {
       this.$router.push({ path: '/players/list', query: { archive: this.selectedRoom?.name } })
-    },
-    openMods() {
-      this.$router.push({
-        path: '/mods',
-        query: { tab: 'room', roomId: this.selectedRoomId, worldId: this.selectedWorldId || undefined }
-      })
     },
     worldIcon(world) {
       return ['cave', 'caves'].includes(String(world.type || world.role || '').trim().toLowerCase())
@@ -1473,6 +1370,20 @@ export default {
         return formatSystemDateTime(date, { locale, hour: '2-digit', minute: '2-digit' })
       }
       return formatSystemDateTime(date, { locale, month: '2-digit', day: '2-digit' })
+    },
+    formatBackupTime(value) {
+      if (!value) return '--'
+      const date = new Date(value)
+      if (!Number.isFinite(date.getTime())) return String(value)
+      const localeState = this.$i18n?.locale
+      const locale = typeof localeState === 'string' ? localeState : (localeState?.value || 'zh-CN')
+      return formatSystemDateTime(date, {
+        locale,
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
     }
   }
 }
@@ -1492,8 +1403,7 @@ export default {
 .world-main,
 .world-name-row,
 .console-toolbar,
-.console-footer,
-.backup-row {
+.console-footer {
   display: flex;
   align-items: center;
 }
@@ -1878,13 +1788,6 @@ export default {
   padding: 0;
 }
 
-.workspace-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
-  gap: 16px;
-  align-items: start;
-}
-
 .operation-content {
   padding-top: 12px;
 }
@@ -1974,35 +1877,7 @@ export default {
   white-space: nowrap;
 }
 
-.context-rail {
-  min-width: 0;
-}
-
-.context-card {
-  min-width: 0;
-}
-
-.context-card-content {
-  padding: 0;
-}
-
-.context-loading {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 14px;
-  color: var(--muted-foreground);
-  font-size: 11px;
-  border-bottom: 1px solid var(--border);
-}
-
-.context-section {
-  min-width: 0;
-  padding: 10px 14px 9px;
-}
-
-.context-section-header {
+.players-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2011,18 +1886,14 @@ export default {
   margin-bottom: 3px;
 }
 
-.context-section-header-plain {
-  min-height: 24px;
-}
-
-.context-section-heading {
+.players-panel-heading {
   display: flex;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
 }
 
-.context-section-heading h2 {
+.players-panel-heading h2 {
   margin: 0;
   color: var(--foreground);
   font-size: 13px;
@@ -2031,7 +1902,7 @@ export default {
   letter-spacing: 0;
 }
 
-.context-section-heading span {
+.players-panel-heading span {
   overflow: hidden;
   color: var(--muted-foreground);
   font-size: 11px;
@@ -2040,7 +1911,7 @@ export default {
   white-space: nowrap;
 }
 
-.context-section-action {
+.players-panel-action {
   margin-right: -6px;
 }
 
@@ -2125,65 +1996,6 @@ export default {
   margin-top: 3px;
 }
 
-.backup-row {
-  gap: 8px;
-  min-height: 42px;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.backup-row:last-child {
-  border-bottom: 0;
-}
-
-.backup-row span {
-  min-width: 0;
-}
-
-.backup-row > svg {
-  width: 16px;
-  height: 16px;
-  color: var(--muted-foreground);
-}
-
-.backup-row strong,
-.backup-row small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.backup-row strong {
-  color: var(--foreground);
-  font-size: 13px;
-}
-
-.backup-row small {
-  margin-top: 2px;
-  color: var(--muted-foreground);
-}
-
-.rail-empty {
-  gap: 2px;
-  min-height: 58px;
-  padding: 8px;
-  color: var(--muted-foreground);
-  text-align: center;
-  background: transparent;
-  border: 0;
-}
-
-.quick-nav {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.quick-nav button {
-  justify-content: flex-start;
-}
-
 @media (max-width: 1100px) {
   .world-item {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -2199,37 +2011,6 @@ export default {
   .world-actions {
     grid-column: 2;
     grid-row: 1;
-  }
-
-  .workspace-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .context-card-content {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr);
-  }
-
-  .context-loading {
-    grid-column: 1 / -1;
-  }
-
-  .context-section-backups {
-    grid-column: 1;
-  }
-
-  .context-separator-quick {
-    grid-column: 2;
-    width: 1px;
-    height: 100%;
-  }
-
-  .context-section-quick {
-    grid-column: 3;
-  }
-
-  .quick-nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
 }
@@ -2271,15 +2052,6 @@ export default {
     flex: 1 1 auto;
   }
 
-  .context-card-content {
-    display: block;
-  }
-
-  .context-separator-quick {
-    width: 100%;
-    height: 1px;
-  }
-
   .world-item {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2306,10 +2078,6 @@ export default {
   .console-select {
     flex: 1 1 100%;
     width: 100%;
-  }
-
-  .quick-nav {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .players-list-expanded {

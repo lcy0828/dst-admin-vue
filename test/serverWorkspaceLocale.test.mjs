@@ -33,6 +33,7 @@ test('server workspace formats dates with the active locale', async () => {
   assert.match(source, /const localeState = this\.\$i18n\?\.locale/)
   assert.match(source, /formatSystemDateTime\(date, \{ locale, hour: '2-digit', minute: '2-digit' \}\)/)
   assert.match(source, /formatSystemDateTime\(date, \{ locale, month: '2-digit', day: '2-digit' \}\)/)
+  assert.match(source, /formatBackupTime\(value\)[\s\S]*month: '2-digit',[\s\S]*day: '2-digit',[\s\S]*hour: '2-digit',[\s\S]*minute: '2-digit'/)
 })
 
 test('server workspace keeps operational summaries inline and world facts on compact weighted columns', async () => {
@@ -93,18 +94,16 @@ test('server workspace operation tabs use a fixed responsive grid without horizo
   assert.doesNotMatch(source, /\.operation-tabs-list \{[^}]*overflow-x: auto;/)
 })
 
-test('server workspace promotes players to operations and keeps supporting context compact', async () => {
+test('server workspace keeps players in operations and removes the redundant context rail', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
-  assert.match(source, /<Card size="sm" class="context-card">/)
-  assert.match(source, /<CardContent class="context-card-content">/)
-  assert.equal((source.match(/<Separator class="context-separator/g) || []).length, 1)
   assert.match(source, /<TabsTrigger value="players">/)
   assert.match(source, /class="players-panel"/)
-  assert.match(source, /class="context-section context-section-backups"/)
-  assert.match(source, /class="context-section context-section-quick"/)
-  assert.doesNotMatch(source, /class="context-section context-section-players"/)
-  assert.doesNotMatch(source, /\$t\('servers\.workspace\.quickNav\.description'\)/)
+  assert.match(source, /servers\.workspace\.backups\.latest/)
+  assert.match(source, /formatBackupTime\(latestBackup\.createdAt \|\| latestBackup\.create_time\)/)
+  assert.doesNotMatch(source, /class="context-(?:rail|card|section-backups|section-quick)/)
+  assert.doesNotMatch(source, /servers\.workspace\.quickNav/)
+  assert.doesNotMatch(source, /visibleBackups/)
 })
 
 test('server workspace shows only live survival metrics and labels cached player locations', async () => {
@@ -121,13 +120,12 @@ test('server workspace shows only live survival metrics and labels cached player
   assert.doesNotMatch(source, /\.players-panel \{\s*min-height: 440px;/)
 })
 
-test('server workspace keeps context lists bounded and uses explicit world-state icons', async () => {
+test('server workspace keeps the player list bounded and uses explicit world-state icons', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
   assert.match(source, /const CONTEXT_PLAYER_LIMIT = 5/)
-  assert.match(source, /const CONTEXT_BACKUP_LIMIT = 3/)
   assert.match(source, /recent_players\?\.slice\(0, CONTEXT_PLAYER_LIMIT\)/)
-  assert.match(source, /return this\.backups\.slice\(0, CONTEXT_BACKUP_LIMIT\)/)
+  assert.doesNotMatch(source, /CONTEXT_BACKUP_LIMIT/)
   assert.match(source, /\? Mountain\s*: Trees/)
   assert.match(source, /autumn: Leaf,[\s\S]*winter: Snowflake,[\s\S]*spring: Sprout,[\s\S]*summer: Sun/)
   assert.match(source, /day: Sun,[\s\S]*dusk: Sunset,[\s\S]*night: Moon/)
