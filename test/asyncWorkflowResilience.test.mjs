@@ -40,7 +40,7 @@ test('log and dashboard refreshes retain previous snapshots on transient failure
     source('src/composables/useDashboardV2.js'),
     source('src/views/v2/DashboardV2.vue'),
     source('src/composables/useSystemResourceStatus.js'),
-    source('src/composables/useDashboardRefreshInterval.js')
+    source('src/composables/useDashboardRefreshIntervals.js')
   ])
 
   const logQuery = section(query, 'async queryLogs(', '// 格式化日期')
@@ -59,9 +59,9 @@ test('log and dashboard refreshes retain previous snapshots on transient failure
   assert.doesNotMatch(section(dashboard, 'async function refreshServers()', 'async function refreshVersion()'), /(?:serverList|roomList)\.value\s*=\s*\[\]/)
   assert.match(dashboard, /updatePollInFlight/)
   assert.match(dashboard, /pollingReady && !updateStatus/)
-  assert.match(dashboardView, /useDashboardRefreshInterval\(\)/)
+  assert.match(dashboardView, /useRoomRefreshInterval\(\)/)
   assert.match(dashboardView, /window\.setInterval\(refreshRuntimeStatus, refreshIntervalMs\.value\)/)
-  assert.match(refreshInterval, /DASHBOARD_REFRESH_INTERVAL_MS = 5_000/)
+  assert.match(refreshInterval, /ROOM_REFRESH_INTERVAL_MS = 5_000/)
   assert.match(dashboardView, /document\.visibilityState === 'hidden'/)
   assert.match(dashboardView, /function stopRuntimeRefreshTimer\(\)[\s\S]*?clearInterval/)
   assert.match(dashboardView, /onBeforeUnmount\([\s\S]*?stopRuntimeRefreshTimer\(\)/)

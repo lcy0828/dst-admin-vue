@@ -1,13 +1,13 @@
 import { ref, watch } from 'vue'
 import { systemApi } from '@/api/index'
-import { useDashboardRefreshInterval } from '@/composables/useDashboardRefreshInterval'
+import { useSystemResourceRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
 import { translate } from '@/i18n'
 
 const status = ref({})
 const loading = ref(false)
 const error = ref('')
 const lastUpdatedAt = ref(null)
-const { refreshIntervalMs } = useDashboardRefreshInterval()
+const { refreshIntervalMs } = useSystemResourceRefreshInterval()
 
 let activePollingConsumers = 0
 let refreshPromise = null

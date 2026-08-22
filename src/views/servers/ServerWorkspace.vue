@@ -49,6 +49,7 @@
             <SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
           </SelectGroup></SelectContent>
         </UiSelect>
+        <RoomRefreshIntervalSelect />
         <Tooltip>
           <TooltipTrigger as-child>
             <UiButton
@@ -481,6 +482,7 @@ import WorldLog from '@/components/WorldLog.vue'
 import RoomChatPanel from '@/components/RoomChatPanel.vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
+import RoomRefreshIntervalSelect from '@/components/layout/RoomRefreshIntervalSelect.vue'
 import { backupApi, commandApi, playerApi, roomApi } from '@/api'
 import { worldStatesV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -496,7 +498,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useDashboardRefreshInterval } from '@/composables/useDashboardRefreshInterval'
+import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
 import { confirmAction, promptText } from '@/lib/feedback'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { translateWorldStateValue } from '@/i18n/worldStateMessages.js'
@@ -540,7 +542,7 @@ export default {
     embedded: { type: Boolean, default: false }
   },
   setup() {
-    const { refreshIntervalMs } = useDashboardRefreshInterval()
+    const { refreshIntervalMs } = useRoomRefreshInterval()
     return { refreshIntervalMs }
   },
   components: {
@@ -582,6 +584,7 @@ export default {
     UiProgress,
     RefreshCw,
     RotateCw,
+    RoomRefreshIntervalSelect,
     RoomChatPanel,
     Search,
     SelectContent,

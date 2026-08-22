@@ -17,13 +17,13 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import DashboardOnboarding from '@/components/dashboard/DashboardOnboarding.vue'
 import ServerWorkspace from '@/views/servers/ServerWorkspace.vue'
-import { useDashboardRefreshInterval } from '@/composables/useDashboardRefreshInterval'
+import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
 import { useDashboardV2 } from '@/composables/useDashboardV2'
 import { hasMetric } from '@/lib/systemResourceMetrics.mjs'
 
 const router = useRouter()
 const { t } = useI18n()
-const { refreshIntervalMs } = useDashboardRefreshInterval()
+const { refreshIntervalMs } = useRoomRefreshInterval()
 let runtimeRefreshTimer = null
 
 const {
