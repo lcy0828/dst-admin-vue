@@ -148,8 +148,8 @@ export const worldStateMessages = {
         no: '否',
         seasons: { autumn: '秋季', winter: '冬季', spring: '春季', summer: '夏季' },
         phases: { day: '白天', dusk: '黄昏', night: '夜晚' },
-        weather: { none: '无降水', rain: '下雨', snow: '下雪' },
-        precipitation: { none: '无', rain: '雨', snow: '雪' },
+        weather: { none: '无降水', rain: '下雨', snow: '下雪', acid_rain: '酸雨', lunar_hail: '月石雹' },
+        precipitation: { none: '无', rain: '雨', snow: '雪', acid_rain: '酸雨', lunar_hail: '月石雹' },
         moon: { new: '新月', quarter: '弦月', half: '半月', threequarter: '盈凸月', full: '满月' },
         moonState: { waxing: '渐盈期', waning: '渐亏期' },
         nightmare: { calm: '平静期', warn: '警告期', wild: '黑暗期', dawn: '黎明期', none: '无效期' }
@@ -312,8 +312,8 @@ export const worldStateMessages = {
         no: 'No',
         seasons: { autumn: 'Autumn', winter: 'Winter', spring: 'Spring', summer: 'Summer' },
         phases: { day: 'Day', dusk: 'Dusk', night: 'Night' },
-        weather: { none: 'No precipitation', rain: 'Raining', snow: 'Snowing' },
-        precipitation: { none: 'None', rain: 'Rain', snow: 'Snow' },
+        weather: { none: 'No precipitation', rain: 'Raining', snow: 'Snowing', acid_rain: 'Acid rain', lunar_hail: 'Lunar hail' },
+        precipitation: { none: 'None', rain: 'Rain', snow: 'Snow', acid_rain: 'Acid rain', lunar_hail: 'Lunar hail' },
         moon: { new: 'New Moon', quarter: 'Quarter Moon', half: 'Half Moon', threequarter: 'Waxing Gibbous', full: 'Full Moon' },
         moonState: { waxing: 'Waxing', waning: 'Waning' },
         nightmare: { calm: 'Calm', warn: 'Warning', wild: 'Wild', dawn: 'Dawn', none: 'Inactive' }

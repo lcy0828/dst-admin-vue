@@ -14,10 +14,11 @@ test('legacy adapters preserve world-state freshness and latest-exit audit field
   assert.match(adapter, /latest_exit: world\.latestExit \|\| null/)
 })
 
-test('server workspace stops polling player statistics when every shard is stopped', async () => {
+test('server workspace stops polling players while keeping cached world freshness current', async () => {
   const workspace = await source('src/views/servers/ServerWorkspace.vue')
 
-  assert.match(workspace, /if \(silent && previousRoomId === this\.selectedRoomId\) \{\s*if \(this\.runningWorlds\.length > 0\) await this\.refreshPlayerStats\(\)/)
+  assert.match(workspace, /const liveRefreshes = \[this\.refreshWorldStates\(\)\]/)
+  assert.match(workspace, /if \(this\.runningWorlds\.length > 0\) liveRefreshes\.push\(this\.refreshPlayerStats\(\)\)/)
   assert.doesNotMatch(workspace, /if \(silent && previousRoomId === this\.selectedRoomId[^}]+\}\s*else await this\.refreshRoomContext\(\)/)
   assert.match(workspace, /RuntimeExitBadge/)
   assert.match(workspace, /WorldDataFreshnessBadge/)

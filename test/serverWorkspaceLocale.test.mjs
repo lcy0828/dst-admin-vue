@@ -39,8 +39,19 @@ test('server workspace keeps operational summaries inline and world facts on sta
   assert.match(source, /class="workspace-overview"/)
   assert.match(source, /class="status-summary" role="list"/)
   assert.match(source, /<Separator class="status-separator" orientation="vertical"/)
-  assert.match(source, /grid-template-columns: repeat\(4, minmax\(72px, 1fr\)\)/)
+  assert.match(source, /grid-template-columns: repeat\(6, minmax\(58px, 1fr\)\)/)
   assert.doesNotMatch(source, /class="status-card"/)
+})
+
+test('server workspace reuses cached world-state snapshots without forcing Lua refresh jobs', async () => {
+  const source = await readFile(sourceUrl, 'utf8')
+
+  assert.match(source, /worldStatesV2API\.list\(roomId\)/)
+  assert.match(source, /worldStateSnapshots/)
+  assert.match(source, /worldSeasonProgress\(world\)/)
+  assert.match(source, /worldPhaseProgress\(world\)/)
+  assert.match(source, /worldWeatherLabel\(world\)/)
+  assert.doesNotMatch(source, /world-states\/actions\/refresh/)
 })
 
 test('room control only shows room-scoped summary data', async () => {

@@ -161,19 +161,43 @@
             <dl class="world-facts">
               <div>
                 <dt>{{ $t('servers.workspace.worlds.day') }}</dt>
-                <dd>{{ metricValue(world.day) }}</dd>
+                <dd>{{ worldDayLabel(world) }}</dd>
               </div>
-              <div>
+              <div class="world-fact-progress">
                 <dt>{{ $t('servers.workspace.worlds.season') }}</dt>
-                <dd>{{ seasonLabel(world.season) }}</dd>
+                <dd>{{ worldSeasonLabel(world) }}</dd>
+                <UiProgress
+                  v-if="worldSeasonProgress(world) !== null"
+                  :model-value="worldSeasonProgress(world)"
+                  :aria-label="$t('servers.workspace.worlds.seasonProgress', { world: world.name, progress: formatProgress(worldSeasonProgress(world)) })"
+                />
+              </div>
+              <div class="world-fact-progress">
+                <dt>{{ $t('servers.workspace.worlds.phase') }}</dt>
+                <dd>{{ worldPhaseLabel(world) }}</dd>
+                <UiProgress
+                  v-if="worldPhaseProgress(world) !== null"
+                  :model-value="worldPhaseProgress(world)"
+                  :aria-label="$t('servers.workspace.worlds.phaseProgress', { world: world.name, progress: formatProgress(worldPhaseProgress(world)) })"
+                />
               </div>
               <div>
-                <dt>{{ $t('servers.workspace.worlds.control') }}</dt>
-                <dd>{{ world.controlAvailable === false ? $t('servers.workspace.states.unavailable') : $t('servers.workspace.states.available') }}</dd>
+                <dt>{{ $t('servers.workspace.worlds.weather') }}</dt>
+                <dd :title="worldWeatherLabel(world)">{{ worldWeatherLabel(world) }}</dd>
+              </div>
+              <div>
+                <dt>{{ worldCycleTitle(world) }}</dt>
+                <dd>{{ worldCycleLabel(world) }}</dd>
               </div>
               <div>
                 <dt>{{ $t('servers.workspace.worlds.dataTime') }}</dt>
-                <dd><WorldDataFreshnessBadge :freshness="world.stateFreshness" :observed-at="world.stateObservedAt" :age-seconds="world.stateAgeSeconds" /></dd>
+                <dd>
+                  <WorldDataFreshnessBadge
+                    :freshness="worldStateFor(world)?.freshness || world.stateFreshness"
+                    :observed-at="worldObservedAt(world)"
+                    :age-seconds="worldStateAgeSeconds(world)"
+                  />
+                </dd>
               </div>
             </dl>
 
@@ -454,12 +478,14 @@ import RoomChatPanel from '@/components/RoomChatPanel.vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import { backupApi, commandApi, playerApi, roomApi } from '@/api'
+import { worldStatesV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Progress as UiProgress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
@@ -468,6 +494,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { confirmAction, promptText } from '@/lib/feedback'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import { translateWorldStateValue } from '@/i18n/worldStateMessages.js'
 import {
   isCapacityRiskCanceled,
   restartWorldWithCapacityRisk,
@@ -543,6 +570,7 @@ export default {
     PackageOpen,
     Pickaxe,
     Play,
+    UiProgress,
     RefreshCw,
     RotateCw,
     RoomChatPanel,
@@ -585,12 +613,14 @@ export default {
       selectedRoomId: this.$route.query.roomId || '',
       selectedWorldId: this.$route.query.worldId || '',
       playerStats: null,
+      worldStateSnapshots: [],
       backups: [],
       consoleServers: [],
       contextErrors: {
         players: null,
         backups: null,
-        console: null
+        console: null,
+        worldStates: null
       },
       pendingWorldActions: [],
       pendingRoomActions: [],
@@ -603,6 +633,7 @@ export default {
       refreshTimer: null,
       refreshSequence: 0,
       contextSequence: 0,
+      worldStateSequence: 0,
       commonCommands: [
         { nameKey: 'servers.workspace.console.commonCommands.save', command: 'c_save()' },
         { nameKey: 'servers.workspace.console.commonCommands.players', command: 'c_listallplayers()' },
@@ -677,16 +708,18 @@ export default {
     },
     handleRuntimeTargetChange() {
       this.contextSequence += 1
+      this.worldStateSequence += 1
       this.selectedRoomId = ''
       this.selectedWorldId = ''
       this.rooms = []
       this.playerStats = null
+      this.worldStateSnapshots = []
       this.backups = []
       this.consoleServers = []
       this.consoleServer = ''
       this.commandResult = null
       this.loadError = null
-      this.contextErrors = { players: null, backups: null, console: null }
+      this.contextErrors = { players: null, backups: null, console: null, worldStates: null }
       this.contextLoading = false
       this.refreshWorkspace()
     },
@@ -712,7 +745,9 @@ export default {
 
       if (this.selectedRoom) {
         if (silent && previousRoomId === this.selectedRoomId) {
-          if (this.runningWorlds.length > 0) await this.refreshPlayerStats()
+          const liveRefreshes = [this.refreshWorldStates()]
+          if (this.runningWorlds.length > 0) liveRefreshes.push(this.refreshPlayerStats())
+          await Promise.all(liveRefreshes)
         } else {
           await this.refreshRoomContext()
         }
@@ -744,17 +779,20 @@ export default {
       const roomName = this.selectedRoom.name
       this.contextLoading = true
       this.playerStats = null
+      this.worldStateSnapshots = []
       this.backups = []
       this.consoleServers = []
       this.consoleServer = ''
-      this.contextErrors = { players: null, backups: null, console: null }
-      const [playersResult, backupsResult, consoleResult] = await Promise.allSettled([
+      this.contextErrors = { players: null, backups: null, console: null, worldStates: null }
+      const worldStateRequestSequence = ++this.worldStateSequence
+      const [playersResult, backupsResult, consoleResult, worldStatesResult] = await Promise.allSettled([
         playerApi.getPlayerStats(roomName),
         backupApi.getBackupList(),
-        commandApi.getServers()
+        commandApi.getServers(),
+        worldStatesV2API.list(roomId)
       ])
 
-      if (requestSequence !== this.contextSequence || this.selectedRoomId !== roomId) return
+      if (requestSequence !== this.contextSequence || worldStateRequestSequence !== this.worldStateSequence || this.selectedRoomId !== roomId) return
       this.playerStats = playersResult.status === 'fulfilled'
         ? playersResult.value?.data || null
         : null
@@ -775,6 +813,12 @@ export default {
       this.contextErrors.console = consoleResult.status === 'rejected'
         ? this.errorState('servers.workspace.feedback.consoleTargetsLoadFailed', consoleResult.reason)
         : null
+      this.worldStateSnapshots = worldStatesResult.status === 'fulfilled'
+        ? worldStatesResult.value?.items || []
+        : []
+      this.contextErrors.worldStates = worldStatesResult.status === 'rejected'
+        ? this.errorState('servers.workspace.feedback.worldStatesLoadFailed', worldStatesResult.reason)
+        : null
       this.syncConsoleTarget()
       this.contextLoading = false
     },
@@ -792,6 +836,22 @@ export default {
         if (requestSequence === this.contextSequence && this.selectedRoomId === roomId) {
           this.playerStats = null
           this.contextErrors.players = this.errorState('servers.workspace.feedback.playersLoadFailed', error)
+        }
+      }
+    },
+    async refreshWorldStates() {
+      if (!this.selectedRoom) return
+      const requestSequence = ++this.worldStateSequence
+      const roomId = this.selectedRoomId
+      this.contextErrors.worldStates = null
+      try {
+        const response = await worldStatesV2API.list(roomId)
+        if (requestSequence === this.worldStateSequence && this.selectedRoomId === roomId) {
+          this.worldStateSnapshots = response?.items || []
+        }
+      } catch (error) {
+        if (requestSequence === this.worldStateSequence && this.selectedRoomId === roomId) {
+          this.contextErrors.worldStates = this.errorState('servers.workspace.feedback.worldStatesLoadFailed', error)
         }
       }
     },
@@ -1098,6 +1158,82 @@ export default {
         return this.$t(`servers.list.seasons.${normalized}`)
       }
       return season || '--'
+    },
+    worldStateFor(world) {
+      return this.worldStateSnapshots.find(snapshot => snapshot.worldId === world.id)
+        || this.worldStateSnapshots.find(snapshot => snapshot.worldName === world.name)
+        || null
+    },
+    worldDayLabel(world) {
+      const cycles = this.worldStateFor(world)?.cycles
+      if (Number.isFinite(cycles)) {
+        return this.$t('servers.workspace.worlds.dayValue', { count: cycles + 1 })
+      }
+      return this.metricValue(world.day)
+    },
+    worldSeasonLabel(world) {
+      return this.seasonLabel(this.worldStateFor(world)?.season || world.season)
+    },
+    worldSeasonProgress(world) {
+      return this.progressValue(this.worldStateFor(world)?.seasonProgress)
+    },
+    worldPhaseLabel(world) {
+      return this.protocolLabel('phases', this.worldStateFor(world)?.phase)
+    },
+    worldPhaseProgress(world) {
+      return this.progressValue(this.worldStateFor(world)?.phaseProgress)
+    },
+    worldWeatherLabel(world) {
+      const snapshot = this.worldStateFor(world)
+      if (!snapshot) return '--'
+      const parts = []
+      if (snapshot.precipitation) parts.push(this.protocolLabel('weather', snapshot.precipitation))
+      if (Number.isFinite(snapshot.temperature)) {
+        parts.push(this.$t('servers.workspace.worlds.temperatureValue', { value: snapshot.temperature.toFixed(1) }))
+      }
+      return parts.join(' · ') || '--'
+    },
+    worldCycleTitle(world) {
+      return ['cave', 'caves'].includes(String(world.type || world.role || '').toLowerCase())
+        ? this.$t('servers.workspace.worlds.nightmare')
+        : this.$t('servers.workspace.worlds.moon')
+    },
+    worldCycleLabel(world) {
+      const snapshot = this.worldStateFor(world)
+      if (!snapshot) return '--'
+      if (['cave', 'caves'].includes(String(world.type || world.role || '').toLowerCase())) {
+        return this.protocolLabel('nightmare', snapshot.nightmarePhase)
+      }
+      return this.protocolLabel('moon', snapshot.moonPhase)
+    },
+    worldObservedAt(world) {
+      const candidates = [this.worldStateFor(world)?.observedAt, world.stateObservedAt]
+      return candidates.find(value => {
+        const observedAt = new Date(value)
+        return Number.isFinite(observedAt.getTime()) && observedAt.getUTCFullYear() > 2000
+      }) || ''
+    },
+    worldStateAgeSeconds(world) {
+      const snapshot = this.worldStateFor(world)
+      return this.worldObservedAt(world) === snapshot?.observedAt
+        ? snapshot.ageSeconds ?? null
+        : world.stateAgeSeconds ?? null
+    },
+    protocolLabel(group, value) {
+      if (value === null || value === undefined || value === '') return '--'
+      return translateWorldStateValue(
+        key => this.$t(key),
+        key => this.$te(key),
+        group,
+        value
+      )
+    },
+    progressValue(value) {
+      if (!Number.isFinite(value)) return null
+      return Math.round(Math.max(0, Math.min(1, value)) * 100)
+    },
+    formatProgress(value) {
+      return Number.isFinite(value) ? `${value}%` : '--'
     },
     characterLabel(prefab) {
       const normalized = String(prefab || '').trim().toLowerCase()
@@ -1412,8 +1548,8 @@ export default {
 
 .world-facts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(72px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(6, minmax(58px, 1fr));
+  gap: 10px;
   margin: 0;
 }
 
@@ -1434,6 +1570,11 @@ export default {
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.world-fact-progress [data-slot='progress'] {
+  max-width: 88px;
+  margin-top: 4px;
 }
 
 .world-actions {
