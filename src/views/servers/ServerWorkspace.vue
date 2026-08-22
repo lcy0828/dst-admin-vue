@@ -301,14 +301,10 @@
                   </UiButton>
                 </header>
                 <div v-if="recentPlayers.length" class="player-list players-list-expanded">
-                  <UiButton
+                  <div
                     v-for="player in recentPlayers"
                     :key="`${player.room_id}:${player.user_id}`"
-                    variant="ghost"
-                    size="sm"
                     class="player-row"
-                    :aria-label="$t('servers.workspace.players.openPlayer', { player: player.player_name || player.user_id })"
-                    @click="openPlayer(player)"
                   >
                     <CharacterAvatar :prefab="player.prefab" :name="player.player_name" size="lg" />
                     <span class="player-copy">
@@ -318,8 +314,8 @@
                     <Badge :variant="player.status === 'online' ? 'default' : 'outline'">
                       {{ playerStatusLabel(player.status) }}
                     </Badge>
-                    <PanelRightOpen />
-                  </UiButton>
+                    <PlayerActionMenu :player="player" @updated="refreshPlayerStats" />
+                  </div>
                 </div>
                 <Alert v-else-if="contextErrors.players" variant="destructive">
                   <CircleAlert />
@@ -477,11 +473,6 @@
       </div>
     </template>
 
-    <PlayerActionSheet
-      v-model:open="playerActionOpen"
-      :player="selectedPlayer"
-      @updated="refreshPlayerStats"
-    />
   </div>
 </template>
 
@@ -492,7 +483,7 @@ import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import RoomRefreshIntervalSelect from '@/components/layout/RoomRefreshIntervalSelect.vue'
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue'
-import PlayerActionSheet from '@/components/players/PlayerActionSheet.vue'
+import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue'
 import { backupApi, commandApi, playerApi, roomApi } from '@/api'
 import { worldStatesV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -534,7 +525,7 @@ import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
   ArrowRight, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
   FileText, Globe2, MessagesSquare, PackageOpen, Pickaxe, Play, RefreshCw, RotateCw, Search, Send, ServerOff,
-  PanelRightOpen, Settings, Square, Terminal, TreePine, User, UsersRound
+  Settings, Square, Terminal, TreePine, User, UsersRound
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
@@ -585,9 +576,8 @@ export default {
     Globe2,
     MessagesSquare,
     PackageOpen,
-    PanelRightOpen,
     Pickaxe,
-    PlayerActionSheet,
+    PlayerActionMenu,
     Play,
     UiProgress,
     RefreshCw,
@@ -632,8 +622,6 @@ export default {
       rooms: [],
       selectedRoomId: this.$route.query.roomId || '',
       selectedWorldId: this.$route.query.worldId || '',
-      selectedPlayer: null,
-      playerActionOpen: false,
       playerStats: null,
       worldStateSnapshots: [],
       backups: [],
@@ -752,8 +740,6 @@ export default {
       this.worldStateSequence += 1
       this.selectedRoomId = ''
       this.selectedWorldId = ''
-      this.selectedPlayer = null
-      this.playerActionOpen = false
       this.rooms = []
       this.playerStats = null
       this.worldStateSnapshots = []
@@ -818,8 +804,6 @@ export default {
       this.syncRouteContext()
     },
     async handleRoomChange() {
-      this.selectedPlayer = null
-      this.playerActionOpen = false
       this.selectedWorldId = (this.worlds.find(world => world.status === 'running') || this.worlds[0])?.id || ''
       this.syncConsoleTarget()
       this.syncRouteContext()
@@ -1156,10 +1140,6 @@ export default {
     },
     openPlayers() {
       this.$router.push({ path: '/players/list', query: { archive: this.selectedRoom?.name } })
-    },
-    openPlayer(player) {
-      this.selectedPlayer = { ...player }
-      this.playerActionOpen = true
     },
     openMods() {
       this.$router.push({
@@ -1823,14 +1803,13 @@ export default {
 
 .player-row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto 16px;
+  grid-template-columns: 40px minmax(0, 1fr) auto 32px;
   gap: 8px;
   align-items: center;
   height: auto;
   width: 100%;
   min-height: 50px;
   padding: 5px 0;
-  cursor: pointer;
   color: inherit;
   text-align: left;
   background: transparent;
@@ -1840,16 +1819,6 @@ export default {
 
 .player-row:last-child {
   border-bottom: 0;
-}
-
-.player-row:hover .player-copy strong,
-.player-row:focus-visible .player-copy strong {
-  color: var(--primary);
-}
-
-.player-row:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
 }
 
 .player-copy {
@@ -1867,7 +1836,6 @@ export default {
 .player-copy strong {
   color: var(--foreground);
   font-size: 13px;
-  transition: color 180ms ease;
 }
 
 .player-copy span {
@@ -2079,8 +2047,7 @@ export default {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .world-item,
-  .player-copy strong {
+  .world-item {
     transition: none;
   }
 }
