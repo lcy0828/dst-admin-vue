@@ -28,11 +28,13 @@ function switchLanguage(value) {
   <DropdownMenu>
     <Tooltip>
       <TooltipTrigger as-child>
-        <DropdownMenuTrigger as-child>
-          <Button variant="ghost" size="icon-sm" :aria-label="t('settings.language.label')">
-            <Languages />
-          </Button>
-        </DropdownMenuTrigger>
+        <span class="inline-flex">
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" size="icon-sm" :aria-label="t('settings.language.label')">
+              <Languages />
+            </Button>
+          </DropdownMenuTrigger>
+        </span>
       </TooltipTrigger>
       <TooltipContent>{{ t('settings.language.label') }}</TooltipContent>
     </Tooltip>

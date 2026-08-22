@@ -66,16 +66,18 @@ function failureMessage(job) {
   <Popover v-if="visible">
     <Tooltip>
       <TooltipTrigger as-child>
-        <PopoverTrigger as-child>
-          <Button variant="ghost" size="sm" :aria-label="triggerLabel">
-            <TriangleAlert v-if="failureCount" class="text-destructive" />
-            <CircleAlert v-else-if="loadError" class="text-destructive" />
-            <ListTodo v-else />
-            <span class="hidden xl:inline">{{ triggerLabel }}</span>
-            <Badge v-if="activeCount" variant="secondary">{{ activeCount }}</Badge>
-            <Badge v-if="failureCount" variant="destructive">{{ failureCount }}</Badge>
-          </Button>
-        </PopoverTrigger>
+        <span class="inline-flex">
+          <PopoverTrigger as-child>
+            <Button variant="ghost" size="sm" :aria-label="triggerLabel">
+              <TriangleAlert v-if="failureCount" class="text-destructive" />
+              <CircleAlert v-else-if="loadError" class="text-destructive" />
+              <ListTodo v-else />
+              <span class="hidden xl:inline">{{ triggerLabel }}</span>
+              <Badge v-if="activeCount" variant="secondary">{{ activeCount }}</Badge>
+              <Badge v-if="failureCount" variant="destructive">{{ failureCount }}</Badge>
+            </Button>
+          </PopoverTrigger>
+        </span>
       </TooltipTrigger>
       <TooltipContent>{{ triggerLabel }}</TooltipContent>
     </Tooltip>
