@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -17,12 +17,13 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import DashboardOnboarding from '@/components/dashboard/DashboardOnboarding.vue'
 import ServerWorkspace from '@/views/servers/ServerWorkspace.vue'
+import { useDashboardRefreshInterval } from '@/composables/useDashboardRefreshInterval'
 import { useDashboardV2 } from '@/composables/useDashboardV2'
 import { hasMetric } from '@/lib/systemResourceMetrics.mjs'
 
 const router = useRouter()
 const { t } = useI18n()
-const RUNTIME_REFRESH_INTERVAL_MS = 10_000
+const { refreshIntervalMs } = useDashboardRefreshInterval()
 let runtimeRefreshTimer = null
 
 const {
@@ -72,15 +73,42 @@ async function refreshRuntimeStatus() {
   await refreshRuntimeServers()
 }
 
+function stopRuntimeRefreshTimer() {
+  if (runtimeRefreshTimer) window.clearInterval(runtimeRefreshTimer)
+  runtimeRefreshTimer = null
+}
+
+function startRuntimeRefreshTimer() {
+  stopRuntimeRefreshTimer()
+  if (document.visibilityState === 'hidden') return
+  runtimeRefreshTimer = window.setInterval(refreshRuntimeStatus, refreshIntervalMs.value)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    stopRuntimeRefreshTimer()
+    return
+  }
+  refreshRuntimeStatus()
+  startRuntimeRefreshTimer()
+}
+
+const stopRefreshIntervalWatch = watch(refreshIntervalMs, () => {
+  refreshRuntimeStatus()
+  startRuntimeRefreshTimer()
+})
+
 onMounted(async () => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   await refreshDashboard()
   resumeUpdatePolling()
-  runtimeRefreshTimer = window.setInterval(refreshRuntimeStatus, RUNTIME_REFRESH_INTERVAL_MS)
+  startRuntimeRefreshTimer()
 })
 
 onBeforeUnmount(() => {
-  if (runtimeRefreshTimer) window.clearInterval(runtimeRefreshTimer)
-  runtimeRefreshTimer = null
+  stopRuntimeRefreshTimer()
+  stopRefreshIntervalWatch()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

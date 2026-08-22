@@ -20,6 +20,15 @@ test('server locale catalogs expose matching keys', () => {
   )
 })
 
+test('ordinary server surfaces call DST shards worlds', () => {
+  assert.equal(serverMessages['zh-CN'].servers.workspace.dashboardTitle, '房间与世界')
+  assert.equal(serverMessages['zh-CN'].servers.workspace.worlds.title, '世界')
+  assert.equal(serverMessages['zh-CN'].servers.workspace.operations.shardLogs, '世界日志')
+  assert.equal(serverMessages['en-US'].servers.workspace.dashboardTitle, 'Rooms and worlds')
+  assert.equal(serverMessages['en-US'].servers.workspace.worlds.title, 'Worlds')
+  assert.equal(serverMessages['en-US'].servers.workspace.operations.shardLogs, 'World logs')
+})
+
 test('server list localizes runtime presentation without changing protocol values', async () => {
   const source = await readFile(new URL('../src/views/servers/ServerList.vue', import.meta.url), 'utf8')
 

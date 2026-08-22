@@ -17,6 +17,9 @@ test('legacy adapters preserve world-state freshness and latest-exit audit field
 test('server workspace stops polling players while keeping cached world freshness current', async () => {
   const workspace = await source('src/views/servers/ServerWorkspace.vue')
 
+  assert.match(workspace, /useDashboardRefreshInterval\(\)/)
+  assert.match(workspace, /if \(silent && this\.refreshInFlightCount > 0\) return false/)
+  assert.match(workspace, /window\.setInterval\(\(\) => this\.refreshWorkspace\(true\), this\.refreshIntervalMs\)/)
   assert.match(workspace, /const liveRefreshes = \[this\.refreshWorldStates\(\)\]/)
   assert.match(workspace, /if \(this\.runningWorlds\.length > 0\) liveRefreshes\.push\(this\.refreshPlayerStats\(\)\)/)
   assert.doesNotMatch(workspace, /if \(silent && previousRoomId === this\.selectedRoomId[^}]+\}\s*else await this\.refreshRoomContext\(\)/)

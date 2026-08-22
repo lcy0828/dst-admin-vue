@@ -12,19 +12,19 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import {
-  SYSTEM_RESOURCE_REFRESH_INTERVAL_OPTIONS_MS,
-  useSystemResourceStatus
-} from '@/composables/useSystemResourceStatus'
+  DASHBOARD_REFRESH_INTERVAL_OPTIONS_MS,
+  useDashboardRefreshInterval
+} from '@/composables/useDashboardRefreshInterval'
 
 const { t } = useI18n()
-const { refreshIntervalMs, setSystemResourceRefreshInterval } = useSystemResourceStatus()
-const intervals = SYSTEM_RESOURCE_REFRESH_INTERVAL_OPTIONS_MS.map(value => ({
+const { refreshIntervalMs, setDashboardRefreshInterval } = useDashboardRefreshInterval()
+const intervals = DASHBOARD_REFRESH_INTERVAL_OPTIONS_MS.map(value => ({
   value: String(value),
   label: `${value / 1000}s`
 }))
 const selectedInterval = computed({
   get: () => String(refreshIntervalMs.value),
-  set: setSystemResourceRefreshInterval
+  set: setDashboardRefreshInterval
 })
 const selectedLabel = computed(() => intervals.find(item => item.value === selectedInterval.value)?.label || '5s')
 const ariaLabel = computed(() => t('dashboard.resources.refreshIntervalAria', { value: selectedLabel.value }))

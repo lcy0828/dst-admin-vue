@@ -55,7 +55,7 @@ export const corePageMessages = {
       lastUpdated: '最后更新 {time}',
       refreshAll: '刷新全部',
       summary: {
-        runningShards: '运行分片',
+        runningShards: '运行世界',
         serverProcesses: '当前专服进程',
         running: '运行中',
         notRunning: '未运行',
@@ -113,9 +113,9 @@ export const corePageMessages = {
           },
           start: {
             title: '启动房间',
-            ready: '在下方房间与分片区域启动 Master 和 Caves，系统会按当前部署方式运行。',
+            ready: '在下方房间与世界区域启动 Master 和 Caves，系统会按当前部署方式运行。',
             done: '已有 {count} 个世界正在运行。',
-            action: '前往房间与分片'
+            action: '前往房间与世界'
           }
         },
         blocked: {
@@ -140,7 +140,7 @@ export const corePageMessages = {
         columns: {
           room: '房间',
           status: '状态',
-          shards: '世界分片',
+          shards: '世界',
           action: '入口'
         },
         statuses: {
@@ -154,7 +154,7 @@ export const corePageMessages = {
       },
       servers: {
         title: '服务器状态',
-        description: '{total} 个分片，{running} 个运行中',
+        description: '{total} 个世界，{running} 个运行中',
         startRoom: '启动房间',
         columns: {
           status: '状态',
@@ -165,26 +165,26 @@ export const corePageMessages = {
         },
         cleanupSession: '清理会话',
         configure: '配置',
-        configureDisabled: '请先停止或清理该分片',
+        configureDisabled: '请先停止或清理该世界',
         loadFailed: '服务器数据加载失败',
         noRooms: '还没有房间',
         noRoomsDescription: '创建房间并配置世界后即可启动专服。',
         createRoom: '创建房间',
         notStarted: '服务器尚未启动',
-        notStartedDescription: '选择房间和世界分片开始运行。',
+        notStartedDescription: '选择房间和世界开始运行。',
         totalInstances: '共 {count} 个服务器实例'
       },
       logs: {
         title: '世界日志',
-        description: '查看世界分片的实时输出与连接状态',
+        description: '查看各世界的实时输出与连接状态',
         empty: '暂无世界日志',
         emptyDescription: '创建房间和世界后，这里会显示实时日志。'
       },
       resources: {
         title: '系统资源',
         refresh: '刷新系统资源',
-        refreshInterval: '刷新间隔',
-        refreshIntervalAria: '系统资源刷新间隔：{value}',
+        refreshInterval: '数据刷新间隔',
+        refreshIntervalAria: '总览数据刷新间隔：{value}',
         viewDetails: '查看系统资源详情',
         unavailable: '系统状态不可用',
         refreshFailed: '刷新失败，正在显示上次获取的数据。',
@@ -257,10 +257,10 @@ export const corePageMessages = {
       },
       startDialog: {
         title: '启动房间',
-        description: '选择需要启动的房间和世界分片。',
+        description: '选择需要启动的房间和世界。',
         room: '房间',
         selectRoom: '选择房间',
-        worlds: '世界分片',
+        worlds: '世界',
         noWorlds: '没有可用世界',
         noWorldsDescription: '请先完成世界配置。',
         submit: '启动所选世界'
@@ -274,18 +274,18 @@ export const corePageMessages = {
         roomLoadFailed: '获取房间列表失败',
         invalidVersionResponse: '版本响应无效',
         versionLoadFailed: '获取游戏版本失败',
-        actionUnavailable: '当前分片状态不可操作',
+        actionUnavailable: '当前世界状态不可操作',
         actionConfirm: '确定要{action}“{room} / {world}”吗？',
         actionConfirmTitle: '服务器操作确认',
         actionConfirmButton: '确认{action}',
         actionCompleted: '{action}完成',
         actionCompletedRefreshFailed: '{action}已完成，但最新服务器状态读取失败，当前继续显示上次数据',
         actionFailed: '{action}失败：{error}',
-        selectWorld: '请至少选择一个可启动的世界分片',
+        selectWorld: '请至少选择一个可启动的世界',
         roomStarted: '房间 {room} 已启动',
         roomStartedRefreshFailed: '房间 {room} 的启动请求已完成，但最新状态读取失败，当前继续显示上次数据',
         roomStartFailed: '启动房间失败：{error}',
-        cleanupUnavailable: '当前分片没有可清理的失败会话',
+        cleanupUnavailable: '当前世界没有可清理的失败会话',
         cleanupConfirm: '确定要停止并清理“{room} / {world}”的失败会话吗？',
         cleanupTitle: '清理失败会话',
         cleanupButton: '确认清理',
@@ -367,7 +367,7 @@ export const corePageMessages = {
       lastUpdated: 'Last updated {time}',
       refreshAll: 'Refresh all',
       summary: {
-        runningShards: 'Running shards',
+        runningShards: 'Running worlds',
         serverProcesses: 'Current server processes',
         running: 'Running',
         notRunning: 'Not running',
@@ -394,7 +394,7 @@ export const corePageMessages = {
         packaging: {
           native: 'Local native',
           all_in_one: 'All-in-One',
-          container: 'Container Shards',
+          container: 'Container worlds',
           control_plane: 'Controller only'
         },
         deployments: {
@@ -425,9 +425,9 @@ export const corePageMessages = {
           },
           start: {
             title: 'Start the room',
-            ready: 'Start Master and Caves in the rooms and shards section below using the current deployment mode.',
+            ready: 'Start Master and Caves in the rooms and worlds section below using the current deployment mode.',
             done: '{count} worlds are running.',
-            action: 'Go to rooms and shards'
+            action: 'Go to rooms and worlds'
           }
         },
         blocked: {
@@ -452,7 +452,7 @@ export const corePageMessages = {
         columns: {
           room: 'Room',
           status: 'Status',
-          shards: 'World shards',
+          shards: 'Worlds',
           action: 'Open'
         },
         statuses: {
@@ -466,7 +466,7 @@ export const corePageMessages = {
       },
       servers: {
         title: 'Server status',
-        description: '{total} shards, {running} running',
+        description: '{total} worlds, {running} running',
         startRoom: 'Start room',
         columns: {
           status: 'Status',
@@ -477,26 +477,26 @@ export const corePageMessages = {
         },
         cleanupSession: 'Clean up session',
         configure: 'Configure',
-        configureDisabled: 'Stop or clean up this shard first',
+        configureDisabled: 'Stop or clean up this world first',
         loadFailed: 'Failed to load server data',
         noRooms: 'No rooms yet',
         noRoomsDescription: 'Create a room and configure its worlds before starting the server.',
         createRoom: 'Create room',
         notStarted: 'No servers are running',
-        notStartedDescription: 'Choose a room and world shards to start.',
+        notStartedDescription: 'Choose a room and worlds to start.',
         totalInstances: '{count} server instances'
       },
       logs: {
         title: 'World logs',
-        description: 'View live output and connection status for world shards',
+        description: 'View live output and connection status for each world',
         empty: 'No world logs',
         emptyDescription: 'Live logs will appear here after you create a room and world.'
       },
       resources: {
         title: 'System resources',
         refresh: 'Refresh system resources',
-        refreshInterval: 'Refresh interval',
-        refreshIntervalAria: 'System resource refresh interval: {value}',
+        refreshInterval: 'Data refresh interval',
+        refreshIntervalAria: 'Overview data refresh interval: {value}',
         viewDetails: 'View system resource details',
         unavailable: 'System status unavailable',
         refreshFailed: 'Refresh failed. Showing the last available data.',
@@ -569,10 +569,10 @@ export const corePageMessages = {
       },
       startDialog: {
         title: 'Start room',
-        description: 'Choose the room and world shards to start.',
+        description: 'Choose the room and worlds to start.',
         room: 'Room',
         selectRoom: 'Select a room',
-        worlds: 'World shards',
+        worlds: 'Worlds',
         noWorlds: 'No worlds available',
         noWorldsDescription: 'Complete the world configuration first.',
         submit: 'Start selected worlds'
@@ -586,18 +586,18 @@ export const corePageMessages = {
         roomLoadFailed: 'Failed to load rooms',
         invalidVersionResponse: 'Invalid version response',
         versionLoadFailed: 'Failed to load the game version',
-        actionUnavailable: 'This shard cannot be controlled in its current state',
+        actionUnavailable: 'This world cannot be controlled in its current state',
         actionConfirm: '{action} “{room} / {world}”?',
         actionConfirmTitle: 'Confirm server action',
         actionConfirmButton: 'Confirm {action}',
         actionCompleted: '{action} complete',
         actionCompletedRefreshFailed: '{action} completed, but the latest server state could not be loaded. The previous data remains visible.',
         actionFailed: '{action} failed: {error}',
-        selectWorld: 'Select at least one world shard that can be started',
+        selectWorld: 'Select at least one world that can be started',
         roomStarted: 'Room {room} started',
         roomStartedRefreshFailed: 'The start request for {room} completed, but the latest state could not be loaded. The previous data remains visible.',
         roomStartFailed: 'Failed to start room: {error}',
-        cleanupUnavailable: 'This shard has no failed session to clean up',
+        cleanupUnavailable: 'This world has no failed session to clean up',
         cleanupConfirm: 'Stop and clean up the failed session for “{room} / {world}”?',
         cleanupTitle: 'Clean up failed session',
         cleanupButton: 'Clean up',

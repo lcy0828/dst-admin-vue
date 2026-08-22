@@ -1,37 +1,18 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { systemApi } from '@/api/index'
+import { useDashboardRefreshInterval } from '@/composables/useDashboardRefreshInterval'
 import { translate } from '@/i18n'
-
-export const SYSTEM_RESOURCE_REFRESH_INTERVAL_MS = 5_000
-export const SYSTEM_RESOURCE_REFRESH_INTERVAL_OPTIONS_MS = Object.freeze([1_000, 5_000, 10_000, 30_000])
-export const SYSTEM_RESOURCE_REFRESH_INTERVAL_STORAGE_KEY = 'dst-admin-system-resource-refresh-interval'
 
 const status = ref({})
 const loading = ref(false)
 const error = ref('')
 const lastUpdatedAt = ref(null)
-const refreshIntervalMs = ref(readStoredRefreshInterval())
+const { refreshIntervalMs } = useDashboardRefreshInterval()
 
 let activePollingConsumers = 0
 let refreshPromise = null
 let refreshTimer = null
 let visibilityListenerAttached = false
-
-function normalizeRefreshInterval(value) {
-  const interval = Number(value)
-  return SYSTEM_RESOURCE_REFRESH_INTERVAL_OPTIONS_MS.includes(interval)
-    ? interval
-    : SYSTEM_RESOURCE_REFRESH_INTERVAL_MS
-}
-
-function readStoredRefreshInterval() {
-  if (typeof localStorage === 'undefined') return SYSTEM_RESOURCE_REFRESH_INTERVAL_MS
-  try {
-    return normalizeRefreshInterval(localStorage.getItem(SYSTEM_RESOURCE_REFRESH_INTERVAL_STORAGE_KEY))
-  } catch {
-    return SYSTEM_RESOURCE_REFRESH_INTERVAL_MS
-  }
-}
 
 async function refreshSystemResourceStatus(options = {}) {
   if (refreshPromise) return refreshPromise
@@ -112,20 +93,11 @@ function stopSystemResourcePolling() {
   }
 }
 
-function setSystemResourceRefreshInterval(value) {
-  const interval = normalizeRefreshInterval(value)
-  if (interval === refreshIntervalMs.value) return
-  refreshIntervalMs.value = interval
-  if (typeof localStorage !== 'undefined') {
-    try {
-      localStorage.setItem(SYSTEM_RESOURCE_REFRESH_INTERVAL_STORAGE_KEY, String(interval))
-    } catch {
-      // A denied storage write must not prevent the in-memory preference from applying.
-    }
-  }
+watch(refreshIntervalMs, () => {
+  if (activePollingConsumers <= 0) return
   refreshSystemResourceStatus({ silent: true })
   startRefreshTimer()
-}
+})
 
 export function useSystemResourceStatus() {
   return {
@@ -136,7 +108,6 @@ export function useSystemResourceStatus() {
     refreshIntervalMs,
     refreshSystemResourceStatus,
     startSystemResourcePolling,
-    stopSystemResourcePolling,
-    setSystemResourceRefreshInterval
+    stopSystemResourcePolling
   }
 }

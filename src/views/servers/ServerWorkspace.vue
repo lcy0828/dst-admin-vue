@@ -496,6 +496,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useDashboardRefreshInterval } from '@/composables/useDashboardRefreshInterval'
 import { confirmAction, promptText } from '@/lib/feedback'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { translateWorldStateValue } from '@/i18n/worldStateMessages.js'
@@ -537,6 +538,10 @@ export default {
   name: 'ServerWorkspace',
   props: {
     embedded: { type: Boolean, default: false }
+  },
+  setup() {
+    const { refreshIntervalMs } = useDashboardRefreshInterval()
+    return { refreshIntervalMs }
   },
   components: {
     Alert,
@@ -635,6 +640,7 @@ export default {
       commandExecuting: false,
       commandResult: null,
       refreshTimer: null,
+      refreshInFlightCount: 0,
       refreshSequence: 0,
       contextSequence: 0,
       worldStateSequence: 0,
@@ -691,24 +697,42 @@ export default {
       return this.roomConsoleServers.find(server => server.session_name === this.consoleServer) || null
     }
   },
+  watch: {
+    refreshIntervalMs() {
+      this.refreshWorkspace(true)
+      this.startRefreshTimer()
+    }
+  },
   async created() {
     await this.refreshWorkspace()
-    this.refreshTimer = window.setInterval(() => {
-      if (document.visibilityState !== 'hidden') this.refreshWorkspace(true)
-    }, 30000)
+    this.startRefreshTimer()
   },
   mounted() {
     window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
     document.addEventListener('visibilitychange', this.handleVisibilityChange)
   },
   beforeUnmount() {
-    if (this.refreshTimer) window.clearInterval(this.refreshTimer)
+    this.stopRefreshTimer()
     window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
   },
   methods: {
+    stopRefreshTimer() {
+      if (this.refreshTimer) window.clearInterval(this.refreshTimer)
+      this.refreshTimer = null
+    },
+    startRefreshTimer() {
+      this.stopRefreshTimer()
+      if (document.visibilityState === 'hidden') return
+      this.refreshTimer = window.setInterval(() => this.refreshWorkspace(true), this.refreshIntervalMs)
+    },
     handleVisibilityChange() {
-      if (document.visibilityState !== 'hidden') this.refreshWorkspace(true)
+      if (document.visibilityState === 'hidden') {
+        this.stopRefreshTimer()
+        return
+      }
+      this.refreshWorkspace(true)
+      this.startRefreshTimer()
     },
     handleRuntimeTargetChange() {
       this.contextSequence += 1
@@ -732,31 +756,39 @@ export default {
       return Array.isArray(response?.data) ? response.data : []
     },
     async refreshWorkspace(silent = false) {
+      if (silent && this.refreshInFlightCount > 0) return false
+
       const requestSequence = ++this.refreshSequence
+      this.refreshInFlightCount += 1
       if (!silent) this.loading = true
       this.loadError = null
       const previousRoomId = this.selectedRoomId
-      const [roomsResult] = await Promise.allSettled([roomApi.getRoomList()])
-      if (requestSequence !== this.refreshSequence) return
+      try {
+        const [roomsResult] = await Promise.allSettled([roomApi.getRoomList()])
+        if (requestSequence !== this.refreshSequence) return false
 
-      if (roomsResult.status === 'rejected') {
-        this.rooms = []
-        this.loadError = this.errorState('servers.workspace.feedback.loadFailed', roomsResult.reason)
-      } else {
-        this.rooms = this.unwrapList(roomsResult.value)
-        this.resolveSelection()
-      }
-
-      if (this.selectedRoom) {
-        if (silent && previousRoomId === this.selectedRoomId) {
-          const liveRefreshes = [this.refreshWorldStates()]
-          if (this.runningWorlds.length > 0) liveRefreshes.push(this.refreshPlayerStats())
-          await Promise.all(liveRefreshes)
+        if (roomsResult.status === 'rejected') {
+          this.rooms = []
+          this.loadError = this.errorState('servers.workspace.feedback.loadFailed', roomsResult.reason)
         } else {
-          await this.refreshRoomContext()
+          this.rooms = this.unwrapList(roomsResult.value)
+          this.resolveSelection()
         }
+
+        if (this.selectedRoom) {
+          if (silent && previousRoomId === this.selectedRoomId) {
+            const liveRefreshes = [this.refreshWorldStates()]
+            if (this.runningWorlds.length > 0) liveRefreshes.push(this.refreshPlayerStats())
+            await Promise.all(liveRefreshes)
+          } else {
+            await this.refreshRoomContext()
+          }
+        }
+        return true
+      } finally {
+        this.refreshInFlightCount = Math.max(0, this.refreshInFlightCount - 1)
+        if (requestSequence === this.refreshSequence) this.loading = false
       }
-      if (requestSequence === this.refreshSequence) this.loading = false
     },
     resolveSelection() {
       let room = this.rooms.find(item => item.id === this.selectedRoomId)

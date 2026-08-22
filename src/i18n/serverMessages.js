@@ -4,10 +4,10 @@ export const serverMessages = {
       noObservation: '暂无采集时间',
       freshness: { live: '实时', delayed: '数据延迟', stopped: '停服前数据', unavailable: '暂无数据' },
       descriptions: {
-        live: '分片正在运行，数据在两分钟内更新。',
-        delayed: '分片正在启动，或运行中的数据已超过两分钟未更新。',
-        stopped: '分片已停止，显示的是停服前最后一次有效数据。',
-        unavailable: '当前没有世界状态快照，或暂时无法确认分片运行状态。'
+        live: '世界正在运行，数据在两分钟内更新。',
+        delayed: '世界正在启动，或运行中的数据已超过两分钟未更新。',
+        stopped: '世界已停止，显示的是停服前最后一次有效数据。',
+        unavailable: '当前没有世界状态快照，或暂时无法确认世界运行状态。'
       }
     },
     runtimeAudit: {
@@ -35,11 +35,11 @@ export const serverMessages = {
     servers: {
       list: {
         title: '服务器状态',
-        subtitle: '监控当前运行目标中的世界分片，并执行启动或停止操作。',
+        subtitle: '监控当前运行目标中的世界，并执行启动或停止操作。',
         filters: {
           title: '筛选范围',
           description: '按运行状态、房间和世界类型缩小结果。',
-          allShards: '全部分片',
+          allShards: '全部世界',
           running: '运行中',
           stopped: '已停止',
           failed: '启动失败',
@@ -51,7 +51,7 @@ export const serverMessages = {
           cave: '洞穴服务器'
         },
         shards: {
-          title: '世界分片',
+          title: '世界',
           description: '状态来自当前选择的本机或远程运行目标。',
           loadFailed: '服务器状态读取失败',
           loadingAria: '正在读取服务器状态',
@@ -62,10 +62,10 @@ export const serverMessages = {
             target: '运行目标',
             actions: '操作'
           },
-          unavailable: '当前分片状态不可控制',
+          unavailable: '当前世界状态不可控制',
           cleanup: '清理会话',
           configure: '配置',
-          configureDisabled: '请先停止或清理该分片',
+          configureDisabled: '请先停止或清理该世界',
           empty: '暂无服务器数据',
           emptyDescription: '创建房间后，可以在这里启动和监控服务器。',
           createRoom: '创建新房间',
@@ -73,12 +73,12 @@ export const serverMessages = {
         },
         startDialog: {
           title: '选择并启动房间',
-          description: '选择当前运行目标中的房间和真实世界分片。',
+          description: '选择当前运行目标中的房间和世界。',
           room: '选择房间',
           roomPlaceholder: '请选择房间',
           worlds: '选择世界',
-          worldsDescription: '已运行或当前目标不可控制的分片不会重复启动。',
-          submit: '启动所选分片'
+          worldsDescription: '已运行或当前目标不可控制的世界不会重复启动。',
+          submit: '启动所选世界'
         },
         worldTypes: {
           forest: '森林',
@@ -109,7 +109,7 @@ export const serverMessages = {
           actionCanceled: '已取消{action}',
           actionCompleted: '{action}完成',
           actionFailed: '{action}失败：{error}',
-          cleanupUnavailable: '当前分片没有可清理的失败会话',
+          cleanupUnavailable: '当前世界没有可清理的失败会话',
           cleanupConfirm: '确定要停止并清理“{room} / {world}”的失败会话吗？',
           cleanupTitle: '清理失败会话',
           cleanupButton: '确认清理',
@@ -120,7 +120,7 @@ export const serverMessages = {
       workspace: {
         kicker: '当前房间',
         title: '房间控制',
-        dashboardTitle: '房间与分片',
+        dashboardTitle: '房间与世界',
         roomSummary: '{name} · {count} 个世界',
         noRoomSelected: '尚未选择房间',
         roomSelect: '选择房间',
@@ -155,7 +155,7 @@ export const serverMessages = {
         overview: {
           label: '服务器概况',
           worldStatus: '世界状态',
-          runningShards: '{count} 个分片运行中',
+          runningShards: '{count} 个世界运行中',
           onlinePlayers: '在线玩家',
           totalPlayers: '共 {count} 人',
           attentionWorlds: '异常世界',
@@ -171,8 +171,8 @@ export const serverMessages = {
           emptyDescription: '创建房间备份后会显示在这里。'
         },
         worlds: {
-          title: '世界与分片',
-          description: '当前房间的分片列表',
+          title: '世界',
+          description: '当前房间的世界列表',
           roomSettings: '房间设置',
           startAll: '全部启动',
           stopAll: '全部停止',
@@ -203,10 +203,10 @@ export const serverMessages = {
         },
         operations: {
           title: '运行控制',
-          description: '查看当前分片日志、房间聊天记录，或向选定世界发送控制台命令。',
+          description: '查看当前世界日志、房间聊天记录，或向选定世界发送控制台命令。',
           liveLogs: '实时日志',
           chatLogs: '聊天记录',
-          shardLogs: '分片日志'
+          shardLogs: '世界日志'
         },
         chat: {
           title: '聊天记录',
@@ -254,10 +254,10 @@ export const serverMessages = {
           execute: '执行',
           sent: '命令已发送',
           failed: '命令执行失败',
-          sentDescription: '命令已发送到分片控制台',
+          sentDescription: '命令已发送到世界控制台',
           sendFailed: '命令发送失败',
           runRecord: '运行记录 {id}',
-          confirmDescription: '该操作会向分片发送 Lua 命令，请输入房间名“{room}”确认',
+          confirmDescription: '该操作会向所选世界发送 Lua 命令，请输入房间名“{room}”确认',
           confirmTitle: '执行确认',
           confirmExecute: '确认执行',
           roomMismatch: '房间名不匹配',
@@ -410,10 +410,10 @@ export const serverMessages = {
       noObservation: 'No observation time',
       freshness: { live: 'Live', delayed: 'Delayed', stopped: 'Pre-stop data', unavailable: 'No data' },
       descriptions: {
-        live: 'The shard is running and this data was updated within two minutes.',
-        delayed: 'The shard is starting, or its running data has not updated for more than two minutes.',
-        stopped: 'The shard is stopped. This is the last valid snapshot before it stopped.',
-        unavailable: 'No world-state snapshot is available, or the shard runtime state cannot currently be confirmed.'
+        live: 'The world is running and this data was updated within two minutes.',
+        delayed: 'The world is starting, or its running data has not updated for more than two minutes.',
+        stopped: 'The world is stopped. This is the last valid snapshot before it stopped.',
+        unavailable: 'No world-state snapshot is available, or the world runtime state cannot currently be confirmed.'
       }
     },
     runtimeAudit: {
@@ -441,11 +441,11 @@ export const serverMessages = {
     servers: {
       list: {
         title: 'Server status',
-        subtitle: 'Monitor world shards on the active runtime target and start or stop them.',
+        subtitle: 'Monitor worlds on the active runtime target and start or stop them.',
         filters: {
           title: 'Filter scope',
           description: 'Narrow results by runtime status, room, and world type.',
-          allShards: 'All shards',
+          allShards: 'All worlds',
           running: 'Running',
           stopped: 'Stopped',
           failed: 'Start failed',
@@ -457,7 +457,7 @@ export const serverMessages = {
           cave: 'Cave servers'
         },
         shards: {
-          title: 'World shards',
+          title: 'Worlds',
           description: 'Status comes from the currently selected local or remote runtime target.',
           loadFailed: 'Failed to load server status',
           loadingAria: 'Loading server status',
@@ -468,10 +468,10 @@ export const serverMessages = {
             target: 'Runtime target',
             actions: 'Actions'
           },
-          unavailable: 'This shard cannot be controlled in its current state',
+          unavailable: 'This world cannot be controlled in its current state',
           cleanup: 'Clean up session',
           configure: 'Configure',
-          configureDisabled: 'Stop or clean up this shard first',
+          configureDisabled: 'Stop or clean up this world first',
           empty: 'No server data',
           emptyDescription: 'Create a room to start and monitor its servers here.',
           createRoom: 'Create room',
@@ -479,12 +479,12 @@ export const serverMessages = {
         },
         startDialog: {
           title: 'Select and start a room',
-          description: 'Select a room and its real world shards on the active runtime target.',
+          description: 'Select a room and its worlds on the active runtime target.',
           room: 'Select room',
           roomPlaceholder: 'Select a room',
           worlds: 'Select worlds',
-          worldsDescription: 'Running shards and shards that cannot be controlled on the current target will not be started again.',
-          submit: 'Start selected shards'
+          worldsDescription: 'Running worlds and worlds that cannot be controlled on the current target will not be started again.',
+          submit: 'Start selected worlds'
         },
         worldTypes: {
           forest: 'Forest',
@@ -515,7 +515,7 @@ export const serverMessages = {
           actionCanceled: '{action} canceled',
           actionCompleted: '{action} complete',
           actionFailed: '{action} failed: {error}',
-          cleanupUnavailable: 'This shard has no failed session to clean up',
+          cleanupUnavailable: 'This world has no failed session to clean up',
           cleanupConfirm: 'Stop and clean up the failed session for “{room} / {world}”?',
           cleanupTitle: 'Clean up failed session',
           cleanupButton: 'Clean up',
@@ -526,7 +526,7 @@ export const serverMessages = {
       workspace: {
         kicker: 'Current room',
         title: 'Room control',
-        dashboardTitle: 'Rooms and shards',
+        dashboardTitle: 'Rooms and worlds',
         roomSummary: '{name} · {count} worlds',
         noRoomSelected: 'No room selected',
         roomSelect: 'Select a room',
@@ -561,7 +561,7 @@ export const serverMessages = {
         overview: {
           label: 'Server overview',
           worldStatus: 'World status',
-          runningShards: '{count} shards running',
+          runningShards: '{count} worlds running',
           onlinePlayers: 'Online players',
           totalPlayers: '{count} players total',
           attentionWorlds: 'Worlds needing attention',
@@ -577,8 +577,8 @@ export const serverMessages = {
           emptyDescription: 'Room backups will appear here after they are created.'
         },
         worlds: {
-          title: 'Worlds and shards',
-          description: 'Shards in the current room',
+          title: 'Worlds',
+          description: 'Worlds in the current room',
           roomSettings: 'Room settings',
           startAll: 'Start all',
           stopAll: 'Stop all',
@@ -609,10 +609,10 @@ export const serverMessages = {
         },
         operations: {
           title: 'Runtime control',
-          description: 'View shard logs and room chat, or send a console command to the selected world.',
+          description: 'View world logs and room chat, or send a console command to the selected world.',
           liveLogs: 'Live logs',
           chatLogs: 'Chat history',
-          shardLogs: 'Shard logs'
+          shardLogs: 'World logs'
         },
         chat: {
           title: 'Chat history',
@@ -660,10 +660,10 @@ export const serverMessages = {
           execute: 'Execute',
           sent: 'Command sent',
           failed: 'Command failed',
-          sentDescription: 'The command was sent to the shard console',
+          sentDescription: 'The command was sent to the world console',
           sendFailed: 'Failed to send command',
           runRecord: 'Run record {id}',
-          confirmDescription: 'This sends a Lua command to the shard. Enter the room name “{room}” to confirm.',
+          confirmDescription: 'This sends a Lua command to the selected world. Enter the room name “{room}” to confirm.',
           confirmTitle: 'Confirm execution',
           confirmExecute: 'Execute command',
           roomMismatch: 'Room name does not match',
