@@ -41,13 +41,15 @@ const {
   stopSystemResourcePolling
 } = useSystemResourceStatus()
 
+const CPU_CORE_ALERT_THRESHOLD = 80
 const hasStatus = computed(() => Object.keys(status.value || {}).length > 0)
 const loadCapacity = computed(() => status.value.cpu_threads || status.value.cpu_cores)
 const busiestCore = computed(() => busiestCPUCore(status.value.cpu_core_usage))
-const primaryCPUUsage = computed(() => busiestCore.value?.usage ?? status.value.cpu_usage)
-const cpuMetricLabel = computed(() => busiestCore.value
-  ? t('dashboard.resources.singleCore')
-  : t('dashboard.resources.cpuAverage'))
+const cpuAverageUsage = computed(() => status.value.cpu_usage)
+const hasHighCPUCore = computed(() => (
+  busiestCore.value?.usage > CPU_CORE_ALERT_THRESHOLD
+))
+const cpuMetricLabel = computed(() => t('dashboard.resources.cpuAverage'))
 const cpuMetricSummary = computed(() => {
   if (!busiestCore.value) {
     return `${status.value.cpu_model || '--'} · ${t('dashboard.resources.coresThreads', {
@@ -57,8 +59,15 @@ const cpuMetricSummary = computed(() => {
   }
   return t('dashboard.resources.busiestCoreSummary', {
     index: busiestCore.value.index + 1,
-    average: formatPercent(status.value.cpu_usage)
+    usage: formatPercent(busiestCore.value.usage)
   })
+})
+const resourceButtonAriaLabel = computed(() => {
+  if (!hasHighCPUCore.value) return t('dashboard.resources.viewDetails')
+  return `${t('dashboard.resources.viewDetails')} · ${t('dashboard.resources.highCoreWarning', {
+    index: busiestCore.value.index + 1,
+    usage: formatPercent(busiestCore.value.usage)
+  })}`
 })
 
 function formatPercent(value) {
@@ -67,6 +76,17 @@ function formatPercent(value) {
 
 function usageClass(value) {
   return cn('tabular-nums font-semibold', hasMetric(value) && percentage(value) >= 90 && 'text-destructive')
+}
+
+function cpuAverageClass() {
+  return cn('tabular-nums font-semibold', hasHighCPUCore.value && 'text-destructive')
+}
+
+function cpuCoreUsageClass(value) {
+  return cn(
+    'tabular-nums font-semibold',
+    hasMetric(value) && percentage(value) > CPU_CORE_ALERT_THRESHOLD && 'text-destructive'
+  )
 }
 
 function sampledAt() {
@@ -85,12 +105,13 @@ onBeforeUnmount(stopSystemResourcePolling)
           variant="ghost"
           size="sm"
           class="max-w-full gap-3 px-2"
-          :aria-label="t('dashboard.resources.viewDetails')"
+          :aria-label="resourceButtonAriaLabel"
         >
           <span class="flex items-center gap-1">
-            <Cpu class="text-muted-foreground" />
+            <Cpu :class="cn('text-muted-foreground', hasHighCPUCore && 'text-destructive')" />
             <span class="hidden 2xl:inline">{{ cpuMetricLabel }}</span>
-            <strong :class="usageClass(primaryCPUUsage)">{{ formatPercent(primaryCPUUsage) }}</strong>
+            <strong :class="cpuAverageClass()">{{ formatPercent(cpuAverageUsage) }}</strong>
+            <CircleAlert v-if="hasHighCPUCore" class="text-destructive" />
           </span>
           <span class="flex items-center gap-1">
             <MemoryStick class="text-muted-foreground" />
@@ -146,9 +167,9 @@ onBeforeUnmount(stopSystemResourcePolling)
             <div class="flex min-w-0 flex-col gap-2">
               <div class="flex items-center justify-between gap-2 text-sm">
                 <span class="flex items-center gap-1.5"><Cpu class="text-muted-foreground size-4" />{{ cpuMetricLabel }}</span>
-                <strong :class="usageClass(primaryCPUUsage)">{{ formatPercent(primaryCPUUsage) }}</strong>
+                <strong :class="cpuAverageClass()">{{ formatPercent(cpuAverageUsage) }}</strong>
               </div>
-              <Progress :model-value="percentage(primaryCPUUsage)" :aria-label="cpuMetricLabel" />
+              <Progress :model-value="percentage(cpuAverageUsage)" :aria-label="cpuMetricLabel" />
               <span class="text-muted-foreground truncate text-xs" :title="`${cpuMetricSummary} · ${status.cpu_model || '--'}`">
                 {{ cpuMetricSummary }}
               </span>
@@ -205,7 +226,7 @@ onBeforeUnmount(stopSystemResourcePolling)
                 >
                   <div class="flex items-center justify-between gap-2 text-xs">
                     <span class="text-muted-foreground">{{ t('dashboard.resources.coreLabel', { index: index + 1 }) }}</span>
-                    <strong :class="usageClass(usage)">{{ formatPercent(usage) }}</strong>
+                    <strong :class="cpuCoreUsageClass(usage)">{{ formatPercent(usage) }}</strong>
                   </div>
                   <Progress
                     :model-value="percentage(usage)"

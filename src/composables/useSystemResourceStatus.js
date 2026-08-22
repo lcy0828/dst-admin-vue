@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { systemApi } from '@/api/index'
 import { translate } from '@/i18n'
 
-export const SYSTEM_RESOURCE_REFRESH_INTERVAL_MS = 30_000
+export const SYSTEM_RESOURCE_REFRESH_INTERVAL_MS = 10_000
 
 const status = ref({})
 const loading = ref(false)
