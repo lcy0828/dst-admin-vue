@@ -272,9 +272,15 @@ export const playerApi = {
     const response = await listPlayers({ archive_name: archiveName }, false)
     const online = response.data.filter(player => player.status === 'online').length
     const staleOnline = response.data.filter(player => player.status === 'stale').length
+    const onlineByWorld = response.data.reduce((counts, player) => {
+      if (player.status !== 'online' || !player.world_id) return counts
+      counts[player.world_id] = (counts[player.world_id] || 0) + 1
+      return counts
+    }, {})
     return success({
       total_count: response.total,
       online_count: online,
+      online_by_world: onlineByWorld,
       stale_online_count: staleOnline,
       offline_count: response.total - online - staleOnline,
       recent_players: response.data.slice(0, 10)

@@ -156,6 +156,12 @@
                 <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || $t('servers.workspace.worlds.directoryUnset') }}</span>
                 <span v-if="worldStatusMessage(world)" class="world-failure">{{ worldStatusMessage(world) }}</span>
               </div>
+              <dl class="world-presence">
+                <div>
+                  <dt>{{ $t('servers.workspace.worlds.players') }}</dt>
+                  <dd>{{ worldOnlinePlayerLabel(world) }}</dd>
+                </div>
+              </dl>
             </div>
 
             <dl class="world-facts">
@@ -1171,6 +1177,11 @@ export default {
       }
       return this.metricValue(world.day)
     },
+    worldOnlinePlayerLabel(world) {
+      const counts = this.playerStats?.online_by_world
+      if (!counts) return '--'
+      return this.$t('servers.workspace.worlds.onlinePlayerCount', { count: counts[world.id] || 0 })
+    },
     worldSeasonLabel(world) {
       return this.seasonLabel(this.worldStateFor(world)?.season || world.season)
     },
@@ -1544,6 +1555,25 @@ export default {
   text-overflow: clip;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.world-presence {
+  flex: 0 0 82px;
+  margin: 0;
+  text-align: right;
+}
+
+.world-presence dt {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.world-presence dd {
+  margin: 2px 0 0;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .world-facts {

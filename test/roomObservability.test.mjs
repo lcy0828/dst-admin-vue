@@ -29,6 +29,8 @@ test('player adapter and surfaces expose sampling freshness and shard presence c
   assert.match(adapter, /presence_status:\s*presenceStatus/)
   assert.match(adapter, /presence_observed_at:\s*player\.presenceObservedAt/)
   assert.match(adapter, /stale_online_count:\s*staleOnline/)
+  assert.match(adapter, /online_by_world:\s*onlineByWorld/)
+  assert.match(adapter, /player\.status !== 'online' \|\| !player\.world_id/)
   assert.match(adapter, /presence_conflict:\s*Boolean\(player\.presenceConflict\)/)
   assert.match(adapter, /observed_world_ids:\s*Array\.isArray\(player\.observedWorldIds\)/)
   assert.match(adapter, /field_states:\s*player\.fields \|\| \{\}/)

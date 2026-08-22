@@ -54,6 +54,15 @@ test('server workspace reuses cached world-state snapshots without forcing Lua r
   assert.doesNotMatch(source, /world-states\/actions\/refresh/)
 })
 
+test('server workspace fills the identity gap with a fixed per-world online count', async () => {
+  const source = await readFile(sourceUrl, 'utf8')
+
+  assert.match(source, /class="world-presence"/)
+  assert.match(source, /worldOnlinePlayerLabel\(world\)/)
+  assert.match(source, /online_by_world/)
+  assert.match(source, /\.world-presence \{[\s\S]*flex: 0 0 82px;/)
+})
+
 test('room control only shows room-scoped summary data', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
