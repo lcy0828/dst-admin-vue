@@ -321,6 +321,7 @@ export const playerMessages = {
         description: '身份、连接状态和服务器操作。',
         gameActions: '游戏操作',
         dangerousActions: '危险操作',
+        managementActions: '玩家管理',
         staleTitle: '在线状态已过期',
         staleDescription: '该玩家最后于 {time} 确认在线，最新采集失败。刷新成功前，实时游戏操作已禁用。',
         presenceConflictTitle: '玩家位置存在冲突',
@@ -438,7 +439,7 @@ export const playerMessages = {
         presenceConflict: 'Shard conflict', presenceConflictDescription: 'This player was observed in these worlds during the same sampling window: {worlds}'
       },
       detail: {
-        title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions',
+        title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions', managementActions: 'Player management',
         staleTitle: 'Presence data is stale', staleDescription: 'This player was last confirmed online at {time}. The latest observation failed, so live game actions are disabled until a successful refresh.',
         presenceConflictTitle: 'Player location conflict', presenceConflictDescription: 'These Shards simultaneously reported the same KU ID online: {worlds}. Refresh player data and inspect Shard connectivity before acting.'
       },

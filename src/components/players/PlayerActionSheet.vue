@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import {
   Ban as BanIcon,
   Clock3,
+  Ellipsis,
   Hammer,
   HeartPulse,
   LogOut,
@@ -35,6 +36,14 @@ import {
   FieldLabel
 } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
@@ -302,24 +311,25 @@ async function confirmBan() {
 <template>
   <Sheet :open="open" @update:open="setOpen">
     <SheetContent side="right" class="player-operation-sheet">
-      <SheetHeader>
-        <SheetTitle>{{ t('players.detail.title') }}</SheetTitle>
-        <SheetDescription>{{ t('players.detail.description') }}</SheetDescription>
+      <SheetHeader class="player-operation-header">
+        <div v-if="activePlayer" class="player-identity">
+          <CharacterAvatar :prefab="activePlayer.prefab" :name="playerName" size="lg" />
+          <div>
+            <div class="player-identity-title">
+              <SheetTitle>{{ playerName }}</SheetTitle>
+              <Badge :variant="status.variant">{{ status.label }}</Badge>
+            </div>
+            <SheetDescription>{{ character }} · {{ activePlayer.archive_name }} / {{ activePlayer.world_name || t('players.values.unknownWorld') }}</SheetDescription>
+          </div>
+        </div>
+        <template v-else>
+          <SheetTitle>{{ t('players.detail.title') }}</SheetTitle>
+          <SheetDescription>{{ t('players.detail.description') }}</SheetDescription>
+        </template>
       </SheetHeader>
 
       <ScrollArea class="player-operation-scroll">
         <div v-if="activePlayer" class="player-operation-content">
-          <header class="player-summary">
-            <CharacterAvatar :prefab="activePlayer.prefab" :name="playerName" size="lg" />
-            <div>
-              <div class="player-summary-title">
-                <strong>{{ playerName }}</strong>
-                <Badge :variant="status.variant">{{ status.label }}</Badge>
-              </div>
-              <span>{{ character }} · {{ activePlayer.archive_name }} / {{ activePlayer.world_name || t('players.values.unknownWorld') }}</span>
-            </div>
-          </header>
-
           <div v-if="detailLoading" class="player-detail-loading" role="status">
             <Spinner />
             <span>{{ t('players.list.loading') }}</span>
@@ -345,12 +355,12 @@ async function confirmBan() {
           </Alert>
 
           <dl class="player-facts">
-            <div><dt>KU ID</dt><dd>{{ activePlayer.user_id }}</dd></div>
-            <div><dt>{{ t('players.fields.roomAndWorld') }}</dt><dd>{{ activePlayer.archive_name }} / {{ activePlayer.world_name || t('players.values.unknownWorld') }}</dd></div>
             <div><dt>{{ t('players.fields.character') }}</dt><dd>{{ character }}</dd></div>
+            <div><dt>{{ t('players.fields.roomAndWorld') }}</dt><dd>{{ activePlayer.archive_name }} / {{ activePlayer.world_name || t('players.values.unknownWorld') }}</dd></div>
             <div><dt>{{ t('players.fields.days') }}</dt><dd>{{ activePlayer.player_age ?? '-' }}</dd></div>
             <div><dt>{{ t('players.fields.network') }}</dt><dd>{{ networkLabel(activePlayer.net_score) }}</dd></div>
             <div><dt>{{ t('players.fields.lastSeen') }}</dt><dd>{{ formatDate(activePlayer.last_seen) }}</dd></div>
+            <div><dt>KU ID</dt><dd>{{ activePlayer.user_id }}</dd></div>
           </dl>
 
           <Separator />
@@ -365,13 +375,23 @@ async function confirmBan() {
             </div>
           </section>
 
-          <section class="player-action-section">
-            <h3>{{ t('players.detail.dangerousActions') }}</h3>
-            <div class="player-action-grid player-danger-grid">
-              <UiButton size="sm" variant="destructive" :disabled="!canUseLiveActions || Boolean(activeAction)" @click="runConfirmedAction('kick')"><LogOut data-icon="inline-start" />{{ t('players.operations.kickShort') }}</UiButton>
-              <UiButton size="sm" variant="destructive" :disabled="Boolean(activeAction)" @click="openBanDialog"><BanIcon data-icon="inline-start" />{{ t('players.operations.banShort') }}</UiButton>
-              <UiButton size="sm" variant="destructive" :disabled="!canUseLiveActions || Boolean(activeAction)" @click="runConfirmedAction('kill')"><Skull data-icon="inline-start" />{{ t('players.operations.killShort') }}</UiButton>
-            </div>
+          <section class="player-action-section player-management-section">
+            <h3>{{ t('players.detail.managementActions') }}</h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <UiButton size="sm" variant="outline" :disabled="Boolean(activeAction)">
+                  <Ellipsis data-icon="inline-start" />{{ t('players.actions.playerActions') }}
+                </UiButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="min-w-44">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem :disabled="!canUseLiveActions" @select="runConfirmedAction('kick')"><LogOut />{{ t('players.operations.kick') }}</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" @select="openBanDialog"><BanIcon />{{ t('players.operations.ban') }}</DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" :disabled="!canUseLiveActions" @select="runConfirmedAction('kill')"><Skull />{{ t('players.operations.kill') }}</DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </section>
         </div>
       </ScrollArea>
@@ -409,46 +429,51 @@ async function confirmBan() {
 
 <style scoped>
 .player-operation-sheet {
-  width: min(94vw, 580px);
-  max-width: 580px;
+  width: min(100vw, 480px);
+  max-width: 480px;
 }
 
-.player-operation-scroll {
-  min-height: 0;
-  flex: 1;
-  padding-right: 12px;
+.player-operation-header {
+  padding: 16px 48px 14px 16px;
+  border-bottom: 1px solid var(--border);
 }
 
-.player-operation-content {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 2px 0 24px;
-}
-
-.player-summary,
-.player-summary-title,
+.player-identity,
+.player-identity-title,
 .player-detail-loading {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.player-summary > div {
+.player-identity > div {
   min-width: 0;
 }
 
-.player-summary-title strong {
-  overflow-wrap: anywhere;
-  font-size: 16px;
+.player-identity-title {
+  gap: 8px;
 }
 
-.player-summary > div > span {
-  display: block;
-  margin-top: 4px;
-  color: var(--muted-foreground);
+.player-identity-title :deep([data-slot='sheet-title']) {
+  overflow-wrap: anywhere;
+}
+
+.player-identity :deep([data-slot='sheet-description']) {
+  margin-top: 3px;
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+.player-operation-scroll {
+  min-height: 0;
+  flex: 1;
+}
+
+.player-operation-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 16px 24px;
 }
 
 .player-detail-loading {
@@ -457,29 +482,24 @@ async function confirmBan() {
 }
 
 .player-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
 }
 
 .player-facts > div {
-  min-width: 0;
-  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
   border-bottom: 1px solid var(--border);
 }
 
-.player-facts > div:nth-child(odd) {
-  border-right: 1px solid var(--border);
-}
-
-.player-facts > div:nth-last-child(-n + 2) {
+.player-facts > div:last-child {
   border-bottom: 0;
 }
 
 .player-facts dt {
-  margin-bottom: 3px;
   color: var(--muted-foreground);
   font-size: 12px;
 }
@@ -501,26 +521,24 @@ async function confirmBan() {
   gap: 8px;
 }
 
-.player-danger-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.player-management-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.player-management-section h3 {
+  margin-bottom: 0;
 }
 
 @media (max-width: 520px) {
-  .player-facts,
-  .player-action-grid,
-  .player-danger-grid {
+  .player-action-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .player-facts > div,
-  .player-facts > div:nth-child(odd),
-  .player-facts > div:nth-last-child(-n + 2) {
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .player-facts > div:last-child {
-    border-bottom: 0;
+  .player-facts > div {
+    grid-template-columns: 76px minmax(0, 1fr);
   }
 }
 </style>

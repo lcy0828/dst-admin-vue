@@ -72,4 +72,7 @@ test('local player actions preserve every existing management operation and conf
   assert.match(actions, /playerApi\.setCreativeMode\(activePlayer\.value, modeEnabled\.value, null\)/)
   assert.match(actions, /inputValidator: value => value === activePlayer\.value\.user_id/)
   assert.match(actions, /banForm\.confirmation !== activePlayer\.value\?\.archive_name/)
+  assert.match(actions, /<SheetTitle>\{\{ playerName \}\}<\/SheetTitle>/)
+  assert.match(actions, /<DropdownMenuItem variant="destructive" @select="openBanDialog">/)
+  assert.doesNotMatch(actions, /player-danger-grid/)
 })
