@@ -99,6 +99,34 @@
             <CardDescription class="break-all">{{ selectedRoom.directoryName || selectedRoom.savepath || $t('servers.workspace.worlds.description') }}</CardDescription>
           </div>
           <CardAction class="world-card-actions row-span-1 flex flex-wrap items-center justify-end gap-2 self-center">
+            <Popover>
+              <PopoverTrigger as-child>
+                <UiButton type="button" size="sm" variant="ghost">
+                  <Shapes data-icon="inline-start" />
+                  {{ $t('servers.workspace.worlds.legend.open') }}
+                </UiButton>
+              </PopoverTrigger>
+              <PopoverContent align="end" class="world-legend-popover">
+                <PopoverHeader>
+                  <PopoverTitle>{{ $t('servers.workspace.worlds.legend.title') }}</PopoverTitle>
+                  <PopoverDescription>{{ $t('servers.workspace.worlds.legend.description') }}</PopoverDescription>
+                </PopoverHeader>
+                <template v-for="(group, groupIndex) in worldLegendGroups" :key="group.key">
+                  <Separator v-if="groupIndex > 0" />
+                  <section class="world-legend-group">
+                    <h4>{{ group.label }}</h4>
+                    <div class="world-legend-items" role="list">
+                      <div v-for="item in group.items" :key="item.key" class="world-legend-item" role="listitem">
+                        <span class="world-legend-icon" :class="item.tone" aria-hidden="true">
+                          <component :is="item.icon" />
+                        </span>
+                        <span>{{ item.label }}</span>
+                      </div>
+                    </div>
+                  </section>
+                </template>
+              </PopoverContent>
+            </Popover>
             <UiButton
               type="button"
               size="sm"
@@ -514,6 +542,7 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
 import { Progress as UiProgress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -554,8 +583,8 @@ import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
 import {
   ArrowRight, Brain, ChartNoAxesCombined, ChevronDown, CircleAlert, CircleCheck, DatabaseBackup, FileCheck2,
   FileText, Globe2, HeartPulse, Leaf, MessagesSquare, Moon, Mountain, PackageOpen, Play, RefreshCw, RotateCw,
-  Search, Send, ServerOff, Settings, Snowflake, Sprout, Square, Sun, Sunset, Terminal, Thermometer, Trees, User,
-  UsersRound, Utensils
+  Search, Send, ServerOff, Settings, Shapes, Snowflake, Sprout, Square, Sun, Sunset, Terminal, Thermometer, Trees,
+  User, UsersRound, Utensils
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
@@ -611,6 +640,12 @@ export default {
     PackageOpen,
     PlayerActionMenu,
     Play,
+    Popover,
+    PopoverContent,
+    PopoverDescription,
+    PopoverHeader,
+    PopoverTitle,
+    PopoverTrigger,
     UiProgress,
     RefreshCw,
     RotateCw,
@@ -626,6 +661,7 @@ export default {
     Send,
     ServerOff,
     Settings,
+    Shapes,
     Snowflake,
     Spinner,
     Sprout,
@@ -732,6 +768,37 @@ export default {
     },
     selectedConsoleServer() {
       return this.roomConsoleServers.find(server => server.session_name === this.consoleServer) || null
+    },
+    worldLegendGroups() {
+      return [
+        {
+          key: 'realms',
+          label: this.$t('servers.workspace.worlds.legend.realms'),
+          items: [
+            { key: 'forest', label: this.$t('servers.workspace.worlds.roles.forest'), icon: Trees, tone: 'forest' },
+            { key: 'cave', label: this.$t('servers.workspace.worlds.roles.cave'), icon: Mountain, tone: 'cave' }
+          ]
+        },
+        {
+          key: 'seasons',
+          label: this.$t('servers.workspace.worlds.legend.seasons'),
+          items: [
+            { key: 'autumn', label: this.$t('servers.list.seasons.autumn'), icon: Leaf },
+            { key: 'winter', label: this.$t('servers.list.seasons.winter'), icon: Snowflake },
+            { key: 'spring', label: this.$t('servers.list.seasons.spring'), icon: Sprout },
+            { key: 'summer', label: this.$t('servers.list.seasons.summer'), icon: Sun }
+          ]
+        },
+        {
+          key: 'phases',
+          label: this.$t('servers.workspace.worlds.legend.phases'),
+          items: [
+            { key: 'day', label: this.$t('worldState.values.phases.day'), icon: Sun },
+            { key: 'dusk', label: this.$t('worldState.values.phases.dusk'), icon: Sunset },
+            { key: 'night', label: this.$t('worldState.values.phases.night'), icon: Moon }
+          ]
+        }
+      ]
     }
   },
   watch: {
@@ -1647,6 +1714,63 @@ export default {
 .world-symbol svg {
   width: 19px;
   height: 19px;
+  stroke-width: 1.8;
+}
+
+.world-legend-popover {
+  width: 320px;
+}
+
+.world-legend-group {
+  display: grid;
+  gap: 8px;
+}
+
+.world-legend-group h4 {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.world-legend-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.world-legend-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.world-legend-item > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.world-legend-icon {
+  display: grid;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+.world-legend-icon.forest {
+  color: var(--foreground);
+}
+
+.world-legend-icon svg {
+  width: 16px;
+  height: 16px;
   stroke-width: 1.8;
 }
 

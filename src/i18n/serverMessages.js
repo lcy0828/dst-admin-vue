@@ -195,6 +195,14 @@ export const serverMessages = {
           restart: '重启世界',
           configure: '世界配置',
           actionLabel: '{action}世界',
+          legend: {
+            open: '查看图例',
+            title: '世界状态图例',
+            description: '查看世界类型、季节和昼夜阶段使用的全部图案。',
+            realms: '世界类型',
+            seasons: '季节',
+            phases: '昼夜阶段'
+          },
           roles: {
             forest: '森林世界',
             cave: '洞穴世界',
@@ -610,6 +618,14 @@ export const serverMessages = {
           restart: 'Restart world',
           configure: 'Configure world',
           actionLabel: '{action} world',
+          legend: {
+            open: 'View legend',
+            title: 'World status legend',
+            description: 'View every icon used for world types, seasons, and day-cycle phases.',
+            realms: 'World types',
+            seasons: 'Seasons',
+            phases: 'Day-cycle phases'
+          },
           roles: {
             forest: 'Forest world',
             cave: 'Caves world',

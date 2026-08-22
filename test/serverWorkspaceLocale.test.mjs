@@ -134,3 +134,14 @@ test('server workspace keeps context lists bounded and uses explicit world-state
   assert.match(source, /class="world-fact-value"/)
   assert.doesNotMatch(source, /Pickaxe|TreePine/)
 })
+
+test('server workspace exposes every world-state icon in a compact legend', async () => {
+  const source = await readFile(sourceUrl, 'utf8')
+
+  assert.match(source, /<PopoverTrigger as-child>/)
+  assert.match(source, /servers\.workspace\.worlds\.legend\.open/)
+  assert.match(source, /worldLegendGroups\(\)/)
+  assert.match(source, /key: 'realms',[\s\S]*icon: Trees[\s\S]*icon: Mountain/)
+  assert.match(source, /key: 'seasons',[\s\S]*icon: Leaf[\s\S]*icon: Snowflake[\s\S]*icon: Sprout[\s\S]*icon: Sun/)
+  assert.match(source, /key: 'phases',[\s\S]*icon: Sun[\s\S]*icon: Sunset[\s\S]*icon: Moon/)
+})
