@@ -34,11 +34,12 @@ test('node and player refreshes preserve usable data and reject obsolete respons
 })
 
 test('log and dashboard refreshes retain previous snapshots on transient failures', async () => {
-  const [query, viewer, dashboard, dashboardView] = await Promise.all([
+  const [query, viewer, dashboard, dashboardView, systemResources] = await Promise.all([
     source('src/views/LogQueryView.vue'),
     source('src/views/servers/LogViewer.vue'),
     source('src/composables/useDashboardV2.js'),
-    source('src/views/v2/DashboardV2.vue')
+    source('src/views/v2/DashboardV2.vue'),
+    source('src/composables/useSystemResourceStatus.js')
   ])
 
   const logQuery = section(query, 'async queryLogs(', '// 格式化日期')
@@ -47,7 +48,8 @@ test('log and dashboard refreshes retain previous snapshots on transient failure
   assert.match(viewer, /targetChanged/)
   assert.match(viewer, /loading && logs\.length === 0/)
 
-  assert.match(dashboard, /systemRequestSequence/)
+  assert.match(systemResources, /if \(refreshPromise\) return refreshPromise/)
+  assert.doesNotMatch(section(systemResources, 'async function refreshSystemResourceStatus()', 'function stopRefreshTimer()'), /status\.value\s*=\s*\{\}/)
   assert.match(dashboard, /serverRequestSequence/)
   assert.match(dashboard, /versionRequestSequence/)
   assert.doesNotMatch(dashboard, /playerApi|getPlayerStats|refreshPlayers/)

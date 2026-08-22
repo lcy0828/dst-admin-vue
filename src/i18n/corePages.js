@@ -183,15 +183,19 @@ export const corePageMessages = {
       resources: {
         title: '系统资源',
         refresh: '刷新系统资源',
+        viewDetails: '查看系统资源详情',
         unavailable: '系统状态不可用',
+        refreshFailed: '刷新失败，正在显示上次获取的数据。',
         coresThreads: '{cores} 核 / {threads} 线程',
         memory: '内存',
         used: '已用 {used} / {total}',
         disk: '磁盘',
         free: '空闲 {free} / {total}',
         load: '系统负载',
+        loadShort: '负载',
         loadWindow: '1 / 5 / 15 分钟 · {one} / {five} / {fifteen}',
-        uptime: '运行 {value}'
+        uptime: '运行 {value}',
+        sampledAt: '采样于 {time}'
       },
       version: {
         title: '版本与更新',
@@ -481,15 +485,19 @@ export const corePageMessages = {
       resources: {
         title: 'System resources',
         refresh: 'Refresh system resources',
+        viewDetails: 'View system resource details',
         unavailable: 'System status unavailable',
+        refreshFailed: 'Refresh failed. Showing the last available data.',
         coresThreads: '{cores} cores / {threads} threads',
         memory: 'Memory',
         used: '{used} used / {total}',
         disk: 'Disk',
         free: '{free} free / {total}',
         load: 'System load',
+        loadShort: 'Load',
         loadWindow: '1 / 5 / 15 min · {one} / {five} / {fifteen}',
-        uptime: 'Up {value}'
+        uptime: 'Up {value}',
+        sampledAt: 'Sampled {time}'
       },
       version: {
         title: 'Version and updates',

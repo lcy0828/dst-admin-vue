@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff, GitFork, KeyRound } from '@lucide/vue'
 import { authAPI, systemV2API } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
+import SystemResourceStatus from '@/components/layout/SystemResourceStatus.vue'
 import ThemeSwitch from '@/components/ThemeSwitch.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -167,7 +168,7 @@ onBeforeUnmount(() => {
       <header class="bg-background/95 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
         <SidebarTrigger />
         <Separator orientation="vertical" class="mr-1 h-4" />
-        <Breadcrumb class="hidden md:block">
+        <Breadcrumb class="hidden min-w-0 overflow-hidden md:block">
           <BreadcrumbList>
             <template v-for="(item, index) in breadcrumbs" :key="`${item.label}-${index}`">
               <BreadcrumbItem>
@@ -179,7 +180,8 @@ onBeforeUnmount(() => {
             </template>
           </BreadcrumbList>
         </Breadcrumb>
-        <div class="ml-auto flex min-w-0 items-center gap-1.5">
+        <SystemResourceStatus class="ml-auto" />
+        <div class="flex min-w-0 items-center gap-1.5">
           <ThemeSwitch />
           <Tooltip>
             <TooltipTrigger as-child>

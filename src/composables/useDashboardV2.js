@@ -2,8 +2,7 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { roomApi, systemApi } from '@/api/index'
 import { systemV2API } from '@/api/v2'
 import { confirmAction } from '@/lib/feedback'
-import { formatDurationSeconds } from '@/lib/localeFormatters.mjs'
-import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import { formatResourceDateTime } from '@/lib/systemResourceMetrics.mjs'
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk'
 import {
   canCleanFailedWorld,
@@ -12,6 +11,7 @@ import {
   worldStatusMessage
 } from '@/lib/worldRuntimeStatus.mjs'
 import { i18n, translate } from '@/i18n'
+import { useSystemResourceStatus } from '@/composables/useSystemResourceStatus'
 import { toast } from 'vue-sonner'
 
 const emptyVersion = () => ({
@@ -42,7 +42,12 @@ const emptyReadiness = () => ({
 })
 
 export function useDashboardV2() {
-  const systemStatus = ref({})
+  const {
+    status: systemStatus,
+    loading: systemLoading,
+    error: systemError,
+    refreshSystemResourceStatus: refreshSystem
+  } = useSystemResourceStatus()
   const serverList = ref([])
   const roomList = ref([])
   const versionInfo = ref(emptyVersion())
@@ -51,19 +56,16 @@ export function useDashboardV2() {
   const updateStatus = ref(null)
   const lastRefreshedAt = ref(null)
 
-  const systemLoading = ref(false)
   const serverLoading = ref(false)
   const versionLoading = ref(false)
   const guidanceLoading = ref(true)
   const updateStarting = ref(false)
 
-  const systemError = ref('')
   const serverError = ref('')
   const roomError = ref('')
   const versionError = ref('')
   const guidanceError = ref('')
   let updateTimer = null
-  let systemRequestSequence = 0
   let serverRequestSequence = 0
   let versionRequestSequence = 0
   let guidanceRequestSequence = 0
@@ -84,25 +86,6 @@ export function useDashboardV2() {
   ))
   const canInstallGame = computed(() => !versionInfo.value.installed && canUpdateGame.value)
   const gameUpdateBusy = computed(() => updateStarting.value || Boolean(updateStatus.value?.is_running))
-
-  async function refreshSystem() {
-    const sequence = ++systemRequestSequence
-    systemLoading.value = true
-    systemError.value = ''
-    try {
-      const response = await systemApi.getDashboardStatus()
-      if (response?.status !== 200 || !response.data) throw new Error(response?.msg || translate('dashboard.feedback.invalidSystemResponse'))
-      if (sequence !== systemRequestSequence) return false
-      systemStatus.value = response.data
-      return true
-    } catch (error) {
-      if (sequence !== systemRequestSequence) return false
-      systemError.value = error.message || translate('dashboard.feedback.systemLoadFailed')
-      return false
-    } finally {
-      if (sequence === systemRequestSequence) systemLoading.value = false
-    }
-  }
 
   async function refreshServers() {
     const sequence = ++serverRequestSequence
@@ -399,46 +382,18 @@ export function useDashboardV2() {
   }
 }
 
-export function hasMetric(value) {
-  return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
-}
-
-export function percentage(value) {
-  if (!hasMetric(value)) return 0
-  const normalized = Math.max(0, Math.min(100, Number(value)))
-  return Math.round(normalized * 10) / 10
-}
-
-export function loadPercentage(value, capacity) {
-  if (!hasMetric(value) || !hasMetric(capacity) || Number(capacity) <= 0) return 0
-  return percentage((Number(value) / Number(capacity)) * 100)
-}
-
-export function formatMemory(value) {
-  if (!hasMetric(value)) return '--'
-  return Number(value) < 1024 ? `${Number(value).toFixed(2)} MB` : `${(Number(value) / 1024).toFixed(2)} GB`
-}
-
-export function formatDisk(value) {
-  return hasMetric(value) ? `${Number(value).toFixed(2)} GB` : '--'
-}
-
-export function formatDecimal(value) {
-  return hasMetric(value) ? Number(value).toFixed(2) : '--'
-}
+export {
+  formatDecimal,
+  formatDisk,
+  formatMemory,
+  formatSystemUptime,
+  hasMetric,
+  loadPercentage,
+  percentage
+} from '@/lib/systemResourceMetrics.mjs'
 
 export function formatDateTime(value, locale = i18n.global.locale.value) {
-  return formatSystemDateTime(value, {
-    locale,
-    fallback: value ? String(value) : '--',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  })
+  return formatResourceDateTime(value, locale)
 }
 
 export function formatServerUptime(value, translator = translate) {
@@ -452,10 +407,4 @@ export function formatServerUptime(value, translator = translate) {
   if (days > 0) return translator('dashboard.duration.daysHours', { days, hours })
   if (hours > 0) return translator('dashboard.duration.hoursMinutes', { hours, minutes })
   return translator('dashboard.duration.minutes', { minutes })
-}
-
-export function formatSystemUptime(status = {}, translator = translate) {
-  const seconds = status.uptime_seconds ?? status.uptime
-  if (hasMetric(seconds)) return formatDurationSeconds(seconds, translator)
-  return status.uptime_formatted || '--'
 }
