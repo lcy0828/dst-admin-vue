@@ -66,7 +66,7 @@ onBeforeUnmount(stopSystemResourcePolling)
         <Button
           variant="ghost"
           size="sm"
-          class="max-w-full gap-2 px-2"
+          class="max-w-full gap-3 px-2"
           :aria-label="t('dashboard.resources.viewDetails')"
         >
           <span class="flex items-center gap-1">
@@ -74,19 +74,16 @@ onBeforeUnmount(stopSystemResourcePolling)
             <span class="hidden 2xl:inline">CPU</span>
             <strong :class="usageClass(status.cpu_usage)">{{ formatPercent(status.cpu_usage) }}</strong>
           </span>
-          <Separator orientation="vertical" class="h-3.5" />
           <span class="flex items-center gap-1">
             <MemoryStick class="text-muted-foreground" />
             <span class="hidden 2xl:inline">{{ t('dashboard.resources.memory') }}</span>
             <strong :class="usageClass(status.memory_usage)">{{ formatPercent(status.memory_usage) }}</strong>
           </span>
-          <Separator orientation="vertical" class="hidden h-3.5 sm:block" />
           <span class="hidden items-center gap-1 sm:flex">
             <HardDrive class="text-muted-foreground" />
             <span class="hidden 2xl:inline">{{ t('dashboard.resources.disk') }}</span>
             <strong :class="usageClass(status.disk_usage)">{{ formatPercent(status.disk_usage) }}</strong>
           </span>
-          <Separator orientation="vertical" class="hidden h-3.5 xl:block" />
           <span class="hidden items-center gap-1 xl:flex">
             <Activity class="text-muted-foreground" />
             <span class="hidden 2xl:inline">{{ t('dashboard.resources.loadShort') }}</span>

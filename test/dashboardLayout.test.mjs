@@ -35,6 +35,8 @@ test('system resources stay visible in the global header without duplicate dashb
   assert.match(resourceStatus, /<Popover>/)
   assert.match(resourceStatus, /dashboard\.resources\.loadWindow/)
   assert.doesNotMatch(resourceStatus, /useDashboardV2/)
+  assert.doesNotMatch(layout, /<Separator orientation="vertical"/)
+  assert.doesNotMatch(resourceStatus, /<Separator orientation="vertical"/)
   assert.match(resourceStatus, /percentage\(value\) >= 90 && 'text-destructive'/)
   assert.match(resourceComposable, /SYSTEM_RESOURCE_REFRESH_INTERVAL_MS = 30_000/)
   assert.match(resourceComposable, /document\.visibilityState === 'hidden'/)

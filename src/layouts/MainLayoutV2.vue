@@ -30,7 +30,6 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -167,9 +166,8 @@ onBeforeUnmount(() => {
       @logout="logout"
     />
     <SidebarInset class="min-w-0">
-      <header class="bg-background/95 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b px-4 backdrop-blur md:px-6">
+      <header class="bg-background/95 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur md:px-6">
         <SidebarTrigger />
-        <Separator orientation="vertical" class="mr-1 h-4" />
         <Breadcrumb class="hidden min-w-0 overflow-hidden md:block">
           <BreadcrumbList>
             <template v-for="(item, index) in breadcrumbs" :key="`${item.label}-${index}`">
