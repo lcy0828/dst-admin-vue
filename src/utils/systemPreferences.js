@@ -1,5 +1,5 @@
 import { DEFAULT_THEME_ID, normalizeThemeColor, resolveThemePreset } from '@/theme/themePresets'
-import { setLocale } from '@/i18n'
+import { preferredLocale, setLocale } from '@/i18n'
 
 const DEFAULTS = Object.freeze({
   systemName: '饥荒管理系统',
@@ -145,16 +145,17 @@ function applyTimePreferences() {
 export function applySystemPreferences(settings) {
   const theme = normalizeThemeColor(fieldValue(settings, 'ui.theme', DEFAULTS.theme))
   const preset = resolveThemePreset(theme)
+  const systemLanguage = fieldValue(settings, 'ui.language', DEFAULTS.language)
   current = {
     systemName: fieldValue(settings, 'ui.systemName', DEFAULTS.systemName),
-    language: fieldValue(settings, 'ui.language', DEFAULTS.language),
+    language: preferredLocale(systemLanguage),
     timezone: fieldValue(settings, 'ui.timezone', DEFAULTS.timezone),
     dateFormat: fieldValue(settings, 'ui.dateFormat', DEFAULTS.dateFormat),
     theme,
     themePreset: preset.id
   }
 
-  current.language = setLocale(current.language)
+  current.language = setLocale(current.language, { persist: false })
   applyThemeVariables(current.theme)
   applyTimePreferences()
   notifyPreferencesUpdated()

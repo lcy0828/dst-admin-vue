@@ -8,7 +8,7 @@ The frontend uses `vue-i18n`. `src/i18n/messages.js` assembles the base catalog 
 - `en-US`: supported
 - `ja-JP`: reserved by the backend settings contract, but must remain disabled until a complete catalog is added
 
-The selected locale is persisted through the existing `ui.language` system setting. A local `dst-admin-locale` value preserves the last selection before authentication and when the backend is unavailable. Once authenticated, the backend setting remains authoritative. `applySystemPreferences()` updates the Vue locale, local value, and document `lang` attribute.
+The `ui.language` system setting provides the default locale for browsers that have not made an explicit choice. The global language switch and login-page selector persist each browser's choice in `dst-admin-locale`; that local choice remains authoritative across authentication and route changes. `applySystemPreferences()` updates the Vue locale and document `lang` attribute without overwriting the browser preference.
 
 ## Data contract
 

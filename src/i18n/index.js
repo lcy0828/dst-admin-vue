@@ -1,5 +1,5 @@
 import { createI18n } from 'vue-i18n'
-import { messages } from './messages'
+import { messages } from './messages.js'
 
 export const DEFAULT_LOCALE = 'zh-CN'
 export const SUPPORTED_LOCALES = Object.freeze(['zh-CN', 'en-US'])
@@ -14,6 +14,15 @@ export function storedLocale() {
   return normalizeLocale(localStorage.getItem(LOCALE_STORAGE_KEY))
 }
 
+export function hasStoredLocale() {
+  if (typeof localStorage === 'undefined') return false
+  return SUPPORTED_LOCALES.includes(localStorage.getItem(LOCALE_STORAGE_KEY))
+}
+
+export function preferredLocale(fallback = DEFAULT_LOCALE) {
+  return hasStoredLocale() ? storedLocale() : normalizeLocale(fallback)
+}
+
 export const i18n = createI18n({
   legacy: false,
   globalInjection: true,
@@ -24,11 +33,11 @@ export const i18n = createI18n({
   fallbackWarn: false
 })
 
-export function setLocale(locale) {
+export function setLocale(locale, { persist = true } = {}) {
   const normalized = normalizeLocale(locale)
   i18n.global.locale.value = normalized
   if (typeof document !== 'undefined') document.documentElement.lang = normalized
-  if (typeof localStorage !== 'undefined') localStorage.setItem(LOCALE_STORAGE_KEY, normalized)
+  if (persist && typeof localStorage !== 'undefined') localStorage.setItem(LOCALE_STORAGE_KEY, normalized)
   return normalized
 }
 
