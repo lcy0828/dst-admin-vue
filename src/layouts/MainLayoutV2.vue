@@ -7,6 +7,7 @@ import { authAPI, systemV2API } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
 import GlobalJobStatus from '@/components/layout/GlobalJobStatus.vue'
 import LanguageSwitch from '@/components/layout/LanguageSwitch.vue'
+import SystemResourceRefreshInterval from '@/components/layout/SystemResourceRefreshInterval.vue'
 import SystemResourceStatus from '@/components/layout/SystemResourceStatus.vue'
 import ThemeSwitch from '@/components/ThemeSwitch.vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -183,6 +184,7 @@ onBeforeUnmount(() => {
         <SystemResourceStatus class="ml-auto" />
         <div class="flex min-w-0 items-center gap-1.5">
           <GlobalJobStatus />
+          <SystemResourceRefreshInterval />
           <LanguageSwitch />
           <ThemeSwitch />
           <Tooltip>

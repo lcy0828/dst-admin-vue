@@ -183,6 +183,8 @@ export const corePageMessages = {
       resources: {
         title: '系统资源',
         refresh: '刷新系统资源',
+        refreshInterval: '刷新间隔',
+        refreshIntervalAria: '系统资源刷新间隔：{value}',
         viewDetails: '查看系统资源详情',
         unavailable: '系统状态不可用',
         refreshFailed: '刷新失败，正在显示上次获取的数据。',
@@ -493,6 +495,8 @@ export const corePageMessages = {
       resources: {
         title: 'System resources',
         refresh: 'Refresh system resources',
+        refreshInterval: 'Refresh interval',
+        refreshIntervalAria: 'System resource refresh interval: {value}',
         viewDetails: 'View system resource details',
         unavailable: 'System status unavailable',
         refreshFailed: 'Refresh failed. Showing the last available data.',
