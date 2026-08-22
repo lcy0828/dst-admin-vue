@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
+  ArrowRight,
   CircleAlert,
   PackageOpen,
   PackageCheck,
@@ -11,15 +12,12 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import DashboardOnboarding from '@/components/dashboard/DashboardOnboarding.vue'
 import ServerWorkspace from '@/views/servers/ServerWorkspace.vue'
 import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
 import { useDashboardV2 } from '@/composables/useDashboardV2'
-import { hasMetric } from '@/lib/systemResourceMetrics.mjs'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -33,7 +31,6 @@ const {
   capabilities,
   setupReadiness,
   onboardingResolved,
-  updateStatus,
   serverLoading,
   versionLoading,
   guidanceLoading,
@@ -53,21 +50,26 @@ const {
 } = useDashboardV2()
 
 const gameUpdateState = computed(() => {
+  if (gameUpdateBusy.value) {
+    return { key: versionInfo.value.installed ? 'updating' : 'installing', variant: 'secondary' }
+  }
+  if (versionError.value) {
+    return { key: 'loadFailed', variant: 'destructive' }
+  }
   if (!versionInfo.value.installed) {
-    return { key: 'installRequired', descriptionKey: 'installRequiredDescription', variant: 'outline' }
+    return { key: 'installRequired', variant: 'outline' }
   }
   if (versionInfo.value.latest?.up_to_date === false) {
-    return {
-      key: 'updateAvailable',
-      descriptionKey: canUpdateGame.value ? 'updateAvailableDescription' : 'externalUpdateDescription',
-      variant: 'default'
-    }
+    return { key: 'updateAvailable', variant: 'default' }
   }
   if (versionInfo.value.latest?.up_to_date === true) {
-    return { key: 'upToDate', descriptionKey: 'upToDateDescription', variant: 'secondary' }
+    return { key: 'upToDate', variant: 'secondary' }
   }
-  return { key: 'updateStateUnknown', descriptionKey: 'updateStateUnknownDescription', variant: 'outline' }
+  return { key: 'updateStateUnknown', variant: 'outline' }
 })
+
+const currentGameVersion = computed(() => versionInfo.value.local?.version || '--')
+const latestGameVersion = computed(() => versionInfo.value.latest?.version || '--')
 
 async function refreshRuntimeStatus() {
   if (document.visibilityState === 'hidden') return
@@ -131,33 +133,48 @@ onBeforeUnmount(() => {
       @refresh="refreshGuidance"
     />
 
-    <ServerWorkspace id="room-operations" embedded />
+    <Alert :variant="versionError ? 'destructive' : 'default'">
+      <CircleAlert v-if="versionError" />
+      <PackageCheck v-else />
+      <AlertTitle class="flex flex-wrap items-center gap-2">
+        <span>{{ t('dashboard.version.simpleTitle') }}</span>
+        <Badge :variant="gameUpdateState.variant">{{ t(`dashboard.version.${gameUpdateState.key}`) }}</Badge>
+      </AlertTitle>
+      <AlertDescription class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <span>{{ t('dashboard.version.currentVersion') }} <strong class="text-foreground font-medium">{{ currentGameVersion }}</strong></span>
+          <ArrowRight class="size-3.5 shrink-0" aria-hidden="true" />
+          <span>{{ t('dashboard.version.latestVersion') }} <strong class="text-foreground font-medium">{{ latestGameVersion }}</strong></span>
+          <span v-if="versionError" class="break-all">{{ versionError }}</span>
+        </div>
+        <div class="flex shrink-0 items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button variant="ghost" size="icon-sm" :disabled="versionLoading" :aria-label="t('dashboard.version.check')" @click="refreshVersion">
+                <Spinner v-if="versionLoading" />
+                <RefreshCw v-else />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{{ t('dashboard.version.check') }}</TooltipContent>
+          </Tooltip>
+          <Button v-if="canInstallGame" size="sm" :disabled="gameUpdateBusy" @click="updateGame">
+            <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
+            <PackageOpen v-else data-icon="inline-start" />
+            {{ t(gameUpdateBusy ? 'dashboard.version.installButtonBusy' : 'dashboard.version.installButton') }}
+          </Button>
+          <Button v-else-if="isVersionOutdated && canUpdateGame" size="sm" :disabled="gameUpdateBusy" @click="updateGame">
+            <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
+            <PackageCheck v-else data-icon="inline-start" />
+            {{ t(gameUpdateBusy ? 'dashboard.version.updateButtonBusy' : 'dashboard.version.updateButton') }}
+          </Button>
+          <Button v-else-if="isVersionOutdated" size="sm" variant="ghost" @click="router.push('/servers/releases')">
+            {{ t('dashboard.version.openUpdateHelp') }}
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
 
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle class="flex items-center gap-2"><PackageCheck />{{ t('dashboard.version.simpleTitle') }}</CardTitle>
-        <CardDescription>{{ t('dashboard.version.simpleDescription') }}</CardDescription>
-        <CardAction><Tooltip><TooltipTrigger as-child><Button variant="ghost" size="icon-sm" :disabled="versionLoading" :aria-label="t('dashboard.version.check')" @click="refreshVersion"><Spinner v-if="versionLoading" /><RefreshCw v-else /></Button></TooltipTrigger><TooltipContent>{{ t('dashboard.version.check') }}</TooltipContent></Tooltip></CardAction>
-      </CardHeader>
-      <CardContent class="flex flex-col gap-3 pt-0">
-        <Alert v-if="versionError" variant="destructive"><CircleAlert /><AlertTitle>{{ t('dashboard.version.loadFailed') }}</AlertTitle><AlertDescription>{{ versionError }}</AlertDescription></Alert>
-        <template v-else>
-          <div class="flex min-w-0 items-start justify-between gap-4">
-            <div class="flex min-w-0 flex-col gap-1">
-              <strong class="text-base font-semibold">{{ t(`dashboard.version.${gameUpdateState.key}`) }}</strong>
-              <p class="text-muted-foreground text-sm">{{ t(`dashboard.version.${gameUpdateState.descriptionKey}`) }}</p>
-            </div>
-            <Badge class="shrink-0" :variant="gameUpdateState.variant">{{ t(`dashboard.version.${gameUpdateState.key}`) }}</Badge>
-          </div>
-          <div v-if="updateStatus" class="bg-muted flex flex-col gap-2 rounded-md p-3"><span class="text-sm font-medium">{{ t(updateStatus.is_completed ? 'dashboard.version.updateCompleted' : (updateStatus.is_running ? (versionInfo.installed ? 'dashboard.version.updating' : 'dashboard.version.installing') : 'dashboard.version.waiting')) }}</span><Progress v-if="hasMetric(updateStatus.progress)" :model-value="Number(updateStatus.progress)" /><p v-if="updateStatus.last_output" class="text-muted-foreground break-all text-xs">{{ updateStatus.last_output }}</p><p v-if="updateStatus.error" class="text-destructive text-xs">{{ updateStatus.error }}</p></div>
-        </template>
-      </CardContent>
-      <CardFooter v-if="canInstallGame || isVersionOutdated">
-        <Button v-if="canInstallGame" size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><PackageOpen v-else data-icon="inline-start" />{{ t(gameUpdateBusy ? 'dashboard.version.installButtonBusy' : 'dashboard.version.installButton') }}</Button>
-        <Button v-else-if="isVersionOutdated && canUpdateGame" size="sm" :disabled="gameUpdateBusy" @click="updateGame"><Spinner v-if="gameUpdateBusy" data-icon="inline-start" /><PackageCheck v-else data-icon="inline-start" />{{ t(gameUpdateBusy ? 'dashboard.version.updateButtonBusy' : 'dashboard.version.updateButton') }}</Button>
-        <Button v-else size="sm" variant="outline" @click="router.push('/servers/releases')"><PackageCheck data-icon="inline-start" />{{ t('dashboard.version.openUpdateHelp') }}</Button>
-      </CardFooter>
-    </Card>
+    <ServerWorkspace id="room-operations" embedded />
 
   </div>
 </template>

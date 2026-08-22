@@ -14,13 +14,21 @@ test('game version adapter keeps Klei releases separate from Steam builds', () =
   assert.match(adapters, /official_check_error: officialCheckError/)
 })
 
-test('dashboard summarizes game updates without exposing build details', () => {
+test('dashboard keeps game updates compact while exposing current and latest builds', () => {
   assert.match(dashboard, /const gameUpdateState = computed/)
+  assert.match(dashboard, /const currentGameVersion = computed\(\(\) => versionInfo\.value\.local\?\.version \|\| '--'\)/)
+  assert.match(dashboard, /const latestGameVersion = computed\(\(\) => versionInfo\.value\.latest\?\.version \|\| '--'\)/)
   assert.match(dashboard, /dashboard\.version\.simpleTitle/)
+  assert.match(dashboard, /dashboard\.version\.currentVersion/)
+  assert.match(dashboard, /dashboard\.version\.latestVersion/)
+  assert.match(dashboard, /<Alert :variant="versionError \? 'destructive' : 'default'">/)
   assert.match(dashboard, /isVersionOutdated && canUpdateGame/)
+  assert.match(dashboard, /v-else-if="isVersionOutdated" size="sm" variant="ghost"/)
   assert.match(dashboard, /router\.push\('\/servers\/releases'\)/)
   assert.match(dashboard, /v-if="canInstallGame"/)
   assert.match(dashboard, /@click="updateGame"/)
+  assert.doesNotMatch(dashboard, /<Card size="sm">/)
+  assert.doesNotMatch(dashboard, /updateStatus\.last_output/)
   assert.doesNotMatch(dashboard, /dashboard\.version\.officialGame/)
   assert.doesNotMatch(dashboard, /dashboard\.version\.localSteamBuild/)
   assert.doesNotMatch(dashboard, /dashboard\.version\.steamUpdateState/)

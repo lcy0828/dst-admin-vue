@@ -14,10 +14,12 @@ const serverWorkspace = fs.readFileSync(new URL('../src/views/servers/ServerWork
 test('dashboard starts with useful room operations without redundant overview chrome', () => {
   assert.doesNotMatch(dashboard, /grid grid-cols-2 gap-x-5 gap-y-3 px-4 py-2\.5 sm:grid-cols-4/)
   assert.doesNotMatch(dashboard, /<CardHeader class="sr-only">/)
-  assert.equal((dashboard.match(/<Card size="sm">/g) || []).length, 1)
+  assert.equal((dashboard.match(/<Card size="sm">/g) || []).length, 0)
   assert.doesNotMatch(dashboard, /dashboard\.summary\.(runningShards|onlinePlayers|roomsAndWorlds|hostLoad)/)
   assert.doesNotMatch(dashboard, /dashboard\.resources\.title/)
   assert.match(dashboard, /<ServerWorkspace id="room-operations" embedded/)
+  assert.match(dashboard, /dashboard\.version\.currentVersion/)
+  assert.match(dashboard, /dashboard\.version\.latestVersion/)
   assert.doesNotMatch(dashboard, /dashboard\.(title|subtitle|lastUpdated|refreshAll)/)
   assert.doesNotMatch(dashboard, /roomOperations|deploymentPackaging/)
   assert.doesNotMatch(dashboard, /dashboard\.roomsOverview\.openControl/)
