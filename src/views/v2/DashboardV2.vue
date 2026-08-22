@@ -32,6 +32,7 @@ const {
   versionInfo,
   capabilities,
   setupReadiness,
+  onboardingResolved,
   updateStatus,
   serverLoading,
   versionLoading,
@@ -115,6 +116,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex min-w-0 flex-col gap-5">
     <DashboardOnboarding
+      v-if="onboardingResolved"
       :capabilities="capabilities"
       :readiness="setupReadiness"
       :installed="versionInfo.installed"

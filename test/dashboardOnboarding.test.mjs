@@ -9,6 +9,7 @@ import {
 
 const dashboard = fs.readFileSync(new URL('../src/views/v2/DashboardV2.vue', import.meta.url), 'utf8')
 const onboarding = fs.readFileSync(new URL('../src/components/dashboard/DashboardOnboarding.vue', import.meta.url), 'utf8')
+const composable = fs.readFileSync(new URL('../src/composables/useDashboardV2.js', import.meta.url), 'utf8')
 const api = fs.readFileSync(new URL('../src/api/v2.js', import.meta.url), 'utf8')
 
 test('local onboarding advances from installation through room creation and startup', () => {
@@ -54,6 +55,7 @@ test('readiness blockers ignore the expected missing executable before installat
 test('dashboard onboarding uses real capabilities, checks, and shadcn controls', () => {
   assert.match(api, /setupChecks: \(\) => client\.get\('\/system\/setup-checks'/)
   assert.match(dashboard, /<DashboardOnboarding/)
+  assert.match(dashboard, /v-if="onboardingResolved"/)
   assert.match(dashboard, /:capabilities="capabilities"/)
   assert.match(onboarding, /dashboard\.onboarding\.packaging/)
   assert.match(onboarding, /<Progress :model-value="state\.progress"/)
@@ -61,6 +63,12 @@ test('dashboard onboarding uses real capabilities, checks, and shadcn controls',
   assert.match(onboarding, /router\.push\('\/agents\/list'\)/)
   assert.match(onboarding, /router\.push\('\/system\/settings'\)/)
   assert.doesNotMatch(onboarding, /bg-(?:blue|green|red|yellow)-[0-9]/)
+})
+
+test('dashboard waits for the initial setup snapshot and preserves it during refreshes', () => {
+  assert.match(composable, /const onboardingResolved = ref\(false\)/)
+  assert.match(composable, /finally \{\s*onboardingResolved\.value = true\s*\}/)
+  assert.doesNotMatch(composable, /onboardingResolved\.value = false/)
 })
 
 test('unknown packaging values fall back to native guidance', () => {

@@ -55,6 +55,7 @@ export function useDashboardV2() {
   const setupReadiness = ref(emptyReadiness())
   const updateStatus = ref(null)
   const lastRefreshedAt = ref(null)
+  const onboardingResolved = ref(false)
 
   const serverLoading = ref(false)
   const versionLoading = ref(false)
@@ -188,9 +189,13 @@ export function useDashboardV2() {
   }
 
   async function refreshDashboard() {
-    const results = await Promise.all([refreshSystem(), refreshServers(), refreshVersion(), refreshGuidance()])
-    if (results.some(Boolean)) lastRefreshedAt.value = new Date()
-    return results.slice(0, 3).every(Boolean)
+    try {
+      const results = await Promise.all([refreshSystem(), refreshServers(), refreshVersion(), refreshGuidance()])
+      if (results.some(Boolean)) lastRefreshedAt.value = new Date()
+      return results.slice(0, 3).every(Boolean)
+    } finally {
+      onboardingResolved.value = true
+    }
   }
 
   async function handleServerAction(server) {
@@ -351,6 +356,7 @@ export function useDashboardV2() {
     versionInfo,
     capabilities,
     setupReadiness,
+    onboardingResolved,
     updateStatus,
     lastRefreshedAt,
     systemLoading,
