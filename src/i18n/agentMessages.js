@@ -64,12 +64,12 @@ export const agentMessages = {
         actions: {
           save: '保存角色'
         },
-        saveHint: '角色变化需要重启当前管理服务，不会自动重启 DST 世界。',
+        saveHint: '保存后自动应用。切换角色前，请先停止本机世界并等待后台任务完成。',
         feedback: {
           loadFailed: '部署配置加载失败',
           invalid: '部署配置校验失败',
           unchanged: '部署角色没有变化',
-          saved: '部署角色已保存，请重启管理服务使其生效',
+          saved: '部署角色已应用', savedRestart: '部署角色已保存，当前后端需要重启后生效',
           saveFailed: '保存部署角色失败'
         }
       },
@@ -659,12 +659,12 @@ export const agentMessages = {
         actions: {
           save: 'Save role'
         },
-        saveHint: 'Role changes require a management service restart and never restart DST worlds automatically.',
+        saveHint: 'Changes apply when saved. Stop local worlds and wait for background tasks before switching roles.',
         feedback: {
           loadFailed: 'Failed to load deployment configuration',
           invalid: 'Deployment configuration is invalid',
           unchanged: 'The deployment role is unchanged',
-          saved: 'Deployment role saved. Restart the management service to apply it',
+          saved: 'Deployment role applied', savedRestart: 'Role saved; this backend requires a service restart',
           saveFailed: 'Failed to save deployment role'
         }
       },

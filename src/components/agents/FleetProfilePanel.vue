@@ -103,7 +103,7 @@ async function loadProfile() {
   loadError.value = ''
   try {
     const [nextCapabilities, nextSettings] = await Promise.all([
-      systemV2API.capabilities(),
+      systemV2API.capabilities({ fresh: true }),
       systemV2API.settings()
     ])
     capabilities.value = nextCapabilities
@@ -161,7 +161,7 @@ async function saveProfile() {
         .map(issue => issue.message)
       throw new Error(messages.join('; ') || t('agents.profile.feedback.invalid'))
     }
-    if (preview.changes.length === 0) {
+    if (preview.changes.length === 0 && !pendingRestart.value) {
       toast.info(t('agents.profile.feedback.unchanged'))
       baseline.value = formValue()
       return true
@@ -171,8 +171,9 @@ async function saveProfile() {
       confirmation: APPLY_CONFIRMATION
     })
     settingsResponse.value = result.settings
+    capabilities.value = await systemV2API.capabilities({ fresh: true })
     populateForm()
-    toast.success(t('agents.profile.feedback.saved'))
+    toast.success(t(result.settings.restartRequired ? 'agents.profile.feedback.savedRestart' : 'agents.profile.feedback.saved'))
     return true
   } catch (error) {
     toast.error(error?.message || t('agents.profile.feedback.saveFailed'))
@@ -196,7 +197,7 @@ onMounted(loadProfile)
 defineExpose({
   prepare: async () => {
     if (loading.value || saving.value || loadError.value) return false
-    return formValue() === baseline.value || await saveProfile()
+    return (formValue() === baseline.value && !pendingRestart.value) || await saveProfile()
   }
 })
 </script>

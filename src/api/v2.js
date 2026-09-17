@@ -187,7 +187,11 @@ export const systemV2API = {
 	}),
 	settings: () => client.get('/system/settings', { headers: { 'Cache-Control': 'no-store' } }),
   previewSettings: input => client.post('/system/settings/preview', input),
-  applySettings: input => client.post('/system/settings/actions/apply', input),
+  applySettings: input => client.post('/system/settings/actions/apply', input).then(result => {
+    capabilityCache.invalidate()
+    window.dispatchEvent(new CustomEvent('system-runtime-updated'))
+    return result
+  }),
   testEmail: input => client.post('/system/settings/actions/test-email', input)
 }
 
