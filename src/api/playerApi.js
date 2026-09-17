@@ -1,26 +1,46 @@
 import {
   automationV2API,
   playersV2API,
-  roomsV2API
+  roomsV2API,
+  topologyV2API
 } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 import { composeRoomResults, throwWhenAllRoomsFailed } from './roomSettlements.mjs'
+import { playerPlayDays, sortPlayers } from '@/lib/playerSorting.mjs'
 import {
   isSystemAutomationGroup,
   SYSTEM_AUTOMATION_GROUP_IDS
 } from '@/lib/systemDataIdentifiers.mjs'
 
 const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg, { numericCode: true })
+const DEFAULT_PLAYER_REFRESH_TASK_NAME = '自动刷新玩家数据'
+const PLAYER_REFRESH_SCHEDULES = Object.freeze({
+  30: '*/30 * * * * *',
+  60: '* * * * *',
+  120: '*/2 * * * *',
+  300: '*/5 * * * *',
+  600: '*/10 * * * *'
+})
+
+function isDefaultPlayerRefreshTask(task) {
+  return task?.action === 'player.refresh' && (task.worldIds || []).length === 0 && task.name === DEFAULT_PLAYER_REFRESH_TASK_NAME
+}
+
+function playerRefreshInterval(schedule) {
+  const normalized = String(schedule || '').trim().replace(/\s+/g, ' ')
+  const entry = Object.entries(PLAYER_REFRESH_SCHEDULES).find(([, value]) => value === normalized)
+  return entry ? Number(entry[0]) : 0
+}
 
 async function loadRooms() {
-  const response = await roomsV2API.list()
-  return (response.items || []).filter(room => room.managed)
+  const response = await roomsV2API.controlPlaneList()
+  return response.items || []
 }
 
 async function loadCatalog() {
   const rooms = await loadRooms()
-  const settlements = await Promise.allSettled(rooms.map(room => roomsV2API.worlds(room.id)))
+  const settlements = await Promise.allSettled(rooms.map(room => topologyV2API.worlds(room.id)))
   const { completed, failures } = composeRoomResults(rooms, settlements)
   throwWhenAllRoomsFailed(rooms.length, failures)
   const worldsByRoom = new Map(completed.map(({ room, value }) => [room.id, value.items || []]))
@@ -82,12 +102,14 @@ function legacyPlayer(player, room) {
     id: player.id,
     room_id: room.id,
     world_id: player.worldId,
-    world_name: player.worldName,
+    world_name: player.worldConfirmed === false ? '' : player.worldName,
+    world_confirmed: player.worldConfirmed,
     archive_name: room.name,
     user_id: player.id,
     player_name: player.name,
-    player_age: player.age,
+    player_age: playerPlayDays({ player_age: player.age, field_states: player.fields || {} }),
     prefab: player.prefab,
+    gameplay_state: player.gameplayState || '',
     status,
     is_admin: player.admin,
     is_friend: null,
@@ -98,9 +120,13 @@ function legacyPlayer(player, room) {
     performance: player.performance ?? null,
     first_seen: player.firstSeenAt,
     last_seen: player.lastSeenAt,
+    last_seen_source: player.lastSeenSource || player.fields?.lastSeenAt?.source || '',
+    last_connected_at: player.lastConnectedAt || null,
+    last_disconnected_at: player.lastDisconnectedAt || null,
     status_change: player.statusChangedAt,
     last_refreshed_at: player.lastRefreshedAt,
     presence_status: presenceStatus,
+    history_only: !player.online && presenceStatus === 'unavailable' && player.lastSeenSource === 'native-log',
     presence_observed_at: player.presenceObservedAt || player.fields?.online?.observedAt || null,
     presence_conflict: Boolean(player.presenceConflict),
     observed_world_ids: Array.isArray(player.observedWorldIds) ? player.observedWorldIds : [],
@@ -114,12 +140,18 @@ function legacyPlayer(player, room) {
     health_percent: player.healthPercent,
     hunger_percent: player.hungerPercent,
     sanity_percent: player.sanityPercent,
+    health: player.health,
+    health_max: player.healthMax,
+    hunger: player.hunger,
+    hunger_max: player.hungerMax,
+    sanity: player.sanity,
+    sanity_max: player.sanityMax,
     temperature: player.temperature,
     moisture: player.moisture
   }
 }
 
-async function roomPlayers(room, params) {
+async function roomPlayers(room, params = {}) {
   const items = []
   let offset = 0
   let total = 0
@@ -128,6 +160,7 @@ async function roomPlayers(room, params) {
       query: params.keyword || '',
       status: params.status === 'stale' ? 'online' : (params.status || ''),
       prefab: params.prefab || '',
+      includeAccessLists: params.include_access_lists !== false,
       limit: 100,
       offset
     })
@@ -139,28 +172,6 @@ async function roomPlayers(room, params) {
     if (page.length === 0) break
   } while (offset < total)
   return items
-}
-
-function sortableValue(player, key) {
-  const value = player[key]
-  if (key === 'first_seen' || key === 'last_seen' || key === 'status_change' || key === 'updated_at') {
-    const time = new Date(value || 0).getTime()
-    return Number.isFinite(time) ? time : 0
-  }
-  return typeof value === 'string' ? value.toLocaleLowerCase('zh-CN') : value
-}
-
-function sortPlayers(players, sortBy, sortOrder) {
-  if (!sortBy || !sortOrder) return players
-  const direction = sortOrder === 'asc' ? 1 : -1
-  return players.slice().sort((left, right) => {
-    const leftValue = sortableValue(left, sortBy)
-    const rightValue = sortableValue(right, sortBy)
-    if (leftValue === rightValue) return 0
-    if (leftValue === null || leftValue === undefined) return 1
-    if (rightValue === null || rightValue === undefined) return -1
-    return leftValue > rightValue ? direction : -direction
-  })
 }
 
 async function listPlayers(params = {}, paginate = true) {
@@ -268,22 +279,28 @@ export const playerApi = {
     }
   },
 
-  async getPlayerStats(archiveName) {
-    const response = await listPlayers({ archive_name: archiveName }, false)
-    const online = response.data.filter(player => player.status === 'online').length
-    const staleOnline = response.data.filter(player => player.status === 'stale').length
-    const onlineByWorld = response.data.reduce((counts, player) => {
+  async getPlayerStats(archiveName, worldIds = [], roomId = '') {
+    const response = roomId
+      ? { data: await roomPlayers({ id: roomId, name: archiveName }, { include_access_lists: false }), failures: [] }
+      : await listPlayers({ archive_name: archiveName, include_access_lists: false }, false)
+    const selectedWorldIds = new Set((Array.isArray(worldIds) ? worldIds : []).map(value => String(value)))
+    const players = selectedWorldIds.size > 0
+      ? response.data.filter(player => selectedWorldIds.has(String(player.world_id || '')))
+      : response.data
+    const online = players.filter(player => player.status === 'online').length
+    const staleOnline = players.filter(player => player.status === 'stale').length
+    const onlineByWorld = players.reduce((counts, player) => {
       if (player.status !== 'online' || !player.world_id) return counts
       counts[player.world_id] = (counts[player.world_id] || 0) + 1
       return counts
     }, {})
     return success({
-      total_count: response.total,
+      total_count: players.length,
       online_count: online,
       online_by_world: onlineByWorld,
       stale_online_count: staleOnline,
-      offline_count: response.total - online - staleOnline,
-      recent_players: response.data.slice(0, 10)
+      offline_count: players.length - online - staleOnline,
+      recent_players: players
     })
   },
 
@@ -299,16 +316,22 @@ export const playerApi = {
     const roomReference = typeof data === 'string' ? data : data.archive_name
     const selectedRooms = roomReference ? [await resolveRoom(roomReference, catalog)] : catalog
     const requestedWorld = typeof data === 'object' ? data.world_name : ''
+    const requestedWorldIdValues = typeof data === 'object' ? (data.world_ids || data.worldIds || []) : []
+    const requestedWorldIds = (Array.isArray(requestedWorldIdValues) ? requestedWorldIdValues : [])
+      .map(value => String(value))
     if (requestedWorld && selectedRooms.length !== 1) throw adapterError('INVALID_PLAYER_INPUT')
     const settlements = await Promise.allSettled(selectedRooms.map(async room => {
       const worldIds = []
-      if (requestedWorld) {
-        const worlds = await roomsV2API.worlds(room.id)
-        const world = (worlds.items || []).find(item => worldMatches(item, requestedWorld))
-        if (!world) throw adapterError('RESOURCE_NOT_FOUND', {
-          context: { room: room.name, world: requestedWorld }
-        })
-        worldIds.push(world.id)
+      if (requestedWorld || requestedWorldIds.length > 0) {
+        const worlds = await topologyV2API.worlds(room.id)
+        const requested = requestedWorld ? [requestedWorld] : requestedWorldIds
+        for (const value of requested) {
+          const world = (worlds.items || []).find(item => worldMatches(item, value))
+          if (!world) throw adapterError('RESOURCE_NOT_FOUND', {
+            context: { room: room.name, world: value }
+          })
+          if (!worldIds.includes(world.id)) worldIds.push(world.id)
+        }
       }
       const job = await playersV2API.refresh(room.id, worldIds)
       return waitForV2Job(job, 120000)
@@ -378,6 +401,52 @@ export const playerApi = {
 
   changeCharacter(player, selectedSession, confirmation) {
     return runAction(player, selectedSession, 'change-character', { confirmation })
+  },
+
+  async getPlayerRefreshSettings(roomReference) {
+    const catalog = await loadRooms()
+    const room = await resolveRoom(roomReference, catalog)
+    const response = await automationV2API.tasks(room.id)
+    const task = (response.items || []).find(isDefaultPlayerRefreshTask)
+    if (!task) throw adapterError('RESOURCE_NOT_FOUND', { context: { roomId: room.id } })
+    return success({
+      room_id: room.id,
+      room_name: room.name,
+      enabled: Boolean(task.enabled),
+      interval_seconds: playerRefreshInterval(task.schedule),
+      task
+    })
+  },
+
+  async updatePlayerRefreshSettings(data) {
+    const intervalSeconds = Number(data?.interval_seconds)
+    const schedule = PLAYER_REFRESH_SCHEDULES[intervalSeconds]
+    const task = data?.task
+    if (!data?.room_id || !schedule || !isDefaultPlayerRefreshTask(task)) {
+      throw adapterError('INVALID_PLAYER_INPUT', { context: { field: 'refresh_settings' } })
+    }
+    const updated = await automationV2API.updateTask(data.room_id, task.id, {
+      groupId: task.groupId,
+      name: task.name,
+      description: task.description || '',
+      enabled: Boolean(data.enabled),
+      schedule,
+      timezone: task.timezone || 'Asia/Shanghai',
+      action: task.action,
+      worldIds: task.worldIds || [],
+      parameters: task.parameters || {},
+      timeoutSeconds: task.timeoutSeconds || 60,
+      retryTimes: task.retryTimes || 0,
+      retryIntervalSeconds: task.retryIntervalSeconds || 60,
+      dependencies: task.dependencies || [],
+      expectedRevision: task.revision
+    })
+    return success({
+      room_id: data.room_id,
+      enabled: Boolean(updated.enabled),
+      interval_seconds: playerRefreshInterval(updated.schedule),
+      task: updated
+    }, 'player_refresh_settings_updated')
   },
 
   async addRefreshSchedule(data) {

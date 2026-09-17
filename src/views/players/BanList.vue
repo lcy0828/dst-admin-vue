@@ -3,7 +3,6 @@
     <header class="page-heading">
       <div>
         <h1>{{ t('players.banList.title') }}</h1>
-        <p>{{ t('players.banList.subtitle') }}</p>
       </div>
       <UiButton variant="outline" size="sm" :disabled="loading" @click="loadBans">
         <RefreshCw data-icon="inline-start" />
@@ -12,18 +11,10 @@
     </header>
 
     <Card>
-      <CardHeader><div><CardTitle>{{ t('players.banList.filterTitle') }}</CardTitle><CardDescription>{{ t('players.banList.filterDescription') }}</CardDescription></div></CardHeader>
+      <CardHeader><CardTitle>{{ t('players.banList.filterTitle') }}</CardTitle></CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
-          <Field>
-            <FieldLabel for="ban-room-filter">{{ t('players.banList.room') }}</FieldLabel>
-            <NativeSelect id="ban-room-filter" v-model="filters.archive_name" @change="applyFilters">
-              <NativeSelectOption value="">{{ t('players.banList.allRooms') }}</NativeSelectOption>
-              <NativeSelectOption v-for="archive in archives" :key="archive.id" :value="archive.id">
-                {{ archive.name }}
-              </NativeSelectOption>
-            </NativeSelect>
-          </Field>
+          <RoomScopeSelect v-model="filters.archive_name" :rooms="archives" allow-all @update:model-value="applyFilters" />
           <Field>
             <FieldLabel for="ban-keyword-filter">{{ t('players.fields.keyword') }}</FieldLabel>
             <InputGroup>
@@ -132,12 +123,16 @@
 </template>
 
 <script setup>
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { readWorkspaceSelection } from '@/lib/workspacePreferences.mjs'
+import { managementScopeTargetId } from '@/lib/managementScope.mjs'
+import { useRoute } from 'vue-router'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RefreshCw, Search, ShieldCheck, TriangleAlert } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { playerApi } from '@/api/playerApi'
-import { promptText } from '@/lib/feedback'
+import { confirmAction } from '@/lib/feedback'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -145,7 +140,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -158,7 +152,7 @@ const bans = ref([])
 const loading = ref(false)
 const error = ref(null)
 const unbanningId = ref('')
-const filters = reactive({ archive_name: '', keyword: '' })
+const filters = reactive({ archive_name: useRoute().query.roomId ?? readWorkspaceSelection(managementScopeTargetId()).roomId, keyword: '' })
 const pagination = reactive({ page: 1, page_size: 20, total: 0 })
 
 const errorText = computed(() => error.value ? playerErrorDetail(error.value, t) : '')
@@ -232,18 +226,17 @@ function changePage(page) {
 
 async function unban(player) {
   try {
-    const result = await promptText(
+    await confirmAction(
       t('players.banList.unbanPrompt', { room: player.archive_name }),
       t('players.actions.unban'),
       {
         confirmButtonText: t('players.actions.unban'),
         cancelButtonText: t('players.actions.cancel'),
-        inputPlaceholder: player.archive_name,
-        inputValidator: value => value === player.archive_name || t('players.validation.roomNameMismatch')
+        type: 'warning'
       }
     )
     unbanningId.value = player.user_id
-    await playerApi.unbanPlayer(player, result.value)
+    await playerApi.unbanPlayer(player, player.archive_name)
     toast.success(t('players.banList.unbanSucceeded', { player: player.player_name || player.user_id }))
     await loadBans()
   } catch (value) {

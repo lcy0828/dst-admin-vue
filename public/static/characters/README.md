@@ -7,3 +7,23 @@ and atlas provenance recorded in its `beacon-assets.json` manifest.
 
 Only derived WebP images are published here; raw Klei TEX and XML files are not
 included.
+
+`animated/` contains 80x80 animated WebP portraits generated from the official
+front-facing `player_idles` animation and each character's default build. Only
+the head, hair, face, and cheek symbols are rendered. These are actual animation
+frames, not transforms applied to a static portrait. Each loop has 22 frames
+at 10 fps. The original static portraits remain the fallback for reduced-motion
+preferences or a failed animated image load.
+
+The source assets are from the companion pipeline's verified Linux build
+24700372, snapshot
+`ff9a3a14eb41063d78da9d8f8ec5ace0e579a469bdc6064aadb26941b27aefb9`.
+`animated/manifest.json` records the source build and atlas hashes, output hashes,
+frame counts and sizes. No raw game animation packages are distributed here.
+
+To regenerate using the companion pipeline's existing renderer and local DST
+assets (no network or running game required):
+
+```sh
+node scripts/generate-character-avatars.mjs /path/to/asset-pipeline /path/to/DST/data
+```

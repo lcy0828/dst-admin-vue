@@ -1,9 +1,10 @@
 <template>
   <div class="player-list-page">
     <div class="page-header">
-      <div class="title-container"><h1>{{ $t('players.list.title') }}</h1><p>{{ $t('players.list.subtitle') }}</p></div>
+      <div class="title-container"><h1>{{ $t('players.list.title') }}</h1></div>
       <div class="action-buttons">
         <UiButton size="sm" variant="outline" @click="refreshPlayerData" :disabled="loading || refreshing"><Spinner v-if="refreshing" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
+        <TooltipProvider><Tooltip><TooltipTrigger as-child><UiButton class="refresh-settings-button" size="icon-sm" variant="outline" :aria-label="$t('players.actions.refreshSettings')" @click="showPlayerRefreshSettings"><Settings2 /></UiButton></TooltipTrigger><TooltipContent>{{ $t('players.actions.refreshSettings') }}</TooltipContent></Tooltip></TooltipProvider>
         <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />{{ $t('players.actions.manualUpdate') }}</UiButton>
         <UiButton size="sm" variant="outline" @click="showSessionSelect"><Globe2 data-icon="inline-start" />{{ $t('players.actions.defaultTaskWorld') }}</UiButton>
         <UiButton size="sm" @click="showScheduleDialog"><Clock3 data-icon="inline-start" />{{ $t('players.actions.addSchedule') }}</UiButton>
@@ -12,16 +13,10 @@
     </div>
 
     <Card class="filter-card">
-      <CardHeader><div><CardTitle>{{ $t('players.list.filterTitle') }}</CardTitle><CardDescription>{{ $t('players.list.filterDescription') }}</CardDescription></div></CardHeader>
+      <CardHeader><CardTitle>{{ $t('players.list.filterTitle') }}</CardTitle></CardHeader>
       <CardContent>
         <FieldGroup class="filter-form">
-          <Field>
-            <FieldLabel for="player-archive-filter">{{ $t('players.fields.archive') }}</FieldLabel>
-            <NativeSelect id="player-archive-filter" v-model="filterForm.archive_name" @change="handleFilter">
-              <NativeSelectOption value="">{{ $t('players.list.allArchives') }}</NativeSelectOption>
-              <NativeSelectOption v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</NativeSelectOption>
-            </NativeSelect>
-          </Field>
+          <RoomScopeSelect v-model="filterForm.archive_name" :rooms="archiveOptions.map(room => ({ id: room.value, name: room.label }))" allow-all @update:model-value="selectRoomFilter" />
           <Field>
             <FieldLabel for="player-status-filter">{{ $t('players.fields.status') }}</FieldLabel>
             <NativeSelect id="player-status-filter" v-model="filterForm.status" @change="handleFilter">
@@ -44,8 +39,6 @@
       </CardContent>
     </Card>
 
-    <RuntimeStatusPanel />
-
     <Card class="table-card">
       <CardHeader class="table-operations">
         <div><CardTitle>{{ $t('players.list.title') }}</CardTitle><CardDescription>{{ $t('players.list.total', { count: pagination.total }) }}</CardDescription></div>
@@ -58,39 +51,53 @@
           <AlertDescription>{{ loadErrorText }}</AlertDescription>
           <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">{{ $t('players.actions.retry') }}</UiButton></AlertAction>
         </Alert>
+        <Alert v-else-if="collectionError" variant="destructive" class="mb-4">
+          <TriangleAlert />
+          <AlertTitle>{{ $t('players.list.currentRefreshFailedTitle') }}</AlertTitle>
+          <AlertDescription class="col-start-2 flex min-w-0 flex-col gap-2">
+            <p class="break-words">{{ $t('players.list.currentRefreshFailedDescription', { error: collectionErrorText }) }}</p>
+            <div class="flex flex-wrap gap-2">
+              <UiButton size="sm" variant="outline" @click="openRoomDiagnostics"><Stethoscope data-icon="inline-start" />{{ $t('players.actions.openDiagnostics') }}</UiButton>
+              <UiButton size="sm" variant="outline" :disabled="loading || refreshing" @click="refreshPlayerData">{{ $t('players.actions.retry') }}</UiButton>
+            </div>
+          </AlertDescription>
+        </Alert>
         <Alert v-else-if="partialFailures.length > 0" class="mb-4">
           <TriangleAlert />
           <AlertTitle>{{ $t('players.list.partialTitle') }}</AlertTitle>
-          <AlertDescription>{{ partialFailureText }}</AlertDescription>
-          <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">{{ $t('players.actions.retry') }}</UiButton></AlertAction>
+          <AlertDescription class="col-start-2 flex min-w-0 flex-col gap-2">
+            <p class="break-words">{{ partialFailureText }}</p>
+            <div class="flex flex-wrap gap-2">
+              <UiButton size="sm" variant="outline" @click="openRoomDiagnostics"><Stethoscope data-icon="inline-start" />{{ $t('players.actions.openDiagnostics') }}</UiButton>
+              <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">{{ $t('players.actions.retry') }}</UiButton>
+            </div>
+          </AlertDescription>
         </Alert>
         <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('players.list.loading') }}</span></div>
         <div v-else-if="!loadError && playerList.length > 0" class="table-wrap">
           <UiTable>
             <TableHeader>
               <TableRow>
-                <TableHead><SortButton label="ID" field="id" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead><SortButton :label="$t('players.fields.roomAndWorld')" field="archive_name" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead>{{ $t(filterForm.archive_name ? 'players.fields.world' : 'players.fields.roomAndWorld') }}</TableHead>
                 <TableHead>{{ $t('players.fields.playerName') }}</TableHead>
                 <TableHead>KU ID</TableHead>
                 <TableHead>{{ $t('players.fields.character') }}</TableHead>
-                <TableHead><SortButton :label="$t('players.fields.days')" field="player_age" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead><SortButton :label="$t('players.fields.status')" field="status" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead :title="$t('players.sorting.daysHint')">{{ $t('players.fields.days') }}</TableHead>
+                <TableHead>{{ $t('players.fields.status') }}</TableHead>
                 <TableHead>{{ $t('players.fields.network') }}</TableHead>
                 <TableHead>Steam ID</TableHead>
-                <TableHead><SortButton :label="$t('players.fields.firstSeen')" field="first_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
-                <TableHead><SortButton :label="$t('players.fields.lastSeen')" field="last_seen" :active-field="sortParams.prop" :order="sortParams.order" @sort="toggleSort" /></TableHead>
+                <TableHead>{{ $t('players.fields.firstSeen') }}</TableHead>
+                <TableHead>{{ $t('players.fields.lastSeen') }}</TableHead>
                 <TableHead class="action-column">{{ $t('players.fields.action') }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-for="player in playerList" :key="`${player.room_id}:${player.id}`">
-                <TableCell>{{ player.id }}</TableCell>
                 <TableCell>
-                  <div class="flex min-w-36 flex-col gap-1">
-                    <span>{{ player.archive_name }}</span>
+                  <div class="flex min-w-20 max-w-44 flex-col gap-1 whitespace-normal break-words">
+                    <span v-if="!filterForm.archive_name">{{ player.archive_name }}</span>
                     <div class="flex flex-wrap items-center gap-1">
-                      <span class="text-xs text-muted-foreground">{{ player.world_name || $t('players.values.unknownWorld') }}</span>
+                      <span :class="{ 'text-xs text-muted-foreground': !filterForm.archive_name }">{{ player.world_name || $t('players.values.unknownWorld') }}</span>
                       <TooltipProvider v-if="player.presence_conflict">
                         <Tooltip>
                           <TooltipTrigger as-child>
@@ -103,41 +110,29 @@
                   </div>
                 </TableCell>
                 <TableCell>
-                  <UiButton class="max-w-56 justify-start px-1" variant="ghost" size="sm" @click="viewPlayerDetail(player)">
-                    <CharacterAvatar :prefab="player.prefab" :name="player.player_name" />
+                  <UiButton class="max-w-56 justify-start px-1" variant="ghost" size="sm" :title="$t('players.actions.details')" @click="viewPlayerDetail(player)">
+                    <CharacterAvatar :prefab="player.prefab" :name="player.player_name" :player="player" />
                     <span class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" :title="$t('players.list.administrator')" /><UserRoundCheck v-if="player.is_friend" :title="$t('players.list.friend')" /></span>
                   </UiButton>
                 </TableCell>
-                <TableCell class="mono-cell">{{ player.user_id }}</TableCell>
-                <TableCell><Badge variant="outline">{{ getCharacterName(player.prefab) }}</Badge></TableCell>
-                <TableCell>{{ player.player_age }}</TableCell>
-                <TableCell><div class="flex min-w-32 flex-col gap-1"><Badge :variant="getPlayerStatusMeta(player.status).variant">{{ getPlayerStatusMeta(player.status).label }}</Badge><span class="text-xs text-muted-foreground">{{ player.status === 'stale' ? $t('players.list.staleObservedAt', { time: formatDate(player.presence_observed_at) }) : $t('players.list.sampledAt', { time: formatDate(player.last_refreshed_at) }) }}</span></div></TableCell>
+                <TableCell class="mono-cell">{{ player.user_id || player.id }}</TableCell>
+                <TableCell><Badge variant="outline">{{ getCharacterName(player) }}</Badge></TableCell>
+                <TableCell>{{ player.player_age ?? '—' }}</TableCell>
+                <TableCell>
+                  <div class="flex min-w-32 flex-col items-start gap-1">
+                    <Badge :variant="getPlayerPresenceMeta(player).variant">{{ getPlayerPresenceMeta(player).label }}</Badge>
+                    <span class="text-xs text-muted-foreground" :title="getPlayerStatusNote(player, false)">{{ getPlayerStatusNote(player) }}</span>
+                  </div>
+                </TableCell>
                 <TableCell><Badge v-if="isPlayerOnline(player.status)" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
                 <TableCell>
                   <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" :title="$t('players.actions.viewOnSteam')" :aria-label="$t('players.actions.viewPlayerOnSteam')" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
                 </TableCell>
-                <TableCell>{{ formatDate(player.first_seen) }}</TableCell>
-                <TableCell>{{ formatDate(player.last_seen) }}</TableCell>
+                <TableCell><PlayerRecordTime :value="player.first_seen" /></TableCell>
+                <TableCell><PlayerRecordTime :value="player.last_seen" /></TableCell>
                 <TableCell class="action-column">
                   <div class="row-actions">
-                    <UiButton variant="ghost" size="sm" @click="viewPlayerDetail(player)">{{ $t('players.actions.details') }}</UiButton>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger as-child><UiButton variant="ghost" size="icon-sm" :aria-label="$t('players.actions.openPlayerMenu')" :title="$t('players.actions.playerActions')"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuGroup>
-                          <DropdownMenuItem :disabled="!isPlayerOnline(player.status)" @select="toggleGodMode(player)">{{ $t('players.operations.godMode') }}</DropdownMenuItem>
-                          <DropdownMenuItem :disabled="!isPlayerOnline(player.status)" @select="toggleCreativeMode(player)">{{ $t('players.operations.creativeMode') }}</DropdownMenuItem>
-                          <DropdownMenuItem :disabled="!isPlayerOnline(player.status)" @select="resurrectPlayer(player)">{{ $t('players.operations.resurrect') }}</DropdownMenuItem>
-                          <DropdownMenuItem :disabled="!isPlayerOnline(player.status)" @select="changeCharacter(player)">{{ $t('players.operations.changeCharacter') }}</DropdownMenuItem>
-                        </DropdownMenuGroup>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                          <DropdownMenuItem variant="destructive" :disabled="!isPlayerOnline(player.status)" @select="kickPlayer(player)">{{ $t('players.operations.kick') }}</DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" @select="banPlayer(player)">{{ $t('players.operations.ban') }}</DropdownMenuItem>
-                          <DropdownMenuItem variant="destructive" :disabled="!isPlayerOnline(player.status)" @select="killPlayer(player)">{{ $t('players.operations.kill') }}</DropdownMenuItem>
-                        </DropdownMenuGroup>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <PlayerActionMenu :player="player" @updated="refreshPlayerAfterAction(player, $event)" @player-state-refreshed="fetchPlayerList" />
                   </div>
                 </TableCell>
               </TableRow>
@@ -173,8 +168,8 @@
         <ScrollArea class="player-detail-scroll">
           <div v-if="currentPlayer" class="player-detail">
             <div class="player-detail-heading">
-              <CharacterAvatar :prefab="currentPlayer.prefab" :name="currentPlayer.player_name" size="lg" />
-              <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="getPlayerStatusMeta(currentPlayer.status).variant">{{ getPlayerStatusMeta(currentPlayer.status).label }}</Badge></div><span>{{ getCharacterName(currentPlayer.prefab) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || $t('players.values.unknownWorld') }}</span></div>
+              <CharacterAvatar :prefab="currentPlayer.prefab" :name="currentPlayer.player_name" :player="currentPlayer" size="lg" />
+              <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="getPlayerPresenceMeta(currentPlayer).variant">{{ getPlayerPresenceMeta(currentPlayer).label }}</Badge></div><span>{{ getCharacterName(currentPlayer) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || $t('players.values.unknownWorld') }}</span></div>
             </div>
             <Alert v-if="currentPlayer.presence_conflict" variant="destructive">
               <TriangleAlert />
@@ -189,20 +184,18 @@
             <dl class="player-description-grid">
               <div><dt>{{ $t('players.fields.playerId') }}</dt><dd>{{ currentPlayer.id }}</dd></div><div><dt>KU ID</dt><dd>{{ currentPlayer.user_id }}</dd></div>
               <div><dt>{{ $t('players.fields.playerName') }}</dt><dd>{{ currentPlayer.player_name }}</dd></div><div><dt>{{ $t('players.fields.archive') }}</dt><dd>{{ currentPlayer.archive_name }}</dd></div>
-              <div><dt>{{ $t('players.fields.character') }}</dt><dd>{{ getCharacterName(currentPlayer.prefab) }}</dd></div><div><dt>{{ $t('players.fields.days') }}</dt><dd>{{ currentPlayer.player_age }}</dd></div>
+              <div><dt>{{ $t('players.fields.character') }}</dt><dd>{{ getCharacterName(currentPlayer) }}</dd></div><div :title="$t('players.sorting.daysHint')"><dt>{{ $t('players.fields.days') }}</dt><dd>{{ currentPlayer.player_age ?? '—' }}</dd></div>
               <div><dt>{{ $t('players.fields.statusChanged') }}</dt><dd>{{ formatDate(currentPlayer.status_change) }}</dd></div><div><dt>Steam ID</dt><dd><UiButton variant="link" size="sm" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</UiButton></dd></div>
               <div><dt>{{ $t('players.fields.network') }}</dt><dd>{{ isPlayerOnline(currentPlayer.status) ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div>
               <div><dt>{{ $t('players.fields.firstSeen') }}</dt><dd>{{ formatDate(currentPlayer.first_seen) }}</dd></div><div><dt>{{ $t('players.fields.lastSeen') }}</dt><dd>{{ formatDate(currentPlayer.last_seen) }}</dd></div>
+              <div><dt>{{ $t('players.fields.lastConnected') }}</dt><dd>{{ formatDate(currentPlayer.last_connected_at) }}</dd></div><div><dt>{{ $t('players.fields.lastDisconnected') }}</dt><dd>{{ formatDate(currentPlayer.last_disconnected_at) }}</dd></div>
               <div><dt>{{ $t('players.fields.createdAt') }}</dt><dd>{{ formatDate(currentPlayer.created_at) }}</dd></div><div><dt>{{ $t('players.fields.lastRefreshed') }}</dt><dd>{{ formatDate(currentPlayer.last_refreshed_at) }}</dd></div>
               <div><dt>{{ $t('players.fields.presenceObservedAt') }}</dt><dd>{{ formatDate(currentPlayer.presence_observed_at) }}</dd></div>
             </dl>
             <Separator />
-            <section><h3>{{ $t('players.detail.gameActions') }}</h3><div class="detail-action-grid">
-              <UiButton size="sm" variant="outline" :disabled="!isPlayerOnline(currentPlayer.status)" @click="toggleGodMode(currentPlayer)">{{ $t('players.operations.godMode') }}</UiButton><UiButton size="sm" variant="outline" :disabled="!isPlayerOnline(currentPlayer.status)" @click="toggleCreativeMode(currentPlayer)">{{ $t('players.operations.creativeMode') }}</UiButton><UiButton size="sm" variant="outline" :disabled="!isPlayerOnline(currentPlayer.status)" @click="resurrectPlayer(currentPlayer)">{{ $t('players.operations.resurrect') }}</UiButton><UiButton size="sm" variant="outline" :disabled="!isPlayerOnline(currentPlayer.status)" @click="changeCharacter(currentPlayer)">{{ $t('players.operations.changeCharacter') }}</UiButton>
-            </div></section>
-            <section><h3>{{ $t('players.detail.dangerousActions') }}</h3><div class="detail-action-grid">
-              <UiButton variant="destructive" size="sm" :disabled="!isPlayerOnline(currentPlayer.status)" @click="kickPlayer(currentPlayer)">{{ $t('players.operations.kickShort') }}</UiButton><UiButton variant="destructive" size="sm" @click="banPlayer(currentPlayer)">{{ $t('players.operations.banShort') }}</UiButton><UiButton variant="destructive" size="sm" :disabled="!isPlayerOnline(currentPlayer.status)" @click="killPlayer(currentPlayer)">{{ $t('players.operations.killShort') }}</UiButton>
-            </div></section>
+            <section class="flex items-center justify-between gap-3"><h3>{{ $t('players.actions.playerActions') }}</h3>
+              <PlayerActionMenu :player="currentPlayer" @updated="refreshPlayerAfterAction(currentPlayer, $event)" @player-state-refreshed="fetchPlayerList" />
+            </section>
           </div>
         </ScrollArea>
       </SheetContent>
@@ -212,7 +205,7 @@
       <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.ban.title') }}</DialogTitle><DialogDescription>{{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
         <FieldGroup><Field :data-invalid="Boolean(banFormError)"><FieldLabel for="ban-reason">{{ $t('players.fields.banReason') }}</FieldLabel><UiTextarea id="ban-reason" v-model="banForm.reason" rows="3" :placeholder="$t('players.dialogs.ban.reasonPlaceholder')" :aria-invalid="Boolean(banFormError)" /><FieldError v-if="banFormError">{{ banFormErrorText }}</FieldError></Field>
           <Field><FieldLabel for="ban-duration">{{ $t('players.fields.banDuration') }}</FieldLabel><UiSelect v-model="banForm.duration"><SelectTrigger id="ban-duration"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="duration in banDurations" :key="duration.value" :value="duration.value">{{ duration.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field :data-invalid="Boolean(banConfirmationError)"><FieldLabel for="ban-confirmation">{{ $t('players.fields.fullRoomName') }}</FieldLabel><UiInput id="ban-confirmation" v-model="banForm.confirmation" :placeholder="currentPlayer?.archive_name ? $t('players.dialogs.ban.roomPlaceholderNamed', { room: currentPlayer.archive_name }) : $t('players.dialogs.ban.roomPlaceholder')" :aria-invalid="Boolean(banConfirmationError)" /><FieldDescription>{{ $t('players.dialogs.ban.description') }}</FieldDescription><FieldError v-if="banConfirmationError">{{ banConfirmationErrorText }}</FieldError></Field></FieldGroup>
+        </FieldGroup>
         <DialogFooter><UiButton variant="outline" @click="banDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton variant="destructive" @click="confirmBanPlayer" :disabled="banning"><Spinner v-if="banning" data-icon="inline-start" />{{ $t('players.actions.confirmBan') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
@@ -239,6 +232,19 @@
       </DialogContent>
     </UiDialog>
 
+    <UiDialog v-model:open="refreshSettingsDialogVisible">
+      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.refreshSettings.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.refreshSettings.description') }}</DialogDescription></DialogHeader>
+        <div v-if="refreshSettingsLoading" class="loading-state refresh-settings-loading"><Spinner />{{ $t('players.dialogs.refreshSettings.loading') }}</div>
+        <Alert v-else-if="refreshSettingsLoadError" variant="destructive"><TriangleAlert /><AlertTitle>{{ $t('players.dialogs.refreshSettings.loadFailed') }}</AlertTitle><AlertDescription>{{ errorDetail(refreshSettingsLoadError) }}</AlertDescription></Alert>
+        <FieldGroup v-else>
+          <Field><FieldLabel for="player-refresh-room">{{ $t('players.fields.refreshRoom') }}</FieldLabel><UiSelect v-model="refreshSettingsForm.room_id" @update:model-value="loadPlayerRefreshSettings"><SelectTrigger id="player-refresh-room"><SelectValue :placeholder="$t('players.dialogs.refreshSettings.roomPlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <Field orientation="horizontal"><FieldContent><FieldLabel for="player-refresh-enabled">{{ $t('players.fields.autoRefresh') }}</FieldLabel><FieldDescription>{{ $t('players.dialogs.refreshSettings.enabledDescription') }}</FieldDescription></FieldContent><UiSwitch id="player-refresh-enabled" v-model="refreshSettingsForm.enabled" /></Field>
+          <Field><FieldLabel for="player-refresh-interval">{{ $t('players.fields.refreshInterval') }}</FieldLabel><UiSelect v-model="refreshSettingsForm.interval_seconds"><SelectTrigger id="player-refresh-interval"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="option in refreshIntervalOptions" :key="option.value" :value="option.value">{{ option.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+        </FieldGroup>
+        <DialogFooter><UiButton variant="outline" @click="refreshSettingsDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton :disabled="refreshSettingsLoading || refreshSettingsSaving || Boolean(refreshSettingsLoadError) || !refreshSettingsTask" @click="savePlayerRefreshSettings"><Spinner v-if="refreshSettingsSaving" data-icon="inline-start" />{{ $t('players.actions.saveRefreshSettings') }}</UiButton></DialogFooter>
+      </DialogContent>
+    </UiDialog>
+
     <UiDialog v-model:open="updateDialogVisible">
       <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.update.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.update.description') }}</DialogDescription></DialogHeader>
         <FieldGroup><Field><FieldLabel for="update-archive">{{ $t('players.fields.archive') }}</FieldLabel><UiSelect v-model="updateForm.archive_name" @update:model-value="onArchiveChange"><SelectTrigger id="update-archive"><SelectValue :placeholder="$t('players.dialogs.update.archivePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
@@ -248,7 +254,7 @@
     </UiDialog>
 
     <UiDialog v-model:open="characterDialogVisible">
-      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.character.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.character.description', { player: currentPlayer?.player_name || '', character: currentPlayer ? getCharacterName(currentPlayer.prefab) : '' }) }}</DialogDescription></DialogHeader>
+      <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.character.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.character.description', { player: currentPlayer?.player_name || '', character: currentPlayer ? getCharacterName(currentPlayer) : '' }) }}</DialogDescription></DialogHeader>
         <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ $t('players.dialogs.character.warningTitle') }}</AlertTitle><AlertDescription>{{ $t('players.dialogs.character.warningDescription') }}</AlertDescription></Alert>
         <DialogFooter><UiButton variant="outline" @click="characterDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmChangeCharacter" :disabled="changingCharacter"><Spinner v-if="changingCharacter" data-icon="inline-start" />{{ $t('players.actions.confirmReselect') }}</UiButton></DialogFooter>
       </DialogContent>
@@ -269,7 +275,10 @@
 </template>
 
 <script>
-import { Clock3, Crown, Download, ExternalLink, Globe2, MoreHorizontal, RefreshCw, Search, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { readWorkspaceSelection } from '@/lib/workspacePreferences.mjs';
+import { managementScopeTargetId } from '@/lib/managementScope.mjs';
+import { Clock3, Crown, Download, ExternalLink, Globe2, RefreshCw, Search, Settings2, Stethoscope, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { playerApi } from '@/api/playerApi';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -277,7 +286,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -300,19 +308,24 @@ import {
   PLAYER_CHARACTER_IDS,
   playerBanDurationLabel,
   playerCharacterLabel,
+  playerCharacterDisplayLabel,
   playerErrorDetail,
   playerNetworkLabel,
+  playerPresenceMeta,
   playerStatusMeta,
   playerWorldStateLabel
 } from '@/i18n/playerMessages.js';
-import { promptText } from '@/lib/feedback';
-import SortButton from './SortButton.vue';
-import RuntimeStatusPanel from '@/components/runtime/RuntimeStatusPanel.vue';
+import { confirmAction } from '@/lib/feedback';
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue';
+import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue';
+import PlayerRecordTime from '@/components/players/PlayerRecordTime.vue';
+import { playerHistoryTime, playerListPresenceTime } from '@/lib/playerHistoryPresentation.mjs';
+import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 
 export default {
   name: 'PlayerList',
   components: {
+    RoomScopeSelect,
     Alert,
     AlertAction,
     AlertDescription,
@@ -326,6 +339,8 @@ export default {
     CardHeader,
     CardTitle,
     CharacterAvatar,
+    PlayerActionMenu,
+    PlayerRecordTime,
     Clock3,
     Crown,
     DialogContent,
@@ -334,12 +349,6 @@ export default {
     DialogHeader,
     DialogTitle,
     Download,
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
     Empty,
     EmptyDescription,
     EmptyHeader,
@@ -356,7 +365,6 @@ export default {
     InputGroup,
     InputGroupAddon,
     InputGroupInput,
-    MoreHorizontal,
     NativeSelect,
     NativeSelectOption,
     Pagination,
@@ -366,9 +374,10 @@ export default {
     PaginationNext,
     PaginationPrevious,
     RefreshCw,
-    RuntimeStatusPanel,
     ScrollArea,
     Search,
+    Settings2,
+    Stethoscope,
     SelectContent,
     SelectGroup,
     SelectItem,
@@ -380,7 +389,6 @@ export default {
     SheetDescription,
     SheetHeader,
     SheetTitle,
-    SortButton,
     Spinner,
     TableBody,
     TableCell,
@@ -409,6 +417,7 @@ export default {
       playerList: [],
       loading: false,
       loadError: null,
+      collectionError: null,
       partialFailures: [],
 
       // 分页参数
@@ -420,7 +429,7 @@ export default {
 
       // 筛选表单
       filterForm: {
-        archive_name: this.$route.query.archive || '',
+        archive_name: this.$route.query.roomId ?? this.$route.query.archive ?? readWorkspaceSelection(managementScopeTargetId()).roomId,
         status: '',
         prefab: '',
         keyword: this.$route.query.playerId || ''
@@ -428,12 +437,6 @@ export default {
 
       // 存档选项
       archiveOptions: [],
-
-      // 排序参数
-      sortParams: {
-        prop: 'last_seen',
-        order: 'descending'
-      },
 
       // 玩家详情
       playerDetailVisible: false,
@@ -445,11 +448,9 @@ export default {
       banDialogVisible: false,
       banForm: {
         reason: '',
-        duration: '1d',
-        confirmation: ''
+        duration: '1d'
       },
       banFormError: '',
-      banConfirmationError: '',
       banning: false,
 
       // 会话列表
@@ -462,6 +463,16 @@ export default {
       worldOptions: [],
       updating: false,
       refreshing: false,
+      refreshSettingsDialogVisible: false,
+      refreshSettingsLoading: false,
+      refreshSettingsSaving: false,
+      refreshSettingsLoadError: null,
+      refreshSettingsTask: null,
+      refreshSettingsForm: {
+        room_id: '',
+        enabled: true,
+        interval_seconds: '60'
+      },
 
       // 无敌模式
       godModeDialogVisible: false,
@@ -497,13 +508,14 @@ export default {
       sessionSelectDialogVisible: false,
       playerRequestSequence: 0,
       archiveRequestSequence: 0,
-      sessionRequestSequence: 0
+      sessionRequestSequence: 0,
+      refreshSettingsRequestSequence: 0
     };
   },
-  created() {
+  async created() {
     this.fetchArchives();
     this.fetchSessions();
-    this.fetchPlayerList();
+    await this.loadInitialPlayerData();
   },
 
   computed: {
@@ -521,16 +533,23 @@ export default {
       }));
     },
 
+    refreshIntervalOptions() {
+      return [30, 60, 120, 300, 600].map(value => ({
+        value: String(value),
+        label: this.$t(`players.refreshIntervals.seconds${value}`)
+      }));
+    },
+
     loadErrorText() {
       return this.loadError ? playerErrorDetail(this.loadError, this.$t) : '';
     },
 
-    banFormErrorText() {
-      return this.banFormError ? this.$t(`players.validation.${this.banFormError}`) : '';
+    collectionErrorText() {
+      return this.collectionError ? playerErrorDetail(this.collectionError, this.$t) : '';
     },
 
-    banConfirmationErrorText() {
-      return this.banConfirmationError ? this.$t(`players.validation.${this.banConfirmationError}`) : '';
+    banFormErrorText() {
+      return this.banFormError ? this.$t(`players.validation.${this.banFormError}`) : '';
     },
 
     // 获取默认的会话名称（Forest1）
@@ -574,10 +593,24 @@ export default {
     }
   },
   methods: {
+    selectRoomFilter() {
+      const query = { ...this.$route.query };
+      if ('roomId' in query || 'archive' in query) {
+        delete query.roomId;
+        delete query.playerId;
+        delete query.worldId;
+        return this.$router.replace({ query: { ...query, archive: this.filterForm.archive_name } });
+      }
+      this.handleFilter();
+    },
     isPlayerOnline,
 
     getPlayerStatusMeta(status) {
       return playerStatusMeta(status, this.$t);
+    },
+
+    getPlayerPresenceMeta(player) {
+      return playerPresenceMeta(player, this.$t);
     },
 
     getWorldState(status) {
@@ -586,6 +619,12 @@ export default {
 
     errorDetail(error) {
       return playerErrorDetail(error, this.$t);
+    },
+
+    openRoomDiagnostics() {
+      const roomId = this.filterForm.archive_name || this.partialFailures[0]?.room_id || '';
+      const query = roomId ? { roomId } : {};
+      this.$router.push({ path: '/rooms/diagnostics', query });
     },
 
     scheduleErrorText(key) {
@@ -606,6 +645,23 @@ export default {
       actions[command.action]?.call(this, command.player);
     },
     // 获取玩家列表
+    async loadInitialPlayerData() {
+      this.refreshing = true;
+      let refreshFailures = [];
+      try {
+        const response = await playerApi.updatePlayerInfo({ archive_name: this.filterForm.archive_name || '' });
+        refreshFailures = response?.data?.failures || [];
+      } catch (error) {
+        this.collectionError = error;
+      } finally {
+        this.refreshing = false;
+      }
+      await this.fetchPlayerList();
+      if (refreshFailures.length > 0) {
+        this.partialFailures = [...this.partialFailures, ...refreshFailures];
+      }
+    },
+
     async fetchPlayerList() {
       const requestSequence = ++this.playerRequestSequence;
       this.loading = true;
@@ -616,12 +672,6 @@ export default {
         page_size: this.pagination.page_size,
         ...this.filterForm
       };
-
-      // 添加排序参数
-      if (this.sortParams.prop && this.sortParams.order) {
-        params.sort_by = this.sortParams.prop;
-        params.sort_order = this.sortParams.order === 'ascending' ? 'asc' : 'desc';
-      }
 
       try {
         const response = await playerApi.getAllPlayers(params);
@@ -642,6 +692,21 @@ export default {
       }
     },
 
+    async refreshPlayerAfterAction(player, event) {
+      if (event?.roomId !== player?.room_id || event?.playerId !== player?.user_id) return;
+      try {
+        if (isPlayerOnline(player.status) && !['kick', 'ban', 'unban'].includes(event.action)) {
+          await playerApi.updatePlayerInfo({ archive_name: player.archive_name, world_ids: [player.world_id] });
+        }
+        await this.fetchPlayerList();
+        if (this.currentPlayer?.user_id === player.user_id && this.currentPlayer?.room_id === player.room_id) {
+          this.currentPlayer = this.playerList.find(item => item.user_id === player.user_id && item.room_id === player.room_id) || this.currentPlayer;
+        }
+      } catch (error) {
+        toast.warning(this.$t('players.quick.refreshFailed', { error: playerErrorDetail(error, this.$t) }));
+      }
+    },
+
     // 刷新数据
     refreshData() {
       return this.fetchPlayerList();
@@ -650,10 +715,12 @@ export default {
     async refreshPlayerData() {
       if (this.refreshing) return;
       this.refreshing = true;
+      this.collectionError = null;
       try {
         const response = await playerApi.updatePlayerInfo({ archive_name: this.filterForm.archive_name || '' });
         const reloaded = await this.fetchPlayerList();
         const failures = response?.data?.failures || [];
+        if (failures.length > 0) this.partialFailures = [...this.partialFailures, ...failures];
         if (!reloaded) {
           toast.warning(this.$t('players.feedback.updateSucceededReloadFailed'));
         } else if (failures.length > 0) {
@@ -663,9 +730,64 @@ export default {
         }
       } catch (error) {
         console.error('刷新玩家列表失败:', error);
+        this.collectionError = error;
         toast.error(this.$t('players.feedback.updateFailed', { error: this.errorDetail(error) }));
       } finally {
         this.refreshing = false;
+      }
+    },
+
+    async showPlayerRefreshSettings() {
+      if (this.archiveOptions.length === 0) await this.fetchArchives();
+      const roomId = this.filterForm.archive_name || this.archiveOptions[0]?.value || '';
+      if (!roomId) {
+        toast.warning(this.$t('players.feedback.refreshSettingsNoRooms'));
+        return;
+      }
+      this.refreshSettingsDialogVisible = true;
+      this.refreshSettingsForm.room_id = roomId;
+      await this.loadPlayerRefreshSettings(roomId);
+    },
+
+    async loadPlayerRefreshSettings(roomId) {
+      if (!roomId) return;
+      const requestSequence = ++this.refreshSettingsRequestSequence;
+      this.refreshSettingsLoading = true;
+      this.refreshSettingsLoadError = null;
+      this.refreshSettingsTask = null;
+      try {
+        const response = await playerApi.getPlayerRefreshSettings(roomId);
+        if (requestSequence !== this.refreshSettingsRequestSequence) return;
+        this.refreshSettingsTask = response.data.task;
+        this.refreshSettingsForm = {
+          room_id: response.data.room_id,
+          enabled: response.data.enabled,
+          interval_seconds: String(response.data.interval_seconds || 60)
+        };
+      } catch (error) {
+        if (requestSequence !== this.refreshSettingsRequestSequence) return;
+        this.refreshSettingsLoadError = error;
+        toast.error(this.$t('players.feedback.refreshSettingsLoadFailed', { error: this.errorDetail(error) }));
+      } finally {
+        if (requestSequence === this.refreshSettingsRequestSequence) this.refreshSettingsLoading = false;
+      }
+    },
+
+    async savePlayerRefreshSettings() {
+      if (!this.refreshSettingsTask || this.refreshSettingsSaving) return;
+      this.refreshSettingsSaving = true;
+      try {
+        const response = await playerApi.updatePlayerRefreshSettings({
+          ...this.refreshSettingsForm,
+          task: this.refreshSettingsTask
+        });
+        this.refreshSettingsTask = response.data.task;
+        toast.success(this.$t('players.feedback.refreshSettingsSaved'));
+        this.refreshSettingsDialogVisible = false;
+      } catch (error) {
+        toast.error(this.$t('players.feedback.refreshSettingsSaveFailed', { error: this.errorDetail(error) }));
+      } finally {
+        this.refreshSettingsSaving = false;
       }
     },
 
@@ -684,15 +806,6 @@ export default {
         keyword: ''
       };
       this.handleFilter();
-    },
-
-    toggleSort(field) {
-      const isCurrentField = this.sortParams.prop === field;
-      this.sortParams.prop = field;
-      this.sortParams.order = isCurrentField && this.sortParams.order === 'ascending'
-        ? 'descending'
-        : 'ascending';
-      this.fetchPlayerList();
     },
 
     // 处理页码变化
@@ -742,17 +855,16 @@ export default {
     },
 
     async confirmPlayerAction(player, title, description) {
-      const result = await promptText(
+      await confirmAction(
         this.$t('players.confirmations.appendKuId', { description, id: player.user_id }),
         title,
         {
           confirmButtonText: this.$t('players.actions.confirmAction'),
           cancelButtonText: this.$t('players.actions.cancel'),
-          inputPlaceholder: player.user_id,
-          inputValidator: value => value === player.user_id || this.$t('players.validation.kuIdMismatch')
+          type: 'warning'
         }
       );
-      return result.value;
+      return player.user_id;
     },
 
     // 踢出玩家
@@ -787,11 +899,9 @@ export default {
       this.currentPlayer = player;
       this.banForm = {
         reason: '',
-        duration: '1d',
-        confirmation: ''
+        duration: '1d'
       };
       this.banFormError = '';
-      this.banConfirmationError = '';
       this.banDialogVisible = true;
     },
 
@@ -799,17 +909,14 @@ export default {
     confirmBanPlayer() {
       const reason = this.banForm.reason.trim();
       this.banFormError = reason ? '' : 'banReasonRequired';
-      this.banConfirmationError = this.banForm.confirmation === this.currentPlayer.archive_name
-        ? ''
-        : 'banRoomMismatch';
-      if (this.banFormError || this.banConfirmationError) return;
+      if (this.banFormError) return;
 
       this.banning = true;
 
       const banData = {
         reason,
         duration: this.banForm.duration,
-        confirmation: this.banForm.confirmation
+        confirmation: this.currentPlayer.archive_name
       };
 
       playerApi.banPlayer(this.currentPlayer, banData)
@@ -937,9 +1044,7 @@ export default {
     exportPlayerData() {
       const loadingId = toast.loading(this.$t('players.feedback.exportLoading'));
       const params = {
-        ...this.filterForm,
-        sort_by: this.sortParams.prop,
-        sort_order: this.sortParams.order === 'ascending' ? 'asc' : 'desc'
+        ...this.filterForm
       };
       playerApi.exportPlayers(params)
         .then(players => {
@@ -987,9 +1092,23 @@ export default {
       return formatPlayerDate(dateString, this.$i18n.locale);
     },
 
+    getPlayerStatusNote(player, compact = true) {
+      const { key, time } = playerListPresenceTime(player);
+      if (!time) return '';
+      const value = compact ? formatSystemDateTime(time, {
+        locale: this.$i18n.locale,
+        month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+      }) : this.formatDate(time);
+      const note = `${this.$t(`players.fields.${key}`)} · ${value}`;
+      if (!compact && key !== 'lastRefreshed' && playerHistoryTime(player.last_refreshed_at)) {
+        return `${note}\n${this.$t('players.list.sampledAt', { time: this.formatDate(player.last_refreshed_at) })}`;
+      }
+      return note;
+    },
+
     // 获取角色名称
-    getCharacterName(prefab) {
-      return playerCharacterLabel(prefab, this.$t);
+    getCharacterName(player) {
+      return playerCharacterDisplayLabel(player, this.$t);
     },
 
     // 获取网络质量文本
@@ -1259,20 +1378,9 @@ export default {
 
     // 复活玩家
     async resurrectPlayer(player) {
-      let confirmation;
-      try {
-        confirmation = await this.confirmPlayerAction(
-          player,
-          this.$t('players.confirmations.resurrectTitle'),
-          this.$t('players.confirmations.resurrectDescription', { player: player.player_name })
-        );
-      } catch {
-        return;
-      }
-
       const loadingId = toast.loading(this.$t('players.feedback.actionLoading'));
       try {
-        const response = await playerApi.resurrectPlayer(player, null, confirmation);
+        const response = await playerApi.resurrectPlayer(player, null, player.user_id);
         if (!response || response.status !== 200) throw new Error(response?.msg || this.$t('players.feedback.commandFailed'));
         toast.success(this.$t('players.feedback.resurrectSucceeded', { player: player.player_name }));
         this.refreshData();
@@ -1427,21 +1535,29 @@ export default {
   color: var(--muted-foreground);
 }
 
-.table-wrap {
-  width: 100%;
-  overflow-x: auto;
+.refresh-settings-loading {
+  min-height: 96px;
 }
 
-.table-wrap :deep(table) {
-  min-width: 1280px;
+.refresh-settings-button {
+  flex: 0 0 36px !important;
+}
+
+.table-wrap {
+  width: 100%;
 }
 
 .action-column {
   position: sticky;
   right: 0;
-  min-width: 108px;
+  width: 1%;
   background: var(--card);
+  box-shadow: inset 1px 0 var(--border);
   text-align: right;
+}
+
+.action-column .row-actions {
+  justify-content: flex-end;
 }
 
 .player-name-cell {
@@ -1457,10 +1573,7 @@ export default {
 }
 
 .mono-cell {
-  max-width: 180px;
-  overflow: hidden;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

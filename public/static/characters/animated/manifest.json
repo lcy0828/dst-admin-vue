@@ -1,0 +1,199 @@
+{
+  "sourceAnimation": "anim/player_idles.zip",
+  "animation": "idle_loop",
+  "facing": 8,
+  "animationSha256": "7465769f57ac6e8e2e549e36050e707766d9394f98ae30dc224305fe5ed437c2",
+  "frameSize": 80,
+  "characters": {
+    "wilson": {
+      "source": "anim/wilson.zip",
+      "build": "wilson",
+      "buildSha256": "f6e67f48a30e9ada36490fefea9d9a557514ca64584e1cb44b72b266d1e97b23",
+      "atlasSha256": "5c909c71adb8fabeaa58fbaa79950cdb0f8a02bdce58419eeb29177c93b57db7",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 39806,
+      "sha256": "053f0d9699e0842d3af6d4621c68a3d874214089bea920b2d48a15ee57032241"
+    },
+    "willow": {
+      "source": "anim/willow.zip",
+      "build": "willow",
+      "buildSha256": "40c6a0d7fb000bc6f5161af5a33f5b37f9cb38871145c75ccc99140bad312c67",
+      "atlasSha256": "e0e1b57fda5961c578e526c3ca769523605f375b45af578304f702b01e8b7862",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 34986,
+      "sha256": "22d953604abb9edffa40d6d2c5bbc0de490605f1e3d126fbb10e80f52a232302"
+    },
+    "wolfgang": {
+      "source": "anim/wolfgang.zip",
+      "build": "wolfgang",
+      "buildSha256": "a86b7b608b3403e223baa0c73ca188da4faa29346b3b77871e9cb9e1635d8a97",
+      "atlasSha256": "176c8e2a90b87fd3fee29e11b472a8394c5429523599e4f0a0af3e8016bdf115",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 37070,
+      "sha256": "72e37cc07c553bf1816426eef6423ba8f2625ceed550b79e18d4056746a520b8"
+    },
+    "wendy": {
+      "source": "anim/wendy.zip",
+      "build": "wendy",
+      "buildSha256": "e64b594f2681deed1b3708d0572354b5ad11289b267c48f0b987b2a02ba5818f",
+      "atlasSha256": "7a1f1081ca273e4b97f503bad59183b621ccb5c58cbe9cdc26db69ea068dcd54",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 51894,
+      "sha256": "5c9a80ca98c3b4071024d9a58d9809b9ce2a5bc8995c4deb04978467e38a8954"
+    },
+    "wx78": {
+      "source": "anim/wx78.zip",
+      "build": "wx78",
+      "buildSha256": "c1fe23a1ffc5c2f44fd5aaa613b866ac976182fb01aca215e6ec681a6e60afd5",
+      "atlasSha256": "89268c93d6df823df0661a09ee4853bdbc77f5e1431dffca12794dbdb1250f08",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 37068,
+      "sha256": "01019805e7ed9624d3c0e1a681d40a2a3444324e527a7fb35d32144b71abd68a"
+    },
+    "wickerbottom": {
+      "source": "anim/wickerbottom.zip",
+      "build": "wickerbottom",
+      "buildSha256": "f6cd1245eef6bf38b75ee14c21e43fa90d0e40c36e746d170b56789fad559029",
+      "atlasSha256": "5cab770284f4c82b2ff6f46de27f510a0dbd686c583ec69551c90f23a92c1bde",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 35716,
+      "sha256": "3cb3dfc6d6c7efcaf27aef8d771b2a0f7f6db06b2a2011dc5f21fa27da25ac17"
+    },
+    "woodie": {
+      "source": "anim/woodie.zip",
+      "build": "woodie",
+      "buildSha256": "a915df191a56126b044192db295338892748cb818b15e1162595d5b87299c999",
+      "atlasSha256": "4830613461d2c733f1e84ed36987624488629ee2a8674bd23cbbfe21cd94ea9f",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 46636,
+      "sha256": "0683fe90b1381ca16ccc7bca75b75f21caa0a567f4709efa362355f4b0d43e7b"
+    },
+    "wes": {
+      "source": "anim/wes.zip",
+      "build": "wes",
+      "buildSha256": "9cfe169052b8558acf7d118d2635e518f72eadff497324146094f3f684b24649",
+      "atlasSha256": "c40fd5b256d0598241167fc3cc40c85f18f4099696a7a64ca0baafca1e04bbe2",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 44358,
+      "sha256": "750e60e178f4084109e5827708b09cba95156953bf801e69cec81b5e7fa3eb3c"
+    },
+    "waxwell": {
+      "source": "anim/waxwell.zip",
+      "build": "waxwell",
+      "buildSha256": "495646ab19af80b87848757a7717584af38db27cb32463c48b104265caebabb6",
+      "atlasSha256": "54767fcbf8667b0a12f2b0a677b22835dc34b093b42d67fafe9fce09e288b632",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 37446,
+      "sha256": "99183f5b43c94d0983b62e9de2dbc491c002d871c332827c307e0022b7d0ee91"
+    },
+    "wathgrithr": {
+      "source": "anim/wathgrithr.zip",
+      "build": "wathgrithr",
+      "buildSha256": "3f3636b61028d7bd42a45da801ea7ab4aa84f35ac40655727384dbf425de5ef5",
+      "atlasSha256": "a177d17404c90fdd186c5a021414b5ce153a0207eb04dbd4a1f6bba94a7fff2a",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 45732,
+      "sha256": "a25ffd818d4337c8c81c83357dade9e418f3787b9a154743de94b07e21e58fb5"
+    },
+    "webber": {
+      "source": "anim/webber.zip",
+      "build": "webber",
+      "buildSha256": "a2ba5d109050839d2c1ea269c45c90bfcdbdc70ed891681243dcbcb895adf48b",
+      "atlasSha256": "c24042c96d5e4c2e6416459e1fb86f008e2ce13c1398d885206e93efb81a86c2",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 38804,
+      "sha256": "fc44dd53471879681da1695793af3b5e4eebbec012166496f7cf97110a5e2eb7"
+    },
+    "winona": {
+      "source": "anim/winona.zip",
+      "build": "winona",
+      "buildSha256": "ccf14de6801710aaad97fb116a4b314318f4d14993861620ec01d7469e81cdeb",
+      "atlasSha256": "71c7b62d719fde62ceb27b078ef6a054d7e29b92115e5a4a4da0e4b0e5d8ffc2",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 34534,
+      "sha256": "5bcbf53665d4145d1be0b8e1017012a1b21965dd1b38c5a45a528899cae83469"
+    },
+    "warly": {
+      "source": "anim/dynamic/warly.zip",
+      "build": "warly",
+      "buildSha256": "f4cefdfe36cbc105b98225bea58d92a8aa6d8eb4f88a4c01b9fc09fd159f090c",
+      "atlasSha256": "ca0634811d401b0f002133906c1b53d264316aa103150793296b0c0c4e435ccc",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 40322,
+      "sha256": "3f2c0b0b05b588056c473d25cf8f56d68d97e8d5cf572caef162383d422d8876"
+    },
+    "walter": {
+      "source": "anim/dynamic/walter.zip",
+      "build": "walter",
+      "buildSha256": "0d289901b07616a2f4d2063f6f685e00ba423822ad8b1681f508fb5b3dd5e40c",
+      "atlasSha256": "429dfec0739b12d254e8f24b472ca942ef010351619e35fd28f44bca7d1efbad",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 40294,
+      "sha256": "09ca2ae89ead4e3d69e2fe6f883acd8b73aff6cd940b4498d8e20dd419a8d723"
+    },
+    "wortox": {
+      "source": "anim/dynamic/wortox.zip",
+      "build": "wortox",
+      "buildSha256": "7964d7e444a6eb3597b7517f0cb242ffcab9e5077fde7c5066c0907dff11fff2",
+      "atlasSha256": "ba01b73fabeffbbbe07db496872dd99fb12145c790ef7ecce6a2fa64a4ec5712",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 38242,
+      "sha256": "fae7bbb04a156f78c8435f7eb29669c5e0f4e305fbee15483bd83818c099597a"
+    },
+    "wormwood": {
+      "source": "anim/dynamic/wormwood.zip",
+      "build": "wormwood",
+      "buildSha256": "a54736debc2148007d975f51681a8ae1804cbed316022ffdc40c5798b7b1569c",
+      "atlasSha256": "38941752c276a9af03d887e74c29d4a4c7ca7c00eae4c879d8e6286be6358580",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 46918,
+      "sha256": "037f2c5f7862ab972586b538c8002d9a1dafdf39576e32a334b582277446fd1d"
+    },
+    "wurt": {
+      "source": "anim/dynamic/wurt.zip",
+      "build": "wurt",
+      "buildSha256": "354e1fb5a70e886918cfcda75991d219b101d176a66d095644bb5bf5c7d65a8d",
+      "atlasSha256": "395f5b183529d9f1638a1aa87281c1cfb866f96cdcafdc09064a1d2106c8511e",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 40806,
+      "sha256": "58898ebb1296aaed2ac128e53ca40e23c4f6994a4b36e98e742bfcb4a62855bf"
+    },
+    "wanda": {
+      "source": "anim/dynamic/wanda.zip",
+      "build": "wanda",
+      "buildSha256": "19eef8169472a0c24f2e19e2fca828fb9a4a70be67cfed030f453b786fda567a",
+      "atlasSha256": "a9a0bdfa4ccb83f36b11cdad6e46e3c475821a4405f364d7ecaa7cb43b885cba",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 41272,
+      "sha256": "93d1e5f5e73a0bc5b312fb301f24675d325ffffd4a23826ec10c7b72458c1408"
+    },
+    "wonkey": {
+      "source": "anim/dynamic/wonkey.zip",
+      "build": "wonkey",
+      "buildSha256": "31f3d02779b35e7eb31027006ee3b3128eb388bfe52995e558c6f390b07df8b6",
+      "atlasSha256": "0f096f646c22a46122b070a090b0711c08d31a8e0d6b8e61836bfde65eae6718",
+      "frameCount": 22,
+      "durationMs": 2200,
+      "bytes": 42994,
+      "sha256": "8f45db595290ac60ea998a6c8184e02c0a3ba0d15467740ed88fe85d43e7f043"
+    }
+  }
+}

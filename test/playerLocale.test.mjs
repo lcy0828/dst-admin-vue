@@ -7,13 +7,20 @@ import {
   formatPlayerDate,
   formatPlayerPercentage,
   formatPlayerTemperature,
+  formatPlayerVital,
+  isKnownPlayerMetric,
   isLivePlayerMetric,
   isPlayerOnline,
+  normalizePlayerGameplayState,
   PLAYER_BAN_DURATION_IDS,
   playerBanDurationLabel,
+  playerAvatarState,
+  playerCharacterDisplayLabel,
   playerCharacterLabel,
   playerErrorDetail,
+  playerGameplayStateLabel,
   playerMessages,
+  playerPresenceMeta,
   playerStatusMeta
 } from '../src/i18n/playerMessages.js'
 
@@ -46,10 +53,44 @@ test('known player status and legacy Chinese values follow the selected locale',
   assert.equal(isPlayerOnline('online'), true)
   assert.equal(isPlayerOnline('在线'), true)
   assert.equal(isPlayerOnline('stale'), false)
-  assert.deepEqual(playerStatusMeta('online', en), { label: 'Online', variant: 'default' })
-  assert.deepEqual(playerStatusMeta('stale', en), { label: 'Last known online', variant: 'outline' })
-  assert.deepEqual(playerStatusMeta('在线', zh), { label: '在线', variant: 'default' })
+  assert.deepEqual(playerStatusMeta('online', en), { label: 'Online', variant: 'success' })
+  assert.deepEqual(playerStatusMeta('stale', en), { label: 'Last known online', variant: 'warning' })
+  assert.deepEqual(playerStatusMeta('在线', zh), { label: '在线', variant: 'success' })
   assert.equal(playerStatusMeta('mod_spectating', en).label, 'mod_spectating')
+  assert.equal(zh('players.list.taskWorld', { world: 'Caves' }), '定时任务默认世界：Caves')
+  assert.equal(en('players.list.taskWorld', { world: 'Caves' }), 'Default scheduled-task world: Caves')
+  assert.equal(zh('players.actions.openDiagnostics'), '房间诊断')
+})
+
+test('gameplay state is distinct from connection state and localized consistently', () => {
+  const zh = translator('zh-CN')
+  const en = translator('en-US')
+
+  assert.equal(normalizePlayerGameplayState('GHOST'), 'ghost')
+  assert.equal(playerGameplayStateLabel('selecting_character', zh), '选择角色')
+  assert.equal(playerGameplayStateLabel('ghost', en), 'Ghost')
+  assert.equal(playerGameplayStateLabel('mod_spectating', zh), '状态未知')
+  assert.deepEqual(playerPresenceMeta({ status: 'online', gameplay_state: 'alive' }, zh), { label: '在线 · 游戏中', variant: 'success' })
+  assert.deepEqual(playerPresenceMeta({ status: 'online', gameplay_state: 'ghost' }, zh), { label: '在线 · 幽灵状态', variant: 'destructive' })
+  assert.deepEqual(playerPresenceMeta({ status: 'online', gameplay_state: 'selecting_character' }, en), { label: 'Online · Selecting character', variant: 'warning' })
+  assert.deepEqual(playerPresenceMeta({ status: 'stale', gameplay_state: 'alive' }, zh), { label: '状态已过期 · 上次游戏中', variant: 'warning' })
+  assert.deepEqual(playerPresenceMeta({ status: 'offline', gameplay_state: 'ghost' }, zh), { label: '离线', variant: 'outline' })
+})
+
+test('avatar transitions require current online gameplay and override retained old characters', () => {
+  const selecting = { status: 'online', gameplay_state: 'selecting_character', prefab: 'wendy' }
+  assert.equal(playerAvatarState(selecting), 'selecting_character')
+  assert.equal(playerCharacterDisplayLabel(selecting, translator('zh-CN')), '选择角色')
+  assert.equal(playerCharacterDisplayLabel({ ...selecting, gameplay_state: 'loading' }, translator('en-US')), 'Entering world')
+  for (const status of ['offline', 'stale']) {
+    assert.equal(playerAvatarState({ ...selecting, status }), 'static')
+    assert.equal(playerCharacterDisplayLabel({ ...selecting, status }, translator('en-US')), 'Wendy')
+  }
+  assert.equal(playerAvatarState({ ...selecting, field_states: { gameplayState: { status: 'stale' } } }), 'static')
+  assert.equal(playerAvatarState({ status: 'offline', prefab: '' }), 'static')
+  assert.equal(playerAvatarState({ status: 'online', prefab: '', gameplay_state: 'unknown' }), 'static')
+  assert.equal(playerAvatarState({ ...selecting, gameplay_state: 'alive' }), 'active')
+  assert.equal(playerAvatarState({ ...selecting, history_only: true }), 'static')
 })
 
 test('live survival metrics reject cached values and format bounded readings', () => {
@@ -60,8 +101,15 @@ test('live survival metrics reject cached values and format bounded readings', (
   assert.equal(isLivePlayerMetric(staleMetric, 'healthPercent', 75), false)
   assert.equal(isLivePlayerMetric({ status: 'offline' }, 'healthPercent', 75), false)
   assert.equal(isLivePlayerMetric({ status: 'online' }, 'healthPercent', null), false)
+  assert.equal(isKnownPlayerMetric(online, 'healthPercent', 0), true)
+  assert.equal(isKnownPlayerMetric(staleMetric, 'healthPercent', 75), true)
+  assert.equal(isKnownPlayerMetric({ status: 'offline' }, 'healthPercent', 75), true)
+  assert.equal(isKnownPlayerMetric({ status: 'offline' }, 'healthPercent', null), false)
+  assert.equal(isKnownPlayerMetric({ status: 'offline', field_states: { healthPercent: { status: 'unavailable' } } }, 'healthPercent', 75), false)
   assert.equal(formatPlayerPercentage(75.6), '76%')
   assert.equal(formatPlayerPercentage(105), '100%')
+  assert.equal(formatPlayerVital(53.75, 150, 35.8, 'zh-CN'), '53.8 / 150')
+  assert.equal(formatPlayerVital(null, 150, 35.8, 'zh-CN'), '36%')
   assert.equal(formatPlayerTemperature(23.45, 'zh-CN'), '23.5 °C')
 })
 
@@ -104,6 +152,14 @@ test('stable errors are localized while custom technical detail stays untouched'
   const en = translator('en-US')
 
   assert.equal(playerErrorDetail({ response: { data: { code: 'WORLD_NOT_RUNNING', message: '世界未运行' } } }, en), 'The world is not running')
+  assert.equal(playerErrorDetail({ code: 'AGENT_UPGRADE_REQUIRED', message: '升级 Agent' }, en), 'The target Agent is outdated. Upgrade the Agent and try again.')
+  assert.equal(playerErrorDetail({ code: 'AGENT_UNAVAILABLE', message: 'Agent 不可用' }, en), 'The target Agent is offline or unavailable.')
+  assert.equal(playerErrorDetail({ code: 'ROOM_UNAVAILABLE', message: '房间不可用' }, en), 'This room is unavailable. Check its runtime node and topology.')
+  assert.equal(playerErrorDetail({ code: 'PLAYER_TARGET_UNAVAILABLE', message: '目标不可用' }, en), 'The player action target is currently unavailable.')
+  assert.equal(playerErrorDetail({ code: 'RUNTIME_NOT_INSTALLED', message: '未安装 Runtime' }, en), 'The player collection Runtime is not installed for the target world.')
+  assert.equal(playerErrorDetail({ code: 'RUNTIME_UNAVAILABLE', message: 'Runtime 不可用' }, en), 'The target world Runtime is currently unavailable.')
+  assert.equal(playerErrorDetail({ code: 'PLAYER_SNAPSHOT_UNAVAILABLE', message: '快照不可用' }, en), 'The target world has not produced a usable player snapshot.')
+  assert.equal(playerErrorDetail({ code: 'PLAYER_COMMAND_NOT_DISPATCHED', message: '命令未发送' }, en), 'The player command could not be sent to the target runtime node.')
   assert.equal(playerErrorDetail({ code: 'CUSTOM_MOD_ERROR', message: 'Lua bridge exited with code 2' }, zh), 'Lua bridge exited with code 2')
 })
 
@@ -128,6 +184,7 @@ test('player pages delegate visible copy to i18n and retain stable API values', 
   assert.match(playerList, /name: `player_refresh_\$\{sessionName\}`/)
   assert.match(playerList, /duration: '1d'/)
   assert.match(playerList, /isPlayerOnline\(player\.status\)/)
+  assert.match(playerList, /getPlayerPresenceMeta\(player\)/)
   assert.match(banList, /formatBanExpiry\(value, locale\.value, t\)/)
   assert.doesNotMatch(playerTemplate, /[\u3400-\u9fff]/)
   assert.doesNotMatch(banTemplate, /[\u3400-\u9fff]/)
