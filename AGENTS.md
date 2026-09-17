@@ -9,3 +9,12 @@ Multi All-in-One management, one Controller with Agents, and Rooms split across
 machines must remain available as progressive extensions of the same Room and
 Runtime UI. Controller-only settings must be labeled as such and must not look
 like they change with the selected Runtime target.
+
+## Public documentation and local data
+
+Keep published docs focused on installation, supported behavior, operation, and
+compatibility. Put development diaries, discussions, machine-specific service
+notes, and private research in ignored `.local-docs/`. Never commit real configs,
+credentials, player records, saves, or build artifacts. Preserve existing local
+data when removing it from Git tracking. Deployment documentation belongs in the
+backend repository; its packages include the official frontend.
