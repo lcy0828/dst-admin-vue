@@ -9,6 +9,8 @@ DST Admin 的 Vue 3 前端。部署请查看 [DST Admin 主仓库](https://githu
 使用 Node.js 22+，后端默认地址为 `http://127.0.0.1:8000`。
 
 ```bash
+git clone --branch master https://github.com/lcy0828/dst-admin-vue.git dst-admin-vue-v3
+cd dst-admin-vue-v3
 npm ci
 npm run dev
 ```
