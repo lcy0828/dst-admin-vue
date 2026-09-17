@@ -28,6 +28,7 @@ export const V2_NAVIGATION = [
         icon: ServerCog,
         children: [
           { labelKey: 'navigation.commandSettings', to: '/servers/commands' },
+          { labelKey: 'navigation.gameTools', to: '/servers/tools' },
           { labelKey: 'navigation.gameReleases', to: '/servers/releases' }
         ]
       },
@@ -78,8 +79,7 @@ export const V2_NAVIGATION = [
         icon: FileSearch,
         children: [
           { labelKey: 'navigation.logQuery', to: '/logs/query' },
-          { labelKey: 'navigation.logRules', to: '/logs/rules' },
-          { labelKey: 'navigation.logParser', to: '/logs/parser' }
+          { labelKey: 'navigation.logRules', to: '/logs/rules' }
         ]
       },
       { labelKey: 'navigation.announcements', to: '/announcements', icon: Megaphone },

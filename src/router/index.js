@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import MainLayoutV2 from '../layouts/MainLayoutV2.vue'
+
+const MainLayoutV2 = () => import('../layouts/MainLayoutV2.vue')
 
 // 公共路由
 export const constantRoutes = [
@@ -80,10 +81,22 @@ export const constantRoutes = [
         meta: { title: '命令设置', titleKey: 'navigation.commandSettings', icon: 'terminal' }
       },
       {
+        path: 'tools',
+        component: () => import('@/views/servers/EntityTools.vue'),
+        name: 'GameTools',
+        meta: { title: '游戏工具', titleKey: 'navigation.gameTools', icon: 'package-plus' }
+      },
+      {
+        path: 'entities',
+        redirect: to => ({ path: '/servers/tools', query: to.query, hash: to.hash }),
+        name: 'EntityToolsLegacy',
+        meta: { hidden: true }
+      },
+      {
         path: 'releases',
         component: () => import('@/views/servers/GameReleases.vue'),
         name: 'GameReleases',
-        meta: { title: '游戏服务端更新', titleKey: 'navigation.gameReleases', icon: 'package' }
+        meta: { title: '游戏服务端管理', titleKey: 'navigation.gameReleases', icon: 'package' }
       }
     ]
   },
@@ -113,9 +126,9 @@ export const constantRoutes = [
       },
       {
         path: 'parser',
-        component: () => import('@/views/logs/LogParser.vue'),
-        name: 'LogParser',
-        meta: { title: '运行中日志', titleKey: 'navigation.logParser', icon: 'view' }
+        redirect: to => ({ path: '/rooms/diagnostics', query: to.query, hash: to.hash }),
+        name: 'RunningLogsLegacy',
+        meta: { hidden: true }
       }
     ]
   },
@@ -142,7 +155,7 @@ export const constantRoutes = [
         path: 'topology',
         component: () => import('@/views/rooms/RoomTopology.vue'),
         name: 'RoomTopology',
-        meta: { title: '运行拓扑', titleKey: 'navigation.roomTopology', icon: 'connection' }
+        meta: { title: '世界运行位置', titleKey: 'navigation.roomTopology', icon: 'connection' }
       },
       {
         path: 'diagnostics',
@@ -208,7 +221,7 @@ export const constantRoutes = [
         path: 'bans',
         component: () => import('@/views/players/BanList.vue'),
         name: 'BanList',
-        meta: { title: '封禁管理', titleKey: 'navigation.bans', icon: 'shield-off' }
+        meta: { title: '封禁记录', titleKey: 'navigation.bans', icon: 'shield-off' }
       }
     ]
   },

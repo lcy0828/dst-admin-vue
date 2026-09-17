@@ -1,9 +1,12 @@
+import { gameInstallationMessages } from './gameInstallationMessages.js'
+import { luajitInstallerMessages } from './luajitInstallerMessages.js'
 import { agentMessages } from './agentMessages.js'
 import { announcementMessages } from './announcementMessages.js'
 import { backupMessages } from './backupMessages.js'
 import { capacityRiskMessages } from './capacityRiskMessages.js'
 import { commandMessages } from './commandMessages.js'
 import { distributedMessages } from './distributedMessages.js'
+import { entityMessages } from './entityMessages.js'
 import { corePageMessages } from './corePages.js'
 import { cronGroupMessages } from './cronGroupMessages.js'
 import { cronLogMessages } from './cronLogMessages.js'
@@ -19,7 +22,9 @@ import { systemSettingsMessages } from './systemSettingsMessages.js'
 import { topologyMessages } from './topologyMessages.js'
 import { roomsMessages } from './roomsMessages.js'
 import { runtimeMessages } from './runtimeMessages.js'
+import { runtimeModeMessages } from './runtimeModeMessages.js'
 import { recoveryMessages } from './recoveryMessages.js'
+import { roomTopologyMessages } from './roomTopologyMessages.js'
 import { sharedUiMessages } from './sharedUiMessages.js'
 import { worldMapsMessages } from './worldMapsMessages.js'
 import { worldStateMessages } from './worldStateMessages.js'
@@ -28,11 +33,14 @@ import { worldsMessages } from './worldsMessages.js'
 export const messages = {
   'zh-CN': {
     ...agentMessages['zh-CN'],
+    ...luajitInstallerMessages['zh-CN'],
+    ...gameInstallationMessages['zh-CN'],
     ...announcementMessages['zh-CN'],
     ...backupMessages['zh-CN'],
     ...capacityRiskMessages['zh-CN'],
     ...commandMessages['zh-CN'],
     ...distributedMessages['zh-CN'],
+    ...entityMessages['zh-CN'],
     ...corePageMessages['zh-CN'],
     ...cronGroupMessages['zh-CN'],
     ...cronLogMessages['zh-CN'],
@@ -47,7 +55,9 @@ export const messages = {
     ...topologyMessages['zh-CN'],
     ...roomsMessages['zh-CN'],
     ...runtimeMessages['zh-CN'],
+    ...runtimeModeMessages['zh-CN'],
     ...recoveryMessages['zh-CN'],
+    ...roomTopologyMessages['zh-CN'],
     ...sharedUiMessages['zh-CN'],
     ...worldMapsMessages['zh-CN'],
     ...worldStateMessages['zh-CN'],
@@ -158,10 +168,36 @@ export const messages = {
         localAvailable: '本机 · 可用',
         localPending: '本机 · 待检查',
         remoteUnconfigured: '远程 · 未配置',
+        remotePendingOnline: '远程 · 已连接 · 待配置',
         remoteOnline: '远程 · 在线',
         remoteOffline: '远程 · 离线',
+        pendingCount: '{count} 台待配置',
+        pendingDescription: 'Agent 已连接，但运行环境尚未就绪。打开机器管理完成配置。',
         loadFailed: '获取管理目标失败',
-        loadFailedDetail: '获取管理目标失败：{error}'
+        loadFailedDetail: '获取管理目标失败：{error}',
+        scopeTitle: '管理范围',
+        scopeDescription: '切换集中视角或聚焦一台机器；房间页面仍保留跨机器世界关系。',
+        currentScope: '当前管理范围：{name}',
+        allTargets: '全部机器',
+        allTargetsDescription: '集中查看所有已纳管机器和世界',
+        activityCounts: '运行中：{worlds} 个世界 · {rooms} 个房间',
+        activityPartial: '已确认：{worlds} 个世界 · {rooms} 个房间，部分机器未知',
+        activityLoading: '正在读取运行数量…',
+        activityUnknown: '运行数量未知',
+        controllerMetrics: '控制机',
+        current: '当前',
+        searchTargets: '搜索机器名称或状态',
+        noTargetMatches: '没有匹配的机器',
+        noTargetMatchesDescription: '更换关键词，或前往机器管理检查 Agent 连接。',
+        manageTargets: '机器管理',
+        roomScopeAll: '房间视图显示全部机器上的完整世界拓扑',
+        roomScopeTarget: '已聚焦 {name}；房间视图仍保留完整的跨机器世界拓扑',
+        roomScopeTopology: '查看运行位置',
+        states: {
+          online: '在线',
+          offline: '离线',
+          setupRequired: '待配置'
+        }
       }
     },
     navigation: {
@@ -180,7 +216,9 @@ export const messages = {
       serverWorkspace: '房间控制',
       serverList: '服务器列表',
       commandSettings: '命令设置',
-      gameReleases: '游戏服务端更新',
+      gameTools: '游戏工具',
+      entityTools: '实体工具',
+      gameReleases: '游戏服务端管理',
       logs: '日志管理器',
       logQuery: '日志查询',
       logRules: '规则管理',
@@ -188,8 +226,8 @@ export const messages = {
       rooms: '房间',
       roomList: '房间管理',
       roomSettings: '房间设置',
-      roomTopology: '运行拓扑',
-      roomDiagnostics: '集中诊断',
+      roomTopology: '部署总览',
+      roomDiagnostics: '房间诊断',
       specialLists: '特殊名单',
       serverToken: '服务器令牌',
       agents: '机器与连接',
@@ -198,7 +236,7 @@ export const messages = {
       agentSecurity: 'Agent 接入',
       players: '玩家管理',
       playerList: '玩家列表',
-      bans: '封禁管理',
+      bans: '封禁记录',
       schedules: '定时任务',
       taskList: '任务列表',
       createTask: '创建任务',
@@ -226,7 +264,7 @@ export const messages = {
       worldSettings: '世界设置',
       worldDetails: '世界详情',
       worldState: '世界状态',
-      worldMaps: '地图与 Session'
+      worldMaps: '世界地图'
     },
     settings: {
       language: {
@@ -527,11 +565,14 @@ export const messages = {
   },
   'en-US': {
     ...agentMessages['en-US'],
+    ...luajitInstallerMessages['en-US'],
+    ...gameInstallationMessages['en-US'],
     ...announcementMessages['en-US'],
     ...backupMessages['en-US'],
     ...capacityRiskMessages['en-US'],
     ...commandMessages['en-US'],
     ...distributedMessages['en-US'],
+    ...entityMessages['en-US'],
     ...corePageMessages['en-US'],
     ...cronGroupMessages['en-US'],
     ...cronLogMessages['en-US'],
@@ -546,7 +587,9 @@ export const messages = {
     ...topologyMessages['en-US'],
     ...roomsMessages['en-US'],
     ...runtimeMessages['en-US'],
+    ...runtimeModeMessages['en-US'],
     ...recoveryMessages['en-US'],
+    ...roomTopologyMessages['en-US'],
     ...sharedUiMessages['en-US'],
     ...worldMapsMessages['en-US'],
     ...worldStateMessages['en-US'],
@@ -657,10 +700,36 @@ export const messages = {
         localAvailable: 'Local · Available',
         localPending: 'Local · Pending check',
         remoteUnconfigured: 'Remote · Not configured',
+        remotePendingOnline: 'Remote · Connected · Setup required',
         remoteOnline: 'Remote · Online',
         remoteOffline: 'Remote · Offline',
+        pendingCount: '{count} need setup',
+        pendingDescription: 'Agents are connected, but their runtimes are not ready. Open machine management to finish setup.',
         loadFailed: 'Failed to load management targets',
-        loadFailedDetail: 'Failed to load management targets: {error}'
+        loadFailedDetail: 'Failed to load management targets: {error}',
+        scopeTitle: 'Management scope',
+        scopeDescription: 'Switch between the fleet and one machine. Room pages keep cross-machine world relationships intact.',
+        currentScope: 'Current management scope: {name}',
+        allTargets: 'All machines',
+        allTargetsDescription: 'View every managed machine and world together',
+        activityCounts: 'Running: {worlds} worlds · {rooms} rooms',
+        activityPartial: 'Confirmed: {worlds} worlds · {rooms} rooms; some machines unknown',
+        activityLoading: 'Loading running counts…',
+        activityUnknown: 'Running counts unavailable',
+        controllerMetrics: 'Controller',
+        current: 'Current',
+        searchTargets: 'Search machines or status',
+        noTargetMatches: 'No matching machine',
+        noTargetMatchesDescription: 'Try another search or check Agent connections in machine management.',
+        manageTargets: 'Machine management',
+        roomScopeAll: 'Room views show the complete world topology across all machines',
+        roomScopeTarget: 'Focused on {name}; room views still preserve the complete cross-machine world topology',
+        roomScopeTopology: 'View placement',
+        states: {
+          online: 'Online',
+          offline: 'Offline',
+          setupRequired: 'Setup required'
+        }
       }
     },
     navigation: {
@@ -679,7 +748,9 @@ export const messages = {
       serverWorkspace: 'Room control',
       serverList: 'Server list',
       commandSettings: 'Command settings',
-      gameReleases: 'Game server updates',
+      gameTools: 'Game tools',
+      entityTools: 'Entity tools',
+      gameReleases: 'Game server management',
       logs: 'Logs',
       logQuery: 'Log search',
       logRules: 'Log rules',
@@ -687,8 +758,8 @@ export const messages = {
       rooms: 'Rooms',
       roomList: 'Room management',
       roomSettings: 'Room settings',
-      roomTopology: 'Runtime topology',
-      roomDiagnostics: 'Centralized diagnostics',
+      roomTopology: 'Deployment overview',
+      roomDiagnostics: 'Room diagnostics',
       specialLists: 'Access lists',
       serverToken: 'Cluster token',
       agents: 'Machines and connections',
@@ -697,7 +768,7 @@ export const messages = {
       agentSecurity: 'Agent access',
       players: 'Players',
       playerList: 'Player list',
-      bans: 'Bans',
+      bans: 'Ban records',
       schedules: 'Schedules',
       taskList: 'Task list',
       createTask: 'Create task',
@@ -725,7 +796,7 @@ export const messages = {
       worldSettings: 'World settings',
       worldDetails: 'World details',
       worldState: 'World state',
-      worldMaps: 'Maps and sessions'
+      worldMaps: 'World maps'
     },
     settings: {
       language: {

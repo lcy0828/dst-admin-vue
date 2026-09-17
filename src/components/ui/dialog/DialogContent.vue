@@ -26,6 +26,10 @@ const props = defineProps({
     skipCheck: true,
   },
   showCloseButton: { type: Boolean, required: false, default: true },
+  overlayClass: {
+    type: [String, Object, Array],
+    required: false,
+  },
 });
 const emits = defineEmits([
   "escapeKeyDown",
@@ -36,14 +40,14 @@ const emits = defineEmits([
   "closeAutoFocus",
 ]);
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegatedProps = reactiveOmit(props, "class", "overlayClass", "showCloseButton");
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits);
 </script>
 
 <template>
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay :class="overlayClass" />
     <DialogContent
       data-slot="dialog-content"
       v-bind="{ ...$attrs, ...forwarded }"

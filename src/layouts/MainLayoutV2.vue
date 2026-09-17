@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff, GitFork, KeyRound } from '@lucide/vue'
@@ -7,10 +7,16 @@ import { authAPI, systemV2API } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
 import GameVersionStatus from '@/components/layout/GameVersionStatus.vue'
 import GlobalJobStatus from '@/components/layout/GlobalJobStatus.vue'
+import RoomUpdateProgress from '@/components/layout/RoomUpdateProgress.vue'
+import { provideGlobalJobStatus } from '@/composables/useGlobalJobStatus'
 import LanguageSwitch from '@/components/layout/LanguageSwitch.vue'
+import ManagementScopeSwitch from '@/components/layout/ManagementScopeSwitch.vue'
+import RoomManagementScopeNotice from '@/components/layout/RoomManagementScopeNotice.vue'
 import SystemResourceRefreshInterval from '@/components/layout/SystemResourceRefreshInterval.vue'
 import SystemResourceStatus from '@/components/layout/SystemResourceStatus.vue'
 import ThemeSwitch from '@/components/ThemeSwitch.vue'
+import RoomWeatherLayer from '@/components/layout/RoomWeatherLayer.vue'
+import { provideRoomWeather } from '@/composables/useRoomWeather'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   Breadcrumb,
@@ -35,14 +41,19 @@ import { Input } from '@/components/ui/input'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { setActiveRuntimeTarget } from '@/utils/runtimeTarget'
 import { getSystemPreferences } from '@/utils/systemPreferences'
+import { MANAGEMENT_SCOPE_CHANGED_EVENT, managementScopeTargetId } from '@/lib/managementScope.mjs'
 import { toast } from 'vue-sonner'
-
-setActiveRuntimeTarget()
+import { pageHasMachineScope, queryAfterMachineChange } from '@/lib/pageScope.mjs'
 
 const router = useRouter()
+provideGlobalJobStatus()
+const roomWeather = provideRoomWeather()
 const route = useRoute()
+const roomScopeTarget = ref(null)
+provide('room-scope-target', roomScopeTarget)
+provide('machine-scope-guard', { check: async () => true })
+const hasMachineScope = computed(() => pageHasMachineScope(route))
 const { t } = useI18n()
 const systemName = ref(getSystemPreferences().systemName)
 const currentUser = ref({})
@@ -53,6 +64,8 @@ const passwordSaving = ref(false)
 const passwordsVisible = ref(false)
 const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const passwordErrors = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+const managementScopeRevision = ref(0)
+let selectedScopeTargetId = managementScopeTargetId()
 
 const userInitial = computed(() => (currentUser.value.username || t('app.administrator')).trim().slice(0, 1).toUpperCase())
 const breadcrumbs = computed(() => {
@@ -71,6 +84,16 @@ const breadcrumbs = computed(() => {
 
 function updateSystemName(event) {
   systemName.value = event.detail?.systemName || getSystemPreferences().systemName
+}
+
+async function refreshManagementScope(event) {
+  const targetId = managementScopeTargetId(event?.detail)
+  if (targetId === selectedScopeTargetId) return
+  selectedScopeTargetId = targetId
+  if (route.path === '/dashboard') return
+  const previousPath = route.fullPath
+  await router.replace({ query: queryAfterMachineChange(route, targetId) })
+  if (route.path === '/mods' || route.fullPath === previousPath) managementScopeRevision.value += 1
 }
 
 async function loadCurrentUser() {
@@ -147,6 +170,7 @@ async function changePassword() {
 onMounted(() => {
   document.body.dataset.uiVersion = 'v2'
   window.addEventListener('system-preferences-updated', updateSystemName)
+  window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, refreshManagementScope)
   loadCurrentUser()
   loadRuntimeFeatures()
 })
@@ -154,11 +178,13 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (document.body.dataset.uiVersion === 'v2') delete document.body.dataset.uiVersion
   window.removeEventListener('system-preferences-updated', updateSystemName)
+  window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, refreshManagementScope)
 })
 </script>
 
 <template>
-  <SidebarProvider>
+  <RoomWeatherLayer v-if="roomWeather.weather.value" :weather="roomWeather.weather.value" />
+  <SidebarProvider class="h-svh overflow-hidden">
     <AppSidebarV2
       :system-name="systemName"
       :user="currentUser"
@@ -167,10 +193,10 @@ onBeforeUnmount(() => {
       @password="passwordOpen = true"
       @logout="logout"
     />
-    <SidebarInset class="min-w-0">
-      <header class="bg-background/95 sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur md:px-6">
+    <SidebarInset class="min-h-0 min-w-0">
+      <header class="bg-background/95 sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 backdrop-blur lg:h-16 lg:flex-nowrap lg:py-0 md:px-4 lg:px-6">
         <SidebarTrigger />
-        <Breadcrumb class="hidden min-w-0 overflow-hidden md:block">
+        <Breadcrumb class="hidden min-w-0 flex-1 overflow-hidden xl:block">
           <BreadcrumbList>
             <template v-for="(item, index) in breadcrumbs" :key="`${item.label}-${index}`">
               <BreadcrumbItem>
@@ -182,16 +208,20 @@ onBeforeUnmount(() => {
             </template>
           </BreadcrumbList>
         </Breadcrumb>
-        <SystemResourceStatus class="ml-auto" />
-        <div class="flex min-w-0 items-center gap-1.5">
-          <GameVersionStatus />
+        <div v-show="hasMachineScope" class="order-3 ml-auto flex min-w-0 basis-full items-center gap-2 lg:order-none lg:basis-auto">
+          <ManagementScopeSwitch v-if="hasMachineScope" />
+          <div ref="roomScopeTarget" class="flex min-w-0 items-center empty:hidden" />
+        </div>
+        <SystemResourceStatus v-if="hasMachineScope" class="hidden md:flex" />
+        <div class="ml-auto flex min-w-0 items-center gap-1.5 lg:ml-0">
+          <GameVersionStatus v-if="hasMachineScope" class="hidden md:block" />
           <GlobalJobStatus />
-          <SystemResourceRefreshInterval />
+          <div v-if="hasMachineScope" class="hidden xl:block"><SystemResourceRefreshInterval /></div>
           <LanguageSwitch />
           <ThemeSwitch />
           <Tooltip>
             <TooltipTrigger as-child>
-              <Button variant="ghost" size="icon-sm" as-child>
+              <Button variant="ghost" size="icon-sm" class="hidden xl:inline-flex" as-child>
                 <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" rel="noopener noreferrer" :aria-label="t('app.openGithubRepository')">
                   <GitFork />
                 </a>
@@ -202,11 +232,14 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
+      <RoomManagementScopeNotice v-if="hasMachineScope && route.path.startsWith('/rooms')" />
+
       <div class="bg-muted/30 min-h-0 flex-1 overflow-auto">
-        <main id="main-content-v2" class="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-6 lg:px-8 lg:py-8" tabindex="-1">
-          <RouterView />
+        <main id="main-content-v2" class="mx-auto w-full px-4 py-6 md:px-6 lg:px-8 lg:py-8" :class="{ 'max-w-[1440px]': route.path !== '/players/list' }" tabindex="-1">
+          <RouterView :key="`${['/mods', '/dashboard'].includes(route.path) ? route.path : route.fullPath}:${route.path === '/dashboard' ? '' : managementScopeRevision}`" />
         </main>
       </div>
+      <RoomUpdateProgress />
     </SidebarInset>
 
     <Dialog v-model:open="profileOpen">

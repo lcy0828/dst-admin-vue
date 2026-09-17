@@ -69,6 +69,8 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
       v-for="(_, key) in modelValue"
       :key="key"
       data-slot="slider-thumb"
+      :aria-label="$attrs['aria-label']"
+      :aria-labelledby="$attrs['aria-labelledby']"
       :data-vertical="props.orientation === 'vertical' ? '' : undefined"
       class="border-ring ring-ring/50 relative size-3 rounded-full border bg-white transition-[color,box-shadow] after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 block shrink-0 select-none disabled:pointer-events-none disabled:opacity-50"
     />

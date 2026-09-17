@@ -7,7 +7,7 @@ import { authAPI, systemV2API } from './api/v2'
 import { i18n } from './i18n'
 import { applySystemPreferences, getSystemPreferences } from './utils/systemPreferences'
 import './utils/themeManager'
-import 'xterm/css/xterm.css'
+import { managementScopeTargetId, setManagementScope } from './lib/managementScope.mjs'
 
 document.documentElement.lang = i18n.global.locale.value
 document.documentElement.dataset.systemTimezone = getSystemPreferences().timezone
@@ -46,6 +46,15 @@ router.beforeEach(async to => {
     return to.path === '/login'
       ? true
       : { path: '/login', query: { reason: 'backend-unavailable', redirect: to.fullPath } }
+  }
+})
+
+// Explicit dashboard links take precedence over the remembered machine.
+router.afterEach((to, _from, failure) => {
+  if (failure || to.path !== '/dashboard' || typeof to.query.targetId !== 'string') return
+  const targetId = to.query.targetId
+  if (targetId !== managementScopeTargetId()) {
+    setManagementScope({ kind: targetId ? 'target' : 'all', targetId })
   }
 })
 

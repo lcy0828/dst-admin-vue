@@ -473,6 +473,7 @@ const NAVIGATION_SECTIONS = [
         icon: House,
         children: [
           { label: '房间列表', to: '/rooms/list' },
+          { label: '世界运行位置', to: '/rooms/topology' },
           { label: '房间设置', to: '/rooms/settings' },
           { label: '特殊名单', to: '/rooms/special-lists' },
           { label: '服务器令牌', to: '/rooms/token' }
@@ -505,7 +506,7 @@ const NAVIGATION_SECTIONS = [
         icon: UsersRound,
         children: [
           { label: '玩家列表', to: '/players/list' },
-          { label: '封禁管理', to: '/players/bans' }
+          { label: '封禁记录', to: '/players/bans' }
         ]
       }
     ]
@@ -519,8 +520,7 @@ const NAVIGATION_SECTIONS = [
         icon: FileSearch,
         children: [
           { label: '日志查询', to: '/logs/query' },
-          { label: '规则管理', to: '/logs/rules' },
-          { label: '日志解析器', to: '/logs/parser' }
+          { label: '规则管理', to: '/logs/rules' }
         ]
       },
       { key: 'announcements', label: '游戏通知', to: '/announcements', icon: Megaphone },

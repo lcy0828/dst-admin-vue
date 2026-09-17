@@ -18,6 +18,22 @@ export default defineConfig(({ mode }) => {
       __VUE_PROD_DEVTOOLS__: false,
       __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('/node_modules/')) return undefined
+            if (id.includes('/zrender/')) return 'vendor-zrender'
+            if (id.includes('/node_modules/echarts/lib/chart/')) return 'vendor-echarts-charts'
+            if (id.includes('/node_modules/echarts/lib/component/')) return 'vendor-echarts-components'
+            if (id.includes('/node_modules/echarts/')) return 'vendor-echarts'
+            if (id.includes('/node_modules/ol/')) return 'vendor-openlayers'
+            if (id.includes('/node_modules/xterm/') || id.includes('/node_modules/xterm-addon-fit/')) return 'vendor-terminal'
+            return undefined
+          }
+        }
+      }
+    },
     server: {
       host: '127.0.0.1',
       port: 5173,

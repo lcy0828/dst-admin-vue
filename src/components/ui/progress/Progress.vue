@@ -8,6 +8,7 @@ const props = defineProps({
   max: { type: Number, required: false },
   getValueLabel: { type: Function, required: false },
   getValueText: { type: Function, required: false },
+  variant: { type: String, default: 'default' },
   asChild: { type: Boolean, required: false },
   as: { type: null, required: false },
   class: {
@@ -17,7 +18,7 @@ const props = defineProps({
   },
 });
 
-const delegatedProps = reactiveOmit(props, "class");
+const delegatedProps = reactiveOmit(props, "class", "variant");
 </script>
 
 <template>
@@ -33,8 +34,24 @@ const delegatedProps = reactiveOmit(props, "class");
   >
     <ProgressIndicator
       data-slot="progress-indicator"
-      class="bg-primary size-full flex-1 transition-all"
-      :style="`transform: translateX(-${100 - (props.modelValue ?? 0)}%);`"
+      :class="cn('size-full flex-1 transition-all', { default: 'bg-primary', success: 'bg-success-foreground', destructive: 'bg-destructive' }[props.variant] || 'bg-primary')"
+      :style="props.modelValue === null ? undefined : `transform: translateX(-${100 - props.modelValue}%);`"
+      :data-indeterminate="props.modelValue === null || undefined"
     />
   </ProgressRoot>
 </template>
+
+<style scoped>
+[data-indeterminate] {
+  flex: none;
+  width: 35%;
+  animation: progress-travel 1.6s ease-in-out infinite;
+}
+@keyframes progress-travel {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(290%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-indeterminate] { animation: none; }
+}
+</style>
