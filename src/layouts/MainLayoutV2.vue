@@ -173,6 +173,7 @@ async function changePassword() {
 onMounted(() => {
   document.body.dataset.uiVersion = 'v2'
   window.addEventListener('system-preferences-updated', updateSystemName)
+  window.addEventListener('system-runtime-updated', loadRuntimeFeatures)
   window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, refreshManagementScope)
   loadCurrentUser()
   loadRuntimeFeatures()
@@ -181,6 +182,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (document.body.dataset.uiVersion === 'v2') delete document.body.dataset.uiVersion
   window.removeEventListener('system-preferences-updated', updateSystemName)
+  window.removeEventListener('system-runtime-updated', loadRuntimeFeatures)
   window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, refreshManagementScope)
 })
 </script>
@@ -197,7 +199,7 @@ onBeforeUnmount(() => {
       @logout="logout"
     />
     <SidebarInset class="min-h-0 min-w-0">
-      <header class="bg-background/95 sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 backdrop-blur lg:h-16 lg:flex-nowrap lg:py-0 md:px-4 lg:px-6">
+      <header class="bg-background/95 sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 backdrop-blur md:px-4 lg:px-6">
         <SidebarTrigger />
         <Breadcrumb class="hidden min-w-0 flex-1 overflow-hidden xl:block">
           <BreadcrumbList>
@@ -211,12 +213,12 @@ onBeforeUnmount(() => {
             </template>
           </BreadcrumbList>
         </Breadcrumb>
-        <div v-show="hasMachineScope" class="order-3 ml-auto flex min-w-0 basis-full items-center gap-2 lg:order-none lg:basis-auto">
+        <div v-show="hasMachineScope" class="order-3 flex min-w-0 max-w-full basis-full flex-wrap items-center gap-2 2xl:order-none 2xl:basis-auto">
           <ManagementScopeSwitch v-if="hasMachineScope" />
           <div ref="roomScopeTarget" class="flex min-w-0 items-center empty:hidden" />
         </div>
         <SystemResourceStatus v-if="hasMachineScope" class="hidden md:flex" />
-        <div class="ml-auto flex min-w-0 items-center gap-1.5 lg:ml-0">
+        <div class="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5">
           <GameVersionStatus v-if="hasMachineScope" class="hidden md:block" />
           <GlobalJobStatus />
           <div v-if="hasMachineScope" class="hidden xl:block"><SystemResourceRefreshInterval /></div>
@@ -225,7 +227,7 @@ onBeforeUnmount(() => {
           <ThemeSwitch />
           <Tooltip>
             <TooltipTrigger as-child>
-              <Button variant="ghost" size="icon-sm" class="hidden xl:inline-flex" as-child>
+              <Button variant="ghost" size="icon-sm" as-child>
                 <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" rel="noopener noreferrer" :aria-label="t('app.openGithubRepository')">
                   <GitFork />
                 </a>
