@@ -89,7 +89,12 @@ export const agentMessages = {
           shardSummary: '远程运行世界 {count}',
           capacitySummary: '{count} 个远程容量提醒'
         },
+        onboarding: {
+          title: '{count} 台在线 Agent 等待完成运行环境',
+          description: 'Agent 连接已经正常。唯一安装会自动采用；多个安装或未登记安装时，需要在对应机器上完成一次选择。'
+        },
         actions: {
+          assignWorlds: '分配世界',
           details: '详情',
           rename: '重命名机器',
           systemSettings: '系统设置',
@@ -101,6 +106,47 @@ export const agentMessages = {
           expandTopology: '展开房间和世界',
           collapseTopology: '收起房间和世界'
         },
+    updates: {
+      manage: 'Agent 版本',
+      title: 'Agent 版本管理',
+      description: '管理中心保存各平台安装包，并在升级后确认目标机器以新版本重新连接。',
+        file: 'Agent 二进制',
+        fileDescription: '仅接受带版本信息的 Agent 程序，最大 {size}',
+        version: '版本号',
+        upload: '上传',
+        uploadProgress: 'Agent 安装包上传进度',
+      delete: '删除安装包',
+      upgrade: '升级 Agent',
+      available: '可升级至 v{version}',
+      emptyTitle: '还没有 Agent 安装包',
+      hints: {
+      offline: 'Agent 离线，无法升级',
+      container: 'Docker Agent 需升级容器镜像',
+      migration: '旧安装位于系统目录，请先用新版安装脚本迁移一次',
+      unsupported: '当前系统暂不支持页面内升级',
+      noPackage: '还没有适用于 {platform} 的安装包',
+      current: '当前 Agent 已是已上传的最新版本',
+      ready: '升级到 v{version}'
+      },
+        validation: {
+        file: '请选择 Agent 二进制文件',
+        fileTooLarge: 'Agent 二进制文件超过上传上限',
+        version: '请输入有效版本号，例如 2.10.0'
+      },
+      feedback: {
+      loadFailed: '读取 Agent 安装包失败：{error}',
+      uploaded: '已上传 v{version}（{platform}）',
+      uploadFailed: '上传 Agent 安装包失败：{error}',
+      deleteTitle: '删除 Agent 安装包',
+      deleteConfirm: '确定删除 v{version}（{platform}）安装包吗？',
+      deleted: 'Agent 安装包已删除',
+      deleteFailed: '删除 Agent 安装包失败：{error}',
+      upgradeTitle: '升级 Agent',
+      upgradeConfirm: '将“{name}”从 v{current} 升级到 v{version}。Agent 会短暂重启，正在运行的 DST 世界不会重启。',
+      upgraded: '“{name}”已升级到 v{version}',
+      upgradeFailed: 'Agent 升级失败：{error}'
+      }
+    },
         fields: {
           system: '系统',
           ipAddress: 'IP 地址',
@@ -146,6 +192,11 @@ export const agentMessages = {
           running: '运行中',
           stopped: '未运行'
         },
+        roles: {
+          currentController: '当前控制器 · All-in-One',
+          managedAllInOne: '受管 All-in-One',
+          agentNode: '独立 Agent'
+        },
         duration: {
           daysHours: '{days} 天 {hours} 小时',
           hoursMinutes: '{hours} 小时 {minutes} 分钟',
@@ -174,6 +225,12 @@ export const agentMessages = {
           waiting: '等待采集',
           configured: '运行时已配置',
           notConfigured: '未配置运行时',
+          chooseInstallation: '待选择安装',
+          noInstallation: '未登记安装',
+          sources: {
+            discovered: '自动发现',
+            manual: '人工配置'
+          },
           upgradeRequired: '需升级 Agent',
           agentOffline: 'Agent 离线，无法刷新',
           configureFirst: '请先配置远程运行时路径',
@@ -181,8 +238,15 @@ export const agentMessages = {
           oldAgentTitle: '当前 Agent 不支持运行时清单',
           oldAgentDescription: '升级到 2.1.0 或更高版本后，才能识别节点上的房间、世界进程和物理核心容量。',
           loadFailedTitle: '节点清单读取失败',
-          notConfiguredTitle: '先配置该节点的 DST 路径',
-          notConfiguredDescription: '清单采集只读取明确配置的存档目录和服务端目录，不会自动扫描整台服务器。',
+          notConfiguredTitle: '等待配置运行环境',
+          notConfiguredDescription: '当前 Agent 尚未提供受信安装清单，请升级 Agent 或手工填写运行环境。机器连接状态不会因此隐藏。',
+          notConfiguredSummary: '连接正常，等待运行环境配置',
+          chooseInstallationTitle: '请选择要管理的 DST 安装',
+          chooseInstallationDescription: '发现 {count} 份游戏安装，请选择要管理的一份。',
+          chooseInstallationSummary: '检测到 {count} 个安装，等待选择',
+          noInstallationTitle: 'Agent 未登记 DST 安装',
+          noInstallationDescription: '机器已连接，但未配置游戏安装。请在这台机器的管理服务中添加游戏路径并重启该服务。',
+          noInstallationSummary: '连接正常，等待 Agent 登记安装',
           waitingTitle: '尚未收到节点清单',
           waitingDescription: '在线节点会定期自动上报，也可以点击本行的刷新按钮立即采集。',
           warningTitle: '节点扫描提示',
@@ -200,7 +264,7 @@ export const agentMessages = {
           emptyTitle: '没有识别到房间',
           emptyDescription: '已配置的存档路径中没有可识别的 Cluster 和 Shard。',
           roles: {
-            master: '主世界',
+            master: '主分片',
             secondary: '从世界',
             unknown: '未识别'
           },
@@ -233,7 +297,7 @@ export const agentMessages = {
         runtime: {
           title: '远程运行时配置',
           description: '选择 Agent 已登记的 DST 安装，供房间投放、分片控制、日志、模组、更新和备份等远程操作使用。',
-          scope: '配置作用域：仅此 Agent',
+          scope: '仅作用于这台机器',
           installation: 'DST 安装实例',
           installationPlaceholder: '选择 Agent 上已登记的安装',
           trustedInstallationDescription: '安装 ID 与路径由 Agent 配置提供并锁定；如需修改，请先更新 Agent 配置并重启 Agent。',
@@ -244,14 +308,50 @@ export const agentMessages = {
           legacyDescription: '当前 Agent 尚未上报受信安装清单。可继续手工配置，但建议升级到 2.5.2 或更高版本，以避免安装 ID 或路径不一致。',
           staleInstallationTitle: '原配置与 Agent 清单不一致',
           staleInstallationDescription: '原安装 ID 已不存在或路径发生变化。请重新选择已登记的安装并确认后保存。',
+          discoveredTitle: '已自动采用唯一的 DST 安装',
+          discoveredDescription: '安装 ID 与路径来自 Agent 的受信配置。保存本表单会将其转为人工配置；主动移除后系统不会再次自动添加。',
           drivers: {
             native: '裸机',
             container: '容器'
           },
           displayName: '显示名称',
-          serverMode: '服务端模式',
+          serverMode: '服务端架构',
+          serverModeDescription: '这里只选择 32/64 位程序。LuaJIT 属于独立性能运行时，必须通过版本兼容检查后才能启用。',
           mode64: '64 位',
           mode32: '32 位',
+          performance: {
+            label: 'LuaJIT 性能运行时',
+            statuses: {
+              not_installed: 'LuaJIT 未安装',
+              detected_unverified: '待验证',
+              incompatible: '不兼容',
+              ready: '可用',
+              not_reported: '未上报'
+            },
+            summaries: {
+              not_installed: '当前安装保持原版 GameLua，不影响正常开服。',
+              detected_unverified: '检测到 LuaJIT 文件，但平台、游戏版本或补丁元数据尚未通过完整验证，系统不会启用。',
+              incompatible: '检测到明确的不兼容或不完整安装，必须修复并重新检测，禁止用于启动世界。',
+              ready: '安装已通过只读兼容检查；“可用”不表示已经启用，当前仍不会改变世界启动方式。',
+              not_reported: '当前 Agent 版本没有提供性能运行时状态。'
+            },
+            versions: '补丁 {package} · 游戏 {game} · 签名 {signature}',
+            issues: {
+              server_architecture_unsupported: 'LuaJIT2 仅支持 64 位服务端',
+              architecture_unsupported: 'CPU 架构不受支持',
+              platform_not_verified: '当前平台尚未纳入权威实验环境',
+              installation_incomplete: '原程序、注入器、VM 或签名文件不完整',
+              injector_wrapper_invalid: '服务端启动壳未正确加载注入器',
+              signature_unreadable: '签名版本无法读取',
+              game_version_unknown: '无法确认当前 Klei 游戏版本',
+              signature_version_mismatch: 'LuaJIT 签名版本与当前游戏版本不一致',
+              package_version_unknown: '无法确认 LuaJIT2 补丁版本或配套 Mod',
+              binary_hash_unavailable: '无法生成原始服务端二进制摘要',
+              plugin_layout_unverified: '检测到 LuaJIT2 v3 插件化布局，但预览版尚未纳入可信启用流程',
+              injector_marker_invalid: '注入器路径标记无效，必须是单行绝对路径',
+              unknown: '存在未识别的兼容问题'
+            }
+          },
           savePath: 'DST 存档路径',
           serverPath: 'DST 服务端路径',
           backupPath: '备份路径',
@@ -584,7 +684,12 @@ export const agentMessages = {
           shardSummary: '{count} remote worlds running',
           capacitySummary: '{count} remote capacity notices'
         },
+        onboarding: {
+          title: '{count} online Agents need runtime setup',
+          description: 'Agent connectivity is healthy. A single installation is registered automatically; multiple or missing installations require one explicit choice on the machine row.'
+        },
         actions: {
+          assignWorlds: 'Assign worlds',
           details: 'Details',
           rename: 'Rename machine',
           systemSettings: 'System settings',
@@ -596,6 +701,47 @@ export const agentMessages = {
           expandTopology: 'Expand rooms and worlds',
           collapseTopology: 'Collapse rooms and worlds'
         },
+    updates: {
+      manage: 'Agent versions',
+      title: 'Agent version management',
+      description: 'The controller stores platform-specific binaries and verifies that each upgraded machine reconnects on the expected version.',
+        file: 'Agent binary',
+        fileDescription: 'Select an Agent binary with embedded version metadata, up to {size}',
+        version: 'Version',
+        upload: 'Upload',
+        uploadProgress: 'Agent package upload progress',
+      delete: 'Delete package',
+      upgrade: 'Upgrade Agent',
+      available: 'v{version} available',
+      emptyTitle: 'No Agent packages uploaded',
+      hints: {
+      offline: 'The Agent is offline',
+      container: 'Upgrade the Docker Agent container image',
+      migration: 'This legacy system-directory installation needs one manual migration with the current installer',
+      unsupported: 'In-page upgrades are not supported on this system yet',
+      noPackage: 'No package is available for {platform}',
+      current: 'This Agent matches the latest uploaded version',
+      ready: 'Upgrade to v{version}'
+      },
+        validation: {
+        file: 'Select an Agent binary',
+        fileTooLarge: 'The Agent binary exceeds the upload limit',
+        version: 'Enter a valid version such as 2.10.0'
+      },
+      feedback: {
+      loadFailed: 'Failed to load Agent packages: {error}',
+      uploaded: 'Uploaded v{version} ({platform})',
+      uploadFailed: 'Failed to upload the Agent package: {error}',
+      deleteTitle: 'Delete Agent package',
+      deleteConfirm: 'Delete the v{version} package for {platform}?',
+      deleted: 'Agent package deleted',
+      deleteFailed: 'Failed to delete the Agent package: {error}',
+      upgradeTitle: 'Upgrade Agent',
+      upgradeConfirm: 'Upgrade “{name}” from v{current} to v{version}. The Agent restarts briefly; running DST worlds are not restarted.',
+      upgraded: '“{name}” upgraded to v{version}',
+      upgradeFailed: 'Agent upgrade failed: {error}'
+      }
+    },
         fields: {
           system: 'System',
           ipAddress: 'IP address',
@@ -641,6 +787,11 @@ export const agentMessages = {
           running: 'Running',
           stopped: 'Not running'
         },
+        roles: {
+          currentController: 'Current controller · All-in-One',
+          managedAllInOne: 'Managed All-in-One',
+          agentNode: 'Standalone Agent'
+        },
         duration: {
           daysHours: '{days}d {hours}h',
           hoursMinutes: '{hours}h {minutes}m',
@@ -669,6 +820,12 @@ export const agentMessages = {
           waiting: 'Awaiting inventory',
           configured: 'Runtime configured',
           notConfigured: 'Runtime not configured',
+          chooseInstallation: 'Choose installation',
+          noInstallation: 'No installation registered',
+          sources: {
+            discovered: 'Auto-discovered',
+            manual: 'Manually configured'
+          },
           upgradeRequired: 'Agent upgrade required',
           agentOffline: 'The Agent is offline and cannot refresh',
           configureFirst: 'Configure the remote runtime paths first',
@@ -676,8 +833,15 @@ export const agentMessages = {
           oldAgentTitle: 'This Agent does not support runtime inventory',
           oldAgentDescription: 'Upgrade to version 2.1.0 or later to discover rooms, world processes, and physical-core capacity on this node.',
           loadFailedTitle: 'Failed to load node inventory',
-          notConfiguredTitle: 'Configure the DST paths for this node',
-          notConfiguredDescription: 'Inventory collection only reads explicitly configured save and server directories. It does not scan the entire server.',
+          notConfiguredTitle: 'Runtime setup required',
+          notConfiguredDescription: 'This Agent has not provided a trusted installation registry. Upgrade the Agent or enter the runtime manually. The connected machine remains visible.',
+          notConfiguredSummary: 'Connected; waiting for runtime setup',
+          chooseInstallationTitle: 'Choose the DST installation to manage',
+          chooseInstallationDescription: 'Found {count} game installations. Choose one to manage.',
+          chooseInstallationSummary: '{count} installations detected; choose one',
+          noInstallationTitle: 'No DST installation registered on the Agent',
+          noInstallationDescription: 'The machine is connected but has no game installation configured. Add the game path to its management service settings and restart that service.',
+          noInstallationSummary: 'Connected; waiting for an Agent installation',
           waitingTitle: 'No node inventory received yet',
           waitingDescription: 'Online nodes report periodically. Use the refresh action on this row to collect immediately.',
           warningTitle: 'Node scan notice',
@@ -728,7 +892,7 @@ export const agentMessages = {
         runtime: {
           title: 'Remote runtime configuration',
           description: 'Select a DST installation registered by this Agent for remote provisioning, Shard control, logs, mods, updates, and backups.',
-          scope: 'Scope: this Agent only',
+          scope: 'Applies to this machine only',
           installation: 'DST installation',
           installationPlaceholder: 'Select a registered Agent installation',
           trustedInstallationDescription: 'The Agent configuration owns and locks the installation ID and paths. Update the Agent configuration and restart it to change them.',
@@ -739,14 +903,50 @@ export const agentMessages = {
           legacyDescription: 'This Agent does not report a trusted installation registry yet. Manual configuration remains available, but upgrade to version 2.5.2 or later to prevent installation ID or path mismatches.',
           staleInstallationTitle: 'The saved installation no longer matches',
           staleInstallationDescription: 'The previous installation ID was removed or its paths changed. Select a registered installation, review it, and save again.',
+          discoveredTitle: 'The only DST installation was registered automatically',
+          discoveredDescription: 'The installation ID and paths come from the Agent trusted configuration. Saving this form makes it manual; removing it pauses automatic registration until you save a configuration again.',
           drivers: {
             native: 'Native',
             container: 'Container'
           },
           displayName: 'Display name',
-          serverMode: 'Server mode',
+          serverMode: 'Server architecture',
+          serverModeDescription: 'This selects only the 32/64-bit executable. LuaJIT is a separate performance runtime and must pass compatibility checks before it can be enabled.',
           mode64: '64-bit',
           mode32: '32-bit',
+          performance: {
+            label: 'LuaJIT performance runtime',
+            statuses: {
+              not_installed: 'LuaJIT not installed',
+              detected_unverified: 'Unverified',
+              incompatible: 'Incompatible',
+              ready: 'Available',
+              not_reported: 'Not reported'
+            },
+            summaries: {
+              not_installed: 'This installation continues to use the original GameLua runtime and can start normally.',
+              detected_unverified: 'LuaJIT files were detected, but the platform, game version, or package metadata has not passed all checks. It will not be enabled.',
+              incompatible: 'The installation is incomplete or explicitly incompatible. It must be repaired and inspected again before use.',
+              ready: 'The installation passed read-only compatibility checks. Available does not mean enabled, and world startup is still unchanged.',
+              not_reported: 'This Agent version does not report performance runtime status.'
+            },
+            versions: 'Package {package} · game {game} · signature {signature}',
+            issues: {
+              server_architecture_unsupported: 'LuaJIT2 requires the 64-bit server',
+              architecture_unsupported: 'The CPU architecture is unsupported',
+              platform_not_verified: 'This platform is not yet an authoritative test environment',
+              installation_incomplete: 'The original executable, injector, VM, or signature files are incomplete',
+              injector_wrapper_invalid: 'The server launcher does not load the injector correctly',
+              signature_unreadable: 'The signature version cannot be read',
+              game_version_unknown: 'The installed Klei game version cannot be confirmed',
+              signature_version_mismatch: 'The LuaJIT signature version does not match the installed game version',
+              package_version_unknown: 'The LuaJIT2 package version or companion mod cannot be confirmed',
+              binary_hash_unavailable: 'The original server binary digest cannot be generated',
+              plugin_layout_unverified: 'The LuaJIT2 v3 plugin layout was detected, but the preview release is not in the trusted enablement flow',
+              injector_marker_invalid: 'The injector path marker is invalid; it must contain one absolute path',
+              unknown: 'An unknown compatibility issue was reported'
+            }
+          },
           savePath: 'DST archive path',
           serverPath: 'DST server path',
           backupPath: 'Backup path',

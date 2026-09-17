@@ -416,7 +416,7 @@
               <div class="player-grid">
                 <div><span>在线玩家</span><strong>{{ playerSummary.online }}</strong></div>
                 <div><span>玩家记录</span><strong>{{ playerSummary.total }}</strong></div>
-                <div><span>已接管房间</span><strong>{{ roomList.length }}</strong></div>
+                <div><span>已发现房间</span><strong>{{ roomList.length }}</strong></div>
                 <div><span>世界分片</span><strong>{{ totalWorldCount }}</strong></div>
               </div>
               <p class="player-footnote">已读取 {{ playerSummary.loadedRooms }} / {{ roomList.length }} 个房间</p>
@@ -596,6 +596,7 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { confirmAction } from '@/lib/feedback';
+import { confirmRoomMaintenance } from '@/lib/maintenanceConfirmation';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import { toast } from 'vue-sonner';
@@ -827,7 +828,7 @@ export default {
         if (this.roomList.length === 0) return;
 
         const results = await Promise.allSettled(
-          this.roomList.map(room => playerApi.getPlayerStats(room.name))
+          this.roomList.map(room => playerApi.getPlayerStats(room.name, [], room.id))
         );
         for (const result of results) {
           if (result.status === 'rejected') {
@@ -872,16 +873,18 @@ export default {
     async handleServerAction(server) {
       const isRunning = server.status === 'running';
       const action = isRunning ? '停止' : '启动';
+      let maintenance = {};
       try {
-        await confirmAction(`确定要${action} "${server.archive_name} / ${server.world_name}" 吗？`, '服务器操作确认', {
-          confirmText: `确认${action}`
+        const confirm = isRunning ? (...args) => confirmRoomMaintenance(server.room_id, ...args) : confirmAction;
+        maintenance = await confirm(`确定要${action} "${server.archive_name} / ${server.world_name}" 吗？`, '服务器操作确认', {
+          confirmButtonText: `确认${action}`
         });
       } catch {
         toast.info(`已取消${action}`);
         return;
       }
 
-      const request = { room_id: server.room_id, world_id: server.world_id };
+      const request = { room_id: server.room_id, world_id: server.world_id, immediate: maintenance?.immediate === true };
       const operation = isRunning ? roomApi.stopRoom(request) : startRoomWithCapacityRisk(request);
       this.serverLoading = true;
       try {

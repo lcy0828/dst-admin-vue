@@ -10,11 +10,21 @@
           <Badge :variant="capacityAlerts > 0 ? 'destructive' : 'secondary'">{{ $t('agents.list.metrics.capacitySummary', { count: capacityAlerts }) }}</Badge>
         </div>
       </div>
-      <UiButton variant="outline" :disabled="loading" @click="refreshData">
-        <Spinner v-if="loading" data-icon="inline-start" />
-        <RefreshCw v-else data-icon="inline-start" />
-        {{ $t('common.actions.refresh') }}
-      </UiButton>
+      <div class="flex flex-wrap items-center gap-2">
+    <UiButton variant="outline" @click="openReleaseManager">
+      <PackageOpen data-icon="inline-start" />
+      {{ $t('agents.list.updates.manage') }}
+    </UiButton>
+        <UiButton variant="outline" @click="navigateToTopology">
+          <Network data-icon="inline-start" />
+          {{ $t('agents.list.actions.assignWorlds') }}
+        </UiButton>
+        <UiButton variant="outline" :disabled="loading" @click="refreshData">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          {{ $t('common.actions.refresh') }}
+        </UiButton>
+      </div>
     </header>
 
     <FleetProfilePanel />
@@ -40,6 +50,18 @@
       <AlertAction><UiButton size="sm" variant="outline" @click="fetchRuntimeTargets">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
+    <Alert v-if="unconfiguredOnlineAgents.length">
+      <CircleAlert />
+      <AlertTitle>{{ $t('agents.list.onboarding.title', { count: unconfiguredOnlineAgents.length }) }}</AlertTitle>
+      <AlertDescription>{{ $t('agents.list.onboarding.description') }}</AlertDescription>
+      <AlertAction v-if="unconfiguredOnlineAgents.length === 1">
+        <UiButton size="sm" variant="outline" @click="openRuntimeConfig(unconfiguredOnlineAgents[0])">
+          <Settings data-icon="inline-start" />
+          {{ $t('agents.list.actions.configureRuntime') }}
+        </UiButton>
+      </AlertAction>
+    </Alert>
+
     <div v-if="loading && totalMachines === 0" class="flex flex-col gap-2" :aria-label="$t('agents.list.loadingAria')">
       <Skeleton v-for="index in 4" :key="index" class="h-14 w-full" />
     </div>
@@ -58,7 +80,11 @@
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-if="localRuntimeTarget">
+          <TableRow
+            v-if="localRuntimeTarget"
+            :data-state="isCurrentManagementTarget(localRuntimeTarget.id) ? 'selected' : undefined"
+            :data-machine-target-id="localRuntimeTarget.id"
+          >
             <TableCell><span class="block size-8" aria-hidden="true" /></TableCell>
             <TableCell>
               <div class="flex min-w-52 items-start gap-2.5">
@@ -67,10 +93,12 @@
                   <div class="flex flex-wrap items-center gap-1.5">
                     <span class="max-w-48 truncate font-medium">{{ localRuntimeTarget.name }}</span>
                     <Badge variant="secondary">{{ $t('common.states.online') }}</Badge>
-                    <Badge variant="outline">{{ $t('agents.list.values.localMachine') }}</Badge>
+                    <Badge variant="outline">{{ $t('agents.list.roles.currentController') }}</Badge>
+                    <Badge v-if="isCurrentManagementTarget(localRuntimeTarget.id)">{{ $t('app.remote.current') }}</Badge>
                   </div>
                   <div class="mt-1 max-w-64 truncate text-xs text-muted-foreground">{{ localRuntimeTarget.hostname || $t('agents.list.values.notAvailable') }}</div>
                   <div class="mt-1 text-xs text-muted-foreground">{{ localRuntimeTarget.os }} / {{ localRuntimeTarget.arch }}</div>
+                  <Badge v-if="localRuntimeTarget.performance" class="mt-1.5" :variant="performanceVariant(localRuntimeTarget.performance)">{{ performanceStatusLabel(localRuntimeTarget.performance) }}</Badge>
                 </div>
               </div>
             </TableCell>
@@ -113,7 +141,11 @@
             </TableCell>
           </TableRow>
           <template v-for="agent in agentList" :key="agent.id">
-            <TableRow :aria-expanded="isExpanded(agent)">
+            <TableRow
+              :aria-expanded="isExpanded(agent)"
+              :data-state="isCurrentManagementTarget(runtimeFor(agent).id) ? 'selected' : undefined"
+              :data-machine-target-id="runtimeFor(agent).id"
+            >
               <TableCell>
                 <Tooltip>
                   <TooltipTrigger as-child>
@@ -137,16 +169,26 @@
                     <div class="flex flex-wrap items-center gap-1.5">
                       <span class="max-w-48 truncate font-medium">{{ machineName(agent) }}</span>
                       <Badge :variant="agent.connected ? 'secondary' : 'destructive'">{{ agent.connected ? $t('common.states.online') : $t('common.states.offline') }}</Badge>
+                      <Badge variant="outline">{{ machineRoleLabel(agent) }}</Badge>
+                      <Badge :variant="runtimeStateVariant(agent)">{{ runtimeStateLabel(agent) }}</Badge>
                       <Badge v-if="isOldAgent(agent)" variant="destructive">{{ $t('agents.list.inventory.upgradeRequired') }}</Badge>
+                      <Badge v-if="isCurrentManagementTarget(runtimeFor(agent).id)">{{ $t('app.remote.current') }}</Badge>
                     </div>
                     <div class="mt-1 max-w-64 truncate text-xs text-muted-foreground">{{ agent.hostname || $t('agents.list.values.notAvailable') }}</div>
                     <div class="mt-1 max-w-64 truncate font-mono text-xs text-muted-foreground">{{ agent.agent_uuid }}</div>
-                    <div class="mt-1 text-xs text-muted-foreground">{{ agent.os || $t('agents.list.values.notAvailable') }} / {{ agent.arch || $t('agents.list.values.notAvailable') }} / v{{ agent.version || $t('agents.list.values.notAvailable') }}</div>
+          <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+            <span>{{ agent.os || $t('agents.list.values.notAvailable') }} / {{ agent.arch || $t('agents.list.values.notAvailable') }} / v{{ agent.version || $t('agents.list.values.notAvailable') }}</span>
+            <Badge v-if="agentUpdate(agent).updateAvailable" variant="secondary">{{ $t('agents.list.updates.available', { version: agentUpdate(agent).latestVersion }) }}</Badge>
+          </div>
                   </div>
                 </div>
               </TableCell>
               <TableCell>
-                <div class="flex min-w-44 flex-col gap-1.5">
+                <div v-if="!runtimeFor(agent).configured" class="flex min-w-44 flex-col gap-1.5">
+                  <span class="font-medium">{{ runtimeRequirementTitle(agent) }}</span>
+                  <span class="text-xs text-muted-foreground">{{ runtimeRequirementSummary(agent) }}</span>
+                </div>
+                <div v-else class="flex min-w-44 flex-col gap-1.5">
                   <div class="flex items-center justify-between gap-3">
                     <span class="font-medium tabular-nums">{{ capacityForAgent(agent).runningShards }} / {{ capacityLimit(agent) }}</span>
                     <Badge :variant="capacityVariant(agent)">{{ capacityStateLabel(agent) }}</Badge>
@@ -156,6 +198,7 @@
                     :aria-label="$t('agents.list.capacity.progressAria', { name: agent.hostname })"
                   />
                   <span class="text-xs text-muted-foreground">{{ capacityMessage(agent) }}</span>
+                  <Badge v-if="runtimeFor(agent).performance" class="w-fit" :variant="performanceVariant(runtimeFor(agent).performance)">{{ performanceStatusLabel(runtimeFor(agent).performance) }}</Badge>
                 </div>
               </TableCell>
               <TableCell>
@@ -210,6 +253,23 @@
                     </TooltipTrigger>
                     <TooltipContent>{{ inventoryActionHint(agent) }}</TooltipContent>
                   </Tooltip>
+          <Tooltip>
+          <TooltipTrigger as-child>
+            <span>
+            <UiButton
+              size="icon-sm"
+              :variant="canUpgradeAgent(agent) ? 'outline' : 'ghost'"
+              :disabled="!canUpgradeAgent(agent) || Boolean(upgradingAgents[agent.id])"
+              :aria-label="$t('agents.list.updates.upgrade')"
+              @click="upgradeAgent(agent)"
+            >
+              <Spinner v-if="upgradingAgents[agent.id]" />
+              <ArrowUpCircle v-else />
+            </UiButton>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{{ agentUpdateHint(agent) }}</TooltipContent>
+          </Tooltip>
                   <Tooltip><TooltipTrigger as-child><UiButton size="icon-sm" variant="ghost" :aria-label="$t('agents.list.actions.details')" @click="showAgentDetails(agent)"><Eye /></UiButton></TooltipTrigger><TooltipContent>{{ $t('agents.list.actions.details') }}</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger as-child><UiButton size="icon-sm" :variant="runtimeFor(agent).configured ? 'ghost' : 'outline'" :disabled="Boolean(runtimeLoadError)" :aria-label="runtimeFor(agent).configured ? $t('agents.list.actions.runtimeConfig') : $t('agents.list.actions.configureRuntime')" @click="openRuntimeConfig(agent)"><Settings /></UiButton></TooltipTrigger><TooltipContent>{{ runtimeFor(agent).configured ? $t('agents.list.actions.runtimeConfig') : $t('agents.list.actions.configureRuntime') }}</TooltipContent></Tooltip>
                   <Tooltip><TooltipTrigger as-child><span><UiButton size="icon-sm" variant="ghost" :disabled="!agent.connected" :aria-label="$t('agents.list.actions.executeCommand')" @click="navigateToCommand(agent.id)"><Terminal /></UiButton></span></TooltipTrigger><TooltipContent>{{ $t('agents.list.actions.executeCommand') }}</TooltipContent></Tooltip>
@@ -226,7 +286,10 @@
                       <h2 class="font-medium">{{ $t('agents.list.topology.title', { name: machineName(agent) }) }}</h2>
                       <p class="text-xs text-muted-foreground">{{ $t('agents.list.topology.description') }}</p>
                     </div>
-                    <Badge :variant="runtimeFor(agent).configured ? 'outline' : 'destructive'">{{ runtimeFor(agent).configured ? $t('agents.list.inventory.configured') : $t('agents.list.inventory.notConfigured') }}</Badge>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <Badge :variant="runtimeFor(agent).configured ? 'outline' : 'destructive'">{{ runtimeFor(agent).configured ? $t('agents.list.inventory.configured') : $t('agents.list.inventory.notConfigured') }}</Badge>
+                      <Badge v-if="runtimeFor(agent).configured" variant="secondary">{{ runtimeSourceLabel(agent) }}</Badge>
+                    </div>
                   </div>
 
                   <Alert v-if="isOldAgent(agent)" variant="destructive">
@@ -241,8 +304,8 @@
                   </Alert>
                   <Alert v-else-if="!runtimeFor(agent).configured">
                     <Settings />
-                    <AlertTitle>{{ $t('agents.list.inventory.notConfiguredTitle') }}</AlertTitle>
-                    <AlertDescription>{{ $t('agents.list.inventory.notConfiguredDescription') }}</AlertDescription>
+                    <AlertTitle>{{ runtimeRequirementTitle(agent) }}</AlertTitle>
+                    <AlertDescription>{{ runtimeRequirementDescription(agent) }}</AlertDescription>
                     <AlertAction><UiButton size="sm" variant="outline" @click="openRuntimeConfig(agent)">{{ $t('agents.list.actions.configureRuntime') }}</UiButton></AlertAction>
                   </Alert>
                   <Alert v-else-if="!inventoryFor(agent)">
@@ -309,6 +372,59 @@
       <EmptyContent><UiButton @click="navigateToSecurity">{{ $t('agents.list.empty.add') }}</UiButton></EmptyContent>
     </Empty>
 
+    <RuntimeInfrastructurePanel
+      v-if="totalMachines > 0"
+      network-only
+      :show-kubernetes="false"
+      :show-preflight="false"
+      :show-room-resources="false"
+    />
+
+  <UiDialog v-model:open="releaseVisible">
+    <DialogContent class="sm:max-w-2xl">
+    <DialogHeader>
+      <DialogTitle>{{ $t('agents.list.updates.title') }}</DialogTitle>
+      <DialogDescription>{{ $t('agents.list.updates.description') }}</DialogDescription>
+    </DialogHeader>
+    <FieldGroup class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end">
+      <Field :data-invalid="Boolean(releaseErrors.file)">
+        <FieldLabel for="agent-release-file">{{ $t('agents.list.updates.file') }}</FieldLabel>
+        <UiInput :key="releaseInputKey" id="agent-release-file" type="file" :aria-invalid="Boolean(releaseErrors.file)" @change="selectReleaseFile" />
+        <FieldDescription>{{ $t('agents.list.updates.fileDescription', { size: formatBytes(releaseMaxUploadBytes) }) }}</FieldDescription>
+        <FieldError v-if="releaseErrors.file">{{ $t(releaseErrors.file) }}</FieldError>
+      </Field>
+      <Field :data-invalid="Boolean(releaseErrors.version)">
+      <FieldLabel for="agent-release-version">{{ $t('agents.list.updates.version') }}</FieldLabel>
+      <UiInput id="agent-release-version" v-model="releaseForm.version" maxlength="64" placeholder="2.10.0" />
+      <FieldError v-if="releaseErrors.version">{{ $t(releaseErrors.version) }}</FieldError>
+      </Field>
+      <UiButton class="w-full sm:w-auto" :disabled="releaseUploading" @click="uploadRelease">
+      <Spinner v-if="releaseUploading" data-icon="inline-start" />
+      <Upload v-else data-icon="inline-start" />
+      {{ $t('agents.list.updates.upload') }}
+        </UiButton>
+      </FieldGroup>
+      <UiProgress v-if="releaseUploading" :model-value="releaseUploadProgress" :aria-label="$t('agents.list.updates.uploadProgress')" />
+
+    <div class="min-h-28 overflow-hidden rounded-md border">
+      <div v-if="releaseLoading" class="flex min-h-28 items-center justify-center"><Spinner /></div>
+      <Empty v-else-if="releaseList.length === 0" class="min-h-28 py-4">
+      <EmptyHeader><EmptyMedia variant="icon"><PackageOpen /></EmptyMedia><EmptyTitle>{{ $t('agents.list.updates.emptyTitle') }}</EmptyTitle></EmptyHeader>
+      </Empty>
+      <div v-else class="divide-y">
+      <div v-for="release in releaseList" :key="release.id" class="flex min-h-16 items-center gap-3 px-3 py-2">
+        <PackageOpen class="size-4 shrink-0 text-muted-foreground" />
+        <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-1.5"><strong>v{{ release.version }}</strong><Badge variant="outline">{{ platformLabel(release) }}</Badge></div>
+        <div class="mt-1 truncate text-xs text-muted-foreground">{{ release.fileName }} · {{ formatBytes(release.size) }} · {{ formatTime(release.uploadedAt) }}</div>
+        </div>
+        <Tooltip><TooltipTrigger as-child><UiButton size="icon-sm" variant="ghost" :aria-label="$t('agents.list.updates.delete')" @click="deleteRelease(release)"><Trash2 /></UiButton></TooltipTrigger><TooltipContent>{{ $t('agents.list.updates.delete') }}</TooltipContent></Tooltip>
+      </div>
+      </div>
+    </div>
+    </DialogContent>
+  </UiDialog>
+
     <UiDialog v-model:open="renameVisible">
       <DialogContent class="sm:max-w-md">
         <DialogHeader>
@@ -372,6 +488,11 @@
           <AlertTitle>{{ $t('agents.list.runtime.staleInstallationTitle') }}</AlertTitle>
           <AlertDescription>{{ $t('agents.list.runtime.staleInstallationDescription') }}</AlertDescription>
         </Alert>
+        <Alert v-else-if="runtimeConfigured && runtimeConfigurationSource === 'discovered'">
+          <CircleCheck />
+          <AlertTitle>{{ $t('agents.list.runtime.discoveredTitle') }}</AlertTitle>
+          <AlertDescription>{{ $t('agents.list.runtime.discoveredDescription') }}</AlertDescription>
+        </Alert>
         <FieldGroup class="grid gap-4 sm:grid-cols-2">
           <Field class="sm:col-span-2" :data-invalid="Boolean(runtimeErrors.installationId)">
             <FieldLabel for="runtime-installation">{{ $t('agents.list.runtime.installation') }}</FieldLabel>
@@ -396,8 +517,17 @@
             <FieldDescription>{{ runtimeRegistrySupported ? $t('agents.list.runtime.trustedInstallationDescription') : $t('agents.list.runtime.manualInstallationDescription') }}</FieldDescription>
             <FieldError v-if="runtimeErrors.installationId">{{ $t(runtimeErrors.installationId) }}</FieldError>
           </Field>
+          <div v-if="selectedRuntimePerformance" class="sm:col-span-2 border-y py-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="text-sm font-medium">{{ $t('agents.list.runtime.performance.label') }}</span>
+              <Badge :variant="performanceVariant(selectedRuntimePerformance)">{{ performanceStatusLabel(selectedRuntimePerformance) }}</Badge>
+            </div>
+            <p class="mt-1.5 text-sm text-muted-foreground">{{ performanceSummary(selectedRuntimePerformance) }}</p>
+            <p v-if="performanceVersionText(selectedRuntimePerformance)" class="mt-1.5 font-mono text-xs text-muted-foreground">{{ performanceVersionText(selectedRuntimePerformance) }}</p>
+            <p v-if="performanceIssueText(selectedRuntimePerformance)" class="mt-1.5 text-xs text-destructive">{{ performanceIssueText(selectedRuntimePerformance) }}</p>
+          </div>
           <Field :data-invalid="Boolean(runtimeErrors.displayName)"><FieldLabel for="runtime-name">{{ $t('agents.list.runtime.displayName') }}</FieldLabel><UiInput id="runtime-name" v-model="runtimeForm.displayName" maxlength="100" :aria-invalid="Boolean(runtimeErrors.displayName)" /><FieldError v-if="runtimeErrors.displayName">{{ $t(runtimeErrors.displayName) }}</FieldError></Field>
-          <Field :data-disabled="runtimeRegistrySupported || undefined"><FieldLabel>{{ $t('agents.list.runtime.serverMode') }}</FieldLabel><ToggleGroup v-model="runtimeForm.serverMode" type="single" :disabled="runtimeRegistrySupported"><ToggleGroupItem value="64">{{ $t('agents.list.runtime.mode64') }}</ToggleGroupItem><ToggleGroupItem value="32">{{ $t('agents.list.runtime.mode32') }}</ToggleGroupItem><ToggleGroupItem value="luajit">LuaJIT</ToggleGroupItem></ToggleGroup></Field>
+          <Field :data-disabled="runtimeRegistrySupported || undefined"><FieldLabel>{{ $t('agents.list.runtime.serverMode') }}</FieldLabel><ToggleGroup v-model="runtimeForm.serverMode" type="single" :disabled="runtimeRegistrySupported"><ToggleGroupItem value="64">{{ $t('agents.list.runtime.mode64') }}</ToggleGroupItem><ToggleGroupItem value="32">{{ $t('agents.list.runtime.mode32') }}</ToggleGroupItem></ToggleGroup><FieldDescription>{{ $t('agents.list.runtime.serverModeDescription') }}</FieldDescription></Field>
           <Field class="sm:col-span-2" :data-disabled="runtimeRegistrySupported || undefined" :data-invalid="Boolean(runtimeErrors.savePath)"><FieldLabel for="runtime-save">{{ $t('agents.list.runtime.savePath') }}</FieldLabel><UiInput id="runtime-save" v-model="runtimeForm.savePath" :placeholder="pathPlaceholder('save')" :disabled="runtimeRegistrySupported" :aria-invalid="Boolean(runtimeErrors.savePath)" /><FieldError v-if="runtimeErrors.savePath">{{ $t(runtimeErrors.savePath) }}</FieldError></Field>
           <Field class="sm:col-span-2" :data-disabled="runtimeRegistrySupported || undefined" :data-invalid="Boolean(runtimeErrors.serverPath)"><FieldLabel for="runtime-server">{{ $t('agents.list.runtime.serverPath') }}</FieldLabel><UiInput id="runtime-server" v-model="runtimeForm.serverPath" :placeholder="pathPlaceholder('server')" :disabled="runtimeRegistrySupported" :aria-invalid="Boolean(runtimeErrors.serverPath)" /><FieldError v-if="runtimeErrors.serverPath">{{ $t(runtimeErrors.serverPath) }}</FieldError></Field>
           <Field class="sm:col-span-2"><FieldLabel for="runtime-backup">{{ $t('agents.list.runtime.backupPath') }}</FieldLabel><UiInput id="runtime-backup" v-model="runtimeForm.backupPath" :placeholder="pathPlaceholder('backup')" /></Field>
@@ -421,8 +551,8 @@
 
 <script>
 import {
-  Apple, ChevronDown, ChevronRight, CircleAlert, Clock3, Cpu, Eye, Layers3, Monitor,
-  Network, Pencil, RefreshCw, Server, Settings, Terminal, Trash2, TriangleAlert
+  Apple, ArrowUpCircle, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock3, Cpu, Eye, Layers3, Monitor,
+  Network, PackageOpen, Pencil, RefreshCw, Server, Settings, Terminal, Trash2, TriangleAlert, Upload
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { agentApi } from '@/api/index';
@@ -431,6 +561,7 @@ import { agentsV2API, runtimeTargetsV2API, systemV2API } from '@/api/v2';
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters';
 import FleetProfilePanel from '@/components/agents/FleetProfilePanel.vue';
 import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue';
+import RuntimeInfrastructurePanel from '@/components/runtime/RuntimeInfrastructurePanel.vue';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -449,6 +580,11 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { confirmAction } from '@/lib/feedback';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
+import {
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  MANAGEMENT_SCOPE_TARGET
+} from '@/lib/managementScope.mjs';
 import { announceRuntimeTargetsUpdated } from '@/utils/runtimeTarget';
 
 const INVENTORY_CAPABILITY = 'runtime.inventory.read';
@@ -476,13 +612,13 @@ export default {
   name: 'AgentList',
   components: {
     Accordion, AccordionContent, AccordionItem, AccordionTrigger, Alert, AlertAction, AlertDescription,
-    AlertTitle, Apple, Badge, ChevronDown, ChevronRight, CircleAlert, Clock3, Cpu, DialogContent,
+    AlertTitle, Apple, ArrowUpCircle, Badge, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock3, Cpu, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription,
     EmptyHeader, EmptyMedia, EmptyTitle, Eye, Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FleetProfilePanel,
-    Layers3, KubernetesProviderPanel, Monitor, Network, Pencil, RefreshCw, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
+    Layers3, KubernetesProviderPanel, Monitor, Network, PackageOpen, Pencil, RefreshCw, RuntimeInfrastructurePanel, Separator, Server, Settings, Skeleton, Spinner, UiTable, TableBody,
     SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, TableCell, TableHead, TableHeader, TableRow,
     Terminal, ToggleGroup, ToggleGroupItem, Tooltip, TooltipContent, TooltipTrigger, Trash2, TriangleAlert, UiButton,
-    UiDialog, UiInput, UiProgress, UiSelect
+    UiDialog, UiInput, UiProgress, UiSelect, Upload
   },
   data() {
     return {
@@ -512,6 +648,17 @@ export default {
       runtimeAgent: null,
       runtimeForm: emptyRuntimeConfig(),
       runtimeErrors: {},
+    releaseVisible: false,
+    releaseLoading: false,
+      releaseUploading: false,
+      releaseUploadProgress: 0,
+      releaseList: [],
+      releaseMaxUploadBytes: 128 * 1024 * 1024,
+    releaseForm: { version: '', file: null },
+    releaseErrors: {},
+    releaseInputKey: 0,
+    upgradingAgents: {},
+      managementScope: getManagementScope(),
       agentRequestSequence: 0,
       runtimeRequestSequence: 0,
       inventoryRequestSequences: {}
@@ -558,6 +705,10 @@ export default {
     capacityAlerts() {
       return this.agentList.filter(agent => ['full', 'overcommitted'].includes(this.capacityForAgent(agent).state)).length;
     },
+    unconfiguredOnlineAgents() {
+      if (this.runtimeLoadError) return [];
+      return this.agentList.filter(agent => agent.connected && !this.runtimeFor(agent).configured);
+    },
     runtimeInstallations() {
       return Array.isArray(this.runtimeAgent?.installations) ? this.runtimeAgent.installations : [];
     },
@@ -566,10 +717,23 @@ export default {
     },
     selectedRuntimeInstallation() {
       return this.runtimeInstallations.find(installation => installation.id === this.runtimeForm.installationId) || null;
+    },
+    selectedRuntimePerformance() {
+      return this.selectedRuntimeInstallation?.performance || null;
+    },
+    runtimeConfigurationSource() {
+      if (!this.runtimeAgent) return '';
+      return this.runtimeFor(this.runtimeAgent).config?.source || '';
     }
   },
   created() {
     this.fetchAgentList();
+  },
+  mounted() {
+    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
+  },
+  beforeUnmount() {
+    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
   },
   methods: {
     async fetchAgentList() {
@@ -599,6 +763,118 @@ export default {
     refreshData() {
       return this.fetchAgentList();
     },
+  agentUpdate(agent) {
+    return agent?.update || { mode: 'migration', supported: false, updateAvailable: false };
+  },
+  canUpgradeAgent(agent) {
+    const update = this.agentUpdate(agent);
+    return Boolean(agent?.connected && update.supported && update.updateAvailable && update.release?.id);
+  },
+  agentUpdateHint(agent) {
+    const update = this.agentUpdate(agent);
+    if (!agent?.connected) return this.$t('agents.list.updates.hints.offline');
+    if (update.mode === 'container') return this.$t('agents.list.updates.hints.container');
+    if (update.mode === 'migration') return this.$t('agents.list.updates.hints.migration');
+    if (update.mode === 'unsupported') return this.$t('agents.list.updates.hints.unsupported');
+    if (!update.release) return this.$t('agents.list.updates.hints.noPackage', { platform: this.platformLabel(agent) });
+    if (!update.updateAvailable) return this.$t('agents.list.updates.hints.current');
+    return this.$t('agents.list.updates.hints.ready', { version: update.latestVersion });
+  },
+  async openReleaseManager() {
+    this.releaseVisible = true;
+    await this.fetchReleases();
+  },
+  async fetchReleases() {
+    this.releaseLoading = true;
+    try {
+      const value = await agentsV2API.releases();
+      this.releaseList = Array.isArray(value.items) ? value.items : [];
+      this.releaseMaxUploadBytes = Number(value.maxUploadBytes) || this.releaseMaxUploadBytes;
+    return true;
+    } catch (error) {
+    toast.error(this.$t('agents.list.updates.feedback.loadFailed', { error: error?.message || this.$t('common.errors.unknown') }));
+    return false;
+    } finally {
+    this.releaseLoading = false;
+    }
+  },
+    selectReleaseFile(event) {
+      this.releaseForm.file = event?.target?.files?.[0] || null;
+      if (this.releaseForm.file) {
+      const errors = { ...this.releaseErrors };
+      if (this.releaseForm.file.size > this.releaseMaxUploadBytes) errors.file = 'agents.list.updates.validation.fileTooLarge';
+      else delete errors.file;
+      this.releaseErrors = errors;
+      }
+  },
+  async uploadRelease() {
+    const errors = {};
+      const version = String(this.releaseForm.version || '').trim().replace(/^v/, '');
+      if (!this.releaseForm.file) errors.file = 'agents.list.updates.validation.file';
+      else if (this.releaseForm.file.size > this.releaseMaxUploadBytes) errors.file = 'agents.list.updates.validation.fileTooLarge';
+    if (!/^[0-9][0-9A-Za-z._+-]{0,63}$/.test(version)) errors.version = 'agents.list.updates.validation.version';
+    this.releaseErrors = errors;
+      if (Object.keys(errors).length > 0 || this.releaseUploading) return;
+      this.releaseUploading = true;
+      this.releaseUploadProgress = 0;
+      try {
+      const release = await agentsV2API.uploadRelease(this.releaseForm.file, version, event => {
+        if (event?.total > 0) this.releaseUploadProgress = Math.min(100, Math.round(event.loaded * 100 / event.total));
+      });
+    this.releaseForm = { version: '', file: null };
+    this.releaseInputKey += 1;
+    await Promise.all([this.fetchReleases(), this.fetchAgentList()]);
+    toast.success(this.$t('agents.list.updates.feedback.uploaded', { version: release.version, platform: this.platformLabel(release) }));
+    } catch (error) {
+    toast.error(this.$t('agents.list.updates.feedback.uploadFailed', { error: error?.message || this.$t('common.errors.unknown') }));
+      } finally {
+      this.releaseUploading = false;
+      this.releaseUploadProgress = 0;
+      }
+  },
+  async deleteRelease(release) {
+    try {
+    await confirmAction(
+      this.$t('agents.list.updates.feedback.deleteConfirm', { version: release.version, platform: this.platformLabel(release) }),
+      this.$t('agents.list.updates.feedback.deleteTitle'),
+      { confirmButtonText: this.$t('agents.list.updates.delete'), cancelButtonText: this.$t('common.actions.cancel'), type: 'warning' }
+    );
+    await agentsV2API.deleteRelease(release.id);
+    await Promise.all([this.fetchReleases(), this.fetchAgentList()]);
+    toast.success(this.$t('agents.list.updates.feedback.deleted'));
+    } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      toast.error(this.$t('agents.list.updates.feedback.deleteFailed', { error: error?.message || this.$t('common.errors.unknown') }));
+    }
+    }
+  },
+  async upgradeAgent(agent) {
+    if (!this.canUpgradeAgent(agent) || this.upgradingAgents[agent.id]) return;
+    const update = this.agentUpdate(agent);
+    try {
+    await confirmAction(
+      this.$t('agents.list.updates.feedback.upgradeConfirm', { name: this.machineName(agent), current: agent.version, version: update.latestVersion }),
+      this.$t('agents.list.updates.feedback.upgradeTitle'),
+      { confirmButtonText: this.$t('agents.list.updates.upgrade'), cancelButtonText: this.$t('common.actions.cancel') }
+    );
+    this.upgradingAgents[agent.id] = true;
+    const job = await agentsV2API.upgrade(agent.id, update.release.id);
+    await waitForV2Job(job, 480000);
+    await this.fetchAgentList();
+    toast.success(this.$t('agents.list.updates.feedback.upgraded', { name: this.machineName(agent), version: update.latestVersion }));
+    } catch (error) {
+    if (error !== 'cancel' && error !== 'close') {
+      toast.error(this.$t('agents.list.updates.feedback.upgradeFailed', { error: error?.message || this.$t('common.errors.unknown') }));
+    }
+    } finally {
+    delete this.upgradingAgents[agent.id];
+    }
+  },
+  platformLabel(value) {
+    const os = String(value?.os || '').toLowerCase();
+    const platform = os === 'darwin' || os === 'macos' ? 'macOS' : os === 'linux' ? 'Linux' : os === 'windows' ? 'Windows' : (os || this.$t('agents.list.values.notAvailable'));
+    return `${platform} / ${value?.arch || this.$t('agents.list.values.notAvailable')}`;
+  },
     async fetchRuntimeTargets() {
       const sequence = ++this.runtimeRequestSequence;
       this.runtimeLoadFailure = null;
@@ -609,6 +885,7 @@ export default {
         this.runtimeByAgent = Object.fromEntries(
           this.runtimeTargetList.filter(item => item.kind === 'agent').map(item => [item.agentId, item])
         );
+        this.revealManagementTarget(false);
         return true;
       } catch (error) {
         if (sequence !== this.runtimeRequestSequence) return false;
@@ -659,15 +936,15 @@ export default {
         if (sequence === this.inventoryRequestSequences[agent.id]) this.inventoryLoading[agent.id] = false;
       }
     },
-    async refreshInventory(agent) {
+    async refreshInventory(agent, options = {}) {
       if (!this.canRefreshInventory(agent) || this.inventoryRefreshing[agent.id]) return;
       this.inventoryRefreshing[agent.id] = true;
       try {
         const job = await agentsV2API.refreshInventory(agent.id);
         await waitForV2Job(job, 45000);
         const refreshed = await this.fetchInventory(agent);
-        if (refreshed) toast.success(this.$t('agents.list.feedback.inventoryRefreshed', { name: agent.hostname }));
-        else toast.warning(this.$t('agents.list.feedback.inventoryRefreshedLoadFailed', { name: agent.hostname }));
+        if (refreshed && options.announceSuccess !== false) toast.success(this.$t('agents.list.feedback.inventoryRefreshed', { name: agent.hostname }));
+        else if (!refreshed) toast.warning(this.$t('agents.list.feedback.inventoryRefreshedLoadFailed', { name: agent.hostname }));
       } catch (error) {
         toast.error(this.$t('agents.list.feedback.inventoryRefreshFailed', {
           error: error?.message || this.$t('common.errors.unknown')
@@ -679,8 +956,76 @@ export default {
     runtimeFor(agent) {
       return this.runtimeByAgent[agent.id] || { configured: false, status: 'configuration_required', config: {} };
     },
+    isCurrentManagementTarget(targetId) {
+      return this.managementScope.kind === MANAGEMENT_SCOPE_TARGET &&
+        Boolean(targetId) && this.managementScope.targetId === targetId;
+    },
+    handleManagementScopeChange(event) {
+      this.managementScope = event?.detail || getManagementScope();
+      this.revealManagementTarget(true);
+    },
+    revealManagementTarget(smooth) {
+      if (this.managementScope.kind !== MANAGEMENT_SCOPE_TARGET || !this.managementScope.targetId) return;
+      this.$nextTick(() => {
+        const row = Array.from(this.$el?.querySelectorAll?.('[data-machine-target-id]') || [])
+          .find(element => element.dataset.machineTargetId === this.managementScope.targetId);
+        row?.scrollIntoView?.({ behavior: smooth ? 'smooth' : 'auto', block: 'nearest' });
+      });
+    },
+    runtimeSourceLabel(agent) {
+      return this.$t(this.runtimeFor(agent).config?.source === 'discovered'
+        ? 'agents.list.inventory.sources.discovered'
+        : 'agents.list.inventory.sources.manual');
+    },
+    runtimeStateLabel(agent) {
+      if (this.runtimeFor(agent).configured) return this.runtimeSourceLabel(agent);
+      if (agent.installation_registry_supported && (agent.installations || []).length > 1) {
+        return this.$t('agents.list.inventory.chooseInstallation');
+      }
+      if (agent.installation_registry_supported && (agent.installations || []).length === 0) {
+        return this.$t('agents.list.inventory.noInstallation');
+      }
+      return this.$t('agents.list.inventory.notConfigured');
+    },
+    runtimeStateVariant(agent) {
+      if (this.runtimeFor(agent).configured) return this.runtimeFor(agent).config?.source === 'discovered' ? 'secondary' : 'outline';
+      return 'outline';
+    },
+    runtimeRequirementTitle(agent) {
+      if (agent.installation_registry_supported && (agent.installations || []).length > 1) {
+        return this.$t('agents.list.inventory.chooseInstallationTitle');
+      }
+      if (agent.installation_registry_supported && (agent.installations || []).length === 0) {
+        return this.$t('agents.list.inventory.noInstallationTitle');
+      }
+      return this.$t('agents.list.inventory.notConfiguredTitle');
+    },
+    runtimeRequirementDescription(agent) {
+      if (agent.installation_registry_supported && (agent.installations || []).length > 1) {
+        return this.$t('agents.list.inventory.chooseInstallationDescription', { count: agent.installations.length });
+      }
+      if (agent.installation_registry_supported && (agent.installations || []).length === 0) {
+        return this.$t('agents.list.inventory.noInstallationDescription');
+      }
+      return this.$t('agents.list.inventory.notConfiguredDescription');
+    },
+    runtimeRequirementSummary(agent) {
+      if (agent.installation_registry_supported && (agent.installations || []).length > 1) {
+        return this.$t('agents.list.inventory.chooseInstallationSummary', { count: agent.installations.length });
+      }
+      if (agent.installation_registry_supported && (agent.installations || []).length === 0) {
+        return this.$t('agents.list.inventory.noInstallationSummary');
+      }
+      return this.$t('agents.list.inventory.notConfiguredSummary');
+    },
     machineName(agent) {
       return this.runtimeFor(agent).name || agent.display_name || agent.hostname || this.$t('agents.list.values.unknownNode');
+    },
+    machineRoleLabel(agent) {
+      if (agent.deployment_profile === 'container' && this.runtimeFor(agent).configured) {
+        return this.$t('agents.list.roles.managedAllInOne');
+      }
+      return this.$t('agents.list.roles.agentNode');
     },
     openRename(target) {
       if (!target?.id) return;
@@ -756,6 +1101,39 @@ export default {
       if (state === 'overcommitted') return 'destructive';
       if (state === 'full') return 'secondary';
       return 'outline';
+    },
+    performanceVariant(performance) {
+      if (performance?.status === 'incompatible') return 'destructive';
+      if (performance?.status === 'ready') return 'secondary';
+      return 'outline';
+    },
+    performanceStatusLabel(performance) {
+      const status = ['not_installed', 'detected_unverified', 'incompatible', 'ready'].includes(performance?.status)
+        ? performance.status
+        : 'not_reported';
+      return this.$t(`agents.list.runtime.performance.statuses.${status}`);
+    },
+    performanceSummary(performance) {
+      const status = ['not_installed', 'detected_unverified', 'incompatible', 'ready'].includes(performance?.status)
+        ? performance.status
+        : 'not_reported';
+      return this.$t(`agents.list.runtime.performance.summaries.${status}`);
+    },
+    performanceVersionText(performance) {
+      if (!performance?.packageVersion && !performance?.gameVersion && !performance?.signatureVersion) return '';
+      return this.$t('agents.list.runtime.performance.versions', {
+        package: performance.packageVersion || this.$t('agents.list.values.notAvailable'),
+        game: performance.gameVersion || this.$t('agents.list.values.notAvailable'),
+        signature: performance.signatureVersion || this.$t('agents.list.values.notAvailable')
+      });
+    },
+    performanceIssueText(performance) {
+      const known = new Set([
+        'server_architecture_unsupported', 'architecture_unsupported', 'platform_not_verified', 'installation_incomplete',
+        'injector_wrapper_invalid', 'signature_unreadable', 'game_version_unknown', 'signature_version_mismatch',
+        'package_version_unknown', 'binary_hash_unavailable', 'plugin_layout_unverified', 'injector_marker_invalid'
+      ]);
+      return (performance?.issues || []).map(issue => this.$t(`agents.list.runtime.performance.issues.${known.has(issue) ? issue : 'unknown'}`)).join(' · ');
     },
     capacityStateLabel(agent) {
       const state = this.capacityForAgent(agent).state;
@@ -914,11 +1292,15 @@ export default {
       }
       this.runtimeSaving = true;
       try {
-        await runtimeTargetsV2API.save(this.runtimeAgent.id, this.runtimeForm);
+        const configuredAgent = this.runtimeAgent;
+        await runtimeTargetsV2API.save(configuredAgent.id, this.runtimeForm);
         this.runtimeVisible = false;
         const refreshed = await this.fetchRuntimeTargets();
         announceRuntimeTargetsUpdated();
-        if (refreshed) toast.success(this.$t('agents.list.feedback.runtimeSaved'));
+        if (refreshed) {
+          toast.success(this.$t('agents.list.feedback.runtimeSaved'));
+          void this.refreshInventory(configuredAgent, { announceSuccess: false });
+        }
         else toast.warning(this.$t('agents.list.feedback.runtimeSavedRefreshFailed'));
       } catch (error) {
         toast.error(this.$t('agents.list.feedback.runtimeSaveFailed', {
@@ -964,13 +1346,16 @@ export default {
           backup: '/Users/yourname/dst-backups'
         }[kind];
       }
-      return { save: '/srv/dst/DoNotStarveTogether', server: '/srv/dst/server', backup: '/srv/dst/backups' }[kind];
+      return { save: '/opt/dst/saves', server: '/opt/dst/server', backup: '/opt/dst/backups' }[kind];
     },
     navigateToSecurity() {
       this.$router.push('/agents/security');
     },
     navigateToSystemSettings() {
       this.$router.push('/system/settings');
+    },
+    navigateToTopology() {
+      this.$router.push('/rooms/topology');
     },
     navigateToCommand(id) {
       this.$router.push({ path: '/agents/command', query: { id } });

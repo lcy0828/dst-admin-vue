@@ -11,7 +11,7 @@
           <RefreshCw v-else data-icon="inline-start" />
           {{ $t('runtime.refresh') }}
         </UiButton>
-        <UiButton size="sm" :disabled="loading || Boolean(busyKey) || managedRooms.length === 0" @click="installAll">
+        <UiButton size="sm" :disabled="loading || Boolean(busyKey) || discoveredRooms.length === 0" @click="installAll">
           <Wrench data-icon="inline-start" />
           {{ $t('runtime.installAll') }}
         </UiButton>
@@ -32,7 +32,7 @@
       <div v-if="loading && reports.length === 0" class="runtime-skeleton" aria-busy="true">
         <Skeleton v-for="index in 3" :key="index" class="h-12 w-full" />
       </div>
-      <Empty v-else-if="!error && managedRooms.length === 0">
+      <Empty v-else-if="!error && discoveredRooms.length === 0">
         <EmptyHeader>
           <EmptyMedia variant="icon"><TerminalSquare /></EmptyMedia>
           <EmptyTitle>{{ $t('runtime.noRooms') }}</EmptyTitle>
@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RefreshCw, TerminalSquare, TriangleAlert, Wrench } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
@@ -103,6 +103,9 @@ import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 const { t } = useI18n()
+const props = defineProps({
+  roomId: { type: [String, Number], default: '' }
+})
 const loading = ref(false)
 const error = ref(null)
 const failures = ref([])
@@ -110,7 +113,7 @@ const rooms = ref([])
 const reports = ref([])
 const busyKey = ref('')
 let requestSequence = 0
-const managedRooms = computed(() => rooms.value.filter(room => room.managed))
+const discoveredRooms = computed(() => rooms.value)
 
 const rowKey = report => `${report.roomId}:${report.worldId}`
 const isBusy = report => busyKey.value === rowKey(report)
@@ -128,15 +131,16 @@ async function loadStatus() {
   try {
     const roomResponse = await roomsV2API.list()
     if (sequence !== requestSequence) return { ok: false, partial: false }
-    const nextRooms = roomResponse.items || []
-    const nextManagedRooms = nextRooms.filter(room => room.managed)
-    const settled = await Promise.allSettled(nextManagedRooms.map(async room => {
+    const nextRooms = (roomResponse.items || []).filter(room => (
+      !props.roomId || String(room.id) === String(props.roomId)
+    ))
+    const settled = await Promise.allSettled(nextRooms.map(async room => {
       const response = await runtimeV2API.status(room.id)
       return (response.items || []).map(item => ({ ...item, roomName: room.name }))
     }))
     if (sequence !== requestSequence) return { ok: false, partial: false }
     const nextFailures = settled.flatMap((item, index) => item.status === 'rejected'
-      ? [{ room: nextManagedRooms[index], reason: item.reason }]
+      ? [{ room: nextRooms[index], reason: item.reason }]
       : [])
     const failedRoomIds = new Set(nextFailures.map(item => item.room.id))
     const successfulReports = settled.filter(item => item.status === 'fulfilled').flatMap(item => item.value)
@@ -156,10 +160,10 @@ async function loadStatus() {
 }
 
 async function installAll() {
-  if (busyKey.value || managedRooms.value.length === 0) return
+  if (busyKey.value || discoveredRooms.value.length === 0) return
   busyKey.value = 'all'
   try {
-    const settled = await Promise.allSettled(managedRooms.value.map(room => runtimeV2API.installRoom(room.id)))
+    const settled = await Promise.allSettled(discoveredRooms.value.map(room => runtimeV2API.installRoom(room.id)))
     const failed = settled.filter(item => item.status === 'rejected')
     if (failed.length === settled.length && failed[0]) throw failed[0].reason
     if (failed.length) toast.warning(t('runtime.messages.roomInstallPartial', { count: failed.length }))
@@ -193,6 +197,8 @@ const activate = report => runWorldAction(report, runtimeV2API.activate, 'activa
 const reload = report => runWorldAction(report, runtimeV2API.reload, 'reload')
 
 onMounted(loadStatus)
+watch(() => props.roomId, () => void loadStatus())
+defineExpose({ loadStatus })
 </script>
 
 <style scoped>

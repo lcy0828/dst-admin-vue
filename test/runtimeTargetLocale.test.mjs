@@ -12,6 +12,7 @@ const messages = {
   'app.remote.localAvailable': 'Local available',
   'app.remote.localPending': 'Local pending',
   'app.remote.remoteUnconfigured': 'Remote not configured',
+  'app.remote.remotePendingOnline': 'Remote connected; setup required',
   'app.remote.remoteOnline': 'Remote online',
   'app.remote.remoteOffline': 'Remote offline',
   'common.states.unknown': 'Unknown'
@@ -20,9 +21,12 @@ const translate = key => messages[key]
 
 test('runtime target labels translate known state without rewriting custom target names', () => {
   assert.equal(runtimeTargetName({ id: 'local', kind: 'local', name: 'Local' }, translate), 'Local')
+  assert.equal(runtimeTargetName({ id: 'local', kind: 'local', name: 'Mac Studio' }, translate), 'Mac Studio')
+  assert.equal(runtimeTargetName({ id: 'local', kind: 'local' }, translate), 'Local')
   assert.equal(runtimeTargetName({ id: 'agent-1', kind: 'agent', name: 'Game Host' }, translate), 'Game Host')
   assert.equal(runtimeTargetMeta({ kind: 'local', status: 'ready' }, translate), 'Local available')
   assert.equal(runtimeTargetMeta({ kind: 'agent', configured: false }, translate), 'Remote not configured')
+  assert.equal(runtimeTargetMeta({ kind: 'agent', configured: false, online: true }, translate), 'Remote connected; setup required')
   assert.equal(runtimeTargetMeta({ kind: 'agent', configured: true, online: false }, translate), 'Remote offline')
 })
 

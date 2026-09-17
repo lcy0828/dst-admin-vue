@@ -1,15 +1,16 @@
-import { roomApi, systemApi } from '@/api/index'
-import { confirmCapacityRisk } from '@/lib/feedback'
+import { roomApi } from '@/api/index'
+import { confirmCapacityRisk, selectRuntimeMode } from '@/lib/feedback'
 import {
-  CAPACITY_RISK_CONFIRMATION_CANCELED,
   isCapacityRiskError,
 } from '@/lib/capacityRisk.mjs'
 
-class CapacityRiskCanceledError extends Error {
+const START_FLOW_CANCELED = 'START_FLOW_CANCELED'
+
+class StartFlowCanceledError extends Error {
   constructor() {
-    super('Capacity risk confirmation was canceled.')
-    this.name = 'CapacityRiskCanceledError'
-    this.code = CAPACITY_RISK_CONFIRMATION_CANCELED
+    super('Room startup was canceled.')
+    this.name = 'StartFlowCanceledError'
+    this.code = START_FLOW_CANCELED
   }
 }
 
@@ -21,26 +22,52 @@ export async function executeWithCapacityConfirmation(execute) {
     try {
       await confirmCapacityRisk(error.details)
     } catch {
-      throw new CapacityRiskCanceledError()
+      throw new StartFlowCanceledError()
     }
     return execute(true)
   }
 }
 
-export function startRoomWithCapacityRisk(input) {
+async function chooseRuntimeSelection(input) {
+  const requested = input?.runtime_mode || input?.runtimeMode
+  if (requested) {
+    return {
+      mode: requested,
+      version: input?.runtime_version || input?.runtimeVersion || (requested === 'game' ? 'game' : ''),
+    }
+  }
+
+  const response = await roomApi.getRuntimeModes(input)
+  const availability = response?.data || response || {}
+
+  try {
+    const result = await selectRuntimeMode(availability)
+    return {
+      mode: result?.value || 'game',
+      version: result?.version || (result?.value === 'game' ? 'game' : ''),
+    }
+  } catch {
+    throw new StartFlowCanceledError()
+  }
+}
+
+export async function startRoomWithCapacityRisk(input) {
+  const runtimeSelection = await chooseRuntimeSelection(input)
   return executeWithCapacityConfirmation(allowCapacityRisk => roomApi.startRoom({
     ...input,
     allow_capacity_risk: allowCapacityRisk,
+    runtime_mode: runtimeSelection.mode,
+    runtime_version: runtimeSelection.version,
   }))
 }
 
 export function restartWorldWithCapacityRisk(input) {
-  return executeWithCapacityConfirmation(allowCapacityRisk => systemApi.restartTmuxServer({
+  return executeWithCapacityConfirmation(allowCapacityRisk => roomApi.restartRoom({
     ...input,
     allow_capacity_risk: allowCapacityRisk,
   }))
 }
 
 export function isCapacityRiskCanceled(error) {
-  return error?.code === CAPACITY_RISK_CONFIRMATION_CANCELED
+  return error?.code === START_FLOW_CANCELED
 }

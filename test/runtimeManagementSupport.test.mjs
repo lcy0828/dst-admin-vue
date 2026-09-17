@@ -15,15 +15,17 @@ test('runtime API exposes status, lifecycle, events, and diagnostics endpoints',
   assert.match(api, /\/runtime\/diagnostics\/latest/)
 })
 
-test('player and world state pages retain runtime management surfaces', async () => {
-  const [players, worldState, statusPanel, diagnosticsPanel] = await Promise.all([
+test('room diagnostics and world state retain runtime management surfaces', async () => {
+  const [players, roomDiagnostics, worldState, statusPanel, diagnosticsPanel] = await Promise.all([
     source('src/views/players/PlayerList.vue'),
+    source('src/views/rooms/RoomDiagnostics.vue'),
     source('src/views/worlds/WorldState.vue'),
     source('src/components/runtime/RuntimeStatusPanel.vue'),
     source('src/components/runtime/RuntimeDiagnosticsPanel.vue')
   ])
 
-  assert.match(players, /<RuntimeStatusPanel/)
+  assert.doesNotMatch(players, /<RuntimeStatusPanel/)
+  assert.match(roomDiagnostics, /<RuntimeStatusPanel[\s\S]*?:room-id="selectedRoomId"/)
   assert.match(statusPanel, /runtimeV2API\.installWorld/)
   assert.match(statusPanel, /runtimeV2API\.activate/)
   assert.match(statusPanel, /runtimeV2API\.reload/)

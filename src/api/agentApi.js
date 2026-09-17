@@ -66,6 +66,8 @@ function legacyAgent(agent = {}) {
     stale_reason: agent.staleReason || '',
     installation_registry_supported: Boolean(agent.installationRegistrySupported),
     installations: normalizeAgentRuntimeInstallations(agent.installations),
+    runtime_auto_adopt_disabled: Boolean(agent.runtimeAutoAdoptDisabled),
+	update: agent.update || {},
     metrics_observed_at: metrics.observedAt || agent.lastReportAt || '',
     uptime_seconds: metrics.uptimeSeconds || 0,
     user,

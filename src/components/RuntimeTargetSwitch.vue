@@ -28,7 +28,17 @@
         </SelectGroup>
       </SelectContent>
     </UiSelect>
-    <Tooltip>
+    <Tooltip v-if="pendingTargets.length">
+      <TooltipTrigger as-child>
+        <UiButton variant="outline" size="sm" :aria-label="$t('app.remote.pendingCount', { count: pendingTargets.length })" @click="openAgentSettings">
+          <CircleAlert data-icon="inline-start" />
+          <span class="target-attention-full">{{ $t('app.remote.pendingCount', { count: pendingTargets.length }) }}</span>
+          <span class="target-attention-compact" aria-hidden="true">{{ pendingTargets.length }}</span>
+        </UiButton>
+      </TooltipTrigger>
+      <TooltipContent>{{ $t('app.remote.pendingDescription') }}</TooltipContent>
+    </Tooltip>
+    <Tooltip v-else>
       <TooltipTrigger as-child>
         <UiButton class="target-settings" variant="ghost" size="icon-sm" :aria-label="$t('app.remote.openConfiguration')" @click="openAgentSettings">
           <SettingsIcon />
@@ -40,7 +50,7 @@
 </template>
 
 <script>
-import { SettingsIcon } from '@lucide/vue'
+import { CircleAlert, SettingsIcon } from '@lucide/vue'
 import { runtimeTargetsV2API } from '@/api/v2'
 import { Button as UiButton } from '@/components/ui/button'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -58,6 +68,7 @@ import { toast } from 'vue-sonner'
 export default {
   name: 'RuntimeTargetSwitch',
   components: {
+    CircleAlert,
     UiButton,
     UiSelect,
     SelectContent,
@@ -72,6 +83,11 @@ export default {
     TooltipTrigger
   },
   emits: ['change'],
+  computed: {
+    pendingTargets() {
+      return this.targets.filter(target => target.kind === 'agent' && target.online && !target.configured)
+    }
+  },
   data() {
     return {
       loading: false,
@@ -203,6 +219,10 @@ export default {
   font-size: 12px;
 }
 
+.target-attention-compact {
+  display: none;
+}
+
 @media (max-width: 980px) {
   .target-label {
     display: none;
@@ -220,6 +240,14 @@ export default {
 
   .target-settings {
     display: none;
+  }
+
+  .target-attention-full {
+    display: none;
+  }
+
+  .target-attention-compact {
+    display: inline;
   }
 }
 </style>

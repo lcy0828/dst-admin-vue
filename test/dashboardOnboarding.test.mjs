@@ -31,6 +31,18 @@ test('local onboarding advances from installation through room creation and star
   assert.equal(complete.progress, 100)
 })
 
+test('completed onboarding stays hidden after every shard is stopped', () => {
+  const complete = dashboardOnboardingState({
+    installed: false,
+    roomCount: 0,
+    runningShards: 0,
+    firstStartCompleted: true
+  })
+  assert.equal(complete.complete, true)
+  assert.equal(complete.visible, false)
+  assert.equal(complete.progress, 100)
+})
+
 test('controller-only onboarding directs users to remote nodes', () => {
   const state = dashboardOnboardingState({ localExecutorEnabled: false })
   assert.equal(state.mode, 'remote')
@@ -57,6 +69,8 @@ test('dashboard onboarding uses real capabilities, checks, and shadcn controls',
   assert.match(dashboard, /<DashboardOnboarding/)
   assert.match(dashboard, /v-if="onboardingResolved"/)
   assert.match(dashboard, /:capabilities="capabilities"/)
+  assert.match(onboarding, /readiness\?\.onboarding\?\.firstStartCompleted/)
+  assert.match(onboarding, /const visible = computed\(\(\) => state\.value\.visible\)/)
   assert.match(onboarding, /dashboard\.onboarding\.packaging/)
   assert.match(onboarding, /<Progress :model-value="state\.progress"/)
   assert.match(onboarding, /<Alert v-if="blockers\.length"/)

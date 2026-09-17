@@ -1,7 +1,8 @@
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { roomApi, systemApi } from '@/api/index'
 import { systemV2API } from '@/api/v2'
 import { confirmAction } from '@/lib/feedback'
+import { confirmRoomMaintenance } from '@/lib/maintenanceConfirmation'
 import { formatResourceDateTime } from '@/lib/systemResourceMetrics.mjs'
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk'
 import {
@@ -13,6 +14,12 @@ import {
 import { i18n, translate } from '@/i18n'
 import { useSystemResourceStatus } from '@/composables/useSystemResourceStatus'
 import { toast } from 'vue-sonner'
+import {
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  managementScopeTargetId
+} from '@/lib/managementScope.mjs'
+import { RUNTIME_OBSERVATION_UPDATED_EVENT } from '@/lib/runtimeObservationStreams.mjs'
 
 const emptyVersion = () => ({
   local: null,
@@ -38,10 +45,13 @@ const emptyCapabilities = () => ({
 
 const emptyReadiness = () => ({
   ready: false,
-  checks: []
+  checks: [],
+  onboarding: {
+    firstStartCompleted: false
+  }
 })
 
-export function useDashboardV2() {
+export function useDashboardV2({ observeRuntime = true } = {}) {
   const {
     status: systemStatus,
     loading: systemLoading,
@@ -56,6 +66,7 @@ export function useDashboardV2() {
   const updateStatus = ref(null)
   const lastRefreshedAt = ref(null)
   const onboardingResolved = ref(false)
+  const managementScope = ref(getManagementScope())
 
   const serverLoading = ref(false)
   const versionLoading = ref(false)
@@ -71,7 +82,6 @@ export function useDashboardV2() {
   let versionRequestSequence = 0
   let guidanceRequestSequence = 0
   let updatePollInFlight = false
-  let runtimePollInFlight = false
 
   const runningServerCount = computed(() => serverList.value.filter(server => server.status === 'running').length)
   const dashboardLoading = computed(() => (
@@ -93,65 +103,47 @@ export function useDashboardV2() {
     serverLoading.value = true
     serverError.value = ''
     roomError.value = ''
-    const [servers, rooms] = await Promise.allSettled([
-      systemApi.getTmuxServers(),
-      roomApi.getRoomList()
+    const overview = await Promise.allSettled([
+      roomApi.getScopedRuntimeOverview(managementScopeTargetId(managementScope.value))
     ])
     if (sequence !== serverRequestSequence) return false
 
-    if (servers.status === 'fulfilled' && servers.value?.status === 200) {
-      serverList.value = Array.isArray(servers.value.data) ? servers.value.data : []
+    const result = overview[0]
+    if (result.status === 'fulfilled' && result.value?.status === 200) {
+      serverList.value = Array.isArray(result.value.data?.servers) ? result.value.data.servers : []
+      roomList.value = Array.isArray(result.value.data?.rooms) ? result.value.data.rooms : []
     } else {
-      serverError.value = servers.reason?.message || servers.value?.msg || translate('dashboard.feedback.serverLoadFailed')
-    }
-
-    if (rooms.status === 'fulfilled' && rooms.value?.status === 200) {
-      roomList.value = Array.isArray(rooms.value.data) ? rooms.value.data : []
-    } else {
-      roomError.value = rooms.reason?.message || rooms.value?.msg || translate('dashboard.feedback.roomLoadFailed')
+      const message = result.reason?.message || result.value?.msg || translate('dashboard.feedback.serverLoadFailed')
+      serverError.value = message
+      roomError.value = message
     }
 
     if (sequence === serverRequestSequence) serverLoading.value = false
-    return servers.status === 'fulfilled' && servers.value?.status === 200 && rooms.status === 'fulfilled' && rooms.value?.status === 200
+    return result.status === 'fulfilled' && result.value?.status === 200
   }
 
-  async function refreshRuntimeServers() {
-    if (serverLoading.value || runtimePollInFlight) return false
-    runtimePollInFlight = true
-    const observedSequence = serverRequestSequence
-    try {
-      const [servers, rooms] = await Promise.allSettled([
-        systemApi.getTmuxServers(),
-        roomApi.getRoomList()
-      ])
-      if (observedSequence !== serverRequestSequence) return false
-
-      const serversReady = servers.status === 'fulfilled' && servers.value?.status === 200
-      const roomsReady = rooms.status === 'fulfilled' && rooms.value?.status === 200
-      if (serversReady) {
-        serverList.value = Array.isArray(servers.value.data) ? servers.value.data : []
-        serverError.value = ''
-      } else if (serverList.value.length === 0) {
-        serverError.value = servers.reason?.message || servers.value?.msg || translate('dashboard.feedback.serverLoadFailed')
-      }
-      if (roomsReady) {
-        roomList.value = Array.isArray(rooms.value.data) ? rooms.value.data : []
-        roomError.value = ''
-      } else if (roomList.value.length === 0) {
-        roomError.value = rooms.reason?.message || rooms.value?.msg || translate('dashboard.feedback.roomLoadFailed')
-      }
-      return serversReady && roomsReady
-    } finally {
-      runtimePollInFlight = false
-    }
+  function handleManagementScopeChange(event) {
+    const previousTargetId = managementScopeTargetId(managementScope.value)
+    managementScope.value = event?.detail || getManagementScope()
+    if (previousTargetId === managementScopeTargetId(managementScope.value)) return
+    serverRequestSequence += 1
+    serverList.value = []
+    roomList.value = []
+    serverError.value = ''
+    roomError.value = ''
+    void refreshServers()
   }
 
-  async function refreshVersion() {
+  function handleRuntimeObservationUpdate() {
+    void refreshServers()
+  }
+
+  async function refreshVersion(options = {}) {
     const sequence = ++versionRequestSequence
     versionLoading.value = true
     versionError.value = ''
     try {
-      const response = await systemApi.getGameVersion()
+      const response = await systemApi.getGameVersion(options)
       if (response?.status !== 200 || !response.data) throw new Error(response?.msg || translate('dashboard.feedback.invalidVersionResponse'))
       if (sequence !== versionRequestSequence) return false
       versionInfo.value = response.data
@@ -206,9 +198,11 @@ export function useDashboardV2() {
     }
     const stopping = primaryAction.kind === 'stop'
     const action = primaryAction.label
+    let maintenance = {}
     try {
-      await confirmAction(translate('dashboard.feedback.actionConfirm', { action, room: server.archive_name, world: server.world_name }), translate('dashboard.feedback.actionConfirmTitle'), {
-        confirmText: translate('dashboard.feedback.actionConfirmButton', { action })
+      const confirm = stopping ? (...args) => confirmRoomMaintenance(server.room_id, ...args) : confirmAction
+      maintenance = await confirm(translate('dashboard.feedback.actionConfirm', { action, room: server.archive_name, world: server.world_name }), translate('dashboard.feedback.actionConfirmTitle'), {
+        confirmButtonText: translate('dashboard.feedback.actionConfirmButton', { action })
       })
     } catch {
       return
@@ -216,7 +210,12 @@ export function useDashboardV2() {
 
     serverLoading.value = true
     try {
-      const input = { room_id: server.room_id, world_id: server.world_id }
+      const input = {
+        immediate: maintenance?.immediate === true,
+        room_id: server.room_id,
+        world_id: server.world_id,
+        exact_world_ids: Boolean(managementScopeTargetId(managementScope.value))
+      }
       await (stopping ? roomApi.stopRoom(input) : startRoomWithCapacityRisk(input))
       const refreshed = await refreshServers()
       if (refreshed) toast.success(translate('dashboard.feedback.actionCompleted', { action }))
@@ -239,7 +238,8 @@ export function useDashboardV2() {
     try {
       await startRoomWithCapacityRisk({
         room_id: room.id,
-        world_ids: startableWorlds.map(world => world.id)
+        world_ids: startableWorlds.map(world => world.id),
+        exact_world_ids: Boolean(managementScopeTargetId(managementScope.value))
       })
       const refreshed = await refreshServers()
       if (refreshed) toast.success(translate('dashboard.feedback.roomStarted', { room: room.name }))
@@ -347,7 +347,16 @@ export function useDashboardV2() {
     }
   }
 
-  onBeforeUnmount(stopUpdatePolling)
+  onMounted(() => {
+    if (!observeRuntime) return
+    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
+    window.addEventListener(RUNTIME_OBSERVATION_UPDATED_EVENT, handleRuntimeObservationUpdate)
+  })
+  onBeforeUnmount(() => {
+    stopUpdatePolling()
+    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
+    window.removeEventListener(RUNTIME_OBSERVATION_UPDATED_EVENT, handleRuntimeObservationUpdate)
+  })
 
   return {
     systemStatus,
@@ -377,7 +386,6 @@ export function useDashboardV2() {
     refreshDashboard,
     refreshSystem,
     refreshServers,
-    refreshRuntimeServers,
     refreshVersion,
     refreshGuidance,
     handleServerAction,

@@ -1,13 +1,16 @@
 export function runtimeTargetName(target, translate) {
-  if (target?.kind === 'local') return translate('app.remote.local')
-  return target?.name || target?.id || translate('common.states.unknown')
+  return target?.name
+    || (target?.kind === 'local' ? translate('app.remote.local') : target?.id)
+    || translate('common.states.unknown')
 }
 
 export function runtimeTargetMeta(target, translate) {
   if (target?.kind === 'local') {
     return translate(target.status === 'ready' ? 'app.remote.localAvailable' : 'app.remote.localPending')
   }
-  if (!target?.configured) return translate('app.remote.remoteUnconfigured')
+  if (!target?.configured) {
+    return translate(target.online ? 'app.remote.remotePendingOnline' : 'app.remote.remoteUnconfigured')
+  }
   return translate(target.online ? 'app.remote.remoteOnline' : 'app.remote.remoteOffline')
 }
 

@@ -1,8 +1,9 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Activity, CircleAlert, Cpu, HardDrive, MemoryStick, RefreshCw } from '@lucide/vue'
+import { Activity, CircleAlert, Cpu, HardDrive, MemoryStick, RefreshCw, Server } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Popover,
@@ -18,6 +19,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSystemResourceStatus } from '@/composables/useSystemResourceStatus'
 import { busiestCPUCore } from '@/lib/cpuMetrics.mjs'
+import { MANAGEMENT_SCOPE_ALL } from '@/lib/managementScope.mjs'
 import {
   formatDecimal,
   formatDisk,
@@ -26,7 +28,8 @@ import {
   formatSystemUptime,
   hasMetric,
   loadPercentage,
-  percentage
+  percentage,
+  systemLoadSeverity
 } from '@/lib/systemResourceMetrics.mjs'
 import { cn } from '@/lib/utils'
 
@@ -36,20 +39,34 @@ const {
   loading,
   error,
   lastUpdatedAt,
+  scope,
   refreshSystemResourceStatus,
   startSystemResourcePolling,
   stopSystemResourcePolling
 } = useSystemResourceStatus()
 
 const CPU_CORE_ALERT_THRESHOLD = 80
+const fleetMode = computed(() => scope.value?.kind === MANAGEMENT_SCOPE_ALL || status.value?.mode === 'fleet')
+const fleetMachines = computed(() => status.value?.machines || [])
+const fleetSummary = computed(() => status.value?.summary || { total: 0, online: 0, alerts: 0 })
+const resourceScopeLabel = computed(() => fleetMode.value
+  ? t('dashboard.resources.allMachines')
+  : scope.value.targetName || t('app.remote.controllerMetrics'))
 const hasStatus = computed(() => Object.keys(status.value || {}).length > 0)
 const loadCapacity = computed(() => status.value.cpu_threads || status.value.cpu_cores)
 const busiestCore = computed(() => busiestCPUCore(status.value.cpu_core_usage))
 const cpuAverageUsage = computed(() => status.value.cpu_usage)
+const loadState = computed(() => systemLoadSeverity(status.value.cpu_load5, loadCapacity.value))
+const loadIsOverloaded = computed(() => loadState.value.key === 'overloaded')
 const hasHighCPUCore = computed(() => (
   busiestCore.value?.usage > CPU_CORE_ALERT_THRESHOLD
 ))
 const cpuMetricLabel = computed(() => t('dashboard.resources.cpuAverage'))
+const selectedNodeState = computed(() => {
+  if (status.value?.application?.nodeOnline === false) return 'offline'
+  if (status.value?.application?.metricsStale === true) return 'stale'
+  return ''
+})
 const cpuMetricSummary = computed(() => {
   if (!busiestCore.value) {
     return `${status.value.cpu_model || '--'} · ${t('dashboard.resources.coresThreads', {
@@ -63,11 +80,27 @@ const cpuMetricSummary = computed(() => {
   })
 })
 const resourceButtonAriaLabel = computed(() => {
-  if (!hasHighCPUCore.value) return t('dashboard.resources.viewDetails')
-  return `${t('dashboard.resources.viewDetails')} · ${t('dashboard.resources.highCoreWarning', {
-    index: busiestCore.value.index + 1,
-    usage: formatPercent(busiestCore.value.usage)
-  })}`
+  if (fleetMode.value) {
+    return t('dashboard.resources.fleetAria', {
+      online: fleetSummary.value.online,
+      total: fleetSummary.value.total,
+      alerts: fleetSummary.value.alerts
+    })
+  }
+  const warnings = []
+  if (hasHighCPUCore.value) {
+    warnings.push(t('dashboard.resources.highCoreWarning', {
+      index: busiestCore.value.index + 1,
+      usage: formatPercent(busiestCore.value.usage)
+    }))
+  }
+  if (loadIsOverloaded.value) {
+    warnings.push(t('dashboard.resources.loadOverloadedWarning', {
+      load: formatDecimal(status.value.cpu_load5),
+      capacity: loadCapacity.value
+    }))
+  }
+  return [t('dashboard.resources.viewDetails'), ...warnings].join(' · ')
 })
 
 function formatPercent(value) {
@@ -89,8 +122,64 @@ function cpuCoreUsageClass(value) {
   )
 }
 
+function loadMetricClass() {
+  return cn('tabular-nums font-semibold', loadIsOverloaded.value && 'text-destructive')
+}
+
+function loadStateBadgeVariant() {
+  if (loadState.value.key === 'overloaded') return 'destructive'
+  if (loadState.value.key === 'elevated') return 'outline'
+  return 'secondary'
+}
+
 function sampledAt() {
   return formatResourceDateTime(status.value.current_time || lastUpdatedAt.value, locale.value)
+}
+
+function machineStateVariant(machine) {
+  if (machine.state === 'healthy') return 'success'
+  if (machine.state === 'offline' || machine.state === 'warning') return 'destructive'
+  return 'warning'
+}
+
+function machineSubtitle(machine) {
+  const parts = [t(`dashboard.resources.machineKinds.${machine.kind}`)]
+  const version = machine?.resource?.application?.agentVersion
+  if (machine.kind === 'agent' && version) parts.push(t('dashboard.resources.agentVersion', { version }))
+  if (machine.hostname && machine.hostname !== machine.name) parts.push(machine.hostname)
+  return parts.join(' · ')
+}
+
+function machineTelemetryHint(machine) {
+  if (machine.kind !== 'agent' || !machine.online) return ''
+
+  const missing = []
+  if (!hasMetric(machine.resource.cpu_usage)) missing.push(t('dashboard.resources.missingMetrics.cpu'))
+  else if (!machine.resource.cpu_core_usage?.length) missing.push(t('dashboard.resources.missingMetrics.perCore'))
+  if (!hasMetric(machine.resource.disk_usage)) missing.push(t('dashboard.resources.missingMetrics.disk'))
+  if (!hasMetric(machine.resource.cpu_load1)) missing.push(t('dashboard.resources.missingMetrics.load'))
+  if (!missing.length) return ''
+
+  const version = machine?.resource?.application?.agentVersion
+  return version
+    ? t('dashboard.resources.agentMetricsIncompleteVersion', { version, metrics: missing.join(t('dashboard.resources.missingMetricSeparator')) })
+    : t('dashboard.resources.agentMetricsIncomplete', { metrics: missing.join(t('dashboard.resources.missingMetricSeparator')) })
+}
+
+function machineLoad(machine) {
+  return machine?.resource?.cpu_load1
+}
+
+function machineLoadCapacity(machine) {
+  return machine?.resource?.cpu_threads || machine?.resource?.cpu_cores
+}
+
+function machineLoadState(machine) {
+  return systemLoadSeverity(machine?.resource?.cpu_load5, machineLoadCapacity(machine))
+}
+
+function machineLoadClass(machine) {
+  return cn('tabular-nums font-semibold', machineLoadState(machine).key === 'overloaded' && 'text-destructive')
 }
 
 onMounted(startSystemResourcePolling)
@@ -107,35 +196,53 @@ onBeforeUnmount(stopSystemResourcePolling)
           class="max-w-full gap-3 px-2"
           :aria-label="resourceButtonAriaLabel"
         >
-          <span class="flex items-center gap-1">
-            <Cpu :class="cn('text-muted-foreground', hasHighCPUCore && 'text-destructive')" />
-            <span class="hidden 2xl:inline">{{ cpuMetricLabel }}</span>
-            <strong :class="cpuAverageClass()">{{ formatPercent(cpuAverageUsage) }}</strong>
-            <CircleAlert v-if="hasHighCPUCore" class="text-destructive" />
-          </span>
-          <span class="flex items-center gap-1">
-            <MemoryStick class="text-muted-foreground" />
-            <span class="hidden 2xl:inline">{{ t('dashboard.resources.memory') }}</span>
-            <strong :class="usageClass(status.memory_usage)">{{ formatPercent(status.memory_usage) }}</strong>
-          </span>
-          <span class="hidden items-center gap-1 sm:flex">
-            <HardDrive class="text-muted-foreground" />
-            <span class="hidden 2xl:inline">{{ t('dashboard.resources.disk') }}</span>
-            <strong :class="usageClass(status.disk_usage)">{{ formatPercent(status.disk_usage) }}</strong>
-          </span>
-          <span class="hidden items-center gap-1 xl:flex">
-            <Activity class="text-muted-foreground" />
-            <span class="hidden 2xl:inline">{{ t('dashboard.resources.loadShort') }}</span>
-            <strong class="tabular-nums font-semibold">{{ formatDecimal(status.cpu_load1) }}</strong>
-          </span>
+          <template v-if="fleetMode">
+            <span class="flex items-center gap-1.5">
+              <Server class="text-muted-foreground" />
+              <span>{{ t('dashboard.resources.onlineCount', { online: fleetSummary.online, total: fleetSummary.total }) }}</span>
+            </span>
+            <Badge v-if="fleetSummary.alerts" variant="destructive">
+              {{ t('dashboard.resources.alertCount', { count: fleetSummary.alerts }) }}
+            </Badge>
+            <Badge v-else-if="hasStatus" variant="success">{{ t('dashboard.resources.allHealthy') }}</Badge>
+          </template>
+          <template v-else>
+            <span class="flex items-center gap-1">
+              <Cpu :class="cn('text-muted-foreground', hasHighCPUCore && 'text-destructive')" />
+              <span class="hidden 2xl:inline">{{ cpuMetricLabel }}</span>
+              <strong :class="cpuAverageClass()">{{ formatPercent(cpuAverageUsage) }}</strong>
+              <CircleAlert v-if="hasHighCPUCore" class="text-destructive" />
+            </span>
+            <span class="hidden items-center gap-1 xl:flex">
+              <MemoryStick class="text-muted-foreground" />
+              <span class="hidden 2xl:inline">{{ t('dashboard.resources.memory') }}</span>
+              <strong :class="usageClass(status.memory_usage)">{{ formatPercent(status.memory_usage) }}</strong>
+            </span>
+            <span class="hidden items-center gap-1 2xl:flex">
+              <HardDrive class="text-muted-foreground" />
+              <span class="hidden 2xl:inline">{{ t('dashboard.resources.disk') }}</span>
+              <strong :class="usageClass(status.disk_usage)">{{ formatPercent(status.disk_usage) }}</strong>
+            </span>
+            <span class="hidden items-center gap-1 2xl:flex">
+              <Activity :class="cn('text-muted-foreground', loadIsOverloaded && 'text-destructive')" />
+              <span class="hidden 2xl:inline">{{ t('dashboard.resources.loadShort') }}</span>
+              <strong :class="loadMetricClass()">{{ formatDecimal(status.cpu_load1) }}</strong>
+              <CircleAlert v-if="loadIsOverloaded" class="text-destructive" />
+            </span>
+          </template>
           <CircleAlert v-if="error" class="text-destructive" />
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" :side-offset="8" class="relative max-h-[min(42rem,calc(100vh-2rem))] w-[min(32rem,calc(100vw-2rem))] gap-3 overflow-y-auto p-3">
+      <PopoverContent align="end" :side-offset="8" :class="cn('relative max-h-[min(42rem,calc(100vh-2rem))] gap-3 overflow-y-auto p-3', fleetMode ? 'w-[min(48rem,calc(100vw-2rem))]' : 'w-[min(32rem,calc(100vw-2rem))]')">
         <PopoverHeader class="pr-8">
-          <PopoverTitle>{{ t('dashboard.resources.title') }}</PopoverTitle>
-          <PopoverDescription>{{ status.os_info || t('dashboard.summary.waitingSystem') }}</PopoverDescription>
+          <PopoverTitle>{{ t('dashboard.resources.title') }} · {{ resourceScopeLabel }}</PopoverTitle>
+          <PopoverDescription>
+            <template v-if="fleetMode">
+              {{ t('dashboard.resources.fleetDescription', { online: fleetSummary.online, total: fleetSummary.total }) }}
+            </template>
+            <template v-else>{{ status.os_info || t('dashboard.summary.waitingSystem') }}</template>
+          </PopoverDescription>
         </PopoverHeader>
 
         <Tooltip>
@@ -146,7 +253,7 @@ onBeforeUnmount(stopSystemResourcePolling)
               class="absolute right-2 top-2"
               :disabled="loading"
               :aria-label="t('dashboard.resources.refresh')"
-              @click="refreshSystemResourceStatus"
+              @click="refreshSystemResourceStatus()"
             >
               <Spinner v-if="loading" />
               <RefreshCw v-else />
@@ -161,8 +268,154 @@ onBeforeUnmount(stopSystemResourcePolling)
           <AlertDescription>{{ error }}</AlertDescription>
         </Alert>
 
+        <template v-else-if="fleetMode">
+          <p v-if="error" role="alert" class="text-destructive text-xs">{{ error }}</p>
+          <div class="overflow-hidden rounded-md border">
+            <section
+              v-for="machine in fleetMachines"
+              :key="machine.id"
+              class="flex min-w-0 flex-col gap-3 border-b p-3 last:border-b-0"
+              :aria-label="machine.name"
+            >
+              <header class="flex min-w-0 items-center justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-2">
+                  <Server class="text-muted-foreground size-4 shrink-0" />
+                  <div class="min-w-0">
+                    <h3 class="truncate text-sm font-semibold" :title="machine.name">{{ machine.name }}</h3>
+                    <p class="text-muted-foreground truncate text-xs" :title="machineSubtitle(machine)">
+                      {{ machineSubtitle(machine) }}
+                    </p>
+                  </div>
+                </div>
+                <Badge :variant="machineStateVariant(machine)">{{ t(`dashboard.resources.machineStates.${machine.state}`) }}</Badge>
+              </header>
+
+              <div class="grid min-w-0 grid-cols-2 gap-x-5 gap-y-3 md:grid-cols-4">
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <div class="flex items-center justify-between gap-2 text-sm">
+                    <span class="flex min-w-0 items-center gap-1.5"><Cpu class="text-muted-foreground size-4 shrink-0" />{{ t('dashboard.resources.cpuAverage') }}</span>
+                    <strong :class="usageClass(machine.resource.cpu_usage)">{{ formatPercent(machine.resource.cpu_usage) }}</strong>
+                  </div>
+                  <Progress
+                    :model-value="percentage(machine.resource.cpu_usage)"
+                    :aria-label="`${machine.name} · ${t('dashboard.resources.cpuAverage')}`"
+                  />
+                  <span
+                    class="text-muted-foreground h-4 truncate text-xs"
+                    :title="t('dashboard.resources.coresThreads', { cores: machine.resource.cpu_cores || '--', threads: machine.resource.cpu_threads || '--' })"
+                  >
+                    {{ t('dashboard.resources.coresThreads', { cores: machine.resource.cpu_cores || '--', threads: machine.resource.cpu_threads || '--' }) }}
+                  </span>
+                </div>
+
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <div class="flex items-center justify-between gap-2 text-sm">
+                    <span class="flex min-w-0 items-center gap-1.5"><MemoryStick class="text-muted-foreground size-4 shrink-0" />{{ t('dashboard.resources.memory') }}</span>
+                    <strong :class="usageClass(machine.resource.memory_usage)">{{ formatPercent(machine.resource.memory_usage) }}</strong>
+                  </div>
+                  <Progress
+                    :model-value="percentage(machine.resource.memory_usage)"
+                    :aria-label="`${machine.name} · ${t('dashboard.resources.memory')}`"
+                  />
+                  <span
+                    class="text-muted-foreground h-4 truncate text-xs"
+                    :title="t('dashboard.resources.used', { used: formatMemory(machine.resource.used_memory), total: formatMemory(machine.resource.total_memory) })"
+                  >
+                    {{ t('dashboard.resources.used', { used: formatMemory(machine.resource.used_memory), total: formatMemory(machine.resource.total_memory) }) }}
+                  </span>
+                </div>
+
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <div class="flex items-center justify-between gap-2 text-sm">
+                    <span class="flex min-w-0 items-center gap-1.5"><HardDrive class="text-muted-foreground size-4 shrink-0" />{{ t('dashboard.resources.disk') }}</span>
+                    <strong :class="usageClass(machine.resource.disk_usage)">{{ formatPercent(machine.resource.disk_usage) }}</strong>
+                  </div>
+                  <Progress
+                    :model-value="percentage(machine.resource.disk_usage)"
+                    :aria-label="`${machine.name} · ${t('dashboard.resources.disk')}`"
+                  />
+                  <span
+                    class="text-muted-foreground h-4 truncate text-xs"
+                    :title="t('dashboard.resources.free', { free: formatDisk(machine.resource.free_disk), total: formatDisk(machine.resource.total_disk) })"
+                  >
+                    {{ t('dashboard.resources.free', { free: formatDisk(machine.resource.free_disk), total: formatDisk(machine.resource.total_disk) }) }}
+                  </span>
+                </div>
+
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <div class="flex items-center justify-between gap-2 text-sm">
+                    <span class="flex min-w-0 items-center gap-1.5"><Activity class="text-muted-foreground size-4 shrink-0" />{{ t('dashboard.resources.loadShort') }}</span>
+                    <strong :class="machineLoadClass(machine)">{{ formatDecimal(machineLoad(machine)) }}</strong>
+                  </div>
+                  <Progress
+                    :model-value="loadPercentage(machine.resource.cpu_load5, machineLoadCapacity(machine))"
+                    :aria-label="`${machine.name} · ${t('dashboard.resources.loadCapacityAria')}`"
+                  />
+                  <span
+                    class="text-muted-foreground h-4 truncate text-xs"
+                    :title="t('dashboard.resources.loadWindow', { one: formatDecimal(machine.resource.cpu_load1), five: formatDecimal(machine.resource.cpu_load5), fifteen: formatDecimal(machine.resource.cpu_load15) })"
+                  >
+                    {{ t('dashboard.resources.loadWindow', { one: formatDecimal(machine.resource.cpu_load1), five: formatDecimal(machine.resource.cpu_load5), fifteen: formatDecimal(machine.resource.cpu_load15) }) }}
+                  </span>
+                </div>
+              </div>
+
+              <Alert v-if="machine.resource.warnings?.length" variant="destructive" class="py-1.5">
+                <CircleAlert />
+                <AlertDescription>{{ machine.resource.warnings.join(' · ') }}</AlertDescription>
+              </Alert>
+
+              <Alert v-if="machineTelemetryHint(machine)" class="py-1.5">
+                <CircleAlert />
+                <AlertDescription class="text-xs">{{ machineTelemetryHint(machine) }}</AlertDescription>
+              </Alert>
+
+              <template v-if="machine.resource.cpu_core_usage?.length">
+                <Separator />
+                <section class="flex min-w-0 flex-col gap-2" :aria-label="`${machine.name} · ${t('dashboard.resources.perCore')}`">
+                  <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                    <h4 class="text-sm font-medium">{{ t('dashboard.resources.perCore') }}</h4>
+                    <span class="text-muted-foreground text-xs">
+                      {{ t('dashboard.resources.logicalCoreCount', { count: machine.resource.cpu_core_usage.length }) }}
+                    </span>
+                  </div>
+                  <div class="grid min-w-0 grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:grid-cols-6">
+                    <div
+                      v-for="(usage, index) in machine.resource.cpu_core_usage"
+                      :key="index"
+                      class="flex min-w-0 flex-col gap-1"
+                    >
+                      <div class="flex items-center justify-between gap-2 text-xs">
+                        <span class="text-muted-foreground">{{ t('dashboard.resources.coreLabel', { index: index + 1 }) }}</span>
+                        <strong :class="cpuCoreUsageClass(usage)">{{ formatPercent(usage) }}</strong>
+                      </div>
+                      <Progress
+                        :model-value="percentage(usage)"
+                        :aria-label="`${machine.name} · ${t('dashboard.resources.coreUsageAria', { index: index + 1 })}`"
+                      />
+                    </div>
+                  </div>
+                </section>
+              </template>
+            </section>
+          </div>
+          <div class="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span>{{ t('dashboard.resources.noFleetAverage') }}</span>
+            <span>{{ t('dashboard.resources.sampledAt', { time: sampledAt() }) }}</span>
+          </div>
+        </template>
+
         <template v-else>
-          <p v-if="error" class="text-destructive text-xs">{{ t('dashboard.resources.refreshFailed') }}</p>
+          <p v-if="error" role="alert" class="text-destructive text-xs">{{ error }}</p>
+          <Alert v-if="status.warnings?.length" variant="destructive" class="py-2">
+            <CircleAlert />
+            <AlertDescription>{{ status.warnings.join(' · ') }}</AlertDescription>
+          </Alert>
+          <Alert v-if="selectedNodeState" :variant="selectedNodeState === 'offline' ? 'destructive' : 'warning'" class="py-2">
+            <CircleAlert />
+            <AlertTitle>{{ t(`dashboard.resources.machineStates.${selectedNodeState}`) }}</AlertTitle>
+            <AlertDescription>{{ t('dashboard.resources.sampledAt', { time: sampledAt() }) }}</AlertDescription>
+          </Alert>
           <div class="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4">
             <div class="flex min-w-0 flex-col gap-2">
               <div class="flex items-center justify-between gap-2 text-sm">
@@ -200,9 +453,28 @@ onBeforeUnmount(stopSystemResourcePolling)
             <div class="flex min-w-0 flex-col gap-2">
               <div class="flex items-center justify-between gap-2 text-sm">
                 <span class="flex items-center gap-1.5"><Activity class="text-muted-foreground size-4" />{{ t('dashboard.resources.load') }}</span>
-                <strong class="tabular-nums font-semibold">{{ formatDecimal(status.cpu_load1) }}</strong>
+                <span class="flex items-center gap-2">
+                  <Badge :variant="loadStateBadgeVariant()">
+                    {{ t(`dashboard.resources.loadStates.${loadState.key}`) }}
+                  </Badge>
+                  <strong :class="loadMetricClass()">{{ formatDecimal(status.cpu_load1) }}</strong>
+                </span>
               </div>
-              <Progress :model-value="loadPercentage(status.cpu_load1, loadCapacity)" />
+              <Progress
+                :model-value="loadPercentage(status.cpu_load5, loadCapacity)"
+                :aria-label="t('dashboard.resources.loadCapacityAria')"
+              />
+              <span
+                v-if="loadState.percent !== null"
+                :class="cn('truncate text-xs', loadIsOverloaded ? 'text-destructive' : 'text-muted-foreground')"
+                :title="t('dashboard.resources.loadThresholdHelp', { capacity: loadCapacity })"
+              >
+                {{ t('dashboard.resources.loadCapacitySummary', {
+                  percent: loadState.percent,
+                  load: formatDecimal(status.cpu_load5),
+                  capacity: loadCapacity
+                }) }}
+              </span>
               <span class="text-muted-foreground truncate text-xs" :title="t('dashboard.resources.loadWindow', { one: formatDecimal(status.cpu_load1), five: formatDecimal(status.cpu_load5), fifteen: formatDecimal(status.cpu_load15) })">
                 {{ t('dashboard.resources.loadWindow', { one: formatDecimal(status.cpu_load1), five: formatDecimal(status.cpu_load5), fifteen: formatDecimal(status.cpu_load15) }) }}
               </span>

@@ -5,7 +5,8 @@ import {
   bindAgentRuntimeInstallation,
   isLegacyCommandTerminal,
   normalizeAgentCommandTimeout,
-  normalizeAgentRuntimeInstallations
+  normalizeAgentRuntimeInstallations,
+  normalizeRuntimePerformance
 } from '../src/api/agentApiSupport.mjs'
 
 test('Agent command timeout follows the backend 5 to 300 second contract', () => {
@@ -58,4 +59,18 @@ test('selecting an Agent installation replaces only Agent-owned runtime fields',
     savePath: '/srv/save', serverPath: '/srv/server', steamcmdPath: '', ugcPath: '/srv/ugc',
     workshopContentPath: '/srv/workshop', serverMode: '64'
   })
+})
+
+test('runtime performance reports keep compatibility state separate from server architecture', () => {
+  assert.deepEqual(normalizeRuntimePerformance({
+    provider: 'dontstarve-luajit2', status: 'incompatible', canEnable: true,
+    packageVersion: '2.9.1', gameVersion: '747465', signatureVersion: '728321',
+    binarySha256: 'A'.repeat(64), supportedModes: ['game', 'game', 'invalid'],
+    issues: ['signature_version_mismatch', 'signature_version_mismatch']
+  }), {
+    provider: 'dontstarve-luajit2', status: 'incompatible', canEnable: false,
+    packageVersion: '2.9.1', gameVersion: '747465', signatureVersion: '728321',
+    binarySha256: 'a'.repeat(64), supportedModes: ['game'], issues: ['signature_version_mismatch']
+  })
+  assert.equal(normalizeRuntimePerformance({ provider: 'game', status: 'unknown' }), null)
 })

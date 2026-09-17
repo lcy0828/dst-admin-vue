@@ -2,8 +2,12 @@
   <section class="flex min-w-0 flex-col gap-3" aria-labelledby="runtime-infrastructure-title">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h2 id="runtime-infrastructure-title" class="text-base font-semibold">{{ t('distributed.infrastructure.title') }}</h2>
-        <p class="mt-0.5 text-sm text-muted-foreground">{{ t('distributed.infrastructure.description') }}</p>
+        <h2 id="runtime-infrastructure-title" class="text-base font-semibold">
+          {{ t(networkOnly ? 'distributed.infrastructure.networkSection.title' : 'distributed.infrastructure.title') }}
+        </h2>
+        <p class="mt-0.5 text-sm text-muted-foreground">
+          {{ t(networkOnly ? 'distributed.infrastructure.networkSection.description' : 'distributed.infrastructure.description') }}
+        </p>
       </div>
       <UiButton size="sm" variant="outline" :disabled="loading" @click="loadInfrastructure">
         <Spinner v-if="loading" data-icon="inline-start" />
@@ -18,14 +22,14 @@
       <AlertDescription>{{ error }}</AlertDescription>
     </Alert>
 
-    <KubernetesProviderPanel :heading-level="3" />
+    <KubernetesProviderPanel v-if="showKubernetes" :heading-level="3" />
 
     <div v-if="loading && !snapshot" class="flex flex-col gap-2" :aria-label="t('distributed.infrastructure.loading')">
       <Skeleton v-for="index in 3" :key="index" class="h-14 w-full" />
     </div>
 
     <template v-else-if="snapshot">
-      <Alert v-if="!snapshot.preflight?.ready" variant="destructive">
+      <Alert v-if="showPreflight && !snapshot.preflight?.ready" variant="destructive">
         <TriangleAlert />
         <AlertTitle>{{ t('distributed.infrastructure.conflictTitle') }}</AlertTitle>
         <AlertDescription class="flex flex-col gap-1">
@@ -40,15 +44,15 @@
         </AlertDescription>
       </Alert>
 
-      <div class="overflow-x-auto rounded-lg border">
-        <UiTable class="min-w-[940px]">
+      <div v-if="showEnvironmentOverview" class="overflow-x-auto rounded-lg border">
+        <UiTable :class="cn({ 'min-w-[560px]': networkOnly, 'min-w-[940px]': !networkOnly })">
           <TableHeader>
             <TableRow>
-              <TableHead>{{ t('distributed.infrastructure.columns.provider') }}</TableHead>
-              <TableHead>{{ t('distributed.infrastructure.columns.environment') }}</TableHead>
+              <TableHead>{{ t(networkOnly ? 'distributed.infrastructure.networkSection.machine' : 'distributed.infrastructure.columns.provider') }}</TableHead>
+              <TableHead v-if="!networkOnly">{{ t('distributed.infrastructure.columns.environment') }}</TableHead>
               <TableHead>{{ t('distributed.infrastructure.columns.network') }}</TableHead>
-              <TableHead>{{ t('distributed.infrastructure.columns.cpu') }}</TableHead>
-              <TableHead>{{ t('distributed.infrastructure.columns.observedAt') }}</TableHead>
+              <TableHead v-if="!networkOnly">{{ t('distributed.infrastructure.columns.cpu') }}</TableHead>
+              <TableHead v-if="!networkOnly">{{ t('distributed.infrastructure.columns.observedAt') }}</TableHead>
               <TableHead class="text-right">{{ t('common.fields.actions') }}</TableHead>
             </TableRow>
           </TableHeader>
@@ -65,7 +69,7 @@
                   </div>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell v-if="!networkOnly">
                 <div class="flex min-w-48 flex-col gap-1">
                   <span>{{ environmentKindLabel(environment.kind) }} · {{ environment.driver }}</span>
                   <span class="font-mono text-xs text-muted-foreground">{{ environment.id }}</span>
@@ -73,17 +77,19 @@
               </TableCell>
               <TableCell>
                 <div class="flex min-w-52 flex-col gap-1">
-                  <span>{{ networkFor(environment)?.name || '--' }}</span>
-                  <span class="text-xs text-muted-foreground">{{ networkFor(environment)?.bindAddress || '--' }} → {{ networkFor(environment)?.advertiseAddress || '--' }}</span>
+                  <span>{{ networkFor(environment)?.advertiseAddress || t('distributed.infrastructure.networkSection.notConfigured') }}</span>
+                  <span class="text-xs text-muted-foreground">
+                    {{ t('distributed.infrastructure.networkSection.bindAddress', { address: networkFor(environment)?.bindAddress || '0.0.0.0' }) }}
+                  </span>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell v-if="!networkOnly">
                 <div class="flex min-w-44 flex-col gap-1">
                   <span>{{ t('distributed.infrastructure.cpuSummary', { physical: environment.cpu?.physical_cores || 0, logical: environment.cpu?.logical_processors || 0 }) }}</span>
                   <span class="text-xs text-muted-foreground">{{ environment.cpu?.topology_available ? t('distributed.infrastructure.cpuTopologyReady') : t('distributed.infrastructure.cpuTopologyMissing') }}</span>
                 </div>
               </TableCell>
-              <TableCell class="min-w-44 text-xs text-muted-foreground">{{ formatTime(environment.observedAt) }}</TableCell>
+              <TableCell v-if="!networkOnly" class="min-w-44 text-xs text-muted-foreground">{{ formatTime(environment.observedAt) }}</TableCell>
               <TableCell>
                 <div class="flex justify-end gap-1">
                   <Tooltip>
@@ -101,7 +107,7 @@
         </UiTable>
       </div>
 
-      <div class="flex min-w-0 flex-col gap-2">
+      <div v-if="showRoomResources && topologySnapshot?.placements?.length" class="flex min-w-0 flex-col gap-2">
         <div>
           <h3 class="text-sm font-semibold">{{ t('distributed.infrastructure.roomResourcesTitle') }}</h3>
           <p class="mt-0.5 text-sm text-muted-foreground">{{ t('distributed.infrastructure.roomResourcesDescription') }}</p>
@@ -264,6 +270,7 @@ import { CircleAlert, Cpu, Network, RefreshCw, TriangleAlert } from '@lucide/vue
 import { toast } from 'vue-sonner'
 import { topologyV2API } from '@/api/v2'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import { cn } from '@/lib/utils'
 import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -280,7 +287,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 const props = defineProps({
   roomId: { type: String, default: '' },
-  topologySnapshot: { type: Object, default: null }
+  topologySnapshot: { type: Object, default: null },
+  showKubernetes: { type: Boolean, default: true },
+  showPreflight: { type: Boolean, default: true },
+  showRoomResources: { type: Boolean, default: true },
+  showEnvironmentOverview: { type: Boolean, default: true },
+  networkOnly: { type: Boolean, default: false }
 })
 
 const { locale, t } = useI18n()

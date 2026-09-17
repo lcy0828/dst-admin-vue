@@ -54,7 +54,8 @@ const state = computed(() => dashboardOnboardingState({
   localExecutorEnabled: localExecutorEnabled.value,
   installed: props.installed,
   roomCount: roomCount.value,
-  runningShards: props.runningShards
+  runningShards: props.runningShards,
+  firstStartCompleted: props.readiness?.onboarding?.firstStartCompleted === true
 }))
 const blockers = computed(() => {
   if (!localExecutorEnabled.value) return []
@@ -68,7 +69,7 @@ const blockers = computed(() => {
   }
   return checks
 })
-const visible = computed(() => state.value.visible || blockers.value.length > 0)
+const visible = computed(() => state.value.visible)
 const compactHost = computed(() => Number(props.cpuCores) > 0 && Number(props.cpuCores) <= 2)
 const deploymentDescriptionKey = computed(() => {
   if (packaging.value === 'all_in_one' && compactHost.value) return 'dashboard.onboarding.deployments.all_in_oneCompact'

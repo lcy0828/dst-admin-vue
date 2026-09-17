@@ -1,12 +1,8 @@
 <script setup>
-import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { onMounted } from 'vue'
 import DashboardOnboarding from '@/components/dashboard/DashboardOnboarding.vue'
 import ServerWorkspace from '@/views/servers/ServerWorkspace.vue'
-import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
 import { useDashboardV2 } from '@/composables/useDashboardV2'
-
-const { refreshIntervalMs } = useRoomRefreshInterval()
-let runtimeRefreshTimer = null
 
 const {
   systemStatus,
@@ -23,52 +19,11 @@ const {
   canInstallGame,
   gameUpdateBusy,
   refreshDashboard,
-  refreshRuntimeServers,
   refreshGuidance,
   updateGame
 } = useDashboardV2()
 
-async function refreshRuntimeStatus() {
-  if (document.visibilityState === 'hidden') return
-  await refreshRuntimeServers()
-}
-
-function stopRuntimeRefreshTimer() {
-  if (runtimeRefreshTimer) window.clearInterval(runtimeRefreshTimer)
-  runtimeRefreshTimer = null
-}
-
-function startRuntimeRefreshTimer() {
-  stopRuntimeRefreshTimer()
-  if (document.visibilityState === 'hidden') return
-  runtimeRefreshTimer = window.setInterval(refreshRuntimeStatus, refreshIntervalMs.value)
-}
-
-function handleVisibilityChange() {
-  if (document.visibilityState === 'hidden') {
-    stopRuntimeRefreshTimer()
-    return
-  }
-  refreshRuntimeStatus()
-  startRuntimeRefreshTimer()
-}
-
-const stopRefreshIntervalWatch = watch(refreshIntervalMs, () => {
-  refreshRuntimeStatus()
-  startRuntimeRefreshTimer()
-})
-
-onMounted(async () => {
-  document.addEventListener('visibilitychange', handleVisibilityChange)
-  await refreshDashboard()
-  startRuntimeRefreshTimer()
-})
-
-onBeforeUnmount(() => {
-  stopRuntimeRefreshTimer()
-  stopRefreshIntervalWatch()
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
-})
+onMounted(refreshDashboard)
 </script>
 
 <template>

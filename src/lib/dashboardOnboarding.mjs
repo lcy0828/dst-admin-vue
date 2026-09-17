@@ -8,10 +8,13 @@ export function dashboardOnboardingState({
   localExecutorEnabled = true,
   installed = false,
   roomCount = 0,
-  runningShards = 0
+  runningShards = 0,
+  firstStartCompleted = false
 } = {}) {
+  const persistedComplete = Boolean(firstStartCompleted)
+  const startCompleted = persistedComplete || Number(runningShards) > 0
   if (!localExecutorEnabled) {
-    const complete = Number(runningShards) > 0
+    const complete = startCompleted
     return {
       mode: 'remote',
       visible: !complete,
@@ -24,9 +27,9 @@ export function dashboardOnboardingState({
   }
 
   const steps = [
-    { id: 'game', complete: Boolean(installed) },
-    { id: 'room', complete: Number(roomCount) > 0 },
-    { id: 'start', complete: Number(runningShards) > 0 }
+    { id: 'game', complete: persistedComplete || Boolean(installed) },
+    { id: 'room', complete: persistedComplete || Number(roomCount) > 0 },
+    { id: 'start', complete: startCompleted }
   ]
   const current = steps.find(step => !step.complete)
   const completedCount = steps.filter(step => step.complete).length
