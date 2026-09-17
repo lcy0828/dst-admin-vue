@@ -8,6 +8,7 @@ import { i18n } from './i18n'
 import { applySystemPreferences, getSystemPreferences } from './utils/systemPreferences'
 import './utils/themeManager'
 import { managementScopeTargetId, setManagementScope } from './lib/managementScope.mjs'
+import { authenticatedDestination, setupRouteRedirect } from './lib/initialSetup.mjs'
 
 document.documentElement.lang = i18n.global.locale.value
 document.documentElement.dataset.systemTimezone = getSystemPreferences().timezone
@@ -38,8 +39,11 @@ router.beforeEach(async to => {
       }
     }
     updateDocumentTitle(to)
+    const setupRedirect = setupRouteRedirect(session, to.path)
+    if (setupRedirect) return setupRedirect
+    if (to.path === '/setup' && session.setupRequired) return true
     if (to.path === '/login') {
-      return session.authenticated ? loginRedirect(to.query.redirect) : true
+      return session.authenticated ? authenticatedDestination(session, loginRedirect(to.query.redirect)) : true
     }
     return session.authenticated ? true : { path: '/login', query: { redirect: to.fullPath } }
   } catch {

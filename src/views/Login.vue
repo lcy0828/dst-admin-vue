@@ -20,12 +20,17 @@
             </SelectContent>
           </UiSelect>
         </div>
-        <CardTitle class="login-title">{{ $t('login.title') }}</CardTitle>
+        <CardTitle class="login-title">{{ $t(setupRequired ? 'setup.accountTitle' : 'login.title') }}</CardTitle>
         <CardDescription>
           {{ setupRequired ? $t('login.setupDescription') : $t('login.description') }}
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <Alert v-if="sessionError" variant="destructive" class="mb-4">
+          <AlertTitle>{{ $t('setup.loadFailed') }}</AlertTitle>
+          <AlertDescription>{{ sessionError }}</AlertDescription>
+          <AlertAction><UiButton variant="outline" size="sm" :disabled="sessionLoading" @click="loadSession">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
+        </Alert>
         <form class="login-form" @submit.prevent="handleLogin">
           <FieldGroup>
             <Field :data-invalid="Boolean(validationErrors.username)">
@@ -52,23 +57,33 @@
                   v-model="loginForm.password"
                   type="password"
                   :placeholder="$t('login.passwordPlaceholder')"
-                  autocomplete="current-password"
+                  :autocomplete="setupRequired ? 'new-password' : 'current-password'"
                   :aria-invalid="Boolean(validationErrors.password)"
                 />
               </InputGroup>
               <FieldError v-if="validationErrors.password">{{ validationErrors.password }}</FieldError>
             </Field>
 
-            <Field orientation="horizontal">
+            <Field v-if="setupRequired" :data-invalid="Boolean(validationErrors.confirmPassword)">
+              <FieldLabel for="login-confirm-password">{{ $t('setup.confirmPassword') }}</FieldLabel>
+              <InputGroup>
+                <InputGroupAddon><LockKeyholeIcon /></InputGroupAddon>
+                <InputGroupInput id="login-confirm-password" v-model="loginForm.confirmPassword" type="password" autocomplete="new-password" :aria-invalid="Boolean(validationErrors.confirmPassword)" />
+              </InputGroup>
+              <FieldError v-if="validationErrors.confirmPassword">{{ validationErrors.confirmPassword }}</FieldError>
+              <FieldDescription>{{ $t('setup.passwordHint', { min: passwordPolicy.minimumLength || 6 }) }}</FieldDescription>
+              <FieldDescription v-if="passwordPolicy.requireComplexity">{{ $t('setup.validation.passwordComplexity') }}</FieldDescription>
+            </Field>
+
+            <Field v-if="!setupRequired" orientation="horizontal">
               <div class="remember-field">
                 <Checkbox id="remember-login" v-model="loginForm.remember" />
                 <FieldLabel for="remember-login">{{ $t('login.remember') }}</FieldLabel>
               </div>
-              <FieldDescription v-if="setupRequired">{{ $t('login.passwordHint') }}</FieldDescription>
             </Field>
 
-            <UiButton type="submit" class="login-button" :disabled="loading">
-              <Spinner v-if="loading" data-icon="inline-start" />
+            <UiButton type="submit" class="login-button" :disabled="loading || sessionLoading || Boolean(sessionError)">
+              <Spinner v-if="loading || sessionLoading" data-icon="inline-start" />
               {{ setupRequired ? $t('login.createAdministrator') : $t('login.submit') }}
             </UiButton>
           </FieldGroup>
@@ -92,12 +107,16 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/c
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { accountErrors, authenticatedDestination } from '@/lib/initialSetup.mjs'
 import { previewSystemLanguage } from '@/utils/systemPreferences'
 import { toast } from 'vue-sonner'
 
 export default {
   name: 'LoginView',
+  emits: ['authenticated'],
   components: {
+    Alert, AlertAction, AlertDescription, AlertTitle,
     Checkbox,
     Card,
     CardContent,
@@ -130,13 +149,18 @@ export default {
       loginForm: {
         username: '',
         password: '',
+        confirmPassword: '',
         remember: false
       },
       validationErrors: {
         username: '',
-        password: ''
+        password: '',
+        confirmPassword: ''
       },
       loading: false,
+      sessionLoading: true,
+      sessionError: '',
+      passwordPolicy: {},
       setupRequired: false
     }
   },
@@ -148,34 +172,36 @@ export default {
       previewSystemLanguage(locale)
     },
     async loadSession() {
+      this.sessionLoading = true
+      this.sessionError = ''
       try {
         const session = await authAPI.session()
         this.setupRequired = session.setupRequired === true
+        this.passwordPolicy = session.passwordPolicy || {}
       } catch (error) {
-        if (this.$route.query.reason === 'backend-unavailable') {
-          toast.error(error.message)
-        }
+        this.sessionError = error.message || this.$t('setup.loadFailed')
+      } finally {
+        this.sessionLoading = false
       }
     },
     async handleLogin() {
-      this.validationErrors.username = this.loginForm.username.trim() ? '' : this.$t('login.validation.usernameRequired')
-      this.validationErrors.password = this.loginForm.password
-        ? (this.loginForm.password.length >= 6 ? '' : this.$t('login.validation.passwordTooShort'))
-        : this.$t('login.validation.passwordRequired')
-      if (this.validationErrors.username || this.validationErrors.password) return
+      if (this.loading || this.sessionLoading || this.sessionError) return
+      const errors = accountErrors(this.loginForm, this.passwordPolicy, this.setupRequired)
+      this.validationErrors = Object.fromEntries(Object.entries(errors).map(([key, message]) => [key, this.$t(`setup.validation.${message}`, { min: this.passwordPolicy.minimumLength || 6 })]))
+      if (Object.keys(errors).length) return
 
       this.loading = true
       try {
         const action = this.setupRequired ? authAPI.setup : authAPI.login
-        await action(this.loginForm.username, this.loginForm.password)
-        const redirect = this.$route.query.redirect
-        const target = typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
-          ? redirect
-          : '/dashboard'
-        await this.$router.push(target)
+        const session = await action(this.loginForm.username, this.loginForm.password)
+        this.loginForm.password = ''
+        this.loginForm.confirmPassword = ''
+        this.$emit('authenticated', session)
+        await this.$router.replace(authenticatedDestination(session, this.$route.query.redirect))
         toast.success(this.setupRequired ? this.$t('login.feedback.setupSucceeded') : this.$t('login.feedback.loginSucceeded'))
       } catch (error) {
         toast.error(error.message || this.$t('login.feedback.loginFailed'))
+        if (error.code === 'SETUP_COMPLETE' || error.code === 'SETUP_REQUIRED') await this.loadSession()
       } finally {
         this.loading = false
       }

@@ -27,6 +27,7 @@ import {
   BreadcrumbSeparator
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   Dialog,
   DialogClose,
@@ -57,6 +58,7 @@ const hasMachineScope = computed(() => pageHasMachineScope(route))
 const { t } = useI18n()
 const systemName = ref(getSystemPreferences().systemName)
 const currentUser = ref({})
+const setupPending = ref(false)
 const runtimeFeatures = ref({})
 const profileOpen = ref(false)
 const passwordOpen = ref(false)
@@ -100,6 +102,7 @@ async function loadCurrentUser() {
   try {
     const session = await authAPI.session()
     currentUser.value = session.user || {}
+    setupPending.value = session.onboarding?.required === true
   } catch {
     currentUser.value = {}
   }
@@ -218,6 +221,7 @@ onBeforeUnmount(() => {
           <GlobalJobStatus />
           <div v-if="hasMachineScope" class="hidden xl:block"><SystemResourceRefreshInterval /></div>
           <LanguageSwitch />
+          <Button variant="ghost" size="sm" @click="router.push('/setup')">{{ t('setup.title') }}</Button>
           <ThemeSwitch />
           <Tooltip>
             <TooltipTrigger as-child>
@@ -236,6 +240,11 @@ onBeforeUnmount(() => {
 
       <div class="bg-muted/30 min-h-0 flex-1 overflow-auto">
         <main id="main-content-v2" class="mx-auto w-full px-4 py-6 md:px-6 lg:px-8 lg:py-8" :class="{ 'max-w-[1440px]': route.path !== '/players/list' }" tabindex="-1">
+          <Alert v-if="setupPending" class="mb-4">
+            <AlertTitle>{{ t('setup.title') }}</AlertTitle>
+            <AlertDescription>{{ t('setup.resume') }}</AlertDescription>
+            <AlertAction><Button variant="outline" @click="router.push('/setup')">{{ t('setup.return') }}</Button></AlertAction>
+          </Alert>
           <RouterView :key="`${['/mods', '/dashboard'].includes(route.path) ? route.path : route.fullPath}:${route.path === '/dashboard' ? '' : managementScopeRevision}`" />
         </main>
       </div>

@@ -1,6 +1,6 @@
 <template>
   <div class="room-settings-page">
-    <RoomScopeSelect v-if="isEdit" :model-value="roomId" :rooms="roomOptions" :disabled="loading || saving" @update:model-value="switchRoom" />
+    <RoomScopeSelect v-if="isEdit && !setupMode" :model-value="roomId" :rooms="roomOptions" :disabled="loading || saving" @update:model-value="switchRoom" />
     <header class="page-header">
       <div class="title-section">
         <div class="title-row">
@@ -382,6 +382,8 @@ const SETTINGS_SECTIONS = [
 export default {
   inject: { machineScopeGuard: { from: 'machine-scope-guard', default: null } },
   name: 'RoomSettings',
+  props: { setupMode: { type: Boolean, default: false } },
+  emits: ['saved', 'cancel'],
   components: {
     RoomScopeSelect,
     Alert,
@@ -592,12 +594,12 @@ export default {
   async created() {
     const roomsLoading = this.fetchSettingsCopyRooms();
     // 检查是否是编辑模式
-    const roomId = this.$route.query.id;
+    const roomId = this.setupMode ? '' : this.$route.query.id;
     if (roomId) {
       this.isEdit = true;
       this.roomId = roomId;
       this.loadRoomSettings(roomId);
-    } else if (this.$route.query.edit === 'true') {
+    } else if (!this.setupMode && this.$route.query.edit === 'true') {
       this.isEdit = true;
       await roomsLoading;
       this.roomId = preferredRoomId(this.roomOptions);
@@ -798,6 +800,7 @@ export default {
       return validationMessages.length === 0;
     },
     goBack() {
+      if (this.setupMode) { this.$emit('cancel'); return; }
       this.$router.push('/rooms/list');
     },
     handleAddUser(users) {
@@ -966,7 +969,7 @@ export default {
           this.roomId = roomValue;
           this.savename = createdRoom.name || this.savename;
           this.isEdit = true;
-          await this.$router.replace({
+          if (!this.setupMode) await this.$router.replace({
             path: this.$route.path,
             query: { ...this.$route.query, id: roomValue }
           });
@@ -994,6 +997,7 @@ export default {
           toast.success(this.$t('rooms.settings.feedback.saved'));
         }
         this.captureBaseline();
+        if (this.setupMode) this.$emit('saved', this.roomId);
       } catch (error) {
         console.error('Failed to save room configuration:', error);
         this.handleError(error, this.$t('rooms.settings.feedback.saveFailed'));

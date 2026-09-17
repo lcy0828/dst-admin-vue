@@ -137,6 +137,10 @@ function presentWorldActionJob(job) {
 
 export const authAPI = {
   session: () => authSessionCache.load(() => client.get('/auth/session')).then(rememberSession),
+  saveOnboarding: step => client.put('/auth/onboarding', { step }).then(state => {
+    authSessionCache.invalidate()
+    return state
+  }),
   setup: (username, password) => {
     authSessionCache.invalidate()
     return client.post('/auth/setup', { username, password }).then(session => {
@@ -170,7 +174,10 @@ const encode = value => encodeURIComponent(String(value))
 const scopeRoomList = value => ({ ...value, items: filterManagementRooms(value?.items) })
 
 export const systemV2API = {
-	capabilities: () => capabilityCache.load(() => client.get('/system/capabilities')),
+	capabilities: ({ fresh = false } = {}) => {
+    if (fresh) capabilityCache.invalidate()
+    return capabilityCache.load(() => client.get('/system/capabilities'))
+  },
 	setupChecks: () => client.get('/system/setup-checks', { headers: { 'Cache-Control': 'no-store' } }),
 	status: () => client.get('/system/status'),
 	/** @returns {Promise<import('./distributedManagement').NodeResourceSnapshot>} */
@@ -208,10 +215,10 @@ export const entityCatalogV2API = {
 
 export const roomsV2API = {
   list: () => client.get('/rooms', { headers: { 'Cache-Control': 'no-store' } }).then(scopeRoomList),
-  controlPlaneList: () => client.get('/rooms', {
+  controlPlaneList: ({ all = false } = {}) => client.get('/rooms', {
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
-  }).then(scopeRoomList),
+  }).then(value => all ? value : scopeRoomList(value)),
   recoveries: () => client.get('/rooms/recovery', { headers: { 'Cache-Control': 'no-store' } }),
   restoreRoom: recoveryName => client.post(`/rooms/recovery/${encode(recoveryName)}/actions/restore`),
   purgeRoomRecovery: (recoveryName, confirmation) => client.delete(`/rooms/recovery/${encode(recoveryName)}`, {
@@ -902,6 +909,7 @@ export const saveImportsV2API = {
     body.set('file', file)
     if (name) body.set('name', name)
     return client.post('/save-imports/upload', body, {
+      headers: { 'Content-Type': 'multipart/form-data' },
       runtimeTarget: false,
       timeout: apiConfig.UPLOAD_TIMEOUT,
       onUploadProgress

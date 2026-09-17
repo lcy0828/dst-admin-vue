@@ -3,7 +3,7 @@
     <Card>
       <CardHeader>
         <CardTitle>{{ t('backups.imports.upload.title') }}</CardTitle>
-        <CardDescription>{{ t('backups.imports.upload.description') }}</CardDescription>
+        <CardDescription>{{ t(createOnly ? 'setup.importUploadDescription' : 'backups.imports.upload.description') }}</CardDescription>
       </CardHeader>
       <CardContent>
         <FieldGroup>
@@ -283,7 +283,7 @@
               <section class="flex flex-col gap-4" :aria-labelledby="'deployment-heading'">
                 <div>
                   <h3 id="deployment-heading" class="text-base font-medium">{{ t('backups.imports.apply.title') }}</h3>
-                  <p class="mt-1 text-sm text-muted-foreground">{{ t('backups.imports.apply.description') }}</p>
+                  <p class="mt-1 text-sm text-muted-foreground">{{ t(createOnly ? 'setup.importPlanDescription' : 'backups.imports.apply.description') }}</p>
                 </div>
 
                 <FieldSet>
@@ -304,7 +304,7 @@
                 <Alert v-if="applyPlan.mode !== 'replace'">
                   <HardDrive />
                   <AlertTitle>{{ t('backups.imports.apply.newLocalOnlyTitle') }}</AlertTitle>
-                  <AlertDescription>{{ t('backups.imports.apply.newLocalOnlyDescription') }}</AlertDescription>
+                  <AlertDescription>{{ t(createOnly ? 'setup.importLocationDescription' : 'backups.imports.apply.newLocalOnlyDescription') }}</AlertDescription>
                 </Alert>
 
                 <FieldGroup>
@@ -503,14 +503,15 @@ import {
   validateSaveImportPlan
 } from '@/lib/saveImportSupport.mjs'
 
+const props = defineProps({ createOnly: { type: Boolean, default: false } })
 const emit = defineEmits(['rooms-changed'])
 const { locale, te, t } = useI18n()
 
-const applyModes = Object.freeze([
+const applyModes = computed(() => [
   { value: 'new', titleKey: 'backups.imports.apply.mode.new', descriptionKey: 'backups.imports.apply.mode.newDescription' },
   { value: 'replace', titleKey: 'backups.imports.apply.mode.replace', descriptionKey: 'backups.imports.apply.mode.replaceDescription' },
   { value: 'clone', titleKey: 'backups.imports.apply.mode.clone', descriptionKey: 'backups.imports.apply.mode.cloneDescription' }
-])
+].filter(mode => !props.createOnly || mode.value === 'new'))
 
 const imports = ref([])
 const rooms = ref([])
@@ -818,6 +819,7 @@ function selectCandidate(candidateId) {
 }
 
 function changeApplyMode(mode) {
+  if (props.createOnly && mode !== 'new') return
   const defaults = defaultSaveImportPlan(selectedCandidate.value, mode)
   Object.assign(applyPlan, defaults)
 }
@@ -827,6 +829,7 @@ function normalizePlan() {
 }
 
 async function applyImport() {
+  if (props.createOnly && applyPlan.mode !== 'new') return
   applyPlan.confirmation = applyPlan.mode === 'replace' ? selectedTargetRoom.value?.name || '' : ''
   const validation = validateSaveImportPlan(applyPlan, selectedCandidate.value, selectedTargetRoom.value)
   if (validation) {
@@ -883,6 +886,8 @@ async function deleteImport() {
     if (generation === lifecycleGeneration) deleting.value = false
   }
 }
+
+defineExpose({ busy: computed(() => uploading.value || applying.value || deleting.value || Object.keys(jobsByImport.value).length > 0) })
 
 onMounted(() => {
   void loadImports()

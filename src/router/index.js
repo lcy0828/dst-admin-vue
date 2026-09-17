@@ -5,6 +5,13 @@ const MainLayoutV2 = () => import('../layouts/MainLayoutV2.vue')
 // 公共路由
 export const constantRoutes = [
   {
+    path: '/setup',
+    component: () => import('@/views/InitialSetup.vue'),
+    name: 'InitialSetup',
+    meta: { titleKey: 'setup.title', hidden: true },
+    hidden: true
+  },
+  {
     path: '/login',
     component: () => import('@/views/Login.vue'),
     hidden: true

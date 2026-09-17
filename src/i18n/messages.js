@@ -8,6 +8,7 @@ import { commandMessages } from './commandMessages.js'
 import { distributedMessages } from './distributedMessages.js'
 import { entityMessages } from './entityMessages.js'
 import { corePageMessages } from './corePages.js'
+import { setupMessages } from './setupMessages.js'
 import { cronGroupMessages } from './cronGroupMessages.js'
 import { cronLogMessages } from './cronLogMessages.js'
 import { cronTaskMessages } from './cronTaskMessages.js'
@@ -42,6 +43,7 @@ export const messages = {
     ...distributedMessages['zh-CN'],
     ...entityMessages['zh-CN'],
     ...corePageMessages['zh-CN'],
+    ...setupMessages['zh-CN'],
     ...cronGroupMessages['zh-CN'],
     ...cronLogMessages['zh-CN'],
     ...globalFeedbackMessages['zh-CN'],
@@ -574,6 +576,7 @@ export const messages = {
     ...distributedMessages['en-US'],
     ...entityMessages['en-US'],
     ...corePageMessages['en-US'],
+    ...setupMessages['en-US'],
     ...cronGroupMessages['en-US'],
     ...cronLogMessages['en-US'],
     ...globalFeedbackMessages['en-US'],

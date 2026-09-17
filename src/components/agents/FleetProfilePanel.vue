@@ -55,6 +55,8 @@ const selectedRole = ref(FLEET_ROLES.STANDALONE)
 const controllerUrl = ref('')
 const memberKey = ref('')
 const formErrors = ref({})
+const baseline = ref('')
+const formValue = () => JSON.stringify([selectedRole.value, controllerUrl.value, memberKey.value])
 
 const roleOptions = computed(() => [
   { value: FLEET_ROLES.STANDALONE, icon: MonitorCog },
@@ -93,6 +95,7 @@ function populateForm() {
   controllerUrl.value = fieldMap.value['fleet.controllerUrl']?.value || deployment.value.controllerUrl || ''
   memberKey.value = ''
   formErrors.value = {}
+  baseline.value = formValue()
 }
 
 async function loadProfile() {
@@ -134,7 +137,7 @@ function selectRole(role) {
 }
 
 async function saveProfile() {
-  if (!profileSupported.value || roleLocked.value || !validateForm()) return
+  if (!profileSupported.value || roleLocked.value || !validateForm()) return false
   saving.value = true
   try {
     const flags = fleetFlagsForRole(selectedRole.value)
@@ -160,7 +163,8 @@ async function saveProfile() {
     }
     if (preview.changes.length === 0) {
       toast.info(t('agents.profile.feedback.unchanged'))
-      return
+      baseline.value = formValue()
+      return true
     }
     const result = await systemV2API.applySettings({
       ...input,
@@ -169,8 +173,10 @@ async function saveProfile() {
     settingsResponse.value = result.settings
     populateForm()
     toast.success(t('agents.profile.feedback.saved'))
+    return true
   } catch (error) {
     toast.error(error?.message || t('agents.profile.feedback.saveFailed'))
+    return false
   } finally {
     saving.value = false
   }
@@ -187,6 +193,12 @@ function packagingLabel(value) {
 }
 
 onMounted(loadProfile)
+defineExpose({
+  prepare: async () => {
+    if (loading.value || saving.value || loadError.value) return false
+    return formValue() === baseline.value || await saveProfile()
+  }
+})
 </script>
 
 <template>
