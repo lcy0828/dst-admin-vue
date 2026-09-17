@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import { getManagementScope, managementScopeTargetId, MANAGEMENT_SCOPE_CHANGED_EVENT } from '@/lib/managementScope.mjs'
 import { luaJITJobTerminal, luaJITJobError } from '@/lib/luajitInstaller.mjs'
+import { formatJobBytes, formatJobRate } from '@/lib/globalJobs.mjs'
 
 const emit = defineEmits(['changed'])
 const { t } = useI18n()
@@ -25,6 +26,15 @@ const selected = ref(null), dialog = ref(''), path = ref(''), candidate = ref(nu
 const job = ref(null), scope = ref(getManagementScope())
 let generation = 0, timer = 0, alive = true, probeSequence = 0
 const running = computed(() => job.value && !luaJITJobTerminal(job.value))
+const observedNow = ref(Date.now())
+const stage = computed(() => job.value?.progressDetail?.stage || 'game.install')
+const transfer = computed(() => job.value?.transfer)
+const stagePercent = computed(() => {
+  if (!running.value) return job.value?.status === 'succeeded' ? 100 : null
+  return transfer.value?.totalBytes > 0 ? Math.min(100, transfer.value.currentBytes / transfer.value.totalBytes * 100) : null
+})
+const rate = computed(() => observedNow.value - Date.parse(job.value?.progressDetail?.observedAt || '') < 10000
+  ? formatJobRate(transfer.value?.bytesPerSecond) : '')
 const busy = computed(() => loading.value || submitting.value || running.value)
 const key = () => `dstGameInstallationJob:${managementScopeTargetId(scope.value) || 'all'}`
 const identity = item => ({ targetId: item.targetId, installationId: item.installationId })
@@ -46,6 +56,7 @@ async function poll(id, current = generation) {
     const value = await jobsV2API.controlPlaneGet(id)
     if (!alive || current !== generation) return
     job.value = value
+    observedNow.value = Date.now()
     if (luaJITJobTerminal(value)) { persist(); await load(current); if (alive && current === generation) { error.value = jobError(value) || error.value; if (!jobError(value)) emit('changed') } return }
     timer = window.setTimeout(() => poll(id, current), 2000)
   } catch (e) { if (alive && current === generation) error.value = e.message || t('gameInstallation.trackingFailed') }
@@ -114,7 +125,20 @@ onBeforeUnmount(() => { alive = false; generation += 1; clearTimeout(timer); win
           </div>
         </CardContent>
       </Card>
-      <div v-if="job" role="status" aria-live="polite" class="flex flex-col gap-2"><p class="text-sm">{{ luaJITJobTerminal(job) ? t(jobError(job) ? 'gameInstallation.failed' : 'gameInstallation.done') : (job.message || t('gameInstallation.working')) }}</p><Progress :model-value="Number(job.progress || 0)" :aria-label="t('gameInstallation.progress')" /></div>
+      <div v-if="job" role="status" aria-live="polite" class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span>{{ running ? t(`gameInstallation.stages.${stage.split('.').pop()}`, t('gameInstallation.working')) : t(jobError(job) ? 'gameInstallation.failed' : 'gameInstallation.done') }}</span>
+          <span v-if="stagePercent !== null" class="tabular-nums">{{ stagePercent.toFixed(1) }}%</span>
+        </div>
+        <Progress :model-value="stagePercent" :aria-label="t('gameInstallation.progress')" class="h-2" />
+        <div v-if="running" class="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
+          <span v-if="transfer?.totalBytes" class="tabular-nums">{{ formatJobBytes(transfer.currentBytes) || '0 B' }} / {{ formatJobBytes(transfer.totalBytes) }}</span>
+          <span v-else>{{ t('gameInstallation.waitingProgress') }}</span>
+          <span v-if="stage === 'game.download'" class="tabular-nums">{{ t('gameInstallation.speed') }} · {{ rate || t('gameInstallation.measuring') }}</span>
+        </div>
+        <p v-if="running && stage === 'game.download'" class="text-xs text-muted-foreground">{{ t('gameInstallation.speedHint') }}</p>
+        <details v-if="job.message" class="min-w-0 text-sm"><summary class="cursor-pointer text-muted-foreground">{{ t('gameInstallation.latestOutput') }}</summary><pre class="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{ job.message }}</pre></details>
+      </div>
       <Alert v-if="error" variant="destructive"><AlertTitle>{{ t('gameInstallation.failed') }}</AlertTitle><AlertDescription class="break-words">{{ error }}</AlertDescription></Alert>
     </CardContent>
   </Card>
