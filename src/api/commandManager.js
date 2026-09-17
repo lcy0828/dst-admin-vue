@@ -1,4 +1,5 @@
-import { consoleV2API, roomsV2API } from './v2'
+import { consoleV2API } from './v2'
+import { getScopedRuntimeOverview } from './v2LegacyAdapters'
 import { COMMAND_CATEGORY_IDS, normalizeCommandCategory } from '../lib/commandCategories.mjs'
 
 export const COMMAND_TYPES = COMMAND_CATEGORY_IDS
@@ -76,15 +77,13 @@ const mapServer = (room, world) => ({
 })
 
 let serverCache = []
+let serverCacheTargetId = null
 
-async function loadServers() {
-  const roomResponse = await roomsV2API.list()
-  const rooms = roomResponse.items || []
-  const groups = await Promise.all(rooms.map(async room => {
-    const response = await roomsV2API.worlds(room.id)
-    return (response.items || []).map(world => mapServer(room, world))
-  }))
-  serverCache = groups.flat()
+async function loadServers(targetId = '') {
+  const normalizedTargetId = String(targetId || '').trim()
+  const overview = await getScopedRuntimeOverview(normalizedTargetId)
+  serverCache = (overview.rooms || []).flatMap(room => (room.worlds || []).map(world => mapServer(room, world)))
+  serverCacheTargetId = normalizedTargetId
   return serverCache
 }
 
@@ -101,9 +100,21 @@ async function waitForCommandRun(roomId, run, timeoutMs = RUN_POLL_TIMEOUT) {
     await new Promise(resolve => setTimeout(resolve, RUN_POLL_INTERVAL))
     current = await consoleV2API.run(roomId, current.id)
   }
-  if (current.status !== 'sent') {
+  if (current.status !== 'succeeded') {
     const detail = current.errorMessage || current.message || ''
-    throw commandError(COMMAND_ERROR_CODES.RUN_FAILED, 'Command delivery failed', { detail })
+    const fallbackCode = current.status === 'unresponsive'
+      ? 'CONSOLE_UNRESPONSIVE'
+      : (['sent', 'uncertain'].includes(current.status) ? 'COMMAND_OUTCOME_UNKNOWN' : COMMAND_ERROR_CODES.RUN_FAILED)
+    throw commandError(
+      current.errorCode || fallbackCode,
+      detail || 'Command execution failed',
+      {
+        detail,
+        run: current,
+        mayHaveExecuted: Boolean(current.mayHaveExecuted || ['sent', 'uncertain', 'unresponsive'].includes(current.status)),
+        recoveryOutcome: current.recoveryOutcome || ''
+      }
+    )
   }
   return current
 }
@@ -217,7 +228,7 @@ export const commandApi = {
   addCommand: command => commandManager.addCommand(command),
   updateCommand: (id, command) => commandManager.updateCommand(id, command),
   deleteCommand: id => commandManager.deleteCommand(id),
-  getServers: loadServers,
+  getServers: targetId => loadServers(targetId),
   async executeCommand(server, commandId, argumentsMap = {}, confirmation = '') {
     const target = parseServerKey(server)
     const run = await consoleV2API.execute(target.roomId, target.worldId, {
@@ -232,16 +243,18 @@ export const commandApi = {
     const run = await consoleV2API.executeRaw(target.roomId, target.worldId, { command, confirmation })
     return waitForCommandRun(target.roomId, run)
   },
-  async getCommandHistory() {
-    const servers = serverCache.length > 0 ? serverCache : await loadServers()
+  async getCommandHistory(targetId = '') {
+    const normalizedTargetId = String(targetId || '').trim()
+    const servers = serverCacheTargetId === normalizedTargetId ? serverCache : await loadServers(normalizedTargetId)
     const rooms = [...new Map(servers.map(server => [server.room_id, server])).values()]
     const responses = await Promise.all(rooms.map(server => consoleV2API.runs(server.room_id, { limit: 50 })))
     return responses.flatMap(response => response.items || [])
       .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
       .slice(0, 50)
   },
-  async clearCommandHistory() {
-    const servers = serverCache.length > 0 ? serverCache : await loadServers()
+  async clearCommandHistory(targetId = '') {
+    const normalizedTargetId = String(targetId || '').trim()
+    const servers = serverCacheTargetId === normalizedTargetId ? serverCache : await loadServers(normalizedTargetId)
     const roomIds = [...new Set(servers.map(server => server.room_id))]
     const results = await Promise.all(roomIds.map(roomId => consoleV2API.clearRuns(roomId)))
     return results.reduce((total, result) => total + (result.deleted || 0), 0)

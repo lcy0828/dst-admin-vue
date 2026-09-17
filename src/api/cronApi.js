@@ -8,18 +8,27 @@ import {
   SYSTEM_AUTOMATION_GROUP_IDS,
   SYSTEM_EXECUTOR_ID
 } from '@/lib/systemDataIdentifiers.mjs'
+import { MANAGEMENT_SCOPE_CHANGED_EVENT } from '@/lib/managementScope.mjs'
 
 const ROOM_KEY = 'dst-admin.automation.room-id'
 const SUCCESS_STATUSES = new Set(['succeeded'])
 const FAILURE_STATUSES = new Set(['failed', 'canceled', 'skipped'])
 
 let roomCatalog = []
+let roomCatalogRequest = null
 let activeRoomId = sessionStorage.getItem(ROOM_KEY) || ''
 let taskCache = new Map()
 let groupCache = new Map()
 let actionCache = []
 let commandCache = []
 let exportHistory = []
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, () => {
+    roomCatalog = []
+    roomCatalogRequest = null
+  })
+}
 
 function nested(data, message = '操作成功') {
   return {
@@ -31,25 +40,34 @@ function nested(data, message = '操作成功') {
   }
 }
 
-async function loadRooms(force = false) {
-  if (roomCatalog.length && !force) return roomCatalog
-  const response = await roomsV2API.list()
-  const rooms = (response.items || []).filter(room => room.managed)
-  roomCatalog = await Promise.all(rooms.map(async room => {
-    const worlds = await roomsV2API.worlds(room.id)
-    return { ...room, worlds: worlds.items || [] }
-  }))
-  if (activeRoomId && !roomCatalog.some(room => room.id === activeRoomId)) {
-    activeRoomId = ''
-    sessionStorage.removeItem(ROOM_KEY)
+async function loadRooms() {
+  if (roomCatalogRequest) return roomCatalogRequest
+  const request = (async () => {
+    const response = await roomsV2API.list()
+    const rooms = response.items || []
+    const current = await Promise.all(rooms.map(async room => {
+      const worlds = await roomsV2API.worlds(room.id)
+      return { ...room, worlds: worlds.items || [] }
+    }))
+    if (activeRoomId && !current.some(room => room.id === activeRoomId)) {
+      activeRoomId = ''
+      sessionStorage.removeItem(ROOM_KEY)
+    }
+    roomCatalog = current
+    if (!activeRoomId && roomCatalog.length === 1) setActiveRoom(roomCatalog[0].id)
+    return roomCatalog
+  })()
+  roomCatalogRequest = request
+  try {
+    return await request
+  } finally {
+    if (roomCatalogRequest === request) roomCatalogRequest = null
   }
-  if (!activeRoomId && roomCatalog.length === 1) setActiveRoom(roomCatalog[0].id)
-  return roomCatalog
 }
 
 function setActiveRoom(roomId) {
   if (roomId && !roomCatalog.some(room => room.id === roomId)) {
-    throw new Error('所选房间不存在或尚未接管')
+    throw new Error('所选房间不存在')
   }
   activeRoomId = roomId || ''
   if (activeRoomId) sessionStorage.setItem(ROOM_KEY, activeRoomId)
@@ -58,7 +76,7 @@ function setActiveRoom(roomId) {
 
 async function activeRoom() {
   const rooms = await loadRooms()
-  if (!rooms.length) throw new Error('当前没有已接管的真实房间')
+  if (!rooms.length) throw new Error('当前没有发现真实房间')
   const room = rooms.find(item => item.id === activeRoomId)
   if (room) return room
   if (rooms.length === 1) {
@@ -363,8 +381,8 @@ async function runsForChart(room, params, days) {
 }
 
 export const realCronTaskApi = {
-  async getRoomScope(force = false) {
-    const rooms = await loadRooms(force)
+  async getRoomScope() {
+    const rooms = await loadRooms()
     return {
       rooms: rooms.map(room => ({ id: room.id, name: room.name, directoryName: room.directoryName })),
       roomId: activeRoomId

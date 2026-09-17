@@ -1,19 +1,34 @@
 import axios from 'axios'
 import apiConfig from './config'
-import { getActiveRuntimeTarget } from '@/utils/runtimeTarget'
 import { createIdempotencyKey } from '@/lib/idempotencyKey.mjs'
+import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
+import { filterManagementRooms } from '@/lib/managementScope.mjs'
+import { emitGlobalJobSubmitted } from '@/lib/globalJobs.mjs'
+import { isWorldProgressJob } from '@/lib/taskProgress.mjs'
 
 const baseURL = `${apiConfig.BASE_URL.replace(/\/$/, '')}/v2`
+const GAME_RELEASE_REQUEST_TIMEOUT = 65_000
+const GAME_VERSION_REQUEST_TIMEOUT = 12_000
+const RUNTIME_OVERVIEW_REQUEST_TIMEOUT = 35_000
 let csrfToken = ''
+const authSessionCache = createAsyncResourceCache({ ttlMs: 1_000 })
+const capabilityCache = createAsyncResourceCache({ ttlMs: 30_000 })
+const gameVersionCache = createAsyncResourceCache({ ttlMs: 1_000 })
+const gameVersionSummaryCache = createAsyncResourceCache({ ttlMs: 1_000 })
 
 export class APIError extends Error {
   constructor(status, body = {}, requestId = '') {
-    const message = body.message || 'The server returned an invalid response.'
-    super(requestId ? `${message} (request ID: ${requestId})` : message)
+    const message = String(body.message || 'The server returned an invalid response.')
+    const detail = String(body?.details?.reason || '').trim()
+    const displayMessage = detail && detail !== message && !message.includes(detail)
+      ? `${message}: ${detail}`
+      : message
+    super(requestId ? `${displayMessage} (request ID: ${requestId})` : displayMessage)
     this.name = 'APIError'
     this.status = status
     this.code = body.code || 'UNKNOWN_ERROR'
     this.details = body.details
+    this.detail = detail
     this.requestId = requestId
   }
 }
@@ -24,8 +39,7 @@ async function getBinary(path, accept) {
     headers: {
       Accept: accept,
       'Cache-Control': 'no-store',
-      Pragma: 'no-cache',
-      'X-DST-Runtime-Target': getActiveRuntimeTarget().id
+      Pragma: 'no-cache'
     }
   })
   if (!response.ok) {
@@ -43,8 +57,7 @@ async function getJSONArtifact(path) {
   const response = await fetch(`${baseURL}${path}`, {
     credentials: 'include',
     headers: {
-      Accept: 'application/json',
-      'X-DST-Runtime-Target': getActiveRuntimeTarget().id
+      Accept: 'application/json'
     }
   })
   if (!response.ok) {
@@ -71,11 +84,6 @@ const client = axios.create({
 
 client.interceptors.request.use(config => {
   const method = (config.method || 'get').toUpperCase()
-  if (config.runtimeTarget === false) {
-    delete config.headers['X-DST-Runtime-Target']
-  } else {
-    config.headers['X-DST-Runtime-Target'] = getActiveRuntimeTarget().id
-  }
   if (['GET', 'HEAD'].includes(method)) {
     config.headers['Cache-Control'] = 'no-store'
     config.headers.Pragma = 'no-cache'
@@ -97,6 +105,13 @@ client.interceptors.response.use(response => {
   if (error instanceof APIError) return Promise.reject(error)
   const response = error.response
   if (!response) {
+    const timedOut = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT' || /timeout/i.test(error.message || '')
+    if (timedOut) {
+      return Promise.reject(new APIError(0, {
+        code: 'REQUEST_TIMEOUT',
+        message: 'The request timed out before the server responded.'
+      }))
+    }
     return Promise.reject(new APIError(0, {
       code: 'BACKEND_UNAVAILABLE',
       message: 'Unable to connect to the backend service.'
@@ -115,12 +130,30 @@ function rememberSession(session) {
   return session
 }
 
+function presentWorldActionJob(job) {
+  if (isWorldProgressJob(job)) emitGlobalJobSubmitted(job)
+  return job
+}
+
 export const authAPI = {
-  session: () => client.get('/auth/session').then(rememberSession),
-  setup: (username, password) => client.post('/auth/setup', { username, password }).then(rememberSession),
-  login: (username, password) => client.post('/auth/login', { username, password }).then(rememberSession),
+  session: () => authSessionCache.load(() => client.get('/auth/session')).then(rememberSession),
+  setup: (username, password) => {
+    authSessionCache.invalidate()
+    return client.post('/auth/setup', { username, password }).then(session => {
+      authSessionCache.invalidate()
+      return rememberSession(session)
+    })
+  },
+  login: (username, password) => {
+    authSessionCache.invalidate()
+    return client.post('/auth/login', { username, password }).then(session => {
+      authSessionCache.invalidate()
+      return rememberSession(session)
+    })
+  },
   logout: () => client.post('/auth/logout').then(session => {
     csrfToken = ''
+    authSessionCache.invalidate()
     return session
   }),
   changePassword: (currentPassword, newPassword) => client.put('/auth/password', {
@@ -128,23 +161,33 @@ export const authAPI = {
     newPassword
   }).then(session => {
     csrfToken = ''
+    authSessionCache.invalidate()
     return session
   })
 }
 
 const encode = value => encodeURIComponent(String(value))
+const scopeRoomList = value => ({ ...value, items: filterManagementRooms(value?.items) })
 
 export const systemV2API = {
-  capabilities: () => client.get('/system/capabilities'),
-  setupChecks: () => client.get('/system/setup-checks', { headers: { 'Cache-Control': 'no-store' } }),
-  status: () => client.get('/system/status'),
-  settings: () => client.get('/system/settings', { headers: { 'Cache-Control': 'no-store' } }),
+	capabilities: () => capabilityCache.load(() => client.get('/system/capabilities')),
+	setupChecks: () => client.get('/system/setup-checks', { headers: { 'Cache-Control': 'no-store' } }),
+	status: () => client.get('/system/status'),
+	/** @returns {Promise<import('./distributedManagement').NodeResourceSnapshot>} */
+	resources: (targetId = '', options = {}) => client.get('/system/resources', {
+		params: { ...(targetId ? { targetId } : {}), ...(options.refresh ? { refresh: true } : {}) },
+		headers: { 'Cache-Control': 'no-store' }
+	}),
+	settings: () => client.get('/system/settings', { headers: { 'Cache-Control': 'no-store' } }),
   previewSettings: input => client.post('/system/settings/preview', input),
   applySettings: input => client.post('/system/settings/actions/apply', input),
   testEmail: input => client.post('/system/settings/actions/test-email', input)
 }
 
 export const gameNotificationsV2API = {
+  maintenancePreview: (roomId, signal) => client.get(`/rooms/${encode(roomId)}/maintenance-preview`, {
+    signal, timeout: 8000, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' }
+  }),
   list: (roomId = '', limit = 25, offset = 0) => client.get('/game-notifications', {
     params: { ...(roomId ? { roomId } : {}), limit, offset },
     headers: { 'Cache-Control': 'no-store' }
@@ -156,19 +199,31 @@ export const gameNotificationsV2API = {
   savePolicy: (roomId, input) => client.put(`/rooms/${encode(roomId)}/game-notification-policy`, input)
 }
 
+export const entityCatalogV2API = {
+  search: ({ query = '', kind = '', limit = 120 } = {}) => client.get('/entity-catalog/entities', {
+    params: { q: query, kind, limit },
+    headers: { 'Cache-Control': 'no-store' }
+  })
+}
+
 export const roomsV2API = {
-  list: () => client.get('/rooms'),
+  list: () => client.get('/rooms', { headers: { 'Cache-Control': 'no-store' } }).then(scopeRoomList),
   controlPlaneList: () => client.get('/rooms', {
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
-  }),
+  }).then(scopeRoomList),
   recoveries: () => client.get('/rooms/recovery', { headers: { 'Cache-Control': 'no-store' } }),
   restoreRoom: recoveryName => client.post(`/rooms/recovery/${encode(recoveryName)}/actions/restore`),
   purgeRoomRecovery: (recoveryName, confirmation) => client.delete(`/rooms/recovery/${encode(recoveryName)}`, {
     data: { confirmation }
   }),
-  get: roomId => client.get(`/rooms/${encode(roomId)}`),
-  worlds: roomId => client.get(`/rooms/${encode(roomId)}/worlds`),
+  get: roomId => client.get(`/rooms/${encode(roomId)}`, { headers: { 'Cache-Control': 'no-store' } }),
+  worlds: roomId => client.get(`/rooms/${encode(roomId)}/worlds`, { headers: { 'Cache-Control': 'no-store' } }),
+  runtimeModes: (roomId, worldIds = []) => client.get(`/rooms/${encode(roomId)}/runtime-modes`, {
+    params: worldIds.length ? { worldIds: worldIds.join(',') } : {},
+    runtimeTarget: false,
+    headers: { 'Cache-Control': 'no-store' }
+  }),
   worldRecoveries: roomId => client.get(`/rooms/${encode(roomId)}/worlds/recovery`, {
     headers: { 'Cache-Control': 'no-store' }
   }),
@@ -190,8 +245,11 @@ export const roomsV2API = {
   ),
   action: (roomId, action, worldIds = [], options = {}) => client.post(`/rooms/${encode(roomId)}/actions/${encode(action)}`, {
     worldIds,
-    ...(options.allowCapacityRisk === true ? { allowCapacityRisk: true } : {})
-  }, { runtimeTarget: false })
+    ...(options.allowCapacityRisk === true ? { allowCapacityRisk: true } : {}),
+    ...(options.immediate === true ? { immediate: true } : {}),
+    ...(options.runtimeMode ? { runtimeMode: options.runtimeMode } : {}),
+    ...(options.runtimeVersion ? { runtimeVersion: options.runtimeVersion } : {})
+  }, { runtimeTarget: false }).then(presentWorldActionJob)
 }
 
 export const topologyV2API = {
@@ -207,7 +265,7 @@ export const topologyV2API = {
   batchAction: (action, rooms, allowCapacityRisk = false) => client.post(`/rooms/actions/${encode(action)}`, {
     rooms,
     ...(allowCapacityRisk === true ? { allowCapacityRisk: true } : {})
-  }, { runtimeTarget: false }),
+  }, { runtimeTarget: false }).then(presentWorldActionJob),
   /** @returns {Promise<import('./distributedManagement').RuntimeInfrastructure>} */
   infrastructure: () => client.get('/runtime-infrastructure', {
     runtimeTarget: false,
@@ -218,9 +276,20 @@ export const topologyV2API = {
     input,
     { runtimeTarget: false }
   ),
+  detectNetworkProfileEgress: (profileId, region = 'global') => client.post(
+    `/runtime-infrastructure/network-profiles/${encode(profileId)}/actions/detect-egress`,
+    { region },
+    { runtimeTarget: false }
+  ),
   updateCPUAllocation: input => client.put('/runtime-infrastructure/cpu-allocations', input, {
     runtimeTarget: false
   }),
+  /** @returns {Promise<import('./distributedManagement').ShardLinkDiscoveryResult>} */
+	discoverShardLinks: (roomId, input) => client.post(
+    `/rooms/${encode(roomId)}/topology/shard-links/actions/discover`,
+    input,
+    { runtimeTarget: false }
+  ),
   preview: (roomId, input) => client.post(`/rooms/${encode(roomId)}/topology/preview`, input, { runtimeTarget: false }),
   update: (roomId, input) => client.put(`/rooms/${encode(roomId)}/topology`, input, { runtimeTarget: false }),
   applyPlacement: (roomId, input) => client.post(
@@ -240,6 +309,30 @@ export const topologyV2API = {
   recoverProvisionOperation: operationId => client.post(
     `/provision-operations/${encode(operationId)}/actions/recover`,
     {},
+    { runtimeTarget: false }
+  )
+}
+
+export const fleetOverviewV2API = {
+  get: (targetId = '', { detail = 'full' } = {}) => client.get('/runtime-overview', {
+    params: { ...(targetId ? { targetId } : {}), ...(detail !== 'full' ? { detail } : {}) },
+    runtimeTarget: false,
+    timeout: RUNTIME_OVERVIEW_REQUEST_TIMEOUT,
+    headers: { 'Cache-Control': 'no-store' }
+  })
+}
+
+export const runtimeObservationsV2API = {
+  streamURL: ({ targetId = '', roomId = '' } = {}) => {
+    const query = new URLSearchParams()
+    if (targetId) query.set('targetId', targetId)
+    if (roomId) query.set('roomId', roomId)
+    const suffix = query.toString()
+    return `${baseURL}/runtime-observations/stream${suffix ? `?${suffix}` : ''}`
+  },
+  refresh: ({ targetId = '', roomId = '' } = {}) => client.post(
+    '/runtime-observations/actions/refresh',
+    { ...(targetId ? { targetId } : {}), ...(roomId ? { roomId } : {}) },
     { runtimeTarget: false }
   )
 }
@@ -349,6 +442,7 @@ export const structuredLogsV2API = {
 }
 
 export const chatLogsV2API = {
+  repair: roomId => client.post(`/rooms/${encode(roomId)}/chat-logs/actions/repair`),
   list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/chat-logs`, { params })
 }
 
@@ -411,6 +505,7 @@ export const playersV2API = {
 }
 
 export const modsV2API = {
+  metadata: (ids, options = {}) => client.get('/mods/metadata', { params: { ids: ids.join(','), ...(options.cached ? { cached: true } : {}) }, runtimeTarget: false }),
   search: (params = {}) => client.get('/mods/search', {
     params,
     runtimeTarget: false
@@ -419,6 +514,25 @@ export const modsV2API = {
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
+  runtimeInventory: (targetId, installationId, params = {}) => client.get(
+    `/runtime-targets/${encode(targetId)}/installations/${encode(installationId)}/mods`,
+    { params, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
+  ),
+  downloadRuntimeMod: (targetId, installationId, modId) => client.post(
+    `/runtime-targets/${encode(targetId)}/installations/${encode(installationId)}/mods/${encode(modId)}/actions/download`,
+    {},
+    { runtimeTarget: false }
+  ),
+  updateRuntimeMod: (targetId, installationId, modId) => client.post(
+    `/runtime-targets/${encode(targetId)}/installations/${encode(installationId)}/mods/${encode(modId)}/actions/update`,
+    {},
+    { runtimeTarget: false }
+  ),
+  updateOutdatedRuntimeMods: (targetId, installationId) => client.post(
+    `/runtime-targets/${encode(targetId)}/installations/${encode(installationId)}/mods/actions/update-outdated`,
+    {},
+    { runtimeTarget: false }
+  ),
   download: input => client.post('/mods/library/actions/download', input, { runtimeTarget: false }),
   updateLibrary: modId => client.post(
     `/mods/library/${encode(modId)}/actions/update`,
@@ -426,30 +540,37 @@ export const modsV2API = {
     { runtimeTarget: false }
   ),
   details: modId => client.get(`/mods/${encode(modId)}`, { runtimeTarget: false }),
-  list: roomId => client.get(`/rooms/${encode(roomId)}/mods`, {
+  list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/mods`, {
+    params,
     runtimeTarget: false,
     headers: { 'Cache-Control': 'no-store' }
   }),
-  install: (roomId, input) => client.post(`/rooms/${encode(roomId)}/mods/actions/install`, input),
+  install: (roomId, input) => client.post(`/rooms/${encode(roomId)}/mods/actions/install`, input, { runtimeTarget: false }),
   addToRoom: (roomId, modId, input) => client.post(
     `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/add`,
-    input
+    input,
+    { runtimeTarget: false }
   ),
-  checkUpdates: roomId => client.post(`/rooms/${encode(roomId)}/mods/actions/check-updates`),
+  checkUpdates: roomId => client.post(`/rooms/${encode(roomId)}/mods/actions/check-updates`, {}, { runtimeTarget: false }),
   update: (roomId, modId) => client.post(
-    `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/update`
+    `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/update`,
+    {},
+    { runtimeTarget: false }
   ),
   enable: (roomId, modId, input) => client.post(
     `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/enable`,
-    input
+    input,
+    { runtimeTarget: false }
   ),
   repair: (roomId, modId, input) => client.post(
     `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/repair`,
-    input
+    input,
+    { runtimeTarget: false }
   ),
   uninstall: (roomId, modId, input) => client.post(
     `/rooms/${encode(roomId)}/mods/${encode(modId)}/actions/uninstall`,
-    input
+    input,
+    { runtimeTarget: false }
   ),
   configurationFile: (roomId, worldId) => client.get(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/configuration-file`,
@@ -466,11 +587,25 @@ export const modsV2API = {
   ),
   applyConfiguration: (roomId, worldId, modId, input) => client.post(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/${encode(modId)}/configuration/actions/apply`,
-    input
+    input,
+    { runtimeTarget: false }
+  ),
+  setConfigurationMode: (roomId, modId, mode) => client.put(
+    `/rooms/${encode(roomId)}/mods/${encode(modId)}/configuration-mode`,
+    { mode },
+    { runtimeTarget: false }
+  ),
+  profile: roomId => client.get(
+    `/rooms/${encode(roomId)}/mod-profile`,
+    { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
   )
 }
 
 export const modPublicationsV2API = {
+  replicas: roomId => client.get(
+    `/rooms/${encode(roomId)}/mod-replicas`,
+    { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
+  ),
   preview: (roomId, input) => client.post(
     `/rooms/${encode(roomId)}/mod-publications/preview`,
     input,
@@ -501,6 +636,33 @@ export const modPublicationsV2API = {
   )
 }
 
+export const modUpdatesV2API = {
+  overview: roomId => client.get(
+    `/rooms/${encode(roomId)}/mod-update`,
+    { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
+  ),
+  updatePolicy: (roomId, input) => client.put(
+    `/rooms/${encode(roomId)}/mod-update/policy`,
+    input,
+    { runtimeTarget: false }
+  ),
+  check: roomId => client.post(
+    `/rooms/${encode(roomId)}/mod-update/actions/check`,
+    {},
+    { runtimeTarget: false }
+  ),
+  applyWhenEmpty: roomId => client.post(
+    `/rooms/${encode(roomId)}/mod-update/actions/apply-when-empty`,
+    {},
+    { runtimeTarget: false }
+  ),
+  applyNow: roomId => client.post(
+    `/rooms/${encode(roomId)}/mod-update/actions/apply`,
+    {},
+    { runtimeTarget: false }
+  )
+}
+
 export const automationV2API = {
   actions: roomId => client.get(`/rooms/${encode(roomId)}/automation/actions`),
   groups: roomId => client.get(`/rooms/${encode(roomId)}/automation/groups`),
@@ -523,7 +685,7 @@ export const automationV2API = {
 }
 
 export const agentsV2API = {
-	list: () => client.get('/agents', { headers: { 'Cache-Control': 'no-store' } }),
+	list: () => client.get('/agents', { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),
 	get: agentId => client.get(`/agents/${encode(agentId)}`, { headers: { 'Cache-Control': 'no-store' } }),
 	inventory: agentId => client.get(`/agents/${encode(agentId)}/inventory`, { headers: { 'Cache-Control': 'no-store' } }),
 	refreshInventory: agentId => client.post(`/agents/${encode(agentId)}/inventory/actions/refresh`),
@@ -534,7 +696,43 @@ export const agentsV2API = {
 	agentCommands: (agentId, params = {}) => client.get(`/agents/${encode(agentId)}/commands`, { params }),
 	runCommand: (agentId, input) => client.post(`/agents/${encode(agentId)}/commands`, input),
 	security: () => client.get('/agents/security', { headers: { 'Cache-Control': 'no-store' } }),
-	rotateKey: confirmation => client.post('/agents/security/actions/rotate', { confirmation })
+	rotateKey: confirmation => client.post('/agents/security/actions/rotate', { confirmation }),
+	releases: () => client.get('/agent-releases', { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),
+	uploadRelease: (file, version, onUploadProgress) => {
+		const body = new FormData()
+		body.set('file', file)
+		body.set('version', version)
+		return client.post('/agent-releases', body, {
+			runtimeTarget: false,
+			timeout: apiConfig.UPLOAD_TIMEOUT,
+			onUploadProgress
+		})
+	},
+	deleteRelease: releaseId => client.delete(`/agent-releases/${encode(releaseId)}`, { runtimeTarget: false }),
+	upgrade: (agentId, releaseId = '') => client.post(
+		`/agents/${encode(agentId)}/actions/upgrade`,
+		releaseId ? { releaseId } : {},
+		{ runtimeTarget: false }
+	)
+}
+
+export const gameInstallationsV2API = {
+  list: targetId => client.get('/runtime-targets/game-installations', { params: targetId ? { targetId } : {}, runtimeTarget: false, timeout: 35000 }),
+  probe: input => client.post('/runtime-targets/game-installations/probe', input, { runtimeTarget: false, timeout: 35000 }),
+  install: input => client.post('/runtime-targets/game-installations/actions/install', input, { runtimeTarget: false }),
+  adopt: input => client.post('/runtime-targets/game-installations/actions/adopt', input, { runtimeTarget: false }),
+}
+
+export const luaJITV2API = {
+  catalog: targetId => client.get('/runtime-targets/luajit', { params: targetId ? { targetId } : {}, runtimeTarget: false, timeout: 35000 }),
+  status: (targetId, installationId, refreshUpstream = false) => client.get('/runtime-targets/luajit/status', { params: { targetId, installationId, ...(refreshUpstream ? { refreshUpstream: true } : {}) }, runtimeTarget: false, timeout: 35000 }),
+  install: input => client.post('/runtime-targets/luajit/actions/install', input, { runtimeTarget: false }),
+  download: input => client.post('/runtime-targets/luajit/actions/download', input, { runtimeTarget: false }),
+  upload: file => {
+    const data = new FormData()
+    data.append('file', file)
+    return client.post('/runtime-targets/luajit/packages', data, { headers: { 'Content-Type': 'multipart/form-data' }, runtimeTarget: false, timeout: 180000 })
+  },
 }
 
 export const runtimeTargetsV2API = {
@@ -555,6 +753,11 @@ export const consoleV2API = {
 		`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/commands`,
 		input
 	),
+	applyShardLinks: (roomId, input) => client.post(
+		`/rooms/${encode(roomId)}/topology/shard-links/actions/apply`,
+		input,
+		{ runtimeTarget: false }
+	),
 	executeRaw: (roomId, worldId, input) => client.post(
 		`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/raw-commands`,
 		input
@@ -567,20 +770,42 @@ export const consoleV2API = {
 }
 
 export const worldStatesV2API = {
-  list: roomId => client.get(`/rooms/${encode(roomId)}/world-states`, { runtimeTarget: false })
+	list: roomId => client.get(`/rooms/${encode(roomId)}/world-states`, { runtimeTarget: false }),
+  refreshWorld: (roomId, worldId) => client.post(
+    `/rooms/${encode(roomId)}/world-states/${encode(worldId)}/actions/refresh`,
+    undefined,
+    { runtimeTarget: false }
+  )
 }
 
 export const gameV2API = {
-  version: () => client.get('/game/version'),
-  update: input => client.post('/game/actions/update', input),
+  version: ({ fresh = false, lightweight = false } = {}) => {
+    const cache = lightweight ? gameVersionSummaryCache : gameVersionCache
+    if (fresh) cache.invalidate()
+    return cache.load(() => client.get('/game/version', {
+      params: lightweight ? { steam: false, refresh: fresh } : undefined,
+      runtimeTarget: false,
+      timeout: lightweight ? GAME_VERSION_REQUEST_TIMEOUT : 35_000
+    }))
+  },
+  update: input => client.post('/game/actions/update', input).then(job => {
+    gameVersionCache.invalidate()
+    gameVersionSummaryCache.invalidate()
+    return job
+  }),
   updateRun: jobId => client.get(`/game/update-runs/${encode(jobId)}`)
 }
 
 export const gameReleasesV2API = {
+  installedVersions: (input = {}) => client.get('/game/installed-versions', {
+    params: { targetIds: (input.targetIds || []).join(',') },
+    runtimeTarget: false,
+    timeout: 35_000
+  }),
   /** @returns {Promise<import('./distributedManagement').GameReleasePlan>} */
-  preview: input => client.post('/game/releases/preview', input, { runtimeTarget: false }),
+  preview: input => client.post('/game/releases/preview', input, { runtimeTarget: false, timeout: GAME_RELEASE_REQUEST_TIMEOUT }),
   /** @returns {Promise<{id: string, kind: string, status: string, progress: number}>} */
-  create: input => client.post('/game/releases', input, { runtimeTarget: false }),
+  create: input => client.post('/game/releases', input, { runtimeTarget: false, timeout: GAME_RELEASE_REQUEST_TIMEOUT }),
   /** @returns {Promise<{items: import('./distributedManagement').GameRelease[], total: number, limit: number, offset: number}>} */
   list: (params = {}) => client.get('/game/releases', {
     params,

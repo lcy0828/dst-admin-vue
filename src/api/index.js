@@ -30,8 +30,8 @@ export const serverApi = {
   getServerTokenStatus(savename) {
     return legacyAccessApi.getServerTokenStatus(savename);
   },
-  revealServerToken(savename, confirmation) {
-    return legacyAccessApi.revealServerToken(savename, confirmation);
+  revealServerToken(savename) {
+	return legacyAccessApi.revealServerToken(savename);
   },
   // 更新管理员列表
   updateAdminList(savename, list, confirmed = false) {
@@ -45,9 +45,12 @@ export const serverApi = {
   updateWhiteList(savename, list, confirmed = false) {
     return legacyAccessApi.updateWhiteList(savename, list, confirmed);
   },
+  updateSpecialLists(savename, lists, confirmed = false) {
+    return legacyAccessApi.updateSpecialLists(savename, lists, confirmed);
+  },
   // 更新服务器令牌
-  updateServerToken(savename, token, confirmation) {
-    return legacyAccessApi.updateServerToken(savename, token, confirmation);
+  updateServerToken(savename, token) {
+	return legacyAccessApi.updateServerToken(savename, token);
   }
 };
 

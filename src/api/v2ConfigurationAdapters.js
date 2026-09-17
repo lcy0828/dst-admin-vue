@@ -6,6 +6,9 @@ export { jobFailure } from './jobFeedback.mjs'
 
 const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg)
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled'])
+const JOB_EVENT_TYPES = ['job.created', 'job.running', 'job.progress', 'job.target.completed', 'job.completed', 'job.interrupted']
+const JOB_POLL_INTERVAL_MS = 2_000
+const JOB_EVENT_HANDSHAKE_TIMEOUT_MS = 5_000
 
 function delay(milliseconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
@@ -16,10 +19,18 @@ export async function waitForV2Job(job, timeout = 60000, onUpdate, options = {})
   const deadline = Date.now() + timeout
   let current = job
   if (typeof onUpdate === 'function') onUpdate(current)
+
+  if (!TERMINAL_JOB_STATES.has(current.status)) {
+    const streamed = options.observe
+      ? await options.observe(current, deadline, onUpdate)
+      : await waitForV2JobEvent(current.id, deadline, onUpdate)
+    if (streamed) current = streamed
+  }
+
   while (!TERMINAL_JOB_STATES.has(current.status)) {
     if (Date.now() >= deadline) throw adapterError('JOB_TIMEOUT', { context: { jobId: job.id } })
-    await delay(300)
-    current = await jobsV2API.get(job.id)
+    await delay(Math.min(JOB_POLL_INTERVAL_MS, Math.max(0, deadline - Date.now())))
+    current = await jobsV2API.controlPlaneGet(job.id)
     if (typeof onUpdate === 'function') onUpdate(current)
   }
   if (current.status !== 'succeeded' && options.allowFailure !== true) {
@@ -31,6 +42,57 @@ export async function waitForV2Job(job, timeout = 60000, onUpdate, options = {})
     })
   }
   return current
+}
+
+function waitForV2JobEvent(jobId, deadline, onUpdate) {
+  if (typeof EventSource !== 'function') return Promise.resolve(null)
+
+  return new Promise(resolve => {
+    let settled = false
+    const remaining = Math.max(0, deadline - Date.now())
+    const source = new EventSource(jobsV2API.eventsURL(), { withCredentials: true })
+    const handshakeTimer = setTimeout(() => finish(null), Math.min(JOB_EVENT_HANDSHAKE_TIMEOUT_MS, remaining))
+    const deadlineTimer = setTimeout(() => finish(null), remaining)
+
+    function finish(value) {
+      if (settled) return
+      settled = true
+      clearTimeout(handshakeTimer)
+      clearTimeout(deadlineTimer)
+      source.close()
+      resolve(value)
+    }
+
+    function apply(value) {
+      if (settled) return
+      if (!value || value.id !== jobId) return
+      if (typeof onUpdate === 'function') onUpdate(value)
+      if (TERMINAL_JOB_STATES.has(value.status)) finish(value)
+    }
+
+    async function refreshAfterCursor() {
+      try {
+        apply(await jobsV2API.controlPlaneGet(jobId))
+      } catch {
+        finish(null)
+      }
+    }
+
+    source.addEventListener('job.cursor', () => {
+      clearTimeout(handshakeTimer)
+      void refreshAfterCursor()
+    })
+    for (const eventType of JOB_EVENT_TYPES) {
+      source.addEventListener(eventType, event => {
+        try {
+          apply(JSON.parse(event.data || '{}')?.data)
+        } catch {
+          // Ignore one malformed event; the next event or fallback read can still finish the Job.
+        }
+      })
+    }
+    source.onerror = () => finish(null)
+  })
 }
 
 export async function resolveV2Room(value) {
@@ -143,10 +205,10 @@ export function roomValuesFromLegacy(config, current) {
   }
 }
 
-async function applyRoomConfiguration(room, config) {
+async function applyRoomConfiguration(room, config, expectedRevision = '') {
   const current = await configurationV2API.room(room.id)
   const request = {
-    expectedRevision: current.revision,
+    expectedRevision: expectedRevision || current.revision,
     values: roomValuesFromLegacy(config, current.values)
   }
   try {
@@ -181,12 +243,13 @@ export const legacyRoomConfigApi = {
       ...legacyRoomSections(configuration.values),
       __schema: configuration.schema || [],
       __revision: configuration.revision,
-      __modifiedAt: configuration.modifiedAt
+      __modifiedAt: configuration.modifiedAt,
+      __sync: configuration.sync || null
     }, 'room_configuration_loaded')
   },
-  async saveRoomConfig(roomValue, config) {
+  async saveRoomConfig(roomValue, config, expectedRevision = '') {
     const room = await resolveV2Room(roomValue)
-    const job = await applyRoomConfiguration(room, config)
+    const job = await applyRoomConfiguration(room, config, expectedRevision)
     return success(job, job ? 'room_configuration_applied' : 'no_configuration_changes')
   },
   async createRoom(directoryName, config, token = '') {
@@ -280,6 +343,13 @@ export const legacyAccessApi = {
   async updateWhiteList(roomValue, list, confirmed = false) {
     return success(await accessUpdate(roomValue, { whitelist: list }, confirmed), 'whitelist_applied')
   },
+  async updateSpecialLists(roomValue, lists, confirmed = false) {
+    return success(await accessUpdate(roomValue, {
+      admins: lists.admin || [],
+      blocked: lists.block || [],
+      whitelist: lists.white || []
+    }, confirmed), 'special_lists_applied')
+  },
   async getServerToken(roomValue) {
     const room = await resolveV2Room(roomValue)
     const status = await configurationV2API.tokenStatus(room.id)
@@ -290,18 +360,18 @@ export const legacyAccessApi = {
     const status = await configurationV2API.tokenStatus(room.id)
     return success({ ...status, roomName: room.name }, status.configured ? 'server_token_status_loaded' : 'server_token_not_configured')
   },
-  async revealServerToken(roomValue, confirmation) {
-    const room = await resolveV2Room(roomValue)
-    const revealed = await configurationV2API.revealToken(room.id, confirmation)
-    return success(revealed.token, 'server_token_revealed')
+  async revealServerToken(roomValue) {
+	const room = await resolveV2Room(roomValue)
+	const revealed = await configurationV2API.revealToken(room.id, room.name)
+	return success(revealed.token, 'server_token_revealed')
   },
-  async updateServerToken(roomValue, token, confirmation) {
+  async updateServerToken(roomValue, token) {
     const room = await resolveV2Room(roomValue)
     const status = await configurationV2API.tokenStatus(room.id)
     const request = {
       expectedRevision: status.revision,
       token,
-      confirmation
+      confirmation: room.name
     }
     await configurationV2API.previewToken(room.id, request)
     const job = await waitForV2Job(await configurationV2API.applyToken(room.id, request))
@@ -310,30 +380,56 @@ export const legacyAccessApi = {
 }
 
 export const legacyWorldConfigurationApi = {
-  async get(roomValue, worldValue) {
-    const room = await resolveV2Room(roomValue)
-    const world = await resolveV2World(room, worldValue)
+  async get(roomValue, worldValue, target = {}) {
+    const room = target.roomId ? { id: target.roomId, name: roomValue } : await resolveV2Room(roomValue)
+    const world = target.worldId ? { id: target.worldId, name: worldValue } : await resolveV2World(room, worldValue)
     return { room, world, configuration: await configurationV2API.world(room.id, world.id) }
   },
-  async apply(roomValue, worldValue, server, overridePatch) {
-    const { room, world, configuration } = await this.get(roomValue, worldValue)
+  async apply(roomValue, worldValue, server, overridePatch, expectedRevision = '', target = {}) {
+    const { room, world, configuration } = await this.get(roomValue, worldValue, target)
     const request = {
-      expectedRevision: configuration.revision,
+      expectedRevision: expectedRevision || configuration.revision,
       server: { ...configuration.server, ...server },
       overridePatch
     }
+    let submitted
     try {
-      await configurationV2API.previewWorld(room.id, world.id, request)
+      submitted = await configurationV2API.applyWorld(room.id, world.id, request)
     } catch (error) {
       if (error.code === 'NO_CONFIGURATION_CHANGES') return success(null, 'no_configuration_changes')
       throw error
     }
-    const job = await waitForV2Job(await configurationV2API.applyWorld(room.id, world.id, request))
+    const job = await waitForV2Job(submitted)
     return success(job, 'world_configuration_applied')
   },
   async getWorldOverrides(roomValue, worldValue) {
     const { configuration } = await this.get(roomValue, worldValue)
     return success(configuration.overrides || {}, 'world_configuration_loaded')
+  },
+  async getWorldConfiguration(roomValue, worldValue, target = {}) {
+    const { room, world, configuration } = await this.get(roomValue, worldValue, target)
+    const server = configuration.server
+    return success({
+      room,
+      world,
+      overrides: configuration.overrides || {},
+      serverIni: {
+        network: { server_port: server.serverPort },
+        shard: {
+          is_master: server.isMaster,
+          name: server.shardName,
+          id: server.shardId
+        },
+        account: { encode_user_path: server.encodeUserPath },
+        steam: {
+          master_server_port: server.masterServerPort,
+          authentication_port: server.authenticationPort
+        }
+      },
+      revision: configuration.revision,
+      modifiedAt: configuration.modifiedAt,
+      sync: configuration.sync || null
+    }, 'world_configuration_loaded')
   },
   async getServerIni(roomValue, worldValue) {
     const { configuration } = await this.get(roomValue, worldValue)
@@ -363,14 +459,21 @@ export const legacyWorldConfigurationApi = {
       masterServerPort: integerValue(config.steam?.master_server_port),
       authenticationPort: integerValue(config.steam?.authentication_port)
     }
-    return this.apply(input.savename, input.worldname, server, {})
+    return this.apply(input.savename, input.worldname, server, {}, input.expectedRevision, {
+      roomId: input.roomId, worldId: input.worldId
+    })
   },
   async createOrApplyWorld(input, type) {
-    const room = await resolveV2Room(input.savename)
-    const worlds = await roomsV2API.worlds(room.id)
-    let world = (worlds.items || []).find(item =>
-      item.id === input.worldname || item.name === input.worldname || item.directoryName === input.worldname
-    )
+    const room = input.roomId ? { id: input.roomId, name: input.savename } : await resolveV2Room(input.savename)
+    let world
+    if (input.worldId) {
+      world = { id: input.worldId, name: input.worldname }
+    } else {
+      const worlds = await roomsV2API.worlds(room.id)
+      world = (worlds.items || []).find(item =>
+        item.id === input.worldname || item.name === input.worldname || item.directoryName === input.worldname
+      )
+    }
     let created = false
     if (!world) {
       world = await roomsV2API.createWorld(room.id, {
@@ -382,7 +485,9 @@ export const legacyWorldConfigurationApi = {
     const overrides = input.overrides || {}
     if (Object.keys(overrides).length > 0) {
       try {
-        await this.apply(room.id, world.id, {}, overrides)
+        await this.apply(room.id, world.id, {}, overrides, input.expectedRevision, {
+          roomId: room.id, worldId: world.id
+        })
       } catch (error) {
         if (created) {
           try {
@@ -401,11 +506,11 @@ export const legacyWorldConfigurationApi = {
     }
     return success(world, created ? 'world_created_and_configured' : 'world_configuration_applied')
   },
-  forestWorld(input) {
-    return this.createOrApplyWorld(input, 'forest')
+  async forestWorld(input) {
+    return legacyWorldConfigurationApi.createOrApplyWorld(input, 'forest')
   },
-  caveWorld(input) {
-    return this.createOrApplyWorld(input, 'cave')
+  async caveWorld(input) {
+    return legacyWorldConfigurationApi.createOrApplyWorld(input, 'cave')
   },
   async deleteWorld(input) {
     const room = await resolveV2Room(input.savename)

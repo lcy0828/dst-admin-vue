@@ -2,6 +2,7 @@ import {
   backupsV2API,
   containersV2API,
   consoleV2API,
+  fleetOverviewV2API,
   gameNotificationsV2API,
   gameV2API,
   roomsV2API,
@@ -11,13 +12,48 @@ import {
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
+import { compareWorldRoles, worldLifecycleSelection } from '@/lib/worldRuntimeStatus.mjs'
+import { projectFleetOverview } from '@/lib/fleetOverview.mjs'
+import { MANAGEMENT_SCOPE_CHANGED_EVENT, managementScopeTargetId } from '@/lib/managementScope.mjs'
 
 const MEBIBYTE = 1024 * 1024
 const GIBIBYTE = 1024 * 1024 * 1024
 const ROOM_JOB_TIMEOUT = 3 * 60 * 1000
 const BACKUP_JOB_TIMEOUT = 5 * 60 * 1000
 
-const roomCatalogCache = createAsyncResourceCache({ ttlMs: 750 })
+// Runtime-facing reads only share a request while it is in flight. Completed
+// results expire immediately so revisiting a page always reaches the API.
+const roomCatalogCache = createAsyncResourceCache({ ttlMs: 0 })
+const roomCatalogWithoutStatesCache = createAsyncResourceCache({ ttlMs: 0 })
+const scopedOverviewCaches = new Map()
+
+function scopedOverviewCache(targetId) {
+  const key = String(targetId || '').trim()
+  if (!scopedOverviewCaches.has(key)) {
+    scopedOverviewCaches.set(key, createAsyncResourceCache({ ttlMs: 0 }))
+  }
+  return scopedOverviewCaches.get(key)
+}
+
+function invalidateRoomCatalog() {
+  roomCatalogCache.invalidate()
+  roomCatalogWithoutStatesCache.invalidate()
+  for (const cache of scopedOverviewCaches.values()) cache.invalidate()
+}
+
+export function invalidateScopedRuntimeOverviewCaches() {
+  for (const cache of scopedOverviewCaches.values()) cache.invalidate()
+}
+
+if (typeof window !== 'undefined') {
+  let selectedTargetId = managementScopeTargetId()
+  window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, event => {
+    const targetId = managementScopeTargetId(event?.detail)
+    if (selectedTargetId === targetId) return
+    selectedTargetId = targetId
+    invalidateRoomCatalog()
+  })
+}
 
 const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg)
 
@@ -76,17 +112,18 @@ function base32(value) {
   return output
 }
 
-function worldType(role, directoryName = '') {
-  if (role === 'master') return 'forest'
-  if (role === 'caves') return 'cave'
-  return directoryName.toLowerCase().includes('cave') ? 'cave' : 'forest'
+function worldType(type, role) {
+  const explicitType = String(type || '').trim().toLowerCase()
+  if (['forest', 'cave', 'unknown'].includes(explicitType)) return explicitType
+  if (String(role || '').trim().toLowerCase() === 'caves') return 'cave'
+  return 'unknown'
 }
 
 function mapWorld(world, state) {
   return {
     ...world,
     worldName: world.name,
-    type: worldType(world.role, world.directoryName),
+    type: worldType(world.type, world.role),
     updateTime: world.updatedAt,
     season: state?.season || null,
     day: state?.cycles ?? null,
@@ -105,7 +142,7 @@ function mapRoom(room, worlds = [], states = []) {
     savename: room.name,
     savepath: room.directoryName,
     updateTime: room.updatedAt,
-    worlds: worlds.map(world => mapWorld(world, statesByWorld.get(world.id))),
+    worlds: worlds.map(world => mapWorld(world, statesByWorld.get(world.id))).sort(compareWorldRoles),
     isRunning: worlds.some(world => world.status === 'running')
   }
 }
@@ -140,8 +177,15 @@ function mapWorldState(snapshot, room) {
     precipitation_rate: snapshot.precipitationRate,
     nightmarephase: snapshot.nightmarePhase,
     nightmare_progress: snapshot.nightmareProgress,
+    host_performance: snapshot.hostPerformance,
     observed_at: snapshot.observedAt,
     runtime_state: snapshot.runtimeState || 'unknown',
+    paused: snapshot.paused,
+    runtime_code: snapshot.runtimeCode || '',
+    runtime_message: snapshot.runtimeMessage || '',
+    observation_state: snapshot.observationState || '',
+    observation_code: snapshot.observationCode || '',
+    observation_error: snapshot.observationError || '',
     freshness: snapshot.freshness || 'unavailable',
     age_seconds: snapshot.ageSeconds ?? null,
     stale: snapshot.stale ?? true,
@@ -167,11 +211,16 @@ function mapWorldState(snapshot, room) {
   return state
 }
 
-async function loadRoomCatalog() {
-  return roomCatalogCache.load(async () => {
+async function loadRoomCatalog({ includeStates = true } = {}) {
+  const cache = includeStates ? roomCatalogCache : roomCatalogWithoutStatesCache
+  return cache.load(async () => {
     const response = await roomsV2API.list()
     const rooms = response.items || []
     return Promise.all(rooms.map(async room => {
+      if (!includeStates) {
+        const worlds = await roomsV2API.worlds(room.id)
+        return mapRoom(room, worlds.items || [])
+      }
       const [worlds, states] = await Promise.all([
         roomsV2API.worlds(room.id),
         worldStatesV2API.list(room.id).catch(() => ({ items: [] }))
@@ -181,8 +230,23 @@ async function loadRoomCatalog() {
   })
 }
 
+async function loadScopedRuntimeOverview(targetId = '') {
+  const normalizedTargetId = String(targetId || '').trim()
+  return scopedOverviewCache(normalizedTargetId).load(async () => {
+    const overview = projectFleetOverview(
+      await fleetOverviewV2API.get(normalizedTargetId),
+      normalizedTargetId
+    )
+    return { ...overview, servers: legacyServers(overview.rooms) }
+  })
+}
+
+export function getScopedRuntimeOverview(targetId = '') {
+  return loadScopedRuntimeOverview(targetId)
+}
+
 async function resolveRoom(value) {
-  const rooms = await loadRoomCatalog()
+  const rooms = await loadRoomCatalog({ includeStates: false })
   const room = rooms.find(item => item.id === value || item.name === value || item.savename === value)
   if (!room) throw adapterError('ROOM_NOT_FOUND', { context: { reference: value || '' } })
   return room
@@ -205,6 +269,15 @@ function selectedWorldIDs(room, input = {}) {
     if (!world) throw adapterError('WORLD_NOT_FOUND', { context: { reference: value || '' } })
     return world.id
   })
+}
+
+function lifecycleWorldIDs(room, input, action) {
+  const requested = selectedWorldIDs(room, input)
+  if (input?.exact_world_ids === true || input?.exactWorldIds === true) return requested
+  if (requested.length === 0) return requested
+  const selected = requested.map(id => room.worlds.find(world => world.id === id)).filter(Boolean)
+  const scope = worldLifecycleSelection(room.worlds, selected, action)
+  return scope.allowed ? scope.worlds.map(world => world.id) : requested
 }
 
 function legacyServers(rooms) {
@@ -233,7 +306,11 @@ function legacyServers(rooms) {
     latest_exit: world.latestExit || null,
     players: null,
     control_available: world.controlAvailable,
-    status_message: world.statusMessage || ''
+    status_code: world.statusCode || '',
+    paused: world.paused,
+    status_message: world.statusMessage || '',
+    target_id: world.targetId || world.placement?.appliedTargetId || '',
+    target_name: world.targetName || world.target?.name || ''
   })))
 }
 
@@ -307,14 +384,19 @@ function mapBackup(backup, roomName) {
 }
 
 export const legacyRoomApi = {
-  async getRoomList() {
-    return success(await loadRoomCatalog(), 'rooms_loaded')
+  async getScopedRuntimeOverview(targetId = '') {
+    return success(await getScopedRuntimeOverview(targetId), 'runtime_overview_loaded')
+  },
+  async getRoomList(options) {
+    return success(await loadRoomCatalog(options), 'rooms_loaded')
   },
   async getRoomDetail(id) {
     return success(await resolveRoom(id))
   },
   async createRoom(data) {
-    return success(await roomsV2API.create(data), 'room_created')
+    const result = await roomsV2API.create(data)
+    invalidateRoomCatalog()
+    return success(result, 'room_created')
   },
   async updateRoom() {
     throw adapterError('ROOM_UPDATE_UNAVAILABLE')
@@ -323,26 +405,48 @@ export const legacyRoomApi = {
     const room = await resolveRoom(roomValue)
     return room.worlds
   },
+  async getRuntimeModes(params) {
+    const room = await resolveRoom(roomReference(params))
+    const availability = await roomsV2API.runtimeModes(room.id, lifecycleWorldIDs(room, params, 'start'))
+    return success(availability, 'runtime_modes_loaded')
+  },
   async startRoom(params) {
     const room = await resolveRoom(roomReference(params))
-    const job = await waitForV2Job(
-      await roomsV2API.action(room.id, 'start', selectedWorldIDs(room, params), {
-        allowCapacityRisk: params?.allow_capacity_risk === true || params?.allowCapacityRisk === true
-      }),
-      ROOM_JOB_TIMEOUT
-    )
-    roomCatalogCache.invalidate()
+    const runtimeMode = params?.runtime_mode || params?.runtimeMode || 'game'
+    const submittedJob = await roomsV2API.action(room.id, 'start', lifecycleWorldIDs(room, params, 'start'), {
+      allowCapacityRisk: params?.allow_capacity_risk === true || params?.allowCapacityRisk === true,
+      runtimeMode,
+      runtimeVersion: params?.runtime_version || params?.runtimeVersion || (runtimeMode === 'game' ? 'game' : '')
+    })
+    invalidateRoomCatalog()
+    if (params?.wait_for_completion === false || params?.waitForCompletion === false) {
+      return success(submittedJob, 'room_start_submitted')
+    }
+    const job = await waitForV2Job(submittedJob, ROOM_JOB_TIMEOUT)
     return success(job, 'room_started')
   },
   async stopRoom(input) {
     const room = await resolveRoom(roomReference(input))
-    const worldIds = input && typeof input === 'object' ? selectedWorldIDs(room, input) : []
+    const worldIds = input && typeof input === 'object' ? lifecycleWorldIDs(room, input, 'stop') : []
     const job = await waitForV2Job(
-      await roomsV2API.action(room.id, 'stop', worldIds),
+      await roomsV2API.action(room.id, 'stop', worldIds, { immediate: input?.immediate === true }),
       ROOM_JOB_TIMEOUT
     )
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(job, 'room_stopped')
+  },
+  async restartRoom(input) {
+    const room = await resolveRoom(roomReference(input))
+    const worldIds = input && typeof input === 'object' ? lifecycleWorldIDs(room, input, 'restart') : []
+    const job = await waitForV2Job(
+      await roomsV2API.action(room.id, 'restart', worldIds, {
+        immediate: input?.immediate === true,
+        allowCapacityRisk: input?.allow_capacity_risk === true || input?.allowCapacityRisk === true
+      }),
+      ROOM_JOB_TIMEOUT
+    )
+    invalidateRoomCatalog()
+    return success(job, 'room_restarted')
   },
   async cleanupRoom(input) {
     const room = await resolveRoom(roomReference(input))
@@ -351,7 +455,7 @@ export const legacyRoomApi = {
       await roomsV2API.action(room.id, 'cleanup', worldIds),
       ROOM_JOB_TIMEOUT
     )
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(job, 'room_session_cleaned')
   },
   async backupRoom(roomValue, name = '') {
@@ -363,7 +467,7 @@ export const legacyRoomApi = {
     const room = await resolveRoom(roomReference(input))
     const confirmation = input && typeof input === 'object' ? input.confirmation : ''
     const result = await roomsV2API.deleteRoom(room.id, confirmation)
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(result, 'room_moved_to_recovery')
   },
   async getRoomRecoveries() {
@@ -371,7 +475,7 @@ export const legacyRoomApi = {
   },
   async restoreRoomRecovery(recoveryName) {
     const result = await roomsV2API.restoreRoom(recoveryName)
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(result, 'room_recovery_restored')
   },
   async purgeRoomRecovery(recoveryName, confirmation) {
@@ -382,7 +486,7 @@ export const legacyRoomApi = {
   },
   async restoreWorldRecovery(roomId, recoveryName) {
     const result = await roomsV2API.restoreWorld(roomId, recoveryName)
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(result, 'world_recovery_restored')
   },
   async purgeWorldRecovery(roomId, recoveryName, confirmation) {
@@ -404,20 +508,20 @@ export const legacyRoomApi = {
       await new Promise(resolve => setTimeout(resolve, 300))
       run = await consoleV2API.run(room.id, run.id)
     }
-    if (run.status !== 'sent') {
+    if (run.status !== 'succeeded') {
       throw adapterError('REGENERATE_COMMAND_FAILED', {
         detail: run.errorMessage || run.message || '',
         context: { runId: run.id }
       })
     }
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(run, 'regenerate_command_sent')
   },
   async deleteWorld(input = {}) {
     const room = await resolveRoom(roomReference(input))
     const [worldId] = selectedWorldIDs(room, input)
     const result = await roomsV2API.deleteWorld(room.id, worldId, input.confirmation || '')
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(result, 'world_moved_to_recovery')
   },
   async saveWorldSettings() {
@@ -427,7 +531,7 @@ export const legacyRoomApi = {
 
 export const legacyWorldApi = {
   async getWorldList() {
-    return success(await loadRoomCatalog(), 'worlds_loaded')
+    return success(await loadRoomCatalog({ includeStates: false }), 'worlds_loaded')
   },
   async getWorldState(params = {}) {
     const room = await resolveRoom(roomReference(params))
@@ -494,7 +598,7 @@ export const legacySystemApi = {
       await roomsV2API.action(server.room_id, 'stop', [server.world_id]),
       ROOM_JOB_TIMEOUT
     )
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(job, 'world_stopped')
   },
   async restartTmuxServer(params) {
@@ -510,11 +614,11 @@ export const legacySystemApi = {
       }),
       ROOM_JOB_TIMEOUT
     )
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(job, 'world_restarted')
   },
-  async getGameVersion() {
-    const version = await gameV2API.version()
+  async getGameVersion({ fresh = false } = {}) {
+    const version = await gameV2API.version({ fresh, lightweight: true })
     const checkError = version.checkError || null
     const officialCheckError = version.officialCheckError || null
     const officialRelease = version.officialRelease
@@ -545,6 +649,7 @@ export const legacySystemApi = {
         published_at: officialRelease.publishedAt || null,
         update_url: officialRelease.url || null,
         source: officialRelease.source || null,
+        test_release: officialRelease.testRelease || null,
         checked_at: officialRelease.checkedAt || null,
         stale: officialRelease.stale === true,
         check_error: officialCheckError
@@ -668,7 +773,7 @@ export const legacyBackupApi = {
       await backupsV2API.restore(backup.id, room.name),
       BACKUP_JOB_TIMEOUT
     )
-    roomCatalogCache.invalidate()
+    invalidateRoomCatalog()
     return success(job, 'backup_restored')
   },
   async deleteBackup(archive, backupName) {

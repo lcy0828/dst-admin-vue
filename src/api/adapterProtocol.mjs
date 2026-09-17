@@ -27,6 +27,7 @@ const ERROR_DEFAULT_MESSAGES = Object.freeze({
   MOD_MANAGED_ROOM_REQUIRED: 'No managed room is available for mod management.',
   MOD_PUBLICATION_RESULT_MISSING: 'The completed job did not produce a mod publication record.',
   MOD_RAW_DATA_REQUIRED: 'Raw mod data is required.',
+  MOD_RUNTIME_TARGET_REQUIRED: 'Refresh the room mod list before updating this mod.',
   MOD_UNINSTALL_CONFIRMATION_REQUIRED: 'Enter the full room name to confirm uninstalling the mod.',
   REGENERATE_COMMAND_FAILED: 'The regenerate command failed.',
   REGENERATE_COMMAND_TIMEOUT: 'The regenerate command did not finish before the timeout.',

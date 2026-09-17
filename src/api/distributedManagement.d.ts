@@ -1,6 +1,7 @@
 export type RuntimeFreshness = 'live' | 'stale' | 'unavailable'
 export type RuntimeShardState = 'healthy' | 'degraded' | 'unavailable'
 export type RuntimeProcessState = 'running' | 'stopped' | 'starting' | 'failed' | 'unknown'
+export type RuntimeObservationState = 'fresh' | 'refreshing' | 'stale' | 'offline' | 'unavailable' | 'error'
 
 export interface RuntimeProblem {
   code: string
@@ -29,6 +30,7 @@ export interface RuntimeOverviewShard {
     code?: string
     message?: string
     sessionExists: boolean
+    paused?: boolean
   }
   runtimeProblem?: RuntimeProblem
   health: RuntimeArtifact<RuntimeHealth>
@@ -52,8 +54,20 @@ export interface TopologyPlacement {
   worldRole: 'master' | 'caves' | 'custom'
   desiredTargetId: string
   appliedTargetId: string
+  desiredInstallationId: string
+  appliedInstallationId: string
   state: string
+  running: boolean
   observedTargetIds: string[]
+  observedLocations: Array<{ targetId: string; installationId: string }>
+}
+
+export interface TopologyTargetInstallation {
+  id: string
+  driver: string
+  default: boolean
+  available: boolean
+  stale: boolean
 }
 
 export interface TopologyTarget {
@@ -62,6 +76,135 @@ export interface TopologyTarget {
   kind: 'local' | 'agent'
   online: boolean
   configured: boolean
+  inventoryAvailable?: boolean
+  inventoryStale?: boolean
+  staleReason?: string
+  observationState?: RuntimeObservationState
+  observationError?: string
+  refreshStartedAt?: string
+  observedAt?: string
+  defaultInstallationId: string
+  installations: TopologyTargetInstallation[]
+}
+
+export type ShardLinkMode = 'lan' | 'overlay' | 'tunnel' | 'public' | 'configured' | 'manual'
+export type ShardLinkCandidateStatus = 'pending' | 'reachable' | 'unreachable' | 'unverified'
+
+export interface ShardLinkInput {
+  sourceTargetId: string
+  sourceInstallationId?: string
+  address: string
+  port: number
+  mode: ShardLinkMode
+}
+
+export interface ShardLink extends ShardLinkInput {
+  sourceInstallationId: string
+  masterTargetId: string
+  masterInstallationId: string
+}
+
+export interface TopologySnapshot {
+	roomId: string
+	revision: string
+	placements: TopologyPlacement[]
+	shardLinks: ShardLink[]
+	appliedShardLinks: ShardLink[]
+	targets: TopologyTarget[]
+}
+
+export interface ShardLinkCandidateInput {
+  address: string
+  port: number
+  name?: string
+}
+
+export interface ShardLinkCandidate {
+  address: string
+  port: number
+  kind: 'lan' | 'overlay' | 'public' | 'configured' | 'manual' | 'interface' | string
+  name: string
+  reachable: boolean
+  latencyMillis?: number
+  status: ShardLinkCandidateStatus
+  error?: string
+}
+
+export interface ShardLinkDiscovery {
+  sourceTargetId: string
+  sourceInstallationId: string
+  sourceTargetName: string
+  candidates: ShardLinkCandidate[]
+  autoSelected?: ShardLinkCandidate
+}
+
+export interface ShardLinkDiscoveryResult {
+  roomId: string
+  revision: string
+  masterTargetId: string
+  masterInstallationId: string
+  masterTargetName: string
+  masterPort: number
+  links: ShardLinkDiscovery[]
+  activeProbe: boolean
+  activeProbeUnavailableReason?: string
+  observedAt: string
+}
+
+export interface NodeResource {
+  targetId: string
+  name: string
+  kind: 'local' | 'agent'
+  online: boolean
+  stale: boolean
+  staleReason?: 'agent_offline' | 'clock_skew' | 'report_expired' | 'report_missing'
+  agentVersion?: string
+  observedAt?: string
+  receivedAt?: string
+  host: {
+    available: boolean
+    hostname: string
+    platform: string
+    version: string
+    kernel: string
+    architecture: string
+    uptimeSeconds: number
+  }
+  cpu: {
+    available: boolean
+    usageAvailable: boolean
+    model: string
+    cores: number
+    threads: number
+    usage: number
+    coreUsage: number[]
+    load1: number
+    load5: number
+    load15: number
+    loadSupported: boolean
+  }
+  memory: {
+    available: boolean
+    totalBytes: number
+    usedBytes: number
+    availableBytes: number
+    usage: number
+  }
+  disk: {
+    available: boolean
+    path: string
+    totalBytes: number
+    usedBytes: number
+    availableBytes: number
+    usage: number
+  }
+  warnings: string[]
+}
+
+export interface NodeResourceSnapshot {
+  items: NodeResource[]
+  total: number
+  observedAt: string
 }
 
 export interface RoomProvisionStep {
@@ -128,7 +271,7 @@ export interface CPUInventory {
 }
 
 export interface RuntimeInfrastructure {
-  providers: Array<{ id: string; targetId: string; kind: 'local' | 'agent'; displayName: string; os: string; arch: string; online: boolean; capabilities: string[]; observedAt?: string }>
+  providers: Array<{ id: string; targetId: string; kind: 'local' | 'agent'; displayName: string; os: string; arch: string; ipAddresses: string[]; online: boolean; capabilities: string[]; observedAt?: string }>
   environments: Array<{ id: string; providerId: string; targetId: string; kind: 'native' | 'container'; driver: string; networkProfileId: string; cpu: CPUInventory; observedAt?: string }>
   networkProfiles: Array<{ id: string; environmentId: string; name: string; mode: 'host' | 'bridge'; scopeId: string; bindAddress: string; advertiseAddress: string }>
   portReservations: Array<{ id: string; environmentId: string; networkProfileId: string; scopeId: string; targetId: string; roomId?: string; worldId?: string; purpose: string; protocol: string; port: number; managed: boolean }>
@@ -189,11 +332,17 @@ export interface GameReleaseShardPlan {
 export interface GameReleaseInstallationPlan {
   targetId: string
   targetName: string
+  os: string
+  arch: string
   installationId: string
+  appId?: string
+  updateMethod?: 'steamcmd' | 'steam-client' | string
   online: boolean
   inventoryFresh: boolean
   capabilities: string[]
   installed: boolean
+  gameVersion?: string
+  steamBuild?: string
   currentVersion?: string
   desiredVersion: string
   upToDate: boolean
