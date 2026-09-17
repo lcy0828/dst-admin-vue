@@ -969,10 +969,6 @@ export default {
           this.roomId = roomValue;
           this.savename = createdRoom.name || this.savename;
           this.isEdit = true;
-          if (!this.setupMode) await this.$router.replace({
-            path: this.$route.path,
-            query: { ...this.$route.query, id: roomValue }
-          });
           const { adminList, blockList, whiteList } = this.form;
           // 每次名单写入都会生成新 revision，必须按顺序应用。
           const pendingLists = [
@@ -989,6 +985,11 @@ export default {
             }
           }
           await this.loadRoomSettings(roomValue, { notify: false });
+          this.captureBaseline();
+          if (!this.setupMode) await this.$router.replace({
+            path: this.$route.path,
+            query: { ...this.$route.query, id: roomValue }
+          });
         }
 
         if (pendingListErrors.length) {
