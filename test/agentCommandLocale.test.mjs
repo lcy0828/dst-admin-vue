@@ -74,7 +74,7 @@ test('Agent command dates and durations follow the active locale', () => {
 
   assert.equal(
     formatAgentCommandTime(timestamp, 'en-US', en),
-    new Date(timestamp).toLocaleString('en-US')
+    new Date(timestamp).toLocaleString('en-US', { timeZone: 'Asia/Shanghai' })
   )
   assert.equal(formatAgentCommandTime('invalid', 'en-US', en), 'N/A')
   assert.equal(formatAgentCommandDuration(999, 'zh-CN', zh), '999 毫秒')

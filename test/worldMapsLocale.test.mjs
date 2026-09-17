@@ -75,8 +75,8 @@ test('world map errors localize stable codes and preserve custom diagnostics', (
 
 test('world map time formatting follows the selected locale', () => {
   const value = '2026-08-10T08:05:04Z'
-  assert.equal(formatWorldMapTime(value, 'zh-CN'), new Date(value).toLocaleString('zh-CN', { hour12: false }))
-  assert.equal(formatWorldMapTime(value, 'en-US'), new Date(value).toLocaleString('en-US', { hour12: false }))
+  assert.equal(formatWorldMapTime(value, 'zh-CN'), new Date(value).toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }))
+  assert.equal(formatWorldMapTime(value, 'en-US'), new Date(value).toLocaleString('en-US', { hour12: false, timeZone: 'Asia/Shanghai' }))
   assert.equal(formatWorldMapTime('invalid', 'en-US'), '--')
 })
 

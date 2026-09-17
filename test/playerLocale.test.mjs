@@ -128,6 +128,7 @@ test('character and ban duration labels preserve unknown mod values', () => {
 test('player dates and ban expiry follow the selected locale', () => {
   const value = '2026-08-10T08:05:04Z'
   const options = {
+    timeZone: 'Asia/Shanghai',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

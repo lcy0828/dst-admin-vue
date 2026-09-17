@@ -55,8 +55,8 @@ test('known cron log values translate while unknown runtime values remain unchan
 test('cron log dates and durations follow the active locale', () => {
   const value = '2026-08-10T08:30:00.000Z'
   const en = translator('en-US')
-  assert.equal(formatCronLogDate(value, 'en-US'), new Date(value).toLocaleString('en-US', { hour12: false }))
-  assert.equal(formatCronLogDate(value, 'zh-CN'), new Date(value).toLocaleString('zh-CN', { hour12: false }))
+  assert.equal(formatCronLogDate(value, 'en-US'), new Date(value).toLocaleString('en-US', { hour12: false, timeZone: 'Asia/Shanghai' }))
+  assert.equal(formatCronLogDate(value, 'zh-CN'), new Date(value).toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }))
   assert.equal(formatCronLogDate('mod-time', 'en-US'), 'mod-time')
   assert.equal(formatCronLogDuration(250, 'en-US', en), '250 ms')
   assert.equal(formatCronLogDuration(1500, 'en-US', en), '1.5 s')

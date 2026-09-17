@@ -71,7 +71,7 @@ test('Cron task date and duration formatting follows the selected locale', () =>
 
   assert.equal(
     formatCronTaskDate(timestamp, 'en-US'),
-    new Date(timestamp).toLocaleString('en-US', { hour12: false })
+    new Date(timestamp).toLocaleString('en-US', { hour12: false, timeZone: 'Asia/Shanghai' })
   )
   assert.equal(formatCronTaskDate('invalid-date', 'en-US'), 'invalid-date')
   assert.equal(formatCronTaskMilliseconds(500, 'zh-CN'), '500 毫秒')

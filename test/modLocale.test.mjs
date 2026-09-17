@@ -57,6 +57,7 @@ test('known mod protocol values are translated while unknown values remain untou
 test('mod dates follow the active locale and preserve unparseable source values', () => {
   const value = '2026-08-10T08:30:00.000Z'
   const options = {
+    timeZone: 'Asia/Shanghai',
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
   }

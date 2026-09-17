@@ -113,9 +113,9 @@ test('command category and status labels preserve unknown protocol values', () =
 
 test('command history time follows the active locale', () => {
   const value = '2026-08-10T08:30:00.000Z'
-  assert.equal(formatCommandTime(value, 'zh-CN'), new Date(value).toLocaleString('zh-CN', { hour12: false }))
-  assert.equal(formatCommandTime(value, 'en-US'), new Date(value).toLocaleString('en-US', { hour12: false }))
-  assert.equal(formatCommandTime(value, { value: 'en-US' }), new Date(value).toLocaleString('en-US', { hour12: false }))
+  assert.equal(formatCommandTime(value, 'zh-CN'), new Date(value).toLocaleString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' }))
+  assert.equal(formatCommandTime(value, 'en-US'), new Date(value).toLocaleString('en-US', { hour12: false, timeZone: 'Asia/Shanghai' }))
+  assert.equal(formatCommandTime(value, { value: 'en-US' }), new Date(value).toLocaleString('en-US', { hour12: false, timeZone: 'Asia/Shanghai' }))
   assert.equal(formatCommandTime('invalid', 'en-US'), '--')
 })
 
