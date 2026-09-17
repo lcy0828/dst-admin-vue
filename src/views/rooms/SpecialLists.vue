@@ -5,12 +5,7 @@
       <p>{{ $t('rooms.specialLists.subtitle') }}</p>
     </header>
 
-    <Card v-if="!savename && !pendingMode">
-      <CardHeader><CardTitle>{{ $t('rooms.specialLists.selectRoom') }}</CardTitle><CardDescription>{{ $t('rooms.specialLists.selectRoomDescription') }}</CardDescription></CardHeader>
-      <CardContent>
-        <FieldGroup><Field><FieldLabel for="special-list-room">{{ $t('rooms.selector.room') }}</FieldLabel><UiSelect v-model="selectedRoomId" :disabled="loadingRooms"><SelectTrigger id="special-list-room"><SelectValue :placeholder="$t('rooms.selector.managedPlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field></FieldGroup>
-      </CardContent>
-    </Card>
+    <RoomScopeSelect v-if="!savename && !pendingMode" v-model="selectedRoomId" :rooms="roomOptions" :loading="loadingRooms" />
 
     <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('rooms.selector.loadFailed') }}</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
 
@@ -25,10 +20,18 @@
           <CardHeader>
             <CardTitle>{{ list.title }}</CardTitle>
             <CardDescription>{{ $t('rooms.specialLists.listDescription', { list: list.tabLabel }) }}</CardDescription>
-            <CardAction><UiButton size="sm" @click="addUser(list.type)">
-              <UserPlus data-icon="inline-start" />
-              {{ $t('rooms.specialLists.add', { member: list.actionLabel }) }}
-            </UiButton></CardAction>
+            <CardAction>
+              <div class="list-actions">
+                <UiButton v-if="availableSourceRooms.length > 0" size="sm" variant="outline" @click="openCopyDialog">
+                  <Copy data-icon="inline-start" />
+                  {{ $t('rooms.copy.action') }}
+                </UiButton>
+                <UiButton size="sm" @click="addUser(list.type)">
+                  <UserPlus data-icon="inline-start" />
+                  {{ $t('rooms.specialLists.add', { member: list.actionLabel }) }}
+                </UiButton>
+              </div>
+            </CardAction>
           </CardHeader>
           <CardContent>
             <div v-if="loading[list.type]" class="list-skeleton" aria-busy="true" :aria-label="$t('rooms.specialLists.loadingAria')">
@@ -113,30 +116,98 @@
         </DialogFooter>
       </DialogContent>
     </UiDialog>
+
+    <UiDialog v-model:open="copyDialogVisible">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ $t('rooms.specialLists.copy.title') }}</DialogTitle>
+          <DialogDescription>{{ $t('rooms.specialLists.copy.description') }}</DialogDescription>
+        </DialogHeader>
+
+        <FieldGroup>
+          <Field>
+            <FieldLabel for="special-list-copy-source">{{ $t('rooms.copy.sourceRoom') }}</FieldLabel>
+            <UiSelect v-model="copySourceRoomId" :disabled="copyLoading || copying" @update:model-value="loadCopySource">
+              <SelectTrigger id="special-list-copy-source"><SelectValue :placeholder="$t('rooms.copy.sourcePlaceholder')" /></SelectTrigger>
+              <SelectContent><SelectGroup><SelectItem v-for="room in availableSourceRooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+
+          <FieldSet>
+            <FieldLegend>{{ $t('rooms.specialLists.copy.lists') }}</FieldLegend>
+            <FieldDescription>{{ $t('rooms.specialLists.copy.listsDescription') }}</FieldDescription>
+            <FieldGroup>
+              <Field v-for="list in listDefinitions" :key="`copy-${list.type}`" orientation="horizontal">
+                <UiCheckbox :id="`copy-special-list-${list.type}`" :model-value="copyListTypes.includes(list.type)" @update:model-value="value => toggleCopyList(list.type, value)" />
+                <FieldContent>
+                  <FieldLabel :for="`copy-special-list-${list.type}`">{{ list.tabLabel }}</FieldLabel>
+                  <FieldDescription v-if="copySourceLoaded">{{ copySummaryLabel(list.type) }}</FieldDescription>
+                </FieldContent>
+              </Field>
+            </FieldGroup>
+          </FieldSet>
+
+          <FieldSet>
+            <FieldLegend>{{ $t('rooms.specialLists.copy.mode') }}</FieldLegend>
+            <RadioGroup v-model="copyMode" class="grid gap-3 sm:grid-cols-2">
+              <Field orientation="horizontal">
+                <RadioGroupItem id="special-list-copy-merge" value="merge" />
+                <FieldContent><FieldLabel for="special-list-copy-merge">{{ $t('rooms.specialLists.copy.merge') }}</FieldLabel><FieldDescription>{{ $t('rooms.specialLists.copy.mergeDescription') }}</FieldDescription></FieldContent>
+              </Field>
+              <Field orientation="horizontal">
+                <RadioGroupItem id="special-list-copy-replace" value="replace" />
+                <FieldContent><FieldLabel for="special-list-copy-replace">{{ $t('rooms.specialLists.copy.replace') }}</FieldLabel><FieldDescription>{{ $t('rooms.specialLists.copy.replaceDescription') }}</FieldDescription></FieldContent>
+              </Field>
+            </RadioGroup>
+          </FieldSet>
+
+          <Alert v-if="copyMode === 'replace'" variant="destructive">
+            <CircleAlert />
+            <AlertTitle>{{ $t('rooms.specialLists.copy.replaceWarning') }}</AlertTitle>
+            <AlertDescription>{{ $t('rooms.specialLists.copy.replaceWarningDescription') }}</AlertDescription>
+          </Alert>
+        </FieldGroup>
+
+        <DialogFooter>
+          <UiButton variant="outline" @click="copyDialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton>
+          <UiButton :disabled="copying || copyLoading || !copySourceLoaded || copyListTypes.length === 0 || copyChangeCount === 0" @click="copyListsFromRoom">
+            <Spinner v-if="copying" data-icon="inline-start" />
+            <Copy v-else data-icon="inline-start" />
+            {{ $t('rooms.copy.confirm') }}
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
-import { CircleAlert, RefreshCw, Trash2, UserPlus, Users } from '@lucide/vue';
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs'
+import { CircleAlert, Copy, RefreshCw, Trash2, UserPlus, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, serverApi } from '@/api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { confirmAction, promptText } from '@/lib/feedback';
+import { confirmAction } from '@/lib/feedback';
+import { composeAccessCopy, summarizeAccessCopy } from '@/lib/roomCopy.mjs';
 
 export default {
   name: 'SpecialLists',
   components: {
+    RoomScopeSelect,
     Alert,
     AlertDescription,
     AlertTitle,
@@ -148,6 +219,8 @@ export default {
     CardHeader,
     CardTitle,
     CircleAlert,
+    Copy,
+    UiCheckbox,
     UiDialog,
     DialogContent,
     DialogDescription,
@@ -160,9 +233,13 @@ export default {
     EmptyMedia,
     EmptyTitle,
     Field,
+    FieldContent,
+    FieldDescription,
     FieldError,
     FieldGroup,
     FieldLabel,
+    FieldLegend,
+    FieldSet,
     UiInput,
     UiSelect,
     SelectContent,
@@ -183,6 +260,8 @@ export default {
     TabsList,
     TabsTrigger,
     RefreshCw,
+    RadioGroup,
+    RadioGroupItem,
     Trash2,
     UserPlus,
     Users
@@ -233,7 +312,15 @@ export default {
       loadingRooms: false,
       roomLoadError: '',
       roomOptions: [],
-      selectedRoomId: ''
+      selectedRoomId: '',
+      copyDialogVisible: false,
+      copySourceRoomId: '',
+      copySourceLists: { admin: [], block: [], white: [] },
+      copySourceLoaded: false,
+      copyListTypes: ['admin', 'block', 'white'],
+      copyMode: 'merge',
+      copyLoading: false,
+      copying: false
     }
   },
   computed: {
@@ -257,11 +344,95 @@ export default {
     confirmationRoomName() {
       if (this.roomName) return this.roomName;
       return this.roomOptions.find(room => room.id === this.roomValue)?.name || '';
+    },
+    availableSourceRooms() {
+      return this.roomOptions.filter(room => room.id !== this.roomValue);
+    },
+    currentAccessLists() {
+      return { admin: this.adminList, block: this.blockList, white: this.whiteList };
+    },
+    copiedAccessLists() {
+      return composeAccessCopy(this.currentAccessLists, this.copySourceLists, this.copyListTypes, this.copyMode);
+    },
+    copiedAccessSummary() {
+      return summarizeAccessCopy(this.currentAccessLists, this.copiedAccessLists);
+    },
+    copyChangeCount() {
+      return this.copyListTypes.reduce((total, type) => {
+        const summary = this.copiedAccessSummary[type];
+        return total + summary.added + summary.removed;
+      }, 0);
     }
   },
   methods: {
     getList(type) {
       return type === 'admin' ? this.adminList : type === 'block' ? this.blockList : this.whiteList;
+    },
+
+    openCopyDialog() {
+      if (this.availableSourceRooms.length === 0) {
+        toast.info(this.$t('rooms.copy.noSourceRooms'));
+        return;
+      }
+      this.copyListTypes = ['admin', 'block', 'white'];
+      this.copyMode = 'merge';
+      this.copySourceRoomId = this.availableSourceRooms[0].id;
+      this.copyDialogVisible = true;
+      this.loadCopySource(this.copySourceRoomId);
+    },
+
+    async loadCopySource(roomId) {
+      this.copySourceLoaded = false;
+      this.copyLoading = true;
+      try {
+        const [admin, block, white] = await Promise.all([
+          serverApi.getAdminList(roomId),
+          serverApi.getBlockList(roomId),
+          serverApi.getWhiteList(roomId)
+        ]);
+        this.copySourceLists = { admin: admin.data || [], block: block.data || [], white: white.data || [] };
+        this.copySourceLoaded = true;
+      } catch (error) {
+        toast.error(this.$t('rooms.specialLists.copy.loadFailed', { error: error.message || this.$t('common.errors.unknown') }));
+      } finally {
+        this.copyLoading = false;
+      }
+    },
+
+    toggleCopyList(type, checked) {
+      this.copyListTypes = checked
+        ? [...new Set([...this.copyListTypes, type])]
+        : this.copyListTypes.filter(item => item !== type);
+    },
+
+    copySummaryLabel(type) {
+      const summary = this.copiedAccessSummary[type];
+      return this.$t('rooms.specialLists.copy.summary', summary);
+    },
+
+    async copyListsFromRoom() {
+      if (this.copying || !this.copySourceLoaded || this.copyListTypes.length === 0) return;
+      this.copying = true;
+      try {
+        const copied = this.copiedAccessLists;
+        if (this.pendingMode) {
+          this.adminList = copied.admin.map(id => ({ id, name: id }));
+          this.blockList = copied.block.map(id => ({ id, name: id }));
+          this.whiteList = copied.white.map(id => ({ id, name: id }));
+          this.emitPendingLists();
+        } else {
+          await serverApi.updateSpecialLists(this.roomValue, copied, true);
+          await Promise.all([this.fetchAdminList(), this.fetchBlockList(), this.fetchWhiteList()]);
+        }
+        this.copyDialogVisible = false;
+        toast.success(this.$t('rooms.specialLists.copy.success', {
+          room: this.availableSourceRooms.find(room => room.id === this.copySourceRoomId)?.name || ''
+        }));
+      } catch (error) {
+        toast.error(this.$t('rooms.specialLists.copy.failed', { error: error.message || this.$t('common.errors.unknown') }));
+      } finally {
+        this.copying = false;
+      }
     },
 
     handleDialogOpenChange(open) {
@@ -292,7 +463,7 @@ export default {
       this.loading.admin = true;
       this.errors.admin = '';
       
-      serverApi.getAdminList(this.roomValue)
+      return serverApi.getAdminList(this.roomValue)
         .then(res => {
           this.adminList = res.data;
           this.adminList = this.adminList.map(item => {
@@ -313,7 +484,7 @@ export default {
     fetchBlockList() {
       this.loading.block = true;
       this.errors.block = '';
-      serverApi.getBlockList(this.roomValue)
+      return serverApi.getBlockList(this.roomValue)
         .then(res => {
           this.blockList = res.data;
           this.blockList = this.blockList.map(item => {
@@ -334,7 +505,7 @@ export default {
     fetchWhiteList() {
       this.loading.white = true;
       this.errors.white = '';
-      serverApi.getWhiteList(this.roomValue)
+      return serverApi.getWhiteList(this.roomValue)
         .then(res => {
           this.whiteList = res.data;
           this.whiteList = this.whiteList.map(item => {
@@ -418,13 +589,13 @@ export default {
           toast.error(this.$t('rooms.specialLists.feedback.missingRoom'));
           return;
         }
-        await promptText(
+        await confirmAction(
           this.$t('rooms.specialLists.feedback.removePrompt', { room: roomName }),
           this.$t('rooms.specialLists.feedback.removeTitle'),
           {
             confirmButtonText: this.$t('rooms.specialLists.feedback.confirmRemove'),
             cancelButtonText: this.$t('common.actions.cancel'),
-            inputValidator: value => value === roomName || this.$t('rooms.specialLists.feedback.roomNameMismatch')
+            type: 'warning'
           }
         );
         this.loading[type] = true;
@@ -551,9 +722,9 @@ export default {
       this.roomLoadError = '';
       try {
         const response = await roomApi.getRoomList();
-        this.roomOptions = (response.data || []).filter(room => room.managed !== false);
-        if (!this.selectedRoomId && this.roomOptions.length > 0) {
-          this.selectedRoomId = this.roomOptions[0].id;
+        this.roomOptions = response.data || [];
+        if (!this.savename && !this.pendingMode && !this.selectedRoomId && this.roomOptions.length > 0) {
+this.selectedRoomId = preferredRoomId(this.roomOptions, this.$route.query.roomId);
         }
       } catch (error) {
         this.roomOptions = [];
@@ -574,7 +745,7 @@ export default {
     }
   },
   created() {
-    if (!this.savename && !this.pendingMode) this.fetchRoomOptions();
+    this.fetchRoomOptions();
   }
 }
 </script>
@@ -618,6 +789,13 @@ export default {
 .action-column {
   width: 120px;
   text-align: right;
+}
+
+.list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .id-cell {

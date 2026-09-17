@@ -7,25 +7,25 @@ export const backupMessages = {
         roomBackups: '房间备份',
         saveImports: '存档导入',
         saveBackups: '存档备份',
-        systemSnapshots: '系统快照'
+        systemSnapshots: '操作前备份'
       },
       catalog: {
         categories: {
           saves: {
             title: '存档备份',
-            description: '按房间查看手动备份、定时备份和导入存档。每份新备份会自动包含房间内的所有世界。',
+            description: '每份新备份包含整个房间，默认不停服。',
             noticeTitle: '默认不停服备份',
             noticeDescription: '手动备份默认保持玩家在线，系统会协调所有世界完成同一次保存并逐一校验。',
             emptyTitle: '还没有存档备份',
             emptyDescription: '可以立即创建一份手动备份，定时任务生成的备份也会显示在这里。'
           },
           system: {
-            title: '系统快照',
-            description: '查看系统在恢复、游戏更新、模组或房间配置变更前自动保留的保护快照。',
+            title: '操作前备份',
+            description: '系统在需要保护存档的操作前自动创建，可用于恢复原存档。',
             noticeTitle: '系统按需自动创建',
             noticeDescription: '系统快照用于操作失败时保护原存档，无需手动创建；需要时可以从这里恢复。',
-            emptyTitle: '还没有系统快照',
-            emptyDescription: '执行需要保护现有存档的操作时，系统会自动在这里生成快照。'
+            emptyTitle: '还没有操作前备份',
+            emptyDescription: '需要保护现有存档时，系统会自动创建，无需手动操作。'
           }
         },
         consistencyTitle: '每次备份都包含完整房间',
@@ -44,7 +44,7 @@ export const backupMessages = {
       imports: {
         upload: {
           title: '上传本地存档',
-          description: '上传后会先深度检查目录、分片、端口、Token 和 Workshop 模组，不会直接覆盖现有房间。',
+          description: '上传后先检查存档，确认导入前不会覆盖现有房间。',
           file: '存档压缩包',
           fileDescription: '支持 ZIP、TAR、TAR.GZ 和 TGZ，单个文件最大 16 GiB。',
           name: '导入名称',
@@ -95,7 +95,7 @@ export const backupMessages = {
           error: '阻止部署'
         },
         roles: {
-          master: '主世界',
+          master: '主分片',
           caves: '洞穴',
           custom: '自定义分片'
         },
@@ -106,8 +106,8 @@ export const backupMessages = {
           CLUSTER_TOKEN_MISSING: '存档未包含 cluster_token.txt，部署前必须选择 Token 策略。',
           DUPLICATE_PORT: '多个分片使用了端口 {port}，选择自动端口策略可以修复。',
           NO_WORLDS: '未找到包含 server.ini 的分片。',
-          MASTER_MISSING: '没有检测到主世界，仅可在明确确认后按高级分片导入。',
-          MULTIPLE_MASTERS: '检测到多个主世界，无法直接部署。',
+          MASTER_MISSING: '没有检测到主分片，仅可在明确确认后按高级分片导入。',
+          MULTIPLE_MASTERS: '检测到多个主分片，无法直接部署。',
           WORKSHOP_MODS_MISSING: '有 {count} 个 Workshop 模组尚未下载，原配置会保留。',
           INVALID_SERVER_INI: 'server.ini 无法解析。',
           WORLD_SESSION_MISSING: '此分片没有现有 Session，将按新世界配置启动。',
@@ -132,7 +132,7 @@ export const backupMessages = {
           ROOM_EXISTS: '目标房间目录已经存在。',
           CONFIRMATION_REQUIRED: '操作确认内容不匹配。',
           ROOM_NOT_MANAGED: '目标房间尚未纳入本系统管理。',
-          PARTIAL_IMPORT_CONFIRMATION_REQUIRED: '缺少主世界的分片导入需要明确确认。',
+          PARTIAL_IMPORT_CONFIRMATION_REQUIRED: '缺少主分片的分片导入需要明确确认。',
           WORLD_TOPOLOGY_MISMATCH: '存档中的世界数量或身份与目标房间不一致。请选择结构一致的房间，或先调整房间世界。',
           unknown: '操作未完成，请查看任务错误详情。'
         },
@@ -179,7 +179,7 @@ export const backupMessages = {
         },
         apply: {
           title: '部署方案',
-          description: '替换现有房间时，系统会保留 Token、端口和各世界当前的运行位置，并在写入前创建系统快照。',
+          description: '替换房间前会自动备份原存档，并保留房间令牌、端口和各世界的运行位置。',
           roomsLoadFailedTitle: '目标房间状态读取失败',
           roomsLoadFailed: '无法读取目标房间列表，替换操作暂不可用。',
           action: '开始部署',
@@ -198,8 +198,8 @@ export const backupMessages = {
           selectTargetRoom: '选择要替换的房间',
           replaceDescription: '房间可以正在运行。系统会自动停止全部世界，按原位置完成恢复，再重新启动原先运行的世界。',
           confirmation: '替换确认',
-          confirmationPlaceholder: '输入完整目标房间名称',
-          confirmationDescription: '请输入“{name}”确认覆盖。',
+          confirmationPlaceholder: '目标房间',
+          confirmationDescription: '将覆盖房间“{name}”。',
           directoryName: '新房间目录',
           directoryDescription: '仅可使用字母、数字、下划线和横线，最长 64 个字符。',
           roomName: '游戏内房间名称',
@@ -240,8 +240,8 @@ export const backupMessages = {
               preserve: '保留每个分片的 modoverrides.lua，缺失模组不会自动补齐。'
             }
           },
-          allowPartial: '允许缺少主世界的高级分片导入',
-          allowPartialDescription: '仅在你明确知道该分片用途时启用。普通房间必须包含一个主世界。',
+          allowPartial: '允许缺少主分片的高级分片导入',
+          allowPartialDescription: '仅在你明确知道该分片用途时启用。普通房间必须包含一个主分片。',
           allowMissingToken: '确认暂时不配置 Token',
           allowMissingTokenDescription: '没有 Token 的专服通常无法被玩家正常发现或加入。',
           replaceWarningTitle: '目标房间将被替换',
@@ -254,7 +254,7 @@ export const backupMessages = {
             directoryInvalid: '新房间目录格式无效或超过 64 个字符。',
             tokenRequired: '请输入有效的服务器 Token。',
             missingTokenNotAllowed: '请提供 Token，或明确确认暂时不配置 Token。',
-            partialNotAllowed: '此存档没有主世界，必须明确允许高级分片导入。'
+            partialNotAllowed: '此存档没有主分片，必须明确允许高级分片导入。'
           }
         },
         jobs: {
@@ -267,7 +267,7 @@ export const backupMessages = {
           warningTitle: '此操作不可撤销',
           warningDescription: '部署后的房间和保护备份不受影响。',
           confirmation: '删除确认',
-          confirmationDescription: '请输入“{name}”确认删除。'
+          confirmationDescription: '将删除导入项“{name}”。'
         },
         feedback: {
           unsupportedFormat: '仅支持 ZIP、TAR、TAR.GZ 和 TGZ 存档。',
@@ -368,25 +368,25 @@ export const backupMessages = {
         roomBackups: 'Room backups',
         saveImports: 'Save imports',
         saveBackups: 'Save backups',
-        systemSnapshots: 'System snapshots'
+        systemSnapshots: 'Pre-operation backups'
       },
       catalog: {
         categories: {
           saves: {
             title: 'Save backups',
-            description: 'View manual backups, scheduled backups, and imported saves by room. Every new backup automatically includes all worlds in the room.',
+            description: 'Each new backup includes the whole room and keeps it running by default.',
             noticeTitle: 'Online backup by default',
             noticeDescription: 'Manual backups keep players online by default while the system coordinates and verifies the same save across every world.',
             emptyTitle: 'No save backups yet',
             emptyDescription: 'Create a manual backup now. Backups created by a schedule will also appear here.'
           },
           system: {
-            title: 'System snapshots',
-            description: 'View protection snapshots created automatically before restores, game updates, mod changes, or room configuration changes.',
+            title: 'Pre-operation backups',
+            description: 'Created automatically before operations that need to protect saves. Use these to restore the previous save.',
             noticeTitle: 'Created automatically when needed',
             noticeDescription: 'System snapshots protect the previous save if an operation fails. They are not created manually and can be restored here when needed.',
-            emptyTitle: 'No system snapshots yet',
-            emptyDescription: 'The system creates a snapshot here before an operation that needs to protect the current save.'
+            emptyTitle: 'No pre-operation backups yet',
+            emptyDescription: 'Created automatically when an operation needs to protect existing saves.'
           }
         },
         consistencyTitle: 'Every new backup covers the complete room',
@@ -540,7 +540,7 @@ export const backupMessages = {
         },
         apply: {
           title: 'Deployment plan',
-          description: 'Replacing a room preserves its token, ports, and current world locations, and creates a system snapshot before writing the save.',
+          description: 'Replacing a room first backs up its save and preserves the room token, ports, and world locations.',
           roomsLoadFailedTitle: 'Could not load target room state',
           roomsLoadFailed: 'The target room list is unavailable, so replacement is temporarily disabled.',
           action: 'Start deployment',
@@ -559,8 +559,8 @@ export const backupMessages = {
           selectTargetRoom: 'Select a room to replace',
           replaceDescription: 'The room may be running. The system stops every world, restores each one at its current location, then restarts the worlds that were running before.',
           confirmation: 'Replacement confirmation',
-          confirmationPlaceholder: 'Enter the complete target room name',
-          confirmationDescription: 'Enter "{name}" to confirm replacement.',
+          confirmationPlaceholder: 'Target room',
+          confirmationDescription: 'Room "{name}" will be replaced.',
           directoryName: 'New room directory',
           directoryDescription: 'Use letters, numbers, underscores, and hyphens only, up to 64 characters.',
           roomName: 'In-game room name',
@@ -628,7 +628,7 @@ export const backupMessages = {
           warningTitle: 'This action cannot be undone',
           warningDescription: 'Deployed rooms and protection backups are not affected.',
           confirmation: 'Deletion confirmation',
-          confirmationDescription: 'Enter "{name}" to confirm deletion.'
+          confirmationDescription: 'Import "{name}" will be deleted.'
         },
         feedback: {
           unsupportedFormat: 'Only ZIP, TAR, TAR.GZ, and TGZ saves are supported.',

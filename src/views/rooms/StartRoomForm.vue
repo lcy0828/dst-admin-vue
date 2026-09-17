@@ -36,6 +36,7 @@
             <div v-for="world in selectedWorlds" :key="world.name" class="world-item" role="listitem">
               <CheckCircle2 class="status-icon" />
               <span>{{ world.name }}</span>
+              <Badge v-if="isDependencyWorld(world)" variant="secondary">{{ $t('rooms.start.dependency') }}</Badge>
               <Badge :variant="getWorldTagType(world.type)">{{ getWorldTypeName(world.type) }}</Badge>
             </div>
           </div>
@@ -73,6 +74,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { worldLifecycleSelection } from '@/lib/worldRuntimeStatus.mjs';
 
 export default {
   name: 'StartRoomForm',
@@ -141,6 +143,12 @@ export default {
     },
     selectedWorlds() {
       if (!this.room || !Array.isArray(this.room.worlds)) return [];
+      const requested = this.requestedWorlds;
+      const scope = worldLifecycleSelection(this.room.worlds, requested, 'start');
+      return scope.allowed ? scope.worlds : requested;
+    },
+    requestedWorlds() {
+      if (!this.room || !Array.isArray(this.room.worlds)) return [];
       if (this.formData.worldType === 'all') return this.room.worlds;
       return this.room.worlds.filter(world => world.type === this.formData.worldType);
     }
@@ -154,6 +162,9 @@ export default {
     }
   },
   methods: {
+    isDependencyWorld(world) {
+      return !this.requestedWorlds.some(item => item.id === world.id);
+    },
     handleConfirm() {
       // 更新父组件的表单数据
       Object.assign(this.startForm, this.formData);

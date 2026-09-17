@@ -1,6 +1,10 @@
 export const roomsMessages = {
   'zh-CN': {
     rooms: {
+      copy: {
+        action: '从其他房间复制', sourceRoom: '来源房间', sourcePlaceholder: '选择要复制的房间',
+        confirm: '确认复制', noSourceRooms: '至少需要另一个可管理房间才能复制'
+      },
       list: {
         title: '房间列表',
         subtitle: '管理当前运行目标中的房间、世界和访问配置。',
@@ -15,19 +19,62 @@ export const roomsMessages = {
         noMatchDescription: '请调整搜索关键词后重试。',
         emptyDescription: '您尚未创建任何房间。',
         worldCount: '{count} 个世界',
+        saveDirectory: '存档目录：{name}',
+        crossMachineCount: '分布于 {count} 台机器',
+        runningMachine: '运行机器',
+        localMachine: '本机',
+        unknownMachine: '未知机器',
+        targetCount: '发现于 {count} 台机器',
         running: '运行中',
-        forest: '主世界：',
+        controlStates: { ready: '可操作', degraded: '部分离线', offline: '机器离线', unavailable: '暂不可用' },
+        forest: '森林：',
         cave: '洞穴：',
         other: '其他：',
         start: '开启',
         stop: '停止',
+        startAll: '全部启动',
+        stopAll: '全部停止',
         edit: '编辑',
         more: '更多操作',
         specialLists: '特殊名单',
         serverToken: '服务器令牌',
+        runtimeLocation: '运行位置',
         viewLogs: '查看日志',
         backup: '备份房间',
         delete: '删除房间',
+        roomStates: {
+          running: '全部运行',
+          partial: '部分运行',
+          stopped: '已停止',
+          transitioning: '状态切换中',
+          attention: '需要处理',
+          unavailable: '不可用'
+        },
+        worldRoles: {
+          master: '主世界',
+          caves: '洞穴世界',
+          custom: '自定义世界'
+        },
+        placement: {
+          pending: '运行位置变更待应用',
+          pendingTarget: '将迁移到 {target}',
+          states: {
+            target_offline: '运行机器已离线',
+            inventory_stale: '机器目标清单已过期',
+            inventory_missing: '运行机器尚未上报目标',
+            shard_missing: '机器上未找到该世界',
+            conflict: '世界运行位置存在冲突'
+          }
+        },
+        worldActions: {
+          open: '更多世界操作',
+          view: '查看世界详情',
+          logs: '查看世界日志',
+          placement: '更改运行机器',
+          edit: '编辑世界',
+          restart: '重启世界',
+          cleanup: '清理失败状态'
+        },
         dialogs: {
           specialListsTitle: '特殊名单管理',
           specialListsDescription: '维护房间管理员、黑名单和白名单。',
@@ -45,6 +92,18 @@ export const roomsMessages = {
           serviceUnavailable: '无法连接管理服务，请检查服务状态后重试',
           dataFailed: '获取数据失败：{error}',
           noMatchingWorld: '没有找到符合条件的真实世界',
+          dependencyMasterUnknown: '主世界状态未知或正在切换，请刷新房间状态后重试',
+          dependencyMasterUnavailable: '主世界当前不可控制，无法安全启动关联世界',
+          dependenciesIncluded: '已自动包含依赖世界：{worlds}',
+          worldActionDependencyConfirm: '执行“{action}”将同时影响 {count} 个关联世界：{worlds}。是否继续？',
+          worldActionConfirm: '确定要对世界“{world}”执行“{action}”吗？',
+          worldActionTitle: '{action}世界',
+          worldActionCompleted: '世界 {world} 已完成“{action}”',
+          worldActionFailed: '世界操作失败：{error}',
+          cleanupConfirm: '确定要清理世界“{world}”的失败运行状态吗？',
+          cleanupTitle: '清理世界状态',
+          cleanupCompleted: '世界 {world} 的失败状态已清理',
+          cleanupFailed: '清理世界状态失败：{error}',
           started: '房间 {room} 已启动',
           startFailed: '启动房间失败：{error}',
           backupConfirm: '确定要备份房间“{room}”吗？',
@@ -53,13 +112,13 @@ export const roomsMessages = {
           backupFailed: '备份房间失败：{error}',
           canceled: '已取消操作',
           stopBeforeDelete: '删除前请先停止房间中的所有世界',
-          deletePrompt: '房间“{room}”将整体移入可恢复目录。请输入完整房间名确认',
+          deletePrompt: '房间“{room}”将整体移入可恢复目录，请确认是否继续。',
           deleteTitle: '删除房间',
           moveToRecovery: '移入恢复目录',
           roomNameMismatch: '房间名不匹配',
           movedToRecovery: '房间 {room} 已移入可恢复目录',
           deleteFailed: '删除房间失败：{error}',
-          stopConfirm: '确定要停止房间“{room}”吗？',
+          stopConfirm: '确定要停止房间“{room}”中的世界：{worlds}？',
           stopTitle: '停止房间',
           stopped: '房间 {room} 已停止',
           stopFailed: '停止房间失败：{error}'
@@ -73,6 +132,7 @@ export const roomsMessages = {
         bit64: '64 位',
         serverModeDescription: 'v2 使用系统设置中的服务端位数',
         preview: '将启动的世界',
+        dependency: '自动包含主世界',
         noWorlds: '没有匹配的世界',
         noWorldsDescription: '请切换启动模式，或先为房间创建对应类型的世界。',
         submit: '启动',
@@ -120,6 +180,19 @@ export const roomsMessages = {
           shard: { tab: '分片设置', title: '分片设置', description: '配置森林、洞穴等分片之间的通信。' },
           steam: { tab: 'Steam 设置', title: 'Steam 设置', description: '配置 Steam 组访问和管理员权限。' }
         },
+        copy: {
+          title: '从其他房间复制设置', description: '选择需要复用的设置并填入当前表单，检查后再保存。',
+          sections: '复制内容', sectionsDescription: '未选择的分类和当前房间名称保持不变。',
+          sectionOptions: {
+            gameplay: { label: '游戏模式', description: '玩家数量、游戏模式、PVP、投票与无人暂停。' },
+            network: { label: '联网与访问', description: '描述、密码、语言、联网方式与通信频率；不覆盖房间名称。' },
+            system: { label: '系统设置', description: '控制台开关与游戏快照数量。' },
+            steam: { label: 'Steam 设置', description: 'Steam 组限制与组管理员权限。' }
+          },
+          excludedTitle: '运行位置不会复制',
+          excludedDescription: '分片 IP、端口、连接密钥、机器和运行位置会继续使用当前房间配置。特殊名单、服务器令牌和模组请在对应标签页复制。',
+          fillForm: '填入当前表单', filled: '已从“{room}”填入设置，请检查后保存', failed: '复制房间设置失败：{error}'
+        },
         fields: {
           game_mode: { label: '游戏模式', description: '生存模式会在全员死亡后重置世界；无尽模式允许从绚丽之门复活；荒野模式让玩家随机出生。' },
           max_players: { label: '最大玩家数', description: '限制同一时间可进入服务器的玩家总数，白名单预留位也包含在此上限内。', constraint: '范围：{min}–{max} 人' },
@@ -131,7 +204,7 @@ export const roomsMessages = {
           cluster_description: { label: '服务器描述', description: '显示在服务器详情中，可填写玩法、规则或联系方式。', constraint: '单行文本，最多 {maxLength} 个字符' },
           cluster_password: { label: '服务器密码', description: '玩家加入时需要输入；留空表示不设置加入密码。', placeholder: '可为空', constraint: '可选，单行文本，最多 {maxLength} 个字符' },
           cluster_intention: { label: '游戏偏好', description: '向服务器浏览器标记房间倾向：合作、竞争、社交或疯狂，不会直接修改世界参数。' },
-          cluster_language: { label: '服务器语言', description: '用于服务器浏览器的语言筛选，不会自动翻译模组或聊天内容。' },
+          cluster_language: { label: '服务器语言', description: '用于服务器浏览器语言筛选，也会影响支持语言检测的服务器模组。不会翻译聊天、专服日志或不支持中文的模组；修改后需重启房间生效。' },
           whitelist_slots: { label: '白名单预留位', description: '为白名单玩家保留名额；普通玩家达到非预留容量后将无法加入。', constraint: '范围：0–当前玩家上限（{maxPlayers}）人，0 表示不预留' },
           tick_rate: { label: '通信频率', description: '控制服务器每秒发送网络状态的频率；更高数值更及时，但会增加 CPU 和网络开销。', constraint: '范围：{min}–{max} 次/秒' },
           idle_timeout: { label: '挂机超时', description: '超过游戏定义的挂机阈值后移除无操作玩家，避免长期占位。', constraint: '非负整数；0 表示关闭挂机移除' },
@@ -156,7 +229,18 @@ export const roomsMessages = {
         },
         state: {
           saving: '正在保存', creating: '正在创建', unsaved: '配置未保存', pending: '待配置', dirty: '有未保存更改', saved: '已保存',
-          savingButton: '保存中...', creatingButton: '创建中...', save: '保存更改', create: '创建房间'
+          readOnly: '离线快照只读', pendingSync: '等待磁盘回读', savingButton: '保存中...', creatingButton: '创建中...', save: '保存更改', create: '创建房间'
+        },
+        runtimeSource: '来源：{target}',
+        runtimeSourceCurrent: '当前运行节点',
+        sync: {
+          stale: { title: '正在显示只读的上次快照', description: '运行节点当前无法回读。此快照不能保存；恢复连接后刷新页面，系统会重新读取磁盘中的 cluster.ini。' },
+          pending: { title: '上次写入尚未完成验证', description: '请刷新并重新读取运行节点磁盘；系统不会使用控制器副本覆盖运行节点。' },
+          untracked: { title: '观测记录暂时不可用', description: '当前配置已直接从运行节点磁盘读取，仍可正常保存，但控制器暂时无法记录本次观测。' }
+        },
+        placementManaged: {
+          title: '分片线路由运行位置管理',
+          description: '监听地址、主分片地址和互联端口会按每个世界的运行机器自动生成；连接密钥仍在这里统一设置。'
         },
         validation: {
           clusterName: '请输入服务器名称', masterPort: '请输入主服务器端口', clusterKey: '请输入连接密码',
@@ -169,7 +253,7 @@ export const roomsMessages = {
         feedback: {
           loaded: '配置加载成功', loadFailed: '获取房间配置失败', loadingFailed: '加载配置失败',
           listWriteFailed: '写入失败', partialLists: '房间已创建，但部分名单未写入。请在特殊名单中重试：{errors}',
-          saved: '保存成功', saveFailed: '保存配置失败', badRequest: '请求参数错误', unauthorized: '未授权访问',
+          saved: '配置已写入运行节点磁盘；不会自动重启正在运行的世界。', saveFailed: '保存配置失败', readOnly: '当前显示的是离线只读快照，请恢复运行节点连接并刷新后再保存。', revisionConflict: '运行节点磁盘配置已被其他操作修改，请刷新后确认新内容再编辑。', badRequest: '请求参数错误', unauthorized: '未授权访问',
           forbidden: '访问被拒绝', notFound: '资源不存在', serverError: '服务器内部错误', requestFailed: '请求失败（{status}）',
           networkFailed: '网络请求失败，请检查网络连接'
         },
@@ -190,7 +274,7 @@ export const roomsMessages = {
         remove: '移除',
         emptyDescription: '添加 KU ID 后会显示在这里。',
         noRooms: '没有可管理的房间',
-        noRoomsDescription: '先创建或接管一个房间，再维护特殊名单。',
+        noRoomsDescription: '先创建房间或等待 Agent 上报，再维护特殊名单。',
         dialogTitle: '添加{member}',
         dialogDescription: '输入玩家的 KU ID，例如 KU_XXXXX。',
         kuIdPlaceholder: '格式：KU_XXXXX',
@@ -198,6 +282,15 @@ export const roomsMessages = {
           admin: { tab: '管理员名单', title: '管理员列表', member: '管理员', empty: '暂无管理员' },
           block: { tab: '黑名单', title: '黑名单列表', member: '黑名单用户', empty: '暂无黑名单用户' },
           white: { tab: '白名单', title: '白名单列表', member: '白名单用户', empty: '暂无白名单用户' }
+        },
+        copy: {
+          title: '从其他房间复制特殊名单', description: '选择来源房间、名单范围和复制方式。',
+          lists: '要复制的名单', listsDescription: '可以一次复制全部名单，也可以只复制其中一类。', mode: '复制方式',
+          merge: '合并名单', mergeDescription: '添加来源房间中的新成员，保留当前已有成员。',
+          replace: '覆盖名单', replaceDescription: '所选名单完全改成来源房间的内容。',
+          replaceWarning: '覆盖会移除成员', replaceWarningDescription: '只会影响选中的名单；来源房间不存在的当前成员将被移除。',
+          summary: '复制后 {total} 人，新增 {added} 人，移除 {removed} 人', loadFailed: '读取来源房间名单失败：{error}',
+          success: '已从“{room}”复制特殊名单', failed: '复制特殊名单失败：{error}'
         },
         validation: {
           requiredKuId: '请输入 KU ID',
@@ -211,7 +304,7 @@ export const roomsMessages = {
           removeTitle: '移除名单用户',
           removedPending: '已从待保存名单移除，创建房间时才会写入服务器',
           missingRoom: '无法确定房间名称，请重新选择房间',
-          removePrompt: '移除名单成员会修改房间访问配置。请输入完整房间名“{room}”确认',
+          removePrompt: '移除名单成员会修改房间“{room}”的访问配置，请确认是否继续。',
           confirmRemove: '确认移除',
           roomNameMismatch: '房间名不匹配',
           removed: '移除成功',
@@ -237,17 +330,26 @@ export const roomsMessages = {
         fieldDescription: '填写 Klei 生成的完整集群令牌，内容不会出现在日志中。',
         pendingHelpDescription: '服务器令牌用于标识您的饥荒服务器。示例：pds-g^KU_HQpffVs^dasdadadawqwqfrdgth5435gf=',
         noRooms: '没有可管理的房间',
-        noRoomsDescription: '先创建或接管一个房间，再管理服务器令牌。',
+        noRoomsDescription: '先创建房间或等待 Agent 上报，再管理服务器令牌。',
         dialogTitle: '修改服务器令牌',
-        dialogDescription: '更新令牌前需要输入完整房间名进行确认。',
+        dialogDescription: '更新令牌会替换当前房间使用的服务器身份。',
         newToken: '新令牌',
         newTokenPlaceholder: '请输入新令牌',
         newTokenDescription: '至少 16 个字符，不能包含空格或换行。',
         confirmation: '确认房间名',
-        confirmationPlaceholder: '请输入 {room}',
-        confirmationPlaceholderGeneric: '请输入完整房间名',
+        confirmationPlaceholder: '当前房间：{room}',
+        confirmationPlaceholderGeneric: '当前房间',
         warning: '警告',
         warningDescription: '修改服务器令牌会导致您的服务器在玩家列表中显示为新服务器。确定要继续吗？',
+        copyFromRoom: {
+          title: '从其他房间复制服务器令牌',
+          description: '把来源房间的 Klei 集群令牌用于当前房间。令牌内容不会显示在页面或日志中。',
+          checking: '正在检查来源房间令牌', configured: '来源房间已配置令牌，可以复制。', notConfigured: '来源房间没有可复制的令牌。',
+          confirmation: '确认来源房间', confirmationPlaceholder: '来源房间：{room}',
+          confirmationDescription: '请确认来源房间，避免把错误的身份令牌复制到当前房间。',
+          warning: '当前房间的令牌会被替换', warningDescription: '复制后，当前房间将使用来源房间的服务器身份。正在运行的世界需要下次重启后完整生效。',
+          loadFailed: '读取来源房间令牌状态失败：{error}', success: '已从“{room}”复制服务器令牌', alreadySame: '当前房间已经使用相同的服务器令牌', failed: '复制服务器令牌失败：{error}'
+        },
         validation: {
           required: '请输入服务器令牌',
           incomplete: '令牌内容不完整，请填写完整的 Klei 集群令牌',
@@ -261,12 +363,12 @@ export const roomsMessages = {
           copied: '令牌已复制到剪贴板',
           copyPermission: '请检查浏览器权限',
           copyFailed: '复制失败：{error}',
-          revealPrompt: '请输入完整房间名“{room}”以显示真实令牌',
+          revealPrompt: '即将显示房间“{room}”的真实服务器令牌，请确认周围环境安全。',
           revealTitle: '显示服务器令牌',
           roomNameMismatch: '房间名不匹配',
-          revealConfirmationFailed: '确认房间名不正确',
+          revealConfirmationFailed: '操作未确认',
           revealFailed: '显示令牌失败：{error}',
-          confirmationRequired: '请输入完整房间名确认修改',
+          confirmationRequired: '请确认修改服务器令牌',
           updated: '服务器令牌已更新',
           updateFailed: '更新令牌失败：{error}'
         }
@@ -274,7 +376,7 @@ export const roomsMessages = {
       selector: {
         room: '房间',
         placeholder: '请选择房间',
-        managedPlaceholder: '请选择已接管房间',
+        managedPlaceholder: '请选择房间',
         loadFailed: '房间列表加载失败',
         readFailed: '读取房间列表失败'
       }
@@ -282,6 +384,10 @@ export const roomsMessages = {
   },
   'en-US': {
     rooms: {
+      copy: {
+        action: 'Copy from another room', sourceRoom: 'Source room', sourcePlaceholder: 'Select a room to copy',
+        confirm: 'Copy', noSourceRooms: 'At least one other manageable room is required'
+      },
       list: {
         title: 'Rooms',
         subtitle: 'Manage rooms, worlds, and access settings on the current runtime target.',
@@ -296,19 +402,62 @@ export const roomsMessages = {
         noMatchDescription: 'Adjust the search terms and try again.',
         emptyDescription: 'You have not created any rooms yet.',
         worldCount: '{count} worlds',
+        saveDirectory: 'Archive: {name}',
+        crossMachineCount: 'Across {count} machines',
+        runningMachine: 'Runtime machine',
+        localMachine: 'Local machine',
+        unknownMachine: 'Unknown machine',
+        targetCount: 'Discovered on {count} machine(s)',
         running: 'Running',
-        forest: 'Primary world:',
+        controlStates: { ready: 'Available', degraded: 'Partially offline', offline: 'Machine offline', unavailable: 'Unavailable' },
+        forest: 'Forest:',
         cave: 'Caves:',
         other: 'Other:',
         start: 'Start',
         stop: 'Stop',
+        startAll: 'Start all',
+        stopAll: 'Stop all',
         edit: 'Edit',
         more: 'More actions',
         specialLists: 'Special lists',
         serverToken: 'Server token',
+        runtimeLocation: 'Runtime location',
         viewLogs: 'View logs',
         backup: 'Back up room',
         delete: 'Delete room',
+        roomStates: {
+          running: 'All running',
+          partial: 'Partially running',
+          stopped: 'Stopped',
+          transitioning: 'Changing state',
+          attention: 'Needs attention',
+          unavailable: 'Unavailable'
+        },
+        worldRoles: {
+          master: 'Master world',
+          caves: 'Caves world',
+          custom: 'Custom world'
+        },
+        placement: {
+          pending: 'Runtime placement change pending',
+          pendingTarget: 'Will move to {target}',
+          states: {
+            target_offline: 'Runtime machine is offline',
+            inventory_stale: 'Machine target inventory is stale',
+            inventory_missing: 'Runtime machine has not reported its targets',
+            shard_missing: 'World was not found on this machine',
+            conflict: 'World runtime placement conflicts with another target'
+          }
+        },
+        worldActions: {
+          open: 'More world actions',
+          view: 'View world details',
+          logs: 'View world logs',
+          placement: 'Change runtime machine',
+          edit: 'Edit world',
+          restart: 'Restart world',
+          cleanup: 'Clear failed state'
+        },
         dialogs: {
           specialListsTitle: 'Manage special lists',
           specialListsDescription: 'Maintain administrators, blocklist, and allowlist entries.',
@@ -326,6 +475,18 @@ export const roomsMessages = {
           serviceUnavailable: 'Unable to connect to the management service. Check its status and try again.',
           dataFailed: 'Failed to load data: {error}',
           noMatchingWorld: 'No real worlds matched the selection',
+          dependencyMasterUnknown: 'The Master state is unknown or changing. Refresh the room status and try again.',
+          dependencyMasterUnavailable: 'The Master is currently uncontrollable, so related worlds cannot be started safely.',
+          dependenciesIncluded: 'Required worlds were included automatically: {worlds}',
+          worldActionDependencyConfirm: '“{action}” will affect {count} related worlds: {worlds}. Continue?',
+          worldActionConfirm: 'Run “{action}” on world “{world}”?',
+          worldActionTitle: '{action} world',
+          worldActionCompleted: '“{action}” completed for world {world}',
+          worldActionFailed: 'World action failed: {error}',
+          cleanupConfirm: 'Clear the failed runtime state for world “{world}”?',
+          cleanupTitle: 'Clear world state',
+          cleanupCompleted: 'Failed state cleared for world {world}',
+          cleanupFailed: 'Failed to clear world state: {error}',
           started: 'Room {room} started',
           startFailed: 'Failed to start room: {error}',
           backupConfirm: 'Back up room “{room}”?',
@@ -334,13 +495,13 @@ export const roomsMessages = {
           backupFailed: 'Failed to back up room: {error}',
           canceled: 'Operation canceled',
           stopBeforeDelete: 'Stop every world in the room before deleting it',
-          deletePrompt: 'Room “{room}” will be moved to a recoverable directory. Enter the full room name to confirm.',
+          deletePrompt: 'Room “{room}” will be moved to a recoverable directory. Continue?',
           deleteTitle: 'Delete room',
           moveToRecovery: 'Move to recovery',
           roomNameMismatch: 'Room name does not match',
           movedToRecovery: 'Room {room} moved to the recovery directory',
           deleteFailed: 'Failed to delete room: {error}',
-          stopConfirm: 'Stop room “{room}”?',
+          stopConfirm: 'Stop these worlds in room “{room}”: {worlds}?',
           stopTitle: 'Stop room',
           stopped: 'Room {room} stopped',
           stopFailed: 'Failed to stop room: {error}'
@@ -354,6 +515,7 @@ export const roomsMessages = {
         bit64: '64-bit',
         serverModeDescription: 'v2 uses the server architecture from system settings',
         preview: 'Worlds to start',
+        dependency: 'Master included automatically',
         noWorlds: 'No matching worlds',
         noWorldsDescription: 'Choose another start mode or create a world of this type first.',
         submit: 'Start',
@@ -401,6 +563,19 @@ export const roomsMessages = {
           shard: { tab: 'Shards', title: 'Shard settings', description: 'Configure communication between forest, cave, and other shards.' },
           steam: { tab: 'Steam', title: 'Steam settings', description: 'Configure Steam group access and administrator privileges.' }
         },
+        copy: {
+          title: 'Copy settings from another room', description: 'Choose reusable settings and fill the current form. Review them before saving.',
+          sections: 'Settings to copy', sectionsDescription: 'Unselected sections and the current room name stay unchanged.',
+          sectionOptions: {
+            gameplay: { label: 'Gameplay', description: 'Player limit, game mode, PVP, voting, and pause when empty.' },
+            network: { label: 'Network and access', description: 'Description, password, language, network mode, and tick rate; keeps the current room name.' },
+            system: { label: 'System', description: 'Console access and game snapshot count.' },
+            steam: { label: 'Steam', description: 'Steam group restrictions and group administrator permissions.' }
+          },
+          excludedTitle: 'Runtime placement is not copied',
+          excludedDescription: 'Shard IPs, ports, connection keys, machines, and runtime locations stay with the current room. Copy access lists, the server token, and mods from their own tabs.',
+          fillForm: 'Fill current form', filled: 'Settings from “{room}” were filled in. Review and save them.', failed: 'Failed to copy room settings: {error}'
+        },
         fields: {
           game_mode: { label: 'Game mode', description: 'Survival resets after everyone dies; Endless allows portal resurrection; Wilderness gives players random spawn locations.' },
           max_players: { label: 'Maximum players', description: 'Limits concurrent players. Reserved allowlist slots are included in this capacity.', constraint: 'Range: {min}–{max} players' },
@@ -412,7 +587,7 @@ export const roomsMessages = {
           cluster_description: { label: 'Server description', description: 'Shown in server details and suitable for rules, play style, or contact information.', constraint: 'One line, up to {maxLength} characters' },
           cluster_password: { label: 'Server password', description: 'Required when players join. Leave blank for a server without a join password.', placeholder: 'Optional', constraint: 'Optional, one line, up to {maxLength} characters' },
           cluster_intention: { label: 'Play style', description: 'Labels the room as cooperative, competitive, social, or madness in the server browser; it does not change world settings.' },
-          cluster_language: { label: 'Server language', description: 'Used by server-browser language filters. It does not translate mods or chat.' },
+          cluster_language: { label: 'Server language', description: 'Used by server-browser language filters and server mods that detect the configured language. It does not translate chat, server logs, or mods without Chinese support. Restart the room to apply changes.' },
           whitelist_slots: { label: 'Allowlist reserved slots', description: 'Keeps capacity available for allowlisted players after regular capacity is full.', constraint: 'Range: 0–current player limit ({maxPlayers}); 0 reserves none' },
           tick_rate: { label: 'Tick rate', description: 'Controls network state updates per second. Higher values improve responsiveness but increase CPU and bandwidth use.', constraint: 'Range: {min}–{max} updates/second' },
           idle_timeout: { label: 'Idle timeout', description: 'Removes inactive players after the threshold defined by the game to prevent long-term slot use.', constraint: 'Non-negative integer; 0 disables idle removal' },
@@ -437,7 +612,18 @@ export const roomsMessages = {
         },
         state: {
           saving: 'Saving', creating: 'Creating', unsaved: 'Configuration not saved', pending: 'Not configured', dirty: 'Unsaved changes', saved: 'Saved',
-          savingButton: 'Saving...', creatingButton: 'Creating...', save: 'Save changes', create: 'Create room'
+          readOnly: 'Offline snapshot · read-only', pendingSync: 'Waiting for disk read-back', savingButton: 'Saving...', creatingButton: 'Creating...', save: 'Save changes', create: 'Create room'
+        },
+        runtimeSource: 'Source: {target}',
+        runtimeSourceCurrent: 'current runtime',
+        sync: {
+          stale: { title: 'Showing the last snapshot in read-only mode', description: 'The runtime cannot be read right now. Reconnect it and refresh to read cluster.ini from disk before editing.' },
+          pending: { title: 'The previous write has not been verified', description: 'Refresh and read the runtime disk again. The controller will not overwrite it from a controller-side copy.' },
+          untracked: { title: 'Observation history is temporarily unavailable', description: 'This configuration was read directly from the runtime disk and remains editable, but the controller could not record the observation.' }
+        },
+        placementManaged: {
+          title: 'Shard routes are managed by runtime placement',
+          description: 'Bind address, Master address, and inter-shard port are generated for each world machine. The shared connection key remains editable here.'
         },
         validation: {
           clusterName: 'Enter the server name', masterPort: 'Enter the primary server port', clusterKey: 'Enter the connection password',
@@ -450,7 +636,7 @@ export const roomsMessages = {
         feedback: {
           loaded: 'Configuration loaded', loadFailed: 'Failed to get room configuration', loadingFailed: 'Failed to load configuration',
           listWriteFailed: 'Write failed', partialLists: 'The room was created, but some lists were not saved. Retry them under Special lists: {errors}',
-          saved: 'Saved successfully', saveFailed: 'Failed to save configuration', badRequest: 'Invalid request parameters', unauthorized: 'Unauthorized access',
+          saved: 'Configuration was written to the runtime disk. Running worlds were not restarted.', saveFailed: 'Failed to save configuration', readOnly: 'This is an offline read-only snapshot. Reconnect the runtime and refresh before saving.', revisionConflict: 'The runtime disk configuration changed after this page was loaded. Refresh and review it before editing again.', badRequest: 'Invalid request parameters', unauthorized: 'Unauthorized access',
           forbidden: 'Access denied', notFound: 'Resource not found', serverError: 'Internal server error', requestFailed: 'Request failed ({status})',
           networkFailed: 'Network request failed. Check the network connection.'
         },
@@ -471,7 +657,7 @@ export const roomsMessages = {
         remove: 'Remove',
         emptyDescription: 'Added KU IDs will appear here.',
         noRooms: 'No manageable rooms',
-        noRoomsDescription: 'Create or adopt a room before managing special lists.',
+        noRoomsDescription: 'Create a room or wait for an Agent to report one before managing special lists.',
         dialogTitle: 'Add {member}',
         dialogDescription: 'Enter the player KU ID, for example KU_XXXXX.',
         kuIdPlaceholder: 'Format: KU_XXXXX',
@@ -479,6 +665,15 @@ export const roomsMessages = {
           admin: { tab: 'Administrator list', title: 'Administrators', member: 'administrator', empty: 'No administrators' },
           block: { tab: 'Blocklist', title: 'Blocked players', member: 'blocked player', empty: 'No blocked players' },
           white: { tab: 'Allowlist', title: 'Allowed players', member: 'allowed player', empty: 'No allowed players' }
+        },
+        copy: {
+          title: 'Copy special lists from another room', description: 'Choose the source room, list types, and copy mode.',
+          lists: 'Lists to copy', listsDescription: 'Copy every list together or select only the lists you need.', mode: 'Copy mode',
+          merge: 'Merge lists', mergeDescription: 'Add new members from the source and keep current members.',
+          replace: 'Replace lists', replaceDescription: 'Make the selected lists match the source room exactly.',
+          replaceWarning: 'Replacing can remove members', replaceWarningDescription: 'Only selected lists are affected. Current members absent from the source will be removed.',
+          summary: '{total} after copy, {added} added, {removed} removed', loadFailed: 'Failed to read source room lists: {error}',
+          success: 'Special lists copied from “{room}”', failed: 'Failed to copy special lists: {error}'
         },
         validation: {
           requiredKuId: 'Enter a KU ID',
@@ -492,7 +687,7 @@ export const roomsMessages = {
           removeTitle: 'Remove list member',
           removedPending: 'Removed from the pending list. The server will be updated when the room is created.',
           missingRoom: 'Unable to determine the room name. Select the room again.',
-          removePrompt: 'Removing this member changes room access. Enter the full room name “{room}” to confirm.',
+          removePrompt: 'Removing this member changes access for room “{room}”. Continue?',
           confirmRemove: 'Remove member',
           roomNameMismatch: 'Room name does not match',
           removed: 'Member removed',
@@ -518,17 +713,26 @@ export const roomsMessages = {
         fieldDescription: 'Enter the complete cluster token generated by Klei. Its contents are not written to logs.',
         pendingHelpDescription: 'The token identifies your Don\'t Starve Together server. Example: pds-g^KU_HQpffVs^dasdadadawqwqfrdgth5435gf=',
         noRooms: 'No manageable rooms',
-        noRoomsDescription: 'Create or adopt a room before managing its server token.',
+        noRoomsDescription: 'Create a room or wait for an Agent to report one before managing its server token.',
         dialogTitle: 'Change server token',
-        dialogDescription: 'Enter the full room name to confirm the token update.',
+        dialogDescription: 'Updating the token replaces the server identity used by this room.',
         newToken: 'New token',
         newTokenPlaceholder: 'Enter the new token',
         newTokenDescription: 'Use at least 16 characters with no spaces or line breaks.',
         confirmation: 'Confirm room name',
-        confirmationPlaceholder: 'Enter {room}',
-        confirmationPlaceholderGeneric: 'Enter the full room name',
+        confirmationPlaceholder: 'Current room: {room}',
+        confirmationPlaceholderGeneric: 'Current room',
         warning: 'Warning',
         warningDescription: 'Changing the server token makes your server appear as a new server in the player list. Continue?',
+        copyFromRoom: {
+          title: 'Copy server token from another room',
+          description: 'Use the source room\'s Klei cluster token in the current room. The token is never shown on the page or written to logs.',
+          checking: 'Checking the source room token', configured: 'The source room has a token that can be copied.', notConfigured: 'The source room has no token to copy.',
+          confirmation: 'Confirm source room', confirmationPlaceholder: 'Source room: {room}',
+          confirmationDescription: 'Confirm the source room to avoid copying the wrong server identity.',
+          warning: 'The current room token will be replaced', warningDescription: 'After copying, the current room uses the source room\'s server identity. Running worlds fully apply it after their next restart.',
+          loadFailed: 'Failed to read source room token status: {error}', success: 'Server token copied from “{room}”', alreadySame: 'The current room already uses the same server token', failed: 'Failed to copy server token: {error}'
+        },
         validation: {
           required: 'Enter the server token',
           incomplete: 'The token is incomplete. Enter the full Klei cluster token.',
@@ -542,12 +746,12 @@ export const roomsMessages = {
           copied: 'Token copied to the clipboard',
           copyPermission: 'Check browser clipboard permissions',
           copyFailed: 'Failed to copy: {error}',
-          revealPrompt: 'Enter the full room name “{room}” to reveal the real token.',
+          revealPrompt: 'The real server token for room “{room}” will be shown. Make sure it cannot be observed by others.',
           revealTitle: 'Reveal server token',
-          roomNameMismatch: 'Room name does not match',
-          revealConfirmationFailed: 'The room name confirmation is incorrect',
+          roomNameMismatch: 'The operation was not confirmed',
+          revealConfirmationFailed: 'The operation was not confirmed',
           revealFailed: 'Failed to reveal the token: {error}',
-          confirmationRequired: 'Enter the full room name to confirm the update',
+          confirmationRequired: 'Confirm the server token update',
           updated: 'Server token updated',
           updateFailed: 'Failed to update the token: {error}'
         }
@@ -555,7 +759,7 @@ export const roomsMessages = {
       selector: {
         room: 'Room',
         placeholder: 'Select a room',
-        managedPlaceholder: 'Select an adopted room',
+        managedPlaceholder: 'Select a room',
         loadFailed: 'Failed to load rooms',
         readFailed: 'Failed to read rooms'
       }

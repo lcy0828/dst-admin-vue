@@ -1,5 +1,6 @@
 <template>
   <div class="room-settings-page">
+    <RoomScopeSelect v-if="isEdit" :model-value="roomId" :rooms="roomOptions" :disabled="loading || saving" @update:model-value="switchRoom" />
     <header class="page-header">
       <div class="title-section">
         <div class="title-row">
@@ -8,12 +9,13 @@
             <span class="change-state-dot" aria-hidden="true"></span>
             {{ changeStateLabel }}
           </span>
+          <Badge v-if="configurationSourceLabel" variant="outline" class="runtime-source-badge">{{ configurationSourceLabel }}</Badge>
         </div>
-        <p>{{ $t(isEdit ? 'rooms.settings.editSubtitle' : 'rooms.settings.createSubtitle') }}</p>
         <code v-if="isEdit && roomId" class="room-reference">{{ roomId }}</code>
       </div>
       <div class="header-actions">
         <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />{{ $t('rooms.settings.back') }}</UiButton>
+        <UiButton v-if="availableCopyRooms.length > 0" variant="outline" :disabled="configurationReadOnly" @click="openSettingsCopyDialog"><Copy data-icon="inline-start" />{{ $t('rooms.copy.action') }}</UiButton>
         <UiButton @click="saveSettings" :disabled="saveDisabled">
           <Spinner v-if="saving" data-icon="inline-start" />
           <Save v-else data-icon="inline-start" />
@@ -39,6 +41,12 @@
       </AlertDescription>
     </Alert>
 
+    <Alert v-if="configurationSync && configurationSync.status !== 'synced'" class="error-alert">
+      <RefreshCw />
+      <AlertTitle>{{ $t(`rooms.settings.sync.${configurationSync.status}.title`) }}</AlertTitle>
+      <AlertDescription>{{ $t(`rooms.settings.sync.${configurationSync.status}.description`) }}</AlertDescription>
+    </Alert>
+
     <Alert v-if="formErrors.length > 0" ref="validationAlert" variant="destructive" class="error-alert" tabindex="-1">
       <TriangleAlert />
       <AlertTitle>{{ $t('rooms.settings.validationFailed') }}</AlertTitle>
@@ -48,6 +56,14 @@
         </ul>
       </AlertDescription>
     </Alert>
+
+    <RoomPlacementCard
+      v-if="isEdit && roomId"
+      :room-id="roomId"
+      :room-name="form.cluster_name"
+      :auto-open="$route.query.deployment === 'edit'"
+      :focus-world-id="String($route.query.worldId || '')"
+    />
 
     <Card v-if="!isEdit" size="sm" class="save-name-card">
       <CardHeader>
@@ -97,6 +113,11 @@
             <CardDescription>{{ section.description }}</CardDescription>
           </CardHeader>
           <CardContent>
+            <Alert v-if="section.key === 'shard' && isEdit" class="placement-managed-alert">
+              <GitBranch />
+              <AlertTitle>{{ $t('rooms.settings.placementManaged.title') }}</AlertTitle>
+              <AlertDescription>{{ $t('rooms.settings.placementManaged.description') }}</AlertDescription>
+            </Alert>
             <FieldGroup class="settings-grid">
               <Field
                 v-for="field in section.fields"
@@ -215,18 +236,67 @@
         <ServerToken :savename="roomId" :pending-mode="!isEdit" @input-token="handleInputToken" />
       </TabsContent>
     </Tabs>
+
+    <UiDialog v-model:open="settingsCopyDialogVisible">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{{ $t('rooms.settings.copy.title') }}</DialogTitle>
+          <DialogDescription>{{ $t('rooms.settings.copy.description') }}</DialogDescription>
+        </DialogHeader>
+
+        <FieldGroup>
+          <Field>
+            <FieldLabel for="room-settings-copy-source">{{ $t('rooms.copy.sourceRoom') }}</FieldLabel>
+            <UiSelect v-model="settingsCopySourceRoomId" :disabled="copyingSettings">
+              <SelectTrigger id="room-settings-copy-source"><SelectValue :placeholder="$t('rooms.copy.sourcePlaceholder')" /></SelectTrigger>
+              <SelectContent><SelectGroup><SelectItem v-for="room in availableCopyRooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+
+          <FieldSet>
+            <FieldLegend>{{ $t('rooms.settings.copy.sections') }}</FieldLegend>
+            <FieldDescription>{{ $t('rooms.settings.copy.sectionsDescription') }}</FieldDescription>
+            <FieldGroup>
+              <Field v-for="section in copySectionOptions" :key="section.key" orientation="horizontal">
+                <UiCheckbox :id="`room-copy-section-${section.key}`" :model-value="settingsCopySections.includes(section.key)" @update:model-value="value => toggleSettingsCopySection(section.key, value)" />
+                <FieldContent><FieldLabel :for="`room-copy-section-${section.key}`">{{ section.label }}</FieldLabel><FieldDescription>{{ section.description }}</FieldDescription></FieldContent>
+              </Field>
+            </FieldGroup>
+          </FieldSet>
+
+          <Alert>
+            <TriangleAlert />
+            <AlertTitle>{{ $t('rooms.settings.copy.excludedTitle') }}</AlertTitle>
+            <AlertDescription>{{ $t('rooms.settings.copy.excludedDescription') }}</AlertDescription>
+          </Alert>
+        </FieldGroup>
+
+        <DialogFooter>
+          <UiButton variant="outline" @click="settingsCopyDialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton>
+          <UiButton :disabled="copyingSettings || !settingsCopySourceRoomId || settingsCopySections.length === 0" @click="copySettingsFromRoom">
+            <Spinner v-if="copyingSettings" data-icon="inline-start" />
+            <Copy v-else data-icon="inline-start" />
+            {{ $t('rooms.settings.copy.fillForm') }}
+          </UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </UiDialog>
   </div>
 </template>
 
 <script>
-import { ArrowLeft, Eye, EyeOff, FolderKey, Gamepad2, GitBranch, KeyRound, ListChecks, Network, RefreshCw, Save, Settings2, TriangleAlert } from '@lucide/vue';
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue';
+import { preferredRoomId } from '@/lib/pageScope.mjs';
+import { ArrowLeft, Copy, Eye, EyeOff, FolderKey, Gamepad2, GitBranch, KeyRound, ListChecks, Network, RefreshCw, Save, Settings2, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { roomConfigApi, serverApi } from '../../api/index';
+import { roomApi, roomConfigApi, serverApi } from '../../api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -235,7 +305,9 @@ import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { confirmAction } from '@/lib/feedback';
+import { globalJobFailureToastId } from '@/lib/globalJobs.mjs';
 import { clusterTokenError } from '@/lib/clusterToken.mjs';
+import { pickCopiedRoomFields, roomCopyValuesFromConfig } from '@/lib/roomCopy.mjs';
 import {
   ROOM_ARCHIVE_RULE,
   frontendRoomFieldKey,
@@ -245,6 +317,7 @@ import {
 } from '@/lib/roomSettingsValidation.mjs';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
+import RoomPlacementCard from '@/components/rooms/RoomPlacementCard.vue';
 
 const SETTINGS_SECTIONS = [
   {
@@ -289,9 +362,9 @@ const SETTINGS_SECTIONS = [
     icon: GitBranch,
     fields: [
       { key: 'shard_enabled', type: 'switch' },
-      { key: 'bind_ip', type: 'text', disabledWhen: 'shard_enabled' },
-      { key: 'master_ip', type: 'text', disabledWhen: 'shard_enabled' },
-      { key: 'master_port', type: 'number', min: 1, max: 65535, required: true, disabledWhen: 'shard_enabled' },
+      { key: 'bind_ip', type: 'text', disabledWhen: 'shard_enabled', placementManaged: true },
+      { key: 'master_ip', type: 'text', disabledWhen: 'shard_enabled', placementManaged: true },
+      { key: 'master_port', type: 'number', min: 1, max: 65535, required: true, disabledWhen: 'shard_enabled', placementManaged: true },
       { key: 'cluster_key', type: 'text', required: true, sensitive: true, autocomplete: 'new-password', disabledWhen: 'shard_enabled' }
     ]
   },
@@ -307,8 +380,10 @@ const SETTINGS_SECTIONS = [
 ];
 
 export default {
+  inject: { machineScopeGuard: { from: 'machine-scope-guard', default: null } },
   name: 'RoomSettings',
   components: {
+    RoomScopeSelect,
     Alert,
     AlertDescription,
     AlertTitle,
@@ -320,15 +395,26 @@ export default {
     CardDescription,
     CardHeader,
     CardTitle,
+    Copy,
+    UiCheckbox,
+    UiDialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
     Field,
     FieldContent,
     FieldDescription,
     FieldError,
     FieldGroup,
     FieldLabel,
+    FieldLegend,
+    FieldSet,
     Eye,
     EyeOff,
     FolderKey,
+    GitBranch,
     InputGroup,
     InputGroupAddon,
     InputGroupButton,
@@ -336,6 +422,7 @@ export default {
     KeyRound,
     ListChecks,
     RefreshCw,
+    RoomPlacementCard,
     Save,
     SelectContent,
     SelectGroup,
@@ -421,7 +508,14 @@ export default {
       baselineFingerprint: '',
       saving: false,
       revealedFields: {},
-      roomSchema: []
+      roomSchema: [],
+      configurationSync: null,
+      configurationRevision: '',
+      roomOptions: [],
+      settingsCopyDialogVisible: false,
+      settingsCopySourceRoomId: '',
+      settingsCopySections: ['gameplay', 'network', 'system', 'steam'],
+      copyingSettings: false
     }
   },
   computed: {
@@ -431,7 +525,7 @@ export default {
         tabLabel: this.$t(`rooms.settings.sections.${section.key}.tab`),
         title: this.$t(`rooms.settings.sections.${section.key}.title`),
         description: this.$t(`rooms.settings.sections.${section.key}.description`),
-        fields: section.fields.map(field => {
+        fields: section.fields.filter(field => !(this.isEdit && field.placementManaged)).map(field => {
           const fieldKey = `rooms.settings.fields.${field.key}`;
           const placeholderKey = `${fieldKey}.placeholder`;
           const rule = roomFieldRule(field.key, this.form, this.roomSchema);
@@ -462,6 +556,10 @@ export default {
     changeStateLabel() {
       if (this.saving) return this.$t(this.isEdit ? 'rooms.settings.state.saving' : 'rooms.settings.state.creating');
       if (!this.isEdit) return this.$t(this.unsavedChanges ? 'rooms.settings.state.unsaved' : 'rooms.settings.state.pending');
+      if (this.configurationReadOnly) return this.$t('rooms.settings.state.readOnly');
+      if (!this.unsavedChanges && this.configurationSync && this.configurationSync.status !== 'synced') {
+        return this.$t('rooms.settings.state.pendingSync');
+      }
       return this.$t(this.unsavedChanges ? 'rooms.settings.state.dirty' : 'rooms.settings.state.saved');
     },
     saveButtonLabel() {
@@ -469,27 +567,126 @@ export default {
       return this.$t(this.isEdit ? 'rooms.settings.state.save' : 'rooms.settings.state.create');
     },
     saveDisabled() {
-      return this.loading || this.saving || Boolean(this.loadError) || (this.isEdit && !this.unsavedChanges);
+      return this.configurationReadOnly || this.loading || this.saving || Boolean(this.loadError) || (this.isEdit && (!this.roomId || !this.unsavedChanges));
+    },
+    configurationReadOnly() {
+      return Boolean(this.isEdit && this.configurationSync?.readOnly);
+    },
+    configurationSourceLabel() {
+      const sync = this.configurationSync;
+      if (!this.isEdit || !sync || sync.source !== 'runtime-disk') return '';
+      const target = [sync.targetId, sync.installationId].filter(Boolean).join(' / ');
+      return this.$t('rooms.settings.runtimeSource', { target: target || this.$t('rooms.settings.runtimeSourceCurrent') });
+    },
+    availableCopyRooms() {
+      return this.roomOptions.filter(room => room.id !== this.roomId);
+    },
+    copySectionOptions() {
+      return ['gameplay', 'network', 'system', 'steam'].map(key => ({
+        key,
+        label: this.$t(`rooms.settings.copy.sectionOptions.${key}.label`),
+        description: this.$t(`rooms.settings.copy.sectionOptions.${key}.description`)
+      }));
     }
   },
-  created() {
+  async created() {
+    const roomsLoading = this.fetchSettingsCopyRooms();
     // 检查是否是编辑模式
     const roomId = this.$route.query.id;
     if (roomId) {
       this.isEdit = true;
       this.roomId = roomId;
       this.loadRoomSettings(roomId);
+    } else if (this.$route.query.edit === 'true') {
+      this.isEdit = true;
+      await roomsLoading;
+      this.roomId = preferredRoomId(this.roomOptions);
+      if (this.roomId) await this.loadRoomSettings(this.roomId);
     } else {
       this.$nextTick(() => this.captureBaseline());
     }
   },
   mounted() {
+    if (this.machineScopeGuard) this.machineScopeGuard.check = this.confirmMachineScopeChange;
     window.addEventListener('beforeunload', this.handleBeforeUnload);
   },
   beforeUnmount() {
+    if (this.machineScopeGuard?.check === this.confirmMachineScopeChange) this.machineScopeGuard.check = async () => true;
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
   },
   methods: {
+    async confirmMachineScopeChange() {
+      if (this.saving) return false;
+      if (!(await this.confirmLeaveRoomSettings())) return false;
+      this.unsavedChanges = false;
+      return true;
+    },
+    async confirmLeaveRoomSettings() {
+      if (!this.unsavedChanges) return true;
+      try {
+        await confirmAction(this.$t('rooms.settings.leave.description'), this.$t('rooms.settings.leave.title'), {
+          confirmButtonText: this.$t('rooms.settings.leave.discard'),
+          cancelButtonText: this.$t('rooms.settings.leave.continue'),
+          destructive: true
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    async switchRoom(roomId) {
+      if (!roomId || roomId === this.roomId || this.saving) return;
+      await this.$router.replace({ path: this.$route.path, query: { ...this.$route.query, id: roomId } });
+    },
+    async fetchSettingsCopyRooms() {
+      try {
+        const response = await roomApi.getRoomList();
+        this.roomOptions = response.data || [];
+      } catch (error) {
+        this.roomOptions = [];
+        console.error('Failed to load room copy sources:', error);
+      }
+    },
+    openSettingsCopyDialog() {
+      if (this.configurationReadOnly) {
+        toast.error(this.$t('rooms.settings.feedback.readOnly'));
+        return;
+      }
+      if (this.availableCopyRooms.length === 0) {
+        toast.info(this.$t('rooms.copy.noSourceRooms'));
+        return;
+      }
+      this.settingsCopySourceRoomId = this.availableCopyRooms[0].id;
+      this.settingsCopySections = ['gameplay', 'network', 'system', 'steam'];
+      this.settingsCopyDialogVisible = true;
+    },
+    toggleSettingsCopySection(section, checked) {
+      this.settingsCopySections = checked
+        ? [...new Set([...this.settingsCopySections, section])]
+        : this.settingsCopySections.filter(item => item !== section);
+    },
+    async copySettingsFromRoom() {
+      if (this.configurationReadOnly || this.copyingSettings || !this.settingsCopySourceRoomId || this.settingsCopySections.length === 0) return;
+      this.copyingSettings = true;
+      try {
+        const response = await roomConfigApi.getRoomConfig(this.settingsCopySourceRoomId);
+        const sourceValues = roomCopyValuesFromConfig(response.data || {});
+        const copiedValues = pickCopiedRoomFields(sourceValues, this.settingsCopySections);
+        Object.entries(copiedValues).forEach(([key, value]) => {
+          if (value !== undefined) this.form[key] = value;
+        });
+        this.validationErrors = {};
+        this.formErrors = [];
+        this.updateDirtyState();
+        this.settingsCopyDialogVisible = false;
+        const source = this.availableCopyRooms.find(room => room.id === this.settingsCopySourceRoomId);
+        toast.success(this.$t('rooms.settings.copy.filled', { room: source?.name || '' }));
+      } catch (error) {
+        toast.error(this.$t('rooms.settings.copy.failed', { error: error.message || this.$t('common.errors.unknown') }));
+      } finally {
+        this.copyingSettings = false;
+      }
+    },
     getFormFingerprint() {
       return JSON.stringify({ saveNameForm: this.saveNameForm, form: this.form });
     },
@@ -523,7 +720,7 @@ export default {
       this.revealedFields = { ...this.revealedFields, [key]: !this.revealedFields[key] };
     },
     isFieldDisabled(field) {
-      return Boolean(field.disabledWhen && !this.form[field.disabledWhen]);
+      return this.configurationReadOnly || Boolean(field.disabledWhen && !this.form[field.disabledWhen]);
     },
     focusFirstError() {
       let targetId = '';
@@ -624,6 +821,8 @@ export default {
           // 适配新的嵌套数据结构
           const configData = response.data;
           this.roomSchema = Array.isArray(configData.__schema) ? configData.__schema : [];
+          this.configurationSync = configData.__sync || null;
+          this.configurationRevision = configData.__revision || '';
           
           // 处理GAMEPLAY部分
           if (configData.GAMEPLAY) {
@@ -686,6 +885,10 @@ export default {
     },
     async saveSettings() {
       try {
+        if (this.configurationReadOnly) {
+          toast.error(this.$t('rooms.settings.feedback.readOnly'));
+          return;
+        }
         this.formErrors = [];
         const pendingListErrors = [];
         
@@ -749,7 +952,7 @@ export default {
         this.saving = true;
         if (this.isEdit) {
           // 编辑模式: 使用已有的roomId
-          await roomConfigApi.saveRoomConfig(this.roomId, convertedData);
+          await roomConfigApi.saveRoomConfig(this.roomId, convertedData, this.configurationRevision);
           await this.loadRoomSettings(this.roomId, { notify: false });
         } else {
           // 创建模式: v2 会先真实创建房间，再应用完整 cluster.ini 配置。
@@ -799,7 +1002,12 @@ export default {
       }
     },
     handleError(error, defaultMessage) {
+      const revisionConflict = error.code === 'CONFIG_REVISION_CONFLICT' || error?.context?.targetErrorCode === 'CONFIG_REVISION_CONFLICT';
       let errorMessage = error.message || defaultMessage;
+
+      if (revisionConflict) {
+        errorMessage = this.$t('rooms.settings.feedback.revisionConflict');
+      }
 
       if (error.details && error.details.fields) {
         const fieldErrors = Object.fromEntries(
@@ -810,7 +1018,7 @@ export default {
         this.focusFirstError();
       }
       
-      if (error.response) {
+      if (error.response && !revisionConflict) {
         // 处理HTTP错误
         switch (error.response.status) {
           case 400:
@@ -838,11 +1046,11 @@ export default {
             ? error.response.data.errors 
             : [error.response.data.errors];
         }
-      } else if (error.request) {
+      } else if (!revisionConflict && error.request) {
         errorMessage = this.$t('rooms.settings.feedback.networkFailed');
       }
       
-      toast.error(errorMessage);
+      toast.error(errorMessage, { id: globalJobFailureToastId(error?.context?.jobId) });
       return errorMessage;
     }
   },
@@ -861,17 +1069,11 @@ export default {
     }
   },
   async beforeRouteLeave() {
-    if (!this.unsavedChanges || this.saving) return true;
-    try {
-      await confirmAction(this.$t('rooms.settings.leave.description'), this.$t('rooms.settings.leave.title'), {
-        confirmButtonText: this.$t('rooms.settings.leave.discard'),
-        cancelButtonText: this.$t('rooms.settings.leave.continue'),
-        destructive: true
-      });
-      return true;
-    } catch {
-      return false;
-    }
+    return this.confirmLeaveRoomSettings();
+  },
+  async beforeRouteUpdate(to, from) {
+    if (to.query.id !== from.query.id) return this.confirmLeaveRoomSettings();
+    return true;
   }
 }
 </script>
@@ -918,6 +1120,14 @@ export default {
 .title-row {
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.runtime-source-badge {
+  min-width: 0;
+  max-width: min(420px, 45vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .change-state {
@@ -989,6 +1199,10 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.placement-managed-alert {
+  margin-bottom: 16px;
 }
 
 .settings-tabs {

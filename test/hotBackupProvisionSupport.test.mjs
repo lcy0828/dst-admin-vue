@@ -31,9 +31,11 @@ test('hot-consistent backups are the safe default and display barrier proof', as
 })
 
 test('room provisioning remains a control-plane workflow distinct from migration', async () => {
-  const [api, topology, declarations, messages] = await Promise.all([
+  const [api, topology, editor, placement, declarations, messages] = await Promise.all([
     source('src/api/v2.js'),
     source('src/views/rooms/RoomTopology.vue'),
+    source('src/components/rooms/RoomPlacementCard.vue'),
+    source('src/lib/roomPlacement.mjs'),
     source('src/api/distributedManagement.d.ts'),
     source('src/i18n/topologyMessages.js')
   ])
@@ -41,12 +43,13 @@ test('room provisioning remains a control-plane workflow distinct from migration
   assert.match(api, /topology\/actions\/provision/)
   assert.match(api, /provision-operations/)
   assert.match(api, /recoverProvisionOperation/)
-  assert.match(topology, /isLocalTarget\(placement\.appliedTargetId\)/)
-  assert.match(topology, /placement\.state === 'shard_missing'/)
-  assert.match(topology, /topologyV2API\.provision/)
+  assert.match(placement, /source\?\.kind === 'local'/)
+  assert.match(placement, /placement\.state === 'shard_missing'/)
+  assert.match(editor, /topologyV2API\.provision/)
   assert.match(topology, /topologyV2API\.recoverProvisionOperation/)
-  assert.match(topology, /topologyV2API\.applyPlacement/)
-  assert.match(topology, /provisionConfirmation\.value !== selectedRoom\.value\?\.name/)
+  assert.match(editor, /topologyV2API\.applyPlacement/)
+  assert.match(editor, /confirmation:\s*roomNameForConfirmation\.value/)
+  assert.doesNotMatch(`${topology}\n${editor}`, /provisionConfirmation|provision-confirmation/)
   assert.match(topology, /'not_started', 'planned', 'uploading'/)
   assert.match(declarations, /export interface RoomProvisionOperation/)
   assert.match(declarations, /phase:\s*'not_started'\s*\|\s*'planned'/)

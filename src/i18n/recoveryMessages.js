@@ -1,7 +1,7 @@
 export const recoveryMessages = {
   'zh-CN': {
     recovery: {
-      rooms: { title: '房间回收站', description: '恢复误删房间，或永久清理不再需要的数据。恢复后房间会重新接管。' },
+      rooms: { title: '房间回收站', description: '恢复误删房间，或永久清理不再需要的数据。恢复后房间会自动重新登记。' },
       worlds: { title: '世界回收站', description: '按房间查看已删除世界。恢复世界前，房间内所有分片必须停止。' },
       open: '回收站',
       selectRoom: '选择房间',
@@ -17,15 +17,15 @@ export const recoveryMessages = {
       purgeSucceeded: '已永久清理 {name}',
       purgeFailed: '永久清理失败：{error}',
       purgeTitle: '永久清理回收项',
-      purgeDescription: '此操作无法撤销。请输入完整回收项名称以确认。',
-      confirmation: '完整回收项名称',
-      confirmationMismatch: '回收项名称不一致',
+      purgeDescription: '此操作无法撤销，回收项及其数据将被永久清理。',
+      confirmation: '待清理回收项',
+      confirmationMismatch: '回收项已发生变化，请重新确认',
       deleteLocation: '恢复位置：{path}'
     }
   },
   'en-US': {
     recovery: {
-      rooms: { title: 'Room Recycle Bin', description: 'Restore deleted rooms or permanently remove data you no longer need. Restored rooms are adopted automatically.' },
+      rooms: { title: 'Room Recycle Bin', description: 'Restore deleted rooms or permanently remove data you no longer need. Restored rooms are registered automatically.' },
       worlds: { title: 'World Recycle Bin', description: 'Inspect deleted worlds by room. Every shard in the room must be stopped before restoring a world.' },
       open: 'Recycle Bin',
       selectRoom: 'Room',
@@ -41,9 +41,9 @@ export const recoveryMessages = {
       purgeSucceeded: 'Permanently deleted {name}',
       purgeFailed: 'Permanent deletion failed: {error}',
       purgeTitle: 'Permanently Delete Recovery Item',
-      purgeDescription: 'This action cannot be undone. Enter the complete recovery item name to confirm.',
-      confirmation: 'Complete recovery item name',
-      confirmationMismatch: 'Recovery item name does not match',
+      purgeDescription: 'This cannot be undone. The recovery item and its data will be permanently deleted.',
+      confirmation: 'Recovery item to delete',
+      confirmationMismatch: 'The recovery item changed. Review it again.',
       deleteLocation: 'Recovery location: {path}'
     }
   }

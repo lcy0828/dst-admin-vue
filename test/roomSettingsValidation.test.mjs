@@ -98,4 +98,7 @@ test('room setting descriptions and constraints stay aligned across locales', ()
       }
     }
   }
+
+  assert.match(roomsMessages['zh-CN'].rooms.settings.fields.cluster_language.description, /模组.*重启/)
+  assert.match(roomsMessages['en-US'].rooms.settings.fields.cluster_language.description, /mods.*Restart/i)
 })

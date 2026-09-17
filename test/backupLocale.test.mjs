@@ -59,7 +59,7 @@ test('backup catalogs distinguish save triggers from automatic system snapshots'
   const en = backupMessages['en-US'].backups
 
   assert.equal(zh.tabs.saveBackups, '存档备份')
-  assert.equal(zh.tabs.systemSnapshots, '系统快照')
+  assert.equal(zh.tabs.systemSnapshots, '操作前备份')
   assert.equal(zh.catalog.sources.manual, '手动备份')
   assert.equal(zh.catalog.sources.snapshot, '定时备份')
   assert.equal(zh.catalog.sources.protection, '系统自动')

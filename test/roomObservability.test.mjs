@@ -12,7 +12,7 @@ test('room diagnostics aggregate placement-aware logs without hiding partial fai
   ])
 
   assert.match(api, /roomSnapshot:[\s\S]*?\/rooms\/\$\{encode\(roomId\)\}\/logs[\s\S]*?runtimeTarget:\s*false/)
-  assert.match(diagnostics, /<RoomLogOverviewPanel :room-id="selectedRoomId"/)
+  assert.match(diagnostics, /<RoomLogOverviewPanel[\s\S]*?:room-id="selectedRoomId"[\s\S]*?embedded/)
   assert.match(panel, /worldLogsV2API\.roomSnapshot/)
   assert.match(panel, /snapshot\?\.partial/)
   assert.match(panel, /world\.problem/)
@@ -36,8 +36,9 @@ test('player adapter and surfaces expose sampling freshness and shard presence c
   assert.match(adapter, /field_states:\s*player\.fields \|\| \{\}/)
   assert.match(list, /player\.presence_conflict/)
   assert.match(list, /player\.observed_world_ids\.join/)
-  assert.match(list, /player\.last_refreshed_at/)
-  assert.match(list, /player\.status === 'stale'/)
+  assert.match(list, /playerListPresenceTime\(player\)/)
+  assert.match(list, /currentPlayer\.last_refreshed_at/)
+  assert.match(list, /currentPlayer\.status === 'stale'/)
   assert.match(list, /players\.detail\.staleDescription/)
 })
 
@@ -45,13 +46,45 @@ test('room diagnostics keep world-state aggregation on the control plane', async
   const [api, diagnostics, panel] = await Promise.all([
     source('src/api/v2.js'),
     source('src/views/rooms/RoomDiagnostics.vue'),
-    source('src/components/runtime/RoomWorldStatePanel.vue')
+    source('src/components/runtime/RuntimeOverviewPanel.vue')
   ])
 
   assert.match(api, /worldStatesV2API[\s\S]*?world-states[\s\S]*?runtimeTarget:\s*false/)
+  assert.match(api, /refreshWorld:[\s\S]*?actions\/refresh[\s\S]*?runtimeTarget:\s*false/)
   assert.match(api, /playersV2API[\s\S]*?runtimeTarget:\s*false/)
-  assert.match(diagnostics, /<RoomWorldStatePanel :room-id="selectedRoomId"/)
+  assert.match(diagnostics, /<RuntimeOverviewPanel/)
+  assert.doesNotMatch(diagnostics, /<RoomWorldStatePanel/)
   assert.match(panel, /WorldDataFreshnessBadge/)
   assert.match(panel, /worldStatesV2API\.list/)
+  assert.match(panel, /Promise\.allSettled/)
   assert.match(panel, /validObservedAt/)
+})
+
+test('runtime management is scoped to the selected room diagnostics view', async () => {
+  const [players, diagnostics, panel] = await Promise.all([
+    source('src/views/players/PlayerList.vue'),
+    source('src/views/rooms/RoomDiagnostics.vue'),
+    source('src/components/runtime/RuntimeStatusPanel.vue')
+  ])
+
+  assert.doesNotMatch(players, /<RuntimeStatusPanel/)
+  assert.match(players, /openRoomDiagnostics\(\)/)
+  assert.match(players, /this\.partialFailures\[0\]\?\.room_id/)
+  assert.match(players, /path: '\/rooms\/diagnostics'/)
+  assert.match(diagnostics, /<TabsTrigger value="runtime">/)
+  assert.match(diagnostics, /<RuntimeStatusPanel[\s\S]*?:room-id="selectedRoomId"/)
+  assert.match(diagnostics, /runtimeStatusPanel\.value\?\.loadStatus\(\)/)
+  assert.match(panel, /defineProps\([\s\S]*?roomId/)
+  assert.match(panel, /String\(room\.id\) === String\(props\.roomId\)/)
+  assert.match(panel, /defineExpose\(\{ loadStatus \}\)/)
+})
+
+test('legacy running-log route redirects to room diagnostics and stays out of navigation', async () => {
+  const [router, navigation] = await Promise.all([
+    source('src/router/index.js'),
+    source('src/v2/navigation.js')
+  ])
+
+  assert.match(router, /path: 'parser',[\s\S]*?redirect:[\s\S]*?path: '\/rooms\/diagnostics'[\s\S]*?hidden: true/)
+  assert.doesNotMatch(navigation, /to: '\/logs\/parser'/)
 })

@@ -62,6 +62,29 @@ test('Kubernetes Provider state is visible in infrastructure and node views with
   assert.doesNotMatch(panel, /kubernetesRuntimeV2API\.(?:apply|start|stop)/)
 })
 
+test('advertised addresses are editable from player connection while machine management keeps advanced network settings', async () => {
+  const [agents, topology, workspace] = await Promise.all([
+    source('src/views/agents/AgentList.vue'),
+    source('src/views/rooms/RoomTopology.vue'),
+    source('src/views/servers/ServerWorkspace.vue')
+  ])
+  assert.match(agents, /<RuntimeInfrastructurePanel[\s\S]*network-only/)
+  assert.match(workspace, /v-model="connectionAddressDraft"/)
+  assert.match(workspace, /detectNetworkProfileEgress/)
+  assert.match(workspace, /updateNetworkProfile/)
+  assert.doesNotMatch(workspace, /openMachineConnections/)
+  assert.doesNotMatch(topology, /<RuntimeOverviewPanel/)
+  assert.match(topology, /:show-environment-overview="false"/)
+})
+
+test('runtime overview exposes stopped Shards as a neutral state', async () => {
+  const panel = await source('src/components/runtime/RuntimeOverviewPanel.vue')
+  assert.match(panel, /shard\.runtime\?\.state === 'stopped'/)
+  assert.match(panel, /distributed\.diagnostics\.stoppedRuntime/)
+  assert.match(panel, /distributed\.diagnostics\.stoppedDiagnostic/)
+  assert.match(panel, /runningWorlds > 0 && !overview\.remoteExecutionReady/)
+})
+
 test('runtime overview delegates resumable streams to the shared manager', async () => {
   const panel = await source('src/components/runtime/RuntimeOverviewPanel.vue')
   assert.match(panel, /createRuntimeEventStreamManager/)
@@ -195,19 +218,26 @@ test('central diagnostics route and placement-aware APIs bypass the manual targe
   assert.match(api, /captureDiagnostic:[\s\S]*runtimeTarget:\s*false/)
   assert.match(view, /<RuntimeOverviewPanel/)
   assert.match(view, /<RuntimeDiagnosticsPanel/)
+  assert.match(view, /v-if="activeSection === 'events'"/)
+  assert.match(view, /:unmount-on-hide="true"/)
   assert.match(view, /roomsV2API\.controlPlaneList/)
 })
 
-test('formal layout keeps remote selection in topology instead of switching the whole application', async () => {
-  const [layout, topology] = await Promise.all([
+test('formal layout switches the active application page by management scope while keeping room placement local', async () => {
+  const [layout, topology, editor] = await Promise.all([
     source('src/layouts/MainLayoutV2.vue'),
-    source('src/views/rooms/RoomTopology.vue')
+    source('src/views/rooms/RoomTopology.vue'),
+    source('src/components/rooms/RoomPlacementCard.vue')
   ])
   assert.doesNotMatch(layout, /RuntimeTargetSelectV2|remoteContextBlocked|RUNTIME_TARGET_CHANGED_EVENT/)
-  assert.match(layout, /setActiveRuntimeTarget\(\)/)
-  assert.match(layout, /<RouterView\s*\/>/)
-  assert.match(topology, /draftPlacements\[placement\.worldId\]/)
-  assert.match(topology, /topologyV2API\.applyPlacement/)
+  assert.doesNotMatch(layout, /setActiveRuntimeTarget|getActiveRuntimeTarget/)
+  assert.match(layout, /<ManagementScopeSwitch/)
+  assert.match(layout, /MANAGEMENT_SCOPE_CHANGED_EVENT/)
+  assert.match(layout, /<RouterView :key="`\$\{\['\/mods', '\/dashboard'\]\.includes\(route\.path\) \? route\.path : route\.fullPath\}:\$\{route\.path === '\/dashboard' \? '' : managementScopeRevision\}`" \/>/)
+  assert.match(topology, /<RoomPlacementCard/)
+  assert.doesNotMatch(topology, /draftPlacements\[placement\.worldId\]/)
+  assert.match(editor, /draft\.worldTargets\[String\(placement\.worldId\)\]/)
+  assert.match(editor, /topologyV2API\.applyPlacement/)
 })
 
 test('distributed capability manifest and declarations cover the implemented contracts', async () => {
@@ -243,13 +273,16 @@ test('distributed capability manifest and declarations cover the implemented con
 })
 
 test('topology exposes confirmed migration and typed resource forms', async () => {
-  const [topology, infrastructure] = await Promise.all([
+  const [topology, editor, infrastructure] = await Promise.all([
     source('src/views/rooms/RoomTopology.vue'),
+    source('src/components/rooms/RoomPlacementCard.vue'),
     source('src/components/runtime/RuntimeInfrastructurePanel.vue')
   ])
-  assert.match(topology, /topologyV2API\.applyPlacement/)
-  assert.match(topology, /waitForV2Job/)
-  assert.match(topology, /migrationConfirmation !== selectedRoom\?\.name/)
+  assert.match(topology, /<RoomPlacementCard/)
+  assert.match(editor, /topologyV2API\.applyPlacement/)
+  assert.match(editor, /waitForV2Job/)
+  assert.match(editor, /confirmation:\s*roomNameForConfirmation\.value/)
+  assert.doesNotMatch(`${topology}\n${editor}`, /migrationConfirmation|migration-confirmation/)
   assert.match(infrastructure, /topologyV2API\.updateNetworkProfile/)
   assert.match(infrastructure, /topologyV2API\.updateCPUAllocation/)
   assert.match(infrastructure, /<FieldGroup>/)
@@ -276,7 +309,8 @@ test('backup UI waits for coordinated create and restore jobs', async () => {
   assert.match(panel, /backupSetsV2API\.operations/)
   assert.match(panel, /backupSetsV2API\.recoverOperation/)
   assert.match(panel, /waitForV2Job/)
-  assert.match(panel, /restoreConfirmation !== selectedSet\?\.roomName/)
+  assert.match(panel, /const confirmation = selectedSet\.value\.roomName/)
+  assert.doesNotMatch(panel, /restoreConfirmation|distributed-backup-confirmation/)
   assert.match(panel, /roomsV2API\.controlPlaneList/)
   assert.match(panel, /recovery_required/)
   assert.match(panel, /protectionSetId/)

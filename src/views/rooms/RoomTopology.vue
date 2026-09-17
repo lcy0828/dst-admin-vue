@@ -2,58 +2,18 @@
   <div class="flex min-w-0 flex-col gap-5">
     <header class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
       <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <h1 class="text-2xl font-semibold tracking-normal">{{ t('topology.title') }}</h1>
-          <Badge variant="outline">{{ t('topology.planningBadge') }}</Badge>
-        </div>
-        <p class="mt-1 text-sm text-muted-foreground">{{ t('topology.subtitle') }}</p>
+        <h1 class="text-2xl font-semibold tracking-normal">{{ t('topology.title') }}</h1>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <UiButton variant="outline" :disabled="loadingRooms || rooms.length === 0" @click="openBatchDialog">
-          <ListChecks data-icon="inline-start" />
-          {{ t('topology.batch.open') }}
-        </UiButton>
-        <UiButton variant="outline" :disabled="loading || provisionRunning || !selectedRoomId" @click="loadTopology">
+        <UiButton variant="outline" :disabled="loading || !selectedRoomId" @click="loadTopology">
           <Spinner v-if="loading" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
           {{ t('common.actions.refresh') }}
         </UiButton>
-        <UiButton variant="outline" :disabled="!canSubmit || previewing" @click="previewPlan">
-          <Spinner v-if="previewing" data-icon="inline-start" />
-          <ScanSearch v-else data-icon="inline-start" />
-          {{ previewing ? t('topology.actions.previewing') : t('topology.actions.preview') }}
-        </UiButton>
-        <UiButton :disabled="!canSubmit || saving" @click="savePlan">
-          <Spinner v-if="saving" data-icon="inline-start" />
-          <Save v-else data-icon="inline-start" />
-          {{ saving ? t('topology.actions.saving') : t('topology.actions.save') }}
-        </UiButton>
       </div>
     </header>
 
-    <FieldGroup class="max-w-sm">
-      <Field>
-        <FieldLabel for="topology-room">{{ t('topology.room') }}</FieldLabel>
-        <UiSelect :model-value="selectedRoomId" :disabled="loadingRooms" @update:model-value="selectRoom">
-          <SelectTrigger id="topology-room">
-            <SelectValue :placeholder="loadingRooms ? t('topology.loadingRooms') : t('topology.selectRoom')" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem v-for="room in rooms" :key="room.id" :value="String(room.id)">
-                {{ room.name }}
-              </SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </UiSelect>
-      </Field>
-    </FieldGroup>
-
-    <Alert>
-      <Cpu />
-      <AlertTitle>{{ t('topology.policy.title') }}</AlertTitle>
-      <AlertDescription>{{ t('topology.policy.description') }}</AlertDescription>
-    </Alert>
+    <RoomScopeSelect :model-value="selectedRoomId" :rooms="rooms" :loading="loadingRooms" @update:model-value="selectRoom" />
 
     <Alert v-if="roomsError" variant="destructive">
       <CircleAlert />
@@ -87,226 +47,194 @@
     </Empty>
 
     <template v-else-if="displaySnapshot">
-      <Alert>
-        <Info />
-        <AlertTitle>{{ t('topology.planning.title') }}</AlertTitle>
-        <AlertDescription>{{ t('topology.planning.description') }}</AlertDescription>
+      <Alert v-if="resourceConflicts.length" variant="destructive">
+        <CircleAlert />
+        <AlertTitle>{{ t('topology.risks.conflictTitle', { count: resourceConflicts.length }) }}</AlertTitle>
+        <AlertDescription>{{ t('topology.risks.conflictDescription') }}</AlertDescription>
+        <AlertAction>
+          <UiButton size="sm" variant="outline" @click="advancedOpen = true">{{ t('topology.advanced.viewDetails') }}</UiButton>
+        </AlertAction>
       </Alert>
 
-      <RuntimeOverviewPanel :room-id="selectedRoomId" />
+      <Alert v-else-if="resourceAdvisories.length">
+        <TriangleAlert />
+        <AlertTitle>{{ t('topology.risks.overlapTitle', { count: resourceAdvisoryPorts.length }) }}</AlertTitle>
+        <AlertDescription>{{ t('topology.risks.overlapDescription') }}</AlertDescription>
+        <AlertAction>
+          <UiButton size="sm" variant="outline" @click="advancedOpen = true">{{ t('topology.advanced.viewDetails') }}</UiButton>
+        </AlertAction>
+      </Alert>
 
-      <section class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-capacity-title">
-        <div>
-          <h2 id="topology-capacity-title" class="text-base font-semibold">{{ t('topology.capacity.title') }}</h2>
-          <p class="mt-0.5 text-sm text-muted-foreground">{{ t('topology.capacity.description') }}</p>
-        </div>
-        <div class="overflow-hidden rounded-lg border">
-          <UiTable class="min-w-[1080px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>{{ t('topology.capacity.columns.target') }}</TableHead>
-                <TableHead>{{ t('topology.capacity.columns.status') }}</TableHead>
-                <TableHead class="text-right">{{ t('topology.capacity.columns.observed') }}</TableHead>
-                <TableHead class="text-right">{{ t('topology.capacity.columns.unmanaged') }}</TableHead>
-                <TableHead class="text-right">{{ t('topology.capacity.columns.planned') }}</TableHead>
-                <TableHead class="text-right">{{ t('topology.capacity.columns.projected') }}</TableHead>
-                <TableHead>{{ t('topology.capacity.columns.budget') }}</TableHead>
-                <TableHead>{{ t('topology.capacity.columns.observedAt') }}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="target in displaySnapshot.targets" :key="target.id">
-                <TableCell>
-                  <div class="min-w-48">
-                    <div class="flex flex-wrap items-center gap-1.5">
-                      <span class="font-medium">{{ target.name || target.id }}</span>
-                      <Badge v-if="target.kind === 'local'" variant="outline">{{ t('topology.target.local') }}</Badge>
-                    </div>
-                    <div class="mt-1 font-mono text-xs text-muted-foreground">{{ target.id }}</div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div class="flex min-w-32 flex-col items-start gap-1.5">
-                    <Badge :variant="target.online ? 'secondary' : 'destructive'">{{ target.online ? t('topology.target.online') : t('topology.target.offline') }}</Badge>
-                    <Badge :variant="freshnessVariant(target)">{{ freshnessLabel(target) }}</Badge>
-                  </div>
-                </TableCell>
-                <TableCell class="text-right font-medium tabular-nums">{{ target.observedRunningShards }}</TableCell>
-                <TableCell class="text-right tabular-nums">{{ target.unmanagedRunningShards }}</TableCell>
-                <TableCell class="text-right tabular-nums">{{ target.plannedShards }}</TableCell>
-                <TableCell class="text-right font-medium tabular-nums">{{ target.projectedShards }}</TableCell>
-                <TableCell>
-                  <div class="flex min-w-56 flex-col gap-1">
-                    <div class="flex flex-wrap items-center gap-1.5">
-                      <span class="font-medium tabular-nums">{{ capacityValue(target) }}</span>
-                      <Badge :variant="capacityVariant(target.projectedCapacity?.state)">{{ capacityStateLabel(target.projectedCapacity?.state) }}</Badge>
-                    </div>
-                    <span class="text-xs text-muted-foreground">{{ physicalCoreLabel(target) }} · {{ t('topology.capacity.logical', { count: target.projectedCapacity?.logicalProcessors || 0 }) }}</span>
-                    <span class="text-xs text-muted-foreground">{{ t('topology.capacity.reserve', { count: target.projectedCapacity?.reservedPhysicalCores || 1 }) }}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div class="min-w-40 text-xs text-muted-foreground">{{ formatTime(target.observedAt) }}</div>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </UiTable>
-        </div>
-      </section>
+      <Alert v-else-if="infrastructureError" variant="destructive">
+        <CircleAlert />
+        <AlertTitle>{{ t('topology.risks.checkFailedTitle') }}</AlertTitle>
+        <AlertDescription>{{ infrastructureError }}</AlertDescription>
+      </Alert>
+
+      <Alert v-else-if="displaySnapshot.issues.length" :variant="hasBlockingTopologyIssue ? 'destructive' : 'default'">
+        <CircleAlert v-if="hasBlockingTopologyIssue" />
+        <TriangleAlert v-else />
+        <AlertTitle>{{ t('topology.risks.issueTitle', { count: displaySnapshot.issues.length }) }}</AlertTitle>
+        <AlertDescription>{{ displaySnapshot.issues[0]?.message }}</AlertDescription>
+        <AlertAction>
+          <UiButton size="sm" variant="outline" @click="advancedOpen = true">{{ t('topology.advanced.viewDetails') }}</UiButton>
+        </AlertAction>
+      </Alert>
+
+      <RoomPlacementCard
+        :room-id="selectedRoomId"
+        :room-name="selectedRoom?.name || ''"
+        @updated="loadTopology"
+      />
 
       <section class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-placement-title">
         <div>
           <h2 id="topology-placement-title" class="text-base font-semibold">{{ t('topology.placements.title') }}</h2>
-          <p class="mt-0.5 text-sm text-muted-foreground">{{ t('topology.placements.description') }}</p>
+          <p class="mt-0.5 text-sm text-muted-foreground">{{ t('topology.placements.simpleDescription') }}</p>
         </div>
-        <div class="overflow-hidden rounded-lg border">
-          <UiTable class="min-w-[820px]">
+        <div class="overflow-x-auto rounded-lg border">
+          <UiTable class="min-w-[760px]">
             <TableHeader>
               <TableRow>
                 <TableHead>{{ t('topology.placements.columns.world') }}</TableHead>
-                <TableHead>{{ t('topology.placements.columns.role') }}</TableHead>
-                <TableHead>{{ t('topology.placements.columns.desired') }}</TableHead>
                 <TableHead>{{ t('topology.placements.columns.applied') }}</TableHead>
+                <TableHead>{{ t('topology.placements.columns.desired') }}</TableHead>
                 <TableHead>{{ t('topology.placements.columns.state') }}</TableHead>
-                <TableHead class="text-right">{{ t('common.fields.actions') }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-for="placement in displaySnapshot.placements" :key="placement.worldId">
                 <TableCell>
-                  <div class="min-w-44 font-medium">{{ placement.worldName }}</div>
-                  <div class="mt-1 font-mono text-xs text-muted-foreground">{{ placement.worldId }}</div>
-                </TableCell>
-                <TableCell><Badge variant="outline">{{ roleLabel(placement.worldRole) }}</Badge></TableCell>
-                <TableCell>
-                  <UiSelect v-model="draftPlacements[placement.worldId]" @update:model-value="clearPreview">
-                    <SelectTrigger class="w-64"><SelectValue :placeholder="t('topology.placements.selectTarget')" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem v-for="target in configuredTargets" :key="target.id" :value="target.id">
-                          {{ targetOptionLabel(target) }}
-                        </SelectItem>
-                      </SelectGroup>
-                    </SelectContent>
-                  </UiSelect>
-                </TableCell>
-                <TableCell>
-                  <div class="min-w-44">{{ targetName(placement.appliedTargetId) }}</div>
-                  <div class="mt-1 font-mono text-xs text-muted-foreground">{{ placement.appliedTargetId }}</div>
-                </TableCell>
-                <TableCell><Badge :variant="placementVariant(placement.state)">{{ placementStateLabel(placement.state) }}</Badge></TableCell>
-                <TableCell>
-                  <div class="flex justify-end">
-                    <UiButton
-                      v-if="isProvisionPlacement(placement)"
-                      size="sm"
-                      variant="outline"
-                      :disabled="isDirty || migrationRunning || provisionRunning || !canProvision"
-                      @click="openProvisionDialog"
-                    >
-                      <Upload data-icon="inline-start" />
-                      {{ t('topology.provision.action') }}
-                    </UiButton>
-                    <UiButton
-                      v-else-if="placement.desiredTargetId !== placement.appliedTargetId"
-                      size="sm"
-                      variant="outline"
-                      :disabled="isDirty || migrationRunning || provisionRunning"
-                      @click="openMigrationDialog(placement)"
-                    >
-                      <MoveRight data-icon="inline-start" />
-                      {{ t('topology.migration.action') }}
-                    </UiButton>
-                    <span v-else class="text-sm text-muted-foreground">--</span>
+                  <div class="flex min-w-36 flex-wrap items-center gap-2">
+                    <span class="font-medium">{{ placement.worldName }}</span>
+                    <Badge variant="outline">{{ roleLabel(placement.worldRole) }}</Badge>
                   </div>
                 </TableCell>
+                <TableCell><span class="font-medium">{{ endpointName(placement.appliedTargetId, placement.appliedInstallationId) }}</span></TableCell>
+                <TableCell><span class="font-medium">{{ endpointName(placement.desiredTargetId, placement.desiredInstallationId) }}</span></TableCell>
+                <TableCell><Badge :variant="placementVariant(placement.state)">{{ placementStateLabel(placement.state) }}</Badge></TableCell>
               </TableRow>
             </TableBody>
           </UiTable>
         </div>
       </section>
 
-      <Alert v-if="provisionOperationsError">
-        <CircleAlert />
-        <AlertTitle>{{ t('topology.provision.operationsLoadFailedTitle') }}</AlertTitle>
-        <AlertDescription>{{ provisionOperationsError }}</AlertDescription>
-      </Alert>
+      <div class="flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2">
+        <span class="text-sm font-medium">{{ t('topology.capacity.compactTitle') }}</span>
+        <Badge
+          v-for="target in displaySnapshot.targets"
+          :key="target.id"
+          :variant="capacityVariant(target.projectedCapacity?.state)"
+        >
+          {{ target.name || target.id }} · {{ capacityValue(target) }}
+        </Badge>
+        <span class="text-xs text-muted-foreground">{{ t('topology.capacity.compactHint') }}</span>
+      </div>
 
-      <section v-if="latestProvisionOperation" class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-provision-operation-title">
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <h2 id="topology-provision-operation-title" class="text-base font-semibold">{{ t('topology.provision.operationTitle') }}</h2>
-              <Badge :variant="provisionStatusVariant(latestProvisionOperation.status)">{{ provisionStatusLabel(latestProvisionOperation.status) }}</Badge>
-              <Badge variant="outline">{{ provisionPhaseLabel(latestProvisionOperation.phase) }}</Badge>
-            </div>
-            <p class="mt-0.5 text-sm text-muted-foreground">{{ t('topology.provision.operationDescription', { time: formatTime(latestProvisionOperation.updatedAt) }) }}</p>
-          </div>
-          <UiButton
-            v-if="latestProvisionOperation.status === 'recovery_required'"
-            size="sm"
-            variant="outline"
-            :disabled="provisionRunning || migrationRunning"
-            @click="recoverProvision(latestProvisionOperation)"
-          >
-            <Spinner v-if="recoveringProvisionId === latestProvisionOperation.id" data-icon="inline-start" />
-            <History v-else data-icon="inline-start" />
-            {{ t('topology.provision.recover') }}
+      <Collapsible v-model:open="advancedOpen" class="rounded-lg border">
+        <CollapsibleTrigger as-child>
+          <UiButton variant="ghost" class="h-auto w-full justify-between rounded-lg px-4 py-3">
+            <span class="flex min-w-0 items-center gap-2 text-left">
+              <Settings data-icon="inline-start" />
+              <span>
+                <span class="block font-medium">{{ t('topology.advanced.title') }}</span>
+                <span class="block text-xs font-normal text-muted-foreground">{{ t('topology.advanced.description') }}</span>
+              </span>
+            </span>
+            <ChevronDown data-icon="inline-end" :class="cn({ 'rotate-180': advancedOpen })" />
           </UiButton>
-        </div>
-        <Alert v-if="latestProvisionOperation.failure" :variant="latestProvisionOperation.status === 'recovery_required' || latestProvisionOperation.status === 'failed' ? 'destructive' : 'default'">
-          <TriangleAlert />
-          <AlertTitle>{{ t('topology.provision.operationFailure') }}</AlertTitle>
-          <AlertDescription>{{ latestProvisionOperation.failure }}</AlertDescription>
-        </Alert>
-        <div class="overflow-x-auto rounded-lg border">
-          <UiTable class="min-w-[860px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>{{ t('topology.provision.columns.world') }}</TableHead>
-                <TableHead>{{ t('topology.provision.columns.target') }}</TableHead>
-                <TableHead>{{ t('topology.provision.columns.phase') }}</TableHead>
-                <TableHead>{{ t('topology.provision.columns.size') }}</TableHead>
-                <TableHead>{{ t('topology.provision.columns.updatedAt') }}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="step in latestProvisionOperation.steps || []" :key="step.id">
-                <TableCell><div class="flex min-w-40 flex-col gap-1"><span class="font-medium">{{ step.worldName }}</span><span class="font-mono text-xs text-muted-foreground">{{ step.shard }}</span></div></TableCell>
-                <TableCell><div class="flex min-w-44 flex-col gap-1"><span>{{ targetName(step.targetId) }}</span><span class="font-mono text-xs text-muted-foreground">{{ step.targetId }}</span></div></TableCell>
-                <TableCell><div class="flex min-w-32 flex-col items-start gap-1"><Badge :variant="provisionStepVariant(step.phase)">{{ provisionStepLabel(step.phase) }}</Badge><span v-if="step.failure" class="text-xs text-destructive">{{ step.failure }}</span></div></TableCell>
-                <TableCell class="tabular-nums">{{ formatBytes(step.size) }}</TableCell>
-                <TableCell class="min-w-40 text-xs text-muted-foreground">{{ formatTime(step.updatedAt) }}</TableCell>
-              </TableRow>
-            </TableBody>
-          </UiTable>
-        </div>
-      </section>
+        </CollapsibleTrigger>
+        <CollapsibleContent class="flex min-w-0 flex-col gap-5 border-t p-4">
+          <div class="flex flex-wrap gap-2">
+            <UiButton variant="outline" :disabled="loadingRooms || rooms.length === 0" @click="openBatchDialog">
+              <ListChecks data-icon="inline-start" />
+              {{ t('topology.batch.open') }}
+            </UiButton>
+            <UiButton variant="outline" @click="router.push({ path: '/rooms/diagnostics', query: { roomId: selectedRoomId } })">
+              <Activity data-icon="inline-start" />
+              {{ t('topology.advanced.openDiagnostics') }}
+            </UiButton>
+          </div>
 
-      <RuntimeInfrastructurePanel :room-id="selectedRoomId" :topology-snapshot="topology" />
-
-      <section class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-issues-title">
-        <div>
-          <h2 id="topology-issues-title" class="text-base font-semibold">{{ t('topology.issues.title') }}</h2>
-          <p class="mt-0.5 text-sm text-muted-foreground">{{ t('topology.issues.description') }}</p>
-        </div>
-        <div v-if="displaySnapshot.issues.length" class="flex flex-col gap-2">
-          <Alert v-for="(issue, index) in displaySnapshot.issues" :key="`${issue.code}:${issue.targetId || ''}:${issue.worldId || ''}:${index}`" :variant="issue.severity === 'error' ? 'destructive' : 'default'">
-            <CircleAlert v-if="issue.severity === 'error'" />
-            <TriangleAlert v-else-if="issue.severity === 'warning'" />
-            <Info v-else />
-            <AlertTitle><Badge :variant="issue.severity === 'error' ? 'destructive' : 'outline'">{{ issue.code }}</Badge></AlertTitle>
-            <AlertDescription>{{ issue.message }}</AlertDescription>
+          <Alert>
+            <Cpu />
+            <AlertTitle>{{ t('topology.policy.title') }}</AlertTitle>
+            <AlertDescription>{{ t('topology.policy.description') }}</AlertDescription>
           </Alert>
-        </div>
-        <Empty v-else>
-          <EmptyHeader>
-            <EmptyMedia variant="icon"><CircleCheck /></EmptyMedia>
-            <EmptyTitle>{{ t('topology.issues.emptyTitle') }}</EmptyTitle>
-            <EmptyDescription>{{ t('topology.issues.emptyDescription') }}</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      </section>
+
+          <section class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-capacity-title">
+            <div>
+              <h2 id="topology-capacity-title" class="text-base font-semibold">{{ t('topology.capacity.title') }}</h2>
+              <p class="mt-0.5 text-sm text-muted-foreground">{{ t('topology.capacity.description') }}</p>
+            </div>
+            <div class="overflow-x-auto rounded-lg border">
+              <UiTable class="min-w-[760px]">
+                <TableHeader><TableRow>
+                  <TableHead>{{ t('topology.capacity.columns.target') }}</TableHead>
+                  <TableHead>{{ t('topology.capacity.columns.status') }}</TableHead>
+                  <TableHead class="text-right">{{ t('topology.capacity.columns.observed') }}</TableHead>
+                  <TableHead class="text-right">{{ t('topology.capacity.columns.projected') }}</TableHead>
+                  <TableHead>{{ t('topology.capacity.columns.budget') }}</TableHead>
+                </TableRow></TableHeader>
+                <TableBody><TableRow v-for="target in displaySnapshot.targets" :key="target.id">
+                  <TableCell><div class="font-medium">{{ target.name || target.id }}</div><div class="mt-1 font-mono text-xs text-muted-foreground">{{ target.id }}</div></TableCell>
+                  <TableCell><div class="flex flex-wrap gap-1.5"><Badge :variant="target.online ? 'secondary' : 'destructive'">{{ target.online ? t('topology.target.online') : t('topology.target.offline') }}</Badge><Badge :variant="freshnessVariant(target)">{{ freshnessLabel(target) }}</Badge></div></TableCell>
+                  <TableCell class="text-right tabular-nums">{{ target.observedRunningShards }}</TableCell>
+                  <TableCell class="text-right font-medium tabular-nums">{{ target.projectedShards }}</TableCell>
+                  <TableCell><div class="flex min-w-48 flex-col gap-1"><span>{{ capacityValue(target) }} · {{ capacityStateLabel(target.projectedCapacity?.state) }}</span><span class="text-xs text-muted-foreground">{{ physicalCoreLabel(target) }}</span></div></TableCell>
+                </TableRow></TableBody>
+              </UiTable>
+            </div>
+          </section>
+
+          <RuntimeInfrastructurePanel
+            :room-id="selectedRoomId"
+            :topology-snapshot="topology"
+            :show-kubernetes="false"
+            :show-preflight="false"
+            :show-environment-overview="false"
+          />
+
+          <section v-if="latestProvisionOperation || provisionOperationsError" class="flex min-w-0 flex-col gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-base font-semibold">{{ t('topology.provision.operationTitle') }}</h2>
+              <Badge v-if="latestProvisionOperation" :variant="provisionStatusVariant(latestProvisionOperation.status)">{{ provisionStatusLabel(latestProvisionOperation.status) }}</Badge>
+              <Badge v-if="latestProvisionOperation" variant="outline">{{ provisionPhaseLabel(latestProvisionOperation.phase) }}</Badge>
+            </div>
+            <Alert v-if="provisionOperationsError" variant="destructive"><CircleAlert /><AlertTitle>{{ t('topology.provision.operationsLoadFailedTitle') }}</AlertTitle><AlertDescription>{{ provisionOperationsError }}</AlertDescription></Alert>
+            <Alert v-else-if="latestProvisionOperation?.failure" variant="destructive"><TriangleAlert /><AlertTitle>{{ t('topology.provision.operationFailure') }}</AlertTitle><AlertDescription>{{ latestProvisionOperation.failure }}</AlertDescription></Alert>
+            <div v-if="latestProvisionOperation" class="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+              <span>{{ t('topology.provision.operationDescription', { time: formatTime(latestProvisionOperation.updatedAt) }) }}</span>
+              <UiButton v-if="latestProvisionOperation.status === 'recovery_required'" size="sm" variant="outline" :disabled="Boolean(recoveringProvisionId)" @click="recoverProvision(latestProvisionOperation)"><Spinner v-if="recoveringProvisionId === latestProvisionOperation.id" data-icon="inline-start" /><History v-else data-icon="inline-start" />{{ t('topology.provision.recover') }}</UiButton>
+            </div>
+            <div v-if="latestProvisionOperation?.steps?.length" class="overflow-x-auto rounded-lg border">
+              <UiTable class="min-w-[720px]">
+                <TableHeader><TableRow><TableHead>{{ t('topology.provision.columns.world') }}</TableHead><TableHead>{{ t('topology.provision.columns.target') }}</TableHead><TableHead>{{ t('topology.provision.columns.phase') }}</TableHead><TableHead>{{ t('topology.provision.columns.size') }}</TableHead></TableRow></TableHeader>
+                <TableBody><TableRow v-for="step in latestProvisionOperation.steps" :key="step.id">
+                  <TableCell><span class="font-medium">{{ step.worldName }}</span></TableCell>
+                  <TableCell>{{ endpointName(step.targetId, step.installationId) }}</TableCell>
+                  <TableCell><div class="flex min-w-32 flex-col items-start gap-1"><Badge :variant="provisionStepVariant(step.phase)">{{ provisionStepLabel(step.phase) }}</Badge><span v-if="step.failure" class="text-xs text-destructive">{{ step.failure }}</span></div></TableCell>
+                  <TableCell class="tabular-nums">{{ formatBytes(step.size) }}</TableCell>
+                </TableRow></TableBody>
+              </UiTable>
+            </div>
+          </section>
+
+          <section v-if="resourceConflicts.length || resourceAdvisories.length || displaySnapshot.issues.length" class="flex min-w-0 flex-col gap-3" aria-labelledby="topology-issues-title">
+            <div><h2 id="topology-issues-title" class="text-base font-semibold">{{ t('topology.issues.title') }}</h2><p class="mt-0.5 text-sm text-muted-foreground">{{ t('topology.issues.description') }}</p></div>
+            <Alert v-for="(conflict, index) in resourceConflicts" :key="`resource:${conflict.code}:${index}`" variant="destructive"><CircleAlert /><AlertTitle>{{ conflict.code }}</AlertTitle><AlertDescription>{{ conflict.message }}</AlertDescription></Alert>
+            <Alert v-if="resourceAdvisories.length">
+              <TriangleAlert />
+              <AlertTitle>{{ t('topology.risks.overlapTitle', { count: resourceAdvisoryPorts.length }) }}</AlertTitle>
+              <AlertDescription class="flex flex-col gap-1">
+                <span>{{ t('topology.risks.overlapDescription') }}</span>
+                <span v-if="resourceAdvisoryPorts.length" class="font-mono text-xs">{{ t('topology.risks.overlapPorts', { ports: resourceAdvisoryPorts.join(', ') }) }}</span>
+              </AlertDescription>
+            </Alert>
+            <Alert v-for="(issue, index) in displaySnapshot.issues" :key="`${issue.code}:${index}`" :variant="issue.severity === 'error' ? 'destructive' : 'default'"><CircleAlert v-if="issue.severity === 'error'" /><TriangleAlert v-else /><AlertTitle>{{ issue.code }}</AlertTitle><AlertDescription>{{ issue.message }}</AlertDescription></Alert>
+          </section>
+        </CollapsibleContent>
+      </Collapsible>
     </template>
 
     <Dialog :open="batchOpen" @update:open="handleBatchOpenChange">
@@ -393,7 +321,7 @@
                   <FieldContent>
                     <FieldLabel :for="`batch-${room.id}-${world.id}`" class="min-w-0 font-normal">
                       <span class="truncate">{{ world.name }}</span>
-                      <Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world.status, t) }}</Badge>
+                      <Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world, t) }}</Badge>
                     </FieldLabel>
                     <FieldDescription>{{ t('topology.batch.runtimeTarget', { name: world.runtimeTargetName || '--' }) }}</FieldDescription>
                   </FieldContent>
@@ -430,117 +358,29 @@
       </DialogScrollContent>
     </Dialog>
 
-    <Dialog v-model:open="migrationDialogOpen">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{{ t('topology.migration.title', { world: migrationPlacement?.worldName || '--' }) }}</DialogTitle>
-          <DialogDescription>{{ t('topology.migration.description') }}</DialogDescription>
-        </DialogHeader>
-        <Alert>
-          <TriangleAlert />
-          <AlertTitle>{{ t('topology.migration.stoppedTitle') }}</AlertTitle>
-          <AlertDescription>{{ t('topology.migration.stoppedDescription') }}</AlertDescription>
-        </Alert>
-        <dl class="grid gap-3 text-sm sm:grid-cols-2">
-          <div><dt class="text-muted-foreground">{{ t('topology.migration.source') }}</dt><dd class="mt-1 font-medium">{{ targetName(migrationPlacement?.appliedTargetId) }}</dd></div>
-          <div><dt class="text-muted-foreground">{{ t('topology.migration.target') }}</dt><dd class="mt-1 font-medium">{{ targetName(migrationPlacement?.desiredTargetId) }}</dd></div>
-        </dl>
-        <FieldGroup>
-          <Field :data-invalid="Boolean(migrationConfirmation) && migrationConfirmation !== selectedRoom?.name">
-            <FieldLabel for="migration-confirmation">{{ t('topology.migration.confirmation') }}</FieldLabel>
-            <UiInput id="migration-confirmation" v-model="migrationConfirmation" autocomplete="off" :placeholder="selectedRoom?.name || ''" :aria-invalid="Boolean(migrationConfirmation) && migrationConfirmation !== selectedRoom?.name" />
-            <FieldDescription>{{ t('topology.migration.confirmationDescription', { room: selectedRoom?.name || '--' }) }}</FieldDescription>
-          </Field>
-        </FieldGroup>
-        <DialogFooter>
-          <UiButton variant="outline" :disabled="migrationRunning" @click="migrationDialogOpen = false">{{ t('common.actions.cancel') }}</UiButton>
-          <UiButton :disabled="migrationRunning || migrationConfirmation !== selectedRoom?.name" @click="applyMigration">
-            <Spinner v-if="migrationRunning" data-icon="inline-start" />
-            <MoveRight v-else data-icon="inline-start" />
-            {{ t('topology.migration.confirm') }}
-          </UiButton>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    <Dialog v-model:open="provisionDialogOpen">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{{ t('topology.provision.title') }}</DialogTitle>
-          <DialogDescription>{{ t('topology.provision.description', { count: provisionablePlacements.length }) }}</DialogDescription>
-        </DialogHeader>
-        <Alert>
-          <Upload />
-          <AlertTitle>{{ t('topology.provision.scopeTitle') }}</AlertTitle>
-          <AlertDescription>{{ t('topology.provision.scopeDescription') }}</AlertDescription>
-        </Alert>
-        <Alert>
-          <TriangleAlert />
-          <AlertTitle>{{ t('topology.provision.stoppedTitle') }}</AlertTitle>
-          <AlertDescription>{{ t('topology.provision.stoppedDescription') }}</AlertDescription>
-        </Alert>
-        <FieldGroup>
-          <Field :data-invalid="Boolean(provisionConfirmation) && provisionConfirmation !== selectedRoom?.name">
-            <FieldLabel for="provision-confirmation">{{ t('topology.provision.confirmation') }}</FieldLabel>
-            <UiInput id="provision-confirmation" v-model="provisionConfirmation" autocomplete="off" :placeholder="selectedRoom?.name || ''" :aria-invalid="Boolean(provisionConfirmation) && provisionConfirmation !== selectedRoom?.name" />
-            <FieldDescription>{{ t('topology.provision.confirmationDescription', { room: selectedRoom?.name || '--' }) }}</FieldDescription>
-          </Field>
-        </FieldGroup>
-        <DialogFooter>
-          <UiButton variant="outline" :disabled="provisionRunning" @click="provisionDialogOpen = false">{{ t('common.actions.cancel') }}</UiButton>
-          <UiButton :disabled="provisionRunning || provisionConfirmation !== selectedRoom?.name || !canProvision" @click="provisionRoom">
-            <Spinner v-if="provisionRunning" data-icon="inline-start" />
-            <Upload v-else data-icon="inline-start" />
-            {{ t('topology.provision.confirm') }}
-          </UiButton>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
-    <AlertDialog v-model:open="overcommitOpen">
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{{ t('topology.overcommit.title') }}</AlertDialogTitle>
-          <AlertDialogDescription>{{ t('topology.overcommit.description') }}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel :disabled="saving">{{ t('topology.overcommit.cancel') }}</AlertDialogCancel>
-          <AlertDialogAction :disabled="saving" @click="confirmOvercommit">
-            <Spinner v-if="saving" data-icon="inline-start" />
-            {{ t('topology.overcommit.confirm') }}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { CircleAlert, CircleCheck, Cpu, History, Info, ListChecks, MoveRight, Network, Play, RefreshCw, RotateCw, Save, ScanSearch, Square, TriangleAlert, Upload } from '@lucide/vue'
+import { Activity, ChevronDown, CircleAlert, CircleCheck, Cpu, History, ListChecks, Network, Play, RefreshCw, RotateCw, Save, Settings, Square, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import { topologyV2API } from '@/api/v2'
+import { runtimeObservationsV2API, topologyV2API } from '@/api/v2'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import { runtimeEndpointLabel } from '@/lib/roomPlacement.mjs'
+import { cn } from '@/lib/utils'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
-} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -549,14 +389,12 @@ import {
 } from '@/components/ui/dialog'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
-import { Input as UiInput } from '@/components/ui/input'
-import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import RoomPlacementCard from '@/components/rooms/RoomPlacementCard.vue'
 import RuntimeInfrastructurePanel from '@/components/runtime/RuntimeInfrastructurePanel.vue'
-import RuntimeOverviewPanel from '@/components/runtime/RuntimeOverviewPanel.vue'
 import { executeWithCapacityConfirmation, isCapacityRiskCanceled } from '@/lib/startCapacityRisk'
 import { attachBatchWorldTargets, selectedBatchRooms, unsuccessfulBatchSelection } from '@/lib/batchRoomActions.mjs'
 import {
@@ -566,33 +404,26 @@ import {
   worldStatusLabel,
   worldStatusVariant
 } from '@/lib/worldRuntimeStatus.mjs'
+import { RUNTIME_OBSERVATION_UPDATED_EVENT } from '@/lib/runtimeObservationStreams.mjs'
+import { useRuntimeObservation } from '@/composables/useRuntimeObservation'
 
 const { locale, t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+useRuntimeObservation()
 
 const rooms = ref([])
 const selectedRoomId = ref('')
 const topology = ref(null)
-const preview = ref(null)
-const draftPlacements = ref({})
+const infrastructureSnapshot = ref(null)
 const roomsError = ref('')
 const topologyError = ref('')
+const infrastructureError = ref('')
 const loadingRooms = ref(false)
 const loading = ref(false)
-const previewing = ref(false)
-const saving = ref(false)
-const migrationDialogOpen = ref(false)
-const migrationPlacement = ref(null)
-const migrationConfirmation = ref('')
-const migrationRunning = ref(false)
-const provisionDialogOpen = ref(false)
-const provisionConfirmation = ref('')
-const provisionRunning = ref(false)
 const provisionOperations = ref([])
 const provisionOperationsError = ref('')
 const recoveringProvisionId = ref('')
-const overcommitOpen = ref(false)
 const batchOpen = ref(false)
 const batchLoadingRooms = ref(false)
 const batchSubmitting = ref(false)
@@ -601,32 +432,16 @@ const batchAction = ref('start')
 const batchRooms = ref([])
 const batchSelection = ref({})
 const batchResult = ref(null)
+const advancedOpen = ref(false)
 let requestSequence = 0
 let roomRequestSequence = 0
-let previewRequestSequence = 0
 
-const displaySnapshot = computed(() => preview.value || topology.value)
-const configuredTargets = computed(() => (topology.value?.targets || []).filter(target => target.configured))
+const displaySnapshot = computed(() => topology.value)
+const resourceConflicts = computed(() => infrastructureSnapshot.value?.preflight?.conflicts || [])
+const resourceAdvisories = computed(() => infrastructureSnapshot.value?.preflight?.advisories || [])
+const resourceAdvisoryPorts = computed(() => [...new Set(resourceAdvisories.value.map(item => Number(item.port)).filter(Boolean))].sort((left, right) => left - right))
+const hasBlockingTopologyIssue = computed(() => (displaySnapshot.value?.issues || []).some(issue => issue.severity === 'error'))
 const selectedRoom = computed(() => rooms.value.find(room => String(room.id) === selectedRoomId.value))
-const isDirty = computed(() => {
-  if (!topology.value) return false
-  return topology.value.placements.some(placement => draftPlacements.value[placement.worldId] !== placement.desiredTargetId)
-})
-const completeDraft = computed(() => {
-  if (!topology.value?.placements?.length) return false
-  return topology.value.placements.every(placement => Boolean(draftPlacements.value[placement.worldId]))
-})
-const canSubmit = computed(() => isDirty.value && completeDraft.value && !loading.value && !previewing.value && !saving.value)
-const pendingPlacements = computed(() => (topology.value?.placements || []).filter(placement => placement.desiredTargetId !== placement.appliedTargetId))
-const provisionablePlacements = computed(() => pendingPlacements.value.filter(isProvisionPlacement))
-const canProvision = computed(() => (
-  !isDirty.value &&
-  pendingPlacements.value.length > 0 &&
-  pendingPlacements.value.length === provisionablePlacements.value.length &&
-  !loading.value &&
-  !migrationRunning.value &&
-  !provisionRunning.value
-))
 const latestProvisionOperation = computed(() => provisionOperations.value[0] || null)
 const selectedBatchRoomCount = computed(() => batchRooms.value.filter(room => selectedBatchWorlds(room).length > 0).length)
 const selectedBatchWorldCount = computed(() => batchRooms.value.reduce((count, room) => count + selectedBatchWorlds(room).length, 0))
@@ -640,19 +455,6 @@ const batchResultTitle = computed(() => {
 
 function setTopology(value) {
   topology.value = value
-  preview.value = null
-  draftPlacements.value = Object.fromEntries((value?.placements || []).map(placement => [placement.worldId, placement.desiredTargetId]))
-}
-
-function placementInput(allowOvercommit = false) {
-  return {
-    expectedRevision: topology.value.revision,
-    allowOvercommit,
-    placements: topology.value.placements.map(placement => ({
-      worldId: placement.worldId,
-      targetId: draftPlacements.value[placement.worldId]
-    }))
-  }
 }
 
 function selectRoom(value) {
@@ -670,15 +472,15 @@ async function loadRooms() {
   try {
     const response = await topologyV2API.rooms()
     if (sequence !== roomRequestSequence) return false
-    rooms.value = (response.items || []).filter(room => room.managed)
-    const queryRoomId = String(route.query.roomId || '')
-    const selected = rooms.value.find(room => String(room.id) === queryRoomId) || rooms.value[0]
-    selectedRoomId.value = selected ? String(selected.id) : ''
+    rooms.value = response.items || []
+    selectedRoomId.value = preferredRoomId(rooms.value, route.query.roomId)
     if (selectedRoomId.value) {
       void router.replace({ query: { ...route.query, roomId: selectedRoomId.value } })
       await loadTopology()
     } else {
       setTopology(null)
+      infrastructureSnapshot.value = null
+      infrastructureError.value = ''
       provisionOperations.value = []
       provisionOperationsError.value = ''
     }
@@ -692,17 +494,22 @@ async function loadRooms() {
   }
 }
 
-async function loadTopology() {
+async function loadTopology({ refreshRuntime = true } = {}) {
   if (!selectedRoomId.value) return
   const roomId = selectedRoomId.value
   const sequence = ++requestSequence
   loading.value = true
   topologyError.value = ''
+  infrastructureError.value = ''
   provisionOperationsError.value = ''
   try {
-    const [topologyResult, operationsResult] = await Promise.allSettled([
+    if (refreshRuntime) {
+      await runtimeObservationsV2API.refresh({ roomId })
+    }
+    const [topologyResult, operationsResult, infrastructureResult] = await Promise.allSettled([
       topologyV2API.get(roomId),
-      topologyV2API.provisionOperations(roomId)
+      topologyV2API.provisionOperations(roomId),
+      topologyV2API.infrastructure()
     ])
     if (sequence !== requestSequence) return
     if (operationsResult.status === 'fulfilled') {
@@ -710,11 +517,20 @@ async function loadTopology() {
     } else {
       provisionOperationsError.value = operationsResult.reason?.message || t('common.errors.unknown')
     }
+    if (infrastructureResult.status === 'fulfilled') {
+      infrastructureSnapshot.value = infrastructureResult.value
+      infrastructureError.value = ''
+    } else {
+      infrastructureSnapshot.value = null
+      infrastructureError.value = infrastructureResult.reason?.message || t('common.errors.unknown')
+    }
     if (topologyResult.status === 'rejected') throw topologyResult.reason
     setTopology(topologyResult.value)
     return true
   } catch (error) {
     if (sequence !== requestSequence) return
+    setTopology(null)
+    infrastructureSnapshot.value = null
     topologyError.value = error.message || t('common.errors.unknown')
     return false
   } finally {
@@ -722,120 +538,8 @@ async function loadTopology() {
   }
 }
 
-function clearPreview() {
-  previewRequestSequence += 1
-  previewing.value = false
-  preview.value = null
-}
-
-async function previewPlan({ quiet = false } = {}) {
-  if (!canSubmit.value) return null
-  const sequence = ++previewRequestSequence
-  previewing.value = true
-  topologyError.value = ''
-  try {
-    const value = await topologyV2API.preview(selectedRoomId.value, placementInput(false))
-    if (sequence !== previewRequestSequence) return null
-    preview.value = value
-    if (!quiet) toast.success(t('topology.feedback.previewReady'))
-    return value
-  } catch (error) {
-    if (sequence !== previewRequestSequence) return null
-    topologyError.value = t('topology.feedback.previewFailed', { error: error.message || t('common.errors.unknown') })
-    if (!quiet) toast.error(topologyError.value)
-    return null
-  } finally {
-    if (sequence === previewRequestSequence) previewing.value = false
-  }
-}
-
-async function savePlan() {
-  const value = await previewPlan({ quiet: true })
-  if (!value) return
-  if (value.requiresOvercommitConfirmation) {
-    overcommitOpen.value = true
-    return
-  }
-  await persistPlan(false)
-}
-
-async function confirmOvercommit() {
-  overcommitOpen.value = false
-  await persistPlan(true)
-}
-
-async function persistPlan(allowOvercommit) {
-  if (!topology.value || saving.value) return
-  saving.value = true
-  topologyError.value = ''
-  try {
-    const value = await topologyV2API.update(selectedRoomId.value, placementInput(allowOvercommit))
-    setTopology(value)
-    toast.success(t('topology.feedback.saved'))
-  } catch (error) {
-    if (error.code === 'TOPOLOGY_REVISION_CONFLICT') {
-      toast.warning(t('topology.feedback.revisionChanged'))
-      await loadTopology()
-      return
-    }
-    topologyError.value = t('topology.feedback.saveFailed', { error: error.message || t('common.errors.unknown') })
-    toast.error(topologyError.value)
-  } finally {
-    saving.value = false
-  }
-}
-
-function openMigrationDialog(placement) {
-  if (isDirty.value || placement.desiredTargetId === placement.appliedTargetId) return
-  migrationPlacement.value = placement
-  migrationConfirmation.value = ''
-  migrationDialogOpen.value = true
-}
-
-function isLocalTarget(targetId) {
-  return (topology.value?.targets || []).find(target => target.id === targetId)?.kind === 'local'
-}
-
-function isProvisionPlacement(placement) {
-  return Boolean(
-    placement &&
-    placement.desiredTargetId !== placement.appliedTargetId &&
-    isLocalTarget(placement.appliedTargetId) &&
-    !isLocalTarget(placement.desiredTargetId) &&
-    placement.state === 'shard_missing'
-  )
-}
-
-function openProvisionDialog() {
-  if (!canProvision.value) return
-  provisionConfirmation.value = ''
-  provisionDialogOpen.value = true
-}
-
-async function provisionRoom() {
-  if (!topology.value || !canProvision.value || provisionRunning.value || provisionConfirmation.value !== selectedRoom.value?.name) return
-  provisionRunning.value = true
-  try {
-    const submitted = await topologyV2API.provision(selectedRoomId.value, {
-      expectedRevision: topology.value.revision,
-      confirmation: provisionConfirmation.value
-    })
-    await waitForV2Job(submitted, 10 * 60 * 1000)
-    provisionDialogOpen.value = false
-    const refreshed = await loadTopology()
-    if (refreshed) toast.success(t('topology.provision.completed'))
-    else toast.warning(t('topology.provision.completedRefreshFailed'))
-  } catch (error) {
-    await loadTopology()
-    toast.error(t('topology.provision.failed', { error: error.message || t('common.errors.unknown') }))
-  } finally {
-    provisionRunning.value = false
-  }
-}
-
 async function recoverProvision(operation) {
-  if (!operation?.id || provisionRunning.value || migrationRunning.value) return
-  provisionRunning.value = true
+  if (!operation?.id || recoveringProvisionId.value) return
   recoveringProvisionId.value = operation.id
   try {
     const submitted = await topologyV2API.recoverProvisionOperation(operation.id)
@@ -848,39 +552,11 @@ async function recoverProvision(operation) {
     toast.error(t('topology.provision.recoverFailed', { error: error.message || t('common.errors.unknown') }))
   } finally {
     recoveringProvisionId.value = ''
-    provisionRunning.value = false
   }
 }
 
-async function applyMigration() {
-  if (!topology.value || !migrationPlacement.value || migrationRunning.value || migrationConfirmation.value !== selectedRoom.value?.name) return
-  migrationRunning.value = true
-  try {
-    const submitted = await topologyV2API.applyPlacement(selectedRoomId.value, {
-      worldId: migrationPlacement.value.worldId,
-      expectedRevision: topology.value.revision,
-      confirmation: migrationConfirmation.value
-    })
-    await waitForV2Job(submitted, 10 * 60 * 1000)
-    migrationDialogOpen.value = false
-    const refreshed = await loadTopology()
-    if (refreshed) toast.success(t('topology.migration.completed'))
-    else toast.warning(t('topology.migration.completedRefreshFailed'))
-  } catch (error) {
-    if (error.code === 'TOPOLOGY_REVISION_CONFLICT') await loadTopology()
-    toast.error(t('topology.migration.failed', { error: error.message || t('common.errors.unknown') }))
-  } finally {
-    migrationRunning.value = false
-  }
-}
-
-function targetName(targetId) {
-  return (displaySnapshot.value?.targets || []).find(target => target.id === targetId)?.name || targetId
-}
-
-function targetOptionLabel(target) {
-  if (target.online) return target.name
-  return `${target.name} (${t('topology.placements.offlineSuffix')})`
+function endpointName(targetId, installationId) {
+  return runtimeEndpointLabel(displaySnapshot.value || {}, targetId, installationId)
 }
 
 function freshnessLabel(target) {
@@ -1134,5 +810,14 @@ function batchTargetStatus(status) {
   return t(`topology.batch.statuses.${key}`)
 }
 
-onMounted(loadRooms)
+function handleRuntimeObservationUpdate() {
+  if (document.visibilityState === 'hidden' || !selectedRoomId.value || loading.value) return
+  void loadTopology({ refreshRuntime: false })
+}
+
+onMounted(() => {
+  window.addEventListener(RUNTIME_OBSERVATION_UPDATED_EVENT, handleRuntimeObservationUpdate)
+  void loadRooms()
+})
+onBeforeUnmount(() => window.removeEventListener(RUNTIME_OBSERVATION_UPDATED_EVENT, handleRuntimeObservationUpdate))
 </script>

@@ -3,7 +3,6 @@
     <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold">{{ $t('backups.title') }}</h1>
-        <p class="mt-1 text-sm text-muted-foreground">{{ $t('backups.subtitle') }}</p>
       </div>
       <UiButton v-if="workspace === 'backups'" variant="outline" @click="workspace = 'imports'">
         <UploadIcon data-icon="inline-start" />

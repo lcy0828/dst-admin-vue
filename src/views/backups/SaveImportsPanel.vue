@@ -317,11 +317,6 @@
                       </UiSelect>
                       <FieldDescription>{{ t('backups.imports.apply.replaceDescription') }}</FieldDescription>
                     </Field>
-                    <Field>
-                      <FieldLabel for="replace-confirmation">{{ t('backups.imports.apply.confirmation') }}</FieldLabel>
-                      <UiInput id="replace-confirmation" v-model="applyPlan.confirmation" :placeholder="selectedTargetRoom?.name || t('backups.imports.apply.confirmationPlaceholder')" />
-                      <FieldDescription>{{ t('backups.imports.apply.confirmationDescription', { name: selectedTargetRoom?.name || '--' }) }}</FieldDescription>
-                    </Field>
                   </template>
                   <template v-else>
                     <Field>
@@ -442,14 +437,9 @@
           <AlertTitle>{{ t('backups.imports.delete.warningTitle') }}</AlertTitle>
           <AlertDescription>{{ t('backups.imports.delete.warningDescription') }}</AlertDescription>
         </Alert>
-        <Field>
-          <FieldLabel for="delete-import-confirmation">{{ t('backups.imports.delete.confirmation') }}</FieldLabel>
-          <UiInput id="delete-import-confirmation" v-model="deleteConfirmation" :placeholder="deleteTarget?.name || ''" />
-          <FieldDescription>{{ t('backups.imports.delete.confirmationDescription', { name: deleteTarget?.name || '--' }) }}</FieldDescription>
-        </Field>
         <DialogFooter>
           <UiButton variant="outline" @click="deleteOpen = false">{{ t('common.actions.cancel') }}</UiButton>
-          <UiButton variant="destructive" :disabled="deleting || deleteConfirmation !== deleteTarget?.name" @click="deleteImport">
+          <UiButton variant="destructive" :disabled="deleting" @click="deleteImport">
             <Spinner v-if="deleting" data-icon="inline-start" />
             <Trash2 v-else data-icon="inline-start" />
             {{ t('backups.imports.actions.delete') }}
@@ -541,7 +531,6 @@ const selectedCandidateId = ref('')
 const applying = ref(false)
 const deleteOpen = ref(false)
 const deleteTarget = ref(null)
-const deleteConfirmation = ref('')
 const deleting = ref(false)
 const applyPlan = reactive(defaultSaveImportPlan(null))
 let disposed = false
@@ -674,7 +663,7 @@ async function loadRooms() {
   try {
     const response = await roomsV2API.controlPlaneList()
     if (sequence !== roomRequestSequence) return false
-    rooms.value = (response.items || []).filter(room => room.managed)
+    rooms.value = response.items || []
     return true
   } catch (error) {
     if (sequence !== roomRequestSequence) return false
@@ -838,6 +827,7 @@ function normalizePlan() {
 }
 
 async function applyImport() {
+  applyPlan.confirmation = applyPlan.mode === 'replace' ? selectedTargetRoom.value?.name || '' : ''
   const validation = validateSaveImportPlan(applyPlan, selectedCandidate.value, selectedTargetRoom.value)
   if (validation) {
     toast.warning(t(`backups.imports.apply.validation.${validation}`))
@@ -871,17 +861,16 @@ async function applyImport() {
 
 function openDelete(item) {
   deleteTarget.value = item
-  deleteConfirmation.value = ''
   deleteOpen.value = true
 }
 
 async function deleteImport() {
-  if (!deleteTarget.value || deleteConfirmation.value !== deleteTarget.value.name) return
+  if (!deleteTarget.value) return
   const generation = lifecycleGeneration
   const targetId = deleteTarget.value.id
   deleting.value = true
   try {
-    await saveImportsV2API.delete(targetId, deleteConfirmation.value)
+    await saveImportsV2API.delete(targetId, deleteTarget.value.name)
     if (disposed || generation !== lifecycleGeneration) return
     imports.value = imports.value.filter(item => item.id !== targetId)
     if (selectedImport.value?.id === targetId) detailsOpen.value = false

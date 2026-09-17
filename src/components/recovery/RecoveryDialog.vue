@@ -47,11 +47,6 @@
   <UiDialog v-model:open="purgeOpen">
     <DialogContent>
       <DialogHeader><DialogTitle>{{ $t('recovery.purgeTitle') }}</DialogTitle><DialogDescription>{{ $t('recovery.purgeDescription') }}</DialogDescription></DialogHeader>
-      <Field :data-invalid="Boolean(purgeError)">
-        <FieldLabel for="recovery-confirmation">{{ $t('recovery.confirmation') }}</FieldLabel>
-        <UiInput id="recovery-confirmation" v-model="confirmation" :placeholder="selectedItem?.recoveryName" :aria-invalid="Boolean(purgeError)" />
-        <FieldError v-if="purgeError">{{ purgeError }}</FieldError>
-      </Field>
       <DialogFooter><UiButton variant="outline" @click="purgeOpen = false">{{ $t('recovery.actions.cancelPurge') }}</UiButton><UiButton variant="destructive" :disabled="Boolean(busyName)" @click="purge"><Spinner v-if="busyName" data-icon="inline-start" />{{ $t('recovery.actions.confirmPurge') }}</UiButton></DialogFooter>
     </DialogContent>
   </UiDialog>
@@ -68,8 +63,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button as UiButton } from '@/components/ui/button'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldError, FieldLabel } from '@/components/ui/field'
-import { Input as UiInput } from '@/components/ui/input'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
@@ -90,8 +84,6 @@ const selectedRoomId = ref('')
 const busyName = ref('')
 const purgeOpen = ref(false)
 const selectedItem = ref(null)
-const confirmation = ref('')
-const purgeError = ref('')
 
 function formatDate(value) {
   return formatSystemDateTime(value, {
@@ -135,19 +127,15 @@ async function restore(item) {
 }
 function openPurge(item) {
   selectedItem.value = item
-  confirmation.value = ''
-  purgeError.value = ''
   purgeOpen.value = true
 }
 async function purge() {
-  if (confirmation.value !== selectedItem.value?.recoveryName) {
-    purgeError.value = t('recovery.confirmationMismatch')
-    return
-  }
+  if (!selectedItem.value) return
+  const confirmation = selectedItem.value.recoveryName
   busyName.value = selectedItem.value.recoveryName
   try {
-    if (props.scope === 'room') await roomsV2API.purgeRoomRecovery(selectedItem.value.recoveryName, confirmation.value)
-    else await roomsV2API.purgeWorldRecovery(selectedRoomId.value, selectedItem.value.recoveryName, confirmation.value)
+    if (props.scope === 'room') await roomsV2API.purgeRoomRecovery(selectedItem.value.recoveryName, confirmation)
+    else await roomsV2API.purgeWorldRecovery(selectedRoomId.value, selectedItem.value.recoveryName, confirmation)
     toast.success(t('recovery.purgeSucceeded', { name: selectedItem.value.displayName }))
     purgeOpen.value = false
     await load()

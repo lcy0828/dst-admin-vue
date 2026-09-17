@@ -18,28 +18,7 @@
       </div>
     </div>
 
-    <FieldGroup class="max-w-sm">
-      <Field>
-        <FieldLabel for="distributed-backup-room">{{ t('distributed.backups.room') }}</FieldLabel>
-        <UiSelect v-model="selectedRoomId" :disabled="loadingRooms || operationRunning">
-          <SelectTrigger id="distributed-backup-room">
-            <SelectValue :placeholder="t('distributed.backups.selectRoom')" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem v-for="room in rooms" :key="room.id" :value="String(room.id)">{{ room.name }}</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </UiSelect>
-      </Field>
-    </FieldGroup>
-
-    <Alert>
-      <ShieldCheck v-if="isSystemCategory" />
-      <DatabaseBackup v-else />
-      <AlertTitle>{{ t(categoryMessage('noticeTitle')) }}</AlertTitle>
-      <AlertDescription>{{ t(categoryMessage('noticeDescription')) }}</AlertDescription>
-    </Alert>
+    <RoomScopeSelect v-model="selectedRoomId" :rooms="rooms" :loading="loadingRooms" :disabled="operationRunning" />
 
     <Alert v-if="error" variant="destructive">
       <CircleAlert />
@@ -271,16 +250,9 @@
           <AlertTitle>{{ t('distributed.backups.restoreDialog.overwriteTitle') }}</AlertTitle>
           <AlertDescription>{{ t('distributed.backups.restoreDialog.overwriteDescription') }}</AlertDescription>
         </Alert>
-        <FieldGroup>
-          <Field :data-invalid="Boolean(restoreConfirmation) && restoreConfirmation !== selectedSet?.roomName">
-            <FieldLabel for="distributed-backup-confirmation">{{ t('distributed.backups.restoreDialog.confirmation') }}</FieldLabel>
-            <UiInput id="distributed-backup-confirmation" v-model="restoreConfirmation" autocomplete="off" :placeholder="selectedSet?.roomName || ''" :aria-invalid="Boolean(restoreConfirmation) && restoreConfirmation !== selectedSet?.roomName" />
-            <FieldDescription>{{ t('distributed.backups.restoreDialog.confirmationDescription', { room: selectedSet?.roomName || '--' }) }}</FieldDescription>
-          </Field>
-        </FieldGroup>
         <DialogFooter>
           <UiButton variant="outline" :disabled="operationRunning" @click="restoreDialogOpen = false">{{ t('common.actions.cancel') }}</UiButton>
-          <UiButton variant="destructive" :disabled="operationRunning || restoreConfirmation !== selectedSet?.roomName" @click="restoreSet">
+          <UiButton variant="destructive" :disabled="operationRunning" @click="restoreSet">
             <Spinner v-if="operationRunning" data-icon="inline-start" />
             {{ t('distributed.backups.restoreDialog.confirm') }}
           </UiButton>
@@ -291,6 +263,10 @@
 </template>
 
 <script setup>
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs'
+import { useRoute } from 'vue-router'
+const roomRoute = useRoute()
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, DatabaseBackup, Download, Eye, Flame, History, RefreshCw, ShieldCheck, Snowflake, Trash2, TriangleAlert } from '@lucide/vue'
@@ -306,7 +282,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
-import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -339,7 +314,6 @@ const detailsDialogOpen = ref(false)
 const restoreDialogOpen = ref(false)
 const backupName = ref('')
 const backupMode = ref('hot-consistent')
-const restoreConfirmation = ref('')
 const recoveringOperationId = ref('')
 let requestSequence = 0
 let roomRequestSequence = 0
@@ -385,9 +359,9 @@ async function loadRooms() {
   try {
     const response = await roomsV2API.controlPlaneList()
     if (sequence !== roomRequestSequence) return false
-    rooms.value = (response.items || []).filter(room => room.managed)
+    rooms.value = response.items || []
     if (!rooms.value.some(room => String(room.id) === selectedRoomId.value)) {
-      selectedRoomId.value = rooms.value[0] ? String(rooms.value[0].id) : ''
+      selectedRoomId.value = preferredRoomId(rooms.value, roomRoute.query.roomId)
     }
     return true
   } catch (cause) {
@@ -511,17 +485,17 @@ function openRestoreDialog(backupSet) {
     return
   }
   selectedSet.value = backupSet
-  restoreConfirmation.value = ''
   restoreDialogOpen.value = true
 }
 
 async function restoreSet() {
-  if (!selectedSet.value || restoreConfirmation.value !== selectedSet.value.roomName || operationRunning.value) return
+  if (!selectedSet.value || operationRunning.value) return
+  const confirmation = selectedSet.value.roomName
   operationRunning.value = true
   try {
     const job = selectedSet.value.source === 'legacy'
-      ? await backupsV2API.restore(selectedSet.value.id, restoreConfirmation.value)
-      : await backupSetsV2API.restore(selectedSet.value.id, restoreConfirmation.value)
+      ? await backupsV2API.restore(selectedSet.value.id, confirmation)
+      : await backupSetsV2API.restore(selectedSet.value.id, confirmation)
     await waitForV2Job(job, 15 * 60 * 1000)
     restoreDialogOpen.value = false
     const refreshedState = await loadSets()
