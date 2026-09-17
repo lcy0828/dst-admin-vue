@@ -20,55 +20,18 @@
     </Card>
 
     <Card>
-      <CardHeader><CardTitle>{{ $t('agents.security.install.title') }}</CardTitle><CardDescription>{{ $t('agents.security.install.description') }}</CardDescription><CardAction><Badge variant="secondary">Beta</Badge></CardAction></CardHeader>
+      <CardHeader><CardTitle>{{ $t('agents.security.install.title') }}</CardTitle><CardDescription>{{ $t('agents.security.install.description') }}</CardDescription></CardHeader>
       <CardContent class="flex flex-col gap-6">
         <div>
 
           <Tabs v-model="activeInstallTab">
-            <TabsList><TabsTrigger value="linux">Linux</TabsTrigger><TabsTrigger value="windows">Windows</TabsTrigger><TabsTrigger value="docker">Docker</TabsTrigger></TabsList>
-            <TabsContent value="linux">
-              <div class="code-block">
-                <pre><code>go build -o dst-admin-agent ./agent/cmd/agent
-./dst-admin-agent -server "{{ installServerURL }}" -key "{{ apiKey }}"</code></pre>
-                <UiButton
-                  variant="ghost"
-                  size="sm"
-                  :disabled="!keyRevealed"
-                  class="copy-btn"
-                  @click="copyInstallCommand('linux')">
-                  <Copy data-icon="inline-start" />
-                  {{ $t('common.actions.copy') }}
-                </UiButton>
-              </div>
-            </TabsContent>
-            <TabsContent value="windows">
-              <div class="code-block">
-                <pre><code>go build -o dst-admin-agent.exe ./agent/cmd/agent
-.\dst-admin-agent.exe -server "{{ installServerURL }}" -key "{{ apiKey }}"</code></pre>
-                <UiButton
-                  variant="ghost"
-                  size="sm"
-                  :disabled="!keyRevealed"
-                  class="copy-btn"
-                  @click="copyInstallCommand('windows')">
-                  <Copy data-icon="inline-start" />
-                  {{ $t('common.actions.copy') }}
-                </UiButton>
-              </div>
-            </TabsContent>
-            <TabsContent value="docker">
-              <div class="code-block">
-                <pre><code>{{ $t('agents.security.install.dockerUnavailable') }}</code></pre>
-                <UiButton
-                  variant="ghost"
-                  size="sm"
-                  disabled
-                  class="copy-btn"
-                  @click="copyInstallCommand('docker')">
-                  <Copy data-icon="inline-start" />
-                  {{ $t('common.actions.copy') }}
-                </UiButton>
-              </div>
+            <TabsList><TabsTrigger value="docker">Docker</TabsTrigger><TabsTrigger value="linux">Linux</TabsTrigger><TabsTrigger value="windows">Windows</TabsTrigger></TabsList>
+            <TabsContent v-for="platform in ['docker', 'linux', 'windows']" :key="platform" :value="platform" class="flex flex-col gap-3">
+              <Field v-if="platform === 'docker'"><FieldLabel>{{ $t('agents.security.install.registry') }}</FieldLabel><UiSelect v-model="imageRegistry"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="aliyun">{{ $t('agents.security.install.aliyun') }}</SelectItem><SelectItem value="dockerhub">Docker Hub</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>{{ $t('agents.security.install.dockerDescription') }}</FieldDescription></Field>
+              <p v-else class="text-sm text-muted-foreground">{{ $t(platform === 'windows' ? 'agents.security.install.windowsDescription' : 'agents.security.install.nativeDescription') }}</p>
+              <p class="text-sm text-muted-foreground">{{ $t('agents.security.install.keyPrompt') }}</p>
+              <div class="code-block"><pre><code>{{ installCommands[platform] }}</code></pre></div>
+              <UiButton variant="outline" class="self-start" @click="copyInstallCommand(platform)"><Copy data-icon="inline-start" />{{ $t('common.actions.copy') }}</UiButton>
             </TabsContent>
           </Tabs>
         </div>
@@ -83,16 +46,13 @@
             </li>
             <li>
               <Badge variant="outline">2</Badge><div class="step-content"><div class="step-title">{{ $t('agents.security.manual.configureTitle') }}</div>
-                {{ $t('agents.security.manual.configureDescription') }} <code>conf/app.conf</code>：
+                {{ $t('agents.security.manual.configureDescription') }} <code>agent.conf</code>：
                 <div class="code-block">
-                  <pre><code>[agent]
-SECURITY_KEY = {{ apiKey }}
-SERVER_URL = {{ installServerURL }}</code></pre>
+                  <pre><code>{{ nativeConfig }}</code></pre>
                   <UiButton
                     variant="ghost"
                     size="sm"
-                    :disabled="!keyRevealed"
-                    class="copy-btn"
+                                        class="copy-btn"
                     @click="copyConfigYaml()">
                     <Copy data-icon="inline-start" />
                     {{ $t('common.actions.copy') }}
@@ -103,12 +63,11 @@ SERVER_URL = {{ installServerURL }}</code></pre>
             <li>
               <Badge variant="outline">3</Badge><div class="step-content"><div class="step-title">{{ $t('agents.security.manual.runTitle') }}</div>
                 <div class="code-block linux-cmd">
-                  <pre><code>./dst-admin-agent</code></pre>
+                  <pre><code>./dst-admin-agent -config ./agent.conf -state ./runtime-state.json</code></pre>
                   <UiButton
                     variant="ghost"
                     size="sm"
-                    :disabled="!keyRevealed"
-                    class="copy-btn"
+                                        class="copy-btn"
                     @click="copyRunCommand()">
                     <Copy data-icon="inline-start" />
                     {{ $t('common.actions.copy') }}
@@ -131,11 +90,13 @@ SERVER_URL = {{ installServerURL }}</code></pre>
 <script>
 import { CircleAlert, Copy, Eye, EyeOff, KeyRound, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
+import { agentInstallCommands, agentNativeConfig } from '@/lib/agentInstall.mjs';
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { agentApi } from '@/api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Separator } from '@/components/ui/separator';
@@ -147,11 +108,11 @@ import { confirmAction } from '@/lib/feedback';
 export default {
   name: 'AgentSecurity',
   components: {
-    Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardAction, CardContent,
+    Alert, AlertAction, AlertDescription, AlertTitle, Badge, Card, CardContent,
     CardDescription, CardFooter, CardHeader, CardTitle, CircleAlert, Copy, Eye, EyeOff, Field,
     FieldDescription, FieldGroup, FieldLabel, InputGroup, InputGroupAddon, InputGroupInput,
     KeyRound, RefreshCw, Separator, Skeleton, Spinner, Tabs, TabsContent, TabsList,
-    TabsTrigger, UiButton
+    TabsTrigger, UiButton, UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue
   },
   data() {
     return {
@@ -162,7 +123,8 @@ export default {
       securityConfigured: false,
       securityAvailable: false,
       showKey: false,
-      activeInstallTab: 'linux'
+      activeInstallTab: 'docker',
+      imageRegistry: 'aliyun'
     };
   },
   created() {
@@ -176,6 +138,8 @@ export default {
         ? this.$t('agents.security.feedback.errorWithDetail', { message, detail: this.loadFailure.detail })
         : message;
     },
+    installCommands() { return agentInstallCommands(this.installServerURL, this.imageRegistry); },
+    nativeConfig() { return agentNativeConfig(this.installServerURL); },
     installServerURL() {
       const configured = String(import.meta.env.VITE_AGENT_SERVER_URL || '').trim();
       if (configured) return configured;
@@ -268,18 +232,8 @@ export default {
       }
     },
     async copyInstallCommand(type) {
-      if (!this.keyRevealed) return;
-      let command = '';
-      switch (type) {
-        case 'linux':
-          command = `go build -o dst-admin-agent ./agent/cmd/agent\n./dst-admin-agent -server "${this.installServerURL}" -key "${this.apiKey}"`;
-          break;
-        case 'windows':
-          command = `go build -o dst-admin-agent.exe ./agent/cmd/agent\n.\\dst-admin-agent.exe -server "${this.installServerURL}" -key "${this.apiKey}"`;
-          break;
-        default:
-          return;
-      }
+      const command = this.installCommands[type];
+      if (!command) return;
       try {
         await this.copyToClipboard(command);
         toast.success(this.$t('agents.security.feedback.installCopied'));
@@ -290,8 +244,7 @@ export default {
       }
     },
     async copyConfigYaml() {
-      if (!this.keyRevealed) return;
-      const config = `[agent]\nSECURITY_KEY = ${this.apiKey}\nSERVER_URL = ${this.installServerURL}`;
+      const config = this.nativeConfig;
       try {
         await this.copyToClipboard(config);
         toast.success(this.$t('agents.security.feedback.configCopied'));
@@ -302,9 +255,8 @@ export default {
       }
     },
     async copyRunCommand() {
-      if (!this.keyRevealed) return;
       try {
-        await this.copyToClipboard('./dst-admin-agent');
+        await this.copyToClipboard('./dst-admin-agent -config ./agent.conf -state ./runtime-state.json');
         toast.success(this.$t('agents.security.feedback.runCopied'));
       } catch (error) {
         toast.error(this.$t('agents.security.feedback.copyRunFailed', {

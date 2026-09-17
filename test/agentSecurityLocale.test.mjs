@@ -17,10 +17,11 @@ test('Agent security preserves key, command, URL, and config protocols', async (
   const source = await readFile(sourceUrl, 'utf8')
 
   assert.match(source, /VITE_AGENT_SERVER_URL/)
-  assert.match(source, /go build -o dst-admin-agent \.\/agent\/cmd\/agent/)
-  assert.match(source, /SECURITY_KEY = \$\{this\.apiKey\}/)
-  assert.match(source, /SERVER_URL = \$\{this\.installServerURL\}/)
-  assert.match(source, /\.\/dst-admin-agent/)
+  assert.match(source, /agentInstallCommands/)
+  assert.match(source, /nativeConfig/)
+  assert.doesNotMatch(source, /SECURITY_KEY = \$\{this\.apiKey\}/)
+  assert.doesNotMatch(source, /dockerUnavailable/)
+
 })
 
 test('Agent security stores stable load failures and preserves backend details', async () => {

@@ -65,8 +65,8 @@ test('Agent topology uses the typed inventory job and one-core-per-Shard capacit
   assert.match(adapter, /installation_registry_supported: Boolean\(agent\.installationRegistrySupported\)/)
   assert.match(adapter, /installations: normalizeAgentRuntimeInstallations\(agent\.installations\)/)
   assert.match(adapter, /runtime_auto_adopt_disabled: Boolean\(agent\.runtimeAutoAdoptDisabled\)/)
-  assert.match(agentMessages['zh-CN'].agents.list.capacity.policyDescription, /每个运行中的 Shard 至少预留 1 个物理核心/)
-  assert.match(agentMessages['en-US'].agents.list.capacity.policyDescription, /one physical core for every running Shard/i)
+  assert.match(agentMessages['zh-CN'].agents.list.capacity.policyDescription, /1–2 核机器不额外预留整核/)
+  assert.match(agentMessages['en-US'].agents.list.capacity.policyDescription, /1–2 CPUs reserve no full CPU/i)
 })
 
 test('machine management includes local runtime and persistent target renaming', async () => {

@@ -1,0 +1,20 @@
+export const AGENT_IMAGES = {
+  aliyun: 'registry.cn-hangzhou.aliyuncs.com/dstadmin/dst-admin-go:agent-v1.0.0',
+  dockerhub: 'lcy0828/dst-admin-go:agent-v1.0.0'
+}
+const shQuote = value => `'${String(value).replaceAll("'", "'\\''")}'`
+const psQuote = value => `'${String(value).replaceAll("'", "''")}'`
+
+export function agentInstallCommands(serverURL, registry = 'aliyun') {
+  const url = shQuote(serverURL)
+  const prompt = "printf 'Agent key: '; read -r DST_ADMIN_AGENT_SECURITY_KEY\nexport DST_ADMIN_AGENT_SECURITY_KEY"
+  return {
+    linux: `go build -o dst-admin-agent ./agent/cmd/agent\n${prompt}\nexport DST_ADMIN_AGENT_SERVER_URL=${url}\n./dst-admin-agent -config ./agent.conf -state ./runtime-state.json`,
+    windows: `go build -o dst-admin-agent.exe ./agent/cmd/agent\n$agentSecret = Read-Host 'Agent key' -AsSecureString\n$env:DST_ADMIN_AGENT_SECURITY_KEY = [System.Net.NetworkCredential]::new('', $agentSecret).Password\n$env:DST_ADMIN_AGENT_SERVER_URL = ${psQuote(serverURL)}\n.\\dst-admin-agent.exe -config .\\agent.conf -state .\\runtime-state.json`,
+    docker: `${prompt}\nexport DST_ADMIN_AGENT_SERVER_URL=${url}\ndocker run -d --name dst-admin-agent --restart unless-stopped \\\n  --group-add "$(stat -c '%g' /var/run/docker.sock)" \\\n  -e DST_ADMIN_AGENT_SERVER_URL -e DST_ADMIN_AGENT_SECURITY_KEY \\\n  -e TZ=Asia/Shanghai \\\n  -v dst-admin-agent:/var/lib/dst-admin-agent \\\n  -v /opt/dst:/opt/dst \\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\n  ${AGENT_IMAGES[registry] || AGENT_IMAGES.aliyun}`
+  }
+}
+
+export function agentNativeConfig(serverURL) {
+  return `[agent]\nSERVER_URL = ${serverURL}\nSECURITY_KEY = REPLACE_WITH_YOUR_AGENT_KEY\n\n[runtime.native]\nDRIVER = native\nSAVE_PATH = /opt/dst/saves\nSERVER_PATH = /opt/dst/server\nSTEAMCMD_PATH = /usr/games/steamcmd\nUGC_PATH = /opt/dst/workshop/steamapps/workshop\nWORKSHOP_CONTENT_PATH = /opt/dst/workshop/steamapps/workshop/content/322330\nSERVER_MODE = 64`
+}

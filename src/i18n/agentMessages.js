@@ -74,6 +74,7 @@ export const agentMessages = {
         }
       },
       list: {
+        configuration: { title: '部署角色与管理方式', experimental: '高级：Kubernetes 实验能力' },
         title: '机器管理',
         subtitle: '统一管理本机和已接入的远程机器；机器名称可自定义，主机名保持不变。',
         loadingAria: '正在读取机器状态',
@@ -204,8 +205,8 @@ export const agentMessages = {
         },
         capacity: {
           policyTitle: '同机多世界容量建议',
-          policyDescription: '同一服务器可以运行多个房间和多个世界分片。每个运行中的 Shard 至少预留 1 个物理核心，并额外为系统、Agent、SteamCMD 与备份任务保留 1 核；这是保守提醒，不是强制限制或性能保证。',
-          localRecommendation: '按物理核心建议最多运行 {count} 层世界',
+          policyDescription: '按每个世界约 1 个核心估算；1–2 核机器不额外预留整核，3 核及以上为系统和维护任务预留 1 核。2 核 4 GB 可运行地表与洞穴。容量仅作建议，还需考虑内存、模组与玩家数量。',
+          localRecommendation: '建议最多运行 {count} 层世界',
           progressAria: '{name} 的世界分片容量使用率',
           states: {
             available: '可用',
@@ -556,7 +557,7 @@ export const agentMessages = {
         install: {
           title: '安装 Agent',
           description: '根据节点环境选择安装命令或手动配置。',
-          dockerUnavailable: '当前仓库没有发布可验证的 Agent Docker 镜像。'
+          registry: '镜像源', aliyun: '阿里云（国内推荐）', dockerDescription: '官方 Agent 镜像，用于连接管理中心并管理已有的 DST Runtime 容器。数据目录默认 /opt/dst；此镜像不包含 SteamCMD。全新游戏节点可部署 All-in-One，再选择加入管理中心。', keyPrompt: '命令会提示输入已有的完整 Agent 密钥。不要输入页面掩码，也无需轮换密钥。', nativeDescription: '在项目源码目录构建；先按下方示例创建 agent.conf，准备 tmux、SteamCMD 和可写的数据目录。', windowsDescription: '在项目源码目录使用 PowerShell 构建 Agent。Windows 暂无原生 DST 运行器；运行游戏节点请使用 Linux 或 WSL2。'
         },
         manual: {
           title: '手动安装',
@@ -669,6 +670,7 @@ export const agentMessages = {
         }
       },
       list: {
+        configuration: { title: 'Deployment role and management', experimental: 'Advanced: experimental Kubernetes' },
         title: 'Machine management',
         subtitle: 'Manage the local machine and connected remote machines together. Display names are editable while hostnames stay unchanged.',
         loadingAria: 'Loading machine status',
@@ -799,7 +801,7 @@ export const agentMessages = {
         },
         capacity: {
           policyTitle: 'Capacity guidance for multiple worlds per node',
-          policyDescription: 'One server may run multiple rooms and world shards. Reserve at least one physical core for every running Shard and one additional core for the OS, Agent, SteamCMD, and backups. This is conservative guidance, not a hard limit or performance guarantee.',
+          policyDescription: 'Allow about one CPU per world. Hosts with 1–2 CPUs reserve no full CPU; larger hosts reserve one for the system and maintenance. A 2 CPU / 4 GB host can run Master and Caves. Capacity is advisory and also depends on memory, mods and players.',
           localRecommendation: 'Up to {count} worlds recommended by physical core count',
           progressAria: 'World shard capacity usage for {name}',
           states: {
@@ -1151,7 +1153,7 @@ export const agentMessages = {
         install: {
           title: 'Install Agent',
           description: 'Choose an installation command or configure the Agent manually for the node environment.',
-          dockerUnavailable: 'This repository does not publish a verifiable Agent Docker image.'
+          registry: 'Image registry', aliyun: 'Alibaba Cloud (mainland China)', dockerDescription: 'Official Agent image for connecting to a controller and managing existing DST Runtime containers. Data defaults to /opt/dst. SteamCMD is not included. For a new game node, deploy All-in-One and choose Join management center.', keyPrompt: 'The command prompts for your existing full Agent key. Do not enter the masked value; key rotation is unnecessary.', nativeDescription: 'Build from the project source. Create agent.conf using the example below and prepare tmux, SteamCMD and writable data directories.', windowsDescription: 'Build the Agent from source using PowerShell. There is no native DST runner for Windows; use Linux or WSL2 for game nodes.'
         },
         manual: {
           title: 'Manual installation',

@@ -11,6 +11,7 @@
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
+    <UiButton variant="outline" @click="navigateToSecurity"><Plus data-icon="inline-start" />{{ $t('agents.list.empty.add') }}</UiButton>
     <UiButton variant="outline" @click="openReleaseManager">
       <PackageOpen data-icon="inline-start" />
       {{ $t('agents.list.updates.manage') }}
@@ -26,16 +27,6 @@
         </UiButton>
       </div>
     </header>
-
-    <FleetProfilePanel />
-
-    <Alert>
-      <Cpu />
-      <AlertTitle>{{ $t('agents.list.capacity.policyTitle') }}</AlertTitle>
-      <AlertDescription>{{ $t('agents.list.capacity.policyDescription') }}</AlertDescription>
-    </Alert>
-
-    <KubernetesProviderPanel :heading-level="2" />
 
     <Alert v-if="loadError" variant="destructive">
       <CircleAlert />
@@ -66,7 +57,7 @@
       <Skeleton v-for="index in 4" :key="index" class="h-14 w-full" />
     </div>
 
-    <div v-else-if="totalMachines > 0" class="overflow-hidden rounded-lg border">
+    <div v-else-if="totalMachines > 0" class="overflow-x-auto rounded-lg border">
       <UiTable class="min-w-[1040px]">
         <TableHeader>
           <TableRow>
@@ -380,6 +371,19 @@
       :show-room-resources="false"
     />
 
+    <Collapsible v-model:open="configurationOpen" class="rounded-lg border p-4">
+      <CollapsibleTrigger as-child><UiButton variant="ghost" class="w-full justify-between"><span>{{ $t('agents.list.configuration.title') }}</span><ChevronDown data-icon="inline-end" /></UiButton></CollapsibleTrigger>
+      <CollapsibleContent class="pt-4"><FleetProfilePanel /></CollapsibleContent>
+    </Collapsible>
+    <Collapsible class="rounded-lg border p-4">
+      <CollapsibleTrigger as-child><UiButton variant="ghost" class="w-full justify-between"><span>{{ $t('agents.list.capacity.policyTitle') }}</span><ChevronDown data-icon="inline-end" /></UiButton></CollapsibleTrigger>
+      <CollapsibleContent class="pt-4"><p class="text-sm text-muted-foreground">{{ $t('agents.list.capacity.policyDescription') }}</p></CollapsibleContent>
+    </Collapsible>
+    <Collapsible class="rounded-lg border p-4">
+      <CollapsibleTrigger as-child><UiButton variant="ghost" class="w-full justify-between"><span>{{ $t('agents.list.configuration.experimental') }}</span><ChevronDown data-icon="inline-end" /></UiButton></CollapsibleTrigger>
+      <CollapsibleContent class="pt-4"><KubernetesProviderPanel :heading-level="2" /></CollapsibleContent>
+    </Collapsible>
+
   <UiDialog v-model:open="releaseVisible">
     <DialogContent class="sm:max-w-2xl">
     <DialogHeader>
@@ -559,6 +563,8 @@ import { agentApi } from '@/api/index';
 import { bindAgentRuntimeInstallation } from '@/api/agentApiSupport.mjs';
 import { agentsV2API, runtimeTargetsV2API, systemV2API } from '@/api/v2';
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Plus } from '@lucide/vue';
 import FleetProfilePanel from '@/components/agents/FleetProfilePanel.vue';
 import KubernetesProviderPanel from '@/components/runtime/KubernetesProviderPanel.vue';
 import RuntimeInfrastructurePanel from '@/components/runtime/RuntimeInfrastructurePanel.vue';
@@ -611,6 +617,7 @@ const editableRuntimeConfig = (agent, config = {}) => {
 export default {
   name: 'AgentList',
   components: {
+    Collapsible, CollapsibleContent, CollapsibleTrigger, Plus,
     Accordion, AccordionContent, AccordionItem, AccordionTrigger, Alert, AlertAction, AlertDescription,
     AlertTitle, Apple, ArrowUpCircle, Badge, ChevronDown, ChevronRight, CircleAlert, CircleCheck, Clock3, Cpu, DialogContent,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent, EmptyDescription,
@@ -658,6 +665,7 @@ export default {
     releaseErrors: {},
     releaseInputKey: 0,
     upgradingAgents: {},
+      configurationOpen: false,
       managementScope: getManagementScope(),
       agentRequestSequence: 0,
       runtimeRequestSequence: 0,
@@ -688,7 +696,8 @@ export default {
       };
     },
     localCapacityLimit() {
-      return Math.max(0, this.localCPU.physical - 1);
+      const cores = this.localCPU.physical || this.localCPU.logical;
+      return Math.max(0, cores > 2 ? cores - 1 : cores);
     },
     localMemory() {
       const memory = this.localSystemStatus.memory || {};
@@ -1111,7 +1120,7 @@ export default {
       const status = ['not_installed', 'detected_unverified', 'incompatible', 'ready'].includes(performance?.status)
         ? performance.status
         : 'not_reported';
-      return this.$t(`agents.list.runtime.performance.statuses.${status}`);
+      return `LuaJIT · ${this.$t(`agents.list.runtime.performance.statuses.${status}`)}`;
     },
     performanceSummary(performance) {
       const status = ['not_installed', 'detected_unverified', 'incompatible', 'ready'].includes(performance?.status)
