@@ -1,24 +1,31 @@
 export const gameReleaseMessages = {
   'zh-CN': {
     gameReleases: {
-      title: '游戏服务端更新',
-      subtitle: '检查本机和已连接节点的 DST 专用服务器版本，有新版时自动备份、更新并恢复房间。',
+      title: '游戏服务端管理',
+      subtitle: '查看各机器的安装状态，安装或接入已有服务端，并管理 LuaJIT 和游戏更新。',
       actions: {
         open: '管理游戏更新', refresh: '刷新更新记录', check: '检查是否有更新', checking: '正在检查',
         publish: '备份并开始更新', retry: '重试失败更新', view: '查看详情'
       },
       simple: {
         title: '检查并更新 DST 服务端', description: '检查操作只读取版本，不会停止房间。发现新版后，你可以再确认是否更新。',
-        notChecked: '尚未检查版本', notCheckedDescription: '点击“检查是否有更新”后，系统会显示当前版本、最新版本和受影响的房间。',
-        resultTitle: '检查结果', resultDescription: '确认版本和影响范围后再决定是否更新。',
-        currentVersion: '当前 build', latestVersion: '最新 build', affectedNodes: '运行节点', affectedRoomsAndWorlds: '受影响房间 / 世界',
-        mixedVersions: '{count} 个不同版本'
+        notChecked: '尚未检查版本', notCheckedDescription: '点击“检查是否有更新”后，系统会显示各主机当前游戏版本、最新官方版本和受影响的房间。',
+        resultTitle: '检查结果', resultDescription: '先确认官方游戏版本和影响范围；Steam 安装信息可在技术详情中查看。',
+        currentGameVersion: '当前游戏版本', latestOfficialVersion: '最新正式版本', affectedNodes: '运行节点', affectedRoomsAndWorlds: '受影响房间 / 世界',
+        mixedGameVersions: '{count} 个不同游戏版本', cached: '缓存', officialVersionUnavailable: '最新官方版本暂不可用'
+      },
+      nodes: {
+        title: '主机游戏版本', count: '{nodes} 台主机 / {installations} 个安装',
+        gameVersionsTitle: '主机游戏版本', machineCount: '{count} 台主机',
+        loading: '正在读取各主机版本', empty: '暂无部署了世界的运行主机', loadFailed: '主机版本读取失败',
+        steamDetails: 'Steam 安装详情', steamDetailsDescription: 'AppID、平台与 Build 仅用于内部更新判断',
+        channelTitle: '为什么 Build 不同', channelDescription: '当前包含多个版本通道：{channels}。不同系统和安装类型使用不同 AppID，因此 Steam Build 数字可以不同，只能在同一 AppID 内比较。', channelSeparator: '；'
       },
       advanced: {
         title: '高级选项', description: '通常保持默认即可，仅在缓存损坏或需要调整启动校验时修改。'
       },
       technical: {
-        title: '技术详情', description: '查看逐节点版本、磁盘空间和计划标识。'
+        title: '技术详情', description: '查看平台、AppID、Steam Build、安装方式、磁盘空间和计划标识。'
       },
       notice: {
         title: '更新期间会自动保护并恢复房间',
@@ -43,13 +50,16 @@ export const gameReleaseMessages = {
         steamManagedDescription: '本机游戏已是最新版本。该安装由 Steam 客户端维护，面板不会修改 Steam 管理的游戏文件。'
       },
       columns: {
-        target: '运行目标', installation: '安装实例', versions: '当前 → 目标', disk: '可用 / 要求',
+        target: '运行目标', installation: '安装实例', gameVersion: '游戏版本', channel: '平台 / Steam 应用', steamVersions: '当前 Build → 目标 Build', updateMethod: '更新方式', disk: '可用 / 要求',
         shards: '运行分片', status: '状态', release: '更新任务', createdAt: '创建时间', rooms: '房间 / 世界',
         stage: '阶段', beforeAfter: '更新前 → 更新后', evidence: '加载证据', updatedAt: '更新时间'
       },
       values: {
+        checkFailed: '检查失败', notInstalled: '未安装', unknown: '状态待确认', testBranch: '测试分支', otherBranch: '其他分支',
         local: '本机', online: '在线', offline: '离线', ready: '待更新', blocked: '阻断', upToDate: '已是最新', steamManaged: 'Steam 已是最新',
         steamClient: 'Steam 客户端管理', steamcmd: '面板自动更新', unknownUpdateMethod: '更新方式未知',
+        platforms: { macos: 'macOS', linux: 'Linux', windows: 'Windows', unknown: '未知系统' },
+        applications: { gameClient: 'DST 游戏客户端', dedicatedServer: 'DST 专用服务器', unknown: '未知 Steam 应用' },
         runningShards: '{running} / {total} 运行', master: 'Master', secondary: 'Secondary', noEvidence: '暂无证据'
       },
       stages: {
@@ -61,7 +71,8 @@ export const gameReleaseMessages = {
         targetOffline: '目标节点离线', inventoryStale: '节点运行清单缺失或过期', capabilityMissing: '节点不支持版本更新协议',
         installationIdentityInvalid: '安装实例标识无效', installationMissing: '未发现 DST 专用服务器安装',
         steamcmdUnavailable: 'SteamCMD 不可用', steamClientUpdateRequired: '请先在 Steam 客户端中更新本机游戏', updateUnsupported: '该安装方式不支持面板更新', diskInsufficient: '磁盘可用空间不足',
-        versionObserveFailed: '读取安装版本失败', shardInventoryMissing: '运行清单中未发现分片', shardStatusFailed: '读取分片状态失败', unknown: '未知阻断项'
+        versionObserveFailed: '读取安装版本失败', versionCheckTimeout: '该主机版本检查超时', latestBuildUnavailable: '无法查询 Steam 最新 Build',
+        shardInventoryMissing: '运行清单中未发现分片', shardStatusFailed: '读取分片状态失败', unknown: '未知阻断项'
       },
       job: {
         title: '更新任务', queued: '等待执行', running: '正在执行', succeeded: '任务完成', failed: '任务失败', canceled: '任务已取消', unknown: '未知任务状态'
@@ -84,30 +95,38 @@ export const gameReleaseMessages = {
         historyFailed: '读取更新记录失败：{error}', previewReady: '更新范围已检查', previewFailed: '检查更新范围失败：{error}',
         submitted: '游戏更新任务已提交', submitFailed: '提交游戏更新失败：{error}', retrySubmitted: '重试任务已提交',
         retryFailed: '提交重试失败：{error}', detailsFailed: '读取更新详情失败：{error}', taskFailed: '更新任务失败：{error}',
-        invalidJobResponse: '后端未返回可跟踪的更新任务', completionUnconfirmed: '更新任务已结束，但连续多次未能读取对应记录；请刷新更新历史并核对恢复状态'
+        invalidJobResponse: '后端未返回可跟踪的更新任务', completionUnconfirmed: '更新任务已结束，但连续多次未能读取对应记录；请刷新更新历史并核对恢复状态',
+        officialVersionUnavailable: '无法读取最新官方游戏版本'
       }
     }
   },
   'en-US': {
     gameReleases: {
-      title: 'Game server updates',
-      subtitle: 'Check DST dedicated-server versions on this host and connected nodes, then back up, update, and restore rooms when a new build is available.',
+      title: 'Game server management',
+      subtitle: 'Inspect installations on each host, install or connect an existing server, and manage LuaJIT and game updates.',
       actions: {
         open: 'Manage game updates', refresh: 'Refresh update history', check: 'Check for updates', checking: 'Checking',
         publish: 'Back up and update', retry: 'Retry failed update', view: 'View details'
       },
       simple: {
         title: 'Check and update the DST server', description: 'Checking only reads versions and never stops a room. If a new build is found, you can choose whether to update.',
-        notChecked: 'Version not checked yet', notCheckedDescription: 'Select “Check for updates” to see the installed build, latest build, and affected rooms.',
-        resultTitle: 'Check result', resultDescription: 'Review the versions and affected rooms before starting the update.',
-        currentVersion: 'Installed build', latestVersion: 'Latest build', affectedNodes: 'Runtime nodes', affectedRoomsAndWorlds: 'Affected rooms / worlds',
-        mixedVersions: '{count} different builds'
+        notChecked: 'Version not checked yet', notCheckedDescription: 'Select “Check for updates” to see each host’s current game version, the latest official version, and affected rooms.',
+        resultTitle: 'Check result', resultDescription: 'Review official game versions and impact first. Steam installation data is available under technical details.',
+        currentGameVersion: 'Current game version', latestOfficialVersion: 'Latest stable version', affectedNodes: 'Runtime nodes', affectedRoomsAndWorlds: 'Affected rooms / worlds',
+        mixedGameVersions: '{count} different game versions', cached: 'Cached', officialVersionUnavailable: 'Latest official version unavailable'
+      },
+      nodes: {
+        title: 'Game versions by host', count: '{nodes} hosts / {installations} installations',
+        gameVersionsTitle: 'Game version by host', machineCount: '{count} hosts',
+        loading: 'Loading host versions', empty: 'No runtime host has a deployed world', loadFailed: 'Failed to load host versions',
+        steamDetails: 'Steam installation details', steamDetailsDescription: 'AppID, platform, and build are used only for update checks',
+        channelTitle: 'Why the builds differ', channelDescription: 'Multiple version channels are present: {channels}. Operating systems and installation types can use different App IDs, so Steam build numbers may differ and are comparable only within one App ID.', channelSeparator: '; '
       },
       advanced: {
         title: 'Advanced options', description: 'Keep the defaults unless a download cache is damaged or startup verification needs adjustment.'
       },
       technical: {
-        title: 'Technical details', description: 'Inspect per-node versions, disk capacity, and plan identifiers.'
+        title: 'Technical details', description: 'Inspect platform, AppID, Steam builds, update method, disk capacity, and plan identifiers.'
       },
       notice: {
         title: 'Rooms are protected and restored automatically',
@@ -132,13 +151,16 @@ export const gameReleaseMessages = {
         steamManagedDescription: 'The local game is current. Steam manages this installation, so the panel will not modify its game files.'
       },
       columns: {
-        target: 'Runtime target', installation: 'Installation', versions: 'Current → desired', disk: 'Available / required',
+        target: 'Runtime target', installation: 'Installation', gameVersion: 'Game version', channel: 'Platform / Steam app', steamVersions: 'Current build → desired build', updateMethod: 'Update method', disk: 'Available / required',
         shards: 'Running shards', status: 'Status', release: 'Update job', createdAt: 'Created', rooms: 'Room / world',
         stage: 'Stage', beforeAfter: 'Before → after', evidence: 'Load evidence', updatedAt: 'Updated'
       },
       values: {
+        checkFailed: 'Check failed', notInstalled: 'Not installed', unknown: 'Unconfirmed', testBranch: 'Test branch', otherBranch: 'Other branch',
         local: 'Local', online: 'Online', offline: 'Offline', ready: 'Pending update', blocked: 'Blocked', upToDate: 'Current', steamManaged: 'Current in Steam',
         steamClient: 'Managed by Steam', steamcmd: 'Panel-managed', unknownUpdateMethod: 'Unknown update method',
+        platforms: { macos: 'macOS', linux: 'Linux', windows: 'Windows', unknown: 'Unknown OS' },
+        applications: { gameClient: 'DST game client', dedicatedServer: 'DST dedicated server', unknown: 'Unknown Steam app' },
         runningShards: '{running} / {total} running', master: 'Master', secondary: 'Secondary', noEvidence: 'No evidence'
       },
       stages: {
@@ -150,7 +172,8 @@ export const gameReleaseMessages = {
         targetOffline: 'Target is offline', inventoryStale: 'Runtime inventory is missing or stale', capabilityMissing: 'Target lacks the update protocol',
         installationIdentityInvalid: 'Installation identity is invalid', installationMissing: 'DST dedicated-server installation not found',
         steamcmdUnavailable: 'SteamCMD is unavailable', steamClientUpdateRequired: 'Update the local game in Steam first', updateUnsupported: 'This installation cannot be updated by the panel', diskInsufficient: 'Insufficient free disk space',
-        versionObserveFailed: 'Failed to observe the installed version', shardInventoryMissing: 'Shard missing from runtime inventory', shardStatusFailed: 'Failed to read shard state', unknown: 'Unknown blocker'
+        versionObserveFailed: 'Failed to observe the installed version', versionCheckTimeout: 'Version check timed out on this host', latestBuildUnavailable: 'Could not query the latest Steam build',
+        shardInventoryMissing: 'Shard missing from runtime inventory', shardStatusFailed: 'Failed to read shard state', unknown: 'Unknown blocker'
       },
       job: {
         title: 'Update job', queued: 'Queued', running: 'Running', succeeded: 'Job completed', failed: 'Job failed', canceled: 'Job canceled', unknown: 'Unknown job status'
@@ -173,7 +196,8 @@ export const gameReleaseMessages = {
         historyFailed: 'Failed to load update history: {error}', previewReady: 'Update check completed', previewFailed: 'Failed to check for updates: {error}',
         submitted: 'Game update job submitted', submitFailed: 'Failed to submit game update: {error}', retrySubmitted: 'Retry job submitted',
         retryFailed: 'Failed to submit retry: {error}', detailsFailed: 'Failed to load update details: {error}', taskFailed: 'Update job failed: {error}',
-        invalidJobResponse: 'The backend did not return a trackable update job', completionUnconfirmed: 'The update job ended, but its record could not be read after repeated attempts. Refresh update history and verify recovery state.'
+        invalidJobResponse: 'The backend did not return a trackable update job', completionUnconfirmed: 'The update job ended, but its record could not be read after repeated attempts. Refresh update history and verify recovery state.',
+        officialVersionUnavailable: 'Could not load the latest official game version'
       }
     }
   }

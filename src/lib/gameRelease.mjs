@@ -26,8 +26,24 @@ const BLOCKER_KEYS = Object.freeze({
   UPDATE_UNSUPPORTED: 'updateUnsupported',
   DISK_INSUFFICIENT: 'diskInsufficient',
   VERSION_OBSERVE_FAILED: 'versionObserveFailed',
+  VERSION_CHECK_TIMEOUT: 'versionCheckTimeout',
+  LATEST_BUILD_UNAVAILABLE: 'latestBuildUnavailable',
   SHARD_INVENTORY_MISSING: 'shardInventoryMissing',
   SHARD_STATUS_FAILED: 'shardStatusFailed'
+})
+
+const PLATFORM_KEYS = Object.freeze({
+  darwin: 'macos',
+  mac: 'macos',
+  macos: 'macos',
+  linux: 'linux',
+  windows: 'windows',
+  win32: 'windows'
+})
+
+const APPLICATION_KEYS = Object.freeze({
+  '322330': 'gameClient',
+  '343050': 'dedicatedServer'
 })
 
 export function gameReleaseStageKey(stage) {
@@ -70,4 +86,55 @@ export function gameReleaseJobProgress(job) {
 
 export function gameReleaseFindByJob(releases, jobId) {
   return (Array.isArray(releases) ? releases : []).find(item => item?.sourceJobId === jobId) || null
+}
+
+export function gameReleaseInstallationStatus(installation) {
+  if ((installation?.blockers || []).length) return { key: 'blocked', variant: 'destructive' }
+  if (installation?.upToDate && installation?.updateMethod === 'steam-client') {
+    return { key: 'steamManaged', variant: 'outline' }
+  }
+  if (installation?.upToDate) return { key: 'upToDate', variant: 'secondary' }
+  return { key: 'ready', variant: 'outline' }
+}
+
+export function gameReleaseNodeCount(installations) {
+  const targetIds = new Set()
+  for (const installation of installations || []) {
+    const targetId = String(installation?.targetId || '').trim()
+    if (targetId) targetIds.add(targetId)
+  }
+  return targetIds.size
+}
+
+export function gameReleaseGameVersions(installations) {
+  return [...new Set((installations || [])
+    .map(installation => String(installation?.gameVersion || '').trim())
+    .filter(Boolean))]
+}
+
+export function gameReleasePlatformKey(value) {
+  return PLATFORM_KEYS[String(value || '').trim().toLowerCase()] || 'unknown'
+}
+
+export function gameReleaseApplicationKey(value) {
+  return APPLICATION_KEYS[String(value || '').trim()] || 'unknown'
+}
+
+export function gameReleaseVersionChannels(installations) {
+  const channels = []
+  const channelByKey = new Map()
+  for (const installation of installations || []) {
+    const appId = String(installation?.appId || '').trim()
+    const updateMethod = String(installation?.updateMethod || '').trim().toLowerCase()
+    const platformKey = gameReleasePlatformKey(installation?.os)
+    const key = `${appId}\u0000${updateMethod}`
+    let channel = channelByKey.get(key)
+    if (!channel) {
+      channel = { appId, updateMethod, platformKeys: [] }
+      channelByKey.set(key, channel)
+      channels.push(channel)
+    }
+    if (!channel.platformKeys.includes(platformKey)) channel.platformKeys.push(platformKey)
+  }
+  return channels
 }

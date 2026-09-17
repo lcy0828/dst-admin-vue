@@ -1,4 +1,6 @@
 <script setup>
+import GameInstallationManager from '@/components/GameInstallationManager.vue'
+import LuaJITInstaller from '@/components/LuaJITInstaller.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
@@ -15,7 +17,7 @@ import {
   TriangleAlert
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import { gameReleasesV2API, jobsV2API } from '@/api/v2'
+import { gameReleasesV2API, gameV2API, jobsV2API, runtimeObservationsV2API } from '@/api/v2'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -36,14 +38,29 @@ import {
   gameReleaseBlockerKey,
   gameReleaseCanRetry,
   gameReleaseFindByJob,
+  gameReleaseGameVersions,
+  gameReleaseApplicationKey,
+  gameReleaseInstallationStatus,
   gameReleaseIsTerminal,
   gameReleaseJobFailed,
   gameReleaseJobIsTerminal,
   gameReleaseJobProgress,
+  gameReleaseNodeCount,
+  gameReleasePlatformKey,
   gameReleaseStageKey,
-  gameReleaseStageVariant
+  gameReleaseStageVariant,
+  gameReleaseVersionChannels
 } from '@/lib/gameRelease.mjs'
+import {
+  filterManagementTargets,
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  MANAGEMENT_SCOPE_TARGET,
+  managementScopeRequest,
+  managementScopeTargetId
+} from '@/lib/managementScope.mjs'
 
+const installationGeneration = ref(0)
 const ACTIVE_RELEASE_KEY = 'dstGameReleaseActivity'
 const { locale, t } = useI18n()
 const desiredVersion = ref('')
@@ -62,6 +79,9 @@ const taskError = ref('')
 const confirmOpen = ref(false)
 const advancedOpen = ref(false)
 const technicalOpen = ref(false)
+const versionReport = ref(null)
+const officialVersionError = ref('')
+const managementScope = ref(getManagementScope())
 let pollTimer = 0
 let requestSequence = 0
 let historyLoadingSequence = 0
@@ -72,20 +92,47 @@ let pollReadFailures = 0
 let pollConfirmationMisses = 0
 
 const planInstallations = computed(() => plan.value?.installations || [])
+const scopeLabel = computed(() => managementScope.value.targetName || t('app.remote.allTargets'))
+const scopedReleases = computed(() => {
+  if (managementScope.value.kind !== MANAGEMENT_SCOPE_TARGET) return releases.value
+  return releases.value.filter(release => (release?.plan?.installations || [])
+    .some(item => item.targetId === managementScope.value.targetId))
+})
+const selectedReleaseInstallations = computed(() => filterManagementTargets(
+  selectedRelease.value?.installations || [],
+  item => item?.targetId,
+  managementScope.value
+))
+const selectedReleaseShards = computed(() => filterManagementTargets(
+  selectedRelease.value?.shards || [],
+  item => item?.targetId,
+  managementScope.value
+))
+const canRetrySelectedRelease = computed(() => {
+  if (!gameReleaseCanRetry(selectedRelease.value)) return false
+  if (managementScope.value.kind !== MANAGEMENT_SCOPE_TARGET) return true
+  const installations = selectedRelease.value?.plan?.installations || []
+  return installations.length > 0 && installations.every(item => item.targetId === managementScope.value.targetId)
+})
 const planBlockers = computed(() => plan.value?.blockers || [])
+const affectedNodeCount = computed(() => gameReleaseNodeCount(planInstallations.value))
+const planVersionChannels = computed(() => gameReleaseVersionChannels(planInstallations.value))
+const planVersionChannelsLabel = computed(() => planVersionChannels.value
+  .map(versionChannelLabel)
+  .join(t('gameReleases.nodes.channelSeparator')))
 const affectedShardCount = computed(() => planInstallations.value.reduce((total, item) => total + (item.shards || []).length, 0))
-const currentVersionLabel = computed(() => {
-  const versions = [...new Set(planInstallations.value.map(item => item.currentVersion).filter(Boolean))]
+const currentGameVersionLabel = computed(() => {
+  const versions = gameReleaseGameVersions(planInstallations.value)
   if (!versions.length) return '--'
   if (versions.length === 1) return versions[0]
-  return t('gameReleases.simple.mixedVersions', { count: versions.length })
+  return t('gameReleases.simple.mixedGameVersions', { count: versions.length })
 })
-const latestVersionLabel = computed(() => {
-  const versions = [...new Set(planInstallations.value.map(item => item.desiredVersion).filter(Boolean))]
-  if (!versions.length) return plan.value?.desiredVersion || '--'
-  if (versions.length === 1) return versions[0]
-  return t('gameReleases.simple.mixedVersions', { count: versions.length })
-})
+const latestOfficialVersionLabel = computed(() => versionReport.value?.officialRelease?.version || '--')
+const officialReleaseId = computed(() => versionReport.value?.officialRelease?.releaseId || '')
+const officialReleaseStale = computed(() => (
+  versionReport.value?.officialRelease?.stale === true ||
+  Boolean(officialVersionError.value && versionReport.value?.officialRelease)
+))
 const planStateKey = computed(() => {
   if (!plan.value?.ready) return 'blocked'
   return plan.value?.updateRequired ? 'ready' : 'checked'
@@ -105,16 +152,21 @@ watch([desiredVersion, () => policy.cleanCache, () => policy.restartRunning, () 
 })
 
 onMounted(async () => {
+  window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
   await loadHistory()
   resumePolling()
 })
 
-onBeforeUnmount(stopPolling)
+onBeforeUnmount(() => {
+  stopPolling()
+  window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
+})
 
 function releaseRequest() {
   const requested = desiredVersion.value.trim()
   return {
     ...(requested ? { desiredVersion: requested } : {}),
+    ...managementScopeRequest(managementScope.value),
     policy: {
       cleanCache: policy.cleanCache,
       restartRunning: policy.restartRunning,
@@ -122,6 +174,16 @@ function releaseRequest() {
       timeoutSeconds: Number(policy.timeoutSeconds)
     }
   }
+}
+
+function handleManagementScopeChange(event) {
+  managementScope.value = event?.detail || getManagementScope()
+  previewRequestSequence += 1
+  previewing.value = false
+  plan.value = null
+  selectedRelease.value = null
+  confirmOpen.value = false
+  taskError.value = ''
 }
 
 function selectLoadConfirmation(value) {
@@ -141,7 +203,17 @@ function jobLabel(status) {
 
 function blockerLabel(blocker) {
   const key = gameReleaseBlockerKey(blocker?.code)
-  return key === 'unknown' && blocker?.message ? blocker.message : t(`gameReleases.blockers.${key}`)
+  const label = t(`gameReleases.blockers.${key}`)
+  const detail = blocker?.message?.trim()
+  return detail ? (key === 'unknown' || detail === label ? detail : `${label}: ${detail}`) : label
+}
+
+function blockerTargetLabel(blocker) {
+  if (!blocker?.targetId) return ''
+  const target = planInstallations.value.find(item => (
+    item.targetId === blocker.targetId && (!blocker.installationId || item.installationId === blocker.installationId)
+  ))
+  return target ? targetName(target) : blocker.targetId
 }
 
 function formatBytes(bytes) {
@@ -169,17 +241,50 @@ function targetName(target) {
   return target?.targetName || (target?.targetId === 'local' ? t('gameReleases.values.local') : target?.targetId) || '--'
 }
 
-function targetStatus(target) {
-  if ((target?.blockers || []).length) return { key: 'blocked', variant: 'destructive' }
-  if (target?.upToDate && target?.updateMethod === 'steam-client') return { key: 'steamManaged', variant: 'outline' }
-  if (target?.upToDate) return { key: 'upToDate', variant: 'secondary' }
-  return { key: 'ready', variant: 'outline' }
-}
-
 function updateMethodLabel(target) {
   if (target?.updateMethod === 'steam-client') return t('gameReleases.values.steamClient')
   if (target?.updateMethod === 'steamcmd') return t('gameReleases.values.steamcmd')
   return t('gameReleases.values.unknownUpdateMethod')
+}
+
+function platformLabel(target) {
+  return t(`gameReleases.values.platforms.${gameReleasePlatformKey(target?.os)}`)
+}
+
+function applicationLabel(target) {
+  return t(`gameReleases.values.applications.${gameReleaseApplicationKey(target?.appId)}`)
+}
+
+function versionChannelLabel(target) {
+  const platforms = Array.isArray(target?.platformKeys) && target.platformKeys.length
+    ? target.platformKeys.map(key => t(`gameReleases.values.platforms.${key}`)).join(' / ')
+    : platformLabel(target)
+  return [platforms, applicationLabel(target), target?.appId ? `App ${target.appId}` : ''].filter(Boolean).join(' · ')
+}
+
+function targetMetadata(target) {
+  return [
+    target?.installationId || '--',
+    versionChannelLabel(target),
+    updateMethodLabel(target),
+    target?.online ? t('gameReleases.values.online') : t('gameReleases.values.offline')
+  ].filter(Boolean).join(' · ')
+}
+
+function targetGameMetadata(target) {
+  return [
+    platformLabel(target),
+    target?.online ? t('gameReleases.values.online') : t('gameReleases.values.offline')
+  ].join(' · ')
+}
+
+function targetSteamVersions(target) {
+  return `${target?.steamBuild || target?.currentVersion || '--'} → ${target?.desiredVersion || '--'}`
+}
+
+function targetGameStatus(target) {
+  const status = gameReleaseInstallationStatus(target)
+  return status.key === 'steamManaged' ? { key: 'upToDate', variant: 'secondary' } : status
 }
 
 function releaseError(job) {
@@ -208,21 +313,39 @@ async function loadHistory(options = {}) {
   }
 }
 
-async function previewRelease() {
+async function loadOfficialVersion() {
+  officialVersionError.value = ''
+  try {
+    const value = await gameV2API.version({ fresh: true, lightweight: true })
+    versionReport.value = value
+    if (!value?.officialRelease) {
+      officialVersionError.value = value?.officialCheckError || t('gameReleases.feedback.officialVersionUnavailable')
+    }
+  } catch (error) {
+    officialVersionError.value = error?.message || t('gameReleases.feedback.officialVersionUnavailable')
+  }
+}
+
+async function previewRelease(options = {}) {
   if (!canPreview.value) return
   const sequence = ++previewRequestSequence
   const request = releaseRequest()
   previewing.value = true
   taskError.value = ''
+  plan.value = null
   try {
-    const value = await gameReleasesV2API.preview(request)
+    const [, value] = await Promise.all([
+      loadOfficialVersion(),
+      runtimeObservationsV2API.refresh({ targetId: managementScopeTargetId(managementScope.value) })
+        .then(() => gameReleasesV2API.preview(request))
+    ])
     if (sequence !== previewRequestSequence) return
     plan.value = value
-    toast.success(t('gameReleases.feedback.previewReady'))
+    if (!options.quiet) toast.success(t('gameReleases.feedback.previewReady'))
   } catch (error) {
     if (sequence !== previewRequestSequence) return
     taskError.value = error.message || t('common.errors.unknown')
-    toast.error(t('gameReleases.feedback.previewFailed', { error: taskError.value }))
+    if (!options.quiet) toast.error(t('gameReleases.feedback.previewFailed', { error: taskError.value }))
   } finally {
     if (sequence === previewRequestSequence) previewing.value = false
   }
@@ -328,7 +451,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
   if (pollTimer) window.clearTimeout(pollTimer)
   pollTimer = 0
   try {
-    const job = await jobsV2API.get(jobId)
+    const job = await jobsV2API.controlPlaneGet(jobId)
     if (generation !== pollGeneration) return
     activeJob.value = job
     const history = await loadHistory({ quiet: true })
@@ -349,6 +472,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
     const jobDone = gameReleaseJobIsTerminal(activeJob.value)
     if (jobDone && (releaseDone || gameReleaseJobFailed(activeJob.value))) {
       sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
+      await previewRelease({ quiet: true })
       if (gameReleaseJobFailed(activeJob.value)) {
         taskError.value = releaseError(activeJob.value)
         toast.error(t('gameReleases.feedback.taskFailed', { error: taskError.value }))
@@ -384,11 +508,14 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
       <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-2">
           <h1 class="text-2xl font-semibold tracking-normal">{{ t('gameReleases.title') }}</h1>
-          <Badge variant="outline">Steam build</Badge>
+          <Badge variant="secondary">{{ scopeLabel }}</Badge>
         </div>
         <p class="mt-1 text-sm text-muted-foreground">{{ t('gameReleases.subtitle') }}</p>
       </div>
     </header>
+
+    <GameInstallationManager @changed="installationGeneration += 1" />
+    <LuaJITInstaller :key="installationGeneration" />
 
     <Alert v-if="taskError" variant="destructive">
       <CircleAlert />
@@ -409,7 +536,11 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
         </UiButton>
       </CardHeader>
       <CardContent class="flex min-w-0 flex-col gap-4 pt-0">
-        <Alert v-if="!plan">
+        <div v-if="previewing && !plan" class="flex flex-col gap-2" :aria-label="t('gameReleases.actions.checking')">
+          <Skeleton v-for="index in 3" :key="index" class="h-10 w-full" />
+        </div>
+
+        <Alert v-else-if="!plan">
           <ScanSearch />
           <AlertTitle>{{ t('gameReleases.simple.notChecked') }}</AlertTitle>
           <AlertDescription>{{ t('gameReleases.simple.notCheckedDescription') }}</AlertDescription>
@@ -431,18 +562,45 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
           </div>
 
           <div class="grid grid-cols-2 gap-x-5 gap-y-3 rounded-lg border px-4 py-3 lg:grid-cols-4">
-            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.currentVersion') }}</span><strong class="truncate text-lg font-semibold tabular-nums" :title="currentVersionLabel">{{ currentVersionLabel }}</strong></div>
-            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.latestVersion') }}</span><strong class="truncate text-lg font-semibold tabular-nums" :title="latestVersionLabel">{{ latestVersionLabel }}</strong></div>
-            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.affectedNodes') }}</span><strong class="text-lg font-semibold tabular-nums">{{ planInstallations.length }}</strong></div>
+            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.currentGameVersion') }}</span><strong class="truncate text-lg font-semibold tabular-nums" :title="currentGameVersionLabel">{{ currentGameVersionLabel }}</strong></div>
+            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.latestOfficialVersion') }}</span><div class="flex min-w-0 flex-wrap items-center gap-1.5"><strong class="truncate text-lg font-semibold tabular-nums" :title="latestOfficialVersionLabel">{{ latestOfficialVersionLabel }}</strong><Badge v-if="officialReleaseId" variant="outline">R{{ officialReleaseId }}</Badge><Badge v-if="officialReleaseStale" variant="outline" :title="versionReport?.officialCheckError || officialVersionError">{{ t('gameReleases.simple.cached') }}</Badge></div></div>
+            <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.affectedNodes') }}</span><strong class="text-lg font-semibold tabular-nums">{{ affectedNodeCount }}</strong></div>
             <div class="flex min-w-0 flex-col gap-0.5"><span class="text-xs text-muted-foreground">{{ t('gameReleases.simple.affectedRoomsAndWorlds') }}</span><strong class="text-lg font-semibold tabular-nums">{{ plan.affectedRoomIds?.length || 0 }}<span class="ml-1 text-xs font-normal text-muted-foreground">/ {{ affectedShardCount }}</span></strong></div>
           </div>
+
+          <Alert v-if="officialVersionError">
+            <CircleAlert />
+            <AlertTitle>{{ t('gameReleases.simple.officialVersionUnavailable') }}</AlertTitle>
+            <AlertDescription>{{ officialVersionError }}</AlertDescription>
+          </Alert>
+
+          <section class="flex min-w-0 flex-col gap-2" :aria-label="t('gameReleases.nodes.title')">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-sm font-semibold">{{ t('gameReleases.nodes.title') }}</h3>
+              <Badge variant="outline">{{ t('gameReleases.nodes.count', { nodes: affectedNodeCount, installations: planInstallations.length }) }}</Badge>
+            </div>
+            <div v-if="planInstallations.length" class="overflow-x-auto rounded-lg border">
+              <Table class="min-w-[640px]">
+                <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.gameVersion') }}</TableHead><TableHead>{{ t('gameReleases.columns.shards') }}</TableHead><TableHead>{{ t('gameReleases.columns.status') }}</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  <TableRow v-for="target in planInstallations" :key="`${target.targetId}:${target.installationId}`">
+                    <TableCell><div class="flex min-w-0 flex-col gap-1"><span class="font-medium">{{ targetName(target) }}</span><span class="text-xs text-muted-foreground">{{ targetGameMetadata(target) }}</span></div></TableCell>
+                    <TableCell class="font-medium tabular-nums">{{ target.gameVersion || '--' }}</TableCell>
+                    <TableCell>{{ t('gameReleases.values.runningShards', { running: target.runningShards || 0, total: target.shards?.length || 0 }) }}</TableCell>
+                    <TableCell><Badge :variant="targetGameStatus(target).variant">{{ t(`gameReleases.values.${targetGameStatus(target).key}`) }}</Badge></TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+            <p v-else class="text-muted-foreground py-3 text-sm">{{ t('gameReleases.nodes.empty') }}</p>
+          </section>
 
           <Alert v-if="planBlockers.length" variant="destructive">
             <TriangleAlert />
             <AlertTitle>{{ t('gameReleases.plan.blockerTitle') }}</AlertTitle>
             <AlertDescription class="flex flex-col gap-1">
               <span>{{ t('gameReleases.plan.blockerDescription') }}</span>
-              <span v-for="(blocker, index) in planBlockers" :key="`${blocker.code}:${blocker.targetId}:${blocker.worldId}:${index}`">{{ blockerLabel(blocker) }}<template v-if="blocker.targetId"> · {{ blocker.targetId }}</template><template v-if="blocker.worldId"> / {{ blocker.worldId }}</template></span>
+              <span v-for="(blocker, index) in planBlockers" :key="`${blocker.code}:${blocker.targetId}:${blocker.worldId}:${index}`">{{ blockerLabel(blocker) }}<template v-if="blocker.targetId"> · {{ blockerTargetLabel(blocker) }}</template><template v-if="blocker.worldId"> / {{ blocker.worldId }}</template></span>
             </AlertDescription>
           </Alert>
 
@@ -466,24 +624,28 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
               </UiButton>
             </CollapsibleTrigger>
             <CollapsibleContent class="flex min-w-0 flex-col gap-3 pt-3">
-              <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-                <span class="min-w-0 truncate" :title="plan.topologyRevision">{{ t('gameReleases.plan.topology') }}: {{ plan.topologyRevision }}</span>
-                <span class="min-w-0 truncate" :title="plan.planHash">{{ t('gameReleases.plan.planHash') }}: {{ plan.planHash }}</span>
-              </div>
-              <div class="overflow-x-auto rounded-lg border">
+              <Alert v-if="planVersionChannels.length > 1">
+                <CircleAlert />
+                <AlertTitle>{{ t('gameReleases.nodes.channelTitle') }}</AlertTitle>
+                <AlertDescription>{{ t('gameReleases.nodes.channelDescription', { channels: planVersionChannelsLabel }) }}</AlertDescription>
+              </Alert>
+              <div v-if="planInstallations.length" class="overflow-x-auto rounded-lg border">
                 <Table class="min-w-[900px]">
-                  <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.installation') }}</TableHead><TableHead>{{ t('gameReleases.columns.versions') }}</TableHead><TableHead>{{ t('gameReleases.columns.disk') }}</TableHead><TableHead>{{ t('gameReleases.columns.shards') }}</TableHead><TableHead>{{ t('gameReleases.columns.status') }}</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.channel') }}</TableHead><TableHead>{{ t('gameReleases.columns.steamVersions') }}</TableHead><TableHead>{{ t('gameReleases.columns.disk') }}</TableHead><TableHead>{{ t('gameReleases.columns.updateMethod') }}</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    <TableRow v-for="target in planInstallations" :key="`${target.targetId}:${target.installationId}`">
-                      <TableCell><div class="flex min-w-0 flex-col gap-1"><span class="font-medium">{{ targetName(target) }}</span><span class="text-xs text-muted-foreground">{{ target.online ? t('gameReleases.values.online') : t('gameReleases.values.offline') }}</span></div></TableCell>
-                      <TableCell><div class="flex min-w-0 flex-col gap-1"><span class="font-mono text-xs">{{ target.installationId }}</span><span class="text-xs text-muted-foreground">{{ updateMethodLabel(target) }}<template v-if="target.appId"> · App {{ target.appId }}</template></span></div></TableCell>
-                      <TableCell class="tabular-nums">{{ target.currentVersion || '--' }} → {{ target.desiredVersion || plan.desiredVersion }}</TableCell>
+                    <TableRow v-for="target in planInstallations" :key="`technical:${target.targetId}:${target.installationId}`">
+                      <TableCell><div class="flex min-w-0 flex-col gap-1"><span class="font-medium">{{ targetName(target) }}</span><span class="font-mono text-xs text-muted-foreground">{{ target.installationId || '--' }}</span></div></TableCell>
+                      <TableCell class="text-xs" :title="targetMetadata(target)">{{ versionChannelLabel(target) }}</TableCell>
+                      <TableCell class="tabular-nums">{{ targetSteamVersions(target) }}</TableCell>
                       <TableCell class="tabular-nums">{{ formatBytes(target.availableBytes) }} / {{ formatBytes(target.requiredBytes) }}</TableCell>
-                      <TableCell>{{ t('gameReleases.values.runningShards', { running: target.runningShards || 0, total: target.shards?.length || 0 }) }}</TableCell>
-                      <TableCell><Badge :variant="targetStatus(target).variant">{{ t(`gameReleases.values.${targetStatus(target).key}`) }}</Badge></TableCell>
+                      <TableCell>{{ updateMethodLabel(target) }}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
+              </div>
+              <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                <span class="min-w-0 truncate" :title="plan.topologyRevision">{{ t('gameReleases.plan.topology') }}: {{ plan.topologyRevision }}</span>
+                <span class="min-w-0 truncate" :title="plan.planHash">{{ t('gameReleases.plan.planHash') }}: {{ plan.planHash }}</span>
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -555,14 +717,14 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
         </UiButton>
       </div>
       <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ t('gameReleases.history.title') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
-      <div v-if="loading && !releases.length" class="flex flex-col gap-2" :aria-label="t('gameReleases.history.loading')"><Skeleton v-for="index in 4" :key="index" class="h-12 w-full" /></div>
-      <Empty v-else-if="!releases.length && !loadError"><EmptyHeader><EmptyMedia variant="icon"><PackageCheck /></EmptyMedia><EmptyTitle>{{ t('gameReleases.history.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ t('gameReleases.history.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
+      <div v-if="loading && !scopedReleases.length" class="flex flex-col gap-2" :aria-label="t('gameReleases.history.loading')"><Skeleton v-for="index in 4" :key="index" class="h-12 w-full" /></div>
+      <Empty v-else-if="!scopedReleases.length && !loadError"><EmptyHeader><EmptyMedia variant="icon"><PackageCheck /></EmptyMedia><EmptyTitle>{{ t('gameReleases.history.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ t('gameReleases.history.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
       <div v-else class="overflow-x-auto rounded-lg border">
-        <Table class="min-w-[760px]">
-          <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.release') }}</TableHead><TableHead>{{ t('gameReleases.plan.targetVersion') }}</TableHead><TableHead>{{ t('gameReleases.columns.status') }}</TableHead><TableHead>{{ t('gameReleases.columns.createdAt') }}</TableHead><TableHead class="text-right">{{ t('common.fields.actions') }}</TableHead></TableRow></TableHeader>
+        <Table class="min-w-[600px]">
+          <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.release') }}</TableHead><TableHead>{{ t('gameReleases.columns.status') }}</TableHead><TableHead>{{ t('gameReleases.columns.createdAt') }}</TableHead><TableHead class="text-right">{{ t('common.fields.actions') }}</TableHead></TableRow></TableHeader>
           <TableBody>
-            <TableRow v-for="release in releases" :key="release.id">
-              <TableCell class="font-mono text-xs">{{ release.id }}</TableCell><TableCell class="tabular-nums">{{ release.plan?.desiredVersion || '--' }}</TableCell><TableCell><Badge :variant="gameReleaseStageVariant(release.stage)">{{ stageLabel(release.stage) }}</Badge></TableCell><TableCell>{{ formatDate(release.createdAt) }}</TableCell><TableCell class="text-right"><UiButton variant="ghost" size="sm" :disabled="detailsLoading" @click="openDetails(release)">{{ t('gameReleases.actions.view') }}</UiButton></TableCell>
+            <TableRow v-for="release in scopedReleases" :key="release.id">
+              <TableCell class="max-w-56"><span class="block truncate font-mono text-xs" :title="release.id">{{ release.id }}</span></TableCell><TableCell><Badge :variant="gameReleaseStageVariant(release.stage)">{{ stageLabel(release.stage) }}</Badge></TableCell><TableCell>{{ formatDate(release.createdAt) }}</TableCell><TableCell class="text-right"><UiButton variant="ghost" size="sm" :disabled="detailsLoading" @click="openDetails(release)">{{ t('gameReleases.actions.view') }}</UiButton></TableCell>
             </TableRow>
           </TableBody>
         </Table>
@@ -572,20 +734,19 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
     <section v-if="selectedRelease" class="flex min-w-0 flex-col gap-3" aria-labelledby="release-details-title">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div><div class="flex flex-wrap items-center gap-2"><h2 id="release-details-title" class="text-base font-semibold">{{ t('gameReleases.details.title') }}</h2><Badge :variant="gameReleaseStageVariant(selectedRelease.stage)">{{ stageLabel(selectedRelease.stage) }}</Badge></div><p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.details.description', { id: selectedRelease.id }) }}</p></div>
-        <UiButton v-if="gameReleaseCanRetry(selectedRelease)" variant="outline" :disabled="retrying" @click="retryRelease"><Spinner v-if="retrying" data-icon="inline-start" /><RotateCw v-else data-icon="inline-start" />{{ t('gameReleases.actions.retry') }}</UiButton>
+        <UiButton v-if="canRetrySelectedRelease" variant="outline" :disabled="retrying" @click="retryRelease"><Spinner v-if="retrying" data-icon="inline-start" /><RotateCw v-else data-icon="inline-start" />{{ t('gameReleases.actions.retry') }}</UiButton>
       </div>
       <Alert v-if="selectedRelease.errorMessage" variant="destructive"><CircleAlert /><AlertTitle>{{ selectedRelease.errorCode || stageLabel(selectedRelease.stage) }}</AlertTitle><AlertDescription>{{ selectedRelease.errorMessage }}</AlertDescription></Alert>
       <div v-if="selectedRelease.protectionBackupIds?.length" class="flex flex-wrap items-center gap-2"><span class="text-sm font-medium">{{ t('gameReleases.details.backups') }}</span><Badge v-for="backupId in selectedRelease.protectionBackupIds" :key="backupId" variant="outline" class="font-mono">{{ backupId }}</Badge></div>
       <Separator />
-      <div><h3 class="mb-2 text-sm font-semibold">{{ t('gameReleases.details.installationResults') }}</h3><div class="overflow-x-auto rounded-lg border"><Table class="min-w-[760px]"><TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.installation') }}</TableHead><TableHead>{{ t('gameReleases.columns.beforeAfter') }}</TableHead><TableHead>{{ t('gameReleases.columns.stage') }}</TableHead><TableHead>{{ t('gameReleases.columns.updatedAt') }}</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="result in selectedRelease.installations || []" :key="`${result.targetId}:${result.installationId}`"><TableCell>{{ result.targetId }}</TableCell><TableCell class="font-mono text-xs">{{ result.installationId }}</TableCell><TableCell class="tabular-nums">{{ result.beforeVersion || '--' }} → {{ result.afterVersion || '--' }}</TableCell><TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(result.stage)" class="self-start">{{ stageLabel(result.stage) }}</Badge><span v-if="result.errorMessage" class="text-xs text-destructive">{{ result.errorMessage }}</span></div></TableCell><TableCell>{{ formatDate(result.updatedAt) }}</TableCell></TableRow></TableBody></Table></div></div>
-      <div><h3 class="mb-2 text-sm font-semibold">{{ t('gameReleases.details.shardResults') }}</h3><div class="overflow-x-auto rounded-lg border"><Table class="min-w-[900px]"><TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.rooms') }}</TableHead><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.stage') }}</TableHead><TableHead>{{ t('gameReleases.columns.evidence') }}</TableHead><TableHead>{{ t('gameReleases.columns.updatedAt') }}</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="shard in selectedRelease.shards || []" :key="`${shard.roomId}:${shard.worldId}`"><TableCell><div class="flex flex-col gap-1"><span>{{ shard.roomId }} / {{ shard.worldId }}</span><Badge variant="outline" class="self-start">{{ t(shard.isMaster ? 'gameReleases.values.master' : 'gameReleases.values.secondary') }}</Badge></div></TableCell><TableCell>{{ shard.targetId }}</TableCell><TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(shard.stage)" class="self-start">{{ stageLabel(shard.stage) }}</Badge><span v-if="shard.errorMessage" class="text-xs text-destructive">{{ shard.errorMessage }}</span></div></TableCell><TableCell class="max-w-80 break-words text-xs">{{ shard.loadMarker || t('gameReleases.values.noEvidence') }}<span v-if="shard.loadConfirmedAt" class="mt-1 block text-muted-foreground">{{ formatDate(shard.loadConfirmedAt) }}</span></TableCell><TableCell>{{ formatDate(shard.updatedAt) }}</TableCell></TableRow></TableBody></Table></div></div>
+      <div><h3 class="mb-2 text-sm font-semibold">{{ t('gameReleases.details.installationResults') }}</h3><div class="overflow-x-auto rounded-lg border"><Table class="min-w-[760px]"><TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.installation') }}</TableHead><TableHead>{{ t('gameReleases.columns.beforeAfter') }}</TableHead><TableHead>{{ t('gameReleases.columns.stage') }}</TableHead><TableHead>{{ t('gameReleases.columns.updatedAt') }}</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="result in selectedReleaseInstallations" :key="`${result.targetId}:${result.installationId}`"><TableCell>{{ result.targetId }}</TableCell><TableCell class="font-mono text-xs">{{ result.installationId }}</TableCell><TableCell class="tabular-nums">{{ result.beforeVersion || '--' }} → {{ result.afterVersion || '--' }}</TableCell><TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(result.stage)" class="self-start">{{ stageLabel(result.stage) }}</Badge><span v-if="result.errorMessage" class="text-xs text-destructive">{{ result.errorMessage }}</span></div></TableCell><TableCell>{{ formatDate(result.updatedAt) }}</TableCell></TableRow></TableBody></Table></div></div>
+      <div><h3 class="mb-2 text-sm font-semibold">{{ t('gameReleases.details.shardResults') }}</h3><div class="overflow-x-auto rounded-lg border"><Table class="min-w-[900px]"><TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.rooms') }}</TableHead><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.stage') }}</TableHead><TableHead>{{ t('gameReleases.columns.evidence') }}</TableHead><TableHead>{{ t('gameReleases.columns.updatedAt') }}</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="shard in selectedReleaseShards" :key="`${shard.roomId}:${shard.worldId}`"><TableCell><div class="flex flex-col gap-1"><span>{{ shard.roomId }} / {{ shard.worldId }}</span><Badge variant="outline" class="self-start">{{ t(shard.isMaster ? 'gameReleases.values.master' : 'gameReleases.values.secondary') }}</Badge></div></TableCell><TableCell>{{ shard.targetId }}</TableCell><TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(shard.stage)" class="self-start">{{ stageLabel(shard.stage) }}</Badge><span v-if="shard.errorMessage" class="text-xs text-destructive">{{ shard.errorMessage }}</span></div></TableCell><TableCell class="max-w-80 break-words text-xs">{{ shard.loadMarker || t('gameReleases.values.noEvidence') }}<span v-if="shard.loadConfirmedAt" class="mt-1 block text-muted-foreground">{{ formatDate(shard.loadConfirmedAt) }}</span></TableCell><TableCell>{{ formatDate(shard.updatedAt) }}</TableCell></TableRow></TableBody></Table></div></div>
     </section>
 
     <Dialog v-model:open="confirmOpen">
       <DialogContent class="sm:max-w-lg">
         <DialogHeader><DialogTitle>{{ t('gameReleases.confirm.title') }}</DialogTitle><DialogDescription>{{ t('gameReleases.confirm.description') }}</DialogDescription></DialogHeader>
         <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ t('gameReleases.confirm.warningTitle') }}</AlertTitle><AlertDescription>{{ t('gameReleases.confirm.warningDescription', { rooms: plan?.affectedRoomIds?.length || 0, shards: affectedShardCount }) }}</AlertDescription></Alert>
-        <div class="flex flex-col gap-1 text-xs text-muted-foreground"><span>{{ t('gameReleases.plan.targetVersion') }}: {{ plan?.desiredVersion }}</span><span class="break-all">{{ t('gameReleases.plan.planHash') }}: {{ plan?.planHash }}</span></div>
         <DialogFooter><UiButton variant="outline" @click="confirmOpen = false">{{ t('common.actions.cancel') }}</UiButton><UiButton :disabled="publishing" @click="publishRelease"><Spinner v-if="publishing" data-icon="inline-start" /><PackageCheck v-else data-icon="inline-start" />{{ t('gameReleases.confirm.submit') }}</UiButton></DialogFooter>
       </DialogContent>
     </Dialog>
