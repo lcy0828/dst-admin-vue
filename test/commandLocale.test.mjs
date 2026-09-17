@@ -63,6 +63,10 @@ test('command category and status labels preserve unknown protocol values', () =
   assert.equal(translateCommandCategory(translate, hasTranslation, '世界控制'), 'World control')
   assert.equal(translateCommandCategory(translate, hasTranslation, 'my_mod_category'), 'my_mod_category')
   assert.equal(translateCommandStatus(translate, hasTranslation, 'sending'), 'Sending')
+  assert.equal(translateCommandStatus(translate, hasTranslation, 'succeeded'), 'Confirmed')
+  assert.equal(translateCommandStatus(translate, hasTranslation, 'sent'), 'Sent (unverified)')
+  assert.equal(translateCommandStatus(translate, hasTranslation, 'uncertain'), 'Outcome uncertain')
+  assert.equal(translateCommandStatus(translate, hasTranslation, 'unresponsive'), 'Console unresponsive')
   assert.equal(translateCommandStatus(translate, hasTranslation, 'mod_status'), 'mod_status')
 
   assert.equal(
@@ -128,4 +132,19 @@ test('command page localizes display copy while preserving Lua command content',
   assert.match(api, /category: normalizeCommandCategory\(command\.type \|\| command\.category\)/)
   assert.match(globalMessages, /\.\.\.commandMessages\['en-US'\]/)
   assert.doesNotMatch(page, /installCommandMessages/)
+})
+
+test('command execution only treats a confirmed runtime receipt as success', () => {
+  const page = fs.readFileSync(new URL('../src/views/servers/CommandManager.vue', import.meta.url), 'utf8')
+  const workspace = fs.readFileSync(new URL('../src/views/servers/ServerWorkspace.vue', import.meta.url), 'utf8')
+  const api = fs.readFileSync(new URL('../src/api/commandManager.js', import.meta.url), 'utf8')
+
+  assert.match(api, /current\.status !== 'succeeded'/)
+  assert.match(api, /run:\s*current/)
+  assert.match(api, /mayHaveExecuted:/)
+  assert.match(api, /recoveryOutcome:/)
+  assert.doesNotMatch(page, /run\.status === 'sent'/)
+  assert.match(page, /run\.status === 'succeeded'/)
+  assert.match(page, /\['sent', 'uncertain'\]\.includes\(status\)/)
+  assert.match(workspace, /run\.status === 'succeeded'/)
 })

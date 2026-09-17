@@ -30,6 +30,6 @@ function switchLanguage() {
     @click="switchLanguage"
   >
     <Languages data-icon="inline-start" />
-    <span class="min-w-5 text-center">{{ currentLanguageCode }}</span>
+    <span class="hidden min-w-5 text-center sm:inline">{{ currentLanguageCode }}</span>
   </Button>
 </template>

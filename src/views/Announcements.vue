@@ -1,4 +1,6 @@
 <script setup>
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -40,7 +42,7 @@ const selectedRoomId = ref('')
 const worlds = ref([])
 const message = ref('')
 const messageError = ref('')
-const policy = ref({ enabled: true, countdownSeconds: 60 })
+const policy = ref({ enabled: true, countdownSeconds: 30 })
 const notifications = ref([])
 const notificationTotal = ref(0)
 const historyOffset = ref(0)
@@ -56,7 +58,6 @@ const selectedNotification = ref(null)
 let roomLoadSequence = 0
 let roomWatchReady = false
 
-const selectedRoom = computed(() => rooms.value.find(room => room.id === selectedRoomId.value) || null)
 const runningWorlds = computed(() => worlds.value.filter(world => world.status === 'running'))
 const messageLength = computed(() => Array.from(message.value.trim()).length)
 const canSend = computed(() => Boolean(selectedRoomId.value && messageLength.value > 0 && messageLength.value <= 500 && !sending.value))
@@ -113,12 +114,12 @@ function deliveryTarget(delivery) {
 
 async function loadRooms() {
   const result = await roomsV2API.list()
-  rooms.value = (result.items || []).filter(room => room.managed)
+  rooms.value = result.items || []
   const requestedRoomId = String(route.query.roomId || '')
   if (rooms.value.some(room => room.id === requestedRoomId)) {
     selectedRoomId.value = requestedRoomId
   } else if (!rooms.value.some(room => room.id === selectedRoomId.value)) {
-    selectedRoomId.value = rooms.value[0]?.id || ''
+    selectedRoomId.value = preferredRoomId(rooms.value, route.query.roomId)
   }
 }
 
@@ -158,7 +159,7 @@ async function loadRoomContext() {
     worlds.value = worldResult.items || []
     policy.value = {
       enabled: policyResult.enabled !== false,
-      countdownSeconds: Number(policyResult.countdownSeconds) || 60
+      countdownSeconds: Number(policyResult.countdownSeconds) || 30
     }
     await loadHistory()
   } catch (error) {
@@ -317,23 +318,14 @@ onMounted(async () => {
           </CardHeader>
           <CardContent>
             <FieldGroup>
-              <Field>
-                <FieldLabel for="notification-room">{{ t('announcements.composer.room') }}</FieldLabel>
-                <Select v-model="selectedRoomId" :disabled="sending">
-                  <SelectTrigger id="notification-room"><SelectValue :placeholder="t('announcements.composer.roomPlaceholder')" /></SelectTrigger>
-                  <SelectContent><SelectGroup>
-                    <SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
-                  </SelectGroup></SelectContent>
-                </Select>
-                <FieldDescription>{{ selectedRoom?.description || t('announcements.composer.roomDescription') }}</FieldDescription>
-              </Field>
+              <RoomScopeSelect v-model="selectedRoomId" :rooms="rooms" :loading="loading" :disabled="sending || savingPolicy" />
 
               <Field>
                 <FieldTitle>{{ t('announcements.composer.worlds') }}</FieldTitle>
                 <div v-if="roomLoading" class="flex flex-wrap gap-2"><Skeleton v-for="index in 2" :key="index" class="h-6 w-24" /></div>
                 <div v-else class="flex flex-wrap gap-2">
-                  <Badge v-for="world in worlds" :key="world.id" :variant="worldStatusVariant(world.status)">
-                    {{ world.name }} · {{ worldStatusLabel(world.status) }}
+                  <Badge v-for="world in worlds" :key="world.id" :variant="worldStatusVariant(world)">
+                    {{ world.name }} · {{ worldStatusLabel(world) }}
                   </Badge>
                 </div>
                 <FieldDescription>{{ t('announcements.composer.worldDescription') }}</FieldDescription>
@@ -386,6 +378,7 @@ onMounted(async () => {
                 <Select v-model="policy.countdownSeconds" :disabled="!policy.enabled">
                   <SelectTrigger id="operation-countdown" class="w-full sm:w-44"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectGroup>
+                    <SelectItem :value="15">{{ t('announcements.policy.seconds', { count: 15 }) }}</SelectItem>
                     <SelectItem :value="30">{{ t('announcements.policy.seconds', { count: 30 }) }}</SelectItem>
                     <SelectItem :value="60">{{ t('announcements.policy.seconds', { count: 60 }) }}</SelectItem>
                     <SelectItem :value="120">{{ t('announcements.policy.seconds', { count: 120 }) }}</SelectItem>

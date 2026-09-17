@@ -38,8 +38,16 @@ export function confirmAction(message, title = '', options = {}) {
   return requestFeedback('confirm', message, title, options)
 }
 
+export function confirmMaintenance(message, title = '', options = {}) {
+  return requestFeedback('maintenance', message, title, options)
+}
+
 export function confirmCapacityRisk(preview) {
   return requestFeedback('capacity-risk', '', '', { preview })
+}
+
+export function selectRuntimeMode(availability) {
+  return requestFeedback('runtime-mode', '', '', { availability })
 }
 
 export function promptText(message, title = '', options = {}) {

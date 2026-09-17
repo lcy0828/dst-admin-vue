@@ -2,7 +2,8 @@ export const systemSettingsMessages = {
   'zh-CN': {
     systemSettings: {
       title: '系统设置',
-      subtitle: '管理界面、安全、备份、通知和当前主机运行状态。',
+      controllerScope: '管理端设置',
+      subtitle: '这些设置作用于管理端，不随所选机器切换。',
       loadFailed: '系统设置加载失败',
       environmentManaged: '部分设置由环境变量管理',
       environmentManagedDescription: '{count} 个字段已锁定，页面不会提交或覆盖这些字段。',
@@ -34,10 +35,10 @@ export const systemSettingsMessages = {
         dateFormatPlaceholder: '请选择日期格式',
         longDateFormat: 'YYYY年MM月DD日',
         theme: '界面主题',
-        themeDescription: '默认使用 Shadcn 中性，也可以切换预设或选择自定义主色。',
+        themeDescription: '选择配色后立即预览，也可自定义主色。',
         selected: '已选择',
         themeNames: {
-          zinc: 'Shadcn 中性',
+          zinc: '默认中性',
           graphite: '石墨朱橙',
           emerald: '翡翠橙光',
           teal: '青柚珊瑚',
@@ -56,7 +57,7 @@ export const systemSettingsMessages = {
         passwordComplexityDescription: '开启后，密码必须包含大小写字母、数字和特殊字符。',
         minPasswordLength: '密码最小长度',
         minPasswordLengthDescription: '独立于复杂度检查，允许设置 6 至 20 位。',
-        sessionTimeout: '会话超时时间（分钟）',
+        sessionTimeout: '自动退出时间（分钟）',
         sessionTimeoutDescription: '用户无操作后自动退出系统的时间。',
         maxLoginAttempts: '最大登录尝试次数',
         maxLoginAttemptsDescription: '超过次数后账户将被临时锁定。',
@@ -67,9 +68,9 @@ export const systemSettingsMessages = {
         ipWhitelistDescription: '仅允许这些 IP 地址访问管理系统，留空表示不限制。'
       },
       backup: {
-        description: '为所有已接管房间同步真实备份策略。',
+        description: '以下备份设置适用于所有房间。',
         auto: '启用自动备份',
-        autoDescription: '定期自动备份系统数据。',
+        autoDescription: '按设定时间备份房间存档。',
         frequency: '备份频率',
         frequencyPlaceholder: '请选择备份频率',
         daily: '每天',
@@ -79,11 +80,11 @@ export const systemSettingsMessages = {
         retention: '保留备份数量',
         retentionDescription: '系统将保留的最近备份数量。',
         location: '备份存储位置',
-        locationDescription: '真实本地备份路径，修改后重启服务生效。',
+        locationDescription: '管理端的备份目录，修改后需重启管理服务。',
         locationPlaceholder: '请输入备份存储路径',
         manual: '手动备份',
         runNow: '立即执行',
-        runNowDescription: '对当前所有已接管房间创建备份，或查看真实备份历史。',
+        runNowDescription: '立即备份所有房间，或查看备份历史。',
         createNow: '立即备份',
         viewHistory: '查看备份历史'
       },
@@ -102,7 +103,7 @@ export const systemSettingsMessages = {
         senderEmail: '发件人邮箱',
         senderEmailPlaceholder: '系统发送邮件的邮箱地址',
         connectionCheck: '连接检查',
-        connectionCheckDescription: '使用当前 SMTP 参数执行一次真实连接与认证测试。',
+        connectionCheckDescription: '检查邮件服务器连接和账号是否可用。',
         testConnection: '测试邮件连接',
         events: '通知事件',
         serverStatus: '服务器状态变更',
@@ -112,7 +113,7 @@ export const systemSettingsMessages = {
       },
       monitor: {
         title: '系统详细监控',
-        description: '查看当前运行管理后端的主机与 Go 进程状态。',
+        description: '管理端所在机器和管理程序的资源占用。',
         refresh: '刷新状态',
         loadFailed: '系统状态加载失败',
         system: '系统状态',
@@ -167,7 +168,7 @@ export const systemSettingsMessages = {
       },
       history: {
         title: '备份历史记录',
-        description: '所有已接管房间的真实备份文件。',
+        description: '所有已发现房间的真实备份文件。',
         room: '房间',
         filename: '文件名',
         size: '大小',
@@ -178,7 +179,7 @@ export const systemSettingsMessages = {
         failed: '失败',
         download: '下载',
         empty: '暂无备份记录',
-        emptyDescription: '当前已接管房间还没有可下载的备份。'
+        emptyDescription: '当前房间还没有可下载的备份。'
       },
       actions: {
         save: '保存设置'
@@ -208,7 +209,7 @@ export const systemSettingsMessages = {
         resetTitle: '重置系统设置',
         resetConfirmButton: '确定重置',
         resetFailed: '重置系统设置失败',
-        noManagedRooms: '没有已接管的房间可以备份',
+        noManagedRooms: '没有已发现的房间可以备份',
         backupCompleted: '已完成 {count} 个房间的真实备份',
         backupCreateFailed: '创建备份失败',
         backupRunning: '备份任务仍在执行，请稍后查看历史记录',
@@ -232,7 +233,8 @@ export const systemSettingsMessages = {
   'en-US': {
     systemSettings: {
       title: 'System settings',
-      subtitle: 'Manage the interface, security, backups, notifications, and host status.',
+      controllerScope: 'Management server settings',
+      subtitle: 'These settings apply to the management server, regardless of the selected machine.',
       loadFailed: 'Failed to load system settings',
       environmentManaged: 'Some settings are managed by environment variables',
       environmentManagedDescription: '{count} fields are locked and will not be submitted or overwritten.',
@@ -264,10 +266,10 @@ export const systemSettingsMessages = {
         dateFormatPlaceholder: 'Select a date format',
         longDateFormat: 'YYYY year MM month DD day',
         theme: 'Interface theme',
-        themeDescription: 'Shadcn Neutral is the default. You can select another preset or a custom primary color.',
+        themeDescription: 'Preview a preset or choose a custom primary color.',
         selected: 'Selected',
         themeNames: {
-          zinc: 'Shadcn Neutral',
+          zinc: 'Default neutral',
           graphite: 'Graphite Vermilion',
           emerald: 'Emerald Orange',
           teal: 'Teal Coral',
@@ -286,7 +288,7 @@ export const systemSettingsMessages = {
         passwordComplexityDescription: 'Passwords must include uppercase and lowercase letters, numbers, and special characters.',
         minPasswordLength: 'Minimum password length',
         minPasswordLengthDescription: 'Independent of complexity checks. Accepts 6 to 20 characters.',
-        sessionTimeout: 'Session timeout (minutes)',
+        sessionTimeout: 'Automatic sign-out (minutes)',
         sessionTimeoutDescription: 'Automatically sign users out after this period of inactivity.',
         maxLoginAttempts: 'Maximum sign-in attempts',
         maxLoginAttemptsDescription: 'The account is temporarily locked after this many failed attempts.',
@@ -297,9 +299,9 @@ export const systemSettingsMessages = {
         ipWhitelistDescription: 'Only these addresses may access the admin system. Leave empty to allow all addresses.'
       },
       backup: {
-        description: 'Synchronize real backup policies for all managed rooms.',
+        description: 'These backup settings apply to all rooms.',
         auto: 'Enable automatic backups',
-        autoDescription: 'Back up managed room data on a schedule.',
+        autoDescription: 'Back up discovered room data on a schedule.',
         frequency: 'Backup frequency',
         frequencyPlaceholder: 'Select a backup frequency',
         daily: 'Daily',
@@ -309,11 +311,11 @@ export const systemSettingsMessages = {
         retention: 'Backups to retain',
         retentionDescription: 'Number of recent backups the system keeps.',
         location: 'Backup storage location',
-        locationDescription: 'Real local backup path. Restart the service after changing it.',
+        locationDescription: 'Backup directory on the management server. Restart the management service after changing it.',
         locationPlaceholder: 'Enter the backup storage path',
         manual: 'Manual backup',
         runNow: 'Run now',
-        runNowDescription: 'Create backups for all managed rooms or view the real backup history.',
+        runNowDescription: 'Back up all rooms now or view backup history.',
         createNow: 'Back up now',
         viewHistory: 'View backup history'
       },
@@ -332,7 +334,7 @@ export const systemSettingsMessages = {
         senderEmail: 'Sender email',
         senderEmailPlaceholder: 'Address used to send system email',
         connectionCheck: 'Connection check',
-        connectionCheckDescription: 'Test a real connection and authentication with the current SMTP settings.',
+        connectionCheckDescription: 'Check the mail server connection and account credentials.',
         testConnection: 'Test email connection',
         events: 'Notification events',
         serverStatus: 'Server status changes',
@@ -397,7 +399,7 @@ export const systemSettingsMessages = {
       },
       history: {
         title: 'Backup history',
-        description: 'Real backup files for all managed rooms.',
+        description: 'Real backup files for all discovered rooms.',
         room: 'Room',
         filename: 'File name',
         size: 'Size',
@@ -408,7 +410,7 @@ export const systemSettingsMessages = {
         failed: 'Failed',
         download: 'Download',
         empty: 'No backup records',
-        emptyDescription: 'There are no downloadable backups for the managed rooms yet.'
+        emptyDescription: 'There are no downloadable backups for the discovered rooms yet.'
       },
       actions: {
         save: 'Save settings'
@@ -438,7 +440,7 @@ export const systemSettingsMessages = {
         resetTitle: 'Reset system settings',
         resetConfirmButton: 'Reset',
         resetFailed: 'Failed to reset system settings',
-        noManagedRooms: 'There are no managed rooms to back up',
+        noManagedRooms: 'There are no discovered rooms to back up',
         backupCompleted: 'Completed real backups for {count} rooms',
         backupCreateFailed: 'Failed to create backups',
         backupRunning: 'Backup jobs are still running. Check the history shortly.',

@@ -49,22 +49,19 @@ test('log and dashboard refreshes retain previous snapshots on transient failure
   assert.match(viewer, /targetChanged/)
   assert.match(viewer, /loading && logs\.length === 0/)
 
-  assert.match(systemResources, /if \(refreshPromise\) return refreshPromise/)
-  assert.doesNotMatch(section(systemResources, 'async function refreshSystemResourceStatus(options = {})', 'function stopRefreshTimer()'), /status\.value\s*=\s*\{\}/)
+  assert.match(systemResources, /if \(refreshPromise && refreshPromiseScope === scopeKey\) return refreshPromise/)
+  assert.doesNotMatch(section(systemResources, 'async function refreshSystemResourceStatus(options = {})', 'function handleManagementScopeChange'), /status\.value\s*=\s*\{\}/)
   assert.match(dashboard, /serverRequestSequence/)
   assert.match(dashboard, /versionRequestSequence/)
   assert.doesNotMatch(dashboard, /playerApi|getPlayerStats|refreshPlayers/)
-  assert.match(dashboard, /async function refreshRuntimeServers\(\)/)
-  assert.match(dashboard, /observedSequence !== serverRequestSequence/)
-  assert.doesNotMatch(section(dashboard, 'async function refreshServers()', 'async function refreshVersion()'), /(?:serverList|roomList)\.value\s*=\s*\[\]/)
+  assert.doesNotMatch(dashboard, /async function refreshRuntimeServers\(\)/)
+  assert.doesNotMatch(section(dashboard, 'async function refreshServers()', 'function handleManagementScopeChange'), /(?:serverList|roomList)\.value\s*=\s*\[\]/)
+  assert.match(section(dashboard, 'function handleManagementScopeChange', 'async function refreshVersion(options = {})'), /serverRequestSequence \+= 1[\s\S]*?serverList\.value = \[\]/)
   assert.match(dashboard, /updatePollInFlight/)
   assert.match(dashboard, /pollingReady && !updateStatus/)
-  assert.match(dashboardView, /useRoomRefreshInterval\(\)/)
-  assert.match(dashboardView, /window\.setInterval\(refreshRuntimeStatus, refreshIntervalMs\.value\)/)
+  assert.doesNotMatch(dashboardView, /useRoomRefreshInterval|setInterval|refreshRuntimeServers/)
   assert.match(refreshInterval, /ROOM_REFRESH_INTERVAL_MS = 5_000/)
-  assert.match(dashboardView, /document\.visibilityState === 'hidden'/)
-  assert.match(dashboardView, /function stopRuntimeRefreshTimer\(\)[\s\S]*?clearInterval/)
-  assert.match(dashboardView, /onBeforeUnmount\([\s\S]*?stopRuntimeRefreshTimer\(\)/)
+  assert.match(dashboardView, /onMounted\(refreshDashboard\)/)
 })
 
 test('distributed jobs distinguish completion from state reload and bound polling', async () => {
@@ -101,4 +98,23 @@ test('distributed jobs distinguish completion from state reload and bound pollin
   assert.match(publications, /pollRequestSequence/)
   assert.match(publications, /if \(!publication\?\.id\) throw new Error/)
   assert.match(publications, /activationSubmitted/)
+})
+
+test('room starts release the workspace after submission and continue in the global task card', async () => {
+  const [workspace, adapters, jobEvents] = await Promise.all([
+    source('src/views/servers/ServerWorkspace.vue'),
+    source('src/api/v2LegacyAdapters.js'),
+    source('src/api/v2ConfigurationAdapters.js')
+  ])
+
+  assert.match(workspace, /wait_for_completion: false/)
+  assert.match(workspace, /emitGlobalJobSubmitted\(submittedJob\)/)
+  assert.match(workspace, /pruneStaleRoomActions\(Date\.now\(\), true\)/)
+  assert.match(workspace, /\{ roomId, kind, token: nextToken, startedAt: Date\.now\(\) \}/)
+  assert.match(workspace, /setRoomActionPending\(roomId, action, false, actionToken\)/)
+  assert.match(workspace, /roomActionAccepted/)
+  assert.match(workspace, /actionAccepted/)
+  assert.match(adapters, /room_start_submitted/)
+  assert.match(adapters, /params\?\.wait_for_completion === false/)
+  assert.match(jobEvents, /'job\.progress'/)
 })

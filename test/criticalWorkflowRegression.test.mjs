@@ -27,7 +27,7 @@ test('automation edit mode loads the task and saves through updateTask', async (
   assert.match(form, /toast\.success[\s\S]*?this\.\$router\.push\('\/cron\/tasks'\)/)
 })
 
-test('job-based workflows synchronize their owning view after completion', async () => {
+test('job workflows reload while direct Mod toggles update in place', async () => {
   const [imports, mods, worlds, players] = await Promise.all([
     source('src/views/backups/SaveImportsPanel.vue'),
     source('src/views/mods/ModList.vue'),
@@ -38,8 +38,10 @@ test('job-based workflows synchronize their owning view after completion', async
   assert.match(imports, /SAVE_IMPORT_TERMINAL_JOB_STATES\.has\(job\.status\)/)
   assert.match(imports, /await refreshImport\(importId, generation\)/)
   assert.match(imports, /purpose === 'apply'[\s\S]*?emit\('rooms-changed'\)/)
-  assert.match(mods, /await modApi\.toggleMod[\s\S]*?await this\.fetchModsList\(true\)/)
-  assert.match(mods, /await modApi\.updateMod[\s\S]*?await this\.fetchModsList\(true\)/)
+  const toggleStart = mods.indexOf('    async toggleModStatus(mod, world, status) {')
+  const toggleEnd = mods.indexOf('    openCopyDialog(mod, sourceWorld) {', toggleStart)
+  assert.doesNotMatch(mods.slice(toggleStart, toggleEnd), /fetchModsList/)
+  assert.match(mods, /await modApi\.updateMod[\s\S]*?toast\.success[\s\S]*?this\.fetchModsList\(true\)/)
   assert.match(worlds, /await roomApi\.deleteWorld[\s\S]*?await this\.refreshWorlds\(true\)/)
   assert.match(players, /await playerApi\.updatePlayerInfo[\s\S]*?await this\.fetchPlayerList\(\)/)
 })

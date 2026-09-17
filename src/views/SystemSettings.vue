@@ -2,7 +2,10 @@
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="min-w-0">
-        <h1 class="text-2xl font-semibold tracking-normal">{{ $t('systemSettings.title') }}</h1>
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-2xl font-semibold tracking-normal">{{ $t('systemSettings.title') }}</h1>
+          <Badge variant="outline">{{ $t('systemSettings.controllerScope') }}</Badge>
+        </div>
         <p class="mt-1 text-sm text-muted-foreground">{{ $t('systemSettings.subtitle') }}</p>
       </div>
       <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSettings()">
@@ -31,7 +34,6 @@
         <Card size="sm" class="settings-card">
           <CardHeader>
             <CardTitle>{{ $t('systemSettings.tabs.basic') }}</CardTitle>
-            <CardDescription>{{ $t('systemSettings.basic.description') }}</CardDescription>
           </CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
@@ -132,7 +134,7 @@
 
       <TabsContent value="security" class="settings-tab-content">
         <Card size="sm" class="settings-card">
-          <CardHeader><CardTitle>{{ $t('systemSettings.tabs.security') }}</CardTitle><CardDescription>{{ $t('systemSettings.security.description') }}</CardDescription></CardHeader>
+          <CardHeader><CardTitle>{{ $t('systemSettings.tabs.security') }}</CardTitle></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
               <Field orientation="horizontal">
@@ -398,7 +400,6 @@ import { formatDurationSeconds } from '@/lib/localeFormatters.mjs';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 import { DEFAULT_THEME_ID, THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
 import { applySystemPreferences, previewSystemLanguage, previewSystemTheme } from '@/utils/systemPreferences';
-import { getActiveRuntimeTarget } from '@/utils/runtimeTarget';
 import { toast } from 'vue-sonner';
 
 const APPLY_CONFIRMATION = 'APPLY SYSTEM SETTINGS';
@@ -860,12 +861,12 @@ export default {
       if (next <= new Date()) next.setDate(next.getDate() + 1);
       return next.toISOString();
     },
-    async managedRooms() {
+    async discoveredRooms() {
       const response = await roomsV2API.list();
-      return (response.items || []).filter(room => room.managed);
+      return response.items || [];
     },
     async syncBackupPolicies() {
-      const rooms = await this.managedRooms();
+      const rooms = await this.discoveredRooms();
       const policy = {
         enabled: this.settings.autoBackup,
         intervalMinutes: this.backupIntervalMinutes(),
@@ -877,7 +878,7 @@ export default {
     async handleBackupNow() {
       this.loading = true;
       try {
-        const rooms = await this.managedRooms();
+        const rooms = await this.discoveredRooms();
         if (rooms.length === 0) throw new Error(this.$t('systemSettings.feedback.noManagedRooms'));
         const jobs = await Promise.all(rooms.map(room => backupsV2API.create(room.id)));
         await this.waitForJobs(jobs);
@@ -929,8 +930,7 @@ export default {
       this.loading = true;
       try {
         const response = await fetch(backupsV2API.downloadURL(backup.id), {
-          credentials: 'include',
-          headers: { 'X-DST-Runtime-Target': getActiveRuntimeTarget().id }
+          credentials: 'include'
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => null);

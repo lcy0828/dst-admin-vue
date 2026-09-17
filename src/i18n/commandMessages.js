@@ -50,7 +50,7 @@ export const commandMessages = {
         rawContent: '命令内容',
         rawPlaceholder: '请输入原始命令，例如：{example}',
         searchCommands: '搜索命令',
-        result: { success: '执行成功', failed: '执行失败' }
+        result: { success: '执行成功', uncertain: '执行结果不确定', failed: '执行失败' }
       },
       history: {
         title: '命令历史记录',
@@ -112,8 +112,11 @@ export const commandMessages = {
         failed: '失败'
       },
       statuses: {
-        sent: '成功',
+        succeeded: '已确认',
+        sent: '已发送（未验证）',
         sending: '发送中',
+        uncertain: '结果不确定',
+        unresponsive: '控制台无响应',
         failed: '失败',
         canceled: '已取消',
         unknown: '未知'
@@ -151,8 +154,8 @@ export const commandMessages = {
         },
         rollback: {
           name: '回档',
-          description: '将当前世界回退指定天数',
-          parameters: { days: { label: '回退天数' } }
+          description: '将当前世界回退指定数量的存档快照',
+          parameters: { days: { label: '回档点数' } }
         }
       },
       common: {
@@ -160,7 +163,7 @@ export const commandMessages = {
         give: { name: '生成物品', description: '生成指定物品' },
         spawn: { name: '生成生物', description: '在当前位置生成生物' },
         regenerate: { name: '重生世界', description: '重新生成世界' },
-        rollback: { name: '回档', description: '将世界回退指定天数' },
+        rollback: { name: '回档', description: '将世界回退指定数量的存档快照' },
         kick: { name: '踢出玩家', description: '踢出指定玩家' },
         ban: { name: '封禁玩家', description: '永久封禁指定玩家' },
         players: { name: '显示玩家列表', description: '显示所有在线玩家' },
@@ -170,7 +173,7 @@ export const commandMessages = {
       },
       confirmation: {
         missingServer: '未找到目标服务器',
-        message: '该操作会向游戏控制台发送 Lua 命令，请输入房间名“{room}”确认',
+        message: '该操作会向房间“{room}”的游戏控制台发送 Lua 命令，请确认是否执行。',
         title: '执行确认',
         execute: '确认执行',
         mismatch: '房间名不匹配'
@@ -190,8 +193,8 @@ export const commandMessages = {
         selectServer: '请选择服务器',
         selectCommand: '请选择要执行的命令',
         enterCommand: '请输入命令内容',
-        sent: '命令已发送',
-        sentToConsole: '命令已发送到分片控制台',
+        sent: '命令执行成功',
+        sentToConsole: 'DST 已确认命令执行成功',
         loadedForRerun: '已加载命令，点击执行按钮运行',
         batchCopyUnsupported: '批量命令无法直接复制',
         copied: '命令已复制到剪贴板',
@@ -213,7 +216,7 @@ export const commandMessages = {
         import: '导入命令失败',
         export: '导出命令失败',
         execution: '命令执行出错',
-        executionFailed: '命令发送失败',
+        executionFailed: '命令执行失败',
         history: '加载命令历史记录失败',
         clearHistory: '清空历史记录失败',
         copy: '复制命令失败',
@@ -223,7 +226,15 @@ export const commandMessages = {
           COMMAND_INVALID_SERVER: '请选择有效的服务器世界',
           COMMAND_MISSING_RUN_ID: '后端没有返回命令执行记录 ID',
           COMMAND_RUN_TIMEOUT: '等待命令发送完成超时，请到命令历史确认最终结果',
-          COMMAND_RUN_FAILED: '命令发送失败',
+          COMMAND_RUN_FAILED: '命令执行失败',
+          COMMAND_OUTCOME_UNKNOWN: '未收到命令执行回执，结果无法确认',
+          CONSOLE_UNRESPONSIVE: '分片控制台无响应',
+          RUNTIME_UNAVAILABLE: '目标分片 Runtime 尚未就绪，命令没有发送',
+          COMMAND_SEND_FAILED: '命令发送失败',
+          COMMAND_CANCELED: '命令请求已取消',
+          COMMAND_COMPILE_FAILED: 'Lua 命令编译失败',
+          COMMAND_EXECUTION_FAILED: 'Lua 命令执行失败',
+          INVALID_SCRIPT: 'Lua 命令内容无效',
           COMMAND_IMPORT_INVALID_FORMAT: '导入文件必须是命令数组',
           COMMAND_IMPORT_ITEM_FAILED: '第 {itemNumber} 条命令导入失败'
         }
@@ -250,7 +261,7 @@ export const commandMessages = {
         parameters: 'Command Parameters', examplePlaceholder: 'Example: {example}', inputPlaceholder: 'Enter {name}',
         selectParameter: 'Select {name}', exampleDescription: 'Example: {example}', preview: 'Command Preview',
         rawContent: 'Command Content', rawPlaceholder: 'Enter a raw command, for example: {example}',
-        searchCommands: 'Search commands', result: { success: 'Execution succeeded', failed: 'Execution failed' }
+        searchCommands: 'Search commands', result: { success: 'Execution succeeded', uncertain: 'Execution outcome uncertain', failed: 'Execution failed' }
       },
       history: {
         title: 'Command History',
@@ -279,7 +290,10 @@ export const commandMessages = {
         commandList: 'Command list', listPlaceholder: '# Enter one command per line', interval: 'Interval (milliseconds)',
         success: 'Succeeded', failed: 'Failed'
       },
-      statuses: { sent: 'Succeeded', sending: 'Sending', failed: 'Failed', canceled: 'Canceled', unknown: 'Unknown' },
+      statuses: {
+        succeeded: 'Confirmed', sent: 'Sent (unverified)', sending: 'Sending', uncertain: 'Outcome uncertain',
+        unresponsive: 'Console unresponsive', failed: 'Failed', canceled: 'Canceled', unknown: 'Unknown'
+      },
       categories: {
         info: 'Information queries', player: 'Player operations', world: 'World operations', system: 'System operations',
         custom: 'Custom commands', basic: 'Basic operations', world_info: 'World information',
@@ -307,8 +321,8 @@ export const commandMessages = {
         },
         rollback: {
           name: 'Roll back',
-          description: 'Roll the current world back by the specified number of days',
-          parameters: { days: { label: 'Rollback days' } }
+          description: 'Roll the current world back by the specified number of save snapshots',
+          parameters: { days: { label: 'Rollback points' } }
         }
       },
       common: {
@@ -316,7 +330,7 @@ export const commandMessages = {
         give: { name: 'Give Item', description: 'Give the specified item' },
         spawn: { name: 'Spawn Creature', description: 'Spawn a creature at the current location' },
         regenerate: { name: 'Regenerate World', description: 'Regenerate the world' },
-        rollback: { name: 'Rollback', description: 'Roll the world back by the specified number of days' },
+        rollback: { name: 'Rollback', description: 'Roll the world back by the specified number of save snapshots' },
         kick: { name: 'Kick Player', description: 'Kick the specified player' },
         ban: { name: 'Ban Player', description: 'Permanently ban the specified player' },
         players: { name: 'List Players', description: 'List all online players' },
@@ -326,7 +340,7 @@ export const commandMessages = {
       },
       confirmation: {
         missingServer: 'Target server not found',
-        message: 'This action sends a Lua command to the game console. Enter the room name “{room}” to confirm.',
+        message: 'This action sends a Lua command to the game console for room “{room}”. Continue?',
         title: 'Execution Confirmation', execute: 'Execute', mismatch: 'Room name does not match'
       },
       feedback: {
@@ -336,7 +350,7 @@ export const commandMessages = {
         deleteTitle: 'Delete Command', deleted: 'Command deleted', imported: 'Imported {count} commands',
         importPartial: 'Imported {imported}/{total} commands; {error}', exported: 'Commands exported',
         exampleApplied: 'Example value applied', selectServer: 'Select a server', selectCommand: 'Select a command to execute',
-        enterCommand: 'Enter command content', sent: 'Command sent', sentToConsole: 'Command sent to the shard console',
+        enterCommand: 'Enter command content', sent: 'Command executed successfully', sentToConsole: 'DST confirmed command execution',
         loadedForRerun: 'Command loaded. Use the execute button to run it.',
         batchCopyUnsupported: 'Batch commands cannot be copied directly', copied: 'Command copied to the clipboard',
         enterCommandList: 'Enter a command list', noValidCommands: 'No valid commands',
@@ -349,14 +363,22 @@ export const commandMessages = {
         commandList: 'Failed to load commands', serverList: 'Failed to load servers',
         commandDetails: 'Failed to load command details', delete: 'Failed to delete command',
         import: 'Failed to import commands', export: 'Failed to export commands', execution: 'Command execution error',
-        executionFailed: 'Command delivery failed', history: 'Failed to load command history',
+        executionFailed: 'Command execution failed', history: 'Failed to load command history',
         clearHistory: 'Failed to clear command history', copy: 'Failed to copy command',
         batch: 'Batch command execution failed', batchItem: 'Execution error',
         codes: {
           COMMAND_INVALID_SERVER: 'Select a valid server world',
           COMMAND_MISSING_RUN_ID: 'The backend did not return a command run ID',
           COMMAND_RUN_TIMEOUT: 'Timed out waiting for command delivery. Check command history for the final result.',
-          COMMAND_RUN_FAILED: 'Command delivery failed',
+          COMMAND_RUN_FAILED: 'Command execution failed',
+          COMMAND_OUTCOME_UNKNOWN: 'No execution receipt was received, so the outcome cannot be confirmed',
+          CONSOLE_UNRESPONSIVE: 'The shard console is unresponsive',
+          RUNTIME_UNAVAILABLE: 'The target shard Runtime is not ready; the command was not sent',
+          COMMAND_SEND_FAILED: 'Command delivery failed',
+          COMMAND_CANCELED: 'The command request was canceled',
+          COMMAND_COMPILE_FAILED: 'The Lua command could not be compiled',
+          COMMAND_EXECUTION_FAILED: 'The Lua command failed during execution',
+          INVALID_SCRIPT: 'The Lua command content is invalid',
           COMMAND_IMPORT_INVALID_FORMAT: 'The import file must be an array of commands',
           COMMAND_IMPORT_ITEM_FAILED: 'Command {itemNumber} could not be imported'
         }

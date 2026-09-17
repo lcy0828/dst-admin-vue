@@ -9,11 +9,11 @@ export const announcementMessages = {
       },
       emptyRooms: {
         title: '没有可用房间',
-        description: '接管房间后才能发送游戏通知和配置操作提醒。'
+        description: '房间所在 Agent 可用时才能发送游戏通知和配置操作提醒。'
       },
       composer: {
         title: '即时通知',
-        description: '消息会发送到所选房间内当前运行中的每个世界。',
+        description: '从一个运行中的世界发送房间广播，由游戏转发到相连世界，避免重复公告。',
         room: '房间',
         roomPlaceholder: '选择房间',
         roomDescription: '选择需要接收消息的游戏房间。',
@@ -30,7 +30,7 @@ export const announcementMessages = {
         enabled: '启用倒计时通知',
         enabledDescription: '仅在检测到在线玩家时等待倒计时。',
         countdown: '提前通知时间',
-        countdownDescription: '系统会在起始时间、30 秒和 10 秒节点提醒。',
+        countdownDescription: '系统会在倒计时开始及剩余 30 秒、10 秒时提醒，超出所设时长的节点会跳过。',
         seconds: '{count} 秒',
         behaviorTitle: '不会阻断管理操作',
         behaviorDescription: '通知投递失败会保留记录，但不会阻止停止或重启；取消任务会同时取消倒计时。'
@@ -101,7 +101,7 @@ export const announcementMessages = {
       },
       feedback: {
         loadFailed: '加载游戏通知失败',
-        sent: '已向 {count} 个世界发送通知',
+        sent: '房间广播已提交',
         noRunningWorlds: '当前没有运行中的世界，未发送通知',
         sendFailed: '游戏通知发送失败，请查看投递详情',
         policySaved: '操作通知策略已保存',
@@ -119,11 +119,11 @@ export const announcementMessages = {
       },
       emptyRooms: {
         title: 'No available rooms',
-        description: 'Adopt a room before sending game notifications or configuring operation warnings.'
+		description: 'Register a room before sending game notifications or configuring operation warnings.'
       },
       composer: {
         title: 'Immediate notification',
-        description: 'The message is sent to every running Shard in the selected room.',
+        description: 'Broadcast once through a running world. The game forwards it to connected worlds without duplicate announcements.',
         room: 'Room',
         roomPlaceholder: 'Select a room',
         roomDescription: 'Select the game room that should receive this message.',
@@ -140,7 +140,7 @@ export const announcementMessages = {
         enabled: 'Enable countdown notifications',
         enabledDescription: 'The countdown only waits when online players are detected.',
         countdown: 'Advance warning',
-        countdownDescription: 'Warnings are sent at the initial, 30-second, and 10-second checkpoints.',
+        countdownDescription: 'Warnings are sent when the countdown starts and at 30 and 10 seconds remaining, skipping checkpoints longer than the selected duration.',
         seconds: '{count} seconds',
         behaviorTitle: 'Management actions remain available',
         behaviorDescription: 'Delivery failures are recorded but do not block stop or restart. Canceling the Job also cancels the countdown.'
@@ -211,7 +211,7 @@ export const announcementMessages = {
       },
       feedback: {
         loadFailed: 'Could not load game notifications',
-        sent: 'Notification sent to {count} worlds',
+        sent: 'Room broadcast submitted',
         noRunningWorlds: 'No worlds are running, so no message was sent',
         sendFailed: 'The game notification failed. Review delivery details.',
         policySaved: 'Operation notification policy saved',

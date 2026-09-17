@@ -97,10 +97,14 @@
           </div>
         </FieldGroup>
 
-        <Alert v-if="executionResult" :variant="executionResult.success ? 'default' : 'destructive'">
+        <Alert
+          v-if="executionResult"
+          :variant="executionResult.success || executionResult.warning ? 'default' : 'destructive'"
+          :class="{ 'border-amber-500/50 bg-amber-50 text-amber-950 dark:bg-amber-950/20 dark:text-amber-200': executionResult.warning }"
+        >
           <CircleCheck v-if="executionResult.success" />
           <CircleAlert v-else />
-          <AlertTitle>{{ $t(executionResult.success ? 'commands.execute.result.success' : 'commands.execute.result.failed') }}</AlertTitle>
+          <AlertTitle>{{ $t(executionResult.warning ? 'commands.execute.result.uncertain' : (executionResult.success ? 'commands.execute.result.success' : 'commands.execute.result.failed')) }}</AlertTitle>
           <AlertDescription><pre>{{ executionResultMessage }}</pre></AlertDescription>
         </Alert>
 
@@ -200,9 +204,13 @@ import {
   translateBuiltinCommandField, translateBuiltinParameterField, translateBuiltinParameterOption,
   translateCommandCategory, translateCommandStatus
 } from '@/i18n/commandMessages';
-import { confirmAction, promptText } from '@/lib/feedback';
+import { confirmAction } from '@/lib/feedback';
 import { normalizeCommandCategory } from '@/lib/commandCategories.mjs';
-import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
+import {
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  managementScopeTargetId
+} from '@/lib/managementScope.mjs';
 
 export default {
   name: 'CommandManager',
@@ -220,6 +228,8 @@ export default {
     return {
       loading: false,
       loadError: null,
+      managementScope: getManagementScope(),
+      scopeRequestSequence: 0,
       commands: [],
       displayCommands: [],
       currentType: '',
@@ -401,10 +411,10 @@ export default {
     await this.loadCommandHistory();
   },
   mounted() {
-    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
   },
   beforeUnmount() {
-    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
   },
   methods: {
     localizedError(error, fallbackKey = 'commands.errors.operation') {
@@ -468,7 +478,9 @@ export default {
         ? this.$t('commands.execute.examplePlaceholder', { example: this.currentCommand.example })
         : this.$t('commands.execute.inputPlaceholder', { name });
     },
-    async handleRuntimeTargetChange() {
+    async handleManagementScopeChange(event) {
+      this.managementScope = event?.detail || getManagementScope();
+      const requestSequence = ++this.scopeRequestSequence;
       this.commands = [];
       this.displayCommands = [];
       this.servers = [];
@@ -476,7 +488,7 @@ export default {
       this.currentCommand = null;
       this.executionResult = null;
       await this.reloadCommandData();
-      await this.loadCommandHistory();
+      if (requestSequence === this.scopeRequestSequence) await this.loadCommandHistory();
     },
     async fetchCommands() {
       this.loading = true;
@@ -687,9 +699,13 @@ export default {
     },
 
     async fetchServers() {
+      const requestSequence = this.scopeRequestSequence;
       try {
-        this.servers = await commandApi.getServers();
+        const servers = await commandApi.getServers(managementScopeTargetId(this.managementScope));
+        if (requestSequence !== this.scopeRequestSequence) return;
+        this.servers = servers;
       } catch (error) {
+        if (requestSequence !== this.scopeRequestSequence) return;
         this.servers = [];
         this.setLoadError('commands.errors.serverList', error);
       }
@@ -755,7 +771,7 @@ export default {
           confirmation
         );
         this.showRunResult(run);
-        if (run.status === 'sent') toast.success(this.$t('commands.feedback.sent'));
+        if (run.status === 'succeeded') toast.success(this.$t('commands.feedback.sent'));
         await this.loadCommandHistory();
       } catch (error) {
         this.showExecutionError(error);
@@ -791,7 +807,7 @@ export default {
           confirmation
         );
         this.showRunResult(run);
-        if (run.status === 'sent') toast.success(this.$t('commands.feedback.sent'));
+        if (run.status === 'succeeded') toast.success(this.$t('commands.feedback.sent'));
         await this.loadCommandHistory();
       } catch (error) {
         this.showExecutionError(error);
@@ -803,35 +819,43 @@ export default {
     async requestRoomConfirmation(serverKey) {
       const server = this.servers.find(item => item.session_name === serverKey);
       if (!server) throw new Error(this.$t('commands.confirmation.missingServer'));
-      const response = await promptText(
+      await confirmAction(
         this.$t('commands.confirmation.message', { room: server.room_name }),
         this.$t('commands.confirmation.title'),
         {
           confirmButtonText: this.$t('commands.confirmation.execute'),
           cancelButtonText: this.$t('commands.actions.cancel'),
-          inputValidator: value => value === server.room_name || this.$t('commands.confirmation.mismatch')
+          type: 'warning'
         }
       );
-      return response.value;
+      return server.room_name;
     },
 
     showRunResult(run) {
-      const success = run.status === 'sent';
+      const success = run.status === 'succeeded';
       this.executionResult = {
         success,
+        status: run.status,
+        warning: ['sent', 'uncertain'].includes(run.status),
         messageKey: success ? 'commands.feedback.sentToConsole' : 'commands.errors.executionFailed',
         detail: success ? '' : (run.errorMessage || run.message || '')
       };
     },
 
     showExecutionError(error) {
+      const status = error?.run?.status || 'failed';
+      const warning = ['sent', 'uncertain'].includes(status);
       this.executionResult = {
         success: false,
+        status,
+        warning,
         messageKey: 'commands.errors.execution',
         detail: '',
         error
       };
-      toast.error(this.localizedError(error, 'commands.errors.execution'));
+      const message = this.localizedError(error, 'commands.errors.execution');
+      if (warning) toast.warning(message);
+      else toast.error(message);
     },
 
     // 根据服务器ID获取服务器名称
@@ -841,10 +865,13 @@ export default {
     },
 
     async loadCommandHistory() {
+      const requestSequence = this.scopeRequestSequence;
       try {
-        const runs = await commandApi.getCommandHistory();
+        const runs = await commandApi.getCommandHistory(managementScopeTargetId(this.managementScope));
+        if (requestSequence !== this.scopeRequestSequence) return;
         this.commandHistory = runs.map(run => this.mapHistoryRun(run));
       } catch (error) {
+        if (requestSequence !== this.scopeRequestSequence) return;
         this.commandHistory = [];
         toast.error(this.localizedError(error, 'commands.errors.history'));
       }
@@ -868,8 +895,9 @@ export default {
     },
 
     historyStatusVariant(status) {
-      if (status === 'sent') return 'default';
+      if (status === 'succeeded') return 'default';
       if (status === 'sending') return 'secondary';
+      if (status === 'sent' || status === 'uncertain') return 'outline';
       return 'destructive';
     },
 
@@ -881,7 +909,7 @@ export default {
           cancelButtonText: this.$t('commands.actions.cancel'),
           type: 'warning'
         });
-        const deleted = await commandApi.clearCommandHistory();
+        const deleted = await commandApi.clearCommandHistory(managementScopeTargetId(this.managementScope));
         await this.loadCommandHistory();
         toast.success(this.$t('commands.feedback.historyCleared', { count: deleted }));
       } catch (error) {
@@ -1008,8 +1036,8 @@ export default {
             );
             this.batchResults.push({
               command: command.trim(),
-              success: run.status === 'sent',
-              message: run.status === 'sent' ? '' : (run.errorMessage || run.message || '')
+              success: run.status === 'succeeded',
+              message: run.status === 'succeeded' ? '' : (run.errorMessage || run.message || '')
             });
 
             executedCount++;

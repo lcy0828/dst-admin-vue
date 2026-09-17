@@ -18,6 +18,6 @@ test('alert confirmation resolves before the controlled dialog closes', async ()
   )
   assert.match(
     feedbackHost,
-    /function confirmRequest\(\) \{\s*finishRequest\(request => request\.resolve\('confirm'\)\)\s*\}/,
+    /function confirmRequest\(\) \{[\s\S]*?finishRequest\(request => request\.resolve\(request\.kind === 'maintenance' \? \{ immediate: false \} : 'confirm'\)\)/,
   )
 })

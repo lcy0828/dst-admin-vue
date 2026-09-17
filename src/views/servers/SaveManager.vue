@@ -189,7 +189,7 @@ export default {
       this.loadError = '';
       try {
         const response = await roomsV2API.list();
-        const rooms = (response.items || []).filter(room => room.managed);
+        const rooms = response.items || [];
         this.serverList = await Promise.all(rooms.map(async room => {
           const worlds = (await roomsV2API.worlds(room.id)).items || [];
           return {

@@ -69,6 +69,8 @@ test('room settings keeps tabs above content and switches in stable fields', asy
   assert.match(roomSettings, /'setting-field--switch': field\.type === 'switch'/)
   assert.match(roomSettings, /\.setting-field--switch\s*\{[^}]*min-height:\s*72px/s)
   assert.match(roomSettings, /data-slot='switch'.{0,80}flex:\s*none/s)
+  assert.match(roomSettings, /field\.placementManaged/)
+  assert.match(roomSettings, /rooms\.settings\.placementManaged\.title/)
 })
 
 test('settings pages preserve dirty state and only show relevant save actions', async () => {
@@ -82,10 +84,35 @@ test('settings pages preserve dirty state and only show relevant save actions', 
   assert.match(roomSettings, /this\.activeTab = invalidSection\.key/)
   assert.match(roomSettings, /async beforeRouteLeave\(\)/)
   assert.match(roomSettings, /saving:\s*false/)
-  assert.match(worldSettings, /v-if="!loadError && showWorldSettingsFooter"/)
+  assert.match(worldSettings, /v-if="showWorldSettingsFooter"/)
+  assert.match(worldSettings, /activeWorldHasBaseline/)
+  assert.match(worldSettings, /loadWorldConfiguration\(this\.roomName, currentWorld\.name\)/)
+  assert.match(worldSettings, /query: \{ \.\.\.this\.\$route\.query, roomId: this\.roomId, worldId: world\.id \}/)
+  assert.match(worldSettings, /await this\.confirmDiscardWorldChanges\(\)/)
+  assert.match(worldSettings, /async beforeRouteLeave\(\)/)
+  assert.match(worldSettings, /loadEpoch !== this\.configurationLoadEpoch/)
+  assert.match(worldSettings, /this\.roomName !== savename \|\| this\.activeTab !== worldname/)
+  assert.match(worldSettings, /expectedRevision: this\.worldConfigurationMeta\[currentWorld\.name\]\?\.revision \|\| ''/)
+  assert.doesNotMatch(worldSettings, /delete this\.worldOriginalSettings\[worldname\]/)
   assert.match(worldSettings, /\['worldgen', 'worldsettings'\]\.includes\(this\.worldSectionTab\)/)
   assert.match(systemSettings, /class="settings-tab-trigger"/)
   assert.match(systemSettings, /\.settings-tabs\s*\{[^}]*max-width:\s*none/s)
+})
+
+test('offline configuration snapshots are visibly read-only', async () => {
+  const [roomSettings, worldSettings, settingsFooter, settingItem] = await Promise.all([
+    source('src/views/rooms/RoomSettings.vue'),
+    source('src/views/worlds/WorldSettings.vue'),
+    source('src/components/worlds/SettingsFooter.vue'),
+    source('src/components/worlds/SettingItem.vue')
+  ])
+
+  assert.match(roomSettings, /configurationReadOnly\(\)/)
+  assert.match(roomSettings, /return this\.configurationReadOnly \|\| Boolean\(field\.disabledWhen/)
+  assert.match(roomSettings, /saveRoomConfig\(this\.roomId, convertedData, this\.configurationRevision\)/)
+  assert.match(worldSettings, /return Boolean\(this\.activeConfigurationSync\?\.readOnly\)/)
+  assert.match(settingsFooter, /:disabled="readOnly \|\| loading \|\| saveLoading \|\| !hasChanges"/)
+  assert.match(settingItem, /:disabled="readOnly"/)
 })
 
 test('room settings exposes constraints and validates instead of clamping values', async () => {
@@ -117,12 +144,12 @@ test('opening mod configuration keeps the list stable and delegates loading to t
     source('src/views/mods/ModList.vue'),
     source('src/views/mods/ModConfigDialog.vue')
   ])
-  const openMethodStart = modList.indexOf('    openConfigDialog(mod) {')
-  const openMethod = modList.slice(openMethodStart, modList.indexOf('    handleConfigUpdated(data)', openMethodStart))
+  const openMethodStart = modList.indexOf('    openConfigDialog(mod, world) {')
+  const openMethod = modList.slice(openMethodStart, modList.indexOf('    handleConfigUpdated(', openMethodStart))
 
   assert.match(openMethod, /this\.configDialogVisible = true/)
   assert.doesNotMatch(openMethod, /this\.loading = true/)
   assert.doesNotMatch(openMethod, /modApi\.getModConfig/)
-  assert.match(modConfig, /await modApi\.getModConfig/)
+  assert.match(modConfig, /await Promise\.all\(\[\s*modApi\.getModConfig/)
   assert.match(modConfig, /v-if="loading" class="loading-container"/)
 })
