@@ -1,7 +1,8 @@
 <template>
   <div class="actions-footer">
     <div class="settings-status">
-      <Badge v-if="hasChanges" variant="secondary">{{ $t('worlds.settingsUi.footer.unsaved') }}</Badge>
+      <Badge v-if="readOnly" variant="outline">{{ $t('worlds.settingsUi.footer.readOnly') }}</Badge>
+      <Badge v-else-if="hasChanges" variant="secondary">{{ $t('worlds.settingsUi.footer.unsaved') }}</Badge>
       <Badge v-else variant="outline">{{ $t('worlds.settingsUi.footer.synced') }}</Badge>
       
       <Popover v-if="hasChanges">
@@ -33,14 +34,14 @@
       <UiButton
         variant="outline"
         @click="$emit('reset')"
-        :disabled="loading || saveLoading || !hasChanges"
+        :disabled="readOnly || loading || saveLoading || !hasChanges"
       >
         <RotateCcwIcon data-icon="inline-start" />
         {{ $t('common.actions.reset') }}
       </UiButton>
       <UiButton
         @click="$emit('save')"
-        :disabled="loading || saveLoading || !hasChanges"
+        :disabled="readOnly || loading || saveLoading || !hasChanges"
       >
         <Spinner v-if="saveLoading" data-icon="inline-start" />
         <CheckIcon v-else data-icon="inline-start" />
@@ -92,6 +93,10 @@ export default {
     changedItems: {
       type: Array,
       default: () => []
+    },
+    readOnly: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {

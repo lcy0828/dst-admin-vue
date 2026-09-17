@@ -4,14 +4,13 @@
       <header class="page-header">
         <div>
           <h1>{{ roomName ? $t('worlds.settingsPage.titleWithRoom', { room: roomName }) : $t('worlds.settingsPage.title') }}</h1>
-          <p>{{ $t('worlds.settingsPage.subtitle') }}</p>
         </div>
         <div class="header-actions">
           <UiButton v-if="currentWorld" variant="outline" size="sm" @click="openWorldMods(currentWorld)">
             <Package data-icon="inline-start" />
             {{ $t('worlds.settingsPage.manageMods') }}
           </UiButton>
-          <UiButton variant="outline" size="sm" @click="reloadSettings" :disabled="loading || loadingRooms">
+          <UiButton variant="outline" size="sm" @click="requestReloadSettings" :disabled="loading || loadingRooms">
             <Spinner v-if="loading || loadingRooms" data-icon="inline-start" />
             <RefreshCw v-else data-icon="inline-start" />
             {{ $t('worlds.settingsPage.refresh') }}
@@ -20,27 +19,7 @@
         </div>
       </header>
 
-      <Card size="sm" class="room-picker-card">
-        <CardHeader>
-          <CardTitle>{{ $t('worlds.settingsPage.selectRoom') }}</CardTitle>
-          <CardDescription>{{ $t('worlds.settingsPage.selectRoomDescription') }}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FieldGroup>
-            <Field>
-              <FieldLabel for="world-settings-room">{{ $t('rooms.selector.room') }}</FieldLabel>
-              <UiSelect v-model="selectedRoomId" :disabled="loadingRooms" @update:model-value="handleRoomChange">
-                <SelectTrigger id="world-settings-room"><SelectValue :placeholder="$t('rooms.selector.managedPlaceholder')" /></SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem v-for="room in roomOptions" :key="room.id" :value="room.id">{{ room.name }}</SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </UiSelect>
-            </Field>
-          </FieldGroup>
-        </CardContent>
-      </Card>
+      <RoomScopeSelect :model-value="roomId || ''" :rooms="roomOptions" :loading="loadingRooms" :disabled="loading" @update:model-value="requestRoomChange" />
 
       <Alert v-if="roomOptionsError" variant="destructive" class="load-error">
         <TriangleAlert />
@@ -49,14 +28,20 @@
         <AlertAction><UiButton size="sm" variant="outline" :disabled="loadingRooms" @click="retryRoomOptions">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
       </Alert>
 
-      <Alert v-if="loadError" variant="destructive" class="load-error">
+      <Alert v-if="loadError" :variant="activeWorldHasBaseline ? 'default' : 'destructive'" class="load-error">
         <TriangleAlert />
         <AlertTitle>{{ $t('worlds.settingsPage.loadFailed') }}</AlertTitle>
         <AlertDescription>{{ loadError }}</AlertDescription>
-        <AlertAction><UiButton size="sm" variant="outline" @click="reloadSettings">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
+        <AlertAction><UiButton size="sm" variant="outline" @click="requestReloadSettings">{{ $t('common.actions.retry') }}</UiButton></AlertAction>
       </Alert>
 
-      <Tabs v-if="!loadError && roomId" v-model="activeTab" orientation="horizontal" class="world-tabs">
+      <Alert v-if="activeConfigurationSync && activeConfigurationSync.status !== 'synced'" class="load-error">
+        <RefreshCw />
+        <AlertTitle>{{ $t(`worlds.settingsPage.sync.${activeConfigurationSync.status}.title`) }}</AlertTitle>
+        <AlertDescription>{{ $t(`worlds.settingsPage.sync.${activeConfigurationSync.status}.description`) }}</AlertDescription>
+      </Alert>
+
+      <Tabs v-if="roomId && originalSettings" :model-value="activeTab" orientation="horizontal" class="world-tabs" @update:model-value="requestWorldTab">
         <div class="world-tabs-toolbar">
           <TabsList class="world-tab-list" :aria-label="$t('worlds.settingsPage.worldListAria')">
             <TabsTrigger v-for="world in visibleWorlds" :key="world.name" :value="world.name">
@@ -84,16 +69,21 @@
                 <Moon v-else />
                 {{ $t('worlds.settingsPage.worldHeading', { name: world.name, type: worldTypeLabel(world.type) }) }}
               </CardTitle>
-              <CardDescription>{{ $t('worlds.settingsPage.worldDescription') }}</CardDescription>
               <CardAction><Badge :variant="world.type === 'forest' ? 'outline' : 'secondary'">{{ worldTypeLabel(world.type) }}</Badge></CardAction>
             </CardHeader>
             <CardContent>
               <Tabs v-model="worldSectionTab" orientation="horizontal" class="world-section-tabs">
-                <TabsList variant="line" class="section-tab-list" :aria-label="$t('worlds.settingsPage.sectionAria')">
-                  <TabsTrigger value="worldgen"><Sparkles />{{ $t('worlds.settingsPage.sections.worldgen') }}</TabsTrigger>
-                  <TabsTrigger value="worldsettings"><SlidersHorizontal />{{ $t('worlds.settingsPage.sections.rules') }}</TabsTrigger>
-                  <TabsTrigger value="server-ini"><ServerCog />{{ $t('worlds.settingsPage.sections.serverIni') }}</TabsTrigger>
-                </TabsList>
+                <div class="section-tabs-toolbar">
+                  <TabsList variant="line" class="section-tab-list" :aria-label="$t('worlds.settingsPage.sectionAria')">
+                    <TabsTrigger value="worldgen"><Sparkles />{{ $t('worlds.settingsPage.sections.worldgen') }}</TabsTrigger>
+                    <TabsTrigger value="worldsettings"><SlidersHorizontal />{{ $t('worlds.settingsPage.sections.rules') }}</TabsTrigger>
+                    <TabsTrigger value="server-ini"><ServerCog />{{ $t('worlds.settingsPage.sections.serverIni') }}</TabsTrigger>
+                  </TabsList>
+                  <div class="section-statuses">
+                    <Badge v-if="configurationSourceLabel" variant="outline" class="runtime-source-badge">{{ configurationSourceLabel }}</Badge>
+                    <Badge variant="outline" class="effect-badge">{{ currentEffectLabel }}</Badge>
+                  </div>
+                </div>
 
                 <TabsContent value="worldgen">
                   <div v-if="loading" class="skeleton-stack">
@@ -106,6 +96,7 @@
                     :world-type="world.type"
                     :search-text="searchText"
                     show-group="WORLDGEN_GROUP"
+                    :read-only="configurationReadOnly"
                     @setting-change="handleSettingChange"
                     @search-input="searchText = $event"
                   />
@@ -125,6 +116,7 @@
                     :world-type="world.type"
                     :search-text="searchText"
                     show-group="WORLDSETTINGS_GROUP"
+                    :read-only="configurationReadOnly"
                     @setting-change="handleSettingChange"
                     @search-input="searchText = $event"
                   />
@@ -140,34 +132,34 @@
                   <FieldGroup v-else-if="serverIni" class="server-ini-grid">
                     <Field>
                       <FieldLabel for="world-server-port">{{ $t('worlds.settingsPage.serverIni.serverPort') }}</FieldLabel>
-                      <UiInput id="world-server-port" v-model.number="serverIni.network.server_port" type="number" min="1024" max="65535" @change="serverIniChanged = true" />
+                      <UiInput id="world-server-port" v-model.number="serverIni.network.server_port" type="number" min="1024" max="65535" :disabled="configurationReadOnly" @change="serverIniChanged = true" />
                     </Field>
                     <Field orientation="horizontal">
                       <FieldContent><FieldLabel for="world-is-master">{{ $t('worlds.settingsPage.serverIni.masterWorld') }}</FieldLabel><FieldDescription>{{ $t('worlds.settingsPage.serverIni.masterWorldDescription') }}</FieldDescription></FieldContent>
-                      <UiSwitch id="world-is-master" v-model="serverIni.shard.is_master" @update:model-value="handleMasterWorldChange" />
+                      <Badge :variant="serverIni.shard.is_master ? 'default' : 'outline'">{{ $t(serverIni.shard.is_master ? 'worlds.roles.master' : 'worlds.roles.secondary') }}</Badge>
                     </Field>
                     <Field>
                       <FieldLabel for="world-shard-name">{{ $t('worlds.settingsPage.serverIni.worldName') }}</FieldLabel>
-                      <UiInput id="world-shard-name" v-model="serverIni.shard.name" @input="serverIniChanged = true" />
+                      <UiInput id="world-shard-name" v-model="serverIni.shard.name" :disabled="configurationReadOnly" @input="serverIniChanged = true" />
                     </Field>
                     <Field>
                       <FieldLabel for="world-shard-id">{{ $t('worlds.settingsPage.serverIni.worldId') }}</FieldLabel>
-                      <UiInput id="world-shard-id" v-model.number="serverIni.shard.id" type="number" min="1" max="999" @change="serverIniChanged = true" />
+                      <UiInput id="world-shard-id" v-model.number="serverIni.shard.id" type="number" min="1" max="999" :disabled="configurationReadOnly" @change="serverIniChanged = true" />
                     </Field>
                     <Field orientation="horizontal">
                       <FieldContent><FieldLabel for="world-encode-path">{{ $t('worlds.settingsPage.serverIni.encodePath') }}</FieldLabel><FieldDescription>{{ $t('worlds.settingsPage.serverIni.encodePathDescription') }}</FieldDescription></FieldContent>
-                      <UiSwitch id="world-encode-path" v-model="serverIni.account.encode_user_path" @update:model-value="serverIniChanged = true" />
+                      <UiSwitch id="world-encode-path" v-model="serverIni.account.encode_user_path" :disabled="configurationReadOnly" @update:model-value="serverIniChanged = true" />
                     </Field>
                     <Field>
                       <FieldLabel for="world-master-port">{{ $t('worlds.settingsPage.serverIni.masterPort') }}</FieldLabel>
-                      <UiInput id="world-master-port" v-model.number="serverIni.steam.master_server_port" type="number" min="1024" max="65535" @change="serverIniChanged = true" />
+                      <UiInput id="world-master-port" v-model.number="serverIni.steam.master_server_port" type="number" min="1024" max="65535" :disabled="configurationReadOnly" @change="serverIniChanged = true" />
                     </Field>
                     <Field>
                       <FieldLabel for="world-auth-port">{{ $t('worlds.settingsPage.serverIni.authPort') }}</FieldLabel>
-                      <UiInput id="world-auth-port" v-model.number="serverIni.steam.authentication_port" type="number" min="1024" max="65535" @change="serverIniChanged = true" />
+                      <UiInput id="world-auth-port" v-model.number="serverIni.steam.authentication_port" type="number" min="1024" max="65535" :disabled="configurationReadOnly" @change="serverIniChanged = true" />
                     </Field>
                     <div class="form-actions">
-                      <UiButton @click="saveServerIni" :disabled="savingServerIni || !serverIniChanged">
+                      <UiButton @click="saveServerIni" :disabled="configurationReadOnly || savingServerIni || !serverIniChanged">
                         <Spinner v-if="savingServerIni" data-icon="inline-start" />{{ $t('worlds.settingsPage.serverIni.save') }}
                       </UiButton>
                       <UiButton variant="outline" @click="resetServerIni" :disabled="!serverIniChanged">{{ $t('common.actions.reset') }}</UiButton>
@@ -184,7 +176,7 @@
         </TabsContent>
       </Tabs>
 
-      <Empty v-if="!loadError && roomId && visibleWorlds.length === 0">
+      <Empty v-if="roomId && visibleWorlds.length === 0">
         <EmptyHeader>
           <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
           <EmptyTitle>{{ $t('worlds.settingsPage.noWorlds') }}</EmptyTitle>
@@ -193,7 +185,7 @@
         <EmptyContent><UiButton @click="showAddWorldDialog"><Plus data-icon="inline-start" />{{ $t('worlds.settingsPage.addWorld') }}</UiButton></EmptyContent>
       </Empty>
 
-      <Empty v-if="!loadError && !roomId && !loadingRooms && !roomOptionsError">
+      <Empty v-if="!roomId && !loadingRooms && !roomOptionsError">
         <EmptyHeader>
           <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
           <EmptyTitle>{{ $t(roomOptions.length ? 'worlds.settingsPage.chooseRoom' : 'worlds.settingsPage.noRooms') }}</EmptyTitle>
@@ -203,12 +195,13 @@
 
     </section>
 
-    <div v-if="!loadError && showWorldSettingsFooter" id="settings-fixed-footer">
+    <div v-if="showWorldSettingsFooter" id="settings-fixed-footer">
       <settings-footer
         :has-changes="hasChanges"
         :loading="loading"
         :save-loading="saveLoading"
         :changed-items="getChangedItems()"
+        :read-only="configurationReadOnly"
         @save="saveSettings"
         @reset="resetSettings"
       />
@@ -244,15 +237,9 @@
           <DialogDescription>{{ $t('worlds.settingsPage.deleteDialog.description', { world: worldToDelete ? worldToDelete.name : '' }) }}</DialogDescription>
         </DialogHeader>
         <Alert variant="destructive"><TriangleAlert /><AlertTitle>{{ $t('worlds.settingsPage.deleteDialog.confirmTitle') }}</AlertTitle><AlertDescription>{{ $t('worlds.settingsPage.deleteDialog.confirmDescription') }}</AlertDescription></Alert>
-        <FieldGroup>
-            <Field :data-invalid="Boolean(deleteConfirmation) && deleteConfirmation !== roomName">
-              <FieldLabel for="delete-world-confirmation">{{ $t('worlds.settingsPage.deleteDialog.roomName') }}</FieldLabel>
-              <UiInput id="delete-world-confirmation" v-model="deleteConfirmation" :aria-invalid="Boolean(deleteConfirmation) && deleteConfirmation !== roomName" :placeholder="roomName ? $t('worlds.settingsPage.deleteDialog.roomPlaceholder', { room: roomName }) : $t('worlds.settingsPage.deleteDialog.roomPlaceholderGeneric')" />
-            </Field>
-        </FieldGroup>
         <DialogFooter>
           <UiButton variant="outline" @click="deleteWorldDialogVisible = false">{{ $t('common.actions.cancel') }}</UiButton>
-          <UiButton variant="destructive" @click="deleteWorld" :disabled="deleteWorldLoading || deleteConfirmation !== roomName || worldToDelete?.status === 'running'">
+          <UiButton variant="destructive" @click="deleteWorld" :disabled="deleteWorldLoading || worldToDelete?.status === 'running'">
             <Spinner v-if="deleteWorldLoading" data-icon="inline-start" />{{ $t('worlds.settingsPage.deleteDialog.delete') }}
           </UiButton>
         </DialogFooter>
@@ -262,6 +249,8 @@
 </template>
 
 <script>
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs';
 import { Globe2, Moon, Package, Plus, RefreshCw, ServerCog, SlidersHorizontal, Sparkles, Sun, Trash2, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import WorldSettingsPanel from '@/components/worlds/WorldSettingsPanel.vue';
@@ -270,7 +259,7 @@ import api from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -282,10 +271,13 @@ import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirmAction } from '@/lib/feedback';
 import { applyWorldSettingsLabels, worldSettingsCatalogPath } from '@/lib/worldSettingsLocale.mjs';
+import { compareWorldRoles } from '@/lib/worldRuntimeStatus.mjs';
 
 export default {
+  inject: { machineScopeGuard: { from: 'machine-scope-guard', default: null } },
   name: 'WorldSettings',
   components: {
+    RoomScopeSelect,
     Alert,
     AlertAction,
     AlertDescription,
@@ -294,7 +286,6 @@ export default {
     Card,
     CardAction,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
     DialogContent,
@@ -383,8 +374,13 @@ export default {
       hasCaveWorld: false,
       worldOverrides: {}, // 存储每个世界的自定义配置
       worldOriginalSettings: {}, // 存储各世界从服务器加载后的真实基线
+      worldConfigurationMeta: {},
+      worldLoadErrors: {},
       loadedWorldConfigs: {}, // 用于跟踪已加载的世界配置
       initializingWorlds: false,
+      initialWorldId: '',
+      previousActiveTab: '',
+      configurationLoadEpoch: 0,
       // 新增世界相关
       addWorldDialogVisible: false,
       newWorld: {
@@ -395,7 +391,6 @@ export default {
       // 删除世界相关
       deleteWorldDialogVisible: false,
       worldToDelete: null,
-      deleteConfirmation: '',
       deleteWorldLoading: false,
       // 基础配置相关
       serverIni: null,
@@ -413,9 +408,10 @@ export default {
   },
   created() {
     // 从URL参数中获取房间ID和名称
-    const { roomId, roomName } = this.$route.query;
+    const { roomId, roomName, worldId } = this.$route.query;
     this.roomId = roomId || null;
     this.roomName = roomName || '';
+    this.initialWorldId = String(worldId || '');
     this.fetchWorldSettings()
       .then(() => this.fetchRoomOptions())
       .then(loaded => (loaded && this.roomId ? this.loadRoomWorlds() : undefined))
@@ -430,10 +426,12 @@ export default {
     window.addEventListener('resize', this.debouncedResize);
   },
   beforeUnmount() {
+    if (this.machineScopeGuard?.check === this.confirmMachineScopeChange) this.machineScopeGuard.check = async () => true;
     // 清理事件监听器
     document.removeEventListener('click', this.debouncedGlobalClick);
     window.removeEventListener('resize', this.debouncedResize);
     window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
     if (this.scrollContainer && this.debouncedScrollHandler) {
       this.scrollContainer.removeEventListener('scroll', this.debouncedScrollHandler);
     }
@@ -504,19 +502,25 @@ export default {
               this.loadWorldConfig(currentWorld);
             } else {
               // 用户关闭了对话框，回到先前的标签页
-              const previousTab = this.activeTab;
+              const previousTab = this.previousActiveTab;
               this.$nextTick(() => {
-                this.activeTab = previousTab;
+                if (previousTab) this.activeTab = previousTab;
               });
             }
           });
           return;
         }
+
+        this.previousActiveTab = newTab;
+        this.syncWorldRoute(currentWorld);
         
         // 每次切换标签页都重新加载该世界的配置
         this.loading = true;
-        this.loadWorldOverrides(this.roomName, currentWorld.name)
+        const loading = this.loadWorldConfiguration(this.roomName, currentWorld.name);
+        const loadEpoch = this.configurationLoadEpoch;
+        loading
           .finally(() => {
+            if (loadEpoch !== this.configurationLoadEpoch) return;
             // 更新已加载配置标记
             if (!this.loadedWorldConfigs) {
               this.loadedWorldConfigs = {};
@@ -524,8 +528,6 @@ export default {
             this.loadedWorldConfigs[`${this.roomName}_${currentWorld.name}`] = true;
             this.loading = false;
             
-            // 加载服务器基础配置
-            this.fetchServerIni(this.roomName, currentWorld.name);
           });
       }
       
@@ -549,6 +551,8 @@ export default {
     }
   },
   mounted() {
+    if (this.machineScopeGuard) this.machineScopeGuard.check = this.confirmMachineScopeChange;
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
     // 优化页面初始渲染
     this.$nextTick(() => {
       // 使用requestAnimationFrame优化渲染性能
@@ -626,8 +630,33 @@ export default {
       return this.visibleWorlds.find(world => world.name === this.activeTab) || this.visibleWorlds[0] || null;
     },
 
+    activeWorldHasBaseline() {
+      return Boolean(this.currentWorld && this.worldOriginalSettings[this.currentWorld.name]);
+    },
+
+    activeConfigurationSync() {
+      return this.currentWorld ? this.worldConfigurationMeta[this.currentWorld.name]?.sync || null : null;
+    },
+
+    configurationReadOnly() {
+      return Boolean(this.activeConfigurationSync?.readOnly);
+    },
+
+    configurationSourceLabel() {
+      const sync = this.activeConfigurationSync;
+      if (!sync || sync.source !== 'runtime-disk') return '';
+      const target = [sync.targetId, sync.installationId].filter(Boolean).join(' / ');
+      return this.$t('worlds.settingsPage.runtimeSource', { target: target || this.$t('worlds.settingsPage.runtimeSourceCurrent') });
+    },
+
+    currentEffectLabel() {
+      return this.$t(this.worldSectionTab === 'worldgen'
+        ? 'worlds.settingsPage.effects.regeneration'
+        : 'worlds.settingsPage.effects.restart');
+    },
+
     showWorldSettingsFooter() {
-      return Boolean(this.currentWorld && ['worldgen', 'worldsettings'].includes(this.worldSectionTab));
+      return Boolean(this.activeWorldHasBaseline && ['worldgen', 'worldsettings'].includes(this.worldSectionTab));
     },
 
     roomHasRunningWorld() {
@@ -638,9 +667,11 @@ export default {
       return this.roomWorlds.length > 0 ? this.sortedRoomWorlds : [];
     },
 
-    // 世界按照ID数字排序
     sortedRoomWorlds() {
       return this.roomWorlds.slice().sort((a, b) => {
+        const roleOrder = compareWorldRoles(a, b);
+        if (roleOrder !== 0) return roleOrder;
+
         // 从名称中提取数字部分
         const numA = parseInt(a.name.replace(/[^\d]/g, '') || '0', 10);
         const numB = parseInt(b.name.replace(/[^\d]/g, '') || '0', 10);
@@ -656,8 +687,57 @@ export default {
     }
   },
   methods: {
+    async confirmMachineScopeChange() {
+      if (this.saveLoading || this.savingServerIni) return false;
+      if (!(await this.confirmDiscardWorldChanges())) return false;
+      this.hasChanges = false;
+      this.serverIniChanged = false;
+      return true;
+    },
+    handleBeforeUnload(event) {
+      if (!this.hasChanges && !this.serverIniChanged) return;
+      event.preventDefault();
+      event.returnValue = '';
+    },
+    async confirmDiscardWorldChanges() {
+      if (!this.hasChanges && !this.serverIniChanged) return true;
+      try {
+        await confirmAction(this.$t('worlds.settingsPage.leave.description'), this.$t('worlds.settingsPage.leave.title'), {
+          confirmButtonText: this.$t('worlds.settingsPage.leave.discard'),
+          cancelButtonText: this.$t('worlds.settingsPage.leave.continue'),
+          type: 'warning'
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    async requestWorldTab(tab) {
+      if (!tab || tab === this.activeTab) return;
+      if (!(await this.confirmDiscardWorldChanges())) return;
+      this.previousActiveTab = this.activeTab;
+      this.activeTab = tab;
+    },
+    async requestRoomChange(roomId) {
+      if (!roomId || roomId === this.roomId) return;
+      if (!(await this.confirmDiscardWorldChanges())) {
+        this.selectedRoomId = this.roomId || '';
+        return;
+      }
+      await this.handleRoomChange(roomId);
+    },
+    async requestReloadSettings() {
+      if (await this.confirmDiscardWorldChanges()) await this.reloadSettings();
+    },
+    syncWorldRoute(world) {
+      if (!world?.id || String(this.$route.query.worldId || '') === String(world.id)) return;
+      this.$router.replace({
+        path: this.$route.path,
+        query: { ...this.$route.query, roomId: this.roomId, worldId: world.id }
+      }).catch(() => {});
+    },
     worldTypeLabel(type) {
-      if (type === 'forest' || type === 'master') return this.$t('worldRuntime.types.forest');
+      if (type === 'forest') return this.$t('worldRuntime.types.forest');
       if (type === 'cave') return this.$t('worldRuntime.types.cave');
       return this.$t('worldRuntime.types.unknown');
     },
@@ -667,12 +747,12 @@ export default {
       try {
         const response = await api.worldApi.getWorldList();
         this.roomOptions = Array.isArray(response.data) ? response.data : [];
-        const selected = this.roomOptions.find(room => room.id === this.roomId || room.name === this.roomName);
+        const wanted = preferredRoomId(this.roomOptions, this.roomId || this.roomName || undefined);
+        const selected = this.roomOptions.find(room => room.id === wanted);
         const query = { ...this.$route.query };
-        const hasLegacyRoomQuery = ['id', 'worldId', 'roomName'].some(key => key in query);
-        delete query.id;
-        delete query.worldId;
-        delete query.roomName;
+		const hasLegacyRoomQuery = ['id', 'roomName'].some(key => key in query);
+		delete query.id;
+		delete query.roomName;
         if (selected) {
           this.roomId = selected.id;
           this.roomName = selected.name;
@@ -722,6 +802,7 @@ export default {
       await this.loadRoomWorlds();
     },
     getSettingsForWorld(world) {
+      if (!this.worldOriginalSettings[world.name]) return null;
       return world.type === 'cave' ? this.filteredCaveSettings : this.filteredForestSettings;
     },
     openWorldMods(world) {
@@ -790,7 +871,7 @@ export default {
       this.loading = true;
       this.loadError = '';
 
-      api.worldApi.getWorldList()
+      return api.worldApi.getWorldList()
         .then(response => {
           const room = response.data.find(r => r.id === this.roomId || r.name === this.roomName);
           if (!room || !Array.isArray(room.worlds)) {
@@ -806,15 +887,20 @@ export default {
             return null;
           }
 
-          const firstWorld = this.sortedRoomWorlds[0];
+          const requestedWorldId = String(this.$route.query.worldId || this.initialWorldId || '');
+          const firstWorld = this.sortedRoomWorlds.find(world =>
+            [String(world.id || ''), String(world.name || ''), String(world.directoryName || '')].includes(requestedWorldId)
+          ) || this.sortedRoomWorlds[0];
+          this.initialWorldId = '';
           this.initializingWorlds = true;
           this.activeTab = firstWorld.name;
+          this.previousActiveTab = firstWorld.name;
+          this.syncWorldRoute(firstWorld);
           return this.$nextTick()
             .then(() => {
               this.initializingWorlds = false;
-              return this.loadWorldOverrides(this.roomName, firstWorld.name);
-            })
-            .then(() => this.fetchServerIni(this.roomName, firstWorld.name));
+              return this.loadWorldConfiguration(this.roomName, firstWorld.name);
+            });
         })
         .catch(error => {
           this.loadError = error.message || this.$t('worlds.settingsPage.feedback.roomWorldsReadFailed');
@@ -847,13 +933,7 @@ export default {
         return worldOverridesData;
       })
       .catch(error => {
-        if (worldType === 'forest') {
-          this.forestSettings = null;
-        } else {
-          this.caveSettings = null;
-        }
-        delete this.worldOriginalSettings[worldname];
-        delete this.worldOverrides[worldname];
+        this.worldLoadErrors = { ...this.worldLoadErrors, [worldname]: error.message || String(error) };
         this.loadError = error.message || this.$t('worlds.settingsPage.feedback.overridesLoadFailed', { world: worldname });
         toast.error(this.$t('worlds.settingsPage.feedback.overridesLoadError', {
           world: worldname,
@@ -861,6 +941,58 @@ export default {
         }));
         return null;
       });
+    },
+
+    loadWorldConfiguration(savename, worldname) {
+      if (!savename || !worldname) return Promise.resolve(null);
+      const loadEpoch = ++this.configurationLoadEpoch;
+      const world = this.roomWorlds.find(item => item.name === worldname);
+      const worldType = world?.type === 'cave' ? 'cave' : 'forest';
+      this.loadingServerIni = true;
+
+      return api.worldApi.getWorldConfiguration(savename, worldname, {
+        roomId: this.roomId, worldId: world?.id
+      })
+        .then(response => {
+          if (loadEpoch !== this.configurationLoadEpoch || this.roomName !== savename || this.activeTab !== worldname) return null;
+          const configuration = response.data || {};
+          this.applyWorldOverrides(configuration.overrides || {}, worldType, worldname);
+          this.serverIni = configuration.serverIni || null;
+          this.serverIniOriginal = this.serverIni ? JSON.parse(JSON.stringify(this.serverIni)) : null;
+          this.serverIniChanged = false;
+          this.worldConfigurationMeta = {
+            ...this.worldConfigurationMeta,
+            [worldname]: {
+              revision: configuration.revision || '',
+              modifiedAt: configuration.modifiedAt || '',
+              sync: configuration.sync || null
+            }
+          };
+          const errors = { ...this.worldLoadErrors };
+          delete errors[worldname];
+          this.worldLoadErrors = errors;
+          this.loadError = '';
+          this.loadedWorldConfigs[`${savename}_${worldname}`] = true;
+          return configuration;
+        })
+        .catch(error => {
+          if (loadEpoch !== this.configurationLoadEpoch || this.roomName !== savename || this.activeTab !== worldname) return null;
+          const message = error.message || this.$t('worlds.settingsPage.feedback.overridesLoadFailed', { world: worldname });
+          this.worldLoadErrors = { ...this.worldLoadErrors, [worldname]: message };
+          this.loadError = message;
+          if (!this.worldOriginalSettings[worldname]) {
+            this.serverIni = null;
+            this.serverIniOriginal = null;
+          }
+          toast.error(this.$t('worlds.settingsPage.feedback.overridesLoadError', {
+            world: worldname,
+            error: message
+          }));
+          return null;
+        })
+        .finally(() => {
+          if (loadEpoch === this.configurationLoadEpoch) this.loadingServerIni = false;
+        });
     },
     
     // 应用世界自定义配置到设置中
@@ -923,6 +1055,7 @@ export default {
     
     // 处理设置变更
     handleSettingChange({ item, value }) {
+      if (this.configurationReadOnly) return;
       // 只在值真正变化时才处理
       if (item.value === value) return;
       
@@ -1031,59 +1164,72 @@ export default {
       this.changedItemsCache = null;
       this.hasChanges = this.getChangedItems().length > 0;
     },
-    saveSettings() {
-      this.saveLoading = true;
+    async saveSettings() {
+      if (this.saveLoading) return;
+      if (this.configurationReadOnly) {
+        toast.error(this.$t('worlds.settingsPage.feedback.readOnly'));
+        return;
+      }
       const currentWorld = this.roomWorlds.find(world => world.name === this.activeTab);
       
       if (!currentWorld) {
         toast.error(this.$t('worlds.settingsPage.feedback.saveWorldMissing'));
-        this.saveLoading = false;
         return;
       }
-      
-      // 准备要保存的数据，只包含已修改的部分
-      const changedSettings = this.prepareChangedSettings();
-      const worldType = currentWorld.type === 'forest' ? 'forest' : 'cave';
-      
-      // 如果是临时世界，先弹窗让用户输入新世界名称
-      if (currentWorld.isTemp) {
-        this.saveLoading = false;
-        this.newWorld = {
-          name: '',
-          type: worldType
-        };
-        this.addWorldDialogVisible = true;
-        
-        // 保存当前设置，供创建世界后使用
-        this.pendingWorldSettings = changedSettings;
-        this.pendingWorldType = worldType;
-        return;
-      }
-      
-      const apiMethod = worldType === 'forest' ? api.worldApi.forestWorld : api.worldApi.caveWorld;
-      apiMethod({
-        savename: this.roomName,
-        worldname: currentWorld.name,
-        overrides: changedSettings[worldType]
-      })
-        .then(async response => {
-          if (response.status === 200) {
-            toast.success(this.$t('worlds.settingsPage.feedback.settingsSaved', {
-              world: currentWorld.name
-            }));
-            await this.loadWorldOverrides(this.roomName, currentWorld.name);
+
+      const roomId = this.roomId;
+      const roomName = this.roomName;
+      const startedAt = performance.now();
+      let appliedAt = null;
+      this.saveLoading = true;
+      try {
+        const changedSettings = this.prepareChangedSettings();
+        const worldType = currentWorld.type === 'forest' ? 'forest' : 'cave';
+
+        if (currentWorld.isTemp) {
+          this.newWorld = { name: '', type: worldType };
+          this.addWorldDialogVisible = true;
+          this.pendingWorldSettings = changedSettings;
+          this.pendingWorldType = worldType;
+          return;
+        }
+
+        const response = await api.worldApi[worldType === 'forest' ? 'forestWorld' : 'caveWorld']({
+          roomId,
+          worldId: currentWorld.id,
+          savename: roomName,
+          worldname: currentWorld.name,
+          expectedRevision: this.worldConfigurationMeta[currentWorld.name]?.revision || '',
+          overrides: changedSettings[worldType]
+        });
+        appliedAt = performance.now();
+        if (response.status === 200) {
+          toast.success(this.$t('worlds.settingsPage.feedback.settingsSaved', {
+            world: currentWorld.name
+          }));
+          if (this.roomId === roomId && this.activeTab === currentWorld.name) {
+            await this.loadWorldConfiguration(roomName, currentWorld.name);
             this.buildCaches();
           }
-        })
-        .catch(error => {
-          toast.error(this.$t('worlds.settingsPage.feedback.settingsSaveFailed', {
-            world: currentWorld.name,
-            error: error.message || this.$t('common.errors.unknown')
-          }));
-        })
-        .finally(() => {
-          this.saveLoading = false;
-        });
+        }
+      } catch (error) {
+        toast.error(this.$t('worlds.settingsPage.feedback.settingsSaveFailed', {
+          world: currentWorld.name,
+          error: this.configurationSaveError(error)
+        }));
+      } finally {
+        this.saveLoading = false;
+        if (!currentWorld.isTemp) {
+          await this.$nextTick();
+          const finishedAt = performance.now();
+          console.info('[WorldConfigurationSave]', {
+            roomId, worldId: currentWorld.id,
+            totalMs: Math.round(finishedAt - startedAt),
+            saveMs: appliedAt === null ? null : Math.round(appliedAt - startedAt),
+            reloadMs: appliedAt === null ? null : Math.round(finishedAt - appliedAt)
+          });
+        }
+      }
     },
     prepareChangedSettings() {
       const currentWorld = this.roomWorlds.find(world => world.name === this.activeTab);
@@ -1628,7 +1774,6 @@ export default {
         return;
       }
       this.worldToDelete = world;
-      this.deleteConfirmation = '';
       this.deleteWorldDialogVisible = true;
     },
     
@@ -1636,14 +1781,6 @@ export default {
     deleteWorld() {
       if (!this.worldToDelete) {
         toast.warning(this.$t('worlds.settingsPage.feedback.deleteWorldMissing'));
-        return;
-      }
-      if (!this.deleteConfirmation) {
-        toast.warning(this.$t('worlds.settingsPage.feedback.deleteConfirmationRequired'));
-        return;
-      }
-      if (this.deleteConfirmation !== this.roomName) {
-        toast.warning(this.$t('worlds.settingsPage.feedback.roomNameMismatch'));
         return;
       }
       if (this.worldToDelete.status === 'running') {
@@ -1656,7 +1793,7 @@ export default {
       api.worldApi.deleteWorld({
         savename: this.roomName,
         worldname: this.worldToDelete.name,
-        confirmation: this.deleteConfirmation
+        confirmation: this.roomName
       })
         .then(response => {
           if (response.status === 200) {
@@ -1756,6 +1893,10 @@ export default {
     // 保存服务器基础配置
     saveServerIni() {
       if (!this.serverIni) return;
+      if (this.configurationReadOnly) {
+        toast.error(this.$t('worlds.settingsPage.feedback.readOnly'));
+        return;
+      }
       
       const currentWorld = this.roomWorlds.find(world => world.name === this.activeTab);
       if (!currentWorld) {
@@ -1772,19 +1913,22 @@ export default {
       this.savingServerIni = true;
 
       api.worldApi.saveServerIni({
+        roomId: this.roomId,
+        worldId: currentWorld.id,
         savename: this.roomName,
         worldname: currentWorld.name,
+        expectedRevision: this.worldConfigurationMeta[currentWorld.name]?.revision || '',
         config: this.serverIni
       })
         .then(async response => {
           if (response.status === 200) {
             toast.success(this.$t('worlds.settingsPage.feedback.serverIniSaved'));
-            await this.fetchServerIni(this.roomName, currentWorld.name);
+            await this.loadWorldConfiguration(this.roomName, currentWorld.name);
           }
         })
         .catch(error => {
           toast.error(this.$t('worlds.settingsPage.feedback.serverIniSaveFailed', {
-            error: error.message || this.$t('common.errors.unknown')
+            error: this.configurationSaveError(error)
           }));
         })
         .finally(() => {
@@ -1799,14 +1943,12 @@ export default {
         this.serverIniChanged = false;
       }
     },
-    handleMasterWorldChange(value) {
-      this.serverIniChanged = true;
-      
-      // 如果设置为主世界，确保世界ID为1
-      if (value && this.serverIni) {
-        this.serverIni.shard.id = 1;
-        toast.info(this.$t('worlds.settingsPage.feedback.masterIdAdjusted'));
+
+    configurationSaveError(error) {
+      if (error?.code === 'CONFIG_REVISION_CONFLICT' || error?.context?.targetErrorCode === 'CONFIG_REVISION_CONFLICT') {
+        return this.$t('worlds.settingsPage.feedback.revisionConflict');
       }
+      return error?.message || this.$t('common.errors.unknown');
     },
     
     // 加载指定世界的配置（处理用户选择世界类型后）
@@ -1823,13 +1965,13 @@ export default {
       }
       
       // 加载世界配置
-      this.loadWorldOverrides(this.roomName, world.name)
+      const loading = this.loadWorldConfiguration(this.roomName, world.name);
+      const loadEpoch = this.configurationLoadEpoch;
+      loading
         .finally(() => {
+          if (loadEpoch !== this.configurationLoadEpoch) return;
           this.loadedWorldConfigs[worldKey] = true;
           this.loading = false;
-          
-          // 加载服务器基础配置
-          this.fetchServerIni(this.roomName, world.name);
           
           // 向服务器更新世界类型
           this.updateWorldType(world);
@@ -1895,6 +2037,10 @@ export default {
       
       return result;
     }
+  },
+  async beforeRouteLeave() {
+    if (this.saveLoading || this.savingServerIni) return true;
+    return this.confirmDiscardWorldChanges();
   }
 }
 </script>
@@ -1975,6 +2121,36 @@ export default {
   gap: 8px;
 }
 
+.section-tabs-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-statuses {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.runtime-source-badge {
+  min-width: 0;
+  max-width: min(420px, 45vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.effect-badge {
+  flex: none;
+}
+
 .world-tab-list {
   min-width: 0;
   flex: 1;
@@ -1993,13 +2169,14 @@ export default {
 
 .section-tab-list {
   width: max-content;
-  min-width: 100%;
+  min-width: 0;
+  flex: 1;
   height: auto;
   max-width: none;
   justify-content: flex-start;
   padding: 0 0 8px;
   overflow: visible;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0;
 }
 
 .section-tab-list :deep([data-slot='tabs-trigger']) {
@@ -2080,6 +2257,20 @@ export default {
 
   .world-tabs-toolbar {
     align-items: flex-start;
+  }
+
+  .section-tabs-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .section-statuses {
+    justify-content: flex-start;
+  }
+
+  .runtime-source-badge {
+    max-width: 100%;
   }
 
   .world-tab-list {

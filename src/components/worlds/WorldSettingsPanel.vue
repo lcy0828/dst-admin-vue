@@ -35,6 +35,7 @@
               :category="category.value"
               :world-type="worldType"
               :is-changed="isItemChanged(item, itemKey)"
+              :read-only="readOnly"
               v-show="matchesSearch(item.text)"
               @setting-change="handleSettingChange"
             />
@@ -68,6 +69,7 @@
               :category="category.value"
               :world-type="worldType"
               :is-changed="isItemChanged(item, itemKey)"
+              :read-only="readOnly"
               v-show="matchesSearch(item.text)"
               @setting-change="handleSettingChange"
             />
@@ -117,6 +119,10 @@ export default {
     showGroup: {
       type: String,
       default: ''
+    },
+    readOnly: {
+      type: Boolean,
+      default: false
     }
   },
   data() {
@@ -214,6 +220,7 @@ export default {
       }
     },
     handleSettingChange({ item, value }) {
+      if (this.readOnly) return;
       this.$emit('setting-change', { item, value });
     }
   }

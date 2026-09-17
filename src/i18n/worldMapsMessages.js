@@ -119,7 +119,7 @@ export function worldMapDiagnosticError(message, translate) {
 export const worldMapsMessages = {
   'zh-CN': {
     worldMaps: {
-      title: '地图与 Session',
+      title: '世界地图',
       subtitle: '查看世界地图版本、生成任务和原始 Session 快照。',
       values: {
         unknown: '未知',
@@ -133,8 +133,8 @@ export const worldMapsMessages = {
         cancelJob: '取消任务',
         generate: '生成地图',
         generating: '正在生成',
-        downloadSession: '下载 Session',
-        downloadSessionAria: '下载 Session {file}',
+        downloadSession: '下载存档文件',
+        downloadSessionAria: '下载存档文件 {file}',
         viewMap: '查看地图',
         viewDiagnostic: '查看诊断',
         viewDiagnosticAria: '查看地图失败诊断',
@@ -148,8 +148,8 @@ export const worldMapsMessages = {
         exitFullscreen: '退出全屏'
       },
       source: {
-        title: '世界来源',
-        description: '只列出已接管房间的真实世界和 Session 文件。',
+        title: '选择世界',
+        description: '列出 Agent 已发现房间的真实世界和 Session 文件。',
         archive: '存档',
         selectArchive: '选择存档',
         world: '世界',
@@ -158,9 +158,9 @@ export const worldMapsMessages = {
       },
       renderer: {
         protocol: 'Renderer v{version}',
-        unavailableBadge: 'Renderer 不可用',
+        unavailableBadge: '地图生成不可用',
         unavailableTitle: '地图渲染器未就绪',
-        unavailableDescription: '当前节点未找到可执行的 dst-map-renderer。已有地图查看和 Session 下载不受影响，新地图生成暂不可用。',
+        unavailableDescription: '请在运行机器上安装地图生成工具 dst-map-renderer。已有地图和存档文件仍可查看或下载。',
         readyTitle: '地图渲染器已就绪',
         readyDescription: '当前节点已完成地图渲染器配置。'
       },
@@ -169,33 +169,33 @@ export const worldMapsMessages = {
         completedTitle: '地图生成完成',
         canceledTitle: '地图生成已取消',
         failedTitle: '地图生成失败',
-        runningDescription: '正在运行外部渲染器并校验输出图层。',
+        runningDescription: '正在从存档生成地图。',
         publishedDescription: '新地图版本已经发布。',
         title: '生成地图',
-        description: '从选定 Session 生成经过校验的不可变地图版本。',
-        sessionSnapshot: 'Session 快照',
-        readingSessions: '正在读取 Session',
-        selectSession: '选择 Session',
+        description: '根据选定的存档生成地图，不修改存档。',
+        sessionSnapshot: '存档记录',
+        readingSessions: '正在读取存档记录',
+        selectSession: '选择存档记录',
         snapshotMetadata: '{size} · {count} 位玩家数据 · {time}',
         layers: '地图图层',
         layersDescription: '地形层始终生成，可叠加位置和世界状态图层。',
-        output: '固定产物',
-        outputDescription: 'Renderer v1 每次生成完整地形、实体和世界状态。',
+        output: '生成内容',
+        outputDescription: '包含地形、物品与生物位置、世界状态。',
         diagnosticSnapshots: '{count} 个可诊断快照'
       },
       sessions: {
-        title: 'Session 诊断',
-        countDescription: '当前世界共 {count} 个快照',
-        unavailableDescription: '当前世界没有可用 Session',
-        loadFailedTitle: 'Session 读取失败',
+        title: '存档文件',
+        countDescription: '当前世界共 {count} 条存档记录',
+        unavailableDescription: '当前世界没有可用存档',
+        loadFailedTitle: '存档文件读取失败',
         columns: {
-          snapshot: '快照',
+          snapshot: '存档记录',
           size: '大小',
           actions: '操作'
         },
         latest: '最新',
-        emptyTitle: '没有 Session 快照',
-        emptyDescription: '世界首次保存后，Session 文件会在这里出现。'
+        emptyTitle: '没有存档记录',
+        emptyDescription: '世界首次保存后，存档文件会出现在这里。'
       },
       viewer: {
         title: '地图查看器',
@@ -217,8 +217,8 @@ export const worldMapsMessages = {
           warnings: '警告'
         },
         emptyTitle: '还没有可用地图',
-        emptyRendererReady: '选择 Session 后生成第一个地图版本。',
-        emptyRendererUnavailable: '配置地图渲染器后即可从 Session 生成地图。'
+        emptyRendererReady: '选择存档记录，生成第一张地图。',
+        emptyRendererUnavailable: '配置地图生成工具后，即可从存档生成地图。'
       },
       history: {
         title: '地图版本',
@@ -227,7 +227,7 @@ export const worldMapsMessages = {
         loadFailedTitle: '地图历史读取失败',
         columns: {
           time: '时间',
-          session: 'Session',
+          session: '存档记录',
           status: '状态',
           stage: '阶段',
           layers: '图层',
@@ -246,10 +246,10 @@ export const worldMapsMessages = {
         noLogs: '渲染器没有返回日志。'
       },
       worldState: {
-        title: '世界快照',
-        description: '从当前 Session 提取的持久化世界状态。',
+        title: '存档中的世界状态',
+        description: '选定存档保存时的世界状态。',
         emptyTitle: '没有世界状态',
-        emptyDescription: '当前 Session 未包含可读取的世界状态。',
+        emptyDescription: '当前存档未包含可读取的世界状态。',
         warningsTitle: '{count} 条渲染警告'
       },
       feature: {
@@ -289,17 +289,17 @@ export const worldMapsMessages = {
       },
       errors: {
         sourceLoadFailedTitle: '地图数据加载失败',
-        roomsLoadFailed: '无法读取已接管房间：{error}',
+        roomsLoadFailed: '无法读取房间：{error}',
         worldsLoadFailed: '无法读取世界列表：{error}',
         mapsLoadFailed: '无法读取地图版本：{error}',
-        sessionsLoadFailed: '无法读取 Session 快照：{error}',
+        sessionsLoadFailed: '无法读取存档记录：{error}',
         artifactsLoadFailed: '无法读取地图产物：{error}',
         withRequestId: '{message}（请求 ID：{requestId}）',
         codes: {
           invalidJson: '地图生成配置无效',
           jobCreateFailed: '无法创建地图生成任务',
-          resourceNotFound: '地图或 Session 资源不存在',
-          roomNotManaged: '接管房间后才能使用地图功能',
+          resourceNotFound: '地图或存档文件不存在',
+          roomNotManaged: '房间所在 Agent 可用后才能使用地图功能',
           rendererUnavailable: '地图渲染器不可用，请先完成节点配置',
           generationInProgress: '该世界已有地图生成任务',
           invalidLayers: '地图图层配置无效',
@@ -314,8 +314,8 @@ export const worldMapsMessages = {
       feedback: {
         generationSubmitted: '地图生成任务已提交',
         generationFailed: '地图生成失败：{error}',
-        sessionDownloadStarted: 'Session 下载已开始',
-        sessionDownloadFailed: 'Session 下载失败：{error}',
+        sessionDownloadStarted: '存档文件下载已开始',
+        sessionDownloadFailed: '存档文件下载失败：{error}',
         generationIncomplete: '地图生成未完成：{error}',
         jobStillRunning: '地图任务仍在执行，请稍后刷新状态',
         jobStatusFailed: '地图任务状态读取失败：{error}',
@@ -329,7 +329,7 @@ export const worldMapsMessages = {
   },
   'en-US': {
     worldMaps: {
-      title: 'Maps & Sessions',
+      title: 'World maps',
       subtitle: 'Inspect map versions, generation jobs, and raw Session snapshots for each world.',
       values: {
         unknown: 'Unknown',
@@ -343,8 +343,8 @@ export const worldMapsMessages = {
         cancelJob: 'Cancel job',
         generate: 'Generate map',
         generating: 'Generating',
-        downloadSession: 'Download Session',
-        downloadSessionAria: 'Download Session {file}',
+        downloadSession: 'Download save file',
+        downloadSessionAria: 'Download save file {file}',
         viewMap: 'View map',
         viewDiagnostic: 'View diagnostics',
         viewDiagnosticAria: 'View map generation failure diagnostics',
@@ -358,8 +358,8 @@ export const worldMapsMessages = {
         exitFullscreen: 'Exit fullscreen'
       },
       source: {
-        title: 'World source',
-        description: 'Only real worlds and Session files from managed rooms are listed.',
+        title: 'Select world',
+        description: 'Lists real worlds and Session files reported by Agents.',
         archive: 'Archive',
         selectArchive: 'Select an archive',
         world: 'World',
@@ -368,9 +368,9 @@ export const worldMapsMessages = {
       },
       renderer: {
         protocol: 'Renderer v{version}',
-        unavailableBadge: 'Renderer unavailable',
+        unavailableBadge: 'Map generation unavailable',
         unavailableTitle: 'Map renderer not ready',
-        unavailableDescription: 'No executable dst-map-renderer was found on this node. Existing maps and Session downloads remain available, but new maps cannot be generated yet.',
+        unavailableDescription: 'Install dst-map-renderer on the machine running this world. Existing maps and save files remain available to view or download.',
         readyTitle: 'Map renderer ready',
         readyDescription: 'The map renderer is configured on this node.'
       },
@@ -379,33 +379,33 @@ export const worldMapsMessages = {
         completedTitle: 'Map generation complete',
         canceledTitle: 'Map generation canceled',
         failedTitle: 'Map generation failed',
-        runningDescription: 'Running the external renderer and validating its output layers.',
+        runningDescription: 'Generating a map from the save.',
         publishedDescription: 'The new map version has been published.',
         title: 'Generate map',
-        description: 'Generate a validated, immutable map version from the selected Session.',
-        sessionSnapshot: 'Session snapshot',
-        readingSessions: 'Reading Sessions',
-        selectSession: 'Select a Session',
+        description: 'Generate a map from the selected save without changing it.',
+        sessionSnapshot: 'Save record',
+        readingSessions: 'Reading save records',
+        selectSession: 'Select a save record',
         snapshotMetadata: '{size} · {count} player records · {time}',
         layers: 'Map layers',
         layersDescription: 'Terrain is always generated. Location and world-state overlays are optional.',
-        output: 'Fixed artifacts',
-        outputDescription: 'Renderer v1 always emits complete terrain, entity, and world-state data.',
+        output: 'Map contents',
+        outputDescription: 'Includes terrain, item and creature locations, and world state.',
         diagnosticSnapshots: '{count} diagnostic snapshots'
       },
       sessions: {
-        title: 'Session diagnostics',
-        countDescription: '{count} snapshots in this world',
-        unavailableDescription: 'No Sessions are available for this world',
-        loadFailedTitle: 'Could not read Sessions',
+        title: 'Save files',
+        countDescription: '{count} save records in this world',
+        unavailableDescription: 'No saves are available for this world',
+        loadFailedTitle: 'Could not read save files',
         columns: {
-          snapshot: 'Snapshot',
+          snapshot: 'Save record',
           size: 'Size',
           actions: 'Actions'
         },
         latest: 'Latest',
-        emptyTitle: 'No Session snapshots',
-        emptyDescription: 'Session files will appear here after the world is saved for the first time.'
+        emptyTitle: 'No save records',
+        emptyDescription: 'Save files will appear here after the world is saved for the first time.'
       },
       viewer: {
         title: 'Map viewer',
@@ -427,8 +427,8 @@ export const worldMapsMessages = {
           warnings: 'Warnings'
         },
         emptyTitle: 'No maps available',
-        emptyRendererReady: 'Select a Session to generate the first map version.',
-        emptyRendererUnavailable: 'Configure the map renderer to generate maps from Sessions.'
+        emptyRendererReady: 'Select a save record to generate the first map.',
+        emptyRendererUnavailable: 'Configure the map tool to generate maps from saves.'
       },
       history: {
         title: 'Map versions',
@@ -437,7 +437,7 @@ export const worldMapsMessages = {
         loadFailedTitle: 'Could not read map history',
         columns: {
           time: 'Time',
-          session: 'Session',
+          session: 'Save record',
           status: 'Status',
           stage: 'Stage',
           layers: 'Layers',
@@ -457,9 +457,9 @@ export const worldMapsMessages = {
       },
       worldState: {
         title: 'World snapshot',
-        description: 'Persistent world state extracted from the current Session.',
+        description: 'World state at the time of the selected save.',
         emptyTitle: 'No world state',
-        emptyDescription: 'The current Session has no readable world state.',
+        emptyDescription: 'The selected save has no readable world state.',
         warningsTitle: '{count} renderer warnings'
       },
       feature: {
@@ -499,16 +499,16 @@ export const worldMapsMessages = {
       },
       errors: {
         sourceLoadFailedTitle: 'Could not load map data',
-        roomsLoadFailed: 'Could not read managed rooms: {error}',
+        roomsLoadFailed: 'Could not read rooms: {error}',
         worldsLoadFailed: 'Could not read worlds: {error}',
         mapsLoadFailed: 'Could not read map versions: {error}',
-        sessionsLoadFailed: 'Could not read Session snapshots: {error}',
+        sessionsLoadFailed: 'Could not read save records: {error}',
         artifactsLoadFailed: 'Could not read map artifacts: {error}',
         withRequestId: '{message} (request ID: {requestId})',
         codes: {
           invalidJson: 'The map generation configuration is invalid',
           jobCreateFailed: 'Could not create the map generation job',
-          resourceNotFound: 'The map or Session resource does not exist',
+          resourceNotFound: 'The map or save file does not exist',
           roomNotManaged: 'Manage the room before using map features',
           rendererUnavailable: 'The map renderer is unavailable; configure it on this node first',
           generationInProgress: 'A map generation job is already running for this world',
@@ -524,8 +524,8 @@ export const worldMapsMessages = {
       feedback: {
         generationSubmitted: 'Map generation job submitted',
         generationFailed: 'Map generation failed: {error}',
-        sessionDownloadStarted: 'Session download started',
-        sessionDownloadFailed: 'Session download failed: {error}',
+        sessionDownloadStarted: 'Save file download started',
+        sessionDownloadFailed: 'Save file download failed: {error}',
         generationIncomplete: 'Map generation did not complete: {error}',
         jobStillRunning: 'The map job is still running. Refresh its status later.',
         jobStatusFailed: 'Could not read the map job status: {error}',

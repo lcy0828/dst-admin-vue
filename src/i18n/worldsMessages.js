@@ -2,9 +2,14 @@ export const worldsMessages = {
   'zh-CN': {
     worlds: {
       types: {
-        master: '主世界',
+        forest: '森林',
+        master: '森林',
         cave: '洞穴',
         other: '其他'
+      },
+      roles: {
+        master: '主世界',
+        secondary: '附属世界'
       },
       categories: {
         title: '房间筛选',
@@ -13,7 +18,7 @@ export const worldsMessages = {
           all: '所有房间',
           active: '活跃房间',
           inactive: '非活跃房间',
-          forest: '仅主世界',
+          forest: '仅森林',
           cave: '仅洞穴',
           both: '混合房间'
         },
@@ -21,14 +26,14 @@ export const worldsMessages = {
           all: '所有世界',
           active: '活跃世界',
           inactive: '非活跃世界',
-          forest: '主世界',
+          forest: '森林世界',
           cave: '洞穴世界',
           both: '混合房间世界',
           custom: '自定义分类'
         }
       },
       actions: {
-        cleanupSession: '清理会话',
+        cleanupSession: '清理失败状态',
         edit: '编辑',
         openMenu: '打开世界操作菜单',
         menuTitle: '世界操作',
@@ -40,19 +45,22 @@ export const worldsMessages = {
       feedback: {
         actionUnavailable: '当前世界状态不可操作',
         actionConfirm: '确定要{action}世界“{world}”吗？',
+        actionDependencyConfirm: '该操作会同时{action} {count} 个关联世界：{worlds}。是否继续？',
         actionTitle: '{action}世界',
         actionCompleted: '{action}完成',
         actionFailed: '{action}世界失败：{error}',
+        dependencyMasterUnknown: '主世界状态未知或正在切换，已刷新状态；请确认主世界稳定后重试',
+        dependencyMasterUnavailable: '主世界当前不可控制，无法安全执行关联世界操作',
         canceled: '已取消操作',
-        cleanupUnavailable: '当前世界没有可清理的失败会话',
-        cleanupConfirm: '确定要停止并清理世界“{world}”的失败会话吗？',
-        cleanupTitle: '清理失败会话',
+        cleanupUnavailable: '当前世界没有需要清理的失败状态',
+        cleanupConfirm: '确定要停止世界“{world}”的残留进程并清理失败状态吗？',
+        cleanupTitle: '清理失败状态',
         cleanupButton: '确认清理',
-        cleanupSucceeded: '失败会话已清理',
+        cleanupSucceeded: '失败状态已清理',
         cleanupFailed: '清理失败：{error}',
-        unmanagedRegenerate: '当前房间尚未接管，无法重新生成世界',
+        unmanagedRegenerate: '当前房间所在机器不可用，无法重新生成世界',
         regenerateNeedsRunning: '重新生成命令需要世界正在运行，请先启动世界',
-        regeneratePrompt: '重新生成会清除世界“{world}”的当前进度。请输入完整房间名“{room}”确认',
+        regeneratePrompt: '重新生成会清除房间“{room}”中世界“{world}”的当前进度，请确认是否继续。',
         regenerateTitle: '重新生成世界',
         regenerateButton: '确认重新生成',
         roomNameMismatch: '房间名不匹配',
@@ -62,9 +70,9 @@ export const worldsMessages = {
         backupTitle: '备份世界',
         backupCreated: '房间备份已创建',
         backupFailed: '备份失败：{error}',
-        deleteNeedsCleanup: '请先清理失败会话，再删除该世界',
+        deleteNeedsCleanup: '请先清理失败状态，再删除该世界',
         deleteNeedsStop: '删除前请先停止该世界',
-        deletePrompt: '世界“{world}”将移入可恢复目录。请输入完整房间名“{room}”确认',
+        deletePrompt: '房间“{room}”中的世界“{world}”将移入可恢复目录，请确认是否继续。',
         deleteTitle: '删除世界',
         moveToRecovery: '移入恢复目录',
         deleteSucceeded: '世界已移入可恢复目录',
@@ -86,7 +94,7 @@ export const worldsMessages = {
         columns: {
           name: '世界名称',
           room: '所属房间',
-          type: '世界类型',
+          type: '类型 / 角色',
           season: '季节',
           day: '天数'
         },
@@ -124,6 +132,7 @@ export const worldsMessages = {
         fields: {
           name: '世界名称',
           type: '世界类型',
+          role: '世界角色',
           season: '当前季节',
           day: '当前天数',
           description: '描述'
@@ -163,6 +172,7 @@ export const worldsMessages = {
         footer: {
           unsaved: '有未保存的更改',
           synced: '设置已同步',
+          readOnly: '离线快照只读',
           viewChanges: '查看变更（{count}）',
           changedItems: '已修改的设置项（{count}）',
           changesDescription: '保存后将应用以下配置变更。',
@@ -191,6 +201,8 @@ export const worldsMessages = {
         stopAllWorlds: '请先停止房间中的所有世界',
         selectRoom: '选择房间',
         selectRoomDescription: '世界设置会直接读写所选房间的真实配置。',
+        runtimeSource: '来源：{target}',
+        runtimeSourceCurrent: '当前运行节点',
         roomDirectoryFailed: '房间目录加载失败',
         loadFailed: '世界设置加载失败',
         worldListAria: '世界列表',
@@ -204,12 +216,27 @@ export const worldsMessages = {
           rules: '世界规则',
           serverIni: '基础配置'
         },
+        effects: {
+          regeneration: '仅重新生成世界生效',
+          restart: '重启世界后生效'
+        },
+        sync: {
+          stale: { title: '正在显示只读的上次快照', description: '运行节点当前无法回读。此快照不能保存；恢复连接后刷新页面，系统会重新读取磁盘配置。' },
+          pending: { title: '上次写入尚未完成验证', description: '请刷新并重新读取运行节点磁盘；系统不会使用控制器副本覆盖运行节点。' },
+          untracked: { title: '观测记录暂时不可用', description: '当前配置已直接从运行节点磁盘读取，仍可正常保存，但控制器暂时无法记录本次观测。' }
+        },
+        leave: {
+          title: '切换世界设置',
+          description: '当前页面有未保存的配置，继续后这些修改会丢失。',
+          discard: '放弃并继续',
+          continue: '继续编辑'
+        },
         noWorldgen: '暂无{type}世界生成数据',
         noRules: '暂无{type}世界设置数据',
         serverIni: {
           serverPort: '服务器端口',
-          masterWorld: '主世界',
-          masterWorldDescription: '主世界的分片 ID 固定为 1。',
+          masterWorld: '世界角色',
+          masterWorldDescription: '每个房间只能有一个主世界，此处不可更改。',
           worldName: '世界名称',
           worldId: '世界 ID',
           encodePath: '编码用户路径',
@@ -223,8 +250,8 @@ export const worldsMessages = {
         noWorldsDescription: '创建森林或洞穴世界后即可配置。',
         chooseRoom: '请选择房间',
         noRooms: '没有可管理的房间',
-        chooseRoomDescription: '选择一个已接管房间后即可管理世界配置。',
-        noRoomsDescription: '先创建或接管房间，再管理世界配置。',
+        chooseRoomDescription: '选择房间后即可管理世界配置。',
+        noRoomsDescription: '先创建房间或等待 Agent 上报，再管理世界配置。',
         addDialog: {
           title: '新增世界',
           description: '在当前房间中创建新的森林或洞穴分片。',
@@ -239,11 +266,11 @@ export const worldsMessages = {
         deleteDialog: {
           title: '删除世界',
           description: '世界 {world} 会被移入服务器上的可恢复目录。',
-          confirmTitle: '需要房间名确认',
-          confirmDescription: '输入完整房间名后才能继续。',
-          roomName: '完整房间名',
-          roomPlaceholder: '请输入 {room}',
-          roomPlaceholderGeneric: '请输入完整房间名',
+          confirmTitle: '确认删除世界',
+          confirmDescription: '删除后仍可从世界回收站恢复，请确认是否继续。',
+          roomName: '当前房间',
+          roomPlaceholder: '当前房间：{room}',
+          roomPlaceholderGeneric: '当前房间',
           delete: '删除'
         },
         feedback: {
@@ -251,7 +278,7 @@ export const worldsMessages = {
           selectType: '选择世界类型',
           forestWorld: '森林世界',
           caveWorld: '洞穴世界',
-          roomDirectoryReadFailed: '无法读取已接管房间目录',
+          roomDirectoryReadFailed: '无法读取房间目录',
           roomWorldsInvalid: '找不到指定房间或房间世界列表无效',
           roomWorldsReadFailed: '获取房间世界列表失败',
           roomWorldsLoadFailed: '获取房间世界列表失败：{error}',
@@ -262,8 +289,9 @@ export const worldsMessages = {
           definitionLoadFailed: '加载设置失败',
           localeLoadFailed: '切换世界设置语言失败：{error}',
           saveWorldMissing: '无法确定要保存的世界',
-          settingsSaved: '{world} 世界设置保存成功',
+          settingsSaved: '{world} 的配置已写入运行节点磁盘；不会自动重启，生效时机以当前分类提示为准。',
           settingsSaveFailed: '保存 {world} 世界设置失败：{error}',
+          revisionConflict: '运行节点磁盘配置已被其他操作修改，请刷新后确认新内容再编辑。',
           settingsReset: '{type}世界设置已重置',
           selectRoomFirst: '请先选择房间',
           stopBeforeCreate: '创建世界前请先停止房间中的所有世界',
@@ -273,7 +301,7 @@ export const worldsMessages = {
           createError: '创建世界失败：{error}',
           stopBeforeDelete: '删除前请先停止当前世界',
           deleteWorldMissing: '未选择要删除的世界',
-          deleteConfirmationRequired: '请输入完整房间名确认删除',
+          deleteConfirmationRequired: '请确认删除世界',
           roomNameMismatch: '房间名不匹配',
           worldDeleted: '已将世界 {world} 移入可恢复目录',
           deleteFailed: '删除世界失败',
@@ -282,8 +310,9 @@ export const worldsMessages = {
           worldListReadFailed: '获取世界列表失败',
           serverIniLoadFailed: '加载服务器基础配置失败：{error}',
           currentWorldMissing: '无法找到当前世界',
-          masterIdAdjusted: '主世界的世界 ID 已自动设置为 1',
-          serverIniSaved: '服务器基础配置保存成功',
+          masterIdAdjusted: '主分片的世界 ID 已自动设置为 1',
+          serverIniSaved: '基础配置已写入运行节点磁盘；正在运行的世界不会自动重启。',
+          readOnly: '当前显示的是离线只读快照，请恢复运行节点连接并刷新后再保存。',
           serverIniSaveFailed: '保存服务器基础配置失败：{error}',
           worldTypeUpdated: '世界类型更新成功',
           worldTypeUpdateFailed: '更新世界类型失败：{error}'
@@ -294,9 +323,14 @@ export const worldsMessages = {
   'en-US': {
     worlds: {
       types: {
-        master: 'Primary world',
+        forest: 'Forest',
+        master: 'Forest',
         cave: 'Caves',
         other: 'Other'
+      },
+      roles: {
+        master: 'Primary world',
+        secondary: 'Secondary world'
       },
       categories: {
         title: 'Room filters',
@@ -305,7 +339,7 @@ export const worldsMessages = {
           all: 'All rooms',
           active: 'Active rooms',
           inactive: 'Inactive rooms',
-          forest: 'Primary world only',
+          forest: 'Forest only',
           cave: 'Caves only',
           both: 'Mixed rooms'
         },
@@ -313,14 +347,14 @@ export const worldsMessages = {
           all: 'All worlds',
           active: 'Active worlds',
           inactive: 'Inactive worlds',
-          forest: 'Primary worlds',
+          forest: 'Forest worlds',
           cave: 'Cave worlds',
           both: 'Worlds in mixed rooms',
           custom: 'Custom category'
         }
       },
       actions: {
-        cleanupSession: 'Clean up session',
+        cleanupSession: 'Clear failed state',
         edit: 'Edit',
         openMenu: 'Open world actions',
         menuTitle: 'World actions',
@@ -332,19 +366,22 @@ export const worldsMessages = {
       feedback: {
         actionUnavailable: 'The current world state cannot be operated',
         actionConfirm: '{action} world “{world}”?',
+        actionDependencyConfirm: 'This will {action} {count} related worlds: {worlds}. Continue?',
         actionTitle: '{action} world',
         actionCompleted: '{action} completed',
         actionFailed: 'Failed to {action} world: {error}',
+        dependencyMasterUnknown: 'The Master state is unknown or changing. Status was refreshed; retry after it stabilizes.',
+        dependencyMasterUnavailable: 'The Master is currently uncontrollable, so the related-world action cannot run safely.',
         canceled: 'Operation canceled',
         cleanupUnavailable: 'This world has no failed session to clean up',
-        cleanupConfirm: 'Stop and clean up the failed session for world “{world}”?',
-        cleanupTitle: 'Clean up failed session',
+        cleanupConfirm: 'Stop leftover processes and clear the failed state for world “{world}”?',
+        cleanupTitle: 'Clear failed state',
         cleanupButton: 'Clean up',
         cleanupSucceeded: 'Failed session cleaned up',
         cleanupFailed: 'Cleanup failed: {error}',
-        unmanagedRegenerate: 'The current room is not adopted, so this world cannot be regenerated',
+        unmanagedRegenerate: 'The machine hosting this room is unavailable, so this world cannot be regenerated',
         regenerateNeedsRunning: 'The world must be running before the regenerate command can be sent',
-        regeneratePrompt: 'Regenerating clears the current progress of world “{world}”. Enter the full room name “{room}” to confirm.',
+        regeneratePrompt: 'Regenerating clears the current progress of world “{world}” in room “{room}”. Continue?',
         regenerateTitle: 'Regenerate world',
         regenerateButton: 'Regenerate',
         roomNameMismatch: 'Room name does not match',
@@ -356,7 +393,7 @@ export const worldsMessages = {
         backupFailed: 'Backup failed: {error}',
         deleteNeedsCleanup: 'Clean up the failed session before deleting this world',
         deleteNeedsStop: 'Stop this world before deleting it',
-        deletePrompt: 'World “{world}” will be moved to a recoverable directory. Enter the full room name “{room}” to confirm.',
+        deletePrompt: 'World “{world}” in room “{room}” will be moved to a recoverable directory. Continue?',
         deleteTitle: 'Delete world',
         moveToRecovery: 'Move to recovery',
         deleteSucceeded: 'World moved to the recovery directory',
@@ -378,7 +415,7 @@ export const worldsMessages = {
         columns: {
           name: 'World name',
           room: 'Room',
-          type: 'World type',
+          type: 'Type / Role',
           season: 'Season',
           day: 'Day'
         },
@@ -416,6 +453,7 @@ export const worldsMessages = {
         fields: {
           name: 'World name',
           type: 'World type',
+          role: 'World role',
           season: 'Current season',
           day: 'Current day',
           description: 'Description'
@@ -455,6 +493,7 @@ export const worldsMessages = {
         footer: {
           unsaved: 'Unsaved changes',
           synced: 'Settings synced',
+          readOnly: 'Offline snapshot · read-only',
           viewChanges: 'View changes ({count})',
           changedItems: 'Changed settings ({count})',
           changesDescription: 'The following configuration changes will be applied when saved.',
@@ -483,6 +522,8 @@ export const worldsMessages = {
         stopAllWorlds: 'Stop every world in the room first',
         selectRoom: 'Select room',
         selectRoomDescription: 'World settings are read from and written directly to the selected room configuration.',
+        runtimeSource: 'Source: {target}',
+        runtimeSourceCurrent: 'current runtime',
         roomDirectoryFailed: 'Failed to load room directory',
         loadFailed: 'Failed to load world settings',
         worldListAria: 'World list',
@@ -496,12 +537,27 @@ export const worldsMessages = {
           rules: 'World rules',
           serverIni: 'Basic configuration'
         },
+        effects: {
+          regeneration: 'Applies only after world regeneration',
+          restart: 'Applies after the world restarts'
+        },
+        sync: {
+          stale: { title: 'Showing the last snapshot in read-only mode', description: 'The runtime cannot be read right now. Reconnect it and refresh to read the disk configuration before editing.' },
+          pending: { title: 'The previous write has not been verified', description: 'Refresh and read the runtime disk again. The controller will not overwrite it from a controller-side copy.' },
+          untracked: { title: 'Observation history is temporarily unavailable', description: 'This configuration was read directly from the runtime disk and remains editable, but the controller could not record the observation.' }
+        },
+        leave: {
+          title: 'Switch world settings',
+          description: 'This page contains unsaved configuration changes. Continuing will discard them.',
+          discard: 'Discard and continue',
+          continue: 'Keep editing'
+        },
         noWorldgen: 'No {type} world generation data',
         noRules: 'No {type} world rule data',
         serverIni: {
           serverPort: 'Server port',
-          masterWorld: 'Primary world',
-          masterWorldDescription: 'The primary world shard ID is fixed at 1.',
+          masterWorld: 'Shard role',
+          masterWorldDescription: 'A room can have only one Master Shard. Its role cannot be changed from a single world settings page.',
           worldName: 'World name',
           worldId: 'World ID',
           encodePath: 'Encode user path',
@@ -515,8 +571,8 @@ export const worldsMessages = {
         noWorldsDescription: 'Create a forest or cave world to begin configuring it.',
         chooseRoom: 'Select a room',
         noRooms: 'No manageable rooms',
-        chooseRoomDescription: 'Select an adopted room to manage its world configuration.',
-        noRoomsDescription: 'Create or adopt a room before managing world configuration.',
+        chooseRoomDescription: 'Select a room to manage its world configuration.',
+        noRoomsDescription: 'Create a room or wait for an Agent to report one before managing world configuration.',
         addDialog: {
           title: 'Add world',
           description: 'Create a new forest or cave shard in the current room.',
@@ -531,11 +587,11 @@ export const worldsMessages = {
         deleteDialog: {
           title: 'Delete world',
           description: 'World {world} will be moved to a recoverable directory on the server.',
-          confirmTitle: 'Room name confirmation required',
-          confirmDescription: 'Enter the full room name to continue.',
-          roomName: 'Full room name',
-          roomPlaceholder: 'Enter {room}',
-          roomPlaceholderGeneric: 'Enter the full room name',
+          confirmTitle: 'Confirm world deletion',
+          confirmDescription: 'The world can still be restored from the recycle bin. Continue?',
+          roomName: 'Current room',
+          roomPlaceholder: 'Current room: {room}',
+          roomPlaceholderGeneric: 'Current room',
           delete: 'Delete'
         },
         feedback: {
@@ -543,7 +599,7 @@ export const worldsMessages = {
           selectType: 'Select world type',
           forestWorld: 'Forest world',
           caveWorld: 'Cave world',
-          roomDirectoryReadFailed: 'Unable to read the adopted room directory',
+          roomDirectoryReadFailed: 'Unable to read the room directory',
           roomWorldsInvalid: 'The requested room was not found or its world list is invalid',
           roomWorldsReadFailed: 'Failed to read the room world list',
           roomWorldsLoadFailed: 'Failed to load the room world list: {error}',
@@ -554,8 +610,9 @@ export const worldsMessages = {
           definitionLoadFailed: 'Failed to load settings',
           localeLoadFailed: 'Failed to switch world setting language: {error}',
           saveWorldMissing: 'Unable to determine which world to save',
-          settingsSaved: 'Settings saved for world {world}',
+          settingsSaved: 'Configuration for {world} was written to the runtime disk. No restart was triggered; use the section hint for when it takes effect.',
           settingsSaveFailed: 'Failed to save settings for world {world}: {error}',
+          revisionConflict: 'The runtime disk configuration changed after this page was loaded. Refresh and review it before editing again.',
           settingsReset: '{type} world settings reset',
           selectRoomFirst: 'Select a room first',
           stopBeforeCreate: 'Stop every world in the room before creating a world',
@@ -565,7 +622,7 @@ export const worldsMessages = {
           createError: 'Failed to create world: {error}',
           stopBeforeDelete: 'Stop the current world before deleting it',
           deleteWorldMissing: 'No world was selected for deletion',
-          deleteConfirmationRequired: 'Enter the full room name to confirm deletion',
+          deleteConfirmationRequired: 'Confirm world deletion',
           roomNameMismatch: 'Room name does not match',
           worldDeleted: 'World {world} moved to the recovery directory',
           deleteFailed: 'Failed to delete world',
@@ -575,7 +632,8 @@ export const worldsMessages = {
           serverIniLoadFailed: 'Failed to load the basic server configuration: {error}',
           currentWorldMissing: 'Unable to find the current world',
           masterIdAdjusted: 'The primary world ID was set to 1 automatically',
-          serverIniSaved: 'Basic server configuration saved',
+          serverIniSaved: 'Basic configuration was written to the runtime disk. Running worlds were not restarted.',
+          readOnly: 'This is an offline read-only snapshot. Reconnect the runtime and refresh before saving.',
           serverIniSaveFailed: 'Failed to save the basic server configuration: {error}',
           worldTypeUpdated: 'World type updated',
           worldTypeUpdateFailed: 'Failed to update the world type: {error}'

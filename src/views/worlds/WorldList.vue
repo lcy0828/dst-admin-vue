@@ -3,7 +3,6 @@
     <header class="page-header">
       <div>
         <h1>{{ $t('worlds.list.title') }}</h1>
-        <p>{{ $t('worlds.list.subtitle') }}</p>
       </div>
       <div class="header-actions">
         <InputGroup class="search-input">
@@ -30,18 +29,8 @@
       <Card class="world-list-card">
         <CardHeader>
           <CardTitle>{{ getCategoryTitle() }}</CardTitle>
-          <CardDescription>{{ $t('worlds.list.description') }}</CardDescription>
           <CardAction class="list-actions max-sm:col-span-full max-sm:row-auto max-sm:justify-self-stretch">
-            <UiSelect v-model="selectedRoom" @update:model-value="handleRoomChange">
-              <SelectTrigger class="room-select"><SelectValue :placeholder="$t('worlds.list.selectRoom')" /></SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem v-for="room in rooms" :key="room.id" :value="room.id">
-                    {{ room.name }} · {{ $t('worlds.list.worldCount', { count: room.worlds ? room.worlds.length : 0 }) }}
-                  </SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </UiSelect>
+            <RoomScopeSelect v-model="selectedRoom" :rooms="rooms" :loading="loading" allow-all @update:model-value="handleRoomChange" />
             <UiButton variant="outline" size="sm" :disabled="isRefreshing" @click="refreshWorlds">
               <Spinner v-if="isRefreshing" data-icon="inline-start" />
               <RefreshCw v-else data-icon="inline-start" />
@@ -51,13 +40,6 @@
         </CardHeader>
 
         <CardContent>
-          <Alert v-if="selectedRoom && !loading" class="filter-info">
-            <Info />
-            <AlertTitle>{{ $t('worlds.list.filterTitle') }}</AlertTitle>
-            <AlertDescription>{{ $t('worlds.list.filterDescription', { room: getSelectedRoomName() }) }}</AlertDescription>
-            <AlertAction><UiButton variant="ghost" size="sm" @click="selectedRoom = null">{{ $t('worlds.list.viewAll') }}</UiButton></AlertAction>
-          </Alert>
-
           <div v-if="loading" class="world-skeleton" aria-busy="true" :aria-label="$t('worlds.list.loadingAria')">
             <Skeleton v-for="row in 6" :key="row" class="h-12 w-full" />
           </div>
@@ -79,7 +61,12 @@
                 <TableRow v-for="world in filteredWorlds" :key="`${world.roomId}-${world.id}`" class="world-row" @click="handleRowClick(world)">
                   <TableCell>{{ world.name }}</TableCell>
                   <TableCell>{{ world.roomName }}</TableCell>
-                  <TableCell><Badge :variant="getWorldTypeTag(world.type)">{{ getWorldTypeName(world.type) }}</Badge></TableCell>
+                  <TableCell>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <Badge :variant="getWorldTypeTag(world.type)">{{ getWorldTypeName(world.type) }}</Badge>
+                      <Badge :variant="world.isMaster ? 'default' : 'outline'">{{ getWorldRoleName(world) }}</Badge>
+                    </div>
+                  </TableCell>
                   <TableCell>{{ world.season ?? '--' }}</TableCell>
                   <TableCell>{{ world.day ?? '--' }}</TableCell>
                   <TableCell>
@@ -176,30 +163,34 @@
 </template>
 
 <script>
-import { ArchiveRestore, CircleAlert, Globe2, Info, MoreHorizontal, Play, Plus, RefreshCw, Search, Square } from '@lucide/vue';
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs'
+import { ArchiveRestore, CircleAlert, Globe2, MoreHorizontal, Play, Plus, RefreshCw, Search, Square } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '../../api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { confirmAction, promptText } from '@/lib/feedback';
+import { confirmAction } from '@/lib/feedback';
+import { confirmRoomMaintenance } from '@/lib/maintenanceConfirmation';
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import {
   canCleanFailedWorld as canCleanFailedRuntimeWorld,
   canConfigureWorld as canConfigureRuntimeWorld,
   canDeleteWorld as canDeleteRuntimeWorld,
   canStopWorld,
+  worldActionRequiresConfirmation,
+  worldLifecycleScope,
   worldPrimaryAction,
   worldStatusLabel,
   worldStatusMessage,
@@ -211,6 +202,7 @@ import RecoveryDialog from '@/components/recovery/RecoveryDialog.vue';
 export default {
   name: 'WorldList',
   components: {
+    RoomScopeSelect,
     Alert,
     AlertAction,
     AlertDescription,
@@ -220,7 +212,6 @@ export default {
     Card,
     CardAction,
     CardContent,
-    CardDescription,
     CardHeader,
     CardTitle,
     CircleAlert,
@@ -248,7 +239,6 @@ export default {
     FieldLegend,
     FieldSet,
     Globe2,
-    Info,
     InputGroup,
     InputGroupAddon,
     InputGroupInput,
@@ -261,11 +251,6 @@ export default {
     RecoveryDialog,
     RoomCategories,
     Search,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
     Spinner,
     Square,
     Skeleton,
@@ -276,7 +261,6 @@ export default {
     TableRow,
     UiButton,
     UiDialog,
-    UiSelect,
     UiTable
   },
   data() {
@@ -289,7 +273,8 @@ export default {
       worlds: [],
       isRefreshing: false,
       lastRefreshTime: 0,
-      selectedRoom: null,
+selectedRoom: null,
+      roomScopeInitialized: false,
       roomSelectDialogVisible: false,
       roomSearchQuery: '',
       tempSelectedRoom: null,
@@ -307,7 +292,7 @@ export default {
         } else if (this.currentCategory === 'inactive') {
           result = result.filter(world => world.status !== 'running');
         } else if (this.currentCategory === 'forest') {
-          result = result.filter(world => world.type === 'master' || world.type === 'forest');
+          result = result.filter(world => world.type === 'forest');
         } else if (this.currentCategory === 'cave') {
           result = result.filter(world => world.type === 'cave');
         } else if (this.currentCategory === 'both') {
@@ -364,9 +349,12 @@ export default {
       return title;
     },
     getWorldTypeName(type) {
-      if (type === 'forest' || type === 'master') return this.$t('worlds.types.master');
+      if (type === 'forest') return this.$t('worlds.types.forest');
       if (type === 'cave') return this.$t('worlds.types.cave');
       return this.$t('worlds.types.other');
+    },
+    getWorldRoleName(world) {
+      return this.$t(world?.isMaster ? 'worlds.roles.master' : 'worlds.roles.secondary');
     },
     getWorldTypeTag(type) {
       if (type === 'cave') return 'secondary';
@@ -460,6 +448,11 @@ export default {
               worlds: room.worlds || []
             }));
 
+            if (!this.roomScopeInitialized) {
+              this.selectedRoom = preferredRoomId(this.rooms, this.$route.query.roomId, { allowAll: true });
+              this.roomScopeInitialized = true;
+            }
+
             // 直接从房间数据中提取世界信息
             let allWorlds = [];
             this.rooms.forEach(room => {
@@ -534,44 +527,69 @@ export default {
         query: { id: world.id, roomId: world.roomId, worldId: world.id }
       });
     },
-    toggleWorldStatus(world) {
+    async toggleWorldStatus(world) {
       const primaryAction = worldPrimaryAction(world, this.$t);
       if (primaryAction.disabled || !primaryAction.kind) {
         toast.warning(worldStatusMessage(world) || this.$t('worlds.feedback.actionUnavailable'));
         return;
       }
       const action = primaryAction.label;
-      confirmAction(this.$t('worlds.feedback.actionConfirm', { action, world: world.name }), this.$t('worlds.feedback.actionTitle', { action }), {
-        confirmButtonText: this.$t('common.actions.confirm'),
-        cancelButtonText: this.$t('common.actions.cancel'),
-        type: 'warning'
-      }).then(() => {
-        this.loading = true;
-        const request = {
-          room_id: world.roomId,
-          world_id: world.id
-        };
-        const operation = primaryAction.kind === 'stop'
-          ? roomApi.stopRoom(request)
-          : startRoomWithCapacityRisk(request);
-        operation
-          .then(async () => {
-            await this.refreshWorlds(true);
-            toast.success(this.$t('worlds.feedback.actionCompleted', { action }));
-          })
-          .catch(error => {
-            if (isCapacityRiskCanceled(error)) return;
-            toast.error(this.$t('worlds.feedback.actionFailed', {
+      const roomWorlds = this.worlds.filter(item => item.roomId === world.roomId);
+      const scope = worldLifecycleScope(roomWorlds, world, primaryAction.kind);
+      if (!scope.allowed) {
+        await this.refreshWorlds(true);
+        toast.warning(this.$t(`worlds.feedback.${scope.reason === 'master-unavailable'
+          ? 'dependencyMasterUnavailable'
+          : 'dependencyMasterUnknown'}`));
+        return;
+      }
+      const affectedNames = scope.worlds.map(item => item.name).join('、');
+      let maintenance = {};
+      if (worldActionRequiresConfirmation(primaryAction.kind)) {
+        try {
+          maintenance = await confirmRoomMaintenance(world.roomId, scope.worlds.length > 1
+            ? this.$t('worlds.feedback.actionDependencyConfirm', {
               action,
-              error: error.message || this.$t('common.errors.unknown')
-            }));
-          })
-          .finally(() => {
-            this.loading = false;
+              count: scope.worlds.length,
+              worlds: affectedNames
+            })
+            : this.$t('worlds.feedback.actionConfirm', { action, world: world.name }),
+          this.$t('worlds.feedback.actionTitle', { action }), {
+            confirmButtonText: this.$t('common.actions.confirm'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            type: 'warning'
           });
-      }).catch(() => {
-        toast.info(this.$t('worlds.feedback.canceled'));
-      });
+        } catch {
+          toast.info(this.$t('worlds.feedback.canceled'));
+          return;
+        }
+      }
+
+      let requestCanceled = false;
+      this.loading = true;
+      try {
+        const request = {
+          ...maintenance,
+          room_id: world.roomId,
+          world_ids: scope.worlds.map(item => item.id)
+        };
+        await (primaryAction.kind === 'stop'
+          ? roomApi.stopRoom(request)
+          : startRoomWithCapacityRisk(request));
+        toast.success(this.$t('worlds.feedback.actionCompleted', { action }));
+      } catch (error) {
+        if (isCapacityRiskCanceled(error)) {
+          requestCanceled = true;
+          return;
+        }
+        toast.error(this.$t('worlds.feedback.actionFailed', {
+          action,
+          error: error.message || this.$t('common.errors.unknown')
+        }));
+      } finally {
+        if (!requestCanceled) await this.refreshWorlds(true);
+        this.loading = false;
+      }
     },
     async cleanupFailedWorld(world) {
       if (!canCleanFailedRuntimeWorld(world)) {
@@ -640,16 +658,16 @@ export default {
       }
       let confirmation;
       try {
-        const result = await promptText(
+        await confirmAction(
           this.$t('worlds.feedback.regeneratePrompt', { world: world.name, room: world.roomName }),
           this.$t('worlds.feedback.regenerateTitle'),
           {
             confirmButtonText: this.$t('worlds.feedback.regenerateButton'),
             cancelButtonText: this.$t('common.actions.cancel'),
-            inputValidator: value => value === world.roomName || this.$t('worlds.feedback.roomNameMismatch')
+            type: 'warning'
           }
         );
-        confirmation = result.value;
+        confirmation = world.roomName;
       } catch {
         return;
       }
@@ -695,16 +713,16 @@ export default {
       }
       let confirmation;
       try {
-        const result = await promptText(
+        await confirmAction(
           this.$t('worlds.feedback.deletePrompt', { world: world.name, room: world.roomName }),
           this.$t('worlds.feedback.deleteTitle'),
           {
             confirmButtonText: this.$t('worlds.feedback.moveToRecovery'),
             cancelButtonText: this.$t('common.actions.cancel'),
-            inputValidator: value => value === world.roomName || this.$t('worlds.feedback.roomNameMismatch')
+            type: 'warning'
           }
         );
-        confirmation = result.value;
+        confirmation = world.roomName;
       } catch {
         return;
       }
@@ -835,10 +853,6 @@ export default {
 
 .room-select {
   width: 210px;
-}
-
-.filter-info {
-  margin-bottom: 12px;
 }
 
 .world-skeleton {

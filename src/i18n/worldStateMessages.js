@@ -40,6 +40,11 @@ export const worldStateMessages = {
       freshness: {
         staleTitle: '当前展示的不是实时数据'
       },
+      diagnostics: {
+        deferredTitle: '世界状态刷新暂缓',
+        deferredDescription: '房间操作正在执行，完成后可再次刷新。',
+        failedTitle: '实时世界状态读取失败'
+      },
       cards: {
         season: '季节',
         worldDays: '世界天数 {days}',
@@ -203,6 +208,11 @@ export const worldStateMessages = {
       },
       freshness: {
         staleTitle: 'The displayed data is not live'
+      },
+      diagnostics: {
+        deferredTitle: 'World state refresh deferred',
+        deferredDescription: 'A room operation is in progress. Refresh again after it completes.',
+        failedTitle: 'Failed to read live world state'
       },
       cards: {
         season: 'Season',

@@ -53,7 +53,7 @@
                 <span class="text-xs text-muted-foreground">{{ roleLabel(world.worldRole) }}</span>
               </div>
             </TableCell>
-            <TableCell><Badge :variant="runtimeVariant(world.runtimeState)">{{ runtimeLabel(world.runtimeState) }}</Badge></TableCell>
+            <TableCell><Badge :variant="runtimeVariant(world)">{{ runtimeLabel(world) }}</Badge></TableCell>
             <TableCell>
               <div class="flex min-w-28 flex-col gap-1">
                 <span>{{ protocolLabel('seasons', world.season) }}</span>
@@ -125,12 +125,16 @@ function roleLabel(role) {
   return t(`distributed.worldStates.roles.${key}`)
 }
 
-function runtimeLabel(state) {
+function runtimeLabel(world) {
+  if (world.runtimeState === 'running' && world.paused === true) return t('worldRuntime.statuses.paused')
+  const state = world.runtimeState
   const key = ['running', 'stopped', 'starting', 'failed'].includes(state) ? state : 'unknown'
   return t(`distributed.runtime.runtimeStates.${key}`)
 }
 
-function runtimeVariant(state) {
+function runtimeVariant(world) {
+  if (world.runtimeState === 'running' && world.paused === true) return 'info'
+  const state = world.runtimeState
   if (state === 'running') return 'secondary'
   if (state === 'failed') return 'destructive'
   return 'outline'

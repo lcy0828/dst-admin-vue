@@ -161,6 +161,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { confirmAction } from '@/lib/feedback';
+import { confirmRoomMaintenance } from '@/lib/maintenanceConfirmation';
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue';
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue';
@@ -363,8 +364,10 @@ export default {
       const primaryAction = this.serverPrimaryAction(server);
       const isStopping = primaryAction.kind === 'stop';
       const action = primaryAction.label;
+      let maintenance = {};
       try {
-        await confirmAction(this.$t('servers.list.feedback.actionConfirm', {
+        const confirm = isStopping ? (...args) => confirmRoomMaintenance(server.room_id, ...args) : confirmAction;
+        maintenance = await confirm(this.$t('servers.list.feedback.actionConfirm', {
           action,
           room: server.archive_name,
           world: server.world_name
@@ -379,7 +382,7 @@ export default {
 
       this.serverActionId = this.serverKey(server);
       try {
-        const request = { room_id: server.room_id, world_id: server.world_id };
+        const request = { room_id: server.room_id, world_id: server.world_id, immediate: maintenance?.immediate === true };
         await (isStopping ? roomApi.stopRoom(request) : startRoomWithCapacityRisk(request));
         await this.fetchData();
         toast.success(this.$t('servers.list.feedback.actionCompleted', { action }));

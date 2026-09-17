@@ -10,26 +10,46 @@ export function worldRuntimeStatus(worldOrStatus) {
 
 export function worldStatusLabel(worldOrStatus, translator) {
   const status = worldRuntimeStatus(worldOrStatus)
-  if (typeof translator === 'function') return translator(`worldRuntime.statuses.${status}`)
+  const presentationStatus = isWorldSaveWriteFailed(worldOrStatus)
+    ? 'saveFailed'
+    : isWorldPaused(worldOrStatus) ? 'paused' : status
+  if (typeof translator === 'function') return translator(`worldRuntime.statuses.${presentationStatus}`)
   return {
     stopped: '已停止',
     starting: '启动中',
     running: '运行中',
+    paused: '运行中 · 已暂停',
+    saveFailed: '保存异常',
     failed: '启动失败',
     stopping: '停止中',
     unknown: '状态未知'
-  }[status]
+  }[presentationStatus]
 }
 
 export function worldStatusVariant(worldOrStatus) {
+  if (isWorldSaveWriteFailed(worldOrStatus)) return 'destructive'
+  if (isWorldPaused(worldOrStatus)) return 'info'
   return {
-    stopped: 'secondary',
-    starting: 'outline',
-    running: 'default',
+    stopped: 'outline',
+    starting: 'warning',
+    running: 'success',
     failed: 'destructive',
-    stopping: 'outline',
+    stopping: 'warning',
     unknown: 'outline'
   }[worldRuntimeStatus(worldOrStatus)]
+}
+
+export function isWorldPaused(world) {
+  return worldRuntimeStatus(world) === 'running' && world?.paused === true
+}
+
+export function worldStatusCode(world) {
+  if (!world || typeof world !== 'object') return ''
+  return String(world.statusCode || world.status_code || '').trim().toUpperCase()
+}
+
+export function isWorldSaveWriteFailed(world) {
+  return worldRuntimeStatus(world) === 'running' && worldStatusCode(world) === 'SAVE_WRITE_FAILED'
 }
 
 export function worldStatusMessage(world) {
@@ -72,6 +92,76 @@ export function canDeleteWorld(world) {
 
 export function worldActionRequiresConfirmation(action) {
   return ['stop', 'restart', 'cleanup'].includes(String(action || '').trim().toLowerCase())
+}
+
+export function isMasterWorld(world) {
+  if (!world || typeof world !== 'object') return false
+  if (typeof world.isMaster === 'boolean') return world.isMaster
+  if (typeof world.is_master === 'boolean') return world.is_master
+  const role = String(world.role || world.worldRole || world.world_role || '').trim().toLowerCase()
+  if (role) return role === 'master'
+  return String(world.directoryName || world.directory_name || '').trim().toLowerCase() === 'master'
+}
+
+export function compareWorldRoles(left, right) {
+  return Number(isMasterWorld(right)) - Number(isMasterWorld(left))
+}
+
+export function worldLifecycleScope(worlds, target, action) {
+  const roomWorlds = Array.isArray(worlds) ? worlds.filter(Boolean) : []
+  const selected = target && roomWorlds.find(world => world.id === target.id)
+  const normalizedAction = String(action || '').trim().toLowerCase()
+  if (!selected || !['start', 'stop', 'restart', 'cleanup'].includes(normalizedAction)) {
+    return { allowed: false, reason: 'invalid-target', worlds: [], addedWorlds: [] }
+  }
+
+  const affected = [selected]
+  const master = roomWorlds.find(isMasterWorld)
+  if (isMasterWorld(selected) && ['stop', 'restart'].includes(normalizedAction)) {
+    affected.push(...roomWorlds.filter(world => (
+      world.id !== selected.id && ['starting', 'running'].includes(worldRuntimeStatus(world))
+    )))
+  } else if (!isMasterWorld(selected) && ['start', 'restart'].includes(normalizedAction) && master) {
+    const masterStatus = worldRuntimeStatus(master)
+    if (['stopped', 'failed'].includes(masterStatus)) {
+      if (!canStartWorld(master)) {
+        return { allowed: false, reason: 'master-unavailable', worlds: [], addedWorlds: [] }
+      }
+      affected.unshift(master)
+    } else if (!['starting', 'running'].includes(masterStatus)) {
+      return { allowed: false, reason: 'master-state-unknown', worlds: [], addedWorlds: [] }
+    }
+  }
+
+  const unique = affected.filter((world, index, values) => (
+    values.findIndex(value => value.id === world.id) === index
+  ))
+  return {
+    allowed: true,
+    reason: '',
+    worlds: unique,
+    addedWorlds: unique.filter(world => world.id !== selected.id)
+  }
+}
+
+export function worldLifecycleSelection(worlds, targets, action) {
+  const roomWorlds = Array.isArray(worlds) ? worlds.filter(Boolean) : []
+  const selectedTargets = Array.isArray(targets) ? targets.filter(Boolean) : []
+  const scopes = selectedTargets.map(target => worldLifecycleScope(roomWorlds, target, action))
+  const blocked = scopes.find(scope => !scope.allowed)
+  if (blocked) return blocked
+
+  const affected = scopes.flatMap(scope => scope.worlds).filter((world, index, values) => (
+    values.findIndex(value => value.id === world.id) === index
+  ))
+  affected.sort((left, right) => Number(isMasterWorld(right)) - Number(isMasterWorld(left)))
+  const selectedIDs = new Set(selectedTargets.map(world => world.id))
+  return {
+    allowed: affected.length > 0,
+    reason: affected.length > 0 ? '' : 'invalid-target',
+    worlds: affected,
+    addedWorlds: affected.filter(world => !selectedIDs.has(world.id))
+  }
 }
 
 export function worldPrimaryAction(world, translator) {

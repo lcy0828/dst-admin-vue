@@ -14,14 +14,15 @@ const props = defineProps({
 const { locale, t } = useI18n()
 
 const normalizedFreshness = computed(() => {
-  return ['live', 'delayed', 'stopped', 'unavailable'].includes(props.freshness)
+  return ['live', 'paused', 'delayed', 'stopped', 'unavailable'].includes(props.freshness)
     ? props.freshness
     : 'unavailable'
 })
 
 const variant = computed(() => {
-  if (normalizedFreshness.value === 'live') return 'secondary'
-  if (normalizedFreshness.value === 'delayed') return 'destructive'
+  if (normalizedFreshness.value === 'live') return 'success'
+  if (normalizedFreshness.value === 'paused') return 'info'
+  if (normalizedFreshness.value === 'delayed') return 'warning'
   return 'outline'
 })
 

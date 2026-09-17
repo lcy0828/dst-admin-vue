@@ -14,7 +14,7 @@
       <p class="setting-name">
         {{ item.text }}
       </p>
-      <UiSelect :model-value="item.value" @update:model-value="handleSelectChange" @update:open="handleSelectOpen">
+      <UiSelect :model-value="item.value" :disabled="readOnly" @update:model-value="handleSelectChange" @update:open="handleSelectOpen">
         <SelectTrigger>
           <SelectValue :placeholder="$t('worlds.settingsUi.selectItem', { item: item.text })" />
         </SelectTrigger>
@@ -81,6 +81,10 @@ export default {
       required: true
     },
     isChanged: {
+      type: Boolean,
+      default: false
+    },
+    readOnly: {
       type: Boolean,
       default: false
     }
@@ -178,6 +182,7 @@ export default {
     },
     
     handleSelectChange(value) {
+      if (this.readOnly) return;
       // 向父组件发送变更通知
       this.$emit('setting-change', { item: this.item, value });
     },

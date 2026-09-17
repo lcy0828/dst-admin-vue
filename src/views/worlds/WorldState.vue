@@ -3,7 +3,6 @@
     <header class="page-header">
       <div>
         <h1>{{ $t('worldState.title') }}</h1>
-        <p>{{ $t('worldState.subtitle') }}</p>
       </div>
       <div class="header-actions">
         <WorldDataFreshnessBadge
@@ -23,26 +22,13 @@
     <Card class="filter-card">
       <CardHeader>
         <CardTitle>{{ $t('worldState.query.title') }}</CardTitle>
-        <CardDescription>{{ $t('worldState.query.description') }}</CardDescription>
       </CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
-          <Field>
-            <FieldLabel>{{ $t('worldState.query.archive') }}</FieldLabel>
-            <UiSelect v-model="selectedArchive" @update:model-value="handleArchiveChange">
-              <SelectTrigger><SelectValue :placeholder="$t('worldState.query.selectArchive')" /></SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem v-for="archive in archives" :key="archive.id || archive.name" :value="archive.name || archive.id">
-                    {{ archive.name || archive.id }}
-                  </SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </UiSelect>
-          </Field>
+          <RoomScopeSelect v-model="selectedArchive" :rooms="archives" value-key="name" :loading="loading" @update:model-value="handleArchiveChange" />
           <Field>
             <FieldLabel>{{ $t('worldState.query.world') }}</FieldLabel>
-            <UiSelect v-model="selectedWorld" :disabled="!selectedArchive">
+            <UiSelect v-model="selectedWorld" :disabled="!selectedArchive" @update:model-value="handleWorldChange">
               <SelectTrigger><SelectValue :placeholder="$t('worldState.query.selectWorld')" /></SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -87,7 +73,13 @@
     </Empty>
 
     <div v-else class="state-content">
-      <Alert v-if="worldState.stale">
+      <Alert v-if="worldStateDiagnostic" :variant="worldStateDiagnostic.variant">
+        <TriangleAlert />
+        <AlertTitle>{{ worldStateDiagnostic.title }}</AlertTitle>
+        <AlertDescription>{{ worldStateDiagnostic.message }}</AlertDescription>
+      </Alert>
+
+      <Alert v-else-if="worldState.stale">
         <TriangleAlert />
         <AlertTitle>{{ $t('worldState.freshness.staleTitle') }}</AlertTitle>
         <AlertDescription>{{ $t(`runtimeData.descriptions.${worldState.freshness || 'unavailable'}`) }}</AlertDescription>
@@ -193,6 +185,8 @@
 </template>
 
 <script>
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { Activity, CircleHelp, CircleMinus, CloudRain, CloudSnow, Leaf, Moon, RefreshCw, Search, Snowflake, Sprout, Sun, Sunrise, Sunset, TriangleAlert, Zap } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import api from '@/api';
@@ -216,6 +210,7 @@ import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadg
 export default {
   name: 'WorldState',
   components: {
+    RoomScopeSelect,
     Activity,
     Alert,
     AlertAction,
@@ -275,6 +270,7 @@ export default {
       showRawData: false,
       autoRefresh: false,
       refreshInterval: null,
+      worldStateRequestSequence: 0,
       detailsTableData: [],
       searchQuery: '',
       currentCategory: ''
@@ -283,6 +279,23 @@ export default {
   computed: {
     loadErrorMessage() {
       return this.localizedError(this.loadError);
+    },
+    worldStateDiagnostic() {
+      if (!this.worldState) return null;
+      if (this.worldState.observation_state === 'deferred' || this.worldState.observation_code === 'ROOM_OPERATION_IN_PROGRESS') {
+        return {
+          variant: 'default',
+          title: this.$t('worldState.diagnostics.deferredTitle'),
+          message: this.$t('worldState.diagnostics.deferredDescription')
+        };
+      }
+      const message = this.worldState.observation_error || this.worldState.runtime_message;
+      if (!message) return null;
+      return {
+        variant: 'destructive',
+        title: this.$t('worldState.diagnostics.failedTitle'),
+        message
+      };
     },
     categoryMap() {
       return Object.fromEntries(
@@ -379,39 +392,63 @@ export default {
   created() {
     this.fetchArchives();
   },
+  mounted() {
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
+  },
   beforeUnmount() {
+    this.worldStateRequestSequence += 1;
     this.clearRefreshInterval();
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
   },
   methods: {
     // 获取存档列表
     fetchArchives() {
+      const requestSequence = ++this.worldStateRequestSequence;
       this.loading = true;
       this.loadError = null;
       api.worldApi.getWorldList()
         .then(response => {
+          if (requestSequence !== this.worldStateRequestSequence) return;
           this.archives = Array.isArray(response.data) ? response.data : [];
 
           const query = this.$route.query;
-          if (query.archive && query.world) {
-            this.selectedArchive = query.archive;
+          const wanted = preferredRoomId(this.archives, query.roomId ?? query.archive);
+          const room = this.archives.find(item => item.id === wanted);
+          this.selectedArchive = room?.name || '';
+          if (room && query.world) {
             this.$nextTick(() => {
+              if (requestSequence !== this.worldStateRequestSequence) return;
               this.selectedWorld = query.world;
               this.fetchWorldState();
             });
           }
         })
         .catch(error => {
+          if (requestSequence !== this.worldStateRequestSequence) return;
           this.loadError = this.createLoadError('worldState.error.archiveList', error);
           toast.error(this.localizedError(this.loadError));
         })
         .finally(() => {
-          this.loading = false;
+          if (requestSequence === this.worldStateRequestSequence) this.loading = false;
         });
     },
 
     // 存档变更处理
     handleArchiveChange() {
+      this.worldStateRequestSequence += 1;
       this.selectedWorld = '';
+      this.worldState = null;
+      this.detailsTableData = [];
+      this.loadError = null;
+      this.loading = false;
+    },
+
+    handleWorldChange() {
+      this.worldStateRequestSequence += 1;
+      this.worldState = null;
+      this.detailsTableData = [];
+      this.loadError = null;
+      this.loading = false;
     },
 
     // 获取世界状态
@@ -421,32 +458,37 @@ export default {
         return;
       }
 
+      const archiveName = this.selectedArchive;
+      const worldName = this.selectedWorld;
+      const requestSequence = ++this.worldStateRequestSequence;
       this.loading = true;
       this.loadError = null;
       api.worldApi.getWorldState({
-        archive_name: this.selectedArchive,
-        world_name: this.selectedWorld
+        archive_name: archiveName,
+        world_name: worldName
       })
         .then(response => {
+          if (requestSequence !== this.worldStateRequestSequence) return;
           this.worldState = response.data;
           this.prepareDetailsTableData();
 
           const currentQuery = this.$route.query;
-          if (currentQuery.archive !== this.selectedArchive || currentQuery.world !== this.selectedWorld) {
+          if (currentQuery.archive !== archiveName || currentQuery.world !== worldName) {
             this.$router.replace({
-              query: { archive: this.selectedArchive, world: this.selectedWorld }
+              query: { archive: archiveName, world: worldName }
             });
           }
           toast.success(this.$t('worldState.feedback.loaded'));
         })
         .catch(error => {
+          if (requestSequence !== this.worldStateRequestSequence) return;
           this.loadError = this.createLoadError('worldState.error.worldState', error);
           toast.error(this.localizedError(this.loadError));
           this.worldState = null;
           this.detailsTableData = [];
         })
         .finally(() => {
-          this.loading = false;
+          if (requestSequence === this.worldStateRequestSequence) this.loading = false;
         });
     },
 
@@ -521,10 +563,24 @@ export default {
       this.autoRefresh = enabled;
       this.clearRefreshInterval();
 
-      if (enabled) {
-        this.refreshInterval = setInterval(() => {
-          this.fetchWorldState();
-        }, 30000); // 30秒刷新一次
+      if (enabled && document.visibilityState !== 'hidden') this.startRefreshInterval();
+    },
+
+    startRefreshInterval() {
+      this.clearRefreshInterval();
+      this.refreshInterval = setInterval(() => {
+        if (document.visibilityState !== 'hidden') this.fetchWorldState();
+      }, 30000);
+    },
+
+    handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        this.clearRefreshInterval();
+        return;
+      }
+      if (this.autoRefresh) {
+        this.fetchWorldState();
+        this.startRefreshInterval();
       }
     },
 

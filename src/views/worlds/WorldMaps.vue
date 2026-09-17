@@ -3,7 +3,6 @@
     <header class="page-heading">
       <div>
         <h1>{{ t('worldMaps.title') }}</h1>
-        <p>{{ t('worldMaps.subtitle') }}</p>
       </div>
       <UiButton variant="outline" :disabled="pageBusy" @click="reloadSelectedWorld">
         <Spinner v-if="mapsLoading || sessionsLoading" data-icon="inline-start" />
@@ -33,23 +32,13 @@
       <Card size="sm">
         <CardHeader>
           <CardTitle>{{ t('worldMaps.source.title') }}</CardTitle>
-          <CardDescription>{{ t('worldMaps.source.description') }}</CardDescription>
-          <CardAction>
-            <Badge v-if="renderer.available" variant="outline">
-              {{ t('worldMaps.renderer.protocol', { version: renderer.protocolVersion || '--' }) }}
-            </Badge>
-            <Badge v-else variant="secondary">{{ t('worldMaps.renderer.unavailableBadge') }}</Badge>
+          <CardAction v-if="!renderer.available">
+            <Badge variant="secondary">{{ t('worldMaps.renderer.unavailableBadge') }}</Badge>
           </CardAction>
         </CardHeader>
         <CardContent>
           <FieldGroup class="source-grid">
-            <Field>
-              <FieldLabel for="map-room-select">{{ t('worldMaps.source.archive') }}</FieldLabel>
-              <UiSelect :model-value="selectedRoomId" :disabled="worldsLoading || !rooms.length" @update:model-value="handleRoomChange">
-                <SelectTrigger id="map-room-select"><SelectValue :placeholder="t('worldMaps.source.selectArchive')" /></SelectTrigger>
-                <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
-              </UiSelect>
-            </Field>
+            <RoomScopeSelect :model-value="selectedRoomId" :rooms="rooms" :loading="sourceLoading" :disabled="worldsLoading" @update:model-value="handleRoomChange" />
             <Field>
               <FieldLabel for="map-world-select">{{ t('worldMaps.source.world') }}</FieldLabel>
               <UiSelect :model-value="selectedWorldId" :disabled="worldsLoading || !worlds.length" @update:model-value="handleWorldChange">
@@ -362,6 +351,8 @@
 </template>
 
 <script setup>
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -388,7 +379,8 @@ import {
   ZoomIn,
   ZoomOut
 } from '@lucide/vue'
-import { jobsV2API, roomsV2API, worldMapsV2API } from '@/api/v2'
+import { jobsV2API, worldMapsV2API } from '@/api/v2'
+import { getScopedRuntimeOverview } from '@/api/v2LegacyAdapters'
 import DstMapCanvas from '@/components/worlds/DstMapCanvas.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -427,7 +419,11 @@ import {
   normalizeFeatureCategories,
   searchMapFeatures
 } from '@/lib/worldMaps.mjs'
-import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
+import {
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  managementScopeTargetId
+} from '@/lib/managementScope.mjs'
 import { toast } from 'vue-sonner'
 
 const TERMINAL_JOB_STATES = new Set(['succeeded', 'failed', 'canceled'])
@@ -436,6 +432,7 @@ const route = useRoute()
 const router = useRouter()
 
 const rooms = ref([])
+const managementScope = ref(getManagementScope())
 const worlds = ref([])
 const maps = ref([])
 const sessions = ref([])
@@ -482,6 +479,7 @@ let artifactEpoch = 0
 let destroyed = false
 
 const selectedWorld = computed(() => worlds.value.find(world => world.id === selectedWorldId.value) || null)
+const selectedRoom = computed(() => rooms.value.find(room => room.id === selectedRoomId.value) || null)
 const selectedSession = computed(() => sessions.value.find(session => session.id === selectedSessionId.value) || null)
 const sourceError = computed(() => localizedFailure(sourceFailure.value))
 const mapError = computed(() => localizedFailure(mapFailure.value))
@@ -554,6 +552,8 @@ function pickByRoute(items, queryValue) {
 
 function updateRouteSelection() {
   const query = { ...route.query }
+  delete query.roomId
+  delete query.worldId
   if (selectedRoomId.value) query.room = selectedRoomId.value
   else delete query.room
   if (selectedWorldId.value) query.world = selectedWorldId.value
@@ -623,10 +623,10 @@ async function loadSources() {
   sessions.value = []
   selectMap(null)
   try {
-    const response = await roomsV2API.list()
+    const response = await getScopedRuntimeOverview(managementScopeTargetId(managementScope.value))
     if (destroyed || epoch !== loadEpoch) return
-    rooms.value = (response.items || []).filter(room => room.managed)
-    selectedRoomId.value = pickByRoute(rooms.value, route.query.room)
+    rooms.value = response.rooms || []
+selectedRoomId.value = preferredRoomId(rooms.value, route.query.roomId ?? route.query.room)
     if (selectedRoomId.value) await loadSelectedRoom(epoch)
   } catch (error) {
     if (destroyed || epoch !== loadEpoch) return
@@ -642,9 +642,14 @@ async function loadSelectedRoom(epoch) {
   worldsLoading.value = true
   sourceFailure.value = null
   try {
-    const response = await roomsV2API.worlds(selectedRoomId.value)
+    const room = selectedRoom.value
+    if (!room) {
+      worlds.value = []
+      selectedWorldId.value = ''
+      return
+    }
     if (destroyed || epoch !== loadEpoch) return
-    worlds.value = response.items || []
+    worlds.value = room.worlds || []
     selectedWorldId.value = pickByRoute(worlds.value, route.query.world)
     updateRouteSelection()
     await loadSelectedWorld(epoch)
@@ -882,7 +887,8 @@ async function cancelGeneration() {
   }
 }
 
-function handleRuntimeTargetChange() {
+function handleManagementScopeChange(event) {
+  managementScope.value = event?.detail || getManagementScope()
   loadEpoch += 1
   jobEpoch += 1
   activeJobId.value = ''
@@ -892,7 +898,7 @@ function handleRuntimeTargetChange() {
 }
 
 onMounted(() => {
-  window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, handleRuntimeTargetChange)
+  window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   void loadSources()
 })
@@ -902,7 +908,7 @@ onBeforeUnmount(() => {
   loadEpoch += 1
   jobEpoch += 1
   clearMapArtifacts()
-  window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, handleRuntimeTargetChange)
+  window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
 })
 </script>

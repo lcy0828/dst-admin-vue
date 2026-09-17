@@ -205,6 +205,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table as ShadcnTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { confirmAction } from '@/lib/feedback';
+import { confirmRoomMaintenance } from '@/lib/maintenanceConfirmation';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import {
@@ -432,13 +433,14 @@ export default {
       }
     },
     async stopRoom(room) {
+      let maintenance = {};
       const worldIds = this.stoppableWorlds(room).map(world => world.id);
       if (!worldIds.length) {
         toast.warning('当前没有可停止的运行中分片');
         return;
       }
       try {
-        await confirmAction(`确定要停止“${room.name}”中正在运行的 ${worldIds.length} 个分片吗？`, '停止房间', {
+        maintenance = await confirmRoomMaintenance(room.id, `确定要停止“${room.name}”中正在运行的 ${worldIds.length} 个分片吗？`, '停止房间', {
           confirmButtonText: '确认停止',
           type: 'warning'
         });
@@ -449,7 +451,7 @@ export default {
 
       this.roomActionId = room.id;
       try {
-        const response = await roomApi.stopRoom({ room_id: room.id, world_ids: worldIds });
+        const response = await roomApi.stopRoom({ room_id: room.id, world_ids: worldIds, ...maintenance });
         await this.refreshRooms();
         toast.success(response?.msg || '房间已停止');
       } catch (error) {

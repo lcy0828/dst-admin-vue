@@ -40,6 +40,7 @@
             <dl class="world-info">
               <div class="info-item"><dt>{{ $t('worlds.details.fields.name') }}</dt><dd>{{ world.name || '--' }}</dd></div>
               <div class="info-item"><dt>{{ $t('worlds.details.fields.type') }}</dt><dd><Badge :variant="getTypeTag(world.type)">{{ getTypeName(world.type) }}</Badge></dd></div>
+              <div class="info-item"><dt>{{ $t('worlds.details.fields.role') }}</dt><dd><Badge :variant="world.isMaster ? 'default' : 'outline'">{{ getRoleName(world) }}</Badge></dd></div>
               <div class="info-item"><dt>{{ $t('worlds.details.fields.season') }}</dt><dd>{{ world.season || '--' }}</dd></div>
               <div class="info-item"><dt>{{ $t('worlds.details.fields.day') }}</dt><dd>{{ world.day ?? '--' }}</dd></div>
               <div class="info-item"><dt>{{ $t('worlds.details.fields.description') }}</dt><dd class="description">{{ world.description || '--' }}</dd></div>
@@ -109,13 +110,16 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
-import { confirmAction, promptText } from '@/lib/feedback';
+import { confirmAction } from '@/lib/feedback';
+import { confirmRoomMaintenance } from '@/lib/maintenanceConfirmation';
 import { isCapacityRiskCanceled, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import {
   canCleanFailedWorld as canCleanFailedRuntimeWorld,
   canConfigureWorld as canConfigureRuntimeWorld,
   canDeleteWorld as canDeleteRuntimeWorld,
   canStopWorld,
+  worldActionRequiresConfirmation,
+  worldLifecycleScope,
   worldPrimaryAction,
   worldStatusLabel,
   worldStatusMessage,
@@ -160,6 +164,7 @@ export default {
       loadError: '',
       roomId: null,
       worldId: null,
+      roomWorlds: [],
       world: {
         id: null,
         name: '',
@@ -208,47 +213,75 @@ export default {
       return canDeleteRuntimeWorld(world);
     },
     getTypeName(type) {
-      if (type === 'forest' || type === 'master') return this.$t('worlds.types.master');
+      if (type === 'forest') return this.$t('worlds.types.forest');
       if (type === 'cave') return this.$t('worlds.types.cave');
       return this.$t('worlds.types.other');
+    },
+    getRoleName(world) {
+      return this.$t(world?.isMaster ? 'worlds.roles.master' : 'worlds.roles.secondary');
     },
     getTypeTag(type) {
       if (type === 'cave') return 'secondary';
       return 'outline';
     },
-    toggleWorldStatus() {
+    async toggleWorldStatus() {
       const primaryAction = worldPrimaryAction(this.world, this.$t);
       if (primaryAction.disabled || !primaryAction.kind) {
         toast.warning(worldStatusMessage(this.world) || this.$t('worlds.feedback.actionUnavailable'));
         return;
       }
       const action = primaryAction.label;
-      confirmAction(this.$t('worlds.feedback.actionConfirm', { action, world: this.world.name }), this.$t('worlds.feedback.actionTitle', { action }), {
-        confirmButtonText: this.$t('common.actions.confirm'),
-        cancelButtonText: this.$t('common.actions.cancel'),
-        type: 'warning'
-      }).then(() => {
-        this.loading = true;
-        const request = { room_id: this.roomId, world_id: this.worldId };
-        const operation = primaryAction.kind === 'stop'
-          ? roomApi.stopRoom(request)
-          : startRoomWithCapacityRisk(request);
-        operation
-          .then(async () => {
-            await this.loadWorldData();
-            toast.success(this.$t('worlds.feedback.actionCompleted', { action }));
-          })
-          .catch(error => {
-            if (isCapacityRiskCanceled(error)) return;
-            toast.error(this.$t('worlds.feedback.actionFailed', {
+      const scope = worldLifecycleScope(this.roomWorlds, this.world, primaryAction.kind);
+      if (!scope.allowed) {
+        await this.loadWorldData();
+        toast.warning(this.$t(`worlds.feedback.${scope.reason === 'master-unavailable'
+          ? 'dependencyMasterUnavailable'
+          : 'dependencyMasterUnknown'}`));
+        return;
+      }
+      const affectedNames = scope.worlds.map(item => item.name).join('、');
+      let maintenance = {};
+      if (worldActionRequiresConfirmation(primaryAction.kind)) {
+        try {
+          maintenance = await confirmRoomMaintenance(this.roomId, scope.worlds.length > 1
+            ? this.$t('worlds.feedback.actionDependencyConfirm', {
               action,
-              error: error.message || this.$t('common.errors.unknown')
-            }));
-          })
-          .finally(() => { this.loading = false; });
-      }).catch(() => {
-        toast.info(this.$t('worlds.feedback.canceled'));
-      });
+              count: scope.worlds.length,
+              worlds: affectedNames
+            })
+            : this.$t('worlds.feedback.actionConfirm', { action, world: this.world.name }),
+          this.$t('worlds.feedback.actionTitle', { action }), {
+            confirmButtonText: this.$t('common.actions.confirm'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            type: 'warning'
+          });
+        } catch {
+          toast.info(this.$t('worlds.feedback.canceled'));
+          return;
+        }
+      }
+
+      let requestCanceled = false;
+      this.loading = true;
+      try {
+        const request = { room_id: this.roomId, world_ids: scope.worlds.map(item => item.id), ...maintenance };
+        await (primaryAction.kind === 'stop'
+          ? roomApi.stopRoom(request)
+          : startRoomWithCapacityRisk(request));
+        toast.success(this.$t('worlds.feedback.actionCompleted', { action }));
+      } catch (error) {
+        if (isCapacityRiskCanceled(error)) {
+          requestCanceled = true;
+          return;
+        }
+        toast.error(this.$t('worlds.feedback.actionFailed', {
+          action,
+          error: error.message || this.$t('common.errors.unknown')
+        }));
+      } finally {
+        if (!requestCanceled) await this.loadWorldData();
+        this.loading = false;
+      }
     },
     async cleanupFailedWorld() {
       if (!canCleanFailedRuntimeWorld(this.world)) {
@@ -288,16 +321,16 @@ export default {
       }
       let confirmation;
       try {
-        const result = await promptText(
+        await confirmAction(
           this.$t('worlds.feedback.regeneratePrompt', { world: this.world.name, room: this.world.roomName }),
           this.$t('worlds.feedback.regenerateTitle'),
           {
             confirmButtonText: this.$t('worlds.feedback.regenerateButton'),
             cancelButtonText: this.$t('common.actions.cancel'),
-            inputValidator: value => value === this.world.roomName || this.$t('worlds.feedback.roomNameMismatch')
+            type: 'warning'
           }
         );
-        confirmation = result.value;
+        confirmation = this.world.roomName;
       } catch {
         return;
       }
@@ -343,16 +376,16 @@ export default {
       }
       let confirmation;
       try {
-        const result = await promptText(
+        await confirmAction(
           this.$t('worlds.feedback.deletePrompt', { world: this.world.name, room: this.world.roomName }),
           this.$t('worlds.feedback.deleteTitle'),
           {
             confirmButtonText: this.$t('worlds.feedback.moveToRecovery'),
             cancelButtonText: this.$t('common.actions.cancel'),
-            inputValidator: value => value === this.world.roomName || this.$t('worlds.feedback.roomNameMismatch')
+            type: 'warning'
           }
         );
-        confirmation = result.value;
+        confirmation = this.world.roomName;
       } catch {
         return;
       }
@@ -385,6 +418,7 @@ export default {
         .then(([roomResponse, worlds]) => {
           const world = worlds.find(item => item.id === this.worldId);
           if (!world) throw new Error(this.$t('worlds.details.notFound'));
+          this.roomWorlds = worlds;
           this.world = {
             ...world,
             roomName: roomResponse.data.name,
