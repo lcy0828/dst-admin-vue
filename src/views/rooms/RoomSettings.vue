@@ -485,7 +485,7 @@ export default {
         // 分片配置
         shard_enabled: true,
         bind_ip: '0.0.0.0',
-        master_ip: '0.0.0.0',
+        master_ip: '127.0.0.1',
         master_port: 10888,
         cluster_key: 'defaultpasswd',
 
