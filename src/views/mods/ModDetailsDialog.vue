@@ -11,6 +11,11 @@
 
       <ScrollArea v-if="mod" class="details-scroll-area">
         <div class="details-content">
+          <Alert v-if="mod.metadataWarning" role="status">
+            <Info />
+            <AlertTitle>{{ $t('mods.metadata.notice') }}</AlertTitle>
+            <AlertDescription>{{ mod.metadataWarning }}</AlertDescription>
+          </Alert>
           <div class="mod-identity">
             <div class="mod-preview">
               <ImageIcon />
@@ -140,7 +145,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { CalendarDays, CircleArrowUp, Clock3, Download, ExternalLink, Eye, FileText, HardDrive, Heart, ImageIcon, PackagePlus, RefreshCw, Star, Tag, Users } from '@lucide/vue'
+import { CalendarDays, CircleArrowUp, Clock3, Download, ExternalLink, Eye, FileText, HardDrive, Heart, ImageIcon, Info, PackagePlus, RefreshCw, Star, Tag, Users } from '@lucide/vue'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'

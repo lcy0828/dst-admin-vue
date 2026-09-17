@@ -66,14 +66,6 @@
         </FieldSet>
 
         <Field orientation="horizontal">
-          <FieldContent>
-            <FieldTitle>{{ $t('mods.addToRoom.enabled') }}</FieldTitle>
-            <FieldDescription>{{ $t('mods.addToRoom.enabledDescription') }}</FieldDescription>
-          </FieldContent>
-          <UiSwitch v-model="enabled" :aria-label="$t('mods.addToRoom.enabled')" />
-        </Field>
-
-        <Field orientation="horizontal">
           <Checkbox id="add-mod-dependencies" v-model="includeDependencies" />
           <FieldContent>
             <FieldLabel for="add-mod-dependencies">{{ $t('mods.addToRoom.dependencies') }}</FieldLabel>
@@ -119,10 +111,11 @@ import {
   FieldGroup,
   FieldLabel,
   FieldLegend,
-  FieldSet,
-  FieldTitle
+  FieldSet
 } from '@/components/ui/field'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { emitGlobalJobSubmitted } from '@/lib/globalJobs.mjs'
+import { useSharedJobStatus } from '@/composables/useGlobalJobStatus'
 import {
   Select as UiSelect,
   SelectContent,
@@ -132,7 +125,6 @@ import {
   SelectValue
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-import { Switch as UiSwitch } from '@/components/ui/switch'
 import { createModFailure, formatModFailure } from '@/i18n/modMessages'
 import { i18n } from '@/i18n'
 
@@ -147,12 +139,12 @@ const rooms = ref([])
 const worlds = ref([])
 const selectedRoomId = ref('')
 const selectedWorldIds = ref([])
-const enabled = ref(true)
 const includeDependencies = ref(true)
 const loadingRooms = ref(false)
 const loadingWorlds = ref(false)
 const submitting = ref(false)
 const loadFailure = ref(null)
+const jobStatus = useSharedJobStatus()
 
 const translate = (...args) => i18n.global.t(...args)
 const loadError = computed(() => formatModFailure(translate, loadFailure.value))
@@ -174,12 +166,11 @@ async function initialize() {
   worlds.value = []
   selectedRoomId.value = ''
   selectedWorldIds.value = []
-  enabled.value = true
   includeDependencies.value = true
   loadFailure.value = null
   loadingRooms.value = true
   try {
-    rooms.value = await modApi.getManagedRooms()
+    rooms.value = await modApi.getRooms()
     if (rooms.value.length === 1) {
       selectedRoomId.value = rooms.value[0].id
       await loadWorlds(selectedRoomId.value)
@@ -216,25 +207,36 @@ function toggleWorld(worldId, checked) {
 async function submit() {
   if (!canSubmit.value) return
   submitting.value = true
+  const mod = props.mod
+  const roomId = selectedRoomId.value
+  const worldIds = [...selectedWorldIds.value]
+  const roomName = rooms.value.find(room => room.id === roomId)?.name || roomId
+  let accepted = false
   try {
     const result = await modApi.addModToRoom({
-      roomId: selectedRoomId.value,
-      id: props.mod.id,
-      worldIds: selectedWorldIds.value,
-      enabled: enabled.value,
-      includeDependencies: includeDependencies.value
+      roomId,
+      id: mod.id,
+      worldIds,
+      targetIds: worlds.value
+        .filter(world => selectedWorldIds.value.includes(world.id))
+        .map(world => world.appliedTargetId),
+      enabled: true,
+      includeDependencies: includeDependencies.value,
+      waitForJob: jobStatus?.waitForJob,
+      onProgress: job => {
+        if (accepted || !job?.id) return
+        accepted = true
+        emitGlobalJobSubmitted({ ...job, displayName: `${mod.name || mod.id} · ${roomName}` })
+        submitting.value = false
+        emit('update:open', false)
+      }
     })
-    finishAdded(result)
+    toast.success(translate('mods.addToRoom.added', { name: mod.name || mod.id }))
+    emit('added', { result, roomId, worldIds })
   } catch (error) {
-    toast.error(formatModFailure(translate, createModFailure('mods.errors.addToRoom', error)))
+    if (!accepted || !jobStatus || !['JOB_FAILED', 'JOB_CANCELED'].includes(error?.code)) toast.error(formatModFailure(translate, createModFailure('mods.errors.addToRoom', error)))
   } finally {
-    submitting.value = false
+    if (!accepted) submitting.value = false
   }
-}
-
-function finishAdded(result) {
-  toast.success(translate('mods.addToRoom.added', { name: props.mod.name || props.mod.id }))
-  emit('added', { result, roomId: selectedRoomId.value, worldIds: selectedWorldIds.value })
-  emit('update:open', false)
 }
 </script>

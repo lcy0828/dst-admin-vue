@@ -14,6 +14,7 @@ import {
   publicationProgress,
   publicationStatusKey,
   publicationStatusVariant,
+  publicationTargetDisplayState,
   publicationTargetPhase,
   publicationTargetWorlds
 } from '../src/lib/modPublication.mjs'
@@ -23,14 +24,15 @@ const source = path => readFile(new URL(path, import.meta.url), 'utf8')
 test('mod publication control-plane API never inherits the manual runtime target', async () => {
   const api = await source('../src/api/v2.js')
   const start = api.indexOf('export const modPublicationsV2API')
-  const end = api.indexOf('export const automationV2API', start)
+  const end = api.indexOf('export const modUpdatesV2API', start)
   const publicationAPI = api.slice(start, end)
 
   assert.match(publicationAPI, /mod-publications\/preview/)
   assert.match(publicationAPI, /\/mod-publications\/\$\{encode\(publicationId\)\}/)
   assert.match(publicationAPI, /retry-failed/)
   assert.match(publicationAPI, /actions\/activate/)
-  assert.equal(publicationAPI.match(/runtimeTarget:\s*false/g)?.length, 6)
+  assert.match(publicationAPI, /mod-replicas/)
+  assert.equal(publicationAPI.match(/runtimeTarget:\s*false/g)?.length, 7)
 })
 
 test('installed mod mapping does not invent per-mod publication state', async () => {
@@ -85,6 +87,32 @@ test('publication presentation helpers normalize backend states without inventin
   assert.equal(publicationTargetPhase({ prepared: true, cacheEnsured: true }), 'stage')
   assert.equal(publicationTargetPhase({ rolledBack: true, completed: true }), 'rollback')
   assert.deepEqual(publicationTargetWorlds({ worlds: [{ worldName: 'Surface' }, { worldId: 'caves' }] }), ['Surface', 'caves'])
+  assert.deepEqual(publicationTargetWorlds({
+    worlds: [
+      { roomId: 'room-a', roomDirectory: 'all', worldId: 'caves', worldDirectory: 'Caves' },
+      { roomId: 'room-a', roomDirectory: 'all', worldId: 'master', worldDirectory: 'Master' },
+      { roomId: 'room-b', roomDirectory: 'room2', worldId: 'caves', worldDirectory: 'Caves' },
+      { roomId: 'room-b', roomDirectory: 'room2', worldId: 'caves', worldDirectory: 'Caves' }
+    ]
+  }), ['all / Caves', 'all / Master', 'room2 / Caves'])
+  assert.deepEqual(publicationTargetDisplayState(
+    { status: 'previewed' },
+    { status: 'failed', errorCode: 'PROTECTION_BACKUP_FAILED', errorMessage: 'cluster shared files differ across runtime targets' }
+  ), {
+    status: 'failed',
+    phase: 'backup',
+    progress: 100,
+    message: 'cluster shared files differ across runtime targets'
+  })
+  assert.deepEqual(publicationTargetDisplayState(
+    { status: 'prepared', prepared: true },
+    { status: 'failed', errorCode: 'TARGET_PUBLISH_FAILED', errorMessage: 'publish failed' }
+  ), {
+    status: 'prepared',
+    phase: 'stage',
+    progress: 40,
+    message: ''
+  })
   assert.equal(isModPublicationUnavailable({ status: 404, code: 'MOD_TARGET_NOT_FOUND' }), false)
   assert.equal(isModPublicationUnavailable({ status: 404, code: 'ENDPOINT_NOT_FOUND' }), true)
   assert.equal(isModPublicationUnavailable({ code: 'REMOTE_RUNTIME_MUTATION_UNAVAILABLE' }), false)

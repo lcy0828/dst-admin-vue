@@ -74,6 +74,9 @@
           <Badge v-if="planBlockers.length" variant="destructive">
             {{ t('mods.publication.summary.blockers', { count: planBlockers.length }) }}
           </Badge>
+          <Badge v-if="affectedRoomCount > 1" variant="secondary">
+            {{ t('mods.publication.summary.affectedRooms', { count: affectedRoomCount }) }}
+          </Badge>
         </div>
 
         <Alert v-for="(blocker, index) in planBlockers" :key="`blocker:${blocker.code || index}`" variant="destructive">
@@ -164,6 +167,9 @@
           <Badge :variant="publicationActivationStatusVariant(selectedPublication.activation?.status)">
             {{ t('mods.publication.activation.badge', { status: activationStatusLabel(selectedPublication.activation?.status) }) }}
           </Badge>
+          <Badge v-if="selectedAffectedRoomCount > 1" variant="secondary">
+            {{ t('mods.publication.summary.affectedRooms', { count: selectedAffectedRoomCount }) }}
+          </Badge>
           <span class="text-sm text-muted-foreground">
             {{ t('mods.publication.fields.topologyRevision') }}:
             {{ selectedPublication.plan?.topologyRevision || '--' }}
@@ -210,18 +216,18 @@
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="target in selectedPublication.targets || []" :key="targetKey(target)">
-                <TableCell>{{ publicationTargetName(target) }}</TableCell>
-                <TableCell>{{ resultWorldNames(target) }}</TableCell>
-                <TableCell>{{ phaseLabel(publicationTargetPhase(target)) }}</TableCell>
-                <TableCell><Badge :variant="publicationStatusVariant(target.status)">{{ statusLabel(target.status) }}</Badge></TableCell>
+              <TableRow v-for="row in selectedTargetRows" :key="targetKey(row.target)">
+                <TableCell>{{ publicationTargetName(row.target) }}</TableCell>
+                <TableCell>{{ resultWorldNames(row.target) }}</TableCell>
+                <TableCell>{{ phaseLabel(row.state.phase) }}</TableCell>
+                <TableCell><Badge :variant="publicationStatusVariant(row.state.status)">{{ statusLabel(row.state.status) }}</Badge></TableCell>
                 <TableCell class="min-w-32">
                   <div class="flex items-center gap-2">
-                    <Progress :model-value="publicationProgress(target)" :aria-label="`${publicationTargetName(target)} ${t('mods.publication.fields.progress')}`" />
-                    <span class="text-xs text-muted-foreground">{{ publicationProgress(target) }}%</span>
+                    <Progress :model-value="row.state.progress" :aria-label="`${publicationTargetName(row.target)} ${t('mods.publication.fields.progress')}`" />
+                    <span class="text-xs text-muted-foreground">{{ row.state.progress }}%</span>
                   </div>
                 </TableCell>
-                <TableCell>{{ target.errorMessage || target.error?.message || statusLabel(target.status) }}</TableCell>
+                <TableCell>{{ row.state.message || statusLabel(row.state.status) }}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -297,7 +303,7 @@ import {
   publicationProgress,
   publicationStatusKey,
   publicationStatusVariant,
-  publicationTargetPhase,
+  publicationTargetDisplayState,
   publicationTargetName,
   publicationTargetWorlds
 } from '@/lib/modPublication.mjs'
@@ -333,6 +339,12 @@ const latestPublication = computed(() => publications.value[0] || null)
 const planTargets = computed(() => plan.value?.targets || [])
 const planWarnings = computed(() => plan.value?.warnings || [])
 const planBlockers = computed(() => plan.value?.blockers || [])
+const affectedRoomCount = computed(() => new Set((plan.value?.affectedRoomIds || []).filter(Boolean)).size)
+const selectedAffectedRoomCount = computed(() => new Set((selectedPublication.value?.plan?.affectedRoomIds || []).filter(Boolean)).size)
+const selectedTargetRows = computed(() => (selectedPublication.value?.targets || []).map(target => ({
+  target,
+  state: publicationTargetDisplayState(target, selectedPublication.value)
+})))
 const displayedRevision = computed(() => plan.value?.topologyRevision || topology.value?.revision || topology.value?.topologyRevision || latestPublication.value?.plan?.topologyRevision || '')
 const canPreview = computed(() => availability.value !== 'unavailable' && Boolean(props.roomId) && Boolean(topology.value) && props.worlds.length > 0 && !loading.value && !previewing.value && !publishing.value)
 const canPublish = computed(() => Boolean(plan.value?.ready && plan.value?.planHash) && !publishing.value && !previewing.value)

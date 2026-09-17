@@ -3,7 +3,6 @@
     <header v-if="!embedded" class="page-heading">
       <div>
         <h1>{{ $t('mods.library.title') }}</h1>
-        <p>{{ $t('mods.library.subtitle') }}</p>
       </div>
       <div class="header-actions">
         <UiButton variant="outline" size="sm" :disabled="loading" @click="loadLibrary">
@@ -20,7 +19,6 @@
     <Card>
       <CardHeader>
         <CardTitle>{{ $t('mods.library.filters.title') }}</CardTitle>
-        <CardDescription>{{ $t('mods.library.filters.description') }}</CardDescription>
       </CardHeader>
       <CardContent>
         <FieldGroup class="filter-form" :data-embedded="embedded || undefined">
@@ -105,7 +103,7 @@
                 <div class="mod-identity">
                   <div class="mod-preview">
                     <ImageIcon />
-                    <img v-if="mod.image" :src="mod.image" :alt="mod.name" loading="lazy" @error="hideImage" />
+                    <img v-if="mod.image" :src="modThumbnailUrl(mod.image, 88)" :alt="mod.name" loading="lazy" @error="hideImage" />
                   </div>
                   <div class="min-w-0">
                     <div class="flex min-w-0 items-center gap-2">
@@ -204,6 +202,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { createModFailure, formatModDate, formatModFailure, translateModBuiltinValue } from '@/i18n/modMessages'
 import { i18n } from '@/i18n'
+import { modThumbnailUrl } from '@/lib/modImages.mjs'
 
 const props = defineProps({
   embedded: { type: Boolean, default: false },

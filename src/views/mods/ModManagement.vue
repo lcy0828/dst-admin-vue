@@ -3,15 +3,18 @@
     <header class="page-heading">
       <div>
         <h1>{{ $t('mods.management.title') }}</h1>
-        <p>{{ $t('mods.management.subtitle') }}</p>
       </div>
     </header>
 
     <Tabs :model-value="activeTab" @update:model-value="setActiveTab">
-      <TabsList>
-        <TabsTrigger value="library">
+      <TabsList class="scope-tabs">
+        <TabsTrigger value="workshop">
           <Search data-icon="inline-start" />
-          {{ $t('mods.management.tabs.library') }}
+          {{ $t('mods.management.tabs.workshop') }}
+        </TabsTrigger>
+        <TabsTrigger value="catalog">
+          <Monitor data-icon="inline-start" />
+          {{ $t('mods.management.tabs.catalog') }}
         </TabsTrigger>
         <TabsTrigger value="room">
           <SlidersHorizontal data-icon="inline-start" />
@@ -19,33 +22,12 @@
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="library" class="tab-content">
-        <div class="scope-toolbar">
-          <div>
-            <h2>{{ $t('mods.management.library.title') }}</h2>
-            <p>{{ $t('mods.management.library.description') }}</p>
-          </div>
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            size="sm"
-            :model-value="libraryScope"
-            @update:model-value="setLibraryScope"
-          >
-            <ToggleGroupItem value="workshop">{{ $t('mods.management.scopes.workshop') }}</ToggleGroupItem>
-            <ToggleGroupItem value="downloaded">{{ $t('mods.management.scopes.downloaded') }}</ToggleGroupItem>
-            <ToggleGroupItem value="updates">{{ $t('mods.management.scopes.updates') }}</ToggleGroupItem>
-          </ToggleGroup>
-        </div>
+      <TabsContent value="workshop" class="tab-content">
+        <ModSearch embedded />
+      </TabsContent>
 
-        <ModSearch v-if="libraryScope === 'workshop'" embedded />
-        <ModLibrary
-          v-else
-          :key="libraryScope"
-          embedded
-          :initial-status="libraryScope"
-          @browse-workshop="setLibraryScope('workshop')"
-        />
+      <TabsContent value="catalog" class="tab-content">
+        <RuntimeModInventory />
       </TabsContent>
 
       <TabsContent value="room" class="tab-content">
@@ -58,20 +40,19 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Search, SlidersHorizontal } from '@lucide/vue'
-import ModLibrary from './ModLibrary.vue'
+import { Monitor, Search, SlidersHorizontal } from '@lucide/vue'
 import ModList from './ModList.vue'
 import ModSearch from './ModSearch.vue'
+import RuntimeModInventory from './RuntimeModInventory.vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 const route = useRoute()
 const router = useRouter()
 
-const activeTab = computed(() => route.query.tab === 'room' ? 'room' : 'library')
-const libraryScope = computed(() => {
-  const scope = String(route.query.scope || '')
-  return ['workshop', 'downloaded', 'updates'].includes(scope) ? scope : 'workshop'
+const activeTab = computed(() => {
+  if (route.query.tab === 'room') return 'room'
+  if (route.query.tab === 'catalog' || route.query.source === 'runtime' || ['downloaded', 'updates'].includes(String(route.query.scope || ''))) return 'catalog'
+  return 'workshop'
 })
 
 function replaceQuery(patch) {
@@ -83,16 +64,15 @@ function replaceQuery(patch) {
 
 function setActiveTab(value) {
   if (!value) return
-  replaceQuery({ tab: value === 'room' ? 'room' : undefined })
-}
-
-function setLibraryScope(value) {
-  if (!value) return
-  replaceQuery({ tab: undefined, scope: value === 'workshop' ? undefined : value })
+  replaceQuery({
+    tab: value === 'workshop' ? undefined : value,
+    source: undefined,
+    scope: undefined
+  })
 }
 
 function openWorkshop() {
-  setLibraryScope('workshop')
+  setActiveTab('workshop')
 }
 </script>
 
@@ -104,32 +84,22 @@ function openWorkshop() {
   flex-direction: column;
 }
 
+.scope-tabs {
+  display: grid;
+  width: min(100%, 560px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .page-container {
   width: 100%;
   gap: 20px;
 }
 
-.page-heading h1,
-.scope-toolbar h2,
-.page-heading p,
-.scope-toolbar p {
-  margin: 0;
-}
-
 .page-heading h1 {
+  margin: 0;
   font-size: 24px;
   font-weight: 600;
   line-height: 32px;
-}
-
-.page-heading p,
-.scope-toolbar p {
-  color: var(--muted-foreground);
-  font-size: 14px;
-}
-
-.page-heading p {
-  margin-top: 4px;
 }
 
 .tab-content {
@@ -137,25 +107,4 @@ function openWorkshop() {
   margin-top: 20px;
 }
 
-.scope-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
-}
-
-.scope-toolbar h2 {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
-}
-
-@media (max-width: 760px) {
-  .scope-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-}
 </style>

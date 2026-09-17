@@ -175,9 +175,58 @@ export function publicationCanActivate(value) {
 }
 
 export function publicationTargetWorlds(target) {
-  return (target?.worlds || []).map(world => world.worldName || world.name || world.worldId || world.id).filter(Boolean)
+  const worlds = Array.isArray(target?.worlds) ? target.worlds : []
+  const roomKeys = new Set(worlds.map(world => world.roomId || world.roomDirectory || world.roomName).filter(Boolean))
+  const includeRoom = roomKeys.size > 1
+  const labels = []
+  const seen = new Set()
+
+  for (const world of worlds) {
+    const room = world.roomName || world.roomDirectory || world.roomId || ''
+    const name = world.worldName || world.name || world.worldDirectory || world.worldId || world.id || ''
+    if (!name) continue
+    const identity = `${world.roomId || world.roomDirectory || room}\u0000${world.worldId || world.id || world.worldDirectory || name}`
+    if (seen.has(identity)) continue
+    seen.add(identity)
+    labels.push(includeRoom && room ? `${room} / ${name}` : name)
+  }
+  return labels
 }
 
 export function publicationTargetName(target) {
   return target?.targetName || target?.name || target?.nodeId || target?.targetId || '--'
+}
+
+const EARLY_FAILURE_PHASES = Object.freeze({
+  PROTECTION_BACKUP_FAILED: 'backup',
+  PREVIEW_RECHECK_FAILED: 'preflight',
+  PREVIEW_BLOCKED: 'preflight',
+  PLAN_CHANGED: 'preflight',
+  TOPOLOGY_CHANGED: 'preflight',
+  LEASE_RENEW_FAILED: 'preflight'
+})
+
+export function publicationTargetDisplayState(target, publication) {
+  const targetStatus = String(target?.status || '').trim().toLowerCase()
+  const publicationStatus = String(publication?.status || '').trim().toLowerCase()
+  const inheritedFailure = ['queued', 'previewed'].includes(targetStatus)
+    && ['failed', 'recovery_required', 'rolled_back'].includes(publicationStatus)
+    && Boolean(publication?.errorCode || publication?.errorMessage)
+
+  if (!inheritedFailure) {
+    return {
+      status: target?.status || '',
+      phase: publicationTargetPhase(target),
+      progress: publicationProgress(target),
+      message: target?.errorMessage || target?.error?.message || ''
+    }
+  }
+
+  const code = String(publication.errorCode || '').trim().toUpperCase()
+  return {
+    status: 'failed',
+    phase: EARLY_FAILURE_PHASES[code] || 'preflight',
+    progress: 100,
+    message: publication.errorMessage || publication.error?.message || ''
+  }
 }

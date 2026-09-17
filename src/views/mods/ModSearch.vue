@@ -3,18 +3,12 @@
     <header v-if="!embedded" class="page-heading">
       <div>
         <h1>{{ $t('mods.search.title') }}</h1>
-        <p>{{ $t('mods.search.subtitle') }}</p>
       </div>
       <UiButton variant="outline" size="sm" @click="goToLibrary"><ArrowLeft data-icon="inline-start" />{{ $t('mods.actions.backToLibrary') }}</UiButton>
     </header>
 
     <Card class="search-panel">
-      <CardHeader
-        ><div>
-          <CardTitle>{{ $t('mods.search.form.title') }}</CardTitle
-          ><CardDescription>{{ $t('mods.search.form.description') }}</CardDescription>
-        </div></CardHeader
-      >
+      <CardHeader><CardTitle>{{ $t('mods.search.form.title') }}</CardTitle></CardHeader>
       <CardContent>
         <FieldGroup class="search-form">
           <Field class="search-keyword">
@@ -26,7 +20,7 @@
           </Field>
           <Field>
             <FieldLabel for="mod-search-sort">{{ $t('mods.search.form.sort') }}</FieldLabel>
-            <UiSelect v-model="searchForm.sort" @update:model-value="filtersChanged">
+            <UiSelect v-model="searchForm.sort" @update:model-value="sortChanged">
               <SelectTrigger id="mod-search-sort"><SelectValue /></SelectTrigger>
               <SelectContent
                 ><SelectGroup>
@@ -101,6 +95,13 @@
       >
     </Alert>
 
+    <Alert v-if="runtimeStatusFailure">
+      <TriangleAlert />
+      <AlertTitle>{{ $t('mods.search.runtimeStatus.failedTitle') }}</AlertTitle>
+      <AlertDescription>{{ runtimeStatusFailure }}</AlertDescription>
+      <AlertAction><UiButton size="sm" variant="outline" @click="loadRuntimeDownloads">{{ $t('mods.actions.retry') }}</UiButton></AlertAction>
+    </Alert>
+
     <div v-if="searching" class="mod-grid">
       <Card v-for="index in 8" :key="index" class="mod-card">
         <CardHeader class="mod-card-header"
@@ -122,11 +123,10 @@
       <div class="mod-grid">
         <Card v-for="mod in searchResults" :key="mod.id" class="mod-card">
           <CardHeader class="mod-card-header">
-            <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultImage" :src="mod.image || defaultImage" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
+            <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultImage" :src="modThumbnailUrl(mod.image || defaultImage, 184)" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
             <div class="min-w-0 flex-1">
               <div class="mod-title-row">
-                <CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle
-                ><Badge v-if="mod.isDownloaded">{{ $t('mods.values.downloaded') }}</Badge>
+                <CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle>
               </div>
               <CardDescription class="truncate">{{ mod.author || $t('mods.values.unknownAuthor') }} · {{ mod.id }}</CardDescription>
               <div class="mt-2 flex flex-wrap gap-2">
@@ -144,24 +144,22 @@
               <span><Users />{{ formatNumber(mod.subscriptions) }}</span>
               <span><Clock />{{ formatDate(mod.updatedAt) }}</span>
             </div>
-            <Alert v-if="downloadStates[mod.id]" :variant="downloadStateVariant(downloadStates[mod.id])" class="mod-download-status">
-              <Spinner v-if="isDownloadActive(downloadStates[mod.id])" />
-              <CircleCheck v-else-if="downloadStates[mod.id].status === 'succeeded'" />
-              <TriangleAlert v-else />
-              <AlertTitle>{{ downloadStateTitle(downloadStates[mod.id]) }}</AlertTitle>
-              <AlertDescription>{{ downloadStateDescription(downloadStates[mod.id]) }}</AlertDescription>
-              <UiProgress v-if="isDownloadActive(downloadStates[mod.id])" :model-value="downloadStates[mod.id].progress" class="col-span-full mt-2" />
-            </Alert>
+            <div class="mod-download-state" aria-live="polite">
+              <Skeleton v-if="runtimeStatusLoading" class="h-5 w-36" />
+              <template v-else-if="downloadedInstallations(mod).length">
+                <Badge
+                  v-for="option in downloadedInstallations(mod)"
+                  :key="option.key"
+                  :variant="downloadStateVariant(option.downloadState)"
+                  :title="option.label"
+                >{{ option.label }} · {{ $t(`mods.search.runtimeStatus.${option.downloadState}`) }}</Badge>
+              </template>
+              <Badge v-else variant="outline">{{ $t('mods.search.runtimeStatus.notDownloaded') }}</Badge>
+            </div>
           </CardContent>
           <CardFooter class="mod-actions">
-            <UiButton size="sm" :variant="mod.isDownloaded ? 'outline' : 'default'" :disabled="isModActionBusy(mod)" @click="handlePrimaryAction(mod)">
-              <Spinner v-if="isModActionBusy(mod)" data-icon="inline-start" />
-              <RefreshCw v-else-if="mod.isDownloaded && !mod.updateAvailable" data-icon="inline-start" />
-              <CircleArrowUp v-else-if="mod.updateAvailable" data-icon="inline-start" />
-              <Download v-else data-icon="inline-start" />
-              {{ $t(primaryActionLabel(mod)) }}
-            </UiButton>
-            <UiButton v-if="mod.isDownloaded" size="sm" @click="openAddDialog(mod)"><PackagePlus data-icon="inline-start" />{{ $t('mods.actions.addToRoom') }}</UiButton>
+            <UiButton size="sm" variant="outline" :disabled="runtimeStatusLoading || downloadOptionsFor(mod).every(option => !option.online)" @click="openDownloadDialog(mod)"><Download data-icon="inline-start" />{{ $t('mods.actions.downloadMod') }}</UiButton>
+            <UiButton size="sm" @click="openAddDialog(mod)"><PackagePlus data-icon="inline-start" />{{ $t('mods.actions.downloadAndAddToRoom') }}</UiButton>
             <UiButton variant="ghost" size="sm" @click="showModDetails(mod)"><Info data-icon="inline-start" />{{ $t('mods.actions.details') }}</UiButton>
           </CardFooter>
         </Card>
@@ -191,18 +189,26 @@
       >
     </Empty>
 
-    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :busy="isModActionBusy(currentModInfo)" @download="handleDownloadMod" @refresh="refreshModStatus" @add-to-room="openAddDialog" />
+    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading">
+      <template #actions="{ mod }">
+        <UiButton variant="outline" @click="openDownloadDialog(mod)"><Download data-icon="inline-start" />{{ $t('mods.actions.downloadMod') }}</UiButton>
+        <UiButton @click="openAddDialog(mod)"><PackagePlus data-icon="inline-start" />{{ $t('mods.actions.downloadAndAddToRoom') }}</UiButton>
+      </template>
+    </ModDetailsDialog>
 
-    <AddModToRoomDialog v-model:open="addDialogOpen" :mod="addTarget" />
+    <DownloadModDialog v-model:open="downloadDialogOpen" :mod="downloadTarget" :installation-options="downloadOptionsFor(downloadTarget)" @downloaded="loadRuntimeDownloads" />
+    <AddModToRoomDialog v-model:open="addDialogOpen" :mod="addTarget" @added="loadRuntimeDownloads" />
   </div>
 </template>
 
 <script>
-import { ArrowLeft, CircleArrowUp, CircleCheck, Clock, Download, ImageIcon, Info, PackagePlus, RefreshCw, Search, SearchX, Star, TriangleAlert, Users } from '@lucide/vue'
+import { ArrowLeft, Clock, Download, ImageIcon, Info, PackagePlus, Search, SearchX, Star, TriangleAlert, Users } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import AddModToRoomDialog from './AddModToRoomDialog.vue'
+import DownloadModDialog from './DownloadModDialog.vue'
 import ModDetailsDialog from './ModDetailsDialog.vue'
 import { modApi } from '@/api'
+import { runtimeTargetsV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -211,11 +217,14 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
-import { Progress as UiProgress } from '@/components/ui/progress'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { createModFailure, formatModDate, formatModFailure } from '@/i18n/modMessages'
+import { resolveModSearchSort } from '@/lib/modSearchDefaults.mjs'
+import { modThumbnailUrl } from '@/lib/modImages.mjs'
+import { getManagementScope, MANAGEMENT_SCOPE_CHANGED_EVENT, managementScopeTargetId } from '@/lib/managementScope.mjs'
+import { buildRuntimeInstallationOptions } from '@/lib/runtimeModInventory.mjs'
 
 export default {
   name: 'ModSearch',
@@ -224,6 +233,7 @@ export default {
   },
   components: {
     AddModToRoomDialog,
+    DownloadModDialog,
     ModDetailsDialog,
     ArrowLeft,
     Alert,
@@ -237,8 +247,6 @@ export default {
     CardFooter,
     CardHeader,
     CardTitle,
-    CircleArrowUp,
-    CircleCheck,
     Clock,
     Download,
     Empty,
@@ -261,7 +269,6 @@ export default {
     PaginationNext,
     PaginationPrevious,
     PackagePlus,
-    RefreshCw,
     Search,
     SearchX,
     SelectContent,
@@ -274,7 +281,6 @@ export default {
     Star,
     TriangleAlert,
     UiButton,
-    UiProgress,
     UiSelect,
     Users
   },
@@ -287,6 +293,7 @@ export default {
         days: '7',
         pageSize: '20'
       },
+      sortManuallySelected: false,
       searching: false,
       loadFailure: null,
       searchRequestId: 0,
@@ -295,17 +302,18 @@ export default {
       totalResults: 0,
       currentPage: 1,
       defaultImage: '',
-      downloadingMods: {}, // 跟踪正在下载的模组
-      refreshingMods: {},
-      downloadStates: {},
-      libraryMods: [],
-      loadingLibrary: false,
       detailsDialogVisible: false, // 详情对话框可见性
       currentModInfo: null, // 当前查看的模组
       detailsLoading: false,
       detailsRequestId: 0,
       addDialogOpen: false,
-      addTarget: null
+      addTarget: null,
+      downloadDialogOpen: false,
+      downloadTarget: null,
+      runtimeInstallations: [],
+      runtimeStatusLoading: false,
+      runtimeStatusFailure: '',
+      runtimeStatusRequestId: 0
     }
   },
   computed: {
@@ -355,43 +363,40 @@ export default {
     }
   },
   async created() {
-    await this.getLibraryMods()
     const keyword = this.$route.query.keyword
     if (typeof keyword === 'string' && keyword.trim()) {
       this.searchForm.keyword = keyword
-      this.searchForm.sort = 'relevance'
     }
-    await this.searchMods()
+    await Promise.all([this.searchMods(), this.loadRuntimeDownloads()])
+  },
+  mounted() {
+    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChanged)
+  },
+  beforeUnmount() {
+    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChanged)
   },
   methods: {
+    modThumbnailUrl,
     handleImageError(event) {
       event.currentTarget.hidden = true
     },
-    async getLibraryMods() {
-      this.loadingLibrary = true
-      this.loadFailure = null
-      try {
-        const response = await modApi.getLibrary()
-        this.libraryMods = response.items || []
-      } catch (error) {
-        this.libraryMods = []
-        this.loadFailure = this.failure('mods.errors.library', error)
-        toast.error(this.loadError)
-      } finally {
-        this.loadingLibrary = false
-      }
-    },
-
-    findLibraryMod(modId) {
-      return this.libraryMods.find(mod => String(mod.modid || mod.id) === String(modId))
-    },
-
     startSearch() {
-      if (!this.searchForm.keyword.trim() && this.searchForm.sort === 'relevance') {
-        this.searchForm.sort = 'trend'
-      }
       this.currentPage = 1
       this.searchMods()
+    },
+
+    sortChanged(sort) {
+      this.searchForm.sort = sort
+      this.sortManuallySelected = true
+      this.filtersChanged()
+    },
+
+    applyKeywordSortDefault() {
+      this.searchForm.sort = resolveModSearchSort(
+        this.searchForm.keyword,
+        this.searchForm.sort,
+        this.sortManuallySelected
+      )
     },
 
     filtersChanged() {
@@ -405,6 +410,7 @@ export default {
     },
 
     async searchMods() {
+      this.applyKeywordSortDefault()
       const requestId = ++this.searchRequestId
       this.searching = true
       this.loadFailure = null
@@ -421,14 +427,7 @@ export default {
           pageSize: this.pageSize
         })
         if (requestId !== this.searchRequestId) return
-        this.searchResults = (data.items || []).map(mod => {
-          const localMod = this.findLibraryMod(mod.id)
-          return {
-            ...mod,
-            isDownloaded: Boolean(localMod?.downloaded),
-            updateAvailable: Boolean(localMod?.updateAvailable)
-          }
-        })
+        this.searchResults = data.items || []
         this.totalResults = data.total || 0
       } catch (error) {
         if (requestId !== this.searchRequestId) return
@@ -440,99 +439,10 @@ export default {
         if (requestId === this.searchRequestId) this.searching = false
       }
     },
-    isModActionBusy(mod) {
-      return Boolean(mod?.id && (this.downloadingMods[mod.id] || this.refreshingMods[mod.id]))
-    },
-
-    primaryActionLabel(mod) {
-      if (this.downloadingMods[mod?.id]) return 'mods.actions.downloading'
-      if (this.refreshingMods[mod?.id]) return 'mods.actions.refreshing'
-      if (mod?.updateAvailable) return 'mods.actions.update'
-      return mod?.isDownloaded ? 'mods.actions.refresh' : 'mods.actions.download'
-    },
-
-    handlePrimaryAction(mod) {
-      if (mod?.isDownloaded && !mod.updateAvailable) {
-        this.refreshModStatus(mod)
-        return
-      }
-      this.handleDownloadMod(mod)
-    },
-
-    handleDownloadMod(mod) {
-      if (mod && (!mod.isDownloaded || mod.updateAvailable)) this.downloadMod(mod)
-    },
-
-    async refreshModStatus(mod) {
-      if (!mod?.id || this.isModActionBusy(mod)) return
-      this.refreshingMods[mod.id] = true
-      try {
-        const response = await modApi.getLibrary()
-        this.libraryMods = response.items || []
-        const localMod = this.findLibraryMod(mod.id)
-        const localState = {
-          downloaded: Boolean(localMod?.downloaded),
-          isDownloaded: Boolean(localMod?.downloaded),
-          updateAvailable: Boolean(localMod?.updateAvailable)
-        }
-        Object.assign(mod, localState)
-        const details = await modApi.getModDetails({ ...mod, ...localState })
-        Object.assign(mod, details, localState)
-        toast.success(this.$t('mods.search.feedback.refreshed'))
-      } catch (error) {
-        toast.error(this.localizedFailure(this.failure('mods.errors.refresh', error)))
-      } finally {
-        this.refreshingMods[mod.id] = false
-      }
-    },
-
-    // 实际执行下载的方法
-    async downloadMod(mod) {
-      if (!mod || this.downloadingMods[mod.id] || (mod.isDownloaded && !mod.updateAvailable)) return
-      const id = mod.id
-      const wasDownloaded = Boolean(mod.isDownloaded)
-
-      // 显示下载中消息
-      const loadingMessage = toast.loading(this.$t('mods.search.feedback.downloading'))
-
-      this.downloadingMods[id] = true
-      this.downloadStates[id] = { status: 'queued', progress: 0, detail: '' }
-
-      try {
-        await modApi.downloadMod({
-          id,
-          downloaded: wasDownloaded,
-          includeDependencies: true,
-          onProgress: job => {
-            this.downloadStates[id] = {
-              status: job.status || 'running',
-              progress: Number.isFinite(Number(job.progress)) ? Number(job.progress) : 0,
-              detail: ''
-            }
-          }
-        })
-        mod.isDownloaded = true
-        mod.updateAvailable = false
-        await this.getLibraryMods()
-        this.downloadStates[id] = {
-          status: 'succeeded',
-          progress: 100,
-          detail: ''
-        }
-        toast.success(this.$t(wasDownloaded ? 'mods.search.feedback.updated' : 'mods.search.feedback.downloaded'))
-      } catch (error) {
-        const detail = this.localizedFailure(this.failure(wasDownloaded ? 'mods.errors.update' : 'mods.errors.download', error))
-        this.downloadStates[id] = { status: 'failed', progress: 100, detail }
-        toast.error(detail)
-      } finally {
-        toast.dismiss(loadingMessage)
-        this.downloadingMods[id] = false
-      }
-    },
-
     resetSearch() {
       this.searchForm.keyword = ''
       this.searchForm.sort = 'trend'
+      this.sortManuallySelected = false
       this.searchForm.category = 'all'
       this.searchForm.days = '7'
       this.searchForm.pageSize = '20'
@@ -542,9 +452,7 @@ export default {
     },
 
     retryLoad() {
-      if (!this.libraryMods.length) return this.getLibraryMods()
-      if (this.hasSearched) return this.searchMods()
-      return this.getLibraryMods()
+      return this.searchMods()
     },
 
     handlePageChange(page) {
@@ -560,6 +468,70 @@ export default {
       this.addTarget = mod
       this.addDialogOpen = true
       this.detailsDialogVisible = false
+    },
+
+    openDownloadDialog(mod) {
+      this.downloadTarget = mod
+      this.downloadDialogOpen = true
+      this.detailsDialogVisible = false
+    },
+
+    handleManagementScopeChanged() {
+      this.loadRuntimeDownloads()
+    },
+
+    async loadRuntimeDownloads() {
+      const requestId = ++this.runtimeStatusRequestId
+      this.runtimeStatusLoading = true
+      this.runtimeStatusFailure = ''
+      try {
+        const targets = await runtimeTargetsV2API.list()
+        const options = buildRuntimeInstallationOptions(targets, managementScopeTargetId(getManagementScope()))
+        const observations = await Promise.all(options.map(async option => {
+          if (!option.online) return { ...option, inventory: null, error: null }
+          try {
+            const inventory = await modApi.getRuntimeModInventory(option.targetId, option.installationId)
+            return { ...option, inventory, error: null }
+          } catch (error) {
+            return { ...option, inventory: null, error }
+          }
+        }))
+        if (requestId !== this.runtimeStatusRequestId) return
+        this.runtimeInstallations = observations
+        const failed = observations.filter(option => option.online && option.error)
+        if (failed.length) {
+          this.runtimeStatusFailure = this.$t('mods.search.runtimeStatus.failedDescription', { count: failed.length })
+        }
+      } catch (error) {
+        if (requestId !== this.runtimeStatusRequestId) return
+        this.runtimeInstallations = []
+        this.runtimeStatusFailure = this.localizedFailure(this.failure('mods.errors.runtimeInventory', error))
+      } finally {
+        if (requestId === this.runtimeStatusRequestId) this.runtimeStatusLoading = false
+      }
+    },
+
+    downloadOptionsFor(mod) {
+      const modId = String(mod?.id || mod?.modid || '')
+      return this.runtimeInstallations.map(option => {
+        if (option.error) return { ...option, downloadState: 'unavailable' }
+        const item = (option.inventory?.items || []).find(value => String(value.id) === modId)
+        if (!item) return { ...option, downloadState: 'missing' }
+        if (item.fileStatus !== 'ready' || item.versionStatus === 'invalid') return { ...option, downloadState: 'invalid' }
+        if (item.versionStatus === 'outdated') return { ...option, downloadState: 'outdated' }
+        return { ...option, downloadState: item.versionStatus === 'current' ? 'current' : 'unknown' }
+      })
+    },
+
+    downloadedInstallations(mod) {
+      return this.downloadOptionsFor(mod).filter(option => ['current', 'outdated', 'unknown', 'invalid'].includes(option.downloadState))
+    },
+
+    downloadStateVariant(state) {
+      if (state === 'current') return 'success'
+      if (state === 'outdated') return 'warning'
+      if (state === 'invalid') return 'destructive'
+      return 'outline'
     },
 
     async showModDetails(mod) {
@@ -614,34 +586,6 @@ export default {
 
     localizedFailure(failure) {
       return formatModFailure(this.$t, failure)
-    },
-
-    isDownloadActive(state) {
-      return state?.status === 'queued' || state?.status === 'running'
-    },
-
-    downloadStateVariant(state) {
-      return state?.status === 'failed' ? 'destructive' : 'default'
-    },
-
-    downloadStateTitle(state) {
-      const status = ['queued', 'running', 'succeeded', 'failed'].includes(state?.status) ? state.status : 'failed'
-      return this.$t(`mods.search.downloadStatus.${status}Title`)
-    },
-
-    downloadStateDescription(state) {
-      if (state?.status === 'failed' && state.detail) return state.detail
-      const status = ['queued', 'running', 'succeeded', 'failed'].includes(state?.status) ? state.status : 'failed'
-      return this.$t(`mods.search.downloadStatus.${status}Description`)
-    },
-
-    // 处理下拉菜单命令
-    handleCommand(command) {
-      switch (command.type) {
-        case 'details':
-          this.showModDetails(command.mod)
-          break
-      }
     }
   }
 }
@@ -785,8 +729,12 @@ export default {
   gap: 8px 16px;
 }
 
-.mod-download-status {
-  margin-top: 6px;
+.mod-download-state {
+  display: flex;
+  min-height: 22px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .mod-meta span {

@@ -3,10 +3,13 @@
     <DialogContent class="mod-config-dialog sm:max-w-4xl">
       <DialogHeader>
         <DialogTitle>{{ $t('mods.config.title', { name: activeModInfo ? activeModInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</DialogTitle>
-        <DialogDescription>{{ $t('mods.config.description', { world: worldName || worldId }) }}</DialogDescription>
+        <DialogDescription class="space-y-1">
+          <span class="block">{{ configurationScope === 'room' ? $t('mods.config.roomDescription', { count: effectiveWorldIds.length }) : $t('mods.config.description', { world: worldName || worldId }) }}</span>
+          <span class="block">{{ $t(configurationScope === 'room' ? 'mods.config.roomSaveBehaviorDescription' : 'mods.config.saveBehaviorDescription', { count: effectiveWorldIds.length }) }}</span>
+        </DialogDescription>
       </DialogHeader>
 
-      <div class="flex flex-wrap items-center gap-2">
+      <div v-if="configurationScope !== 'room'" class="flex flex-wrap items-center gap-2">
         <Badge variant="outline">
           <Server />
           {{ configTargetLabel }}
@@ -92,18 +95,28 @@
         </Empty>
       </ScrollArea>
 
-      <DialogFooter>
-        <UiButton variant="outline" @click="handleClose">{{ $t('mods.actions.cancel') }}</UiButton>
-        <UiButton @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !modInfo">
-          <Spinner v-if="saving" data-icon="inline-start" />{{ $t('mods.actions.saveConfig') }}
-        </UiButton>
+      <DialogFooter class="mod-config-footer">
+        <div class="save-state" :class="saveJob && ['failed', 'canceled'].includes(saveJob.status) && 'save-state-error'" aria-live="polite" role="status">
+          <template v-if="saveJob">
+            <TriangleAlert v-if="saveJob.status === 'failed' || saveJob.status === 'canceled'" />
+            <Spinner v-else-if="saving && saveJob.status !== 'succeeded'" />
+            <CircleCheck v-else />
+            <span class="save-state-copy" :title="`${saveJobTitle}：${saveJobDescription}`">{{ saveJobTitle }} · {{ saveJobDescription }}</span>
+          </template>
+        </div>
+        <div class="save-actions">
+          <UiButton variant="outline" @click="handleClose">{{ $t('mods.actions.cancel') }}</UiButton>
+          <UiButton @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !modInfo">
+            <Spinner v-if="saving" data-icon="inline-start" />{{ $t('mods.actions.saveConfig') }}
+          </UiButton>
+        </div>
       </DialogFooter>
     </DialogContent>
   </UiDialog>
 </template>
 
 <script>
-import { CircleHelp, Info, RotateCcw, TriangleAlert } from '@lucide/vue';
+import { CircleCheck, CircleHelp, Info, RotateCcw, TriangleAlert } from '@lucide/vue';
 import { Server } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { modApi } from '@/api';
@@ -130,6 +143,7 @@ export default {
     AlertDescription,
     AlertTitle,
     Badge,
+    CircleCheck,
     CircleHelp,
     DialogContent,
     DialogDescription,
@@ -201,6 +215,22 @@ export default {
     targetName: {
       type: String,
       default: ''
+    },
+    expectedTopologyRevision: {
+      type: String,
+      default: ''
+    },
+    configurationScope: {
+      type: String,
+      default: 'world'
+    },
+    worldIds: {
+      type: Array,
+      default: () => []
+    },
+    expectedRevisions: {
+      type: Object,
+      default: () => ({})
     }
   },
   data() {
@@ -209,6 +239,7 @@ export default {
       loading: false,
       loadFailure: null,
       saving: false,
+      saveJob: null,
       configForm: {},
       originalConfig: {},
       defaultConfig: {},
@@ -216,6 +247,8 @@ export default {
       customOverrides: {},
       resetRequested: false,
       configRevision: '',
+      configRequestId: 0,
+      configWorldRevisions: {},
       configuredEnabled: true,
       topologyRevision: '',
       resolvedTargetId: '',
@@ -237,11 +270,29 @@ export default {
     activeModInfo() {
       return this.resolvedModInfo || this.modInfo;
     },
+    effectiveWorldIds() {
+      return this.worldIds.length > 0 ? this.worldIds : [this.worldId].filter(Boolean);
+    },
     configTargetLabel() {
+      if (this.configurationScope === 'room') {
+        return this.$t('mods.config.roomTarget', { count: this.effectiveWorldIds.length });
+      }
       const target = this.targetName || this.resolvedTargetName || this.targetId || this.resolvedTargetId;
       return target
         ? this.$t('mods.config.target', { target })
         : this.$t('mods.config.targetUnknown');
+    },
+    saveJobTitle() {
+      if (this.saveJob?.status === 'succeeded') return this.$t('mods.config.feedback.saveCompletedTitle');
+      if (this.saveJob?.status === 'failed' || this.saveJob?.status === 'canceled') return this.$t('mods.config.feedback.saveFailedTitle');
+      return this.$t('mods.config.feedback.savingTitle');
+    },
+    saveJobDescription() {
+      if (this.saveJob?.status === 'succeeded') return this.$t('mods.config.feedback.saved');
+      if (this.saveJob?.status === 'failed' || this.saveJob?.status === 'canceled') {
+        return this.saveJob?.error?.message || this.saveJob?.message || this.$t('mods.config.feedback.saveFailedDescription');
+      }
+      return this.$t('mods.config.feedback.savingDescription');
     },
     // 所有配置选项(已扁平化)
     allOptions() {
@@ -291,10 +342,12 @@ export default {
     },
     // 重置组件状态
     resetComponentState() {
+      this.configRequestId += 1;
       this.isInitialized = false;
       this.loading = false;
       this.loadFailure = null;
       this.saving = false;
+      this.saveJob = null;
       this.configForm = {};
       this.originalConfig = {};
       this.defaultConfig = {};
@@ -302,6 +355,7 @@ export default {
       this.customOverrides = {};
       this.resetRequested = false;
       this.configRevision = '';
+      this.configWorldRevisions = { ...this.expectedRevisions };
       this.configuredEnabled = true;
       this.topologyRevision = '';
       this.resolvedTargetId = '';
@@ -313,6 +367,7 @@ export default {
     async initializeConfig() {
       if (this.isInitialized) return;
       if (!this.modInfo) return;
+      const requestId = this.configRequestId;
       
       this.isInitialized = true;
       this.loading = true;
@@ -326,36 +381,39 @@ export default {
       this.resetRequested = false;
       
       try {
-        try {
-          const topology = await modApi.getRoomTopology(this.roomId);
-          this.topologyRevision = topology?.revision || topology?.topologyRevision || '';
-          const placement = (topology?.placements || []).find(item => item.worldId === this.worldId);
-          const target = (topology?.targets || []).find(item => item.id === placement?.appliedTargetId);
-          this.resolvedTargetId = placement?.appliedTargetId || '';
-          this.resolvedTargetName = target?.name || '';
-        } catch {
-          // Older local backends do not expose topology metadata.
-        }
-        const response = await modApi.getModConfig({
-          roomId: this.roomId,
-          worldId: this.worldId,
-          modid: this.modId,
-          mod: this.modInfo
-        });
+        const [response, topology] = await Promise.all([
+          modApi.getModConfig({
+            roomId: this.roomId,
+            worldId: this.worldId,
+            modid: this.modId,
+            mod: this.modInfo
+          }),
+          this.expectedTopologyRevision
+            ? Promise.resolve(null)
+            : modApi.getRoomTopology(this.roomId).catch(() => null)
+        ]);
+        if (requestId !== this.configRequestId) return;
+        this.topologyRevision = this.expectedTopologyRevision || topology?.revision || topology?.topologyRevision || '';
+        const placement = (topology?.placements || []).find(item => item.worldId === this.worldId);
+        const target = (topology?.targets || []).find(item => item.id === placement?.appliedTargetId);
+        this.resolvedTargetId = this.targetId || placement?.appliedTargetId || '';
+        this.resolvedTargetName = this.targetName || target?.name || '';
         this.resolvedModInfo = response.modinfo;
         const configuration = response.modinfo.configuration || {};
         this.userCustomConfig = configuration.values || {};
         this.customOverrides = configuration.overrides || {};
         this.configRevision = configuration.revision || '';
+        this.configWorldRevisions = { ...this.configWorldRevisions, [this.worldId]: this.configRevision };
         this.configuredEnabled = configuration.enabled !== false;
         if (this.activeModInfo.configuration_options) {
           this.initializeConfigFromData(this.activeModInfo.configuration_options);
         }
       } catch (error) {
+        if (requestId !== this.configRequestId) return;
         this.isInitialized = false;
         this.loadFailure = createModFailure('mods.errors.config', error);
       } finally {
-        this.loading = false;
+        if (requestId === this.configRequestId) this.loading = false;
       }
     },
     
@@ -481,13 +539,24 @@ export default {
     // 保存配置
     async saveConfig() {
       if (this.saving) return;
+      const requestId = this.configRequestId;
       const prepared = this.prepareConfigForSubmit(this.configForm);
-      let changedConfig = Object.fromEntries(
-        Object.entries(prepared).filter(([key, value]) =>
-          JSON.stringify(value) !== JSON.stringify(this.originalConfig[key])
-        )
-      );
-      if (this.resetRequested) {
+      let changedConfig;
+      if (this.configurationScope === 'room') {
+        changedConfig = Object.fromEntries(
+          this.allOptions.map(option => [
+            option.name,
+            prepared[option.name] === undefined ? null : prepared[option.name]
+          ])
+        );
+      } else {
+        changedConfig = Object.fromEntries(
+          Object.entries(prepared).filter(([key, value]) =>
+            JSON.stringify(value) !== JSON.stringify(this.originalConfig[key])
+          )
+        );
+      }
+      if (this.resetRequested && this.configurationScope !== 'room') {
         changedConfig = Object.fromEntries(
           Object.keys(this.customOverrides)
             .filter(key => this.findOptionByName(key))
@@ -500,13 +569,14 @@ export default {
         }
       }
       const enabled = this.activeModInfo?.configuration?.enabled ?? this.configuredEnabled;
-      if (Object.keys(changedConfig).length === 0 && enabled === this.configuredEnabled) {
+      if (this.configurationScope !== 'room' && Object.keys(changedConfig).length === 0 && enabled === this.configuredEnabled) {
         this.resetRequested = false;
         toast.info(this.$t('mods.config.feedback.noChanges'));
         return;
       }
 
       this.saving = true;
+      this.saveJob = { status: 'running' };
       const customConfigData = {
         roomId: this.roomId,
         worldId: this.worldId,
@@ -519,48 +589,72 @@ export default {
       // 只使用新接口保存用户自定义配置
       try {
         const result = await this.persistConfig(customConfigData);
-        if (result.mode === 'legacy') await this.getUserCustomConfig();
-        this.originalConfig = JSON.parse(JSON.stringify(this.configForm));
+        if (requestId !== this.configRequestId) return;
+        this.saveJob = {
+          ...(this.saveJob || {}),
+          status: result?.result?.status || 'succeeded',
+          progress: 100
+        };
+        const saved = result?.result || {};
+        const revisions = { ...(saved.revisions || {}) };
+        if (saved.revision) revisions[this.worldId] = saved.revision;
+        this.configWorldRevisions = { ...this.configWorldRevisions, ...revisions };
+        this.configRevision = revisions[this.worldId] || this.configRevision;
+        const overrides = { ...this.customOverrides };
+        for (const [key, value] of Object.entries(changedConfig)) {
+          if (value === null) delete overrides[key];
+          else overrides[key] = value;
+        }
+        this.customOverrides = overrides;
+        this.userCustomConfig = { ...this.defaultConfig, ...overrides };
+        this.configForm = { ...prepared };
+        this.originalConfig = { ...prepared };
         this.resetRequested = false;
-
+        this.resolvedModInfo = {
+          ...this.activeModInfo,
+          configuration: {
+            ...this.activeModInfo?.configuration,
+            revision: this.configRevision,
+            values: this.userCustomConfig,
+            overrides
+          }
+        };
         this.$emit('config-updated', {
+          roomId: this.roomId,
           modId: this.modId,
-          configData: this.configForm
+          configData: this.configForm,
+          revisions
         });
-
-        this.dialogVisible = false;
-        toast.success(this.$t(result.mode === 'publication' ? 'mods.config.feedback.publicationSubmitted' : 'mods.config.feedback.saved'));
+        toast.success(this.$t('mods.config.feedback.saved'));
       } catch (error) {
+        if (requestId !== this.configRequestId) return;
+        this.saveJob = {
+          ...(this.saveJob || {}),
+          status: error?.code === 'JOB_CANCELED' ? 'canceled' : 'failed',
+          progress: 100,
+          error: { message: formatModFailure(this.$t, createModFailure('mods.errors.saveConfig', error)) }
+        };
         toast.error(formatModFailure(this.$t, createModFailure('mods.errors.saveConfig', error)));
       } finally {
-        this.saving = false;
+        if (requestId === this.configRequestId) this.saving = false;
       }
     },
 
     async persistConfig(customConfigData) {
-      const publicationInput = {
-        roomId: this.roomId,
-        action: 'configure',
-        modId: this.modId,
-        worldIds: [this.worldId],
-        enabled: customConfigData.enabled,
-        expectedConfigurationRevision: customConfigData.expectedRevision,
-        patch: customConfigData.configuration_options,
-        ...(this.topologyRevision ? { expectedTopologyRevision: this.topologyRevision } : {})
-      };
-      const response = await modApi.previewModPublication(publicationInput);
-      const plan = response?.plan || response;
-      if (!plan?.ready || !plan?.planHash) {
-        const detail = (plan?.blockers || []).map(blocker => blocker.message || blocker.code).filter(Boolean).join('; ');
-        throw new Error(detail || this.$t('mods.addToRoom.planBlocked'));
-      }
-      const publication = await modApi.createModPublication({
-        ...publicationInput,
-        planHash: plan.planHash,
-        expectedTopologyRevision: plan.topologyRevision || this.topologyRevision,
-        confirmation: plan.planHash
+      const requestId = this.configRequestId;
+      const targetId = this.targetId || this.resolvedTargetId;
+      return modApi.saveModConfigurationForWorld({
+        ...customConfigData,
+        sourceWorldId: this.configurationScope === 'room' ? this.worldId : '',
+        worldIds: this.effectiveWorldIds,
+        expectedRevisions: this.configurationScope === 'room' ? this.configWorldRevisions : {},
+        preserveEnabled: this.configurationScope === 'room',
+        targetId,
+        expectedTopologyRevision: this.topologyRevision,
+        onProgress: job => {
+          if (requestId === this.configRequestId) this.saveJob = job;
+        }
       });
-      return { mode: 'publication', publication };
     },
     
     // 准备提交数据
@@ -636,6 +730,44 @@ export default {
   padding-right: 12px;
 }
 
+.mod-config-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.save-state {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+}
+
+.save-state > :first-child {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.save-state-copy {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-state-error {
+  color: var(--destructive);
+}
+
+.save-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .loading-container {
   display: flex;
   min-height: 240px;
@@ -666,6 +798,14 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .mod-config-footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .save-actions {
+    justify-content: flex-end;
+  }
+
   .config-form {
     grid-template-columns: minmax(0, 1fr);
   }

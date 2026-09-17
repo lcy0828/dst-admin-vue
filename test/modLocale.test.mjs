@@ -84,6 +84,45 @@ test('mod failures keep a stable message key and untouched technical detail', ()
   )
 })
 
+test('mod failures prefer backend operation reasons over generic HTTP messages', () => {
+  const error = new Error('Mod operation failed')
+  error.details = { reason: 'I/O Operation Failed' }
+  error.requestId = 'request-io'
+  const failure = createModFailure('mods.errors.update', error)
+
+  assert.equal(failure.detail, 'I/O Operation Failed')
+  assert.equal(
+    formatModFailure(translator('zh-CN'), failure),
+    '更新模组失败：I/O Operation Failed（请求 ID：request-io）'
+  )
+})
+
+test('mod failures expose asynchronous job IDs for support', () => {
+  const error = new Error('The job failed: I/O Operation Failed')
+  error.code = 'JOB_FAILED'
+  error.detail = 'I/O Operation Failed'
+  error.context = { jobId: 'job-mod-io' }
+  const failure = createModFailure('mods.errors.update', error)
+
+  assert.equal(failure.jobId, 'job-mod-io')
+  assert.equal(
+    formatModFailure(translator('zh-CN'), failure),
+    '更新模组失败：I/O Operation Failed（任务 ID：job-mod-io）'
+  )
+})
+
+test('mod failures combine request and job IDs without repeating the message', () => {
+  const error = new Error('The job failed')
+  error.details = { reason: 'I/O Operation Failed' }
+  error.requestId = 'request-mod-io'
+  error.context = { jobId: 'job-mod-io' }
+
+  assert.equal(
+    formatModFailure(translator('en-US'), createModFailure('mods.errors.update', error)),
+    'Could not update the mod: I/O Operation Failed (request ID: request-mod-io; job ID: job-mod-io)'
+  )
+})
+
 test('mod failures preserve stable backend codes for localized remote errors', () => {
   const error = new Error('remote mutation unavailable')
   error.code = 'REMOTE_RUNTIME_MUTATION_UNAVAILABLE'
@@ -94,7 +133,7 @@ test('mod failures preserve stable backend codes for localized remote errors', (
   assert.equal(failure.requestId, 'request-1')
   assert.equal(
     formatModFailure(translator('en-US'), failure),
-    'The active runtime location cannot be modified directly; use room mod sync: remote mutation unavailable'
+    'The active runtime location cannot be modified directly; use room mod sync: remote mutation unavailable (request ID: request-1)'
   )
 })
 
