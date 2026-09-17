@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-通过 `VITE_API_PROXY_TARGET` 修改后端地址。详细步骤见[开发指南](https://github.com/lcy0828/dst-admin-go/blob/feature/v2-rebuild/docs/development.md)。
+通过 `VITE_API_PROXY_TARGET` 修改后端地址。详细步骤见[开发指南](https://github.com/lcy0828/dst-admin-go/blob/master/docs/development.md)。
 
 ## 检查与构建
 

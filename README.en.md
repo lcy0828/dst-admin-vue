@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Set `VITE_API_PROXY_TARGET` to change the backend address. See the [development guide](https://github.com/lcy0828/dst-admin-go/blob/feature/v2-rebuild/docs/development.en.md).
+Set `VITE_API_PROXY_TARGET` to change the backend address. See the [development guide](https://github.com/lcy0828/dst-admin-go/blob/master/docs/development.en.md).
 
 ## Checks and build
 
