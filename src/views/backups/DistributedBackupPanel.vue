@@ -20,6 +20,8 @@
 
     <RoomScopeSelect v-model="selectedRoomId" :rooms="rooms" :loading="loadingRooms" :disabled="operationRunning" />
 
+    <BackupSchedulePanel v-if="selectedRoomId && !isSystemCategory" :key="selectedRoomId" :room-id="selectedRoomId" />
+
     <Alert v-if="error" variant="destructive">
       <CircleAlert />
       <AlertTitle>{{ t('distributed.backups.loadFailed') }}</AlertTitle>
@@ -271,6 +273,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, DatabaseBackup, Download, Eye, Flame, History, RefreshCw, ShieldCheck, Snowflake, Trash2, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
+import BackupSchedulePanel from './BackupSchedulePanel.vue'
 import { backupsV2API, backupSetsV2API, roomsV2API } from '@/api/v2'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { confirmAction } from '@/lib/feedback'

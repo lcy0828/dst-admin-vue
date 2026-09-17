@@ -160,7 +160,7 @@ function mapTask(task, roomId, tasks = []) {
     const dependency = tasks.find(item => item.id === id)
     return { id, name: dependency?.name || id }
   })
-  const type = taskType(task.action)
+  const type = task.parameters?.rawCommand ? 'tmux_raw_command' : taskType(task.action)
   const args = taskArguments(task)
   const worldId = task.worldIds?.[0] || ''
   const commandId = task.parameters?.commandId || ''
@@ -187,6 +187,7 @@ function mapTask(task, roomId, tasks = []) {
     session_name: worldId,
     command_id: commandId,
     command_params: args,
+    raw_command: task.parameters?.rawCommand || '',
     tmux_task: type === 'tmux_command' ? {
       session_name: worldId,
       command_id: commandId,
@@ -257,16 +258,21 @@ function valueForParameter(value, parameter) {
 
 async function taskInput(data, room, existing = null) {
   if (data.type === 'shell') throw new Error('定时 Shell 已被后端安全策略禁用，请改用受控函数')
-  if (data.type === 'tmux_raw_command') throw new Error('定时 TMUX 原始命令已被后端安全策略禁用，请改用内建命令')
   let groupId = data.group_id
   if (!groupId || groupId === 0 || groupId === '0') groupId = (await ensureDefaultGroup(room)).id
   const parameters = {}
   const worldIds = []
   let action = data.target
-  if (data.type === 'tmux_command') {
+  if (data.type === 'tmux_raw_command') {
+    action = 'command.execute'
+    const world = room.worlds.find(item => item.id === data.session_name)
+    if (!world) throw new Error('请选择命令执行世界')
+    worldIds.push(world.id)
+    parameters.rawCommand = String(data.raw_command || '').trim()
+  } else if (data.type === 'tmux_command') {
     action = 'command.execute'
     const definition = commandCache.find(item => item.id === data.command_id)
-    if (!definition) throw new Error('请选择真实存在的内建命令')
+    if (!definition) throw new Error('请选择已有命令')
     if (!data.session_name) throw new Error('请选择命令执行世界')
     const selectedWorld = room.worlds.find(world => world.id === data.session_name || world.name === data.session_name || world.directoryName === data.session_name)
     if (!selectedWorld) throw new Error('所选命令执行世界不存在')

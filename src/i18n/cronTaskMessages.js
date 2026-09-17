@@ -22,7 +22,7 @@ export const cronTaskMessages = Object.freeze({
         enabled: '启用', disabled: '禁用', success: '成功', failed: '失败', new: 'NEW'
       },
       taskTypes: {
-        function: '受控函数', shell: 'Shell 命令', tmux_command: '内建命令', tmux_raw_command: 'TMUX 原始命令'
+        function: '受控函数', shell: 'Shell 命令', tmux_command: '命令模板', tmux_raw_command: '自定义 Lua 命令'
       },
       statuses: {
         queued: '等待执行', running: '执行中', success: '成功', succeeded: '成功', failed: '失败',
@@ -48,7 +48,7 @@ export const cronTaskMessages = Object.freeze({
       roomRestart: { name: '重启分片', description: '重启选中的分片；未选择时重启全部分片' },
       backupCreate: { name: '创建快照', description: '创建一致性房间快照' },
       backupPrune: { name: '清理快照', description: '按保留数量清理旧快照' },
-      commandExecute: { name: '执行内建命令', description: '执行低或中风险参数化命令' },
+      commandExecute: { name: '执行游戏命令', description: '执行命令模板或自定义 Lua 脚本' },
       notificationSend: { name: '发送游戏通知', description: '向房间内当前运行中的所有分片发送游戏内消息' },
       playerRefresh: { name: '刷新玩家', description: '采样分片玩家状态' },
       structuredLogRefresh: { name: '刷新结构化日志', description: '刷新分片结构化日志快照' },
@@ -116,14 +116,14 @@ export const cronTaskMessages = Object.freeze({
         cronDescription: '格式：秒 分 时 日 月 星期 [年]。示例：每 5 分钟执行一次为 0 */5 * * * *',
         taskType: '任务类型', function: '选择函数', selectFunction: '请选择函数', tmux: 'TMUX 命令',
         server: '选择服务器', selectServer: '请选择服务器', command: '选择命令', selectCommand: '请选择命令',
-        unavailableForSchedule: '（不可用于定时任务）', commandContent: '命令内容', commandParameters: '命令参数',
+        rawCommand: '自定义 Lua 命令', rawDescription: '在所选世界的游戏控制台执行 Lua。支持多行脚本，也可选择命令设置中保存的模板。', commandContent: '命令内容', commandParameters: '命令参数',
         select: '请选择', parameterValue: '参数值', example: '示例：{value}', functionParameters: '函数参数',
         timeout: '超时设置（秒）', timeoutDescription: '后端允许 5–3600 秒，默认 300 秒。',
         retries: '重试次数', retriesDescription: '任务失败后自动重试的次数，0 表示不重试。',
         retryInterval: '重试间隔（秒）', dependencies: '依赖任务', dependenciesDescription: '当前任务会在所选依赖任务全部成功后执行，请避免循环依赖。',
         enabled: '启用任务', enabledDescription: '禁用后调度器不会自动执行此任务。'
       },
-      validation: {
+      validation: { rawRequired: '请选择世界并填写 Lua 命令',
         nameRequired: '请输入任务名称', nameLength: '长度应在 2 到 50 个字符之间',
         descriptionLength: '描述不能超过 200 个字符', cronRequired: '请输入 Cron 表达式',
         targetRequired: '请选择执行目标', tmuxTargetRequired: '请选择服务器和 TMUX 命令',
@@ -188,7 +188,7 @@ export const cronTaskMessages = Object.freeze({
         enabled: 'Enabled', disabled: 'Disabled', success: 'Success', failed: 'Failed', new: 'NEW'
       },
       taskTypes: {
-        function: 'Controlled function', shell: 'Shell command', tmux_command: 'Built-in command', tmux_raw_command: 'Raw TMUX command'
+        function: 'Controlled function', shell: 'Shell command', tmux_command: 'Command template', tmux_raw_command: 'Custom Lua command'
       },
       statuses: {
         queued: 'Queued', running: 'Running', success: 'Success', succeeded: 'Success', failed: 'Failed',
@@ -214,7 +214,7 @@ export const cronTaskMessages = Object.freeze({
       roomRestart: { name: 'Restart shards', description: 'Restart selected shards, or every shard when none are selected' },
       backupCreate: { name: 'Create snapshot', description: 'Create a consistent room snapshot' },
       backupPrune: { name: 'Prune snapshots', description: 'Remove old snapshots according to the retention count' },
-      commandExecute: { name: 'Run built-in command', description: 'Run a parameterized low- or medium-risk command' },
+      commandExecute: { name: 'Run game command', description: 'Run a command template or custom Lua script' },
       notificationSend: { name: 'Send game notification', description: 'Send an in-game message to every running Shard in the room' },
       playerRefresh: { name: 'Refresh players', description: 'Sample player state from the shards' },
       structuredLogRefresh: { name: 'Refresh structured logs', description: 'Refresh the structured log snapshot for each shard' },
@@ -282,14 +282,14 @@ export const cronTaskMessages = Object.freeze({
         cronDescription: 'Format: second minute hour day month weekday [year]. Example: every 5 minutes is 0 */5 * * * *',
         taskType: 'Task type', function: 'Select function', selectFunction: 'Select a function', tmux: 'TMUX command',
         server: 'Select server', selectServer: 'Select a server', command: 'Select command', selectCommand: 'Select a command',
-        unavailableForSchedule: ' (unavailable for scheduled tasks)', commandContent: 'Command content', commandParameters: 'Command parameters',
+        rawCommand: 'Custom Lua command', rawDescription: 'Execute Lua in the selected game world. Multiline scripts and saved command templates are supported.', commandContent: 'Command content', commandParameters: 'Command parameters',
         select: 'Select', parameterValue: 'Parameter value', example: 'Example: {value}', functionParameters: 'Function parameters',
         timeout: 'Timeout (seconds)', timeoutDescription: 'The backend accepts 5–3600 seconds. The default is 300 seconds.',
         retries: 'Retries', retriesDescription: 'Automatic retries after failure. Set to 0 to disable retries.',
         retryInterval: 'Retry interval (seconds)', dependencies: 'Dependencies', dependenciesDescription: 'This task runs after every selected dependency succeeds. Avoid circular dependencies.',
         enabled: 'Enable task', enabledDescription: 'Disabled tasks are not run automatically by the scheduler.'
       },
-      validation: {
+      validation: { rawRequired: 'Select a world and enter a Lua command',
         nameRequired: 'Enter a task name', nameLength: 'Use 2 to 50 characters',
         descriptionLength: 'The description cannot exceed 200 characters', cronRequired: 'Enter a Cron expression',
         targetRequired: 'Select an execution target', tmuxTargetRequired: 'Select a server and TMUX command',

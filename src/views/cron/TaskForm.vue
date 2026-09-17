@@ -12,17 +12,18 @@
             <TabsContent value="basic"><FieldGroup class="mt-4">
               <Field :data-invalid="Boolean(formErrors.name)"><FieldLabel for="task-name">{{ text('form.fields.name') }}</FieldLabel><UiInput id="task-name" v-model="taskForm.name" :aria-invalid="Boolean(formErrors.name)" :placeholder="text('form.fields.namePlaceholder')" /><FieldError v-if="formErrors.name">{{ formErrorText(formErrors.name) }}</FieldError></Field>
               <Field :data-invalid="Boolean(formErrors.description)"><FieldLabel for="task-description">{{ text('form.fields.description') }}</FieldLabel><UiTextarea id="task-description" v-model="taskForm.description" rows="3" :aria-invalid="Boolean(formErrors.description)" :placeholder="text('form.fields.descriptionPlaceholder')" /><FieldError v-if="formErrors.description">{{ formErrorText(formErrors.description) }}</FieldError></Field>
-              <Field><FieldLabel for="task-group">{{ text('form.fields.group') }}</FieldLabel><UiSelect :model-value="String(taskForm.group_id)" @update:model-value="taskForm.group_id = Number($event)"><SelectTrigger id="task-group"><SelectValue :placeholder="text('form.fields.selectGroup')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="0">{{ text('common.values.noGroup') }}</SelectItem><SelectItem v-for="group in groupList" :key="group.id" :value="String(group.id)">{{ groupLabel(group.name) }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+              <Field><FieldLabel for="task-group">{{ text('form.fields.group') }}</FieldLabel><UiSelect :model-value="String(taskForm.group_id)" @update:model-value="taskForm.group_id = $event"><SelectTrigger id="task-group"><SelectValue :placeholder="text('form.fields.selectGroup')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="0">{{ text('common.values.noGroup') }}</SelectItem><SelectItem v-for="group in groupList" :key="group.id" :value="String(group.id)">{{ groupLabel(group.name) }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
               <Field :data-invalid="Boolean(formErrors.spec)"><FieldLabel for="task-spec">{{ text('form.fields.cron') }}</FieldLabel><UiInput id="task-spec" v-model="taskForm.spec" class="font-mono" :aria-invalid="Boolean(formErrors.spec)" :placeholder="text('form.fields.cronPlaceholder')" /><FieldError v-if="formErrors.spec">{{ formErrorText(formErrors.spec) }}</FieldError><FieldDescription>{{ text('form.fields.cronDescription') }}</FieldDescription></Field>
               <FieldSet><FieldLegend variant="label">{{ text('form.fields.taskType') }}</FieldLegend><RadioGroup v-model="taskForm.type" class="grid gap-3 sm:grid-cols-2"><Field v-for="option in typeOptions" :key="option.value" orientation="horizontal"><RadioGroupItem :id="`task-type-${option.value}`" :value="option.value" /><FieldLabel :for="`task-type-${option.value}`">{{ option.label }}</FieldLabel></Field></RadioGroup></FieldSet>
 
               <Field v-if="taskForm.type === 'function'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="task-function">{{ text('form.fields.function') }}</FieldLabel><UiSelect :model-value="taskForm.target" @update:model-value="handleFunctionChange"><SelectTrigger id="task-function" :aria-invalid="Boolean(formErrors.target)"><SelectValue :placeholder="text('form.fields.selectFunction')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="func in functionList" :key="func.name" :value="func.name">{{ functionOptionLabel(func) }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldError v-if="formErrors.target">{{ formErrorText(formErrors.target) }}</FieldError></Field>
 
-              <FieldSet v-else-if="taskForm.type === 'tmux_command'"><FieldLegend>{{ text('form.fields.tmux') }}</FieldLegend><FieldGroup>
+              <FieldSet v-else-if="['tmux_command', 'tmux_raw_command'].includes(taskForm.type)"><FieldLegend>{{ text('form.fields.tmux') }}</FieldLegend><FieldGroup>
                 <Field><FieldLabel for="tmux-session">{{ text('form.fields.server') }}</FieldLabel><UiSelect v-model="tmuxSession" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-session"><SelectValue :placeholder="text('form.fields.selectServer')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="session in tmuxSessions" :key="session.session_name" :value="session.session_name">{{ session.archive_name }} - {{ session.world_name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-                <Field><FieldLabel for="tmux-command">{{ text('form.fields.command') }}</FieldLabel><UiSelect v-model="tmuxCommandId" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-command"><SelectValue :placeholder="text('form.fields.selectCommand')" /></SelectTrigger><SelectContent><SelectGroup v-for="group in tmuxCommandGroups" :key="group.type"><SelectLabel>{{ group.type }}</SelectLabel><SelectItem v-for="command in group.commands" :key="command.id" :value="String(command.id)" :disabled="command.risk === 'high' || command.risk === 'critical'">{{ command.name }}{{ command.risk === 'high' || command.risk === 'critical' ? text('form.fields.unavailableForSchedule') : '' }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-                <Field v-if="currentTmuxCommand"><FieldLabel for="tmux-command-preview">{{ text('form.fields.commandContent') }}</FieldLabel><UiTextarea id="tmux-command-preview" :model-value="currentTmuxCommand.script || currentTmuxCommand.command" rows="2" readonly /></Field>
-                <Field v-if="currentTmuxCommand && currentTmuxCommand.needs_params" :data-invalid="Boolean(formErrors.target)"><FieldTitle>{{ text('form.fields.commandParameters') }}</FieldTitle><div class="flex flex-col gap-2"><Field v-for="(parameter, index) in currentTmuxCommand.parameters" :key="parameter.name"><FieldLabel :for="`command-parameter-${parameter.name}`">{{ parameter.label || parameter.name }}</FieldLabel><UiSelect v-if="parameter.type === 'enum'" :model-value="String(tmuxParams[index] || '')" @update:model-value="updateCommandParameter(index, $event)"><SelectTrigger :id="`command-parameter-${parameter.name}`" :aria-invalid="Boolean(formErrors.target)"><SelectValue :placeholder="parameter.description || text('form.fields.select')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="option in parameter.options" :key="option" :value="option">{{ option }}</SelectItem></SelectGroup></SelectContent></UiSelect><UiInput v-else :id="`command-parameter-${parameter.name}`" v-model="tmuxParams[index]" :type="parameter.type === 'integer' ? 'number' : 'text'" :min="parameter.minimum" :max="parameter.maximum" :aria-invalid="Boolean(formErrors.target)" :placeholder="parameter.description || text('form.fields.parameterValue')" @input="updateTmuxTarget" /></Field></div><FieldError v-if="formErrors.target">{{ formErrorText(formErrors.target) }}</FieldError><FieldDescription v-if="currentTmuxCommand.example">{{ text('form.fields.example', { value: currentTmuxCommand.example }) }}</FieldDescription></Field>
+                <Field v-if="taskForm.type === 'tmux_command'"><FieldLabel for="tmux-command">{{ text('form.fields.command') }}</FieldLabel><UiSelect v-model="tmuxCommandId" @update:model-value="updateTmuxTarget"><SelectTrigger id="tmux-command"><SelectValue :placeholder="text('form.fields.selectCommand')" /></SelectTrigger><SelectContent><SelectGroup v-for="group in tmuxCommandGroups" :key="group.type"><SelectLabel>{{ group.type }}</SelectLabel><SelectItem v-for="command in group.commands" :key="command.id" :value="String(command.id)">{{ command.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+                <Field v-if="taskForm.type === 'tmux_command' && currentTmuxCommand"><FieldLabel for="tmux-command-preview">{{ text('form.fields.commandContent') }}</FieldLabel><UiTextarea id="tmux-command-preview" :model-value="currentTmuxCommand.script || currentTmuxCommand.command" rows="2" readonly /></Field>
+                <Field v-if="taskForm.type === 'tmux_command' && currentTmuxCommand && currentTmuxCommand.needs_params" :data-invalid="Boolean(formErrors.target)"><FieldTitle>{{ text('form.fields.commandParameters') }}</FieldTitle><div class="flex flex-col gap-2"><Field v-for="(parameter, index) in currentTmuxCommand.parameters" :key="parameter.name"><FieldLabel :for="`command-parameter-${parameter.name}`">{{ parameter.label || parameter.name }}</FieldLabel><UiSelect v-if="parameter.type === 'enum'" :model-value="String(tmuxParams[index] || '')" @update:model-value="updateCommandParameter(index, $event)"><SelectTrigger :id="`command-parameter-${parameter.name}`" :aria-invalid="Boolean(formErrors.target)"><SelectValue :placeholder="parameter.description || text('form.fields.select')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="option in parameter.options" :key="option" :value="option">{{ option }}</SelectItem></SelectGroup></SelectContent></UiSelect><UiInput v-else :id="`command-parameter-${parameter.name}`" v-model="tmuxParams[index]" :type="parameter.type === 'integer' ? 'number' : 'text'" :min="parameter.minimum" :max="parameter.maximum" :aria-invalid="Boolean(formErrors.target)" :placeholder="parameter.description || text('form.fields.parameterValue')" @input="updateTmuxTarget" /></Field></div><FieldError v-if="formErrors.target">{{ formErrorText(formErrors.target) }}</FieldError><FieldDescription v-if="currentTmuxCommand.example">{{ text('form.fields.example', { value: currentTmuxCommand.example }) }}</FieldDescription></Field>
+                <Field v-if="taskForm.type === 'tmux_raw_command'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="raw-command">{{ text('form.fields.rawCommand') }}</FieldLabel><UiTextarea id="raw-command" v-model="rawCommand" rows="6" :aria-invalid="Boolean(formErrors.target)" placeholder="c_save()" /><FieldDescription>{{ text('form.fields.rawDescription') }}</FieldDescription><FieldError v-if="formErrors.target">{{ formErrorText(formErrors.target) }}</FieldError></Field>
               </FieldGroup></FieldSet>
 
               <Field v-if="taskForm.type === 'function' && currentFunction?.param_types?.length"><FieldTitle>{{ text('form.fields.functionParameters') }}</FieldTitle><div class="flex flex-col gap-2"><InputGroup v-for="(parameter, index) in currentFunction.param_types" :key="parameter"><InputGroupAddon>{{ parameter }}</InputGroupAddon><InputGroupInput v-model="taskForm.args[index]" :type="parameter === 'keep' ? 'number' : 'text'" :min="parameter === 'keep' ? 1 : undefined" :max="parameter === 'keep' ? 100 : undefined" :aria-label="parameter" :placeholder="text('form.fields.parameterValue')" /></InputGroup></div></Field>
@@ -97,6 +98,7 @@ export default {
       tmuxCommands: [],
       tmuxCommandGroups: [],
       tmuxSession: '',
+      rawCommand: '',
       tmuxCommandId: '',
       tmuxParams: [],
       currentTmuxCommand: null,
@@ -138,7 +140,7 @@ export default {
       return typeof state === 'string' ? state : (state?.value || 'zh-CN');
     },
     typeOptions() {
-      return ['function', 'tmux_command'].map(value => ({
+      return ['function', 'tmux_command', 'tmux_raw_command'].map(value => ({
         value,
         label: cronTaskTypeLabel(value, this.activeLocale)
       }));
@@ -382,6 +384,9 @@ export default {
               }
             }
 
+            this.rawCommand = taskData.raw_command || '';
+            this.tmuxSession = taskData.session_name || '';
+
             // 处理TMUX相关数据
             if (taskData.type === 'tmux_command') {
               // 优先使用新的直接字段
@@ -461,6 +466,7 @@ export default {
               description: taskData.description,
               group_id: taskData.group_id || 0,
               spec: taskData.spec,
+              timezone: taskData.timezone,
               type: taskData.type,
               target: taskData.target,
               args: args,
@@ -581,6 +587,7 @@ export default {
       if (!(this.taskForm.target || '').trim() && this.taskForm.type === 'function') errors.target = 'form.validation.targetRequired';
       if (this.taskForm.type === 'tmux_command' && (!this.tmuxSession || !this.tmuxCommandId)) errors.target = 'form.validation.tmuxTargetRequired';
       if (this.taskForm.type === 'tmux_command' && this.currentTmuxCommand?.parameters?.some((parameter, index) => parameter.required && (this.tmuxParams[index] === '' || this.tmuxParams[index] == null))) errors.target = 'form.validation.commandParametersRequired';
+      if (this.taskForm.type === 'tmux_raw_command' && (!this.tmuxSession || !this.rawCommand.trim())) errors.target = 'form.validation.rawRequired';
       if (this.taskForm.timeout < 5 || this.taskForm.timeout > 3600) errors.timeout = 'form.validation.timeoutRange';
       this.formErrors = errors;
       if (Object.keys(errors).length > 0) this.activeTab = 'basic';
@@ -611,6 +618,11 @@ export default {
               command_id: this.tmuxTaskData.command_id,
               command_params: this.tmuxTaskData.command_params
             };
+          }
+
+          if (this.taskForm.type === 'tmux_raw_command') {
+            this.taskForm.session_name = this.tmuxSession;
+            this.taskForm.raw_command = this.rawCommand;
           }
 
           const apiMethod = this.isEdit
