@@ -1,7 +1,7 @@
 <template>
   <section class="flex min-w-0 flex-col gap-3" aria-labelledby="room-log-overview-title">
     <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div>
+      <div v-if="!embedded">
         <div class="flex flex-wrap items-center gap-2">
           <h2 id="room-log-overview-title" class="text-base font-semibold">{{ t('distributed.roomLogs.title') }}</h2>
           <Badge v-if="snapshot" variant="outline">
@@ -9,6 +9,11 @@
           </Badge>
         </div>
         <p class="mt-0.5 text-sm text-muted-foreground">{{ t('distributed.roomLogs.description') }}</p>
+      </div>
+      <div v-else class="flex items-center gap-2">
+        <Badge v-if="snapshot" variant="outline">
+          {{ t('distributed.roomLogs.available', { available: snapshot.available, total: snapshot.worlds?.length || 0 }) }}
+        </Badge>
       </div>
       <form class="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl" @submit.prevent="loadLogs">
         <Field class="min-w-0 flex-1">
@@ -115,7 +120,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 
-const props = defineProps({ roomId: { type: String, default: '' } })
+const props = defineProps({
+  roomId: { type: String, default: '' },
+  embedded: { type: Boolean, default: false }
+})
 const { locale, t } = useI18n()
 const snapshot = ref(null)
 const query = ref('')
@@ -165,4 +173,6 @@ watch(() => props.roomId, () => {
   snapshot.value = null
   void loadLogs()
 }, { immediate: true })
+
+defineExpose({ loadLogs })
 </script>

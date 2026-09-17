@@ -3,7 +3,6 @@
     <header class="page-heading">
       <div>
         <h1>{{ $t('logs.title') }}</h1>
-        <p>{{ $t('logs.query.subtitle') }}</p>
       </div>
       <UiButton :disabled="refreshLoading || sourceLoading || !queryParams.archive" @click="refreshLogs">
         <Spinner v-if="refreshLoading" data-icon="inline-start" />
@@ -14,11 +13,11 @@
 
     <Card>
       <CardHeader>
-        <div><CardTitle>{{ $t('logs.query.filters') }}</CardTitle><CardDescription>{{ $t('logs.query.filtersDescription') }}</CardDescription></div>
+        <CardTitle>{{ $t('logs.query.filters') }}</CardTitle>
       </CardHeader>
       <CardContent>
         <FieldGroup class="filter-grid">
-          <Field><FieldLabel for="log-archive-filter">{{ $t('logs.query.archive') }}</FieldLabel><UiSelect v-model="queryParams.archive" :disabled="sourceLoading || worldsLoading" @update:model-value="handleArchiveChange"><SelectTrigger id="log-archive-filter"><SelectValue :placeholder="sourceLoading ? $t('logs.query.loadingArchive') : $t('logs.query.selectArchive')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="item in archives" :key="item.id" :value="item.id">{{ item.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+          <RoomScopeSelect v-model="queryParams.archive" :rooms="archives" :loading="sourceLoading" :disabled="worldsLoading" @update:model-value="handleArchiveChange" />
           <Field><FieldLabel for="log-world-filter">{{ $t('logs.query.world') }}</FieldLabel><UiSelect v-model="queryParams.world" :disabled="sourceLoading || worldsLoading || !queryParams.archive" @update:model-value="handleWorldChange"><SelectTrigger id="log-world-filter"><SelectValue :placeholder="worldsLoading ? $t('logs.query.loadingWorld') : $t('logs.query.selectWorld')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="world in worlds" :key="world.id" :value="world.id">{{ world.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           <Field><FieldLabel for="log-type-filter">{{ $t('logs.type') }}</FieldLabel><UiSelect v-model="queryTypeModel"><SelectTrigger id="log-type-filter"><SelectValue :placeholder="$t('logs.query.selectType')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="type in localizedLogTypes" :key="type.type || '__all__'" :value="type.type || '__all__'">{{ type.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           <Field class="query-field"><FieldLabel for="log-query-input">{{ $t('logs.query.contentSearch') }}</FieldLabel><InputGroup><InputGroupInput id="log-query-input" v-model="queryParams.query" maxlength="256" :placeholder="$t('logs.query.contentPlaceholder')" @keyup.enter="queryLogs(true)" /><InputGroupAddon><SearchIcon /></InputGroupAddon></InputGroup></Field>
@@ -108,6 +107,8 @@
 </template>
 
 <script>
+import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { CircleCheckIcon, RefreshCwIcon, RotateCcwIcon, ScrollTextIcon, SearchIcon, Trash2Icon, TriangleAlertIcon } from '@lucide/vue'
 import { logApi, ruleManagementApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -129,12 +130,17 @@ import RegexTester from '@/components/RegexTester.vue';
 import { confirmAction } from '@/lib/feedback'
 import { logTypeLabel } from '@/i18n/logTypes'
 import { normalizeLogSources, shouldBootstrapStructuredLogs, structuredLogSnapshotKey } from '@/lib/logQuerySupport.mjs'
-import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
+import {
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  managementScopeTargetId
+} from '@/lib/managementScope.mjs'
 import { toast } from 'vue-sonner'
 
 export default {
   name: 'LogQueryView',
   components: {
+    RoomScopeSelect,
     Alert,
     AlertAction,
     AlertDescription,
@@ -206,6 +212,7 @@ export default {
         page: 1,
         page_size: 20
       },
+      managementScope: getManagementScope(),
       // 存档列表
       archives: [],
       // 世界列表
@@ -319,17 +326,18 @@ export default {
     }
   },
   mounted() {
-    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
     this.getArchives();
   },
   beforeUnmount() {
     this.sourceRequestSequence += 1
     this.queryRequestSequence += 1
     this.refreshRequestSequence += 1
-    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
   },
   methods: {
-    handleRuntimeTargetChange() {
+    handleManagementScopeChange(event) {
+      this.managementScope = event?.detail || getManagementScope();
       this.sourceRequestSequence += 1;
       this.queryRequestSequence += 1;
       this.refreshRequestSequence += 1;
@@ -358,17 +366,13 @@ export default {
       this.sourceLoading = true;
       this.sourceError = '';
       try {
-        const response = await logApi.getArchivesWithLogs();
+        const response = await logApi.getArchivesWithLogs(managementScopeTargetId(this.managementScope));
         if (requestSequence !== this.sourceRequestSequence) return;
         if (response?.status !== 200 || !Array.isArray(response.data)) {
           throw new Error(response?.msg || this.$t('logs.query.feedback.archiveResponseInvalid'));
         }
         this.archives = normalizeLogSources(response.data);
-        const requestedArchive = this.$route.query.archive;
-        const matchedArchive = this.archives.find(item => item.id === requestedArchive || item.name === requestedArchive)
-        this.queryParams.archive = matchedArchive
-          ? matchedArchive.id
-          : (this.archives[0]?.id || '');
+        this.queryParams.archive = preferredRoomId(this.archives, this.$route.query.roomId ?? this.$route.query.archive);
         await this.getWorlds(this.queryParams.archive);
       } catch (error) {
         if (requestSequence !== this.sourceRequestSequence) return;

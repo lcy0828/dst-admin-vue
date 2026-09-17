@@ -1,20 +1,42 @@
 import {
   jobsV2API,
   logRulesV2API,
-  roomsV2API,
   structuredLogsV2API
 } from './v2'
+import { getScopedRuntimeOverview } from './v2LegacyAdapters'
 import { buildStructuredLogFilter, inspectStructuredLogRefreshJob, normalizeStructuredLogList } from '../lib/logQuerySupport.mjs'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 
 const success = (data, msg = 'operation_succeeded') => adapterSuccess(data, msg)
 let archiveCatalog = []
+const archiveCatalogs = new Map()
+
+async function loadArchiveCatalog(targetId = '') {
+  const scopeKey = String(targetId || '').trim()
+  const overview = await getScopedRuntimeOverview(scopeKey)
+  const catalog = (overview.rooms || []).map(room => ({
+    id: room.id,
+    name: room.name,
+    directory_name: room.directoryName,
+    worlds: (room.worlds || []).map(world => ({
+      ...world,
+      id: world.id,
+      name: world.name,
+      directory_name: world.directoryName
+    }))
+  }))
+  archiveCatalogs.set(scopeKey, catalog)
+  archiveCatalog = catalog
+  return catalog
+}
 
 function resolveArchive(reference) {
   const value = typeof reference === 'object'
     ? reference.room_id || reference.roomId || reference.archive_name || reference.archive
     : reference
-  const room = archiveCatalog.find(item => item.id === value || item.name === value)
+  const catalogs = [archiveCatalog, ...archiveCatalogs.values()]
+  const room = catalogs.flat().find(item => item.id === value) ||
+    catalogs.flat().find(item => item.name === value)
   if (!room) throw adapterError('ROOM_NOT_FOUND', { context: { reference: value || '' } })
   return room
 }
@@ -78,14 +100,9 @@ function ruleInput(rule) {
 }
 
 export const realLogApi = {
-  async getActiveLogParsers() {
-    const response = await roomsV2API.list()
-    const rooms = (response.items || []).filter(room => room.managed)
-    const worldsByRoom = await Promise.all(rooms.map(async room => ({
-      room,
-      worlds: (await roomsV2API.worlds(room.id)).items || []
-    })))
-    const parsers = worldsByRoom.flatMap(({ room, worlds }) => worlds
+  async getActiveLogParsers(targetId = '') {
+    const rooms = await loadArchiveCatalog(targetId)
+    const parsers = rooms.flatMap(room => room.worlds
       .filter(world => world.status === 'running')
       .map(world => ({
         id: `${room.id}_${world.id}`,
@@ -93,7 +110,7 @@ export const realLogApi = {
         world_id: world.id,
         archive_name: room.name,
         world_name: world.name,
-        server_type: world.role === 'master' ? 'Forest' : world.role === 'caves' ? 'Caves' : 'Custom',
+        server_type: world.type === 'forest' ? 'Forest' : world.type === 'cave' ? 'Caves' : 'Custom',
         status: world.status,
         control_available: world.controlAvailable !== false,
         status_message: world.statusMessage || ''
@@ -101,23 +118,9 @@ export const realLogApi = {
     return success(parsers, 'active_worlds_loaded')
   },
 
-  async getArchivesWithLogs() {
-    const response = await roomsV2API.list()
-    const rooms = (response.items || []).filter(room => room.managed)
-    archiveCatalog = await Promise.all(rooms.map(async room => {
-      const worlds = await roomsV2API.worlds(room.id)
-      return {
-        id: room.id,
-        name: room.name,
-        directory_name: room.directoryName,
-        worlds: (worlds.items || []).map(world => ({
-          id: world.id,
-          name: world.name,
-          directory_name: world.directoryName
-        }))
-      }
-    }))
-    return success(archiveCatalog.map(room => ({
+  async getArchivesWithLogs(targetId = '') {
+    const catalog = await loadArchiveCatalog(targetId)
+    return success(catalog.map(room => ({
       room_id: room.id,
       archive_name: room.name,
       worlds: room.worlds.map(world => ({
@@ -135,9 +138,9 @@ export const realLogApi = {
     return success(normalizeStructuredLogList(response), 'logs_loaded')
   },
 
-  async getRoomOptions() {
-    await this.getArchivesWithLogs()
-    return archiveCatalog.map(room => ({ id: room.id, name: room.name }))
+  async getRoomOptions(targetId = '') {
+    const catalog = await loadArchiveCatalog(targetId)
+    return catalog.map(room => ({ id: room.id, name: room.name }))
   },
 
   async getLogTypes(reference) {

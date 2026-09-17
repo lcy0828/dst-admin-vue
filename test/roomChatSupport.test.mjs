@@ -32,7 +32,16 @@ test('chat response normalization keeps partial availability metadata', () => {
     unavailableWorlds: 1,
     startedAt: '2026-08-21T01:00:00Z',
     updatedAt: '2026-08-21T02:00:00Z',
-    problems: [{ worldId: 'caves' }]
+    problems: [{ worldId: 'caves' }],
+    historyAvailable: true,
+    pendingGenerations: 0,
+    unavailableGenerations: 0,
+    parseErrors: 0,
+    uncertainTimes: 0,
+    parseProblems: [],
+    syncState: 'partial',
+    syncMessage: 'agent offline',
+    lastSyncedAt: '2026-08-21T02:00:00Z'
   }), {
     items: [{ id: 'one' }],
     total: 1,
@@ -43,7 +52,16 @@ test('chat response normalization keeps partial availability metadata', () => {
     unavailableWorlds: 1,
     startedAt: '2026-08-21T01:00:00Z',
     updatedAt: '2026-08-21T02:00:00Z',
-    problems: [{ worldId: 'caves' }]
+    problems: [{ worldId: 'caves' }],
+    historyAvailable: true,
+    pendingGenerations: 0,
+    unavailableGenerations: 0,
+    parseErrors: 0,
+    uncertainTimes: 0,
+    parseProblems: [],
+    syncState: 'partial',
+    syncMessage: 'agent offline',
+    lastSyncedAt: '2026-08-21T02:00:00Z'
   })
 })
 
@@ -62,7 +80,19 @@ test('server workspace exposes room chat with shadcn composition', async () => {
   assert.match(panel, /entry\.occurredAt/)
   assert.match(panel, /chat\.columns\.runtime/)
   assert.match(panel, /chat\.startedAt/)
+  assert.match(panel, /chat\.lastSyncedAt/)
+  assert.match(panel, /historyPartialTitle/)
   assert.match(panel, /<Empty v-else-if=/)
   assert.match(panel, /chatLogsV2API\.list/)
   assert.match(api, /\/rooms\/\$\{encode\(roomId\)\}\/chat-logs/)
+})
+
+test('chat review metadata preserves parse and time problems independently of read completion', () => {
+  const list = normalizeChatLogList({ historyAvailable: true, syncState: 'review', pendingGenerations: 0,
+    parseErrors: 2, uncertainTimes: 3, unavailableGenerations: 1, parseProblems: ['Master / archive: byte 123'] })
+  assert.equal(list.syncState, 'review')
+  assert.equal(list.parseErrors, 2)
+  assert.equal(list.uncertainTimes, 3)
+  assert.equal(list.unavailableGenerations, 1)
+  assert.deepEqual(list.parseProblems, ['Master / archive: byte 123'])
 })

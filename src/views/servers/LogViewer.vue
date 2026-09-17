@@ -84,7 +84,8 @@
 <script>
 import { CircleAlert, Download, Info, RefreshCw, Search, X } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { roomsV2API, worldLogsV2API } from '@/api/v2';
+import { worldLogsV2API } from '@/api/v2';
+import { getScopedRuntimeOverview } from '@/api/v2LegacyAdapters';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
@@ -93,7 +94,11 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
-import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget';
+import {
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  managementScopeTargetId
+} from '@/lib/managementScope.mjs';
 
 export default {
   name: 'LogViewer',
@@ -132,6 +137,7 @@ export default {
       streamError: '',
       selectedWorld: this.defaultWorld || (this.worlds.length > 0 ? this.worlds[0].name : ''),
       searchQuery: '',
+      managementScope: getManagementScope(),
       autoScroll: true,
       eventSource: null,
       resolvedRoomId: '',
@@ -154,7 +160,8 @@ export default {
     }
   },
   methods: {
-    handleRuntimeTargetChange() {
+    handleManagementScopeChange(event) {
+      this.managementScope = event?.detail || getManagementScope();
       this.requestSequence += 1;
       this.closeEventSource();
       this.loading = false;
@@ -163,13 +170,13 @@ export default {
       this.refreshLogs();
     },
     formatWorldType(type) {
-      if (type === 'forest' || type === 'master') return this.$t('servers.list.worldTypes.forest');
+      if (type === 'forest') return this.$t('servers.list.worldTypes.forest');
       if (type === 'cave' || type === 'caves') return this.$t('servers.list.worldTypes.cave');
       return type || this.$t('servers.list.worldTypes.custom');
     },
     async resolveLogTarget() {
-      const roomResponse = await roomsV2API.list();
-      const room = (roomResponse.items || []).find(item =>
+      const overview = await getScopedRuntimeOverview(managementScopeTargetId(this.managementScope));
+      const room = (overview.rooms || []).find(item =>
         item.id === this.archiveName || item.name === this.archiveName || item.directoryName === this.archiveName
       );
       if (!room) throw new Error(this.$t('servers.liveLogs.feedback.roomNotFound', { room: this.archiveName }));
@@ -178,8 +185,7 @@ export default {
         item.id === this.selectedWorld || item.name === this.selectedWorld
       );
       const worldReference = providedWorld?.id || this.selectedWorld;
-      const worldResponse = await roomsV2API.worlds(room.id);
-      const world = (worldResponse.items || []).find(item =>
+      const world = (room.worlds || []).find(item =>
         item.id === worldReference || item.name === worldReference || item.directoryName === worldReference
       );
       if (!world) throw new Error(this.$t('servers.liveLogs.feedback.worldNotFound', { world: this.selectedWorld }));
@@ -318,11 +324,11 @@ export default {
     }
   },
   mounted() {
-    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
     this.refreshLogs();
   },
   beforeUnmount() {
-    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
     this.requestSequence += 1;
     this.closeEventSource();
   },

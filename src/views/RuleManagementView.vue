@@ -84,7 +84,11 @@ import { confirmAction } from '@/lib/feedback'
 import { logTypeLabel } from '@/i18n/logTypes'
 import { logRuleDescription, logRuleName } from '@/i18n/logRules'
 import { migrationReasonLabel } from '@/i18n/migrationReasons'
-import { getActiveRuntimeTarget, RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
+import {
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  managementScopeTargetId
+} from '@/lib/managementScope.mjs'
 import { toast } from 'vue-sonner'
 
 export default {
@@ -156,6 +160,7 @@ export default {
       },
       loadError: '',
       loadErrorContext: '',
+      managementScope: getManagementScope(),
       savingRule: false,
       migrationLoading: false,
       migrationApplying: false,
@@ -204,14 +209,15 @@ export default {
     }
   },
   mounted() {
-    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
     this.loadRooms();
   },
   beforeUnmount() {
-    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange);
+    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
   },
   methods: {
-    handleRuntimeTargetChange() {
+    handleManagementScopeChange(event) {
+      this.managementScope = event?.detail || getManagementScope();
       this.roomRequestSequence += 1;
       this.ruleRequestSequence += 1;
       this.rooms = [];
@@ -228,7 +234,7 @@ export default {
       this.loadErrorContext = '';
       this.loading.rooms = true;
       try {
-        this.rooms = await logApi.getRoomOptions();
+        this.rooms = await logApi.getRoomOptions(managementScopeTargetId(this.managementScope));
         if (requestSequence !== this.roomRequestSequence) return;
         if (this.rooms.length === 1) {
           this.selectedRoomId = this.rooms[0].id;
@@ -309,19 +315,19 @@ export default {
     async migrateLegacyRules() {
       if (this.migrationApplying || !this.migrationPreview?.ready) return
       const roomId = this.selectedRoomId
-      const runtimeTargetId = getActiveRuntimeTarget().id
+      const scopeTargetId = managementScopeTargetId(this.managementScope)
       const requestSequence = this.ruleRequestSequence
       this.migrationApplying = true
       try {
         const result = await ruleManagementApi.migrateLegacyRules(roomId)
         const imported = Number(result?.imported || 0)
         this.dialogVisible.migration = false
-        if (requestSequence !== this.ruleRequestSequence || roomId !== this.selectedRoomId || runtimeTargetId !== getActiveRuntimeTarget().id) {
+        if (requestSequence !== this.ruleRequestSequence || roomId !== this.selectedRoomId || scopeTargetId !== managementScopeTargetId(this.managementScope)) {
           toast.warning(this.$t('rules.management.feedback.importedOnPreviousTarget', { count: imported }))
           return
         }
         await this.getParserRulesList()
-        if (roomId !== this.selectedRoomId || runtimeTargetId !== getActiveRuntimeTarget().id) {
+        if (roomId !== this.selectedRoomId || scopeTargetId !== managementScopeTargetId(this.managementScope)) {
           toast.warning(this.$t('rules.management.feedback.importedTargetChanged', { count: imported }))
           return
         }

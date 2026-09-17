@@ -41,6 +41,10 @@
       </FieldGroup>
 
       <div class="chat-actions">
+        <UiButton v-if="historyAvailable" size="sm" variant="outline" :disabled="repairSubmitting || Boolean(activeRepair)" @click="repairHistory">
+          <Spinner v-if="repairSubmitting || activeRepair" data-icon="inline-start" />
+          {{ $t(activeRepair ? 'servers.workspace.chat.historyCatchingUp' : 'servers.workspace.chat.repairAction') }}
+        </UiButton>
         <UiButton size="sm" :disabled="loading" @click="applySearch">
           <Search data-icon="inline-start" />
           {{ $t('servers.workspace.chat.searchAction') }}
@@ -68,7 +72,13 @@
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.say'), count: counts.say }) }}</Badge>
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.whisper'), count: counts.whisper }) }}</Badge>
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.announcement'), count: counts.announcement }) }}</Badge>
-      <div v-if="startedAt || updatedAt" class="chat-summary-times">
+      <Badge v-if="historyAvailable" :variant="syncState === 'ready' ? 'outline' : 'secondary'">
+        {{ syncStateLabel }}
+      </Badge>
+      <div v-if="historyAvailable && lastSyncedAt" class="chat-summary-times">
+        <span>{{ $t('servers.workspace.chat.lastSyncedAt', { time: formatDateTime(lastSyncedAt) }) }}</span>
+      </div>
+      <div v-else-if="startedAt || updatedAt" class="chat-summary-times">
         <span v-if="startedAt">{{ $t('servers.workspace.chat.startedAt', { time: formatDateTime(startedAt) }) }}</span>
         <span v-if="updatedAt">{{ $t('servers.workspace.chat.updatedAt', { time: formatDateTime(updatedAt) }) }}</span>
       </div>
@@ -81,10 +91,25 @@
       <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="loadChatLogs">{{ $t('servers.workspace.chat.retry') }}</UiButton></AlertAction>
     </Alert>
 
+    <Alert v-else-if="historyAvailable && syncState === 'partial'">
+      <TriangleAlert />
+      <AlertTitle>{{ $t('servers.workspace.chat.historyPartialTitle') }}</AlertTitle>
+      <AlertDescription>{{ syncMessage || $t('servers.workspace.chat.historyPartialDescription') }}</AlertDescription>
+    </Alert>
+
     <Alert v-else-if="partial">
       <TriangleAlert />
       <AlertTitle>{{ $t('servers.workspace.chat.partialTitle') }}</AlertTitle>
       <AlertDescription>{{ $t('servers.workspace.chat.partialDescription', { count: unavailableWorlds }) }}</AlertDescription>
+    </Alert>
+
+    <Alert v-if="historyAvailable && (parseErrors || uncertainTimes || unavailableGenerations)">
+      <Info />
+      <AlertTitle>{{ $t('servers.workspace.chat.historyReview') }}</AlertTitle>
+      <AlertDescription>
+        {{ $t('servers.workspace.chat.reviewDescription', { errors: parseErrors, times: uncertainTimes, missing: unavailableGenerations }) }}
+        <span v-for="problem in parseProblems" :key="problem">{{ problem }}</span>
+      </AlertDescription>
     </Alert>
 
     <Alert v-if="truncated">
@@ -129,8 +154,8 @@
             <TableCell>
               <span
                 class="chat-time"
-                :title="formatDateTime(entry.occurredAt) || $t('servers.workspace.chat.realTimeUnavailable')"
-              >{{ formatDateTime(entry.occurredAt) || '—' }}</span>
+                :title="!entry.occurredAt ? $t('servers.workspace.chat.realTimeUnavailable') : entry.timeEstimated ? $t('servers.workspace.chat.estimatedTime') : (formatDateTime(entry.occurredAt) || $t('servers.workspace.chat.realTimeUnavailable'))"
+              >{{ entry.occurredAt && entry.timeEstimated ? '~ ' : '' }}{{ formatDateTime(entry.occurredAt) || $t('servers.workspace.chat.realTimeUnavailable') }}</span>
             </TableCell>
             <TableCell><span class="chat-time">{{ entry.sourceTimestamp }}</span></TableCell>
             <TableCell><Badge :variant="kindVariant(entry.kind)">{{ kindLabel(entry) }}</Badge></TableCell>
@@ -165,6 +190,10 @@
 import {
   ArrowLeft, ArrowRight, CircleAlert, Info, MessagesSquare, RefreshCw, Search, TriangleAlert
 } from '@lucide/vue'
+import { computed } from 'vue'
+import { toast } from 'vue-sonner'
+import { useSharedJobStatus } from '@/composables/useGlobalJobStatus'
+import { emitGlobalJobSubmitted } from '@/lib/globalJobs.mjs'
 import { chatLogsV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -196,6 +225,11 @@ export default {
     roomId: { type: String, required: true },
     worlds: { type: Array, default: () => [] }
   },
+  setup(props) {
+    const status = useSharedJobStatus()
+    const activeRepair = computed(() => status?.activeJobs.value.find(job => job.kind === 'log.chat.repair' && job.roomId === props.roomId))
+    return { activeRepair }
+  },
   data() {
     return {
       items: [],
@@ -215,6 +249,18 @@ export default {
       startedAt: '',
       updatedAt: '',
       problems: [],
+      historyAvailable: false,
+      syncState: '',
+      syncMessage: '',
+      lastSyncedAt: '',
+      pendingGenerations: 0,
+      unavailableGenerations: 0,
+      parseErrors: 0,
+      uncertainTimes: 0,
+      parseProblems: [],
+      repairSubmitting: false,
+      refreshTimer: null,
+      panelActive: true,
       requestSequence: 0
     }
   },
@@ -227,14 +273,54 @@ export default {
     },
     rangeEnd() {
       return Math.min(this.total, this.page * PAGE_SIZE)
+    },
+    syncStateLabel() {
+      if (this.syncState === 'ready') return this.$t('servers.workspace.chat.historyReady')
+      if (this.syncState === 'catching_up') return this.$t('servers.workspace.chat.historyCatchingUp')
+      if (this.syncState === 'review') return this.$t('servers.workspace.chat.historyReview')
+      if (this.syncState === 'partial') return this.$t('servers.workspace.chat.historyPartial')
+      return this.$t('servers.workspace.chat.historyPending')
     }
   },
   mounted() {
+    document.addEventListener('visibilitychange', this.handleVisibility)
     this.loadChatLogs()
   },
+  beforeUnmount() {
+    this.panelActive = false
+    this.requestSequence += 1
+    clearTimeout(this.refreshTimer)
+    document.removeEventListener('visibilitychange', this.handleVisibility)
+  },
   methods: {
+    async repairHistory() {
+      const roomId = this.roomId
+      this.repairSubmitting = true
+      try {
+        const job = await chatLogsV2API.repair(roomId)
+        emitGlobalJobSubmitted(job)
+        if (this.panelActive && this.roomId === roomId) {
+          this.syncState = 'catching_up'
+          this.scheduleRefresh()
+        }
+      } catch (error) {
+        toast.error(error?.message || this.$t('servers.workspace.chat.repairFailed'))
+      } finally {
+        this.repairSubmitting = false
+      }
+    },
+    handleVisibility() {
+      clearTimeout(this.refreshTimer)
+      if (document.visibilityState !== 'hidden' && (this.activeRepair || this.syncState === 'catching_up')) this.loadChatLogs()
+    },
+    scheduleRefresh() {
+      clearTimeout(this.refreshTimer)
+      if (!this.panelActive || document.visibilityState === 'hidden' || this.loadError) return
+      if (this.activeRepair || this.syncState === 'catching_up') this.refreshTimer = setTimeout(() => this.loadChatLogs(), 5000)
+    },
     async loadChatLogs() {
-      if (!this.roomId) return
+      if (!this.roomId || !this.panelActive) return
+      clearTimeout(this.refreshTimer)
       const requestSequence = ++this.requestSequence
       this.loading = true
       this.loadError = ''
@@ -253,7 +339,10 @@ export default {
         Object.assign(this, normalizeChatLogList())
         this.loadError = error?.message || this.$t('servers.workspace.chat.loadFailed')
       } finally {
-        if (requestSequence === this.requestSequence) this.loading = false
+        if (requestSequence === this.requestSequence) {
+          this.loading = false
+          this.scheduleRefresh()
+        }
       }
     },
     applySearch() {
@@ -308,6 +397,9 @@ export default {
     }
   },
   watch: {
+    activeRepair(value, previous) {
+      if ((value || previous) && this.panelActive && document.visibilityState !== 'hidden') this.loadChatLogs()
+    },
     roomId(value, previous) {
       if (!value || value === previous) return
       this.requestSequence += 1

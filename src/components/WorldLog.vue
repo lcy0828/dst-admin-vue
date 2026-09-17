@@ -25,32 +25,50 @@
             <SelectTrigger id="world-log-world"><SelectValue :placeholder="$t('servers.liveLogs.fields.selectWorld')" /></SelectTrigger>
             <SelectContent><SelectGroup>
               <SelectItem v-for="world in currentRoomWorlds" :key="world.id" :value="world.id">
-                {{ world.name }} ({{ formatWorldType(world.type || world.role) }})
+                {{ world.name }} ({{ formatWorldType(world.type) }})
               </SelectItem>
             </SelectGroup></SelectContent>
           </UiSelect>
         </Field>
 
-        <Field>
-          <FieldLabel for="world-log-time-mode">{{ $t('servers.liveLogs.fields.timeDisplay') }}</FieldLabel>
-          <UiSelect
-            v-model="timeDisplayMode"
-            @update:model-value="handleTimeDisplayModeChange"
-          >
-            <SelectTrigger id="world-log-time-mode">
-              <SelectValue :placeholder="$t('servers.liveLogs.fields.timeDisplayPlaceholder')" />
-            </SelectTrigger>
-            <SelectContent><SelectGroup>
-              <SelectItem value="wallclock">{{ $t('servers.liveLogs.fields.timeModes.wallclock') }}</SelectItem>
-              <SelectItem value="runtime">{{ $t('servers.liveLogs.fields.timeModes.runtime') }}</SelectItem>
-            </SelectGroup></SelectContent>
-          </UiSelect>
-        </Field>
+        <FieldGroup class="log-display-controls">
+          <Field>
+            <FieldLabel for="world-log-time-mode">{{ $t('servers.liveLogs.fields.timeDisplay') }}</FieldLabel>
+            <UiSelect
+              v-model="timeDisplayMode"
+              @update:model-value="handleTimeDisplayModeChange"
+            >
+              <SelectTrigger id="world-log-time-mode">
+                <SelectValue :placeholder="$t('servers.liveLogs.fields.timeDisplayPlaceholder')" />
+              </SelectTrigger>
+              <SelectContent><SelectGroup>
+                <SelectItem value="wallclock">{{ $t('servers.liveLogs.fields.timeModes.wallclock') }}</SelectItem>
+                <SelectItem value="runtime">{{ $t('servers.liveLogs.fields.timeModes.runtime') }}</SelectItem>
+              </SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+
+          <Field>
+            <FieldLabel for="world-log-line-count">{{ $t('servers.liveLogs.fields.lineCount') }}</FieldLabel>
+            <UiSelect
+              v-model="logLineCount"
+              @update:model-value="handleLogLineCountChange"
+            >
+              <SelectTrigger id="world-log-line-count">
+                <SelectValue :placeholder="$t('servers.liveLogs.fields.lineCountPlaceholder')" />
+              </SelectTrigger>
+              <SelectContent><SelectGroup>
+                <SelectItem v-for="count in logLineOptions" :key="count" :value="count">
+                  {{ $t('servers.liveLogs.fields.lineCountValue', { count }) }}
+                </SelectItem>
+                <SelectItem value="all">{{ $t('servers.liveLogs.fields.lineCounts.all') }}</SelectItem>
+              </SelectGroup></SelectContent>
+            </UiSelect>
+          </Field>
+        </FieldGroup>
 
         <Field orientation="horizontal" class="toggle-field">
-          <FieldContent>
-            <FieldLabel for="world-log-follow">{{ $t('servers.liveLogs.fields.follow') }}</FieldLabel>
-          </FieldContent>
+          <FieldLabel for="world-log-follow">{{ $t('servers.liveLogs.fields.follow') }}</FieldLabel>
           <UiSwitch
             id="world-log-follow"
             v-model="followLog"
@@ -59,12 +77,11 @@
         </Field>
 
         <Field orientation="horizontal" class="toggle-field">
-          <FieldContent>
-            <FieldLabel for="world-log-scroll">{{ $t('servers.liveLogs.fields.autoScroll') }}</FieldLabel>
-          </FieldContent>
+          <FieldLabel for="world-log-scroll">{{ $t('servers.liveLogs.fields.autoScroll') }}</FieldLabel>
           <UiSwitch
             id="world-log-scroll"
             v-model="autoScroll"
+            @update:model-value="handleAutoScrollChange"
           />
         </Field>
       </FieldGroup>
@@ -105,14 +122,28 @@ import 'xterm/css/xterm.css'
 import { roomApi } from '@/api/index'
 import { worldLogsV2API } from '@/api/v2'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import {
+  ALL_LIVE_LOG_LINES,
+  LIVE_LOG_LINE_OPTIONS,
+  limitLiveLogLines,
+  liveLogRequestLimit,
+  liveLogScrollbackSize,
+  mergeLiveLogTail,
+  splitLiveLogText
+} from '@/lib/liveLogLines.mjs'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Field, FieldContent, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { readLogView, rememberLogView } from '@/lib/workspacePreferences.mjs'
 import { Switch as UiSwitch } from '@/components/ui/switch'
-import { RUNTIME_TARGET_CHANGED_EVENT } from '@/utils/runtimeTarget'
+import {
+  getManagementScope,
+  MANAGEMENT_SCOPE_CHANGED_EVENT,
+  managementScopeTargetId
+} from '@/lib/managementScope.mjs'
 
 export default {
   name: 'WorldLog',
@@ -123,7 +154,6 @@ export default {
     AlertTitle,
     Badge,
     Field,
-    FieldContent,
     FieldGroup,
     FieldLabel,
     RefreshCwIcon,
@@ -166,11 +196,12 @@ export default {
       fitAddon: null,
       selectedRoomId: this.roomId || '',
       selectedWorldId: this.worldId || '',
+      managementScope: getManagementScope(),
       archives: [],
       loading: false,
       followLog: true,
-      autoScroll: true,
-      timeDisplayMode: 'wallclock',
+      ...readLogView(),
+      logLineOptions: LIVE_LOG_LINE_OPTIONS,
       logStartedAt: null,
       rawLogLines: [],
       logSnapshot: null,
@@ -205,13 +236,19 @@ export default {
       if (this.streamState === 'error') return 'destructive'
       if (this.streamState === 'connecting' || this.streamState === 'reconnecting') return 'outline'
       return 'secondary'
+    },
+    allLogLinesSelected() {
+      return this.logLineCount === ALL_LIVE_LOG_LINES
+    },
+    selectedLogLineLimit() {
+      return liveLogRequestLimit(this.logLineCount)
     }
   },
   async mounted() {
     this.destroyed = false
     this.initTerminal()
     window.addEventListener('resize', this.onResize)
-    window.addEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
+    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange)
     if (typeof ResizeObserver !== 'undefined') {
       this.resizeObserver = new ResizeObserver(this.onResize)
       this.resizeObserver.observe(this.$refs.root)
@@ -220,14 +257,28 @@ export default {
   },
   beforeUnmount() {
     this.destroyed = true
+    this.archiveRequestSequence += 1
+    this.logRequestSequence += 1
     window.removeEventListener('resize', this.onResize)
-    window.removeEventListener(RUNTIME_TARGET_CHANGED_EVENT, this.handleRuntimeTargetChange)
+    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange)
     this.resizeObserver?.disconnect()
     this.clearLogRetry(true)
     this.closeEventSource()
-    this.terminal?.dispose()
+    const terminal = this.terminal
+    this.terminal = null
+    this.fitAddon = null
+    // xterm 5.3 leaves refresh/reset callbacks queued after its renderer is disposed.
+    const viewport = terminal?._core?.viewport
+    if (viewport) {
+      if (viewport._refreshAnimationFrame != null) window.cancelAnimationFrame(viewport._refreshAnimationFrame)
+      viewport.syncScrollArea = () => {}
+    }
+    terminal?.dispose()
   },
   methods: {
+    rememberDisplayPreferences() {
+      rememberLogView({ logLineCount: this.logLineCount, timeDisplayMode: this.timeDisplayMode, autoScroll: this.autoScroll })
+    },
     initTerminal() {
       this.terminal = markRaw(new Terminal({
         cursorBlink: false,
@@ -246,7 +297,7 @@ export default {
       this.fitAddon = markRaw(new FitAddon())
       this.terminal.loadAddon(this.fitAddon)
       this.terminal.open(this.$refs.terminal)
-      this.$nextTick(() => this.fitAddon.fit())
+      this.$nextTick(() => this.fitAddon?.fit())
       this.writeSystemLine(this.$t('servers.liveLogs.terminal.selectTarget'))
     },
     async loadArchives() {
@@ -254,11 +305,9 @@ export default {
       this.loading = true
       this.loadError = ''
       try {
-        const response = await roomApi.getRoomList()
+        const response = await roomApi.getScopedRuntimeOverview(managementScopeTargetId(this.managementScope))
         if (requestSequence !== this.archiveRequestSequence) return
-        this.archives = Array.isArray(response)
-          ? response
-          : (Array.isArray(response?.data) ? response.data : [])
+        this.archives = Array.isArray(response?.data?.rooms) ? response.data.rooms : []
         this.resolveInitialSelection()
         if (this.selectedRoomId && this.selectedWorldId) await this.loadLog()
       } catch (error) {
@@ -271,7 +320,9 @@ export default {
         if (requestSequence === this.archiveRequestSequence) this.loading = false
       }
     },
-    handleRuntimeTargetChange() {
+    handleManagementScopeChange(event) {
+      this.managementScope = event?.detail || getManagementScope()
+      this.archiveRequestSequence += 1
       this.clearLogRetry(true)
       this.closeEventSource()
       this.logRequestSequence += 1
@@ -315,8 +366,11 @@ export default {
     handleTimeDisplayModeChange() {
       if (this.logSnapshot || this.rawLogLines.length > 0) this.redrawTerminal()
     },
+    handleLogLineCountChange() {
+      if (this.selectedRoomId && this.selectedWorldId) this.loadLog()
+    },
     formatWorldType(type) {
-      if (type === 'forest' || type === 'master') return this.$t('servers.list.worldTypes.forest')
+      if (type === 'forest') return this.$t('servers.list.worldTypes.forest')
       if (type === 'cave' || type === 'caves') return this.$t('servers.list.worldTypes.cave')
       return type || this.$t('servers.list.worldTypes.custom')
     },
@@ -337,7 +391,7 @@ export default {
       this.terminal.writeln(`\x1B[1;33m${this.currentRoom?.name || '-'} / ${this.currentWorld?.name || '-'}\x1B[0m`)
 
       try {
-        const snapshot = await worldLogsV2API.snapshot(this.selectedRoomId, this.selectedWorldId, { limit: 300 })
+        const snapshot = await this.fetchLogSnapshot()
         if (requestSequence !== this.logRequestSequence) return
         this.renderSnapshot(snapshot)
         this.retryAttempt = 0
@@ -353,10 +407,31 @@ export default {
         if (requestSequence === this.logRequestSequence) this.loading = false
       }
     },
+    async fetchLogSnapshot() {
+      if (!this.allLogLinesSelected) {
+        return worldLogsV2API.snapshot(this.selectedRoomId, this.selectedWorldId, {
+          limit: this.selectedLogLineLimit
+        })
+      }
+
+      const [metadata, blob] = await Promise.all([
+        worldLogsV2API.snapshot(this.selectedRoomId, this.selectedWorldId, { limit: 1 }),
+        worldLogsV2API.downloadBlob(this.selectedRoomId, this.selectedWorldId)
+      ])
+      return {
+        ...metadata,
+        truncated: false,
+        lines: splitLiveLogText(await blob.text())
+      }
+    },
     connectEventSource() {
       this.manuallyClosedEventSource = false
       this.streamState = 'connecting'
-      const source = new EventSource(worldLogsV2API.eventURL(this.selectedRoomId, this.selectedWorldId, 300))
+      const source = new EventSource(worldLogsV2API.eventURL(
+        this.selectedRoomId,
+        this.selectedWorldId,
+        this.selectedLogLineLimit
+      ))
       this.eventSource = source
 
       source.addEventListener('connected', event => {
@@ -365,7 +440,10 @@ export default {
         this.clearLogRetry(true)
         this.streamState = 'connected'
         this.loadError = ''
-        if (payload?.snapshot) this.renderSnapshot(payload.snapshot)
+        if (payload?.snapshot) {
+          if (this.allLogLinesSelected && this.logSnapshot) this.mergeConnectedSnapshot(payload.snapshot)
+          else this.renderSnapshot(payload.snapshot)
+        }
       })
       source.addEventListener('line', event => {
         if (this.eventSource !== source) return
@@ -426,19 +504,38 @@ export default {
         fileName: snapshot.fileName || 'server_log.txt',
         truncated: Boolean(snapshot.truncated)
       }
-      this.rawLogLines = (snapshot.lines || [])
+      this.rawLogLines = limitLiveLogLines((snapshot.lines || [])
         .map(line => typeof line === 'string' ? line : line?.text)
         .filter(line => line !== undefined && line !== null)
-        .map(line => String(line))
-        .slice(-5000)
+        .map(line => String(line)), this.logLineCount)
+      this.redrawTerminal()
+    },
+    mergeConnectedSnapshot(snapshot) {
+      this.logStartedAt = this.normalizeStartedAt(snapshot.startedAt) || this.logStartedAt
+      this.logSnapshot = {
+        fileName: snapshot.fileName || this.logSnapshot?.fileName || 'server_log.txt',
+        truncated: false
+      }
+      const incoming = (snapshot.lines || [])
+        .map(line => typeof line === 'string' ? line : line?.text)
+        .filter(line => line !== undefined && line !== null)
+      this.rawLogLines = mergeLiveLogTail(this.rawLogLines, incoming, this.logLineCount)
       this.redrawTerminal()
     },
     writeLogLine(line) {
       const value = String(line ?? '')
+      const terminal = this.terminal
+      const viewportY = terminal.buffer.active.viewportY
       this.rawLogLines.push(value)
-      if (this.rawLogLines.length > 5000) this.rawLogLines.splice(0, this.rawLogLines.length - 5000)
-      this.terminal.writeln(this.formatLogLine(value))
-      if (this.autoScroll) this.terminal.scrollToBottom()
+      if (!this.allLogLinesSelected && this.rawLogLines.length > this.selectedLogLineLimit) {
+        this.rawLogLines.splice(0, this.rawLogLines.length - this.selectedLogLineLimit)
+      }
+      this.ensureTerminalScrollback()
+      terminal.writeln(this.formatLogLine(value), () => {
+        if (!this.destroyed && !this.autoScroll && this.terminal === terminal) {
+          terminal.scrollToLine(viewportY)
+        }
+      })
     },
     resetLogMetadata() {
       this.logStartedAt = null
@@ -474,6 +571,7 @@ export default {
     },
     redrawTerminal() {
       if (!this.terminal) return
+      this.ensureTerminalScrollback()
       this.terminal.clear()
       this.terminal.writeln(`\x1B[1;33m${this.currentRoom?.name || '-'} / ${this.currentWorld?.name || '-'}\x1B[0m`)
       if (!this.logSnapshot) {
@@ -487,6 +585,11 @@ export default {
       })}\x1B[0m`)
       this.rawLogLines.forEach(line => this.terminal.writeln(this.formatLogLine(line)))
       if (this.autoScroll) this.terminal.scrollToBottom()
+    },
+    ensureTerminalScrollback() {
+      if (!this.terminal) return
+      const required = liveLogScrollbackSize(this.rawLogLines.length, this.logLineCount)
+      if (this.terminal.options.scrollback !== required) this.terminal.options.scrollback = required
     },
     writeSystemLine(message) {
       this.terminal?.writeln(`\x1B[36m${this.$t('servers.liveLogs.terminal.systemPrefix')}\x1B[0m ${message}`)
@@ -507,6 +610,9 @@ export default {
         this.closeEventSource()
         this.streamState = 'paused'
       }
+    },
+    handleAutoScrollChange(enabled) {
+      if (enabled) this.$nextTick(() => this.terminal?.scrollToBottom())
     },
     scheduleLogRetry(requestSequence) {
       if (this.destroyed || !this.followLog || !this.selectedRoomId || !this.selectedWorldId) return
@@ -541,6 +647,9 @@ export default {
     }
   },
   watch: {
+    logLineCount() { this.rememberDisplayPreferences() },
+    timeDisplayMode() { this.rememberDisplayPreferences() },
+    autoScroll() { this.rememberDisplayPreferences() },
     '$i18n.locale'() {
       if (!this.terminal) return
       if (this.selectedRoomId && this.selectedWorldId) this.loadLog()
@@ -610,10 +719,19 @@ export default {
   gap: 10px;
 }
 
+.log-display-controls {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 10px;
+}
+
 .log-actions {
   display: flex;
   flex: none;
   min-width: 0;
+  min-height: 36px;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
@@ -644,13 +762,25 @@ export default {
 }
 
 :deep(.xterm-viewport::-webkit-scrollbar) {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 :deep(.xterm-viewport::-webkit-scrollbar-thumb) {
-  background: rgba(230, 233, 230, 0.28);
-  border-radius: 3px;
+  min-height: 32px;
+  border: 2px solid #181a19;
+  border-radius: 5px;
+  background: rgba(230, 233, 230, 0.42);
+  background-clip: padding-box;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-thumb:hover) {
+  background: rgba(230, 233, 230, 0.58);
+  background-clip: padding-box;
+}
+
+:deep(.xterm-viewport::-webkit-scrollbar-track) {
+  background: #181a19;
 }
 
 @media (max-width: 860px) {
@@ -663,12 +793,20 @@ export default {
     width: 100%;
     justify-content: flex-end;
   }
+
+  .log-controls {
+    width: 100%;
+  }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 720px) {
   .log-controls {
     width: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .log-display-controls {
+    grid-column: 1 / -1;
   }
 
   .log-actions {

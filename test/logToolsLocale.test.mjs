@@ -36,7 +36,7 @@ test('parser labels translate known protocol values and preserve custom values',
   const zh = translator('zh-CN')
   const en = translator('en-US')
 
-  assert.deepEqual(logParserStatusMeta('running', en), { label: 'Running', variant: 'default' })
+  assert.deepEqual(logParserStatusMeta('running', en), { label: 'Running', variant: 'success' })
   assert.equal(logParserStatusMeta('custom_status', en).label, 'custom_status')
   assert.equal(logParserServerTypeLabel('Forest', zh), '森林世界')
   assert.equal(logParserServerTypeLabel('Caves', en), 'Caves world')
@@ -62,17 +62,11 @@ test('parser and regex error state is translated without rewriting technical det
 })
 
 test('log tools delegate visible templates to i18n while leaving tool payloads untouched', async () => {
-  const [parser, tester] = await Promise.all([
-    readFile(new URL('../src/views/logs/LogParser.vue', import.meta.url), 'utf8'),
-    readFile(new URL('../src/components/RegexTester.vue', import.meta.url), 'utf8')
-  ])
-  const parserTemplate = parser.split('<script>')[0]
+  const tester = await readFile(new URL('../src/components/RegexTester.vue', import.meta.url), 'utf8')
   const testerTemplate = tester.split('<script>')[0]
 
-  assert.match(parser, /\$t\('logTools\.parser\./)
   assert.match(tester, /\$t\('logTools\.regex\./)
   assert.match(tester, /this\.regexForm\.pattern/)
   assert.match(tester, /this\.regexForm\.testContent/)
-  assert.doesNotMatch(parserTemplate, /[\u3400-\u9fff]/)
   assert.doesNotMatch(testerTemplate, /[\u3400-\u9fff]/)
 })

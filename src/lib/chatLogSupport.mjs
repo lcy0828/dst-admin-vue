@@ -39,6 +39,15 @@ export function normalizeChatLogList(value) {
     unavailableWorlds: Math.max(0, Number(source.unavailableWorlds) || 0),
     startedAt: source.startedAt || '',
     updatedAt: source.updatedAt || '',
-    problems: Array.isArray(source.problems) ? source.problems : []
+    problems: Array.isArray(source.problems) ? source.problems : [],
+    historyAvailable: Boolean(source.historyAvailable),
+    pendingGenerations: Math.max(0, Number(source.pendingGenerations) || 0),
+    unavailableGenerations: Math.max(0, Number(source.unavailableGenerations) || 0),
+    parseErrors: Math.max(0, Number(source.parseErrors) || 0),
+    uncertainTimes: Math.max(0, Number(source.uncertainTimes) || 0),
+    parseProblems: Array.isArray(source.parseProblems) ? source.parseProblems : [],
+    syncState: String(source.syncState || ''),
+    syncMessage: String(source.syncMessage || ''),
+    lastSyncedAt: source.lastSyncedAt || ''
   }
 }
