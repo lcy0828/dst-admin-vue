@@ -1,76 +1,88 @@
-# DST Admin Vue
+# DST Admin Web
 
-《饥荒联机版》(Don't Starve Together) 专用服务器管理系统的 Vue 3 前端。项目面向自建服务器的个人玩家、社区服管理者和需要管理多个房间的商用部署者。
+**简体中文（默认）** | [English](README.en.md)
 
-前端默认以本机管理为主，远程节点单独配置。所有业务页面读取真实后端数据，不使用演示数据替代接口结果。
+DST Admin Web 是 DST Admin 的浏览器管理界面，与 [`dst-admin-go`](https://git.luocaiyi.top/dst/dst-admin-go) 共同组成同一个《饥荒联机版》服务器管理项目。
 
-## 产品原则
+普通服主不需要单独部署或启动这个前端。All-in-One 和原生安装会把页面构建后交给 Go 管理服务，通过同一个地址提供 Web 页面和 API。
 
-- 新手能直接完成启动世界、安装模组、查看玩家和创建备份等日常操作。
-- 熟练用户仍可使用实时日志、Lua 控制台、规则和自动化任务等完整能力。
-- 当前房间和世界始终作为操作上下文，危险操作需要明确确认。
-- 加载中、暂无数据、接口失败和功能不可用使用不同状态表达。
-- 保留紧凑的运维效率，但不以牺牲可理解性为代价。
-- 本机是默认管理目标；远程配置和本机配置相互独立。
+## 可以管理什么
 
-## 当前功能
+- 房间和 Master、Caves 等世界分片。
+- 玩家、角色状态、聊天和实时日志。
+- Steam Workshop 模组及每个世界的配置。
+- 手动备份、定时备份、存档导入和恢复。
+- 查看本机与 Agent 的游戏安装、安装或接入已有服务端、更新游戏及管理 LuaJIT2。
+- 本机资源、远程机器及房间的世界运行位置。
 
-- 服务器工作台：世界状态、启动、停止、重启、实时日志和 Lua 控制台。
-- 房间与世界：房间管理、世界配置、天数和季节状态。
-- 玩家管理：在线状态、详情、私信、踢出、封禁和名单管理。
-- 模组管理：Workshop 搜索、下载、更新、启停和真实配置编辑。
-- 备份与恢复：备份创建、列表、下载、恢复和删除。
-- 日志与自动化：日志查询、规则、解析器和定时任务。
-- 集中运行拓扑：本机优先，远程 Agent 单独配置；每个世界分片可选择本机或远程节点。
-- 多节点运维：Placement-aware 启停、集中诊断、日志与玩家聚合、冷一致备份、Mod 原子发布和游戏版本发布。
-- 系统管理：资源状态、服务端版本、macOS 安装方式提示和主题预设。
+## 从这里开始
 
-## 当前边界
+完整安装入口在 [DST Admin 主 README](https://git.luocaiyi.top/dst/dst-admin-go)。
 
-- 前端需要配合 `dst-admin-go` 后端及其 `/api/v2` 接口使用。
-- 正式布局不提供“把整个应用切换到单个远程节点”的旧入口。远程节点在 Agent 页面配置，在运行拓扑中按分片选择，集中操作由控制面编排。
-- 房间目录发现、首次创建和普通配置编辑仍以控制面本地目录为入口；远程分片通过拓扑迁移、原子 Mod 发布和分布式备份管理，不会静默回落到同名本机路径。
-- `hot-consistent` 跨分片保存屏障尚未取得实机证据；当前分布式备份明确为会停服的 `cold-consistent`。
-- Kubernetes Provider 默认关闭且只读，仅提供状态、观察和预检，不提供 Apply、生命周期、Console、Mod 或备份恢复。
-- Lua 控制台作为兼容复杂模组和特殊管理命令的高级入口保留，并要求输入目标房间名确认。
+前后端仓库相邻时，可直接阅读：
 
-## 技术栈
+- [安装与启动指南](../dst-admin-go/docs/startup-guide.md)：Linux/macOS 原生安装、Agent 接入和存档保护。
+- [开发启动说明](../dst-admin-go/docs/development.md)：独立配置、Go API、Vite 代理与同源运行。
+- [游戏安装管理](../dst-admin-go/docs/game-installation-management.md)与 [LuaJIT 安装](../dst-admin-go/docs/luajit-installation.md)。
 
-- Vue 3.5
-- Vue Router 4
-- shadcn-vue（Reka UI）与 Tailwind CSS 4
-- Lucide Vue、vue-sonner
-- Vite 8、Axios、ECharts、xterm.js
+以上相邻路径供本地检出阅读；在线阅读请从后端主 README 的对应文档链接进入。
 
-## 本地开发
+当前项目仍是源码预览版本。安装时必须使用匹配的前后端：
 
-环境要求：Node.js `20.19+` 或 `22.12+`，以及运行在本机或可访问地址上的 `dst-admin-go` 后端。
+- 后端：`feature/v2-rebuild`
+- 前端：`master`
 
-```bash
-cp .env.example .env
-npm install
-npm run dev
-```
+推荐在 x86_64 Linux 服务器上使用 Docker All-in-One。2 核 4 GB 机器优先只运行 Master 和 Caves。
 
-开发服务默认地址为 `http://127.0.0.1:5173`，API 默认代理到 `http://127.0.0.1:8000`。需要连接其他后端时修改 `.env`：
+## 正式访问地址
 
-```dotenv
-VITE_API_BASE_URL=/api
-VITE_API_PROXY_TARGET=http://127.0.0.1:8000
-```
+| 部署方式 | 默认地址 |
+| --- | --- |
+| Docker All-in-One | `http://服务器IP:8080` |
+| Linux 原生安装 | `http://服务器IP:8000` |
+| macOS 原生安装 | `http://127.0.0.1:8000` |
 
-本机长期运行的端口归属、受管重启方式和切换事故记录见 [`docs/local-runtime.md`](docs/local-runtime.md)。重启正式 `5173` 时使用 `./scripts/restart-local-5173.sh`，不要在相邻工作区中直接执行 `npm run dev -- --port 5173`。
+`5173` 仅用于源码调试，不是普通服主的正式入口。生产环境不需要单独运行 Vite。
 
-## 质量检查
+## 前端开发启动
+
+使用 Node.js 24 LTS 和 npm。在本仓库执行：
 
 ```bash
-npm run lint -- --no-fix
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+默认将 `/api` 代理到 `http://127.0.0.1:8000`，后端需另行启动。
+从零准备后端请按上面的开发启动说明操作。访问 `http://127.0.0.1:5173`。
+已有服务占用 `5173` 时，不直接终止它；换端口调试，或遵循本仓库的
+[已登记本机服务说明](docs/local-runtime.md)。
+
+后端使用其他端口时，例如 `18080`：
+
+```bash
+VITE_API_PROXY_TARGET=http://127.0.0.1:18080 \
+  npm run dev -- --host 127.0.0.1 --port 15173 --strictPort
+```
+
+`VITE_API_BASE_URL` 默认 `/api`，通常保持不变。`VITE_*` 会进入浏览器代码，不存放密钥。
+
+## 构建与验证
+
+```bash
 npm test
+npm run lint
 npm run build
 ```
 
-当前仓库没有 `api:generate` 或浏览器 `test:e2e` 脚本，不应把它们写入发布命令。真实功能状态、远程边界和人工验收项见 [`docs/DST_ADMIN_FUNCTION_TRUTH.md`](docs/DST_ADMIN_FUNCTION_TRUTH.md)。
+构建产物在 `dist/`。生产 Go 服务通过 `DST_ADMIN_WEB_ROOT` 指向该目录，
+与 `/api/v2` 使用同一地址。单独运行 `npm run preview` 只提供静态预览，不包含管理后端。
+前后端升级时一起更新匹配的产物，保留管理配置、数据库和存档。
 
-仓库主线、旧版保护分支以及 `feature/v2-rebuild` 的功能迁移决策见 [`docs/branch-consolidation.md`](docs/branch-consolidation.md)。
+## 使用前注意
 
-视觉和交互约束记录在 [`design-system/dst-admin-vue-3/MASTER.md`](design-system/dst-admin-vue-3/MASTER.md)。
+- Web 页面能打开不代表 DST 的 UDP 游戏端口已经可以从公网访问。
+- 模组下载后还需要添加到房间；启用或修改配置后需要重启对应世界。
+- All-in-One 的配置、存档、游戏文件、模组和备份默认保存在宿主机 `/opt/dst`。
+- 单机和 All-in-One 不需要额外 Agent；只有管理其他机器时才需要添加 Agent。
+- 世界停止后显示的季节、天数等快照会标记为已过期，不代表世界仍在运行。
