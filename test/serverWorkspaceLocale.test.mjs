@@ -215,7 +215,7 @@ test('server workspace uses compact semantic status cues and clear refresh scope
   assert.doesNotMatch(source, /<CardDescription class="break-all">\{\{ selectedRoom\.directoryName/)
   assert.match(source, /class="player-heading-line"[\s\S]*<Badge[\s\S]*v-if="row\.vitals\.length"[\s\S]*class="player-vitals-state"/)
   assert.match(source, /class="player-row-actions"[\s\S]*<PlayerActionMenu/)
-  assert.match(source, /\.player-row \{[\s\S]*grid-template-columns: 40px minmax\(0, 1fr\) auto;[\s\S]*align-items: start;/)
+  assert.match(source, /\.player-row \{[\s\S]*grid-template-columns: 40px minmax\(0, 1fr\) auto;[\s\S]*align-items: center;/)
   assert.match(messages, /refresh: '刷新全部数据'/)
   assert.match(messages, /refresh: 'Refresh all data'/)
   assert.match(badge, /success:[\s\S]*border-success\/25[\s\S]*warning:[\s\S]*border-warning\/25/)

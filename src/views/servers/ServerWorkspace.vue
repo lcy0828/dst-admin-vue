@@ -674,6 +674,10 @@
                         >
                           {{ playerVitalsLabel(row.player, row.vitals) }}
                         </Badge>
+                        <Badge :variant="playerPresence(row.player).variant">
+                          {{ playerPresence(row.player).label }}
+                        </Badge>
+                        <span class="player-observation" :title="playerObservationLabel(row.player)">{{ playerObservationLabel(row.player) }}</span>
                       </div>
                       <div class="player-context-line">
                         <span class="player-context">{{ playerContextLabel(row.player) }}</span>
@@ -700,12 +704,8 @@
                           @execute="executePlayerVitalAction(row.player, $event)"
                         />
                       </div>
-                      <span class="player-observation">{{ playerObservationLabel(row.player) }}</span>
                     </div>
                     <div class="player-row-actions">
-                      <Badge :variant="playerPresence(row.player).variant">
-                        {{ playerPresence(row.player).label }}
-                      </Badge>
                       <PlayerActionMenu
                         :player="row.player"
                         :workbench-request="playerWorkbenchTargetId === row.player.user_id ? playerWorkbenchRequest : 0"
@@ -3589,8 +3589,8 @@ export default {
 
 .players-list-expanded {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
 }
 
 .players-empty {
@@ -3702,21 +3702,17 @@ export default {
 .player-row {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: start;
+  gap: 12px;
+  align-items: center;
   height: auto;
   width: 100%;
   min-height: 72px;
-  padding: 8px 0;
+  padding: 10px 12px;
   color: inherit;
   text-align: left;
   background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.player-row:last-child {
-  border-bottom: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 
 .player-avatar-action {
@@ -3750,15 +3746,17 @@ export default {
 }
 
 .player-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto;
+  gap: 4px 16px;
   min-width: 0;
   padding-top: 1px;
 }
 
 .player-heading-line {
   display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
   min-width: 0;
   min-height: 20px;
   align-items: center;
@@ -3776,6 +3774,7 @@ export default {
 
 .player-heading-line > strong {
   min-width: 0;
+  max-width: min(100%, 20rem);
   color: var(--foreground);
   font-size: 13px;
 }
@@ -3846,8 +3845,8 @@ export default {
   margin-top: 1px;
 }
 
-@media (max-width: 1280px) {
-  .players-list-expanded {
+@media (max-width: 900px) {
+  .player-copy {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -38,8 +38,9 @@ let pendingReleaseID = ''
 let alive = true
 const target = computed(() => installations.value.find(item => luaJITInstallationKey(item) === installationKey.value))
 const releases = computed(() => packageSource.value === 'controller' ? transfers.value : (target.value?.releases || []))
+const defaultReleaseID = computed(() => releases.value.find(item => item.channel === 'compatibility')?.id || releases.value[0]?.id || '')
 watch(releases, values => {
-  if (!values.some(item => item.id === releaseID.value)) releaseID.value = values[0]?.id || ''
+  if (!values.some(item => item.id === releaseID.value)) releaseID.value = defaultReleaseID.value
 }, { flush: 'sync' })
 const running = computed(() => Boolean(activeJob.value && !luaJITJobTerminal(activeJob.value)))
 const busy = computed(() => submitting.value || loading.value || inspecting.value || running.value)
@@ -80,7 +81,7 @@ async function inspectSelected(current = generation, refreshUpstream = false) {
 }
 function selectInstallation() {
   packageSource.value = 'runtime'
-  releaseID.value = ''
+  releaseID.value = defaultReleaseID.value
   error.value = ''
   inspectSelected()
 }

@@ -12,7 +12,7 @@ const roomWeatherKey = Symbol.for('dst-admin:room-weather')
 
 export function provideRoomWeather() {
   const source = shallowRef(null)
-  const enabled = ref(false)
+  const enabled = ref(true)
   const preview = shallowRef(null)
   const { refreshIntervalMs } = useRoomRefreshInterval()
   const visible = ref(!document.hidden)
@@ -20,7 +20,7 @@ export function provideRoomWeather() {
   const roomId = ref(readWorkspaceSelection(targetId.value).roomId)
   let mounted = false
   let previewTimer
-  try { enabled.value = localStorage.getItem(ROOM_WEATHER_PREFERENCE) === 'true' } catch { /* Optional browser preference. */ }
+  try { enabled.value = localStorage.getItem(ROOM_WEATHER_PREFERENCE) !== 'false' } catch { /* Optional browser preference. */ }
 
   function stopPreview() {
     clearTimeout(previewTimer)
