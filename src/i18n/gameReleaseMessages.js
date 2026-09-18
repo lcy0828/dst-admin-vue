@@ -8,7 +8,7 @@ export const gameReleaseMessages = {
         publish: '备份并开始更新', retry: '重试失败更新', view: '查看详情'
       },
       simple: {
-        title: '检查并更新 DST 服务端', description: '检查操作只读取版本，不会停止房间。发现新版后，你可以再确认是否更新。',
+        title: '游戏更新', description: '检查版本不会停服；确认更新后自动备份并恢复房间。',
         notChecked: '尚未检查版本', notCheckedDescription: '点击“检查是否有更新”后，系统会显示各主机当前游戏版本、最新官方版本和受影响的房间。',
         resultTitle: '检查结果', resultDescription: '先确认官方游戏版本和影响范围；Steam 安装信息可在技术详情中查看。',
         currentGameVersion: '当前游戏版本', latestOfficialVersion: '最新正式版本', affectedNodes: '运行节点', affectedRoomsAndWorlds: '受影响房间 / 世界',
@@ -109,7 +109,7 @@ export const gameReleaseMessages = {
         publish: 'Back up and update', retry: 'Retry failed update', view: 'View details'
       },
       simple: {
-        title: 'Check and update the DST server', description: 'Checking only reads versions and never stops a room. If a new build is found, you can choose whether to update.',
+        title: 'Game updates', description: 'Version checks keep rooms running. Confirmed updates back up and restore rooms.',
         notChecked: 'Version not checked yet', notCheckedDescription: 'Select “Check for updates” to see each host’s current game version, the latest official version, and affected rooms.',
         resultTitle: 'Check result', resultDescription: 'Review official game versions and impact first. Steam installation data is available under technical details.',
         currentGameVersion: 'Current game version', latestOfficialVersion: 'Latest stable version', affectedNodes: 'Runtime nodes', affectedRoomsAndWorlds: 'Affected rooms / worlds',

@@ -24,7 +24,7 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
@@ -510,12 +510,13 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
           <h1 class="text-2xl font-semibold tracking-normal">{{ t('gameReleases.title') }}</h1>
           <Badge variant="secondary">{{ scopeLabel }}</Badge>
         </div>
-        <p class="mt-1 text-sm text-muted-foreground">{{ t('gameReleases.subtitle') }}</p>
       </div>
     </header>
 
-    <GameInstallationManager @changed="installationGeneration += 1" />
-    <LuaJITInstaller :key="installationGeneration" />
+    <div class="grid min-w-0 items-start gap-4 xl:grid-cols-2">
+      <GameInstallationManager @changed="installationGeneration += 1" />
+      <LuaJITInstaller :key="installationGeneration" />
+    </div>
 
     <Alert v-if="taskError" variant="destructive">
       <CircleAlert />
@@ -540,11 +541,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
           <Skeleton v-for="index in 3" :key="index" class="h-10 w-full" />
         </div>
 
-        <Alert v-else-if="!plan">
-          <ScanSearch />
-          <AlertTitle>{{ t('gameReleases.simple.notChecked') }}</AlertTitle>
-          <AlertDescription>{{ t('gameReleases.simple.notCheckedDescription') }}</AlertDescription>
-        </Alert>
+        <p v-else-if="!plan" class="text-sm text-muted-foreground">{{ t('gameReleases.simple.notChecked') }}</p>
 
         <template v-else>
           <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -554,7 +551,6 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
                 <Badge :variant="plan.ready ? 'secondary' : 'destructive'">{{ t(`gameReleases.plan.${planStateKey}`) }}</Badge>
                 <Badge variant="outline">{{ t(plan.updateRequired ? 'gameReleases.plan.updateRequired' : 'gameReleases.plan.upToDate') }}</Badge>
               </div>
-              <p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.simple.resultDescription') }}</p>
             </div>
             <UiButton v-if="plan.updateRequired" :disabled="!canPublish" @click="openConfirmation">
               <PackageCheck data-icon="inline-start" />{{ t('gameReleases.actions.publish') }}
@@ -619,7 +615,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
           <Collapsible v-model:open="technicalOpen">
             <CollapsibleTrigger as-child>
               <UiButton variant="ghost" class="group w-full justify-between">
-                <span class="text-left"><span class="block">{{ t('gameReleases.technical.title') }}</span><span class="block text-xs font-normal text-muted-foreground">{{ t('gameReleases.technical.description') }}</span></span>
+                <span>{{ t('gameReleases.technical.title') }}</span>
                 <ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" />
               </UiButton>
             </CollapsibleTrigger>
@@ -656,7 +652,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
         <Collapsible v-model:open="advancedOpen">
           <CollapsibleTrigger as-child>
             <UiButton variant="ghost" class="group w-full justify-between">
-              <span class="text-left"><span class="block">{{ t('gameReleases.advanced.title') }}</span><span class="block text-xs font-normal text-muted-foreground">{{ t('gameReleases.advanced.description') }}</span></span>
+              <span>{{ t('gameReleases.advanced.title') }}</span>
               <ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" />
             </UiButton>
           </CollapsibleTrigger>
@@ -709,7 +705,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
 
     <section class="flex min-w-0 flex-col gap-3" aria-labelledby="release-history-title">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div><h2 id="release-history-title" class="text-base font-semibold">{{ t('gameReleases.history.title') }}</h2><p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.history.description') }}</p></div>
+        <div><h2 id="release-history-title" class="text-base font-semibold">{{ t('gameReleases.history.title') }}</h2></div>
         <UiButton variant="outline" size="sm" :disabled="loading" @click="loadHistory">
           <Spinner v-if="loading" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
@@ -718,7 +714,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
       </div>
       <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ t('gameReleases.history.title') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
       <div v-if="loading && !scopedReleases.length" class="flex flex-col gap-2" :aria-label="t('gameReleases.history.loading')"><Skeleton v-for="index in 4" :key="index" class="h-12 w-full" /></div>
-      <Empty v-else-if="!scopedReleases.length && !loadError"><EmptyHeader><EmptyMedia variant="icon"><PackageCheck /></EmptyMedia><EmptyTitle>{{ t('gameReleases.history.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ t('gameReleases.history.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
+      <Empty v-else-if="!scopedReleases.length && !loadError"><EmptyHeader><EmptyMedia variant="icon"><PackageCheck /></EmptyMedia><EmptyTitle>{{ t('gameReleases.history.emptyTitle') }}</EmptyTitle></EmptyHeader></Empty>
       <div v-else class="overflow-x-auto rounded-lg border">
         <Table class="min-w-[600px]">
           <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.release') }}</TableHead><TableHead>{{ t('gameReleases.columns.status') }}</TableHead><TableHead>{{ t('gameReleases.columns.createdAt') }}</TableHead><TableHead class="text-right">{{ t('common.fields.actions') }}</TableHead></TableRow></TableHeader>
