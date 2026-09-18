@@ -1,5 +1,7 @@
 import { DEFAULT_LIVE_LOG_LINE_COUNT, LIVE_LOG_LINE_OPTIONS } from './liveLogLines.mjs'
 
+export const ROOM_SELECTION_CHANGED_EVENT = 'workspace-room-selection-changed'
+
 const STORAGE_KEY = 'dst-admin-workspace-preferences'
 const tabs = ['players', 'logs', 'chat', 'console']
 const object = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {}
@@ -37,6 +39,12 @@ export function readWorkspaceSelection(targetId = '', query = {}) {
   return { roomId, ...view, worldId: explicit && typeof query.worldId === 'string' ? query.worldId : view.worldId }
 }
 
+function selectionChanged(preferences, targetId, roomId) {
+  if (identifier(object(preferences.targets)[targetId || 'all']) !== roomId && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(ROOM_SELECTION_CHANGED_EVENT, { detail: { targetId, roomId } }))
+  }
+}
+
 export function rememberWorkspaceView(targetId, roomId, view) {
   if (!roomId) return
   const preferences = read()
@@ -44,11 +52,13 @@ export function rememberWorkspaceView(targetId, roomId, view) {
     targets: { ...object(preferences.targets), [targetId || 'all']: roomId },
     rooms: { ...object(preferences.rooms), [roomId]: roomView(view) }
   })
+  selectionChanged(preferences, targetId, roomId)
 }
 
 export function rememberRoomSelection(targetId, roomId) {
   const preferences = read()
   save({ ...preferences, targets: { ...object(preferences.targets), [targetId || 'all']: roomId } })
+  selectionChanged(preferences, targetId, roomId)
 }
 
 function logView(value = {}) {

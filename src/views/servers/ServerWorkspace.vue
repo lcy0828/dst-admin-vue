@@ -919,8 +919,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
-import { useRoomWeather } from '@/composables/useRoomWeather'
-import { resolveRoomWeather } from '@/lib/roomWeather.mjs'
+import { useRoomWeatherSource } from '@/composables/useRoomWeather'
 import { useRuntimeObservation } from '@/composables/useRuntimeObservation'
 import { confirmAction } from '@/lib/feedback'
 import { confirmRoomMaintenance } from '@/lib/maintenanceConfirmation'
@@ -993,9 +992,9 @@ export default {
 	const { refreshIntervalMs } = useRoomRefreshInterval()
 	const { locale: activeLocale } = useI18n()
 	const { state: runtimeObservationState } = useRuntimeObservation()
-	const roomWeather = useRoomWeather()
+	const publishRoomWeather = useRoomWeatherSource()
 	return { activeLocale, refreshIntervalMs, runtimeObservationState, CalendarDays, Thermometer,
-    publishRoomWeather: value => roomWeather?.setSource(value) }
+    publishRoomWeather }
   },
   components: {
     RoomScopeSelect,
@@ -1186,7 +1185,7 @@ export default {
   },
   computed: {
     roomWeatherSource() {
-      return resolveRoomWeather(this.selectedRoom, this.worldStateSnapshots)
+      return { room: this.selectedRoom, snapshots: this.worldStateSnapshots, pending: this.initialLoading || this.contextLoading }
     },
     initialLoading() {
       return this.loading && this.rooms.length === 0 && !this.loadError
@@ -1350,7 +1349,7 @@ export default {
     }
   },
   watch: {
-    roomWeatherSource: { immediate: true, handler(value) { this.publishRoomWeather(value) } },
+    roomWeatherSource: { immediate: true, handler(value) { if (!value.pending) this.publishRoomWeather(value.room, value.snapshots) } },
     activeOperation() { this.rememberRoomView() },
     playerDisplayLimit() { this.rememberRoomView() },
     '$route.query'(query) {
@@ -1388,7 +1387,6 @@ export default {
   },
   beforeUnmount() {
     this.workspaceDisposed = true
-    this.publishRoomWeather(null)
     this.refreshSequence += 1
     this.contextSequence += 1
     this.worldStateSequence += 1

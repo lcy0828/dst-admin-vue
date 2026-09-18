@@ -1,7 +1,7 @@
 export const weatherMessages = {
   'zh-CN': { weather: {
     menu: '主题与天气', enabled: '全屏天气动画',
-    scope: '跟随房间首页的主分片', noData: '主分片暂无实时天气',
+    scope: '全站跟随当前房间的主分片', noData: '主分片暂无实时天气',
     following: '{room} / {world} · {weather}', paused: '游戏已暂停',
     preview: '预览效果 · 10 秒', previewRain: '预览下雨', previewSnow: '预览下雪', stopPreview: '结束预览',
     previewing: '天气预览：{weather}（10 秒）', reducedMotion: '系统已减少动画，显示静态背景',
@@ -19,12 +19,12 @@ export const weatherMessages = {
   } },
   'en-US': { weather: {
     menu: 'Theme and weather', enabled: 'Full-screen weather',
-    scope: 'Follow the room dashboard’s master shard', noData: 'No live weather from the master shard',
+    scope: 'Follow the selected room’s master shard across pages', noData: 'No live weather from the master shard',
     following: '{room} / {world} · {weather}', paused: 'Game paused',
     preview: 'Preview · 10 seconds', previewRain: 'Preview rain', previewSnow: 'Preview snow', stopPreview: 'End preview',
     previewing: 'Weather preview: {weather} (10 seconds)', reducedMotion: 'Reduced motion is on. Showing a static background.',
     controls: {
-      button: 'Weather', active: 'Manual weather', title: 'Weather effects', description: 'Independent of light and dark themes. Only affects this page.',
+      button: 'Weather', active: 'Manual weather', title: 'Weather effects', description: 'Independent of light and dark themes. Page effects only.',
       mode: 'Weather mode', modes: { off: 'Off', automatic: 'Dynamic', manual: 'Manual' },
       offDescription: 'Weather effects are off. Follow the room with Dynamic, or adjust them manually.', followRoom: 'Follow room again',
       collapse: 'Hide panel', season: 'Season', phase: 'Time of day', precipitation: 'Weather', intensity: 'Rain / snow intensity',

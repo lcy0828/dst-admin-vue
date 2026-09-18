@@ -2,8 +2,8 @@ import { isMasterWorld } from './worldRuntimeStatus.mjs'
 
 export const ROOM_WEATHER_PREFERENCE = 'dst-admin-room-weather'
 
-// The dashboard already reads these facts. Weather decoration never collects
-// game data, infers weather from the season, or falls back to a different shard.
+// Use existing runtime snapshots only. Weather decoration never requests active
+// game collection, infers weather from the season, or substitutes another shard.
 export function resolveRoomWeather(room, snapshots = []) {
   const master = room?.worlds?.find(isMasterWorld)
   if (!master) return null
