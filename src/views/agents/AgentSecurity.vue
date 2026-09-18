@@ -28,7 +28,8 @@
             <TabsList><TabsTrigger value="docker">Docker</TabsTrigger><TabsTrigger value="linux">Linux</TabsTrigger><TabsTrigger value="windows">Windows</TabsTrigger></TabsList>
             <TabsContent v-for="platform in ['docker', 'linux', 'windows']" :key="platform" :value="platform" class="flex flex-col gap-3">
               <Field v-if="platform === 'docker'"><FieldLabel>{{ $t('agents.security.install.registry') }}</FieldLabel><UiSelect v-model="imageRegistry"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="aliyun">{{ $t('agents.security.install.aliyun') }}</SelectItem><SelectItem value="dockerhub">Docker Hub</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>{{ $t('agents.security.install.dockerDescription') }}</FieldDescription></Field>
-              <p v-else class="text-sm text-muted-foreground">{{ $t(platform === 'windows' ? 'agents.security.install.windowsDescription' : 'agents.security.install.nativeDescription') }}</p>
+              <Field v-if="platform === 'linux'"><FieldLabel>{{ $t('agents.security.install.downloadSource') }}</FieldLabel><UiSelect v-model="downloadSource"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="proxy">{{ $t('agents.security.install.downloadProxy') }}</SelectItem><SelectItem value="direct">{{ $t('agents.security.install.downloadDirect') }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+              <p v-if="platform !== 'docker'" class="text-sm text-muted-foreground">{{ $t(platform === 'windows' ? 'agents.security.install.windowsDescription' : 'agents.security.install.nativeDescription') }}</p>
               <p class="text-sm text-muted-foreground">{{ $t('agents.security.install.keyPrompt') }}</p>
               <div class="code-block"><pre><code>{{ installCommands[platform] }}</code></pre></div>
               <UiButton variant="outline" class="self-start" @click="copyInstallCommand(platform)"><Copy data-icon="inline-start" />{{ $t('common.actions.copy') }}</UiButton>
@@ -41,7 +42,7 @@
           <ol class="manual-steps">
             <li>
               <Badge variant="outline">1</Badge><div class="step-content"><div class="step-title">{{ $t('agents.security.manual.downloadTitle') }}</div>
-                {{ $t('agents.security.manual.buildFrom') }} <a href="https://github.com/lcy0828/dst-admin-go" target="_blank" rel="noopener noreferrer">{{ $t('agents.security.manual.repository') }}</a> {{ $t('agents.security.manual.buildForSystem') }}
+                {{ $t('agents.security.manual.buildFrom') }} <a :href="releasesURL" target="_blank" rel="noopener noreferrer">{{ $t('agents.security.manual.repository') }}</a> {{ $t('agents.security.manual.buildForSystem') }}
               </div>
             </li>
             <li>
@@ -90,7 +91,7 @@
 <script>
 import { CircleAlert, Copy, Eye, EyeOff, KeyRound, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { agentInstallCommands, agentNativeConfig } from '@/lib/agentInstall.mjs';
+import { agentInstallCommands, agentNativeConfig, AGENT_RELEASES_URL } from '@/lib/agentInstall.mjs';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { agentApi } from '@/api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -124,7 +125,9 @@ export default {
       securityAvailable: false,
       showKey: false,
       activeInstallTab: 'docker',
-      imageRegistry: 'aliyun'
+      imageRegistry: 'aliyun',
+      downloadSource: 'proxy',
+      releasesURL: AGENT_RELEASES_URL
     };
   },
   created() {
@@ -138,7 +141,7 @@ export default {
         ? this.$t('agents.security.feedback.errorWithDetail', { message, detail: this.loadFailure.detail })
         : message;
     },
-    installCommands() { return agentInstallCommands(this.installServerURL, this.imageRegistry); },
+    installCommands() { return agentInstallCommands(this.installServerURL, this.imageRegistry, this.downloadSource); },
     nativeConfig() { return agentNativeConfig(this.installServerURL); },
     installServerURL() {
       const configured = String(import.meta.env.VITE_AGENT_SERVER_URL || '').trim();

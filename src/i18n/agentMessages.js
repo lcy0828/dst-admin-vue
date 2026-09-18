@@ -557,14 +557,14 @@ export const agentMessages = {
         install: {
           title: '安装 Agent',
           description: '根据节点环境选择安装命令或手动配置。',
-          registry: '镜像源', aliyun: '阿里云（国内推荐）', dockerDescription: '官方 Agent 镜像，用于连接管理中心并管理已有的 DST Runtime 容器。数据目录默认 /opt/dst；此镜像不包含 SteamCMD。全新游戏节点可部署 All-in-One，再选择加入管理中心。', keyPrompt: '命令会提示输入已有的完整 Agent 密钥。不要输入页面掩码，也无需轮换密钥。', nativeDescription: '在项目源码目录构建；先按下方示例创建 agent.conf，准备 tmux、SteamCMD 和可写的数据目录。', windowsDescription: '在项目源码目录使用 PowerShell 构建 Agent。Windows 暂无原生 DST 运行器；运行游戏节点请使用 Linux 或 WSL2。'
+          downloadSource: '下载方式', downloadProxy: 'GHFast（国内推荐）', downloadDirect: 'GitHub 直连', registry: '镜像源', aliyun: '阿里云（国内推荐）', dockerDescription: '官方 Agent 镜像，用于连接管理中心并管理已有的 DST Runtime 容器。数据目录默认 /opt/dst；此镜像不包含 SteamCMD。全新游戏节点可部署 All-in-One，再选择加入管理中心。', keyPrompt: '命令会提示输入已有的完整 Agent 密钥。不要输入页面掩码，也无需轮换密钥。', nativeDescription: 'Linux x86_64 直接下载正式版并校验，无需 Go。先准备 tmux、SteamCMD 和可写的数据目录；命令会保留已有 agent.conf，新安装使用默认 /opt/dst 路径。自定义路径请先按下方示例创建配置。', windowsDescription: '在项目源码目录使用 PowerShell 构建 Agent。Windows 暂无原生 DST 运行器；运行游戏节点请使用 Linux 或 WSL2。'
         },
         manual: {
           title: '手动安装',
           downloadTitle: '下载 Agent 安装文件',
           buildFrom: '从',
-          repository: '项目仓库',
-          buildForSystem: '构建适合您系统的 Agent 二进制文件。',
+          repository: '正式版下载页',
+          buildForSystem: '下载对应系统的 Agent 包并校验 SHA-256，解压后使用其中的 dst-admin-agent。Linux 也可直接使用上方安装命令。',
           configureTitle: '配置 Agent',
           configureDescription: '创建配置文件',
           runTitle: '运行 Agent',
@@ -1153,14 +1153,14 @@ export const agentMessages = {
         install: {
           title: 'Install Agent',
           description: 'Choose an installation command or configure the Agent manually for the node environment.',
-          registry: 'Image registry', aliyun: 'Alibaba Cloud (mainland China)', dockerDescription: 'Official Agent image for connecting to a controller and managing existing DST Runtime containers. Data defaults to /opt/dst. SteamCMD is not included. For a new game node, deploy All-in-One and choose Join management center.', keyPrompt: 'The command prompts for your existing full Agent key. Do not enter the masked value; key rotation is unnecessary.', nativeDescription: 'Build from the project source. Create agent.conf using the example below and prepare tmux, SteamCMD and writable data directories.', windowsDescription: 'Build the Agent from source using PowerShell. There is no native DST runner for Windows; use Linux or WSL2 for game nodes.'
+          downloadSource: 'Download source', downloadProxy: 'GHFast (mainland China)', downloadDirect: 'GitHub direct', registry: 'Image registry', aliyun: 'Alibaba Cloud (mainland China)', dockerDescription: 'Official Agent image for connecting to a controller and managing existing DST Runtime containers. Data defaults to /opt/dst. SteamCMD is not included. For a new game node, deploy All-in-One and choose Join management center.', keyPrompt: 'The command prompts for your existing full Agent key. Do not enter the masked value; key rotation is unnecessary.', nativeDescription: 'Download and verify the stable Linux x86_64 release; Go is not required. Prepare tmux, SteamCMD and writable data directories first. Existing agent.conf is preserved; new installs use /opt/dst. For custom paths, create the configuration below first.', windowsDescription: 'Build the Agent from source using PowerShell. There is no native DST runner for Windows; use Linux or WSL2 for game nodes.'
         },
         manual: {
           title: 'Manual installation',
-          downloadTitle: 'Build the Agent binary',
-          buildFrom: 'Build an Agent binary for your system from the',
-          repository: 'project repository',
-          buildForSystem: '.',
+          downloadTitle: 'Download the Agent',
+          buildFrom: 'Download the package for your system from the',
+          repository: 'stable release page',
+          buildForSystem: ', verify its SHA-256, and extract dst-admin-agent. On Linux, you can use the installation command above.',
           configureTitle: 'Configure Agent',
           configureDescription: 'Create the configuration file',
           runTitle: 'Run Agent',
