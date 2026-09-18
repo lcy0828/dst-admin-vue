@@ -28,20 +28,30 @@ export function provideRoomWeather() {
   function startManualPreview() {
     clearTimeout(previewTimer)
     if (preview.value?.manual) return
-    // Always show motion when entering manual preview, including paused rooms.
-    preview.value = { ...(preview.value || previewRoomWeather('snow')), paused: false, manual: true }
+    // An explicit manual selection starts from the currently displayed weather.
+    // Opening the controls never calls this method.
+    const current = preview.value || (source.value?.available ? source.value : previewRoomWeather('none'))
+    preview.value = { ...previewRoomWeather(current.precipitation, current), manual: true }
   }
   function updateManualPreview(changes) {
     startManualPreview()
     const next = { ...preview.value, ...changes }
     preview.value = { ...previewRoomWeather(next.precipitation, next), manual: true }
   }
+  function setMode(value) {
+    if (value === 'manual') startManualPreview()
+    else if (value === 'automatic' || value === 'off') {
+      stopPreview()
+      setEnabled(value === 'automatic')
+    }
+  }
   function setSource(value) {
     if (source.value?.roomId !== value?.roomId) stopPreview()
     source.value = value
   }
   const state = {
-    source, enabled, preview, setEnabled, setSource, showPreview, stopPreview, startManualPreview, updateManualPreview,
+    mode: computed(() => preview.value ? 'manual' : enabled.value ? 'automatic' : 'off'),
+    setMode, source, enabled, preview, setEnabled, setSource, showPreview, stopPreview, startManualPreview, updateManualPreview,
     weather: computed(() => preview.value || (enabled.value && source.value?.available ? source.value : null))
   }
   provide(roomWeatherKey, state)

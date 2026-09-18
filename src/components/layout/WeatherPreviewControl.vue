@@ -1,9 +1,8 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePreferredReducedMotion } from '@vueuse/core'
 import { CloudSun, Pause, Play, X } from '@lucide/vue'
-import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Field, FieldGroup, FieldTitle } from '@/components/ui/field'
 import { Popover, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from '@/components/ui/popover'
@@ -25,23 +24,20 @@ const fields = [
   { key: 'precipitation', options: ['none', 'rain', 'snow', 'acid_rain'], messages: 'conditions' }
 ]
 
-function setOpen(value) {
-  open.value = value
-  if (value) {
-    weather.startManualPreview()
-    toast.dismiss('weather-preview')
-  }
-}
 function select(key, value) {
   if (value) weather.updateManualPreview({ [key]: value })
 }
-function finish() { open.value = false; weather.stopPreview() }
-// Turning weather off or leaving this room also closes its controls.
-watch(manual, value => { if (!value) open.value = false })
+const sourceLabel = computed(() => {
+  const source = weather.source.value
+  if (!source) return t('weather.scope')
+  if (!source.available) return t('weather.noData')
+  const condition = ['none', 'rain', 'snow', 'acid_rain', 'lunar_hail'].includes(source.precipitation) ? source.precipitation : 'unknown'
+  return t('weather.following', { room: source.roomName, world: source.worldName, weather: source.paused ? t('weather.paused') : t(`weather.conditions.${condition}`) })
+})
 </script>
 
 <template>
-  <Popover :open="open" :modal="false" @update:open="setOpen">
+  <Popover v-model:open="open" :modal="false">
     <PopoverTrigger as-child>
       <Button :variant="manual ? 'secondary' : 'ghost'" size="sm" class="pointer-coarse:min-h-11 pointer-coarse:min-w-11" :aria-label="t('weather.controls.title')" :title="t('weather.controls.title')" :data-weather-preview="manual">
         <CloudSun data-icon="inline-start" />
@@ -56,7 +52,15 @@ watch(manual, value => { if (!value) open.value = false })
         </PopoverHeader>
         <Button variant="ghost" size="icon-sm" class="shrink-0 pointer-coarse:size-11" :aria-label="t('weather.controls.collapse')" @click="open = false"><X /></Button>
       </div>
-      <FieldGroup v-if="model" class="gap-4">
+      <FieldGroup><Field>
+        <FieldTitle id="weather-mode">{{ t('weather.controls.mode') }}</FieldTitle>
+        <ToggleGroup type="single" variant="outline" size="sm" :spacing="1" :model-value="weather.mode.value" aria-labelledby="weather-mode" class="w-full" @update:model-value="weather.setMode($event)">
+          <ToggleGroupItem v-for="mode in ['off', 'automatic', 'manual']" :key="mode" :value="mode" class="min-w-0 flex-1 pointer-coarse:min-h-11">{{ t(`weather.controls.modes.${mode}`) }}</ToggleGroupItem>
+        </ToggleGroup>
+      </Field></FieldGroup>
+      <p v-if="weather.mode.value === 'automatic'" class="text-xs text-muted-foreground">{{ sourceLabel }}</p>
+      <p v-else-if="weather.mode.value === 'off'" class="text-xs text-muted-foreground">{{ t('weather.controls.offDescription') }}</p>
+      <FieldGroup v-if="manual && model" class="gap-4">
         <Field v-for="field in fields" :key="field.key">
           <FieldTitle :id="`weather-preview-${field.key}`">{{ t(`weather.controls.${field.key}`) }}</FieldTitle>
           <ToggleGroup type="single" variant="outline" size="sm" :spacing="1" :model-value="model[field.key]" :aria-labelledby="`weather-preview-${field.key}`" class="w-full" @update:model-value="select(field.key, $event)">
@@ -72,13 +76,13 @@ watch(manual, value => { if (!value) open.value = false })
         </Field>
       </FieldGroup>
       <p v-if="reducedMotion === 'reduce'" class="text-xs text-muted-foreground">{{ t('weather.reducedMotion') }}</p>
-      <Separator />
-      <div v-if="model" class="flex items-center justify-between gap-2">
+      <Separator v-if="manual" />
+      <div v-if="manual && model" class="flex items-center justify-between gap-2">
         <Button variant="outline" size="sm" class="pointer-coarse:min-h-11" :disabled="reducedMotion === 'reduce'" @click="weather.updateManualPreview({ paused: !model.paused })">
           <Play v-if="model.paused" data-icon="inline-start" /><Pause v-else data-icon="inline-start" />
           {{ t(model.paused ? 'weather.controls.play' : 'weather.controls.pause') }}
         </Button>
-        <Button size="sm" class="pointer-coarse:min-h-11" @click="finish">{{ t('weather.stopPreview') }}</Button>
+        <Button size="sm" class="pointer-coarse:min-h-11" @click="weather.setMode('automatic')">{{ t('weather.controls.followRoom') }}</Button>
       </div>
     </PopoverContent>
   </Popover>

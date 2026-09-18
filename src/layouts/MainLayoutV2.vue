@@ -15,6 +15,7 @@ import RoomManagementScopeNotice from '@/components/layout/RoomManagementScopeNo
 import SystemResourceRefreshInterval from '@/components/layout/SystemResourceRefreshInterval.vue'
 import SystemResourceStatus from '@/components/layout/SystemResourceStatus.vue'
 import ThemeSwitch from '@/components/ThemeSwitch.vue'
+import WeatherPreviewControl from '@/components/layout/WeatherPreviewControl.vue'
 import RoomWeatherLayer from '@/components/layout/RoomWeatherLayer.vue'
 import { provideRoomWeather } from '@/composables/useRoomWeather'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -225,6 +226,7 @@ onBeforeUnmount(() => {
           <LanguageSwitch />
           <Button variant="ghost" size="sm" @click="router.push('/setup')">{{ t('setup.title') }}</Button>
           <ThemeSwitch />
+          <WeatherPreviewControl />
           <Tooltip>
             <TooltipTrigger as-child>
               <Button variant="ghost" size="icon-sm" as-child>
