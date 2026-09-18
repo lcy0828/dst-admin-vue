@@ -112,12 +112,12 @@
                   <History data-icon="inline-start" />
                   {{ t('distributed.backups.restore') }}
                 </UiButton>
-                <UiButton v-if="backupSet.source === 'legacy'" size="icon-sm" variant="outline" :title="t('backups.actions.download')" :disabled="downloadingBackupId === backupSet.id" @click="downloadLegacyBackup(backupSet)">
+                <UiButton size="icon-sm" variant="outline" :title="t('backups.actions.download')" :disabled="Boolean(downloadingBackupId) || backupSet.status !== 'verified'" @click="downloadBackup(backupSet)">
                   <Spinner v-if="downloadingBackupId === backupSet.id" data-icon="inline-start" />
                   <Download v-else data-icon="inline-start" />
                   <span class="sr-only">{{ t('backups.actions.download') }}</span>
                 </UiButton>
-                <UiButton v-if="backupSet.source === 'legacy'" size="icon-sm" variant="destructive" :title="t('backups.actions.delete')" :disabled="operationRunning" @click="deleteLegacyBackup(backupSet)">
+                <UiButton size="icon-sm" variant="destructive" :title="t('backups.actions.delete')" :disabled="operationRunning" @click="deleteBackup(backupSet)">
                   <Trash2 data-icon="inline-start" />
                   <span class="sr-only">{{ t('backups.actions.delete') }}</span>
                 </UiButton>
@@ -514,12 +514,13 @@ async function restoreSet() {
   }
 }
 
-async function downloadLegacyBackup(backup) {
+async function downloadBackup(backup) {
   if (!backup?.id || downloadingBackupId.value) return
   downloadingBackupId.value = backup.id
   let objectURL = ''
   try {
-    const blob = await backupsV2API.downloadBlob(backup.id)
+    const api = backup.source === 'legacy' ? backupsV2API : backupSetsV2API
+    const blob = await api.downloadBlob(backup.id)
     objectURL = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = objectURL
@@ -536,7 +537,7 @@ async function downloadLegacyBackup(backup) {
   }
 }
 
-async function deleteLegacyBackup(backup) {
+async function deleteBackup(backup) {
   if (operationRunning.value) return
   try {
     await confirmAction(
@@ -553,7 +554,8 @@ async function deleteLegacyBackup(backup) {
   }
   operationRunning.value = true
   try {
-    await backupsV2API.delete(backup.id, backup.name)
+    const api = backup.source === 'legacy' ? backupsV2API : backupSetsV2API
+    await api.delete(backup.id, backup.name)
     await loadSets()
     toast.success(t('backups.feedback.deleted'))
   } catch (cause) {

@@ -68,7 +68,10 @@ export const systemSettingsMessages = {
         ipWhitelistDescription: '仅允许这些 IP 地址访问管理系统，留空表示不限制。'
       },
       backup: {
-        description: '以下备份设置适用于所有房间。',
+        description: '设置管理端备份目录，按房间管理备份计划。',
+        schedules: '按房间设置计划',
+        scheduleDescription: '前往备份管理选择房间，设置时间、时区和保留数量。原有已启用的计划继续运行，可在房间中查看和暂停。',
+        manage: '管理备份与计划',
         auto: '启用自动备份',
         autoDescription: '按设定时间备份房间存档。',
         frequency: '备份频率',
@@ -80,7 +83,7 @@ export const systemSettingsMessages = {
         retention: '保留备份数量',
         retentionDescription: '系统将保留的最近备份数量。',
         location: '备份存储位置',
-        locationDescription: '管理端的备份目录，修改后需重启管理服务。',
+        locationDescription: '管理端的备份目录。修改路径不会搬动已有备份。',
         locationPlaceholder: '请输入备份存储路径',
         manual: '手动备份',
         runNow: '立即执行',
@@ -89,7 +92,9 @@ export const systemSettingsMessages = {
         viewHistory: '查看备份历史'
       },
       notification: {
-        description: '配置 SMTP 连接；通知事件开关将在后续版本开放。',
+        description: '保存 SMTP 配置并检查连接。',
+        unavailable: '邮件事件通知尚未支持',
+        unavailableDescription: '当前只提供 SMTP 连接与认证测试，不发送服务器、登录或备份事件邮件。',
         emailEnabled: '启用邮件通知',
         emailEnabledDescription: '启用系统邮件通知功能。',
         smtpServer: 'SMTP 服务器',
@@ -299,7 +304,10 @@ export const systemSettingsMessages = {
         ipWhitelistDescription: 'Only these addresses may access the admin system. Leave empty to allow all addresses.'
       },
       backup: {
-        description: 'These backup settings apply to all rooms.',
+        description: 'Set backup storage here and manage schedules per room.',
+        schedules: 'Schedule backups per room',
+        scheduleDescription: 'Open Backup Management, select a room, and set the schedule, time zone, and retention. Existing enabled schedules continue running and can be viewed or paused there.',
+        manage: 'Manage backups and schedules',
         auto: 'Enable automatic backups',
         autoDescription: 'Back up discovered room data on a schedule.',
         frequency: 'Backup frequency',
@@ -311,7 +319,7 @@ export const systemSettingsMessages = {
         retention: 'Backups to retain',
         retentionDescription: 'Number of recent backups the system keeps.',
         location: 'Backup storage location',
-        locationDescription: 'Backup directory on the management server. Restart the management service after changing it.',
+        locationDescription: 'Backup directory on the management server. Changing it does not move existing backups.',
         locationPlaceholder: 'Enter the backup storage path',
         manual: 'Manual backup',
         runNow: 'Run now',
@@ -320,7 +328,9 @@ export const systemSettingsMessages = {
         viewHistory: 'View backup history'
       },
       notification: {
-        description: 'Configure the SMTP connection. Notification event switches will be available later.',
+        description: 'Save SMTP settings and check the connection.',
+        unavailable: 'Event emails are not available yet',
+        unavailableDescription: 'Only SMTP connection and authentication checks are supported. Server, sign-in, and backup events do not send email.',
         emailEnabled: 'Enable email notifications',
         emailEnabledDescription: 'Enable system email notifications.',
         smtpServer: 'SMTP server',

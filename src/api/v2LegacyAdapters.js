@@ -1,5 +1,5 @@
 import {
-  backupsV2API,
+  roomBackupsV2API,
   containersV2API,
   consoleV2API,
   fleetOverviewV2API,
@@ -460,7 +460,7 @@ export const legacyRoomApi = {
   },
   async backupRoom(roomValue, name = '') {
     const room = await resolveRoom(roomValue)
-    const job = await waitForV2Job(await backupsV2API.create(room.id, name), BACKUP_JOB_TIMEOUT)
+    const job = await waitForV2Job(await roomBackupsV2API.create(room.id, name), BACKUP_JOB_TIMEOUT)
     return success(job, 'backup_created')
   },
   async deleteRoom(input = {}) {
@@ -749,14 +749,14 @@ export const legacyBackupApi = {
     const rooms = await loadRoomCatalog()
     const grouped = {}
     await Promise.all(rooms.map(async room => {
-      const response = await backupsV2API.list(room.id)
+      const response = await roomBackupsV2API.list(room.id)
       grouped[room.name] = (response.items || []).map(item => mapBackup(item, room.name))
     }))
     return success(grouped, 'backups_loaded')
   },
   async createBackup(archive) {
     const room = await resolveRoom(archive)
-    const job = await waitForV2Job(await backupsV2API.create(room.id), BACKUP_JOB_TIMEOUT)
+    const job = await waitForV2Job(await roomBackupsV2API.create(room.id), BACKUP_JOB_TIMEOUT)
     return success(job, 'backup_created')
   },
   async restoreBackup(archive, backupName, targetName) {
@@ -766,11 +766,11 @@ export const legacyBackupApi = {
       })
     }
     const room = await resolveRoom(archive)
-    const response = await backupsV2API.list(room.id)
+    const response = await roomBackupsV2API.list(room.id)
     const backup = (response.items || []).find(item => item.name === backupName || item.id === backupName)
     if (!backup) throw adapterError('BACKUP_NOT_FOUND', { context: { backupName } })
     const job = await waitForV2Job(
-      await backupsV2API.restore(backup.id, room.name),
+      await roomBackupsV2API.restore(backup, room.name),
       BACKUP_JOB_TIMEOUT
     )
     invalidateRoomCatalog()
@@ -778,16 +778,16 @@ export const legacyBackupApi = {
   },
   async deleteBackup(archive, backupName) {
     const room = await resolveRoom(archive)
-    const response = await backupsV2API.list(room.id)
+    const response = await roomBackupsV2API.list(room.id)
     const backup = (response.items || []).find(item => item.name === backupName || item.id === backupName)
     if (!backup) throw adapterError('BACKUP_NOT_FOUND', { context: { backupName } })
-    return success(await backupsV2API.delete(backup.id, backup.name), 'backup_deleted')
+    return success(await roomBackupsV2API.delete(backup), 'backup_deleted')
   },
   async downloadBackup(archive, backupName) {
     const room = await resolveRoom(archive)
-    const response = await backupsV2API.list(room.id)
+    const response = await roomBackupsV2API.list(room.id)
     const backup = (response.items || []).find(item => item.name === backupName || item.id === backupName)
     if (!backup) throw adapterError('BACKUP_NOT_FOUND', { context: { backupName } })
-    return backupsV2API.downloadURL(backup.id)
+    return roomBackupsV2API.downloadURL(backup)
   }
 }

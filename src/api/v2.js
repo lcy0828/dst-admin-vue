@@ -5,6 +5,7 @@ import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
 import { filterManagementRooms } from '@/lib/managementScope.mjs'
 import { emitGlobalJobSubmitted } from '@/lib/globalJobs.mjs'
 import { isWorldProgressJob } from '@/lib/taskProgress.mjs'
+import { createRoomBackupsAPI } from '@/lib/roomBackups.mjs'
 
 const baseURL = `${apiConfig.BASE_URL.replace(/\/$/, '')}/v2`
 const GAME_RELEASE_REQUEST_TIMEOUT = 65_000
@@ -868,6 +869,11 @@ export const backupsV2API = {
 }
 
 export const backupSetsV2API = {
+  downloadURL: backupSetId => `${baseURL}/backup-sets/${encode(backupSetId)}/download`,
+  downloadBlob: backupSetId => getBinary(`/backup-sets/${encode(backupSetId)}/download`, 'application/zip'),
+  delete: (backupSetId, confirmation) => client.delete(`/backup-sets/${encode(backupSetId)}`, {
+    data: { confirmation }, runtimeTarget: false
+  }),
   /** @returns {Promise<{items: import('./distributedManagement').DistributedBackupSet[], total: number}>} */
   list: roomId => client.get(`/rooms/${encode(roomId)}/backup-sets`, {
     runtimeTarget: false,
@@ -898,6 +904,8 @@ export const backupSetsV2API = {
     { runtimeTarget: false }
   )
 }
+
+export const roomBackupsV2API = createRoomBackupsAPI(backupsV2API, backupSetsV2API)
 
 export const saveImportsV2API = {
   list: () => client.get('/save-imports', {

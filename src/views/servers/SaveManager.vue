@@ -68,9 +68,9 @@
                 <TableCell><div class="save-name"><FileArchive /><span>{{ save.name }}</span></div></TableCell>
                 <TableCell>{{ save.size }}</TableCell><TableCell>{{ save.createdAt }}</TableCell>
                 <TableCell><div class="table-actions">
-                  <UiButton size="xs" variant="ghost" @click="handleActivate(save)">加载</UiButton>
-                  <UiButton size="xs" variant="ghost" @click="handleRename(save)">重命名</UiButton>
-                  <UiButton size="xs" variant="ghost" @click="handleDownload(save)">下载</UiButton>
+                  <UiButton size="xs" variant="ghost" :disabled="!save.raw.restorable" @click="handleActivate(save)">加载</UiButton>
+                  <UiButton v-if="save.raw.source === 'legacy'" size="xs" variant="ghost" @click="handleRename(save)">重命名</UiButton>
+                  <UiButton size="xs" variant="ghost" :disabled="save.raw.status !== 'verified'" @click="handleDownload(save)">下载</UiButton>
                   <UiButton size="xs" variant="destructive" @click="handleDelete(save)">删除</UiButton>
                 </div></TableCell>
               </TableRow>
@@ -126,7 +126,7 @@
 <script>
 import { ArchiveRestore, CircleAlert, Download, FileArchive, FolderOpen, RefreshCw, Trash2, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { backupsV2API, jobsV2API, roomsV2API } from '@/api/v2';
+import { backupsV2API, roomBackupsV2API, jobsV2API, roomsV2API } from '@/api/v2';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -224,7 +224,7 @@ export default {
       this.loading = true;
       this.loadError = '';
       try {
-        const response = await backupsV2API.list(serverId);
+        const response = await roomBackupsV2API.list(serverId);
         this.savesList = (response.items || []).map(backup => ({
           id: backup.id,
           name: backup.name,
@@ -274,7 +274,7 @@ export default {
           confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
         });
         this.loading = true;
-        const job = await backupsV2API.restore(save.id, this.selectedRoom.name);
+        const job = await roomBackupsV2API.restore(save.raw, this.selectedRoom.name);
         await this.waitForJob(job);
         toast.success(`存档 ${save.name} 已恢复`);
         await this.loadServerSaves(this.selectedServer);
@@ -308,8 +308,9 @@ export default {
       }
     },
     handleDownload(save) {
+      if (save.raw.status !== 'verified') return;
       const link = document.createElement('a');
-      link.href = backupsV2API.downloadURL(save.id);
+      link.href = roomBackupsV2API.downloadURL(save.raw);
       link.download = `${save.name}.zip`;
       document.body.appendChild(link);
       link.click();
@@ -332,7 +333,7 @@ export default {
           confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning'
         });
         this.loading = true;
-        await backupsV2API.delete(save.id, save.name);
+        await roomBackupsV2API.delete(save.raw);
         await this.loadServerSaves(this.selectedServer);
         toast.success(`存档 ${save.name} 已删除`);
       } catch (error) {
@@ -349,7 +350,7 @@ export default {
         });
         this.loading = true;
         const selected = [...this.selectedSaves];
-        const results = await Promise.allSettled(selected.map(save => backupsV2API.delete(save.id, save.name)));
+        const results = await Promise.allSettled(selected.map(save => roomBackupsV2API.delete(save.raw)));
         await this.loadServerSaves(this.selectedServer);
         const deleted = results.filter(result => result.status === 'fulfilled').length;
         const failed = results.length - deleted;
@@ -364,11 +365,11 @@ export default {
     },
     async createBackup() {
       try {
-        await confirmAction('确定要为当前房间创建一个新的备份吗?', '创建备份', {
+        await confirmAction('为房间创建一致性备份。全部世界运行时在线备份；部分世界运行时会短暂停止并恢复原运行世界。是否继续？', '创建备份', {
           confirmButtonText: '确定', cancelButtonText: '取消', type: 'info'
         });
         this.loading = true;
-        const job = await backupsV2API.create(this.selectedServer);
+        const job = await roomBackupsV2API.create(this.selectedServer);
         await this.waitForJob(job);
         await this.loadServerSaves(this.selectedServer);
         toast.success('备份创建成功');

@@ -176,37 +176,12 @@
           <CardHeader><CardTitle>{{ $t('systemSettings.tabs.backup') }}</CardTitle><CardDescription>{{ $t('systemSettings.backup.description') }}</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
-              <Field orientation="horizontal">
-                <FieldContent><FieldLabel for="auto-backup">{{ $t('systemSettings.backup.auto') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.backup.autoDescription') }}</FieldDescription></FieldContent>
-                <UiSwitch id="auto-backup" v-model="settings.autoBackup" :disabled="!fieldEditable('backup.auto')" />
-              </Field>
-              <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel for="backup-frequency">{{ $t('systemSettings.backup.frequency') }}</FieldLabel></FieldContent>
-                <UiSelect v-model="settings.backupFrequency" :disabled="!settings.autoBackup || !fieldEditable('backup.frequency')">
-                  <SelectTrigger id="backup-frequency" class="setting-control"><SelectValue :placeholder="$t('systemSettings.backup.frequencyPlaceholder')" /></SelectTrigger>
-                  <SelectContent><SelectGroup><SelectItem value="daily">{{ $t('systemSettings.backup.daily') }}</SelectItem><SelectItem value="weekly">{{ $t('systemSettings.backup.weekly') }}</SelectItem><SelectItem value="monthly">{{ $t('systemSettings.backup.monthly') }}</SelectItem></SelectGroup></SelectContent>
-                </UiSelect>
-              </Field>
-              <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel for="backup-time">{{ $t('systemSettings.backup.time') }}</FieldLabel></FieldContent>
-                <UiInput id="backup-time" v-model="settings.backupTime" class="setting-control" type="time" :disabled="!settings.autoBackup || !fieldEditable('backup.time')" />
-              </Field>
-              <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel for="backup-retention">{{ $t('systemSettings.backup.retention') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.backup.retentionDescription') }}</FieldDescription></FieldContent>
-                <UiInput id="backup-retention" class="number-control" type="number" min="1" max="100" :disabled="!settings.autoBackup || !fieldEditable('backup.retention')" :model-value="String(settings.backupRetention)" @update:model-value="settings.backupRetention = Number($event)" />
-              </Field>
-              <Field orientation="responsive" :data-disabled="!settings.autoBackup">
-                <FieldContent><FieldLabel for="backup-location">{{ $t('systemSettings.backup.location') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.backup.locationDescription') }}</FieldDescription></FieldContent>
-                <UiInput id="backup-location" v-model="settings.backupLocation" class="setting-control" :disabled="!settings.autoBackup || !fieldEditable('paths.backup')" :placeholder="$t('systemSettings.backup.locationPlaceholder')" />
-              </Field>
-              <FieldSeparator>{{ $t('systemSettings.backup.manual') }}</FieldSeparator>
+              <Alert><AlertTitle>{{ $t('systemSettings.backup.schedules') }}</AlertTitle><AlertDescription>{{ $t('systemSettings.backup.scheduleDescription') }}</AlertDescription></Alert>
               <Field orientation="responsive">
-                <FieldContent><FieldTitle>{{ $t('systemSettings.backup.runNow') }}</FieldTitle><FieldDescription>{{ $t('systemSettings.backup.runNowDescription') }}</FieldDescription></FieldContent>
-                <div class="field-actions">
-                  <UiButton :disabled="loading" @click="handleBackupNow"><DatabaseBackup data-icon="inline-start" />{{ $t('systemSettings.backup.createNow') }}</UiButton>
-                  <UiButton variant="outline" :disabled="loading" @click="showBackupHistory"><History data-icon="inline-start" />{{ $t('systemSettings.backup.viewHistory') }}</UiButton>
-                </div>
+                <FieldContent><FieldLabel for="backup-location">{{ $t('systemSettings.backup.location') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.backup.locationDescription') }}</FieldDescription></FieldContent>
+                <UiInput id="backup-location" v-model="settings.backupLocation" class="setting-control" :disabled="!fieldEditable('paths.backup')" :placeholder="$t('systemSettings.backup.locationPlaceholder')" />
               </Field>
+              <UiButton variant="outline" @click="$router.push('/backups')"><DatabaseBackup data-icon="inline-start" />{{ $t('systemSettings.backup.manage') }}</UiButton>
             </FieldGroup>
           </CardContent>
           <CardFooter class="settings-card-footer">
@@ -221,41 +196,31 @@
           <CardHeader><CardTitle>{{ $t('systemSettings.tabs.notification') }}</CardTitle><CardDescription>{{ $t('systemSettings.notification.description') }}</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
-              <Field orientation="horizontal">
-                <FieldContent><FieldLabel for="email-notification">{{ $t('systemSettings.notification.emailEnabled') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.notification.emailEnabledDescription') }}</FieldDescription></FieldContent>
-                <UiSwitch id="email-notification" v-model="settings.emailNotification" :disabled="!fieldEditable('notification.emailEnabled')" />
-              </Field>
-              <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpServer)">
+              <Alert><AlertTitle>{{ $t('systemSettings.notification.unavailable') }}</AlertTitle><AlertDescription>{{ $t('systemSettings.notification.unavailableDescription') }}</AlertDescription></Alert>
+              <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpServer)">
                 <FieldContent><FieldLabel for="smtp-server">{{ $t('systemSettings.notification.smtpServer') }}</FieldLabel><FieldError v-if="formErrors.smtpServer">{{ formErrors.smtpServer }}</FieldError></FieldContent>
-                <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpServer')" :aria-invalid="Boolean(formErrors.smtpServer)" :placeholder="$t('systemSettings.notification.smtpServerPlaceholder')" @input="formErrors.smtpServer = ''" />
+                <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!fieldEditable('notification.smtpServer')" :aria-invalid="Boolean(formErrors.smtpServer)" :placeholder="$t('systemSettings.notification.smtpServerPlaceholder')" @input="formErrors.smtpServer = ''" />
               </Field>
-              <Field orientation="responsive" :data-disabled="!settings.emailNotification">
+              <Field orientation="responsive">
                 <FieldContent><FieldLabel for="smtp-port">{{ $t('systemSettings.notification.smtpPort') }}</FieldLabel></FieldContent>
-                <UiInput id="smtp-port" class="number-control" type="number" min="1" max="65535" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpPort')" :model-value="String(settings.smtpPort)" @update:model-value="settings.smtpPort = Number($event)" />
+                <UiInput id="smtp-port" class="number-control" type="number" min="1" max="65535" :disabled="!fieldEditable('notification.smtpPort')" :model-value="String(settings.smtpPort)" @update:model-value="settings.smtpPort = Number($event)" />
               </Field>
-              <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpUsername)">
+              <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpUsername)">
                 <FieldContent><FieldLabel for="smtp-username">{{ $t('systemSettings.notification.smtpUsername') }}</FieldLabel><FieldError v-if="formErrors.smtpUsername">{{ formErrors.smtpUsername }}</FieldError></FieldContent>
-                <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpUsername')" :aria-invalid="Boolean(formErrors.smtpUsername)" :placeholder="$t('systemSettings.notification.smtpUsernamePlaceholder')" @input="formErrors.smtpUsername = ''" />
+                <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!fieldEditable('notification.smtpUsername')" :aria-invalid="Boolean(formErrors.smtpUsername)" :placeholder="$t('systemSettings.notification.smtpUsernamePlaceholder')" @input="formErrors.smtpUsername = ''" />
               </Field>
-              <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.smtpPassword)">
+              <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpPassword)">
                 <FieldContent><FieldLabel for="smtp-password">{{ $t('systemSettings.notification.smtpPassword') }}</FieldLabel><FieldError v-if="formErrors.smtpPassword">{{ formErrors.smtpPassword }}</FieldError></FieldContent>
-                <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!settings.emailNotification || !fieldEditable('notification.smtpPassword')" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="$t(smtpPasswordConfigured ? 'systemSettings.notification.smtpPasswordConfigured' : 'systemSettings.notification.smtpPasswordPlaceholder')" @input="formErrors.smtpPassword = ''" />
+                <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!fieldEditable('notification.smtpPassword')" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="$t(smtpPasswordConfigured ? 'systemSettings.notification.smtpPasswordConfigured' : 'systemSettings.notification.smtpPasswordPlaceholder')" @input="formErrors.smtpPassword = ''" />
               </Field>
-              <Field orientation="responsive" :data-disabled="!settings.emailNotification" :data-invalid="Boolean(formErrors.senderEmail)">
+              <Field orientation="responsive" :data-invalid="Boolean(formErrors.senderEmail)">
                 <FieldContent><FieldLabel for="sender-email">{{ $t('systemSettings.notification.senderEmail') }}</FieldLabel><FieldError v-if="formErrors.senderEmail">{{ formErrors.senderEmail }}</FieldError></FieldContent>
-                <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!settings.emailNotification || !fieldEditable('notification.senderEmail')" :aria-invalid="Boolean(formErrors.senderEmail)" :placeholder="$t('systemSettings.notification.senderEmailPlaceholder')" @input="formErrors.senderEmail = ''" />
+                <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!fieldEditable('notification.senderEmail')" :aria-invalid="Boolean(formErrors.senderEmail)" :placeholder="$t('systemSettings.notification.senderEmailPlaceholder')" @input="formErrors.senderEmail = ''" />
               </Field>
-              <Field orientation="responsive" :data-disabled="!settings.emailNotification">
+              <Field orientation="responsive">
                 <FieldContent><FieldTitle>{{ $t('systemSettings.notification.connectionCheck') }}</FieldTitle><FieldDescription>{{ $t('systemSettings.notification.connectionCheckDescription') }}</FieldDescription></FieldContent>
-                <UiButton variant="outline" :disabled="loading || !settings.emailNotification" @click="testEmailConnection"><Send data-icon="inline-start" />{{ $t('systemSettings.notification.testConnection') }}</UiButton>
+                <UiButton variant="outline" :disabled="loading" @click="testEmailConnection"><Send data-icon="inline-start" />{{ $t('systemSettings.notification.testConnection') }}</UiButton>
               </Field>
-              <FieldSeparator>{{ $t('systemSettings.notification.events') }}</FieldSeparator>
-              <FieldGroup class="notification-events">
-                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-server-status">{{ $t('systemSettings.notification.serverStatus') }}</FieldLabel><UiSwitch id="notify-server-status" v-model="settings.notifyServerStatus" disabled /></Field>
-                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-login-failures">{{ $t('systemSettings.notification.loginFailures') }}</FieldLabel><UiSwitch id="notify-login-failures" v-model="settings.notifyLoginFailures" disabled /></Field>
-                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-backup-results">{{ $t('systemSettings.notification.backupResults') }}</FieldLabel><UiSwitch id="notify-backup-results" v-model="settings.notifyBackupResults" disabled /></Field>
-                <Field orientation="horizontal" data-disabled><FieldLabel for="notify-system-updates">{{ $t('systemSettings.notification.systemUpdates') }}</FieldLabel><UiSwitch id="notify-system-updates" v-model="settings.notifySystemUpdates" disabled /></Field>
-              </FieldGroup>
             </FieldGroup>
           </CardContent>
           <CardFooter class="settings-card-footer">
@@ -327,28 +292,7 @@
       </TabsContent>
     </Tabs>
 
-    <UiDialog v-model:open="backupHistoryVisible">
-      <DialogScrollContent class="sm:max-w-4xl">
-        <DialogHeader><DialogTitle>{{ $t('systemSettings.history.title') }}</DialogTitle><DialogDescription>{{ $t('systemSettings.history.description') }}</DialogDescription></DialogHeader>
-        <div class="table-scroll">
-          <ShadcnTable>
-            <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>{{ $t('systemSettings.history.room') }}</TableHead><TableHead>{{ $t('systemSettings.history.filename') }}</TableHead><TableHead>{{ $t('systemSettings.history.size') }}</TableHead><TableHead>{{ $t('systemSettings.history.createdAt') }}</TableHead><TableHead>{{ $t('systemSettings.history.status') }}</TableHead><TableHead class="table-actions-head">{{ $t('systemSettings.history.actions') }}</TableHead></TableRow></TableHeader>
-            <TableBody>
-              <TableRow v-for="backup in backupHistory" :key="backup.id"><TableCell>{{ backup.id }}</TableCell><TableCell>{{ backup.roomName }}</TableCell><TableCell>{{ backup.filename }}</TableCell><TableCell>{{ backup.size }}</TableCell><TableCell>{{ backup.createTime }}</TableCell><TableCell><Badge :variant="backup.status === 'success' ? 'secondary' : 'destructive'">{{ $t(backup.status === 'success' ? 'systemSettings.history.success' : 'systemSettings.history.failed') }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton variant="outline" size="sm" :disabled="loading" @click="downloadBackup(backup)"><Download data-icon="inline-start" />{{ $t('systemSettings.history.download') }}</UiButton><UiButton variant="destructive" size="sm" :disabled="loading" @click="deleteBackup(backup)"><Trash2 data-icon="inline-start" />{{ $t('common.actions.delete') }}</UiButton></div></TableCell></TableRow>
-              <TableEmpty v-if="backupHistory.length === 0" :colspan="7">
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyTitle>{{ $t('systemSettings.history.empty') }}</EmptyTitle>
-                    <EmptyDescription>{{ $t('systemSettings.history.emptyDescription') }}</EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              </TableEmpty>
-            </TableBody>
-          </ShadcnTable>
-        </div>
-        <DialogFooter><UiButton variant="outline" @click="backupHistoryVisible = false">{{ $t('common.actions.close') }}</UiButton></DialogFooter>
-      </DialogScrollContent>
-    </UiDialog>
+
   </div>
 </template>
 
@@ -362,9 +306,7 @@ import {
   CodeXml,
   Cpu,
   DatabaseBackup,
-  Download,
   HardDrive,
-  History,
   MemoryStick,
   RefreshCw,
   RotateCcw,
@@ -372,18 +314,15 @@ import {
   Send,
   Settings2,
   ShieldCheck,
-  Trash2
 } from '@lucide/vue';
 import { systemApi } from '@/api';
-import { editableSystemSettingValues, TERMINAL_SYSTEM_JOB_STATES } from '@/api/systemSettingsSupport.mjs';
-import { backupsV2API, jobsV2API, roomsV2API, systemV2API } from '@/api/v2';
+import { editableSystemSettingValues } from '@/api/systemSettingsSupport.mjs';
+import { systemV2API } from '@/api/v2';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog as UiDialog, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldSeparator, FieldTitle } from '@/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Progress as UiProgress } from '@/components/ui/progress';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -391,7 +330,6 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
-import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -425,26 +363,14 @@ export default {
     CodeXml,
     Cpu,
     DatabaseBackup,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogScrollContent,
-    DialogTitle,
-    Download,
-    Empty,
-    EmptyDescription,
-    EmptyHeader,
-    EmptyTitle,
     Field,
     FieldContent,
     FieldDescription,
     FieldError,
     FieldGroup,
     FieldLabel,
-    FieldSeparator,
     FieldTitle,
     HardDrive,
-    History,
     MemoryStick,
     UiProgress,
     RefreshCw,
@@ -459,24 +385,15 @@ export default {
     Settings2,
     ShieldCheck,
     Separator,
-    ShadcnTable,
     Skeleton,
     Spinner,
-    TableBody,
-    TableCell,
-    TableEmpty,
-    TableHead,
-    TableHeader,
-    TableRow,
     Tabs,
     TabsContent,
     TabsList,
     TabsTrigger,
     ToggleGroup,
     ToggleGroupItem,
-    Trash2,
     UiButton,
-    UiDialog,
     UiInput,
     UiSelect,
     UiSwitch,
@@ -521,23 +438,14 @@ export default {
         ipWhitelist: '',
 
         // 备份设置
-        autoBackup: true,
-        backupFrequency: 'daily',
-        backupTime: '03:00',
-        backupRetention: 7,
         backupLocation: '',
 
         // 通知设置
-        emailNotification: false,
         smtpServer: '',
         smtpPort: 587,
         smtpUsername: '',
         smtpPassword: '',
         senderEmail: '',
-        notifyServerStatus: true,
-        notifyLoginFailures: true,
-        notifyBackupResults: true,
-        notifySystemUpdates: true
       },
 
       // 系统状态信息
@@ -585,8 +493,6 @@ export default {
       },
 
       // 备份历史
-      backupHistoryVisible: false,
-      backupHistory: []
     };
   },
   computed: {
@@ -689,21 +595,12 @@ export default {
         maxLoginAttempts: this.fieldNumber(response, 'security.maxLoginAttempts', 5),
         twoFactorAuth: this.fieldBoolean(response, 'security.twoFactorAuth'),
         ipWhitelist: this.field(response, 'security.ipWhitelist').value,
-        autoBackup: this.fieldBoolean(response, 'backup.auto', true),
-        backupFrequency: this.field(response, 'backup.frequency', 'daily').value,
-        backupTime: this.field(response, 'backup.time', '03:00').value,
-        backupRetention: this.fieldNumber(response, 'backup.retention', 7),
         backupLocation: this.field(response, 'paths.backup').value,
-        emailNotification: this.fieldBoolean(response, 'notification.emailEnabled'),
         smtpServer: this.field(response, 'notification.smtpServer').value,
         smtpPort: this.fieldNumber(response, 'notification.smtpPort', 587),
         smtpUsername: this.field(response, 'notification.smtpUsername').value,
         smtpPassword: '',
         senderEmail: this.field(response, 'notification.senderEmail').value,
-        notifyServerStatus: this.fieldBoolean(response, 'notification.serverStatus', true),
-        notifyLoginFailures: this.fieldBoolean(response, 'notification.loginFailures', true),
-        notifyBackupResults: this.fieldBoolean(response, 'notification.backupResults', true),
-        notifySystemUpdates: this.fieldBoolean(response, 'notification.systemUpdates', true)
       };
       this.resetFormErrors();
     },
@@ -738,7 +635,7 @@ export default {
         ? ['smtpServer', 'smtpUsername', 'smtpPassword', 'senderEmail']
         : ['smtpServer', 'smtpUsername', 'smtpPassword'];
       this.resetFormErrors(fields);
-      if (!this.settings.emailNotification) return true;
+      if (includeSender) return true;
 
       if (!String(this.settings.smtpServer || '').trim()) this.formErrors.smtpServer = this.$t('systemSettings.validation.smtpServerRequired');
       if (!String(this.settings.smtpUsername || '').trim()) this.formErrors.smtpUsername = this.$t('systemSettings.validation.smtpUsernameRequired');
@@ -754,9 +651,6 @@ export default {
       if (!String(this.settings.systemName || '').trim()) this.formErrors.systemName = this.$t('systemSettings.validation.systemNameRequired');
       if (String(this.settings.adminEmail || '').trim() && !this.isValidEmail(this.settings.adminEmail)) {
         this.formErrors.adminEmail = this.$t('systemSettings.validation.emailInvalid');
-      }
-      if (this.settings.emailNotification && !String(this.settings.adminEmail || '').trim()) {
-        this.formErrors.adminEmail = this.$t('systemSettings.validation.adminEmailRequired');
       }
       const emailValid = this.validateEmailFields(true);
       const basicValid = !this.formErrors.systemName && !this.formErrors.adminEmail;
@@ -778,20 +672,11 @@ export default {
         'security.sessionTimeout': String(this.settings.sessionTimeout),
         'security.maxLoginAttempts': String(this.settings.maxLoginAttempts),
         'security.ipWhitelist': this.settings.ipWhitelist,
-        'backup.auto': String(this.settings.autoBackup),
-        'backup.frequency': this.settings.backupFrequency,
-        'backup.time': this.settings.backupTime,
-        'backup.retention': String(this.settings.backupRetention),
         'paths.backup': this.settings.backupLocation,
-        'notification.emailEnabled': String(this.settings.emailNotification),
         'notification.smtpServer': this.settings.smtpServer,
         'notification.smtpPort': String(this.settings.smtpPort),
         'notification.smtpUsername': this.settings.smtpUsername,
         'notification.senderEmail': this.settings.senderEmail,
-        'notification.serverStatus': String(this.settings.notifyServerStatus),
-        'notification.loginFailures': String(this.settings.notifyLoginFailures),
-        'notification.backupResults': String(this.settings.notifyBackupResults),
-        'notification.systemUpdates': String(this.settings.notifySystemUpdates)
       };
       const values = editableSystemSettingValues(this.settingsResponse?.fields, currentValues);
       if (this.settings.smtpPassword && this.fieldEditable('notification.smtpPassword')) {
@@ -814,21 +699,11 @@ export default {
           return;
         }
         const result = await systemV2API.applySettings({ ...input, confirmation: APPLY_CONFIRMATION });
-        let backupPolicyError = null;
-        if (preview.changes.some(change => change.fieldId.startsWith('backup.'))) {
-          try {
-            await this.syncBackupPolicies();
-          } catch (error) {
-            backupPolicyError = error;
-          }
-        }
         this.populateSettings(result.settings);
         applySystemPreferences(result.settings);
         const refreshed = await this.loadSettings(false);
         if (!refreshed) {
           toast.warning(this.$t('systemSettings.feedback.refreshAfterSaveFailed'));
-        } else if (backupPolicyError) {
-          toast.warning(this.$t('systemSettings.feedback.backupSyncFailed', { error: backupPolicyError.message || this.$t('common.errors.unknown') }));
         } else {
           toast.success(result.settings.restartRequired
             ? this.$t('systemSettings.feedback.savedRestartRequired', { reason: this.$t('systemSettings.feedback.restartRequired') })
@@ -849,122 +724,6 @@ export default {
         await this.loadSettings(false);
       } catch (error) {
         if (error !== 'cancel' && error !== 'close') toast.error(error.message || this.$t('systemSettings.feedback.resetFailed'));
-      }
-    },
-    backupIntervalMinutes() {
-      return { daily: 1440, weekly: 10080, monthly: 43200 }[this.settings.backupFrequency] || 1440;
-    },
-    nextBackupRun() {
-      const [hour, minute] = String(this.settings.backupTime || '03:00').split(':').map(Number);
-      const next = new Date();
-      next.setHours(hour, minute, 0, 0);
-      if (next <= new Date()) next.setDate(next.getDate() + 1);
-      return next.toISOString();
-    },
-    async discoveredRooms() {
-      const response = await roomsV2API.list();
-      return response.items || [];
-    },
-    async syncBackupPolicies() {
-      const rooms = await this.discoveredRooms();
-      const policy = {
-        enabled: this.settings.autoBackup,
-        intervalMinutes: this.backupIntervalMinutes(),
-        maxSnapshots: this.settings.backupRetention,
-        nextRunAt: this.settings.autoBackup ? this.nextBackupRun() : undefined
-      };
-      await Promise.all(rooms.map(room => backupsV2API.savePolicy(room.id, policy)));
-    },
-    async handleBackupNow() {
-      this.loading = true;
-      try {
-        const rooms = await this.discoveredRooms();
-        if (rooms.length === 0) throw new Error(this.$t('systemSettings.feedback.noManagedRooms'));
-        const jobs = await Promise.all(rooms.map(room => backupsV2API.create(room.id)));
-        await this.waitForJobs(jobs);
-        await this.loadBackupHistory();
-        toast.success(this.$t('systemSettings.feedback.backupCompleted', { count: rooms.length }));
-      } catch (error) {
-        toast.error(error.message || this.$t('systemSettings.feedback.backupCreateFailed'));
-      } finally {
-        this.loading = false;
-      }
-    },
-    async waitForJobs(jobs) {
-      let current = jobs;
-      for (let attempt = 0; attempt < 120; attempt += 1) {
-        current = await Promise.all(current.map(job => jobsV2API.get(job.id)));
-        if (current.every(job => TERMINAL_SYSTEM_JOB_STATES.has(job.status))) break;
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      if (current.some(job => !TERMINAL_SYSTEM_JOB_STATES.has(job.status))) throw new Error(this.$t('systemSettings.feedback.backupRunning'));
-      const failed = current.find(job => job.status !== 'succeeded');
-      if (failed) throw new Error(failed.error?.message || this.$t('systemSettings.feedback.backupPartialFailure'));
-    },
-    async loadBackupHistory() {
-      const response = await roomsV2API.list();
-      const rooms = response.items || [];
-      const results = await Promise.all(rooms.map(async room => ({ room, backups: await backupsV2API.list(room.id) })));
-      this.backupHistory = results.flatMap(({ room, backups }) => (backups.items || []).map(item => ({
-        id: item.id,
-        name: item.name,
-        filename: item.fileName || `${item.name}.zip`,
-        size: this.formatBytes(item.size),
-        createTime: this.formatDateTime(item.createdAt),
-        status: item.status === 'verified' ? 'success' : 'failed',
-        roomName: room.name
-      }))).sort((first, second) => second.createTime.localeCompare(first.createTime));
-    },
-    async showBackupHistory() {
-      this.loading = true;
-      try {
-        await this.loadBackupHistory();
-        this.backupHistoryVisible = true;
-      } catch (error) {
-        toast.error(error.message || this.$t('systemSettings.feedback.historyLoadFailed'));
-      } finally {
-        this.loading = false;
-      }
-    },
-    async downloadBackup(backup) {
-      this.loading = true;
-      try {
-        const response = await fetch(backupsV2API.downloadURL(backup.id), {
-          credentials: 'include'
-        });
-        if (!response.ok) {
-          const payload = await response.json().catch(() => null);
-          throw new Error(payload?.error?.message || this.$t('systemSettings.feedback.downloadHttpFailed', { status: response.status }));
-        }
-        const url = URL.createObjectURL(await response.blob());
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = backup.filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-      } catch (error) {
-        toast.error(error.message || this.$t('systemSettings.feedback.downloadFailed'));
-      } finally {
-        this.loading = false;
-      }
-    },
-    async deleteBackup(backup) {
-      try {
-        await confirmAction(this.$t('systemSettings.feedback.deleteConfirm', { filename: backup.filename }), this.$t('systemSettings.feedback.deleteTitle'), {
-          confirmButtonText: this.$t('common.actions.delete'), cancelButtonText: this.$t('common.actions.cancel'), type: 'warning'
-        });
-        this.loading = true;
-        try {
-          await backupsV2API.delete(backup.id, backup.name);
-          await this.loadBackupHistory();
-          toast.success(this.$t('systemSettings.feedback.deleted'));
-        } finally {
-          this.loading = false;
-        }
-      } catch (error) {
-        if (error !== 'cancel' && error !== 'close') toast.error(error.message || this.$t('systemSettings.feedback.deleteFailed'));
       }
     },
     async testEmailConnection() {

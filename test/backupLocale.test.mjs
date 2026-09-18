@@ -43,7 +43,7 @@ test('backup page localizes presentation without changing backup identifiers', (
   assert.match(catalogPanel, /backupSourceLabel\(backupSet\.kind\)/)
   assert.match(catalogPanel, /v-if="!isSystemCategory"/)
   assert.match(catalogPanel, /Promise\.allSettled/)
-  assert.match(catalogPanel, /backupsV2API\.downloadBlob/)
+  assert.match(catalogPanel, /api\.downloadBlob/)
   assert.match(importPanel, /saveImportStatusKey\(item\.status\)/)
   assert.match(importPanel, /saveImportCompatibilityKey\(candidate\.compatibility\)/)
   assert.match(importPanel, /roomsV2API\.controlPlaneList\(\)/)
