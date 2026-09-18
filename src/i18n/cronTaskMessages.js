@@ -50,6 +50,7 @@ export const cronTaskMessages = Object.freeze({
       backupPrune: { name: '清理快照', description: '按保留数量清理旧快照' },
       commandExecute: { name: '执行游戏命令', description: '执行命令模板或自定义 Lua 脚本' },
       notificationSend: { name: '发送游戏通知', description: '向房间内当前运行中的所有分片发送游戏内消息' },
+      gameUpdateEmpty: { name: '无人时更新游戏并重启', description: '检查游戏更新；所有共用安装的房间均无人时更新并恢复原运行世界' },
       playerRefresh: { name: '刷新玩家', description: '采样分片玩家状态' },
       structuredLogRefresh: { name: '刷新结构化日志', description: '刷新分片结构化日志快照' },
       worldStateRefresh: { name: '刷新世界状态', description: '采样分片世界状态' }
@@ -216,6 +217,7 @@ export const cronTaskMessages = Object.freeze({
       backupPrune: { name: 'Prune snapshots', description: 'Remove old snapshots according to the retention count' },
       commandExecute: { name: 'Run game command', description: 'Run a command template or custom Lua script' },
       notificationSend: { name: 'Send game notification', description: 'Send an in-game message to every running Shard in the room' },
+      gameUpdateEmpty: { name: 'Update game and restart when empty', description: 'Check for game updates and resume running worlds only when all rooms sharing the installation are empty' },
       playerRefresh: { name: 'Refresh players', description: 'Sample player state from the shards' },
       structuredLogRefresh: { name: 'Refresh structured logs', description: 'Refresh the structured log snapshot for each shard' },
       worldStateRefresh: { name: 'Refresh world state', description: 'Sample world state from the shards' }
@@ -359,6 +361,7 @@ const ACTION_KEYS = Object.freeze({
   'room.start': 'roomStart', 'room.stop': 'roomStop', 'room.restart': 'roomRestart',
   'backup.create': 'backupCreate', 'backup.prune': 'backupPrune', 'command.execute': 'commandExecute',
   'notification.send': 'notificationSend',
+  'game.update-empty': 'gameUpdateEmpty',
   'player.refresh': 'playerRefresh', 'log.structured.refresh': 'structuredLogRefresh', 'world.state.refresh': 'worldStateRefresh'
 })
 

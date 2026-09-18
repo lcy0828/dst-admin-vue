@@ -12,7 +12,7 @@ import { MANAGEMENT_SCOPE_CHANGED_EVENT } from '@/lib/managementScope.mjs'
 
 const ROOM_KEY = 'dst-admin.automation.room-id'
 const SUCCESS_STATUSES = new Set(['succeeded'])
-const FAILURE_STATUSES = new Set(['failed', 'canceled', 'skipped'])
+const FAILURE_STATUSES = new Set(['failed', 'canceled'])
 
 let roomCatalog = []
 let roomCatalogRequest = null
@@ -195,6 +195,7 @@ function mapTask(task, roomId, tasks = []) {
     } : null,
     last_run_time: task.lastRunAt,
     last_status: task.lastStatus === 'succeeded' ? 1 : 0,
+    last_run_status: task.lastStatus || '',
     next_run_time: task.nextRunAt,
     revision: task.revision,
     created_at: task.createdAt,

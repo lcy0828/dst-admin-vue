@@ -100,6 +100,7 @@
           </TabsTrigger>
           <TabsTrigger value="special-lists" class="settings-tab-trigger"><ListChecks />{{ $t('rooms.settings.specialLists') }}</TabsTrigger>
           <TabsTrigger value="token" class="settings-tab-trigger"><KeyRound />{{ $t('rooms.settings.serverToken') }}</TabsTrigger>
+          <TabsTrigger v-if="isEdit && roomId && !setupMode" value="maintenance" class="settings-tab-trigger"><RefreshCw />{{ $t('rooms.settings.automaticMaintenance') }}</TabsTrigger>
         </TabsList>
       </div>
 
@@ -235,6 +236,9 @@
       <TabsContent value="token" class="settings-tab-content">
         <ServerToken :savename="roomId" :pending-mode="!isEdit" @input-token="handleInputToken" />
       </TabsContent>
+      <TabsContent v-if="isEdit && roomId && !setupMode" value="maintenance" class="settings-tab-content">
+        <RoomMaintenancePanel :key="roomId" :room-id="roomId" />
+      </TabsContent>
     </Tabs>
 
     <UiDialog v-model:open="settingsCopyDialogVisible">
@@ -289,6 +293,7 @@ import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue';
 import { preferredRoomId } from '@/lib/pageScope.mjs';
 import { ArrowLeft, Copy, Eye, EyeOff, FolderKey, Gamepad2, GitBranch, KeyRound, ListChecks, Network, RefreshCw, Save, Settings2, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
+import RoomMaintenancePanel from '@/components/RoomMaintenancePanel.vue';
 import { roomApi, roomConfigApi, serverApi } from '../../api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -385,6 +390,7 @@ export default {
   props: { setupMode: { type: Boolean, default: false } },
   emits: ['saved', 'cancel'],
   components: {
+    RoomMaintenancePanel,
     RoomScopeSelect,
     Alert,
     AlertDescription,

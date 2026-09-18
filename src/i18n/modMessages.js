@@ -288,16 +288,16 @@ export const modMessages = {
           failed: '模组更新受阻，请查看详情。',
           showDetails: '查看详情', hideDetails: '收起详情'
         },
-        description: '按房间管理 Workshop 检查、运行机器预下载和无人时生效。',
+        description: '按房间管理 Workshop 检查与无人时自动更新。',
         loading: '正在读取更新策略',
         actions: { open: '更新策略', checkNow: '立即检查', save: '保存策略' },
         mode: {
           title: '更新方式',
-          description: '自动行为只作用于这个房间实际运行位置中的安装实例。',
+          description: '在房间所在安装实例更新模组，共用这些安装的房间也会检查并重启。',
           manual: '手动', notify: '仅提醒', auto: '无人自动更新',
           manualDescription: '只在你点击“立即检查”时读取 Workshop，不自动下载或重启。',
           notifyDescription: '定期检查并在页面提示可用更新，不改动运行节点。',
-          autoDescription: '直接在各运行机器下载更新，全部成功且所有玩家持续离线后，重启原本运行的世界。'
+          autoDescription: '所有共用安装的房间无人时，在运行机器下载更新；等待无人宽限时间并再次确认后，重启原本运行的世界。'
         },
         fields: {
           interval: '检查间隔', grace: '无人宽限时间', announcement: '游戏内公告',
@@ -993,16 +993,16 @@ export const modMessages = {
           failed: 'The Mod update was blocked. Review the details.',
           showDetails: 'View details', hideDetails: 'Hide details'
         },
-        description: 'Manage Workshop checks, runtime-machine prefetch, and empty-room activation per room.',
+        description: 'Manage Workshop checks and automatic updates while rooms are empty.',
         loading: 'Loading update policy',
         actions: { open: 'Update Policy', checkNow: 'Check Now', save: 'Save Policy' },
         mode: {
           title: 'Update Mode',
-          description: 'Automatic actions only affect installations in this room\'s applied runtime placement.',
+          description: 'Update the room\'s installations. Rooms sharing them are also checked and restarted.',
           manual: 'Manual', notify: 'Notify Only', auto: 'Update When Empty',
           manualDescription: 'Read Workshop only when you click Check Now. Nothing is downloaded or restarted automatically.',
           notifyDescription: 'Check on a schedule and show available updates without changing runtime nodes.',
-          autoDescription: 'Download updates directly on each runtime machine, then restart previously running worlds after all downloads succeed and every player has stayed offline for the grace period.'
+          autoDescription: 'Wait until every room sharing the installations is empty, download on the runtime machines, then check again after the empty grace period and restart previously running worlds.'
         },
         fields: {
           interval: 'Check Interval', grace: 'Empty Grace Period', announcement: 'In-game Announcement',
