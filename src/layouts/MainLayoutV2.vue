@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
           <GlobalJobStatus />
           <div v-if="hasMachineScope" class="hidden xl:block"><SystemResourceRefreshInterval /></div>
           <LanguageSwitch />
-          <Button variant="ghost" size="sm" @click="router.push('/setup')">{{ t('setup.title') }}</Button>
+          <Button v-if="setupPending" variant="ghost" size="sm" @click="router.push('/setup')">{{ t('setup.title') }}</Button>
           <ThemeSwitch />
           <WeatherPreviewControl />
           <Tooltip>

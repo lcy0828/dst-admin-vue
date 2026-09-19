@@ -8,11 +8,16 @@
         </div>
         <p class="mt-1 text-sm text-muted-foreground">{{ $t('systemSettings.subtitle') }}</p>
       </div>
-      <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSettings()">
-        <Spinner v-if="loading" data-icon="inline-start" />
-        <RefreshCw v-else data-icon="inline-start" />
-        {{ $t('common.actions.refresh') }}
-      </UiButton>
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <UiButton variant="outline" size="sm" as-child>
+          <RouterLink to="/setup">{{ $t('setup.open') }}</RouterLink>
+        </UiButton>
+        <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSettings()">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          {{ $t('common.actions.refresh') }}
+        </UiButton>
+      </div>
     </header>
 
     <Alert v-if="loadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('systemSettings.loadFailed') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="loadSettings(false)">{{ $t('common.actions.retry') }}</UiButton></AlertAction></Alert>
