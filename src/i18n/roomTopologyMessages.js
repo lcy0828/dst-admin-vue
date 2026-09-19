@@ -3,7 +3,7 @@ export const roomTopologyMessages = {
     roomTopology: {
       trigger: '拓扑',
       title: '房间连接拓扑',
-      description: '玩家连接 Master；各个 Secondary 世界通过 Shard 线路连接 Master。',
+      description: '玩家从 Master 进入房间，从世界连接 Master。',
       refresh: '刷新拓扑',
       refreshing: '正在刷新拓扑',
       observedAt: '运行数据：{time}',
@@ -28,8 +28,8 @@ export const roomTopologyMessages = {
       nodes: {
         players: '玩家入口',
         playersDescription: '外部玩家连接 Master',
-        master: 'Master · 主分片',
-        secondary: 'Secondary · 从分片'
+        master: '主世界',
+        secondary: '从世界'
       },
       fields: {
         endpoint: '连接地址',
@@ -59,7 +59,7 @@ export const roomTopologyMessages = {
         unknown: '未识别游戏服务端'
       },
       routes: {
-        local: '同机内部互联',
+        local: '同机互联',
         lan: '局域网',
         overlay: '虚拟组网',
         tunnel: '内网穿透',
@@ -122,7 +122,7 @@ export const roomTopologyMessages = {
     roomTopology: {
       trigger: 'Topology',
       title: 'Room connection topology',
-      description: 'Players connect to Master; each Secondary world connects to Master over its Shard route.',
+      description: 'Players join through Master; secondary worlds connect to Master.',
       refresh: 'Refresh topology',
       refreshing: 'Refreshing topology',
       observedAt: 'Runtime data: {time}',
@@ -178,7 +178,7 @@ export const roomTopologyMessages = {
         unknown: 'Unknown game server'
       },
       routes: {
-        local: 'Same-machine link',
+        local: 'Same machine',
         lan: 'LAN',
         overlay: 'Overlay network',
         tunnel: 'Tunnel',

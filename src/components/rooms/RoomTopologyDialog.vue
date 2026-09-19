@@ -7,16 +7,13 @@
       </UiButton>
     </DialogTrigger>
 
-    <DialogScrollContent class="topology-dialog max-w-4xl gap-0 p-0">
+    <DialogScrollContent class="topology-dialog max-w-5xl gap-0 p-0" @open-auto-focus="focusHeading">
       <DialogHeader class="topology-header">
         <div class="topology-heading">
-          <DialogTitle>{{ t('roomTopology.title') }}</DialogTitle>
+          <DialogTitle ref="titleRef" tabindex="-1" class="outline-none">{{ t('roomTopology.title') }}</DialogTitle>
           <DialogDescription>{{ t('roomTopology.description') }}</DialogDescription>
         </div>
         <div class="topology-summary" role="status" aria-live="polite">
-          <Badge v-if="!refreshing && view.runtimeRisks.length" variant="warning">
-            {{ t('roomTopology.issues.riskTitle', { count: view.runtimeRisks.length }) }}
-          </Badge>
           <Badge :variant="refreshing ? 'outline' : healthVariant">{{ refreshing ? t('roomTopology.refreshing') : t(`roomTopology.health.${displayStatus}`) }}</Badge>
           <Tooltip>
             <TooltipTrigger as-child>
@@ -49,104 +46,46 @@
         </Alert>
 
         <section class="topology-map" :aria-label="t('roomTopology.lanes.complete')">
-          <div class="topology-entry-grid">
-            <article class="topology-node topology-entry" :class="{ 'is-warning': !view.playerEntry.ready }">
-              <span class="topology-node-icon"><UsersRound /></span>
-              <div class="topology-node-copy">
-                <div class="topology-node-heading">
-                  <div class="topology-world-title">
-                    <strong>{{ t('roomTopology.nodes.players') }}</strong>
-                    <span>{{ t('roomTopology.nodes.playersDescription') }}</span>
-                  </div>
-                  <Badge :variant="entryVariant">{{ t(`roomTopology.entrySources.${entrySource}`) }}</Badge>
-                </div>
-                <div class="topology-entry-endpoint">
-                  <Cable />
-                  <code>{{ view.playerEntry.endpoint || t('roomTopology.routes.unavailable') }}</code>
-                </div>
-              </div>
-            </article>
-          </div>
-
-          <div class="topology-access-grid" aria-hidden="true">
-            <div class="topology-access-edge">
-              <span class="topology-access-line" />
-              <span class="topology-access-label">
-                <Badge variant="outline">{{ t('roomTopology.fields.protocol') }}</Badge>
-                <ArrowDown />
-              </span>
+          <div class="topology-room-heading">
+            <div class="topology-room-title">
+              <Waypoints aria-hidden="true" />
+              <strong>{{ t('roomTopology.lanes.room', { room: view.roomName || view.roomId || '--' }) }}</strong>
+            </div>
+            <div class="topology-room-meta">
+              <Badge variant="outline" class="h-auto whitespace-normal">{{ t(`roomTopology.modes.${view.mode}`) }}</Badge>
+              <Badge variant="outline">{{ t('roomTopology.summary', { worlds: view.worldCount }) }}</Badge>
             </div>
           </div>
 
-          <div class="topology-room">
-            <div class="topology-room-heading">
-              <div class="topology-room-title">
-                <Waypoints />
-                <strong>{{ t('roomTopology.lanes.room', { room: view.roomName || view.roomId || '--' }) }}</strong>
-              </div>
-              <div class="topology-room-meta">
-                <Badge variant="outline">{{ t(`roomTopology.modes.${view.mode}`) }}</Badge>
-                <Badge variant="outline">{{ t('roomTopology.summary', { worlds: view.worldCount }) }}</Badge>
-              </div>
+          <div class="topology-flow" :class="{ 'is-single-world': !view.secondaries.length }">
+            <div class="topology-entry-lane">
+              <Card size="sm" class="topology-entry" :class="{ 'is-warning': !view.playerEntry.ready }">
+                <CardHeader>
+                  <CardTitle class="flex items-center gap-2"><UsersRound class="size-4 shrink-0" aria-hidden="true" />{{ t('roomTopology.nodes.players') }}</CardTitle>
+                  <CardDescription>{{ t('roomTopology.nodes.playersDescription') }}</CardDescription>
+                </CardHeader>
+                <CardContent class="flex flex-col gap-3 group-data-[size=sm]/card:pt-0">
+                  <code class="topology-entry-endpoint">{{ view.playerEntry.endpoint || t('roomTopology.entrySources.missing') }}</code>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <Badge v-if="view.playerEntry.endpoint" variant="secondary">UDP</Badge>
+                    <Badge :variant="entryVariant" class="h-auto whitespace-normal">{{ t(`roomTopology.entrySources.${entrySource}`) }}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+              <div class="topology-entry-edge" :class="{ 'is-missing': !view.playerEntry.ready || !view.master }" aria-hidden="true"><ArrowRight /></div>
             </div>
 
-            <div v-if="view.master" class="topology-shards">
-              <article class="topology-node topology-master" :class="nodeToneClass(view.master)">
-                <span class="topology-node-icon"><Server /></span>
-                <div class="topology-node-copy">
-                  <div class="topology-node-heading">
-                    <div class="topology-world-title">
-                      <strong>{{ view.master.name }}</strong>
-                      <span>{{ t('roomTopology.nodes.master') }}</span>
-                    </div>
-                    <Badge :variant="runtimeVariant(view.master.runtimeState)">
-                      {{ runtimeLabel(view.master.runtimeState) }}
-                    </Badge>
-                  </div>
-                  <RoomTopologyNodeFacts :node="view.master" :master="true" />
-                </div>
-              </article>
+            <div class="topology-shards">
+              <RoomTopologyWorldNode v-if="view.master" class="topology-master" :node="view.master" :master="true" />
+              <div v-else class="topology-missing-master">
+                <CircleAlert aria-hidden="true" />
+                <span>{{ t('roomTopology.issues.masterMissing') }}</span>
+              </div>
 
-              <div
-                v-if="view.secondaries.length"
-                class="topology-branches"
-                :style="{ '--branch-count': Math.max(view.secondaries.length, 1) }"
-              >
+              <div v-if="view.secondaries.length" class="topology-branches" :class="{ 'has-multiple': view.secondaries.length > 1 }">
                 <article v-for="node in view.secondaries" :key="node.id" class="topology-branch">
-                  <div class="topology-route" :class="{ 'is-missing': node.route.state === 'missing' }">
-                    <span class="topology-route-line" aria-hidden="true" />
-                    <div class="topology-route-label">
-                      <div class="topology-route-title">
-                        <ArrowLeft />
-                        <Badge :variant="node.route.state === 'missing' ? 'destructive' : 'outline'">
-                          {{ routeModeLabel(node.route.mode) }}
-                        </Badge>
-                        <span>{{ t('roomTopology.routes.toMaster') }}</span>
-                      </div>
-                      <Tooltip>
-                        <TooltipTrigger as-child>
-                          <code tabindex="0">{{ routeDestination(node.route) }}</code>
-                        </TooltipTrigger>
-                        <TooltipContent>{{ routeDestination(node.route) }}</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </div>
-
-                  <div class="topology-node topology-secondary" :class="nodeToneClass(node)">
-                    <span class="topology-node-icon"><Boxes /></span>
-                    <div class="topology-node-copy">
-                      <div class="topology-node-heading">
-                        <div class="topology-world-title">
-                          <strong>{{ node.name }}</strong>
-                          <span>{{ t('roomTopology.nodes.secondary') }}</span>
-                        </div>
-                        <Badge :variant="runtimeVariant(node.runtimeState)">
-                          {{ runtimeLabel(node.runtimeState) }}
-                        </Badge>
-                      </div>
-                      <RoomTopologyNodeFacts :node="node" />
-                    </div>
-                  </div>
+                  <div class="topology-shard-edge" :class="{ 'is-missing': node.route.state === 'missing' || !view.master }" aria-hidden="true"><ArrowLeft /></div>
+                  <RoomTopologyWorldNode class="topology-secondary" :node="node" />
                 </article>
               </div>
             </div>
@@ -198,16 +137,17 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowDown, ArrowLeft, Boxes, Cable, CircleAlert, RefreshCw, Server, TriangleAlert, UsersRound, Waypoints } from '@lucide/vue'
+import { ArrowLeft, ArrowRight, CircleAlert, RefreshCw, TriangleAlert, UsersRound, Waypoints } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogDescription, DialogHeader, DialogScrollContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { buildRoomTopologyView } from '@/lib/roomTopologyPresentation.mjs'
-import RoomTopologyNodeFacts from './RoomTopologyNodeFacts.vue'
+import RoomTopologyWorldNode from './RoomTopologyWorldNode.vue'
 
 const props = defineProps({
   room: { type: Object, default: () => ({}) },
@@ -222,6 +162,7 @@ const props = defineProps({
 const emit = defineEmits(['refresh'])
 const { t, locale } = useI18n()
 const open = ref(false)
+const titleRef = ref(null)
 
 const view = computed(() => buildRoomTopologyView({
   room: props.room,
@@ -247,39 +188,9 @@ watch(open, value => {
   if (value) emit('refresh')
 })
 
-function safeRuntimeState(state) {
-  return ['running', 'stopped', 'starting', 'failed'].includes(state) ? state : 'unknown'
-}
-
-function runtimeLabel(state) {
-  return t(`roomTopology.runtime.${safeRuntimeState(state)}`)
-}
-
-function runtimeVariant(state) {
-  if (state === 'running') return 'success'
-  if (state === 'failed') return 'destructive'
-  if (state === 'starting') return 'warning'
-  return 'outline'
-}
-
-function nodeToneClass(node) {
-  return {
-    'is-error': node.placementTone === 'error' || !node.targetOnline,
-    'is-warning': node.placementTone === 'warning' || node.installationStale || !node.installationAvailable
-  }
-}
-
-function routeModeLabel(mode) {
-  const value = ['local', 'lan', 'overlay', 'tunnel', 'public', 'configured', 'manual', 'missing'].includes(mode) ? mode : 'manual'
-  return t(`roomTopology.routes.${value}`)
-}
-
-function routeDestination(route) {
-  if (route.mode === 'local') return route.endpoint
-    ? `${t('roomTopology.routes.localDestination')} · ${route.endpoint}`
-    : t('roomTopology.routes.localDestination')
-  if (!route.endpoint) return t('roomTopology.routes.unavailable')
-  return route.endpoint
+function focusHeading(event) {
+  event.preventDefault()
+  titleRef.value?.$el?.focus({ preventScroll: true })
 }
 
 function issueMessage(value) {
@@ -297,7 +208,7 @@ function formatTimestamp(value) {
 
 <style scoped>
 .topology-dialog {
-  overflow-x: hidden;
+  min-width: 0;
 }
 
 .topology-header {
@@ -305,310 +216,328 @@ function formatTimestamp(value) {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   gap: 16px;
-  padding: 16px 52px 13px 18px;
+  padding: 20px 52px 16px 20px;
   border-bottom: 1px solid var(--border);
+  text-align: left;
 }
 
 .topology-heading,
 .topology-content,
-.topology-map,
-.topology-node-copy,
-.topology-world-title,
-.topology-branches,
 .topology-issue-list {
   display: flex;
   min-width: 0;
   flex-direction: column;
-}
-
-.topology-heading {
-  gap: 3px;
+  gap: 6px;
 }
 
 .topology-summary,
 .topology-room-heading,
 .topology-room-title,
 .topology-room-meta,
-.topology-node-heading,
-.topology-entry-endpoint,
-.topology-access-label,
-.topology-route-title,
 .topology-timestamps {
   display: flex;
   min-width: 0;
   align-items: center;
+  gap: 8px;
 }
 
 .topology-summary {
   justify-content: flex-end;
-  gap: 6px;
   flex-wrap: wrap;
 }
 
 .topology-content {
-  gap: 12px;
-  padding: 14px 18px 13px;
+  gap: 16px;
+  padding: 16px 20px;
+  overflow-wrap: anywhere;
 }
 
 .topology-map {
-  gap: 0;
-}
-
-.topology-entry-grid,
-.topology-access-grid,
-.topology-shards {
-  display: grid;
   min-width: 0;
-  grid-template-columns: minmax(250px, 0.9fr) minmax(0, 1.35fr);
-}
-
-.topology-entry-grid,
-.topology-access-grid {
-  padding-inline: 12px;
-}
-
-.topology-node {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--background);
-}
-
-.topology-node.is-warning {
-  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
-}
-
-.topology-node.is-error {
-  border-color: color-mix(in srgb, var(--destructive) 45%, var(--border));
-}
-
-.topology-node-icon {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  color: var(--muted-foreground);
-  border-radius: var(--radius-sm);
-  background: var(--muted);
-}
-
-.topology-node-icon :deep(svg) {
-  width: 17px;
-  height: 17px;
-}
-
-.topology-node-copy,
-.topology-world-title {
-  gap: 2px;
-}
-
-.topology-node-heading {
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.topology-node-heading strong {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 13px;
-  line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.topology-world-title > span {
-  color: var(--muted-foreground);
-  font-size: 10px;
-  line-height: 14px;
-}
-
-.topology-entry-endpoint {
-  gap: 5px;
-  margin-top: 5px;
-  color: var(--muted-foreground);
-}
-
-.topology-entry-endpoint svg {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-}
-
-.topology-entry-endpoint code,
-.topology-route code {
-  min-width: 0;
-  overflow: hidden;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.topology-access-edge {
-  position: relative;
-  display: grid;
-  min-height: 42px;
-  place-items: center;
-}
-
-.topology-access-line {
-  position: absolute;
-  inset-block: 0;
-  left: 50%;
-  border-left: 1px solid var(--border);
-}
-
-.topology-access-label {
-  position: relative;
-  gap: 3px;
-  padding: 2px;
-  background: var(--popover);
-}
-
-.topology-access-label > svg {
-  width: 14px;
-  height: 14px;
-  color: var(--muted-foreground);
-}
-
-.topology-room {
-  min-width: 0;
-  padding: 10px 12px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--muted) 32%, var(--background));
 }
 
 .topology-room-heading {
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.topology-room-title,
-.topology-room-meta {
-  gap: 6px;
-}
-
-.topology-room-title > svg {
-  width: 15px;
-  height: 15px;
-  color: var(--muted-foreground);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .topology-room-title strong {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 11px;
-  line-height: 16px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
-.topology-master {
-  align-self: center;
-}
-
-.topology-branches {
-  --branch-count: 1;
-  position: relative;
-  display: grid;
-  grid-template-rows: repeat(var(--branch-count), minmax(0, 1fr));
-  gap: 10px;
-}
-
-.topology-branches::before {
-  position: absolute;
-  top: calc(50% / var(--branch-count));
-  bottom: calc(50% / var(--branch-count));
-  left: 0;
-  border-left: 1px solid var(--border);
-  content: '';
-}
-
-.topology-branch {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(130px, 0.58fr) minmax(230px, 1fr);
-}
-
-.topology-route {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  min-height: 100%;
-  place-items: center;
-}
-
-.topology-route-line {
-  position: absolute;
-  inset-inline: 0;
-  top: 50%;
-  border-top: 1px solid var(--border);
-}
-
-.topology-route-label {
-  position: relative;
-  display: flex;
-  max-width: calc(100% - 12px);
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 5px 7px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--popover);
-}
-
-.topology-route.is-missing .topology-route-label {
-  border-color: color-mix(in srgb, var(--destructive) 45%, var(--border));
-}
-
-.topology-route-title {
-  justify-content: center;
-  gap: 4px;
-}
-
-.topology-route-title > svg {
-  width: 14px;
-  height: 14px;
+.topology-room-title > svg {
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
   color: var(--muted-foreground);
 }
 
-.topology-route-title > span {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted-foreground);
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.topology-room-meta {
+  flex-wrap: wrap;
 }
 
-.topology-issue-list {
-  gap: 2px;
+.topology-flow {
+  --edge-width: 36px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
+  align-items: center;
+  min-width: 0;
+}
+
+.topology-entry-lane,
+.topology-shards,
+.topology-branch {
+  display: grid;
+  min-width: 0;
+  align-items: center;
+}
+
+.topology-entry-lane {
+  grid-template-columns: minmax(0, 1fr) var(--edge-width);
+}
+
+.topology-entry {
+  min-width: 0;
+}
+
+.topology-entry.is-warning {
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--border));
+}
+
+.topology-entry-endpoint {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.topology-entry-edge,
+.topology-shard-edge {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  color: var(--muted-foreground);
+}
+
+.topology-entry-edge > svg,
+.topology-shard-edge > svg {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.5;
+  background: var(--popover);
+}
+
+.topology-entry-edge::before,
+.topology-shard-edge::before {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  border-top: 1px solid currentColor;
+  opacity: 0.5;
+  content: '';
+}
+
+.is-missing::before {
+  border-top-style: dashed;
+}
+
+.is-missing {
+  color: var(--destructive);
+}
+
+.is-missing > svg {
+  stroke-dasharray: 3 3;
+}
+
+.topology-shards {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.is-single-world {
+  max-width: 660px;
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.is-single-world .topology-shards {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.topology-missing-master {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 1px dashed var(--destructive);
+  border-radius: var(--radius);
+  color: var(--destructive);
+  font-size: 13px;
+}
+
+.topology-missing-master > svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.topology-branches {
+  display: grid;
+  min-width: 0;
+  grid-auto-rows: 1fr;
+}
+
+.topology-branch {
+  position: relative;
+  grid-template-columns: var(--edge-width) minmax(0, 1fr);
+  padding-block: 6px;
+}
+
+.topology-secondary {
+  height: 100%;
+}
+
+/* Each arm meets one shared trunk: additional worlds never link to one another. */
+.has-multiple .topology-branch::before {
+  position: absolute;
+  left: calc(var(--edge-width) / 2);
+  inset-block: 0;
+  border-left: 1px solid var(--border);
+  content: '';
+}
+
+.has-multiple .topology-branch:first-child::before {
+  top: 50%;
+}
+
+.has-multiple .topology-branch:last-child::before {
+  bottom: 50%;
+}
+
+.has-multiple .topology-shard-edge > svg {
+  width: 18px;
+  justify-self: end;
+}
+
+.has-multiple .topology-shard-edge::before {
+  left: 50%;
+}
+
+.has-multiple {
+  position: relative;
+}
+
+.has-multiple::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: calc(var(--edge-width) / 2);
+  border-top: 1px solid var(--border);
+  content: '';
 }
 
 .topology-timestamps {
   justify-content: flex-end;
-  gap: 12px;
   flex-wrap: wrap;
+  column-gap: 16px;
   color: var(--muted-foreground);
-  font-size: 10px;
-  line-height: 14px;
+  font-size: 11px;
+  line-height: 16px;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 899px) {
+  .topology-flow,
+  .topology-shards,
+  .topology-entry-lane {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .topology-flow {
+    max-width: 560px;
+    margin-inline: auto;
+  }
+
+  .topology-entry-edge {
+    height: 32px;
+  }
+
+  .topology-entry-edge > svg {
+    transform: rotate(90deg);
+  }
+
+  .topology-entry-edge::before {
+    inset-block: 0;
+    inset-inline: auto;
+    left: 50%;
+    border-top: 0;
+    border-left: 1px solid currentColor;
+  }
+
+  .topology-entry-edge.is-missing::before {
+    border-left-style: dashed;
+  }
+
+  .topology-branches {
+    margin-left: 16px;
+    padding-top: 12px;
+    grid-auto-rows: auto;
+    gap: 12px;
+  }
+
+  .topology-branch {
+    padding-block: 0;
+  }
+
+  .topology-branch::before,
+  .has-multiple .topology-branch::before,
+  .has-multiple .topology-branch:first-child::before {
+    position: absolute;
+    display: block;
+    left: 0;
+    top: -12px;
+    bottom: 0;
+    border-left: 1px solid var(--border);
+    content: '';
+  }
+
+  .topology-branch:last-child::before,
+  .has-multiple .topology-branch:last-child::before {
+    bottom: calc(100% - 34px);
+  }
+
+  .has-multiple::before {
+    display: none;
+  }
+
+  .has-multiple .topology-shard-edge::before {
+    left: 0;
+  }
+
+  .has-multiple .topology-shard-edge > svg {
+    width: 20px;
+    justify-self: center;
+  }
+
+  .topology-shard-edge {
+    align-self: start;
+    margin-top: 24px;
+  }
+
+  .topology-timestamps {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 479px) {
   .topology-header {
     grid-template-columns: minmax(0, 1fr);
-    padding-right: 48px;
+    gap: 12px;
+    padding: 16px 48px 16px 16px;
   }
 
   .topology-summary {
@@ -616,47 +545,11 @@ function formatTimestamp(value) {
   }
 
   .topology-content {
-    padding-inline: 12px;
+    padding: 16px;
   }
 
-  .topology-entry-grid,
-  .topology-access-grid,
-  .topology-shards,
-  .topology-branch {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .topology-branches {
-    display: flex;
-  }
-
-  .topology-branches::before {
-    display: none;
-  }
-
-  .topology-room-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .topology-route {
-    min-height: 58px;
-  }
-
-  .topology-route-line {
-    inset-block: 0;
-    inset-inline: auto;
-    left: 50%;
-    border-top: 0;
-    border-left: 1px solid var(--border);
-  }
-
-  .topology-route-title > svg {
-    transform: rotate(90deg);
-  }
-
-  .topology-timestamps {
-    justify-content: flex-start;
+  .topology-flow {
+    --edge-width: 20px;
   }
 }
 </style>
