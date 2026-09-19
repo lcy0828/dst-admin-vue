@@ -136,6 +136,56 @@ test('topology alone does not probe the external address', async () => {
   assert.equal(calls.length, 2)
 })
 
+test('topology refresh retains the visible snapshot during loading and after failure', async () => {
+  const { state, calls } = fixture()
+  const topology = { roomId: 'one', placements: [{ worldId: 'Master' }] }
+  const infrastructure = { networkProfiles: [{ id: 'profile' }] }
+  state.roomTopology = topology
+  state.runtimeInfrastructure = infrastructure
+  state.detectedConnectionAddress = '198.51.100.20'
+  const read = state.refreshTopologyDialog()
+  assert.equal(state.roomTopology, topology)
+  assert.equal(state.runtimeInfrastructure, infrastructure)
+  assert.equal(state.detectedConnectionAddress, '198.51.100.20')
+  await state.refreshTopologyDialog()
+  assert.equal(calls.length, 2)
+  calls[0].reject(new Error('node unavailable'))
+  calls[1].reject(new Error('network unavailable'))
+  await read
+  assert.equal(state.roomTopology, topology)
+  assert.equal(state.runtimeInfrastructure, infrastructure)
+  assert.equal(state.detectedConnectionAddress, '198.51.100.20')
+  assert.equal(state.topologyDialogRefreshing, false)
+  assert.match(state.topologyDialogError, /node unavailable/)
+
+  const retry = state.refreshTopologyDialog()
+  const nextTopology = { roomId: 'one', placements: [{ worldId: 'Master' }, { worldId: 'Caves' }] }
+  const nextInfrastructure = { networkProfiles: [{ id: 'profile', advertiseAddress: '198.51.100.10' }] }
+  calls[2].resolve(nextTopology)
+  calls[3].resolve(nextInfrastructure)
+  await retry
+  assert.equal(state.roomTopology, nextTopology)
+  assert.equal(state.runtimeInfrastructure, nextInfrastructure)
+  assert.equal(state.detectedConnectionAddress, '')
+  assert.equal(state.topologyDialogError, '')
+})
+
+test('a late topology refresh cannot replace the selected room snapshot', async () => {
+  const { state, calls } = fixture()
+  const read = state.refreshTopologyDialog()
+  const nextTopology = { roomId: 'two' }
+  state.selectedRoomId = 'two'
+  state.selectedRoom = { id: 'two' }
+  state.roomTopology = nextTopology
+  state.topologyDialogSequence += 1
+  state.topologyDialogRefreshing = false
+  calls[0].resolve({ roomId: 'one' })
+  calls[1].resolve({ networkProfiles: [] })
+  await read
+  assert.equal(state.roomTopology, nextTopology)
+  assert.equal(state.topologyDialogRefreshing, false)
+})
+
 test('closing direct connection before loading finishes does not start an egress probe', async () => {
   const { state, calls } = fixture()
   state.handleConnectionPopoverOpen(true)

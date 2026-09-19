@@ -1688,17 +1688,19 @@ export default {
       const sequence = ++this.topologyDialogSequence
       this.topologyDialogRefreshing = true
       this.topologyDialogError = ''
-      this.roomTopology = null
-      this.runtimeInfrastructure = null
-      this.detectedConnectionAddress = ''
-      this.connectionProbeKey = ''
-      this.connectionProbeSequence += 1
       try {
         const [topologyResult, infrastructureResult] = await Promise.allSettled([
           topologyV2API.get(roomId),
           topologyV2API.infrastructure()
         ])
         if (sequence !== this.topologyDialogSequence || this.selectedRoomId !== roomId) return
+        // Keep the last snapshot visible while refreshing; room changes clear it separately.
+        if (topologyResult.status === 'fulfilled' && infrastructureResult.status === 'fulfilled') {
+          this.detectedConnectionAddress = ''
+          this.connectionProbeKey = ''
+          this.connectionProbeSequence += 1
+          this.connectionAddressDetecting = false
+        }
         if (topologyResult.status === 'fulfilled') this.roomTopology = topologyResult.value
         if (infrastructureResult.status === 'fulfilled') this.runtimeInfrastructure = infrastructureResult.value
         const failures = [topologyResult, infrastructureResult]
