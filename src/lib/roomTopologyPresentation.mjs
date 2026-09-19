@@ -188,6 +188,31 @@ function isRuntimeRisk(value = {}) {
     || code.startsWith('TARGET_MEMORY_')
 }
 
+function currentCapacityIssues(target) {
+  const capacity = target?.currentCapacity
+  if (!capacity) return []
+  const parameters = {
+    machine: clean(target.name || target.id),
+    count: capacity.runningShards,
+    limit: capacity.recommendedShardLimit
+  }
+  const notice = (code, key) => ({
+    ...issue(code, 'warning', `roomTopology.issues.${key}`, parameters),
+    targetId: clean(target.id)
+  })
+  // Retained reports from offline/stale targets are not current load evidence.
+  if (target.online === false || target.inventoryAvailable === false || target.inventoryStale === true) {
+    return [notice('TARGET_CAPACITY_UNKNOWN', 'capacityUnknown')]
+  }
+  const notices = []
+  if (capacity.state === 'overcommitted') notices.push(notice('TARGET_OVERCOMMITTED', 'capacityOvercommitted'))
+  else if (capacity.state === 'full') notices.push(notice('TARGET_CAPACITY_FULL', 'capacityFull'))
+  else if (capacity.state === 'unknown') notices.push(notice('TARGET_CAPACITY_UNKNOWN', 'capacityUnknown'))
+  if (capacity.memoryState === 'critical') notices.push(notice('TARGET_MEMORY_CRITICAL', 'memoryCritical'))
+  else if (capacity.memoryState === 'tight') notices.push(notice('TARGET_MEMORY_TIGHT', 'memoryTight'))
+  return notices
+}
+
 function isConfigurationNotice(value = {}) {
   return CONFIGURATION_NOTICE_CODES.has(clean(value.code).toUpperCase())
 }
@@ -229,7 +254,14 @@ export function buildRoomTopologyView({ room = {}, topology = null, infrastructu
   const targetCount = new Set(nodes.map(node => node.targetId).filter(Boolean)).size
   const endpointCount = new Set(nodes.map(node => endpoint(node.targetId, node.installationId)).filter(value => !value.startsWith('\u0000'))).size
   const mode = targetCount > 1 ? 'distributed' : (endpointCount > 1 ? 'multiInstallation' : 'singleMachine')
-  const issues = [...(topology?.issues || [])]
+  const observedTargetIds = new Set(nodes.map(node => node.targetId).filter(Boolean))
+  // Topology plan issues assume all configured worlds will run. This dialog
+  // describes current connections, so use current machine capacity instead.
+  // Keep other rooms' running processes on shared hosts in the machine total.
+  const issues = [
+    ...(topology?.issues || []).filter(value => !isRuntimeRisk(value)),
+    ...[...observedTargetIds].flatMap(targetId => currentCapacityIssues(targetsById.get(targetId)))
+  ]
 
   if (!master) issues.push(issue('TOPOLOGY_MASTER_MISSING', 'error', 'roomTopology.issues.masterMissing'))
   if (masters.length > 1) issues.push(issue('TOPOLOGY_MASTER_MULTIPLE', 'error', 'roomTopology.issues.masterMultiple', { count: masters.length }))
@@ -262,7 +294,6 @@ export function buildRoomTopologyView({ room = {}, topology = null, infrastructu
             || hasNodeWarning
             ? 'warning'
             : 'healthy'))
-  const observedTargetIds = new Set(nodes.map(node => node.targetId).filter(Boolean))
   const observedAt = oldestTimestamp([...observedTargetIds].map(targetId => targetsById.get(targetId)?.observedAt))
 
   return {

@@ -145,6 +145,7 @@ test('capacity risks remain visible without mislabeling a complete connection to
     targets: [
       {
         id: 'local', name: '本机', online: true, observedAt: '2026-08-29T09:30:00Z',
+        currentCapacity: { state: 'available', runningShards: 1, recommendedShardLimit: 3, memoryState: 'critical' },
         installations: [{ id: 'default', driver: 'native', default: true }]
       },
       {
@@ -202,6 +203,110 @@ test('inventory notices request configuration review without becoming connection
   assert.equal(view.connectionIssues.length, 0)
   assert.equal(view.configurationNotices.length, 1)
   assert.equal(view.runtimeRisks.length, 0)
+})
+
+function capacityTopology(overrides = {}) {
+  return {
+    placements: room.worlds.map(world => ({
+      worldId: world.id, worldName: world.name, worldRole: world.role,
+      appliedTargetId: 'local', appliedInstallationId: 'default', state: 'aligned', running: true
+    })),
+    targets: [{
+      id: 'local', name: '本机', online: true, inventoryAvailable: true, inventoryStale: false,
+      installations: [{ id: 'default', driver: 'native', available: true, stale: false }],
+      observedRunningShards: 2, plannedShards: 4, projectedShards: 4,
+      currentCapacity: { state: 'available', runningShards: 2, recommendedShardLimit: 3, memoryState: 'healthy' },
+      projectedCapacity: { state: 'overcommitted', runningShards: 4, recommendedShardLimit: 3, memoryState: 'critical' },
+      ...overrides
+    }],
+    issues: [
+      { code: 'TARGET_OVERCOMMITTED', severity: 'warning', targetId: 'local', message: '计划承载 4 个世界分片' },
+      { code: 'TARGET_MEMORY_CRITICAL', severity: 'warning', targetId: 'local', message: '启动计划世界后预计可用内存不足' }
+    ]
+  }
+}
+
+function capacityView(topology) {
+  return buildRoomTopologyView({
+    room, topology, worldPorts,
+    connection: { ready: true, endpoint: 'example.com:10999', port: 10999 }
+  })
+}
+
+test('four configured worlds with only two running do not produce current CPU or memory warnings', () => {
+  const view = capacityView(capacityTopology())
+  assert.deepEqual(view.runtimeRisks, [])
+  assert(!view.issues.some(value => value.message?.includes('计划')))
+  assert.equal(view.status, 'healthy')
+})
+
+test('current capacity includes other rooms on the same machine without counting this room twice', () => {
+  const view = capacityView(capacityTopology({
+    observedRunningShards: 4,
+    currentCapacity: { state: 'overcommitted', runningShards: 4, recommendedShardLimit: 3, memoryState: 'healthy' }
+  }))
+  assert.equal(view.runtimeRisks.length, 1)
+  assert.equal(view.runtimeRisks[0].messageKey, 'roomTopology.issues.capacityOvercommitted')
+  assert.deepEqual(view.runtimeRisks[0].parameters, { machine: '本机', count: 4, limit: 3 })
+  assert.equal(view.status, 'healthy')
+})
+
+test('a 2C4G machine running Master and Caves only gets an at-capacity reminder', () => {
+  const view = capacityView(capacityTopology({
+    currentCapacity: { state: 'full', runningShards: 2, recommendedShardLimit: 2, memoryState: 'healthy' }
+  }))
+  assert.deepEqual(view.runtimeRisks.map(value => value.code), ['TARGET_CAPACITY_FULL'])
+  assert.equal(view.runtimeRisks[0].messageKey, 'roomTopology.issues.capacityFull')
+  assert.equal(view.status, 'healthy')
+})
+
+for (const memoryState of ['tight', 'critical']) {
+  test(`current ${memoryState} memory remains visible independently of CPU capacity`, () => {
+    const view = capacityView(capacityTopology({
+      currentCapacity: { state: 'available', runningShards: 2, recommendedShardLimit: 3, memoryState }
+    }))
+    assert.deepEqual(view.runtimeRisks.map(value => value.code), [`TARGET_MEMORY_${memoryState.toUpperCase()}`])
+    assert.equal(view.runtimeRisks[0].targetId, 'local')
+  })
+}
+
+for (const unavailable of [{ inventoryStale: true }, { online: false }, { inventoryAvailable: false }]) {
+  test(`retained load is not treated as current when ${JSON.stringify(unavailable)}`, () => {
+    const topology = capacityTopology({
+      ...unavailable,
+      currentCapacity: { state: 'overcommitted', runningShards: 4, recommendedShardLimit: 3, memoryState: 'critical' }
+    })
+    const view = capacityView(topology)
+    assert.deepEqual(view.runtimeRisks.map(value => value.code), ['TARGET_CAPACITY_UNKNOWN'])
+    assert.equal(view.runtimeRisks[0].messageKey, 'roomTopology.issues.capacityUnknown')
+  })
+}
+
+test('CPU capacity can be unknown while current memory still needs attention', () => {
+  const view = capacityView(capacityTopology({
+    currentCapacity: { state: 'unknown', runningShards: 2, memoryState: 'critical' }
+  }))
+  assert.deepEqual(view.runtimeRisks.map(value => value.code), ['TARGET_CAPACITY_UNKNOWN', 'TARGET_MEMORY_CRITICAL'])
+})
+
+test('split rooms show each applied machine once and exclude unrelated or future destinations', () => {
+  const topology = capacityTopology()
+  topology.placements[0].desiredTargetId = 'agent:future'
+  topology.placements[1].appliedTargetId = 'agent:caves'
+  for (const id of ['agent:caves', 'agent:unrelated', 'agent:future']) {
+    topology.targets.push({
+      id, name: id, online: true,
+      installations: [{ id: 'default', driver: 'native', available: true }],
+      currentCapacity: { state: 'overcommitted', runningShards: 4, recommendedShardLimit: 3, memoryState: 'healthy' }
+    })
+    topology.issues.push({ code: 'TARGET_OVERCOMMITTED', targetId: id, severity: 'warning', message: '计划容量提醒' })
+  }
+  const view = capacityView(topology)
+  assert.deepEqual(view.runtimeRisks.map(value => value.targetId), ['agent:caves'])
+})
+
+test('missing current capacity never falls back to all-configured projections', () => {
+  assert.deepEqual(capacityView(capacityTopology({ currentCapacity: undefined })).runtimeRisks, [])
 })
 
 test('topology accepts a Cave Master and does not promote a secondary Forest', () => {
