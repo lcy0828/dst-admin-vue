@@ -607,7 +607,7 @@ function operationStatusVariant(value) {
 }
 
 function operationPhaseLabel(value) {
-  const known = ['planned', 'barrier_preparing', 'barrier_committing', 'barrier_waiting', 'stopping', 'staging', 'protecting', 'preparing', 'prepared', 'publishing', 'published', 'completing', 'completed', 'failed', 'rolled_back', 'recovered']
+  const known = ['planned', 'barrier_preparing', 'barrier_committing', 'barrier_waiting', 'stopping', 'staging', 'protecting', 'preparing', 'prepared', 'publishing', 'published', 'completing', 'completed', 'failed', 'rolling_back', 'rollback_completed', 'resuming', 'rolled_back', 'recovered']
   return t(`distributed.backups.operationPhases.${known.includes(value) ? value : 'unknown'}`)
 }
 
