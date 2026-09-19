@@ -16,6 +16,15 @@
       <dt>{{ t('roomTopology.fields.shardPort') }}</dt>
       <dd>{{ node.shardPort ? `${node.shardPort} / UDP` : '--' }}</dd>
     </div>
+    <div v-else-if="node.route" class="topology-route-fact">
+      <dt class="topology-route-heading">
+        {{ t('roomTopology.routes.toMaster') }}
+        <Badge v-if="node.route.mode !== 'local'" :variant="node.route.state === 'missing' ? 'destructive' : 'outline'" class="h-auto whitespace-normal">
+          {{ t(`roomTopology.routes.${routeMode}`) }}
+        </Badge>
+      </dt>
+      <dd><code v-if="node.route.endpoint">{{ node.route.endpoint }}</code><span v-else>{{ t('roomTopology.routes.unavailable') }}</span></dd>
+    </div>
     <div v-if="node.pending" class="topology-placement-fact">
       <dt>{{ t('roomTopology.fields.placement') }}</dt>
       <dd>{{ t('roomTopology.fields.pendingTarget', { machine: node.desiredTargetName || '--' }) }}</dd>
@@ -24,14 +33,17 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Badge } from '@/components/ui/badge'
 
-defineProps({
+const props = defineProps({
   node: { type: Object, required: true },
   master: { type: Boolean, default: false }
 })
 
 const { t } = useI18n()
+const routeMode = computed(() => ['local', 'lan', 'overlay', 'tunnel', 'public', 'configured', 'manual', 'missing'].includes(props.node.route?.mode) ? props.node.route.mode : 'manual')
 
 function shardId(value) {
   const parsed = Number(value)
@@ -73,5 +85,17 @@ function shardId(value) {
 
 .topology-placement-fact {
   grid-column: 1 / -1;
+}
+
+.topology-route-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.topology-route-fact code {
+  font-family: var(--font-mono);
+  font-size: inherit;
 }
 </style>

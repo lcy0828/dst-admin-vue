@@ -3,7 +3,7 @@ export const roomTopologyMessages = {
     roomTopology: {
       trigger: '拓扑',
       title: '房间连接拓扑',
-      description: '玩家从 Master 进入房间，从世界连接 Master。',
+      description: '玩家从 Master 进入房间，附属世界通过分片端口与 Master 互联。',
       refresh: '刷新拓扑',
       refreshing: '正在刷新拓扑',
       observedAt: '运行数据：{time}',
@@ -29,7 +29,7 @@ export const roomTopologyMessages = {
         players: '玩家入口',
         playersDescription: '外部玩家连接 Master',
         master: '主世界',
-        secondary: '从世界'
+        secondary: '附属世界'
       },
       fields: {
         endpoint: '连接地址',
