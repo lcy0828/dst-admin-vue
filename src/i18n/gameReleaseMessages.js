@@ -8,6 +8,7 @@ export const gameReleaseMessages = {
         publish: '备份并开始更新', retry: '重试失败更新', view: '查看详情'
       },
       simple: {
+        checkedScope: '检查范围', affectedScope: '影响范围', scopeSummary: '{rooms} 个房间 · {worlds} 个世界', runningSummary: '{count} 个世界运行中',
         title: '游戏更新', description: '检查版本不会停服；确认更新后自动备份并恢复房间。',
         notChecked: '尚未检查版本', notCheckedDescription: '点击“检查是否有更新”后，系统会显示各主机当前游戏版本、最新官方版本和受影响的房间。',
         resultTitle: '检查结果', resultDescription: '先确认官方游戏版本和影响范围；Steam 安装信息可在技术详情中查看。',
@@ -109,6 +110,7 @@ export const gameReleaseMessages = {
         publish: 'Back up and update', retry: 'Retry failed update', view: 'View details'
       },
       simple: {
+        checkedScope: 'Checked scope', affectedScope: 'Update scope', scopeSummary: '{rooms} rooms · {worlds} worlds', runningSummary: '{count} worlds running',
         title: 'Game updates', description: 'Version checks keep rooms running. Confirmed updates back up and restore rooms.',
         notChecked: 'Version not checked yet', notCheckedDescription: 'Select “Check for updates” to see each host’s current game version, the latest official version, and affected rooms.',
         resultTitle: 'Check result', resultDescription: 'Review official game versions and impact first. Steam installation data is available under technical details.',

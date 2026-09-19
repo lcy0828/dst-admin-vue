@@ -1,12 +1,13 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Download, RefreshCw, Upload } from '@lucide/vue'
+import { ChevronDown, Download, RefreshCw, Upload, Zap } from '@lucide/vue'
 import { jobsV2API, luaJITV2API } from '@/api/v2'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
@@ -30,6 +31,7 @@ const activeJob = ref(null)
 const loading = ref(false)
 const submitting = ref(false)
 const error = ref('')
+const installOptionsOpen = ref(false)
 const scope = ref(getManagementScope())
 let generation = 0
 let timer = 0
@@ -46,6 +48,7 @@ const running = computed(() => Boolean(activeJob.value && !luaJITJobTerminal(act
 const busy = computed(() => submitting.value || loading.value || inspecting.value || running.value)
 const installedVersion = computed(() => target.value?.performance?.packageVersion || '')
 const ready = computed(() => target.value?.performance?.canEnable === true)
+watch([installationKey, ready], () => { installOptionsOpen.value = Boolean(target.value && !ready.value) })
 const storageKey = () => `dstLuaJITJob:${managementScopeTargetId(scope.value) || 'all'}`
 
 function persistJob(id = '') {
@@ -172,67 +175,79 @@ onBeforeUnmount(() => { alive = false; generation += 1; clearTimeout(timer); win
 </script>
 
 <template>
-  <Card id="luajit" class="min-w-0 scroll-mt-6">
+  <Card id="luajit" size="sm" class="min-w-0 scroll-mt-6">
     <CardHeader>
-      <CardTitle>{{ t('luajitInstaller.title') }}</CardTitle>
-      <CardDescription>{{ t('luajitInstaller.description') }}</CardDescription>
+      <CardTitle class="flex items-center gap-2"><Zap class="size-4 text-muted-foreground" />{{ t('luajitInstaller.title') }}</CardTitle>
       <CardAction><Button variant="ghost" size="icon-sm" :disabled="loading || submitting" :aria-label="t('luajitInstaller.refresh')" :title="t('luajitInstaller.refresh')" @click="refresh"><RefreshCw /></Button></CardAction>
     </CardHeader>
-    <CardContent class="flex min-w-0 flex-col gap-4">
+    <CardContent class="flex min-w-0 flex-1 flex-col gap-3 pt-0 group-data-[size=sm]/card:pt-0">
       <p v-if="loading && !installations.length" role="status" class="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{{ t('luajitInstaller.loading') }}</p>
-      <FieldGroup class="gap-3">
-        <Field v-if="installations.length > 1">
-          <FieldLabel for="luajit-target">{{ t('luajitInstaller.target') }}</FieldLabel>
-          <Select v-model="installationKey" :disabled="busy" @update:model-value="selectInstallation">
-            <SelectTrigger id="luajit-target" class="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectGroup><SelectItem v-for="item in installations" :key="luaJITInstallationKey(item)" :value="luaJITInstallationKey(item)">{{ item.targetName }} / {{ item.installationId }}</SelectItem></SelectGroup></SelectContent>
-          </Select>
-        </Field>
-        <div v-if="target" class="flex flex-wrap items-center gap-2"><span class="font-medium">{{ target.targetName }}</span><Badge variant="outline">{{ installedVersion ? t('luajitInstaller.installed', { version: installedVersion }) : t('luajitInstaller.notInstalled') }}</Badge><Badge v-if="installedVersion" :variant="ready ? 'secondary' : 'destructive'">{{ ready ? t('luajitInstaller.ready') : t('luajitInstaller.needsRepair') }}</Badge></div>
-        <p v-else-if="!loading" class="text-sm text-muted-foreground">{{ t('luajitInstaller.noInstallation') }}</p>
-        <Field v-if="transfers.length">
-          <FieldLabel id="luajit-source-label">{{ t('luajitInstaller.source') }}</FieldLabel>
-          <ToggleGroup type="single" :model-value="packageSource" variant="outline" :disabled="busy" aria-labelledby="luajit-source-label" @update:model-value="value => { if (value) packageSource = value }">
-            <ToggleGroupItem value="runtime">{{ t('luajitInstaller.runtimeSource') }}</ToggleGroupItem>
-            <ToggleGroupItem value="controller">{{ t('luajitInstaller.controllerSource') }}</ToggleGroupItem>
-          </ToggleGroup>
-        </Field>
-        <Field v-if="releases.length">
-          <FieldLabel for="luajit-release">{{ t('luajitInstaller.version') }}</FieldLabel>
-          <Select v-model="releaseID" :disabled="busy">
-            <SelectTrigger id="luajit-release" class="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectGroup><SelectItem v-for="item in releases" :key="item.id" :value="item.id">{{ t('luajitInstaller.releaseLabel', { version: item.version }) }} · {{ t(`luajitInstaller.${['upstream', 'compatibility'].includes(item.channel) ? item.channel : 'imported'}`) }}</SelectItem></SelectGroup></SelectContent>
-          </Select>
-        </Field>
-        <p v-else-if="!loading" class="text-sm text-muted-foreground">{{ t('luajitInstaller.noPackage') }}</p>
-      </FieldGroup>
-      <p v-if="target && !target.canInstall" class="text-sm text-muted-foreground">{{ target.reason }}</p>
-      <div class="flex flex-wrap items-center gap-2">
-        <Button size="sm" :disabled="busy || !target?.canInstall || !releaseID" @click="install"><Spinner v-if="submitting || running" data-icon="inline-start" /><Download v-else data-icon="inline-start" />{{ packageSource === 'controller' ? t('luajitInstaller.transferInstall') : (installedVersion ? t('luajitInstaller.reinstall') : t('luajitInstaller.install')) }}</Button>
-        <Button size="sm" variant="outline" :disabled="busy || !target?.online" @click="error = ''; inspectSelected(generation, true)">{{ t('luajitInstaller.checkUpstream') }}</Button>
+      <FieldGroup v-if="installations.length > 1"><Field>
+        <FieldLabel for="luajit-target">{{ t('luajitInstaller.target') }}</FieldLabel>
+        <Select v-model="installationKey" :disabled="busy" @update:model-value="selectInstallation">
+          <SelectTrigger id="luajit-target" class="w-full"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectGroup><SelectItem v-for="item in installations" :key="luaJITInstallationKey(item)" :value="luaJITInstallationKey(item)">{{ item.targetName }} / {{ item.installationId }}</SelectItem></SelectGroup></SelectContent>
+        </Select>
+      </Field></FieldGroup>
+      <div v-if="target" class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex min-w-0 flex-col gap-1">
+          <span class="text-xs text-muted-foreground">{{ t('luajitInstaller.currentVersion') }}</span>
+          <strong class="text-2xl font-semibold tabular-nums">{{ installedVersion || '—' }}</strong>
+        </div>
+        <Badge :variant="!target.online ? 'outline' : ready ? 'success' : installedVersion ? 'destructive' : 'secondary'">{{ !target.online ? t('gameInstallation.offline') : t(ready ? 'luajitInstaller.ready' : installedVersion ? 'luajitInstaller.needsRepair' : 'luajitInstaller.notInstalled') }}</Badge>
       </div>
-      <p v-if="target?.canInstall" class="text-xs text-muted-foreground">{{ t('luajitInstaller.stopFirst') }}</p>
+      <p v-else-if="!loading" class="text-sm text-muted-foreground">{{ t('luajitInstaller.noInstallation') }}</p>
+      <div class="flex flex-col gap-1 text-sm text-muted-foreground">
+        <span>{{ t('luajitInstaller.description') }}</span>
+        <span v-if="ready">{{ t('luajitInstaller.usage') }}</span>
+      </div>
+      <p v-if="target && !target.canInstall" class="text-sm text-muted-foreground">{{ target.reason }}</p>
+      <Collapsible v-model:open="installOptionsOpen" class="mt-auto flex min-w-0 flex-col gap-3 pt-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" :disabled="busy || !target?.online" @click="installOptionsOpen = true; error = ''; inspectSelected(generation, true)"><Spinner v-if="inspecting" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t('luajitInstaller.checkUpstream') }}</Button>
+          <CollapsibleTrigger as-child><Button size="sm" variant="outline" class="group">{{ t('luajitInstaller.options') }}<ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger>
+        </div>
+        <CollapsibleContent class="flex min-w-0 flex-col gap-3 border-t pt-3">
+          <FieldGroup class="gap-3">
+            <Field v-if="transfers.length">
+              <FieldLabel id="luajit-source-label">{{ t('luajitInstaller.source') }}</FieldLabel>
+              <ToggleGroup type="single" :model-value="packageSource" variant="outline" :disabled="busy" aria-labelledby="luajit-source-label" @update:model-value="value => { if (value) packageSource = value }">
+                <ToggleGroupItem value="runtime">{{ t('luajitInstaller.runtimeSource') }}</ToggleGroupItem>
+                <ToggleGroupItem value="controller">{{ t('luajitInstaller.controllerSource') }}</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+            <Field v-if="releases.length">
+              <FieldLabel for="luajit-release">{{ t('luajitInstaller.version') }}</FieldLabel>
+              <Select v-model="releaseID" :disabled="busy">
+                <SelectTrigger id="luajit-release" class="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent><SelectGroup><SelectItem v-for="item in releases" :key="item.id" :value="item.id">{{ t('luajitInstaller.releaseLabel', { version: item.version }) }} · {{ t(`luajitInstaller.${['upstream', 'compatibility'].includes(item.channel) ? item.channel : 'imported'}`) }}</SelectItem></SelectGroup></SelectContent>
+              </Select>
+            </Field>
+            <p v-else-if="!loading" class="text-sm text-muted-foreground">{{ t('luajitInstaller.noPackage') }}</p>
+          </FieldGroup>
+          <Button size="sm" class="self-start" :disabled="busy || !target?.canInstall || !releaseID" @click="install"><Spinner v-if="submitting || running" data-icon="inline-start" /><Download v-else data-icon="inline-start" />{{ packageSource === 'controller' ? t('luajitInstaller.transferInstall') : (installedVersion ? t('luajitInstaller.reinstall') : t('luajitInstaller.install')) }}</Button>
+          <p v-if="target?.canInstall" class="text-xs text-muted-foreground">{{ t('luajitInstaller.stopFirst') }}</p>
+          <Collapsible>
+            <CollapsibleTrigger as-child><Button variant="ghost" size="sm" class="group w-full justify-between">{{ t('luajitInstaller.importTitle') }}<ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger>
+            <CollapsibleContent class="flex min-w-0 flex-col gap-3 pt-3">
+              <p class="text-sm text-muted-foreground">{{ t('luajitInstaller.importDescription') }}</p>
+              <FieldGroup>
+                <Field><FieldLabel for="luajit-url">{{ t('luajitInstaller.url') }}</FieldLabel><Input id="luajit-url" v-model="sourceURL" type="url" placeholder="https://…/luajit.zip" :disabled="busy" /></Field>
+                <Field><FieldLabel for="luajit-sha">SHA-256</FieldLabel><Input id="luajit-sha" v-model="sourceSHA" autocomplete="off" :disabled="busy" /></Field>
+              </FieldGroup>
+              <Button variant="outline" class="self-start" :disabled="busy || !target?.canInstall || !sourceURL.startsWith('https://') || !/^[a-fA-F0-9]{64}$/.test(sourceSHA.trim())" @click="download"><Download data-icon="inline-start" />{{ t('luajitInstaller.download') }}</Button>
+              <p class="text-sm text-muted-foreground">{{ t('luajitInstaller.transferDescription') }}</p>
+              <FieldGroup><Field><FieldLabel for="luajit-file">{{ t('luajitInstaller.file') }}</FieldLabel><Input id="luajit-file" type="file" accept=".zip,application/zip" :disabled="busy" @change="packageFile = $event.target.files?.[0] || null" /></Field></FieldGroup>
+              <Button variant="outline" class="self-start" :disabled="busy || !packageFile" @click="upload"><Upload data-icon="inline-start" />{{ t('luajitInstaller.upload') }}</Button>
+            </CollapsibleContent>
+          </Collapsible>
+        </CollapsibleContent>
+      </Collapsible>
       <div v-if="activeJob" role="status" aria-live="polite" class="flex flex-col gap-2">
         <p class="text-sm">{{ luaJITJobTerminal(activeJob) ? t(`luajitInstaller.job.${luaJITJobError(activeJob) ? 'failed' : 'done'}`) : (activeJob.message || t('luajitInstaller.job.running')) }}</p>
         <Progress :model-value="Number(activeJob.progress || 0)" :aria-label="t('luajitInstaller.progress')" />
       </div>
       <Alert v-if="error" variant="destructive"><AlertTitle>{{ t('luajitInstaller.failed') }}</AlertTitle><AlertDescription class="break-words">{{ error }}</AlertDescription></Alert>
-      <details class="rounded-md border p-3">
-        <summary class="cursor-pointer text-sm font-medium">{{ t('luajitInstaller.importTitle') }}</summary>
-        <div class="mt-4 flex flex-col gap-4">
-          <p class="text-sm text-muted-foreground">{{ t('luajitInstaller.importDescription') }}</p>
-          <FieldGroup>
-            <Field><FieldLabel for="luajit-url">{{ t('luajitInstaller.url') }}</FieldLabel><Input id="luajit-url" v-model="sourceURL" type="url" placeholder="https://…/luajit.zip" :disabled="busy" /></Field>
-            <Field><FieldLabel for="luajit-sha">SHA-256</FieldLabel><Input id="luajit-sha" v-model="sourceSHA" autocomplete="off" :disabled="busy" /></Field>
-          </FieldGroup>
-          <Button variant="outline" class="self-start" :disabled="busy || !target?.canInstall || !sourceURL.startsWith('https://') || !/^[a-fA-F0-9]{64}$/.test(sourceSHA.trim())" @click="download"><Download data-icon="inline-start" />{{ t('luajitInstaller.download') }}</Button>
-          <p class="text-sm text-muted-foreground">{{ t('luajitInstaller.transferDescription') }}</p>
-          <FieldGroup>
-            <Field><FieldLabel for="luajit-file">{{ t('luajitInstaller.file') }}</FieldLabel><Input id="luajit-file" type="file" accept=".zip,application/zip" :disabled="busy" @change="packageFile = $event.target.files?.[0] || null" /></Field>
-          </FieldGroup>
-          <Button variant="outline" class="self-start" :disabled="busy || !packageFile" @click="upload"><Upload data-icon="inline-start" />{{ t('luajitInstaller.upload') }}</Button>
-        </div>
-      </details>
     </CardContent>
   </Card>
 </template>

@@ -1,6 +1,6 @@
 export const luajitInstallerMessages = {
   'zh-CN': { luajitInstaller: {
-    title: 'LuaJIT2 加速', description: '可选加速 · Linux x64',
+    title: 'LuaJIT2 加速', currentVersion: '已安装版本', usage: '启动世界时选择 LuaJIT 模式。', options: '版本与安装', description: '可选加速 · Linux x64',
     loading: '正在检查安装包与运行机器…', target: '安装到', installed: '已安装 {version}', notInstalled: '尚未安装 LuaJIT', ready: '可用', needsRepair: '需要修复或更新',
     noInstallation: '当前范围内没有已配置的 DST 安装。请先配置游戏服务端。', version: '安装版本', releaseLabel: '{version}', upstream: '上游原版', compatibility: '兼容构建', imported: '已导入', noPackage: '当前运行节点尚无可用安装包，可在下方下载上游 Linux ZIP。',
     install: '安装 LuaJIT2', reinstall: '安装 / 修复', checkUpstream: '检查更新', refresh: '刷新状态', stopFirst: '安装前停止相关世界，启动时选择 LuaJIT。',
@@ -13,7 +13,7 @@ export const luajitInstallerMessages = {
     file: '本地 ZIP 安装包（最大 256 MiB）', upload: '上传到控制端', url: '安装包下载地址', download: '由运行节点下载', open: '下载安装 LuaJIT2',
   } },
   'en-US': { luajitInstaller: {
-    title: 'LuaJIT2 acceleration', description: 'Optional acceleration · Linux x64',
+    title: 'LuaJIT2 acceleration', currentVersion: 'Installed version', usage: 'Select LuaJIT when starting a world.', options: 'Versions & installation', description: 'Optional acceleration · Linux x64',
     loading: 'Checking packages and runtime hosts…', target: 'Install to', installed: 'Installed: {version}', notInstalled: 'LuaJIT is not installed', ready: 'Ready', needsRepair: 'Repair or update required',
     noInstallation: 'No configured DST installation in this scope. Configure the game server first.', version: 'Package version', releaseLabel: '{version}', upstream: 'Upstream', compatibility: 'Compatibility build', imported: 'Imported', noPackage: 'No package is available on this runtime node. Download a compatible ZIP below.',
     install: 'Install LuaJIT2', reinstall: 'Install / repair', checkUpstream: 'Check updates', refresh: 'Refresh status', stopFirst: 'Stop related worlds before installing; select LuaJIT on startup.',

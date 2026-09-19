@@ -1,6 +1,6 @@
 export const gameInstallationMessages = {
   'zh-CN': { gameInstallation: {
-    title: '游戏服务端安装', description: '安装游戏或接入已有目录。',
+    title: '游戏服务端', currentVersion: '当前版本', description: '安装游戏或接入已有目录。',
     refresh: '刷新安装状态', loading: '正在读取安装状态…', empty: '当前范围没有可管理的运行机器。',
     installed: '已安装', missing: '未安装', offline: '离线', unknown: '检测失败', version: '游戏版本 {version}',
     location: '安装位置', actualLocation: '已有服务端目录', saves: '存档目录', steamReady: 'SteamCMD 可用', steamMissing: 'SteamCMD 未配置',
@@ -16,7 +16,7 @@ export const gameInstallationMessages = {
     progress: '当前阶段进度', noVersion: '版本未知', needsRegistration: '请先在运行机器登记游戏和存档路径。'
   } },
   'en-US': { gameInstallation: {
-    title: 'Game server installations', description: 'Install the game or connect an existing directory.',
+    title: 'Game server', currentVersion: 'Installed version', description: 'Install the game or connect an existing directory.',
     refresh: 'Refresh installation status', loading: 'Reading installation status…', empty: 'No runtime hosts are available in this scope.',
     installed: 'Installed', missing: 'Not installed', offline: 'Offline', unknown: 'Inspection failed', version: 'Game version {version}',
     location: 'Installation location', actualLocation: 'Existing game directory', saves: 'Save directory', steamReady: 'SteamCMD available', steamMissing: 'SteamCMD not configured',

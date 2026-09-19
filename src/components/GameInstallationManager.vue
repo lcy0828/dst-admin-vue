@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { Download, FolderOpen, RefreshCw } from '@lucide/vue'
+import { Download, FolderOpen, RefreshCw, Server } from '@lucide/vue'
 import { gameInstallationsV2API, jobsV2API } from '@/api/v2'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -96,29 +96,31 @@ onBeforeUnmount(() => { alive = false; generation += 1; clearTimeout(timer); win
 </script>
 
 <template>
-  <Card id="installations" class="min-w-0 scroll-mt-6">
+  <Card id="installations" size="sm" class="min-w-0 scroll-mt-6">
     <CardHeader>
-      <CardTitle>{{ t('gameInstallation.title') }}</CardTitle>
-      <CardDescription>{{ t('gameInstallation.description') }}</CardDescription>
+      <CardTitle class="flex items-center gap-2"><Server class="size-4 text-muted-foreground" />{{ t('gameInstallation.title') }}</CardTitle>
+      <CardDescription v-if="!items.length || items.some(item => !item.installed)">{{ t('gameInstallation.description') }}</CardDescription>
       <CardAction><Button variant="ghost" size="icon-sm" :disabled="loading || submitting" :aria-label="t('gameInstallation.refresh')" :title="t('gameInstallation.refresh')" @click="refresh"><RefreshCw /></Button></CardAction>
     </CardHeader>
-    <CardContent class="flex flex-col gap-4">
+    <CardContent class="flex flex-1 flex-col gap-3 pt-0 group-data-[size=sm]/card:pt-0">
       <p v-if="loading && !items.length" role="status" class="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{{ t('gameInstallation.loading') }}</p>
       <p v-else-if="!items.length" class="text-sm text-muted-foreground">{{ t('gameInstallation.empty') }}</p>
-      <section v-for="item in items" :key="`${item.targetId}/${item.installationId}`" class="flex min-w-0 flex-col gap-4 border-b pb-4 last:border-0 last:pb-0">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="font-medium">{{ item.targetName }}<span v-if="item.installationId && item.installationId !== 'default'"> · {{ item.installationId }}</span></span>
-          <Badge :variant="item.error ? 'destructive' : item.installed ? 'secondary' : 'outline'">{{ t(`gameInstallation.${state(item)}`) }}</Badge>
-          <Badge v-if="item.gameVersion" variant="outline">{{ t('gameInstallation.version', { version: item.gameVersion }) }}</Badge>
+      <section v-for="item in items" :key="`${item.targetId}/${item.installationId}`" class="flex min-w-0 flex-1 flex-col gap-3 border-b pb-4 last:border-0 last:pb-0">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex min-w-0 flex-col gap-1">
+            <span class="text-xs text-muted-foreground">{{ t('gameInstallation.currentVersion') }}<template v-if="items.length > 1"> · {{ item.targetName }} / {{ item.installationId }}</template></span>
+            <strong class="text-2xl font-semibold tabular-nums">{{ item.gameVersion || '—' }}</strong>
+          </div>
+          <Badge :variant="item.error ? 'destructive' : !item.online ? 'outline' : item.installed ? 'success' : 'secondary'">{{ t(`gameInstallation.${state(item)}`) }}</Badge>
         </div>
         <p v-if="item.error || item.reason || !item.steamcmdAvailable" class="text-sm text-muted-foreground">{{ item.error || item.reason || t('gameInstallation.steamMissing') }}</p>
-        <dl class="grid min-w-0 gap-3 sm:grid-cols-2">
+        <dl class="grid min-w-0 gap-2 sm:grid-cols-2">
           <div class="min-w-0"><dt class="text-xs text-muted-foreground">{{ t('gameInstallation.location') }}</dt><dd class="mt-1 break-all text-sm">{{ item.serverPath || '—' }}</dd></div>
           <div class="min-w-0"><dt class="text-xs text-muted-foreground">{{ t('gameInstallation.saves') }}</dt><dd class="mt-1 break-all text-sm">{{ item.savePath || '—' }}</dd></div>
           <div v-if="item.resolvedPath && item.resolvedPath !== item.serverPath" class="min-w-0 sm:col-span-2"><dt class="text-xs text-muted-foreground">{{ t('gameInstallation.actualLocation') }}</dt><dd class="mt-1 break-all text-sm">{{ item.resolvedPath }}</dd></div>
         </dl>
-        <div class="flex flex-wrap items-center gap-2">
-          <Button size="sm" :disabled="busy || !item.online || Boolean(item.error) || !item.canInstall" @click="open(item, 'install')"><Download data-icon="inline-start" />{{ t(item.installed ? 'gameInstallation.update' : 'gameInstallation.install') }}</Button>
+        <div class="mt-auto flex flex-wrap items-center gap-2 pt-1">
+          <Button size="sm" :variant="item.installed ? 'outline' : 'default'" :disabled="busy || !item.online || Boolean(item.error) || !item.canInstall" @click="open(item, 'install')"><Download data-icon="inline-start" />{{ t(item.installed ? 'gameInstallation.update' : 'gameInstallation.install') }}</Button>
           <Button v-if="!item.installed" size="sm" variant="outline" :disabled="busy || !item.online || Boolean(item.error) || !item.canAdopt" @click="open(item, 'adopt')"><FolderOpen data-icon="inline-start" />{{ t('gameInstallation.adopt') }}</Button>
           <Button v-if="item.installed" size="sm" variant="outline" @click="router.push('/rooms')">{{ t('gameInstallation.rooms') }}</Button>
         </div>
