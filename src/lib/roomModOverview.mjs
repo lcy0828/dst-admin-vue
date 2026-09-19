@@ -26,6 +26,23 @@ function modID(value) {
   return String(value?.modid || value?.id || '').trim()
 }
 
+// Fact refreshes omit Workshop presentation. Keep names and images while new
+// metadata loads, but always take versions and operational state from fresh facts.
+export function retainRoomModPresentation(items = [], previous = []) {
+  const known = new Map(previous.map(item => [modID(item), item]))
+  return items.map(item => {
+    const id = modID(item)
+    const cached = id ? known.get(id) : null
+    if (!cached) return item
+    const name = String(item.name || '').trim()
+    return {
+      ...item,
+      name: (!name || name === `Workshop ${id}`) ? cached.name || item.name : item.name,
+      image: item.image || cached.image || ''
+    }
+  })
+}
+
 function normalizedAvailableIDs(overview) {
   return new Set((overview?.state?.availableModIds || []).map(value => String(value).trim()).filter(Boolean))
 }

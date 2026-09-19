@@ -141,7 +141,7 @@ import { useSharedJobStatus } from '@/composables/useGlobalJobStatus'
 import { taskProgress } from '@/lib/taskProgress.mjs'
 import { modThumbnailUrl } from '@/lib/modImages.mjs'
 import { enrichModMetadata } from '@/lib/modMetadata.mjs'
-import { buildRoomModOverview, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey, roomModFileStatusLabel, roomModStatusVariant as statusVariant } from '@/lib/roomModOverview.mjs'
+import { buildRoomModOverview, retainRoomModPresentation, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey, roomModFileStatusLabel, roomModStatusVariant as statusVariant } from '@/lib/roomModOverview.mjs'
 import { CircleAlert, Info, Package, PackageOpen, RefreshCw, RotateCw, Settings2 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
@@ -166,6 +166,7 @@ function viewUpdateProgress() {
 const mods = ref([])
 const updateOverview = ref(null)
 const loading = ref(false)
+const factsLoaded = ref(false)
 const checking = ref(false)
 const applying = ref(false)
 const dialogOpen = ref(false)
@@ -229,6 +230,10 @@ watch(() => props.roomId, () => {
   dialogOpen.value = false
   updateOverview.value = null
   mods.value = []
+  factsLoaded.value = false
+  loading.value = false
+  metadataWarning.value = ''
+  incompleteMetadataIds.value = []
   brokenImages.value = new Set()
   updateStateUnavailable.value = false
   void refresh()
@@ -262,10 +267,8 @@ async function refresh({ silent = false } = {}) {
   metadataSequence += 1
   metadataLoading.value = false
   metadataLoadedSequence = -1
-  if (!silent || !mods.value.length) loading.value = true
+  if (!silent || !factsLoaded.value) loading.value = true
   loadError.value = ''
-  metadataWarning.value = ''
-  incompleteMetadataIds.value = []
   const updatesCompletion = modApi.getModUpdateOverview(roomId).then(
     overview => {
       if (sequence !== loadSequence || roomId !== props.roomId) return
@@ -280,7 +283,12 @@ async function refresh({ silent = false } = {}) {
   try {
     const items = await modApi.getRoomModFacts({ roomId })
     if (sequence !== loadSequence || roomId !== props.roomId) return
-    mods.value = items || []
+    mods.value = retainRoomModPresentation(items || [], mods.value)
+    factsLoaded.value = true
+    if (!mods.value.length) {
+      metadataWarning.value = ''
+      incompleteMetadataIds.value = []
+    }
     if (dialogOpen.value) void loadMetadata(roomId, sequence)
   } catch (error) {
     if (sequence !== loadSequence || roomId !== props.roomId) return

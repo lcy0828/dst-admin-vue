@@ -4,7 +4,7 @@ import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import { babelParse, parse } from '@vue/compiler-sfc'
 import { computed, reactive, ref, watch } from 'vue'
-import { buildRoomModOverview, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey } from '../src/lib/roomModOverview.mjs'
+import { buildRoomModOverview, retainRoomModPresentation, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey } from '../src/lib/roomModOverview.mjs'
 import { enrichModMetadata } from '../src/lib/modMetadata.mjs'
 import { taskProgress } from '../src/lib/taskProgress.mjs'
 
@@ -36,7 +36,7 @@ function fixture({ deferMetadata = false, open = true } = {}) {
     return new Promise((resolve, reject) => calls.push({ kind, roomId, items, resolve, reject }))
   }
   const state = runInNewContext(`${script}; ({ refresh, rows, mods, loading, loadError, metadataWarning, metadataLoading, incompleteMetadataIds, retryMetadata, overviewDescription, updateOverview, updateStateUnavailable, updateError, updateErrorDetail, updateKnown, statusLabel, applying, dialogOpen, triggerStatus })`, {
-    computed, ref, buildRoomModOverview, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey, enrichModMetadata, taskProgress,
+    computed, ref, buildRoomModOverview, retainRoomModPresentation, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey, enrichModMetadata, taskProgress,
     defineProps: () => props, defineEmits: () => () => {}, defineExpose: () => {},
     useI18n: () => ({ t: key => key, locale: ref('en-US') }), useRouter: () => ({}),
     useSharedJobStatus: () => jobStatus,
@@ -325,6 +325,49 @@ test('only a successful empty Mod response shows the empty room description', as
   await flush()
   assert.equal(state.overviewDescription.value, 'servers.workspace.mods.emptyDescription')
   assert.equal(state.loading.value, false)
+})
+
+test('refreshing an empty room keeps its empty state instead of flashing initial loading', async () => {
+  const { state, calls, props, roomChanged, unmount } = fixture()
+  calls.find(call => call.kind === 'mods').resolve([])
+  calls.find(call => call.kind === 'updates').resolve(null)
+  await flush()
+  const pending = state.refresh({ silent: true })
+  assert.equal(state.loading.value, false)
+  assert.equal(state.overviewDescription.value, 'servers.workspace.mods.emptyDescription')
+  calls.at(-1).resolve([])
+  calls.at(-2).resolve(null)
+  await pending
+  props.roomId = 'room-2'
+  roomChanged()
+  assert.equal(state.loading.value, true)
+  assert.equal(state.overviewDescription.value, 'servers.workspace.mods.loading')
+  unmount()
+})
+
+test('background refresh keeps names, images and metadata warnings while applying fresh runtime facts', async () => {
+  const { state, calls, unmount } = fixture({ deferMetadata: true })
+  calls.find(call => call.kind === 'mods').resolve([{ ...mod('1'), name: 'Workshop 1', currentVersion: '1' }])
+  calls.find(call => call.kind === 'updates').resolve(null)
+  await flush()
+  calls.find(call => call.kind === 'metadata').resolve({ metadata: { 1: { name: 'Insight', previewUrl: '/insight.webp' } }, warning: 'Some details unavailable', incompleteModIds: ['1'] })
+  await flush()
+  const pending = state.refresh({ silent: true })
+  assert.equal(state.metadataWarning.value, 'Some details unavailable')
+  calls.at(-1).resolve([{ ...mod('1'), name: 'Workshop 1', image: '', enabled: false, currentVersion: '2' }])
+  calls.at(-2).resolve(null)
+  await pending
+  assert.equal(state.loading.value, false)
+  assert.equal(state.mods.value[0].name, 'Insight')
+  assert.equal(state.mods.value[0].image, '/insight.webp')
+  assert.equal(state.mods.value[0].currentVersion, '2')
+  assert.equal(state.mods.value[0].enabled, false)
+  calls.at(-1).reject(new Error('Steam timeout'))
+  await flush()
+  assert.equal(state.mods.value[0].name, 'Insight')
+  assert.equal(state.mods.value[0].image, '/insight.webp')
+  assert.equal(state.metadataWarning.value, 'Steam timeout')
+  unmount()
 })
 
 test('update read failures do not hide current Mod facts', async () => {

@@ -1,7 +1,29 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { buildRoomModOverview, roomModAttentionCount, roomModPrepareCount, roomModStatusVariant, roomModOperationalStatus, roomModUpdateErrorKey, roomModFileStatusLabel } from '../src/lib/roomModOverview.mjs'
+import { buildRoomModOverview, retainRoomModPresentation, roomModAttentionCount, roomModPrepareCount, roomModStatusVariant, roomModOperationalStatus, roomModUpdateErrorKey, roomModFileStatusLabel } from '../src/lib/roomModOverview.mjs'
+
+test('fact refresh retains Workshop presentation without retaining obsolete runtime state', () => {
+  const old = [
+    { id: '1', name: 'Known Mod', image: '/old.webp', currentVersion: '1', enabled: true, runtimeFileStatus: 'ready', runtimeOutdatedTargets: 1, updateAvailable: true },
+    { id: '2', name: 'Removed Mod', image: '/removed.webp' }
+  ]
+  const fresh = [
+    { id: '1', name: 'Workshop 1', image: '', currentVersion: '2', enabled: false, runtimeFileStatus: 'pending', runtimeOutdatedTargets: 0 },
+    { id: '3', name: 'Workshop 3' }
+  ]
+  const rows = retainRoomModPresentation(fresh, old)
+  assert.deepEqual(rows.map(row => row.id), ['1', '3'])
+  assert.deepEqual(rows[0], { ...fresh[0], name: 'Known Mod', image: '/old.webp' })
+  assert.equal(rows[0].updateAvailable, undefined)
+  assert.deepEqual(rows[1], fresh[1])
+  assert.equal(fresh[0].name, 'Workshop 1')
+  assert.equal(old[0].currentVersion, '1')
+  assert.deepEqual(retainRoomModPresentation([], old), [])
+  assert.deepEqual(retainRoomModPresentation([{ modid: '1', name: 'Renamed Mod', image: '/new.webp' }], old), [
+    { modid: '1', name: 'Renamed Mod', image: '/new.webp' }
+  ])
+})
 
 test('missing local files are explained separately from mixed network and file errors', () => {
   const fileError = 'Workshop 1392778117 在 local/default 的版本未确认：invalid'
