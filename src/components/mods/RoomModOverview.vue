@@ -1,163 +1,77 @@
 <template>
-  <Card size="sm" class="room-mod-overview">
-    <CardHeader class="room-mod-header">
-      <div class="min-w-0">
-        <div class="room-mod-title-row">
-          <CardTitle class="room-mod-title">
-            <PackageOpen aria-hidden="true" />
-            {{ t('servers.workspace.mods.title') }}
-          </CardTitle>
-          <Badge v-if="rows.length || (!loading && !loadError)" variant="outline">{{ t('servers.workspace.mods.count', { count: rows.length }) }}</Badge>
-          <Badge v-if="updateCount" variant="warning">
-            {{ t('servers.workspace.mods.updateCount', { count: updateCount }) }}
-          </Badge>
-          <Badge v-else-if="rows.length && updateKnown && !updateError" variant="success">
-            {{ t('servers.workspace.mods.current') }}
-          </Badge>
-        </div>
-        <CardDescription>{{ overviewDescription }}</CardDescription>
+  <UiDialog v-model:open="dialogOpen">
+    <DialogTrigger as-child>
+      <UiButton type="button" variant="outline" class="room-mod-trigger" :disabled="!roomId" :title="overviewDescription">
+        <Spinner v-if="loading || checking || applying || activeUpdateJob" data-icon="inline-start" />
+        <PackageOpen v-else data-icon="inline-start" />
+        {{ t('servers.workspace.mods.title') }}
+        <span v-if="rows.length || (!loading && !loadError)" class="tabular-nums">{{ rows.length }}</span>
+        <Badge v-if="triggerStatus" :variant="triggerStatus.variant">{{ triggerStatus.label }}</Badge>
+      </UiButton>
+    </DialogTrigger>
+    <DialogContent class="room-mod-dialog flex w-[calc(100vw-2rem)] flex-col overflow-hidden sm:max-w-3xl max-sm:h-[calc(100dvh-2rem)]" @open-auto-focus="focusDetails">
+      <DialogHeader class="pr-6">
+        <DialogTitle ref="dialogTitle" tabindex="-1" class="outline-none">{{ t('servers.workspace.mods.dialogTitle', { room: roomName }) }}</DialogTitle>
+        <DialogDescription>{{ dialogDescription }}</DialogDescription>
+      </DialogHeader>
+      <div class="room-mod-dialog-summary">
+        <Badge v-if="updateCount" variant="warning">{{ t('servers.workspace.mods.updateCount', { count: updateCount }) }}</Badge>
+        <Badge v-if="attentionCount" variant="destructive">{{ t('servers.workspace.mods.attentionCount', { count: attentionCount }) }}</Badge>
+        <Badge v-if="prepareCount" variant="secondary">{{ t('servers.workspace.mods.prepareCount', { count: prepareCount }) }}</Badge>
+        <span class="text-xs text-muted-foreground">{{ updateKnown ? t('servers.workspace.mods.checkedAt', { time: lastCheckedLabel }) : t('servers.workspace.mods.notChecked') }}</span>
       </div>
-      <CardAction class="room-mod-actions">
-        <UiButton v-if="prepareCount || attentionCount" type="button" size="sm" variant="outline" @click="openModManagement">
-          <Settings2 data-icon="inline-start" />{{ t('servers.workspace.mods.manage') }}
-        </UiButton>
-        <UiButton
-          v-if="rows.length"
-          type="button"
-          size="sm"
-          variant="ghost"
-          @click="dialogOpen = true"
-        >
-          {{ t('servers.workspace.mods.viewAll') }}
-          <ArrowRight data-icon="inline-end" />
-        </UiButton>
-        <UiButton
-          type="button"
-          size="icon-sm"
-          variant="outline"
-          :disabled="busy || !roomId"
-          :aria-label="t(checking ? 'servers.workspace.mods.checking' : 'servers.workspace.mods.check')"
-          :title="t(checking ? 'servers.workspace.mods.checking' : 'servers.workspace.mods.check')"
-          @click="checkUpdates"
-        >
-          <Spinner v-if="checking" />
-          <RefreshCw v-else />
-        </UiButton>
-        <UiButton
-          v-if="updateCount || activeUpdateJob"
-          type="button"
-          size="sm"
-          :disabled="busy && !activeUpdateJob"
-          @click="activeUpdateJob ? viewUpdateProgress() : confirmApplyUpdates()"
-        >
-          <Spinner v-if="applying" data-icon="inline-start" />
-          <RotateCw v-else data-icon="inline-start" />
-          {{ t(activeUpdateJob ? 'globalJobs.viewProgress' : applying ? 'servers.workspace.mods.updating' : 'servers.workspace.mods.updateAndRestart') }}
-        </UiButton>
-      </CardAction>
-    </CardHeader>
-
-    <CardContent class="room-mod-content">
-      <div v-if="loading" class="room-mod-grid" role="status" :aria-label="t('servers.workspace.mods.loading')">
-        <div v-for="index in 4" :key="index" class="room-mod-row">
-          <Skeleton class="room-mod-image" />
-          <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-            <Skeleton class="h-3.5 w-32 max-w-full" />
-            <Skeleton class="h-3 w-20" />
+      <ScrollArea class="room-mod-scroll">
+        <div class="room-mod-content">
+          <div v-if="loading" class="flex flex-col gap-3" role="status" :aria-label="t('servers.workspace.mods.loading')">
+            <Skeleton v-for="index in 4" :key="index" class="h-14 w-full" />
           </div>
-          <Skeleton class="h-5 w-16" />
-        </div>
-      </div>
-      <Alert v-else-if="loadError && !rows.length" variant="destructive">
-        <CircleAlert />
-        <AlertTitle>{{ t('servers.workspace.mods.loadFailed') }}</AlertTitle>
-        <AlertDescription>{{ loadError }}</AlertDescription>
-      </Alert>
-      <div v-else-if="visibleRows.length" class="room-mod-grid">
-        <article v-for="mod in visibleRows" :key="mod.id" class="room-mod-row">
-          <div class="room-mod-image">
-            <Package v-if="!mod.image || brokenImages.has(mod.id)" aria-hidden="true" />
-            <img
-              v-else
-              :src="modThumbnailUrl(mod.image, 68)"
-              :alt="mod.name"
-              loading="lazy"
-              @error="markImageBroken(mod.id)"
-            />
-          </div>
-          <div class="room-mod-copy">
-            <strong :title="mod.name">{{ mod.name }}</strong>
-            <span>{{ modMeta(mod) }}</span>
-          </div>
-          <div class="room-mod-badges">
-            <Badge :variant="statusVariant(mod.status)">{{ statusLabel(mod.status, mod) }}</Badge>
-            <Badge v-if="mod.updateAvailable" variant="warning">{{ t('servers.workspace.mods.status.update_available') }}</Badge>
-          </div>
-        </article>
-      </div>
-      <div v-else class="room-mod-empty">
-        <PackageOpen aria-hidden="true" />
-        <span>{{ t('servers.workspace.mods.empty') }}</span>
-      </div>
-      <p v-if="loadError && rows.length" class="room-mod-inline-error">
-        <CircleAlert aria-hidden="true" />{{ loadError }}
-      </p>
-      <Alert v-if="updateError && !loadError" :variant="updateActionFailed ? 'destructive' : 'default'" role="status">
-        <CircleAlert />
-        <AlertTitle>{{ t(updateActionFailed ? 'mods.autoUpdate.status.blocked' : updateFileProblem ? 'mods.autoUpdate.filesUnavailable' : 'mods.autoUpdate.checkUnavailable') }}</AlertTitle>
-        <AlertDescription>
-          <p>{{ updateError }}</p>
-          <p v-if="updateKnown">{{ t('servers.workspace.mods.checkedAt', { time: lastCheckedLabel }) }}</p>
-          <Collapsible :key="updateErrorDetail" v-slot="{ open }" class="w-full min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <UiButton type="button" variant="outline" size="sm" :disabled="busy || !roomId" @click="checkUpdates">
-                <Spinner v-if="checking" data-icon="inline-start" />
+          <Alert v-if="loadError" variant="destructive">
+            <CircleAlert />
+            <AlertTitle>{{ t('servers.workspace.mods.loadFailed') }}</AlertTitle>
+            <AlertDescription>{{ loadError }}</AlertDescription>
+            <AlertAction><UiButton size="sm" variant="outline" :disabled="loading" @click="refresh()">{{ t('common.actions.retry') }}</UiButton></AlertAction>
+          </Alert>
+          <Alert v-if="updateError && !loadError" :variant="updateActionFailed ? 'destructive' : 'default'" role="status">
+            <CircleAlert />
+            <AlertTitle>{{ t(updateActionFailed ? 'mods.autoUpdate.status.blocked' : updateFileProblem ? 'mods.autoUpdate.filesUnavailable' : 'mods.autoUpdate.checkUnavailable') }}</AlertTitle>
+            <AlertDescription>
+              <p>{{ updateError }}</p>
+              <p v-if="updateKnown">{{ t('servers.workspace.mods.checkedAt', { time: lastCheckedLabel }) }}</p>
+              <Collapsible :key="updateErrorDetail" v-slot="{ open }" class="w-full min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                  <UiButton type="button" variant="outline" size="sm" :disabled="busy || !roomId" @click="checkUpdates">
+                    <Spinner v-if="checking" data-icon="inline-start" />
+                    <RefreshCw v-else data-icon="inline-start" />
+                    {{ t(checking ? 'servers.workspace.mods.checking' : 'servers.workspace.mods.check') }}
+                  </UiButton>
+                  <CollapsibleTrigger v-if="updateErrorDetail" as-child>
+                    <UiButton type="button" variant="ghost" size="sm">
+                      {{ t(open ? 'mods.autoUpdate.errors.hideDetails' : 'mods.autoUpdate.errors.showDetails') }}
+                    </UiButton>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent>
+                  <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all text-xs">{{ updateErrorDetail }}</pre>
+                </CollapsibleContent>
+              </Collapsible>
+            </AlertDescription>
+          </Alert>
+          <Alert v-if="metadataWarning && !loadError" role="status">
+            <Info />
+            <AlertTitle>{{ t('mods.metadata.notice') }}</AlertTitle>
+            <AlertDescription>
+              <p>{{ metadataWarning }}</p>
+              <p>{{ t('mods.metadata.localFactsAvailable') }}</p>
+              <UiButton v-if="incompleteMetadataIds.length" type="button" variant="outline" size="sm" class="mt-2 w-fit" :disabled="metadataLoading" @click="retryMetadata">
+                <Spinner v-if="metadataLoading" aria-hidden="true" data-icon="inline-start" />
                 <RefreshCw v-else data-icon="inline-start" />
-                {{ t(checking ? 'servers.workspace.mods.checking' : 'servers.workspace.mods.check') }}
+                {{ t(metadataLoading ? 'mods.metadata.retrying' : 'mods.metadata.retry') }}
               </UiButton>
-              <CollapsibleTrigger v-if="updateErrorDetail" as-child>
-                <UiButton type="button" variant="ghost" size="sm">
-                  {{ t(open ? 'mods.autoUpdate.errors.hideDetails' : 'mods.autoUpdate.errors.showDetails') }}
-                </UiButton>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent>
-              <pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all text-xs">{{ updateErrorDetail }}</pre>
-            </CollapsibleContent>
-          </Collapsible>
-        </AlertDescription>
-      </Alert>
-      <Alert v-if="metadataWarning && !loadError" role="status">
-        <Info />
-        <AlertTitle>{{ t('mods.metadata.notice') }}</AlertTitle>
-        <AlertDescription>
-          <p>{{ metadataWarning }}</p>
-          <p>{{ t('mods.metadata.localFactsAvailable') }}</p>
-          <UiButton v-if="incompleteMetadataIds.length" type="button" variant="outline" size="sm" class="mt-2 w-fit" :disabled="metadataLoading" @click="retryMetadata">
-            <Spinner v-if="metadataLoading" aria-hidden="true" data-icon="inline-start" />
-            <RefreshCw v-else data-icon="inline-start" />
-            {{ t(metadataLoading ? 'mods.metadata.retrying' : 'mods.metadata.retry') }}
-          </UiButton>
-        </AlertDescription>
-      </Alert>
-    </CardContent>
-
-    <UiDialog v-model:open="dialogOpen">
-      <DialogContent class="room-mod-dialog">
-        <DialogHeader>
-          <DialogTitle>{{ t('servers.workspace.mods.dialogTitle', { room: roomName }) }}</DialogTitle>
-          <DialogDescription>{{ dialogDescription }}</DialogDescription>
-        </DialogHeader>
-        <div class="room-mod-dialog-summary">
-          <Badge variant="outline">{{ t('servers.workspace.mods.count', { count: rows.length }) }}</Badge>
-          <Badge v-if="updateCount" variant="warning">{{ t('servers.workspace.mods.updateCount', { count: updateCount }) }}</Badge>
-          <Badge v-if="attentionCount" variant="destructive">{{ t('servers.workspace.mods.attentionCount', { count: attentionCount }) }}</Badge>
-          <Badge v-else-if="prepareCount" variant="secondary">{{ t('servers.workspace.mods.prepareCount', { count: prepareCount }) }}</Badge>
-        </div>
-        <ScrollArea class="room-mod-scroll">
-          <div class="room-mod-list">
+            </AlertDescription>
+          </Alert>
+          <div v-if="rows.length" class="room-mod-list">
             <article v-for="mod in rows" :key="mod.id" class="room-mod-dialog-row">
-              <div class="room-mod-image is-dialog">
+              <div class="room-mod-image">
                 <Package v-if="!mod.image || brokenImages.has(mod.id)" aria-hidden="true" />
                 <img v-else :src="modThumbnailUrl(mod.image, 80)" :alt="mod.name" loading="lazy" @error="markImageBroken(mod.id)" />
               </div>
@@ -171,26 +85,39 @@
               </div>
             </article>
           </div>
-        </ScrollArea>
-        <DialogFooter>
-          <UiButton type="button" variant="outline" @click="openModManagement">
-            <Settings2 data-icon="inline-start" />
-            {{ t('servers.workspace.mods.manage') }}
-          </UiButton>
-          <UiButton
-            v-if="updateCount || activeUpdateJob"
-            type="button"
-            :disabled="busy && !activeUpdateJob"
-            @click="activeUpdateJob ? viewUpdateProgress() : confirmApplyUpdates()"
-          >
-            <Spinner v-if="applying" data-icon="inline-start" />
-            <RotateCw v-else data-icon="inline-start" />
-            {{ t(activeUpdateJob ? 'globalJobs.viewProgress' : applying ? 'servers.workspace.mods.updating' : 'servers.workspace.mods.updateAndRestart') }}
-          </UiButton>
-        </DialogFooter>
-      </DialogContent>
-    </UiDialog>
-  </Card>
+          <Empty v-else-if="!loading && !loadError">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><PackageOpen /></EmptyMedia>
+              <EmptyTitle>{{ t('servers.workspace.mods.empty') }}</EmptyTitle>
+            </EmptyHeader>
+            <EmptyContent><UiButton variant="outline" @click="openModManagement">{{ t('servers.workspace.mods.manage') }}</UiButton></EmptyContent>
+          </Empty>
+        </div>
+      </ScrollArea>
+      <DialogFooter class="room-mod-footer">
+        <UiButton type="button" variant="outline" :disabled="busy || !roomId" @click="checkUpdates">
+          <Spinner v-if="checking" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          {{ t(checking ? 'servers.workspace.mods.checking' : 'servers.workspace.mods.check') }}
+        </UiButton>
+        <UiButton type="button" variant="outline" @click="openModManagement">
+          <Settings2 data-icon="inline-start" />
+          {{ t('servers.workspace.mods.manage') }}
+        </UiButton>
+        <UiButton
+          v-if="updateCount || activeUpdateJob"
+          type="button"
+          :disabled="busy && !activeUpdateJob"
+          @click="activeUpdateJob ? viewUpdateProgress() : confirmApplyUpdates()"
+        >
+          <Spinner v-if="applying" data-icon="inline-start" />
+          <RotateCw v-else data-icon="inline-start" />
+          {{ t(activeUpdateJob ? 'globalJobs.viewProgress' : applying ? 'servers.workspace.mods.updating' : 'servers.workspace.mods.updateAndRestart') }}
+        </UiButton>
+      </DialogFooter>
+
+    </DialogContent>
+  </UiDialog>
 </template>
 
 <script setup>
@@ -199,12 +126,12 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import modApi from '@/api/modApi'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Empty, EmptyContent, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
@@ -215,7 +142,7 @@ import { taskProgress } from '@/lib/taskProgress.mjs'
 import { modThumbnailUrl } from '@/lib/modImages.mjs'
 import { enrichModMetadata } from '@/lib/modMetadata.mjs'
 import { buildRoomModOverview, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey, roomModFileStatusLabel, roomModStatusVariant as statusVariant } from '@/lib/roomModOverview.mjs'
-import { ArrowRight, CircleAlert, Info, Package, PackageOpen, RefreshCw, RotateCw, Settings2 } from '@lucide/vue'
+import { CircleAlert, Info, Package, PackageOpen, RefreshCw, RotateCw, Settings2 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 
 const props = defineProps({
@@ -242,17 +169,22 @@ const loading = ref(false)
 const checking = ref(false)
 const applying = ref(false)
 const dialogOpen = ref(false)
+const dialogTitle = ref(null)
+function focusDetails(event) {
+  event.preventDefault()
+  dialogTitle.value?.$el?.focus()
+}
 const loadError = ref('')
 const metadataWarning = ref('')
 const incompleteMetadataIds = ref([])
 const metadataLoading = ref(false)
 let metadataSequence = 0
+let metadataLoadedSequence = -1
 const updateStateUnavailable = ref(false)
 const brokenImages = ref(new Set())
 let loadSequence = 0
 
 const rows = computed(() => buildRoomModOverview(mods.value, updateOverview.value))
-const visibleRows = computed(() => rows.value.slice(0, 4))
 const updateCount = computed(() => rows.value.filter(mod => mod.updateAvailable).length)
 const attentionCount = computed(() => roomModAttentionCount(rows.value))
 const prepareCount = computed(() => roomModPrepareCount(rows.value))
@@ -266,6 +198,16 @@ const updateError = computed(() => {
   return key ? t(key) : ''
 })
 const busy = computed(() => loading.value || checking.value || applying.value || Boolean(activeUpdateJob.value))
+const triggerStatus = computed(() => {
+  if (activeUpdateJob.value || applying.value) return { variant: 'secondary', label: t('servers.workspace.mods.updating') }
+  if (checking.value) return { variant: 'secondary', label: t('servers.workspace.mods.checking') }
+  if (loadError.value || updateActionFailed.value) return { variant: 'destructive', label: t('servers.workspace.mods.needsAttention') }
+  if (attentionCount.value) return { variant: 'destructive', label: t('servers.workspace.mods.attentionCount', { count: attentionCount.value }) }
+  if (prepareCount.value) return { variant: 'warning', label: t('servers.workspace.mods.prepareCount', { count: prepareCount.value }) }
+  if (updateCount.value) return { variant: 'warning', label: t('servers.workspace.mods.updateCount', { count: updateCount.value }) }
+  if (updateError.value) return { variant: 'warning', label: t('servers.workspace.mods.statusUnavailable') }
+  return null
+})
 const lastCheckedLabel = computed(() => formatDateTime(updateOverview.value?.state?.lastCheckedAt))
 const overviewDescription = computed(() => {
   if (!rows.value.length && loading.value) return t('servers.workspace.mods.loading')
@@ -292,6 +234,12 @@ watch(() => props.roomId, () => {
   void refresh()
 }, { immediate: true })
 
+watch(dialogOpen, open => {
+  if (open && !loading.value && metadataLoadedSequence !== loadSequence) {
+    void loadMetadata(props.roomId, loadSequence)
+  }
+})
+
 // Use the existing task stream once at the download/restart boundary. World
 // log updates within that phase do not need another Mod read.
 watch([
@@ -311,6 +259,9 @@ async function refresh({ silent = false } = {}) {
   const roomId = props.roomId
   if (!roomId) return
   const sequence = ++loadSequence
+  metadataSequence += 1
+  metadataLoading.value = false
+  metadataLoadedSequence = -1
   if (!silent || !mods.value.length) loading.value = true
   loadError.value = ''
   metadataWarning.value = ''
@@ -330,7 +281,7 @@ async function refresh({ silent = false } = {}) {
     const items = await modApi.getRoomModFacts({ roomId })
     if (sequence !== loadSequence || roomId !== props.roomId) return
     mods.value = items || []
-    void loadMetadata(roomId, sequence)
+    if (dialogOpen.value) void loadMetadata(roomId, sequence)
   } catch (error) {
     if (sequence !== loadSequence || roomId !== props.roomId) return
     loadError.value = error?.message || t('common.errors.unknown')
@@ -341,13 +292,14 @@ async function refresh({ silent = false } = {}) {
 }
 
 async function loadMetadata(roomId, sequence, items = mods.value, retry = false) {
-  if (!items.length) return
+  if (!dialogOpen.value || !items.length || metadataLoading.value) return
   const request = ++metadataSequence
   metadataLoading.value = true
   try {
     const result = await modApi.getModMetadata(items)
     if (sequence !== loadSequence || roomId !== props.roomId || request !== metadataSequence) return
     mods.value = enrichModMetadata(mods.value, result.metadata)
+    metadataLoadedSequence = sequence
     metadataWarning.value = result.warning
     incompleteMetadataIds.value = result.incompleteModIds || []
     if (retry) {
@@ -509,97 +461,54 @@ defineExpose({ refresh })
 </script>
 
 <style scoped>
-.room-mod-header {
-  align-items: center;
+.room-mod-trigger {
+  max-width: 100%;
 }
 
-.room-mod-title-row,
-.room-mod-title,
-.room-mod-actions,
-.room-mod-badges,
-.room-mod-dialog-summary {
-  display: flex;
-  align-items: center;
-}
-
-.room-mod-title-row {
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.room-mod-title {
-  gap: 7px;
-}
-
-.room-mod-title > svg {
-  width: 16px;
-  height: 16px;
-  color: var(--muted-foreground);
-}
-
-.room-mod-actions {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
+.room-mod-dialog-summary,
 .room-mod-badges {
+  display: flex;
   min-width: 0;
+  align-items: center;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px;
+  gap: 6px;
 }
 
 .room-mod-content {
-  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.room-mod-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-top: 1px solid var(--border);
+.room-mod-scroll {
+  height: min(56dvh, 480px);
+  min-height: 0;
+  flex: 1 1 auto;
+  margin-right: -8px;
+  padding-right: 8px;
 }
 
-.room-mod-row,
 .room-mod-dialog-row {
   display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   min-width: 0;
+  min-height: 64px;
   align-items: center;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
   gap: 9px;
-}
-
-.room-mod-row {
-  min-height: 54px;
-  padding: 8px 10px 8px 0;
+  padding: 8px 2px;
   border-bottom: 1px solid var(--border);
-}
-
-.room-mod-row:nth-child(odd) {
-  padding-right: 14px;
-  border-right: 1px solid var(--border);
-}
-
-.room-mod-row:nth-child(even) {
-  padding-left: 14px;
 }
 
 .room-mod-image {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   overflow: hidden;
   place-items: center;
   color: var(--muted-foreground);
   background: var(--muted);
   border: 1px solid var(--border);
-  border-radius: 4px;
-}
-
-.room-mod-image.is-dialog {
-  width: 40px;
-  height: 40px;
+  border-radius: var(--radius-sm);
 }
 
 .room-mod-image img {
@@ -609,8 +518,8 @@ defineExpose({ refresh })
 }
 
 .room-mod-image > svg {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
 }
 
 .room-mod-copy {
@@ -625,110 +534,27 @@ defineExpose({ refresh })
   white-space: nowrap;
 }
 
-.room-mod-copy strong {
-  color: var(--foreground);
-  font-size: 13px;
-  line-height: 18px;
-}
-
 .room-mod-copy span {
-  margin-top: 1px;
+  margin-top: 3px;
   color: var(--muted-foreground);
-  font-size: 11px;
-  line-height: 16px;
-}
-
-.room-mod-empty {
-  display: flex;
-  min-height: 58px;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--muted-foreground);
-  border-top: 1px solid var(--border);
-}
-
-.room-mod-empty > svg {
-  width: 17px;
-  height: 17px;
-}
-
-.room-mod-inline-error {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 0 0;
-  color: var(--destructive);
   font-size: 12px;
 }
 
-.room-mod-inline-error > svg {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-}
-
-.room-mod-dialog {
-  width: min(720px, calc(100vw - 32px));
-  max-width: 720px;
-  overflow: hidden;
-}
-
-.room-mod-dialog-summary {
+.room-mod-footer {
   flex-wrap: wrap;
-  gap: 6px;
 }
 
-.room-mod-scroll {
-  height: min(58vh, 520px);
-  min-height: 220px;
-  margin-right: -8px;
-  padding-right: 8px;
-}
-
-.room-mod-list {
-  border-top: 1px solid var(--border);
-}
-
-.room-mod-dialog-row {
-  min-height: 58px;
-  padding: 8px 2px;
-  border-bottom: 1px solid var(--border);
-}
-
-@media (max-width: 760px) {
-  .room-mod-header {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 640px) {
+  .room-mod-scroll {
+    height: auto;
   }
 
-  .room-mod-actions {
-    grid-column: 1;
-    grid-row: auto;
-    justify-self: stretch;
-    justify-content: flex-start;
-    margin-top: 4px;
-  }
-
-  .room-mod-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .room-mod-row:nth-child(odd),
-  .room-mod-row:nth-child(even) {
-    padding-right: 0;
-    padding-left: 0;
-    border-right: 0;
-  }
-}
-
-@media (max-width: 480px) {
   .room-mod-dialog-row {
     grid-template-columns: 40px minmax(0, 1fr);
   }
 
   .room-mod-dialog-row > .room-mod-badges {
     grid-column: 2;
-    justify-content: flex-start;
   }
 }
 </style>

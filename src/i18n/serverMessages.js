@@ -176,6 +176,8 @@ export const serverMessages = {
         },
         mods: {
           title: '模组',
+          needsAttention: '需要处理',
+          statusUnavailable: '状态未知',
           count: '{count} 个',
           updateCount: '{count} 个可更新',
           attentionCount: '{count} 个异常',
@@ -863,6 +865,8 @@ export const serverMessages = {
         },
         mods: {
           title: 'Mods',
+          needsAttention: 'Needs attention',
+          statusUnavailable: 'Status unknown',
           count: '{count}',
           updateCount: '{count} updates',
           attentionCount: '{count} need attention',

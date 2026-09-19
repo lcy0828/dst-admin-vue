@@ -63,8 +63,7 @@ test('room summary and Mod management use the same status colors', async () => {
     readFile(new URL('../src/views/mods/ModList.vue', import.meta.url), 'utf8')
   ])
   assert.match(overview, /roomModStatusVariant as statusVariant/)
-  assert.equal((overview.match(/:variant="statusVariant\(mod.status\)"/g) || []).length, 2)
-  assert.match(overview, /@media \(max-width: 480px\)[\s\S]*\.room-mod-dialog-row > \.room-mod-badges\s*\{\s*grid-column: 2;\s*justify-content: flex-start;/)
+  assert.match(overview, /:variant="statusVariant\(mod.status\)"/)
   assert.match(management, /return roomModStatusVariant\(this\.modOperationalStatus\(mod\)\)/)
 })
 
@@ -141,7 +140,7 @@ test('room Mod overview ignores publication and parser history as room health', 
   assert.equal(roomModPrepareCount(rows), 0)
 })
 
-test('server workspace exposes a compact four-Mod overview and explicit restart flow', async () => {
+test('server workspace exposes Mod details and explicit restart flow', async () => {
   const [workspace, component, client, adapter, messages] = await Promise.all([
     readFile(new URL('../src/views/servers/ServerWorkspace.vue', import.meta.url), 'utf8'),
     readFile(new URL('../src/components/mods/RoomModOverview.vue', import.meta.url), 'utf8'),
@@ -151,7 +150,6 @@ test('server workspace exposes a compact four-Mod overview and explicit restart 
   ])
 
   assert.match(workspace, /<RoomModOverview[\s\S]*:room-id="roomModOverviewId"[\s\S]*@updated="handleModsUpdated"/)
-  assert.match(component, /rows\.value\.slice\(0, 4\)/)
   assert.match(component, /modApi\.getRoomModFacts\(\{ roomId \}\)/)
   assert.doesNotMatch(component, /runtimeReplica/)
   const factsStart = adapter.indexOf('async function getRoomModFacts')
@@ -168,7 +166,6 @@ test('server workspace exposes a compact four-Mod overview and explicit restart 
   assert.match(component, /v-if="updateCount"[\s\S]*confirmApplyUpdates/)
   assert.match(component, /confirmRoomMaintenance\([\s\S]*applyModUpdatesNow/)
   assert.match(component, /jobStatus\?\.waitForJob \|\| waitForV2Job\)\(job, 20 \* 60 \* 1000\)[\s\S]*emit\('updated'\)/)
-  assert.match(component, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
   assert.match(client, /`\/rooms\/\$\{encode\(roomId\)\}\/mod-update\/actions\/apply`/)
   assert.match(adapter, /async function applyModUpdatesNow\(roomId\)/)
   assert.match(messages, /updateAndRestart: '更新并重启'/)

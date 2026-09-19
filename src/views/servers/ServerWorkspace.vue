@@ -69,6 +69,16 @@
           </TooltipTrigger>
           <TooltipContent>{{ $t('servers.workspace.refresh') }}</TooltipContent>
         </Tooltip>
+        <RoomModOverview
+          v-if="roomModOverviewId && selectedRoom"
+          ref="roomModOverview"
+          :room-id="roomModOverviewId"
+          :room-name="selectedRoom?.name || ''"
+          :world-count="worlds.length"
+          :runtime-targets="worlds.map(world => worldRuntimeTarget(world)).filter(Boolean)"
+          :online-players="playerStats?.online_count || 0"
+          @updated="handleModsUpdated"
+        />
         <UiButton
           :disabled="!selectedRoom || !roomControlAvailable || backupCreating"
           @click="createBackup"
@@ -577,18 +587,6 @@
       </Card>
 
     </template>
-
-    <RoomModOverview
-      v-if="roomModOverviewId"
-      v-show="Boolean(selectedRoom)"
-      ref="roomModOverview"
-      :room-id="roomModOverviewId"
-      :room-name="selectedRoom?.name || ''"
-      :world-count="worlds.length"
-      :runtime-targets="worlds.map(world => worldRuntimeTarget(world)).filter(Boolean)"
-      :online-players="playerStats?.online_count || 0"
-      @updated="handleModsUpdated"
-    />
 
     <template v-if="selectedRoom">
       <Card size="sm">
@@ -3589,7 +3587,7 @@ export default {
 
 .players-list-expanded {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -3747,8 +3745,8 @@ export default {
 
 .player-copy {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) auto;
-  gap: 4px 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
   min-width: 0;
   padding-top: 1px;
 }
@@ -3843,12 +3841,6 @@ export default {
 
 .player-observation {
   margin-top: 1px;
-}
-
-@media (max-width: 900px) {
-  .player-copy {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 @media (max-width: 1100px) {

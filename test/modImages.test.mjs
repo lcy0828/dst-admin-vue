@@ -59,7 +59,7 @@ test('invalid thumbnail sizes do not add unusable CDN parameters', () => {
 
 test('all Mod list images use size-appropriate thumbnails and retain their fallbacks', async () => {
   const views = [
-    ['src/components/mods/RoomModOverview.vue', [68, 80]],
+    ['src/components/mods/RoomModOverview.vue', [80]],
     ['src/views/mods/ModList.vue', [96]],
     ['src/views/mods/ModSearch.vue', [184]],
     ['src/views/mods/ModLibrary.vue', [88]],

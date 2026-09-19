@@ -24,7 +24,7 @@ const workspaceMethods = runInNewContext(`({ ${[manualRefresh, overviewID].map(n
 const flush = () => new Promise(resolve => setImmediate(resolve))
 const mod = id => ({ id, name: `Mod ${id}`, configured: true, enabled: true, runtimeFileStatus: 'ready' })
 
-function fixture({ deferMetadata = false } = {}) {
+function fixture({ deferMetadata = false, open = true } = {}) {
   const calls = []
   const props = reactive({ roomId: 'room-1', roomName: '666777', worldCount: 2 })
   const jobStatus = { activeJobs: ref([]), rememberRoomLabel() {} }
@@ -35,13 +35,13 @@ function fixture({ deferMetadata = false } = {}) {
   function read(kind, roomId, items) {
     return new Promise((resolve, reject) => calls.push({ kind, roomId, items, resolve, reject }))
   }
-  const state = runInNewContext(`${script}; ({ refresh, rows, mods, loading, loadError, metadataWarning, metadataLoading, incompleteMetadataIds, retryMetadata, overviewDescription, updateOverview, updateStateUnavailable, updateError, updateErrorDetail, updateKnown, statusLabel, applying })`, {
+  const state = runInNewContext(`${script}; ({ refresh, rows, mods, loading, loadError, metadataWarning, metadataLoading, incompleteMetadataIds, retryMetadata, overviewDescription, updateOverview, updateStateUnavailable, updateError, updateErrorDetail, updateKnown, statusLabel, applying, dialogOpen, triggerStatus })`, {
     computed, ref, buildRoomModOverview, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey, enrichModMetadata, taskProgress,
     defineProps: () => props, defineEmits: () => () => {}, defineExpose: () => {},
     useI18n: () => ({ t: key => key, locale: ref('en-US') }), useRouter: () => ({}),
     useSharedJobStatus: () => jobStatus,
     watch: (source, handler, options) => {
-      if (Array.isArray(source)) stops.push(watch(source, handler, options))
+      if (Array.isArray(source) || typeof source !== 'function') stops.push(watch(source, handler, options))
       else {
         if (typeof source() === 'string') roomChanged = () => handler(source())
         if (options?.immediate) handler(source())
@@ -55,8 +55,30 @@ function fixture({ deferMetadata = false } = {}) {
       getModUpdateOverview: roomId => read('updates', roomId)
     }
   })
+  state.dialogOpen.value = open
   return { state, calls, props, notifications, jobStatus, roomChanged: () => roomChanged(), unmount: () => { stops.forEach(stop => stop()); unmount() } }
 }
+
+test('closed Mod details read local facts but request metadata only on opening, reusing it on reopen', async () => {
+  const { state, calls, unmount } = fixture({ deferMetadata: true, open: false })
+  calls.find(call => call.kind === 'mods').resolve([mod('1')])
+  calls.find(call => call.kind === 'updates').resolve({ state: { availableModIds: ['1'] } })
+  await flush()
+  assert.equal(calls.filter(call => call.kind === 'metadata').length, 0)
+  assert.equal(state.rows.value[0].updateAvailable, true)
+  assert.equal(state.triggerStatus.value.variant, 'warning')
+  state.dialogOpen.value = true
+  await flush()
+  calls.find(call => call.kind === 'metadata').resolve({ metadata: { 1: { name: 'Insight', author: 'Author' } }, warning: '', incompleteModIds: [] })
+  await flush()
+  state.dialogOpen.value = false
+  await flush()
+  state.dialogOpen.value = true
+  await flush()
+  assert.equal(calls.filter(call => call.kind === 'metadata').length, 1)
+  assert.equal(state.mods.value[0].name, 'Insight')
+  unmount()
+})
 
 test('existing job events refresh disk versions once before restart, without polling each world log update', async () => {
   const { state, calls, jobStatus, unmount } = fixture({ deferMetadata: true })
@@ -199,6 +221,8 @@ test('a retry finishing after a room switch does not show an old result or hide 
   const oldRequest = calls.at(-1)
   props.roomId = 'room-2'
   roomChanged()
+  assert.equal(state.dialogOpen.value, false)
+  state.dialogOpen.value = true
   for (const call of calls.filter(call => call.roomId === 'room-2')) call.resolve(call.kind === 'mods' ? [mod('2')] : null)
   await flush()
   oldRequest.resolve({ metadata: { 1: { name: 'Old' } }, warning: '', incompleteModIds: [] })
