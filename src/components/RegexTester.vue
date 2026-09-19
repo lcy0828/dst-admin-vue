@@ -137,6 +137,7 @@ import { Separator } from '@/components/ui/separator'
 import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { regexTesterErrorLabel } from '@/i18n/logToolsMessages.js'
+import { headTailMatches } from '@/lib/headTailMatches.mjs'
 
 export default {
   name: 'RegexTester',
@@ -365,46 +366,8 @@ export default {
       try {
         const tailRegex = new RegExp(this.regexForm.tailPattern, 'm');
         const content = this.regexForm.testContent;
-        const matches = [];
-
-        // 查找所有头部匹配
-        let headMatch;
-        let lastIndex = 0;
-        const headMatches = [];
-
-        while ((headMatch = regex.exec(content.slice(lastIndex))) !== null) {
-          const startIndex = lastIndex + headMatch.index;
-          headMatches.push({
-            match: headMatch[0],
-            startIndex: startIndex,
-            endIndex: startIndex + headMatch[0].length
-          });
-          lastIndex = startIndex + 1; // 移动到下一个可能的匹配位置
-
-          // 防止无限循环
-          if (headMatch.index === regex.lastIndex) {
-            regex.lastIndex++;
-          }
-        }
-
-        // 对每个头部匹配，查找对应的尾部匹配
-        for (const head of headMatches) {
-          const searchStart = head.endIndex;
-          const remainingContent = content.slice(searchStart);
-
-          const tailMatch = remainingContent.match(tailRegex);
-          if (tailMatch) {
-            const tailStartIndex = searchStart + tailMatch.index;
-            const tailEndIndex = tailStartIndex + tailMatch[0].length;
-
-            // 提取从头部开始到尾部结束的完整内容
-            const fullMatch = content.slice(head.startIndex, tailEndIndex);
-            matches.push(fullMatch);
-          }
-        }
-
         this.testResult.isValid = true;
-        this.testResult.matches = matches;
+        this.testResult.matches = headTailMatches(content, regex, tailRegex);
 
       } catch (error) {
         this.testResult.isValid = false;
