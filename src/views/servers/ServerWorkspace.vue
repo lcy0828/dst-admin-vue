@@ -636,18 +636,19 @@
                     :key="`${row.player.room_id}:${row.player.user_id}`"
                     class="player-row"
                   >
-                    <Tooltip v-if="playerAvatarActionAvailable(row.player)">
+                    <Tooltip>
                       <TooltipTrigger as-child>
                         <UiButton
+                          v-if="playerAvatarActionAvailable(row.player)"
                           type="button"
                           variant="ghost"
                           size="icon-lg"
                           class="player-avatar-action"
                           :disabled="isPlayerActionPending(row.player.user_id)"
-                          :aria-label="playerAvatarActionLabel(row.player)"
+                          :aria-label="playerAvatarLabel(row.player)"
                           @click="handlePlayerAvatarAction(row.player)"
                         >
-                          <CharacterAvatar :prefab="row.player.prefab" :name="row.player.player_name" :player="row.player" size="lg" />
+                          <CharacterAvatar :prefab="row.player.prefab" :name="row.player.player_name" :player="row.player" size="lg" :title="null" />
                           <span v-if="isPlayerActionPending(row.player.user_id)" class="player-avatar-state is-pending" aria-hidden="true">
                             <Spinner />
                           </span>
@@ -655,10 +656,12 @@
                             <HeartPulse />
                           </span>
                         </UiButton>
+                        <span v-else class="player-avatar-info" tabindex="0" :aria-label="playerAvatarLabel(row.player)">
+                          <CharacterAvatar :prefab="row.player.prefab" :name="row.player.player_name" :player="row.player" size="lg" :title="null" />
+                        </span>
                       </TooltipTrigger>
-                      <TooltipContent>{{ playerAvatarActionLabel(row.player) }}</TooltipContent>
+                      <TooltipContent>{{ playerAvatarLabel(row.player) }}</TooltipContent>
                     </Tooltip>
-                    <CharacterAvatar v-else :prefab="row.player.prefab" :name="row.player.player_name" :player="row.player" size="lg" />
                     <div class="player-copy">
                       <div class="player-heading-line">
                         <strong :title="row.player.player_name || row.player.user_id">{{ row.player.player_name || row.player.user_id }}</strong>
@@ -675,14 +678,17 @@
                         <Badge :variant="playerPresence(row.player).variant">
                           {{ playerPresence(row.player).label }}
                         </Badge>
-                        <span class="player-observation" :title="playerObservationLabel(row.player)">{{ playerObservationLabel(row.player) }}</span>
-                      </div>
-                      <div class="player-context-line">
-                        <span class="player-context">{{ playerContextLabel(row.player) }}</span>
+                        <Tooltip>
+                          <TooltipTrigger as-child>
+                            <span class="player-world" tabindex="0" :aria-label="playerContextLabel(row.player)">{{ playerWorldLabel(row.player) }}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>{{ playerContextLabel(row.player) }}</TooltipContent>
+                        </Tooltip>
                         <PlayerNetworkIndicator
                           :score="row.player.net_score"
                           :available="playerNetworkAvailable(row.player)"
                         />
+                        <span class="player-observation" :title="playerObservationLabel(row.player)">{{ playerObservationLabel(row.player) }}</span>
                       </div>
                       <div
                         v-if="row.vitals.length"
@@ -1813,6 +1819,12 @@ export default {
         ? 'servers.workspace.players.quickActions.avatarResurrect'
         : 'servers.workspace.players.quickActions.avatarWorkbench', { player: playerName })
     },
+    playerAvatarLabel(player) {
+      const character = playerCharacterDisplayLabel(player, this.$t)
+      return this.playerAvatarActionAvailable(player)
+        ? `${character} · ${this.playerAvatarActionLabel(player)}`
+        : character
+    },
     playerMetricControlLabel(player, metric) {
       if (this.isPlayerActionPending(player?.user_id)) {
         return this.$t('servers.workspace.players.quickActions.pending')
@@ -2839,12 +2851,15 @@ export default {
     playerIsOnline(player) {
       return isPlayerOnline(player?.status)
     },
+    playerWorldLabel(player) {
+      return playerWorldConfirmed(player) && player?.world_name
+        ? player.world_name
+        : this.$t('servers.workspace.players.unknownWorld')
+    },
     playerContextLabel(player) {
       const status = normalizePlayerStatus(player?.status)
-      const character = playerCharacterDisplayLabel(player, this.$t)
       const parameters = {
-        character,
-        world: player?.world_name || this.$t('servers.workspace.players.unknownWorld')
+        world: this.playerWorldLabel(player)
       }
       if (!playerWorldConfirmed(player)) return this.$t('servers.workspace.players.worldUnconfirmed', parameters)
       if (player?.field_states?.world?.source === 'native-log') return this.$t('servers.workspace.players.lastConnectedWorld', parameters)
@@ -3762,7 +3777,7 @@ export default {
 }
 
 .player-heading-line > strong,
-.player-context,
+.player-world,
 .player-observation {
   display: block;
   overflow: hidden;
@@ -3777,18 +3792,25 @@ export default {
   font-size: 13px;
 }
 
-.player-context-line {
-  display: flex;
+.player-world {
   min-width: 0;
-  align-items: center;
-  gap: 5px;
+  max-width: 100%;
+  cursor: help;
 }
 
-.player-context-line .player-context {
-  min-width: 0;
+.player-avatar-info {
+  display: inline-flex;
+  border-radius: var(--radius-md);
+  cursor: help;
 }
 
-.player-context,
+.player-world:focus-visible,
+.player-avatar-info:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.player-world,
 .player-observation {
   color: var(--foreground);
   font-size: 12px;

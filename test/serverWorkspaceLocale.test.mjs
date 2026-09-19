@@ -164,7 +164,6 @@ test('server workspace shows live player netscore as compact in-game network bar
 
   assert.match(source, /<PlayerNetworkIndicator[\s\S]*:score="row\.player\.net_score"[\s\S]*:available="playerNetworkAvailable\(row\.player\)"/)
   assert.match(source, /!this\.playerSnapshotStale && isLivePlayerMetric\(player, 'netScore', player\?\.net_score\)/)
-  assert.match(source, /class="player-context-line"/)
   assert.match(indicator, /playerNetworkLabel\(normalizedScore\.value, t\)/)
   assert.match(indicator, /normalizedScore\.value === null \? 0 : 3 - normalizedScore\.value/)
   assert.match(indicator, /<Tooltip v-if="normalizedScore !== null">/)
