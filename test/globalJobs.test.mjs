@@ -141,7 +141,7 @@ test('global job warnings have separate toast and accessible task panel feedback
   assert.match(jobStatusComponent, /toast\.warning\(t\('globalJobs\.warningToastTitle'/)
   assert.match(jobStatusComponent, /aria-live="polite"/)
   assert.match(jobStatusComponent, /globalJobs\.sections\.warning/)
-  assert.match(jobStatusComponent, /variant="warning"/)
+  assert.match(jobStatusComponent, /:variant="failureCount \? 'destructive' : warningCount \? 'warning' : 'secondary'"/)
 })
 
 test('global job panel stays within the viewport and prioritizes failures', () => {

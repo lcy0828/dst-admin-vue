@@ -1,12 +1,16 @@
 <template>
   <UiDialog v-model:open="dialogOpen">
     <DialogTrigger as-child>
-      <UiButton type="button" variant="outline" class="room-mod-trigger" :disabled="!roomId" :title="overviewDescription">
-        <Spinner v-if="loading || checking || applying || activeUpdateJob" data-icon="inline-start" />
-        <PackageOpen v-else data-icon="inline-start" />
+      <UiButton type="button" variant="outline" class="room-mod-trigger" :disabled="!roomId" :title="triggerStatus?.label || overviewDescription">
+        <span class="relative inline-flex" aria-hidden="true">
+          <Spinner v-if="loading || checking || applying || activeUpdateJob" data-icon="inline-start" />
+          <PackageOpen v-else data-icon="inline-start" />
+          <span v-if="triggerStatus?.variant === 'destructive'" class="absolute -right-1 -top-1 size-1.5 rounded-full bg-destructive" />
+          <span v-else-if="triggerStatus?.variant === 'warning'" class="absolute -right-1 -top-1 size-1.5 rounded-full bg-warning-foreground" />
+        </span>
         {{ t('servers.workspace.mods.title') }}
-        <span v-if="rows.length || (!loading && !loadError)" class="tabular-nums">{{ rows.length }}</span>
-        <Badge v-if="triggerStatus" :variant="triggerStatus.variant">{{ triggerStatus.label }}</Badge>
+        <span class="min-w-[2ch] text-right tabular-nums">{{ rows.length || (!loading && !loadError) ? rows.length : '–' }}</span>
+        <span v-if="triggerStatus" class="sr-only">{{ triggerStatus.label }}</span>
       </UiButton>
     </DialogTrigger>
     <DialogContent class="room-mod-dialog flex w-[calc(100vw-2rem)] flex-col overflow-hidden sm:max-w-3xl max-sm:h-[calc(100dvh-2rem)]" @open-auto-focus="focusDetails">

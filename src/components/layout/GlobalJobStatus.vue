@@ -6,6 +6,7 @@ import { toast } from 'vue-sonner'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import {
   Popover,
   PopoverContent,
@@ -63,6 +64,7 @@ const notifiedFailureIds = new Set()
 const notifiedWarningIds = new Set()
 
 const triggerLabel = computed(() => {
+  if (!visible.value) return t('globalJobs.title')
   if (loadError.value && !activeCount.value && !failureCount.value && !warningCount.value) return t('globalJobs.trigger.unavailable')
   if (activeCount.value && failureCount.value) {
     return t('globalJobs.trigger.summary', { active: activeCount.value, failed: failureCount.value })
@@ -173,20 +175,22 @@ watch(recentWarnings, warnings => {
 </script>
 
 <template>
-  <Popover v-if="visible" v-model:open="popoverOpen">
+  <Popover v-model:open="popoverOpen">
     <Tooltip>
       <TooltipTrigger as-child>
         <span class="inline-flex">
           <PopoverTrigger as-child>
-            <Button variant="ghost" size="sm" :aria-label="triggerDescription">
+            <Button variant="ghost" size="icon-sm" class="global-job-trigger relative" :aria-label="triggerDescription">
               <TriangleAlert v-if="failureCount" class="text-destructive" />
               <CircleAlert v-else-if="loadError" class="text-destructive" />
               <CircleAlert v-else-if="warningCount" class="text-warning-foreground" />
               <ListTodo v-else />
-              <span class="hidden xl:inline">{{ triggerLabel }}</span>
-              <Badge v-if="activeCount" variant="secondary">{{ activeCount }}</Badge>
-              <Badge v-if="failureCount" variant="destructive">{{ failureCount }}</Badge>
-              <Badge v-if="warningCount" variant="warning">{{ warningCount }}</Badge>
+              <Badge
+                v-if="failureCount || warningCount || activeCount"
+                :variant="failureCount ? 'destructive' : warningCount ? 'warning' : 'secondary'"
+                class="pointer-events-none absolute -right-1 -top-1 origin-top-right scale-75"
+                aria-hidden="true"
+              >{{ Math.min(99, failureCount || warningCount || activeCount) }}</Badge>
             </Button>
           </PopoverTrigger>
         </span>
@@ -205,6 +209,10 @@ watch(recentWarnings, warnings => {
           {{ connected ? t('globalJobs.descriptionLive') : t('globalJobs.descriptionConnecting') }}
         </PopoverDescription>
       </PopoverHeader>
+
+      <Empty v-if="!visible">
+        <EmptyHeader><EmptyTitle>{{ t('globalJobs.empty') }}</EmptyTitle></EmptyHeader>
+      </Empty>
 
       <Alert v-if="loadError" variant="destructive">
         <CircleAlert />

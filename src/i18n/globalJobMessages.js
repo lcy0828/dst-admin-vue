@@ -60,6 +60,7 @@ const JOB_KIND_KEYS = Object.freeze({
 export const globalJobMessages = Object.freeze({
   'zh-CN': {
     globalJobs: {
+      empty: '暂无后台任务',
       title: '后台任务',
       viewProgress: '查看进度',
       viewResult: '查看结果',
@@ -166,6 +167,7 @@ export const globalJobMessages = Object.freeze({
   },
   'en-US': {
     globalJobs: {
+      empty: 'No background tasks',
       title: 'Background tasks',
       viewProgress: 'View progress',
       viewResult: 'View result',
