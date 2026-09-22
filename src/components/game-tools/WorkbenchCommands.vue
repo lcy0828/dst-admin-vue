@@ -20,10 +20,12 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import CommandRunResult from './CommandRunResult.vue'
 const props=defineProps({roomId:{type:String,default:''},roomName:{type:String,default:''},worldId:{type:String,default:''},worldName:{type:String,default:''},playerId:{type:String,default:''},running:Boolean})
 const {t,te}=useI18n()
 const definitions=ref([]),selected=ref(null),search=ref(''),filter=ref('custom'),script=ref(''),name=ref(''),values=ref({}),loading=ref(false),saving=ref(false),executing=ref(false),error=ref(''),listError=ref(''),lastRun=ref(null),armed=ref(false)
-let alive=true,loadSequence=0,contextSequence=0
+const recentRuns=ref([]),historyError=ref('')
+let alive=true,loadSequence=0,contextSequence=0,historySequence=0
 const commandName=item=>translateBuiltinCommandField(t,te,item,'name')
 const commandDescription=item=>translateBuiltinCommandField(t,te,item,'description')
 const items=computed(()=>definitions.value.filter(item=>(filter.value==='all'||!item.isBuiltin)&&`${commandName(item)} ${commandDescription(item)} ${item.name} ${item.id}`.toLowerCase().includes(search.value.toLowerCase())))
@@ -35,6 +37,18 @@ const targetLabel=computed(()=>[props.roomName,props.worldName].filter(Boolean).
 const canRun=computed(()=>Boolean(props.roomId&&props.worldId&&props.running&&!executing.value&&(template.value?argumentsMap.value!==null:script.value.trim()&&bytes.value<=LUA_MAX_BYTES&&!script.value.includes('\0'))))
 const canSave=computed(()=>Boolean(!template.value&&!saving.value&&!executing.value&&name.value.trim()&&script.value.trim()&&bytes.value<=LUA_MAX_BYTES&&!script.value.includes('\0')))
 async function load(){const sequence=++loadSequence;loading.value=true;listError.value='';try{const data=await consoleV2API.definitions();if(alive&&sequence===loadSequence)definitions.value=data.items||[]}catch(e){if(alive&&sequence===loadSequence)listError.value=e.message}finally{if(alive&&sequence===loadSequence)loading.value=false}}
+async function loadHistory(){
+ const sequence=++historySequence,room=props.roomId,world=props.worldId,target=targetLabel.value
+ historyError.value=''
+ if(!room||!world)return
+ try{const data=await consoleV2API.runs(room,{worldId:world,limit:10});if(alive&&sequence===historySequence)recentRuns.value=(data.items||[]).filter(run=>run.status!=='sending').map(run=>({...run,target}))}
+ catch(e){if(alive&&sequence===historySequence)historyError.value=e.message}
+}
+function showRun(run,target){
+ lastRun.value={...run,target}
+ recentRuns.value=[lastRun.value,...recentRuns.value.filter(item=>item.id!==run.id)].slice(0,10)
+}
+function runTime(run){return new Date(run.createdAt).toLocaleString()}
 function choose(item){selected.value=item;script.value=item.script;name.value=item.name;lastRun.value=null;error.value='';values.value=Object.fromEntries((item.parameters||[]).map(parameter=>[parameter.name,parameter.name==='player_id'&&props.playerId?props.playerId:parameter.default??(parameter.type==='boolean'?false:'')]))}
 function fresh(){selected.value=null;script.value='';name.value='';values.value={};error.value='';lastRun.value=null}
 function example(id){const code=workbenchExample(id,props.playerId);if(!code)return;fresh();script.value=code;name.value=t(`workbench.examples.${id}`)}
@@ -49,18 +63,19 @@ async function execute(){
  if(!canRun.value)return
  if(!armed.value){armed.value=true;return}
  armed.value=false;executing.value=true;error.value='';lastRun.value=null
+ ++historySequence
  const sequence=contextSequence,target=targetLabel.value,room=props.roomId,world=props.worldId,confirmation=props.roomName
  try{
   const run=template.value?await commandApi.executeCommand(`${room}::${world}`,selected.value.id,argumentsMap.value,confirmation):await commandApi.executeRawCommand(`${room}::${world}`,script.value.trim(),confirmation)
-  if(alive&&sequence===contextSequence)lastRun.value={...run,target}
- }catch(e){if(alive&&sequence===contextSequence)error.value=e.detail||e.message}
+  if(alive&&sequence===contextSequence)showRun(run,target)
+ }catch(e){if(alive&&sequence===contextSequence){if(e.run)showRun(e.run,target);else error.value=e.detail||e.message}}
  finally{if(alive)executing.value=false}
 }
 watch([script,name,values,selected,()=>props.roomId,()=>props.worldId,()=>props.playerId],()=>{armed.value=false},{deep:true})
-watch(()=>[props.roomId,props.worldId],()=>{++contextSequence;lastRun.value=null;error.value='';if(parameters.value.some(p=>p.name==='player_id'))values.value.player_id=props.playerId||''})
+watch(()=>[props.roomId,props.worldId],()=>{++contextSequence;lastRun.value=null;recentRuns.value=[];error.value='';void loadHistory();if(parameters.value.some(p=>p.name==='player_id'))values.value.player_id=props.playerId||''})
 watch(()=>props.playerId,value=>{if(parameters.value.some(p=>p.name==='player_id'))values.value.player_id=value||''})
-onMounted(load)
-onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence})
+onMounted(()=>{void load();void loadHistory()})
+onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence;++historySequence})
 </script>
 <template>
  <div class="command-workbench grid min-w-0 gap-4 rounded-lg border p-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
@@ -99,7 +114,9 @@ onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence})
    <details v-if="template"><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.viewCode')}}</summary><pre class="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{script}}</pre></details>
    <Separator />
    <Alert v-if="error" variant="destructive"><AlertTitle>{{t('workbench.commands.failed')}}</AlertTitle><AlertDescription class="break-all">{{error}}</AlertDescription></Alert>
-   <Alert v-if="lastRun"><AlertTitle>{{t('workbench.commands.succeeded')}}</AlertTitle><AlertDescription>{{lastRun.target}} · {{lastRun.message}}<span class="mt-1 block break-all text-xs">{{t('workbench.commands.runId')}} {{lastRun.id}}</span></AlertDescription></Alert>
+   <CommandRunResult v-if="lastRun" :run="lastRun" :target="lastRun.target" />
+   <details v-if="recentRuns.length" data-command-history><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.recentRuns')}}</summary><div class="mt-2 flex max-h-52 flex-col gap-1 overflow-y-auto"><Button v-for="run in recentRuns" :key="run.id" :variant="lastRun?.id===run.id?'secondary':'ghost'" class="h-auto justify-between gap-2 py-2 text-left" @click="lastRun=run"><span class="min-w-0 truncate">{{run.name}} · {{runTime(run)}}</span><span class="shrink-0 text-xs">{{t(`workbench.commands.${run.status==='succeeded'?'succeeded':run.status==='failed'?'runFailed':'uncertain'}`)}}</span></Button></div></details>
+   <Alert v-if="historyError"><AlertDescription>{{t('workbench.commands.historyFailed')}}<Button variant="ghost" size="sm" @click="loadHistory">{{t('workbench.commands.retryHistory')}}</Button></AlertDescription></Alert>
    <div class="flex flex-wrap items-center justify-between gap-3"><p class="text-xs text-muted-foreground">{{!running?t('workbench.commands.stopped'):armed?t('workbench.commands.confirm',{target:targetLabel}):t('workbench.commands.output')}}</p><div class="flex gap-2"><Button v-if="armed" variant="ghost" @click="armed=false">{{t('workbench.commands.cancel')}}</Button><Button :disabled="!canRun||saving" @click="execute"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{t(executing?'workbench.commands.executing':armed?'workbench.commands.confirmRun':'workbench.commands.run')}}</Button></div></div>
   </section>
  </div>
