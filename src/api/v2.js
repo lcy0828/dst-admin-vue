@@ -748,6 +748,7 @@ export const luaJITV2API = {
 }
 
 export const runtimeTargetsV2API = {
+	setDisplayAddress: (targetId, displayAddress) => client.put(`/runtime-targets/${encode(targetId)}/display-address`, { displayAddress }, { runtimeTarget: false }),
 	list: () => client.get('/runtime-targets', { headers: { 'Cache-Control': 'no-store' } }),
 	rename: (targetId, displayName) => client.patch(`/runtime-targets/${encode(targetId)}`, { displayName }),
 	get: agentId => client.get(`/runtime-targets/agents/${encode(agentId)}`, { headers: { 'Cache-Control': 'no-store' } }),

@@ -23,7 +23,7 @@ test('node and player refreshes preserve usable data and reject obsolete respons
   assert.match(agents, /runtimeRequestSequence/)
   assert.match(agents, /inventoryRequestSequences/)
   assert.doesNotMatch(section(agents, 'async fetchAgentList()', 'refreshData()'), /this\.agentList\s*=\s*\[\]/)
-  assert.doesNotMatch(section(agents, 'async fetchRuntimeTargets()', 'async fetchInventories()'), /this\.runtimeByAgent\s*=\s*\{\}/)
+  assert.doesNotMatch(section(agents, 'async fetchRuntimeTargets()', 'async fetchLocalSystemStatus()'), /this\.runtimeByAgent\s*=\s*\{\}/)
   assert.match(agents, /inventoryRefreshedLoadFailed/)
 
   const playerRefresh = section(players, 'async fetchPlayerList()', '// 刷新数据')

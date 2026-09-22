@@ -68,7 +68,10 @@ test('advertised addresses are editable from player connection while machine man
     source('src/views/rooms/RoomTopology.vue'),
     source('src/views/servers/ServerWorkspace.vue')
   ])
-  assert.match(agents, /<RuntimeInfrastructurePanel[\s\S]*network-only/)
+  assert.match(agents, /<MachineManagementPanel/)
+  const machines = await source('src/components/agents/MachineManagementPanel.vue')
+  assert.match(machines, /updateNetworkProfile/)
+  assert.match(machines, /advancedNetwork/)
   assert.match(workspace, /v-model="connectionAddressDraft"/)
   assert.match(workspace, /detectNetworkProfileEgress/)
   assert.match(workspace, /updateNetworkProfile/)

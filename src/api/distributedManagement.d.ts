@@ -271,6 +271,18 @@ export interface CPUInventory {
 }
 
 export interface RuntimeInfrastructure {
+  machines?: Array<{
+    targetId: string
+    installationId: string
+    available: boolean
+    stale: boolean
+    staleReason?: string
+    observedAt?: string
+    capacity: { memoryState: 'unknown' | 'healthy' | 'tight' | 'critical'; runningShards: number; recommendedShardLimit: number }
+    memory: { used_bytes: number; total_bytes: number; available_bytes: number }
+    worlds: Array<{ roomId: string; roomName: string; worldId: string; worldName: string; role: string; known: boolean; running: boolean; serverPort?: number }>
+  }>
+
   providers: Array<{ id: string; targetId: string; kind: 'local' | 'agent'; displayName: string; os: string; arch: string; ipAddresses: string[]; online: boolean; capabilities: string[]; observedAt?: string }>
   environments: Array<{ id: string; providerId: string; targetId: string; kind: 'native' | 'container'; driver: string; networkProfileId: string; cpu: CPUInventory; observedAt?: string }>
   networkProfiles: Array<{ id: string; environmentId: string; name: string; mode: 'host' | 'bridge'; scopeId: string; bindAddress: string; advertiseAddress: string }>

@@ -1,3 +1,4 @@
+import { machineMessages } from './machineMessages.js'
 import { gameInstallationMessages } from './gameInstallationMessages.js'
 import { luajitInstallerMessages } from './luajitInstallerMessages.js'
 import { agentMessages } from './agentMessages.js'
@@ -34,6 +35,7 @@ import { worldsMessages } from './worldsMessages.js'
 export const messages = {
   'zh-CN': {
     ...agentMessages['zh-CN'],
+    ...machineMessages['zh-CN'],
     ...luajitInstallerMessages['zh-CN'],
     ...gameInstallationMessages['zh-CN'],
     ...announcementMessages['zh-CN'],
@@ -567,6 +569,7 @@ export const messages = {
   },
   'en-US': {
     ...agentMessages['en-US'],
+    ...machineMessages['en-US'],
     ...luajitInstallerMessages['en-US'],
     ...gameInstallationMessages['en-US'],
     ...announcementMessages['en-US'],

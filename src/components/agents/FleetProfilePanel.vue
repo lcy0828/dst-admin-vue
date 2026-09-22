@@ -45,6 +45,7 @@ const ROLE_FIELD_IDS = [
   'fleet.memberEnabled'
 ]
 
+const emit = defineEmits(['changed'])
 const { t } = useI18n()
 const loading = ref(true)
 const saving = ref(false)
@@ -174,6 +175,7 @@ async function saveProfile() {
     capabilities.value = await systemV2API.capabilities({ fresh: true })
     populateForm()
     toast.success(t(result.settings.restartRequired ? 'agents.profile.feedback.savedRestart' : 'agents.profile.feedback.saved'))
+    emit('changed')
     return true
   } catch (error) {
     toast.error(error?.message || t('agents.profile.feedback.saveFailed'))

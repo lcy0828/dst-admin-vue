@@ -17,6 +17,7 @@ import { getManagementScope, managementScopeTargetId, MANAGEMENT_SCOPE_CHANGED_E
 import { luaJITJobTerminal, luaJITJobError } from '@/lib/luajitInstaller.mjs'
 import { formatJobBytes, formatJobRate } from '@/lib/globalJobs.mjs'
 
+const props = defineProps({ targetId: { type: String, default: '' } })
 const emit = defineEmits(['changed'])
 const { t } = useI18n()
 const router = useRouter()
@@ -36,7 +37,8 @@ const stagePercent = computed(() => {
 const rate = computed(() => observedNow.value - Date.parse(job.value?.progressDetail?.observedAt || '') < 10000
   ? formatJobRate(transfer.value?.bytesPerSecond) : '')
 const busy = computed(() => loading.value || submitting.value || running.value)
-const key = () => `dstGameInstallationJob:${managementScopeTargetId(scope.value) || 'all'}`
+const selectedTarget = () => props.targetId || managementScopeTargetId(scope.value)
+const key = () => `dstGameInstallationJob:${selectedTarget() || 'all'}`
 const identity = item => ({ targetId: item.targetId, installationId: item.installationId })
 const state = item => !item.online ? 'offline' : item.error ? 'unknown' : item.installed ? 'installed' : 'missing'
 watch(path, () => { candidate.value = null; dialogError.value = ''; probeSequence += 1; probing.value = false })
@@ -44,7 +46,7 @@ watch(path, () => { candidate.value = null; dialogError.value = ''; probeSequenc
 async function load(current = generation) {
   loading.value = true; error.value = ''
   try {
-    const values = await gameInstallationsV2API.list(managementScopeTargetId(scope.value))
+    const values = await gameInstallationsV2API.list(selectedTarget())
     if (alive && current === generation) items.value = values || []
   } catch (e) { if (alive && current === generation) error.value = e.message }
   finally { if (alive && current === generation) loading.value = false }
@@ -91,8 +93,10 @@ async function resetScope() {
   if (!alive || current !== generation) return
   try { const id = sessionStorage.getItem(key()); if (id) { job.value = { id, status: 'pending' }; poll(id, current) } } catch { /* optional */ }
 }
-onMounted(() => { window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, resetScope); resetScope() })
-onBeforeUnmount(() => { alive = false; generation += 1; clearTimeout(timer); window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, resetScope) })
+function handleScopeChange() { if (!props.targetId) resetScope() }
+watch(() => props.targetId, resetScope)
+onMounted(() => { window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleScopeChange); resetScope() })
+onBeforeUnmount(() => { alive = false; generation += 1; clearTimeout(timer); window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleScopeChange) })
 </script>
 
 <template>
@@ -142,7 +146,7 @@ onBeforeUnmount(() => { alive = false; generation += 1; clearTimeout(timer); win
       <Alert v-if="error" variant="destructive"><AlertTitle>{{ t('gameInstallation.failed') }}</AlertTitle><AlertDescription class="break-words">{{ error }}</AlertDescription></Alert>
     </CardContent>
   </Card>
-  <Dialog :open="Boolean(dialog)" @update:open="value => { if (!value && !submitting) { dialog = ''; probeSequence += 1; probing = false } }">
+  <Dialog v-if="dialog" :open="Boolean(dialog)" @update:open="value => { if (!value && !submitting) { dialog = ''; probeSequence += 1; probing = false } }">
     <DialogContent>
       <DialogHeader><DialogTitle>{{ t(dialog === 'adopt' ? 'gameInstallation.adoptTitle' : 'gameInstallation.installTitle') }}</DialogTitle><DialogDescription>{{ dialog === 'adopt' ? t('gameInstallation.adoptDescription') : t('gameInstallation.installDescription', { target: selected?.targetName, path: selected?.serverPath }) }}</DialogDescription></DialogHeader>
       <template v-if="dialog === 'adopt'">

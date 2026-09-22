@@ -41,6 +41,8 @@ function legacyAgent(agent = {}) {
     last_heartbeat: seconds(agent.lastHeartbeat),
     last_report_at: seconds(agent.lastReportAt),
     cpu_count: metrics.cpuCount || 0,
+    cpu_usage: metrics.cpuUsage,
+    cpu_usage_available: metrics.cpuUsageAvailable === true,
     logical_processors: metrics.logicalProcessors || metrics.cpuCount || 0,
     physical_cores: metrics.physicalCores || 0,
     physical_core_source: metrics.physicalCoreSource || '',
