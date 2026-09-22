@@ -212,10 +212,28 @@ export const gameNotificationsV2API = {
 }
 
 export const entityCatalogV2API = {
+  directory: ({ signal } = {}) => client.get('/entity-catalog/directory', { runtimeTarget: false, signal }),
+  snapshot: (roomId, worldId, refresh = false, { signal } = {}) => client.get(`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/entity-catalog/snapshot`, { params: { refresh }, runtimeTarget: false, signal, timeout: 35000 }),
+  runtimeSearch: (roomId, worldId, input, { signal } = {}) => client.post(`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/entity-catalog/search`, input, { runtimeTarget: false, signal }),
   search: ({ query = '', kind = '', limit = 120 } = {}) => client.get('/entity-catalog/entities', {
     params: { q: query, kind, limit },
     headers: { 'Cache-Control': 'no-store' }
   })
+}
+
+// Artwork is a shared panel resource; selecting an Agent must not redirect it.
+export const artworkPackV2API = {
+  status: () => client.get('/entity-catalog/artwork-pack', { runtimeTarget: false }),
+  index: () => client.get('/entity-catalog/artwork-pack/index', { runtimeTarget: false }),
+  install: source => client.post('/entity-catalog/artwork-pack/install', { source }, { runtimeTarget: false }),
+  uninstall: () => client.delete('/entity-catalog/artwork-pack', { runtimeTarget: false }),
+  cancel: () => client.post('/entity-catalog/artwork-pack/cancel', {}, { runtimeTarget: false }),
+  search: ({ query = '', offset = 0, limit = 60 } = {}, { signal } = {}) => client.get('/entity-catalog/artwork-pack/entities', { params: { q: query, offset, limit }, runtimeTarget: false, signal }),
+  upload: (file, onUploadProgress) => {
+    const data = new FormData()
+    data.append('file', file)
+    return client.post('/entity-catalog/artwork-pack/upload', data, { headers: { 'Content-Type': 'multipart/form-data' }, runtimeTarget: false, timeout: 300000, onUploadProgress })
+  }
 }
 
 export const roomsV2API = {

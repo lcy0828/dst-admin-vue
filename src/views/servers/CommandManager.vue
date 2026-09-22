@@ -544,6 +544,7 @@ export default {
         type: normalizeCommandCategory(command.type || command.category),
         description: command.description,
         command: command.command || command.script,
+        scriptMode: command.scriptMode || 'template',
         parameterized: command.parameterized || command.needs_params || false,
         parameters: command.parameters ? [...command.parameters] : []
       };
@@ -590,7 +591,7 @@ export default {
     async submitForm() {
       const name = this.commandForm.name.trim();
       const invalidParameter = this.commandForm.parameterized && this.commandForm.parameters.some(param => !param.name.trim());
-      if (!name || name.length < 2 || name.length > 50 || !this.commandForm.type || !this.commandForm.description.trim() || !this.commandForm.command.trim() || invalidParameter) {
+      if (!name || name.length < 2 || name.length > 50 || !this.commandForm.type || !this.commandForm.command.trim() || invalidParameter) {
         toast.warning(this.$t(invalidParameter ? 'commands.feedback.invalidParameter' : 'commands.feedback.incompleteForm'));
         return;
       }
@@ -600,6 +601,7 @@ export default {
           type: normalizeCommandCategory(this.commandForm.type),
           description: this.commandForm.description,
           command: this.commandForm.command,
+          scriptMode: this.commandForm.parameterized ? 'template' : (this.commandForm.scriptMode || 'literal'),
           parameterized: this.commandForm.parameterized,
           parameters: this.commandForm.parameterized ? this.commandForm.parameters : []
         };

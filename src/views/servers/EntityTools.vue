@@ -1,4 +1,8 @@
 <script setup>
+import EntityArtwork from '@/components/game-tools/EntityArtwork.vue'
+import ResourceEntityPicker from '@/components/game-tools/ResourceEntityPicker.vue'
+import { rememberResource } from '@/lib/resourceLibrary.mjs'
+import WorkbenchCommands from '@/components/game-tools/WorkbenchCommands.vue'
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { useRoute } from 'vue-router'
@@ -6,12 +10,12 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Backpack,
-  Box,
   Boxes,
   CalendarDays,
   Check,
   ChevronRight,
   CloudRain,
+  Code,
   Droplets,
   Flame,
   Gauge,
@@ -21,7 +25,6 @@ import {
   PackagePlus,
   PawPrint,
   RefreshCw,
-  Search,
   Send,
   ShieldCheck,
   Skull,
@@ -34,23 +37,19 @@ import {
   TriangleAlert,
   UserRound,
   Wrench,
-  X,
   Zap
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { commandApi } from '@/api'
 import { playerApi } from '@/api/playerApi'
-import { entityCatalogV2API, playersV2API, roomsV2API, worldStatesV2API } from '@/api/v2'
+import { playersV2API, roomsV2API, worldStatesV2API } from '@/api/v2'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
@@ -182,7 +181,7 @@ const props = defineProps({
   initialSection: {
     type: String,
     default: 'entity',
-    validator: value => ['entity', 'player', 'world'].includes(value)
+    validator: value => ['entity', 'player', 'world', 'commands'].includes(value)
   }
 })
 
@@ -192,21 +191,20 @@ const { locale, t } = useI18n()
 const rooms = ref([])
 const worlds = ref([])
 const players = ref([])
-const entities = ref([])
-const brokenArtworkUrls = ref(new Set())
 const selectedRoomId = ref(props.initialRoomId)
 const roomRoute = useRoute()
 const selectedWorldId = ref(props.initialWorldId)
 const selectedPlayerId = ref(props.initialPlayerId)
 const selectedEntity = ref(null)
 const activeSection = ref(props.initialSection)
+const commandsOpened = ref(props.initialSection === 'commands')
+watch(activeSection, value => { if (value === 'commands') commandsOpened.value = true })
 
 const entityMode = ref('give')
 const entityActionGroup = ref('entity')
 const giveVariant = ref('direct')
 const giveQuantityMode = ref('units')
 const entityAction = ref('extinguish')
-const query = ref('')
 const count = ref(1)
 const radius = ref(10)
 const tillLayout = ref('3x3')
@@ -268,19 +266,14 @@ const nightSegments = ref(2)
 
 const targetsLoading = ref(false)
 const playersLoading = ref(false)
-const catalogLoading = ref(false)
 const executing = ref(false)
 const targetError = ref('')
-const catalogError = ref('')
-const remoteAvailable = ref(false)
 const pendingConfirmation = ref(null)
 const executionError = ref('')
 const playerOperationEditor = ref(null)
 const worldOperationEditor = ref(null)
 let targetSequence = 0
 let playerSequence = 0
-let catalogSequence = 0
-let searchTimer = 0
 let confirmationTimer = 0
 
 const currentRoom = computed(() => rooms.value.find(item => item.id === selectedRoomId.value) || null)
@@ -326,7 +319,6 @@ const worldOperationGroups = computed(() => WORLD_OPERATION_GROUPS.map(group => 
   operations: group.operations.map(id => WORLD_OPERATIONS.find(operation => operation.id === id)).filter(Boolean)
 })))
 const maximumCount = computed(() => ({ give: 40, spawn: 20, remove: 100 })[entityMode.value] || 100)
-const catalogKind = computed(() => ({ give: 'give', spawn: 'spawn', remove: 'remove', act: 'remove', locate: 'spawn' })[entityMode.value])
 const amountLabel = computed(() => {
   if (entityMode.value === 'give') {
     if (giveVariant.value === 'direct') return t(`entityTools.catalog.${giveQuantityMode.value === 'stacks' ? 'stackCount' : 'itemCount'}`)
@@ -363,7 +355,6 @@ const worldSubmitLabel = computed(() => t('entityTools.actions.executeWorldOpera
 const entityConfirmationArmed = computed(() => isConfirmationArmed('entity', buildEntityOperation()))
 const playerConfirmationArmed = computed(() => isConfirmationArmed('player', buildPlayerOperation()))
 const worldConfirmationArmed = computed(() => isConfirmationArmed('world', buildWorldOperation()))
-const showRemoteFallback = computed(() => Boolean(query.value.trim() && !catalogLoading.value && !remoteAvailable.value))
 
 const canExecuteEntity = computed(() => Boolean(
   currentRoom.value && currentWorld.value && currentPlayerIsOnline.value &&
@@ -437,18 +428,6 @@ function playerName(player) {
 
 function targetWorldLabel() {
   return `${currentRoom.value?.name || ''} / ${currentWorld.value?.name || ''}`
-}
-
-function entityArtworkUrl(entity) {
-  const artworkUrl = entity?.common
-    ? `/static/entities/${entity.id}.webp`
-    : entity?.artworkUrl || ''
-  return brokenArtworkUrls.value.has(artworkUrl) ? '' : artworkUrl
-}
-
-function markBrokenArtwork(event) {
-  const artworkUrl = event.currentTarget.getAttribute('src') || ''
-  if (artworkUrl) brokenArtworkUrls.value = new Set([...brokenArtworkUrls.value, artworkUrl])
 }
 
 async function loadRooms() {
@@ -530,41 +509,6 @@ async function loadPlayers() {
 async function refreshTargets() {
   await loadRooms()
   if (selectedRoomId.value) await loadWorlds()
-}
-
-async function loadCatalog() {
-  const searchQuery = query.value.trim()
-  const requestedKind = catalogKind.value
-  const sequence = ++catalogSequence
-  catalogLoading.value = true
-  catalogError.value = ''
-  try {
-    let result
-    try {
-      result = await entityCatalogV2API.search({ query: searchQuery, kind: requestedKind, limit: 120 })
-    } catch (error) {
-      if (error?.code !== 'INVALID_ENTITY_SEARCH') throw error
-      result = await entityCatalogV2API.search({ query: searchQuery, kind: requestedKind, limit: 20 })
-    }
-    if (sequence !== catalogSequence || requestedKind !== catalogKind.value || searchQuery !== query.value.trim()) return
-    entities.value = result.items || []
-    remoteAvailable.value = Boolean(result.remoteAvailable)
-    if (selectedEntity.value && !entities.value.some(item => item.key === selectedEntity.value.key)) {
-      selectedEntity.value = null
-    }
-  } catch (error) {
-    if (sequence !== catalogSequence) return
-    entities.value = []
-    remoteAvailable.value = false
-    catalogError.value = t('entityTools.feedback.catalogFailed', { error: error?.message || t('common.errors.unknown') })
-  } finally {
-    if (sequence === catalogSequence) catalogLoading.value = false
-  }
-}
-
-function scheduleCatalogSearch() {
-  window.clearTimeout(searchTimer)
-  searchTimer = window.setTimeout(loadCatalog, 300)
 }
 
 function selectEntityMode(value) {
@@ -770,6 +714,7 @@ function buildEntityOperation() {
   )
   return {
     commandId: commandIds[entityMode.value],
+    resource: entity ? { ...entity } : null,
     arguments: argumentsMap,
     operation,
     description: t(`entityTools.confirm.entityDescriptions.${entityMode.value === 'give' ? `give_${giveVariant.value}` : entityMode.value}`),
@@ -1048,6 +993,7 @@ async function executeOperation(operation) {
         room.name
       )
     }
+    if (operation.resource) rememberResource(operation.resource, 'use')
     if (operation.refreshWorldState) {
       try {
         const refreshed = await worldStatesV2API.refreshWorld(room.id, world.id)
@@ -1096,6 +1042,7 @@ async function executeOperation(operation) {
 
 watch(selectedRoomId, loadWorlds)
 watch(selectedWorldId, loadPlayers)
+watch([selectedRoomId, selectedWorldId], () => { selectedEntity.value = null })
 watch(selectedPlayerId, value => {
   if (!players.value.some(player => player.id === teleportDestinationId.value && player.id !== value)) {
     teleportDestinationId.value = players.value.find(player => player.id !== value)?.id || ''
@@ -1110,12 +1057,10 @@ watch(selectedPlayerId, value => {
     playerOperationGroup.value = 'status'
   }
 })
-watch(query, scheduleCatalogSearch)
 watch(entityMode, value => {
   count.value = value === 'give' || value === 'spawn' ? 1 : 20
   radius.value = 10
   selectedEntity.value = null
-  loadCatalog()
 })
 watch(entityActionGroup, value => {
   const actions = ENTITY_ACTION_GROUPS.find(group => group.id === value)?.actions || []
@@ -1138,15 +1083,12 @@ watch(playerAbility, value => {
 onMounted(async () => {
   await loadRooms()
   if (selectedRoomId.value && worlds.value.length === 0) await loadWorlds()
-  loadCatalog()
 })
 
 onBeforeUnmount(() => {
-  window.clearTimeout(searchTimer)
   window.clearTimeout(confirmationTimer)
   targetSequence += 1
   playerSequence += 1
-  catalogSequence += 1
 })
 </script>
 
@@ -1220,6 +1162,7 @@ onBeforeUnmount(() => {
           <TabsTrigger value="entity"><Boxes data-icon="inline-start" />{{ t('entityTools.sections.entity') }}</TabsTrigger>
           <TabsTrigger value="player"><UserRound data-icon="inline-start" />{{ t('entityTools.sections.player') }}</TabsTrigger>
           <TabsTrigger value="world"><SunMedium data-icon="inline-start" />{{ t('entityTools.sections.world') }}</TabsTrigger>
+          <TabsTrigger value="commands"><Code data-icon="inline-start" />{{ t('workbench.section') }}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="entity">
@@ -1240,63 +1183,17 @@ onBeforeUnmount(() => {
                 <AlertTitle>{{ t('entityTools.catalog.batchTitle') }}</AlertTitle>
                 <AlertDescription>{{ selectedEntity ? t('entityTools.catalog.filteredBatch', { prefab: selectedEntity.id }) : t('entityTools.catalog.unfilteredBatch') }}</AlertDescription>
               </Alert>
-              <InputGroup>
-                <InputGroupAddon><Search /></InputGroupAddon>
-                <InputGroupInput v-model="query" :placeholder="t('entityTools.catalog.search')" maxlength="100" />
-                <InputGroupAddon v-if="catalogLoading || query" align="inline-end">
-                  <Spinner v-if="catalogLoading" />
-                  <InputGroupButton v-else :aria-label="t('entityTools.catalog.clearSearch')" @click="query = ''">
-                    <X />
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
-
-              <Alert v-if="catalogError" variant="destructive">
-                <TriangleAlert />
-                <AlertDescription>{{ catalogError }}</AlertDescription>
-              </Alert>
-              <Alert v-else-if="showRemoteFallback">
-                <TriangleAlert />
-                <AlertDescription>{{ t('entityTools.catalog.builtinFallback') }}</AlertDescription>
-              </Alert>
-
-              <div v-if="catalogLoading && entities.length === 0" class="catalog-loading">
-                <Spinner />
-                <span>{{ t('entityTools.catalog.searching') }}</span>
-              </div>
-              <ScrollArea v-else-if="entities.length > 0" class="entity-results-scroll">
-                <div class="entity-grid">
-                  <button
-                    v-for="entity in entities"
-                    :key="entity.key"
-                    type="button"
-                    class="entity-option"
-                    :class="{ 'entity-option--selected': selectedEntity?.key === entity.key }"
-                    :aria-pressed="selectedEntity?.key === entity.key"
-                    @click="selectEntity(entity)"
-                  >
-                    <span class="entity-artwork">
-                      <img v-if="entityArtworkUrl(entity)" :src="entityArtworkUrl(entity)" :alt="entityName(entity)" loading="lazy" @error="markBrokenArtwork">
-                      <Box v-else />
-                    </span>
-                    <span class="entity-copy">
-                      <strong>{{ entityName(entity) }}</strong>
-                      <code>{{ entity.id }}</code>
-                    </span>
-                    <Badge :variant="selectedEntity?.key === entity.key ? 'default' : entity.common ? 'secondary' : 'outline'">
-                      <Check v-if="selectedEntity?.key === entity.key" />
-                      {{ selectedEntity?.key === entity.key ? t('entityTools.catalog.selected') : t(`entityTools.catalog.${entity.common ? 'common' : 'remote'}`) }}
-                    </Badge>
-                  </button>
-                </div>
-              </ScrollArea>
-              <Empty v-else>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon"><Search /></EmptyMedia>
-                  <EmptyTitle>{{ t('entityTools.catalog.empty') }}</EmptyTitle>
-                  <EmptyDescription>{{ t('entityTools.catalog.description') }}</EmptyDescription>
-                </EmptyHeader>
-              </Empty>
+              <ResourceEntityPicker
+                v-if="activeSection === 'entity'"
+                :room-id="selectedRoomId"
+                :world-id="selectedWorldId"
+                :running="currentWorld?.status === 'running'"
+                :world-status="currentWorld?.status || ''"
+                :target-loading="targetsLoading"
+                :selected-key="selectedEntity?.key || ''"
+                @select="selectEntity"
+                @refresh-target="refreshTargets"
+              />
             </CardContent>
             <Separator />
             <CardFooter class="operation-footer">
@@ -1346,8 +1243,7 @@ onBeforeUnmount(() => {
               </FieldGroup>
               <div v-if="selectedEntity" class="selected-entity">
                 <span class="selected-entity-artwork">
-                  <img v-if="entityArtworkUrl(selectedEntity)" :src="entityArtworkUrl(selectedEntity)" :alt="entityName(selectedEntity)" @error="markBrokenArtwork">
-                  <Box v-else />
+                  <EntityArtwork :entity="selectedEntity" :room-id="selectedRoomId" :world-id="selectedWorldId" />
                 </span>
                 <span class="selected-entity-copy">
                   <span>{{ t(entityMode === 'act' ? 'entityTools.catalog.filter' : 'entityTools.catalog.selected') }}</span>
@@ -1863,6 +1759,11 @@ onBeforeUnmount(() => {
             </CardFooter>
           </Card>
         </TabsContent>
+        <TabsContent value="commands" force-mount v-show="activeSection === 'commands'">
+          <WorkbenchCommands v-if="commandsOpened" :room-id="selectedRoomId" :room-name="currentRoom?.name || ''" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :player-id="currentPlayerIsOnline ? selectedPlayerId : ''" :running="currentWorld?.status === 'running'"
+                :world-status="currentWorld?.status || ''"
+                :target-loading="targetsLoading" />
+        </TabsContent>
     </Tabs>
 
   </div>
@@ -1876,7 +1777,7 @@ onBeforeUnmount(() => {
 .target-toolbar-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: .75rem; }
 .target-toolbar-fields :deep([data-slot="field"]) { gap: .35rem; }
 .tools-workspace { min-width: 0; }
-.section-tabs-list { display: grid; width: 100%; height: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.section-tabs-list { display: grid; width: 100%; height: auto; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .section-tabs-list :deep(button) { min-height: 2.5rem; }
 .section-card-header { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .entity-mode-toggle { display: grid; flex: none; grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -1992,6 +1893,7 @@ onBeforeUnmount(() => {
 }
 @media (max-width: 640px) {
   .target-toolbar-fields { grid-template-columns: 1fr; }
+  .section-tabs-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem; }
   .entity-mode-toggle { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .operation-category-tabs--player, .operation-category-tabs--world { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .entity-grid, .operation-footer, .clock-fields, .two-column-fields, .three-column-fields, .four-column-fields { grid-template-columns: 1fr; }

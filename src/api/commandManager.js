@@ -52,6 +52,7 @@ const toDefinitionInput = command => ({
   description: String(command.description || '').trim(),
   category: normalizeCommandCategory(command.type || command.category),
   script: String(command.command || command.script || '').trim(),
+  scriptMode: command.scriptMode || 'template',
   parameters: command.parameterized === false ? [] : (command.parameters || []).map(parameter => ({
     name: String(parameter.name || '').trim(),
     label: String(parameter.label || '').trim(),
@@ -176,6 +177,7 @@ class CommandManager {
       description: command.description,
       category: command.category,
       script: command.script,
+      scriptMode: command.scriptMode,
       parameters: command.parameters
     })), null, 2)
   }
