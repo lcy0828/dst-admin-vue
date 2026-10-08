@@ -44,7 +44,7 @@
         </Field>
         <Field class="filter-search">
           <FieldLabel class="sr-only" for="installed-mod-search">{{ $t('mods.installed.filters.keyword') }}</FieldLabel>
-          <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="installed-mod-search" v-model="filterForm.keyword" :placeholder="$t('mods.installed.filters.keywordPlaceholder')" /></InputGroup>
+          <InputGroup><InputGroupAddon><SearchIcon /></InputGroupAddon><InputGroupInput id="installed-mod-search" v-model="filterForm.keyword" :placeholder="$t('mods.installed.filters.keywordPlaceholder')" /></InputGroup>
         </Field>
         <UiButton size="icon-sm" variant="ghost" :disabled="!filterChanged" :aria-label="$t('mods.actions.reset')" :title="$t('mods.actions.reset')" @click="resetFilter"><RefreshCw /></UiButton>
       </FieldGroup>
@@ -414,7 +414,7 @@
 
 <script>
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
-import { ChevronDown, CirclePause, CirclePlay, Copy, Download, FileCode2, ImageIcon, Info, MoreHorizontal, Network, PackageOpen, Plus, RefreshCw, Search, Server, Settings2, ShieldCheck, SunMedium, TriangleAlert } from '@lucide/vue';
+import { ChevronDown, CirclePause, CirclePlay, Copy, Download, FileCode2, ImageIcon, Info, MoreHorizontal, Network, PackageOpen, Plus, RefreshCw, Search as SearchIcon, Server, Settings2, ShieldCheck, SunMedium, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import ModConfigDialog from './ModConfigDialog.vue';
 import ModDetailsDialog from './ModDetailsDialog.vue';
@@ -503,7 +503,7 @@ export default {
     Plus,
     RefreshCw,
     RoomModPublicationPanel,
-    Search,
+    SearchIcon,
     Server,
     Separator,
     SelectContent,

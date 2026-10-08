@@ -7,7 +7,7 @@
     <Card>
       <CardHeader><CardTitle>{{ $t('cronLogs.list.cardTitle') }}</CardTitle><CardDescription>{{ $t('cronLogs.list.cardDescription') }}</CardDescription></CardHeader>
       <CardContent>
-        <FieldGroup class="filter-grid"><Field><FieldLabel for="log-task-filter">{{ $t('cronLogs.list.filters.task') }}</FieldLabel><UiSelect v-model="listQuery.task_id"><SelectTrigger id="log-task-filter"><SelectValue :placeholder="$t('cronLogs.list.filters.selectTask')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('cronLogs.list.filters.all') }}</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-status-filter">{{ $t('cronLogs.list.filters.status') }}</FieldLabel><UiSelect v-model="listQuery.status"><SelectTrigger id="log-status-filter"><SelectValue :placeholder="$t('cronLogs.list.filters.executionStatus')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('cronLogs.list.filters.all') }}</SelectItem><SelectItem value="success">{{ $t('cronLogs.common.statuses.success') }}</SelectItem><SelectItem value="failed">{{ $t('cronLogs.common.statuses.failed') }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-start-date">{{ $t('cronLogs.list.filters.startDate') }}</FieldLabel><UiInput id="log-start-date" v-model="listQuery.start_date" type="date" /></Field><Field><FieldLabel for="log-end-date">{{ $t('cronLogs.list.filters.endDate') }}</FieldLabel><UiInput id="log-end-date" v-model="listQuery.end_date" type="date" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="handleSearch"><Spinner v-if="loading" data-icon="inline-start" /><Search v-else data-icon="inline-start" />{{ $t('cronLogs.list.actions.search') }}</UiButton><UiButton variant="outline" @click="resetQuery">{{ $t('cronLogs.list.actions.reset') }}</UiButton></div></FieldGroup>
+        <FieldGroup class="filter-grid"><Field><FieldLabel for="log-task-filter">{{ $t('cronLogs.list.filters.task') }}</FieldLabel><UiSelect v-model="listQuery.task_id"><SelectTrigger id="log-task-filter"><SelectValue :placeholder="$t('cronLogs.list.filters.selectTask')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('cronLogs.list.filters.all') }}</SelectItem><SelectItem v-for="task in taskOptions" :key="task.id" :value="String(task.id)">{{ task.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-status-filter">{{ $t('cronLogs.list.filters.status') }}</FieldLabel><UiSelect v-model="listQuery.status"><SelectTrigger id="log-status-filter"><SelectValue :placeholder="$t('cronLogs.list.filters.executionStatus')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ $t('cronLogs.list.filters.all') }}</SelectItem><SelectItem value="success">{{ $t('cronLogs.common.statuses.success') }}</SelectItem><SelectItem value="failed">{{ $t('cronLogs.common.statuses.failed') }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="log-start-date">{{ $t('cronLogs.list.filters.startDate') }}</FieldLabel><UiInput id="log-start-date" v-model="listQuery.start_date" type="date" /></Field><Field><FieldLabel for="log-end-date">{{ $t('cronLogs.list.filters.endDate') }}</FieldLabel><UiInput id="log-end-date" v-model="listQuery.end_date" type="date" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="handleSearch"><Spinner v-if="loading" data-icon="inline-start" /><SearchIcon v-else data-icon="inline-start" />{{ $t('cronLogs.list.actions.search') }}</UiButton><UiButton variant="outline" @click="resetQuery">{{ $t('cronLogs.list.actions.reset') }}</UiButton></div></FieldGroup>
 
         <Alert v-if="loadError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>{{ $t('cronLogs.list.loadFailed') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
         <div v-if="loading && logList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 6" :key="index" class="h-12 w-full" /></div>
@@ -38,7 +38,7 @@
 </template>
 
 <script>
-import { ArrowLeft, CircleAlert, Eye, RefreshCw, Search, Trash2 } from '@lucide/vue';
+import { ArrowLeft, CircleAlert, Eye, RefreshCw, Search as SearchIcon, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
@@ -75,7 +75,7 @@ export default {
     DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle,
     Empty, EmptyDescription, EmptyHeader, EmptyTitle, Eye, Field, FieldGroup, FieldLabel,
     PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious,
-    RefreshCw, Search, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
+    RefreshCw, SearchIcon, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,
     ShadcnPagination, ShadcnTable, Skeleton, Spinner, TableBody, TableCell, TableHead,
     TableHeader, TableRow, Trash2, UiButton, UiDialog, UiInput, UiSelect
   },

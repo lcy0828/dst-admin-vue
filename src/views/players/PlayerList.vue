@@ -32,9 +32,9 @@
           </Field>
           <Field>
             <FieldLabel for="player-keyword-filter">{{ $t('players.fields.keyword') }}</FieldLabel>
-            <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput id="player-keyword-filter" v-model="filterForm.keyword" :placeholder="$t('players.list.searchPlaceholder')" @keyup.enter="handleFilter" /></InputGroup>
+            <InputGroup><InputGroupAddon><SearchIcon /></InputGroupAddon><InputGroupInput id="player-keyword-filter" v-model="filterForm.keyword" :placeholder="$t('players.list.searchPlaceholder')" @keyup.enter="handleFilter" /></InputGroup>
           </Field>
-          <div class="filter-actions"><UiButton @click="handleFilter"><Search data-icon="inline-start" />{{ $t('players.actions.search') }}</UiButton><UiButton variant="outline" @click="resetFilter">{{ $t('players.actions.reset') }}</UiButton></div>
+          <div class="filter-actions"><UiButton @click="handleFilter"><SearchIcon data-icon="inline-start" />{{ $t('players.actions.search') }}</UiButton><UiButton variant="outline" @click="resetFilter">{{ $t('players.actions.reset') }}</UiButton></div>
         </FieldGroup>
       </CardContent>
     </Card>
@@ -280,7 +280,7 @@
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { readWorkspaceSelection } from '@/lib/workspacePreferences.mjs';
 import { managementScopeTargetId } from '@/lib/managementScope.mjs';
-import { ChevronRight, Clock3, Crown, Download, ExternalLink, Globe2, RefreshCw, Search, Settings2, Stethoscope, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
+import { ChevronRight, Clock3, Crown, Download, ExternalLink, Globe2, RefreshCw, Search as SearchIcon, Settings2, Stethoscope, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { playerApi } from '@/api/playerApi';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -378,7 +378,7 @@ export default {
     PaginationPrevious,
     RefreshCw,
     ScrollArea,
-    Search,
+    SearchIcon,
     Settings2,
     Stethoscope,
     SelectContent,

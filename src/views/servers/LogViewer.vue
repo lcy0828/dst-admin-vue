@@ -35,7 +35,7 @@
           </SelectContent>
         </UiSelect>
         <InputGroup class="search-wrapper">
-          <InputGroupAddon><Search /></InputGroupAddon>
+          <InputGroupAddon><SearchIcon /></InputGroupAddon>
           <InputGroupInput v-model="searchQuery" :placeholder="$t('servers.liveLogs.fields.search')" :aria-label="$t('servers.liveLogs.fields.search')" />
         </InputGroup>
       </div>
@@ -82,7 +82,7 @@
 </template>
 
 <script>
-import { CircleAlert, Download, Info, RefreshCw, Search, X } from '@lucide/vue';
+import { CircleAlert, Download, Info, RefreshCw, Search as SearchIcon, X } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { worldLogsV2API } from '@/api/v2';
 import { getScopedRuntimeOverview } from '@/api/v2LegacyAdapters';
@@ -105,7 +105,7 @@ export default {
   components: {
     Alert, AlertAction, AlertDescription, AlertTitle, CircleAlert, Download, Empty, EmptyDescription,
     EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldLabel, Info, InputGroup, InputGroupAddon,
-    InputGroupInput, RefreshCw, Search, SelectContent, SelectGroup, SelectItem, SelectTrigger,
+    InputGroupInput, RefreshCw, SearchIcon, SelectContent, SelectGroup, SelectItem, SelectTrigger,
     SelectValue, Spinner, UiButton, UiCheckbox, UiSelect, X
   },
   props: {

@@ -78,6 +78,7 @@ import { worldLifecycleSelection } from '@/lib/worldRuntimeStatus.mjs';
 
 export default {
   name: 'StartRoomForm',
+  emits: ['close', 'confirm', 'update:startForm'],
   components: {
     Alert,
     AlertDescription,
@@ -166,10 +167,9 @@ export default {
       return !this.requestedWorlds.some(item => item.id === world.id);
     },
     handleConfirm() {
-      // 更新父组件的表单数据
-      Object.assign(this.startForm, this.formData);
-      // 触发确认事件
-      this.$emit('confirm');
+      const form = { ...this.formData };
+      this.$emit('update:startForm', form);
+      this.$emit('confirm', form);
     },
     getWorldTagType(type) {
       if (type === 'cave') return 'secondary';

@@ -6,7 +6,7 @@
       </div>
       <div class="header-actions">
         <InputGroup class="search-input">
-          <InputGroupAddon><Search /></InputGroupAddon>
+          <InputGroupAddon><SearchIcon /></InputGroupAddon>
           <InputGroupInput v-model="searchQuery" :placeholder="$t('worlds.list.search')" />
         </InputGroup>
         <UiButton variant="outline" @click="recoveryVisible = true"><ArchiveRestore data-icon="inline-start" />{{ $t('recovery.open') }}</UiButton>
@@ -130,7 +130,7 @@
           <Field>
             <FieldLabel for="room-dialog-search">{{ $t('worlds.list.searchRooms') }}</FieldLabel>
             <InputGroup>
-              <InputGroupAddon><Search /></InputGroupAddon>
+              <InputGroupAddon><SearchIcon /></InputGroupAddon>
               <InputGroupInput id="room-dialog-search" v-model="roomSearchQuery" :placeholder="$t('worlds.list.searchRooms')" />
             </InputGroup>
           </Field>
@@ -165,7 +165,7 @@
 <script>
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { preferredRoomId } from '@/lib/pageScope.mjs'
-import { ArchiveRestore, CircleAlert, Globe2, MoreHorizontal, Play, Plus, RefreshCw, Search, Square } from '@lucide/vue';
+import { ArchiveRestore, CircleAlert, Globe2, MoreHorizontal, Play, Plus, RefreshCw, Search as SearchIcon, Square } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, systemApi } from '../../api/index';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -250,7 +250,7 @@ export default {
     RefreshCw,
     RecoveryDialog,
     RoomCategories,
-    Search,
+    SearchIcon,
     Spinner,
     Square,
     Skeleton,

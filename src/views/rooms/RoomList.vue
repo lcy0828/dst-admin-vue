@@ -6,7 +6,7 @@
       </div>
       <div class="header-actions">
         <InputGroup class="search-input">
-          <InputGroupAddon><Search /></InputGroupAddon>
+          <InputGroupAddon><SearchIcon /></InputGroupAddon>
           <InputGroupInput v-model="searchQuery" :placeholder="$t('rooms.list.search')" />
         </InputGroup>
         <UiButton variant="outline" @click="refreshRooms(true)" :disabled="isRefreshing">
@@ -231,7 +231,7 @@ import {
   Play,
   Plus,
   RefreshCw,
-  Search,
+  Search as SearchIcon,
   Server,
   Square,
   Trash2,
@@ -328,7 +328,7 @@ export default {
     Plus,
     RefreshCw,
     RecoveryDialog,
-    Search,
+    SearchIcon,
     Separator,
     Server,
     Skeleton,

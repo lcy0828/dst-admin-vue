@@ -14,7 +14,7 @@
           <Field class="search-keyword">
             <FieldLabel for="mod-search-keyword">{{ $t('mods.search.form.name') }}</FieldLabel>
             <InputGroup>
-              <InputGroupAddon><Search /></InputGroupAddon>
+              <InputGroupAddon><SearchIcon /></InputGroupAddon>
               <InputGroupInput id="mod-search-keyword" v-model="searchForm.keyword" :placeholder="$t('mods.search.form.namePlaceholder')" @keyup.enter="startSearch" />
             </InputGroup>
           </Field>
@@ -78,7 +78,7 @@
           <Field class="search-actions">
             <FieldLabel class="sr-only">{{ $t('mods.actions.search') }}</FieldLabel>
             <div class="search-action-buttons">
-              <UiButton @click="startSearch" :disabled="searching"> <Spinner v-if="searching" data-icon="inline-start" /><Search v-else data-icon="inline-start" />{{ $t('mods.actions.search') }} </UiButton>
+              <UiButton @click="startSearch" :disabled="searching"> <Spinner v-if="searching" data-icon="inline-start" /><SearchIcon v-else data-icon="inline-start" />{{ $t('mods.actions.search') }} </UiButton>
               <UiButton variant="outline" @click="resetSearch">{{ $t('mods.actions.reset') }}</UiButton>
             </div>
           </Field>
@@ -185,7 +185,7 @@
     </Empty>
     <Empty v-else-if="!loadError">
       <EmptyHeader
-        ><EmptyMedia variant="icon"><Search /></EmptyMedia><EmptyTitle>{{ $t('mods.search.empty.notSearched') }}</EmptyTitle></EmptyHeader
+        ><EmptyMedia variant="icon"><SearchIcon /></EmptyMedia><EmptyTitle>{{ $t('mods.search.empty.notSearched') }}</EmptyTitle></EmptyHeader
       >
     </Empty>
 
@@ -202,7 +202,7 @@
 </template>
 
 <script>
-import { ArrowLeft, Clock, Download, ImageIcon, Info, PackagePlus, Search, SearchX, Star, TriangleAlert, Users } from '@lucide/vue'
+import { ArrowLeft, Clock, Download, ImageIcon, Info, PackagePlus, Search as SearchIcon, SearchX, Star, TriangleAlert, Users } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import AddModToRoomDialog from './AddModToRoomDialog.vue'
 import DownloadModDialog from './DownloadModDialog.vue'
@@ -269,7 +269,7 @@ export default {
     PaginationNext,
     PaginationPrevious,
     PackagePlus,
-    Search,
+    SearchIcon,
     SearchX,
     SelectContent,
     SelectGroup,

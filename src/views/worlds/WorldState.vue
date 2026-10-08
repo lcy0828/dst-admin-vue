@@ -139,7 +139,7 @@
           <CardDescription>{{ $t('worldState.details.description') }}</CardDescription>
           <CardAction class="details-filters max-lg:col-span-full max-lg:row-auto max-lg:justify-self-stretch">
             <InputGroup>
-              <InputGroupAddon><Search /></InputGroupAddon>
+              <InputGroupAddon><SearchIcon /></InputGroupAddon>
               <InputGroupInput v-model="searchQuery" :placeholder="$t('worldState.details.search')" />
             </InputGroup>
             <UiSelect v-model="currentCategory">
@@ -187,7 +187,7 @@
 <script>
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { preferredRoomId } from '@/lib/pageScope.mjs'
-import { Activity, CircleHelp, CircleMinus, CloudRain, CloudSnow, Leaf, Moon, RefreshCw, Search, Snowflake, Sprout, Sun, Sunrise, Sunset, TriangleAlert, Zap } from '@lucide/vue';
+import { Activity, CircleHelp, CircleMinus, CloudRain, CloudSnow, Leaf, Moon, RefreshCw, Search as SearchIcon, Snowflake, Sprout, Sun, Sunrise, Sunset, TriangleAlert, Zap } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import api from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -239,7 +239,7 @@ export default {
     InputGroupInput,
     RefreshCw,
     RuntimeDiagnosticsPanel,
-    Search,
+    SearchIcon,
     SelectContent,
     SelectGroup,
     SelectItem,

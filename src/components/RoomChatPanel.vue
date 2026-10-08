@@ -5,7 +5,7 @@
         <Field>
           <FieldLabel class="sr-only" for="room-chat-search">{{ $t('servers.workspace.chat.search') }}</FieldLabel>
           <InputGroup>
-            <InputGroupAddon><Search /></InputGroupAddon>
+            <InputGroupAddon><SearchIcon /></InputGroupAddon>
             <InputGroupInput
               id="room-chat-search"
               v-model="draftQuery"
@@ -46,7 +46,7 @@
           {{ $t(activeRepair ? 'servers.workspace.chat.historyCatchingUp' : 'servers.workspace.chat.repairAction') }}
         </UiButton>
         <UiButton size="sm" :disabled="loading" @click="applySearch">
-          <Search data-icon="inline-start" />
+          <SearchIcon data-icon="inline-start" />
           {{ $t('servers.workspace.chat.searchAction') }}
         </UiButton>
         <Tooltip>
@@ -188,7 +188,7 @@
 
 <script>
 import {
-  ArrowLeft, ArrowRight, CircleAlert, Info, MessagesSquare, RefreshCw, Search, TriangleAlert
+  ArrowLeft, ArrowRight, CircleAlert, Info, MessagesSquare, RefreshCw, Search as SearchIcon, TriangleAlert
 } from '@lucide/vue'
 import { computed } from 'vue'
 import { toast } from 'vue-sonner'
@@ -216,7 +216,7 @@ export default {
   components: {
     Alert, AlertAction, AlertDescription, AlertTitle, ArrowLeft, ArrowRight, Badge, CircleAlert,
     Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldGroup, FieldLabel,
-    Info, InputGroup, InputGroupAddon, InputGroupInput, MessagesSquare, RefreshCw, Search,
+    Info, InputGroup, InputGroupAddon, InputGroupInput, MessagesSquare, RefreshCw, SearchIcon,
     SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, Skeleton, Spinner,
     TableBody, TableCell, TableHead, TableHeader, TableRow, Tooltip, TooltipContent, TooltipTrigger,
     TriangleAlert, UiButton, UiSelect, UiTable
