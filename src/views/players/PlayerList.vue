@@ -194,12 +194,14 @@
             </dl>
             <Separator />
             <section class="flex items-center justify-between gap-3"><h3>{{ $t('players.actions.playerActions') }}</h3>
-              <PlayerActionMenu :player="currentPlayer" @updated="refreshPlayerAfterAction(currentPlayer, $event)" @player-state-refreshed="fetchPlayerList" />
+              <UiButton variant="outline" size="sm" @click="openDetailPlayerActions">{{ $t('players.quick.trigger') }}<ChevronRight data-icon="inline-end" /></UiButton>
             </section>
           </div>
         </ScrollArea>
       </SheetContent>
     </Sheet>
+
+    <PlayerActionMenu v-if="actionPanelPlayer" :player="actionPanelPlayer" hide-trigger :open-request="actionPanelRequest" @updated="refreshPlayerAfterAction(actionPanelPlayer, $event)" @player-state-refreshed="fetchPlayerList" />
 
     <UiDialog v-model:open="banDialogVisible">
       <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.ban.title') }}</DialogTitle><DialogDescription>{{ currentPlayer?.player_name || '' }}</DialogDescription></DialogHeader>
@@ -278,7 +280,7 @@
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { readWorkspaceSelection } from '@/lib/workspacePreferences.mjs';
 import { managementScopeTargetId } from '@/lib/managementScope.mjs';
-import { Clock3, Crown, Download, ExternalLink, Globe2, RefreshCw, Search, Settings2, Stethoscope, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
+import { ChevronRight, Clock3, Crown, Download, ExternalLink, Globe2, RefreshCw, Search, Settings2, Stethoscope, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { playerApi } from '@/api/playerApi';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -339,6 +341,7 @@ export default {
     CardHeader,
     CardTitle,
     CharacterAvatar,
+    ChevronRight,
     PlayerActionMenu,
     PlayerRecordTime,
     Clock3,
@@ -441,6 +444,8 @@ export default {
       // 玩家详情
       playerDetailVisible: false,
       currentPlayer: null,
+      actionPanelPlayer: null,
+      actionPanelRequest: 0,
 
 
 
@@ -702,6 +707,9 @@ export default {
         if (this.currentPlayer?.user_id === player.user_id && this.currentPlayer?.room_id === player.room_id) {
           this.currentPlayer = this.playerList.find(item => item.user_id === player.user_id && item.room_id === player.room_id) || this.currentPlayer;
         }
+        if (this.actionPanelPlayer?.user_id === player.user_id && this.actionPanelPlayer?.room_id === player.room_id) {
+          this.actionPanelPlayer = this.playerList.find(item => item.user_id === player.user_id && item.room_id === player.room_id) || this.actionPanelPlayer;
+        }
       } catch (error) {
         toast.warning(this.$t('players.quick.refreshFailed', { error: playerErrorDetail(error, this.$t) }));
       }
@@ -834,6 +842,13 @@ export default {
           playerId: player.user_id
         }
       });
+    },
+
+    openDetailPlayerActions() {
+      if (!this.currentPlayer) return;
+      this.actionPanelPlayer = { ...this.currentPlayer };
+      this.playerDetailVisible = false;
+      this.$nextTick(() => { this.actionPanelRequest += 1; });
     },
 
     openRequestedPlayer() {

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, useId, watch } from 'vue'
+import { computed, nextTick, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Ban as BanIcon,
@@ -27,13 +27,22 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger
+  DialogTitle
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
   Field,
-  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
@@ -42,7 +51,6 @@ import {
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Slider } from '@/components/ui/slider'
-import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import GameToolsDialog from '@/components/game-tools/GameToolsDialog.vue'
@@ -59,22 +67,24 @@ import {
 const props = defineProps({
   player: { type: Object, required: true },
   workbenchRequest: { type: Number, default: 0 },
+  openRequest: { type: Number, default: 0 },
+  hideTrigger: { type: Boolean, default: false },
   requestedWorkbenchSection: {
     type: String,
     default: '',
-    validator: value => !value || ['entity', 'player', 'world'].includes(value)
+    validator: value => !value || ['entity', 'player', 'world', 'commands'].includes(value)
   }
 })
 
 const emit = defineEmits(['updated', 'player-state-refreshed', 'world-state-refreshed'])
 const { t } = useI18n()
 const fieldId = useId()
-// Temporary UI review requested while no players are online. Production builds
-// keep the normal availability checks; this preview never dispatches actions.
-const previewMode = import.meta.env.DEV
+const previewMode = import.meta.env.DEV && import.meta.env.VITE_PLAYER_ACTION_PREVIEW === 'true'
 const activeAction = ref('')
-const menuOpen = ref(false)
+const dropdownOpen = ref(false)
+const dialogOpen = ref(false)
 const quickAction = ref('')
+const actionFeedback = ref(null)
 const workbenchOpen = ref(false)
 const activeWorkbenchSection = ref('entity')
 const modeEnabled = ref(true)
@@ -90,6 +100,7 @@ const canUseLiveActions = computed(() => (
 ))
 const canUseCharacterActions = computed(() => canUseLiveActions.value && playerCanUseCharacterActions(activePlayer.value))
 const canResurrect = computed(() => canUseLiveActions.value && ['ghost', 'dead'].includes(activePlayer.value?.gameplay_state))
+const isCurrentTarget = target => activePlayer.value?.room_id === target.room_id && activePlayer.value?.user_id === target.user_id
 const actionTitleKeys = {
   god: 'players.dialogs.godMode.title', creative: 'players.dialogs.creativeMode.title',
   ban: 'players.dialogs.ban.title', kick: 'players.confirmations.kickTitle',
@@ -115,8 +126,6 @@ const banDurations = computed(() => PLAYER_BAN_DURATION_IDS.map(value => ({
 })))
 const banReasonId = `${fieldId}-ban-reason`
 const banDurationId = `${fieldId}-ban-duration`
-const godModeId = `${fieldId}-god-mode`
-const creativeModeId = `${fieldId}-creative-mode`
 
 watch(
   () => props.workbenchRequest,
@@ -126,11 +135,25 @@ watch(
   }
 )
 
-watch(menuOpen, open => { if (open) quickAction.value = '' })
-watch([() => props.player.room_id, () => props.player.world_id, () => props.player.user_id], () => {
-  menuOpen.value = false
-  workbenchOpen.value = false
+watch(() => props.openRequest, request => { if (request) openActionDialog() })
+
+watch(dialogOpen, open => {
+  if (open) actionFeedback.value = null
+  else quickAction.value = ''
 })
+watch([() => props.player.room_id, () => props.player.world_id, () => props.player.user_id], () => {
+  dropdownOpen.value = false
+  dialogOpen.value = false
+  workbenchOpen.value = false
+  actionFeedback.value = null
+})
+
+async function openActionDialog(action = '') {
+  dropdownOpen.value = false
+  quickAction.value = action
+  await nextTick()
+  dialogOpen.value = true
+}
 
 function errorText(error) {
   return playerErrorDetail(error, t)
@@ -139,7 +162,8 @@ function errorText(error) {
 function openWorkbench(section = defaultWorkbenchSection.value) {
   if (activeAction.value) return
   if (previewMode) return toast.info(t('players.quick.previewNotice'))
-  menuOpen.value = false
+  dropdownOpen.value = false
+  dialogOpen.value = false
   activeWorkbenchSection.value = ['entity', 'player', 'world'].includes(section)
     ? section
     : defaultWorkbenchSection.value
@@ -155,13 +179,16 @@ async function runAction(kind, execute, successKey, failureKey, options = {}) {
   const target = { ...activePlayer.value }
   const name = playerName.value
   activeAction.value = kind
+  actionFeedback.value = null
   const loadingId = toast.loading(t('players.feedback.actionLoading'))
   try {
     await execute(target)
-    toast.success(t(successKey, {
+    const message = t(successKey, {
       player: name,
       ...(options.successParams || {})
-    }))
+    })
+    if (isCurrentTarget(target)) actionFeedback.value = { success: true, message }
+    toast.success(message)
     emit('updated', {
       roomId: target.room_id,
       playerId: target.user_id,
@@ -169,6 +196,7 @@ async function runAction(kind, execute, successKey, failureKey, options = {}) {
     })
     return true
   } catch (error) {
+    if (isCurrentTarget(target)) actionFeedback.value = { success: false, message: t(failureKey, { error: errorText(error) }) }
     toast.error(t(failureKey, { error: errorText(error) }), {
       id: globalJobFailureToastId(error?.context?.jobId)
     })
@@ -187,21 +215,21 @@ async function runConfirmedAction(kind) {
     kick: {
       success: 'players.feedback.kickSucceeded',
       failure: 'players.feedback.kickFailed',
-      execute: confirmation => playerApi.kickPlayer(activePlayer.value, null, confirmation)
+      execute: (target, confirmation) => playerApi.kickPlayer(target, null, confirmation)
     },
     kill: {
       success: 'players.feedback.killSucceeded',
       failure: 'players.feedback.killFailed',
-      execute: confirmation => playerApi.killPlayer(activePlayer.value, null, confirmation)
+      execute: (target, confirmation) => playerApi.killPlayer(target, null, confirmation)
     },
     character: {
       success: 'players.feedback.characterSucceeded',
       failure: 'players.feedback.characterFailed',
-      execute: confirmation => playerApi.changeCharacter(activePlayer.value, null, confirmation)
+      execute: (target, confirmation) => playerApi.changeCharacter(target, null, confirmation)
     },
     unban: {
       success: 'players.banList.unbanSucceeded', failure: 'players.banList.unbanFailed',
-      execute: () => playerApi.unbanPlayer(activePlayer.value, activePlayer.value.archive_name)
+      execute: target => playerApi.unbanPlayer(target, target.archive_name)
     }
   }
   const definition = definitions[kind]
@@ -210,19 +238,18 @@ async function runConfirmedAction(kind) {
   const confirmation = activePlayer.value.user_id
   const succeeded = await runAction(
     kind,
-    () => definition.execute(confirmation),
+    target => definition.execute(target, confirmation),
     definition.success,
     definition.failure
   )
-  if (succeeded) menuOpen.value = false
+  if (succeeded) quickAction.value = ''
 }
 
 async function resurrectPlayer() {
   if (!activePlayer.value || (!previewMode && !canResurrect.value)) return
-  menuOpen.value = false
   await runAction(
     'resurrect',
-    () => playerApi.resurrectPlayer(activePlayer.value, null, activePlayer.value.user_id),
+    target => playerApi.resurrectPlayer(target, null, target.user_id),
     'players.feedback.resurrectSucceeded',
     'players.feedback.resurrectFailed'
   )
@@ -239,9 +266,9 @@ async function confirmMode(kind) {
   const godMode = kind === 'god'
   const succeeded = await runAction(
     kind,
-    () => godMode
-      ? playerApi.setGodMode(activePlayer.value, modeEnabled.value, null)
-      : playerApi.setCreativeMode(activePlayer.value, modeEnabled.value, null),
+    target => godMode
+      ? playerApi.setGodMode(target, modeEnabled.value, null)
+      : playerApi.setCreativeMode(target, modeEnabled.value, null),
     godMode ? 'players.feedback.godModeSucceeded' : 'players.feedback.creativeModeSucceeded',
     godMode ? 'players.feedback.godModeFailed' : 'players.feedback.creativeModeFailed',
     {
@@ -250,7 +277,7 @@ async function confirmMode(kind) {
       }
     }
   )
-  if (succeeded) menuOpen.value = false
+  if (succeeded) quickAction.value = ''
 }
 
 function openBanDialog() {
@@ -266,15 +293,15 @@ async function confirmBan() {
   if (banReasonInvalid.value) return
   const succeeded = await runAction(
     'ban',
-    () => playerApi.banPlayer(activePlayer.value, {
+    target => playerApi.banPlayer(target, {
       reason: banForm.reason.trim(),
       duration: banForm.duration,
-      confirmation: activePlayer.value.archive_name
+      confirmation: target.archive_name
     }),
     'players.feedback.banSucceeded',
     'players.feedback.banFailed'
   )
-  if (succeeded) menuOpen.value = false
+  if (succeeded) quickAction.value = ''
 }
 
 function quickActionAvailable(action) {
@@ -309,15 +336,15 @@ async function runQuickAction({ action, input = {} }) {
       throw error
     }
   }, 'players.quick.succeeded', 'players.quick.failed', { successParams: { action: t(`players.quick.${action}`) } })
-  if (succeeded) menuOpen.value = false
+  if (succeeded) quickAction.value = ''
 }
 
 </script>
 
 <template>
   <div class="player-action-buttons" @click.stop>
-    <UiDialog v-model:open="menuOpen">
-      <DialogTrigger as-child>
+    <DropdownMenu v-if="!hideTrigger" v-model:open="dropdownOpen">
+      <DropdownMenuTrigger as-child>
         <UiButton
           variant="outline"
           size="sm"
@@ -329,11 +356,27 @@ async function runQuickAction({ action, input = {} }) {
           {{ t('players.quick.trigger') }}
           <ChevronDown data-icon="inline-end" />
         </UiButton>
-      </DialogTrigger>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" class="w-56" @click.stop>
+        <DropdownMenuLabel class="truncate">{{ playerName }}</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuItem v-if="canResurrect" :disabled="Boolean(activeAction)" @select="resurrectPlayer"><HeartPulse />{{ t('players.operations.resurrect') }}</DropdownMenuItem>
+          <DropdownMenuItem :disabled="!quickActionAvailable('recover')" @select="selectQuickAction('recover')"><HeartPulse />{{ t('players.quick.recover') }}</DropdownMenuItem>
+          <DropdownMenuItem :disabled="!quickActionAvailable('clean')" @select="selectQuickAction('clean')"><Sparkles />{{ t('players.quick.clean') }}</DropdownMenuItem>
+          <DropdownMenuItem :disabled="!quickActionAvailable('speed')" @select="openActionDialog('speed')"><Gauge />{{ t('players.quick.speed') }}</DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem @select="openWorkbench('entity')"><HeartPlus />{{ t('players.quick.more') }}</DropdownMenuItem>
+          <DropdownMenuItem @select="openActionDialog()"><ChevronRight />{{ t('players.quick.moreActions') }}</DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+
+    <UiDialog v-model:open="dialogOpen">
       <DialogContent
         :show-close-button="false"
-        overlay-class="supports-backdrop-filter:backdrop-blur-none"
-        class="inset-0 m-auto flex h-[min(34rem,calc(100dvh-2rem))] translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden p-0 sm:h-[min(25rem,calc(100dvh-2rem))] sm:max-w-xl data-[state=open]:animate-none data-[state=closed]:animate-none"
+        class="player-actions-dialog flex max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
         @click.stop
       >
         <div class="flex shrink-0 items-center gap-3 px-4 py-3">
@@ -342,8 +385,9 @@ async function runQuickAction({ action, input = {} }) {
           <DialogHeader class="min-w-0 flex-1 gap-1 text-left">
             <DialogTitle class="truncate"><template v-if="!quickAction">{{ playerName }} · </template>{{ menuTitle }}</DialogTitle>
             <DialogDescription class="truncate"><template v-if="quickAction">{{ playerName }} · </template><template v-if="activePlayer.archive_name">{{ activePlayer.archive_name }} · </template>{{ activePlayer.world_name || activePlayer.world_id }}</DialogDescription>
+            <Badge v-if="!quickAction" variant="outline" class="w-fit">{{ t(`players.statuses.${activePlayer.status === 'stale' ? 'stale' : isPlayerOnline(activePlayer.status) ? 'online' : 'offline'}`) }}</Badge>
           </DialogHeader>
-          <UiButton variant="ghost" size="icon-sm" :aria-label="t('players.quick.close')" @click="menuOpen = false"><X /></UiButton>
+          <UiButton variant="ghost" size="icon-sm" :aria-label="t('players.quick.close')" @click="dialogOpen = false"><X /></UiButton>
         </div>
         <Separator />
         <div class="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
@@ -369,51 +413,49 @@ async function runQuickAction({ action, input = {} }) {
           <DialogFooter><UiButton type="button" variant="outline" :disabled="Boolean(activeAction)" @click="quickAction = ''">{{ t('players.actions.cancel') }}</UiButton><UiButton type="submit" variant="destructive" :disabled="Boolean(activeAction)"><Spinner v-if="activeAction === 'ban'" data-icon="inline-start" />{{ t('players.actions.confirmBan') }}</UiButton></DialogFooter>
         </form>
         <form v-else-if="['god', 'creative'].includes(quickAction)" class="flex flex-col gap-5 p-5" @submit.prevent="confirmMode(quickAction)">
-          <Field orientation="horizontal"><FieldContent><FieldLabel :for="quickAction === 'god' ? godModeId : creativeModeId">{{ t(quickAction === 'god' ? 'players.operations.godMode' : 'players.operations.creativeMode') }}</FieldLabel><FieldDescription>{{ t(modeEnabled ? 'players.values.enabled' : 'players.values.disabled') }}</FieldDescription></FieldContent><UiSwitch :id="quickAction === 'god' ? godModeId : creativeModeId" v-model="modeEnabled" :disabled="Boolean(activeAction)" /></Field>
+          <Field><FieldLabel>{{ t(quickAction === 'god' ? 'players.operations.godMode' : 'players.operations.creativeMode') }}</FieldLabel><ToggleGroup :model-value="modeEnabled ? 'enable' : 'disable'" type="single" variant="outline" class="grid grid-cols-2" :disabled="Boolean(activeAction)" @update:model-value="value => { if (value) modeEnabled = value === 'enable' }"><ToggleGroupItem value="enable">{{ t('players.values.enabled') }}</ToggleGroupItem><ToggleGroupItem value="disable">{{ t('players.values.disabled') }}</ToggleGroupItem></ToggleGroup></Field>
           <DialogFooter><UiButton type="button" variant="outline" :disabled="Boolean(activeAction)" @click="quickAction = ''">{{ t('players.actions.cancel') }}</UiButton><UiButton type="submit" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)"><Spinner v-if="activeAction" data-icon="inline-start" />{{ t('players.actions.confirm') }}</UiButton></DialogFooter>
         </form>
         <form v-else-if="confirmingAction" class="flex flex-col gap-5 p-5" @submit.prevent="runConfirmedAction(quickAction)">
           <p class="text-sm text-muted-foreground">{{ confirmationDescription }}</p>
+          <p class="text-xs text-muted-foreground">{{ activePlayer.archive_name }} / {{ activePlayer.world_name || activePlayer.world_id }}</p>
           <DialogFooter><UiButton type="button" variant="outline" :disabled="Boolean(activeAction)" @click="quickAction = ''">{{ t('players.actions.cancel') }}</UiButton><UiButton type="submit" variant="destructive" :disabled="Boolean(activeAction)"><Spinner v-if="activeAction" data-icon="inline-start" />{{ t('players.actions.confirmAction') }}</UiButton></DialogFooter>
         </form>
-        <div v-else class="flex flex-col gap-3 px-4 py-3">
-          <section class="flex flex-col gap-2" :aria-label="t('players.quick.recovery')">
-            <div class="flex items-center justify-between gap-2">
-              <h3 class="text-xs text-muted-foreground">{{ t('players.quick.recovery') }}</h3>
-              <UiButton variant="ghost" size="sm" :disabled="Boolean(activeAction)" :aria-label="t('players.actions.openWorkbench')" @click="openWorkbench()">{{ t('players.quick.more') }}<ChevronRight data-icon="inline-end" /></UiButton>
-            </div>
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 [&_button]:h-auto [&_button]:min-h-11 [&_button]:min-w-0 [&_button]:justify-start [&_button]:gap-1.5 [&_button]:whitespace-normal [&_button]:text-left">
-              <UiButton v-for="action in commonActions" :key="action.id" variant="outline" size="sm" :disabled="!quickActionAvailable(action.id)" @click="selectQuickAction(action.id)">
-                <Spinner v-if="activeAction === action.id" data-icon="inline-start" /><component :is="action.icon" v-else data-icon="inline-start" /><span>{{ t(`players.quick.${action.id}`) }}</span>
-              </UiButton>
-              <UiButton variant="outline" size="sm" :disabled="(!previewMode && !canResurrect) || Boolean(activeAction)" @click="resurrectPlayer"><HeartPulse data-icon="inline-start" />{{ t('players.operations.resurrect') }}</UiButton>
-              <UiButton variant="outline" size="sm" :disabled="!quickActionAvailable('penalty')" @click="selectQuickAction('penalty')"><HeartPlus data-icon="inline-start" />{{ t('players.quick.penalty') }}</UiButton>
-            </div>
-          </section>
-          <section class="flex flex-col gap-2" :aria-label="t('players.quick.character')">
-            <h3 class="text-xs text-muted-foreground">{{ t('players.quick.character') }}</h3>
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:gap-2 [&_button]:whitespace-normal [&_button]:text-left">
-              <UiButton variant="outline" size="sm" :disabled="!quickActionAvailable('speed')" @click="selectQuickAction('speed')"><Gauge data-icon="inline-start" />{{ t('players.quick.speed') }}</UiButton>
-              <UiButton variant="outline" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="openModeDialog('god')"><ShieldCheck data-icon="inline-start" />{{ t('players.operations.godMode') }}</UiButton>
-              <UiButton variant="outline" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="openModeDialog('creative')"><Hammer data-icon="inline-start" />{{ t('players.operations.creativeMode') }}</UiButton>
+        <div v-else class="flex flex-col gap-5 px-4 py-4">
+          <section class="flex flex-col gap-2" :aria-label="t('players.quick.common')">
+            <h3 class="text-xs font-medium text-muted-foreground">{{ t('players.quick.common') }}</h3>
+            <div class="grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-11 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
+              <UiButton variant="outline" size="sm" :disabled="Boolean(activeAction)" @click="openWorkbench('entity')"><HeartPlus data-icon="inline-start" />{{ t('players.quick.give') }}</UiButton>
+              <UiButton v-if="canResurrect" variant="outline" size="sm" :disabled="Boolean(activeAction)" @click="resurrectPlayer"><HeartPulse data-icon="inline-start" />{{ t('players.operations.resurrect') }}</UiButton>
+              <UiButton v-for="action in commonActions" :key="action.id" variant="outline" size="sm" :disabled="!quickActionAvailable(action.id)" @click="selectQuickAction(action.id)"><Spinner v-if="activeAction === action.id" data-icon="inline-start" /><component :is="action.icon" v-else data-icon="inline-start" /><span>{{ t(`players.quick.${action.id}`) }}</span></UiButton>
             </div>
           </section>
           <Separator />
-          <section class="flex flex-col gap-2" :aria-label="t('players.quick.management')">
-            <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-muted-foreground">
-              <h3>{{ t('players.quick.management') }}</h3>
-              <span>{{ t('players.quick.managementHint') }}</span>
-            </div>
-            <div class="grid grid-cols-2 gap-1 sm:grid-cols-4 [&_button]:h-auto [&_button]:min-h-10 [&_button]:whitespace-normal [&_button]:text-left">
-              <UiButton variant="ghost" size="sm" class="justify-start" :disabled="(!previewMode && !canUseLiveActions) || Boolean(activeAction)" @click="quickAction = 'character'"><RotateCcw data-icon="inline-start" class="text-destructive" />{{ t('players.operations.changeCharacter') }}</UiButton>
-              <UiButton variant="ghost" size="sm" class="justify-start" :disabled="(!previewMode && !canUseLiveActions) || Boolean(activeAction)" @click="quickAction = 'kick'"><LogOut data-icon="inline-start" class="text-destructive" />{{ t('players.operations.kick') }}</UiButton>
-              <UiButton variant="ghost" size="sm" class="justify-start" :disabled="Boolean(activeAction)" @click="openBanDialog"><BanIcon data-icon="inline-start" class="text-destructive" />{{ t(activePlayer.banned ? 'players.quick.unban' : 'players.operations.ban') }}</UiButton>
-              <UiButton variant="ghost" size="sm" class="justify-start" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="quickAction = 'kill'"><Skull data-icon="inline-start" class="text-destructive" />{{ t('players.operations.kill') }}</UiButton>
+          <section class="flex flex-col gap-2" :aria-label="t('players.quick.character')">
+            <h3 class="text-xs font-medium text-muted-foreground">{{ t('players.quick.character') }}</h3>
+            <div class="grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
+              <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('speed')" @click="selectQuickAction('speed')"><Gauge data-icon="inline-start" />{{ t('players.quick.speed') }}</UiButton>
+              <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('penalty')" @click="selectQuickAction('penalty')"><HeartPlus data-icon="inline-start" />{{ t('players.quick.penalty') }}</UiButton>
+              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="openModeDialog('god')"><ShieldCheck data-icon="inline-start" />{{ t('players.operations.godMode') }}</UiButton>
+              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="openModeDialog('creative')"><Hammer data-icon="inline-start" />{{ t('players.operations.creativeMode') }}</UiButton>
             </div>
           </section>
+          <UiButton variant="secondary" class="w-full justify-between" :disabled="Boolean(activeAction)" :aria-label="t('players.actions.openWorkbench')" @click="openWorkbench()">{{ t('players.quick.more') }}<ChevronRight data-icon="inline-end" /></UiButton>
+          <Separator />
+          <details class="player-management-actions">
+            <summary class="flex cursor-pointer items-center justify-between gap-2 py-1 text-sm font-medium">{{ t('players.quick.management') }}<ChevronDown class="size-4" /></summary>
+            <p class="mb-2 text-xs text-muted-foreground">{{ t('players.quick.managementHint') }}</p>
+            <div class="grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
+              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseLiveActions) || Boolean(activeAction)" @click="quickAction = 'character'"><RotateCcw data-icon="inline-start" />{{ t('players.operations.changeCharacter') }}</UiButton>
+              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseLiveActions) || Boolean(activeAction)" @click="quickAction = 'kick'"><LogOut data-icon="inline-start" />{{ t('players.operations.kick') }}</UiButton>
+              <UiButton variant="ghost" size="sm" :disabled="Boolean(activeAction)" @click="openBanDialog"><BanIcon data-icon="inline-start" />{{ t(activePlayer.banned ? 'players.quick.unban' : 'players.operations.ban') }}</UiButton>
+              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="quickAction = 'kill'"><Skull data-icon="inline-start" />{{ t('players.operations.kill') }}</UiButton>
+            </div>
+          </details>
           <p v-if="!previewMode && !canUseLiveActions" class="text-xs text-muted-foreground">{{ t('players.quick.liveUnavailable') }}</p>
         </div>
         </div>
+        <Alert v-if="actionFeedback" :variant="actionFeedback.success ? 'default' : 'destructive'" class="mx-4 mb-3 w-auto shrink-0"><AlertDescription>{{ actionFeedback.message }}</AlertDescription></Alert>
         <p v-if="previewMode" class="shrink-0 px-4 py-3 text-xs text-muted-foreground">{{ t('players.quick.previewNotice') }}</p>
       </DialogContent>
     </UiDialog>
@@ -440,4 +482,8 @@ async function runQuickAction({ action, input = {} }) {
   align-items: center;
   gap: 4px;
 }
+:global(.player-actions-dialog [data-slot='dialog-footer']) { margin-top: .5rem; flex-direction: row; justify-content: flex-end; padding: 0; }
+.player-management-actions summary { list-style: none; }
+.player-management-actions summary::-webkit-details-marker { display: none; }
+.player-management-actions[open] summary svg { transform: rotate(180deg); }
 </style>
