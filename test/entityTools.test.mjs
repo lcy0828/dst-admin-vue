@@ -80,7 +80,7 @@ test('Entity operations keep exact Prefab commands bounded and make batch filter
   assert.match(page, /<ToggleGroupItem value="units">[\s\S]*<ToggleGroupItem value="stacks">/)
   assert.match(page, /stackCountHint/)
   assert.match(page, /async function submitEntityOperation\(\)[\s\S]*submitOperation\('entity', operation, ENTITY_CONFIRMATION_MODES\.has\(entityMode\.value\)\)/)
-  assert.match(page, /async function executeOperation\(operation\)/)
+  assert.match(page, /async function executeOperation\(operation, section\)/)
   assert.match(page, /class="entity-submit-button"[\s\S]*@click="submitEntityOperation"[\s\S]*entitySubmitLabel/)
   assert.match(page, /\.entity-submit-button \{[^}]*max-width: 20rem;[^}]*white-space: normal;[^}]*overflow-wrap: anywhere;/)
   assert.doesNotMatch(page, /action:\s*entityAction\.value,[\s\S]{0,100}maximum:/)
@@ -149,15 +149,14 @@ test('Workbench action labels wrap without crossing the editor columns', async (
   assert.doesNotMatch(page, /playerOperation === operation\.id[\s\S]{0,120}<ChevronRight/)
 })
 
-test('Player operation switching keeps the desktop workbench geometry stable', async () => {
+test('Player operation switching uses one responsive scroll surface', async () => {
   const page = await source('src/views/servers/EntityTools.vue')
 
-  assert.match(page, /\.operation-workbench--player \{ block-size: clamp\(20rem, 42dvh, 23rem\);/)
-  assert.match(page, /\.player-operation-editor \{ block-size: 100%; overflow: hidden; \}/)
-  assert.match(page, /\.player-operation-editor \.operation-editor-fields \{[^}]*flex: 1 1 auto;[^}]*overflow-y: auto;[^}]*scrollbar-gutter: stable;/)
+  assert.match(page, /\.operation-workbench--player \{[^}]*grid-template-columns: minmax\(15rem, 17rem\) auto minmax\(0, 1fr\)/)
+  assert.doesNotMatch(page, /\.operation-workbench--player \{[^}]*block-size: clamp/)
+  assert.doesNotMatch(page, /\.player-operation-editor \.operation-editor-fields \{[^}]*overflow-y: auto/)
   assert.match(page, /\.operation-editor-actions \{[^}]*flex: none;/)
-  assert.match(page, /async function resetPlayerOperationEditorScroll\(\)[\s\S]*querySelector\('\.operation-editor-fields'\)[\s\S]*fields\.scrollTop = 0/)
-  assert.match(page, /async function selectPlayerOperation\(value\)[\s\S]*await resetPlayerOperationEditorScroll\(\)[\s\S]*revealOperationEditor\(playerOperationEditor\)/)
+  assert.match(page, /function selectPlayerOperation\(value\)[\s\S]*revealOperationEditor\(playerOperationEditor\)/)
   assert.match(page, /@container \(max-width: 52rem\) \{[\s\S]*\.operation-workbench--player \{ block-size: auto;/)
 })
 
@@ -174,14 +173,14 @@ test('Player controls use balanced widths and reliable pointer targets', async (
   assert.match(page, /\.player-submit-button \{[^}]*min-height: 2\.75rem;/)
 })
 
-test('Player rows retain the locked game workbench inside the action panel', async () => {
+test('Player actions keep the locked game workbench from the centered dialog', async () => {
   const [menu, dialog, page] = await Promise.all([
     source('src/components/players/PlayerActionMenu.vue'),
     source('src/components/game-tools/GameToolsDialog.vue'),
     source('src/views/servers/EntityTools.vue')
   ])
 
-  assert.match(menu, /<DialogContent/)
+  assert.match(menu, /<UiDialog v-model:open="dialogOpen">[\s\S]*<DialogContent/)
   assert.match(menu, /:aria-label="t\('players\.actions\.openWorkbench'\)"/)
   assert.match(menu, /@click="openWorkbench\(\)"/)
   assert.match(menu, /<GameToolsDialog[\s\S]*v-model:open="workbenchOpen"/)
@@ -249,7 +248,8 @@ test('Only dangerous operations require an in-place second click', async () => {
   assert.match(page, /worldConfirmationArmed \? 'destructive' : 'default'/)
   assert.equal((page.match(/entityTools\.actions\.clickAgainToConfirm/g) || []).length, 3)
   assert.match(page, /const executionError = ref\(''\)/)
-  assert.match(page, /executionError\.value = t\('entityTools\.feedback\.executeFailed'/)
+  assert.match(page, /const message = t\('entityTools\.feedback\.executeFailed'/)
+  assert.match(page, /executionError\.value = error\?\.run \? '' : message/)
   assert.match(page, /<Alert v-if="executionError" variant="destructive" role="alert">/)
   assert.match(page, /entityTools\.actions\.giveNow/)
   assert.match(page, /operation\.commandId,[\s\S]*operation\.arguments,[\s\S]*room\.name/)

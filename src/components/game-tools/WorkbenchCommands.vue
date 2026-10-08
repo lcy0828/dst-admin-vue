@@ -15,7 +15,6 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
@@ -23,7 +22,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import CommandRunResult from './CommandRunResult.vue'
 const props=defineProps({roomId:{type:String,default:''},roomName:{type:String,default:''},worldId:{type:String,default:''},worldName:{type:String,default:''},playerId:{type:String,default:''},running:Boolean})
 const {t,te}=useI18n()
-const definitions=ref([]),selected=ref(null),search=ref(''),filter=ref('custom'),script=ref(''),name=ref(''),values=ref({}),loading=ref(false),saving=ref(false),executing=ref(false),error=ref(''),listError=ref(''),lastRun=ref(null),armed=ref(false)
+const definitions=ref([]),selected=ref(null),search=ref(''),filter=ref('custom'),script=ref(''),name=ref(''),values=ref({}),loading=ref(false),saving=ref(false),executing=ref(false),error=ref(''),listError=ref(''),lastRun=ref(null),armed=ref(false),saveEditorOpen=ref(false)
 const recentRuns=ref([]),historyError=ref('')
 let alive=true,loadSequence=0,contextSequence=0,historySequence=0
 const commandName=item=>translateBuiltinCommandField(t,te,item,'name')
@@ -49,15 +48,15 @@ function showRun(run,target){
  recentRuns.value=[lastRun.value,...recentRuns.value.filter(item=>item.id!==run.id)].slice(0,10)
 }
 function runTime(run){return new Date(run.createdAt).toLocaleString()}
-function choose(item){selected.value=item;script.value=item.script;name.value=item.name;lastRun.value=null;error.value='';values.value=Object.fromEntries((item.parameters||[]).map(parameter=>[parameter.name,parameter.name==='player_id'&&props.playerId?props.playerId:parameter.default??(parameter.type==='boolean'?false:'')]))}
-function fresh(){selected.value=null;script.value='';name.value='';values.value={};error.value='';lastRun.value=null}
+function choose(item){selected.value=item;script.value=item.script;name.value=item.name;lastRun.value=null;error.value='';saveEditorOpen.value=false;values.value=Object.fromEntries((item.parameters||[]).map(parameter=>[parameter.name,parameter.name==='player_id'&&props.playerId?props.playerId:parameter.default??(parameter.type==='boolean'?false:'')]))}
+function fresh(){selected.value=null;script.value='';name.value='';values.value={};error.value='';lastRun.value=null;saveEditorOpen.value=false}
 function example(id){const code=workbenchExample(id,props.playerId);if(!code)return;fresh();script.value=code;name.value=t(`workbench.examples.${id}`)}
 function insertPlayer(){const context=luaPlayerContext(props.playerId);if(context){selected.value=null;script.value=context+script.value}}
 async function save(){
  if(!canSave.value)return
  const input={name:name.value.trim(),description:selected.value?.description||'',category:selected.value?.category||'custom',script:script.value.trim(),scriptMode:'literal',parameters:[]}
  saving.value=true;error.value=''
- try{const item=selected.value?.id?await consoleV2API.updateDefinition(selected.value.id,input):await consoleV2API.createDefinition(input);if(!alive)return;selected.value=item;await load();toast.success(t('workbench.commands.saved'))}catch(e){if(alive)error.value=e.message}finally{if(alive)saving.value=false}
+ try{const item=selected.value?.id?await consoleV2API.updateDefinition(selected.value.id,input):await consoleV2API.createDefinition(input);if(!alive)return;selected.value=item;await load();saveEditorOpen.value=false;toast.success(t('workbench.commands.saved'))}catch(e){if(alive)error.value=e.message}finally{if(alive)saving.value=false}
 }
 async function execute(){
  if(!canRun.value)return
@@ -78,7 +77,7 @@ onMounted(()=>{void load();void loadHistory()})
 onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence;++historySequence})
 </script>
 <template>
- <div class="command-workbench grid min-w-0 gap-4 rounded-lg border p-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
+ <div class="command-workbench grid min-w-0 gap-4 rounded-md border p-3 lg:grid-cols-[14rem_minmax(0,1fr)] lg:p-4">
   <aside class="flex min-w-0 flex-col gap-3">
    <div class="flex items-center justify-between gap-2"><h3 class="text-sm font-medium">{{t('workbench.commands.library')}}</h3><Button size="icon-sm" variant="ghost" :disabled="loading" :aria-label="t('workbench.commands.refresh')" @click="load"><RefreshCw /></Button></div>
    <InputGroup><InputGroupAddon><Search /></InputGroupAddon><InputGroupInput v-model="search" :aria-label="t('workbench.commands.search')" :placeholder="t('workbench.commands.search')" /></InputGroup>
@@ -90,7 +89,6 @@ onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence;++historySeque
    </div>
    <Empty v-else class="p-3"><EmptyHeader><EmptyTitle>{{t('workbench.commands.empty')}}</EmptyTitle></EmptyHeader></Empty>
    <Button variant="outline" :disabled="executing||saving" @click="fresh"><Plus data-icon="inline-start" />{{t('workbench.commands.new')}}</Button>
-   <p class="text-xs text-muted-foreground">{{t('workbench.commands.shared')}}</p>
   </aside>
   <section class="flex min-w-0 flex-col gap-3">
    <div class="flex flex-wrap items-center justify-between gap-2"><h3 class="flex items-center gap-2 text-sm font-medium"><Code class="size-4" />{{template?commandName(selected):t('workbench.commands.editor')}}</h3><Badge variant="outline">{{targetLabel||t('workbench.commands.noTarget')}}</Badge></div>
@@ -98,10 +96,10 @@ onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence;++historySeque
    <template v-if="!template">
     <div class="flex flex-wrap gap-1"><Button v-for="id in ['world','mods','player','give']" :key="id" size="sm" variant="ghost" :disabled="executing||saving||(['player','give'].includes(id)&&!luaPlayerContext(playerId))" @click="example(id)">{{t(`workbench.examples.${id}`)}}</Button></div>
     <FieldGroup>
-     <Field><FieldLabel for="workbench-command-name">{{t('workbench.commands.name')}}</FieldLabel><Input id="workbench-command-name" v-model="name" maxlength="80" :disabled="executing||saving" :placeholder="t('workbench.commands.nameHint')" /></Field>
-     <Field :data-invalid="bytes>LUA_MAX_BYTES"><FieldLabel for="workbench-lua">Lua</FieldLabel><Textarea id="workbench-lua" v-model="script" class="min-h-56 max-h-96 font-mono" spellcheck="false" :disabled="executing||saving" :aria-invalid="bytes>LUA_MAX_BYTES" :placeholder="t('workbench.commands.placeholder')" /><FieldDescription class="flex flex-wrap justify-between gap-2"><span>{{t('workbench.commands.serverLua')}}</span><span>{{bytes}} / {{LUA_MAX_BYTES}} B</span></FieldDescription></Field>
+     <Field :data-invalid="bytes>LUA_MAX_BYTES"><FieldLabel for="workbench-lua">Lua</FieldLabel><Textarea id="workbench-lua" v-model="script" class="min-h-52 max-h-96 font-mono" spellcheck="false" :disabled="executing||saving" :aria-invalid="bytes>LUA_MAX_BYTES" :placeholder="t('workbench.commands.placeholder')" /><FieldDescription class="flex flex-wrap justify-between gap-2"><span>{{t('workbench.commands.serverLua')}}</span><span>{{bytes}} / {{LUA_MAX_BYTES}} B</span></FieldDescription></Field>
     </FieldGroup>
-    <div class="flex flex-wrap gap-2"><Button size="sm" variant="outline" :disabled="!luaPlayerContext(playerId)||executing||saving" @click="insertPlayer">{{t('workbench.commands.insertPlayer')}}</Button><Button size="sm" variant="outline" :disabled="!canSave" @click="save"><Spinner v-if="saving" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{t(selected?.id?'workbench.commands.update':'workbench.commands.save')}}</Button></div>
+    <div class="flex flex-wrap gap-2"><Button size="sm" variant="outline" :disabled="!luaPlayerContext(playerId)||executing||saving" @click="insertPlayer">{{t('workbench.commands.insertPlayer')}}</Button><Button size="sm" variant="outline" :disabled="executing||saving||!script.trim()" @click="saveEditorOpen=!saveEditorOpen"><Save data-icon="inline-start" />{{t(selected?.id?'workbench.commands.update':'workbench.commands.save')}}</Button></div>
+    <FieldGroup v-if="saveEditorOpen" class="rounded-md border p-3"><Field><FieldLabel for="workbench-command-name">{{t('workbench.commands.name')}}</FieldLabel><Input id="workbench-command-name" v-model="name" maxlength="80" :disabled="executing||saving" :placeholder="t('workbench.commands.nameHint')" /><FieldDescription>{{t('workbench.commands.shared')}}</FieldDescription></Field><Button size="sm" class="self-start" :disabled="!canSave" @click="save"><Spinner v-if="saving" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{t(selected?.id?'workbench.commands.update':'workbench.commands.save')}}</Button></FieldGroup>
    </template>
    <FieldGroup v-else-if="parameters.length" class="grid gap-3 sm:grid-cols-2">
     <Field v-for="parameter in parameters" :key="parameter.name"><FieldLabel :for="`workbench-param-${parameter.name}`">{{translateBuiltinParameterField(t,te,selected,parameter,'label')||parameter.name}}{{parameter.required?' *':''}}</FieldLabel>
@@ -112,12 +110,16 @@ onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence;++historySeque
     </Field>
    </FieldGroup>
    <details v-if="template"><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.viewCode')}}</summary><pre class="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{script}}</pre></details>
-   <Separator />
+   <div class="command-action-bar flex flex-wrap items-center justify-between gap-3"><p class="text-xs text-muted-foreground">{{!running?t('workbench.commands.stopped'):armed?t('workbench.commands.confirm',{target:targetLabel}):t('workbench.commands.output')}}</p><div class="flex gap-2"><Button v-if="armed" variant="ghost" @click="armed=false">{{t('workbench.commands.cancel')}}</Button><Button :disabled="!canRun||saving" @click="execute"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{t(executing?'workbench.commands.executing':armed?'workbench.commands.confirmRun':'workbench.commands.run')}}</Button></div></div>
    <Alert v-if="error" variant="destructive"><AlertTitle>{{t('workbench.commands.failed')}}</AlertTitle><AlertDescription class="break-all">{{error}}</AlertDescription></Alert>
    <CommandRunResult v-if="lastRun" :run="lastRun" :target="lastRun.target" />
    <details v-if="recentRuns.length" data-command-history><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.recentRuns')}}</summary><div class="mt-2 flex max-h-52 flex-col gap-1 overflow-y-auto"><Button v-for="run in recentRuns" :key="run.id" :variant="lastRun?.id===run.id?'secondary':'ghost'" class="h-auto justify-between gap-2 py-2 text-left" @click="lastRun=run"><span class="min-w-0 truncate">{{run.name}} · {{runTime(run)}}</span><span class="shrink-0 text-xs">{{t(`workbench.commands.${run.status==='succeeded'?'succeeded':run.status==='failed'?'runFailed':'uncertain'}`)}}</span></Button></div></details>
    <Alert v-if="historyError"><AlertDescription>{{t('workbench.commands.historyFailed')}}<Button variant="ghost" size="sm" @click="loadHistory">{{t('workbench.commands.retryHistory')}}</Button></AlertDescription></Alert>
-   <div class="flex flex-wrap items-center justify-between gap-3"><p class="text-xs text-muted-foreground">{{!running?t('workbench.commands.stopped'):armed?t('workbench.commands.confirm',{target:targetLabel}):t('workbench.commands.output')}}</p><div class="flex gap-2"><Button v-if="armed" variant="ghost" @click="armed=false">{{t('workbench.commands.cancel')}}</Button><Button :disabled="!canRun||saving" @click="execute"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{t(executing?'workbench.commands.executing':armed?'workbench.commands.confirmRun':'workbench.commands.run')}}</Button></div></div>
   </section>
  </div>
 </template>
+
+<style scoped>
+.command-workbench :deep([data-slot='empty']) { flex: none; min-height: 6rem; }
+.command-action-bar { position: sticky; bottom: 0; z-index: 1; border-top: 1px solid var(--border); background: var(--card); padding-block: .5rem; }
+</style>

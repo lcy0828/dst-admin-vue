@@ -12,8 +12,13 @@ const { t } = useI18n()
 const { copy, copied } = useClipboard({ legacy: true })
 const status = computed(() => props.run.status === 'succeeded' ? 'succeeded' : props.run.status === 'failed' ? 'runFailed' : 'uncertain')
 const code = computed(() => props.run.script || props.run.rawCommand || '')
+const runTime = computed(() => {
+  const value = props.run.createdAt || props.run.completedAt
+  const date = value ? new Date(value) : null
+  return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : ''
+})
 async function copyOutput() {
-  try { await copy(props.run.output.text) } catch { toast.error(t('workbench.commands.copyFailed')) }
+  try { await copy(props.run.output?.text || '') } catch { toast.error(t('workbench.commands.copyFailed')) }
 }
 </script>
 
@@ -22,9 +27,9 @@ async function copyOutput() {
     <Alert :variant="run.status === 'failed' ? 'destructive' : 'default'">
       <AlertTitle>{{ t(`workbench.commands.${status}`) }}</AlertTitle>
       <AlertDescription class="flex min-w-0 flex-col gap-1 break-words">
-        <span>{{ target }} · {{ run.message }}</span>
+        <span v-if="target || runTime">{{ [target, runTime].filter(Boolean).join(' · ') }}</span>
+        <span v-if="run.message">{{ run.message }}</span>
         <span v-if="run.errorMessage" class="whitespace-pre-wrap">{{ run.errorMessage }}</span>
-        <span class="break-all text-xs">{{ t('workbench.commands.runId') }} {{ run.id }}</span>
       </AlertDescription>
     </Alert>
     <div class="flex items-center justify-between gap-2">
@@ -34,6 +39,6 @@ async function copyOutput() {
     <pre v-if="run.output?.text" data-command-output class="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs [overflow-wrap:anywhere]">{{ run.output.text }}</pre>
     <p v-else class="text-sm text-muted-foreground">{{ t(run.output ? 'workbench.commands.noOutput' : 'workbench.commands.outputUnavailable') }}</p>
     <p v-if="run.output?.truncated" class="text-xs text-muted-foreground">{{ t('workbench.commands.outputTruncated') }}</p>
-    <details v-if="code" class="min-w-0"><summary class="cursor-pointer text-xs text-muted-foreground">{{ t('workbench.commands.executedCode') }}</summary><pre class="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs [overflow-wrap:anywhere]">{{ code }}</pre></details>
+    <details v-if="run.id || code" class="min-w-0"><summary class="cursor-pointer text-xs text-muted-foreground">{{ t('workbench.commands.details') }}</summary><div class="mt-2 flex min-w-0 flex-col gap-2"><span v-if="run.id" class="break-all font-mono text-xs text-muted-foreground">{{ t('workbench.commands.runId') }} {{ run.id }}</span><div v-if="code"><span class="text-xs text-muted-foreground">{{ t('workbench.commands.executedCode') }}</span><pre class="mt-1 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 font-mono text-xs [overflow-wrap:anywhere]">{{ code }}</pre></div></div></details>
   </section>
 </template>

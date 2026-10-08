@@ -97,23 +97,15 @@
           </div>
         </FieldGroup>
 
-        <Alert
-          v-if="executionResult"
-          :variant="executionResult.success || executionResult.warning ? 'default' : 'destructive'"
-          :class="{ 'border-amber-500/50 bg-amber-50 text-amber-950 dark:bg-amber-950/20 dark:text-amber-200': executionResult.warning }"
-        >
-          <CircleCheck v-if="executionResult.success" />
-          <CircleAlert v-else />
-          <AlertTitle>{{ $t(executionResult.warning ? 'commands.execute.result.uncertain' : (executionResult.success ? 'commands.execute.result.success' : 'commands.execute.result.failed')) }}</AlertTitle>
-          <AlertDescription><pre>{{ executionResultMessage }}</pre></AlertDescription>
-        </Alert>
+        <CommandRunResult v-if="executionResult?.run" ref="executionResultPanel" :run="executionResult.run" :target="executionResult.target" />
+        <Alert v-else-if="executionResult?.error" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('commands.execute.result.failed') }}</AlertTitle><AlertDescription>{{ localizedError(executionResult.error, 'commands.errors.execution') }}</AlertDescription></Alert>
 
         <div v-if="commandHistory.length" class="command-history">
           <Separator />
           <div class="section-heading"><h3>{{ $t('commands.history.title') }}</h3><div><UiButton size="sm" variant="ghost" @click="clearHistory">{{ $t('commands.actions.clearHistory') }}</UiButton><UiButton size="sm" variant="ghost" @click="saveHistoryToFile"><Download data-icon="inline-start" />{{ $t('commands.actions.saveFile') }}</UiButton></div></div>
           <ShadcnTable>
             <TableHeader><TableRow><TableHead>{{ $t('commands.history.columns.time') }}</TableHead><TableHead>{{ $t('commands.history.columns.server') }}</TableHead><TableHead>{{ $t('commands.history.columns.command') }}</TableHead><TableHead>{{ $t('commands.history.columns.status') }}</TableHead><TableHead>{{ $t('commands.history.columns.actions') }}</TableHead></TableRow></TableHeader>
-            <TableBody><TableRow v-for="item in commandHistory" :key="item.id"><TableCell>{{ commandTime(item.createdAt) }}</TableCell><TableCell>{{ item.serverName }}</TableCell><TableCell class="truncate-cell">{{ item.mode === 'structured' ? item.commandName : item.command }}</TableCell><TableCell><Badge :variant="historyStatusVariant(item.status)">{{ historyStatusLabel(item.status) }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton size="xs" variant="ghost" @click="rerunCommand(item)">{{ $t('commands.actions.rerun') }}</UiButton><UiButton size="xs" variant="ghost" @click="copyCommand(item)">{{ $t('commands.actions.copy') }}</UiButton></div></TableCell></TableRow></TableBody>
+            <TableBody><TableRow v-for="item in commandHistory" :key="item.id"><TableCell>{{ commandTime(item.createdAt) }}</TableCell><TableCell>{{ item.serverName }}</TableCell><TableCell class="truncate-cell">{{ item.mode === 'structured' ? item.commandName : item.command }}</TableCell><TableCell><Badge :variant="historyStatusVariant(item.status)">{{ historyStatusLabel(item.status) }}</Badge></TableCell><TableCell><div class="table-actions"><UiButton size="xs" variant="ghost" @click="showRunResult(item.run, item.server, true)">{{ $t('workbench.commands.outputTitle') }}</UiButton><UiButton size="xs" variant="ghost" @click="rerunCommand(item)">{{ $t('commands.actions.rerun') }}</UiButton><UiButton size="xs" variant="ghost" @click="copyCommand(item)">{{ $t('commands.actions.copy') }}</UiButton></div></TableCell></TableRow></TableBody>
           </ShadcnTable>
         </div>
       </CardContent>
@@ -176,7 +168,7 @@
 
 <script>
 import {
-  BookOpen, CircleAlert, CircleCheck, Download, ListPlus, Pencil, Play, Plus, RefreshCw,
+  BookOpen, CircleAlert, Download, ListPlus, Pencil, Play, Plus, RefreshCw,
   SquareTerminal, Trash2, Upload
 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
@@ -193,6 +185,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Progress as UiProgress } from '@/components/ui/progress';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import CommandRunResult from '@/components/game-tools/CommandRunResult.vue';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
@@ -216,7 +209,7 @@ export default {
   name: 'CommandManager',
   components: {
     Alert, AlertAction, AlertDescription, AlertTitle, Badge, BookOpen, Card, CardAction, CardContent, CardDescription,
-    CardHeader, CardTitle, CircleAlert, CircleCheck, DialogDescription, DialogFooter,
+    CardHeader, CardTitle, CircleAlert, CommandRunResult, DialogDescription, DialogFooter,
     DialogHeader, DialogScrollContent, DialogTitle, Download, Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
     Field, FieldDescription, FieldGroup, FieldLabel, ListPlus,
     Pencil, Play, Plus, Popover, PopoverContent, PopoverTrigger, RefreshCw, SelectContent, SelectGroup,
@@ -342,16 +335,6 @@ export default {
     loadErrorMessage() {
       if (!this.loadError) return '';
       return this.localizedError(this.loadError.error, this.loadError.fallbackKey);
-    },
-    executionResultMessage() {
-      if (!this.executionResult) return '';
-      if (this.executionResult.error) {
-        return this.localizedError(this.executionResult.error, this.executionResult.messageKey);
-      }
-      const message = this.$t(this.executionResult.messageKey);
-      return this.executionResult.detail
-        ? this.$t('commands.errors.withDetail', { message, detail: this.executionResult.detail })
-        : message;
     },
     commandTypes() {
       return [...new Set([
@@ -765,18 +748,19 @@ export default {
       }
 
       this.executing = true;
+      const serverKey = this.executeForm.server;
       try {
         const run = await commandApi.executeCommand(
-          this.executeForm.server,
+          serverKey,
           this.executeForm.commandId,
           this.executeForm.params,
           confirmation
         );
-        this.showRunResult(run);
+        this.showRunResult(run, serverKey);
         if (run.status === 'succeeded') toast.success(this.$t('commands.feedback.sent'));
         await this.loadCommandHistory();
       } catch (error) {
-        this.showExecutionError(error);
+        this.showExecutionError(error, serverKey);
       } finally {
         this.executing = false;
       }
@@ -802,17 +786,18 @@ export default {
       }
 
       this.executing = true;
+      const serverKey = this.rawCommandForm.server;
       try {
         const run = await commandApi.executeRawCommand(
-          this.rawCommandForm.server,
+          serverKey,
           this.rawCommandForm.command,
           confirmation
         );
-        this.showRunResult(run);
+        this.showRunResult(run, serverKey);
         if (run.status === 'succeeded') toast.success(this.$t('commands.feedback.sent'));
         await this.loadCommandHistory();
       } catch (error) {
-        this.showExecutionError(error);
+        this.showExecutionError(error, serverKey);
       } finally {
         this.executing = false;
       }
@@ -833,28 +818,17 @@ export default {
       return server.room_name;
     },
 
-    showRunResult(run) {
-      const success = run.status === 'succeeded';
-      this.executionResult = {
-        success,
-        status: run.status,
-        warning: ['sent', 'uncertain'].includes(run.status),
-        messageKey: success ? 'commands.feedback.sentToConsole' : 'commands.errors.executionFailed',
-        detail: success ? '' : (run.errorMessage || run.message || '')
-      };
+    showRunResult(run, serverKey, reveal = false) {
+      this.executionResult = { run, target: this.getServerNameById(serverKey) };
+      if (reveal) this.$nextTick(() => this.$refs.executionResultPanel?.$el?.scrollIntoView({ block: 'start' }));
     },
 
-    showExecutionError(error) {
+    showExecutionError(error, serverKey) {
       const status = error?.run?.status || 'failed';
       const warning = ['sent', 'uncertain'].includes(status);
-      this.executionResult = {
-        success: false,
-        status,
-        warning,
-        messageKey: 'commands.errors.execution',
-        detail: '',
-        error
-      };
+      this.executionResult = error?.run
+        ? { run: error.run, target: this.getServerNameById(serverKey) }
+        : { error };
       const message = this.localizedError(error, 'commands.errors.execution');
       if (warning) toast.warning(message);
       else toast.error(message);
@@ -883,6 +857,7 @@ export default {
       const server = this.servers.find(item => item.room_id === run.roomId && item.world_id === run.worldId);
       const definition = this.commands.find(command => command.id === run.commandId);
       return {
+        run,
         id: run.id,
         mode: run.mode === 'raw' ? 'raw' : 'structured',
         createdAt: run.createdAt,

@@ -799,15 +799,21 @@
                     {{ $t('servers.workspace.console.execute') }}
                   </UiButton>
                 </div>
-                <Alert v-if="commandResult" :variant="commandResult.success ? 'default' : 'destructive'">
-                  <CircleCheck v-if="commandResult.success" />
-                  <CircleAlert v-else />
-                  <AlertTitle>{{ commandResult.success ? $t('servers.workspace.console.sent') : $t('servers.workspace.console.failed') }}</AlertTitle>
-                  <AlertDescription>
-                    {{ commandResult.message || $t(commandResult.success ? 'servers.workspace.console.sentDescription' : 'servers.workspace.console.sendFailed') }}
-                    <span v-if="commandResult.runId">{{ $t('servers.workspace.console.runRecord', { id: commandResult.runId }) }}</span>
-                  </AlertDescription>
+                <CommandRunResult v-if="commandResult && commandResultTarget === consoleServer" :run="commandResult" :target="selectedConsoleServer?.name || ''" />
+                <Alert v-if="commandExecutionError && commandResultTarget === consoleServer" variant="destructive" role="alert">
+                  <CircleAlert /><AlertTitle>{{ $t('servers.workspace.console.failed') }}</AlertTitle><AlertDescription>{{ commandExecutionError }}</AlertDescription>
                 </Alert>
+                <details class="console-history" :open="commandHistoryOpen" @toggle="handleConsoleHistoryToggle">
+                  <summary>{{ $t('workbench.commands.recentRuns') }}</summary>
+                  <div v-if="commandHistoryOpen" class="console-history-list">
+                    <Spinner v-if="commandHistoryLoading" />
+                    <UiButton v-for="run in commandRuns" :key="run.id" size="sm" :variant="commandResult?.id === run.id ? 'secondary' : 'ghost'" class="console-history-item" @click="selectConsoleRun(run)">
+                      <span class="truncate">{{ run.name || run.rawCommand || run.script || $t('workbench.commands.editor') }}</span>
+                      <span class="console-history-status">{{ $t(`workbench.commands.${run.status === 'succeeded' ? 'succeeded' : run.status === 'failed' ? 'runFailed' : 'uncertain'}`) }}</span>
+                    </UiButton>
+                    <Alert v-if="commandHistoryError"><AlertDescription>{{ $t('workbench.commands.historyFailed') }} <UiButton size="sm" variant="ghost" @click="loadConsoleRuns">{{ $t('workbench.commands.retryHistory') }}</UiButton></AlertDescription></Alert>
+                  </div>
+                </details>
               </div>
             </TabsContent>
           </Tabs></CardContent>
@@ -899,10 +905,11 @@ import { playerHistoryTime, playerLastObservation, playerWorldConfirmed } from '
 import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue'
 import PlayerNetworkIndicator from '@/components/players/PlayerNetworkIndicator.vue'
 import PlayerVitalQuickControl from '@/components/players/PlayerVitalQuickControl.vue'
+import CommandRunResult from '@/components/game-tools/CommandRunResult.vue'
 import RoomTopologyDialog from '@/components/rooms/RoomTopologyDialog.vue'
 import RoomModOverview from '@/components/mods/RoomModOverview.vue'
 import { commandApi, playerApi, roomApi } from '@/api'
-import { backupSetsV2API, configurationV2API, topologyV2API, worldStatesV2API } from '@/api/v2'
+import { backupSetsV2API, configurationV2API, consoleV2API, topologyV2API, worldStatesV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -1014,6 +1021,7 @@ export default {
     CardHeader,
     CardTitle,
     CharacterAvatar,
+    CommandRunResult,
     Cable,
     CalendarDays,
     CircleAlert,
@@ -1162,6 +1170,13 @@ export default {
       rawCommand: '',
       commandExecuting: false,
       commandResult: null,
+      commandResultTarget: '',
+      commandExecutionError: '',
+      commandRuns: [],
+      commandHistoryOpen: false,
+      commandHistoryLoading: false,
+      commandHistoryError: false,
+      commandHistorySequence: 0,
       connectionPopoverOpen: false,
       connectionAddressDraft: '',
       connectionAddressError: '',
@@ -1354,7 +1369,18 @@ export default {
   },
   watch: {
     roomWeatherSource: { immediate: true, handler(value) { if (!value.pending) this.publishRoomWeather(value.room, value.snapshots) } },
-    activeOperation() { this.rememberRoomView() },
+    activeOperation(value) {
+      this.rememberRoomView()
+      if (value === 'console' && this.commandHistoryOpen) void this.loadConsoleRuns()
+    },
+    consoleServer() {
+      this.commandHistorySequence += 1
+      this.commandResult = null
+      this.commandResultTarget = ''
+      this.commandExecutionError = ''
+      this.commandRuns = []
+      if (this.commandHistoryOpen && this.activeOperation === 'console') void this.loadConsoleRuns()
+    },
     playerDisplayLimit() { this.rememberRoomView() },
     '$route.query'(query) {
       if (query.targetId != null && query.targetId !== managementScopeTargetId(this.managementScope)) return
@@ -1397,6 +1423,7 @@ export default {
     this.connectionProbeSequence += 1
     this.topologyDialogSequence += 1
     this.rollbackConfigurationSequence += 1
+    this.commandHistorySequence += 1
     this.stopRefreshTimer()
     window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange)
     window.removeEventListener(RUNTIME_OBSERVATION_UPDATED_EVENT, this.handleRuntimeObservationUpdate)
@@ -2474,6 +2501,34 @@ export default {
     applyCommonCommand(command) {
       this.rawCommand = command
     },
+    handleConsoleHistoryToggle(event) {
+      this.commandHistoryOpen = event.target.open
+      if (this.commandHistoryOpen) void this.loadConsoleRuns()
+    },
+    async loadConsoleRuns() {
+      const server = this.selectedConsoleServer
+      if (!server) return
+      const sequence = ++this.commandHistorySequence
+      this.commandHistoryLoading = true
+      this.commandHistoryError = false
+      try {
+        const response = await consoleV2API.runs(server.room_id, { worldId: server.world_id, limit: 10 })
+        if (this.workspaceDisposed || sequence !== this.commandHistorySequence || this.consoleServer !== server.session_name) return
+        const current = this.commandResultTarget === server.session_name ? this.commandResult : null
+        this.commandRuns = [current, ...(response.items || [])].filter((run, index, runs) =>
+          run?.id && run.status !== 'sending' && runs.findIndex(item => item?.id === run.id) === index
+        ).slice(0, 10)
+      } catch {
+        if (sequence === this.commandHistorySequence) this.commandHistoryError = true
+      } finally {
+        if (sequence === this.commandHistorySequence) this.commandHistoryLoading = false
+      }
+    },
+    selectConsoleRun(run) {
+      this.commandResult = run
+      this.commandResultTarget = this.consoleServer
+      this.commandExecutionError = ''
+    },
     async executeRawCommand() {
       const server = this.selectedConsoleServer
       if (!server || !this.rawCommand.trim()) return
@@ -2496,19 +2551,23 @@ export default {
 
       this.commandExecuting = true
       this.commandResult = null
+      this.commandResultTarget = server.session_name
+      this.commandExecutionError = ''
       try {
         const run = await commandApi.executeRawCommand(server.session_name, this.rawCommand.trim(), confirmation)
-        const success = run.status === 'succeeded'
-        this.commandResult = {
-          success,
-          runId: run.id,
-          message: success ? '' : (run.errorMessage || run.message || '')
+        if (!this.workspaceDisposed && this.consoleServer === server.session_name) {
+          this.commandResult = run
+          this.commandRuns = [run, ...this.commandRuns.filter(item => item.id !== run.id)].slice(0, 10)
+          toast.success(this.$t('servers.workspace.console.sent'))
         }
-        if (success) toast.success(this.$t('servers.workspace.console.sent'))
-        else toast.error(this.commandResult.message || this.$t('servers.workspace.console.sendFailed'))
       } catch (error) {
-        this.commandResult = { success: false, message: error.detail || error.message || '' }
-        toast.error(this.commandResult.message || this.$t('servers.workspace.console.sendFailed'))
+        if (!this.workspaceDisposed && this.consoleServer === server.session_name) {
+          if (error.run) {
+            this.commandResult = error.run
+            this.commandRuns = [error.run, ...this.commandRuns.filter(item => item.id !== error.run.id)].slice(0, 10)
+          } else this.commandExecutionError = error.detail || error.message || this.$t('servers.workspace.console.sendFailed')
+          toast.error(error.detail || error.message || this.$t('servers.workspace.console.sendFailed'))
+        }
       } finally {
         this.commandExecuting = false
       }
@@ -3625,6 +3684,10 @@ export default {
 
 .console-panel {
   min-height: 440px;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .console-toolbar {
@@ -3668,6 +3731,11 @@ export default {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.console-history summary { cursor: pointer; color: var(--muted-foreground); font-size: 12px; }
+.console-history-list { display: flex; flex-direction: column; gap: 4px; max-height: 180px; margin-top: 8px; overflow-y: auto; }
+.console-history-item { display: flex; min-width: 0; justify-content: space-between; gap: 12px; text-align: left; }
+.console-history-status { flex: none; color: var(--muted-foreground); font-size: 11px; }
 
 .players-panel-header {
   display: flex;

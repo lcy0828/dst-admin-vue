@@ -3,6 +3,7 @@ import EntityArtwork from '@/components/game-tools/EntityArtwork.vue'
 import ResourceEntityPicker from '@/components/game-tools/ResourceEntityPicker.vue'
 import { rememberResource } from '@/lib/resourceLibrary.mjs'
 import WorkbenchCommands from '@/components/game-tools/WorkbenchCommands.vue'
+import CommandRunResult from '@/components/game-tools/CommandRunResult.vue'
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { useRoute } from 'vue-router'
@@ -270,6 +271,9 @@ const executing = ref(false)
 const targetError = ref('')
 const pendingConfirmation = ref(null)
 const executionError = ref('')
+const lastOperationRun = ref(null)
+const lastOperationSection = ref('')
+const lastOperationTarget = ref('')
 const playerOperationEditor = ref(null)
 const worldOperationEditor = ref(null)
 let targetSequence = 0
@@ -515,10 +519,9 @@ function selectEntityMode(value) {
   if (value && value !== entityMode.value) entityMode.value = value
 }
 
-async function selectPlayerOperation(value) {
+function selectPlayerOperation(value) {
   if (!value) return
   playerOperation.value = value
-  await resetPlayerOperationEditorScroll()
   revealOperationEditor(playerOperationEditor)
 }
 
@@ -528,14 +531,13 @@ function selectWorldOperation(value) {
   revealOperationEditor(worldOperationEditor)
 }
 
-async function selectPlayerOperationGroup(value) {
+function selectPlayerOperationGroup(value) {
   if (!value) return
   playerOperationGroup.value = value
   const operations = availablePlayerOperationGroups.value.find(group => group.id === value)?.operations || []
   if (!operations.some(operation => operation.id === playerOperation.value)) {
     playerOperation.value = operations[0]?.id || playerOperation.value
   }
-  await resetPlayerOperationEditorScroll()
   revealOperationEditor(playerOperationEditor)
 }
 
@@ -556,12 +558,6 @@ async function revealOperationEditor(editor) {
     behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     block: 'start'
   })
-}
-
-async function resetPlayerOperationEditorScroll() {
-  await nextTick()
-  const fields = playerOperationEditor.value?.querySelector('.operation-editor-fields')
-  if (fields) fields.scrollTop = 0
 }
 
 function selectEntityAction(value) {
@@ -948,7 +944,7 @@ async function submitOperation(section, operation, confirmationRequired) {
     return
   }
   clearPendingConfirmation()
-  await executeOperation(operation)
+  await executeOperation(operation, section)
 }
 
 async function submitEntityOperation() {
@@ -966,12 +962,15 @@ async function submitWorldOperation() {
   await submitOperation('world', operation, WORLD_CONFIRMATION_OPERATIONS.has(worldOperation.value))
 }
 
-async function executeOperation(operation) {
+async function executeOperation(operation, section) {
   const room = currentRoom.value
   const world = currentWorld.value
   if (!operation || !room || !world || executing.value) return
   executing.value = true
   executionError.value = ''
+  lastOperationRun.value = null
+  lastOperationSection.value = section
+  lastOperationTarget.value = `${room.name} / ${world.name}`
   try {
     let refreshError = null
     if (operation.playerApiAbility) {
@@ -986,12 +985,13 @@ async function executeOperation(operation) {
         await playerApi.setCreativeMode(player, operation.arguments.enabled, null)
       }
     } else {
-      await commandApi.executeCommand(
+      const run = await commandApi.executeCommand(
         `${room.id}::${world.id}`,
         operation.commandId,
         operation.arguments,
         room.name
       )
+      if (selectedRoomId.value === room.id && selectedWorldId.value === world.id) lastOperationRun.value = run
     }
     if (operation.resource) rememberResource(operation.resource, 'use')
     if (operation.refreshWorldState) {
@@ -1031,10 +1031,14 @@ async function executeOperation(operation) {
       }))
     }
   } catch (error) {
-    executionError.value = t('entityTools.feedback.executeFailed', {
-      error: error?.detail || error?.message || t('common.errors.unknown')
-    })
-    toast.error(executionError.value)
+    if (selectedRoomId.value === room.id && selectedWorldId.value === world.id) {
+      if (error?.run) lastOperationRun.value = error.run
+      const message = t('entityTools.feedback.executeFailed', {
+        error: error?.detail || error?.message || t('common.errors.unknown')
+      })
+      executionError.value = error?.run ? '' : message
+      toast.error(message)
+    }
   } finally {
     executing.value = false
   }
@@ -1042,7 +1046,7 @@ async function executeOperation(operation) {
 
 watch(selectedRoomId, loadWorlds)
 watch(selectedWorldId, loadPlayers)
-watch([selectedRoomId, selectedWorldId], () => { selectedEntity.value = null })
+watch([selectedRoomId, selectedWorldId], () => { selectedEntity.value = null; lastOperationRun.value = null; executionError.value = '' })
 watch(selectedPlayerId, value => {
   if (!players.value.some(player => player.id === teleportDestinationId.value && player.id !== value)) {
     teleportDestinationId.value = players.value.find(player => player.id !== value)?.id || ''
@@ -1166,7 +1170,7 @@ onBeforeUnmount(() => {
         </TabsList>
 
         <TabsContent value="entity">
-          <Card size="sm">
+          <Card size="sm" class="entity-catalog-card">
             <CardHeader class="section-card-header">
               <CardTitle>{{ t('entityTools.catalog.title') }}</CardTitle>
               <ToggleGroup :model-value="entityMode" type="single" variant="outline" class="entity-mode-toggle" @update:model-value="selectEntityMode">
@@ -1259,12 +1263,14 @@ onBeforeUnmount(() => {
                 <span>{{ t('entityTools.catalog.filter') }}</span>
                 <strong>{{ t('entityTools.catalog.allApplicable') }}</strong>
               </div>
+              <p v-else class="text-sm text-muted-foreground">{{ t('workbench.catalog.chooseResource') }}</p>
               <UiButton class="entity-submit-button" :variant="entityConfirmationArmed ? 'destructive' : 'default'" :disabled="!canExecuteEntity" @click="submitEntityOperation">
                 <Spinner v-if="executing" data-icon="inline-start" />
                 <TriangleAlert v-else-if="entityConfirmationArmed" data-icon="inline-start" />
                 <Send v-else data-icon="inline-start" />
                 {{ executing ? t('entityTools.actions.executing') : entityConfirmationArmed ? t('entityTools.actions.clickAgainToConfirm') : entitySubmitLabel }}
               </UiButton>
+              <CommandRunResult v-if="lastOperationRun && lastOperationSection === 'entity'" :run="lastOperationRun" :target="lastOperationTarget" />
             </CardFooter>
           </Card>
         </TabsContent>
@@ -1565,6 +1571,7 @@ onBeforeUnmount(() => {
               </div>
             </CardContent>
           </Card>
+          <CommandRunResult v-if="lastOperationRun && lastOperationSection === 'player'" class="mt-3" :run="lastOperationRun" :target="lastOperationTarget" />
         </TabsContent>
 
         <TabsContent value="world">
@@ -1758,6 +1765,7 @@ onBeforeUnmount(() => {
               </UiButton>
             </CardFooter>
           </Card>
+          <CommandRunResult v-if="lastOperationRun && lastOperationSection === 'world'" class="mt-3" :run="lastOperationRun" :target="lastOperationTarget" />
         </TabsContent>
         <TabsContent value="commands" force-mount v-show="activeSection === 'commands'">
           <WorkbenchCommands v-if="commandsOpened" :room-id="selectedRoomId" :room-name="currentRoom?.name || ''" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :player-id="currentPlayerIsOnline ? selectedPlayerId : ''" :running="currentWorld?.status === 'running'"
@@ -1783,6 +1791,14 @@ onBeforeUnmount(() => {
 .entity-mode-toggle { display: grid; flex: none; grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .entity-mode-toggle :deep(button) { min-width: 6.5rem; }
 .catalog-content { display: flex; flex-direction: column; gap: .75rem; }
+.entity-catalog-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(17rem, 20rem); align-items: start; }
+.entity-catalog-card > :deep([data-slot='card-header']) { grid-column: 1 / -1; }
+.entity-catalog-card > :deep([data-slot='card-content']) { min-width: 0; }
+.entity-catalog-card > :deep([data-slot='separator']) { display: none; }
+.entity-catalog-card > :deep([data-slot='card-footer']) { position: sticky; top: 1rem; display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: .875rem; border-top: 0; border-left: 1px solid var(--border); }
+.entity-catalog-card .selected-entity { order: -1; }
+.entity-catalog-card .operation-fields { display: flex; flex-direction: column; }
+.entity-catalog-card .entity-submit-button { width: 100%; max-width: none; }
 .catalog-loading { display: flex; min-height: 15rem; align-items: center; justify-content: center; gap: .5rem; color: var(--muted-foreground); font-size: .875rem; }
 .entity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: .5rem; }
 .entity-results-scroll { height: clamp(18rem, calc(100dvh - 40rem), 24rem); padding-inline-end: .75rem; }
@@ -1810,8 +1826,8 @@ onBeforeUnmount(() => {
 .game-tools-page--embedded .player-operation-content { padding: .25rem 0 0; }
 .field-copy { display: flex; min-width: 0; flex-direction: column; gap: .25rem; }
 .operation-workbench { display: grid; grid-template-columns: minmax(0, 1.15fr) auto minmax(22rem, 1fr); align-items: stretch; gap: 1rem; }
-.operation-workbench--player { block-size: clamp(20rem, 42dvh, 23rem); grid-template-columns: minmax(15rem, 17rem) auto minmax(0, 1fr); align-items: stretch; }
-.operation-workbench--player > .action-picker { min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; padding-inline-end: .25rem; scrollbar-gutter: stable; }
+.operation-workbench--player { grid-template-columns: minmax(15rem, 17rem) auto minmax(0, 1fr); align-items: start; }
+.operation-workbench--player > .action-picker { min-block-size: 0; }
 .operation-workbench-separator--horizontal { display: none; }
 .operation-editor { position: sticky; top: 1rem; display: flex; min-width: 0; align-self: start; flex-direction: column; gap: .75rem; scroll-margin-top: 1rem; }
 .operation-editor-header { display: flex; min-height: 2.25rem; align-items: center; gap: .625rem; }
@@ -1820,8 +1836,8 @@ onBeforeUnmount(() => {
 .operation-editor-copy { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: .375rem .5rem; }
 .operation-editor-copy strong { overflow-wrap: anywhere; }
 .operation-editor-fields { gap: .75rem; }
-.player-operation-editor { block-size: 100%; overflow: hidden; }
-.player-operation-editor .operation-editor-fields { min-block-size: 0; max-width: 42rem; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding-inline-end: .5rem; scrollbar-gutter: stable; }
+.player-operation-editor { max-width: 42rem; }
+.player-operation-editor .operation-editor-fields { min-block-size: 0; }
 .operation-editor-actions { display: flex; flex: none; align-items: flex-end; justify-content: space-between; gap: 1rem; padding-top: .25rem; }
 .player-submit-button { height: auto; min-height: 2.75rem; max-width: 20rem; margin-inline-start: auto; white-space: normal; overflow-wrap: anywhere; }
 .action-picker { min-width: 0; }
@@ -1871,6 +1887,8 @@ onBeforeUnmount(() => {
   .player-operation-editor .operation-editor-fields { overflow: visible; padding-inline-end: 0; scrollbar-gutter: auto; }
 }
 @media (max-width: 1100px) {
+  .entity-catalog-card { grid-template-columns: 1fr; }
+  .entity-catalog-card > :deep([data-slot='card-footer']) { position: static; border-top: 1px solid var(--border); border-left: 0; }
   .game-tools-header { grid-template-columns: minmax(0, 1fr) auto; }
   .target-toolbar { grid-column: 1 / -1; grid-row: 2; }
   .section-card-header { flex-direction: column; }
