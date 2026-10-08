@@ -142,9 +142,11 @@
                       <FieldLabel for="world-shard-name">{{ $t('worlds.settingsPage.serverIni.worldName') }}</FieldLabel>
                       <UiInput id="world-shard-name" v-model="serverIni.shard.name" :disabled="configurationReadOnly" @input="serverIniChanged = true" />
                     </Field>
-                    <Field>
+                    <Field :data-invalid="serverShardIdInvalid || undefined">
                       <FieldLabel for="world-shard-id">{{ $t('worlds.settingsPage.serverIni.worldId') }}</FieldLabel>
-                      <UiInput id="world-shard-id" v-model.number="serverIni.shard.id" type="number" min="1" max="999" :disabled="configurationReadOnly" @change="serverIniChanged = true" />
+                      <UiInput id="world-shard-id" v-model.number="serverIni.shard.id" type="number" :min="serverShardIdMinimum" max="999" step="1" :aria-invalid="serverShardIdInvalid || undefined" :disabled="configurationReadOnly" @change="serverIniChanged = true" />
+                      <FieldDescription>{{ $t(serverIni.shard.is_master ? 'worlds.settingsPage.serverIni.masterIdDescription' : 'worlds.settingsPage.serverIni.secondaryIdDescription') }}</FieldDescription>
+                      <FieldError v-if="serverShardIdInvalid">{{ $t('worlds.settingsPage.feedback.invalidShardId', { min: serverShardIdMinimum }) }}</FieldError>
                     </Field>
                     <Field orientation="horizontal">
                       <FieldContent><FieldLabel for="world-encode-path">{{ $t('worlds.settingsPage.serverIni.encodePath') }}</FieldLabel><FieldDescription>{{ $t('worlds.settingsPage.serverIni.encodePathDescription') }}</FieldDescription></FieldContent>
@@ -262,7 +264,7 @@ import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -301,6 +303,7 @@ export default {
     EmptyTitle,
     Field,
     FieldContent,
+    FieldError,
     FieldDescription,
     FieldGroup,
     FieldLabel,
@@ -584,6 +587,14 @@ export default {
     });
   },
   computed: {
+    serverShardIdMinimum() {
+      return this.serverIni?.shard?.is_master ? 0 : 1;
+    },
+    serverShardIdInvalid() {
+      const raw = this.serverIni?.shard?.id;
+      const id = Number(raw);
+      return raw == null || String(raw).trim() === '' || !Number.isInteger(id) || id < this.serverShardIdMinimum || id > 999;
+    },
     // 当前活动设置
     activeSettings() {
       // 检查当前选中的标签页对应的世界类型
@@ -1904,15 +1915,14 @@ export default {
         return;
       }
       
-      // 检查规则：如果是主世界，分片ID必须为1
-      if (this.serverIni.shard.is_master && this.serverIni.shard.id !== 1) {
-        this.serverIni.shard.id = 1;
-        toast.warning(this.$t('worlds.settingsPage.feedback.masterIdAdjusted'));
+      if (this.serverShardIdInvalid) {
+        toast.error(this.$t('worlds.settingsPage.feedback.invalidShardId', { min: this.serverShardIdMinimum }));
+        return;
       }
       
       this.savingServerIni = true;
 
-      api.worldApi.saveServerIni({
+      return api.worldApi.saveServerIni({
         roomId: this.roomId,
         worldId: currentWorld.id,
         savename: this.roomName,

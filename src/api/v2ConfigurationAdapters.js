@@ -454,7 +454,7 @@ export const legacyWorldConfigurationApi = {
       serverPort: integerValue(config.network?.server_port),
       isMaster: booleanValue(config.shard?.is_master),
       shardName: config.shard?.name ?? '',
-      shardId: integerValue(config.shard?.id),
+      shardId: integerValue(config.shard?.id, -1),
       encodeUserPath: booleanValue(config.account?.encode_user_path),
       masterServerPort: integerValue(config.steam?.master_server_port),
       authenticationPort: integerValue(config.steam?.authentication_port)

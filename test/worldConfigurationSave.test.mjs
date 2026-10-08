@@ -18,6 +18,9 @@ const viewObject = babelParse(viewSource, { sourceType: 'module' }).program.body
 const viewMethods = viewObject.properties.find(node => node.key.name === 'methods').value.properties
 const saveMethod = viewMethods.find(node => node.key.name === 'saveSettings')
 const loadMethod = viewMethods.find(node => node.key.name === 'loadWorldConfiguration')
+const saveServerMethod = viewMethods.find(node => node.key.name === 'saveServerIni')
+const serverIdComputed = viewObject.properties.find(node => node.key.name === 'computed').value.properties
+  .filter(node => ['serverShardIdMinimum', 'serverShardIdInvalid'].includes(node.key.name))
 
 function loadAdapter(type, failure) {
   const room = { id: 'room-1', name: '666777' }
@@ -150,6 +153,66 @@ test('server.ini saves reuse known identifiers and retain the editor revision', 
   assert.deepEqual(calls, ['configuration.read', 'configuration.apply', 'jobs.wait'])
   assert.equal(requests[0].request.server.serverPort, 11001)
   assert.equal(requests[0].request.expectedRevision, 'editor-revision')
+})
+
+for (const shardId of [0, 7, '0']) {
+  test(`server.ini editor and adapter preserve explicit master ID ${JSON.stringify(shardId)}`, async () => {
+    const { adapter, calls, requests } = loadAdapter('forest')
+    const notifications = []
+    const save = runInNewContext(`({ ${viewSource.slice(saveServerMethod.start, saveServerMethod.end)} }).saveServerIni`, {
+      api: { worldApi: adapter },
+      toast: {
+        success: message => notifications.push({ status: 'success', message }),
+        error: message => notifications.push({ status: 'error', message }),
+        warning: message => assert.fail(`save must not rewrite the world ID: ${message}`)
+      }
+    })
+    const state = {
+      roomId: 'room-1', roomName: '666777', activeTab: 'Master',
+      roomWorlds: [{ id: 'world-1', name: 'Master' }],
+      worldConfigurationMeta: { Master: { revision: 'editor-revision' } },
+      serverIni: {
+        network: { server_port: 11001 },
+        shard: { is_master: true, name: 'Master', id: shardId },
+        account: { encode_user_path: true },
+        steam: { master_server_port: 27017, authentication_port: 8767 }
+      },
+      loadWorldConfiguration: async () => { calls.push('editor.reload') },
+      $t: key => key
+    }
+    const computed = runInNewContext(`({ ${serverIdComputed.map(node => viewSource.slice(node.start, node.end)).join(',')} })`)
+    for (const [name, getter] of Object.entries(computed)) {
+      Object.defineProperty(state, name, { get: () => getter.call(state) })
+    }
+    await save.call(state)
+    assert.equal(state.serverIni.shard.id, shardId)
+    assert.equal(requests[0].request.server.shardId, Number(shardId))
+    assert.equal(requests[0].request.expectedRevision, 'editor-revision')
+    assert.equal(state.savingServerIni, false)
+    assert.equal(notifications[0]?.status, 'success')
+    assert.deepEqual(calls, ['configuration.read', 'configuration.apply', 'jobs.wait', 'editor.reload'])
+
+    for (const [isMaster, invalidId] of [[false, 0], [true, -1], [true, 1000], [true, ''], [true, 1.5], [true, 'abc']]) {
+      state.serverIni.shard.is_master = isMaster
+      state.serverIni.shard.id = invalidId
+      const count = requests.length
+      await save.call(state)
+      assert.equal(requests.length, count, `invalid world ID ${invalidId} was submitted`)
+      assert.equal(state.serverIni.shard.id, invalidId)
+      assert.equal(notifications.at(-1).status, 'error')
+    }
+  })
+}
+
+test('an omitted or invalid world ID is not silently converted to zero', async () => {
+  const { adapter, requests } = loadAdapter('forest')
+  for (const id of [undefined, '', 'invalid']) {
+    await adapter.saveServerIni({
+      roomId: 'room-1', worldId: 'world-1', savename: '666777', worldname: 'Master',
+      config: { network: { server_port: 11001 }, shard: { is_master: true, id } }
+    })
+    assert.equal(requests.at(-1).request.server.shardId, -1)
+  }
 })
 
 test('a no-change response from apply does not require a job', async () => {
