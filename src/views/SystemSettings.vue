@@ -32,6 +32,7 @@
           <TabsTrigger value="backup" class="settings-tab-trigger"><DatabaseBackup />{{ $t('systemSettings.tabs.backup') }}</TabsTrigger>
           <TabsTrigger value="notification" class="settings-tab-trigger"><BellRing />{{ $t('systemSettings.tabs.notification') }}</TabsTrigger>
           <TabsTrigger value="systemStatus" class="settings-tab-trigger"><Activity />{{ $t('systemSettings.tabs.systemStatus') }}</TabsTrigger>
+          <TabsTrigger value="software" class="settings-tab-trigger"><Download />{{ $t('softwareUpdate.title') }}</TabsTrigger>
         </TabsList>
       </div>
 
@@ -235,6 +236,7 @@
         </Card>
       </TabsContent>
 
+      <TabsContent value="software" class="settings-tab-content"><SoftwareUpdatePanel /></TabsContent>
       <TabsContent value="systemStatus" class="settings-tab-content">
         <div class="status-header">
           <div><h2>{{ $t('systemSettings.monitor.title') }}</h2><p>{{ $t('systemSettings.monitor.description') }}</p></div>
@@ -311,6 +313,7 @@ import {
   CodeXml,
   Cpu,
   DatabaseBackup,
+  Download,
   HardDrive,
   MemoryStick,
   RefreshCw,
@@ -323,6 +326,7 @@ import {
 import { systemApi } from '@/api';
 import { editableSystemSettingValues } from '@/api/systemSettingsSupport.mjs';
 import { systemV2API } from '@/api/v2';
+import SoftwareUpdatePanel from '@/components/settings/SoftwareUpdatePanel.vue';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -368,6 +372,8 @@ export default {
     CodeXml,
     Cpu,
     DatabaseBackup,
+    Download,
+    SoftwareUpdatePanel,
     Field,
     FieldContent,
     FieldDescription,
@@ -412,7 +418,7 @@ export default {
       statusLoading: false,
       statusLoaded: false,
       statusError: '',
-      activeTab: 'basic',
+      activeTab: this.$route.query.tab === 'software' ? 'software' : 'basic',
       revision: '',
       settingsResponse: null,
       smtpPasswordConfigured: false,
@@ -521,6 +527,9 @@ export default {
     if (this.settingsResponse) applySystemPreferences(this.settingsResponse);
   },
   watch: {
+    '$route.query.tab'(value) {
+      if (value === 'software') this.activeTab = 'software';
+    },
     // 监听标签页切换，在切换到系统状态标签页时刷新数据
     activeTab(newVal) {
       if (newVal === 'systemStatus') {

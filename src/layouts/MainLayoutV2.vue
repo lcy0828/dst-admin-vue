@@ -6,6 +6,8 @@ import { Eye, EyeOff, GitFork, KeyRound } from '@lucide/vue'
 import { authAPI, systemV2API } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
 import GameVersionStatus from '@/components/layout/GameVersionStatus.vue'
+import SoftwareVersionStatus from '@/components/layout/SoftwareVersionStatus.vue'
+import { provideSoftwareUpdate } from '@/composables/useSoftwareUpdate'
 import GlobalJobStatus from '@/components/layout/GlobalJobStatus.vue'
 import RoomUpdateProgress from '@/components/layout/RoomUpdateProgress.vue'
 import { provideGlobalJobStatus } from '@/composables/useGlobalJobStatus'
@@ -50,6 +52,7 @@ import { pageHasMachineScope, queryAfterMachineChange } from '@/lib/pageScope.mj
 
 const router = useRouter()
 provideGlobalJobStatus()
+provideSoftwareUpdate()
 const roomWeather = provideRoomWeather()
 const route = useRoute()
 const roomScopeTarget = ref(null)
@@ -221,6 +224,7 @@ onBeforeUnmount(() => {
         <SystemResourceStatus v-if="hasMachineScope" class="hidden md:flex" />
         <div class="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5">
           <GameVersionStatus v-if="hasMachineScope" class="hidden md:block" />
+          <SoftwareVersionStatus />
           <GlobalJobStatus />
           <div v-if="hasMachineScope" class="hidden xl:block"><SystemResourceRefreshInterval /></div>
           <LanguageSwitch />

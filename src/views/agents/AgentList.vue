@@ -27,6 +27,7 @@
       @command="navigateToCommand"
       @forget="forgetAgent"
       @target-updated="updateMachineTarget"
+      @software-updated="fetchAgentList"
     />
     <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Network /></EmptyMedia><EmptyTitle>{{ $t('agents.list.empty.title') }}</EmptyTitle><EmptyDescription>{{ $t('agents.list.empty.description') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="navigateToSecurity">{{ $t('machines.add') }}</UiButton></EmptyContent></Empty>
     <footer class="flex flex-wrap items-center justify-between gap-2">

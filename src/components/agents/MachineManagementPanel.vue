@@ -11,6 +11,7 @@ import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { cn } from '@/lib/utils'
 import { announceRuntimeTargetsUpdated } from '@/utils/runtimeTarget'
 import GameInstallationManager from '@/components/GameInstallationManager.vue'
+import AgentSoftwareUpdatePanel from '@/components/agents/AgentSoftwareUpdatePanel.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,7 +29,7 @@ const props = defineProps({
   localStatus: { type: Object, default: () => ({}) }, refreshKey: { type: Number, default: 0 },
   unavailable: { type: Boolean, default: false },
 })
-const emit = defineEmits(['rename', 'configure', 'upgrade', 'command', 'forget', 'target-updated'])
+const emit = defineEmits(['rename', 'configure', 'upgrade', 'command', 'forget', 'target-updated', 'software-updated'])
 const { t, locale } = useI18n()
 const router = useRouter()
 const infrastructure = ref(null), installations = ref([]), loading = ref(false), installLoading = ref(false)
@@ -159,6 +160,7 @@ defineExpose({ refresh: load })
             <div :class="cn('mt-1.5 flex items-center gap-1.5 text-xs', unavailable ? 'text-muted-foreground' : item.target.online ? 'text-success-foreground' : 'text-destructive')">
               <span class="size-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />{{ t(unavailable ? 'machines.connectionUnknown' : item.target.online ? 'machines.online' : 'machines.disconnected') }}
             </div>
+            <button v-if="item.agent?.version" type="button" class="mt-1 flex cursor-pointer flex-wrap items-center gap-1.5 text-left text-xs text-muted-foreground hover:underline" @click="show(item, 'diagnostics')"><span>{{ item.agent.update?.software?.current?.version || (item.agent.version.startsWith('v') ? item.agent.version : 'v' + item.agent.version) }}</span><Badge v-if="item.agent.update?.updateAvailable" variant="secondary">{{ t('softwareUpdate.available') }}</Badge></button>
           </div>
           <div class="machine-address min-w-0">
             <div v-if="item.address" class="flex min-w-0 items-center gap-1">
@@ -258,14 +260,15 @@ defineExpose({ refresh: load })
               <Alert v-if="!selected.target.online"><CircleAlert /><AlertTitle>{{ t('machines.disconnected') }}</AlertTitle><AlertDescription>{{ t('machines.offlineDescription') }}</AlertDescription></Alert>
               <dl class="grid grid-cols-2 gap-4 text-sm">
                 <div><dt class="text-xs text-muted-foreground">{{ t('machines.observed') }}</dt><dd class="mt-1">{{ time(selected.observedAt) }}</dd></div>
-                <div v-if="selected.agent"><dt class="text-xs text-muted-foreground">{{ t('agents.list.details.version') }}</dt><dd class="mt-1">{{ selected.agent?.version || '—' }}</dd></div>
+                <div v-if="selected.agent"><dt class="text-xs text-muted-foreground">{{ t('agents.list.details.version') }}</dt><dd class="mt-1">{{ selected.agent.update?.software?.current?.version || selected.agent.version || '—' }}</dd></div>
               </dl>
               <template v-if="selected.agent">
-                <p v-if="selected.agent.update?.updateAvailable" class="text-sm">{{ t('agents.list.updates.available', { version: selected.agent.update.latestVersion }) }}</p>
+                <AgentSoftwareUpdatePanel v-if="selected.agent.capabilities?.includes('agent.software-update.v1') && open && tab === 'diagnostics'" :key="selected.agent.id" :agent-id="selected.agent.id" :online="selected.target.online" @changed="emit('software-updated')" />
+                <p v-else-if="selected.agent.update?.updateAvailable" class="text-sm">{{ t('agents.list.updates.available', { version: selected.agent.update.latestVersion }) }}</p>
                 <div class="flex flex-wrap gap-2">
                   <Button v-if="selected.target.configured && selected.target.capabilities?.includes('runtime.inventory.read')" size="sm" variant="outline" :disabled="!selected.target.online || refreshing" @click="refreshInventory"><Spinner v-if="refreshing" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t('agents.list.actions.refreshInventory') }}</Button>
                   <Button size="sm" variant="outline" @click="emit('command', selected.agent.id)"><Terminal data-icon="inline-start" />{{ t('agents.list.actions.executeCommand') }}</Button>
-                  <Button v-if="selected.agent.update?.supported && selected.agent.update?.updateAvailable" size="sm" variant="outline" :disabled="!selected.target.online" @click="emit('upgrade', selected.agent)"><ArrowUpCircle data-icon="inline-start" />{{ t('agents.list.updates.upgrade') }}</Button>
+                  <Button v-if="!selected.agent.capabilities?.includes('agent.software-update.v1') && selected.agent.update?.supported && selected.agent.update?.updateAvailable" size="sm" variant="outline" :disabled="!selected.target.online" @click="emit('upgrade', selected.agent)"><ArrowUpCircle data-icon="inline-start" />{{ t('agents.list.updates.upgrade') }}</Button>
                   <Button v-if="!selected.target.online" size="sm" variant="destructive" @click="emit('forget', selected.agent)"><Trash2 data-icon="inline-start" />{{ t('agents.list.actions.remove') }}</Button>
                 </div>
               </template>

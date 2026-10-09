@@ -196,6 +196,14 @@ export const systemV2API = {
   testEmail: input => client.post('/system/settings/actions/test-email', input)
 }
 
+// Management software belongs to this controller, independent of machine scope.
+export const softwareV2API = {
+  status: () => client.get('/system/software', { runtimeTarget: false, timeout: 5000 }),
+  check: (force = false, source = 'auto') => client.get('/system/software/check', { params: { force, source }, runtimeTarget: false, timeout: 30000 }),
+  update: (version, source = 'auto') => client.post('/system/software/actions/update', { version, source, confirmation: version }, { runtimeTarget: false }),
+  apply: operationId => client.post('/system/software/actions/apply', { operationId, confirmation: 'APPLY SOFTWARE UPDATE' }, { runtimeTarget: false, timeout: 15000 }),
+}
+
 export const gameNotificationsV2API = {
   maintenancePreview: (roomId, signal) => client.get(`/rooms/${encode(roomId)}/maintenance-preview`, {
     signal, timeout: 8000, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' }
@@ -743,7 +751,10 @@ export const agentsV2API = {
 		`/agents/${encode(agentId)}/actions/upgrade`,
 		releaseId ? { releaseId } : {},
 		{ runtimeTarget: false }
-	)
+	),
+	software: agentId => client.get(`/agents/${encode(agentId)}/software`, { runtimeTarget: false, timeout: 35000 }),
+	checkSoftware: (agentId, params = {}) => client.get(`/agents/${encode(agentId)}/software/check`, { params, runtimeTarget: false, timeout: 35000 }),
+	updateSoftware: (agentId, input) => client.post(`/agents/${encode(agentId)}/software/actions/update`, input, { runtimeTarget: false })
 }
 
 export const gameInstallationsV2API = {

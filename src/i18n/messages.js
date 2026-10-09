@@ -22,6 +22,7 @@ import { modMessages } from './modMessages.js'
 import { playerMessages } from './playerMessages.js'
 import { serverMessages } from './serverMessages.js'
 import { systemSettingsMessages } from './systemSettingsMessages.js'
+import { softwareUpdateMessages } from './softwareUpdateMessages.js'
 import { topologyMessages } from './topologyMessages.js'
 import { roomsMessages } from './roomsMessages.js'
 import { runtimeMessages } from './runtimeMessages.js'
@@ -58,6 +59,7 @@ export const messages = {
     ...playerMessages['zh-CN'],
     ...serverMessages['zh-CN'],
     ...systemSettingsMessages['zh-CN'],
+    ...softwareUpdateMessages['zh-CN'],
     ...topologyMessages['zh-CN'],
     ...roomsMessages['zh-CN'],
     ...runtimeMessages['zh-CN'],
@@ -593,6 +595,7 @@ export const messages = {
     ...playerMessages['en-US'],
     ...serverMessages['en-US'],
     ...systemSettingsMessages['en-US'],
+    ...softwareUpdateMessages['en-US'],
     ...topologyMessages['en-US'],
     ...roomsMessages['en-US'],
     ...runtimeMessages['en-US'],
