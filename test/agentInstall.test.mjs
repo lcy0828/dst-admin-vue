@@ -29,6 +29,12 @@ test('native Agent instructions offer proxy and direct release downloads', () =>
   assert.match(proxy, /https:\/\/ghfast.top\/https:\/\/github.com\/lcy0828\/dst-admin-go\/releases\/latest\/download/)
   assert.doesNotMatch(direct, /ghfast|go build/)
   assert.match(direct, /sha256sum -c/)
+  const windows = agentInstallCommands('wss://example.com/agent', 'aliyun', 'direct').windows
+  assert.doesNotMatch(windows, /ghfast|go build/)
+  assert.match(windows, /dst-admin-agent-windows-amd64\.tar\.gz/)
+  assert.match(windows, /Get-FileHash .* -Algorithm SHA256/)
+  assert.match(windows, /if \(!\(Test-Path \.\\agent\.conf\)\)/)
+  assert.ok(windows.indexOf('Agent checksum verification failed') < windows.indexOf('Move-Item'))
 })
 
 test('native installation verifies bytes before replacing binaries and preserves existing config', () => {

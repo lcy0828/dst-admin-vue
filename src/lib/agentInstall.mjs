@@ -27,9 +27,33 @@ ${prompt}
 export DST_ADMIN_AGENT_SERVER_URL=${url}
 ./dst-admin-agent -config ./agent.conf -state ./runtime-state.json
 )`
+  const windows = `& {
+$ErrorActionPreference = 'Stop'
+if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'This package requires Windows x86_64.' }
+$dstAgentTemp = Join-Path ([System.IO.Path]::GetTempPath()) ('dst-agent-' + [guid]::NewGuid())
+New-Item -ItemType Directory -Path $dstAgentTemp | Out-Null
+try {
+  $dstAgentArchive = Join-Path $dstAgentTemp 'dst-admin-agent-windows-amd64.tar.gz'
+  Invoke-WebRequest '${downloadBase}/dst-admin-agent-windows-amd64.tar.gz' -OutFile $dstAgentArchive
+  Invoke-WebRequest '${downloadBase}/dst-admin-agent-windows-amd64.tar.gz.sha256' -OutFile ($dstAgentArchive + '.sha256')
+  $dstAgentDigest = (Get-Content ($dstAgentArchive + '.sha256') -Raw).Trim() -split '\\s+'
+  if ($dstAgentDigest.Count -ne 2 -or $dstAgentDigest[0] -notmatch '^[a-fA-F0-9]{64}$' -or $dstAgentDigest[1] -ne 'dst-admin-agent-windows-amd64.tar.gz' -or (Get-FileHash $dstAgentArchive -Algorithm SHA256).Hash -ne $dstAgentDigest[0]) { throw 'Agent checksum verification failed.' }
+  $dstAgentEntries = @(& tar -tzf $dstAgentArchive)
+  if ($LASTEXITCODE -ne 0 -or $dstAgentEntries.Count -ne 2 -or $dstAgentEntries -notcontains 'dst-admin-agent.exe' -or $dstAgentEntries -notcontains 'agent.conf.example') { throw 'Invalid Agent archive.' }
+  & tar -xzf $dstAgentArchive -C $dstAgentTemp dst-admin-agent.exe agent.conf.example
+  if ($LASTEXITCODE -ne 0) { throw 'Agent extraction failed.' }
+  Move-Item (Join-Path $dstAgentTemp 'dst-admin-agent.exe') .\\dst-admin-agent.exe -Force
+  if (!(Test-Path .\\agent.conf)) { Copy-Item (Join-Path $dstAgentTemp 'agent.conf.example') .\\agent.conf }
+} finally { Remove-Item $dstAgentTemp -Recurse -Force }
+$agentSecret = Read-Host 'Agent key' -AsSecureString
+$env:DST_ADMIN_AGENT_SECURITY_KEY = [System.Net.NetworkCredential]::new('', $agentSecret).Password
+$env:DST_ADMIN_AGENT_SERVER_URL = ${psQuote(serverURL)}
+try { .\\dst-admin-agent.exe -config .\\agent.conf -state .\\runtime-state.json }
+finally { Remove-Item Env:DST_ADMIN_AGENT_SECURITY_KEY -ErrorAction SilentlyContinue }
+}`
   return {
     linux,
-    windows: `go build -o dst-admin-agent.exe ./agent/cmd/agent\n$agentSecret = Read-Host 'Agent key' -AsSecureString\n$env:DST_ADMIN_AGENT_SECURITY_KEY = [System.Net.NetworkCredential]::new('', $agentSecret).Password\n$env:DST_ADMIN_AGENT_SERVER_URL = ${psQuote(serverURL)}\n.\\dst-admin-agent.exe -config .\\agent.conf -state .\\runtime-state.json`,
+    windows,
     docker: `${prompt}\nexport DST_ADMIN_AGENT_SERVER_URL=${url}\ndocker run --pull always -d --name dst-admin-agent --restart unless-stopped \\\n  --group-add "$(stat -c '%g' /var/run/docker.sock)" \\\n  -e DST_ADMIN_AGENT_SERVER_URL -e DST_ADMIN_AGENT_SECURITY_KEY \\\n  -e TZ=Asia/Shanghai \\\n  -v dst-admin-agent:/var/lib/dst-admin-agent \\\n  -v /opt/dst:/opt/dst \\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\n  ${AGENT_IMAGES[registry] || AGENT_IMAGES.aliyun}`
   }
 }
