@@ -204,6 +204,17 @@ export const softwareV2API = {
   apply: operationId => client.post('/system/software/actions/apply', { operationId, confirmation: 'APPLY SOFTWARE UPDATE' }, { runtimeTarget: false, timeout: 15000 }),
 }
 
+// Outbound notifications are Controller settings, independent of node scope.
+export const notificationsV2API = {
+  channels: () => client.get('/system/notifications/channels', { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),
+  save: (id, input) => id ? client.put(`/system/notifications/channels/${encode(id)}`, input, { runtimeTarget: false }) : client.post('/system/notifications/channels', input, { runtimeTarget: false }),
+  remove: (id, revision) => client.delete(`/system/notifications/channels/${encode(id)}`, { data: { revision }, runtimeTarget: false }),
+  test: id => client.post(`/system/notifications/channels/${encode(id)}/actions/test`, {}, { runtimeTarget: false }),
+  history: (limit = 25, offset = 0) => client.get('/system/notifications/deliveries', { params: { limit, offset }, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),
+  retry: id => client.post(`/system/notifications/deliveries/${encode(id)}/actions/retry`, {}, { runtimeTarget: false }),
+  send: (title, message) => client.post('/system/notifications/actions/send', { title, message }, { runtimeTarget: false })
+}
+
 export const gameNotificationsV2API = {
   maintenancePreview: (roomId, signal) => client.get(`/rooms/${encode(roomId)}/maintenance-preview`, {
     signal, timeout: 8000, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' }

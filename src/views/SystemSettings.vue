@@ -198,11 +198,12 @@
       </TabsContent>
 
       <TabsContent value="notification" class="settings-tab-content">
+        <details>
+          <summary class="mb-3 cursor-pointer text-sm font-medium">{{ $t('systemSettings.notification.mailServer') }}</summary>
         <Card size="sm" class="settings-card">
           <CardHeader><CardTitle>{{ $t('systemSettings.tabs.notification') }}</CardTitle><CardDescription>{{ $t('systemSettings.notification.description') }}</CardDescription></CardHeader>
           <CardContent>
             <FieldGroup class="settings-form">
-              <Alert><AlertTitle>{{ $t('systemSettings.notification.unavailable') }}</AlertTitle><AlertDescription>{{ $t('systemSettings.notification.unavailableDescription') }}</AlertDescription></Alert>
               <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpServer)">
                 <FieldContent><FieldLabel for="smtp-server">{{ $t('systemSettings.notification.smtpServer') }}</FieldLabel><FieldError v-if="formErrors.smtpServer">{{ formErrors.smtpServer }}</FieldError></FieldContent>
                 <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!fieldEditable('notification.smtpServer')" :aria-invalid="Boolean(formErrors.smtpServer)" :placeholder="$t('systemSettings.notification.smtpServerPlaceholder')" @input="formErrors.smtpServer = ''" />
@@ -234,6 +235,8 @@
             <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
           </CardFooter>
         </Card>
+        </details>
+        <NotificationChannelsPanel v-if="activeTab === 'notification'" :default-email="settings.adminEmail" />
       </TabsContent>
 
       <TabsContent value="software" class="settings-tab-content"><SoftwareUpdatePanel /></TabsContent>
@@ -327,6 +330,7 @@ import { systemApi } from '@/api';
 import { editableSystemSettingValues } from '@/api/systemSettingsSupport.mjs';
 import { systemV2API } from '@/api/v2';
 import SoftwareUpdatePanel from '@/components/settings/SoftwareUpdatePanel.vue';
+import NotificationChannelsPanel from '@/components/settings/NotificationChannelsPanel.vue';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -374,6 +378,7 @@ export default {
     DatabaseBackup,
     Download,
     SoftwareUpdatePanel,
+    NotificationChannelsPanel,
     Field,
     FieldContent,
     FieldDescription,
@@ -418,7 +423,7 @@ export default {
       statusLoading: false,
       statusLoaded: false,
       statusError: '',
-      activeTab: this.$route.query.tab === 'software' ? 'software' : 'basic',
+      activeTab: ['basic', 'security', 'backup', 'notification', 'software', 'systemStatus'].includes(this.$route.query.tab) ? this.$route.query.tab : 'basic',
       revision: '',
       settingsResponse: null,
       smtpPasswordConfigured: false,
@@ -528,7 +533,7 @@ export default {
   },
   watch: {
     '$route.query.tab'(value) {
-      if (value === 'software') this.activeTab = 'software';
+      if (['basic', 'security', 'backup', 'notification', 'software', 'systemStatus'].includes(value)) this.activeTab = value;
     },
     // 监听标签页切换，在切换到系统状态标签页时刷新数据
     activeTab(newVal) {
@@ -652,8 +657,7 @@ export default {
       if (includeSender) return true;
 
       if (!String(this.settings.smtpServer || '').trim()) this.formErrors.smtpServer = this.$t('systemSettings.validation.smtpServerRequired');
-      if (!String(this.settings.smtpUsername || '').trim()) this.formErrors.smtpUsername = this.$t('systemSettings.validation.smtpUsernameRequired');
-      if (!String(this.settings.smtpPassword || '').trim() && !this.smtpPasswordConfigured) this.formErrors.smtpPassword = this.$t('systemSettings.validation.smtpPasswordRequired');
+      if (String(this.settings.smtpUsername || '').trim() && !String(this.settings.smtpPassword || '').trim() && !this.smtpPasswordConfigured) this.formErrors.smtpPassword = this.$t('systemSettings.validation.smtpPasswordRequired');
       if (includeSender) {
         if (!String(this.settings.senderEmail || '').trim()) this.formErrors.senderEmail = this.$t('systemSettings.validation.senderEmailRequired');
         else if (!this.isValidEmail(this.settings.senderEmail)) this.formErrors.senderEmail = this.$t('systemSettings.validation.emailInvalid');
@@ -752,7 +756,8 @@ export default {
           server: this.settings.smtpServer,
           port: this.settings.smtpPort,
           username: this.settings.smtpUsername,
-          password: this.settings.smtpPassword
+          password: this.settings.smtpPassword,
+          useStoredPassword: this.smtpPasswordConfigured && !this.settings.smtpPassword
         });
         toast.success(this.$t('systemSettings.feedback.smtpSucceeded', { transport: result.tls ? 'TLS' : this.$t('systemSettings.feedback.localPlaintext') }));
       } catch (error) {

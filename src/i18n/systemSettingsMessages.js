@@ -92,9 +92,8 @@ export const systemSettingsMessages = {
         viewHistory: '查看备份历史'
       },
       notification: {
-        description: '保存 SMTP 配置并检查连接。',
-        unavailable: '邮件事件通知尚未支持',
-        unavailableDescription: '当前只提供 SMTP 连接与认证测试，不发送服务器、登录或备份事件邮件。',
+        mailServer: '邮件服务器（SMTP）',
+        description: '配置发件服务器，下方添加接收邮箱或 Webhook 通知渠道。',
         emailEnabled: '启用邮件通知',
         emailEnabledDescription: '启用系统邮件通知功能。',
         smtpServer: 'SMTP 服务器',
@@ -328,9 +327,8 @@ export const systemSettingsMessages = {
         viewHistory: 'View backup history'
       },
       notification: {
-        description: 'Save SMTP settings and check the connection.',
-        unavailable: 'Event emails are not available yet',
-        unavailableDescription: 'Only SMTP connection and authentication checks are supported. Server, sign-in, and backup events do not send email.',
+        mailServer: 'Mail server (SMTP)',
+        description: 'Configure the mail server, then add email or Webhook channels below.',
         emailEnabled: 'Enable email notifications',
         emailEnabledDescription: 'Enable system email notifications.',
         smtpServer: 'SMTP server',
