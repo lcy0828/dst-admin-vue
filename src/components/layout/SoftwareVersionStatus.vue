@@ -16,12 +16,16 @@ const label = computed(() => `${t('softwareUpdate.management')} ${version.value}
 <template>
   <Tooltip>
     <TooltipTrigger as-child>
-      <Button :variant="available ? 'outline' : 'ghost'" size="sm" as-child>
+      <Button :variant="available ? 'warning' : 'ghost'" size="sm" as-child>
         <RouterLink :to="{ path: '/system/settings', query: { tab: 'software' } }" :aria-label="label">
           <ArrowUpCircle v-if="available" data-icon="inline-start" />
           <Package v-else data-icon="inline-start" />
           <span class="hidden lg:inline">{{ t('softwareUpdate.management') }}</span>
-          {{ version }}
+          <template v-if="available">
+            <span class="hidden sm:inline">{{ version }}</span>
+            <span>{{ t('softwareUpdate.available') }}</span>
+          </template>
+          <span v-else>{{ version }}</span>
         </RouterLink>
       </Button>
     </TooltipTrigger>

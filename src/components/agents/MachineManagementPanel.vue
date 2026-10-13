@@ -160,7 +160,7 @@ defineExpose({ refresh: load })
             <div :class="cn('mt-1.5 flex items-center gap-1.5 text-xs', unavailable ? 'text-muted-foreground' : item.target.online ? 'text-success-foreground' : 'text-destructive')">
               <span class="size-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />{{ t(unavailable ? 'machines.connectionUnknown' : item.target.online ? 'machines.online' : 'machines.disconnected') }}
             </div>
-            <button v-if="item.agent?.version" type="button" class="mt-1 flex cursor-pointer flex-wrap items-center gap-1.5 text-left text-xs text-muted-foreground hover:underline" @click="show(item, 'diagnostics')"><span>{{ item.agent.update?.software?.current?.version || (item.agent.version.startsWith('v') ? item.agent.version : 'v' + item.agent.version) }}</span><Badge v-if="item.agent.update?.updateAvailable" variant="secondary">{{ t('softwareUpdate.available') }}</Badge></button>
+            <button v-if="item.agent?.version" type="button" class="mt-1 flex cursor-pointer flex-wrap items-center gap-1.5 text-left text-xs text-muted-foreground hover:underline" @click="show(item, 'diagnostics')"><span>{{ item.agent.update?.software?.current?.version || (item.agent.version.startsWith('v') ? item.agent.version : 'v' + item.agent.version) }}</span><Badge v-if="item.agent.update?.updateAvailable" variant="warning">{{ t('softwareUpdate.available') }}</Badge></button>
           </div>
           <div class="machine-address min-w-0">
             <div v-if="item.address" class="flex min-w-0 items-center gap-1">
@@ -264,7 +264,7 @@ defineExpose({ refresh: load })
               </dl>
               <template v-if="selected.agent">
                 <AgentSoftwareUpdatePanel v-if="selected.agent.capabilities?.includes('agent.software-update.v1') && open && tab === 'diagnostics'" :key="selected.agent.id" :agent-id="selected.agent.id" :online="selected.target.online" @changed="emit('software-updated')" />
-                <p v-else-if="selected.agent.update?.updateAvailable" class="text-sm">{{ t('agents.list.updates.available', { version: selected.agent.update.latestVersion }) }}</p>
+                <Badge v-else-if="selected.agent.update?.updateAvailable" variant="warning">{{ t('agents.list.updates.available', { version: selected.agent.update.latestVersion }) }}</Badge>
                 <div class="flex flex-wrap gap-2">
                   <Button v-if="selected.target.configured && selected.target.capabilities?.includes('runtime.inventory.read')" size="sm" variant="outline" :disabled="!selected.target.online || refreshing" @click="refreshInventory"><Spinner v-if="refreshing" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t('agents.list.actions.refreshInventory') }}</Button>
                   <Button size="sm" variant="outline" @click="emit('command', selected.agent.id)"><Terminal data-icon="inline-start" />{{ t('agents.list.actions.executeCommand') }}</Button>

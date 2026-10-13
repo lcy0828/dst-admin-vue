@@ -69,7 +69,7 @@ async function execute() {
             <dt class="text-sm text-muted-foreground">{{ t('softwareUpdate.latest') }}</dt>
             <dd class="flex flex-wrap items-center gap-2 text-xl font-semibold tabular-nums">
               {{ latest?.version || '—' }}
-              <Badge :variant="snapshot.check.hasUpdate ? 'default' : 'secondary'">{{ t(snapshot.check.hasUpdate ? 'softwareUpdate.available' : latest ? 'softwareUpdate.upToDate' : 'softwareUpdate.unknown') }}</Badge>
+              <Badge :variant="snapshot.check.hasUpdate ? 'warning' : 'secondary'">{{ t(snapshot.check.hasUpdate ? 'softwareUpdate.available' : latest ? 'softwareUpdate.upToDate' : 'softwareUpdate.unknown') }}</Badge>
             </dd>
           </div>
         </dl>
