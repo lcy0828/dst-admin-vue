@@ -13,6 +13,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
+import SteamLoginSettings from '@/components/SteamLoginSettings.vue'
 import { getManagementScope, managementScopeTargetId, MANAGEMENT_SCOPE_CHANGED_EVENT } from '@/lib/managementScope.mjs'
 import { luaJITJobTerminal, luaJITJobError } from '@/lib/luajitInstaller.mjs'
 import { formatJobBytes, formatJobRate } from '@/lib/globalJobs.mjs'
@@ -124,6 +125,7 @@ onBeforeUnmount(() => { alive = false; generation += 1; clearTimeout(timer); win
           <div v-if="item.resolvedPath && item.resolvedPath !== item.serverPath" class="min-w-0 sm:col-span-2"><dt class="text-xs text-muted-foreground">{{ t('gameInstallation.actualLocation') }}</dt><dd class="mt-1 break-all text-sm">{{ item.resolvedPath }}</dd></div>
         </dl>
         <div class="mt-auto flex flex-wrap items-center gap-2 pt-1">
+			<SteamLoginSettings v-if="item.installationId" :target-id="item.targetId" :installation-id="item.installationId" :node-label="items.length > 1 ? `${item.targetName} / ${item.installationId}` : ''" :disabled="busy || !item.online || !item.steamcmdAvailable" />
           <Button size="sm" :variant="item.installed ? 'outline' : 'default'" :disabled="busy || !item.online || Boolean(item.error) || !item.canInstall" @click="open(item, 'install')"><Download data-icon="inline-start" />{{ t(item.installed ? 'gameInstallation.update' : 'gameInstallation.install') }}</Button>
           <Button v-if="!item.installed" size="sm" variant="outline" :disabled="busy || !item.online || Boolean(item.error) || !item.canAdopt" @click="open(item, 'adopt')"><FolderOpen data-icon="inline-start" />{{ t('gameInstallation.adopt') }}</Button>
           <Button v-if="item.installed" size="sm" variant="outline" @click="router.push('/rooms')">{{ t('gameInstallation.rooms') }}</Button>

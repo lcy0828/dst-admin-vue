@@ -758,6 +758,8 @@ export const agentsV2API = {
 }
 
 export const gameInstallationsV2API = {
+	steamLogin: (targetId,installationId) => client.get('/runtime-targets/game-installations/steam-login',{params:{targetId,installationId},runtimeTarget:false,timeout:35000}),
+	manageSteamLogin: input => client.post('/runtime-targets/game-installations/steam-login',input,{runtimeTarget:false,timeout:35000}),
   list: targetId => client.get('/runtime-targets/game-installations', { params: targetId ? { targetId } : {}, runtimeTarget: false, timeout: 35000 }),
   probe: input => client.post('/runtime-targets/game-installations/probe', input, { runtimeTarget: false, timeout: 35000 }),
   install: input => client.post('/runtime-targets/game-installations/actions/install', input, { runtimeTarget: false }),
