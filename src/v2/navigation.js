@@ -10,6 +10,7 @@ import {
   RadioTower,
   ServerCog,
   Settings2,
+  Sparkles,
   UsersRound
 } from '@lucide/vue'
 
@@ -74,6 +75,7 @@ export const V2_NAVIGATION = [
   {
     labelKey: 'navigation.sections.operations',
     items: [
+      { labelKey: 'ai.title', to: '/ai', icon: Sparkles },
       {
         labelKey: 'navigation.logs',
         icon: FileSearch,

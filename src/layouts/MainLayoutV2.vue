@@ -9,6 +9,7 @@ import GameVersionStatus from '@/components/layout/GameVersionStatus.vue'
 import SoftwareVersionStatus from '@/components/layout/SoftwareVersionStatus.vue'
 import { provideSoftwareUpdate } from '@/composables/useSoftwareUpdate'
 import GlobalJobStatus from '@/components/layout/GlobalJobStatus.vue'
+import AIFloatingAssistant from '@/components/ai/AIFloatingAssistant.vue'
 import RoomUpdateProgress from '@/components/layout/RoomUpdateProgress.vue'
 import { provideGlobalJobStatus } from '@/composables/useGlobalJobStatus'
 import LanguageSwitch from '@/components/layout/LanguageSwitch.vue'
@@ -247,7 +248,7 @@ onBeforeUnmount(() => {
       <RoomManagementScopeNotice v-if="hasMachineScope && route.path.startsWith('/rooms')" />
 
       <div class="bg-muted/30 min-h-0 flex-1 overflow-auto">
-        <main id="main-content-v2" class="mx-auto w-full px-4 py-6 md:px-6 lg:px-8 lg:py-8" :class="{ 'max-w-[1440px]': route.path !== '/players/list' }" tabindex="-1">
+        <main id="main-content-v2" class="mx-auto w-full px-4 pt-6 pb-24 md:px-6 lg:px-8 lg:pt-8" :class="{ 'max-w-[1440px]': route.path !== '/players/list' }" tabindex="-1">
           <Alert v-if="setupPending" class="mb-4">
             <AlertTitle>{{ t('setup.title') }}</AlertTitle>
             <AlertDescription>{{ t('setup.resume') }}</AlertDescription>
@@ -258,6 +259,7 @@ onBeforeUnmount(() => {
       </div>
       <RoomUpdateProgress />
     </SidebarInset>
+    <AIFloatingAssistant />
 
     <Dialog v-model:open="profileOpen">
       <DialogContent class="sm:max-w-md">

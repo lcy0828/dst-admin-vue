@@ -48,7 +48,7 @@ const knownEvents = new Set([
   'start_requested', 'stop_requested', 'restart_requested', 'cleanup_requested',
   'session_started', 'running', 'failed', 'stopped', 'unexpected_exit'
 ])
-const knownSources = new Set(['api', 'automation', 'game_update', 'system_monitor', 'external'])
+const knownSources = new Set(['api', 'ai', 'automation', 'game_update', 'system_monitor', 'external'])
 const knownStates = new Set(['stopped', 'starting', 'running', 'failed', 'stopping'])
 
 function eventLabel(type) {

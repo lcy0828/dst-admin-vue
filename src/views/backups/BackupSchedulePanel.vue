@@ -49,7 +49,7 @@ import { useRouter } from 'vue-router'
 import { Plus } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { cronTaskApi } from '@/api/index'
-import { automationV2API, backupsV2API } from '@/api/v2'
+import { backupsV2API } from '@/api/v2'
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent } from '@/components/ui/card'
 import { Alert, AlertTitle, AlertDescription, AlertAction } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -67,6 +67,7 @@ const { t, locale } = useI18n({ messages: {
   'en-US': { retention: 'Recent snapshots to keep', retentionHelp: 'Enter 1–100, or leave blank to disable cleanup. Retention is shared per room and removes only successful automatic snapshots; manual and protection backups are kept. Legacy ZIP snapshots are retained separately.', retentionSummary: 'Keep {keep} recent automatic snapshots', noRetention: 'No automatic cleanup', invalidRetention: 'Enter 1–100 for retention, or leave it blank.', legacyTitle: 'An existing backup schedule is active', legacyDescription: 'The legacy schedule runs every {interval} minutes and keeps {keep} snapshots. Pause it before adding a new schedule to avoid duplicate backups.', pauseLegacy: 'Pause old schedule', title: 'Scheduled backups', description: 'Schedule backups for all worlds in this room. Rooms use hot snapshots when all worlds run; partially running rooms briefly stop and resume their running worlds.', add: 'Add schedule', edit: 'Edit schedule', history: 'Tasks and history', name: 'Schedule name', frequency: 'Frequency', hourly: 'Every hour', daily: 'Daily at 04:00', custom: 'Custom', cronHelp: 'Use 5 fields (minute hour day month weekday) or 6 fields (second first). Example: 0 */6 * * * runs every 6 hours.', timezone: 'Time zone', enabled: 'Enabled', disabled: 'Paused', groupDisabled: 'Group paused', next: 'Next backup:', empty: 'This room has no scheduled backups.', failed: 'Operation failed', retry: 'Retry', loading: 'Loading schedules…', cancel: 'Cancel', save: 'Save', saved: 'Backup schedule saved', defaultName: 'Scheduled room backup' }
 } })
 const keep = ref('7'), legacyPolicy = ref(null)
+const defaults = ref({ schedule: '0 4 * * *', timezone: 'Asia/Shanghai', keep: 7 })
 const tasks = ref([]), groups = ref([]), loading = ref(false), error = ref('')
 const open = ref(false), saving = ref(false), saveError = ref(''), selected = ref(null), preset = ref('daily')
 const form = ref({ name: '', schedule: '0 4 * * *', timezone: 'Asia/Shanghai', enabled: true })
@@ -75,16 +76,17 @@ function groupEnabled(task) { return groups.value.find(group => group.id === tas
 async function load() {
   loading.value = true; error.value = ''
   try {
-    const [taskResponse, groupResponse, policy] = await Promise.all([automationV2API.tasks(props.roomId), automationV2API.groups(props.roomId), backupsV2API.policy(props.roomId)])
-    legacyPolicy.value = policy
-    tasks.value = (taskResponse.items || []).filter(task => task.action === 'backup.create')
-    groups.value = groupResponse.items || []
+    const response = await backupsV2API.schedules(props.roomId)
+    legacyPolicy.value = response.legacyPolicy
+    tasks.value = response.items || []
+    groups.value = response.groups || []
+    defaults.value = response.defaults
   } catch (cause) { error.value = cause.message } finally { loading.value = false }
 }
 function edit(task = null) {
   selected.value = task; saveError.value = ''
-  keep.value = task ? String(task.parameters?.keep ?? '') : '7'
-  form.value = { name: task?.name || t('defaultName'), schedule: task?.schedule || '0 4 * * *', timezone: task?.timezone || 'Asia/Shanghai', enabled: task?.enabled ?? true }
+  keep.value = task ? String(task.parameters?.keep ?? '') : String(defaults.value.keep)
+  form.value = { name: task?.name || t('defaultName'), schedule: task?.schedule || defaults.value.schedule, timezone: task?.timezone || defaults.value.timezone, enabled: task?.enabled ?? true }
   preset.value = task ? 'custom' : 'daily'; open.value = true
 }
 function applyPreset(value) { if (value !== 'custom') form.value.schedule = value === 'hourly' ? '0 * * * *' : '0 4 * * *' }
@@ -98,19 +100,9 @@ async function save() {
     const task = selected.value
     const retention = String(keep.value).trim()
     if (retention && (!/^\d+$/.test(retention) || Number(retention) < 1 || Number(retention) > 100)) throw new Error(t('invalidRetention'))
-    const parameters = { ...task?.parameters }
-    if (retention) parameters.keep = Number(retention)
-    else delete parameters.keep
-    let groupId = task?.groupId
-    if (!groupId) {
-      let group = groups.value.find(item => item.name === 'room-backups')
-      if (group && !group.enabled) throw new Error(t('groupDisabled'))
-      if (!group) { group = await automationV2API.createGroup(props.roomId, { name: 'room-backups', description: '', type: 'custom', enabled: true }); groups.value.push(group) }
-      groupId = group.id
-    }
-    const input = { ...form.value, groupId, action: 'backup.create', description: task?.description || '', worldIds: task?.worldIds || [], parameters, timeoutSeconds: task?.timeoutSeconds || 600, retryTimes: task?.retryTimes || 0, retryIntervalSeconds: task?.retryIntervalSeconds || 60, dependencies: task?.dependencies || [], expectedRevision: task?.revision || '' }
-    if (task) await automationV2API.updateTask(props.roomId, task.id, input)
-    else await automationV2API.createTask(props.roomId, input)
+    const input = { ...form.value, ...(retention ? { keep: Number(retention) } : { clearRetention: true }),
+      ...(task ? { taskId: task.id, expectedRevision: task.revision } : { createNew: true }) }
+    await backupsV2API.configureSchedule(props.roomId, input)
     open.value = false; toast.success(t('saved')); await load()
   } catch (cause) { saveError.value = cause.message } finally { saving.value = false }
 }

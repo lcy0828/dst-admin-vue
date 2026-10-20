@@ -15,7 +15,7 @@ export const serverMessages = {
       unexpectedExit: '上次异常退出',
       defaultMessage: '未发现对应的停止、重启或清理请求，分片会话已消失。',
       source: '来源：{source}',
-      sources: { api: 'Web 操作', automation: '自动化', game_update: '游戏更新', system_monitor: '系统监测', external: '外部或未知' },
+      sources: { ai: 'AI 操作', api: 'Web 操作', automation: '自动化', game_update: '游戏更新', system_monitor: '系统监测', external: '外部或未知' },
       history: {
         title: '运行事件',
         description: '记录启动、停止、清理和进程退出的来源，便于追查异常退出。',
@@ -704,7 +704,7 @@ export const serverMessages = {
       unexpectedExit: 'Last exit unexpected',
       defaultMessage: 'The shard session disappeared without a matching stop, restart, or cleanup request.',
       source: 'Source: {source}',
-      sources: { api: 'Web action', automation: 'Automation', game_update: 'Game update', system_monitor: 'System monitor', external: 'External or unknown' },
+      sources: { ai: 'AI action', api: 'Web action', automation: 'Automation', game_update: 'Game update', system_monitor: 'System monitor', external: 'External or unknown' },
       history: {
         title: 'Runtime events',
         description: 'Audit the source of start, stop, cleanup, and process-exit events.',

@@ -6,6 +6,9 @@ import { filterManagementRooms } from '@/lib/managementScope.mjs'
 import { emitGlobalJobSubmitted } from '@/lib/globalJobs.mjs'
 import { isWorldProgressJob } from '@/lib/taskProgress.mjs'
 import { createRoomBackupsAPI } from '@/lib/roomBackups.mjs'
+import { readAIEvents } from '@/lib/aiStream.mjs'
+import { createOpenAPIClient } from './openapiClient.mjs'
+import openapiOperations from './openapiOperations.json'
 
 const baseURL = `${apiConfig.BASE_URL.replace(/\/$/, '')}/v2`
 const GAME_RELEASE_REQUEST_TIMEOUT = 65_000
@@ -97,6 +100,7 @@ client.interceptors.request.use(config => {
 })
 
 client.interceptors.response.use(response => {
+  if (response.config.responseType === 'blob') return response.data
   const envelope = response.data
   if (!envelope || envelope.error) {
     throw new APIError(response.status, envelope?.error, envelope?.meta?.requestId)
@@ -213,6 +217,40 @@ export const notificationsV2API = {
   history: (limit = 25, offset = 0) => client.get('/system/notifications/deliveries', { params: { limit, offset }, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),
   retry: id => client.post(`/system/notifications/deliveries/${encode(id)}/actions/retry`, {}, { runtimeTarget: false }),
   send: (title, message) => client.post('/system/notifications/actions/send', { title, message }, { runtimeTarget: false })
+}
+
+// AI configuration, credentials and activity belong to the Controller.
+export const managementAPI = createOpenAPIClient(client, openapiOperations)
+
+export const aiV2API = {
+  status: () => client.get('/system/ai', { runtimeTarget: false }),
+  save: input => client.put('/system/ai', input, { runtimeTarget: false }),
+  test: () => client.post('/system/ai/actions/test', {}, { runtimeTarget: false, timeout: 55000 }),
+  tokens: () => client.get('/system/ai/tokens', { runtimeTarget: false }),
+  createToken: input => client.post('/system/ai/tokens', input, { runtimeTarget: false }),
+  revoke: id => client.delete(`/system/ai/tokens/${encode(id)}`, { runtimeTarget: false }),
+  history: () => client.get('/system/ai/calls', { runtimeTarget: false }),
+  call: id => client.get(`/system/ai/calls/${encode(id)}`, { runtimeTarget: false }),
+  upload: (file, onUploadProgress, signal) => {
+    const body = new FormData()
+    body.set('file', file)
+    return client.post('/system/ai/attachments', body, { runtimeTarget: false, signal, onUploadProgress, timeout: 0, headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+  deleteAttachment: id => client.delete(`/system/ai/attachments/${encode(id)}`, { runtimeTarget: false }),
+  privateInput: input => client.post('/system/ai/private-inputs', input, { runtimeTarget: false }),
+  async chat(input, { signal, onEvent } = {}) {
+    if (!csrfToken) await authAPI.session()
+    const response = await fetch(`${baseURL}/system/ai/chat`, {
+      method: 'POST', credentials: 'include', signal,
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', 'X-CSRF-Token': csrfToken, 'Idempotency-Key': createIdempotencyKey() },
+      body: JSON.stringify(input)
+    })
+    if (!response.ok) {
+      const envelope = await response.json().catch(() => null)
+      throw new APIError(response.status, envelope?.error || { code: 'AI_REQUEST_FAILED', message: `HTTP ${response.status}` })
+    }
+    return readAIEvents(response, onEvent)
+  }
 }
 
 export const gameNotificationsV2API = {
@@ -908,7 +946,9 @@ export const backupsV2API = {
   downloadURL: backupId => `${baseURL}/backups/${encode(backupId)}/download`,
   downloadBlob: backupId => getBinary(`/backups/${encode(backupId)}/download`, 'application/zip'),
   policy: roomId => client.get(`/rooms/${encode(roomId)}/backup-policy`),
-  savePolicy: (roomId, input) => client.put(`/rooms/${encode(roomId)}/backup-policy`, input)
+  savePolicy: (roomId, input) => client.put(`/rooms/${encode(roomId)}/backup-policy`, input),
+  schedules: roomId => managementAPI('listRoomBackupSchedules', { path: { roomId } }),
+  configureSchedule: (roomId, input) => managementAPI('configureRoomBackupSchedule', { path: { roomId }, body: input })
 }
 
 export const backupSetsV2API = {

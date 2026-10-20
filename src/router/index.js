@@ -34,6 +34,12 @@ export const constantRoutes = [
     redirect: '/dashboard',
     children: [
       {
+        path: 'ai',
+        component: () => import('@/views/AIAssistant.vue'),
+        name: 'AIAssistant',
+        meta: { titleKey: 'ai.title' }
+      },
+      {
         path: 'dashboard',
         component: () => import('@/views/v2/DashboardV2.vue'),
         name: 'Dashboard',

@@ -9,9 +9,11 @@
 <script>
 import FeedbackHost from '@/components/FeedbackHost.vue'
 import { Toaster } from '@/components/ui/sonner'
+import { provideAIAssistant } from '@/composables/useAIAssistant'
 
 export default {
   name: 'App',
+  setup() { provideAIAssistant() },
   components: {
     FeedbackHost,
     Toaster

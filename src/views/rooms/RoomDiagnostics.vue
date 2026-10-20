@@ -5,6 +5,7 @@
         <h1 class="text-2xl font-semibold tracking-normal">{{ t('distributed.diagnostics.title') }}</h1>
       </div>
       <div class="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+        <UiButton variant="outline" :disabled="!selectedRoomId" @click="router.push({ path: '/ai', query: { roomId: selectedRoomId } })">{{ t('ai.diagnose') }}</UiButton>
         <RoomScopeSelect :model-value="selectedRoomId" :rooms="rooms" :loading="loadingRooms" @update:model-value="selectRoom" />
         <UiButton variant="outline" :disabled="refreshing || loadingRooms || !selectedRoomId" @click="refreshPage">
           <Spinner v-if="refreshing" data-icon="inline-start" />
