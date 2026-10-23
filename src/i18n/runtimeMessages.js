@@ -2,7 +2,8 @@ const catalog = {
   'zh-CN': {
     runtime: {
       title: '数据采集 Runtime',
-      description: '管理 customcommands.lua 中由系统维护的采集模块。玩家列表、世界状态、事件与诊断依赖此模块。',
+      description: '采集模块随控制端和 Agent 升级自动维护；运行中的世界无需重启。这里可查看结果或重试修复。',
+      autoUpdate: { updating: '正在自动维护', current: '已是最新', updated: '已自动更新', failed: '自动维护失败', disabled: '未启用', unknown: '状态未知' },
       refresh: '刷新状态',
       installAll: '安装或修复全部',
       noRooms: '没有可管理的房间',
@@ -55,7 +56,8 @@ const catalog = {
   'en-US': {
     runtime: {
       title: 'Telemetry Runtime',
-      description: 'Manage the system-owned modules in customcommands.lua. Player data, world state, events, and diagnostics depend on this runtime.',
+      description: 'Telemetry modules are maintained automatically with controller and Agent upgrades, without restarting running worlds. Check the result or retry repairs here.',
+      autoUpdate: { updating: 'Maintaining runtime', current: 'Up to date', updated: 'Updated automatically', failed: 'Maintenance failed', disabled: 'Not enabled', unknown: 'Unknown' },
       refresh: 'Refresh Status',
       installAll: 'Install or Repair All',
       noRooms: 'No rooms',

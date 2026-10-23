@@ -461,9 +461,9 @@ export const runtimeV2API = {
     const path = `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/events/stream`
     return cursor ? `${baseURL}${path}?cursor=${encode(cursor)}` : `${baseURL}${path}`
   },
-  installRoom: roomId => client.post(`/rooms/${encode(roomId)}/runtime/actions/install`),
+  installRoom: roomId => client.post(`/rooms/${encode(roomId)}/runtime/actions/install`, {}, { timeout: 180000 }),
   installWorld: (roomId, worldId) => client.post(
-    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/actions/install`
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/actions/install`, {}, { timeout: 35000 }
   ),
   activate: (roomId, worldId) => client.post(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/runtime/actions/activate`

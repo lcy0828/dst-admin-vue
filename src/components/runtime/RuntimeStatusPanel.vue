@@ -55,7 +55,15 @@
             <TableRow v-for="report in reports" :key="`${report.roomId}:${report.worldId}`">
               <TableCell>{{ report.roomName }}</TableCell>
               <TableCell>{{ report.worldName }}</TableCell>
-              <TableCell><Badge :variant="installVariant(report.state)">{{ installLabel(report.state) }}</Badge></TableCell>
+              <TableCell>
+                <div class="runtime-health">
+                  <Badge :variant="installVariant(report.state)">{{ installLabel(report.state) }}</Badge>
+                  <Badge v-if="report.autoUpdate" :variant="report.autoUpdate.state === 'failed' ? 'destructive' : 'outline'" role="status">
+                    <Spinner v-if="report.autoUpdate.state === 'updating'" data-icon="inline-start" />
+                    {{ autoUpdateLabel(report.autoUpdate.state) }}
+                  </Badge>
+                </div>
+              </TableCell>
               <TableCell>
                 <div class="runtime-health">
                   <Badge :variant="healthVariant(report.healthState)">{{ healthLabel(report.healthState) }}</Badge>
@@ -65,9 +73,9 @@
               <TableCell>{{ report.version || '--' }}</TableCell>
               <TableCell>
                 <div class="row-actions">
-                  <UiButton v-if="report.state !== 'installed'" size="sm" variant="outline" :disabled="Boolean(busyKey)" @click="installWorld(report)">
+                  <UiButton v-if="report.state !== 'installed' || report.autoUpdate?.state === 'failed'" size="sm" variant="outline" :disabled="Boolean(busyKey)" @click="installWorld(report)">
                     <Spinner v-if="isBusy(report)" data-icon="inline-start" />
-                    {{ installActionLabel(report.state) }}
+                    {{ report.autoUpdate?.state === 'failed' ? $t('runtime.actions.repair') : installActionLabel(report.state) }}
                   </UiButton>
                   <UiButton v-if="report.state === 'installed' && report.processRunning && report.healthState !== 'ready'" size="sm" variant="outline" :disabled="Boolean(busyKey)" @click="activate(report)">
                     <Spinner v-if="isBusy(report)" data-icon="inline-start" />
@@ -88,7 +96,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { RefreshCw, TerminalSquare, TriangleAlert, Wrench } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
@@ -113,10 +121,13 @@ const rooms = ref([])
 const reports = ref([])
 const busyKey = ref('')
 let requestSequence = 0
+let updateTimer = null
+let updatePolls = 0
 const discoveredRooms = computed(() => rooms.value)
 
 const rowKey = report => `${report.roomId}:${report.worldId}`
 const isBusy = report => busyKey.value === rowKey(report)
+const autoUpdateLabel = state => t(`runtime.autoUpdate.${['updating', 'current', 'updated', 'failed', 'disabled'].includes(state) ? state : 'unknown'}`)
 const installLabel = state => t(`runtime.installStates.${['missing', 'installed', 'outdated', 'invalid'].includes(state) ? state : 'unknown'}`)
 const healthLabel = state => t(`runtime.healthStates.${['ready', 'starting', 'stopped', 'degraded', 'unavailable'].includes(state) ? state : 'unknown'}`)
 const installActionLabel = state => t(`runtime.actions.${state === 'invalid' ? 'repair' : state === 'outdated' ? 'upgrade' : 'install'}`)
@@ -124,6 +135,7 @@ const installVariant = state => state === 'installed' ? 'secondary' : state === 
 const healthVariant = state => state === 'ready' ? 'default' : state === 'degraded' ? 'destructive' : 'outline'
 
 async function loadStatus() {
+  clearTimeout(updateTimer)
   const sequence = ++requestSequence
   loading.value = true
   error.value = null
@@ -155,7 +167,15 @@ async function loadStatus() {
     error.value = cause
     return { ok: false, partial: false }
   } finally {
-    if (sequence === requestSequence) loading.value = false
+    if (sequence === requestSequence) {
+      loading.value = false
+      clearTimeout(updateTimer)
+      const updating = reports.value.some(report => report.autoUpdate?.state === 'updating')
+      if (updating && !error.value && !document.hidden && updatePolls < 90) {
+        updatePolls += 1
+        updateTimer = setTimeout(loadStatus, 2000)
+      } else if (!updating) updatePolls = 0
+    }
   }
 }
 
@@ -192,11 +212,22 @@ async function runWorldAction(report, action, actionKey) {
   }
 }
 
-const installWorld = report => runWorldAction(report, runtimeV2API.installWorld, report.state === 'invalid' ? 'repair' : report.state === 'outdated' ? 'upgrade' : 'install')
+const installWorld = report => runWorldAction(report, runtimeV2API.installWorld, report.autoUpdate?.state === 'failed' || report.state === 'invalid' ? 'repair' : report.state === 'outdated' ? 'upgrade' : 'install')
 const activate = report => runWorldAction(report, runtimeV2API.activate, 'activate')
 const reload = report => runWorldAction(report, runtimeV2API.reload, 'reload')
 
-onMounted(loadStatus)
+const onVisibility = () => {
+  if (!document.hidden && reports.value.some(report => report.autoUpdate?.state === 'updating')) void loadStatus()
+}
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibility)
+  void loadStatus()
+})
+onBeforeUnmount(() => {
+  requestSequence += 1
+  clearTimeout(updateTimer)
+  document.removeEventListener('visibilitychange', onVisibility)
+})
 watch(() => props.roomId, () => void loadStatus())
 defineExpose({ loadStatus })
 </script>
