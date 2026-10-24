@@ -77,7 +77,7 @@
             <article v-for="mod in rows" :key="mod.id" class="room-mod-dialog-row">
               <div class="room-mod-image">
                 <Package v-if="!mod.image || brokenImages.has(mod.id)" aria-hidden="true" />
-                <img v-else :src="modThumbnailUrl(mod.image, 80)" :alt="mod.name" loading="lazy" @error="markImageBroken(mod.id)" />
+                <img v-else :src="modThumbnailUrl(mod.image, 80, mod.id || mod.modid)" :alt="mod.name" loading="lazy" @error="markImageBroken(mod.id)" />
               </div>
               <div class="room-mod-copy">
                 <strong :title="mod.name">{{ mod.name }}</strong>

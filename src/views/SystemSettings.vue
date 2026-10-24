@@ -32,6 +32,7 @@
           <TabsTrigger value="backup" class="settings-tab-trigger"><DatabaseBackup />{{ $t('systemSettings.tabs.backup') }}</TabsTrigger>
           <TabsTrigger value="notification" class="settings-tab-trigger"><BellRing />{{ $t('systemSettings.tabs.notification') }}</TabsTrigger>
           <TabsTrigger value="systemStatus" class="settings-tab-trigger"><Activity />{{ $t('systemSettings.tabs.systemStatus') }}</TabsTrigger>
+          <TabsTrigger value="workshop" class="settings-tab-trigger"><Settings2 />{{ $t('workshop.title') }}</TabsTrigger>
           <TabsTrigger value="software" class="settings-tab-trigger"><Download />{{ $t('softwareUpdate.title') }}</TabsTrigger>
         </TabsList>
       </div>
@@ -239,6 +240,7 @@
         <NotificationChannelsPanel v-if="activeTab === 'notification'" :default-email="settings.adminEmail" />
       </TabsContent>
 
+      <TabsContent value="workshop" class="settings-tab-content"><WorkshopNetworkPanel v-if="activeTab === 'workshop'" /></TabsContent>
       <TabsContent value="software" class="settings-tab-content"><SoftwareUpdatePanel /></TabsContent>
       <TabsContent value="systemStatus" class="settings-tab-content">
         <div class="status-header">
@@ -329,6 +331,7 @@ import {
 import { systemApi } from '@/api';
 import { editableSystemSettingValues } from '@/api/systemSettingsSupport.mjs';
 import { systemV2API } from '@/api/v2';
+import WorkshopNetworkPanel from '@/components/settings/WorkshopNetworkPanel.vue';
 import SoftwareUpdatePanel from '@/components/settings/SoftwareUpdatePanel.vue';
 import NotificationChannelsPanel from '@/components/settings/NotificationChannelsPanel.vue';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -378,6 +381,7 @@ export default {
     DatabaseBackup,
     Download,
     SoftwareUpdatePanel,
+    WorkshopNetworkPanel,
     NotificationChannelsPanel,
     Field,
     FieldContent,
@@ -423,7 +427,7 @@ export default {
       statusLoading: false,
       statusLoaded: false,
       statusError: '',
-      activeTab: ['basic', 'security', 'backup', 'notification', 'software', 'systemStatus'].includes(this.$route.query.tab) ? this.$route.query.tab : 'basic',
+      activeTab: ['basic', 'security', 'backup', 'notification', 'software', 'workshop', 'systemStatus'].includes(this.$route.query.tab) ? this.$route.query.tab : 'basic',
       revision: '',
       settingsResponse: null,
       smtpPasswordConfigured: false,
@@ -533,7 +537,7 @@ export default {
   },
   watch: {
     '$route.query.tab'(value) {
-      if (['basic', 'security', 'backup', 'notification', 'software', 'systemStatus'].includes(value)) this.activeTab = value;
+      if (['basic', 'security', 'backup', 'notification', 'software', 'workshop', 'systemStatus'].includes(value)) this.activeTab = value;
     },
     // 监听标签页切换，在切换到系统状态标签页时刷新数据
     activeTab(newVal) {

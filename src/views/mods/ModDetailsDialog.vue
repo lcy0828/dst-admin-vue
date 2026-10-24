@@ -2,7 +2,7 @@
   <UiDialog :open="open" @update:open="$emit('update:open', $event)">
     <DialogContent class="mod-details-dialog sm:max-w-5xl" :aria-busy="loading">
       <DialogHeader class="details-dialog-header">
-        <DialogTitle class="details-dialog-title">{{ mod?.name || $t('mods.workshop.detailsTitle') }}</DialogTitle>
+        <DialogTitle class="details-dialog-title">{{ displayedMod.name || $t('mods.workshop.detailsTitle') }}</DialogTitle>
         <DialogDescription class="details-dialog-description">
           <Spinner v-if="loading" />
           <span>{{ $t('mods.workshop.detailsDescription') }}</span>
@@ -16,10 +16,12 @@
             <AlertTitle>{{ $t('mods.metadata.notice') }}</AlertTitle>
             <AlertDescription>{{ mod.metadataWarning }}</AlertDescription>
           </Alert>
+          <p v-if="extraLoading" class="flex items-center gap-2 text-sm text-muted-foreground" role="status"><Spinner />{{ $t('workshop.detailsLoading') }}</p>
+          <Alert v-if="extraWarning"><AlertDescription>{{ extraWarning }}</AlertDescription></Alert>
           <div class="mod-identity">
             <div class="mod-preview">
               <ImageIcon />
-              <img v-if="mod.image" :src="mod.image" :alt="mod.name" @error="hideImage" />
+              <img v-if="mod.image" :src="modThumbnailUrl(mod.image, 384, mod.id || mod.modid)" :alt="mod.name" @error="hideImage" />
             </div>
             <div class="mod-identity-content">
               <div class="identity-badges">
@@ -30,7 +32,7 @@
               <dl class="identity-list">
                 <div>
                   <dt>{{ $t('mods.workshop.author') }}</dt>
-                  <dd>{{ mod.author || $t('mods.values.unknownAuthor') }}</dd>
+                  <dd>{{ displayedMod.author || $t('mods.values.unknownAuthor') }}</dd>
                 </div>
                 <div>
                   <dt>{{ $t('mods.workshop.workshopId') }}</dt>
@@ -144,7 +146,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { modThumbnailUrl } from '@/lib/modImages.mjs'
+import { computed, ref, watch, onBeforeUnmount } from 'vue'
+import { workshopV2API } from '@/api/v2'
 import { CalendarDays, CircleArrowUp, Clock3, Download, ExternalLink, Eye, FileText, HardDrive, Heart, ImageIcon, Info, PackagePlus, RefreshCw, Star, Tag, Users } from '@lucide/vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -165,6 +169,27 @@ const props = defineProps({
 })
 
 defineEmits(['update:open', 'download', 'refresh', 'add-to-room'])
+
+const extra = ref(null)
+const extraWarning = ref('')
+const extraLoading = ref(false)
+let enrichmentController, enrichmentRequest = 0
+const displayedMod = computed(() => ({ ...props.mod, ...(extra.value || {}), author: extra.value?.author || props.mod?.author || '' }))
+watch([() => props.open, () => props.mod?.id || props.mod?.modid], async ([open, id]) => {
+  const request = ++enrichmentRequest
+  enrichmentController?.abort(); extra.value = null; extraWarning.value = ''; extraLoading.value = false
+  if (!open || !/^[0-9]{1,20}$/.test(String(id || ''))) return
+  enrichmentController = new AbortController(); extraLoading.value = true
+  try {
+    const data = await workshopV2API.enrich([String(id)], '', { signal: enrichmentController.signal, community: true })
+    if (request !== enrichmentRequest) return
+    const item = data.items?.[id]
+    if (item) extra.value = Object.fromEntries(['name', 'author', 'description'].filter(key => item[key]).map(key => [key, item[key]]))
+    if (data.warning) extraWarning.value = i18n.global.t('workshop.partial')
+  } catch (error) { if (request === enrichmentRequest && error.code !== 'ERR_CANCELED') extraWarning.value = i18n.global.t('workshop.partial') }
+  finally { if (request === enrichmentRequest) extraLoading.value = false }
+}, { immediate: true })
+onBeforeUnmount(() => { enrichmentRequest++; enrichmentController?.abort() })
 
 const categoryKeys = Object.freeze({
   character: 'character',
@@ -190,7 +215,7 @@ const categoryKeys = Object.freeze({
 const downloaded = computed(() => Boolean(props.mod?.downloaded || props.mod?.isDownloaded))
 const updateAvailable = computed(() => Boolean(props.mod?.updateAvailable))
 const displayTags = computed(() => (props.mod?.tags || []).filter(tag => !String(tag).toLowerCase().startsWith('version:')))
-const formattedDescription = computed(() => formatWorkshopDescription(props.mod && props.mod.description) || i18n.global.t('mods.workshop.noDescription'))
+const formattedDescription = computed(() => formatWorkshopDescription(displayedMod.value.description) || i18n.global.t('mods.workshop.noDescription'))
 const ratingLabel = computed(() => {
   if (props.mod?.rating === null || props.mod?.rating === undefined) return i18n.global.t('mods.workshop.noRatings')
   const score = Number(props.mod.rating)

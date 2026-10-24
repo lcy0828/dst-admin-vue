@@ -183,7 +183,7 @@
                     <div class="mod-identity">
                       <div class="mod-preview">
                         <Package v-if="!mod.previewUrl || brokenImages.has(mod.id)" />
-                        <img v-else :src="modThumbnailUrl(mod.previewUrl, 80)" :alt="mod.name" loading="lazy" @error="markImageBroken(mod.id)" />
+                        <img v-else :src="modThumbnailUrl(mod.previewUrl, 80, mod.id || mod.modid)" :alt="mod.name" loading="lazy" @error="markImageBroken(mod.id)" />
                       </div>
                       <div class="min-w-0">
                         <strong class="block truncate" :title="mod.name">{{ mod.name }}</strong>

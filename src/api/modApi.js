@@ -436,15 +436,15 @@ async function updateOutdatedRuntimeMods(targetId, installationId) {
   )
 }
 
-async function searchMods({ keyword = '', sort = 'trend', days = 7, tags = [], page = 1, pageSize = 20 }) {
+async function searchMods({ keyword = '', sort = 'trend', days = 7, tags = [], page = 1, pageSize = 20, source = '', configVersion = '', language = '', signal }) {
   const response = await modsV2API.search({
     query: keyword.trim(),
     sort,
     days,
     tags: Array.isArray(tags) ? tags.join(',') : tags,
     page,
-    pageSize
-  })
+    pageSize, source, configVersion, language
+  }, { signal })
   return {
     ...response,
     items: (response.items || []).map(mapSearchMod)

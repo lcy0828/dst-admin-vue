@@ -593,8 +593,9 @@ export const playersV2API = {
 
 export const modsV2API = {
   metadata: (ids, options = {}) => client.get('/mods/metadata', { params: { ids: ids.join(','), ...(options.cached ? { cached: true } : {}) }, runtimeTarget: false }),
-  search: (params = {}) => client.get('/mods/search', {
+  search: (params = {}, { signal } = {}) => client.get('/mods/search', {
     params,
+    signal,
     runtimeTarget: false
   }),
   library: () => client.get('/mods/library', {
@@ -989,6 +990,13 @@ export const backupSetsV2API = {
 }
 
 export const roomBackupsV2API = createRoomBackupsAPI(backupsV2API, backupSetsV2API)
+
+export const workshopV2API = {
+  get: () => client.get('/system/workshop', { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),
+  save: input => client.put('/system/workshop', input, { runtimeTarget: false }),
+  test: (input, { signal } = {}) => client.post('/system/workshop/actions/test', input, { runtimeTarget: false, timeout: 15000, signal }),
+  enrich: (ids, configVersion = '', { signal, community = false } = {}) => client.post('/mods/metadata/enrichment', { ids, configVersion, community }, { runtimeTarget: false, signal })
+}
 
 export const saveImportsV2API = {
   list: () => client.get('/save-imports', {

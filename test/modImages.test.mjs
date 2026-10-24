@@ -71,7 +71,7 @@ test('all Mod list images use size-appropriate thumbnails and retain their fallb
     const images = [...source.matchAll(/<img\b[^>]*>/g)].map(match => match[0])
     assert.equal(images.length, sizes.length, path)
     for (const [index, image] of images.entries()) {
-      assert.match(image, new RegExp(`:src="modThumbnailUrl\\([^"\\n]+, ${sizes[index]}\\)"`), path)
+      assert.match(image, new RegExp(`:src="modThumbnailUrl\\([^"\\n]+, ${sizes[index]}(?:, [^"\\n]+)?\\)"`), path)
       assert.match(image, /loading="lazy"/, path)
       assert.match(image, /@error=/, path)
     }
@@ -79,11 +79,18 @@ test('all Mod list images use size-appropriate thumbnails and retain their fallb
   }
 })
 
-test('Mod details and API metadata keep the original image URL', async () => {
+test('Mod details use the panel thumbnail while API metadata retains source URLs', async () => {
   const details = await readFile(new URL('../src/views/mods/ModDetailsDialog.vue', import.meta.url), 'utf8')
   const adapter = await readFile(new URL('../src/api/modApi.js', import.meta.url), 'utf8')
-  assert.match(details, /:src="mod.image"/)
-  assert.doesNotMatch(details, /modThumbnailUrl/)
+  assert.match(details, /modThumbnailUrl\(mod.image, 384, mod.id \|\| mod.modid\)/)
   assert.match(adapter, /image: mod.previewUrl \|\| ''/)
   assert.doesNotMatch(adapter, /modThumbnailUrl/)
+})
+
+
+test('known mod IDs use the authenticated panel thumbnail endpoint', () => {
+  assert.equal(modThumbnailUrl(original, 184, '378160973'), '/api/v2/mods/378160973/thumbnail?size=184')
+  assert.equal(modThumbnailUrl(original, 96, '378160973'), '/api/v2/mods/378160973/thumbnail?size=184')
+  assert.equal(modThumbnailUrl(original, 384, '378160973'), '/api/v2/mods/378160973/thumbnail?size=384')
+  assert.equal(modThumbnailUrl(original, 80, '../secret'), modThumbnailUrl(original, 80))
 })

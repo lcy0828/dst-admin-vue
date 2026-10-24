@@ -77,7 +77,7 @@
     <div v-else-if="!loadError && filteredMods.length > 0" class="mod-list">
       <section v-for="mod in filteredMods" :key="mod.id" class="mod-list-item" :data-expanded="isModExpanded(mod) || undefined">
         <header class="mod-summary" :aria-busy="isModBusy(mod)">
-          <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultIcon" :src="modThumbnailUrl(mod.image || defaultIcon, 96)" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
+          <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultIcon" :src="modThumbnailUrl(mod.image || defaultIcon, 96, mod.id || mod.modid)" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
           <div class="mod-heading-content">
             <div class="mod-title-row">
               <strong class="truncate" :title="mod.name">{{ mod.name }}</strong>

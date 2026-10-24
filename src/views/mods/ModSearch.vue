@@ -15,8 +15,9 @@
             <FieldLabel for="mod-search-keyword">{{ $t('mods.search.form.name') }}</FieldLabel>
             <InputGroup>
               <InputGroupAddon><SearchIcon /></InputGroupAddon>
-              <InputGroupInput id="mod-search-keyword" v-model="searchForm.keyword" :placeholder="$t('mods.search.form.namePlaceholder')" @keyup.enter="startSearch" />
+              <InputGroupInput id="mod-search-keyword" v-model="searchForm.keyword" :placeholder="$t('mods.search.form.namePlaceholder')" @keydown.enter.prevent="startSearch" @input="queueSearch" @compositionstart="searchComposing = true" @compositionend="finishComposition" />
             </InputGroup>
+            <p class="text-sm text-muted-foreground">{{ $t('workshop.searchHint') }}</p>
           </Field>
           <Field>
             <FieldLabel for="mod-search-sort">{{ $t('mods.search.form.sort') }}</FieldLabel>
@@ -87,22 +88,26 @@
     </Card>
 
     <Alert v-if="loadError" variant="destructive">
-      <TriangleAlert />
-      <AlertTitle>{{ $t('mods.search.loadFailedTitle') }}</AlertTitle>
-      <AlertDescription>{{ loadError }}</AlertDescription>
-      <AlertAction
-        ><UiButton size="sm" variant="outline" @click="retryLoad">{{ $t('mods.actions.retry') }}</UiButton></AlertAction
-      >
+      <TriangleAlert /><AlertTitle>{{ $t('mods.search.loadFailedTitle') }}</AlertTitle>
+      <AlertDescription class="flex min-w-0 flex-col gap-2">
+        <span>{{ loadError }} <span v-if="networkSearchFailure">{{ $t('workshop.searchUnavailable') }}</span></span>
+        <div class="flex flex-wrap gap-2">
+          <UiButton size="sm" variant="outline" @click="retryLoad">{{ $t('mods.actions.retry') }}</UiButton>
+          <UiButton v-if="networkSearchFailure" size="sm" variant="outline" @click="$router.push({ path: '/system/settings', query: { tab: 'workshop' } })">{{ $t('workshop.networkSettings') }}</UiButton>
+          <UiButton v-if="networkSearchFailure && searchSource !== 'community' && loadFailure?.code !== 'WORKSHOP_RATE_LIMITED'" size="sm" variant="outline" @click="tryCommunity">{{ $t('workshop.tryCommunity') }}</UiButton>
+        </div>
+      </AlertDescription>
     </Alert>
-
     <Alert v-if="runtimeStatusFailure">
-      <TriangleAlert />
-      <AlertTitle>{{ $t('mods.search.runtimeStatus.failedTitle') }}</AlertTitle>
+      <TriangleAlert /><AlertTitle>{{ $t('mods.search.runtimeStatus.failedTitle') }}</AlertTitle>
       <AlertDescription>{{ runtimeStatusFailure }}</AlertDescription>
       <AlertAction><UiButton size="sm" variant="outline" @click="loadRuntimeDownloads">{{ $t('mods.actions.retry') }}</UiButton></AlertAction>
     </Alert>
 
-    <div v-if="searching" class="mod-grid">
+    <p v-if="searching && searchResults.length" class="text-sm text-muted-foreground" role="status">{{ $t('workshop.refreshing') }}</p>
+    <Alert v-if="searchWarning || searchStale"><AlertTitle>{{ searchStale ? $t('workshop.cached', { time: formatDate(searchObservedAt) }) : $t('workshop.partial') }}</AlertTitle></Alert>
+    <p v-if="loadError && searchResults.length" class="text-sm text-muted-foreground">{{ $t('workshop.currentResults') }}</p>
+    <div v-if="searching && !searchResults.length" class="mod-grid">
       <Card v-for="index in 8" :key="index" class="mod-card">
         <CardHeader class="mod-card-header"
           ><Skeleton class="mod-image" />
@@ -113,17 +118,17 @@
       </Card>
     </div>
 
-    <div v-else-if="!loadError && searchResults.length > 0">
+    <div v-else-if="searchResults.length > 0">
       <div class="result-heading">
         <p>
-          {{ $t('mods.search.results', { count: formatNumber(totalResults) }) }}
+          {{ totalKind === 'exact' ? $t('mods.search.results', { count: formatNumber(totalResults) }) : $t('workshop.showing', { count: searchResults.length }) }}
         </p>
         <p>{{ $t(`mods.search.sorts.${sortTranslationKey}`) }}</p>
       </div>
       <div class="mod-grid">
         <Card v-for="mod in searchResults" :key="mod.id" class="mod-card">
           <CardHeader class="mod-card-header">
-            <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultImage" :src="modThumbnailUrl(mod.image || defaultImage, 184)" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
+            <div class="mod-image"><ImageIcon /><img v-if="mod.image || defaultImage" :key="`${mod.id}:${searchRequestId}`" :src="modThumbnailUrl(mod.image || defaultImage, 184, mod.id || mod.modid)" :alt="mod.name" loading="lazy" @error="handleImageError" /></div>
             <div class="min-w-0 flex-1">
               <div class="mod-title-row">
                 <CardTitle class="truncate" :title="mod.name">{{ mod.name }}</CardTitle>
@@ -165,7 +170,7 @@
         </Card>
       </div>
 
-      <Pagination v-if="totalResults > pageSize" :page="currentPage" :total="totalResults" :items-per-page="pageSize" show-edges @update:page="handlePageChange">
+      <Pagination v-if="!loadError && totalKind === 'exact' && totalResults > pageSize" :page="currentPage" :total="totalResults" :items-per-page="pageSize" show-edges @update:page="handlePageChange">
         <PaginationContent v-slot="{ items }">
           <PaginationPrevious />
           <template v-for="(item, index) in items" :key="index">
@@ -175,6 +180,7 @@
           <PaginationNext />
         </PaginationContent>
       </Pagination>
+      <div v-if="!loadError && totalKind !== 'exact'" class="flex justify-center gap-2"><UiButton variant="outline" :disabled="searching || currentPage <= 1" @click="handlePageChange(currentPage - 1)">{{ $t('workshop.previous') }}</UiButton><UiButton variant="outline" :disabled="searching || !hasMore" @click="handlePageChange(currentPage + 1)">{{ $t('workshop.next') }}</UiButton></div>
     </div>
 
     <Empty v-else-if="!loadError && hasSearched">
@@ -208,7 +214,7 @@ import AddModToRoomDialog from './AddModToRoomDialog.vue'
 import DownloadModDialog from './DownloadModDialog.vue'
 import ModDetailsDialog from './ModDetailsDialog.vue'
 import { modApi } from '@/api'
-import { runtimeTargetsV2API } from '@/api/v2'
+import { runtimeTargetsV2API, workshopV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -297,6 +303,7 @@ export default {
       searching: false,
       loadFailure: null,
       searchRequestId: 0,
+      searchSource: '', searchConfigVersion: '', totalKind: 'exact', hasMore: false, searchWarning: '', searchStale: false, searchObservedAt: '', searchSignature: '', searchComposing: false,
       hasSearched: false,
       searchResults: [],
       totalResults: 0,
@@ -317,6 +324,7 @@ export default {
     }
   },
   computed: {
+    networkSearchFailure() { return !['WORKSHOP_ITEM_UNAVAILABLE', 'WORKSHOP_CONFIG_CHANGED', 'INVALID_MOD_REQUEST', 'INVALID_MOD_ID', 'INVALID_MOD_CONFIGURATION'].includes(this.loadFailure?.code) },
     loadError() {
       return this.localizedFailure(this.loadFailure)
     },
@@ -362,6 +370,7 @@ export default {
       }))
     }
   },
+  watch: { '$i18n.locale'() { this.currentPage = 1; this.searchMods() } },
   async created() {
     const keyword = this.$route.query.keyword
     if (typeof keyword === 'string' && keyword.trim()) {
@@ -373,6 +382,8 @@ export default {
     window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChanged)
   },
   beforeUnmount() {
+    this.searchRequestId++; this.detailsRequestId++; this.runtimeStatusRequestId++
+    this.searchController?.abort(); this.enrichmentController?.abort(); clearTimeout(this.searchTimer)
     window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChanged)
   },
   methods: {
@@ -380,7 +391,15 @@ export default {
     handleImageError(event) {
       event.currentTarget.hidden = true
     },
-    startSearch() {
+    queueSearch() {
+      clearTimeout(this.searchTimer)
+      if (!this.searchComposing) this.searchTimer = setTimeout(() => this.startSearch(), 300)
+    },
+    finishComposition() { this.searchComposing = false; this.queueSearch() },
+    tryCommunity() { this.searchSource = 'community'; this.searchConfigVersion = ''; this.currentPage = 1; this.searchMods() },
+    startSearch(event) {
+      if (event?.isComposing || this.searchComposing) return
+      this.searchSource = ''; this.searchConfigVersion = ''
       this.currentPage = 1
       this.searchMods()
     },
@@ -411,11 +430,14 @@ export default {
 
     async searchMods() {
       this.applyKeywordSortDefault()
+      clearTimeout(this.searchTimer)
+      const signature = JSON.stringify([this.searchForm.keyword.trim(), this.searchForm.sort, this.searchForm.days, this.searchForm.category, this.pageSize, this.$i18n?.locale])
+      if (signature !== this.searchSignature) { this.currentPage = 1; this.searchSource = ''; this.searchConfigVersion = ''; this.searchSignature = signature }
       const requestId = ++this.searchRequestId
+      this.searchController?.abort(); this.enrichmentController?.abort(); this.searchController = new AbortController()
       this.searching = true
       this.loadFailure = null
       this.hasSearched = true
-      this.searchResults = []
 
       try {
         const data = await modApi.searchMods({
@@ -424,20 +446,35 @@ export default {
           days: Number(this.searchForm.days),
           tags: this.searchForm.category === 'all' ? [] : [this.searchForm.category],
           page: this.currentPage,
-          pageSize: this.pageSize
+          pageSize: this.pageSize, language: this.$i18n?.locale === 'en-US' ? 'english' : 'schinese', source: this.searchSource, configVersion: this.searchConfigVersion, signal: this.searchController.signal
         })
         if (requestId !== this.searchRequestId) return
         this.searchResults = data.items || []
         this.totalResults = data.total || 0
+        this.searchSource = data.source || ''
+        this.searchConfigVersion = data.configVersion || ''
+        this.totalKind = data.totalKind || 'exact'
+        this.hasMore = Boolean(data.hasMore)
+        this.searchWarning = data.warning || ''
+        this.searchStale = Boolean(data.stale)
+        this.searchObservedAt = data.observedAt || ''
+        if (!data.stale && this.searchResults.length) this.enrichResults(requestId)
+
       } catch (error) {
         if (requestId !== this.searchRequestId) return
         this.loadFailure = this.failure('mods.errors.search', error)
-        toast.error(this.loadError)
-        this.searchResults = []
-        this.totalResults = 0
+        if (error.code === 'WORKSHOP_CONFIG_CHANGED') { this.searchSource = ''; this.searchConfigVersion = ''; this.currentPage = 1 }
       } finally {
         if (requestId === this.searchRequestId) this.searching = false
       }
+    },
+    async enrichResults(requestId) {
+      this.enrichmentController = new AbortController()
+      try {
+        const data = await workshopV2API.enrich(this.searchResults.map(mod => String(mod.id)), this.searchConfigVersion, { signal: this.enrichmentController.signal })
+        if (requestId !== this.searchRequestId || data.configVersion !== this.searchConfigVersion) return
+        this.searchResults = this.searchResults.map(mod => { const info = data.items?.[mod.id]; return info ? { ...mod, author: info.author || mod.author, name: info.name || mod.name } : mod })
+      } catch { /* Optional display metadata does not invalidate search results. */ }
     },
     resetSearch() {
       this.searchForm.keyword = ''

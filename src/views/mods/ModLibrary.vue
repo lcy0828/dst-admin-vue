@@ -103,7 +103,7 @@
                 <div class="mod-identity">
                   <div class="mod-preview">
                     <ImageIcon />
-                    <img v-if="mod.image" :src="modThumbnailUrl(mod.image, 88)" :alt="mod.name" loading="lazy" @error="hideImage" />
+                    <img v-if="mod.image" :src="modThumbnailUrl(mod.image, 88, mod.id || mod.modid)" :alt="mod.name" loading="lazy" @error="hideImage" />
                   </div>
                   <div class="min-w-0">
                     <div class="flex min-w-0 items-center gap-2">

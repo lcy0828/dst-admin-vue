@@ -1,4 +1,7 @@
 import { formatSystemDateTime } from '../lib/dateTime.mjs'
+import { workshopMessages } from './workshopMessages.js'
+
+const workshopFailureKeys = Object.fromEntries(Object.keys(workshopMessages['zh-CN'].workshop.codes).map(code => [code, `workshop.codes.${code}`]))
 
 const MOD_VALUE_KEYS = Object.freeze({
   health: Object.freeze({
@@ -34,6 +37,7 @@ const MOD_VALUE_KEYS = Object.freeze({
 })
 
 const MOD_FAILURE_CODE_KEYS = Object.freeze({
+  ...workshopFailureKeys,
   MOD_PUBLICATION_RESULT_MISSING: 'mods.publication.errors.resultMissing',
   MOD_PUBLICATION_PREVIEW_BLOCKED: 'mods.publication.errors.previewBlocked',
   MOD_RUNTIME_TARGET_REQUIRED: 'mods.errors.runtimeTargetRequired',
@@ -1482,7 +1486,7 @@ export function formatModDate(value, locale = 'zh-CN') {
 
 export function createModFailure(key, error) {
   const code = String(error?.code || '').trim()
-  const localizedAdapterError = error?.name === 'AdapterProtocolError' && MOD_FAILURE_CODE_KEYS[code]
+  const localizedAdapterError = (error?.name === 'AdapterProtocolError' && MOD_FAILURE_CODE_KEYS[code]) || workshopFailureKeys[code]
   return {
     key,
     detail: String(error?.detail || error?.details?.reason || (localizedAdapterError ? '' : error?.message) || '').trim(),

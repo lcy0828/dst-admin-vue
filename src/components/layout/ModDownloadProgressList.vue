@@ -64,7 +64,7 @@ function transfer(item) {
     <li v-for="group in groups" :key="group.id" class="mod-download-item" tabindex="-1" :aria-label="`${group.name} · ${t(`taskProgress.itemStates.${state(group.status)}`)}`" :data-status="group.status" :data-downloading="group.downloads.some(item => item.status === 'downloading') || undefined">
       <div class="mod-download-heading">
         <Avatar class="size-10 rounded-lg shrink-0">
-          <AvatarImage v-if="group.image" :src="modThumbnailUrl(group.image, 80)" :alt="group.name" />
+          <AvatarImage v-if="group.image" :src="modThumbnailUrl(group.image, 80, group.id)" :alt="group.name" />
           <AvatarFallback class="rounded-lg"><Package class="size-5" /></AvatarFallback>
         </Avatar>
         <strong class="mod-download-name" :title="group.name">{{ group.name }}</strong>
