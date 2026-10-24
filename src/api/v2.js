@@ -269,8 +269,8 @@ export const gameNotificationsV2API = {
 }
 
 export const entityCatalogV2API = {
-  directory: ({ signal } = {}) => client.get('/entity-catalog/directory', { runtimeTarget: false, signal }),
-  snapshot: (roomId, worldId, refresh = false, { signal } = {}) => client.get(`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/entity-catalog/snapshot`, { params: { refresh }, runtimeTarget: false, signal, timeout: 35000 }),
+  directory: ({ signal } = {}) => client.get('/entity-catalog/directory', { params: { complete: true }, runtimeTarget: false, signal }),
+  snapshot: (roomId, worldId, refresh = false, { signal } = {}) => client.get(`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/entity-catalog/snapshot`, { params: { refresh, complete: true }, runtimeTarget: false, signal, timeout: 35000 }),
   runtimeSearch: (roomId, worldId, input, { signal } = {}) => client.post(`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/entity-catalog/search`, input, { runtimeTarget: false, signal }),
   search: ({ query = '', kind = '', limit = 120 } = {}) => client.get('/entity-catalog/entities', {
     params: { q: query, kind, limit },
