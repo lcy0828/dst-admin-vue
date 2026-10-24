@@ -34,7 +34,7 @@ test('dashboard starts with useful room operations without redundant overview ch
 
 test('global header separates lightweight system refreshes from room world polling', () => {
   assert.match(layout, /<ManagementScopeSwitch v-if="hasMachineScope"/)
-  assert.match(layout, /<SystemResourceStatus v-if="hasMachineScope" class="hidden md:flex"/)
+  assert.match(layout, /<SystemResourceStatus v-if="hasMachineScope" class="ml-auto hidden md:flex"/)
   assert.match(layout, /<GameVersionStatus v-if="hasMachineScope"/)
   assert.match(gameVersionStatus, /dashboard\.version\.officialGame/)
   assert.doesNotMatch(gameVersionStatus, /dashboard\.version\.localSteamBuild/)

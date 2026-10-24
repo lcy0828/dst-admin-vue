@@ -206,24 +206,19 @@ onBeforeUnmount(() => {
     <SidebarInset class="min-h-0 min-w-0">
       <header class="bg-background/95 sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 backdrop-blur md:px-4 lg:px-6">
         <SidebarTrigger />
-        <Breadcrumb class="hidden min-w-0 flex-1 overflow-hidden xl:block">
-          <BreadcrumbList>
+        <Breadcrumb class="hidden min-w-0 flex-[1_0_14rem] overflow-hidden xl:block">
+          <BreadcrumbList class="flex-nowrap whitespace-nowrap">
             <template v-for="(item, index) in breadcrumbs" :key="`${item.label}-${index}`">
-              <BreadcrumbItem>
-                <BreadcrumbLink v-if="item.to" as-child><RouterLink :to="item.to">{{ item.label }}</RouterLink></BreadcrumbLink>
-                <BreadcrumbPage v-else-if="index === breadcrumbs.length - 1">{{ item.label }}</BreadcrumbPage>
-                <span v-else class="text-muted-foreground">{{ item.label }}</span>
+              <BreadcrumbItem class="min-w-0">
+                <BreadcrumbLink v-if="item.to" as-child><RouterLink :to="item.to" class="truncate" :title="item.label">{{ item.label }}</RouterLink></BreadcrumbLink>
+                <BreadcrumbPage v-else-if="index === breadcrumbs.length - 1" class="truncate" :title="item.label">{{ item.label }}</BreadcrumbPage>
+                <span v-else class="text-muted-foreground truncate" :title="item.label">{{ item.label }}</span>
               </BreadcrumbItem>
               <BreadcrumbSeparator v-if="index < breadcrumbs.length - 1" />
             </template>
           </BreadcrumbList>
         </Breadcrumb>
-        <div v-show="hasMachineScope" class="order-3 flex min-w-0 max-w-full basis-full flex-wrap items-center gap-2 2xl:order-none 2xl:basis-auto">
-          <ManagementScopeSwitch v-if="hasMachineScope" />
-          <div ref="roomScopeTarget" class="flex min-w-0 items-center empty:hidden" />
-        </div>
-        <SystemResourceStatus v-if="hasMachineScope" class="hidden md:flex" />
-        <div class="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5">
+        <div class="ml-auto flex min-w-0 max-w-full flex-1 flex-wrap items-center justify-end gap-1.5 xl:flex-none">
           <GameVersionStatus v-if="hasMachineScope" class="hidden md:block" />
           <SoftwareVersionStatus />
           <GlobalJobStatus />
@@ -242,6 +237,11 @@ onBeforeUnmount(() => {
             </TooltipTrigger>
             <TooltipContent>{{ t('app.githubRepository') }}</TooltipContent>
           </Tooltip>
+        </div>
+        <div v-show="hasMachineScope" class="flex min-w-0 max-w-full basis-full flex-wrap items-center gap-2">
+          <ManagementScopeSwitch v-if="hasMachineScope" />
+          <div ref="roomScopeTarget" class="flex min-w-0 items-center empty:hidden" />
+          <SystemResourceStatus v-if="hasMachineScope" class="ml-auto hidden md:flex" />
         </div>
       </header>
 
