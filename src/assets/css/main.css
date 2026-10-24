@@ -4,6 +4,15 @@
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
+  font-family: 'DST Game Emoji';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/dst-game-emoji.woff2') format('woff2');
+  unicode-range: U+F0000-F0031;
+}
+
+@font-face {
   font-family: 'Inter Variable';
   font-style: normal;
   font-display: swap;
@@ -97,7 +106,7 @@ body[data-ui-version='v2'] {
 
 html, body {
   height: 100%;
-  font-family: 'Inter Variable', Inter, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-family: 'DST Game Emoji', 'Inter Variable', Inter, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 14px;
@@ -273,7 +282,7 @@ a,
   background: var(--surface-muted);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: 'DST Game Emoji', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   line-height: 1.65;
 }
@@ -353,8 +362,9 @@ a,
 }
 
 @theme inline {
-  --font-sans: 'Inter Variable', Inter, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-sans: 'DST Game Emoji', 'Inter Variable', Inter, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   --font-heading: var(--font-sans);
+  --font-mono: 'DST Game Emoji', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
