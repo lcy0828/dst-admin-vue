@@ -104,11 +104,11 @@ onBeforeUnmount(() => { reader.dispose(); baseController?.abort(); clearTimeout(
         <Select v-model="sort"><SelectTrigger class="w-full" :aria-label="t('workbench.resources.sort')"><SelectValue>{{ t(`workbench.resources.sorts.${sort}`) }}</SelectValue></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="key in ['smart', 'recent', 'name']" :key="key" :value="key">{{ t(`workbench.resources.sorts.${key}`) }}</SelectItem></SelectGroup></SelectContent></Select>
       </Field>
     </div>
-    <ToggleGroup :model-value="category" type="single" variant="outline" spacing="1" class="flex flex-wrap justify-start gap-1" :aria-label="t('workbench.resources.category')" @update:model-value="value => { if (value) category = value }">
+    <ToggleGroup :model-value="category" type="single" variant="outline" :spacing="1" class="flex flex-wrap justify-start gap-1" :aria-label="t('workbench.resources.category')" @update:model-value="value => { if (value) category = value }">
       <ToggleGroupItem v-for="key in resourceCategories" :key="key" :value="key" class="gap-1.5 px-2.5 text-xs sm:text-sm"><span>{{ t(`workbench.resources.categories.${key}`) }}</span><span class="text-[10px] tabular-nums opacity-60">{{ result.counts[key] }}</span></ToggleGroupItem>
     </ToggleGroup>
     <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-      <span aria-live="polite">{{ t('workbench.catalog.count', { count: result.items.length }) }}<span v-if="observed"> · {{ t(error ? 'workbench.resources.lastWorldRead' : 'workbench.resources.worldRead', { time: observed }) }}</span></span>
+      <span aria-live="polite">{{ t(category === 'all' ? 'workbench.catalog.count' : 'workbench.resources.categoryCount', { count: result.items.length, category: t(`workbench.resources.categories.${category}`) }) }}<span v-if="observed"> · {{ t(error ? 'workbench.resources.lastWorldRead' : 'workbench.resources.worldRead', { time: observed }) }}</span></span>
       <Button v-if="canRead" size="sm" variant="outline" :disabled="loading" @click="readWorld(Boolean(snapshot))"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t(loading ? 'workbench.resources.readingButton' : error ? 'workbench.resources.retryWorld' : snapshot ? 'workbench.catalog.refresh' : 'workbench.catalog.read') }}</Button>
       <Button v-else-if="roomId" size="sm" variant="outline" :disabled="targetLoading" @click="emit('refresh-target')"><RefreshCw data-icon="inline-start" />{{ t('workbench.resources.checkWorld') }}</Button>
     </div>
