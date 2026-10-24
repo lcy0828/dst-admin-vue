@@ -182,6 +182,7 @@
 </template>
 
 <script>
+import { accessListReadError } from '@/lib/accessListErrors.mjs';
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { CircleAlert, Copy, RefreshCw, Trash2, UserPlus, Users } from '@lucide/vue';
@@ -365,6 +366,9 @@ export default {
     }
   },
   methods: {
+    describeReadError(error) {
+      return accessListReadError(error, (key, values) => this.$t(key, values));
+    },
     getList(type) {
       return type === 'admin' ? this.adminList : type === 'block' ? this.blockList : this.whiteList;
     },
@@ -472,7 +476,7 @@ export default {
         })
         .catch(err => {
           const list = this.$t('rooms.specialLists.definitions.admin.tab');
-          this.errors.admin = err.message || this.$t('rooms.specialLists.feedback.readFailed', { list });
+          this.errors.admin = this.describeReadError(err) || this.$t('rooms.specialLists.feedback.readFailed', { list });
           toast.error(this.$t('rooms.specialLists.feedback.fetchFailed', { list, error: this.errors.admin }));
         })
         .finally(() => {
@@ -493,7 +497,7 @@ export default {
         })
         .catch(err => {
           const list = this.$t('rooms.specialLists.definitions.block.tab');
-          this.errors.block = err.message || this.$t('rooms.specialLists.feedback.readFailed', { list });
+          this.errors.block = this.describeReadError(err) || this.$t('rooms.specialLists.feedback.readFailed', { list });
           toast.error(this.$t('rooms.specialLists.feedback.fetchFailed', { list, error: this.errors.block }));
         })
         .finally(() => {
@@ -514,7 +518,7 @@ export default {
         })
         .catch(err => {
           const list = this.$t('rooms.specialLists.definitions.white.tab');
-          this.errors.white = err.message || this.$t('rooms.specialLists.feedback.readFailed', { list });
+          this.errors.white = this.describeReadError(err) || this.$t('rooms.specialLists.feedback.readFailed', { list });
           toast.error(this.$t('rooms.specialLists.feedback.fetchFailed', { list, error: this.errors.white }));
         })
         .finally(() => {
