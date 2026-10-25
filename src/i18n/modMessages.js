@@ -52,6 +52,13 @@ const MOD_FAILURE_CODE_KEYS = Object.freeze({
 export const modMessages = {
   'zh-CN': {
     mods: {
+      local: {
+        title: '本地', source: '模组来源', allSources: '全部来源', workshop: '创意工坊',
+        directory: '目录名称', ready: '本地文件就绪',
+        description: '读取所选运行机器上的本地模组。启停或配置更改将在下次启动世界时生效。',
+        copy: '文件所在机器', version: '声明版本', noVersion: '未声明',
+        copyNotice: '以下资料来自所选安装；同名模组在不同机器上的内容可能不同。'
+      },
       metadata: {
         notice: '工坊资料提示',
         localFactsAvailable: '名称或作者资料缺失，可点击“重试获取资料”。不影响模组使用。',
@@ -757,6 +764,13 @@ export const modMessages = {
   },
   'en-US': {
     mods: {
+      local: {
+        title: 'Local', source: 'Mod source', allSources: 'All sources', workshop: 'Steam Workshop',
+        directory: 'Directory', ready: 'Local files ready',
+        description: 'Read the local Mod on the selected Runtime. Configuration changes take effect on the next world start.',
+        copy: 'Runtime copy', version: 'Declared version', noVersion: 'Not declared',
+        copyNotice: 'These details describe the selected installation. Copies on other machines may differ.'
+      },
       metadata: {
         notice: 'Workshop information',
         localFactsAvailable: 'Names or authors are missing. Click “Retry information” to fetch them. Mod usage is unaffected.',

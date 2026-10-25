@@ -5,7 +5,7 @@
         <DialogTitle class="details-dialog-title">{{ displayedMod.name || $t('mods.workshop.detailsTitle') }}</DialogTitle>
         <DialogDescription class="details-dialog-description">
           <Spinner v-if="loading" />
-          <span>{{ $t('mods.workshop.detailsDescription') }}</span>
+          <span>{{ $t(isLocal ? 'mods.local.description' : 'mods.workshop.detailsDescription') }}</span>
         </DialogDescription>
       </DialogHeader>
 
@@ -18,6 +18,16 @@
           </Alert>
           <p v-if="extraLoading" class="flex items-center gap-2 text-sm text-muted-foreground" role="status"><Spinner />{{ $t('workshop.detailsLoading') }}</p>
           <Alert v-if="extraWarning"><AlertDescription>{{ extraWarning }}</AlertDescription></Alert>
+          <Field v-if="isLocal && localCopies.length">
+            <FieldLabel for="local-mod-copy">{{ $t('mods.local.copy') }}</FieldLabel>
+            <UiSelect :model-value="selectedCopy" :disabled="loading" @update:model-value="selectCopy">
+              <SelectTrigger id="local-mod-copy"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectGroup>
+                <SelectItem v-for="copy in localCopies" :key="copy.key" :value="copy.key">{{ copy.label }}</SelectItem>
+              </SelectGroup></SelectContent>
+            </UiSelect>
+            <FieldDescription>{{ $t('mods.local.copyNotice') }}</FieldDescription>
+          </Field>
           <div class="mod-identity">
             <div class="mod-preview">
               <ImageIcon />
@@ -25,7 +35,8 @@
             </div>
             <div class="mod-identity-content">
               <div class="identity-badges">
-                <Badge v-if="downloaded">{{ $t('mods.values.downloaded') }}</Badge>
+                <Badge v-if="isLocal" variant="secondary">{{ $t('mods.local.title') }}</Badge>
+                <Badge v-if="!isLocal && downloaded">{{ $t('mods.values.downloaded') }}</Badge>
                 <Badge v-if="updateAvailable" variant="destructive">{{ $t('mods.values.health.updateAvailable') }}</Badge>
                 <Badge v-if="mod.version" variant="secondary">v{{ mod.version }}</Badge>
               </div>
@@ -35,8 +46,8 @@
                   <dd>{{ displayedMod.author || $t('mods.values.unknownAuthor') }}</dd>
                 </div>
                 <div>
-                  <dt>{{ $t('mods.workshop.workshopId') }}</dt>
-                  <dd><code>{{ mod.id }}</code></dd>
+                  <dt>{{ $t(isLocal ? 'mods.local.directory' : 'mods.workshop.workshopId') }}</dt>
+                  <dd><code>{{ isLocal ? mod.directoryName : mod.id }}</code></dd>
                 </div>
               </dl>
             </div>
@@ -44,7 +55,11 @@
 
           <Separator />
 
-          <section class="details-section" aria-labelledby="mod-workshop-summary">
+          <section v-if="isLocal" class="details-section">
+            <h3>{{ $t('mods.local.version') }}</h3>
+            <p class="mod-description">{{ mod.version || $t('mods.local.noVersion') }}</p>
+          </section>
+          <section v-else class="details-section" aria-labelledby="mod-workshop-summary">
             <h3 id="mod-workshop-summary">{{ $t('mods.workshop.summary') }}</h3>
             <dl class="metadata-grid metadata-grid--primary">
               <div>
@@ -66,7 +81,7 @@
             </dl>
           </section>
 
-          <section class="details-section" aria-labelledby="mod-file-activity">
+          <section v-if="!isLocal" class="details-section" aria-labelledby="mod-file-activity">
             <h3 id="mod-file-activity">{{ $t('mods.workshop.fileAndActivity') }}</h3>
             <dl class="metadata-grid">
               <div>
@@ -107,7 +122,7 @@
       <div v-else class="details-loading"><Spinner />{{ $t('mods.workshop.loadingDetails') }}</div>
 
       <DialogFooter v-if="mod" class="details-dialog-footer">
-        <div class="footer-links">
+        <div v-if="!isLocal" class="footer-links">
           <UiButton variant="outline" as-child>
             <a :href="mod.workshopUrl" target="_blank" rel="noopener noreferrer">
               <ExternalLink data-icon="inline-start" />
@@ -122,7 +137,7 @@
           </UiButton>
         </div>
         <slot name="actions" :mod="mod">
-          <div v-if="actions" class="footer-actions">
+          <div v-if="actions && !isLocal" class="footer-actions">
             <UiButton v-if="downloaded && !updateAvailable" variant="outline" :disabled="busy" @click="$emit('refresh', mod)">
               <Spinner v-if="busy" data-icon="inline-start" />
               <RefreshCw v-else data-icon="inline-start" />
@@ -146,6 +161,9 @@
 </template>
 
 <script setup>
+import { isLocalMod, localModCopy } from '@/lib/modReference.mjs'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { modThumbnailUrl } from '@/lib/modImages.mjs'
 import { computed, ref, watch, onBeforeUnmount } from 'vue'
 import { workshopV2API } from '@/api/v2'
@@ -168,7 +186,20 @@ const props = defineProps({
   actions: { type: Boolean, default: true }
 })
 
-defineEmits(['update:open', 'download', 'refresh', 'add-to-room'])
+const emit = defineEmits(['update:open', 'download', 'refresh', 'add-to-room', 'select-copy'])
+const isLocal = computed(() => isLocalMod(props.mod || {}))
+const localCopies = computed(() => (props.mod?.runtimeVersions || []).map(copy => ({
+  ...copy, key: JSON.stringify([copy.targetId, copy.installationId]),
+  label: `${copy.targetName || copy.targetId} · ${copy.installationId}`
+})))
+const selectedCopy = computed(() => {
+  const copy = localModCopy(props.mod || {})
+  return copy ? JSON.stringify([copy.targetId, copy.installationId]) : ''
+})
+function selectCopy(key) {
+  const copy = localCopies.value.find(item => item.key === key)
+  if (copy) emit('select-copy', { targetId: copy.targetId, installationId: copy.installationId })
+}
 
 const extra = ref(null)
 const extraWarning = ref('')

@@ -1,3 +1,4 @@
+import { isLocalMod, modSourceFields, workshopMetadataIds, localModCopy } from '../src/lib/modReference.mjs'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
@@ -36,7 +37,7 @@ async function componentOptions(path, dependencies) {
     .find(node => node.type === 'ExportDefaultDeclaration').declaration
   const properties = declaration.properties.filter(node => node.key.name !== 'components')
     .map(node => script.slice(node.start, node.end))
-  const scope = { ...feedback, modThumbnailUrl, enrichModMetadata, useSharedJobStatus: () => null, ...dependencies }
+  const scope = { ...feedback, isLocalMod, modThumbnailUrl, enrichModMetadata, useSharedJobStatus: () => null, ...dependencies }
   return new Function(...Object.keys(scope), `return ({${properties.join(',')}})`)(...Object.values(scope))
 }
 
@@ -94,7 +95,7 @@ async function modAPI(dependencies) {
     const statement = node.type === 'ExportNamedDeclaration' ? node.declaration : node
     return [code.slice(statement.start, statement.end)]
   }).join('\n')
-  const scope = { mergeRoomModCatalog, compareWorldRoles, adapterError: code => new Error(code), ...dependencies }
+  const scope = { isLocalMod, modSourceFields, workshopMetadataIds, localModCopy, mergeRoomModCatalog, compareWorldRoles, adapterError: code => new Error(code), ...dependencies }
   return new Function(...Object.keys(scope), `${body}\nreturn realModApi`)(...Object.values(scope))
 }
 

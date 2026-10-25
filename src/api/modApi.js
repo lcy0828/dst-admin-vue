@@ -1,3 +1,4 @@
+import { isLocalMod, modSourceFields, workshopMetadataIds, localModCopy } from '../lib/modReference.mjs'
 import { modPublicationsV2API, modsV2API, modUpdatesV2API, roomsV2API, topologyV2API } from './v2'
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError } from './adapterProtocol.mjs'
@@ -31,6 +32,7 @@ function mapSearchMod(mod) {
   const subscriptions = Number(mod.subscriptions) || 0
   return {
     id: mod.id,
+    ...modSourceFields(mod),
     name: mod.name || '',
     auth: mod.author || '',
     author: mod.author || '',
@@ -56,8 +58,8 @@ function mapSearchMod(mod) {
     installed: Boolean(mod.installed),
     loaded: Boolean(mod.loaded),
     dependencies: mod.dependencies || [],
-    workshopUrl: `https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.id}`,
-    changelogUrl: `https://steamcommunity.com/sharedfiles/filedetails/changelog/${mod.id}`
+    workshopUrl: isLocalMod(mod) ? '' : `https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.id}`,
+    changelogUrl: isLocalMod(mod) ? '' : `https://steamcommunity.com/sharedfiles/filedetails/changelog/${mod.id}`
   }
 }
 
@@ -66,8 +68,9 @@ function mapInstalledMod(mod, replica = null, replicaError = null, profile = nul
   const subscriptions = Number(mod.subscriptions) || 0
   return {
     id: mod.id,
+    ...modSourceFields(mod),
     modid: mod.id,
-    name: mod.name || `Workshop ${mod.id}`,
+    name: mod.name || (isLocalMod(mod) ? modSourceFields(mod).directoryName : `Workshop ${mod.id}`),
     author: mod.author || '',
     description: mod.description || '',
     image: mod.previewUrl || '',
@@ -119,8 +122,8 @@ function mapInstalledMod(mod, replica = null, replicaError = null, profile = nul
     localUpdatedAt: mod.localUpdatedAt || '',
     path: '',
     size: Number(mod.fileSize) || 0,
-    workshopUrl: `https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.id}`,
-    changelogUrl: `https://steamcommunity.com/sharedfiles/filedetails/changelog/${mod.id}`,
+    workshopUrl: isLocalMod(mod) ? '' : `https://steamcommunity.com/sharedfiles/filedetails/?id=${mod.id}`,
+    changelogUrl: isLocalMod(mod) ? '' : `https://steamcommunity.com/sharedfiles/filedetails/changelog/${mod.id}`,
     runtimeReplica: replica,
     runtimeReplicaAvailable: replicaError === null,
     runtimeReplicaError: replicaError?.message || '',
@@ -252,7 +255,7 @@ async function getRoomModFacts({ roomId } = {}) {
 }
 
 async function getModMetadata(items = []) {
-  const ids = [...new Set(items.map(item => String(item.modid || item.id || '')).filter(Boolean))]
+  const ids = workshopMetadataIds(items)
   const metadata = {}
   const warnings = []
   for (let start = 0; start < ids.length; start += 100) {
@@ -451,12 +454,14 @@ async function searchMods({ keyword = '', sort = 'trend', days = 7, tags = [], p
   }
 }
 
-async function getModDetails(mod) {
+async function getModDetails(mod, scope = null) {
   const modId = requireValue(mod?.id || mod?.modid, 'MOD_ID_REQUIRED')
-  const details = mapSearchMod(await modsV2API.details(modId))
+  const detailsScope = isLocalMod(mod) ? requireValue(localModCopy(mod, scope), 'MOD_RUNTIME_TARGET_REQUIRED') : null
+  const details = mapSearchMod(await modsV2API.details(modId, detailsScope || {}))
   return {
     ...mod,
     ...details,
+    detailsScope,
     modid: mod.modid || details.id,
     downloaded: Boolean(mod.downloaded || mod.isDownloaded),
     isDownloaded: Boolean(mod.isDownloaded || mod.downloaded),
@@ -486,6 +491,7 @@ async function getModDetails(mod) {
 
 async function downloadMod(input) {
   const modId = requireValue(input.modid || input.id, 'MOD_ID_REQUIRED')
+  if (!/^[0-9]{1,20}$/.test(String(modId))) throw adapterError('MOD_INVALID_ID')
   const targetId = requireValue(input.targetId, 'RUNTIME_TARGET_REQUIRED')
   const installationId = requireValue(input.installationId, 'RUNTIME_INSTALLATION_REQUIRED')
   const job = await modsV2API.downloadRuntimeMod(targetId, installationId, modId)
@@ -500,7 +506,7 @@ async function addModToRoom(input) {
     modId,
     worldIds,
     enabled: input.enabled !== false,
-    includeDependencies: input.includeDependencies !== false
+    includeDependencies: !isLocalMod({ id: modId }) && input.includeDependencies !== false
   })
   return (input.waitForJob || waitForV2Job)(job, MOD_JOB_TIMEOUT, input.onProgress)
 }
@@ -597,6 +603,7 @@ async function toggleMod(input) {
 async function updateMod(input) {
   requireValue(input.roomId, 'ROOM_REQUIRED')
   const modId = requireValue(input.modid, 'MOD_ID_REQUIRED')
+  if (!/^[0-9]{1,20}$/.test(String(modId))) throw adapterError('MOD_INVALID_ID')
   const seen = new Set()
   const targets = []
   for (const runtime of Array.isArray(input.runtimeVersions) ? input.runtimeVersions : []) {

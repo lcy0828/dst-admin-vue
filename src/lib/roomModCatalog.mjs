@@ -1,9 +1,11 @@
+import { isLocalMod, modSourceFields } from './modReference.mjs'
+
 function clean(value) {
   return String(value || '').trim()
 }
 
 function modId(value = {}) {
-  return clean(value.modid || value.id)
+  return String(value.modid || value.id || '')
 }
 
 function runtimeCatalogMod(item = {}) {
@@ -11,7 +13,8 @@ function runtimeCatalogMod(item = {}) {
   return {
     id,
     modid: id,
-    name: clean(item.name) || `Workshop ${id}`,
+    ...modSourceFields(item),
+    name: clean(item.name) || (isLocalMod(item) ? modSourceFields(item).directoryName : `Workshop ${id}`),
     author: clean(item.author),
     description: clean(item.description),
     image: clean(item.previewUrl || item.image),
@@ -47,6 +50,7 @@ function runtimeCatalogMod(item = {}) {
 export function mergeRoomModCatalog(configured = [], observations = []) {
   const items = new Map((configured || []).map(item => [modId(item), {
     ...item,
+    ...modSourceFields(item),
     machineOnly: false,
     runtimeVersions: [],
     runtimeReadyTargets: 0,
@@ -74,7 +78,7 @@ export function mergeRoomModCatalog(configured = [], observations = []) {
       const ready = runtimeMod.fileStatus === 'ready'
       items.set(id, {
         ...current,
-        name: current.name || runtimeMod.name || `Workshop ${id}`,
+        name: (isLocalMod(current) && current.name === current.directoryName ? runtimeMod.name : current.name) || runtimeMod.name || (isLocalMod(current) ? current.directoryName : `Workshop ${id}`),
         author: current.author || runtimeMod.author || '',
         image: current.image || runtimeMod.previewUrl || '',
         currentVersion: current.currentVersion || runtimeMod.currentVersion || '',
@@ -105,6 +109,7 @@ export function mergeRoomModCatalog(configured = [], observations = []) {
     const versions = [...new Set(item.runtimeVersions.map(value => clean(value.version)).filter(Boolean))]
     const runtimeVersionStatus = versions.length > 1
       ? 'mixed'
+      : isLocalMod(item) ? 'local'
       : outdatedTargets > 0
         ? 'outdated'
         : observed > 0 && currentTargets === observed

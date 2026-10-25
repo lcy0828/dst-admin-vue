@@ -80,8 +80,8 @@ test('Workshop search distinguishes direct machine download from download and ad
   assert.match(adapter, /days,/)
   assert.match(adapter, /tags: Array\.isArray\(tags\)/)
   assert.doesNotMatch(adapter, /requireValue\(keyword/)
-  assert.match(adapter, /modsV2API\.details\(modId\)/)
-  assert.match(search, /modApi\.getModDetails\(mod\)/)
+  assert.match(adapter, /modsV2API\.details\(modId, detailsScope \|\| \{\}\)/)
+  assert.match(search, /modApi\.getModDetails\(mod(?:, scope)?\)/)
 })
 
 test('the internal controller library still separates metadata refresh from content updates', async () => {
@@ -99,7 +99,7 @@ test('every mod details entry refreshes Workshop metadata before presentation', 
   ])
 
   for (const page of pages) {
-    assert.match(page, /modApi\.getModDetails\(mod\)/)
+    assert.match(page, /modApi\.getModDetails\(mod(?:, scope)?\)/)
     assert.match(page, /:loading="detailsLoading"/)
   }
 })

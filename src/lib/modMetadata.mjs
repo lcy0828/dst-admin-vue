@@ -1,3 +1,4 @@
+import { isLocalMod } from './modReference.mjs'
 const readyVersionStates = new Set(['ready', 'current', 'outdated', 'unknown'])
 const text = value => String(value || '').trim()
 const timestamp = value => Math.max(0, Date.parse(value) || 0)
@@ -20,6 +21,7 @@ export function runtimeModVersionStatus(current = {}, latest = {}) {
 
 export function enrichModMetadata(items = [], metadata = {}) {
   return items.map(item => {
+    if (isLocalMod(item)) return item
     const id = text(item.modid || item.id)
     const latest = metadata[id]
     if (!latest) return item

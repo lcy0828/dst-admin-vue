@@ -187,7 +187,8 @@
                       </div>
                       <div class="min-w-0">
                         <strong class="block truncate" :title="mod.name">{{ mod.name }}</strong>
-                        <span class="text-muted-foreground text-xs">{{ mod.author || $t('mods.values.unknownAuthor') }} · {{ mod.id }}</span>
+                        <Badge v-if="isLocalMod(mod)" variant="secondary">{{ $t('mods.local.title') }}</Badge>
+                        <span class="text-muted-foreground text-xs">{{ mod.author || $t('mods.values.unknownAuthor') }} · {{ isLocalMod(mod) ? mod.directoryName : mod.id }}</span>
                       </div>
                     </div>
                   </TableCell>
@@ -281,6 +282,7 @@
 </template>
 
 <script setup>
+import { isLocalMod } from '@/lib/modReference.mjs'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CircleAlert, Monitor, MonitorOff, Package, PackageOpen, RefreshCw, Search, TriangleAlert } from '@lucide/vue'
@@ -461,6 +463,7 @@ function versionLabel(mod) {
 }
 
 function versionStatusLabel(mod) {
+  if (isLocalMod(mod) && mod.fileStatus === 'ready') return i18n.global.t('mods.local.ready')
   const key = ['current', 'outdated', 'unknown', 'invalid'].includes(mod.versionStatus) ? mod.versionStatus : 'unknown'
   if (key === 'outdated' && mod.currentVersion === mod.latestVersion) {
     return i18n.global.t('mods.runtimeInventory.states.contentUpdated')
@@ -494,7 +497,7 @@ function contentReasonLabel(mod) {
 }
 
 function canUpdateMod(mod) {
-  return mod?.versionStatus === 'outdated' || mod?.versionStatus === 'invalid'
+  return !isLocalMod(mod) && (mod?.versionStatus === 'outdated' || mod?.versionStatus === 'invalid')
 }
 
 function isModUpdating(mod) {

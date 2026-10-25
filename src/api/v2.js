@@ -627,7 +627,7 @@ export const modsV2API = {
     {},
     { runtimeTarget: false }
   ),
-  details: modId => client.get(`/mods/${encode(modId)}`, { runtimeTarget: false }),
+  details: (modId, params = {}) => client.get(`/mods/${encode(modId)}`, { params, runtimeTarget: false }),
   list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/mods`, {
     params,
     runtimeTarget: false,

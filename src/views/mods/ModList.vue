@@ -34,6 +34,17 @@
           </ToggleGroup>
         </Field>
         <Field class="filter-sort">
+          <FieldLabel class="sr-only" for="installed-mod-source">{{ $t('mods.local.source') }}</FieldLabel>
+          <UiSelect v-model="filterForm.source">
+            <SelectTrigger id="installed-mod-source"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectGroup>
+              <SelectItem value="all">{{ $t('mods.local.allSources') }}</SelectItem>
+              <SelectItem value="workshop">{{ $t('mods.local.workshop') }}</SelectItem>
+              <SelectItem value="local">{{ $t('mods.local.title') }}</SelectItem>
+            </SelectGroup></SelectContent>
+          </UiSelect>
+        </Field>
+        <Field class="filter-sort">
           <FieldLabel class="sr-only" for="installed-mod-sort">{{ $t('mods.installed.filters.sort') }}</FieldLabel>
           <UiSelect v-model="filterForm.sortBy">
             <SelectTrigger id="installed-mod-sort"><SelectValue /></SelectTrigger>
@@ -81,7 +92,8 @@
           <div class="mod-heading-content">
             <div class="mod-title-row">
               <strong class="truncate" :title="mod.name">{{ mod.name }}</strong>
-              <span class="mod-id">Workshop {{ mod.modid }}</span>
+              <Badge v-if="isLocalMod(mod)" variant="secondary">{{ $t('mods.local.title') }}</Badge>
+              <span class="mod-id">{{ isLocalMod(mod) ? mod.directoryName : `Workshop ${mod.modid}` }}</span>
             </div>
             <span class="mod-author">{{ mod.author || $t('mods.values.unknownAuthor') }}</span>
             <span v-if="modVersionLabel(mod)" class="mod-runtime-version">{{ modVersionLabel(mod) }}</span>
@@ -112,10 +124,10 @@
               <DropdownMenuTrigger as-child><UiButton class="mod-summary-icon" variant="ghost" size="icon-sm" :aria-label="$t('mods.installed.aria.openMenu', { name: mod.name })"><MoreHorizontal /></UiButton></DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuGroup>
-                  <DropdownMenuItem v-if="['pending', 'corrupt'].includes(modOperationalStatus(mod))" :disabled="isModBusy(mod)" @select="updateMod(mod, true)"><Download />{{ $t('mods.installed.operational.downloadOnMachines') }}</DropdownMenuItem>
-                  <DropdownMenuItem v-else-if="mod.updateAvailable" :disabled="isModBusy(mod)" @select="updateMod(mod)">{{ $t('mods.actions.updateMod') }}</DropdownMenuItem>
+                  <DropdownMenuItem v-if="!isLocalMod(mod) && ['pending', 'corrupt'].includes(modOperationalStatus(mod))" :disabled="isModBusy(mod)" @select="updateMod(mod, true)"><Download />{{ $t('mods.installed.operational.downloadOnMachines') }}</DropdownMenuItem>
+                  <DropdownMenuItem v-else-if="!isLocalMod(mod) && mod.updateAvailable" :disabled="isModBusy(mod)" @select="updateMod(mod)">{{ $t('mods.actions.updateMod') }}</DropdownMenuItem>
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator v-if="mod.updateAvailable || ['pending', 'corrupt'].includes(modOperationalStatus(mod))" />
+                <DropdownMenuSeparator v-if="!isLocalMod(mod) && (mod.updateAvailable || ['pending', 'corrupt'].includes(modOperationalStatus(mod)))" />
                 <DropdownMenuGroup>
                   <DropdownMenuItem :disabled="isModBusy(mod) || roomModStatus(mod) === 'allEnabled'" @select="toggleRoomModStatus(mod, true)"><CirclePlay />{{ $t('mods.actions.enableInRoom') }}</DropdownMenuItem>
                   <DropdownMenuItem :disabled="isModBusy(mod) || roomModStatus(mod) === 'disabled'" @select="toggleRoomModStatus(mod, false)"><CirclePause />{{ $t('mods.actions.disableInRoom') }}</DropdownMenuItem>
@@ -328,7 +340,7 @@
       </DialogContent>
     </UiDialog>
 
-    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :actions="false" />
+    <ModDetailsDialog v-model:open="detailsDialogVisible" :mod="currentModInfo" :loading="detailsLoading" :actions="false" @select-copy="scope => showModDetails(currentModInfo, scope)" />
 
     <UiDialog v-model:open="copyDialogVisible">
       <DialogContent>
@@ -442,6 +454,7 @@ import { useSharedJobStatus } from '@/composables/useGlobalJobStatus';
 import { modThumbnailUrl } from '@/lib/modImages.mjs';
 import { roomModOperationalStatus, roomModStatusVariant, roomModFileStatusLabel } from '@/lib/roomModOverview.mjs';
 import { sortRoomModCatalog } from '@/lib/roomModCatalog.mjs';
+import { isLocalMod } from '@/lib/modReference.mjs';
 import { enrichModMetadata } from '@/lib/modMetadata.mjs';
 import { composeModConfigurationPatch, composeModWorldConfigured, composeModWorldEnabled, sameModConfigurationOverrides } from '@/lib/modWorldState.mjs';
 import { matchRoomWorlds } from '@/lib/roomCopy.mjs';
@@ -560,6 +573,7 @@ export default {
       // 筛选
       filterForm: {
         status: 'all',
+        source: 'all',
         sortBy: 'enabled',
         keyword: ''
       },
@@ -655,13 +669,15 @@ export default {
       return Math.round((this.roomCopyCompleted / this.roomCopyAssignmentCount) * 100);
     },
     filterChanged() {
-      return this.filterForm.status !== 'all'
+      return this.filterForm.source !== 'all'
+        || this.filterForm.status !== 'all'
         || this.filterForm.sortBy !== 'enabled'
         || Boolean(this.filterForm.keyword.trim());
     },
     // 筛选后的模组列表
     filteredMods() {
       let result = [...this.modsList];
+      if (this.filterForm.source !== 'all') result = result.filter(mod => (isLocalMod(mod) ? 'local' : 'workshop') === this.filterForm.source);
       if (this.filterForm.status && this.filterForm.status !== 'all') {
         result = result.filter(mod => this.roomModStatus(mod) === this.filterForm.status);
       }
@@ -694,6 +710,7 @@ export default {
   },
   methods: {
     modThumbnailUrl,
+    isLocalMod,
     handleImageError(event) {
       event.currentTarget.hidden = true;
     },
@@ -905,6 +922,7 @@ export default {
     modVersionLabel(mod) {
       const current = String(mod?.currentVersion || mod?.runtimeVersion || '').trim();
       const latest = String(mod?.latestVersion || '').trim();
+      if (isLocalMod(mod)) return current ? this.$t('mods.installed.versions.current', { version: current }) : '';
       if (mod?.runtimeVersionStatus === 'mixed') {
         return this.$t('mods.installed.versions.mixed', { latest: latest || '--' });
       }
@@ -1150,6 +1168,7 @@ export default {
     resetFilter() {
       this.filterForm = {
         status: 'all',
+        source: 'all',
         sortBy: 'enabled',
         keyword: ''
       };
@@ -1628,16 +1647,19 @@ export default {
     },
 
     // 显示模组详情
-    async showModDetails(mod) {
+    async showModDetails(mod, scope = null) {
       const requestId = ++this.detailsRequestId;
-      this.currentModInfo = mod;
+      this.currentModInfo = scope ? {
+        ...mod, detailsScope: scope, name: mod.directoryName,
+        author: '', version: '', description: '', metadataWarning: ''
+      } : mod;
       this.detailsDialogVisible = true;
       this.detailsLoading = true;
       try {
-        const details = await modApi.getModDetails(mod);
-        if (requestId === this.detailsRequestId) {
+        const details = await modApi.getModDetails(mod, scope);
+        if (requestId === this.detailsRequestId && this.detailsDialogVisible) {
           this.currentModInfo = details;
-          this.modsList = this.modsList.map(item => (item.modid || item.id) === (mod.modid || mod.id)
+          if (!isLocalMod(mod)) this.modsList = this.modsList.map(item => (item.modid || item.id) === (mod.modid || mod.id)
             ? { ...item, name: details.name?.trim() || item.name, author: details.author?.trim() || item.author }
             : item);
         }
