@@ -60,3 +60,15 @@ test('Successful use of a mod override never promotes the vanilla entity',()=>{
  assert.equal(history['vanilla:log'],undefined)
  assert.ok(history['workshop-1:log'])
 })
+
+test('merged vanilla names keep their translation provenance while mod overrides use their own', () => {
+  const base = [{ id: 'queen_torch', nameZhCN: '女王火炬', translated: true, translationSource: 'official', category: 'equipment' }]
+  const runtime = [{ id: 'queen_torch', nameZhCN: 'Queen\'s Torch', translated: false, translationSource: 'runtime' }]
+  const vanilla = mergeResourceDirectory(base, runtime)[0]
+  assert.equal(vanilla.nameZhCN, '女王火炬')
+  assert.equal(vanilla.translated, true)
+  assert.equal(vanilla.translationSource, 'official')
+  const mod = mergeResourceDirectory(base, [{ ...runtime[0], modId: 'local:custom' }])[0]
+  assert.equal(mod.translated, false)
+  assert.equal(mod.translationSource, 'runtime')
+})

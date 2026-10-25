@@ -23,6 +23,8 @@ export function mergeResourceDirectory(builtin = [], runtime = []) {
     const merged = item.modId ? { ...item, common: false, artworkUrl: item.artworkUrl || '', category: 'other' } : {
       ...base, ...item,
       nameZhCN: base?.nameZhCN || item.nameZhCN,
+      translated: base?.nameZhCN ? base.translated : item.translated,
+      translationSource: base?.nameZhCN ? base.translationSource : item.translationSource,
       nameEn: base?.nameEn || item.nameEn,
       common: base?.common || false,
       category: base?.category || 'other'
