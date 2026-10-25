@@ -67,10 +67,17 @@
               <TableCell>
                 <div class="runtime-health">
                   <Badge :variant="healthVariant(report.healthState)">{{ healthLabel(report.healthState) }}</Badge>
+                  <Badge v-if="report.processRunning && (report.paused ?? report.health?.paused) === true" variant="secondary">{{ $t('runtime.paused') }}</Badge>
+                  <small v-if="report.startupStage">{{ startupStageLabel(report.startupStage) }}</small>
                   <small v-if="report.healthMessage">{{ report.healthMessage }}</small>
                 </div>
               </TableCell>
-              <TableCell>{{ report.version || '--' }}</TableCell>
+              <TableCell>
+                <div class="runtime-health">
+                  <span>{{ $t('runtime.installedVersion', { version: report.version || '--' }) }}</span>
+                  <small>{{ $t('runtime.runningVersion', { version: report.processRunning ? report.health?.producerVersion || '--' : '--' }) }}</small>
+                </div>
+              </TableCell>
               <TableCell>
                 <div class="row-actions">
                   <UiButton v-if="report.state !== 'installed' || report.autoUpdate?.state === 'failed'" size="sm" variant="outline" :disabled="Boolean(busyKey)" @click="installWorld(report)">
@@ -133,6 +140,7 @@ const healthLabel = state => t(`runtime.healthStates.${['ready', 'starting', 'st
 const installActionLabel = state => t(`runtime.actions.${state === 'invalid' ? 'repair' : state === 'outdated' ? 'upgrade' : 'install'}`)
 const installVariant = state => state === 'installed' ? 'secondary' : state === 'invalid' ? 'destructive' : 'outline'
 const healthVariant = state => state === 'ready' ? 'default' : state === 'degraded' ? 'destructive' : 'outline'
+const startupStageLabel = stage => t(`runtime.startupStages.${['initializing', 'loading_mods', 'generating_world', 'loading_world', 'connecting'].includes(stage) ? stage : 'waiting'}`)
 
 async function loadStatus() {
   clearTimeout(updateTimer)

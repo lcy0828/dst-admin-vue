@@ -247,6 +247,9 @@ export interface RuntimeHealth {
   running: boolean
   ready: boolean
   writing: boolean
+  heartbeatSequence?: number
+  heartbeatAtUnix?: number
+  paused?: boolean
   lastError?: string
 }
 

@@ -5,7 +5,7 @@ export const serverMessages = {
       freshness: { live: '实时', paused: '暂停中数据', delayed: '数据延迟', stopped: '停服前数据', unavailable: '暂无数据' },
       descriptions: {
         live: '世界正在运行，数据在两分钟内更新。',
-        paused: '世界进程仍在运行，最新日志显示模拟已暂停；显示最后一次有效数据。',
+        paused: '世界模拟已暂停，显示最近一次有效采样；游戏时间不会因采集而推进。',
         delayed: '显示最后一次有效数据，采集时间已超过两分钟。',
         stopped: '世界已停止，显示的是停服前最后一次有效数据。',
         unavailable: '当前没有世界状态快照，或暂时无法确认世界运行状态。'
@@ -694,7 +694,7 @@ export const serverMessages = {
       freshness: { live: 'Live', paused: 'Paused data', delayed: 'Delayed', stopped: 'Pre-stop data', unavailable: 'No data' },
       descriptions: {
         live: 'The world is running and this data was updated within two minutes.',
-        paused: 'The process is running but its latest log reports a paused simulation. Showing the last valid data.',
+        paused: 'Simulation is paused. Showing the latest valid sample; telemetry does not advance game time.',
         delayed: 'Showing the last valid data, sampled more than two minutes ago.',
         stopped: 'The world is stopped. This is the last valid snapshot before it stopped.',
         unavailable: 'No world-state snapshot is available, or the world runtime state cannot currently be confirmed.'
