@@ -402,7 +402,7 @@ export const playerMessages = {
         refreshInterval: '刷新间隔'
       },
       refreshIntervals: { seconds30: '30 秒', seconds60: '1 分钟', seconds120: '2 分钟', seconds300: '5 分钟', seconds600: '10 分钟' },
-      statuses: { history: '历史记录', online: '在线', stale: '最后已知在线', offline: '离线', onlineGameplay: '在线 · {state}', staleGameplay: '状态已过期 · 上次{state}' },
+      statuses: { history: '历史记录', online: '在线', stale: '状态已过期', offline: '离线', onlineGameplay: '在线 · {state}', staleGameplay: '状态已过期 · 上次{state}' },
       gameplayStates: { selectingCharacter: '选择角色', loading: '进入世界中', alive: '游戏中', dead: '死亡中', ghost: '幽灵状态', migrating: '切换世界中', unknown: '状态未知' },
       worldStates: { running: '运行中', stopped: '已停止', starting: '启动中', stopping: '停止中', failed: '失败' },
       network: { excellent: '极佳', fair: '中等', poor: '很差' },
@@ -428,6 +428,7 @@ export const playerMessages = {
         filterTitle: '筛选玩家',
         filterDescription: '按存档、在线状态、角色或关键词缩小范围。',
         allArchives: '全部存档',
+        sessionScope: '存档记录', currentSession: '当前存档', previousSessions: '历史存档', previousSessionsHint: '重置前或尚未确认所属存档的玩家记录，仅供查看，不代表当前在线状态。',
         allStatuses: '全部状态',
         allCharacters: '全部角色',
         searchPlaceholder: '搜索玩家名称或 ID',
@@ -456,7 +457,7 @@ export const playerMessages = {
         dangerousActions: '危险操作',
         managementActions: '玩家管理',
         staleTitle: '在线状态已过期',
-        staleDescription: '该玩家最后于 {time} 确认在线，最新采集失败。刷新成功前，实时游戏操作已禁用。',
+        staleDescription: '该玩家的状态最后采集于 {time}，当前已过期。刷新成功前，实时游戏操作已禁用。',
         presenceConflictTitle: '玩家位置存在冲突',
         presenceConflictDescription: '以下分片同时报告该 KU ID 在线：{worlds}。操作前请刷新玩家数据并检查分片连接。'
       },
@@ -583,7 +584,7 @@ export const playerMessages = {
         refreshRoom: 'Room', autoRefresh: 'Auto refresh', refreshInterval: 'Refresh interval'
       },
       refreshIntervals: { seconds30: '30 seconds', seconds60: '1 minute', seconds120: '2 minutes', seconds300: '5 minutes', seconds600: '10 minutes' },
-      statuses: { history: 'Historical record', online: 'Online', stale: 'Last known online', offline: 'Offline', onlineGameplay: 'Online · {state}', staleGameplay: 'Stale · Last {state}' },
+      statuses: { history: 'Historical record', online: 'Online', stale: 'Stale status', offline: 'Offline', onlineGameplay: 'Online · {state}', staleGameplay: 'Stale · Last {state}' },
       gameplayStates: { selectingCharacter: 'Selecting character', loading: 'Entering world', alive: 'In game', dead: 'Dying', ghost: 'Ghost', migrating: 'Changing world', unknown: 'Unknown state' },
       worldStates: { running: 'Running', stopped: 'Stopped', starting: 'Starting', stopping: 'Stopping', failed: 'Failed' },
       network: { excellent: 'Excellent', fair: 'Fair', poor: 'Poor' },
@@ -600,7 +601,7 @@ export const playerMessages = {
       },
       list: {
         title: 'Players', subtitle: 'Review player records and online status, then run in-world actions.', taskWorld: 'Default scheduled-task world: {world}', filterTitle: 'Filter players',
-        filterDescription: 'Narrow the list by archive, online status, character, or keyword.', allArchives: 'All archives', allStatuses: 'All statuses', allCharacters: 'All characters',
+        filterDescription: 'Narrow the list by archive, online status, character, or keyword.', allArchives: 'All archives', sessionScope: 'Save records', currentSession: 'Current save', previousSessions: 'Previous saves', previousSessionsHint: 'Records from previous or unverified saves. These do not describe current players.', allStatuses: 'All statuses', allCharacters: 'All characters',
         searchPlaceholder: 'Search player name or ID', total: '{count} players', loadFailedTitle: 'Could not load players', currentRefreshFailedTitle: 'Could not collect current player state',
         currentRefreshFailedDescription: 'The records below are historical and do not represent current presence: {error}', partialTitle: 'Some rooms could not be loaded',
         partialDescription: 'Available data is shown; {count} rooms are unavailable: {rooms}', loading: 'Loading players', emptyTitle: 'No player data',
@@ -610,7 +611,7 @@ export const playerMessages = {
       },
       detail: {
         title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions', managementActions: 'Player management',
-        staleTitle: 'Presence data is stale', staleDescription: 'This player was last confirmed online at {time}. The latest observation failed, so live game actions are disabled until a successful refresh.',
+        staleTitle: 'Presence data is stale', staleDescription: 'This player was last observed at {time}. The observation is stale, so live game actions are disabled until a successful refresh.',
         presenceConflictTitle: 'Player location conflict', presenceConflictDescription: 'These Shards simultaneously reported the same KU ID online: {worlds}. Refresh player data and inspect Shard connectivity before acting.'
       },
       quick: {

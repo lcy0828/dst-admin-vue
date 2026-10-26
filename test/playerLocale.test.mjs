@@ -54,7 +54,7 @@ test('known player status and legacy Chinese values follow the selected locale',
   assert.equal(isPlayerOnline('在线'), true)
   assert.equal(isPlayerOnline('stale'), false)
   assert.deepEqual(playerStatusMeta('online', en), { label: 'Online', variant: 'success' })
-  assert.deepEqual(playerStatusMeta('stale', en), { label: 'Last known online', variant: 'warning' })
+  assert.deepEqual(playerStatusMeta('stale', en), { label: 'Stale status', variant: 'warning' })
   assert.deepEqual(playerStatusMeta('在线', zh), { label: '在线', variant: 'success' })
   assert.equal(playerStatusMeta('mod_spectating', en).label, 'mod_spectating')
   assert.equal(zh('players.list.taskWorld', { world: 'Caves' }), '定时任务默认世界：Caves')

@@ -581,6 +581,7 @@ export const logRulesV2API = {
 }
 
 export const playersV2API = {
+  inventory: (roomId, playerId, params = {}, { signal } = {}) => client.get(`/rooms/${encode(roomId)}/players/${encode(playerId)}/inventory`, { params, signal, timeout: 20_000, runtimeTarget: false }),
   list: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/players`, { params, runtimeTarget: false }),
   get: (roomId, playerId) => client.get(`/rooms/${encode(roomId)}/players/${encode(playerId)}`, { runtimeTarget: false }),
   refresh: (roomId, worldIds = []) => client.post(`/rooms/${encode(roomId)}/players/actions/refresh`, { worldIds }, { runtimeTarget: false }),

@@ -81,7 +81,7 @@ test('workspace player rows expose local actions without leaving the dashboard',
   assert.match(playerList, /keyword: this\.\$route\.query\.playerId \|\| ''/)
   assert.match(playerList, /this\.openRequestedPlayer\(\)/)
   assert.match(playerList, /item\.user_id === playerId && \(!roomId \|\| item\.room_id === roomId\)/)
-  assert.match(playerList, /<PlayerActionMenu :player="player"/)
+  assert.match(playerList, /<PlayerActionMenu v-if="!player.historical" :player="player"/)
   assert.match(playerList, /<PlayerActionMenu v-if="actionPanelPlayer" :player="actionPanelPlayer" hide-trigger/)
   assert.match(playerList, /openDetailPlayerActions\(\)[\s\S]*this\.playerDetailVisible = false/)
 })

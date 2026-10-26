@@ -36,7 +36,7 @@ test('player rows use room-scoped keys and room requests settle independently', 
     readFile(new URL('../src/api/playerApi.js', import.meta.url), 'utf8')
   ])
 
-  assert.match(view, /:key="`\$\{player\.room_id\}:\$\{player\.id\}`"/)
+  assert.match(view, /:key="`\$\{player\.room_id\}:\$\{player\.id\}:\$\{player\.history_id\}`"/)
   assert.match(api, /Promise\.allSettled\(rooms\.map\(room => roomPlayers/)
   assert.match(api, /Promise\.allSettled\(selectedRooms\.map/)
   assert.match(api, /async getPlayerDetail[\s\S]*?const catalog = await loadRooms\(\)/)

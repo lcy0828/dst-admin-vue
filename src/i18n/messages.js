@@ -20,6 +20,7 @@ import { gameReleaseMessages } from './gameReleaseMessages.js'
 import { logToolsMessages } from './logToolsMessages.js'
 import { modMessages } from './modMessages.js'
 import { playerMessages } from './playerMessages.js'
+import { inventoryMessages } from './inventoryMessages.js'
 import { serverMessages } from './serverMessages.js'
 import { systemSettingsMessages } from './systemSettingsMessages.js'
 import { workshopMessages } from './workshopMessages.js'
@@ -39,6 +40,7 @@ import { worldsMessages } from './worldsMessages.js'
 
 export const messages = {
   'zh-CN': {
+    ...inventoryMessages['zh-CN'],
     ...agentMessages['zh-CN'],
     ...machineMessages['zh-CN'],
     ...workbenchMessages['zh-CN'],
@@ -578,6 +580,7 @@ export const messages = {
     }
   },
   'en-US': {
+    ...inventoryMessages['en-US'],
     ...agentMessages['en-US'],
     ...machineMessages['en-US'],
     ...workbenchMessages['en-US'],

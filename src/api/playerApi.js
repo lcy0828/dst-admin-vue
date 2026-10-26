@@ -95,11 +95,15 @@ async function resolveSession(value, catalog = null) {
 
 function legacyPlayer(player, room) {
   const presenceStatus = player.presenceStatus || player.fields?.online?.status || 'unavailable'
-  const status = !player.online
-    ? 'offline'
-    : (presenceStatus === 'live' ? 'online' : 'stale')
+  const status = presenceStatus === 'stale'
+    ? 'stale'
+    : (player.online ? (presenceStatus === 'live' ? 'online' : 'stale') : 'offline')
   return {
     id: player.id,
+    session_id: player.sessionId || '',
+    historical: Boolean(player.historical),
+    history_id: player.historyId || '',
+    observed_online: Boolean(player.online),
     room_id: room.id,
     world_id: player.worldId,
     world_name: player.worldConfirmed === false ? '' : player.worldName,
@@ -126,7 +130,7 @@ function legacyPlayer(player, room) {
     status_change: player.statusChangedAt,
     last_refreshed_at: player.lastRefreshedAt,
     presence_status: presenceStatus,
-    history_only: !player.online && presenceStatus === 'unavailable' && player.lastSeenSource === 'native-log',
+    history_only: Boolean(player.historical) || (!player.online && presenceStatus === 'unavailable' && player.lastSeenSource === 'native-log'),
     presence_observed_at: player.presenceObservedAt || player.fields?.online?.observedAt || null,
     presence_conflict: Boolean(player.presenceConflict),
     observed_world_ids: Array.isArray(player.observedWorldIds) ? player.observedWorldIds : [],
@@ -158,7 +162,8 @@ async function roomPlayers(room, params = {}) {
   do {
     const response = await playersV2API.list(room.id, {
       query: params.keyword || '',
-      status: params.status === 'stale' ? 'online' : (params.status || ''),
+      status: params.status === 'stale' ? '' : (params.status || ''),
+      scope: params.scope || 'current',
       prefab: params.prefab || '',
       includeAccessLists: params.include_access_lists !== false,
       limit: 100,
@@ -288,7 +293,8 @@ export const playerApi = {
       ? response.data.filter(player => selectedWorldIds.has(String(player.world_id || '')))
       : response.data
     const online = players.filter(player => player.status === 'online').length
-    const staleOnline = players.filter(player => player.status === 'stale').length
+    const stale = players.filter(player => player.status === 'stale').length
+    const staleOnline = players.filter(player => player.status === 'stale' && player.observed_online).length
     const onlineByWorld = players.reduce((counts, player) => {
       if (player.status !== 'online' || !player.world_id) return counts
       counts[player.world_id] = (counts[player.world_id] || 0) + 1
@@ -299,6 +305,7 @@ export const playerApi = {
       online_count: online,
       online_by_world: onlineByWorld,
       stale_online_count: staleOnline,
+      stale_count: stale,
       offline_count: players.length - online - staleOnline,
       recent_players: players
     })
@@ -306,6 +313,7 @@ export const playerApi = {
 
   async getPlayerDetail(player) {
     if (!player?.room_id || !player?.user_id) throw adapterError('INVALID_PLAYER_INPUT')
+    if (player.historical) return success(player)
     const catalog = await loadRooms()
     const room = await resolveRoom(player.room_id, catalog)
     return success(legacyPlayer(await playersV2API.get(room.id, player.user_id), room))

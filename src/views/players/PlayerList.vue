@@ -3,6 +3,7 @@
     <div class="page-header">
       <div class="title-container"><h1>{{ $t('players.list.title') }}</h1></div>
       <div class="action-buttons">
+        <UiButton size="sm" variant="outline" @click="inventoryLookupOpen = true">{{ $t('inventory.byId') }}</UiButton>
         <UiButton size="sm" variant="outline" @click="refreshPlayerData" :disabled="loading || refreshing"><Spinner v-if="refreshing" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
         <TooltipProvider><Tooltip><TooltipTrigger as-child><UiButton class="refresh-settings-button" size="icon-sm" variant="outline" :aria-label="$t('players.actions.refreshSettings')" @click="showPlayerRefreshSettings"><Settings2 /></UiButton></TooltipTrigger><TooltipContent>{{ $t('players.actions.refreshSettings') }}</TooltipContent></Tooltip></TooltipProvider>
         <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />{{ $t('players.actions.manualUpdate') }}</UiButton>
@@ -17,6 +18,13 @@
       <CardContent>
         <FieldGroup class="filter-form">
           <RoomScopeSelect v-model="filterForm.archive_name" :rooms="archiveOptions.map(room => ({ id: room.value, name: room.label }))" allow-all @update:model-value="selectRoomFilter" />
+          <Field>
+            <FieldLabel for="player-session-scope">{{ $t('players.list.sessionScope') }}</FieldLabel>
+            <NativeSelect id="player-session-scope" v-model="filterForm.scope" @change="handleFilter">
+              <NativeSelectOption value="current">{{ $t('players.list.currentSession') }}</NativeSelectOption>
+              <NativeSelectOption value="history">{{ $t('players.list.previousSessions') }}</NativeSelectOption>
+            </NativeSelect>
+          </Field>
           <Field>
             <FieldLabel for="player-status-filter">{{ $t('players.fields.status') }}</FieldLabel>
             <NativeSelect id="player-status-filter" v-model="filterForm.status" @change="handleFilter">
@@ -73,6 +81,7 @@
             </div>
           </AlertDescription>
         </Alert>
+        <p v-if="filterForm.scope === 'history'" class="mb-3 text-sm text-muted-foreground">{{ $t('players.list.previousSessionsHint') }}</p>
         <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('players.list.loading') }}</span></div>
         <div v-else-if="!loadError && playerList.length > 0" class="table-wrap">
           <UiTable>
@@ -92,7 +101,7 @@
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow v-for="player in playerList" :key="`${player.room_id}:${player.id}`">
+              <TableRow v-for="player in playerList" :key="`${player.room_id}:${player.id}:${player.history_id}`">
                 <TableCell>
                   <div class="flex min-w-20 max-w-44 flex-col gap-1 whitespace-normal break-words">
                     <span v-if="!filterForm.archive_name">{{ player.archive_name }}</span>
@@ -110,7 +119,7 @@
                   </div>
                 </TableCell>
                 <TableCell>
-                  <UiButton class="max-w-56 justify-start px-1" variant="ghost" size="sm" :title="$t('players.actions.details')" @click="viewPlayerDetail(player)">
+                  <UiButton class="max-w-56 justify-start px-1" variant="ghost" size="sm" :title="$t('players.actions.details')" :disabled="player.historical" @click="viewPlayerDetail(player)">
                     <CharacterAvatar :prefab="player.prefab" :name="player.player_name" :player="player" />
                     <span class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" :title="$t('players.list.administrator')" /><UserRoundCheck v-if="player.is_friend" :title="$t('players.list.friend')" /></span>
                   </UiButton>
@@ -132,7 +141,7 @@
                 <TableCell><PlayerRecordTime :value="player.last_seen" /></TableCell>
                 <TableCell class="action-column">
                   <div class="row-actions">
-                    <PlayerActionMenu :player="player" @updated="refreshPlayerAfterAction(player, $event)" @player-state-refreshed="fetchPlayerList" />
+                    <PlayerActionMenu v-if="!player.historical" :player="player" @updated="refreshPlayerAfterAction(player, $event)" @player-state-refreshed="fetchPlayerList" />
                   </div>
                 </TableCell>
               </TableRow>
@@ -273,6 +282,7 @@
         <DialogFooter><UiButton variant="outline" @click="scheduleDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmAddSchedule" :disabled="addingSchedule"><Spinner v-if="addingSchedule" data-icon="inline-start" />{{ $t('players.actions.confirmAdd') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
+    <PlayerInventoryDialog v-model:open="inventoryLookupOpen" :rooms="archiveOptions.map(room => ({ id: room.value, name: room.label }))" :initial-room-id="filterForm.archive_name" />
   </div>
 </template>
 
@@ -320,6 +330,7 @@ import {
 import { confirmAction } from '@/lib/feedback';
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue';
 import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue';
+import PlayerInventoryDialog from '@/components/players/PlayerInventoryDialog.vue';
 import PlayerRecordTime from '@/components/players/PlayerRecordTime.vue';
 import { playerHistoryTime, playerListPresenceTime } from '@/lib/playerHistoryPresentation.mjs';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
@@ -343,6 +354,7 @@ export default {
     CharacterAvatar,
     ChevronRight,
     PlayerActionMenu,
+    PlayerInventoryDialog,
     PlayerRecordTime,
     Clock3,
     Crown,
@@ -416,6 +428,7 @@ export default {
   },
   data() {
     return {
+      inventoryLookupOpen: false,
       // 玩家列表数据
       playerList: [],
       loading: false,
@@ -432,6 +445,7 @@ export default {
 
       // 筛选表单
       filterForm: {
+        scope: 'current',
         archive_name: this.$route.query.roomId ?? this.$route.query.archive ?? readWorkspaceSelection(managementScopeTargetId()).roomId,
         status: '',
         prefab: '',
@@ -808,6 +822,7 @@ export default {
     // 重置筛选
     resetFilter() {
       this.filterForm = {
+        scope: 'current',
         archive_name: '',
         status: '',
         prefab: '',
