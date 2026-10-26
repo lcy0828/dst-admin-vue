@@ -41,7 +41,7 @@ export function enrichModMetadata(items = [], metadata = {}) {
     const rating = Number(latest.ratingCount) > 0 || Number(latest.score) > 0 ? Number(latest.score) : null
     return {
       ...item,
-      name: text(latest.name) || item.name,
+      name: text(item.localName) || text(latest.name) || item.name,
       author: text(latest.author) || item.author,
       description: latest.description || item.description,
       image: latest.previewUrl || item.image,

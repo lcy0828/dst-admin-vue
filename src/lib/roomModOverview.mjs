@@ -106,7 +106,7 @@ export function buildRoomModOverview(mods = [], overview = null) {
       ...mod,
       id,
       modid: id,
-      name: String(mod.name || `Workshop ${id}`).trim(),
+      name: String(mod.localName || mod.name || `Workshop ${id}`).trim(),
       updateAvailable,
       status: roomModOperationalStatus(mod)
     })
