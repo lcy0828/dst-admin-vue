@@ -1,4 +1,4 @@
-export const notificationEvents = ['room.result', 'backup.result', 'game.result', 'mod.result', 'agent.status', 'security.login', 'software.available', 'custom']
+export const notificationEvents = ['room.result', 'backup.result', 'game.result', 'mod.result', 'agent.status', 'security.login', 'software.available', 'agent.software.available', 'custom']
 
 export const webhookPresets = {
   http: { format: 'json', template: JSON.stringify({ event_id: '{{id}}', event: '{{event}}', title: '{{title}}', message: '{{message}}', status: '{{status}}', room_id: '{{roomId}}', target_id: '{{targetId}}', job_id: '{{jobId}}', timestamp: '{{timestamp}}' }, null, 2) },

@@ -19,7 +19,7 @@ export function createAgentSoftwareController({ id, api, jobs, storage, onChange
     })()
     return loading
   }
-  async function check(source = 'auto', force = true) {
+  async function check(source = '', force = true) {
     if (checking || state.acting) return checking
     state.checking = true; state.error = ''; publish()
     checking = (async () => {
@@ -33,7 +33,7 @@ export function createAgentSoftwareController({ id, api, jobs, storage, onChange
     if (observing) return observing
     state.acting = true; state.error = ''; publish()
     observing = (async () => {
-      const deadline = now() + 19 * 60 * 1000
+      const deadline = now() + 486 * 60 * 1000
       let retryUntil = 0
       try {
         while (alive) {
@@ -67,7 +67,7 @@ export function createAgentSoftwareController({ id, api, jobs, storage, onChange
     })()
     return observing
   }
-  async function start({ version, source = 'auto', operationId = '' }) {
+  async function start({ version, source = '', operationId = '' }) {
     if (state.acting || state.checking || !version) return
     state.acting = true; state.error = ''; state.job = null; publish()
     try {
@@ -83,7 +83,7 @@ export function createAgentSoftwareController({ id, api, jobs, storage, onChange
     const jobID = remembered()
     if (jobID) { await observe(jobID); return }
     await refresh()
-    if (alive && state.snapshot?.supported && !state.snapshot?.check?.latest && !state.snapshot?.operation?.phase?.match(/^(downloading|verifying|restarting)$/)) await check('auto', false)
+    if (alive && state.snapshot?.supported && !state.snapshot?.check?.latest && !state.snapshot?.operation?.phase?.match(/^(downloading|verifying|restarting)$/)) await check('', false)
   }
   return { state, refresh, check, start, initialize, reconnect: () => { const jobID = remembered(); return jobID ? observe(jobID) : refresh() }, dispose() { alive = false } }
 }

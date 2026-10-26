@@ -1,4 +1,6 @@
 <script setup>
+import SoftwareUpdateSettings from './SoftwareUpdateSettings.vue'
+import { useSoftwareUpdate } from '@/composables/useSoftwareUpdate'
 import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Mail, Webhook, Plus, RefreshCw, Send, Pencil, Trash2, CircleAlert } from '@lucide/vue'
@@ -24,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 const props = defineProps({ defaultEmail: { type: String, default: '' } })
 const { t, locale } = useI18n(), id = useId()
+const softwareUpdate = useSoftwareUpdate()
 const channels = ref([]), deliveries = ref([]), total = ref(0), offset = ref(0)
 const loading = ref(true), action = ref(''), error = ref(''), formError = ref('')
 const open = ref(false), remove = ref(null), detail = ref(null), compose = ref(false)
@@ -107,6 +110,7 @@ onBeforeUnmount(() => { alive = false; sequence++; clearTimeout(timer); form.val
 </script>
 
 <template>
+  <SoftwareUpdateSettings :settings="softwareUpdate.state.snapshot?.settings" notifications @saved="softwareUpdate.reconnect()" />
   <section class="flex min-w-0 flex-col gap-4">
     <Alert v-if="error" variant="destructive"><CircleAlert /><AlertTitle>{{ t('notifications.failed') }}</AlertTitle><AlertDescription>{{ error }}</AlertDescription><Button size="sm" variant="outline" :disabled="loading" @click="load">{{ t('notifications.refresh') }}</Button></Alert>
     <Card>

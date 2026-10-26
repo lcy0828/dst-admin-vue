@@ -9,16 +9,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import SoftwareUpdateSettings from './SoftwareUpdateSettings.vue'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 const { t } = useI18n()
 const update = useSoftwareUpdate()
 const { state } = update
-const source = ref('auto')
+const source = computed(() => state.snapshot?.settings?.source || '')
 const confirmation = ref('')
 const confirmingVersion = ref('')
 const snapshot = computed(() => state.snapshot)
@@ -33,7 +32,7 @@ const errorMessage = computed(() => {
 })
 
 function confirm(action) {
-  confirmingVersion.value = action === 'apply' ? operation.value.version : latest.value.version
+  confirmingVersion.value = action === 'apply' || action === 'resume' ? operation.value.version : latest.value.version
   confirmation.value = action
 }
 
@@ -85,16 +84,10 @@ async function execute() {
         <Alert v-if="snapshot.check.hasUpdate && !latest?.onlineUpdate">
           <CircleAlert /><AlertDescription>{{ t('softwareUpdate.packageMissing') }}</AlertDescription>
         </Alert>
-        <Field>
-          <FieldLabel id="software-source-label">{{ t('softwareUpdate.source') }}</FieldLabel>
-          <ToggleGroup :model-value="source" type="single" variant="outline" aria-labelledby="software-source-label" :disabled="busy" @update:model-value="value => { if (value) source = value }">
-            <ToggleGroupItem value="auto">{{ t('softwareUpdate.auto') }}</ToggleGroupItem>
-            <ToggleGroupItem value="direct">{{ t('softwareUpdate.direct') }}</ToggleGroupItem>
-            <ToggleGroupItem value="proxy">{{ t('softwareUpdate.proxy') }}</ToggleGroupItem>
-          </ToggleGroup>
-          <FieldDescription>{{ t('softwareUpdate.autoDescription') }}</FieldDescription>
-        </Field>
+        <SoftwareUpdateSettings :settings="snapshot.settings" :disabled="busy" @saved="update.reconnect()" />
         <div v-if="operation" class="flex min-w-0 flex-col gap-2" aria-live="polite">
+          <p v-if="operation.resumed" class="text-sm text-muted-foreground">{{ t('softwareUpdate.resumed') }}</p>
+          <p v-if="operation.source" class="text-sm text-muted-foreground">{{ t('softwareUpdate.actualSource') }} · {{ t(`softwareUpdate.routes.${operation.source}`) }}</p>
           <p v-if="state.retrying" class="text-sm text-muted-foreground">{{ t('softwareUpdate.trackingReconnect') }}</p>
           <div class="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span class="flex items-center gap-2"><Spinner v-if="busy" />{{ phaseLabel }} · {{ operation.version }}</span>
@@ -118,6 +111,7 @@ async function execute() {
         <Button v-if="operation?.phase === 'prepared' && snapshot.supported" :disabled="busy" @click="confirm('apply')">
           <PackageCheck data-icon="inline-start" />{{ t('softwareUpdate.apply') }}
         </Button>
+        <Button v-else-if="['failed', 'interrupted'].includes(operation?.phase) && snapshot.supported" :disabled="busy" @click="confirm('resume')"><Download data-icon="inline-start" />{{ t('softwareUpdate.resume', { version: operation.version }) }}</Button>
         <Button v-else-if="snapshot.check.hasUpdate && latest?.onlineUpdate && snapshot.supported" :disabled="busy" @click="confirm('update')">
           <Download data-icon="inline-start" />{{ t('softwareUpdate.update', { version: latest.version }) }}
         </Button>

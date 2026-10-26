@@ -53,7 +53,7 @@ export function createSoftwareUpdateController({ api, changed, reload, storage, 
     if (operation?.phase === 'rolled_back' && pending === operation.id && snapshot.ready !== false) {
       pending = ''; writePending(''); stopTimer(); emit(); reload(); return
     }
-    if (operation?.phase === 'failed' || operation?.phase === 'rolled_back' && snapshot.ready !== false) {
+    if (['failed', 'interrupted'].includes(operation?.phase) || operation?.phase === 'rolled_back' && snapshot.ready !== false) {
       if (operation.id === pending) { pending = ''; writePending('') }
       if (snapshot.ready !== false) restartUntil = 0
     }
@@ -89,7 +89,7 @@ export function createSoftwareUpdateController({ api, changed, reload, storage, 
     return statusRequest
   }
 
-  function check(force = false, source = 'auto') {
+  function check(force = false, source = '') {
     if (checkRequest) return checkRequest
     state.checking = true
     emit()

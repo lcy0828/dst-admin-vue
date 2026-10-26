@@ -58,3 +58,75 @@ export const softwareUpdateMessages = {
     imageNote: 'System dependency and base image changes still require an image update. Routine releases can be installed here.'
   } }
 }
+
+Object.assign(softwareUpdateMessages["zh-CN"].softwareUpdate, {
+  "proxyMode": "网络代理",
+  "proxyURL": "代理地址",
+  "secretSaved": "已保存，留空保留",
+  "timeout": "下载总时限（分钟）",
+  "saveSettings": "保存更新设置",
+  "savingSettings": "正在保存",
+  "settingsSaved": "更新设置已保存",
+  "proxyModes": {
+    "inherit": "继承工坊代理",
+    "agentInherit": "使用此 Agent 的系统代理",
+    "system": "使用系统环境代理",
+    "direct": "不使用代理",
+    "custom": "自定义代理"
+  },
+  "proxyHelp": "用于检查版本、下载校验文件和程序包。",
+  "agentProxyHelp": "地址由此 Agent 访问；127.0.0.1 指 Agent 所在机器。",
+  "backgroundCheck": "后台检查软件新版",
+  "backgroundHelp": "有启用的管理服务或 Agent 新版订阅时定期检查，关闭浏览器后也可提醒。同一渠道对同一组件、节点和版本不重复入队。",
+  "interval": "检查间隔（小时）",
+  "resumed": "正在接着上次的进度下载",
+  "actualSource": "实际下载来源",
+  "routes": {
+    "direct": "GitHub",
+    "mirror": "国内镜像",
+    "proxy": "国内镜像",
+    "auto": "自动",
+    "configured-proxy": "已配置代理",
+    "controller": "控制端"
+  },
+  "proxy": "国内镜像",
+  "autoDescription": "自动模式依次尝试已配置代理、GitHub 直连和国内镜像。固定来源不自动换源。"
+})
+Object.assign(softwareUpdateMessages["en-US"].softwareUpdate, {
+  "proxyMode": "Network proxy",
+  "proxyURL": "Proxy URL",
+  "secretSaved": "Saved; leave blank to keep",
+  "timeout": "Download deadline (minutes)",
+  "saveSettings": "Save update settings",
+  "savingSettings": "Saving",
+  "settingsSaved": "Update settings saved",
+  "proxyModes": {
+    "inherit": "Inherit Workshop proxy",
+    "agentInherit": "Use this Agent’s system proxy",
+    "system": "System environment proxy",
+    "direct": "No proxy",
+    "custom": "Custom proxy"
+  },
+  "proxyHelp": "Used for release checks, checksums and archives.",
+  "agentProxyHelp": "The Agent connects to this address. 127.0.0.1 means the Agent machine.",
+  "backgroundCheck": "Check software releases in the background",
+  "backgroundHelp": "Checks when an enabled channel subscribes to releases, even with the browser closed. Each channel queues a component, node and version once.",
+  "interval": "Check interval (hours)",
+  "resumed": "Resuming the previous download",
+  "actualSource": "Download route",
+  "routes": {
+    "direct": "GitHub",
+    "mirror": "China mirror",
+    "proxy": "China mirror",
+    "auto": "Automatic",
+    "configured-proxy": "Configured proxy",
+    "controller": "Controller"
+  },
+  "proxy": "China mirror",
+  "autoDescription": "Automatic mode tries the configured proxy, direct GitHub and the China mirror. A fixed source does not switch automatically."
+})
+
+softwareUpdateMessages['zh-CN'].softwareUpdate.resume = '继续下载 {version}'
+softwareUpdateMessages['en-US'].softwareUpdate.resume = 'Resume download of {version}'
+softwareUpdateMessages['zh-CN'].softwareUpdate.phases.interrupted = '下载已中断，可继续'
+softwareUpdateMessages['en-US'].softwareUpdate.phases.interrupted = 'Download interrupted; resume available'

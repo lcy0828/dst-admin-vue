@@ -202,9 +202,10 @@ export const systemV2API = {
 
 // Management software belongs to this controller, independent of machine scope.
 export const softwareV2API = {
+  saveSettings: input => client.put('/system/software/settings', input, { runtimeTarget: false }),
   status: () => client.get('/system/software', { runtimeTarget: false, timeout: 5000 }),
-  check: (force = false, source = 'auto') => client.get('/system/software/check', { params: { force, source }, runtimeTarget: false, timeout: 30000 }),
-  update: (version, source = 'auto') => client.post('/system/software/actions/update', { version, source, confirmation: version }, { runtimeTarget: false }),
+  check: (force = false, source = '') => client.get('/system/software/check', { params: { force, source }, runtimeTarget: false, timeout: 100000 }),
+  update: (version, source = '') => client.post('/system/software/actions/update', { version, source, confirmation: version }, { runtimeTarget: false }),
   apply: operationId => client.post('/system/software/actions/apply', { operationId, confirmation: 'APPLY SOFTWARE UPDATE' }, { runtimeTarget: false, timeout: 15000 }),
 }
 
@@ -803,8 +804,9 @@ export const agentsV2API = {
 		releaseId ? { releaseId } : {},
 		{ runtimeTarget: false }
 	),
+	saveSoftwareSettings: (agentId, input) => client.put(`/agents/${encode(agentId)}/software/settings`, input, { runtimeTarget: false }),
 	software: agentId => client.get(`/agents/${encode(agentId)}/software`, { runtimeTarget: false, timeout: 35000 }),
-	checkSoftware: (agentId, params = {}) => client.get(`/agents/${encode(agentId)}/software/check`, { params, runtimeTarget: false, timeout: 35000 }),
+	checkSoftware: (agentId, params = {}) => client.get(`/agents/${encode(agentId)}/software/check`, { params, runtimeTarget: false, timeout: 105000 }),
 	updateSoftware: (agentId, input) => client.post(`/agents/${encode(agentId)}/software/actions/update`, input, { runtimeTarget: false })
 }
 

@@ -172,3 +172,12 @@ test('authorization errors stop observation immediately without a restart loop',
   assert.equal(f.controller.state.error, 'session expired')
   assert.equal(f.scheduled.size, 0)
 })
+
+test('interrupted downloads clear pending apply intent and stop idle polling', async () => {
+  const f = fixture({ status: async () => snapshot('interrupted') }, 'op')
+  await f.controller.refresh()
+  assert.equal(f.memory.has('dst-admin-software-operation'), false)
+  assert.equal(f.scheduled.size, 0)
+  assert.equal(f.calls.apply, 0)
+  assert.equal(f.controller.state.snapshot.operation.phase, 'interrupted')
+})
