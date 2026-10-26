@@ -1,5 +1,20 @@
 export const gameInstallationMessages = {
   'zh-CN': { gameInstallation: {
+    maintenance: {
+      title: '更新 / 校验游戏服务端', checking: '正在检查安装和相关世界…', recheck: '重新检查', blocked: '暂时无法开始',
+      ready: '可以开始', downtime: '需要短暂停服', affected: '受影响的世界',
+      managedDescription: '先创建保护备份，再停止相关世界并更新、校验游戏文件。存档目录保留。',
+      idleDescription: '当前安装未被游戏进程使用。校验会补齐损坏文件，并下载 Steam 当前版本；存档目录保留。',
+      willStop: '将停止', staysStopped: '保持停止', unknownState: '状态待确认',
+      sharedScope: '共用安装或同属跨节点房间的世界需要一起处理，以避免游戏版本不一致。',
+      restart: '完成后恢复运行', restartHint: '仅恢复操作前运行的世界；关闭后这些世界将保持停止。',
+      confirmStop: '确认停服并更新 / 校验', confirmValidate: '开始更新 / 校验', viewDetails: '查看更新记录',
+      blockers: {
+        USAGE_UNAVAILABLE: '无法确认安装的使用状态，请重新检查；旧版 Agent 需先升级。',
+        UNMANAGED_GAME_RUNNING: '此目录被未纳入更新计划的游戏进程使用，请先停止这些进程，再重新检查。',
+        SHARD_STATE_UNCERTAIN: '世界正在切换状态或状态无法确认，请稍后重新检查。'
+      }
+    },
 	steamLogin: {
 		retryRead: '重新读取状态',
 		reset: '重置登录设置', resetTitle: '重置此节点的 Steam 登录设置？', resetDescription: '清除此 SteamCMD 共用的面板账号配置，并切换为匿名登录。之后可重新配置账号。游戏文件、模组和存档不会改动。', resetConfirm: '确认重置',
@@ -13,7 +28,7 @@ export const gameInstallationMessages = {
     installed: '已安装', missing: '未安装', offline: '离线', unknown: '检测失败', version: '游戏版本 {version}',
     location: '安装位置', actualLocation: '已有服务端目录', saves: '存档目录', steamReady: 'SteamCMD 可用', steamMissing: 'SteamCMD 未配置',
     install: '安装游戏服务端', update: '更新 / 校验', adopt: '使用已有服务端', rooms: '管理房间',
-    installTitle: '安装或校验游戏服务端', installDescription: '在 {target} 的 {path} 执行 SteamCMD 下载与校验。请先停止使用该目录的全部世界；存档目录保留。更新后如需使用 LuaJIT，可在下方重新安装 / 修复。',
+    installTitle: '安装游戏服务端', installDescription: '检查 {target} 的 {path}，确认后执行下载与文件校验。',
     confirmInstall: '开始安装 / 校验', cancel: '取消', adoptTitle: '接入已有游戏服务端',
     adoptDescription: '填写所选运行机器上的目录。接入后复用该目录中的游戏文件，继续使用下方所示的存档目录。已有存档如需导入，请在房间管理中单独操作。',
     path: '该机器上的游戏目录', pathPlaceholder: '/opt/dst-existing/server', probe: '检测目录', checking: '正在检测…',
@@ -24,6 +39,21 @@ export const gameInstallationMessages = {
     progress: '当前阶段进度', noVersion: '版本未知', needsRegistration: '请先在运行机器登记游戏和存档路径。'
   } },
   'en-US': { gameInstallation: {
+    maintenance: {
+      title: 'Update / validate game server', checking: 'Checking the installation and affected worlds…', recheck: 'Check again', blocked: 'Cannot start yet',
+      ready: 'Ready to start', downtime: 'Brief downtime required', affected: 'Affected worlds',
+      managedDescription: 'Create protection backups, then stop affected worlds and update and validate game files. Save directories are preserved.',
+      idleDescription: 'No game process is using this installation. Validation repairs files and downloads the current Steam version. Saves are preserved.',
+      willStop: 'Will stop', staysStopped: 'Keep stopped', unknownState: 'State unknown',
+      sharedScope: 'Worlds sharing an installation or belonging to connected rooms across nodes are included to keep game versions consistent.',
+      restart: 'Resume worlds when finished', restartHint: 'Resume only worlds that were running before this operation. Turn off to leave them stopped.',
+      confirmStop: 'Stop worlds and update / validate', confirmValidate: 'Start update / validation', viewDetails: 'View update history',
+      blockers: {
+        USAGE_UNAVAILABLE: 'Installation usage could not be confirmed. Check again; older Agents need to be upgraded first.',
+        UNMANAGED_GAME_RUNNING: 'Game processes outside this update plan use the directory. Stop them first, then check again.',
+        SHARD_STATE_UNCERTAIN: 'A world is changing state or its state is unknown. Check again shortly.'
+      }
+    },
 	steamLogin: {
 		retryRead: 'Retry status',
 		reset: 'Reset login settings', resetTitle: 'Reset Steam login settings on this node?', resetDescription: 'Clear the panel account settings shared by this SteamCMD and switch to anonymous login. You can then configure an account again. Game files, mods and saves are preserved.', resetConfirm: 'Confirm reset',
@@ -37,7 +67,7 @@ export const gameInstallationMessages = {
     installed: 'Installed', missing: 'Not installed', offline: 'Offline', unknown: 'Inspection failed', version: 'Game version {version}',
     location: 'Installation location', actualLocation: 'Existing game directory', saves: 'Save directory', steamReady: 'SteamCMD available', steamMissing: 'SteamCMD not configured',
     install: 'Install game server', update: 'Update / validate', adopt: 'Use existing server', rooms: 'Manage rooms',
-    installTitle: 'Install or validate game server', installDescription: 'Run SteamCMD download and validation at {path} on {target}. Stop all worlds using this directory first. Saves are preserved. Reinstall / repair LuaJIT below after a game update if needed.',
+    installTitle: 'Install game server', installDescription: 'Check {path} on {target} before downloading and validating game files.',
     confirmInstall: 'Start install / validation', cancel: 'Cancel', adoptTitle: 'Connect an existing game server',
     adoptDescription: 'Enter a directory on the selected runtime host. The game files are reused and the save directory shown below stays active. Import any existing saves separately through room management.',
     path: 'Game directory on this host', pathPlaceholder: '/opt/dst-existing/server', probe: 'Inspect directory', checking: 'Inspecting…',

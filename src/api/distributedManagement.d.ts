@@ -375,7 +375,8 @@ export interface GameReleasePlan {
   desiredVersion: string
   topologyRevision: string
   planHash: string
-  policy: { cleanCache: boolean; restartRunning: boolean; loadConfirmation: 'logs' | 'none'; timeoutSeconds: number }
+  selectedInstallations?: { targetId: string; installationId: string }[]
+  policy: { validate?: boolean; requireEmpty?: boolean; cleanCache: boolean; restartRunning: boolean; loadConfirmation: 'logs' | 'none'; timeoutSeconds: number }
   affectedRoomIds: string[]
   installations: GameReleaseInstallationPlan[]
   blockers: GameReleaseBlocker[]

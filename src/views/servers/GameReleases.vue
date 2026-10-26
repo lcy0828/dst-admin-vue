@@ -1,7 +1,8 @@
 <script setup>
 import GameInstallationManager from '@/components/GameInstallationManager.vue'
 import LuaJITInstaller from '@/components/LuaJITInstaller.vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { nextTick, computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import {
@@ -59,6 +60,7 @@ import {
   managementScopeTargetId
 } from '@/lib/managementScope.mjs'
 
+const route = useRoute()
 const installationGeneration = ref(0)
 const ACTIVE_RELEASE_KEY = 'dstGameReleaseActivity'
 const { locale, t } = useI18n()
@@ -154,13 +156,22 @@ watch([desiredVersion, () => policy.cleanCache, () => policy.restartRunning, () 
 onMounted(async () => {
   window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
   await loadHistory()
-  resumePolling()
+  if (!showMaintenanceJob(route.query.maintenanceJob)) resumePolling()
 })
 
 onBeforeUnmount(() => {
   stopPolling()
   window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
 })
+
+watch(() => route.query.maintenanceJob, id => showMaintenanceJob(id))
+
+function showMaintenanceJob(id) {
+  if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(id)) return false
+  startPolling({ id, kind: 'game.release', status: 'queued' })
+  nextTick(() => document.getElementById('game-release-activity')?.scrollIntoView({ block: 'start' }))
+  return true
+}
 
 function releaseRequest() {
   const requested = desiredVersion.value.trim()
@@ -685,7 +696,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
       </CardContent>
     </Card>
 
-    <Alert v-if="activeJob">
+    <Alert v-if="activeJob" id="game-release-activity" class="scroll-mt-6">
       <ServerCog />
       <AlertTitle>{{ t('gameReleases.job.title') }} · {{ jobLabel(activeJob.status) }}</AlertTitle>
       <AlertDescription class="flex flex-col gap-2">
