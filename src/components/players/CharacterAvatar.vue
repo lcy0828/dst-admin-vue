@@ -39,7 +39,7 @@ function handleImageStatus(status) {
   <Avatar :key="Boolean(source)" :size="size" role="img" :aria-label="characterName" :title="characterName" :data-avatar-state="avatarState" :data-avatar-motion="animated ? 'animated' : 'static'">
     <AvatarImage v-if="source" :src="source" :alt="characterName" @loading-status-change="handleImageStatus" />
     <AvatarFallback>
-      <RefreshCw v-if="!source" class="motion-safe:animate-spin" aria-hidden="true" />
+      <RefreshCw v-if="choosingCharacter" class="motion-safe:animate-spin" aria-hidden="true" />
       <UserRound v-else />
     </AvatarFallback>
   </Avatar>
