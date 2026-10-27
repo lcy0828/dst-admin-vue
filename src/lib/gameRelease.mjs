@@ -153,3 +153,78 @@ export function gameReleaseRecoveryRequest(release, { validateUnknown = false } 
 export function gameReleaseWriteState(state) {
   return ['not_started', 'dispatched', 'unknown', 'failed', 'version_changed', 'verified'].includes(state) ? state : 'unavailable'
 }
+
+// Use the names captured by this update, even if a room is renamed or deleted
+// later. No extra room/node requests are needed while polling progress.
+export function gameReleaseResultRows(release) {
+  const plans = release?.plan?.installations || []
+  const installations = (release?.installations || []).map(result => ({
+    ...plans.find(plan => plan.targetId === result.targetId && plan.installationId === result.installationId),
+    ...result
+  }))
+  const shards = (release?.shards || []).map(result => {
+    const installation = plans.find(plan => plan.targetId === result.targetId && plan.installationId === result.installationId)
+    const planned = installation?.shards?.find(shard => shard.roomId === result.roomId && shard.worldId === result.worldId)
+    return { ...planned, ...result, targetName: installation?.targetName }
+  })
+  const backups = (release?.plan?.affectedRoomIds || []).map((roomId, index) => {
+    const shard = plans.flatMap(plan => plan.shards || []).find(shard => shard.roomId === roomId)
+    return { roomId, roomName: shard?.roomName || shard?.roomDirectory || '', id: release?.protectionBackupIds?.[index] || '' }
+  })
+  return { installations, shards, backups }
+}
+
+export function gameReleaseProgress(release) {
+  const rows = gameReleaseResultRows(release)
+  const stage = gameReleaseStageKey(release?.stage)
+  const terminal = gameReleaseIsTerminal(release)
+  const running = rows.shards.filter(shard => shard.wasRunning)
+  const restore = release?.plan?.policy?.restartRunning !== false ? running : []
+  const counts = [
+    [running.filter(shard => shard.stoppedAt || shard.stage === 'staged' && shard.runtimeState === 'stopped').length, running.length],
+    [rows.backups.filter(backup => backup.id).length, rows.backups.length],
+    [rows.installations.filter(item => ['verified', 'succeeded'].includes(item.stage)).length, rows.installations.length],
+    [restore.filter(shard => shard.startedAt && ['confirming', 'succeeded'].includes(shard.stage)).length, restore.length],
+    [restore.filter(shard => shard.loadConfirmedAt && shard.stage === 'succeeded').length, restore.length]
+  ]
+  const stages = ['stopping', 'protecting', 'updating', 'restarting', 'confirming']
+  const current = ({ stopping: 0, protecting: 1, staged: 2, updating: 2, verified: 2, restarting: 3, confirming: 4 })[stage] ?? -1
+  // Counts come from recorded evidence. A failed job's generic 100% only means
+  // it finished processing; it must not turn incomplete update steps green.
+  const noUpdate = release?.plan?.updateRequired === false
+  let interrupted = terminal && stage !== 'succeeded' ? counts.findIndex(([done, total]) => done < total) : -1
+  if (interrupted < 0 && terminal && stage !== 'succeeded') interrupted = 4
+  const steps = stages.map((key, index) => {
+    const [done, total] = counts[index]
+    const skipped = noUpdate || total === 0
+    const complete = !skipped && done === total
+    let state = skipped ? 'skipped' : complete ? 'done' : 'pending'
+    if (!terminal && index === current && !skipped && !complete) state = 'active'
+    if (index === interrupted && !skipped) state = 'interrupted'
+    return { key, done, total, state }
+  })
+  return {
+    stage, terminal, steps, rows,
+    completed: steps.filter(step => ['done', 'skipped'].includes(step.state)).length,
+    restored: counts[4][0], restoreTotal: restore.length,
+    keptStopped: rows.shards.length - restore.length,
+    noUpdate
+  }
+}
+
+export function gameReleaseShardState(shard, release) {
+  if (shard?.errorMessage || shard?.stage === 'failed') return 'failed'
+  if (shard?.stage === 'succeeded') {
+    if (shard.runtimeState === 'running') return 'running'
+    if (shard.runtimeState === 'stopped') return shard.wasRunning ? 'stopped' : 'keptStopped'
+    return 'completed'
+  }
+  if (shard?.stage === 'stopping' || shard?.stopRequestedAt && !shard?.stoppedAt) return 'stopping'
+  if (shard?.stage === 'restarting') return 'restarting'
+  if (shard?.stage === 'confirming') return 'confirming'
+  if (!shard?.wasRunning) return 'keptStopped'
+  if (shard?.stoppedAt || shard?.runtimeState === 'stopped') {
+    return release?.plan?.policy?.restartRunning === false ? 'stopped' : 'waitingRestore'
+  }
+  return 'pending'
+}

@@ -61,7 +61,8 @@ export const gameReleaseMessages = {
         steamClient: 'Steam 客户端管理', steamcmd: '面板自动更新', unknownUpdateMethod: '更新方式未知',
         platforms: { macos: 'macOS', linux: 'Linux', windows: 'Windows', unknown: '未知系统' },
         applications: { gameClient: 'DST 游戏客户端', dedicatedServer: 'DST 专用服务器', unknown: '未知 Steam 应用' },
-        runningShards: '{running} / {total} 运行', master: 'Master', secondary: 'Secondary', noEvidence: '暂无证据'
+        runningShards: '{running} / {total} 运行', master: '主世界', secondary: '附属世界', noEvidence: '尚未确认加载',
+        unknownRoom: '未知房间', unknownWorld: '未知世界', unknownTarget: '未知机器', defaultInstallation: '默认安装'
       },
       stages: {
         previewed: '已生成计划', protecting: '保护备份', stopping: '停止分片', staged: '准备更新', updating: '更新安装',
@@ -79,6 +80,25 @@ export const gameReleaseMessages = {
       recovery: { title: '下一步', repair: '校验修复并继续', repairDescription: '将保留原保护备份和世界恢复设置，在确认节点无其他写入后发起新的 SteamCMD 文件校验；可能需要重新下载部分游戏文件。校验成功前不启动相关世界。', recheck: '重新检查并继续', continue: '按新版本继续原任务', expected: '目标版本 {version}', confirmDescription: 'Steam 最新版本已变化。确认后继续原更新任务，保留原保护备份和世界恢复设置。', retry_release: '继续原任务。已验证的安装不重复下载；原本停止的世界保持停止。', preview_and_retry: 'Steam 最新版本已变化。重新检查后可按新版本继续原任务。', inspect_release: '更新已下发，但写入结果尚未确认。点击继续会先检查原操作回执，确认前不会重复下载或启动相关世界。' },
       job: { processing: '正在处理更新任务', progressMeaning: '此进度表示任务步骤的处理情况；最终结果以安装验证与世界恢复状态为准。',
         title: '更新任务', queued: '等待执行', running: '正在执行', succeeded: '任务完成', failed: '任务失败', canceled: '任务已取消', unknown: '未知任务状态'
+      },
+      progress: {
+        title: '更新进度', steps: '更新执行步骤', updatedAt: '最近更新：{time}',
+        stepsLabels: { stopping: '停止世界', protecting: '保护备份', updating: '更新并校验', restarting: '恢复世界', confirming: '确认加载' },
+        states: { pending: '等待', active: '进行中', done: '已完成', skipped: '无需执行', interrupted: '未完成' },
+        hints: {
+          previewed: '任务已建立，正在准备执行。', stopping: '正在安全停止原先运行的世界；全部停止后才会备份和更新。',
+          protecting: '正在创建并验证各房间的保护备份，尚未更新游戏文件。', staged: '保护备份已完成，正在检查安装条件。',
+          updating: 'SteamCMD 正在下载更新并校验文件，完成后会读取实际版本。本步骤暂不提供下载百分比。',
+          verified: '游戏文件已校验，正在准备恢复原先运行的世界。', restarting: '正在恢复原先运行的世界；原本停止的世界保持停止。',
+          confirming: '正在等待各世界加载完成，进程启动不代表更新任务已经完成。', unknown: '正在读取更新任务的执行阶段。'
+        },
+        success: '游戏更新完成', noUpdate: '检查完成，游戏无需更新', actualBuild: '实际 Steam Build',
+        restored: '已恢复并确认 {count}/{total} 个世界，另有 {stopped} 个世界保持停止。', incomplete: '更新尚未完整完成，请查看安装及世界恢复结果。',
+        backups: '保护备份 {count}/{total} 个房间', backupReady: '备份已验证', backupPending: '等待备份',
+        shardStates: { pending: '等待停服', stopping: '正在停止', waitingRestore: '已停止，等待更新完成后恢复', restarting: '正在启动', confirming: '等待加载完成', running: '已恢复运行', stopped: '已停止，不自动恢复', keptStopped: '保持停止（更新前未运行）', completed: '处理完成', failed: '处理失败' },
+        noLoadNeeded: '此世界无需恢复运行', processConfirmed: '进程运行已确认', logConfirmed: '世界加载已确认',
+        awaitingRecord: '正在读取任务的实际执行阶段…', queued: '等待执行', refresh: '重新读取进度',
+        historyTask: '游戏服务端更新', inspectIds: '任务标识'
       },
       history: {
         title: '更新记录', description: '保留每次检查、保护备份、安装结果和世界恢复状态。',
@@ -165,7 +185,8 @@ export const gameReleaseMessages = {
         steamClient: 'Managed by Steam', steamcmd: 'Panel-managed', unknownUpdateMethod: 'Unknown update method',
         platforms: { macos: 'macOS', linux: 'Linux', windows: 'Windows', unknown: 'Unknown OS' },
         applications: { gameClient: 'DST game client', dedicatedServer: 'DST dedicated server', unknown: 'Unknown Steam app' },
-        runningShards: '{running} / {total} running', master: 'Master', secondary: 'Secondary', noEvidence: 'No evidence'
+        runningShards: '{running} / {total} running', master: 'Master world', secondary: 'Secondary world', noEvidence: 'Loading not confirmed yet',
+        unknownRoom: 'Unknown room', unknownWorld: 'Unknown world', unknownTarget: 'Unknown host', defaultInstallation: 'Default installation'
       },
       stages: {
         previewed: 'Plan ready', protecting: 'Protection backups', stopping: 'Stopping shards', staged: 'Update staged', updating: 'Updating installation',
@@ -183,6 +204,25 @@ export const gameReleaseMessages = {
       recovery: { title: 'Next step', repair: 'Validate, repair and continue', repairDescription: 'Keep the original protection backups and world restore settings. Once node checks confirm no other writer, start a new SteamCMD file validation; some game files may be downloaded again. Related worlds stay stopped until verified.', recheck: 'Recheck and continue', continue: 'Continue original release with new build', expected: 'Expected build {version}', confirmDescription: 'The latest Steam build has changed. Continue the original release while retaining its protection backups and world restore settings.', retry_release: 'Resume the original release. Verified installations are not downloaded again; originally stopped worlds stay stopped.', preview_and_retry: 'The latest Steam build changed. Recheck before continuing the original release with the new build.', inspect_release: 'The update was dispatched but its outcome is not confirmed. Continue checks the original operation receipt before resending or starting related worlds.' },
       job: { processing: 'Processing update', progressMeaning: 'Progress reflects processed task steps. Installation verification and world restoration determine the final result.',
         title: 'Update job', queued: 'Queued', running: 'Running', succeeded: 'Job completed', failed: 'Job failed', canceled: 'Job canceled', unknown: 'Unknown job status'
+      },
+      progress: {
+        title: 'Update progress', steps: 'Update steps', updatedAt: 'Last updated: {time}',
+        stepsLabels: { stopping: 'Stop worlds', protecting: 'Protect backups', updating: 'Update and validate', restarting: 'Restore worlds', confirming: 'Confirm loading' },
+        states: { pending: 'Waiting', active: 'In progress', done: 'Completed', skipped: 'Not required', interrupted: 'Incomplete' },
+        hints: {
+          previewed: 'The task has been created and is preparing to run.', stopping: 'Safely stopping previously running worlds before backups and game changes.',
+          protecting: 'Creating and verifying protection backups for each room. Game files have not been updated yet.', staged: 'Protection backups are complete. Checking installation prerequisites.',
+          updating: 'SteamCMD is downloading updates and validating files. The installed build will be checked afterward. Download percentage is not available for this step.',
+          verified: 'Game files have been validated. Preparing to restore previously running worlds.', restarting: 'Restoring previously running worlds. Worlds that were stopped remain stopped.',
+          confirming: 'Waiting for each world to finish loading. Starting a process does not complete the update.', unknown: 'Reading the current update stage.'
+        },
+        success: 'Game update completed', noUpdate: 'Check complete; no game update needed', actualBuild: 'Actual Steam build',
+        restored: '{count}/{total} worlds restored and confirmed; {stopped} worlds remain stopped.', incomplete: 'The update is incomplete. Check installation and world restore results.',
+        backups: 'Protection backups: {count}/{total} rooms', backupReady: 'Backup verified', backupPending: 'Waiting for backup',
+        shardStates: { pending: 'Waiting to stop', stopping: 'Stopping', waitingRestore: 'Stopped; waiting for the update before restoring', restarting: 'Starting', confirming: 'Waiting for world loading', running: 'Restored and running', stopped: 'Stopped; automatic restore disabled', keptStopped: 'Kept stopped (not running before update)', completed: 'Completed', failed: 'Failed' },
+        noLoadNeeded: 'World does not need to be restored', processConfirmed: 'Running process confirmed', logConfirmed: 'World loading confirmed',
+        awaitingRecord: 'Reading the actual update stage…', queued: 'Queued', refresh: 'Reload progress',
+        historyTask: 'Game server update', inspectIds: 'Task identifiers'
       },
       history: {
         title: 'Update history', description: 'Every plan, protection backup, installation result, and shard load marker remains auditable.',

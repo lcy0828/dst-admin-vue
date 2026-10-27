@@ -107,7 +107,7 @@ test('game release workspace uses accessible shadcn composition and real APIs', 
   assert.match(view, /managementScopeRequest\(managementScope\.value\)/)
   assert.match(view, /MANAGEMENT_SCOPE_CHANGED_EVENT/)
   assert.match(view, /jobsV2API\.controlPlaneGet\(jobId\)/)
-  assert.match(view, /await loadHistory\(\)/)
+  assert.match(view, /await loadHistory\(\{ discover: false \}\)/)
   assert.doesNotMatch(view, /Promise\.all\(\[loadHistory\(\), previewRelease/)
   assert.match(view, /gameReleaseNodeCount\(planInstallations\.value\)/)
   assert.match(view, /gameReleaseVersionChannels\(planInstallations\.value\)/)

@@ -1,5 +1,6 @@
 <script setup>
 import ModPreflightReports from '@/components/runtime/ModPreflightReports.vue'
+import GameReleaseProgress from '@/components/runtime/GameReleaseProgress.vue'
 import GameInstallationManager from '@/components/GameInstallationManager.vue'
 import LuaJITInstaller from '@/components/LuaJITInstaller.vue'
 import { useRoute } from 'vue-router'
@@ -13,7 +14,6 @@ import {
   RefreshCw,
   RotateCw,
   ScanSearch,
-  ServerCog,
   ShieldCheck,
   TriangleAlert
 } from '@lucide/vue'
@@ -28,7 +28,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
@@ -46,7 +45,8 @@ import {
   gameReleaseIsTerminal,
   gameReleaseJobFailed,
   gameReleaseJobIsTerminal,
-  gameReleaseJobProgress,
+  gameReleaseResultRows,
+  gameReleaseShardState,
   gameReleaseNodeCount,
   gameReleasePlatformKey,
   gameReleaseStageKey,
@@ -73,6 +73,7 @@ const plan = ref(null)
 const releases = ref([])
 const selectedRelease = ref(null)
 const activeJob = ref(null)
+const trackedRelease = ref(null)
 const loading = ref(false)
 const previewing = ref(false)
 const publishing = ref(false)
@@ -98,6 +99,7 @@ let detailsRequestSequence = 0
 let pollGeneration = 0
 let pollReadFailures = 0
 let pollConfirmationMisses = 0
+let disposed = false
 
 const planInstallations = computed(() => plan.value?.installations || [])
 const scopeLabel = computed(() => managementScope.value.targetName || t('app.remote.allTargets'))
@@ -107,12 +109,12 @@ const scopedReleases = computed(() => {
     .some(item => item.targetId === managementScope.value.targetId))
 })
 const selectedReleaseInstallations = computed(() => filterManagementTargets(
-  selectedRelease.value?.installations || [],
+  gameReleaseResultRows(selectedRelease.value).installations,
   item => item?.targetId,
   managementScope.value
 ))
 const selectedReleaseShards = computed(() => filterManagementTargets(
-  selectedRelease.value?.shards || [],
+  gameReleaseResultRows(selectedRelease.value).shards,
   item => item?.targetId,
   managementScope.value
 ))
@@ -143,8 +145,9 @@ const planStateKey = computed(() => {
 const steamClientManagedOnly = computed(() => (
   planInstallations.value.length > 0 && planInstallations.value.every(item => item.updateMethod === 'steam-client')
 ))
-const activeProgress = computed(() => gameReleaseJobProgress(activeJob.value))
-const activeJobRunning = computed(() => Boolean(activeJob.value && !gameReleaseJobIsTerminal(activeJob.value)))
+const activeJobRunning = computed(() => Boolean(activeJob.value && (
+  !gameReleaseJobIsTerminal(activeJob.value) || trackedRelease.value && !gameReleaseIsTerminal(trackedRelease.value)
+)))
 const canPreview = computed(() => !previewing.value && !publishing.value && !activeJobRunning.value && Number(policy.timeoutSeconds) >= 30 && Number(policy.timeoutSeconds) <= 900)
 const canPublish = computed(() => Boolean(plan.value?.ready && plan.value?.updateRequired && plan.value?.planHash) && !publishing.value && !activeJobRunning.value)
 
@@ -156,11 +159,16 @@ watch([desiredVersion, () => policy.cleanCache, () => policy.restartRunning, () 
 
 onMounted(async () => {
   window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
-  await loadHistory()
-  if (!showMaintenanceJob(route.query.maintenanceJob)) resumePolling()
+  await loadHistory({ discover: false })
+  if (disposed) return
+  if (!showMaintenanceJob(route.query.maintenanceJob) && !resumePolling()) followRunningRelease()
 })
 
 onBeforeUnmount(() => {
+  disposed = true
+  requestSequence += 1
+  detailsRequestSequence += 1
+  previewRequestSequence += 1
   stopPolling()
   window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
 })
@@ -197,6 +205,10 @@ function handleInstallationChanged() {
 }
 
 function handleManagementScopeChange(event) {
+  stopPolling()
+  detailsRequestSequence += 1
+  activeJob.value = null
+  trackedRelease.value = null
   managementScope.value = event?.detail || getManagementScope()
   previewRequestSequence += 1
   previewing.value = false
@@ -204,6 +216,7 @@ function handleManagementScopeChange(event) {
   selectedRelease.value = null
   confirmOpen.value = false
   taskError.value = ''
+  followRunningRelease()
 }
 
 function selectLoadConfirmation(value) {
@@ -258,7 +271,18 @@ function formatDate(value) {
 }
 
 function targetName(target) {
-  return target?.targetName || (target?.targetId === 'local' ? t('gameReleases.values.local') : target?.targetId) || '--'
+  if (target?.targetId === 'local') return t('gameReleases.values.local')
+  return target?.targetName || t('gameReleases.values.unknownTarget')
+}
+
+function shardName(shard) {
+  return `${shard.roomName || shard.roomDirectory || t('gameReleases.values.unknownRoom')} / ${shard.worldName || shard.worldDirectory || t('gameReleases.values.unknownWorld')}`
+}
+
+function shardEvidence(shard) {
+  if (!shard.wasRunning || selectedRelease.value?.plan?.policy?.restartRunning === false) return t('gameReleases.progress.noLoadNeeded')
+  if (shard.loadConfirmedAt) return t(selectedRelease.value?.plan?.policy?.loadConfirmation === 'none' ? 'gameReleases.progress.processConfirmed' : 'gameReleases.progress.logConfirmed')
+  return t('gameReleases.values.noEvidence')
 }
 
 function updateMethodLabel(target) {
@@ -322,7 +346,10 @@ async function loadHistory(options = {}) {
     const response = await gameReleasesV2API.list({ limit: 50, offset: 0 })
     if (sequence !== requestSequence) return releases.value
     releases.value = Array.isArray(response?.items) ? response.items : []
+    const selected = releases.value.find(item => item.id === selectedRelease.value?.id)
+    if (selected) selectedRelease.value = selected
     loadError.value = ''
+    if (!options.quiet && options.discover !== false && !activeJobRunning.value) followRunningRelease()
     return releases.value
   } catch (error) {
     if (sequence === requestSequence) loadError.value = error.message || t('common.errors.unknown')
@@ -403,7 +430,12 @@ async function openDetails(release) {
   detailsLoading.value = true
   try {
     const value = await gameReleasesV2API.get(release.id)
-    if (sequence === detailsRequestSequence) selectedRelease.value = value
+    if (sequence === detailsRequestSequence) {
+      selectedRelease.value = value
+      if (!gameReleaseIsTerminal(value) && value.sourceJobId) {
+        startPolling({ id: value.sourceJobId, status: 'running' }, value.id)
+      }
+    }
   } catch (error) {
     if (sequence !== detailsRequestSequence) return
     toast.error(t('gameReleases.feedback.detailsFailed', { error: error.message || t('common.errors.unknown') }))
@@ -445,13 +477,15 @@ async function retryRelease(confirmed = false, repair = false) {
 }
 
 function startPolling(job, releaseId = '') {
-  if (!job?.id) return
+  if (disposed || !job?.id) return
   stopPolling()
   const generation = ++pollGeneration
   pollReadFailures = 0
   pollConfirmationMisses = 0
   activeJob.value = job
-  sessionStorage.setItem(ACTIVE_RELEASE_KEY, JSON.stringify({ jobId: job.id, releaseId }))
+  trackedRelease.value = releaseId ? releases.value.find(item => item.id === releaseId) || null : null
+  if (trackedRelease.value) selectedRelease.value = trackedRelease.value
+  persistActivity({ jobId: job.id, releaseId })
   void pollActivity(job.id, releaseId, generation)
 }
 
@@ -459,14 +493,27 @@ function resumePolling() {
   try {
     const saved = JSON.parse(sessionStorage.getItem(ACTIVE_RELEASE_KEY) || '{}')
     if (saved.jobId) {
-      const generation = ++pollGeneration
-      pollReadFailures = 0
-      pollConfirmationMisses = 0
-      void pollActivity(saved.jobId, saved.releaseId || '', generation)
+      if (saved.releaseId && !scopedReleases.value.some(item => item.id === saved.releaseId)) return false
+      startPolling({ id: saved.jobId, status: 'queued' }, saved.releaseId || '')
+      return true
     }
   } catch {
-    sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
+    persistActivity(null)
   }
+  return false
+}
+
+function persistActivity(value) {
+  try {
+    if (value) sessionStorage.setItem(ACTIVE_RELEASE_KEY, JSON.stringify(value))
+    else sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
+  } catch { /* Tracking still works when browser storage is unavailable. */ }
+}
+
+function followRunningRelease() {
+  if (disposed || activeJobRunning.value) return
+  const release = scopedReleases.value.find(item => item.sourceJobId && !gameReleaseIsTerminal(item))
+  if (release) startPolling({ id: release.sourceJobId, status: 'running' }, release.id)
 }
 
 function stopPolling() {
@@ -486,41 +533,44 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
   if (pollTimer) window.clearTimeout(pollTimer)
   pollTimer = 0
   try {
-    const job = await jobsV2API.controlPlaneGet(jobId)
+    const [jobResult, historyResult] = await Promise.allSettled([
+      jobsV2API.controlPlaneGet(jobId),
+      loadHistory({ quiet: true })
+    ])
     if (generation !== pollGeneration) return
-    activeJob.value = job
-    const history = await loadHistory({ quiet: true })
-    if (generation !== pollGeneration) return
-    const associated = releaseId
-      ? history.find(item => item.id === releaseId)
-      : gameReleaseFindByJob(history, jobId)
+    if (jobResult.status === 'fulfilled') activeJob.value = jobResult.value
+    const history = historyResult.status === 'fulfilled' ? historyResult.value : releases.value
+    const associatedId = releaseId || gameReleaseFindByJob(history, jobId)?.id
     let associatedRelease = null
-    if (associated?.id) {
-      associatedRelease = await gameReleasesV2API.get(associated.id)
+    if (associatedId) {
+      associatedRelease = await gameReleasesV2API.get(associatedId)
       if (generation !== pollGeneration) return
-      selectedRelease.value = associatedRelease
+      trackedRelease.value = associatedRelease
+      if (!selectedRelease.value || selectedRelease.value.id === associatedId) selectedRelease.value = associatedRelease
+      releases.value = releases.value.map(item => item.id === associatedId ? associatedRelease : item)
     }
+    if (jobResult.status === 'rejected' && !associatedRelease) throw jobResult.reason
 
     pollReadFailures = 0
     taskError.value = ''
     const releaseDone = associatedRelease && gameReleaseIsTerminal(associatedRelease)
     const jobDone = gameReleaseJobIsTerminal(activeJob.value)
-    if (jobDone && (releaseDone || gameReleaseJobFailed(activeJob.value))) {
-      sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
+    if (jobDone && (releaseDone || !associatedRelease && gameReleaseJobFailed(activeJob.value))) {
+      persistActivity(null)
       await installationsRef.value?.refresh()
       if (generation !== pollGeneration) return
       installationGeneration.value += 1
       await previewRelease({ quiet: true })
-      if (gameReleaseJobFailed(activeJob.value)) {
-        taskError.value = releaseError(activeJob.value)
+      if (associatedRelease?.errorMessage || !associatedRelease && gameReleaseJobFailed(activeJob.value)) {
+        taskError.value = associatedRelease?.errorMessage || releaseError(activeJob.value)
         toast.error(t('gameReleases.feedback.taskFailed', { error: taskError.value }))
       }
       return
     }
-    if (jobDone) {
+    if (jobDone && !associatedRelease) {
       pollConfirmationMisses += 1
       if (pollConfirmationMisses >= 10) {
-        sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
+        persistActivity(null)
         taskError.value = t('gameReleases.feedback.completionUnconfirmed')
         return
       }
@@ -532,11 +582,11 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
     pollReadFailures += 1
     taskError.value = error.message || t('common.errors.unknown')
     if (pollReadFailures >= 5) {
-      sessionStorage.removeItem(ACTIVE_RELEASE_KEY)
+      persistActivity(null)
       return
     }
   }
-  schedulePoll(jobId, releaseId, generation)
+  schedulePoll(jobId, trackedRelease.value?.id || releaseId, generation)
 }
 </script>
 
@@ -556,6 +606,15 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
       <AlertTitle>{{ t('gameReleases.feedback.operationFailedTitle') }}</AlertTitle>
       <AlertDescription>{{ taskError }}</AlertDescription>
     </Alert>
+
+    <section v-if="activeJob" id="game-release-activity" class="flex scroll-mt-6 flex-col gap-2">
+      <GameReleaseProgress v-if="trackedRelease" :release="trackedRelease" />
+      <Alert v-else>
+        <AlertTitle>{{ t('gameReleases.job.title') }} · {{ jobLabel(activeJob.status) }}</AlertTitle>
+        <AlertDescription class="flex items-center gap-2"><Spinner v-if="activeJobRunning" />{{ t('gameReleases.progress.awaitingRecord') }}</AlertDescription>
+      </Alert>
+      <UiButton variant="ghost" size="sm" class="self-start" @click="startPolling(activeJob, trackedRelease?.id || '')"><RefreshCw data-icon="inline-start" />{{ t('gameReleases.progress.refresh') }}</UiButton>
+    </section>
 
     <div class="game-installation-grid grid min-w-0 items-start gap-4 xl:grid-cols-3">
       <div class="min-w-0 xl:col-span-2">
@@ -723,16 +782,6 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
       <LuaJITInstaller :key="installationGeneration" />
     </div>
 
-    <Alert v-if="activeJob" id="game-release-activity" class="scroll-mt-6">
-      <ServerCog />
-      <AlertTitle>{{ t('gameReleases.job.title') }} · {{ jobLabel(activeJob.status) }}</AlertTitle>
-      <AlertDescription class="flex flex-col gap-2">
-        <Progress v-if="activeProgress !== null" :model-value="activeProgress" />
-        <span>{{ activeJob.message || t('gameReleases.job.processing') }}</span>
-        <span class="text-xs text-muted-foreground">{{ t('gameReleases.job.progressMeaning') }}</span>
-      </AlertDescription>
-    </Alert>
-
     <section class="flex min-w-0 flex-col gap-3" aria-labelledby="release-history-title">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div><h2 id="release-history-title" class="text-base font-semibold">{{ t('gameReleases.history.title') }}</h2></div>
@@ -750,7 +799,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
           <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.release') }}</TableHead><TableHead>{{ t('gameReleases.columns.status') }}</TableHead><TableHead>{{ t('gameReleases.columns.createdAt') }}</TableHead><TableHead class="text-right">{{ t('common.fields.actions') }}</TableHead></TableRow></TableHeader>
           <TableBody>
             <TableRow v-for="release in scopedReleases" :key="release.id">
-              <TableCell class="max-w-56"><span class="block truncate font-mono text-xs" :title="release.id">{{ release.id }}</span></TableCell><TableCell><Badge :variant="gameReleaseStageVariant(release.stage)">{{ stageLabel(release.stage) }}</Badge></TableCell><TableCell>{{ formatDate(release.createdAt) }}</TableCell><TableCell class="text-right"><UiButton variant="ghost" size="sm" :disabled="detailsLoading" @click="openDetails(release)">{{ t('gameReleases.actions.view') }}</UiButton></TableCell>
+              <TableCell class="max-w-56"><span class="block truncate" :title="release.id">{{ t('gameReleases.progress.historyTask') }}</span></TableCell><TableCell><Badge :variant="gameReleaseStageVariant(release.stage)">{{ stageLabel(release.stage) }}</Badge></TableCell><TableCell>{{ formatDate(release.createdAt) }}</TableCell><TableCell class="text-right"><UiButton variant="ghost" size="sm" :disabled="detailsLoading" @click="openDetails(release)">{{ t('gameReleases.actions.view') }}</UiButton></TableCell>
             </TableRow>
           </TableBody>
         </Table>
@@ -759,16 +808,52 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
 
     <section v-if="selectedRelease" class="flex min-w-0 flex-col gap-3" aria-labelledby="release-details-title">
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div><div class="flex flex-wrap items-center gap-2"><h2 id="release-details-title" class="text-base font-semibold">{{ t('gameReleases.details.title') }}</h2><Badge :variant="gameReleaseStageVariant(selectedRelease.stage)">{{ stageLabel(selectedRelease.stage) }}</Badge></div><p class="mt-0.5 text-sm text-muted-foreground">{{ t('gameReleases.details.description', { id: selectedRelease.id }) }}</p></div>
+        <div><div class="flex flex-wrap items-center gap-2"><h2 id="release-details-title" class="text-base font-semibold">{{ t('gameReleases.details.title') }}</h2><Badge :variant="gameReleaseStageVariant(selectedRelease.stage)">{{ stageLabel(selectedRelease.stage) }}</Badge></div><p class="mt-0.5 text-sm text-muted-foreground">{{ formatDate(selectedRelease.createdAt) }}</p></div>
         <UiButton v-if="canRetrySelectedRelease" variant="outline" :disabled="retrying || activeJobRunning" @click="retryRelease(false)"><Spinner v-if="retrying" data-icon="inline-start" /><RotateCw v-else data-icon="inline-start" />{{ t(selectedRelease.nextAction === 'preview_and_retry' ? 'gameReleases.recovery.recheck' : 'gameReleases.actions.retry') }}</UiButton>
         <UiButton v-if="canRetrySelectedRelease && selectedRelease.nextAction === 'inspect_release'" variant="outline" :disabled="retrying || activeJobRunning" @click="retryRelease(false, true)">{{ t('gameReleases.recovery.repair') }}</UiButton>
       </div>
-      <Alert v-if="selectedRelease.errorMessage" variant="destructive"><CircleAlert /><AlertTitle>{{ selectedRelease.errorCode || stageLabel(selectedRelease.stage) }}</AlertTitle><AlertDescription>{{ selectedRelease.errorMessage }}</AlertDescription></Alert>
+      <GameReleaseProgress v-if="selectedRelease.id !== trackedRelease?.id" :release="selectedRelease" />
+      <Alert v-if="selectedRelease.modDiagnosticsWarning"><AlertTitle>{{ t('modDiagnostics.baselineWarning') }}</AlertTitle><AlertDescription>{{ t('modDiagnostics.baselineWarningHint') }}</AlertDescription></Alert>
       <Alert v-if="selectedRelease.nextAction"><CircleAlert /><AlertTitle>{{ t('gameReleases.recovery.title') }}</AlertTitle><AlertDescription>{{ t(`gameReleases.recovery.${['retry_release', 'preview_and_retry', 'inspect_release'].includes(selectedRelease.nextAction) ? selectedRelease.nextAction : 'retry_release'}`) }}</AlertDescription></Alert>
-      <div v-if="selectedRelease.protectionBackupIds?.length" class="flex flex-wrap items-center gap-2"><span class="text-sm font-medium">{{ t('gameReleases.details.backups') }}</span><Badge v-for="backupId in selectedRelease.protectionBackupIds" :key="backupId" variant="outline" class="font-mono">{{ backupId }}</Badge></div>
       <Separator />
-      <div><h3 class="mb-2 text-sm font-semibold">{{ t('gameReleases.details.installationResults') }}</h3><div class="overflow-x-auto rounded-lg border"><Table class="min-w-[760px]"><TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.installation') }}</TableHead><TableHead>{{ t('gameReleases.columns.beforeAfter') }}</TableHead><TableHead>{{ t('gameReleases.columns.stage') }}</TableHead><TableHead>{{ t('gameReleases.columns.updatedAt') }}</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="result in selectedReleaseInstallations" :key="`${result.targetId}:${result.installationId}`"><TableCell>{{ result.targetId }}</TableCell><TableCell class="font-mono text-xs">{{ result.installationId }}</TableCell><TableCell class="tabular-nums"><div>{{ result.beforeVersion || '--' }} → {{ result.afterVersion || '--' }}</div><span v-if="result.expectedVersion" class="text-xs text-muted-foreground">{{ t('gameReleases.recovery.expected', { version: result.expectedVersion }) }}</span></TableCell><TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(result.stage)" class="self-start">{{ stageLabel(result.stage) }}</Badge><span class="text-xs text-muted-foreground">{{ t(`gameReleases.writeStates.${gameReleaseWriteState(result.writeState)}`) }}</span><span v-if="result.errorMessage" class="text-xs text-destructive">{{ result.errorMessage }}</span></div></TableCell><TableCell>{{ formatDate(result.updatedAt) }}</TableCell></TableRow></TableBody></Table></div></div>
-      <div><h3 class="mb-2 text-sm font-semibold">{{ t('gameReleases.details.shardResults') }}</h3><div class="overflow-x-auto rounded-lg border"><Table class="min-w-[900px]"><TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.rooms') }}</TableHead><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.stage') }}</TableHead><TableHead>{{ t('gameReleases.columns.evidence') }}</TableHead><TableHead>{{ t('gameReleases.columns.updatedAt') }}</TableHead></TableRow></TableHeader><TableBody><TableRow v-for="shard in selectedReleaseShards" :key="`${shard.roomId}:${shard.worldId}`"><TableCell><div class="flex flex-col gap-1"><span>{{ shard.roomId }} / {{ shard.worldId }}</span><Badge variant="outline" class="self-start">{{ t(shard.isMaster ? 'gameReleases.values.master' : 'gameReleases.values.secondary') }}</Badge></div></TableCell><TableCell>{{ shard.targetId }}</TableCell><TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(shard.stage)" class="self-start">{{ stageLabel(shard.stage) }}</Badge><span v-if="shard.errorMessage" class="text-xs text-destructive">{{ shard.errorMessage }}</span></div></TableCell><TableCell class="max-w-80 break-words text-xs">{{ shard.loadMarker || t('gameReleases.values.noEvidence') }}<span v-if="shard.loadConfirmedAt" class="mt-1 block text-muted-foreground">{{ formatDate(shard.loadConfirmedAt) }}</span></TableCell><TableCell>{{ formatDate(shard.updatedAt) }}</TableCell></TableRow></TableBody></Table></div></div>
+      <div>
+        <h3 class="mb-2 text-sm font-semibold">{{ t('gameReleases.details.installationResults') }}</h3>
+        <div class="overflow-x-auto rounded-lg border">
+          <Table class="min-w-[760px]">
+            <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.installation') }}</TableHead><TableHead>{{ t('gameReleases.columns.beforeAfter') }}</TableHead><TableHead>{{ t('gameReleases.columns.stage') }}</TableHead><TableHead>{{ t('gameReleases.columns.updatedAt') }}</TableHead></TableRow></TableHeader>
+            <TableBody>
+              <TableRow v-for="result in selectedReleaseInstallations" :key="`${result.targetId}:${result.installationId}`">
+                <TableCell :title="result.targetId">{{ targetName(result) }}</TableCell>
+                <TableCell>{{ result.installationId === 'default' ? t('gameReleases.values.defaultInstallation') : result.installationId }}</TableCell>
+                <TableCell class="tabular-nums"><div>{{ result.beforeVersion || '--' }} → {{ result.afterVersion || '--' }}</div><span v-if="result.expectedVersion" class="text-xs text-muted-foreground">{{ t('gameReleases.recovery.expected', { version: result.expectedVersion }) }}</span></TableCell>
+                <TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(result.stage)" class="self-start">{{ stageLabel(result.stage) }}</Badge><span class="text-xs text-muted-foreground">{{ t(`gameReleases.writeStates.${gameReleaseWriteState(result.writeState)}`) }}</span><span v-if="result.errorMessage" class="text-xs text-destructive">{{ result.errorMessage }}</span></div></TableCell>
+                <TableCell>{{ formatDate(result.updatedAt) }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      <div>
+        <h3 class="mb-2 text-sm font-semibold">{{ t('gameReleases.details.shardResults') }}</h3>
+        <div class="overflow-x-auto rounded-lg border">
+          <Table class="min-w-[760px]">
+            <TableHeader><TableRow><TableHead>{{ t('gameReleases.columns.rooms') }}</TableHead><TableHead>{{ t('gameReleases.columns.target') }}</TableHead><TableHead>{{ t('gameReleases.columns.stage') }}</TableHead><TableHead>{{ t('gameReleases.columns.evidence') }}</TableHead><TableHead>{{ t('gameReleases.columns.updatedAt') }}</TableHead></TableRow></TableHeader>
+            <TableBody>
+              <TableRow v-for="shard in selectedReleaseShards" :key="`${shard.roomId}:${shard.worldId}`">
+                <TableCell><div class="flex flex-col gap-1"><span>{{ shardName(shard) }}</span><Badge variant="outline" class="self-start">{{ t(shard.isMaster ? 'gameReleases.values.master' : 'gameReleases.values.secondary') }}</Badge></div></TableCell>
+                <TableCell :title="shard.targetId">{{ targetName(shard) }}</TableCell>
+                <TableCell><div class="flex flex-col gap-1"><Badge :variant="shard.errorMessage ? 'destructive' : shard.runtimeState === 'running' && shard.stage === 'succeeded' ? 'success' : 'outline'" class="self-start">{{ t(`gameReleases.progress.shardStates.${gameReleaseShardState(shard, selectedRelease)}`) }}</Badge><span v-if="shard.errorMessage" class="text-xs text-destructive">{{ shard.errorMessage }}</span></div></TableCell>
+                <TableCell class="max-w-80 break-words text-xs" :title="shard.loadMarker || undefined">{{ shardEvidence(shard) }}<span v-if="shard.loadConfirmedAt" class="mt-1 block text-muted-foreground">{{ formatDate(shard.loadConfirmedAt) }}</span></TableCell>
+                <TableCell>{{ formatDate(shard.updatedAt) }}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      <Collapsible>
+        <CollapsibleTrigger as-child><UiButton variant="ghost" size="sm" class="group">{{ t('gameReleases.progress.inspectIds') }}<ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" /></UiButton></CollapsibleTrigger>
+        <CollapsibleContent class="flex flex-col gap-1 pt-2 text-xs text-muted-foreground"><span class="break-all">{{ t('gameReleases.job.title') }}: {{ selectedRelease.sourceJobId || '—' }}</span><span class="break-all">{{ t('gameReleases.columns.release') }}: {{ selectedRelease.id }}</span><span v-if="selectedRelease.errorCode">{{ selectedRelease.errorCode }}</span></CollapsibleContent>
+      </Collapsible>
     </section>
 
     <Dialog v-model:open="recoveryConfirmOpen">
