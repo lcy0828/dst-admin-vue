@@ -12,7 +12,7 @@ export const inventoryMessages = {
     unreadContents: '部分内容未读取', metrics: { perishable: '保鲜', fuel: '燃料', armor: '护甲', uses: '次数' },
     errors: {
       SOURCE_AMBIGUOUS: '发现多个存档来源，请选择要查看的世界或来源。',
-      PLAYER_LOCATION_UNCERTAIN: '暂时无法确定玩家所在世界，可能正在迁移。可重新读取或切换到存档快照。',
+      PLAYER_LOCATION_UNCERTAIN: '玩家位置尚未确认，可能正在跨分片移动。请稍后刷新；持续失败时检查节点与 Runtime 状态。',
       PLAYER_NOT_READY: '玩家正在加载或选择角色，暂时没有可读取的背包。', PLAYER_NOT_ONLINE: '玩家未在该世界中，可切换到存档快照。',
       PLAYER_SNAPSHOT_NOT_FOUND: '当前世界尚未找到该玩家的存档，不能据此判断背包为空。',
       INVENTORY_CAPABILITY_UNAVAILABLE: '运行节点或游戏采集模块尚不支持背包查询，请更新后重试；存档快照可独立读取。',
@@ -32,7 +32,7 @@ export const inventoryMessages = {
     choose: 'Choose a snapshot source', candidate: '{world} · {time} · #{index}', unknownWorld: 'Unknown world', details: 'Read details', slotCount: '{count} slots', slot: 'Slot {slot}', contents: '{count} contained items',
     unreadContents: 'Some contents were not read', metrics: { perishable: 'Freshness', fuel: 'Fuel', armor: 'Armor', uses: 'Uses' },
     errors: {
-      SOURCE_AMBIGUOUS: 'Multiple saved sources were found. Choose a world or source.', PLAYER_LOCATION_UNCERTAIN: 'The player location is uncertain, possibly during migration. Retry or select a saved snapshot.',
+      SOURCE_AMBIGUOUS: 'Multiple saved sources were found. Choose a world or source.', PLAYER_LOCATION_UNCERTAIN: 'The player location is unconfirmed, possibly during Shard migration. Refresh shortly; check the node and Runtime if this persists.',
       PLAYER_NOT_READY: 'The player is loading or choosing a character. Inventory is not ready.', PLAYER_NOT_ONLINE: 'The player is not in this world. Try a saved snapshot.',
       PLAYER_SNAPSHOT_NOT_FOUND: 'No player snapshot was found in the selected worlds. This does not mean their inventory is empty.',
       INVENTORY_CAPABILITY_UNAVAILABLE: 'Update the execution node or game Runtime to read inventories. Saved snapshots can be read independently.',

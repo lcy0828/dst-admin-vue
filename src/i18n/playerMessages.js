@@ -332,7 +332,7 @@ export const playerMessages = {
         unknownCharacter: '未知角色',
         unknownDuration: '未知时长',
         unknownPlayer: '未知玩家',
-        unknownWorld: '未知世界',
+        unknownWorld: '未知世界', locationPending: '位置确认中', lastKnownWorld: '最后确认位于 {world}',
         noReason: '未记录原因',
         enabled: '开启',
         disabled: '关闭'
@@ -459,7 +459,7 @@ export const playerMessages = {
         staleTitle: '在线状态已过期',
         staleDescription: '该玩家的状态最后采集于 {time}，当前已过期。刷新成功前，实时游戏操作已禁用。',
         presenceConflictTitle: '玩家位置存在冲突',
-        presenceConflictDescription: '以下分片同时报告该 KU ID 在线：{worlds}。操作前请刷新玩家数据并检查分片连接。'
+        presenceConflictDescription: '以下分片同时发现该玩家的本地实体：{worlds}。请稍后刷新；持续冲突时检查分片连接。'
       },
       quick: {
         trigger: '操作', common: '常用操作', character: '角色调整', management: '管理操作',
@@ -568,7 +568,7 @@ export const playerMessages = {
     players: {
       values: {
         unknown: 'Unknown', unknownError: 'Unknown error', unknownStatus: 'Unknown status', unknownCharacter: 'Unknown character', unknownDuration: 'Unknown duration',
-        unknownPlayer: 'Unknown player', unknownWorld: 'Unknown world', noReason: 'No reason recorded', enabled: 'enabled', disabled: 'disabled'
+        unknownPlayer: 'Unknown player', unknownWorld: 'Unknown world', locationPending: 'Locating player', lastKnownWorld: 'Last confirmed in {world}', noReason: 'No reason recorded', enabled: 'enabled', disabled: 'disabled'
       },
       actions: {
         refresh: 'Refresh', refreshSettings: 'Auto-refresh settings', saveRefreshSettings: 'Save settings', retry: 'Retry', search: 'Search', query: 'Search', reset: 'Reset', cancel: 'Cancel', confirm: 'Confirm', confirmAction: 'Confirm', details: 'Details',
@@ -612,7 +612,7 @@ export const playerMessages = {
       detail: {
         title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions', managementActions: 'Player management',
         staleTitle: 'Presence data is stale', staleDescription: 'This player was last observed at {time}. The observation is stale, so live game actions are disabled until a successful refresh.',
-        presenceConflictTitle: 'Player location conflict', presenceConflictDescription: 'These Shards simultaneously reported the same KU ID online: {worlds}. Refresh player data and inspect Shard connectivity before acting.'
+        presenceConflictTitle: 'Player location conflict', presenceConflictDescription: 'These Shards simultaneously found a local entity for this player: {worlds}. Refresh shortly; inspect Shard connectivity if the conflict persists.'
       },
       quick: {
         trigger: 'Actions', common: 'Common actions', character: 'Character', management: 'Management',

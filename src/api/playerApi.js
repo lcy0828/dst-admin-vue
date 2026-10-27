@@ -8,6 +8,7 @@ import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 import { composeRoomResults, throwWhenAllRoomsFailed } from './roomSettlements.mjs'
 import { playerPlayDays, sortPlayers } from '@/lib/playerSorting.mjs'
+import { playerWorldFields, playerLocalWorldIds } from '@/lib/playerHistoryPresentation.mjs'
 import {
   isSystemAutomationGroup,
   SYSTEM_AUTOMATION_GROUP_IDS
@@ -105,9 +106,7 @@ function legacyPlayer(player, room) {
     history_id: player.historyId || '',
     observed_online: Boolean(player.online),
     room_id: room.id,
-    world_id: player.worldId,
-    world_name: player.worldConfirmed === false ? '' : player.worldName,
-    world_confirmed: player.worldConfirmed,
+    ...playerWorldFields(player),
     archive_name: room.name,
     user_id: player.id,
     player_name: player.name,
@@ -290,20 +289,20 @@ export const playerApi = {
       : await listPlayers({ archive_name: archiveName, include_access_lists: false }, false)
     const selectedWorldIds = new Set((Array.isArray(worldIds) ? worldIds : []).map(value => String(value)))
     const players = selectedWorldIds.size > 0
-      ? response.data.filter(player => selectedWorldIds.has(String(player.world_id || '')))
+      ? response.data.filter(player => selectedWorldIds.has(String(player.world_id || '')) || playerLocalWorldIds(player).some(worldId => selectedWorldIds.has(String(worldId))))
       : response.data
     const online = players.filter(player => player.status === 'online').length
     const stale = players.filter(player => player.status === 'stale').length
     const staleOnline = players.filter(player => player.status === 'stale' && player.observed_online).length
     const onlineByWorld = players.reduce((counts, player) => {
-      if (player.status !== 'online' || !player.world_id) return counts
-      counts[player.world_id] = (counts[player.world_id] || 0) + 1
+      for (const worldId of playerLocalWorldIds(player)) counts[worldId] = (counts[worldId] || 0) + 1
       return counts
     }, {})
     return success({
       total_count: players.length,
       online_count: online,
       online_by_world: onlineByWorld,
+      unlocated_online_count: players.filter(player => player.status === 'online' && (player.world_confirmed === false || player.presence_conflict)).length,
       stale_online_count: staleOnline,
       stale_count: stale,
       offline_count: players.length - online - staleOnline,

@@ -606,6 +606,7 @@
                   <div class="players-panel-heading">
                     <h2 id="workspace-players-title">{{ $t('servers.workspace.players.title') }}</h2>
                     <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.presenceSummary', { total: playerStats.total_count, online: playerStats.online_count, stale: playerStats.stale_count ?? playerStats.stale_online_count ?? 0 }) : $t('servers.workspace.states.statusUnavailable')) }}</span>
+                    <span v-if="playerStats?.unlocated_online_count > 0">{{ $t('servers.workspace.players.unlocatedCount', { count: playerStats.unlocated_online_count }) }}</span>
                   </div>
                   <div class="players-panel-actions">
                     <Tooltip>
@@ -901,7 +902,7 @@ import WorldStateQuickControl from '@/components/worlds/WorldStateQuickControl.v
 import WorldPerformanceIndicator from '@/components/worlds/WorldPerformanceIndicator.vue'
 import RoomRefreshIntervalSelect from '@/components/layout/RoomRefreshIntervalSelect.vue'
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue'
-import { playerHistoryTime, playerLastObservation, playerWorldConfirmed } from '@/lib/playerHistoryPresentation.mjs'
+import { playerHistoryTime, playerLastObservation, playerWorldConfirmed, playerLocationPending, playerLastWorld } from '@/lib/playerHistoryPresentation.mjs'
 import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue'
 import PlayerNetworkIndicator from '@/components/players/PlayerNetworkIndicator.vue'
 import PlayerVitalQuickControl from '@/components/players/PlayerVitalQuickControl.vue'
@@ -1830,7 +1831,7 @@ export default {
         || null
     },
     playerCanUseLiveActions(player) {
-      return this.playerIsOnline(player) && !player?.presence_conflict
+      return this.playerIsOnline(player) && playerWorldConfirmed(player) && !player?.presence_conflict
     },
     playerIsGhost(player) {
       return normalizePlayerGameplayState(player?.gameplay_state) === 'ghost'
@@ -2913,6 +2914,7 @@ export default {
       return isPlayerOnline(player?.status)
     },
     playerWorldLabel(player) {
+      if (playerLocationPending(player)) return this.$t('servers.workspace.players.locationPending')
       return playerWorldConfirmed(player) && player?.world_name
         ? player.world_name
         : this.$t('servers.workspace.players.unknownWorld')
@@ -2922,7 +2924,12 @@ export default {
       const parameters = {
         world: this.playerWorldLabel(player)
       }
-      if (!playerWorldConfirmed(player)) return this.$t('servers.workspace.players.worldUnconfirmed', parameters)
+      if (!playerWorldConfirmed(player)) {
+        const last = playerLastWorld(player)
+        return last
+          ? this.$t('servers.workspace.players.lastKnownWorld', { world: last })
+          : this.$t('servers.workspace.players.worldUnconfirmed', parameters)
+      }
       if (player?.field_states?.world?.source === 'native-log') return this.$t('servers.workspace.players.lastConnectedWorld', parameters)
       if (player?.field_states?.world?.status === 'stale') return this.$t('servers.workspace.players.lastKnownWorld', parameters)
       if (status === 'online') return this.$t('servers.workspace.players.currentWorld', parameters)

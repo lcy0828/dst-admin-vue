@@ -11,6 +11,39 @@ export function playerWorldConfirmed(player) {
   return Boolean(player?.world_name) && ['alive', 'dead', 'ghost', 'migrating'].includes(player?.gameplay_state)
 }
 
+// Keep historical world evidence available without presenting it as a current
+// location. Cluster-wide online observations do not establish a shard.
+export function playerWorldFields(player) {
+  const confirmed = player?.worldConfirmed !== false
+  const hasHistory = Boolean(playerHistoryTime(player?.fields?.world?.observedAt))
+  return {
+    world_id: !confirmed && player?.online ? '' : (player?.worldId || ''),
+    world_name: confirmed ? (player?.worldName || '') : '',
+    world_confirmed: player?.worldConfirmed,
+    local_entity: player?.localEntity,
+    last_world_id: hasHistory ? (player?.worldId || '') : '',
+    last_world_name: hasHistory ? (player?.worldName || '') : ''
+  }
+}
+
+export function playerLocationPending(player) {
+  return player?.status === 'online' && !playerWorldConfirmed(player)
+}
+
+// Counts describe actual local entities, including a migrating entity still
+// present on a shard. This does not make its location safe for a live action.
+export function playerLocalWorldIds(player) {
+  if (player?.status !== 'online' || player?.local_entity === false) return []
+  if (!playerWorldConfirmed(player) && player?.local_entity !== true) return []
+  if (Array.isArray(player?.observed_world_ids) && player.observed_world_ids.length) return [...new Set(player.observed_world_ids.filter(Boolean))]
+  return playerWorldConfirmed(player) && player?.world_id ? [player.world_id] : []
+}
+
+export function playerLastWorld(player) {
+  if (player?.last_world_name) return player.last_world_name
+  return playerHistoryTime(player?.field_states?.world?.observedAt) ? (player?.world_name || '') : ''
+}
+
 export function playerLastObservation(player) {
   const seen = playerHistoryTime(player?.last_seen)
   const disconnected = playerHistoryTime(player?.last_disconnected_at)

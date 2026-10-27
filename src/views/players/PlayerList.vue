@@ -106,7 +106,14 @@
                   <div class="flex min-w-20 max-w-44 flex-col gap-1 whitespace-normal break-words">
                     <span v-if="!filterForm.archive_name">{{ player.archive_name }}</span>
                     <div class="flex flex-wrap items-center gap-1">
-                      <span :class="{ 'text-xs text-muted-foreground': !filterForm.archive_name }">{{ player.world_name || $t('players.values.unknownWorld') }}</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger as-child>
+                            <span tabindex="0" :class="{ 'text-xs text-muted-foreground': !filterForm.archive_name }">{{ playerWorldLabel(player) }}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>{{ playerWorldHint(player) }}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       <TooltipProvider v-if="player.presence_conflict">
                         <Tooltip>
                           <TooltipTrigger as-child>
@@ -178,7 +185,7 @@
           <div v-if="currentPlayer" class="player-detail">
             <div class="player-detail-heading">
               <CharacterAvatar :prefab="currentPlayer.prefab" :name="currentPlayer.player_name" :player="currentPlayer" size="lg" />
-              <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="getPlayerPresenceMeta(currentPlayer).variant">{{ getPlayerPresenceMeta(currentPlayer).label }}</Badge></div><span>{{ getCharacterName(currentPlayer) }} · {{ currentPlayer.archive_name }} / {{ currentPlayer.world_name || $t('players.values.unknownWorld') }}</span></div>
+              <div><div class="detail-player-name"><strong>{{ currentPlayer.player_name || currentPlayer.user_id }}</strong><Badge :variant="getPlayerPresenceMeta(currentPlayer).variant">{{ getPlayerPresenceMeta(currentPlayer).label }}</Badge></div><span>{{ getCharacterName(currentPlayer) }} · {{ currentPlayer.archive_name }} / {{ playerWorldLabel(currentPlayer) }}</span></div>
             </div>
             <Alert v-if="currentPlayer.presence_conflict" variant="destructive">
               <TriangleAlert />
@@ -332,7 +339,7 @@ import CharacterAvatar from '@/components/players/CharacterAvatar.vue';
 import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue';
 import PlayerInventoryDialog from '@/components/players/PlayerInventoryDialog.vue';
 import PlayerRecordTime from '@/components/players/PlayerRecordTime.vue';
-import { playerHistoryTime, playerListPresenceTime } from '@/lib/playerHistoryPresentation.mjs';
+import { playerHistoryTime, playerListPresenceTime, playerLocationPending, playerLastWorld } from '@/lib/playerHistoryPresentation.mjs';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
 
 export default {
@@ -630,6 +637,17 @@ export default {
 
     getPlayerPresenceMeta(player) {
       return playerPresenceMeta(player, this.$t);
+    },
+
+    playerWorldLabel(player) {
+      return playerLocationPending(player) ? this.$t('players.values.locationPending') : (player.world_name || this.$t('players.values.unknownWorld'));
+    },
+
+    playerWorldHint(player) {
+      const last = playerLastWorld(player);
+      return playerLocationPending(player) && last
+        ? this.$t('players.values.lastKnownWorld', { world: last })
+        : this.playerWorldLabel(player);
     },
 
     getWorldState(status) {

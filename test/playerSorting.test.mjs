@@ -4,6 +4,7 @@ import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import { babelParse, parse } from '@vue/compiler-sfc'
 import { playerPlayDays, sortPlayers } from '../src/lib/playerSorting.mjs'
+import { playerWorldFields, playerLocalWorldIds } from '../src/lib/playerHistoryPresentation.mjs'
 import { composeRoomResults, throwWhenAllRoomsFailed } from '../src/api/roomSettlements.mjs'
 
 const ids = players => Array.from(players, player => player.id)
@@ -87,7 +88,7 @@ test('API sorts all backend pages and rooms before applying the requested displa
     .map(node => source.slice(node.declaration?.start ?? node.start, node.end)).join('\n')
   const requested = []
   const api = runInNewContext(`${script}; playerApi`, {
-    playerPlayDays, sortPlayers, composeRoomResults, throwWhenAllRoomsFailed,
+    playerPlayDays, sortPlayers, playerWorldFields, playerLocalWorldIds, composeRoomResults, throwWhenAllRoomsFailed,
     roomsV2API: { controlPlaneList: async () => ({ items: [{ id: 'A' }, { id: 'B' }] }) },
     playersV2API: {
       list: async (roomId, { offset, limit }) => {
@@ -109,4 +110,32 @@ test('API sorts all backend pages and rooms before applying the requested displa
   const exported = await api.exportPlayers({})
   assert.equal(exported.length, 106)
   assert.deepEqual(ids(exported.slice(0, 6)), [...ids(first.data), ...ids(second.data)])
+})
+
+test('room counts retain unlocated connections while shard counts use local entity evidence', async () => {
+  const source = read('src/api/playerApi.js')
+  const script = babelParse(source, { sourceType: 'module' }).program.body
+    .filter(node => node.type !== 'ImportDeclaration')
+    .map(node => source.slice(node.declaration?.start ?? node.start, node.end)).join('\n')
+  const row = (id, data) => ({ id, name: id, online: true, presenceStatus: 'live', ...data })
+  const players = [
+    row('local', { worldId: 'master', worldName: 'Master', worldConfirmed: true, localEntity: true, observedWorldIds: ['master'] }),
+    row('selecting', { worldId: 'master', worldName: 'Master', worldConfirmed: false, localEntity: false, observedWorldIds: [], gameplayState: 'selecting_character' }),
+    row('moving', { worldId: 'caves', worldName: 'Caves', worldConfirmed: false, localEntity: true, observedWorldIds: ['caves'], gameplayState: 'migrating' }),
+    row('conflict', { worldId: 'master', worldName: 'Master', worldConfirmed: false, localEntity: true, observedWorldIds: ['master', 'caves'], presenceConflict: true }),
+    row('offline', { online: false, worldId: 'master', worldName: 'Master', worldConfirmed: true, localEntity: true, observedWorldIds: ['master'] })
+  ]
+  const api = runInNewContext(`${script}; playerApi`, {
+    playerPlayDays, sortPlayers, playerWorldFields, playerLocalWorldIds,
+    adapterSuccess: data => ({ data }),
+    playersV2API: { list: async () => ({ items: players, total: players.length }) }
+  })
+  const { data } = await api.getPlayerStats('Room', [], 'room')
+  assert.equal(data.online_count, 4)
+  assert.equal(data.unlocated_online_count, 3)
+  assert.equal(data.offline_count, 1)
+  assert.equal(data.online_by_world.master, 2)
+  assert.equal(data.online_by_world.caves, 2)
+  assert.equal(data.recent_players.find(player => player.user_id === 'selecting').world_id, '')
+  assert.equal(data.recent_players.find(player => player.user_id === 'moving').world_id, '')
 })
