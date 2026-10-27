@@ -1,3 +1,4 @@
+import { spawnAuditMessages } from './spawnAuditMessages.js'
 import { workbenchMessages } from './workbenchMessages.js'
 import { machineMessages } from './machineMessages.js'
 import { gameInstallationMessages } from './gameInstallationMessages.js'
@@ -40,6 +41,7 @@ import { worldsMessages } from './worldsMessages.js'
 
 export const messages = {
   'zh-CN': {
+    ...spawnAuditMessages['zh-CN'],
     ...inventoryMessages['zh-CN'],
     ...agentMessages['zh-CN'],
     ...machineMessages['zh-CN'],
@@ -580,6 +582,7 @@ export const messages = {
     }
   },
   'en-US': {
+    ...spawnAuditMessages['en-US'],
     ...inventoryMessages['en-US'],
     ...agentMessages['en-US'],
     ...machineMessages['en-US'],

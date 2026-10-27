@@ -861,7 +861,7 @@ export const consoleV2API = {
 		input
 	),
 	runs: (roomId, params = {}) => client.get(`/rooms/${encode(roomId)}/command-runs`, { params }),
-	run: (roomId, runId) => client.get(`/rooms/${encode(roomId)}/command-runs/${encode(runId)}`),
+	run: (roomId, runId, params = {}) => client.get(`/rooms/${encode(roomId)}/command-runs/${encode(runId)}`, { params, headers: { 'Cache-Control': 'no-store' } }),
 	clearRuns: (roomId, worldId = '') => client.delete(`/rooms/${encode(roomId)}/command-runs`, {
 		params: worldId ? { worldId } : {}
 	})

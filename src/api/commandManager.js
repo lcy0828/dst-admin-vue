@@ -96,10 +96,11 @@ async function waitForCommandRun(roomId, run, timeoutMs = RUN_POLL_TIMEOUT) {
   let current = run
   while (current.status === 'sending') {
     if (Date.now() >= deadline) {
-      throw commandError(COMMAND_ERROR_CODES.RUN_TIMEOUT, 'Timed out waiting for command delivery')
+      throw commandError(COMMAND_ERROR_CODES.RUN_TIMEOUT, 'Timed out waiting for command execution; the command may have executed', { run: current, mayHaveExecuted: true })
     }
     await new Promise(resolve => setTimeout(resolve, RUN_POLL_INTERVAL))
-    current = await consoleV2API.run(roomId, current.id)
+    try { current = await consoleV2API.run(roomId, current.id) }
+    catch (error) { throw Object.assign(error, { run: current, mayHaveExecuted: true }) }
   }
   if (current.status !== 'succeeded') {
     const detail = current.errorMessage || current.message || ''

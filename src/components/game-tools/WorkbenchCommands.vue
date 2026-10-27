@@ -23,7 +23,8 @@ import CommandRunResult from './CommandRunResult.vue'
 const props=defineProps({roomId:{type:String,default:''},roomName:{type:String,default:''},worldId:{type:String,default:''},worldName:{type:String,default:''},playerId:{type:String,default:''},running:Boolean})
 const {t,te}=useI18n()
 const definitions=ref([]),selected=ref(null),search=ref(''),filter=ref('custom'),script=ref(''),name=ref(''),values=ref({}),loading=ref(false),saving=ref(false),executing=ref(false),error=ref(''),listError=ref(''),lastRun=ref(null),armed=ref(false),saveEditorOpen=ref(false)
-const recentRuns=ref([]),historyError=ref('')
+const recentRuns=ref([]),historyError=ref(''),executionContext=ref('')
+const waitingOnTarget=computed(()=>executing.value&&executionContext.value===`${props.roomId}::${props.worldId}`)
 let alive=true,loadSequence=0,contextSequence=0,historySequence=0
 const commandName=item=>translateBuiltinCommandField(t,te,item,'name')
 const commandDescription=item=>translateBuiltinCommandField(t,te,item,'description')
@@ -47,6 +48,7 @@ function showRun(run,target){
  lastRun.value={...run,target}
  recentRuns.value=[lastRun.value,...recentRuns.value.filter(item=>item.id!==run.id)].slice(0,10)
 }
+function updateRun(run){if(lastRun.value?.id===run.id&&run.roomId===props.roomId&&run.worldId===props.worldId)showRun(run,targetLabel.value)}
 function runTime(run){return new Date(run.createdAt).toLocaleString()}
 function choose(item){selected.value=item;script.value=item.script;name.value=item.name;lastRun.value=null;error.value='';saveEditorOpen.value=false;values.value=Object.fromEntries((item.parameters||[]).map(parameter=>[parameter.name,parameter.name==='player_id'&&props.playerId?props.playerId:parameter.default??(parameter.type==='boolean'?false:'')]))}
 function fresh(){selected.value=null;script.value='';name.value='';values.value={};error.value='';lastRun.value=null;saveEditorOpen.value=false}
@@ -61,7 +63,7 @@ async function save(){
 async function execute(){
  if(!canRun.value)return
  if(!armed.value){armed.value=true;return}
- armed.value=false;executing.value=true;error.value='';lastRun.value=null
+ armed.value=false;executionContext.value=`${props.roomId}::${props.worldId}`;executing.value=true;error.value='';lastRun.value=null
  ++historySequence
  const sequence=contextSequence,target=targetLabel.value,room=props.roomId,world=props.worldId,confirmation=props.roomName
  try{
@@ -112,7 +114,7 @@ onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence;++historySeque
    <details v-if="template"><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.viewCode')}}</summary><pre class="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{script}}</pre></details>
    <div class="command-action-bar flex flex-wrap items-center justify-between gap-3"><p class="text-xs text-muted-foreground">{{!running?t('workbench.commands.stopped'):armed?t('workbench.commands.confirm',{target:targetLabel}):t('workbench.commands.output')}}</p><div class="flex gap-2"><Button v-if="armed" variant="ghost" @click="armed=false">{{t('workbench.commands.cancel')}}</Button><Button :disabled="!canRun||saving" @click="execute"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{t(executing?'workbench.commands.executing':armed?'workbench.commands.confirmRun':'workbench.commands.run')}}</Button></div></div>
    <Alert v-if="error" variant="destructive"><AlertTitle>{{t('workbench.commands.failed')}}</AlertTitle><AlertDescription class="break-all">{{error}}</AlertDescription></Alert>
-   <CommandRunResult v-if="lastRun" :run="lastRun" :target="lastRun.target" />
+   <CommandRunResult v-if="waitingOnTarget || lastRun" :run="lastRun" :pending="waitingOnTarget" :target="lastRun?.target || targetLabel" @updated="updateRun" />
    <details v-if="recentRuns.length" data-command-history><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.recentRuns')}}</summary><div class="mt-2 flex max-h-52 flex-col gap-1 overflow-y-auto"><Button v-for="run in recentRuns" :key="run.id" :variant="lastRun?.id===run.id?'secondary':'ghost'" class="h-auto justify-between gap-2 py-2 text-left" @click="lastRun=run"><span class="min-w-0 truncate">{{run.name}} · {{runTime(run)}}</span><span class="shrink-0 text-xs">{{t(`workbench.commands.${run.status==='succeeded'?'succeeded':run.status==='failed'?'runFailed':'uncertain'}`)}}</span></Button></div></details>
    <Alert v-if="historyError"><AlertDescription>{{t('workbench.commands.historyFailed')}}<Button variant="ghost" size="sm" @click="loadHistory">{{t('workbench.commands.retryHistory')}}</Button></AlertDescription></Alert>
   </section>
