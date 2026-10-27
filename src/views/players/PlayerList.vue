@@ -3,6 +3,7 @@
     <div class="page-header">
       <div class="title-container"><h1>{{ $t('players.list.title') }}</h1></div>
       <div class="action-buttons">
+        <UiButton size="sm" variant="outline" @click="activityOpen = true">{{ $t('activity.title') }}</UiButton>
         <UiButton size="sm" variant="outline" @click="inventoryLookupOpen = true">{{ $t('inventory.byId') }}</UiButton>
         <UiButton size="sm" variant="outline" @click="refreshPlayerData" :disabled="loading || refreshing"><Spinner v-if="refreshing" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
         <TooltipProvider><Tooltip><TooltipTrigger as-child><UiButton class="refresh-settings-button" size="icon-sm" variant="outline" :aria-label="$t('players.actions.refreshSettings')" @click="showPlayerRefreshSettings"><Settings2 /></UiButton></TooltipTrigger><TooltipContent>{{ $t('players.actions.refreshSettings') }}</TooltipContent></Tooltip></TooltipProvider>
@@ -289,6 +290,7 @@
         <DialogFooter><UiButton variant="outline" @click="scheduleDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmAddSchedule" :disabled="addingSchedule"><Spinner v-if="addingSchedule" data-icon="inline-start" />{{ $t('players.actions.confirmAdd') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
+    <PlayerActivityDialog v-model:open="activityOpen" :rooms="archiveOptions.map(room => ({ id: room.value, name: room.label }))" :initial-room-id="filterForm.archive_name" />
     <PlayerInventoryDialog v-model:open="inventoryLookupOpen" :rooms="archiveOptions.map(room => ({ id: room.value, name: room.label }))" :initial-room-id="filterForm.archive_name" />
   </div>
 </template>
@@ -338,6 +340,7 @@ import { confirmAction } from '@/lib/feedback';
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue';
 import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue';
 import PlayerInventoryDialog from '@/components/players/PlayerInventoryDialog.vue';
+import PlayerActivityDialog from '@/components/players/PlayerActivityDialog.vue';
 import PlayerRecordTime from '@/components/players/PlayerRecordTime.vue';
 import { playerHistoryTime, playerListPresenceTime, playerLocationPending, playerLastWorld } from '@/lib/playerHistoryPresentation.mjs';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
@@ -362,6 +365,7 @@ export default {
     ChevronRight,
     PlayerActionMenu,
     PlayerInventoryDialog,
+    PlayerActivityDialog,
     PlayerRecordTime,
     Clock3,
     Crown,
@@ -436,6 +440,7 @@ export default {
   data() {
     return {
       inventoryLookupOpen: false,
+      activityOpen: false,
       // 玩家列表数据
       playerList: [],
       loading: false,

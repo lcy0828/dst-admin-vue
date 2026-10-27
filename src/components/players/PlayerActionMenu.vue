@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import {
   Ban as BanIcon,
   Backpack,
+  History,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -57,6 +58,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import GameToolsDialog from '@/components/game-tools/GameToolsDialog.vue'
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue'
 import PlayerInventoryDialog from '@/components/players/PlayerInventoryDialog.vue'
+import PlayerActivityDialog from '@/components/players/PlayerActivityDialog.vue'
 import { playerCanUseCharacterActions, playerQuickCommands } from '@/lib/playerQuickActions.mjs'
 import { globalJobFailureToastId } from '@/lib/globalJobs.mjs'
 import {
@@ -89,6 +91,7 @@ const quickAction = ref('')
 const actionFeedback = ref(null)
 const workbenchOpen = ref(false)
 const inventoryOpen = ref(false)
+const activityOpen = ref(false)
 const activeWorkbenchSection = ref('entity')
 const modeEnabled = ref(true)
 const speedMultiplier = ref(1)
@@ -149,6 +152,7 @@ watch([() => props.player.room_id, () => props.player.world_id, () => props.play
   dialogOpen.value = false
   workbenchOpen.value = false
   inventoryOpen.value = false
+  activityOpen.value = false
   actionFeedback.value = null
 })
 
@@ -364,6 +368,7 @@ async function runQuickAction({ action, input = {} }) {
       <DropdownMenuContent align="end" class="w-56" @click.stop>
         <DropdownMenuLabel class="truncate">{{ playerName }}</DropdownMenuLabel>
         <DropdownMenuGroup>
+          <DropdownMenuItem @select="activityOpen = true"><History />{{ t('activity.view') }}</DropdownMenuItem>
           <DropdownMenuItem @select="inventoryOpen = true"><Backpack />{{ t('inventory.view') }}</DropdownMenuItem>
           <DropdownMenuItem v-if="canResurrect" :disabled="Boolean(activeAction)" @select="resurrectPlayer"><HeartPulse />{{ t('players.operations.resurrect') }}</DropdownMenuItem>
           <DropdownMenuItem :disabled="!quickActionAvailable('recover')" @select="selectQuickAction('recover')"><HeartPulse />{{ t('players.quick.recover') }}</DropdownMenuItem>
@@ -430,6 +435,7 @@ async function runQuickAction({ action, input = {} }) {
           <section class="flex flex-col gap-2" :aria-label="t('players.quick.common')">
             <h3 class="text-xs font-medium text-muted-foreground">{{ t('players.quick.common') }}</h3>
             <div class="grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-11 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
+              <UiButton variant="outline" size="sm" @click="dialogOpen = false; activityOpen = true"><History data-icon="inline-start" />{{ t('activity.view') }}</UiButton>
               <UiButton variant="outline" size="sm" :disabled="Boolean(activeAction)" @click="dialogOpen = false; inventoryOpen = true"><Backpack data-icon="inline-start" />{{ t('inventory.view') }}</UiButton>
               <UiButton variant="outline" size="sm" :disabled="Boolean(activeAction)" @click="openWorkbench('entity')"><HeartPlus data-icon="inline-start" />{{ t('players.quick.give') }}</UiButton>
               <UiButton v-if="canResurrect" variant="outline" size="sm" :disabled="Boolean(activeAction)" @click="resurrectPlayer"><HeartPulse data-icon="inline-start" />{{ t('players.operations.resurrect') }}</UiButton>
@@ -467,6 +473,7 @@ async function runQuickAction({ action, input = {} }) {
     </UiDialog>
   </div>
 
+  <PlayerActivityDialog v-model:open="activityOpen" :player="activePlayer" />
   <PlayerInventoryDialog v-model:open="inventoryOpen" :player="activePlayer" />
   <GameToolsDialog
     v-model:open="workbenchOpen"
