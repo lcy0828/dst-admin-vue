@@ -1002,6 +1002,13 @@ export const workshopV2API = {
   enrich: (ids, configVersion = '', { signal, community = false } = {}) => client.post('/mods/metadata/enrichment', { ids, configVersion, community }, { runtimeTarget: false, signal })
 }
 
+// Read-only, bounded analysis. Available even if the game's Lua Runtime failed.
+export const modDiagnosticsV2API = {
+  analyze: (roomId, worldId) => client.get(`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mod-diagnostics`, {
+    runtimeTarget: false, timeout: 25_000, headers: { 'Cache-Control': 'no-store' }
+  })
+}
+
 export const saveImportsV2API = {
   list: () => client.get('/save-imports', {
     runtimeTarget: false,

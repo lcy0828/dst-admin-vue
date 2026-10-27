@@ -1,0 +1,63 @@
+export const modDiagnosticsMessages = {
+  'zh-CN': { modDiagnostics: {
+    title: '游戏与模组分析', incomplete: '部分证据不可用', unknownCount: '启用模组数量未知', enabledCount: '启用 {count} 个模组', atLeast: '至少启用 {count} 个模组', description: '只读检查版本、模组与错误上下文，不修改配置或存档。',
+    analyze: '重新分析', export: '导出报告', exportHint: '报告不包含存档或配置正文；日志已做常见敏感信息遮盖，分享前请检查内容。',
+    failed: '分析暂不可用', loading: '正在读取运行节点的模组事实与相关日志…',
+    preflightTitle: '模组与版本提示', preflightHint: '这些提示不阻止更新，也不能保证模组支持目标游戏版本。更新执行前会保存版本与配置摘要，供异常时比较。',
+    baselineWarning: '更新前摘要未完整保存', baselineWarningHint: '更新任务仍按原有备份保护流程执行，但后续分析可能缺少更新前的比较证据。',
+    local: '本机', findings: '发现的线索', noFindings: '本次可见证据未发现明确问题；这不代表所有模组均兼容。',
+    versions: '游戏版本 {game} · Steam Build {build} · {mods}',
+    errorBlock: '错误上下文 {index} · 日志位置 {cursor}', comparison: '与更新前比较 · 已观察到 {count} 处变化',
+    baseline: '更新前观察于 {time}；它不是“已验证兼容”的基准。',
+    modList: '启用的模组（{count}）', modVersion: '版本 {version} · Manifest {manifest}', declaration: '作者声明 DST：{dst} · API：{api}',
+    limits: '证据范围与限制', observedAt: '本次读取：{time}', tab: '模组与版本', selectWorld: '选择一个世界查看游戏与模组分析。', open: '分析日志与模组',
+    status: { observed_problem: '发现异常事实', suspected: '有待核实的线索', no_known_issue: '未发现已知问题', insufficient_evidence: '证据有限' },
+    correlation: { matched: '日志开始时间与最近启动记录吻合。', historical: '日志属于先前启动，不用于归因当前故障。', unknown: '无法确认日志属于本次启动，以下仅为日志内的线索。', not_requested: '更新预检不读取游戏日志。' },
+    fields: { steamBuild: 'Steam Build', gameVersion: '游戏版本', configurationRevision: '模组配置摘要', modVersion: '模组版本', modManifest: '模组 Manifest', modEnabled: '模组启用状态' },
+    codes: {
+      MOD_FILES_UNAVAILABLE: '启用的模组文件缺失或无效，请在对应节点核实。',
+      DECLARED_DEPENDENCY_NOT_ENABLED: '依赖声明涉及未启用的模组；声明可能包含可选依赖，需要核实。',
+      DECLARED_NOT_DST: '模组作者声明 dst_compatible=false，请核实是否适用于联机版。',
+      MOD_IN_ERROR_STACK: '错误堆栈涉及以下模组，尚不能确认它们是原因。', GAME_LOG_ERROR: '日志中存在游戏错误，需结合完整上下文判断。', SAVE_WRITE_ERROR: '日志存在存档写入失败，优先核实磁盘与权限。',
+      CURRENT_FILES_NOT_START_SNAPSHOT: '版本与模组来自本次文件读取，不冒充发生报错时的进程快照。',
+      NOT_A_COMPATIBILITY_GUARANTEE: '模组已加载、较新或暂无报错，都不能证明兼容某个游戏版本。',
+      DECLARED_DEPENDENCIES_UNKNOWN: '部分模组没有可用的依赖缓存，不把它解释为没有依赖。', DEPENDENCY_LIMIT_REACHED: '部分模组的依赖声明超过读取上限，结果不完整。',
+      DECLARED_METADATA_ONLY: '依赖来自已有元数据，可能不完整；不执行模组源码来判断兼容性。',
+      NO_PRE_UPDATE_BASELINE: '尚无此世界的更新前摘要。', BASELINE_UNAVAILABLE: '暂时无法读取更新前摘要。', BASELINE_PLACEMENT_CHANGED: '运行节点或安装已变化，不能直接比较旧摘要。',
+      VERSION_NOT_COMPARABLE: '缺少相同 AppID 的版本证据，不混比 Steam Build 与游戏版本。', MOD_COMPARISON_INCOMPLETE: '模组观察不完整，不将缺失观察当成模组被移除。',
+      LOG_UNAVAILABLE: '本次无法读取日志，不能据此判断没有报错。', LOG_FROM_PREVIOUS_START: '日志早于最近启动，不用于解释本次启动。', LOG_TAIL_ONLY: '只读取了日志尾部，可能遗漏更早的首个错误。',
+      START_CORRELATION_UNKNOWN: '没有足够记录将日志与某次启动可靠关联。', STACK_REFERENCE_IS_NOT_CAUSATION: '堆栈中的模组可能是调用方或被其他模组影响，不能直接定责。', STACK_TRUNCATED: '错误上下文达到读取上限，可能还有后续堆栈。',
+      RUNTIME_UNAVAILABLE: '对应运行节点不可用，没有读取控制端本地文件作为替代。', PLACEMENT_CHANGED: '预检后世界部署位置已变化，此摘要不适用于新位置。',
+      RUNTIME_STATUS_UNAVAILABLE: '本次无法确认世界运行状态。', GAME_VERSION_UNAVAILABLE: '本次缺少可靠的游戏版本观察。',
+      MOD_FACTS_UNAVAILABLE: '模组事实读取失败，不代表没有启用模组。', MOD_LIMIT_REACHED: '模组数超过本次分析上限，结果不完整。', MOD_FILE_STATUS_UNKNOWN: '部分模组在对应节点的文件状态未知。',
+      CONFIGURATION_UNREADABLE_OR_UNSUPPORTED: '配置不可读或面板解析器不支持其写法；不据此认定游戏 Lua 配置错误。', RUNTIME_EVENTS_UNAVAILABLE: '运行事件暂不可用，启动关联信息可能不完整。', MOD_METADATA_UNAVAILABLE: '部分模组元数据不可读或解析受限。', DST_DECLARATION_UNKNOWN: '部分模组未提供可读的 DST 声明；旧版 Agent 也可能不支持返回此字段。',
+      REVIEW_FIRST_ERROR_AND_STACK: '优先查看最早可见错误及相邻堆栈，后续报错可能是连锁反应。', CHECK_MOD_AUTHOR_COMPATIBILITY: '结合模组作者说明核实相关版本；需要复现时请在独立测试环境处理。',
+      COLLECT_MATCHING_START_LOG: '需要进一步归因时，提供对应失败启动的完整服务器日志。', KEEP_BACKUP_BEFORE_GAME_UPDATE: '游戏更新前保留可恢复的备份。', PLAN_SCOPE_LIMIT_REACHED: '更新范围超过本次分析上限，部分世界未分析。'
+    }
+  } },
+  'en-US': { modDiagnostics: {
+    title: 'Game and mod analysis', incomplete: 'Some evidence is unavailable', unknownCount: 'Enabled mod count unknown', enabledCount: '{count} enabled mods', atLeast: 'At least {count} enabled mods', description: 'Read-only version, mod and error inspection. Configuration and saves are preserved.',
+    analyze: 'Analyze again', export: 'Export report', exportHint: 'Saves and configuration contents are excluded. Common sensitive log values are masked; review before sharing.',
+    failed: 'Analysis unavailable', loading: 'Reading mod observations and related logs from the Runtime…',
+    preflightTitle: 'Mod and version advisories', preflightHint: 'Advisories do not block updates or guarantee compatibility. Version and configuration summaries are saved before the update executes for later comparison.',
+    baselineWarning: 'Pre-update summary was not fully saved', baselineWarningHint: 'The update keeps its normal backup protection, but later analysis may lack pre-update evidence.',
+    local: 'Local', findings: 'Findings', noFindings: 'No definite issue in the available evidence. This does not establish mod compatibility.',
+    versions: 'Game {game} · Steam Build {build} · {mods}', errorBlock: 'Error context {index} · Log position {cursor}', comparison: 'Compared with pre-update · {count} observed changes',
+    baseline: 'Observed before update at {time}; this is not a verified compatible baseline.', modList: 'Enabled mods ({count})', modVersion: 'Version {version} · Manifest {manifest}', declaration: 'Author declaration DST: {dst} · API: {api}',
+    limits: 'Evidence coverage and limitations', observedAt: 'Read at {time}', tab: 'Mods and versions', selectWorld: 'Select a world to analyze game and mod evidence.', open: 'Analyze logs and mods',
+    status: { observed_problem: 'Observed issue', suspected: 'Unconfirmed leads', no_known_issue: 'No known issue found', insufficient_evidence: 'Limited evidence' },
+    correlation: { matched: 'Log start time matches the latest start record.', historical: 'The log is from an earlier start and is excluded from current incident attribution.', unknown: 'The start could not be matched. These are leads within the log only.', not_requested: 'Update preflight does not read game logs.' },
+    fields: { steamBuild: 'Steam Build', gameVersion: 'Game version', configurationRevision: 'Mod configuration digest', modVersion: 'Mod version', modManifest: 'Mod manifest', modEnabled: 'Mod enabled' },
+    codes: {
+      MOD_FILES_UNAVAILABLE: 'An enabled mod has missing or invalid files on its Runtime.', DECLARED_DEPENDENCY_NOT_ENABLED: 'Declared dependencies include a mod not enabled here; optional dependencies require verification.', DECLARED_NOT_DST: 'The author declares dst_compatible=false. Verify that this mod targets DST.',
+      MOD_IN_ERROR_STACK: 'The stack references these mods; causation is not established.', GAME_LOG_ERROR: 'The log contains a game error. Review its context.', SAVE_WRITE_ERROR: 'The log reports a save write failure. Check disk and permissions first.',
+      CURRENT_FILES_NOT_START_SNAPSHOT: 'Versions and mods describe current files, not a proven snapshot of the process at the time of the error.',
+      NOT_A_COMPATIBILITY_GUARANTEE: 'Loaded, recent or error-free mods are not proven compatible with a particular game version.', DECLARED_DEPENDENCIES_UNKNOWN: 'Some dependency metadata is not cached; this does not establish absence of dependencies.', DEPENDENCY_LIMIT_REACHED: 'Some dependency declarations exceed the analysis limit; coverage is incomplete.',
+      DECLARED_METADATA_ONLY: 'Dependency metadata may be incomplete. Mod source is not executed for compatibility checks.',
+      NO_PRE_UPDATE_BASELINE: 'No pre-update summary exists for this world.', BASELINE_UNAVAILABLE: 'The pre-update summary is unavailable.', BASELINE_PLACEMENT_CHANGED: 'Runtime or installation changed; the old summary is not directly comparable.', VERSION_NOT_COMPARABLE: 'Same-AppID version evidence is missing. Steam Build and game versions are not interchangeable.', MOD_COMPARISON_INCOMPLETE: 'Incomplete mod observations cannot establish mod removal.',
+      LOG_UNAVAILABLE: 'The log could not be read; this does not mean no error occurred.', LOG_FROM_PREVIOUS_START: 'The log predates the latest start and cannot explain it.', LOG_TAIL_ONLY: 'Only the bounded log tail was read; earlier errors may be missing.', START_CORRELATION_UNKNOWN: 'The log could not be reliably associated with a start.', STACK_REFERENCE_IS_NOT_CAUSATION: 'A referenced mod may be a caller or affected by another mod; the stack does not establish blame.', STACK_TRUNCATED: 'The context limit was reached; more stack frames may follow.',
+      RUNTIME_UNAVAILABLE: 'The Runtime is unavailable. Controller files were not used as a fallback.', PLACEMENT_CHANGED: 'Placement changed after preflight; this summary does not apply to the new location.', RUNTIME_STATUS_UNAVAILABLE: 'Current world state could not be observed.', GAME_VERSION_UNAVAILABLE: 'Reliable game version evidence is unavailable.', MOD_FACTS_UNAVAILABLE: 'Mod observations failed. This does not mean no mods are enabled.', MOD_LIMIT_REACHED: 'The mod analysis limit was reached; coverage is incomplete.', MOD_FILE_STATUS_UNKNOWN: 'Some mod file states on this Runtime are unknown.', CONFIGURATION_UNREADABLE_OR_UNSUPPORTED: 'Configuration is unreadable or unsupported by the panel parser; this is not proof of invalid game Lua.', RUNTIME_EVENTS_UNAVAILABLE: 'Runtime events are unavailable; start correlation may be incomplete.', MOD_METADATA_UNAVAILABLE: 'Some mod metadata is unreadable or parser-limited.', DST_DECLARATION_UNKNOWN: 'Some DST declarations are unknown. Older Agents may not return this field.',
+      REVIEW_FIRST_ERROR_AND_STACK: 'Review the earliest visible error and adjacent stack first; later errors may be secondary.', CHECK_MOD_AUTHOR_COMPATIBILITY: 'Verify affected versions with the mod author. Reproduce separately in a test environment if needed.', COLLECT_MATCHING_START_LOG: 'Provide the complete server log from the failed start for further attribution.', KEEP_BACKUP_BEFORE_GAME_UPDATE: 'Keep a recoverable backup before game updates.', PLAN_SCOPE_LIMIT_REACHED: 'The update scope exceeds the analysis limit; some worlds were not analyzed.'
+    }
+  } }
+}

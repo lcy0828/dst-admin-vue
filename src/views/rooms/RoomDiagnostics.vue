@@ -72,6 +72,7 @@
             <History data-icon="inline-start" />
             {{ t('distributed.diagnostics.eventsTab') }}
           </TabsTrigger>
+          <TabsTrigger value="mods">{{ t('modDiagnostics.tab') }}</TabsTrigger>
           <TabsTrigger value="runtime">
             <Wrench data-icon="inline-start" />
             {{ t('runtime.title') }}
@@ -88,6 +89,13 @@
             :worlds="selectedRoomWorlds"
             embedded
           />
+        </TabsContent>
+        <TabsContent value="mods" class="pt-3">
+          <div class="mb-3 flex flex-wrap gap-2">
+            <UiButton v-for="world in selectedRoomWorlds" :key="world.id" size="sm" :variant="diagnosticWorldId === world.id ? 'default' : 'outline'" @click="modWorldId = world.id">{{ world.name || world.directoryName }}</UiButton>
+          </div>
+          <WorldModDiagnosticsPanel v-if="activeSection === 'mods' && diagnosticWorldId" :room-id="selectedRoomId" :world-id="diagnosticWorldId" />
+          <p v-else class="text-sm text-muted-foreground">{{ t('modDiagnostics.selectWorld') }}</p>
         </TabsContent>
         <TabsContent value="runtime" class="pt-3">
           <RuntimeStatusPanel
@@ -116,6 +124,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import WorldModDiagnosticsPanel from '@/components/runtime/WorldModDiagnosticsPanel.vue'
 import RuntimeDiagnosticsPanel from '@/components/runtime/RuntimeDiagnosticsPanel.vue'
 import RuntimeAuditPanel from '@/components/runtime/RuntimeAuditPanel.vue'
 import RoomLogOverviewPanel from '@/components/runtime/RoomLogOverviewPanel.vue'
@@ -131,7 +140,7 @@ const selectedShard = ref(null)
 const loadingRooms = ref(false)
 const refreshing = ref(false)
 const roomsError = ref('')
-const activeSection = ref('logs')
+const activeSection = ref(route.query.diagnostic === 'mods' ? 'mods' : 'logs')
 const overviewPanel = ref(null)
 const logPanel = ref(null)
 const auditPanel = ref(null)
@@ -140,6 +149,9 @@ const selectedRoomWorlds = computed(() => {
   const room = rooms.value.find(item => String(item.id) === selectedRoomId.value)
   return Array.isArray(room?.worlds) ? room.worlds : []
 })
+const modWorldId = ref('')
+const diagnosticWorldId = computed(() => (selectedRoomWorlds.value.some(world => world.id === modWorldId.value) ? modWorldId.value : '') || selectedShard.value?.worldId ||
+  (selectedRoomWorlds.value.some(world => world.id === route.query.worldId) ? String(route.query.worldId) : '') || selectedRoomWorlds.value[0]?.id || '')
 const selectedShardEndpoint = computed(() => runtimeEndpointLabel(
   { targets: selectedShard.value?.target ? [selectedShard.value.target] : [] },
   selectedShard.value?.placement?.appliedTargetId,
@@ -192,6 +204,7 @@ async function replaceRoomQuery() {
 function selectRoom(value) {
   selectedRoomId.value = String(value || '')
   selectedShard.value = null
+  modWorldId.value = ''
   activeSection.value = 'logs'
   void replaceRoomQuery()
 }

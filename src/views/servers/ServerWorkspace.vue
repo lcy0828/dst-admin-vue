@@ -413,6 +413,7 @@
                     :available="worldPerformanceAvailable(world)"
                   />
                   <RuntimeExitBadge :event="world.latestExit" />
+                  <RouterLink v-if="world.status === 'failed' || world.latestExit?.type === 'unexpected_exit'" :to="{ path: '/rooms/diagnostics', query: { roomId: selectedRoomId, worldId: world.id, diagnostic: 'mods' } }" class="text-xs text-primary underline-offset-4 hover:underline" @click.stop>{{ $t('modDiagnostics.open') }}</RouterLink>
                 </div>
                 <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || $t('servers.workspace.worlds.directoryUnset') }}</span>
                 <span class="world-machine" :title="worldMachineName(world)">
@@ -800,7 +801,7 @@
                     {{ $t('servers.workspace.console.execute') }}
                   </UiButton>
                 </div>
-                <CommandRunResult v-if="commandResult && commandResultTarget === consoleServer" :run="commandResult" :target="selectedConsoleServer?.name || ''" />
+                <CommandRunResult v-if="(commandExecuting || commandResult) && commandResultTarget === consoleServer" :run="commandResult" :pending="commandExecuting" :target="selectedConsoleServer?.name || ''" @updated="updateCommandResult" />
                 <Alert v-if="commandExecutionError && commandResultTarget === consoleServer" variant="destructive" role="alert">
                   <CircleAlert /><AlertTitle>{{ $t('servers.workspace.console.failed') }}</AlertTitle><AlertDescription>{{ commandExecutionError }}</AlertDescription>
                 </Alert>
@@ -2529,6 +2530,11 @@ export default {
       this.commandResult = run
       this.commandResultTarget = this.consoleServer
       this.commandExecutionError = ''
+    },
+    updateCommandResult(run) {
+      if (this.workspaceDisposed || this.commandResult?.id !== run.id || this.commandResultTarget !== this.consoleServer) return
+      this.commandResult = run
+      this.commandRuns = this.commandRuns.map(item => item.id === run.id ? run : item)
     },
     async executeRawCommand() {
       const server = this.selectedConsoleServer

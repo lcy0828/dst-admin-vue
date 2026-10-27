@@ -373,7 +373,24 @@ export interface GameReleaseInstallationPlan {
   blockers: GameReleaseBlocker[]
 }
 
+export interface ModDiagnosticReport {
+  status: 'observed_problem' | 'suspected' | 'no_known_issue' | 'insufficient_evidence'
+  observation: {
+    roomId: string; roomName?: string; worldId: string; worldName?: string; targetId?: string; installationId?: string
+    version: { appId?: string; steamBuild?: string; gameVersion?: string }
+    mods: { id: string; name?: string; version?: string; manifest?: string; fileStatus?: string; dstCompatible?: boolean; apiVersion?: string; dependencies?: string[] }[]
+    configurationRevision?: string; observedAt: string; limitations: string[]
+  }
+  baseline?: { releaseId: string; capturedAt: string; observation: ModDiagnosticReport['observation'] }
+  changes: { field: string; modId?: string; before?: string; after?: string }[]
+  findings: { code: string; kind: 'observed' | 'suspected'; modIds?: string[] }[]
+  evidence: { code: string; firstCursor: number; errorCursor: number; lines: string[]; modIds: string[]; truncated: boolean }[]
+  logCorrelation: 'matched' | 'historical' | 'unknown' | 'not_requested'
+  limitations: string[]; recommendations: string[]
+}
+
 export interface GameReleasePlan {
+  modDiagnostics?: ModDiagnosticReport[]
   version: number
   desiredVersion: string
   topologyRevision: string
@@ -427,6 +444,7 @@ export interface GameReleaseShardResult {
 }
 
 export interface GameRelease {
+  modDiagnosticsWarning?: string
   attempt?: number
   writingStarted?: boolean
   planHistory?: GameReleasePlan[]

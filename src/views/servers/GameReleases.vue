@@ -1,4 +1,5 @@
 <script setup>
+import ModPreflightReports from '@/components/runtime/ModPreflightReports.vue'
 import GameInstallationManager from '@/components/GameInstallationManager.vue'
 import LuaJITInstaller from '@/components/LuaJITInstaller.vue'
 import { useRoute } from 'vue-router'
@@ -617,6 +618,8 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
                     </Table>
                   </div>
                 </section>
+
+                <ModPreflightReports :reports="plan?.modDiagnostics || []" />
 
                 <Alert v-if="planBlockers.length" variant="destructive">
                   <TriangleAlert />

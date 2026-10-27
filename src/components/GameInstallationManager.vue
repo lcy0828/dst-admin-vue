@@ -1,4 +1,5 @@
 <script setup>
+import ModPreflightReports from '@/components/runtime/ModPreflightReports.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -247,6 +248,7 @@ defineExpose({ refresh })
               <Badge class="shrink-0" :variant="world.wasRunning ? 'warning' : 'secondary'">{{ t(world.wasRunning ? 'gameInstallation.maintenance.willStop' : world.runtimeState === 'stopped' ? 'gameInstallation.maintenance.staysStopped' : 'gameInstallation.maintenance.unknownState') }}</Badge>
             </div>
           </div>
+          <ModPreflightReports :reports="preview.plan?.modDiagnostics || []" />
           <p v-if="preview.plan?.installations.length > 1" class="text-sm text-muted-foreground">{{ t('gameInstallation.maintenance.sharedScope') }}</p>
           <FieldGroup v-if="runningWorlds.length">
             <Field orientation="horizontal"><FieldContent><FieldLabel for="game-maintenance-restart">{{ t('gameInstallation.maintenance.restart') }}</FieldLabel><FieldDescription>{{ t('gameInstallation.maintenance.restartHint') }}</FieldDescription></FieldContent><Switch id="game-maintenance-restart" :model-value="restartRunning" :disabled="submitting" @update:model-value="setRestart" /></Field>
