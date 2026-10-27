@@ -16,7 +16,9 @@ import {
   gameReleasePlatformKey,
   gameReleaseStageKey,
   gameReleaseStageVariant,
-  gameReleaseVersionChannels
+  gameReleaseVersionChannels,
+  gameReleaseRecoveryRequest,
+  gameReleaseWriteState
 } from '../src/lib/gameRelease.mjs'
 
 const source = path => readFile(new URL(path, import.meta.url), 'utf8')
@@ -108,7 +110,6 @@ test('game release workspace uses accessible shadcn composition and real APIs', 
   assert.match(view, /await loadHistory\(\)/)
   assert.doesNotMatch(view, /Promise\.all\(\[loadHistory\(\), previewRelease/)
   assert.match(view, /gameReleaseNodeCount\(planInstallations\.value\)/)
-  assert.match(view, /gameReleaseGameVersions\(planInstallations\.value\)/)
   assert.match(view, /gameReleaseVersionChannels\(planInstallations\.value\)/)
   assert.match(view, /gameReleases\.nodes\.channelDescription/)
   assert.match(view, /function targetMetadata\(target\)/)
@@ -134,4 +135,20 @@ test('game release workspace uses accessible shadcn composition and real APIs', 
     const position = view.indexOf(technicalValue, technicalStart)
     assert.ok(position > technicalStart && position < technicalEnd, `${technicalValue} should stay in technical details`)
   }
+})
+
+
+test('recovery reuses the original exact scope, omits stale build and preserves policy', () => {
+  const release = { plan: { desiredVersion: '701', selectedInstallations: [{ targetId: 'agent:one', installationId: 'primary' }], installations: [{ targetId: 'agent:two', installationId: 'extra' }], policy: { requireEmpty: true, restartRunning: false } } }
+  const request = gameReleaseRecoveryRequest(release)
+  assert.deepEqual(request, { installations: [{ targetId: 'agent:one', installationId: 'primary' }], policy: { requireEmpty: true, restartRunning: false } })
+  request.installations[0].targetId = 'edited'
+  assert.equal(release.plan.selectedInstallations[0].targetId, 'agent:one')
+  assert.equal(gameReleaseRecoveryRequest(release, { validateUnknown: true }).policy.validate, true)
+  assert.equal(release.plan.policy.validate, undefined)
+  delete release.plan.selectedInstallations
+  assert.deepEqual(gameReleaseRecoveryRequest(release).installations, [{ targetId: 'agent:two', installationId: 'extra' }])
+  assert.equal(gameReleaseWriteState('unknown'), 'unknown')
+  assert.equal(gameReleaseWriteState('version_changed'), 'version_changed')
+  assert.equal(gameReleaseWriteState(undefined), 'unavailable')
 })

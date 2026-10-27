@@ -330,6 +330,7 @@ export interface GameReleaseBlocker {
 }
 
 export interface GameReleaseShardPlan {
+  runtimeMode?: string
   roomId: string
   roomName: string
   roomDirectory: string
@@ -345,6 +346,8 @@ export interface GameReleaseShardPlan {
 }
 
 export interface GameReleaseInstallationPlan {
+  serverPath?: string
+  branch?: string
   targetId: string
   targetName: string
   os: string
@@ -386,6 +389,9 @@ export interface GameReleasePlan {
 }
 
 export interface GameReleaseInstallationResult {
+  writeState?: 'not_started' | 'dispatched' | 'unknown' | 'failed' | 'version_changed' | 'verified'
+  operationId?: string
+  expectedVersion?: string
   targetId: string
   installationId: string
   stage: GameReleaseStage
@@ -400,6 +406,9 @@ export interface GameReleaseInstallationResult {
 }
 
 export interface GameReleaseShardResult {
+  stopRequestedAt?: string
+  logFileId?: string
+  logOffset?: number
   roomId: string
   worldId: string
   targetId: string
@@ -418,6 +427,11 @@ export interface GameReleaseShardResult {
 }
 
 export interface GameRelease {
+  attempt?: number
+  writingStarted?: boolean
+  planHistory?: GameReleasePlan[]
+  nextAction?: 'retry_release' | 'preview_and_retry' | 'inspect_release'
+  blockers?: GameReleaseBlocker[]
   id: string
   sourceJobId?: string
   stage: GameReleaseStage

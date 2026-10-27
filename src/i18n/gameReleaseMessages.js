@@ -5,7 +5,7 @@ export const gameReleaseMessages = {
       subtitle: '查看各机器的安装状态，安装或接入已有服务端，并管理 LuaJIT 和游戏更新。',
       actions: {
         open: '管理游戏更新', refresh: '刷新更新记录', check: '检查是否有更新', checking: '正在检查',
-        publish: '备份并开始更新', retry: '重试失败更新', view: '查看详情'
+        publish: '备份并开始更新', retry: '继续更新 / 恢复', view: '查看详情'
       },
       simple: {
         checkedScope: '检查范围', affectedScope: '影响范围', scopeSummary: '{rooms} 个房间 · {worlds} 个世界', runningSummary: '{count} 个世界运行中',
@@ -30,7 +30,7 @@ export const gameReleaseMessages = {
       },
       notice: {
         title: '更新期间会自动保护并恢复房间',
-        description: '系统会先备份受影响的房间并安全停止世界，更新和校验 Steam build 后，再恢复更新前正在运行的世界。多节点房间会自动按正确顺序处理。'
+        description: '系统会安全停止相关世界，创建并验证保护备份，更新与校验游戏后恢复原先运行的世界。共用安装和跨节点房间会一起处理。'
       },
       form: {
         title: '更新选项', description: '先检查本次更新影响的节点、房间和世界；检查结果变化后需要重新确认。',
@@ -69,13 +69,15 @@ export const gameReleaseMessages = {
         failed: '更新失败', recovery_required: '需要人工恢复', unknown: '未知阶段'
       },
       blockers: {
-        targetOffline: '目标节点离线', inventoryStale: '节点运行清单缺失或过期', capabilityMissing: '节点不支持版本更新协议',
+        targetOffline: '目标节点离线', inventoryRefreshFailed: '运行清单刷新失败', shardRunning: '维护期间世界仍在运行', backupDiskInsufficient: '备份磁盘空间不足', inventoryStale: '节点运行清单缺失或过期', capabilityMissing: '节点不支持版本更新协议',
         installationIdentityInvalid: '安装实例标识无效', installationMissing: '未发现 DST 专用服务器安装',
         steamcmdUnavailable: 'SteamCMD 不可用', steamClientUpdateRequired: '请先在 Steam 客户端中更新本机游戏', updateUnsupported: '该安装方式不支持面板更新', diskInsufficient: '磁盘可用空间不足',
         versionObserveFailed: '读取安装版本失败', versionCheckTimeout: '该主机版本检查超时', latestBuildUnavailable: '无法查询 Steam 最新 Build',
         shardInventoryMissing: '运行清单中未发现分片', shardStatusFailed: '读取分片状态失败', unknown: '未知阻断项'
       },
-      job: {
+      writeStates: { not_started: '尚未写入游戏文件', dispatched: '更新已下发，等待结果', unknown: '写入结果待确认', failed: '本次写入未通过验证', version_changed: '实际版本变化，需重新检查', verified: '安装完整性已验证', unavailable: '旧记录未提供写入状态' },
+      recovery: { title: '下一步', repair: '校验修复并继续', repairDescription: '将保留原保护备份和世界恢复设置，在确认节点无其他写入后发起新的 SteamCMD 文件校验；可能需要重新下载部分游戏文件。校验成功前不启动相关世界。', recheck: '重新检查并继续', continue: '按新版本继续原任务', expected: '目标版本 {version}', confirmDescription: 'Steam 最新版本已变化。确认后继续原更新任务，保留原保护备份和世界恢复设置。', retry_release: '继续原任务。已验证的安装不重复下载；原本停止的世界保持停止。', preview_and_retry: 'Steam 最新版本已变化。重新检查后可按新版本继续原任务。', inspect_release: '更新已下发，但写入结果尚未确认。点击继续会先检查原操作回执，确认前不会重复下载或启动相关世界。' },
+      job: { processing: '正在处理更新任务', progressMeaning: '此进度表示任务步骤的处理情况；最终结果以安装验证与世界恢复状态为准。',
         title: '更新任务', queued: '等待执行', running: '正在执行', succeeded: '任务完成', failed: '任务失败', canceled: '任务已取消', unknown: '未知任务状态'
       },
       history: {
@@ -87,7 +89,7 @@ export const gameReleaseMessages = {
         installationResults: '安装结果', shardResults: '分片恢复与加载确认', noSelection: '选择一条更新记录查看完整证据。'
       },
       confirm: {
-        title: '确认备份并更新', description: '确认后将保护受影响的房间，创建备份并停止正在运行的世界。',
+        title: '确认备份并更新', description: '确认后将安全停止相关世界、创建保护备份，再更新并恢复原运行状态。',
         warningTitle: '更新期间房间会暂时停止', warningDescription: '本次更新会影响 {rooms} 个房间和 {shards} 个分片。失败时系统会保留恢复状态和完整记录。',
         submit: '创建备份并更新'
       },
@@ -107,7 +109,7 @@ export const gameReleaseMessages = {
       subtitle: 'Inspect installations on each host, install or connect an existing server, and manage LuaJIT and game updates.',
       actions: {
         open: 'Manage game updates', refresh: 'Refresh update history', check: 'Check for updates', checking: 'Checking',
-        publish: 'Back up and update', retry: 'Retry failed update', view: 'View details'
+        publish: 'Back up and update', retry: 'Resume update / restore', view: 'View details'
       },
       simple: {
         checkedScope: 'Checked scope', affectedScope: 'Update scope', scopeSummary: '{rooms} rooms · {worlds} worlds', runningSummary: '{count} worlds running',
@@ -132,7 +134,7 @@ export const gameReleaseMessages = {
       },
       notice: {
         title: 'Rooms are protected and restored automatically',
-        description: 'The system backs up affected rooms, safely stops worlds, updates and verifies each Steam build, then restores the worlds that were running before the update. Multi-node rooms are handled in the correct order.'
+        description: 'The system safely stops affected worlds, creates verified protection backups, updates and validates the game, then restores previously running worlds. Shared installations and split rooms are handled together.'
       },
       form: {
         title: 'Update options', description: 'Check affected nodes, rooms, and worlds first. Changes to the result require a new confirmation.',
@@ -171,13 +173,15 @@ export const gameReleaseMessages = {
         failed: 'Update failed', recovery_required: 'Manual recovery required', unknown: 'Unknown stage'
       },
       blockers: {
-        targetOffline: 'Target is offline', inventoryStale: 'Runtime inventory is missing or stale', capabilityMissing: 'Target lacks the update protocol',
+        targetOffline: 'Target is offline', inventoryRefreshFailed: 'Runtime inventory refresh failed', shardRunning: 'World still running during maintenance', backupDiskInsufficient: 'Insufficient space on backup disk', inventoryStale: 'Runtime inventory is missing or stale', capabilityMissing: 'Target lacks the update protocol',
         installationIdentityInvalid: 'Installation identity is invalid', installationMissing: 'DST dedicated-server installation not found',
         steamcmdUnavailable: 'SteamCMD is unavailable', steamClientUpdateRequired: 'Update the local game in Steam first', updateUnsupported: 'This installation cannot be updated by the panel', diskInsufficient: 'Insufficient free disk space',
         versionObserveFailed: 'Failed to observe the installed version', versionCheckTimeout: 'Version check timed out on this host', latestBuildUnavailable: 'Could not query the latest Steam build',
         shardInventoryMissing: 'Shard missing from runtime inventory', shardStatusFailed: 'Failed to read shard state', unknown: 'Unknown blocker'
       },
-      job: {
+      writeStates: { not_started: 'Game files not written', dispatched: 'Update dispatched; awaiting result', unknown: 'Write outcome unconfirmed', failed: 'Write did not pass validation', version_changed: 'Installed version changed; recheck required', verified: 'Installation integrity verified', unavailable: 'Write state unavailable in this older record' },
+      recovery: { title: 'Next step', repair: 'Validate, repair and continue', repairDescription: 'Keep the original protection backups and world restore settings. Once node checks confirm no other writer, start a new SteamCMD file validation; some game files may be downloaded again. Related worlds stay stopped until verified.', recheck: 'Recheck and continue', continue: 'Continue original release with new build', expected: 'Expected build {version}', confirmDescription: 'The latest Steam build has changed. Continue the original release while retaining its protection backups and world restore settings.', retry_release: 'Resume the original release. Verified installations are not downloaded again; originally stopped worlds stay stopped.', preview_and_retry: 'The latest Steam build changed. Recheck before continuing the original release with the new build.', inspect_release: 'The update was dispatched but its outcome is not confirmed. Continue checks the original operation receipt before resending or starting related worlds.' },
+      job: { processing: 'Processing update', progressMeaning: 'Progress reflects processed task steps. Installation verification and world restoration determine the final result.',
         title: 'Update job', queued: 'Queued', running: 'Running', succeeded: 'Job completed', failed: 'Job failed', canceled: 'Job canceled', unknown: 'Unknown job status'
       },
       history: {

@@ -916,9 +916,9 @@ export const gameReleasesV2API = {
     headers: { 'Cache-Control': 'no-store' }
   }),
   /** @returns {Promise<{id: string, kind: string, status: string, progress: number}>} */
-  retry: releaseId => client.post(
+  retry: (releaseId, input = {}) => client.post(
     `/game/releases/${encode(releaseId)}/actions/retry`,
-    {},
+    input,
     { runtimeTarget: false }
   )
 }

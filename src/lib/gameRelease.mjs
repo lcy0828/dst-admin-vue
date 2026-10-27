@@ -18,6 +18,9 @@ const RETRYABLE_RELEASE_STAGES = new Set(['failed', 'recovery_required'])
 const BLOCKER_KEYS = Object.freeze({
   TARGET_OFFLINE: 'targetOffline',
   INVENTORY_STALE: 'inventoryStale',
+  INVENTORY_REFRESH_FAILED: 'inventoryRefreshFailed',
+  SHARD_RUNNING: 'shardRunning',
+  BACKUP_DISK_INSUFFICIENT: 'backupDiskInsufficient',
   CAPABILITY_MISSING: 'capabilityMissing',
   INSTALLATION_IDENTITY_INVALID: 'installationIdentityInvalid',
   INSTALLATION_MISSING: 'installationMissing',
@@ -137,4 +140,16 @@ export function gameReleaseVersionChannels(installations) {
     if (!channel.platformKeys.includes(platformKey)) channel.platformKeys.push(platformKey)
   }
   return channels
+}
+
+export function gameReleaseRecoveryRequest(release, { validateUnknown = false } = {}) {
+  const plan = release?.plan || {}
+  const installations = plan.selectedInstallations?.length
+    ? plan.selectedInstallations
+    : (plan.installations || []).map(({ targetId, installationId }) => ({ targetId, installationId }))
+  return { installations: installations.map(item => ({ ...item })), policy: { ...(plan.policy || {}), ...(validateUnknown ? { validate: true } : {}) } }
+}
+
+export function gameReleaseWriteState(state) {
+  return ['not_started', 'dispatched', 'unknown', 'failed', 'version_changed', 'verified'].includes(state) ? state : 'unavailable'
 }

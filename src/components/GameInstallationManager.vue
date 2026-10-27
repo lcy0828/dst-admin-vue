@@ -2,13 +2,14 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { Download, FolderOpen, RefreshCw, Server } from '@lucide/vue'
+import { ChevronDown, Download, FolderOpen, RefreshCw, Server, Wrench } from '@lucide/vue'
 import { gameInstallationsV2API, gameReleasesV2API, jobsV2API } from '@/api/v2'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -21,7 +22,11 @@ import { formatJobBytes, formatJobRate } from '@/lib/globalJobs.mjs'
 import { gameReleaseBlockerKey } from '@/lib/gameRelease.mjs'
 import { installationMaintenanceReady, installationMaintenanceRequest, installationMaintenanceWorlds } from '@/lib/gameInstallation.mjs'
 
-const props = defineProps({ targetId: { type: String, default: '' } })
+const props = defineProps({
+  targetId: { type: String, default: '' },
+  maintenanceMenu: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false }
+})
 const emit = defineEmits(['changed'])
 const { t, te } = useI18n()
 const router = useRouter()
@@ -48,7 +53,7 @@ const stagePercent = computed(() => {
 })
 const rate = computed(() => observedNow.value - Date.parse(job.value?.progressDetail?.observedAt || '') < 10000
   ? formatJobRate(transfer.value?.bytesPerSecond) : '')
-const busy = computed(() => loading.value || submitting.value || running.value || preparing.value)
+const busy = computed(() => props.disabled || loading.value || submitting.value || running.value || preparing.value)
 const selectedTarget = () => props.targetId || managementScopeTargetId(scope.value)
 const key = () => `dstGameInstallationJob:${selectedTarget() || 'all'}`
 const identity = item => ({ targetId: item.targetId, installationId: item.installationId })
@@ -98,12 +103,13 @@ function closeDialog() {
   dialog.value = ''; probeSequence += 1; preflightSequence += 1; probing.value = false; preparing.value = false; preview.value = null
 }
 function open(item, kind) {
+  if (busy.value) return
   selected.value = item; path.value = ''; candidate.value = null; dialogError.value = ''; preview.value = null; restartRunning.value = true
   dialog.value = kind; probeSequence += 1
   if (kind === 'install') checkMaintenance()
 }
 async function checkMaintenance() {
-  if (!selected.value || dialog.value !== 'install' || submitting.value) return
+  if (!selected.value || dialog.value !== 'install' || submitting.value || props.disabled) return
   const current = generation, sequence = ++preflightSequence
   const input = { ...identity(selected.value), restartRunning: restartRunning.value }
   preparing.value = true; preview.value = null; dialogError.value = ''
@@ -152,6 +158,7 @@ function handleScopeChange() { if (!props.targetId) resetScope() }
 watch(() => props.targetId, resetScope)
 onMounted(() => { window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleScopeChange); resetScope() })
 onBeforeUnmount(() => { alive = false; generation += 1; preflightSequence += 1; clearTimeout(timer); window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleScopeChange) })
+defineExpose({ refresh })
 </script>
 
 <template>
@@ -159,7 +166,7 @@ onBeforeUnmount(() => { alive = false; generation += 1; preflightSequence += 1; 
     <CardHeader>
       <CardTitle class="flex items-center gap-2"><Server class="size-4 text-muted-foreground" />{{ t('gameInstallation.title') }}</CardTitle>
       <CardDescription v-if="!items.length || items.some(item => !item.installed)">{{ t('gameInstallation.description') }}</CardDescription>
-      <CardAction><Button variant="ghost" size="icon-sm" :disabled="loading || submitting" :aria-label="t('gameInstallation.refresh')" :title="t('gameInstallation.refresh')" @click="refresh"><RefreshCw /></Button></CardAction>
+      <CardAction><Button variant="ghost" size="icon-sm" :disabled="loading || submitting || disabled" :aria-label="t('gameInstallation.refresh')" :title="t('gameInstallation.refresh')" @click="refresh"><RefreshCw /></Button></CardAction>
     </CardHeader>
     <CardContent class="flex flex-1 flex-col gap-3 pt-0 group-data-[size=sm]/card:pt-0">
       <p v-if="loading && !items.length" role="status" class="flex items-center gap-2 text-sm text-muted-foreground"><Spinner />{{ t('gameInstallation.loading') }}</p>
@@ -180,7 +187,17 @@ onBeforeUnmount(() => { alive = false; generation += 1; preflightSequence += 1; 
         </dl>
         <div class="mt-auto flex flex-wrap items-center gap-2 pt-1">
 			<SteamLoginSettings v-if="item.installationId" :target-id="item.targetId" :installation-id="item.installationId" :node-label="items.length > 1 ? `${item.targetName} / ${item.installationId}` : ''" :disabled="busy || !item.online || !item.steamcmdAvailable" />
-          <Button size="sm" :variant="item.installed ? 'outline' : 'default'" :disabled="busy || !item.online || Boolean(item.error) || !item.canInstall" @click="open(item, 'install')"><Download data-icon="inline-start" />{{ t(item.installed ? 'gameInstallation.update' : 'gameInstallation.install') }}</Button>
+          <DropdownMenu v-if="item.installed && maintenanceMenu">
+            <DropdownMenuTrigger as-child>
+              <Button size="sm" variant="outline" :disabled="busy || !item.online || Boolean(item.error) || !item.canInstall">{{ t('gameInstallation.moreMaintenance') }}<ChevronDown data-icon="inline-end" /></Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuGroup>
+                <DropdownMenuItem @select="open(item, 'install')"><Wrench />{{ t('gameInstallation.validateFiles') }}</DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button v-else size="sm" :variant="item.installed ? 'outline' : 'default'" :disabled="busy || !item.online || Boolean(item.error) || !item.canInstall" @click="open(item, 'install')"><Download data-icon="inline-start" />{{ t(item.installed ? 'gameInstallation.update' : 'gameInstallation.install') }}</Button>
           <Button v-if="!item.installed" size="sm" variant="outline" :disabled="busy || !item.online || Boolean(item.error) || !item.canAdopt" @click="open(item, 'adopt')"><FolderOpen data-icon="inline-start" />{{ t('gameInstallation.adopt') }}</Button>
           <Button v-if="item.installed" size="sm" variant="outline" @click="router.push('/rooms')">{{ t('gameInstallation.rooms') }}</Button>
         </div>
@@ -202,6 +219,7 @@ onBeforeUnmount(() => { alive = false; generation += 1; preflightSequence += 1; 
       </div>
       <Alert v-if="error" variant="destructive"><AlertTitle>{{ t('gameInstallation.failed') }}</AlertTitle><AlertDescription class="break-words">{{ error }}</AlertDescription></Alert>
     </CardContent>
+    <slot name="footer" :items="items" :busy="busy" />
   </Card>
   <Dialog v-if="dialog" :open="Boolean(dialog)" @update:open="value => { if (!value) closeDialog() }">
     <DialogContent>
