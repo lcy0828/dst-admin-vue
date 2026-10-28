@@ -481,3 +481,24 @@ test('actual route key preserves initial Mod load and Caves configuration dialog
     app.unmount()
   }
 })
+
+test('configuration choices retain exact Lua types and expose every large-mod field', async () => {
+  const options = await componentOptions('views/mods/ModConfigDialog.vue', {})
+  const fields = Array.from({ length: 120 }, (_, index) => ({ name: `field_${index}`, default: index, options: [{ description: 'zero string', data: '0' }, { description: 'zero number', data: 0 }, { description: 'false boolean', data: false }, { description: 'false string', data: 'false' }] }))
+  const dialog = instance(options, { modInfo: { configuration_options: fields } })
+  dialog.initializeConfigFromData(fields)
+  assert.equal(dialog.allOptions.length, 120)
+  const option = fields[0]
+  for (const [index, value] of ['0', 0, false, 'false'].entries()) {
+    dialog.selectOption(option, `choice:${index}`)
+    assert.strictEqual(dialog.configForm.field_0, value)
+    assert.equal(dialog.selectedOption(option), `choice:${index}`)
+    assert.strictEqual(dialog.prepareConfigForSubmit(dialog.configForm).field_0, value)
+  }
+  assert.equal(dialog.isBooleanOption({ options: [{ data: 'true' }, { data: 'false' }] }), false)
+  assert.equal(dialog.isBooleanOption({ options: [{ data: true }, { data: false }] }), true)
+  dialog.selectOption(option, 'choice:9999')
+  assert.strictEqual(dialog.configForm.field_0, 'false')
+  dialog.resetToDefault()
+  assert.equal(dialog.configForm.field_119, 119)
+})

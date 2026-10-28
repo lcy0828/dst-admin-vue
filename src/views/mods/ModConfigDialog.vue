@@ -1,15 +1,15 @@
 <template>
   <UiDialog :open="dialogVisible" @update:open="handleDialogOpenChange">
-    <DialogContent class="mod-config-dialog sm:max-w-4xl">
-      <DialogHeader>
-        <DialogTitle>{{ $t('mods.config.title', { name: activeModInfo ? activeModInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</DialogTitle>
-        <DialogDescription class="space-y-1">
+    <DialogContent class="mod-config-dialog flex max-h-[min(90dvh,900px)] min-w-0 flex-col overflow-hidden sm:max-w-4xl">
+      <DialogHeader class="shrink-0">
+        <DialogTitle class="min-w-0 break-words">{{ $t('mods.config.title', { name: activeModInfo ? activeModInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</DialogTitle>
+        <DialogDescription class="flex flex-col gap-1">
           <span class="block">{{ configurationScope === 'room' ? $t('mods.config.roomDescription', { count: effectiveWorldIds.length }) : $t('mods.config.description', { world: worldName || worldId }) }}</span>
           <span class="block">{{ $t(configurationScope === 'room' ? 'mods.config.roomSaveBehaviorDescription' : 'mods.config.saveBehaviorDescription', { count: effectiveWorldIds.length }) }}</span>
         </DialogDescription>
       </DialogHeader>
 
-      <div v-if="configurationScope !== 'room'" class="flex flex-wrap items-center gap-2">
+      <div v-if="configurationScope !== 'room'" class="flex shrink-0 flex-wrap items-center gap-2">
         <Badge variant="outline">
           <Server />
           {{ configTargetLabel }}
@@ -43,7 +43,7 @@
             <Field v-for="option in allOptions" :key="option.name" :orientation="isBooleanOption(option) ? 'horizontal' : 'vertical'">
               <FieldContent>
                 <div class="field-label-row">
-                  <FieldLabel :for="`mod-option-${option.name}`">{{ option.label }}</FieldLabel>
+                  <FieldLabel class="min-w-0 break-words" :for="`mod-option-${option.name}`">{{ option.label || option.name }}</FieldLabel>
                   <Tooltip v-if="option.hover">
                     <TooltipTrigger as-child>
                       <UiButton type="button" variant="ghost" size="icon-xs" :aria-label="$t('mods.config.optionHelp', { label: option.label })"><CircleHelp /></UiButton>
@@ -63,13 +63,13 @@
 
               <UiSelect
                 v-else-if="option.options && option.options.length > 0"
-                v-model="configForm[option.name]"
-                @update:model-value="handleConfigChange(option.name)"
+                :model-value="selectedOption(option)"
+                @update:model-value="selectOption(option, $event)"
               >
-                <SelectTrigger :id="`mod-option-${option.name}`"><SelectValue :placeholder="$t('mods.config.selectOption')" /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger :id="`mod-option-${option.name}`" class="h-auto min-h-9 w-full min-w-0 py-2 text-left [&>span]:min-w-0 [&>span]:whitespace-normal [&>span]:break-words"><SelectValue :placeholder="$t('mods.config.selectOption')" /></SelectTrigger>
+                <SelectContent class="max-w-[calc(100vw-3rem)]">
                   <SelectGroup>
-                    <SelectItem v-for="(opt, idx) in option.options" :key="idx" :value="opt.data">{{ opt.description }}</SelectItem>
+                    <SelectItem v-for="(opt, idx) in option.options" :key="idx" :value="`choice:${idx}`" class="whitespace-normal break-words">{{ opt.description ?? String(opt.data) }}</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </UiSelect>
@@ -95,8 +95,8 @@
         </Empty>
       </ScrollArea>
 
-      <DialogFooter class="mod-config-footer">
-        <div class="save-state" :class="saveJob && ['failed', 'canceled'].includes(saveJob.status) && 'save-state-error'" aria-live="polite" role="status">
+      <DialogFooter class="mod-config-footer shrink-0">
+        <div v-if="saveJob" class="save-state" :class="saveJob && ['failed', 'canceled'].includes(saveJob.status) && 'save-state-error'" aria-live="polite" role="status">
           <template v-if="saveJob">
             <TriangleAlert v-if="saveJob.status === 'failed' || saveJob.status === 'canceled'" />
             <Spinner v-else-if="saving && saveJob.status !== 'succeeded'" />
@@ -106,7 +106,7 @@
         </div>
         <div class="save-actions">
           <UiButton variant="outline" @click="handleClose">{{ $t('mods.actions.cancel') }}</UiButton>
-          <UiButton @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !modInfo">
+          <UiButton @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !activeModInfo">
             <Spinner v-if="saving" data-icon="inline-start" />{{ $t('mods.actions.saveConfig') }}
           </UiButton>
         </div>
@@ -491,22 +491,24 @@ export default {
     
     // 解析配置值
     parseOptionValue(value) {
-      if (value === undefined || value === null) return value;
-      
-      try {
-        if (typeof value === 'string') {
-          const lowerValue = value.toLowerCase();
-          if (lowerValue === 'true') return true;
-          if (lowerValue === 'false') return false;
-          
-          if (!isNaN(value) && value !== '') {
-            return Number(value);
-          }
-        }
-        return value;
-      } catch (error) {
-        return value;
-      }
+      // The Runtime returns typed Lua values. A string "0" is not a number,
+      // and converting it prevents both selection and lossless configuration.
+      return value;
+    },
+
+    selectedOption(option) {
+      const value = this.configForm[option.name];
+      const index = option.options.findIndex(item => JSON.stringify(item.data) === JSON.stringify(value));
+      return index >= 0 ? `choice:${index}` : undefined;
+    },
+
+    selectOption(option, token) {
+      const match = /^choice:(\d+)$/.exec(String(token));
+      if (!match) return;
+      const item = option.options[Number(match[1])];
+      if (!item) return;
+      this.configForm[option.name] = item.data;
+      this.handleConfigChange(option.name);
     },
     
     // 判断是否是布尔选项
@@ -516,8 +518,8 @@ export default {
         return false;
       }
       
-      const values = option.options.map(opt => String(opt.data).toLowerCase());
-      return values.includes('true') && values.includes('false');
+      const values = option.options.map(opt => opt.data);
+      return values.includes(true) && values.includes(false);
     },
 
     updateTextOption(option, value) {
@@ -718,17 +720,15 @@ export default {
 </script>
 
 <style scoped>
-.mod-config-dialog {
-  display: grid;
-  max-height: min(90vh, 900px);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-}
-
 .config-scroll-area {
-  min-height: 220px;
-  max-height: min(68vh, 680px);
+  min-height: 0;
+  height: min(58dvh, 680px);
+  flex: 1 1 auto;
+  overflow: hidden;
   padding-right: 12px;
 }
+
+.config-form > * { min-width: 0; }
 
 .mod-config-footer {
   display: grid;
@@ -764,6 +764,8 @@ export default {
 }
 
 .save-actions {
+  grid-column: 2;
+  justify-content: flex-end;
   display: flex;
   gap: 8px;
 }
@@ -803,6 +805,7 @@ export default {
   }
 
   .save-actions {
+    grid-column: 1;
     justify-content: flex-end;
   }
 

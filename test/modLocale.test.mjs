@@ -184,8 +184,8 @@ test('mod pages delegate visible copy to i18n without translating mod-owned data
   assert.match(pages[2], /\{\{ mod\.name \}\}/)
   assert.match(pages[2], /\{\{ mod\.author \|\| \$t\(/)
   assert.match(pages[4], /displayedMod\.value\.description/)
-  assert.match(pages[5], /\{\{ option\.label \}\}/)
-  assert.match(pages[5], /:value="opt\.data"/)
+  assert.match(pages[5], /\{\{ option\.label \|\| option\.name \}\}/)
+  assert.match(pages[5], /:value="`choice:\$\{idx\}`"/)
   assert.match(pages[5], /this\.configForm\[option\.name\] = value/)
 })
 
