@@ -838,7 +838,7 @@ export default {
 
           // 添加解析规则
           this.ruleSaving = true;
-          await ruleManagementApi.addRule(this.queryParams.archive, formData);
+          await ruleManagementApi.addRule(formData);
           toast.success(this.$t('logs.query.feedback.ruleAdded'));
 
           // 关闭对话框

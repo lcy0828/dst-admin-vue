@@ -568,17 +568,17 @@ export const worldLogsV2API = {
 }
 
 export const logRulesV2API = {
-  list: roomId => client.get(`/rooms/${encode(roomId)}/log-rules`, {
-    headers: { 'Cache-Control': 'no-store' }
+  list: () => client.get('/log-rules', {
+    runtimeTarget: false, headers: { 'Cache-Control': 'no-store' }
   }),
-  create: (roomId, input) => client.post(`/rooms/${encode(roomId)}/log-rules`, input),
-  update: (roomId, ruleId, input) => client.put(`/rooms/${encode(roomId)}/log-rules/${encode(ruleId)}`, input),
-  delete: (roomId, ruleId) => client.delete(`/rooms/${encode(roomId)}/log-rules/${encode(ruleId)}`),
-  test: (roomId, input) => client.post(`/rooms/${encode(roomId)}/log-rules/actions/test`, input),
-  migrationPreview: roomId => client.get(`/rooms/${encode(roomId)}/log-rules/migration-preview`, {
-    headers: { 'Cache-Control': 'no-store' }
+  create: input => client.post('/log-rules', input, { runtimeTarget: false }),
+  update: (ruleId, input) => client.put(`/log-rules/${encode(ruleId)}`, input, { runtimeTarget: false }),
+  delete: ruleId => client.delete(`/log-rules/${encode(ruleId)}`, { runtimeTarget: false }),
+  test: input => client.post('/log-rules/actions/test', input, { runtimeTarget: false }),
+  migrationPreview: () => client.get('/log-rules/migration-preview', {
+    runtimeTarget: false, headers: { 'Cache-Control': 'no-store' }
   }),
-  migrateLegacy: roomId => client.post(`/rooms/${encode(roomId)}/log-rules/actions/migrate-legacy`)
+  migrateLegacy: () => client.post('/log-rules/actions/migrate-legacy', {}, { runtimeTarget: false })
 }
 
 export const playersV2API = {

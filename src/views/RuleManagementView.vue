@@ -2,7 +2,7 @@
   <div class="flex min-w-0 flex-col gap-6">
     <header class="flex min-w-0 flex-col gap-1"><h1 class="text-2xl font-semibold tracking-normal">{{ $t('rules.management.title') }}</h1><p class="text-sm text-muted-foreground">{{ $t('rules.management.subtitle') }}</p></header>
 
-    <Alert v-if="loadError" variant="destructive"><CircleAlertIcon /><AlertTitle>{{ loadErrorContext === 'rooms' ? $t('rules.management.roomLoadFailed') : $t('rules.management.ruleLoadFailed') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="loadErrorContext === 'rooms' ? loadRooms() : getParserRulesList()">{{ $t('common.actions.retry') }}</UiButton></AlertAction></Alert>
+    <Alert v-if="loadError" variant="destructive"><CircleAlertIcon /><AlertTitle>{{ $t('rules.management.ruleLoadFailed') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="getParserRulesList()">{{ $t('common.actions.retry') }}</UiButton></AlertAction></Alert>
 
     <Alert v-if="migrationNoticeVisible"><HistoryIcon /><AlertTitle>{{ $t('rules.management.legacyDetected') }}</AlertTitle><AlertDescription>{{ $t('rules.management.legacySummary', { ready: migrationPreview.ready, review: migrationPreview.conflicts + migrationPreview.incompatible }) }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" :disabled="migrationLoading" @click="openMigrationDialog"><Spinner v-if="migrationLoading" data-icon="inline-start" />{{ $t('rules.management.viewUpgrade') }}</UiButton></AlertAction></Alert>
 
@@ -10,25 +10,16 @@
       <CardHeader>
         <CardTitle>{{ $t('rules.management.cardTitle') }}</CardTitle><CardDescription>{{ $t('rules.management.cardDescription') }}</CardDescription>
         <CardAction class="flex flex-wrap items-end justify-end gap-2">
-          <Field><FieldLabel for="rule-room" class="sr-only">{{ $t('rules.management.archive') }}</FieldLabel>
-          <UiSelect
-            v-model="selectedRoomId"
-            :disabled="loading.rooms"
-            @update:model-value="getParserRulesList"
-          >
-            <SelectTrigger id="rule-room" class="room-select"><SelectValue :placeholder="loading.rooms ? $t('rules.management.loadingArchive') : $t('rules.management.selectArchive')" /></SelectTrigger>
-            <SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent>
-          </UiSelect></Field>
           <UiButton v-if="migrationPreview && migrationPreview.ready > 0" size="sm" variant="outline" :disabled="migrationLoading || loading.parser" @click="openMigrationDialog"><HistoryIcon data-icon="inline-start" />{{ $t('rules.management.upgradeLegacy') }}</UiButton>
-          <UiButton size="sm" :disabled="loading.rooms || loading.parser || !selectedRoomId" @click="addParserRule"><PlusIcon data-icon="inline-start" />{{ $t('rules.management.addRule') }}</UiButton>
+          <UiButton size="sm" :disabled="loading.parser || Boolean(loadError)" @click="addParserRule"><PlusIcon data-icon="inline-start" />{{ $t('rules.management.addRule') }}</UiButton>
         </CardAction>
       </CardHeader>
       <CardContent><ShadcnTable class="min-w-[1120px]"><TableHeader><TableRow><TableHead>ID</TableHead><TableHead>{{ $t('rules.management.columns.name') }}</TableHead><TableHead>{{ $t('rules.management.columns.description') }}</TableHead><TableHead>{{ $t('rules.management.columns.type') }}</TableHead><TableHead>{{ $t('rules.management.columns.pattern') }}</TableHead><TableHead>{{ $t('rules.management.columns.matchMode') }}</TableHead><TableHead><UiButton variant="ghost" size="xs" @click="togglePrioritySort">{{ $t('rules.management.columns.priority') }}<ArrowUpDownIcon data-icon="inline-end" /></UiButton></TableHead><TableHead>{{ $t('rules.management.columns.status') }}</TableHead><TableHead class="actions-column">{{ $t('rules.management.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
-        <template v-if="!loading.parser && !loading.rooms"><TableRow v-for="rule in displayedParserRules" :key="rule.id"><TableCell>{{ rule.id }}</TableCell><TableCell>{{ getRuleName(rule) }}</TableCell><TableCell class="max-w-60 truncate">{{ getRuleDescription(rule) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(rule.log_type)" :title="rule.log_type">{{ getLogTypeText(rule.log_type) }}</Badge></TableCell><TableCell><div class="pattern-container"><span class="max-w-64 truncate">{{ rule.pattern }}</span><Tooltip><TooltipTrigger as-child><UiButton variant="ghost" size="icon-xs" :aria-label="$t('rules.management.copyPattern')" @click.stop="copyPattern(rule.pattern)"><CopyIcon /></UiButton></TooltipTrigger><TooltipContent>{{ $t('rules.management.copyPattern') }}</TooltipContent></Tooltip></div></TableCell><TableCell><Badge :variant="getMatchModeTag(rule.match_mode)">{{ getMatchModeText(rule.match_mode) }}</Badge></TableCell><TableCell>{{ rule.priority }}</TableCell><TableCell><UiSwitch v-model="rule.is_enabled" :disabled="togglingRuleIds.includes(rule.id)" :aria-label="$t('rules.management.toggleRule', { name: getRuleName(rule) })" @update:model-value="toggleRuleStatus(rule)" /></TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" :disabled="deletingRuleId === rule.id || togglingRuleIds.includes(rule.id)" @click="editParserRule(rule)">{{ $t('common.actions.edit') }}</UiButton><UiButton variant="destructive" size="sm" :disabled="rule.built_in || deletingRuleId === rule.id || togglingRuleIds.includes(rule.id)" :title="rule.built_in ? $t('rules.management.builtInCannotDelete') : $t('rules.management.deleteRule')" @click="removeParserRule(rule)"><Spinner v-if="deletingRuleId === rule.id" data-icon="inline-start" />{{ $t('common.actions.delete') }}</UiButton></div></TableCell></TableRow></template>
-        <TableEmpty v-if="loading.parser || loading.rooms" :colspan="9"><div class="flex flex-col gap-2 py-4"><Skeleton v-for="index in 4" :key="index" class="h-8 w-full" /></div></TableEmpty>
-        <TableEmpty v-else-if="!loadError && displayedParserRules.length === 0" :colspan="9"><Empty><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>{{ selectedRoomId ? $t('rules.management.noRules') : $t('rules.management.selectArchiveEmpty') }}</EmptyTitle><EmptyDescription>{{ selectedRoomId ? $t('rules.management.noRulesDescription') : $t('rules.management.selectArchiveDescription') }}</EmptyDescription></EmptyHeader></Empty></TableEmpty>
+        <template v-if="!loading.parser"><TableRow v-for="rule in displayedParserRules" :key="rule.id"><TableCell>{{ rule.id }}</TableCell><TableCell>{{ getRuleName(rule) }}</TableCell><TableCell class="max-w-60 truncate">{{ getRuleDescription(rule) }}</TableCell><TableCell><Badge :variant="getLogTypeTag(rule.log_type)" :title="rule.log_type">{{ getLogTypeText(rule.log_type) }}</Badge></TableCell><TableCell><div class="pattern-container"><span class="max-w-64 truncate">{{ rule.pattern }}</span><Tooltip><TooltipTrigger as-child><UiButton variant="ghost" size="icon-xs" :aria-label="$t('rules.management.copyPattern')" @click.stop="copyPattern(rule.pattern)"><CopyIcon /></UiButton></TooltipTrigger><TooltipContent>{{ $t('rules.management.copyPattern') }}</TooltipContent></Tooltip></div></TableCell><TableCell><Badge :variant="getMatchModeTag(rule.match_mode)">{{ getMatchModeText(rule.match_mode) }}</Badge></TableCell><TableCell>{{ rule.priority }}</TableCell><TableCell><UiSwitch v-model="rule.is_enabled" :disabled="togglingRuleIds.includes(rule.id)" :aria-label="$t('rules.management.toggleRule', { name: getRuleName(rule) })" @update:model-value="toggleRuleStatus(rule)" /></TableCell><TableCell><div class="row-actions"><UiButton variant="outline" size="sm" :disabled="deletingRuleId === rule.id || togglingRuleIds.includes(rule.id)" @click="editParserRule(rule)">{{ $t('common.actions.edit') }}</UiButton><UiButton variant="destructive" size="sm" :disabled="rule.built_in || deletingRuleId === rule.id || togglingRuleIds.includes(rule.id)" :title="rule.built_in ? $t('rules.management.builtInCannotDelete') : $t('rules.management.deleteRule')" @click="removeParserRule(rule)"><Spinner v-if="deletingRuleId === rule.id" data-icon="inline-start" />{{ $t('common.actions.delete') }}</UiButton></div></TableCell></TableRow></template>
+        <TableEmpty v-if="loading.parser" :colspan="9"><div class="flex flex-col gap-2 py-4"><Skeleton v-for="index in 4" :key="index" class="h-8 w-full" /></div></TableEmpty>
+        <TableEmpty v-else-if="!loadError && displayedParserRules.length === 0" :colspan="9"><Empty><EmptyHeader><EmptyMedia variant="icon"><ScrollTextIcon /></EmptyMedia><EmptyTitle>{{ $t('rules.management.noRules') }}</EmptyTitle><EmptyDescription>{{ $t('rules.management.noRulesDescription') }}</EmptyDescription></EmptyHeader></Empty></TableEmpty>
       </TableBody></ShadcnTable></CardContent>
-      <CardFooter v-if="!loading.parser && !loading.rooms && !loadError" class="text-sm text-muted-foreground">{{ $t('rules.management.total', { count: displayedParserRules.length }) }}</CardFooter>
+      <CardFooter v-if="!loading.parser && !loadError" class="text-sm text-muted-foreground">{{ $t('rules.management.total', { count: displayedParserRules.length }) }}</CardFooter>
     </Card>
 
     <UiDialog :open="dialogVisible.parser" @update:open="handleDialogOpenChange"><DialogScrollContent class="sm:max-w-3xl"><DialogHeader><DialogTitle>{{ ruleForm.id ? $t('rules.management.editRule') : $t('rules.management.addRule') }}</DialogTitle><DialogDescription>{{ $t('rules.management.editorDescription') }}</DialogDescription></DialogHeader>
@@ -64,7 +55,7 @@
 
 <script>
 import { ArrowUpDownIcon, CircleAlertIcon, CopyIcon, HistoryIcon, PlusIcon, ScrollTextIcon } from '@lucide/vue'
-import { logApi, ruleManagementApi } from '@/api';
+import { realRuleManagementApi as ruleManagementApi } from '@/api/logApi';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -84,11 +75,7 @@ import { confirmAction } from '@/lib/feedback'
 import { logTypeLabel } from '@/i18n/logTypes'
 import { logRuleDescription, logRuleName } from '@/i18n/logRules'
 import { migrationReasonLabel } from '@/i18n/migrationReasons'
-import {
-  getManagementScope,
-  MANAGEMENT_SCOPE_CHANGED_EVENT,
-  managementScopeTargetId
-} from '@/lib/managementScope.mjs'
+
 import { toast } from 'vue-sonner'
 
 export default {
@@ -155,12 +142,9 @@ export default {
     return {
       // 加载状态
       loading: {
-        parser: false,
-        rooms: false
+        parser: false
       },
       loadError: '',
-      loadErrorContext: '',
-      managementScope: getManagementScope(),
       savingRule: false,
       migrationLoading: false,
       migrationApplying: false,
@@ -191,9 +175,6 @@ export default {
       parserRulesList: [],
       // 唯一的日志类型列表
       uniqueLogTypes: [],
-      rooms: [],
-      selectedRoomId: '',
-      roomRequestSequence: 0,
       ruleRequestSequence: 0
     };
   },
@@ -209,61 +190,19 @@ export default {
     }
   },
   mounted() {
-    window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
-    this.loadRooms();
+    this.getParserRulesList();
   },
   beforeUnmount() {
-    window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
+    this.ruleRequestSequence += 1;
   },
   methods: {
-    handleManagementScopeChange(event) {
-      this.managementScope = event?.detail || getManagementScope();
-      this.roomRequestSequence += 1;
-      this.ruleRequestSequence += 1;
-      this.rooms = [];
-      this.selectedRoomId = '';
-      this.parserRulesList = [];
-      this.uniqueLogTypes = [];
-      this.migrationPreview = null;
-      this.dialogVisible.migration = false;
-      this.loadRooms();
-    },
-    async loadRooms() {
-      const requestSequence = ++this.roomRequestSequence;
-      this.loadError = '';
-      this.loadErrorContext = '';
-      this.loading.rooms = true;
-      try {
-        this.rooms = await logApi.getRoomOptions(managementScopeTargetId(this.managementScope));
-        if (requestSequence !== this.roomRequestSequence) return;
-        if (this.rooms.length === 1) {
-          this.selectedRoomId = this.rooms[0].id;
-          await this.getParserRulesList();
-        }
-      } catch (error) {
-        if (requestSequence !== this.roomRequestSequence) return;
-        this.rooms = [];
-        this.loadError = error.message || this.$t('common.errors.unknown');
-        this.loadErrorContext = 'rooms';
-        toast.error(this.$t('rules.management.feedback.archiveLoadFailed', { error: this.loadError }));
-      } finally {
-        if (requestSequence === this.roomRequestSequence) this.loading.rooms = false;
-      }
-    },
-
     // 获取解析规则列表
     async getParserRulesList() {
-      if (!this.selectedRoomId) {
-        this.parserRulesList = [];
-        this.uniqueLogTypes = [];
-        return;
-      }
       const requestSequence = ++this.ruleRequestSequence;
       this.loading.parser = true;
       this.loadError = '';
-      this.loadErrorContext = '';
       try {
-        const response = await ruleManagementApi.getRulesList(this.selectedRoomId);
+        const response = await ruleManagementApi.getRulesList();
         if (requestSequence !== this.ruleRequestSequence) return;
         if (response?.status !== 200 || !Array.isArray(response.data)) {
           throw new Error(response?.msg || this.$t('rules.management.feedback.rulesResponseInvalid'));
@@ -276,7 +215,6 @@ export default {
       } catch (error) {
         if (requestSequence !== this.ruleRequestSequence) return;
         this.loadError = error.message || this.$t('rules.management.feedback.rulesLoadFailed');
-        this.loadErrorContext = 'rules';
         toast.error(this.loadError);
         this.parserRulesList = [];
         this.uniqueLogTypes = [];
@@ -286,13 +224,9 @@ export default {
     },
 
     async getRuleMigrationPreview(ruleRequestSequence = this.ruleRequestSequence) {
-      if (!this.selectedRoomId) {
-        this.migrationPreview = null
-        return
-      }
       this.migrationLoading = true
       try {
-        const preview = await ruleManagementApi.getMigrationPreview(this.selectedRoomId)
+        const preview = await ruleManagementApi.getMigrationPreview()
         if (ruleRequestSequence !== this.ruleRequestSequence) return
         this.migrationPreview = preview
       } catch {
@@ -303,7 +237,7 @@ export default {
     },
 
     async openMigrationDialog() {
-      if (!this.selectedRoomId || this.migrationApplying) return
+      if (this.migrationApplying) return
       await this.getRuleMigrationPreview()
       if (!this.migrationPreview) {
         toast.error(this.$t('rules.management.feedback.migrationPreviewFailed'))
@@ -314,36 +248,19 @@ export default {
 
     async migrateLegacyRules() {
       if (this.migrationApplying || !this.migrationPreview?.ready) return
-      const roomId = this.selectedRoomId
-      const scopeTargetId = managementScopeTargetId(this.managementScope)
       const requestSequence = this.ruleRequestSequence
       this.migrationApplying = true
       try {
-        const result = await ruleManagementApi.migrateLegacyRules(roomId)
+        const result = await ruleManagementApi.migrateLegacyRules()
         const imported = Number(result?.imported || 0)
         this.dialogVisible.migration = false
-        if (requestSequence !== this.ruleRequestSequence || roomId !== this.selectedRoomId || scopeTargetId !== managementScopeTargetId(this.managementScope)) {
-          toast.warning(this.$t('rules.management.feedback.importedOnPreviousTarget', { count: imported }))
-          return
-        }
+        if (requestSequence !== this.ruleRequestSequence) return
         await this.getParserRulesList()
-        if (roomId !== this.selectedRoomId || scopeTargetId !== managementScopeTargetId(this.managementScope)) {
-          toast.warning(this.$t('rules.management.feedback.importedTargetChanged', { count: imported }))
-          return
-        }
         if (imported === 0) {
           toast.info(this.$t('rules.management.feedback.nothingToImport'))
           return
         }
-        toast.success(this.$t('rules.management.feedback.importedParsing', { count: imported }))
-        try {
-          await logApi.refresh(roomId)
-          toast.success(this.$t('rules.management.feedback.importedComplete', { count: imported }))
-        } catch (error) {
-          toast.warning(this.$t('rules.management.feedback.importedParseFailed', {
-            error: error.message || this.$t('common.errors.unknown')
-          }))
-        }
+        toast.success(this.$t('rules.management.feedback.importedComplete', { count: imported }))
       } catch (error) {
         toast.error(this.$t('rules.management.feedback.migrationFailed', {
           error: error.message || this.$t('common.errors.unknown')
@@ -370,10 +287,6 @@ export default {
 
     // 添加解析规则对话框
     addParserRule() {
-      if (!this.selectedRoomId) {
-        toast.warning(this.$t('rules.management.feedback.selectArchiveFirst'));
-        return;
-      }
       this.ruleForm = {
         id: '',
         name: '',
@@ -400,7 +313,7 @@ export default {
         pattern: rule.pattern,
         is_regex: rule.is_regex !== undefined ? rule.is_regex : false,
         is_enabled: rule.is_enabled !== undefined ? rule.is_enabled : true,
-        priority: rule.priority || 50,
+        priority: rule.priority ?? 50,
         match_mode: rule.match_mode || 'single',
         tail_pattern: rule.tail_pattern || ''
       };
@@ -436,10 +349,10 @@ export default {
           formData.priority = parseInt(formData.priority, 10);
 
           if (this.ruleForm.id) {
-            await ruleManagementApi.updateRule(this.selectedRoomId, this.ruleForm.id, formData);
+            await ruleManagementApi.updateRule(this.ruleForm.id, formData);
             toast.success(this.$t('rules.management.feedback.ruleEdited'));
           } else {
-            await ruleManagementApi.addRule(this.selectedRoomId, formData);
+            await ruleManagementApi.addRule(formData);
             toast.success(this.$t('rules.management.feedback.ruleAdded'));
 
             // 如果是新的日志类型，直接添加到唯一日志类型列表中
@@ -468,7 +381,7 @@ export default {
           type: 'warning'
         })
         this.deletingRuleId = row.id
-        await ruleManagementApi.deleteRule(this.selectedRoomId, row.id);
+        await ruleManagementApi.deleteRule(row.id);
         toast.success(this.$t('rules.management.feedback.ruleDeleted'));
         await this.getParserRulesList();
       } catch (error) {
@@ -490,7 +403,7 @@ export default {
       this.togglingRuleIds.push(rule.id)
       try {
         const updatedRule = { ...rule };
-        await ruleManagementApi.updateRule(this.selectedRoomId, rule.id, updatedRule);
+        await ruleManagementApi.updateRule(rule.id, updatedRule);
         toast.success(this.$t('rules.management.feedback.statusUpdated'));
         await this.getParserRulesList();
       } catch (error) {
@@ -698,10 +611,6 @@ export default {
 </script>
 
 <style scoped>
-.room-select {
-  width: 220px;
-}
-
 .pattern-container {
   display: flex;
   align-items: center;
@@ -720,10 +629,6 @@ export default {
 }
 
 @media (max-width: 640px) {
-  .room-select {
-    width: 100%;
-  }
-
   .row-actions {
     justify-content: flex-start;
   }

@@ -209,7 +209,7 @@ test('live log views reconnect transient streams and validate downloads', async 
   assert.match(apiSource, /downloadBlob:[\s\S]+getBinary/)
 })
 
-test('legacy rule migration previews changes before importing and reparsing real logs', async () => {
+test('legacy rule migration imports into global rules without eagerly parsing every room', async () => {
   const [viewSource, adapterSource, apiSource] = await Promise.all([
     readFile(new URL('../src/views/RuleManagementView.vue', import.meta.url), 'utf8'),
     readFile(new URL('../src/api/logApi.js', import.meta.url), 'utf8'),
@@ -221,7 +221,7 @@ test('legacy rule migration previews changes before importing and reparsing real
   assert.match(adapterSource, /getMigrationPreview/)
   assert.match(adapterSource, /migrateLegacyRules/)
   assert.match(viewSource, /migrationPreview\.items/)
-  assert.match(viewSource, /ruleManagementApi\.migrateLegacyRules\(roomId\)/)
-  assert.match(viewSource, /await logApi\.refresh\(roomId\)/)
-  assert.match(viewSource, /scopeTargetId !== managementScopeTargetId\(this\.managementScope\)/)
+  assert.match(viewSource, /ruleManagementApi\.migrateLegacyRules\(\)/)
+  assert.doesNotMatch(viewSource, /logApi\.refresh|selectedRoomId|managementScope/)
+  assert.match(apiSource, /list: \(\) => client\.get\('\/log-rules'/)
 })

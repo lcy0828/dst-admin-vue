@@ -69,7 +69,6 @@ async function waitForJob(job, timeoutMs = 120000) {
 function mapRule(rule) {
   return {
     id: rule.id,
-    room_id: rule.roomId,
     name: rule.name,
     description: rule.description,
     log_type: rule.logType,
@@ -143,10 +142,8 @@ export const realLogApi = {
     return catalog.map(room => ({ id: room.id, name: room.name }))
   },
 
-  async getLogTypes(reference) {
-    if (!reference || (!reference.archive && !reference.room_id && typeof reference !== 'string')) return success([])
-    const room = resolveArchive(reference)
-    const response = await logRulesV2API.list(room.id)
+  async getLogTypes() {
+    const response = await logRulesV2API.list()
     return success([...new Set((response.items || []).map(item => item.logType))])
   },
 
@@ -166,40 +163,32 @@ export const realLogApi = {
 }
 
 export const realRuleManagementApi = {
-  async getRulesList(roomReference) {
-    if (!roomReference) throw adapterError('ROOM_REQUIRED')
-    const room = resolveArchive(roomReference)
-    const response = await logRulesV2API.list(room.id)
+  async getRulesList() {
+    const response = await logRulesV2API.list()
     return success((response.items || []).map(mapRule))
   },
 
-  async addRule(roomReference, data) {
-    const room = resolveArchive(roomReference)
-    return success(mapRule(await logRulesV2API.create(room.id, ruleInput(data))), 'log_rule_created')
+  async addRule(data) {
+    return success(mapRule(await logRulesV2API.create(ruleInput(data))), 'log_rule_created')
   },
 
-  async updateRule(roomReference, ruleId, data) {
-    const room = resolveArchive(roomReference)
-    return success(mapRule(await logRulesV2API.update(room.id, ruleId, ruleInput(data))), 'log_rule_updated')
+  async updateRule(ruleId, data) {
+    return success(mapRule(await logRulesV2API.update(ruleId, ruleInput(data))), 'log_rule_updated')
   },
 
-  async deleteRule(roomReference, ruleId) {
-    const room = resolveArchive(roomReference)
-    return success(await logRulesV2API.delete(room.id, ruleId), 'log_rule_deleted')
+  async deleteRule(ruleId) {
+    return success(await logRulesV2API.delete(ruleId), 'log_rule_deleted')
   },
 
-  async testRule(roomReference, data, sample) {
-    const room = resolveArchive(roomReference)
-    return success(await logRulesV2API.test(room.id, { ...ruleInput(data), sample }))
+  async testRule(data, sample) {
+    return success(await logRulesV2API.test({ ...ruleInput(data), sample }))
   },
 
-  async getMigrationPreview(roomReference) {
-    const room = resolveArchive(roomReference)
-    return logRulesV2API.migrationPreview(room.id)
+  async getMigrationPreview() {
+    return logRulesV2API.migrationPreview()
   },
 
-  async migrateLegacyRules(roomReference) {
-    const room = resolveArchive(roomReference)
-    return logRulesV2API.migrateLegacy(room.id)
+  async migrateLegacyRules() {
+    return logRulesV2API.migrateLegacy()
   }
 }
