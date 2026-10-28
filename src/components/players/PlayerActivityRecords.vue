@@ -30,8 +30,8 @@ const incomplete = computed(() => props.data?.coverage?.some(w => !w.complete))
           </template>
           <div v-else class="flex flex-col gap-2">
             <article v-for="event in items" :key="event.id" class="flex flex-col gap-1 rounded-md border p-3 text-sm">
-              <div class="flex flex-wrap items-center gap-2"><span class="font-medium">{{ event.source ? t(event.source === 'sample' ? 'activity.position' : 'activity.action') : kindLabel(event.kind) }}</span><Badge variant="outline">{{ worldName(event.worldId) }}</Badge><span>{{ event.name || event.userId }}</span><time class="text-xs text-muted-foreground">{{ time(event.occurredAt) }}</time></div>
-              <p v-if="event.kind?.startsWith('collection.')" class="text-xs text-muted-foreground">{{ t('activity.gapHint') }} · {{ event.fields?.code }}</p>
+              <div class="flex flex-wrap items-center gap-2"><span class="font-medium">{{ event.source ? t(event.source === 'sample' ? 'activity.position' : 'activity.action') : event.fields?.recovered ? t('activity.recoveredBoundary') : kindLabel(event.kind) }}</span><Badge variant="outline">{{ worldName(event.worldId) }}</Badge><span>{{ event.name || event.userId }}</span><time class="text-xs text-muted-foreground">{{ time(event.occurredAt) }}</time></div>
+              <p v-if="event.kind?.startsWith('collection.')" class="text-xs text-muted-foreground">{{ t(event.kind === 'collection.instance' ? 'activity.instanceHint' : event.fields?.recovered ? 'activity.recoveredHint' : 'activity.gapHint') }} · {{ event.fields?.code }}</p>
               <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span v-if="event.position">X {{ event.position.x.toFixed(1) }} / Z {{ event.position.z.toFixed(1) }}</span><span v-if="event.fields?.targetPrefab">{{ event.fields?.targetPrefab }}</span><span v-if="event.fields?.count">{{ t('activity.count') }} {{ event.fields?.count }}</span><span v-if="event.fields?.hits">{{ t('activity.hits') }} {{ event.fields?.hits }}</span><Badge v-if="event.fields?.epic" variant="secondary">{{ t('activity.epic') }}</Badge></div>
             </article>
           </div>
