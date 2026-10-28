@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, watch, useId } from 'vue'
+import { computed, reactive, ref, watch, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { softwareV2API, agentsV2API } from '@/api/v2'
@@ -15,6 +15,10 @@ const emit = defineEmits(['saved'])
 const { t } = useI18n()
 const id = useId()
 const form = reactive({})
+const checkIntervalMinutes = computed({
+  get: () => Math.round(Number(form.checkIntervalHours) * 60),
+  set: value => { form.checkIntervalHours = Number(value) / 60 }
+})
 const saving = ref(false)
 const error = ref('')
 watch(() => JSON.stringify(props.settings), () => { if (props.settings) Object.assign(form, props.settings, { proxyURL: '' }) }, { immediate: true })
@@ -50,7 +54,7 @@ async function save() {
     <FieldGroup v-else>
       <Field orientation="horizontal"><Switch :id="`${id}-background`" v-model="form.backgroundCheck" :disabled="disabled || saving" /><FieldLabel :for="`${id}-background`">{{ t('softwareUpdate.backgroundCheck') }}</FieldLabel></Field>
       <FieldDescription>{{ t('softwareUpdate.backgroundHelp') }}</FieldDescription>
-      <Field v-if="form.backgroundCheck"><FieldLabel :for="`${id}-interval`">{{ t('softwareUpdate.interval') }}</FieldLabel><Input :id="`${id}-interval`" v-model="form.checkIntervalHours" type="number" min="1" max="168" required class="max-w-40" :disabled="disabled || saving" /></Field>
+      <Field v-if="form.backgroundCheck"><FieldLabel :for="`${id}-interval`">{{ t('softwareUpdate.interval') }}</FieldLabel><Input :id="`${id}-interval`" v-model="checkIntervalMinutes" type="number" min="30" max="10080" step="1" required class="max-w-40" :disabled="disabled || saving" /></Field>
     </FieldGroup>
     <Alert v-if="error" variant="destructive"><AlertDescription>{{ error }}</AlertDescription></Alert>
     <Button type="submit" variant="outline" class="self-start" :disabled="saving || disabled">{{ t(saving ? 'softwareUpdate.savingSettings' : 'softwareUpdate.saveSettings') }}</Button>

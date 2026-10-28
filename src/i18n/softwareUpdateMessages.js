@@ -77,8 +77,8 @@ Object.assign(softwareUpdateMessages["zh-CN"].softwareUpdate, {
   "proxyHelp": "用于检查版本、下载校验文件和程序包。",
   "agentProxyHelp": "地址由此 Agent 访问；127.0.0.1 指 Agent 所在机器。",
   "backgroundCheck": "后台检查软件新版",
-  "backgroundHelp": "有启用的管理服务或 Agent 新版订阅时定期检查，关闭浏览器后也可提醒。同一渠道对同一组件、节点和版本不重复入队。",
-  "interval": "检查间隔（小时）",
+  "backgroundHelp": "默认每 30 分钟检查。有启用的管理服务或 Agent 新版订阅时定期检查，关闭浏览器后也可提醒。同一渠道对同一组件、节点和版本不重复入队。",
+  "interval": "检查间隔（分钟）",
   "resumed": "正在接着上次的进度下载",
   "actualSource": "实际下载来源",
   "routes": {
@@ -110,8 +110,8 @@ Object.assign(softwareUpdateMessages["en-US"].softwareUpdate, {
   "proxyHelp": "Used for release checks, checksums and archives.",
   "agentProxyHelp": "The Agent connects to this address. 127.0.0.1 means the Agent machine.",
   "backgroundCheck": "Check software releases in the background",
-  "backgroundHelp": "Checks when an enabled channel subscribes to releases, even with the browser closed. Each channel queues a component, node and version once.",
-  "interval": "Check interval (hours)",
+  "backgroundHelp": "Checks every 30 minutes by default when an enabled channel subscribes to releases, even with the browser closed. Each channel queues a component, node and version once.",
+  "interval": "Check interval (minutes)",
   "resumed": "Resuming the previous download",
   "actualSource": "Download route",
   "routes": {
