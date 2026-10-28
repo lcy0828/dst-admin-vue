@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { aiV2API } from '@/api/v2'
@@ -16,6 +16,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Copy, KeyRound, PlugZap } from '@lucide/vue'
 
 const props = defineProps({ config: { type: Object, required: true }, mcpPath: { type: String, default: '/mcp' } })
+const NotificationChannelsPanel = defineAsyncComponent(() => import('@/components/settings/NotificationChannelsPanel.vue'))
+const notificationsOpen = ref(false)
+const notificationFeed = computed(() => new URL('/api/v2/system/notifications/events', window.location.origin).href)
 const emit = defineEmits(['saved', 'error'])
 const { t, locale } = useI18n()
 const form = reactive(aiSettingsForm(props.config))
@@ -107,6 +110,18 @@ onMounted(loadTokens)
           <Button variant="outline" size="sm" :disabled="!!revoking" @click="revoke(token)">{{ t('ai.revoke') }}</Button>
         </div>
       </CardFooter>
+    </Card>
+    <Card class="min-w-0 xl:col-span-2">
+      <CardHeader><CardTitle>{{ t('ai.notifications.title') }}</CardTitle><CardDescription>{{ t('ai.notifications.description') }}</CardDescription></CardHeader>
+      <CardContent class="flex min-w-0 flex-col gap-4">
+        <p class="text-sm text-muted-foreground">{{ t('ai.notifications.webhook') }}</p>
+        <details @toggle="notificationsOpen = $event.target.open"><summary class="cursor-pointer text-sm font-medium">{{ t('ai.notifications.configure') }}</summary><div class="mt-4"><NotificationChannelsPanel v-if="notificationsOpen" /></div></details>
+        <details><summary class="cursor-pointer text-sm font-medium">{{ t('ai.notifications.mcp') }}</summary>
+          <p class="mt-3 text-sm text-muted-foreground">{{ t('ai.notifications.mcpHelp') }}</p>
+          <Field class="mt-3"><FieldLabel for="ai-notification-feed">{{ t('ai.notifications.feed') }}</FieldLabel><div class="flex min-w-0 gap-2"><Input id="ai-notification-feed" :model-value="notificationFeed" readonly @focus="$event.target.select()" /><Button variant="outline" size="icon" :aria-label="t('ai.copy')" @click="copy(notificationFeed)"><Copy /></Button></div></Field>
+          <p class="mt-3 rounded-md bg-muted p-3 text-sm whitespace-pre-wrap break-words">{{ t('ai.notifications.example') }}</p>
+        </details>
+      </CardContent>
     </Card>
     <Dialog v-model:open="secretOpen" @update:open="value => { if (!value) secret = '' }">
       <DialogContent><DialogHeader><DialogTitle>{{ t('ai.token') }}</DialogTitle><DialogDescription>{{ t('ai.oneTime') }}</DialogDescription></DialogHeader><Input :model-value="secret" readonly :aria-label="t('ai.token')" @focus="$event.target.select()" /><DialogFooter><Button variant="outline" @click="copy(secret)"><Copy data-icon="inline-start" />{{ t('ai.copy') }}</Button><Button @click="secretOpen = false; secret = ''">{{ t('ai.dismiss') }}</Button></DialogFooter></DialogContent>

@@ -1,7 +1,7 @@
 export const notificationEvents = ['room.result', 'backup.result', 'game.result', 'mod.result', 'agent.status', 'security.login', 'software.available', 'agent.software.available', 'custom']
 
 export const webhookPresets = {
-  http: { format: 'json', template: JSON.stringify({ event_id: '{{id}}', event: '{{event}}', title: '{{title}}', message: '{{message}}', status: '{{status}}', room_id: '{{roomId}}', target_id: '{{targetId}}', job_id: '{{jobId}}', timestamp: '{{timestamp}}' }, null, 2) },
+  http: { format: 'json', template: JSON.stringify({ event_id: '{{id}}', event: '{{event}}', title: '{{title}}', message: '{{message}}', status: '{{status}}', room_id: '{{roomId}}', target_id: '{{targetId}}', job_id: '{{jobId}}', timestamp: '{{timestamp}}', release: { component: '{{component}}', currentVersion: '{{currentVersion}}', latestVersion: '{{latestVersion}}', releaseURL: '{{releaseURL}}', publishedAt: '{{publishedAt}}', detectedAt: '{{detectedAt}}', statusPath: '{{statusPath}}' } }, null, 2) },
   wecom: { format: 'json', template: JSON.stringify({ msgtype: 'text', text: { content: '{{title}}\n{{message}}' } }, null, 2) },
   dingtalk: { format: 'json', template: JSON.stringify({ msgtype: 'text', text: { content: '{{title}}\n{{message}}' } }, null, 2) },
   feishu: { format: 'json', template: JSON.stringify({ msg_type: 'text', content: { text: '{{title}}\n{{message}}' } }, null, 2) }
