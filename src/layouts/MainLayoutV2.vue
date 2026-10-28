@@ -254,7 +254,7 @@ onBeforeUnmount(() => {
             <AlertDescription>{{ t('setup.resume') }}</AlertDescription>
             <AlertAction><Button variant="outline" @click="router.push('/setup')">{{ t('setup.return') }}</Button></AlertAction>
           </Alert>
-          <RouterView :key="`${['/mods', '/dashboard'].includes(route.path) ? route.path : route.fullPath}:${route.path === '/dashboard' ? '' : managementScopeRevision}`" />
+          <RouterView :key="`${['/mods', '/dashboard', '/servers/performance'].includes(route.path) ? route.path : route.fullPath}:${route.path === '/dashboard' ? '' : managementScopeRevision}`" />
         </main>
       </div>
       <RoomUpdateProgress />

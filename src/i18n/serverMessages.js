@@ -487,6 +487,7 @@ export const serverMessages = {
         },
         players: {
           title: '玩家',
+          loading: '正在读取玩家信息…',
           refresh: '刷新玩家状态',
           refreshing: '正在刷新玩家状态',
           refreshSucceeded: '玩家状态已刷新',
@@ -1178,6 +1179,7 @@ export const serverMessages = {
         },
         players: {
           title: 'Players',
+          loading: 'Loading player information…',
           refresh: 'Refresh player state',
           refreshing: 'Refreshing player state',
           refreshSucceeded: 'Player state refreshed',

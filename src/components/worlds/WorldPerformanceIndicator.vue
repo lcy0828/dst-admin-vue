@@ -5,13 +5,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 const props = defineProps({
   score: { type: Number, default: null },
-  available: { type: Boolean, default: false }
+  available: { type: Boolean, default: false },
+  simulationScore: { type: Number, default: null },
+  samplingState: { type: String, default: '' }
 })
 
 const { t } = useI18n()
 
 const normalizedScore = computed(() => {
-  const value = Number(props.score)
+  const value = props.score
   return props.available && Number.isInteger(value) && value >= 0 && value <= 2 ? value : null
 })
 
@@ -27,7 +29,11 @@ const stateKey = computed(() => {
 
 const activeBars = computed(() => normalizedScore.value === null ? 0 : 3 - normalizedScore.value)
 const statusLabel = computed(() => t(`servers.workspace.worlds.performance.states.${stateKey.value}`))
-const accessibleLabel = computed(() => t('servers.workspace.worlds.performance.summary', { status: statusLabel.value }))
+const simulationLabel = computed(() => {
+  if (Number.isFinite(props.simulationScore) && props.simulationScore >= 0 && props.simulationScore <= 100) return t('performance.score', { value: Math.round(props.simulationScore) })
+  return props.samplingState ? t(`performance.indicatorStates.${props.samplingState}`) : ''
+})
+const accessibleLabel = computed(() => [t('servers.workspace.worlds.performance.summary', { status: statusLabel.value }), simulationLabel.value].filter(Boolean).join(' · '))
 </script>
 
 <template>
@@ -47,7 +53,10 @@ const accessibleLabel = computed(() => t('servers.workspace.worlds.performance.s
       </span>
     </TooltipTrigger>
     <TooltipContent>
-      {{ t(`servers.workspace.worlds.performance.descriptions.${stateKey}`) }}
+      <div class="flex max-w-72 flex-col gap-1">
+        <span v-if="simulationLabel" class="tabular-nums">{{ t('performance.metrics.score') }} · {{ simulationLabel }}</span>
+        <span>{{ t(`servers.workspace.worlds.performance.descriptions.${stateKey}`) }}</span>
+      </div>
     </TooltipContent>
   </Tooltip>
 </template>

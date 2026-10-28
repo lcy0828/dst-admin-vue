@@ -30,7 +30,8 @@ export const V2_NAVIGATION = [
         children: [
           { labelKey: 'navigation.commandSettings', to: '/servers/commands' },
           { labelKey: 'navigation.gameTools', to: '/servers/tools' },
-          { labelKey: 'navigation.gameReleases', to: '/servers/releases' }
+          { labelKey: 'navigation.gameReleases', to: '/servers/releases' },
+          { labelKey: 'performance.title', to: '/servers/performance' }
         ]
       },
       {

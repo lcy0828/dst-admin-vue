@@ -7,7 +7,7 @@ test('global pages hide machine scope while runtime pages and room editing expos
   for (const path of ['/system/settings', '/agents/list', '/agents/security', '/logs/rules', '/servers/commands', '/cron/tasks']) {
     assert.equal(pageHasMachineScope({ path }), false, path)
   }
-  for (const path of ['/dashboard', '/mods', '/players/list', '/worlds/settings', '/backups', '/servers/releases']) {
+  for (const path of ['/dashboard', '/mods', '/players/list', '/worlds/settings', '/backups', '/servers/releases', '/servers/performance']) {
     assert.equal(pageHasMachineScope({ path }), true, path)
   }
   assert.equal(pageHasMachineScope({ path: '/rooms/settings' }), false)

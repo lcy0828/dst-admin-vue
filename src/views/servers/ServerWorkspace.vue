@@ -411,14 +411,18 @@
               </div>
               <div class="world-identity">
                 <div class="world-name-row">
-                  <strong>{{ world.name }}</strong>
+                  <strong :title="world.name">{{ world.name }}</strong>
                   <Badge :variant="worldStatusVariant(world)">
                     {{ worldStatusLabel(world) }}
                   </Badge>
                   <RuntimeModeBadge :world="world" />
-                  <WorldPerformanceIndicator
-                    :score="worldStateFor(world)?.hostPerformance"
-                    :available="worldPerformanceAvailable(world)"
+                  <WorldPerformanceScore
+                    :room-id="selectedRoomId"
+                    :world-id="world.id"
+                    :running="world.status === 'running'"
+                    :paused="world.paused === true || worldStateFor(world)?.paused === true"
+                    :native-score="worldStateFor(world)?.hostPerformance"
+                    :native-available="world.status === 'running' && worldStateFor(world)?.freshness === 'live'"
                   />
                   <RuntimeExitBadge :event="world.latestExit" />
                   <RouterLink v-if="world.status === 'failed' || world.latestExit?.type === 'unexpected_exit'" :to="{ path: '/rooms/diagnostics', query: { roomId: selectedRoomId, worldId: world.id, diagnostic: 'mods' } }" class="text-xs text-primary underline-offset-4 hover:underline" @click.stop>{{ $t('modDiagnostics.open') }}</RouterLink>
@@ -620,7 +624,7 @@
                 <header class="players-panel-header">
                   <div class="players-panel-heading">
                     <h2 id="workspace-players-title">{{ $t('servers.workspace.players.title') }}</h2>
-                    <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.presenceSummary', { total: playerStats.total_count, online: playerStats.online_count, stale: playerStats.stale_count ?? playerStats.stale_online_count ?? 0 }) : $t('servers.workspace.states.statusUnavailable')) }}</span>
+                    <span>{{ contextErrors.players ? $t('servers.workspace.states.dataReadFailed') : (playerStats ? $t('servers.workspace.players.presenceSummary', { total: playerStats.total_count, online: playerStats.online_count, stale: playerStats.stale_count ?? playerStats.stale_online_count ?? 0 }) : $t(playerStatsLoading ? 'servers.workspace.players.loading' : 'servers.workspace.states.statusUnavailable')) }}</span>
                     <span v-if="playerStats?.unlocated_online_count > 0">{{ $t('servers.workspace.players.unlocatedCount', { count: playerStats.unlocated_online_count }) }}</span>
                   </div>
                   <div class="players-panel-actions">
@@ -646,6 +650,11 @@
                     </UiButton>
                   </div>
                 </header>
+                <Alert v-if="contextErrors.players" variant="destructive">
+                  <CircleAlert />
+                  <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
+                  <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
+                </Alert>
                 <div v-if="recentPlayerRows.length" class="player-list players-list-expanded">
                   <div
                     v-for="row in recentPlayerRows"
@@ -737,12 +746,11 @@
                     </div>
                   </div>
                 </div>
-                <Alert v-else-if="contextErrors.players" variant="destructive">
-                  <CircleAlert />
-                  <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
-                  <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
-                </Alert>
-                <Empty v-else class="players-empty">
+                <div v-else-if="playerStatsLoading" class="flex flex-col gap-3 py-4" role="status">
+                  <span class="text-sm text-muted-foreground">{{ $t('servers.workspace.players.loading') }}</span>
+                  <Skeleton class="h-20 w-full" />
+                </div>
+                <Empty v-else-if="!contextErrors.players" class="players-empty">
                   <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.players.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.players.emptyDescription') }}</EmptyDescription></EmptyHeader>
                 </Empty>
                 <div v-if="(playerStats?.recent_players?.length || 0) > 5" class="flex flex-wrap items-center gap-2">
@@ -916,7 +924,7 @@ import { defineAsyncComponent } from 'vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import WorldStateQuickControl from '@/components/worlds/WorldStateQuickControl.vue'
-import WorldPerformanceIndicator from '@/components/worlds/WorldPerformanceIndicator.vue'
+import WorldPerformanceScore from '@/components/worlds/WorldPerformanceScore.vue'
 import RoomRefreshIntervalSelect from '@/components/layout/RoomRefreshIntervalSelect.vue'
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue'
 import { playerHistoryTime, playerLastObservation, playerWorldConfirmed, playerLocationPending, playerLastWorld } from '@/lib/playerHistoryPresentation.mjs'
@@ -927,7 +935,7 @@ import CommandRunResult from '@/components/game-tools/CommandRunResult.vue'
 import RoomTopologyDialog from '@/components/rooms/RoomTopologyDialog.vue'
 import RoomModOverview from '@/components/mods/RoomModOverview.vue'
 import { commandApi, playerApi, roomApi } from '@/api'
-import { backupSetsV2API, configurationV2API, consoleV2API, topologyV2API, worldStatesV2API } from '@/api/v2'
+import { backupSetsV2API, configurationV2API, consoleV2API, playersV2API, topologyV2API, worldStatesV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -1135,7 +1143,7 @@ export default {
     RuntimeExitBadge,
     PlayerNetworkIndicator,
     WorldDataFreshnessBadge,
-    WorldPerformanceIndicator,
+    WorldPerformanceScore,
     WorldStateQuickControl
   },
   data() {
@@ -1169,6 +1177,7 @@ export default {
       pendingPlayerActions: [],
       playersRefreshing: false,
       playerRefreshInFlight: false,
+      playerStatsLoading: false,
       pendingRoomActions: [],
       roomActionSequence: 0,
       playerSnapshotStale: false,
@@ -1210,6 +1219,8 @@ export default {
       runtimeRefreshPending: false,
       refreshSequence: 0,
       contextSequence: 0,
+      playerReadSequence: 0,
+      playerInitialCollectionKey: '',
       worldStateSequence: 0,
       worldStateRefreshInFlight: false,
       commonCommands: [
@@ -1438,6 +1449,7 @@ export default {
     this.workspaceDisposed = true
     this.refreshSequence += 1
     this.contextSequence += 1
+    this.playerReadSequence += 1
     this.worldStateSequence += 1
     this.connectionProbeSequence += 1
     this.topologyDialogSequence += 1
@@ -1499,6 +1511,9 @@ export default {
       if (previousTargetId === managementScopeTargetId(this.managementScope)) return
       this.refreshSequence += 1
       this.contextSequence += 1
+      this.playerReadSequence += 1
+      this.playerStatsLoading = false
+      this.playerInitialCollectionKey = ''
       this.worldStateSequence += 1
       const targetId = managementScopeTargetId(this.managementScope)
       const preferred = readWorkspaceSelection(targetId, this.$route.query.targetId === targetId ? this.$route.query : {})
@@ -1629,6 +1644,9 @@ export default {
       this.playerDisplayLimit = CONTEXT_PLAYER_LIMIT
     },
     async handleRoomChange() {
+      this.playerReadSequence += 1
+      this.playerStatsLoading = false
+      this.playerInitialCollectionKey = ''
       this.rollbackDialogOpen = false
       this.rollbackWorldId = ''
       this.rollbackConfigurationSequence += 1
@@ -1649,6 +1667,9 @@ export default {
     },
     clearRoomContext() {
       this.contextSequence += 1
+      this.playerReadSequence += 1
+      this.playerStatsLoading = false
+      this.playerInitialCollectionKey = ''
       this.worldStateSequence += 1
       this.topologyDialogSequence += 1
       this.topologyDialogRefreshing = false
@@ -1672,7 +1693,6 @@ export default {
       this.topologyDialogRefreshing = false
       const requestSequence = ++this.contextSequence
       const roomId = this.selectedRoomId
-      const roomName = this.selectedRoom.name
       this.contextLoading = true
       this.topologyDialogError = ''
       this.worldStateSnapshots = []
@@ -1686,19 +1706,7 @@ export default {
       this.consoleServer = ''
       this.contextErrors = { players: null, console: null, worldStates: null }
       const worldStateRequestSequence = ++this.worldStateSequence
-      const playersCompletion = playerApi.getPlayerStats(roomName, this.playerScopeWorldIds(), roomId).then(
-        response => {
-          if (requestSequence !== this.contextSequence || this.selectedRoomId !== roomId) return
-          this.playerStats = response?.data || null
-          this.playerSnapshotStale = false
-          this.contextErrors.players = null
-        },
-        error => {
-          if (requestSequence !== this.contextSequence || this.selectedRoomId !== roomId) return
-          this.playerSnapshotStale = Boolean(this.playerStats)
-          this.contextErrors.players = this.errorState('servers.workspace.feedback.playersLoadFailed', error)
-        }
-      )
+      const playersCompletion = this.reloadPlayerStats({ collectIfEmpty: true }).catch(() => {})
       const [backupsResult, consoleResult, worldStatesResult] = await Promise.allSettled([
         backupSetsV2API.list(roomId),
         Promise.resolve(this.consoleTargetsForSelectedRoom()),
@@ -1780,26 +1788,43 @@ export default {
       if (!managementScopeTargetId(this.managementScope)) return []
       return this.worlds.map(world => world.id)
     },
-    async reloadPlayerStats({ preserveExisting = false, collected = false, reportFailure = true } = {}) {
+    async reloadPlayerStats({ preserveExisting = true, collected = false, reportFailure = true, collectIfEmpty = false } = {}) {
       if (!this.selectedRoom) return
-      const requestSequence = ++this.contextSequence
+      const requestSequence = ++this.playerReadSequence
       const roomId = this.selectedRoomId
+      const roomName = this.selectedRoom.name
+      const worldIds = [...this.playerScopeWorldIds()]
+      const collectionKey = JSON.stringify([roomId, worldIds])
+      const current = () => requestSequence === this.playerReadSequence && this.selectedRoomId === roomId && !this.workspaceDisposed
+      this.playerStatsLoading = true
       if (reportFailure) this.contextErrors.players = null
       try {
-        const response = await playerApi.getPlayerStats(this.selectedRoom.name, this.playerScopeWorldIds(), roomId)
-        if (requestSequence === this.contextSequence && this.selectedRoomId === roomId) {
+        let response = await playerApi.getPlayerStats(roomName, worldIds, roomId)
+        if (!current()) return response
+        // Opening a room with an empty cache should not wait for the next
+        // scheduled collection. Only sample its active worlds, once on entry.
+        const activeWorldIds = this.runningWorlds.filter(world => world.paused !== true).map(world => world.id)
+        if (collectIfEmpty && this.playerInitialCollectionKey !== collectionKey && response?.data?.total_count === 0 && activeWorldIds.length > 0) {
+          this.playerInitialCollectionKey = collectionKey
+          await waitForV2Job(await playersV2API.refresh(roomId, activeWorldIds))
+          if (!current()) return
+          response = await playerApi.getPlayerStats(roomName, worldIds, roomId)
+        }
+        if (current()) {
           this.playerStats = response?.data || null
           if (collected) this.playerSnapshotStale = false
           this.contextErrors.players = null
         }
         return response
       } catch (error) {
-        if (reportFailure && requestSequence === this.contextSequence && this.selectedRoomId === roomId) {
+        if (reportFailure && current()) {
           if (!preserveExisting) this.playerStats = null
           this.playerSnapshotStale = preserveExisting && Boolean(this.playerStats)
           this.contextErrors.players = this.errorState('servers.workspace.feedback.playersLoadFailed', error)
         }
         throw error
+      } finally {
+        if (current()) this.playerStatsLoading = false
       }
     },
     async refreshPlayerStats() {
@@ -2823,10 +2848,6 @@ export default {
       if (!counts) return '--'
       return this.$t('servers.workspace.worlds.onlinePlayerCount', { count: counts[world.id] || 0 })
     },
-    worldPerformanceAvailable(world) {
-      const snapshot = this.worldStateFor(world)
-      return world?.status === 'running' && snapshot?.freshness === 'live'
-    },
     worldSeasonLabel(world) {
       const snapshot = this.worldStateFor(world)
       return this.seasonLabel(snapshot ? snapshot.season : world.season)
@@ -3273,6 +3294,7 @@ export default {
 }
 
 .world-card-content {
+  container: world-list / inline-size;
   padding-top: 0;
   padding-bottom: 0;
 }
@@ -3536,11 +3558,14 @@ export default {
 
 .world-name-row {
   justify-content: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .world-name-row strong {
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   color: var(--foreground);
   font-size: 14px;
@@ -3599,19 +3624,20 @@ export default {
   display: grid;
   grid-template-columns:
     minmax(70px, 0.7fr)
-    minmax(76px, 0.75fr)
-    minmax(86px, 0.9fr)
-    minmax(86px, 0.9fr)
+    minmax(104px, 0.95fr)
+    minmax(76px, 0.9fr)
+    minmax(76px, 0.9fr)
     minmax(130px, 1.35fr)
-    minmax(86px, 0.9fr)
-    minmax(120px, 1.2fr);
+    minmax(80px, 0.9fr)
+    minmax(128px, 1.2fr);
+  align-items: start;
   gap: 8px;
   margin: 0;
   padding-left: 14px;
   border-left: 1px solid var(--border);
 }
 
-.world-facts div {
+.world-facts > div {
   min-width: 0;
 }
 
@@ -3622,12 +3648,10 @@ export default {
 
 .world-facts dd {
   margin: 2px 0 0;
-  overflow: hidden;
   color: var(--foreground);
   font-size: 13px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .world-actions {
@@ -3978,22 +4002,6 @@ export default {
     display: none;
   }
 
-  .world-item {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .world-facts {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    padding-left: 46px;
-    border-left: 0;
-  }
-
-  .world-actions {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
 }
 
 @media (max-width: 768px) {
@@ -4033,25 +4041,6 @@ export default {
     flex: 1 1 auto;
   }
 
-  .world-item {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .world-facts {
-    grid-column: auto;
-    grid-row: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin: 2px 0;
-    padding-left: 46px;
-  }
-
-  .world-actions {
-    grid-column: auto;
-    grid-row: auto;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-  }
-
   .workspace-log {
     height: 520px;
   }
@@ -4081,10 +4070,6 @@ export default {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .world-facts {
-    padding-left: 0;
-  }
-
   .player-row {
     grid-template-columns: 40px minmax(0, 1fr);
   }
@@ -4094,6 +4079,52 @@ export default {
     justify-content: flex-end;
   }
 
+}
+
+@container world-list (max-width: 1180px) {
+  .world-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .world-facts {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-left: 46px;
+    border-left: 0;
+  }
+
+  .world-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@container world-list (max-width: 900px) {
+  .world-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@container world-list (max-width: 640px) {
+  .world-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .world-facts {
+    grid-column: auto;
+    grid-row: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 2px 0;
+    padding-left: 0;
+  }
+
+  .world-actions {
+    grid-column: auto;
+    grid-row: auto;
+    flex-wrap: wrap;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

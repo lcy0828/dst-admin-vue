@@ -1,3 +1,4 @@
+import { performanceMessages } from './performanceMessages.js'
 import { playerActivityMessages } from './playerActivityMessages.js'
 import { modDiagnosticsMessages } from './modDiagnosticsMessages.js'
 import { spawnAuditMessages } from './spawnAuditMessages.js'
@@ -44,6 +45,7 @@ import { worldsMessages } from './worldsMessages.js'
 export const messages = {
   'zh-CN': {
     ...playerActivityMessages['zh-CN'],
+    ...performanceMessages['zh-CN'],
     ...spawnAuditMessages['zh-CN'],
     ...modDiagnosticsMessages['zh-CN'],
     ...inventoryMessages['zh-CN'],
@@ -575,6 +577,7 @@ export const messages = {
   },
   'en-US': {
     ...playerActivityMessages['en-US'],
+    ...performanceMessages['en-US'],
     ...spawnAuditMessages['en-US'],
     ...modDiagnosticsMessages['en-US'],
     ...inventoryMessages['en-US'],

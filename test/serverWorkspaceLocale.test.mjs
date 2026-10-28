@@ -44,10 +44,10 @@ test('server workspace keeps operational summaries inline and world facts on com
   assert.match(source, /class="workspace-overview"/)
   assert.match(source, /class="status-summary" role="list"/)
   assert.match(source, /<Separator class="status-separator" orientation="vertical"/)
-  assert.match(source, /minmax\(70px, 0\.7fr\)[\s\S]*minmax\(130px, 1\.35fr\)[\s\S]*minmax\(120px, 1\.2fr\)/)
+  assert.match(source, /minmax\(70px, 0\.7fr\)[\s\S]*minmax\(104px, 0\.95fr\)[\s\S]*minmax\(130px, 1\.35fr\)/)
   assert.match(source, /\.world-card-header \{\s*padding-block: 10px;/)
   assert.match(source, /\.world-facts \{[\s\S]*padding-left: 14px;\s*border-left: 1px solid var\(--border\);/)
-  assert.match(source, /@media \(max-width: 1100px\) \{[\s\S]*\.world-facts \{[\s\S]*border-left: 0;/)
+  assert.match(source, /@container world-list \(max-width: 1180px\) \{[\s\S]*\.world-facts \{[\s\S]*border-left: 0;/)
   assert.doesNotMatch(source, /class="status-card"/)
 })
 
@@ -222,7 +222,7 @@ test('server workspace uses compact semantic status cues and clear refresh scope
   assert.match(freshness, /normalizedFreshness\.value === 'delayed'\) return 'warning'/)
 })
 
-test('server workspace shows the room directory and DST in-game host performance', async () => {
+test('server workspace shows performance bars beside the world name with scores in the tooltip', async () => {
   const [source, indicator, messages] = await Promise.all([
     readFile(sourceUrl, 'utf8'),
     readFile(new URL('../src/components/worlds/WorldPerformanceIndicator.vue', import.meta.url), 'utf8'),
@@ -230,8 +230,10 @@ test('server workspace shows the room directory and DST in-game host performance
   ])
 
   assert.match(source, /selectedRoom\.directoryName[\s\S]*servers\.workspace\.roomDirectory/)
-  assert.match(source, /<WorldPerformanceIndicator[\s\S]*:score="worldStateFor\(world\)\?\.hostPerformance"[\s\S]*:available="worldPerformanceAvailable\(world\)"/)
-  assert.match(source, /world\?\.status === 'running' && snapshot\?\.freshness === 'live'/)
+  assert.match(source, /<WorldPerformanceScore[\s\S]*:room-id="selectedRoomId"[\s\S]*:world-id="world\.id"[\s\S]*:running="world\.status === 'running'"[\s\S]*:paused="world\.paused === true \|\| worldStateFor\(world\)\?\.paused === true"/)
+  assert.match(source, /:native-score="worldStateFor\(world\)\?\.hostPerformance"/)
+  assert.doesNotMatch(source, /world-performance-value/)
+  assert.match(indicator, /<TooltipContent>[\s\S]*simulationLabel/)
   assert.match(indicator, /normalizedScore\.value === null \? 0 : 3 - normalizedScore\.value/)
   assert.match(indicator, /v-for="bar in 3"[\s\S]*bar <= activeBars/)
   assert.match(indicator, /is-good[\s\S]*var\(--success\)[\s\S]*is-fair[\s\S]*var\(--warning\)[\s\S]*is-poor[\s\S]*var\(--destructive\)/)

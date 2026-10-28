@@ -236,7 +236,7 @@ test('formal layout switches the active application page by management scope whi
   assert.doesNotMatch(layout, /setActiveRuntimeTarget|getActiveRuntimeTarget/)
   assert.match(layout, /<ManagementScopeSwitch/)
   assert.match(layout, /MANAGEMENT_SCOPE_CHANGED_EVENT/)
-  assert.match(layout, /<RouterView :key="`\$\{\['\/mods', '\/dashboard'\]\.includes\(route\.path\) \? route\.path : route\.fullPath\}:\$\{route\.path === '\/dashboard' \? '' : managementScopeRevision\}`" \/>/)
+  assert.match(layout, /<RouterView :key="`\$\{\['\/mods', '\/dashboard', '\/servers\/performance'\]\.includes\(route\.path\) \? route\.path : route\.fullPath\}:\$\{route\.path === '\/dashboard' \? '' : managementScopeRevision\}`" \/>/)
   assert.match(topology, /<RoomPlacementCard/)
   assert.doesNotMatch(topology, /draftPlacements\[placement\.worldId\]/)
   assert.match(editor, /draft\.worldTargets\[String\(placement\.worldId\)\]/)

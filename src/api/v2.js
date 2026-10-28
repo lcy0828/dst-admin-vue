@@ -209,6 +209,12 @@ export const softwareV2API = {
   apply: operationId => client.post('/system/software/actions/apply', { operationId, confirmation: 'APPLY SOFTWARE UPDATE' }, { runtimeTarget: false, timeout: 15000 }),
 }
 
+export const performanceV2API = {
+  report: (roomId, query = {}) => client.get(`/rooms/${encode(roomId)}/performance`, { params: query, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),
+  settings: roomId => client.get(`/rooms/${encode(roomId)}/performance/settings`, { runtimeTarget: false }),
+  save: (roomId, input) => client.put(`/rooms/${encode(roomId)}/performance/settings`, input, { runtimeTarget: false })
+}
+
 // Outbound notifications are Controller settings, independent of node scope.
 export const notificationsV2API = {
   channels: () => client.get('/system/notifications/channels', { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),

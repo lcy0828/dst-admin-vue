@@ -71,7 +71,7 @@ test('the formal layout exposes one searchable fleet and machine scope switcher'
   const layout = await readFile(new URL('../src/layouts/MainLayoutV2.vue', import.meta.url), 'utf8')
 
   assert.match(layout, /<ManagementScopeSwitch v-if="hasMachineScope"/)
-  assert.match(layout, /<RouterView :key="`\$\{\['\/mods', '\/dashboard'\]\.includes\(route\.path\) \? route\.path : route\.fullPath\}:\$\{route\.path === '\/dashboard' \? '' : managementScopeRevision\}`"/)
+  assert.match(layout, /<RouterView :key="`\$\{\['\/mods', '\/dashboard', '\/servers\/performance'\]\.includes\(route\.path\) \? route\.path : route\.fullPath\}:\$\{route\.path === '\/dashboard' \? '' : managementScopeRevision\}`"/)
   assert.match(layout, /<RoomManagementScopeNotice v-if="hasMachineScope && route\.path\.startsWith\('\/rooms'\)"/)
   assert.match(component, /runtimeTargetsV2API\.list\(\)/)
   assert.match(component, /targets\.value\.length === 1/)

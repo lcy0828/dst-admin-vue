@@ -227,7 +227,7 @@ test('workspace scope changes invalidate old requests before clearing rendered d
   assert.match(dashboard, /serverRequestSequence \+= 1[\s\S]*?serverList\.value = \[\]/)
   assert.match(adapter, /if \(input\?\.exact_world_ids === true \|\| input\?\.exactWorldIds === true\) return requested/)
   assert.match(playerApi, /const players = selectedWorldIds\.size > 0[\s\S]*?total_count: players\.length/)
-  assert.match(workspace, /getPlayerStats\(roomName, this\.playerScopeWorldIds\(\), roomId\)/)
+  assert.match(workspace, /getPlayerStats\(roomName, worldIds, roomId\)/)
   assert.match(workspace, /world_ids: this\.playerScopeWorldIds\(\)/)
   assert.doesNotMatch(api, /X-DST-Runtime-Target|getActiveRuntimeTarget/)
   assert.match(commands, /getScopedRuntimeOverview\(normalizedTargetId\)/)

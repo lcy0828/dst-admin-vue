@@ -339,8 +339,8 @@ function setTemperature() {
 
 <style scoped>
 .world-state-control { min-width: 0; }
-.world-state-trigger { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: .25rem; }
-.world-state-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.world-state-trigger { width: 100%; min-width: 0; height: auto; min-height: 1.5rem; justify-content: flex-start; padding-inline: .25rem; }
+.world-state-trigger > span { min-width: 0; text-align: start; white-space: normal; overflow-wrap: anywhere; }
 .world-state-control > [data-slot='progress'] { max-width: 88px; margin-top: 4px; }
 .world-state-popover { width: min(19rem, calc(100vw - 2rem)); }
 .world-state-popover--weather { width: min(22rem, calc(100vw - 2rem)); }

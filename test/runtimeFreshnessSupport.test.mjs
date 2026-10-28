@@ -91,8 +91,8 @@ test('workspace renders lightweight player results independently from slower roo
 
   assert.ok(contextStart >= 0 && contextEnd > contextStart)
   assert.doesNotMatch(contextRefresh, /this\.playerStats = null/)
-  assert.match(contextRefresh, /const playersCompletion = playerApi\.getPlayerStats\(roomName, this\.playerScopeWorldIds\(\), roomId\)\.then\(/)
-  assert.ok(contextRefresh.indexOf('this.playerStats = response?.data || null') < contextRefresh.indexOf('await Promise.allSettled(['))
+  assert.match(contextRefresh, /const playersCompletion = this\.reloadPlayerStats\(\{ collectIfEmpty: true \}\)/)
+  assert.ok(contextRefresh.indexOf('const playersCompletion') < contextRefresh.indexOf('await Promise.allSettled(['))
   assert.match(contextRefresh, /this\.contextLoading = false\s*await playersCompletion/)
   assert.doesNotMatch(contextRefresh, /this\.detectDefaultConnectionAddress\(\)/)
   assert.match(playerApi, /includeAccessLists: params\.include_access_lists !== false/)

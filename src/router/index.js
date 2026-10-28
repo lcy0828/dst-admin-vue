@@ -106,6 +106,12 @@ export const constantRoutes = [
         meta: { hidden: true }
       },
       {
+        path: 'performance',
+        component: () => import('@/views/servers/PerformanceReports.vue'),
+        name: 'PerformanceReports',
+        meta: { title: '性能与报表', titleKey: 'performance.title', icon: 'chart-no-axes-combined' }
+      },
+      {
         path: 'releases',
         component: () => import('@/views/servers/GameReleases.vue'),
         name: 'GameReleases',

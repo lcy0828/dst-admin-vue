@@ -8,7 +8,7 @@ export function pageHasMachineScope({ path, query = {} }) {
     '/dashboard', '/mods', '/rooms/list', '/rooms/topology', '/rooms/diagnostics',
     '/rooms/special-lists', '/rooms/token', '/worlds/list', '/worlds/settings',
     '/worlds/state', '/worlds/maps', '/players/list', '/players/bans',
-    '/logs/query', '/announcements', '/backups', '/servers/tools', '/servers/releases'
+    '/logs/query', '/announcements', '/backups', '/servers/tools', '/servers/releases', '/servers/performance'
   ].includes(path)
 }
 

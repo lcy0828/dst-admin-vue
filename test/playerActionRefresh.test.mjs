@@ -21,6 +21,8 @@ function workspace(playerApi) {
     selectedRoom: { id: 'room', name: '666777' },
     selectedRoomId: 'room',
     contextSequence: 0,
+    playerReadSequence: 0,
+    runningWorlds: [],
     contextErrors: { players: null },
     playerSnapshotStale: false,
     playerStats: { items: [{ user_id: 'KU_OTHER', status: 'online', health: 150 }] },
