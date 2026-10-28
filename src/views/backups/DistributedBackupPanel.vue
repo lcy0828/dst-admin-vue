@@ -84,14 +84,11 @@
             </TableCell>
             <TableCell>
               <div class="flex min-w-32 flex-col items-start gap-1">
-                <Badge :variant="setStatusVariant(backupSet.status)">{{ setStatusLabel(backupSet.status) }}</Badge>
-                <Badge v-if="backupSet.source !== 'legacy'" :variant="backupSet.restorable ? 'secondary' : 'destructive'">{{ contentKindLabel(backupSet) }}</Badge>
-                <Badge v-if="backupSet.source !== 'legacy' && latestOperation(backupSet.id)" :variant="operationStatusVariant(latestOperation(backupSet.id).status)">
-                  {{ operationStatusLabel(latestOperation(backupSet.id).status) }}
-                </Badge>
-                <span v-if="backupSet.failure" class="text-xs text-destructive">{{ backupSet.failure }}</span>
-                <span v-if="backupSet.validationError" class="max-w-64 text-xs text-destructive">{{ backupSet.validationError }}</span>
-                <span v-if="latestOperation(backupSet.id)?.failure" class="max-w-64 text-xs text-destructive">{{ latestOperation(backupSet.id).failure }}</span>
+                <Badge :variant="setStatusVariant(backupSet.status, backupSet.artifactState)">{{ setStatusLabel(backupSet.status, backupSet.artifactState) }}</Badge>
+                <Badge v-if="backupSet.source !== 'legacy'" variant="outline">{{ contentKindLabel(backupSet) }}</Badge>
+                <span v-if="backupSet.status === 'creating' && latestOperation(backupSet.id)" class="text-xs text-muted-foreground">{{ operationPhaseLabel(latestOperation(backupSet.id).phase) }}</span>
+                <span v-if="failureMessage(backupSet)" class="max-w-64 text-xs text-destructive">{{ failureMessage(backupSet) }}</span>
+                <span v-if="backupSet.barrierReleaseState === 'unconfirmed'" class="max-w-64 text-xs text-destructive">{{ t('distributed.backups.releaseStates.unconfirmed') }}</span>
                 <UiButton v-if="latestOperation(backupSet.id)?.status === 'recovery_required'" size="xs" variant="outline" :disabled="operationRunning" @click="recoverOperation(latestOperation(backupSet.id))">
                   <Spinner v-if="recoveringOperationId === latestOperation(backupSet.id).id" data-icon="inline-start" />
                   <History v-else data-icon="inline-start" />
@@ -181,7 +178,12 @@
           <Skeleton v-for="index in 4" :key="index" class="h-12 w-full" />
         </div>
         <template v-else-if="selectedSet">
-          <Alert v-if="!selectedSet.restorable" variant="destructive">
+          <Alert v-if="failureMessage(selectedSet)" variant="destructive">
+            <TriangleAlert />
+            <AlertTitle>{{ t('distributed.backups.failureTitle') }}</AlertTitle>
+            <AlertDescription>{{ failureMessage(selectedSet) }}</AlertDescription>
+          </Alert>
+          <Alert v-else-if="!selectedSet.restorable && backupArtifactState(selectedSet) === 'available'" variant="destructive">
             <TriangleAlert />
             <AlertTitle>{{ t('distributed.backups.notRestorableTitle') }}</AlertTitle>
             <AlertDescription>{{ selectedSet.validationError || t('distributed.backups.notRestorable') }}</AlertDescription>
@@ -189,7 +191,7 @@
           <Alert v-if="selectedOperation" :variant="selectedOperation.status === 'recovery_required' || selectedOperation.status === 'failed' ? 'destructive' : 'default'">
             <History />
             <AlertTitle>{{ t('distributed.backups.operationSummary', { kind: operationKindLabel(selectedOperation.kind), status: operationStatusLabel(selectedOperation.status) }) }}</AlertTitle>
-            <AlertDescription>{{ selectedOperation.failure || t('distributed.backups.operationUpdatedAt', { time: formatTime(selectedOperation.updatedAt) }) }}</AlertDescription>
+            <AlertDescription>{{ t('distributed.backups.operationUpdatedAt', { time: formatTime(selectedOperation.updatedAt) }) }}</AlertDescription>
           </Alert>
           <dl class="grid gap-3 text-sm sm:grid-cols-3">
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.columns.mode') }}</dt><dd class="mt-1 font-medium">{{ backupModeLabel(selectedSet.mode) }}</dd></div>
@@ -200,9 +202,16 @@
             <div class="sm:col-span-3"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.topologyRevision') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedSet.topologyRevision }}</dd></div>
             <div v-if="selectedSet.mode === 'hot-consistent'" class="sm:col-span-2"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.barrierId') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedSet.barrierId || '--' }}</dd></div>
             <div v-if="selectedSet.mode === 'hot-consistent'"><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.snapshot') }}</dt><dd class="mt-1 font-medium tabular-nums">{{ selectedSet.snapshot ?? '--' }}</dd></div>
+            <div v-if="selectedSet.barrierAttempts"><dt class="text-muted-foreground">{{ t('distributed.backups.attempts') }}</dt><dd class="mt-1">{{ selectedSet.barrierAttempts }}</dd></div>
+            <div v-if="selectedSet.barrierReleaseState"><dt class="text-muted-foreground">{{ t('distributed.backups.releaseLabel') }}</dt><dd class="mt-1">{{ t(`distributed.backups.releaseStates.${selectedSet.barrierReleaseState}`) }}</dd></div>
+            <div v-if="selectedSet.failurePhase"><dt class="text-muted-foreground">{{ t('distributed.backups.failurePhase') }}</dt><dd class="mt-1">{{ operationPhaseLabel(selectedSet.failurePhase) }}</dd></div>
             <div v-if="selectedOperation"><dt class="text-muted-foreground">{{ t('distributed.backups.operationPhase') }}</dt><dd class="mt-1 font-medium">{{ operationPhaseLabel(selectedOperation.phase) }}</dd></div>
             <div v-if="selectedOperation?.protectionSetId" class="sm:col-span-2"><dt class="text-muted-foreground">{{ t('distributed.backups.protectionSet') }}</dt><dd class="mt-1 break-all font-mono text-xs">{{ selectedOperation.protectionSetId }}</dd></div>
           </dl>
+          <Collapsible v-if="selectedSet.failure || selectedSet.validationError || selectedOperation?.failure">
+            <CollapsibleTrigger as-child><UiButton variant="outline" size="sm">{{ t('distributed.backups.technicalDetails') }}</UiButton></CollapsibleTrigger>
+            <CollapsibleContent><pre class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs">{{ technicalDetails }}</pre></CollapsibleContent>
+          </Collapsible>
           <div class="overflow-x-auto rounded-lg border">
             <UiTable class="min-w-[980px]">
               <TableHeader><TableRow><TableHead>{{ t('distributed.backups.partColumns.world') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.target') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.status') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.barrier') }}</TableHead><TableHead>{{ t('distributed.backups.columns.size') }}</TableHead><TableHead>SHA-256</TableHead></TableRow></TableHeader>
@@ -217,10 +226,11 @@
                         <span class="font-mono text-xs text-muted-foreground">{{ t('distributed.backups.saveEvidence.latestSnapshot', { value: part.latestSnapshot }) }}</span>
                         <Badge variant="outline">{{ part.hasShardIndex ? t('distributed.backups.saveEvidence.shardIndexPresent') : t('distributed.backups.saveEvidence.shardIndexMissing') }}</Badge>
                       </template>
-                      <span v-else class="text-xs text-destructive">{{ part.validationError || t('distributed.backups.notRestorable') }}</span>
+                      <span v-else class="text-xs text-muted-foreground">{{ contentKindLabel(part) }}</span>
+                      <span v-if="part.failure || part.validationError" class="max-w-72 break-words text-xs text-destructive">{{ part.failure || part.validationError }}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{{ part.targetId }}</TableCell>
+                  <TableCell>{{ part.targetId === 'local' ? t('distributed.infrastructure.providerKinds.local') : part.targetId }}</TableCell>
                   <TableCell><Badge :variant="partStatusVariant(part.status)">{{ partStatusLabel(part.status) }}</Badge></TableCell>
                   <TableCell>
                     <div v-if="selectedSet.mode === 'hot-consistent'" class="flex min-w-64 flex-col gap-1 text-xs">
@@ -275,6 +285,8 @@ import { CircleAlert, DatabaseBackup, Download, Eye, Flame, History, RefreshCw, 
 import { toast } from 'vue-sonner'
 import BackupSchedulePanel from './BackupSchedulePanel.vue'
 import { backupsV2API, backupSetsV2API, roomsV2API } from '@/api/v2'
+import { backupArtifactState, backupFailureMessage, verifiedBackupParts } from '@/lib/backupResults.mjs'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { confirmAction } from '@/lib/feedback'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
@@ -326,6 +338,7 @@ let loadedSetsRoomId = ''
 const recoveryOperations = computed(() => operations.value.filter(operation => operation.status === 'recovery_required'))
 const backupModeKey = computed(() => backupMode.value === 'hot-consistent' ? 'hot' : 'cold')
 const selectedOperation = computed(() => selectedSet.value ? latestOperation(selectedSet.value.id) : null)
+const technicalDetails = computed(() => [...new Set([selectedSet.value?.failure, selectedSet.value?.validationError, selectedOperation.value?.failure].filter(Boolean))].join('\n'))
 const selectedRoom = computed(() => rooms.value.find(room => String(room.id) === selectedRoomId.value) || null)
 const isSystemCategory = computed(() => props.category === 'system')
 const backupItems = computed(() => [
@@ -600,14 +613,8 @@ function operationKindLabel(value) {
   return t(`distributed.backups.operationKinds.${known.includes(value) ? value : 'unknown'}`)
 }
 
-function operationStatusVariant(value) {
-  if (value === 'succeeded') return 'secondary'
-  if (value === 'failed' || value === 'recovery_required') return 'destructive'
-  return 'outline'
-}
-
 function operationPhaseLabel(value) {
-  const known = ['planned', 'barrier_preparing', 'barrier_committing', 'barrier_waiting', 'stopping', 'staging', 'protecting', 'preparing', 'prepared', 'publishing', 'published', 'completing', 'completed', 'failed', 'rolling_back', 'rollback_completed', 'resuming', 'rolled_back', 'recovered']
+  const known = ['planned', 'barrier_preparing', 'barrier_arming', 'barrier_retrying', 'transferring', 'barrier_committing', 'barrier_waiting', 'stopping', 'staging', 'protecting', 'preparing', 'prepared', 'publishing', 'published', 'completing', 'completed', 'failed', 'rolling_back', 'rollback_completed', 'resuming', 'rolled_back', 'recovered']
   return t(`distributed.backups.operationPhases.${known.includes(value) ? value : 'unknown'}`)
 }
 
@@ -616,16 +623,20 @@ function backupModeLabel(value) {
 }
 
 function contentKindLabel(value) {
+  const artifact = backupArtifactState(value)
+  if (artifact !== 'available') return t(`distributed.backups.artifacts.${artifact}`)
   const kind = value?.restorable ? 'gameSave' : value?.contentKind === 'configuration-only' ? 'configurationOnly' : 'unknown'
   return t(`distributed.backups.contentKinds.${kind}`)
 }
 
-function setStatusLabel(value) {
+function setStatusLabel(value, artifact) {
+  if (artifact === 'missing' || artifact === 'corrupt') return t('distributed.backups.unavailable')
   const known = ['creating', 'verified', 'partial', 'failed', 'corrupt']
   return t(`distributed.backups.statuses.${known.includes(value) ? value : 'unknown'}`)
 }
 
-function setStatusVariant(value) {
+function setStatusVariant(value, artifact) {
+  if (artifact === 'missing' || artifact === 'corrupt') return 'destructive'
   if (value === 'verified') return 'secondary'
   if (value === 'failed' || value === 'corrupt') return 'destructive'
   return 'outline'
@@ -643,7 +654,11 @@ function partStatusVariant(value) {
 }
 
 function verifiedParts(backupSet) {
-  return (backupSet.parts || []).filter(part => part.status === 'verified').length
+  return verifiedBackupParts(backupSet)
+}
+
+function failureMessage(value) {
+  return backupFailureMessage(value, latestOperation(value.id), t)
 }
 
 function formatBytes(value) {
