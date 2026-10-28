@@ -182,6 +182,13 @@
                 </template>
               </PopoverContent>
             </Popover>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child><UiButton size="sm" variant="outline" :disabled="roomActionsBusy" :aria-label="$t('runtimeMode.change')">{{ $t(`runtimeMode.names.${runtimeModeSummary(worlds)}`) }}<ChevronDown data-icon="inline-end" /></UiButton></DropdownMenuTrigger>
+              <DropdownMenuContent align="end"><DropdownMenuGroup>
+                <DropdownMenuItem :disabled="roomStartWorlds.length === 0" @select="handleRoomAction('start', true)">{{ $t('runtimeMode.chooseStart') }}</DropdownMenuItem>
+                <DropdownMenuItem :disabled="roomStopWorlds.length === 0" @select="handleRoomAction('restart', true)">{{ $t('runtimeMode.chooseRestart') }}</DropdownMenuItem>
+              </DropdownMenuGroup></DropdownMenuContent>
+            </DropdownMenu>
             <UiButton
               type="button"
               size="sm"
@@ -408,6 +415,7 @@
                   <Badge :variant="worldStatusVariant(world)">
                     {{ worldStatusLabel(world) }}
                   </Badge>
+                  <RuntimeModeBadge :world="world" />
                   <WorldPerformanceIndicator
                     :score="worldStateFor(world)?.hostPerformance"
                     :available="worldPerformanceAvailable(world)"
@@ -502,6 +510,12 @@
             </dl>
 
             <div class="world-actions" @click.stop>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child><UiButton size="icon-sm" variant="outline" :disabled="roomActionsBusy || isWorldActionPending(world.id) || isWorldStateActionPending(world.id) || isRollbackPending(world.id) || (!canStopWorld(world) && !canStartWorld(world))" :aria-label="$t('runtimeMode.change')"><ChevronDown /></UiButton></DropdownMenuTrigger>
+                <DropdownMenuContent align="end"><DropdownMenuGroup>
+                  <DropdownMenuItem @select="handleWorldAction(world, canStopWorld(world) ? 'restart' : 'start', true)">{{ $t(canStopWorld(world) ? 'runtimeMode.chooseRestart' : 'runtimeMode.chooseStart') }}</DropdownMenuItem>
+                </DropdownMenuGroup></DropdownMenuContent>
+              </DropdownMenu>
               <Tooltip>
                 <TooltipTrigger as-child>
                   <UiButton
@@ -895,6 +909,8 @@
 </template>
 
 <script>
+import RuntimeModeBadge from '@/components/RuntimeModeBadge.vue'
+import { runtimeModeSummary } from '@/lib/runtimeModeInheritance.mjs'
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { defineAsyncComponent } from 'vue'
 import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
@@ -1010,6 +1026,7 @@ export default {
     publishRoomWeather }
   },
   components: {
+    RuntimeModeBadge,
     RoomScopeSelect,
     Alert,
     AlertAction,
@@ -1432,6 +1449,7 @@ export default {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange)
   },
   methods: {
+    runtimeModeSummary,
     async manualRefreshWorkspace() {
       if (this.loading || this.workspaceDisposed) return
       await Promise.all([
@@ -2274,9 +2292,9 @@ export default {
       ))
       return null
     },
-    async handleRoomAction(action) {
+    async handleRoomAction(action, chooseRuntimeMode = false) {
       this.pruneStaleRoomActions()
-      if (!this.selectedRoom || !['start', 'stop'].includes(action) || this.roomActionsBusy) return
+      if (!this.selectedRoom || !['start', 'stop', 'restart'].includes(action) || this.roomActionsBusy) return
 
       const roomId = this.selectedRoom.id
       const roomName = this.selectedRoom.name
@@ -2295,7 +2313,7 @@ export default {
       const actionToken = this.setRoomActionPending(roomId, action, true)
       let maintenance = {}
       try {
-        if (action === 'stop') {
+        if (action === 'stop' || action === 'restart') {
           try {
             maintenance = await confirmRoomMaintenance(roomId, this.$t('servers.workspace.feedback.roomActionConfirm', {
               action: label,
@@ -2316,6 +2334,7 @@ export default {
           count: worlds.length
         }))
         const target = {
+          choose_runtime_mode: chooseRuntimeMode,
           room_id: roomId,
           world_ids: worlds.map(world => world.id),
           exact_world_ids: Boolean(managementScopeTargetId(this.managementScope))
@@ -2327,6 +2346,7 @@ export default {
           emitGlobalJobSubmitted(submittedJob)
         }
         if (action === 'stop') await roomApi.stopRoom({ ...target, ...maintenance })
+        if (action === 'restart') await restartWorldWithCapacityRisk({ ...target, ...maintenance })
       } catch (error) {
         if (isCapacityRiskCanceled(error)) {
           requestCanceled = true
@@ -2357,13 +2377,14 @@ export default {
         this.setRoomActionPending(roomId, action, false, actionToken)
       }
     },
-    async handleWorldAction(world, action) {
+    async handleWorldAction(world, action, chooseRuntimeMode = false) {
       const roomId = this.selectedRoom?.id
       if (!action ||
           !roomId ||
           this.isRoomActionPending(roomId) ||
           this.isWorldActionPending(world.id, roomId) ||
           this.isWorldStateActionPending(world.id, roomId) ||
+          this.isRollbackPending(world.id, roomId) ||
           (action === 'start' && !canStartWorld(world)) ||
           (action === 'cleanup' && !canCleanFailedWorld(world)) ||
           (action === 'stop' && !canRequestStopWorld(world)) ||
@@ -2434,6 +2455,7 @@ export default {
             world: world.name
           }))
         const target = {
+          choose_runtime_mode: chooseRuntimeMode,
           room_id: roomId,
           world_ids: affectedWorlds.map(item => item.id),
           exact_world_ids: Boolean(managementScopeTargetId(this.managementScope))
@@ -2758,6 +2780,9 @@ export default {
     },
     canStopWorld(world) {
       return canStopWorld(world)
+    },
+    canStartWorld(world) {
+      return canStartWorld(world)
     },
     canCleanFailedWorld(world) {
       return canCleanFailedWorld(world)

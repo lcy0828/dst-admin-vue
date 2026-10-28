@@ -1,3 +1,4 @@
+import { runtimeRequestOptions } from '@/lib/runtimeModeInheritance.mjs'
 import {
   roomBackupsV2API,
   containersV2API,
@@ -412,11 +413,9 @@ export const legacyRoomApi = {
   },
   async startRoom(params) {
     const room = await resolveRoom(roomReference(params))
-    const runtimeMode = params?.runtime_mode || params?.runtimeMode || 'game'
     const submittedJob = await roomsV2API.action(room.id, 'start', lifecycleWorldIDs(room, params, 'start'), {
       allowCapacityRisk: params?.allow_capacity_risk === true || params?.allowCapacityRisk === true,
-      runtimeMode,
-      runtimeVersion: params?.runtime_version || params?.runtimeVersion || (runtimeMode === 'game' ? 'game' : '')
+      ...runtimeRequestOptions(params)
     })
     invalidateRoomCatalog()
     if (params?.wait_for_completion === false || params?.waitForCompletion === false) {
@@ -441,6 +440,7 @@ export const legacyRoomApi = {
     const job = await waitForV2Job(
       await roomsV2API.action(room.id, 'restart', worldIds, {
         immediate: input?.immediate === true,
+        ...runtimeRequestOptions(input),
         allowCapacityRisk: input?.allow_capacity_risk === true || input?.allowCapacityRisk === true
       }),
       ROOM_JOB_TIMEOUT

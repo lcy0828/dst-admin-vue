@@ -90,6 +90,7 @@
 
                   <div class="world-state">
                     <Badge :variant="worldStatusVariant(world)">{{ worldStatusLabel(world) }}</Badge>
+                    <RuntimeModeBadge :world="world" />
                     <Tooltip v-if="worldRowMessage(world)">
                       <TooltipTrigger as-child>
                         <button type="button" class="world-message" :aria-label="worldRowMessage(world)">
@@ -130,6 +131,7 @@
                           <DropdownMenuItem @select="viewWorld(room, world)">{{ $t('rooms.list.worldActions.view') }}</DropdownMenuItem>
                           <DropdownMenuItem @select="handleViewWorldLogs(room, world)">{{ $t('rooms.list.worldActions.logs') }}</DropdownMenuItem>
                           <DropdownMenuItem @select="manageWorldPlacement(room, world)"><Network />{{ $t('rooms.list.worldActions.placement') }}</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="isWorldBusy(room, world) || !['running', 'stopped', 'failed'].includes(world.status)" @select="world.status === 'running' ? restartWorld(room, world, true) : toggleWorldStatus(room, world, true)">{{ $t(world.status === 'running' ? 'runtimeMode.chooseRestart' : 'runtimeMode.chooseStart') }}</DropdownMenuItem>
                           <DropdownMenuItem @select="editWorld(room, world)">{{ $t('rooms.list.worldActions.edit') }}</DropdownMenuItem>
                           <DropdownMenuItem :disabled="world.status !== 'running' || isWorldBusy(room, world)" @select="restartWorld(room, world)">{{ $t('rooms.list.worldActions.restart') }}</DropdownMenuItem>
                           <DropdownMenuItem v-if="world.status === 'failed'" :disabled="isWorldBusy(room, world)" @select="cleanupWorld(room, world)">{{ $t('rooms.list.worldActions.cleanup') }}</DropdownMenuItem>
@@ -144,6 +146,7 @@
         </CardContent>
         <CardFooter class="save-actions">
           <div class="batch-actions">
+            <Badge variant="outline">{{ $t(`runtimeMode.names.${runtimeModeSummary(room.worlds)}`) }}</Badge>
             <UiButton
               size="sm"
               :disabled="!canStartRoom(room) || isRoomBusy(room)"
@@ -179,6 +182,7 @@
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuGroup>
+                  <DropdownMenuItem :disabled="!canStartRoom(room) || isRoomBusy(room)" @select="startRoom(room, true)">{{ $t('runtimeMode.chooseStart') }}</DropdownMenuItem>
                   <DropdownMenuItem :disabled="!room.controlAvailable" @select="handleSpecialLists(room)">{{ $t('rooms.list.specialLists') }}</DropdownMenuItem>
                   <DropdownMenuItem :disabled="!room.controlAvailable" @select="handleServerToken(room)">{{ $t('rooms.list.serverToken') }}</DropdownMenuItem>
                   <DropdownMenuItem @select="handleViewLogs(room)">{{ $t('rooms.list.viewLogs') }}</DropdownMenuItem>
@@ -217,6 +221,8 @@
 </template>
 
 <script>
+import RuntimeModeBadge from '@/components/RuntimeModeBadge.vue';
+import { runtimeModeSummary } from '@/lib/runtimeModeInheritance.mjs';
 import {
   ArchiveRestore,
   CircleAlert,
@@ -281,6 +287,7 @@ import RecoveryDialog from '@/components/recovery/RecoveryDialog.vue';
 export default {
   name: 'RoomList',
   components: {
+    RuntimeModeBadge,
     Alert,
     AlertDescription,
     AlertTitle,
@@ -391,6 +398,7 @@ export default {
     window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
   },
   methods: {
+    runtimeModeSummary,
     formatDate(timestamp) {
       return formatSystemDateTime(timestamp, {
         locale: this.$i18n.locale,
@@ -536,7 +544,7 @@ export default {
         query: { id: room.roomId || room.id, deployment: 'edit', worldId: world.id }
       });
     },
-    async startRoom(room) {
+    async startRoom(room, chooseRuntimeMode = false) {
       const selected = room.worlds.filter(world => world.controlAvailable !== false && ['stopped', 'failed'].includes(world.status));
       const scope = worldLifecycleSelection(room.allWorlds, selected, 'start');
       if (!scope.allowed) {
@@ -548,6 +556,7 @@ export default {
       try {
         this.notifyAddedDependencies(scope);
         await startRoomWithCapacityRisk({
+          choose_runtime_mode: chooseRuntimeMode,
           room_id: room.roomId,
           world_ids: scope.worlds.map(world => world.id),
           exact_world_ids: true
@@ -596,7 +605,7 @@ export default {
         return null;
       }
     },
-    async toggleWorldStatus(room, world) {
+    async toggleWorldStatus(room, world, chooseRuntimeMode = false) {
       const primary = this.getWorldPrimaryAction(world);
       if (!primary.kind || primary.disabled || this.isWorldBusy(room, world)) return;
       const sourceWorld = room.allWorlds.find(item => item.id === world.id) || world;
@@ -613,6 +622,7 @@ export default {
         if (primary.kind === 'start') {
           this.notifyAddedDependencies(scope);
           await startRoomWithCapacityRisk({
+            choose_runtime_mode: chooseRuntimeMode,
             room_id: room.roomId,
             world_ids: scope.worlds.map(item => item.id),
             exact_world_ids: true
@@ -638,7 +648,7 @@ export default {
         this.clearWorldBusy(room, scope.worlds);
       }
     },
-    async restartWorld(room, world) {
+    async restartWorld(room, world, chooseRuntimeMode = false) {
       const sourceWorld = room.allWorlds.find(item => item.id === world.id) || world;
       const scope = worldLifecycleScope(room.allWorlds, sourceWorld, 'restart');
       if (!scope.allowed) {
@@ -652,6 +662,7 @@ export default {
       this.setWorldBusy(room, scope.worlds, 'restart');
       try {
         await restartWorldWithCapacityRisk({
+          choose_runtime_mode: chooseRuntimeMode,
           ...maintenance,
           room_id: room.roomId,
           world_ids: scope.worlds.map(item => item.id),

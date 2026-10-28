@@ -575,11 +575,7 @@ function showNextRequest() {
   if (activeRequest.value.kind === 'runtime-mode') {
     runtimeVersionValue.value = preferredRuntimePackageVersion(runtimeModeAvailability.value)
     const preferred = activeRequest.value.options?.availability?.defaultMode || 'game'
-    const mode = isRuntimeModeSupported(preferred)
-      ? preferred
-      : LUAJIT_RUNTIME_MODES.includes(preferred)
-        ? firstSupportedLuaJITMode(supportedLuaJITModes.value, preferred) || 'game'
-        : 'game'
+    const mode = ['game', ...LUAJIT_RUNTIME_MODES].includes(preferred) ? preferred : 'game'
     applyRuntimeSelection(mode)
     runtimeAdvancedOpen.value = false
   }

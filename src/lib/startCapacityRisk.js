@@ -1,5 +1,6 @@
 import { roomApi } from '@/api/index'
 import { confirmCapacityRisk, selectRuntimeMode } from '@/lib/feedback'
+import { resolveRuntimeSelection } from '@/lib/runtimeModeInheritance.mjs'
 import {
   isCapacityRiskError,
 } from '@/lib/capacityRisk.mjs'
@@ -29,25 +30,11 @@ export async function executeWithCapacityConfirmation(execute) {
 }
 
 async function chooseRuntimeSelection(input) {
-  const requested = input?.runtime_mode || input?.runtimeMode
-  if (requested) {
-    return {
-      mode: requested,
-      version: input?.runtime_version || input?.runtimeVersion || (requested === 'game' ? 'game' : ''),
-    }
-  }
-
-  const response = await roomApi.getRuntimeModes(input)
-  const availability = response?.data || response || {}
-
   try {
-    const result = await selectRuntimeMode(availability)
-    return {
-      mode: result?.value || 'game',
-      version: result?.version || (result?.value === 'game' ? 'game' : ''),
-    }
-  } catch {
-    throw new StartFlowCanceledError()
+    return await resolveRuntimeSelection(input, value => roomApi.getRuntimeModes(value), availability => selectRuntimeMode(availability))
+  } catch (error) {
+    if (error === 'cancel') throw new StartFlowCanceledError()
+    throw error
   }
 }
 
@@ -56,14 +43,15 @@ export async function startRoomWithCapacityRisk(input) {
   return executeWithCapacityConfirmation(allowCapacityRisk => roomApi.startRoom({
     ...input,
     allow_capacity_risk: allowCapacityRisk,
-    runtime_mode: runtimeSelection.mode,
-    runtime_version: runtimeSelection.version,
+    ...runtimeSelection,
   }))
 }
 
-export function restartWorldWithCapacityRisk(input) {
+export async function restartWorldWithCapacityRisk(input) {
+  const runtimeSelection = await chooseRuntimeSelection(input)
   return executeWithCapacityConfirmation(allowCapacityRisk => roomApi.restartRoom({
     ...input,
+    ...runtimeSelection,
     allow_capacity_risk: allowCapacityRisk,
   }))
 }

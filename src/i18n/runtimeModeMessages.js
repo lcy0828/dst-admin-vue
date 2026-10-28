@@ -2,14 +2,16 @@ export const runtimeModeMessages = {
   'zh-CN': {
     runtimeMode: {
       title: '选择启动方式',
+      actual: '实际运行方式', saved: '沿用的启动方式', inherit: '沿用设置', change: '更改启动方式', chooseStart: '选择方式并启动', chooseRestart: '更改方式并重启', scheduleDescription: '默认保留各世界的运行方式；指定后在任务执行时使用所选方式。', scheduleUnavailable: '所选方式在当前运行位置不可用，请检查游戏服务端管理中的 LuaJIT 安装。',
+      names: { game: '原版', luajit: 'LuaJIT', 'arena-gc': 'Arena GC', mixed: '按各世界设置', unknown: '方式待确认', inherit: '沿用设置' },
       description: '本次启动的全部世界使用同一种方式，不会修改房间或模组配置。',
       incompatible: '不兼容',
       incompatibleTarget: '{target}：{reason}',
       unknownTarget: '未知机器',
       experimentalTitle: 'LuaJIT 是第三方实验功能',
       experimentalDescription: '原版兼容性最好。LuaJIT 可能提升性能，也可能与部分模组不兼容；所有运行机器通过检测后才能选择。',
-      cancel: '取消启动',
-      confirm: '开始启动',
+      cancel: '取消',
+      confirm: '使用所选方式继续',
       reasons: {
         agent_runtime_mode_unsupported: 'Agent 版本过旧，不支持启动时选择运行时',
         inspection_unavailable: '尚未取得 LuaJIT 检测结果',
@@ -83,14 +85,16 @@ export const runtimeModeMessages = {
   'en-US': {
     runtimeMode: {
       title: 'Choose startup runtime',
+      actual: 'Actual runtime', saved: 'Remembered startup runtime', inherit: 'Keep world settings', change: 'Change startup runtime', chooseStart: 'Choose runtime and start', chooseRestart: 'Change runtime and restart', scheduleDescription: 'Keep each world’s runtime by default, or use the selected runtime when the task runs.', scheduleUnavailable: 'This runtime is unavailable on the current targets. Check the LuaJIT installation in Game Server Management.',
+      names: { game: 'Game Lua', luajit: 'LuaJIT', 'arena-gc': 'Arena GC', mixed: 'Per-world settings', unknown: 'Runtime unconfirmed', inherit: 'Keep world settings' },
       description: 'All selected worlds will use the same runtime for this start. Room and mod configuration will not be changed.',
       incompatible: 'Incompatible',
       incompatibleTarget: '{target}: {reason}',
       unknownTarget: 'Unknown machine',
       experimentalTitle: 'LuaJIT is an experimental third-party feature',
       experimentalDescription: 'Game Lua offers the best compatibility. LuaJIT may improve performance but can conflict with some mods, and is available only after every target machine passes inspection.',
-      cancel: 'Cancel start',
-      confirm: 'Start',
+      cancel: 'Cancel',
+      confirm: 'Continue with this runtime',
       reasons: {
         agent_runtime_mode_unsupported: 'The Agent is too old to select a runtime at startup',
         inspection_unavailable: 'LuaJIT inspection results are not available yet',

@@ -23,11 +23,10 @@ test('room startup selects a verified Lua runtime once and forwards it to API v2
     source('src/api/v2LegacyAdapters.js'),
   ])
 
-  assert.match(helper, /roomApi\.getRuntimeModes\(input\)/)
+  assert.match(helper, /resolveRuntimeSelection\(input/)
   assert.match(helper, /selectRuntimeMode\(availability\)/)
   assert.doesNotMatch(helper, /modes\.some/)
-  assert.match(helper, /runtime_mode: runtimeSelection\.mode/)
-  assert.match(helper, /runtime_version: runtimeSelection\.version/)
+  assert.match(helper, /\.\.\.runtimeSelection/)
   assert.match(feedback, /requestFeedback\('runtime-mode'/)
   assert.match(host, /<ToggleGroup[\s\S]*?runtimeEngineValue/)
   assert.match(host, /const runtimeEngineValue = ref\('game'\)/)
@@ -40,7 +39,8 @@ test('room startup selects a verified Lua runtime once and forwards it to API v2
   assert.match(api, /runtime-modes/)
   assert.match(api, /runtimeMode: options\.runtimeMode/)
   assert.match(api, /runtimeVersion: options\.runtimeVersion/)
-  assert.match(adapter, /runtimeVersion: params\?\.runtime_version \|\| params\?\.runtimeVersion/)
+  assert.match(adapter, /runtimeRequestOptions\(params\)/)
+  assert.match(adapter, /runtimeRequestOptions\(input\)/)
 })
 
 test('runtime package versions remain explicit and require matching verified targets', () => {

@@ -26,7 +26,16 @@
                 <Field v-if="taskForm.type === 'tmux_raw_command'" :data-invalid="Boolean(formErrors.target)"><FieldLabel for="raw-command">{{ text('form.fields.rawCommand') }}</FieldLabel><UiTextarea id="raw-command" v-model="rawCommand" rows="6" :aria-invalid="Boolean(formErrors.target)" placeholder="c_save()" /><FieldDescription>{{ text('form.fields.rawDescription') }}</FieldDescription><FieldError v-if="formErrors.target">{{ formErrorText(formErrors.target) }}</FieldError></Field>
               </FieldGroup></FieldSet>
 
-              <Field v-if="taskForm.type === 'function' && currentFunction?.param_types?.length"><FieldTitle>{{ text('form.fields.functionParameters') }}</FieldTitle><div class="flex flex-col gap-2"><InputGroup v-for="(parameter, index) in currentFunction.param_types" :key="parameter"><InputGroupAddon>{{ parameter }}</InputGroupAddon><InputGroupInput v-model="taskForm.args[index]" :type="parameter === 'keep' ? 'number' : 'text'" :min="parameter === 'keep' ? 1 : undefined" :max="parameter === 'keep' ? 100 : undefined" :aria-label="parameter" :placeholder="text('form.fields.parameterValue')" /></InputGroup></div></Field>
+              <Field v-if="taskForm.type === 'function' && ['room.start', 'room.restart'].includes(taskForm.target)">
+                <FieldLabel for="task-runtime-mode">{{ $t('runtimeMode.title') }}</FieldLabel>
+                <UiSelect :model-value="taskForm.args[0] || 'inherit'" @update:model-value="taskForm.args[0] = $event === 'inherit' ? '' : $event">
+                  <SelectTrigger id="task-runtime-mode"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectGroup><SelectItem v-for="mode in ['inherit', 'game', 'luajit', 'arena-gc']" :key="mode" :value="mode" :disabled="mode !== 'inherit' && runtimeModeAvailability && !runtimeModeAvailability.modes?.includes(mode)">{{ $t(`runtimeMode.names.${mode}`) }}</SelectItem></SelectGroup></SelectContent>
+                </UiSelect>
+                <FieldDescription>{{ $t('runtimeMode.scheduleDescription') }}</FieldDescription>
+                <FieldDescription v-if="runtimeModeAvailability && taskForm.args[0] && !runtimeModeAvailability.modes?.includes(taskForm.args[0])">{{ $t('runtimeMode.scheduleUnavailable') }}</FieldDescription>
+              </Field>
+              <Field v-if="taskForm.type === 'function' && !['room.start', 'room.restart'].includes(taskForm.target) && currentFunction?.param_types?.length"><FieldTitle>{{ text('form.fields.functionParameters') }}</FieldTitle><div class="flex flex-col gap-2"><InputGroup v-for="(parameter, index) in currentFunction.param_types" :key="parameter"><InputGroupAddon>{{ parameter }}</InputGroupAddon><InputGroupInput v-model="taskForm.args[index]" :type="parameter === 'keep' ? 'number' : 'text'" :min="parameter === 'keep' ? 1 : undefined" :max="parameter === 'keep' ? 100 : undefined" :aria-label="parameter" :placeholder="text('form.fields.parameterValue')" /></InputGroup></div></Field>
             </FieldGroup></TabsContent>
 
             <TabsContent value="advanced"><FieldGroup class="mt-4">
@@ -48,7 +57,7 @@
 <script>
 import { ArrowLeft } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
+import { cronTaskApi, roomApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -90,6 +99,9 @@ export default {
       taskId: null,
       submitting: false,
       functionList: [],
+      automationRoomID: '',
+      runtimeModeAvailability: null,
+      runtimeModeLoading: false,
       groupList: [],
       availableTasks: [],
       activeTab: 'basic',
@@ -167,7 +179,9 @@ export default {
       const description = cronTaskActionDescription(func.name, this.activeLocale, func.description);
       return description ? `${name} - ${description}` : name;
     },
-    handleAutomationRoom() {
+    handleAutomationRoom(roomID) {
+      this.automationRoomID = roomID;
+      this.runtimeModeAvailability = null;
       this.functionList = [];
       this.groupList = [];
       this.availableTasks = [];
@@ -180,7 +194,9 @@ export default {
         this.getTmuxSessions(),
         this.getTmuxCommands()
       ]).then(() => {
+        if (this.automationRoomID !== roomID) return;
         if (this.isEdit && this.taskId) this.getTaskDetail(this.taskId);
+        else this.loadTaskRuntimeModes();
       });
     },
     getFunctions() {
@@ -476,6 +492,7 @@ export default {
               dependencies: dependencies.map(dep => (typeof dep === 'object' ? dep.id : dep)),
               status: taskData.status
             };
+            this.loadTaskRuntimeModes();
           } else {
             const detail = response.data?.msg || response.data?.message;
             toast.error(detail
@@ -488,10 +505,25 @@ export default {
           toast.error(this.failureText('form.feedback.detailFailed', error));
         });
     },
+    async loadTaskRuntimeModes() {
+      if (!this.automationRoomID || !['room.start', 'room.restart'].includes(this.taskForm.target) || this.runtimeModeAvailability || this.runtimeModeLoading === this.automationRoomID) return;
+      const roomID = this.automationRoomID;
+      this.runtimeModeLoading = roomID;
+      try {
+        const response = await roomApi.getRuntimeModes({ room_id: roomID });
+        if (this.automationRoomID === roomID) this.runtimeModeAvailability = response?.data || response;
+      } catch {
+        // Unknown capability never becomes a false claim that LuaJIT is supported.
+        if (this.automationRoomID === roomID) this.runtimeModeAvailability = null;
+      } finally {
+        if (this.runtimeModeLoading === roomID) this.runtimeModeLoading = false;
+      }
+    },
     handleFunctionChange(value) {
       this.taskForm.target = value;
       const definition = this.functionList.find(item => item.name === value);
-      this.taskForm.args = (definition?.param_types || []).map((_, index) => this.taskForm.args[index] || '');
+      this.taskForm.args = (definition?.param_types || []).map(() => '');
+      this.loadTaskRuntimeModes();
     },
     // TMUX相关方法
     getTmuxSessions() {
