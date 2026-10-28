@@ -3,11 +3,47 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { parse } from '@babel/parser'
 import { parse as parseSFC } from '@vue/compiler-sfc'
+import { computed, reactive, ref } from 'vue'
 import { workshopMessages } from '../src/i18n/workshopMessages.js'
 import { resolveModSearchSort } from '../src/lib/modSearchDefaults.mjs'
 import { createModFailure, formatModFailure, modMessages } from '../src/i18n/modMessages.js'
 
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
+async function networkForm() {
+  const source = await readFile(new URL('../src/components/settings/WorkshopNetworkPanel.vue', import.meta.url), 'utf8')
+  const script = parseSFC(source).descriptor.scriptSetup.content
+  const body = parse(script, { sourceType: 'module' }).program.body.filter(node => node.type !== 'ImportDeclaration').map(node => script.slice(node.start, node.end)).join('\n')
+  const scope = { computed, reactive, ref, watch() {}, onMounted() {}, onBeforeUnmount() {}, useI18n: () => ({ t: key => key }) }
+  return new Function(...Object.keys(scope), `${body}\nreturn { accept, input, form, proxyEdited, clearKey }`)(...Object.values(scope))
+}
+
+test('a readable proxy endpoint is preserved without overwriting stored credentials on unrelated saves', async () => {
+  const vm = await networkForm()
+  vm.accept({ revision: 'r1', fields: [
+    { id: 'mod.proxyMode', value: 'custom', editable: true },
+    { id: 'mod.proxyURL', value: '', displayValue: 'http://proxy.example:7890', sensitive: true, configured: true, editable: true },
+    { id: 'mod.steamAPIKey', value: '', sensitive: true, configured: true, editable: true },
+  ] })
+  assert.equal(vm.form['mod.proxyURL'], 'http://proxy.example:7890')
+  vm.form['mod.steamAPIBase'] = 'https://api.example.com'
+  assert.equal(Object.hasOwn(vm.input().values, 'mod.proxyURL'), false)
+  vm.clearKey.value = true
+  assert.deepEqual(vm.input().clearSecrets, ['mod.steamAPIKey'])
+  assert.equal(Object.hasOwn(vm.input().values, 'mod.proxyURL'), false)
+
+  vm.form['mod.proxyURL'] = 'http://new-proxy.example:1080'
+  vm.proxyEdited.value = true // Input emits update:modelValue only for an edit.
+  assert.equal(vm.input().values['mod.proxyURL'], 'http://new-proxy.example:1080')
+  vm.accept({ revision: 'r2', fields: [{ id: 'mod.proxyURL', value: '', displayValue: 'http://new-proxy.example:1080', sensitive: true, configured: true }] })
+  assert.equal(Object.hasOwn(vm.input().values, 'mod.proxyURL'), false)
+})
+
+test('a legacy settings response cannot silently clear a configured proxy', async () => {
+  const vm = await networkForm()
+  vm.accept({ revision: 'old', fields: [{ id: 'mod.proxyURL', value: '', sensitive: true, configured: true }] })
+  assert.equal(Object.hasOwn(vm.input().values, 'mod.proxyURL'), false)
+})
+
 async function searchInstance(search) {
   const source = await readFile(new URL('../src/views/mods/ModSearch.vue', import.meta.url), 'utf8')
   const script = parseSFC(source).descriptor.script.content

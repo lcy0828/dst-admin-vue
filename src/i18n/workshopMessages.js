@@ -2,7 +2,7 @@ export const workshopMessages = {
   'zh-CN': { workshop: {
     title: '创意工坊', description: '配置当前管理服务访问工坊资料的方式，保存后立即生效。',
     mode: '访问方式', modes: { system: '跟随系统代理', direct: '直连', custom: '指定代理' },
-    proxy: '代理地址', proxyHint: '支持 HTTP、HTTPS 和 socks5h；容器内的 localhost 指向容器自身。',
+    proxy: '代理地址', proxyHint: '填写完整地址（含 http://、https:// 或 socks5h://）。已保存的认证信息不回显；地址未修改时继续保留。',
     key: 'Steam Web API Key（可选）', keyHint: '有 Key 时优先使用官方 API 搜索；无 Key 时使用公开工坊。',
     configured: '已配置，留空保留', notConfigured: '未配置', clear: '清除', keep: '保留现有值',
     advanced: '高级设置', apiBase: 'Steam API 地址', communityBase: 'Steam 社区地址',
@@ -23,7 +23,7 @@ export const workshopMessages = {
   'en-US': { workshop: {
     title: 'Workshop', description: 'Configure Workshop access for this management service. Changes apply immediately.',
     mode: 'Connection', modes: { system: 'System proxy', direct: 'Direct', custom: 'Custom proxy' },
-    proxy: 'Proxy URL', proxyHint: 'Supports HTTP, HTTPS and socks5h. In Docker, localhost refers to the container.',
+    proxy: 'Proxy URL', proxyHint: 'Include http://, https:// or socks5h://. Saved credentials stay hidden and are retained while the address is unchanged.',
     key: 'Steam Web API Key (optional)', keyHint: 'Search uses the official API with a key, or the public Workshop without one.',
     configured: 'Configured; leave blank to keep', notConfigured: 'Not configured', clear: 'Clear', keep: 'Keep existing value',
     advanced: 'Advanced settings', apiBase: 'Steam API base URL', communityBase: 'Steam Community base URL',

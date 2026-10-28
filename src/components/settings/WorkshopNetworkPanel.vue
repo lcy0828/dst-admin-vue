@@ -16,7 +16,7 @@
           </Field>
           <Field v-if="form['mod.proxyMode'] === 'custom'">
             <FieldLabel for="workshop-proxy">{{ t('workshop.proxy') }}</FieldLabel>
-            <Input id="workshop-proxy" v-model="form['mod.proxyURL']" type="password" autocomplete="new-password" :disabled="locked('mod.proxyURL') || busy" :placeholder="secretPlaceholder('mod.proxyURL')" />
+            <Input id="workshop-proxy" v-model="form['mod.proxyURL']" type="url" autocomplete="off" spellcheck="false" :disabled="locked('mod.proxyURL') || busy" :placeholder="fields['mod.proxyURL']?.configured && !fields['mod.proxyURL']?.displayValue ? secretPlaceholder('mod.proxyURL') : 'http://proxy.example:7890'" @update:model-value="proxyEdited = true" />
             <FieldDescription>{{ locked('mod.proxyURL') ? environment('mod.proxyURL') : t('workshop.proxyHint') }}</FieldDescription>
           </Field>
           <Field>
@@ -85,6 +85,7 @@ import { Spinner } from '@/components/ui/spinner'
 const { t, te } = useI18n()
 const fields = ref({}), revision = ref(''), loading = ref(true), testing = ref(false), saving = ref(false), error = ref(''), clearKey = ref(false), testResult = ref(null), sampleId = ref('')
 const form = reactive({ 'mod.proxyMode': 'system', 'mod.proxyURL': '', 'mod.steamAPIKey': '', 'mod.steamAPIBase': '', 'mod.steamCommunityBase': '' })
+const proxyEdited = ref(false)
 const busy = computed(() => loading.value || testing.value || saving.value)
 let controller
 const locked = id => fields.value[id]?.editable === false
@@ -95,10 +96,12 @@ function accept(data) {
   revision.value = data.revision
   fields.value = Object.fromEntries((data.fields || []).map(field => [field.id, field]))
   for (const id of Object.keys(form)) form[id] = fields.value[id]?.value || ''
+  form['mod.proxyURL'] = fields.value['mod.proxyURL']?.displayValue || ''
+  proxyEdited.value = false
   clearKey.value = false
 }
 function input() {
-  return { revision: revision.value, values: Object.fromEntries(Object.entries(form).filter(([id, value]) => !locked(id) && (id !== 'mod.steamAPIKey' || !clearKey.value) && (!fields.value[id]?.sensitive || value.trim()))), clearSecrets: clearKey.value ? ['mod.steamAPIKey'] : [] }
+  return { revision: revision.value, values: Object.fromEntries(Object.entries(form).filter(([id, value]) => !locked(id) && (id !== 'mod.proxyURL' || proxyEdited.value) && (id !== 'mod.steamAPIKey' || !clearKey.value) && (!fields.value[id]?.sensitive || value.trim()))), clearSecrets: clearKey.value ? ['mod.steamAPIKey'] : [] }
 }
 async function load() {
   try { accept(await workshopV2API.get()) } catch (e) { error.value = e.message || t('workshop.loadFailed') } finally { loading.value = false }
