@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { activityPaths, activityPlot, activityQuery } from '../src/lib/playerActivity.mjs'
-const event = (id, worldId = 'Master', producerInstanceId = 'boot-1', extra = {}) => ({ id, userId: 'KU_TEST', worldId, producerInstanceId, kind: 'position', position: { x: id, z: id * 2 }, ...extra })
+const event = (id, worldId = 'Master', producerInstanceId = 'boot-1', extra = {}) => ({ id, userId: 'KU_TEST', worldId, producerInstanceId, sessionId: 'session-1', continuousRangeId: 'range-1', kind: 'position', position: { x: id, z: id * 2 }, ...extra })
 test('trajectory splits on collection boundaries, world, instance and player', () => {
   const chronological = [event(1), event(2), event(3, 'Caves'), event(4, 'Caves', 'boot-2'), event(5, 'Caves', 'boot-2', { kind: 'collection.gap', position: null }), event(6, 'Caves', 'boot-2'), event(7, 'Caves', 'boot-2', { userId: 'KU_OTHER' })]
   const paths = activityPaths(chronological.reverse())
@@ -23,4 +23,11 @@ test('pagination preserves the exact time window and query filters', () => {
 test('a discovered gap never connects historic points through an unknown loss window', () => {
   const events = [event(5, 'Master', 'boot-1', { kind: 'collection.gap', position: null }), event(4), event(3), event(2), event(1)]
   assert.equal(activityPaths(events).every(path => path.points.length === 1), true)
+})
+
+test('persistent ranges split without a visible gap event, and legacy points never connect', () => {
+  const records = [event(4, 'Master', 'boot-1', { continuousRangeId: 'after' }), event(3, 'Master', 'boot-1', { continuousRangeId: 'after' }), event(2), event(1)]
+  assert.deepEqual(activityPaths(records).map(p => p.points.length), [2, 2])
+  assert.deepEqual(activityPaths([event(2, 'Master', 'boot-1', { continuousRangeId: '' }), event(1, 'Master', 'boot-1', { continuousRangeId: '' })]).map(p => p.points.length), [1, 1])
+  assert.deepEqual(activityPaths([event(2, 'Master', 'boot-1', { sessionId: 'session-2' }), event(1)]).map(p => p.points.length), [1, 1])
 })

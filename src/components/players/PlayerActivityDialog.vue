@@ -23,6 +23,7 @@ const emit = defineEmits(['update:open'])
 const { t } = useI18n()
 const id = useId()
 const room = ref(''), user = ref(''), world = ref(''), kind = ref(''), hours = ref('24'), tab = ref('timeline')
+const resyncing = ref(false)
 const status = ref(null), data = ref(null), loading = ref(false), saving = ref(false), error = ref('')
 const form = reactive({})
 const roomId = computed(() => props.player?.room_id || props.player?.roomId || room.value)
@@ -32,8 +33,9 @@ const items = computed(() => data.value?.items || [])
 const time = value => value ? formatSystemDateTime(value) : '—'
 const limits = { positionIntervalSeconds: [5, 300], minimumDistance: [0, 100], combatIntervalSeconds: [5, 120], flushIntervalSeconds: [2, 30], syncIntervalSeconds: [5, 60], retentionDays: [1, 90], maximumMiB: [16, 2048] }
 const validSettings = computed(() => Boolean(form.revision) && Object.entries(limits).every(([key, [min, max]]) => Number.isInteger(Number(form[key])) && Number(form[key]) >= min && Number(form[key]) <= max))
-let sequence = 0, controller, queryNow = Date.now()
-function reset() { ++sequence; controller?.abort(); loading.value = false; status.value = null; data.value = null; error.value = ''; world.value = ''; kind.value = ''; queryNow = Date.now() }
+let sequence = 0, controller, queryNow = Date.now(), syncTimer, syncEpoch = 0
+function stopSyncWatch() { ++syncEpoch; clearTimeout(syncTimer); resyncing.value = false }
+function reset() { stopSyncWatch(); ++sequence; controller?.abort(); loading.value = false; status.value = null; data.value = null; error.value = ''; world.value = ''; kind.value = ''; queryNow = Date.now() }
 async function load(before = '', refresh = true) {
   if (!props.open || !roomId.value) return
   const request = ++sequence
@@ -52,6 +54,7 @@ async function load(before = '', refresh = true) {
     if (tab.value === 'settings' || tab.value === 'trajectory' && !playerId.value) return
     const query = activityQuery({ userId: playerId.value, worldId: world.value, kind: tab.value === 'timeline' ? kind.value : '', hours: hours.value, before, now: queryNow })
     if (tab.value === 'combat') { delete query.limit; delete query.before }
+    if (tab.value === 'trajectory') query.projection = 'compact'
     const value = await api[tab.value === 'timeline' ? 'events' : tab.value](selectedRoom, query, { signal: controller.signal })
     if (request === sequence) data.value = value
   } catch (e) {
@@ -70,6 +73,33 @@ async function save() {
   } catch { if (props.open && roomId.value === selectedRoom) error.value = t('activity.saveError') }
   finally { saving.value = false }
 }
+async function resync() {
+  if (resyncing.value || !roomId.value) return
+  stopSyncWatch()
+  const epoch = syncEpoch, selectedRoom = roomId.value
+  const previous = new Map(worlds.value.map(w => [w.worldId, w.lastAttemptAt]))
+  resyncing.value = true
+  try {
+    await api.resync(selectedRoom)
+    if (epoch !== syncEpoch || !props.open) return
+    toast.success(t('activity.resyncAccepted'))
+    let remaining = 8
+    const poll = async () => {
+      if (epoch !== syncEpoch || !props.open || roomId.value !== selectedRoom) return
+      try {
+        const value = await api.status(selectedRoom)
+        if (epoch !== syncEpoch || !props.open || roomId.value !== selectedRoom) return
+        status.value = value
+        const observed = value.worlds?.length && value.worlds.every(w => w.lastAttemptAt && w.lastAttemptAt !== previous.get(w.worldId))
+        if (observed || --remaining <= 0) { resyncing.value = false; return }
+      } catch { if (--remaining <= 0) { resyncing.value = false; return } }
+      if (epoch === syncEpoch) syncTimer = setTimeout(poll, 3000)
+    }
+    syncTimer = setTimeout(poll, 1000)
+  } catch {
+    if (epoch === syncEpoch) { resyncing.value = false; error.value = t('activity.resyncError') }
+  }
+}
 function exportPage() {
   const url = URL.createObjectURL(new Blob([JSON.stringify({ roomId: roomId.value, exportedAt: new Date().toISOString(), scope: 'current-page', view: tab.value, ...data.value }, null, 2)], { type: 'application/json' }))
   const link = document.createElement('a'); link.href = url; link.download = `player-activity-${tab.value}.json`; link.click(); URL.revokeObjectURL(url)
@@ -80,7 +110,7 @@ watch(tab, () => load('', false))
 // Finish invalidating filters synchronously, before a room reset starts its
 // replacement request. A queued filter watcher could otherwise abort that read.
 watch([user, world, kind, hours], () => { ++sequence; controller?.abort(); loading.value = false; data.value = null }, { flush: 'sync' })
-onBeforeUnmount(() => { ++sequence; controller?.abort() })
+onBeforeUnmount(() => { stopSyncWatch(); ++sequence; controller?.abort() })
 </script>
 
 <template>
@@ -96,16 +126,23 @@ onBeforeUnmount(() => { ++sequence; controller?.abort() })
             <Field v-if="tab !== 'settings'"><FieldLabel :for="`${id}-time`">{{ t('activity.period') }}</FieldLabel><NativeSelect :id="`${id}-time`" v-model="hours"><NativeSelectOption v-for="h in ['1', '24', '168']" :key="h" :value="h">{{ t(`activity.h${h}`) }}</NativeSelectOption></NativeSelect></Field>
             <Field v-if="tab === 'timeline'"><FieldLabel :for="`${id}-kind`">{{ t('activity.category') }}</FieldLabel><NativeSelect :id="`${id}-kind`" v-model="kind"><NativeSelectOption value="">{{ t('activity.all') }}</NativeSelectOption><NativeSelectOption v-for="[key, label] in [['position', 'position'], ['action.', 'action'], ['combat.', 'combatKind'], ['player.', 'lifecycle'], ['collection.', 'collection']]" :key="key" :value="key">{{ t(`activity.${label}`) }}</NativeSelectOption></NativeSelect></Field>
           </FieldGroup>
-          <div class="flex flex-wrap items-center gap-2"><Button type="submit" size="sm" variant="outline" :disabled="loading || !roomId || saving"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t('activity.refresh') }}</Button><Button v-if="data" size="sm" variant="ghost" type="button" @click="exportPage"><Download data-icon="inline-start" />{{ t('activity.export') }}</Button><span v-if="status" class="text-xs text-muted-foreground">{{ t('activity.stored', { count: status.storedEvents, mib: (status.storedBytes / 1048576).toFixed(1) }) }}</span></div>
+          <div class="flex flex-wrap items-center gap-2"><Button type="submit" size="sm" variant="outline" :disabled="loading || !roomId || saving"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t('activity.refresh') }}</Button><Button size="sm" variant="outline" type="button" :disabled="resyncing || !roomId || saving" @click="resync"><Spinner v-if="resyncing" data-icon="inline-start" />{{ t('activity.resync') }}</Button><Button v-if="data" size="sm" variant="ghost" type="button" @click="exportPage"><Download data-icon="inline-start" />{{ t('activity.export') }}</Button><span v-if="status" class="text-xs text-muted-foreground">{{ t('activity.stored', { count: status.storedEvents, mib: (status.storedBytes / 1048576).toFixed(1) }) }}</span></div>
         </form>
         <Tabs v-model="tab"><TabsList class="flex h-auto flex-wrap justify-start"><TabsTrigger v-for="key in ['timeline', 'trajectory', 'combat', 'settings']" :key="key" :value="key">{{ t(`activity.${key}`) }}</TabsTrigger></TabsList></Tabs>
         <Alert v-if="error" variant="destructive"><TriangleAlert /><AlertTitle>{{ error }}</AlertTitle></Alert>
         <div v-if="status" class="grid gap-2 sm:grid-cols-2">
           <div v-for="w in worlds" :key="w.worldId" class="flex flex-col gap-1 rounded-md border p-3 text-xs">
-            <div class="flex flex-wrap items-center gap-2"><span class="font-medium">{{ w.worldName }}</span><Badge :variant="['unavailable', 'degraded'].includes(w.state) ? 'destructive' : 'secondary'">{{ t(`activity.status.${w.state}`) }}</Badge><Badge variant="outline">{{ t(w.pending ? 'activity.pending' : 'activity.applied') }}</Badge></div>
+            <div class="flex flex-wrap items-center gap-2"><span class="font-medium">{{ w.worldName }}</span><Badge :variant="['unavailable', 'degraded'].includes(w.state) ? 'destructive' : 'secondary'">{{ t(`activity.status.${w.state}`) }}</Badge><Badge variant="outline">{{ t(w.pending ? 'activity.pending' : 'activity.applied') }}</Badge><Badge v-if="w.syncState" variant="secondary">{{ t(`activity.sync.${w.syncState}`) }}</Badge></div>
             <span>{{ t('activity.sourceTime') }}: {{ time(w.sourceUpdatedAt) }} · {{ t('activity.collected') }}: {{ time(w.lastCollectedAt) }}</span>
             <span>{{ t('activity.lastEvent') }}: {{ time(w.lastEventAt) }} · {{ t('activity.gaps', { count: w.gapCount }) }} · {{ t('activity.dropped', { count: w.dropped }) }}</span>
-            <p v-if="w.error" class="break-words text-muted-foreground">{{ t('activity.nodeHint') }} <span class="font-mono">{{ w.error }}</span></p>
+            <span v-if="w.backlog">{{ t('activity.backlog', { count: w.backlog }) }}</span>
+            <span v-if="w.coverage && !w.coverage.complete">{{ t('activity.coverageSummary', { pending: w.coverage.pendingSegments + w.coverage.isolatedSegments, unavailable: w.coverage.unavailableRanges, recovered: w.coverage.recoveredSegments }) }}</span>
+            <span v-if="w.coverage?.legacyUnknown">{{ t('activity.legacyUnknown') }}</span>
+            <span v-if="w.nextRetryAt">{{ t('activity.retryAt') }}: {{ time(w.nextRetryAt) }}</span>
+            <p v-if="w.state === 'unavailable'" class="text-muted-foreground">{{ t('activity.nodeHint') }}</p>
+            <p v-if="w.configError" class="break-words text-muted-foreground">{{ t('activity.configRetry') }} · {{ w.configError }}</p>
+            <p v-if="w.writeUnconfirmed" class="text-muted-foreground">{{ t('activity.writeUnconfirmed') }}</p>
+            <details v-if="w.error || w.diagnostics?.length" class="text-muted-foreground"><summary class="cursor-pointer">{{ t('activity.diagnostics') }}</summary><p v-if="w.error" class="break-words font-mono">{{ w.error }}</p><p v-for="d in w.diagnostics" :key="`${d.generation}-${d.code}`" class="break-words font-mono">{{ d.generation }} · {{ d.code }} {{ d.field }}</p></details>
           </div>
         </div>
         <div v-if="loading" class="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Spinner />{{ t('activity.loading') }}</div>

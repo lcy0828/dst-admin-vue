@@ -114,3 +114,39 @@ test('changing a camelCase player identity reloads exactly once within the same 
     assert.equal(dialog.state.data.value.items[0].userId, 'KU_TWO')
   } finally { dialog.unmount() }
 })
+
+test('trajectory opts into compact points and preserves required player filters', async () => {
+  let received
+  api.status = async room => status(room)
+  api.events = async () => ({ items: [] })
+  api.trajectory = async (room, query) => { received = { room, query }; return { items: [], coverage: [] } }
+  const dialog = mount({ player: { roomId: 'A', userId: 'KU_ONE' } })
+  try {
+    await settle()
+    dialog.state.tab.value = 'trajectory'
+    await settle()
+    assert.equal(received.room, 'A')
+    assert.equal(received.query.userId, 'KU_ONE')
+    assert.equal(received.query.projection, 'compact')
+  } finally { dialog.unmount() }
+})
+
+test('re-sync acceptance for a previous room cannot start polling the new room', async () => {
+  const held = deferred(), resyncRooms = []
+  api.status = async room => status(room)
+  api.events = async room => ({ items: [{ roomId: room }] })
+  api.resync = async room => { resyncRooms.push(room); return held.promise }
+  const dialog = mount()
+  try {
+    await settle()
+    const request = dialog.state.resync()
+    assert.equal(dialog.state.resyncing.value, true)
+    dialog.state.room.value = 'B'
+    await settle()
+    held.resolve({ accepted: true, status: 'pending' })
+    await request
+    assert.deepEqual(resyncRooms, ['A'])
+    assert.equal(dialog.state.resyncing.value, false)
+    assert.equal(dialog.state.status.value.settings.revision, 'B')
+  } finally { dialog.unmount() }
+})

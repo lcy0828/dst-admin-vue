@@ -9,9 +9,11 @@ export function activityPaths(events = []) {
     if (event.kind?.startsWith('collection.')) { current = null; continue }
     const p = event.position
     if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue
-    const key = `${event.userId}/${event.worldId}/${event.producerInstanceId}`
-    if (!current || current.key !== key || gapWorlds.has(event.worldId)) { current = { key, worldId: event.worldId, points: [] }; paths.push(current) }
-    current.points.push({ x: p.x, z: p.z, at: event.occurredAt, kind: event.kind })
+    // The range is saved when importing, so a gap on another page still
+    // separates paths. Legacy rows have unknown continuity and remain points.
+    const key = JSON.stringify([event.userId, event.worldId, event.producerInstanceId, event.sessionId, event.continuousRangeId])
+    if (!current || current.key !== key || !event.continuousRangeId || gapWorlds.has(event.worldId)) { current = { key, worldId: event.worldId, points: [] }; paths.push(current) }
+    current.points.push({ x: p.x, z: p.z, at: event.occurredAt, kind: event.kind || (event.source === 'sample' ? 'position' : 'action') })
   }
   return paths
 }

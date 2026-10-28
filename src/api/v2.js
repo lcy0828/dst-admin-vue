@@ -1010,6 +1010,7 @@ export const modDiagnosticsV2API = {
 }
 
 export const playerActivityV2API = {
+  resync: roomId => client.post(`/rooms/${encode(roomId)}/player-activity/resync`, {}, { runtimeTarget: false }),
   settings: roomId => client.get(`/rooms/${encode(roomId)}/player-activity/settings`, { runtimeTarget: false }),
   save: (roomId, input) => client.put(`/rooms/${encode(roomId)}/player-activity/settings`, input, { runtimeTarget: false }),
   status: (roomId, options = {}) => client.get(`/rooms/${encode(roomId)}/player-activity/status`, { runtimeTarget: false, ...options }),
