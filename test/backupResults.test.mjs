@@ -3,6 +3,16 @@ import assert from 'node:assert/strict'
 import { backupArtifactState, backupFailureMessage, verifiedBackupParts } from '../src/lib/backupResults.mjs'
 const t = key => key
 
+test('receipt schema failures have one readable summary including historical failures', () => {
+  const original = 'cross-shard snapshot barrier failed\njson: unknown field "commitRequested"\njson: unknown field "commitRequested"'
+  for (const failureCode of [undefined, 'SNAPSHOT_ROUND_UNCONFIRMED', 'BACKUP_SNAPSHOT_BARRIER_FAILED', 'SNAPSHOT_RECEIPT_INVALID']) {
+    const value = { status: 'failed', failureCode, failure: original }
+    assert.equal(backupFailureMessage(value, null, t), 'distributed.backups.failureReasons.SNAPSHOT_RECEIPT_INVALID')
+    assert.equal(value.failure, original)
+  }
+  assert.equal(backupFailureMessage({ failureCode: 'SAVE_WRITE_FAILED', failure: original }, null, t), 'distributed.backups.failureReasons.SAVE_WRITE_FAILED')
+})
+
 test('a historical barrier failure is not described as a corrupt ZIP', () => {
   const value = { status: 'failed', artifactState: 'not_generated', failure: 'cross-shard snapshot barrier failed' }
   assert.equal(backupArtifactState(value), 'not_generated')

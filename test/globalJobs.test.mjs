@@ -16,6 +16,22 @@ import {
 } from '../src/lib/globalJobs.mjs'
 import { globalJobKindLabel, globalJobMessages } from '../src/i18n/globalJobMessages.js'
 
+test('automated backup failure feedback separates the cause from an unconfirmed release', () => {
+  const raw = 'cross-shard snapshot barrier failed\njson: unknown field "commitRequested"\njson: unknown field "commitRequested"'
+  const job = { kind: 'automation.run', error: { code: 'JOB_FAILED', message: 'Task failed' }, targets: [{
+    name: 'Scheduled backup', status: 'failed', error: {
+      code: 'SNAPSHOT_RECEIPT_INVALID', message: raw,
+      details: { backupSetId: 'backup', artifactState: 'not_generated', barrierReleaseState: 'unconfirmed' }
+    }
+  }] }
+  const t = key => key
+  assert.equal(globalJobFailure(job, t).message, 'distributed.backups.failureReasons.SNAPSHOT_RECEIPT_INVALID distributed.backups.releaseStates.unconfirmed')
+  assert.equal(globalJobFailure(job).message, raw)
+  job.targets[0].error.details.barrierReleaseState = 'released'
+  assert.equal(globalJobFailure(job, t).message, 'distributed.backups.failureReasons.SNAPSHOT_RECEIPT_INVALID')
+  assert.equal(globalJobFailure({ error: { code: 'TOPOLOGY_CHANGED', message: 'placement changed' } }, t).message, 'placement changed')
+})
+
 const jobStatusComposable = fs.readFileSync(new URL('../src/composables/useGlobalJobStatus.js', import.meta.url), 'utf8')
 const jobStatusComponent = fs.readFileSync(new URL('../src/components/layout/GlobalJobStatus.vue', import.meta.url), 'utf8')
 

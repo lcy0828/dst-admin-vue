@@ -102,7 +102,7 @@ function taskTargets(job) {
 }
 
 function failureMessage(job) {
-  return globalJobFailure(job).message || t('globalJobs.unknownFailure')
+  return globalJobFailure(job, t).message || t('globalJobs.unknownFailure')
 }
 
 function warningMessage(job) {

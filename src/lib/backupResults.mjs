@@ -1,5 +1,5 @@
 const failureCodes = new Set([
-  'SNAPSHOT_ROUND_UNCONFIRMED', 'SAVE_IN_PROGRESS', 'TARGET_SNAPSHOT_PASSED',
+  'SNAPSHOT_ROUND_UNCONFIRMED', 'SNAPSHOT_RECEIPT_INVALID', 'SAVE_IN_PROGRESS', 'TARGET_SNAPSHOT_PASSED',
   'SAVE_WRITE_FAILED', 'BARRIER_EXPIRED', 'BACKUP_TIMEOUT', 'RUNTIME_UPDATE_REQUIRED',
   'HOT_BACKUP_UNAVAILABLE', 'TOPOLOGY_CHANGED', 'ARCHIVE_INTEGRITY_FAILED', 'CONTROLLER_RESTARTED'
 ])
@@ -16,6 +16,8 @@ export function backupFailureMessage(value, operation, t) {
   let code = value?.failureCode
   const original = value?.failure || operation?.failure || value?.validationError || ''
   // Legacy failed rows retain the original evidence, with a readable summary.
+  if ((!code || code === 'SNAPSHOT_ROUND_UNCONFIRMED' || code === 'BACKUP_SNAPSHOT_BARRIER_FAILED')
+      && original.includes('json: unknown field "commitRequested"')) code = 'SNAPSHOT_RECEIPT_INVALID'
   if (!code && original.includes('cross-shard snapshot barrier failed')) code = 'SNAPSHOT_ROUND_UNCONFIRMED'
   if (failureCodes.has(code)) return t(`distributed.backups.failureReasons.${code}`)
   return original

@@ -175,6 +175,7 @@ export const distributedMessages = {
         attempts: '保存尝试次数', releaseLabel: '保存保护', failurePhase: '失败阶段', technicalDetails: '原始错误详情',
         releaseStates: { pending: '等待解除', released: '已确认解除', unconfirmed: '尚未确认保存保护已解除，请重新检测或重试恢复' },
         failureReasons: {
+          SNAPSHOT_RECEIPT_INVALID: '无法解析游戏返回的保存回执，本次备份未能完成。请更新管理服务后重试；远程节点也请检查 Agent 版本。',
           SNAPSHOT_ROUND_UNCONFIRMED: '未能确认所有世界完成了同一轮保存。', SAVE_IN_PROGRESS: '已有保存正在写入，重试后仍未能同步。',
           TARGET_SNAPSHOT_PASSED: '保存轮次已变化，重试后仍未能同步。', SAVE_WRITE_FAILED: '游戏保存未能正常完成。',
           BARRIER_EXPIRED: '保存保护已到期，备份已终止。', BACKUP_TIMEOUT: '备份等待超时。',
@@ -365,6 +366,7 @@ export const distributedMessages = {
         attempts: 'Save attempts', releaseLabel: 'Save protection', failurePhase: 'Failed during', technicalDetails: 'Original error details',
         releaseStates: { pending: 'Release pending', released: 'Release confirmed', unconfirmed: 'Save protection release is unconfirmed. Recheck or retry recovery.' },
         failureReasons: {
+          SNAPSHOT_RECEIPT_INVALID: 'The game save receipt could not be decoded, so this backup did not complete. Update the management service and retry; also check the Agent version for remote nodes.',
           SNAPSHOT_ROUND_UNCONFIRMED: 'Could not confirm the same save round on every world.', SAVE_IN_PROGRESS: 'An existing save is still writing after retries.',
           TARGET_SNAPSHOT_PASSED: 'The save round changed and retries could not synchronize it.', SAVE_WRITE_FAILED: 'The game save did not complete successfully.',
           BARRIER_EXPIRED: 'Save protection expired; the backup was aborted.', BACKUP_TIMEOUT: 'The backup timed out.',

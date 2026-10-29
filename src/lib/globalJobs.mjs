@@ -1,3 +1,5 @@
+import { backupFailureMessage } from './backupResults.mjs'
+
 export const ACTIVE_JOB_STATUSES = Object.freeze(['queued', 'running'])
 export const GLOBAL_JOB_SUBMITTED_EVENT = 'dst-admin:job-submitted'
 
@@ -19,16 +21,24 @@ export function globalJobWarningToastId(jobOrId) {
   return normalized ? `global-job-warning:${normalized}` : undefined
 }
 
-export function globalJobFailure(job) {
+export function globalJobFailure(job, t) {
   const targets = Array.isArray(job?.targets) ? job.targets : []
   const target = targets.find(item => item?.status === 'failed' && item?.error?.message)
     || targets.find(item => item?.error?.message)
   const error = target?.error || job?.error || {}
-  return {
+  const failure = {
     code: String(error.code || '').trim(),
     message: String(error.message || job?.message || '').trim(),
     targetName: String(target?.name || '').trim()
   }
+  if (typeof t === 'function' && (error.details?.backupSetId || failure.code === 'SNAPSHOT_RECEIPT_INVALID'
+      || failure.message.includes('cross-shard snapshot barrier failed'))) {
+    failure.message = backupFailureMessage({ failureCode: failure.code, failure: failure.message, artifactState: error.details?.artifactState }, null, t)
+    if (error.details?.barrierReleaseState === 'unconfirmed') {
+      failure.message = `${failure.message} ${t('distributed.backups.releaseStates.unconfirmed')}`
+    }
+  }
+  return failure
 }
 
 export function globalJobWarning(job) {

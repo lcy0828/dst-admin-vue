@@ -40,7 +40,7 @@ const model = computed(() => taskProgress(props.job))
 const worlds = computed(() => worldRestartProgress(props.job))
 const worldPhase = computed(() => model.value.lifecycle || model.value.restart && model.value.phase === 'restarting')
 const warning = computed(() => globalJobWarning(props.job).message)
-const failure = computed(() => globalJobFailure(props.job).message)
+const failure = computed(() => globalJobFailure(props.job, globalT).message)
 const succeeded = computed(() => model.value.status === 'succeeded' && !warning.value)
 const tone = computed(() => model.value.status === 'failed' ? 'destructive'
   : warning.value || ['waiting', 'unconfirmed'].includes(model.value.status) ? 'warning'
