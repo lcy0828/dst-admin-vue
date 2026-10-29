@@ -36,7 +36,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { FLEET_ROLES, fleetFlagsForRole, fleetRoleFromFlags } from '@/lib/fleetProfile.mjs'
+import { FLEET_ROLES, fleetFlagsForRole, fleetRoleFromFlags, fleetRoleSwitchPreservesWorlds } from '@/lib/fleetProfile.mjs'
 
 const APPLY_CONFIRMATION = 'APPLY SYSTEM SETTINGS'
 const ROLE_FIELD_IDS = [
@@ -80,6 +80,9 @@ const memberKeyConfigured = computed(() => Boolean(memberKeyField.value.configur
 const memberKeyLocked = computed(() => memberKeyField.value.editable === false)
 const managedWorkerSelected = computed(() => selectedRole.value === FLEET_ROLES.MANAGED_WORKER)
 const pendingRestart = computed(() => Boolean(settingsResponse.value?.restartRequired))
+const saveHintKey = computed(() => settingsResponse.value?.runtimeApplySupported && fleetRoleSwitchPreservesWorlds(actualRole.value, selectedRole.value) && !pendingRestart.value
+  ? 'agents.profile.saveHintLive'
+  : 'agents.profile.saveHint')
 
 function booleanField(id, fallback) {
   const value = fieldMap.value[id]?.value
@@ -319,7 +322,7 @@ defineExpose({
     </CardContent>
 
     <CardFooter v-if="!loading && !loadError && profileSupported" class="flex flex-wrap justify-between gap-2">
-      <p class="text-xs text-muted-foreground">{{ t('agents.profile.saveHint') }}</p>
+      <p class="text-xs text-muted-foreground">{{ t(saveHintKey) }}</p>
       <div class="flex gap-2">
         <Button variant="outline" :disabled="saving" @click="loadProfile">
           <RefreshCw data-icon="inline-start" />

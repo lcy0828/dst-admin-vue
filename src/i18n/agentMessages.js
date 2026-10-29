@@ -64,7 +64,8 @@ export const agentMessages = {
         actions: {
           save: '保存角色'
         },
-        saveHint: '保存后自动应用。切换角色前，请先停止本机世界并等待后台任务完成。',
+        saveHint: '保存后自动应用。变更本机执行器或移交管理权前，请先停止本机世界。',
+        saveHintLive: '保存后自动应用，无需停止或重启世界。关闭集中管理前会检查远程房间依赖。',
         feedback: {
           loadFailed: '部署配置加载失败',
           invalid: '部署配置校验失败',
@@ -660,7 +661,8 @@ export const agentMessages = {
         actions: {
           save: 'Save role'
         },
-        saveHint: 'Changes apply when saved. Stop local worlds and wait for background tasks before switching roles.',
+        saveHint: 'Changes apply when saved. Stop local worlds before changing the local executor or transferring control.',
+        saveHintLive: 'Changes apply without stopping or restarting worlds. Remote room dependencies are checked before disabling centralized management.',
         feedback: {
           loadFailed: 'Failed to load deployment configuration',
           invalid: 'Deployment configuration is invalid',

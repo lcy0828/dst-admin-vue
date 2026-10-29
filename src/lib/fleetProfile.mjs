@@ -40,3 +40,8 @@ export function fleetRoleFromFlags(flags = {}) {
   if (flags.controllerEnabled === true) return FLEET_ROLES.CONTROLLER_WORKER
   return FLEET_ROLES.STANDALONE
 }
+
+export function fleetRoleSwitchPreservesWorlds(currentRole, nextRole) {
+  const localRoles = [FLEET_ROLES.STANDALONE, FLEET_ROLES.CONTROLLER_WORKER]
+  return localRoles.includes(currentRole) && localRoles.includes(nextRole)
+}
