@@ -133,6 +133,12 @@ export const constantRoutes = [
         meta: { title: '日志查询', titleKey: 'navigation.logQuery', icon: 'search' }
       },
       {
+        path: 'service',
+        component: () => import('@/views/ServiceLogsView.vue'),
+        name: 'ServiceLogs',
+        meta: { title: '服务日志', titleKey: 'serviceLogs.title', icon: 'document' }
+      },
+      {
         path: 'rules',
         component: () => import('@/views/RuleManagementView.vue'),
         name: 'RuleManagement',

@@ -82,6 +82,7 @@ export const V2_NAVIGATION = [
         icon: FileSearch,
         children: [
           { labelKey: 'navigation.logQuery', to: '/logs/query' },
+          { labelKey: 'serviceLogs.title', to: '/logs/service' },
           { labelKey: 'navigation.logRules', to: '/logs/rules' }
         ]
       },

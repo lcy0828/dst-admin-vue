@@ -209,6 +209,18 @@ export const softwareV2API = {
   apply: operationId => client.post('/system/software/actions/apply', { operationId, confirmation: 'APPLY SOFTWARE UPDATE' }, { runtimeTarget: false, timeout: 15000 }),
 }
 
+// Service logs select their own explicit source, independent of Runtime scope.
+export const serviceLogsV2API = {
+  sources: () => client.get('/system/service-logs/sources', { runtimeTarget: false }),
+  source: id => client.get(`/system/service-logs/sources/${encode(id)}`, { runtimeTarget: false }),
+  query: params => client.get('/system/service-logs', { params, runtimeTarget: false, timeout: 8000 }),
+  context: params => client.get('/system/service-logs/context', { params, runtimeTarget: false, timeout: 8000 }),
+  diagnostics: params => client.get('/system/service-logs/diagnostics', { params, runtimeTarget: false, timeout: 8000 }),
+  settings: sourceId => client.get('/system/service-logs/settings', { params: { sourceId }, runtimeTarget: false }),
+  saveSettings: (sourceId, input) => client.put('/system/service-logs/settings', input, { params: { sourceId }, runtimeTarget: false }),
+  export: params => getBinary(`/system/service-logs/export?${new URLSearchParams(params)}`, 'application/json')
+}
+
 export const performanceV2API = {
   report: (roomId, query = {}) => client.get(`/rooms/${encode(roomId)}/performance`, { params: query, runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }),
   settings: roomId => client.get(`/rooms/${encode(roomId)}/performance/settings`, { runtimeTarget: false }),
