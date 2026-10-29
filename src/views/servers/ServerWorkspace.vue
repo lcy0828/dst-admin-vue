@@ -415,7 +415,7 @@
                   <Badge :variant="worldStatusVariant(world)">
                     {{ worldStatusLabel(world) }}
                   </Badge>
-                  <RuntimeModeBadge :world="world" />
+                  <RuntimeModeBadge class="world-runtime-mode" :world="world" />
                   <WorldPerformanceScore
                     :room-id="selectedRoomId"
                     :world-id="world.id"
@@ -424,14 +424,16 @@
                     :native-score="worldStateFor(world)?.hostPerformance"
                     :native-available="world.status === 'running' && worldStateFor(world)?.freshness === 'live'"
                   />
-                  <RuntimeExitBadge :event="world.latestExit" />
-                  <RouterLink v-if="world.status === 'failed' || world.latestExit?.type === 'unexpected_exit'" :to="{ path: '/rooms/diagnostics', query: { roomId: selectedRoomId, worldId: world.id, diagnostic: 'mods' } }" class="text-xs text-primary underline-offset-4 hover:underline" @click.stop>{{ $t('modDiagnostics.open') }}</RouterLink>
                 </div>
                 <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || $t('servers.workspace.worlds.directoryUnset') }}</span>
                 <span class="world-machine" :title="worldMachineName(world)">
                   <Server aria-hidden="true" />
                   {{ $t('servers.workspace.worlds.machine', { name: worldMachineName(world) }) }}
                 </span>
+                <div v-if="world.status === 'failed' || world.latestExit?.type === 'unexpected_exit'" class="world-diagnostic-actions">
+                  <RuntimeExitBadge :event="world.latestExit" />
+                  <RouterLink :to="{ path: '/rooms/diagnostics', query: { roomId: selectedRoomId, worldId: world.id, diagnostic: 'mods' } }" class="text-xs text-primary underline-offset-4 hover:underline" @click.stop>{{ $t('modDiagnostics.open') }}</RouterLink>
+                </div>
                 <span
                   v-if="worldStatusMessage(world)"
                   class="world-status-message"
@@ -453,7 +455,7 @@
             <dl class="world-facts">
               <div>
                 <dt>{{ $t('servers.workspace.worlds.players') }}</dt>
-                <dd>{{ worldOnlinePlayerLabel(world) }}</dd>
+                <dd :title="worldOnlinePlayerLabel(world)">{{ worldOnlinePlayerLabel(world) }}</dd>
               </div>
               <WorldStateQuickControl
                 kind="day"
@@ -499,11 +501,11 @@
               />
               <div>
                 <dt>{{ worldCycleTitle(world) }}</dt>
-                <dd>{{ worldCycleLabel(world) }}</dd>
+                <dd :title="worldCycleLabel(world)">{{ worldCycleLabel(world) }}</dd>
               </div>
               <div>
                 <dt>{{ $t('servers.workspace.worlds.dataTime') }}</dt>
-                <dd>
+                <dd class="world-freshness">
                   <WorldDataFreshnessBadge
                     :freshness="worldStateFor(world)?.freshness || world.stateFreshness"
                     :observed-at="worldObservedAt(world)"
@@ -3308,9 +3310,9 @@ export default {
 .world-item {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(240px, 260px) minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
   padding: 8px 0;
   cursor: pointer;
@@ -3558,19 +3560,28 @@ export default {
 
 .world-name-row {
   justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .world-name-row strong {
   flex: 0 1 auto;
-  min-width: 0;
+  min-width: min(48px, 100%);
   max-width: 100%;
   overflow: hidden;
   color: var(--foreground);
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.world-name-row > .world-runtime-mode {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 88px;
+  text-overflow: ellipsis;
+  line-height: 14px;
 }
 
 .world-identity > span {
@@ -3592,6 +3603,14 @@ export default {
 
 .world-identity > .world-failure {
   color: var(--destructive);
+}
+
+.world-diagnostic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
 }
 
 .world-identity > .world-runtime-diagnostic {
@@ -3621,17 +3640,18 @@ export default {
 }
 
 .world-facts {
+  min-width: 0;
   display: grid;
   grid-template-columns:
-    minmax(70px, 0.7fr)
-    minmax(104px, 0.95fr)
-    minmax(76px, 0.9fr)
-    minmax(76px, 0.9fr)
-    minmax(130px, 1.35fr)
-    minmax(80px, 0.9fr)
-    minmax(128px, 1.2fr);
+    minmax(0, 0.9fr)
+    minmax(0, 1.3fr)
+    minmax(0, 0.75fr)
+    minmax(0, 0.7fr)
+    minmax(0, 1.65fr)
+    minmax(0, 0.7fr)
+    minmax(0, 1fr);
   align-items: start;
-  gap: 8px;
+  gap: 6px;
   margin: 0;
   padding-left: 14px;
   border-left: 1px solid var(--border);
@@ -3642,22 +3662,35 @@ export default {
 }
 
 .world-facts dt {
+  overflow: hidden;
   color: var(--muted-foreground);
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .world-facts dd {
   margin: 2px 0 0;
+  overflow: hidden;
   color: var(--foreground);
   font-size: 13px;
   font-weight: 600;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.world-freshness :deep([data-slot='tooltip-trigger']) {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+  text-overflow: ellipsis;
+  line-height: 14px;
 }
 
 .world-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 4px;
   padding: 0;
 }
 
@@ -4081,7 +4114,7 @@ export default {
 
 }
 
-@container world-list (max-width: 1180px) {
+@container world-list (max-width: 900px) {
   .world-item {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -4089,6 +4122,7 @@ export default {
   .world-facts {
     grid-column: 1 / -1;
     grid-row: 2;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     padding-left: 46px;
     border-left: 0;
   }
@@ -4096,12 +4130,6 @@ export default {
   .world-actions {
     grid-column: 2;
     grid-row: 1;
-  }
-}
-
-@container world-list (max-width: 900px) {
-  .world-facts {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

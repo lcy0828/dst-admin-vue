@@ -160,7 +160,7 @@ function setTemperature() {
 
 <template>
   <div class="world-state-control" @click.stop @keydown.stop>
-    <dt>{{ label }}</dt>
+    <dt :title="label">{{ label }}</dt>
     <dd>
       <Popover v-model:open="open">
         <PopoverTrigger as-child>
@@ -171,6 +171,7 @@ function setTemperature() {
             class="world-state-trigger"
             :disabled="disabled"
             :aria-label="t('servers.workspace.worlds.quickActions.open', { label, value })"
+            :title="`${label} · ${value}`"
           >
             <Spinner v-if="pendingKey" data-icon="inline-start" />
             <component :is="icon" v-else-if="icon" data-icon="inline-start" aria-hidden="true" />
@@ -339,8 +340,10 @@ function setTemperature() {
 
 <style scoped>
 .world-state-control { min-width: 0; }
-.world-state-trigger { width: 100%; min-width: 0; height: auto; min-height: 1.5rem; justify-content: flex-start; padding-inline: .25rem; }
-.world-state-trigger > span { min-width: 0; text-align: start; white-space: normal; overflow-wrap: anywhere; }
+.world-state-control > dt { overflow: hidden; color: var(--muted-foreground); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.world-state-control > dd { margin: 2px 0 0; }
+.world-state-trigger { width: 100%; min-width: 0; height: 1.5rem; justify-content: flex-start; gap: 3px; padding-inline: 0; }
+.world-state-trigger > span { min-width: 0; overflow: hidden; text-align: start; text-overflow: ellipsis; white-space: nowrap; }
 .world-state-control > [data-slot='progress'] { max-width: 88px; margin-top: 4px; }
 .world-state-popover { width: min(19rem, calc(100vw - 2rem)); }
 .world-state-popover--weather { width: min(22rem, calc(100vw - 2rem)); }

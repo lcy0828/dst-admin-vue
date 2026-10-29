@@ -44,10 +44,10 @@ test('server workspace keeps operational summaries inline and world facts on com
   assert.match(source, /class="workspace-overview"/)
   assert.match(source, /class="status-summary" role="list"/)
   assert.match(source, /<Separator class="status-separator" orientation="vertical"/)
-  assert.match(source, /minmax\(70px, 0\.7fr\)[\s\S]*minmax\(104px, 0\.95fr\)[\s\S]*minmax\(130px, 1\.35fr\)/)
+  assert.match(source, /minmax\(0, 0\.9fr\)[\s\S]*minmax\(0, 1\.3fr\)[\s\S]*minmax\(0, 1\.65fr\)/)
   assert.match(source, /\.world-card-header \{\s*padding-block: 10px;/)
   assert.match(source, /\.world-facts \{[\s\S]*padding-left: 14px;\s*border-left: 1px solid var\(--border\);/)
-  assert.match(source, /@container world-list \(max-width: 1180px\) \{[\s\S]*\.world-facts \{[\s\S]*border-left: 0;/)
+  assert.match(source, /@container world-list \(max-width: 900px\) \{[\s\S]*\.world-facts \{[\s\S]*border-left: 0;/)
   assert.doesNotMatch(source, /class="status-card"/)
 })
 
@@ -75,7 +75,7 @@ test('server workspace shows each world runtime machine and opens placement mana
 test('server workspace keeps player count aligned with the world facts', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
-  assert.match(source, /grid-template-columns: minmax\(180px, 240px\) minmax\(0, 1fr\) auto/)
+  assert.match(source, /grid-template-columns: minmax\(240px, 260px\) minmax\(0, 1fr\) auto/)
   assert.match(source, /worldOnlinePlayerLabel\(world\)/)
   assert.match(source, /online_by_world/)
   assert.doesNotMatch(source, /class="world-presence"/)
