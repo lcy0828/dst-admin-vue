@@ -20,3 +20,15 @@ export function aiLimitsInput(limits) {
   }
   return result
 }
+
+export function aiTokenInput(value) {
+  const name = String(value?.name || '').trim()
+  const days = Number(value?.days)
+  const profile = value?.profile
+  const roomIds = Array.isArray(value?.roomIds) ? [...new Set(value.roomIds)] : []
+  if (!name || name.length > 100 || !Number.isInteger(days) || days < 1 || days > 365 ||
+      !['game-read', 'game-manage', 'panel-manage'].includes(profile) || roomIds.length > 64 ||
+      roomIds.some(id => typeof id !== 'string' || !id || id.length > 255 || /[\0\r\n]/.test(id)) ||
+      (profile !== 'panel-manage' && roomIds.length === 0)) return null
+  return { name, days, profile, roomIds }
+}

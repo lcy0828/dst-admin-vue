@@ -2,14 +2,16 @@
 import { computed, defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
-import { aiV2API } from '@/api/v2'
+import { aiV2API, roomsV2API } from '@/api/v2'
 import { confirmAction } from '@/lib/feedback'
-import { aiLimitValue, aiLimitsInput, aiSettingsForm } from '@/lib/aiSettings.mjs'
+import { aiLimitValue, aiLimitsInput, aiSettingsForm, aiTokenInput } from '@/lib/aiSettings.mjs'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -26,7 +28,12 @@ watch(() => props.config, value => Object.assign(form, aiSettingsForm(value)))
 const limitFields = ['maxRounds', 'maxToolCalls', 'timeoutSeconds']
 const saving = ref(false), testing = ref(false), creating = ref(false), revoking = ref('')
 const tokens = ref([]), secret = ref(''), secretOpen = ref(false)
-const credential = reactive({ name: '', days: 30 })
+const credential = reactive({ name: '', days: 30, profile: 'game-read', roomIds: [] })
+const rooms = ref([]), roomsLoading = ref(false), roomsError = ref(false)
+const profiles = ['game-read', 'game-manage', 'panel-manage']
+const tokenInput = computed(() => aiTokenInput(credential))
+function chooseRoom(id, checked) { credential.roomIds = checked ? [...new Set([...credential.roomIds, id])] : credential.roomIds.filter(value => value !== id) }
+async function loadRooms() { roomsLoading.value = true; roomsError.value = false; try { rooms.value = (await roomsV2API.controlPlaneList({ all: true })).items || [] } catch (error) { roomsError.value = true; fail(error) } finally { roomsLoading.value = false } }
 const endpoint = computed(() => new URL(props.mcpPath, window.location.origin).href)
 const sample = computed(() => JSON.stringify({ mcpServers: { 'dst-admin': { type: 'http', url: endpoint.value, headers: { Authorization: 'Bearer <ACCESS_TOKEN>' } } } }, null, 2))
 function fail(error) { emit('error', error.message || t('ai.failure')) }
@@ -42,9 +49,10 @@ async function test() {
 }
 async function loadTokens() { try { tokens.value = (await aiV2API.tokens()).items || [] } catch (error) { fail(error) } }
 async function create() {
+  if (!tokenInput.value) { fail(new Error(t('ai.scopeInvalid'))); return }
   creating.value = true
   try {
-    const result = await aiV2API.createToken({ name: credential.name, days: Number(credential.days) })
+    const result = await aiV2API.createToken(tokenInput.value)
     secret.value = result.secret; secretOpen.value = true; credential.name = ''; await loadTokens()
   } catch (error) { fail(error) } finally { creating.value = false }
 }
@@ -56,7 +64,7 @@ async function revoke(token) {
 async function copy(value) {
   try { await navigator.clipboard.writeText(value); toast.success(t('ai.copied')) } catch { toast.error(t('ai.copyManually')) }
 }
-onMounted(loadTokens)
+onMounted(() => { loadTokens(); loadRooms() })
 </script>
 
 <template>
@@ -98,15 +106,35 @@ onMounted(loadTokens)
         <form class="flex flex-col gap-5" @submit.prevent="create">
           <FieldGroup>
             <Field><FieldLabel for="ai-token-name">{{ t('ai.tokenName') }}</FieldLabel><Input id="ai-token-name" v-model="credential.name" required maxlength="100" :disabled="creating" /></Field>
+            <Field>
+              <FieldLabel id="ai-token-profile-label">{{ t('ai.tokenProfile') }}</FieldLabel>
+              <ToggleGroup v-model="credential.profile" type="single" variant="outline" :spacing="1" :disabled="creating" aria-labelledby="ai-token-profile-label" class="max-w-full flex-wrap">
+                <ToggleGroupItem v-for="profile in profiles" :key="profile" :value="profile">{{ t(`ai.profiles.${profile}`) }}</ToggleGroupItem>
+              </ToggleGroup>
+              <FieldDescription>{{ t(`ai.profileHints.${credential.profile || 'game-read'}`) }}</FieldDescription>
+            </Field>
+            <FieldSet :data-invalid="credential.profile !== 'panel-manage' && !credential.roomIds.length">
+              <FieldLegend>{{ t('ai.allowedRooms') }}</FieldLegend>
+              <FieldDescription>{{ credential.profile === 'panel-manage' ? t('ai.allRoomsIfEmpty') : t('ai.chooseRooms') }}</FieldDescription>
+              <Spinner v-if="roomsLoading" :aria-label="t('ai.reading', { tool: t('ai.room') })" />
+              <Button v-else-if="roomsError" type="button" variant="outline" size="sm" class="self-start" @click="loadRooms">{{ t('ai.retry') }}</Button>
+              <FieldGroup v-else class="max-h-48 overflow-auto">
+                <Field v-for="room in rooms" :key="room.id" orientation="horizontal">
+                  <Checkbox :id="`ai-token-room-${room.id}`" :model-value="credential.roomIds.includes(room.id)" :disabled="creating" @update:model-value="checked => chooseRoom(room.id, checked === true)" />
+                  <FieldLabel :for="`ai-token-room-${room.id}`">{{ room.name }}</FieldLabel>
+                </Field>
+              </FieldGroup>
+              <FieldError v-if="!roomsLoading && !roomsError && credential.profile !== 'panel-manage' && !credential.roomIds.length">{{ t('ai.chooseRooms') }}</FieldError>
+            </FieldSet>
             <Field><FieldLabel for="ai-token-days">{{ t('ai.tokenDays') }}</FieldLabel><Input id="ai-token-days" v-model="credential.days" type="number" min="1" max="365" required :disabled="creating" /></Field>
           </FieldGroup>
-          <Button type="submit" :disabled="creating || !config.enabled || !credential.name.trim()" class="self-start"><Spinner v-if="creating" data-icon="inline-start" /><KeyRound v-else data-icon="inline-start" />{{ t('ai.createToken') }}</Button>
+          <Button type="submit" :disabled="creating || !config.enabled || !tokenInput" class="self-start"><Spinner v-if="creating" data-icon="inline-start" /><KeyRound v-else data-icon="inline-start" />{{ t('ai.createToken') }}</Button>
         </form>
       </CardContent>
       <CardFooter class="flex flex-col items-stretch gap-3">
         <h3 class="text-sm font-medium">{{ t('ai.credentials') }}</h3><p v-if="!tokens.length" class="text-sm text-muted-foreground">{{ t('ai.noTokens') }}</p>
         <div v-for="token in tokens" :key="token.id" class="flex flex-wrap items-center gap-2 rounded-md border p-3">
-          <div class="min-w-0 flex-1"><p class="break-words font-medium">{{ token.name }}</p><p class="text-xs text-muted-foreground">{{ t('ai.expires') }} {{ new Date(token.expiresAt).toLocaleString(locale) }}</p></div>
+          <div class="min-w-0 flex-1"><p class="break-words font-medium">{{ token.name }}</p><Badge variant="secondary">{{ t(`ai.profiles.${token.profile || 'panel-manage'}`) }}</Badge><p class="text-xs text-muted-foreground">{{ token.roomIds?.length ? token.roomIds.map(id => rooms.find(room => room.id === id)?.name || id).join('、') : t('ai.allRooms') }}</p><p class="text-xs text-muted-foreground">{{ t('ai.expires') }} {{ new Date(token.expiresAt).toLocaleString(locale) }}</p></div>
           <Button variant="outline" size="sm" :disabled="!!revoking" @click="revoke(token)">{{ t('ai.revoke') }}</Button>
         </div>
       </CardFooter>
