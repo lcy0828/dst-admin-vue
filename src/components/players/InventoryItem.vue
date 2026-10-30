@@ -18,7 +18,7 @@ const entity = computed(() => ({ id: props.item.prefab, source: 'runtime', modId
     <div class="flex min-w-0 items-center gap-3">
       <span class="size-10 shrink-0"><EntityArtwork :entity="entity" :room-id="roomId" :world-id="worldId" /></span>
       <div class="flex min-w-0 flex-1 flex-col gap-1">
-        <div class="flex min-w-0 items-start justify-between gap-2"><span class="truncate font-medium" :title="item.name || item.prefab">{{ item.name || item.prefab }}</span><span v-if="item.count != null" class="shrink-0 tabular-nums text-muted-foreground">× {{ n(item.count) }}</span></div>
+        <div class="flex min-w-0 items-start justify-between gap-2"><span class="truncate font-medium" :title="item.displayName || item.name || item.prefab">{{ item.displayName || item.name || item.prefab }}</span><span v-if="item.count != null" class="shrink-0 tabular-nums text-muted-foreground">× {{ n(item.count) }}</span></div>
         <div class="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground"><span class="truncate">{{ item.prefab }}</span><span>{{ t('inventory.slot', { slot: item.slot }) }}</span></div>
         <p v-if="metrics.length" class="text-xs text-muted-foreground">{{ metrics.map(metric => `${t(`inventory.metrics.${metric.key}`)} ${metric.text}`).join(' · ') }}</p>
         <p v-if="item.warnings?.length" class="text-xs text-muted-foreground">{{ t('inventory.unreadContents') }}</p>

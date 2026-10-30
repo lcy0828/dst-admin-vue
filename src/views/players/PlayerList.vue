@@ -83,6 +83,11 @@
           </AlertDescription>
         </Alert>
         <p v-if="filterForm.scope === 'history'" class="mb-3 text-sm text-muted-foreground">{{ $t('players.list.previousSessionsHint') }}</p>
+        <Alert v-if="collectionWarnings.length && !loadError && !collectionError" class="mb-4">
+          <TriangleAlert />
+          <AlertTitle>{{ $t('players.list.currentRefreshFailedTitle') }}</AlertTitle>
+          <AlertDescription>{{ $t('players.list.currentRefreshFailedDescription', { error: collectionWarnings.join('；') }) }}</AlertDescription>
+        </Alert>
         <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('players.list.loading') }}</span></div>
         <div v-else-if="!loadError && playerList.length > 0" class="table-wrap">
           <UiTable>
@@ -446,6 +451,7 @@ export default {
       loading: false,
       loadError: null,
       collectionError: null,
+      collectionWarnings: [],
       partialFailures: [],
 
       // 分页参数
@@ -719,6 +725,7 @@ export default {
         const response = await playerApi.getAllPlayers(params);
         if (requestSequence !== this.playerRequestSequence) return false;
         this.playerList = response.data || [];
+        this.collectionWarnings = response.warnings || [];
         this.pagination.total = response.total || 0;
         this.partialFailures = response.failures || [];
         this.openRequestedPlayer();

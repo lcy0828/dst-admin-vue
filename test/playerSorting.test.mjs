@@ -128,7 +128,7 @@ test('room counts retain unlocated connections while shard counts use local enti
   const api = runInNewContext(`${script}; playerApi`, {
     playerPlayDays, sortPlayers, playerWorldFields, playerLocalWorldIds,
     adapterSuccess: data => ({ data }),
-    playersV2API: { list: async () => ({ items: players, total: players.length }) }
+    playersV2API: { list: async () => ({ items: players, total: players.length, warnings: ['Caves: player snapshot unavailable'] }) }
   })
   const { data } = await api.getPlayerStats('Room', [], 'room')
   assert.equal(data.online_count, 4)
@@ -138,4 +138,5 @@ test('room counts retain unlocated connections while shard counts use local enti
   assert.equal(data.online_by_world.caves, 2)
   assert.equal(data.recent_players.find(player => player.user_id === 'selecting').world_id, '')
   assert.equal(data.recent_players.find(player => player.user_id === 'moving').world_id, '')
+  assert.deepEqual(Array.from(data.collection_warnings), ['Caves: player snapshot unavailable'])
 })

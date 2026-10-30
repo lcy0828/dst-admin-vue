@@ -657,6 +657,11 @@
                   <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
                   <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
                 </Alert>
+                <Alert v-else-if="playerStats?.collection_warnings?.length">
+                  <CircleAlert />
+                  <AlertTitle>{{ $t('players.list.currentRefreshFailedTitle') }}</AlertTitle>
+                  <AlertDescription>{{ $t('players.list.currentRefreshFailedDescription', { error: playerStats.collection_warnings.join('；') }) }}</AlertDescription>
+                </Alert>
                 <div v-if="recentPlayerRows.length" class="player-list players-list-expanded">
                   <div
                     v-for="row in recentPlayerRows"

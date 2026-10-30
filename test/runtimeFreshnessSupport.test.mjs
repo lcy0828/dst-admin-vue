@@ -96,7 +96,7 @@ test('workspace renders lightweight player results independently from slower roo
   assert.match(contextRefresh, /this\.contextLoading = false\s*await playersCompletion/)
   assert.doesNotMatch(contextRefresh, /this\.detectDefaultConnectionAddress\(\)/)
   assert.match(playerApi, /includeAccessLists: params\.include_access_lists !== false/)
-  assert.match(playerApi, /roomId\s*\? \{ data: await roomPlayers\(\{ id: roomId, name: archiveName \}, \{ include_access_lists: false \}\)/)
+  assert.match(playerApi, /roomId\s*\? await roomPlayers\(\{ id: roomId, name: archiveName \}, \{ include_access_lists: false \}\)/)
   assert.match(dashboard, /playerApi\.getPlayerStats\(room\.name, \[\], room\.id\)/)
 })
 

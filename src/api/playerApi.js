@@ -156,6 +156,7 @@ function legacyPlayer(player, room) {
 
 async function roomPlayers(room, params = {}) {
   const items = []
+  const warnings = new Set()
   let offset = 0
   let total = 0
   do {
@@ -169,13 +170,14 @@ async function roomPlayers(room, params = {}) {
       offset
     })
     const page = response.items || []
+    for (const warning of response.warnings || []) warnings.add(warning)
     const mapped = page.map(player => legacyPlayer(player, room))
     items.push(...(params.status ? mapped.filter(player => player.status === params.status) : mapped))
     total = response.total || 0
     offset += page.length
     if (page.length === 0) break
   } while (offset < total)
-  return items
+  return { items, warnings: [...warnings] }
 }
 
 async function listPlayers(params = {}, paginate = true) {
@@ -186,12 +188,13 @@ async function listPlayers(params = {}, paginate = true) {
   const settlements = await Promise.allSettled(rooms.map(room => roomPlayers(room, params)))
   const { completed, failures } = composeRoomResults(rooms, settlements)
   throwWhenAllRoomsFailed(rooms.length, failures)
-  const players = completed.flatMap(({ value }) => value)
+  const players = completed.flatMap(({ value }) => value.items)
+  const warnings = [...new Set(completed.flatMap(({ value }) => value.warnings))]
   const sorted = sortPlayers(players, params.sort_by, params.sort_order)
   const page = Math.max(1, Number.parseInt(params.page, 10) || 1)
   const pageSize = Math.max(1, Number.parseInt(params.page_size, 10) || 10)
   const data = paginate ? sorted.slice((page - 1) * pageSize, page * pageSize) : sorted
-  return { data, total: sorted.length, page, size: pageSize, failures }
+  return { data, total: sorted.length, page, size: pageSize, failures, warnings }
 }
 
 async function actionContext(player, selectedSession) {
@@ -285,7 +288,7 @@ export const playerApi = {
 
   async getPlayerStats(archiveName, worldIds = [], roomId = '') {
     const response = roomId
-      ? { data: await roomPlayers({ id: roomId, name: archiveName }, { include_access_lists: false }), failures: [] }
+      ? await roomPlayers({ id: roomId, name: archiveName }, { include_access_lists: false }).then(result => ({ data: result.items, warnings: result.warnings, failures: [] }))
       : await listPlayers({ archive_name: archiveName, include_access_lists: false }, false)
     const selectedWorldIds = new Set((Array.isArray(worldIds) ? worldIds : []).map(value => String(value)))
     const players = selectedWorldIds.size > 0
@@ -299,6 +302,7 @@ export const playerApi = {
       return counts
     }, {})
     return success({
+      collection_warnings: response.warnings || [],
       total_count: players.length,
       online_count: online,
       online_by_world: onlineByWorld,
