@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createSoftwareUpdateController, formatSoftwareBytes } from '../src/lib/softwareUpdate.mjs'
+import { createSoftwareUpdateController, formatSoftwareBytes, softwareUpdateAction } from '../src/lib/softwareUpdate.mjs'
 
 const snapshot = (phase, version = 'v1.0.0') => ({
   current: { version }, supported: true, check: { hasUpdate: true, latest: { version: 'v1.1.0', onlineUpdate: true } },
@@ -180,4 +180,72 @@ test('interrupted downloads clear pending apply intent and stop idle polling', a
   assert.equal(f.scheduled.size, 0)
   assert.equal(f.calls.apply, 0)
   assert.equal(f.controller.state.snapshot.operation.phase, 'interrupted')
+})
+
+test('Controller and Agent actions never let an obsolete operation hide the latest release', () => {
+  for (const phase of ['prepared', 'failed', 'interrupted', 'superseded']) {
+    for (const current of ['v1.1.0', 'v1.2.0']) {
+      const value = snapshot(phase, current)
+      value.check.latest.version = 'v1.3.0'
+      assert.deepEqual(softwareUpdateAction(value), { kind: 'update', version: 'v1.3.0' })
+      value.check.hasUpdate = false
+      assert.equal(softwareUpdateAction(value), null)
+    }
+  }
+})
+
+test('a newer release takes precedence over an older prepared or failed future target', () => {
+  for (const phase of ['prepared', 'failed', 'interrupted']) {
+    const value = snapshot(phase)
+    value.check.latest.version = 'v1.10.0'
+    assert.deepEqual(softwareUpdateAction(value), { kind: 'update', version: 'v1.10.0' })
+  }
+  assert.deepEqual(softwareUpdateAction(snapshot('prepared')), { kind: 'apply', version: 'v1.1.0', operationId: 'op' })
+  assert.deepEqual(softwareUpdateAction(snapshot('interrupted')), { kind: 'resume', version: 'v1.1.0' })
+  assert.equal(softwareUpdateAction({ ...snapshot('prepared'), supported: false }), null)
+})
+
+test('external upgrades clear pending apply intent without restarting or reloading', async () => {
+  for (const phase of ['prepared', 'superseded', 'interrupted']) {
+    const f = fixture({ status: async () => snapshot(phase, 'v1.2.0') }, 'op')
+    await f.controller.refresh()
+    await f.controller.apply()
+    assert.equal(f.calls.apply, 0)
+    assert.equal(f.memory.size, 0)
+    assert.equal(f.scheduled.size, 0)
+    assert.equal(f.reloaded(), 0)
+  }
+})
+
+test('confirming an older operation never applies a replacement operation', async () => {
+  const f = fixture()
+  f.controller.state.snapshot = snapshot('prepared')
+  await f.controller.apply('previous-operation')
+  assert.equal(f.calls.apply, 0)
+})
+
+test('a prepared update waits for startup verification before applying', async () => {
+  let ready = false
+  const f = fixture({ status: async () => ({ ...snapshot('prepared'), ready }) }, 'op')
+  await f.controller.refresh()
+  await f.controller.apply()
+  assert.equal(f.calls.apply, 0)
+  assert.equal(f.scheduled.size, 1)
+  ready = true
+  await f.controller.refresh()
+  assert.equal(f.calls.apply, 1)
+})
+
+test('invalid prepared-package rejection refreshes the persisted failure and offers a new download', async () => {
+  let reads = 0
+  const f = fixture({
+    status: async () => { reads++; return snapshot(reads === 1 ? 'prepared' : 'failed') },
+    apply: async () => { throw Object.assign(Error('package unavailable'), { status: 409 }) }
+  }, 'op')
+  await f.controller.refresh()
+  assert.equal(f.controller.state.snapshot.operation.phase, 'failed')
+  assert.equal(f.controller.state.error, 'package unavailable')
+  assert.deepEqual(softwareUpdateAction(f.controller.state.snapshot), { kind: 'resume', version: 'v1.1.0' })
+  assert.equal(f.memory.size, 0)
+  assert.equal(f.scheduled.size, 0)
 })

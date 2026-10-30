@@ -47,6 +47,10 @@ async function save() {
         <Select v-model="form.proxyMode" :disabled="disabled || saving"><SelectTrigger :id="`${id}-proxy`" class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="mode in ['inherit', 'system', 'direct', 'custom']" :key="mode" :value="mode">{{ t(`softwareUpdate.proxyModes.${agentId && mode === 'inherit' ? 'agentInherit' : mode}`) }}</SelectItem></SelectGroup></SelectContent></Select>
         <FieldDescription>{{ t(agentId ? 'softwareUpdate.agentProxyHelp' : 'softwareUpdate.proxyHelp') }}</FieldDescription>
       </Field>
+      <Field v-if="form.source !== 'direct'" class="sm:col-span-2"><FieldLabel :for="`${id}-mirror`">{{ t('softwareUpdate.mirrorPrefix') }}</FieldLabel>
+        <Input :id="`${id}-mirror`" v-model="form.mirrorPrefix" type="url" inputmode="url" autocomplete="off" spellcheck="false" maxlength="1024" pattern="https://.*" placeholder="https://ghfast.top/" :aria-describedby="`${id}-mirror-help`" :disabled="disabled || saving" />
+        <FieldDescription :id="`${id}-mirror-help`">{{ t('softwareUpdate.mirrorPrefixHelp') }}</FieldDescription>
+      </Field>
       <Field v-if="form.proxyMode === 'custom'"><FieldLabel :for="`${id}-url`">{{ t('softwareUpdate.proxyURL') }}</FieldLabel><Input :id="`${id}-url`" v-model="form.proxyURL" type="password" autocomplete="new-password" :placeholder="form.proxyConfigured ? t('softwareUpdate.secretSaved') : 'http://127.0.0.1:7890'" :disabled="disabled || saving" /></Field>
       <Field><FieldLabel :for="`${id}-timeout`">{{ t('softwareUpdate.timeout') }}</FieldLabel><Input :id="`${id}-timeout`" v-model="form.timeoutMinutes" type="number" min="10" max="240" required :disabled="disabled || saving" /></Field>
       <Field v-if="agentId" orientation="horizontal"><Switch :id="`${id}-relay`" v-model="form.controllerRelay" :disabled="disabled || saving" /><FieldLabel :for="`${id}-relay`">{{ t('softwareUpdate.controllerTransfer') }}</FieldLabel><FieldDescription>{{ t('softwareUpdate.agentSources') }}</FieldDescription></Field>

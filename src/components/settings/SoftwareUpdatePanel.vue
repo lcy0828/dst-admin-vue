@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CircleAlert, Download, ExternalLink, PackageCheck, RefreshCw } from '@lucide/vue'
 import { useSoftwareUpdate } from '@/composables/useSoftwareUpdate'
-import { formatSoftwareBytes, softwareUpdateActive } from '@/lib/softwareUpdate.mjs'
+import { formatSoftwareBytes, softwareUpdateActive, softwareUpdateAction } from '@/lib/softwareUpdate.mjs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
@@ -20,9 +20,11 @@ const { state } = update
 const source = computed(() => state.snapshot?.settings?.source || '')
 const confirmation = ref('')
 const confirmingVersion = ref('')
+const confirmingOperationId = ref('')
 const snapshot = computed(() => state.snapshot)
 const latest = computed(() => snapshot.value?.check?.latest)
 const operation = computed(() => snapshot.value?.operation)
+const nextAction = computed(() => softwareUpdateAction(snapshot.value))
 const busy = computed(() => state.acting || state.reconnecting || softwareUpdateActive(operation.value) || snapshot.value?.supported && snapshot.value?.ready === false)
 const phaseLabel = computed(() => operation.value ? t(`softwareUpdate.phases.${operation.value.phase}`) : '')
 const confirmationTitle = computed(() => t(`softwareUpdate.${confirmation.value === 'apply' ? 'confirmApply' : 'confirmUpdate'}`, { version: confirmingVersion.value }))
@@ -31,15 +33,17 @@ const errorMessage = computed(() => {
   return key ? t(key) : state.error
 })
 
-function confirm(action) {
-  confirmingVersion.value = action === 'apply' || action === 'resume' ? operation.value.version : latest.value.version
-  confirmation.value = action
+function confirm() {
+  if (!nextAction.value) return
+  confirmingVersion.value = nextAction.value.version
+  confirmingOperationId.value = nextAction.value.operationId || ''
+  confirmation.value = nextAction.value.kind
 }
 
 async function execute() {
   const action = confirmation.value, version = confirmingVersion.value
   confirmation.value = ''
-  if (action === 'apply') await update.apply()
+  if (action === 'apply') await update.apply(confirmingOperationId.value)
   else await update.update(version, source.value)
 }
 </script>
@@ -96,6 +100,7 @@ async function execute() {
           <Progress v-if="busy || operation.phase === 'prepared'" :model-value="operation.progress" :aria-label="t('softwareUpdate.progress')" />
           <p v-if="operation.totalBytes > 0 && operation.phase === 'downloading'" class="text-sm text-muted-foreground tabular-nums">{{ t('softwareUpdate.downloaded', { downloaded: formatSoftwareBytes(operation.downloadedBytes), total: formatSoftwareBytes(operation.totalBytes) }) }}</p>
           <p v-if="state.reconnecting || operation.phase === 'restarting'" class="text-sm text-muted-foreground">{{ t('softwareUpdate.reconnecting') }}</p>
+          <p v-if="operation.phase === 'superseded'" class="text-sm text-muted-foreground">{{ t('softwareUpdate.supersededHelp') }}</p>
           <Alert v-if="operation.error" variant="destructive"><CircleAlert /><AlertTitle>{{ phaseLabel }}</AlertTitle><AlertDescription class="break-words">{{ operation.error }}</AlertDescription></Alert>
         </div>
         <div v-if="latest?.notes" class="flex min-w-0 flex-col gap-2">
@@ -108,12 +113,8 @@ async function execute() {
           <Spinner v-if="state.checking" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />
           {{ t(state.checking ? 'softwareUpdate.checking' : 'softwareUpdate.check') }}
         </Button>
-        <Button v-if="operation?.phase === 'prepared' && snapshot.supported" :disabled="busy" @click="confirm('apply')">
-          <PackageCheck data-icon="inline-start" />{{ t('softwareUpdate.apply') }}
-        </Button>
-        <Button v-else-if="['failed', 'interrupted'].includes(operation?.phase) && snapshot.supported" :disabled="busy" @click="confirm('resume')"><Download data-icon="inline-start" />{{ t('softwareUpdate.resume', { version: operation.version }) }}</Button>
-        <Button v-else-if="snapshot.check.hasUpdate && latest?.onlineUpdate && snapshot.supported" :disabled="busy" @click="confirm('update')">
-          <Download data-icon="inline-start" />{{ t('softwareUpdate.update', { version: latest.version }) }}
+        <Button v-if="nextAction" :disabled="busy || state.checking" @click="confirm()">
+          <PackageCheck v-if="nextAction.kind === 'apply'" data-icon="inline-start" /><Download v-else data-icon="inline-start" />{{ t(`softwareUpdate.${nextAction.kind === 'resume' ? 'resume' : nextAction.kind === 'apply' ? 'apply' : 'update'}`, { version: nextAction.version }) }}
         </Button>
         <Button v-if="latest?.url" variant="ghost" as-child><a :href="latest.url" target="_blank" rel="noopener noreferrer">{{ t('softwareUpdate.release') }}<ExternalLink data-icon="inline-end" /></a></Button>
       </CardFooter>

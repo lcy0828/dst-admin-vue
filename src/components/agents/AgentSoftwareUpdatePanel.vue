@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { Download, RefreshCw, CircleAlert } from '@lucide/vue'
 import { agentsV2API, jobsV2API } from '@/api/v2'
 import { createAgentSoftwareController } from '@/lib/agentSoftwareUpdate.mjs'
-import { formatSoftwareBytes, softwareUpdateActive } from '@/lib/softwareUpdate.mjs'
+import { formatSoftwareBytes, softwareUpdateActive, softwareUpdateAction } from '@/lib/softwareUpdate.mjs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
@@ -29,8 +29,9 @@ const latest = computed(() => snapshot.value?.check?.latest)
 const legacySource = ref('auto')
 const source = computed(() => snapshot.value?.settings?.controllerRelay ? 'controller' : snapshot.value?.settings?.source || legacySource.value)
 const operation = computed(() => snapshot.value?.operation)
+const nextAction = computed(() => softwareUpdateAction(snapshot.value))
 const busy = computed(() => state.acting || softwareUpdateActive(operation.value) || snapshot.value?.supported && snapshot.value?.ready === false)
-const phase = computed(() => state.job?.progressDetail?.stage || operation.value?.phase)
+const phase = computed(() => state.acting ? state.job?.progressDetail?.stage || operation.value?.phase : operation.value?.phase)
 const transfer = computed(() => state.job?.transfer || { currentBytes: operation.value?.downloadedBytes, totalBytes: operation.value?.totalBytes, bytesPerSecond: operation.value?.bytesPerSecond })
 const errorMessage = computed(() => {
   const key = { SOFTWARE_CONNECTION_TIMEOUT: 'softwareUpdate.connectionTimeout', SOFTWARE_OBSERVATION_TIMEOUT: 'softwareUpdate.observationTimeout' }[state.error]
@@ -63,9 +64,7 @@ onBeforeUnmount(() => controller.dispose())
     </CardContent>
     <CardFooter class="flex flex-wrap gap-2">
       <Button variant="outline" size="sm" :disabled="!online || busy || state.loading || state.checking" @click="controller.check(source)"><Spinner v-if="state.checking" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t(state.checking ? 'softwareUpdate.checking' : 'softwareUpdate.check') }}</Button>
-      <Button v-if="snapshot?.supported && snapshot.check.hasUpdate && latest?.onlineUpdate" size="sm" :disabled="!online || busy || state.checking" @click="confirm('update', latest.version)"><Download data-icon="inline-start" />{{ t('softwareUpdate.update', { version: latest.version }) }}</Button>
-      <Button v-if="['failed', 'interrupted'].includes(operation?.phase)" size="sm" :disabled="!online || busy" @click="confirm('update', operation.version)">{{ t('softwareUpdate.resume', { version: operation.version }) }}</Button>
-      <Button v-if="operation?.phase === 'prepared'" size="sm" :disabled="!online || busy" @click="confirm('apply', operation.version, operation.id)">{{ t('softwareUpdate.apply') }}</Button>
+      <Button v-if="nextAction" size="sm" :disabled="!online || busy || state.checking" @click="confirm(nextAction.kind, nextAction.version, nextAction.operationId)"><Download data-icon="inline-start" />{{ t(`softwareUpdate.${nextAction.kind === 'apply' ? 'apply' : nextAction.kind === 'resume' ? 'resume' : 'update'}`, { version: nextAction.version }) }}</Button>
     </CardFooter>
   </Card>
   <AlertDialog :open="Boolean(ui.confirmation)" @update:open="value => { if (!value) ui.confirmation = '' }"><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{{ t('softwareUpdate.confirmAgentUpdate', { version: ui.version }) }}</AlertDialogTitle><AlertDialogDescription>{{ t('softwareUpdate.agentConfirmation') }}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>{{ t('softwareUpdate.cancel') }}</AlertDialogCancel><AlertDialogAction @click="execute">{{ t('softwareUpdate.confirm') }}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

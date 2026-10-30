@@ -2,6 +2,29 @@ const activePhases = new Set(['downloading', 'verifying', 'restarting'])
 export const softwareUpdateActive = operation => activePhases.has(operation?.phase)
 export const softwareUpdateRetryable = error => !error?.status || error.status === 408 || error.status === 429 || error.status >= 500
 
+function compareVersions(left, right) {
+  const parse = value => typeof value === 'string' && /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value) ? value.replace(/^v/, '').split('.').map(Number) : null
+  const a = parse(left), b = parse(right)
+  if (!a || !b || [...a, ...b].some(n => n > 4294967295)) return null
+  for (let i = 0; i < 3; i++) { if (a[i] !== b[i]) return Math.sign(a[i] - b[i]) }
+  return 0
+}
+
+export const softwareUpdateTargetAhead = (snapshot, version = snapshot?.operation?.version) => compareVersions(version, snapshot?.current?.version) === 1
+
+// The newest available version stays reachable even when an older task remains
+// in history. Shared by the Controller and selected-Agent panels.
+export function softwareUpdateAction(snapshot) {
+  if (!snapshot?.supported) return null
+  const operation = snapshot.operation, latest = snapshot.check?.latest
+  const prepared = operation?.phase === 'prepared' && softwareUpdateTargetAhead(snapshot)
+  const resumable = ['failed', 'interrupted'].includes(operation?.phase) && softwareUpdateTargetAhead(snapshot)
+  if (latest?.onlineUpdate && snapshot.check.hasUpdate && softwareUpdateTargetAhead(snapshot, latest.version) && (!(prepared || resumable) || compareVersions(latest.version, operation.version) === 1)) return { kind: 'update', version: latest.version }
+  if (prepared) return { kind: 'apply', version: operation.version, operationId: operation.id }
+  if (resumable) return { kind: 'resume', version: operation.version }
+  return null
+}
+
 // One shared controller: no release polling when idle, and one in-flight status
 // request while an update is active. Kept framework-free to test reconnects.
 export function createSoftwareUpdateController({ api, changed, reload, storage, now = Date.now, schedule = setTimeout, unschedule = clearTimeout }) {
@@ -53,12 +76,12 @@ export function createSoftwareUpdateController({ api, changed, reload, storage, 
     if (operation?.phase === 'rolled_back' && pending === operation.id && snapshot.ready !== false) {
       pending = ''; writePending(''); stopTimer(); emit(); reload(); return
     }
-    if (['failed', 'interrupted'].includes(operation?.phase) || operation?.phase === 'rolled_back' && snapshot.ready !== false) {
+    if (['failed', 'interrupted', 'superseded'].includes(operation?.phase) || operation?.phase === 'prepared' && !softwareUpdateTargetAhead(snapshot) || operation?.phase === 'rolled_back' && snapshot.ready !== false) {
       if (operation.id === pending) { pending = ''; writePending('') }
       if (snapshot.ready !== false) restartUntil = 0
     }
     emit()
-    if (operation?.phase === 'prepared' && operation.id === pending && !autoApplyFailed) await apply()
+    if (operation?.phase === 'prepared' && snapshot.ready !== false && softwareUpdateTargetAhead(snapshot) && operation.id === pending && !autoApplyFailed) await apply()
     if (!state.acting) poll()
   }
 
@@ -122,13 +145,18 @@ export function createSoftwareUpdateController({ api, changed, reload, storage, 
         restartUntil = 0
         state.reconnecting = false
         fail(error)
+        // A rejected apply may have invalidated a missing/corrupt prepared
+        // package. Read its persisted result once so the UI offers a download.
+        if (restarting) {
+          try { await accept(await api.status()) } catch { /* Keep the actionable error. */ }
+        }
       }
     } finally { state.acting = false; emit(); poll() }
   }
 
-  async function apply() {
+  async function apply(expectedId = state.snapshot?.operation?.id) {
     const id = state.snapshot?.operation?.id
-    if (!id || state.snapshot.operation.phase !== 'prepared') return
+    if (!id || id !== expectedId || state.snapshot.ready === false || state.snapshot.operation.phase !== 'prepared' || !softwareUpdateTargetAhead(state.snapshot)) return
     // Record authorization before the request: the connection may drop after
     // the server accepted it but before the browser received the response.
     pending = id

@@ -61,6 +61,9 @@ export const softwareUpdateMessages = {
 
 Object.assign(softwareUpdateMessages["zh-CN"].softwareUpdate, {
   "proxyMode": "网络代理",
+  "mirrorPrefix": "GitHub 加速前缀",
+  "mirrorPrefixHelp": "填写支持在完整 GitHub 链接前添加的 HTTPS 前缀，例如 https://ghfast.top/。留空恢复默认；用于版本信息、校验文件和安装包，不支持账号、查询参数或片段。",
+  "supersededHelp": "当前运行版本已覆盖此任务的目标版本，无需再次安装。可继续检查或下载更新版本。",
   "proxyURL": "代理地址",
   "secretSaved": "已保存，留空保留",
   "timeout": "下载总时限（分钟）",
@@ -90,10 +93,13 @@ Object.assign(softwareUpdateMessages["zh-CN"].softwareUpdate, {
     "controller": "控制端"
   },
   "proxy": "国内镜像",
-  "autoDescription": "自动模式依次尝试已配置代理、GitHub 直连和国内镜像。固定来源不自动换源。"
+  "autoDescription": "自动模式依次尝试已配置代理、GitHub 直连和已配置的加速前缀。固定来源不自动换源。"
 })
 Object.assign(softwareUpdateMessages["en-US"].softwareUpdate, {
   "proxyMode": "Network proxy",
+  "mirrorPrefix": "GitHub mirror prefix",
+  "mirrorPrefixHelp": "An HTTPS prefix prepended to complete GitHub URLs, e.g. https://ghfast.top/. Leave blank to restore the default. Used for release metadata, checksums and archives. Credentials, query strings and fragments are not supported.",
+  "supersededHelp": "The running version already covers this task’s target. No further installation is needed; you can check for or download a newer release.",
   "proxyURL": "Proxy URL",
   "secretSaved": "Saved; leave blank to keep",
   "timeout": "Download deadline (minutes)",
@@ -123,10 +129,12 @@ Object.assign(softwareUpdateMessages["en-US"].softwareUpdate, {
     "controller": "Controller"
   },
   "proxy": "China mirror",
-  "autoDescription": "Automatic mode tries the configured proxy, direct GitHub and the China mirror. A fixed source does not switch automatically."
+  "autoDescription": "Automatic mode tries the configured proxy, direct GitHub and the configured mirror prefix. A fixed source does not switch automatically."
 })
 
 softwareUpdateMessages['zh-CN'].softwareUpdate.resume = '继续下载 {version}'
 softwareUpdateMessages['en-US'].softwareUpdate.resume = 'Resume download of {version}'
 softwareUpdateMessages['zh-CN'].softwareUpdate.phases.interrupted = '下载已中断，可继续'
 softwareUpdateMessages['en-US'].softwareUpdate.phases.interrupted = 'Download interrupted; resume available'
+softwareUpdateMessages['zh-CN'].softwareUpdate.phases.superseded = '目标版本已被当前版本覆盖'
+softwareUpdateMessages['en-US'].softwareUpdate.phases.superseded = 'Target covered by the running version'
