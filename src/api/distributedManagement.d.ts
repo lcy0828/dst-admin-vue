@@ -318,7 +318,7 @@ export interface RuntimeInfrastructure {
   observedAt: string
 }
 
-export type GameReleaseStage = 'previewed' | 'protecting' | 'stopping' | 'staged' | 'updating' | 'verified' | 'restarting' | 'confirming' | 'succeeded' | 'failed' | 'recovery_required'
+export type GameReleaseStage = 'previewed' | 'protecting' | 'stopping' | 'staged' | 'updating' | 'verified' | 'restarting' | 'confirming' | 'succeeded' | 'failed' | 'recovery_required' | 'abandoned'
 
 export interface GameReleaseBlocker {
   code: string
@@ -406,6 +406,7 @@ export interface GameReleasePlan {
 }
 
 export interface GameReleaseInstallationResult {
+  warningMessage?: string
   writeState?: 'not_started' | 'dispatched' | 'unknown' | 'failed' | 'version_changed' | 'verified'
   operationId?: string
   expectedVersion?: string
@@ -423,6 +424,8 @@ export interface GameReleaseInstallationResult {
 }
 
 export interface GameReleaseShardResult {
+  runtimeMode?: 'game' | 'luajit' | 'arena-gc'
+  warningCode?: 'RUNTIME_FALLBACK_GAME'
   stopRequestedAt?: string
   logFileId?: string
   logOffset?: number

@@ -9,10 +9,11 @@ const RELEASE_STAGES = new Set([
   'confirming',
   'succeeded',
   'failed',
-  'recovery_required'
+  'recovery_required',
+  'abandoned'
 ])
 
-const TERMINAL_RELEASE_STAGES = new Set(['succeeded', 'failed', 'recovery_required'])
+const TERMINAL_RELEASE_STAGES = new Set(['succeeded', 'failed', 'recovery_required', 'abandoned'])
 const RETRYABLE_RELEASE_STAGES = new Set(['failed', 'recovery_required'])
 
 const BLOCKER_KEYS = Object.freeze({
@@ -67,6 +68,13 @@ export function gameReleaseIsTerminal(release) {
 
 export function gameReleaseCanRetry(release) {
   return Boolean(release?.id && RETRYABLE_RELEASE_STAGES.has(gameReleaseStageKey(release?.stage)))
+}
+
+export function gameReleaseCanFinish(release) {
+  return gameReleaseCanRetry(release) && Boolean(release?.plan?.planHash) &&
+    Array.isArray(release.installations) && release.installations.length > 0 &&
+    release.installations.length === release.plan.installations?.length &&
+    release.installations.every(item => ['verified', 'succeeded'].includes(item.stage))
 }
 
 export function gameReleaseBlockerKey(code) {
@@ -196,7 +204,7 @@ export function gameReleaseProgress(release) {
   if (interrupted < 0 && terminal && stage !== 'succeeded') interrupted = 4
   const steps = stages.map((key, index) => {
     const [done, total] = counts[index]
-    const skipped = noUpdate || total === 0
+    const skipped = noUpdate || total === 0 || stage === 'abandoned' && index >= 3
     const complete = !skipped && done === total
     let state = skipped ? 'skipped' : complete ? 'done' : 'pending'
     if (!terminal && index === current && !skipped && !complete) state = 'active'
@@ -213,6 +221,7 @@ export function gameReleaseProgress(release) {
 }
 
 export function gameReleaseShardState(shard, release) {
+  if (release?.stage === 'abandoned') return shard?.runtimeState === 'running' ? 'running' : 'stopped'
   if (shard?.errorMessage || shard?.stage === 'failed') return 'failed'
   if (shard?.stage === 'succeeded') {
     if (shard.runtimeState === 'running') return 'running'

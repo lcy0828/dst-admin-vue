@@ -37,6 +37,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   gameReleaseBlockerKey,
   gameReleaseCanRetry,
+  gameReleaseCanFinish,
   gameReleaseFindByJob,
   gameReleaseRecoveryRequest,
   gameReleaseWriteState,
@@ -118,6 +119,8 @@ const selectedReleaseShards = computed(() => filterManagementTargets(
   item => item?.targetId,
   managementScope.value
 ))
+const finishConfirmOpen = ref(false)
+const canFinishSelectedRelease = computed(() => canRetrySelectedRelease.value && gameReleaseCanFinish(selectedRelease.value))
 const canRetrySelectedRelease = computed(() => {
   if (!gameReleaseCanRetry(selectedRelease.value)) return false
   if (managementScope.value.kind !== MANAGEMENT_SCOPE_TARGET) return true
@@ -476,6 +479,23 @@ async function retryRelease(confirmed = false, repair = false) {
   }
 }
 
+async function finishRelease() {
+  const release = selectedRelease.value
+  if (!canFinishSelectedRelease.value || activeJobRunning.value || retrying.value) return
+  retrying.value = true
+  try {
+    const hash = release.plan.planHash
+    const job = await gameReleasesV2API.retry(release.id, { finishWithoutRestart: true, planHash: hash, confirmation: hash })
+    if (!job?.id) throw new Error(t('gameReleases.feedback.invalidJobResponse'))
+    finishConfirmOpen.value = false
+    startPolling(job, release.id)
+  } catch (error) {
+    toast.error(t('gameReleases.feedback.retryFailed', { error: error.message || t('common.errors.unknown') }))
+  } finally {
+    retrying.value = false
+  }
+}
+
 function startPolling(job, releaseId = '') {
   if (disposed || !job?.id) return
   stopPolling()
@@ -810,6 +830,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
       <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div><div class="flex flex-wrap items-center gap-2"><h2 id="release-details-title" class="text-base font-semibold">{{ t('gameReleases.details.title') }}</h2><Badge :variant="gameReleaseStageVariant(selectedRelease.stage)">{{ stageLabel(selectedRelease.stage) }}</Badge></div><p class="mt-0.5 text-sm text-muted-foreground">{{ formatDate(selectedRelease.createdAt) }}</p></div>
         <UiButton v-if="canRetrySelectedRelease" variant="outline" :disabled="retrying || activeJobRunning" @click="retryRelease(false)"><Spinner v-if="retrying" data-icon="inline-start" /><RotateCw v-else data-icon="inline-start" />{{ t(selectedRelease.nextAction === 'preview_and_retry' ? 'gameReleases.recovery.recheck' : 'gameReleases.actions.retry') }}</UiButton>
+        <UiButton v-if="canFinishSelectedRelease" variant="outline" :disabled="retrying || activeJobRunning" @click="finishConfirmOpen = true">{{ t('gameReleases.recovery.finish') }}</UiButton>
         <UiButton v-if="canRetrySelectedRelease && selectedRelease.nextAction === 'inspect_release'" variant="outline" :disabled="retrying || activeJobRunning" @click="retryRelease(false, true)">{{ t('gameReleases.recovery.repair') }}</UiButton>
       </div>
       <GameReleaseProgress v-if="selectedRelease.id !== trackedRelease?.id" :release="selectedRelease" />
@@ -826,7 +847,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
                 <TableCell :title="result.targetId">{{ targetName(result) }}</TableCell>
                 <TableCell>{{ result.installationId === 'default' ? t('gameReleases.values.defaultInstallation') : result.installationId }}</TableCell>
                 <TableCell class="tabular-nums"><div>{{ result.beforeVersion || '--' }} → {{ result.afterVersion || '--' }}</div><span v-if="result.expectedVersion" class="text-xs text-muted-foreground">{{ t('gameReleases.recovery.expected', { version: result.expectedVersion }) }}</span></TableCell>
-                <TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(result.stage)" class="self-start">{{ stageLabel(result.stage) }}</Badge><span class="text-xs text-muted-foreground">{{ t(`gameReleases.writeStates.${gameReleaseWriteState(result.writeState)}`) }}</span><span v-if="result.errorMessage" class="text-xs text-destructive">{{ result.errorMessage }}</span></div></TableCell>
+                <TableCell><div class="flex flex-col gap-1"><Badge :variant="gameReleaseStageVariant(result.stage)" class="self-start">{{ stageLabel(result.stage) }}</Badge><span class="text-xs text-muted-foreground">{{ t(`gameReleases.writeStates.${gameReleaseWriteState(result.writeState)}`) }}</span><span v-if="result.warningMessage" class="text-xs text-warning-foreground">{{ result.warningMessage }}</span><span v-if="result.errorMessage" class="text-xs text-destructive">{{ result.errorMessage }}</span></div></TableCell>
                 <TableCell>{{ formatDate(result.updatedAt) }}</TableCell>
               </TableRow>
             </TableBody>
@@ -842,7 +863,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
               <TableRow v-for="shard in selectedReleaseShards" :key="`${shard.roomId}:${shard.worldId}`">
                 <TableCell><div class="flex flex-col gap-1"><span>{{ shardName(shard) }}</span><Badge variant="outline" class="self-start">{{ t(shard.isMaster ? 'gameReleases.values.master' : 'gameReleases.values.secondary') }}</Badge></div></TableCell>
                 <TableCell :title="shard.targetId">{{ targetName(shard) }}</TableCell>
-                <TableCell><div class="flex flex-col gap-1"><Badge :variant="shard.errorMessage ? 'destructive' : shard.runtimeState === 'running' && shard.stage === 'succeeded' ? 'success' : 'outline'" class="self-start">{{ t(`gameReleases.progress.shardStates.${gameReleaseShardState(shard, selectedRelease)}`) }}</Badge><span v-if="shard.errorMessage" class="text-xs text-destructive">{{ shard.errorMessage }}</span></div></TableCell>
+                <TableCell><div class="flex flex-col gap-1"><Badge :variant="shard.errorMessage ? 'destructive' : shard.runtimeState === 'running' && shard.stage === 'succeeded' ? 'success' : 'outline'" class="self-start">{{ t(`gameReleases.progress.shardStates.${gameReleaseShardState(shard, selectedRelease)}`) }}</Badge><span v-if="shard.warningCode === 'RUNTIME_FALLBACK_GAME'" class="text-xs text-warning-foreground">{{ t('gameReleases.recovery.runtimeFallback') }}</span><span v-if="shard.errorMessage" class="text-xs text-destructive">{{ shard.errorMessage }}</span></div></TableCell>
                 <TableCell class="max-w-80 break-words text-xs" :title="shard.loadMarker || undefined">{{ shardEvidence(shard) }}<span v-if="shard.loadConfirmedAt" class="mt-1 block text-muted-foreground">{{ formatDate(shard.loadConfirmedAt) }}</span></TableCell>
                 <TableCell>{{ formatDate(shard.updatedAt) }}</TableCell>
               </TableRow>
@@ -856,6 +877,12 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
       </Collapsible>
     </section>
 
+    <Dialog v-model:open="finishConfirmOpen">
+      <DialogContent class="sm:max-w-lg">
+        <DialogHeader><DialogTitle>{{ t('gameReleases.recovery.finish') }}</DialogTitle><DialogDescription>{{ t('gameReleases.recovery.finishDescription') }}</DialogDescription></DialogHeader>
+        <DialogFooter><UiButton variant="outline" @click="finishConfirmOpen = false">{{ t('common.actions.cancel') }}</UiButton><UiButton :disabled="retrying" @click="finishRelease"><Spinner v-if="retrying" data-icon="inline-start" />{{ t('gameReleases.recovery.finish') }}</UiButton></DialogFooter>
+      </DialogContent>
+    </Dialog>
     <Dialog v-model:open="recoveryConfirmOpen">
       <DialogContent class="sm:max-w-lg">
         <DialogHeader><DialogTitle>{{ t(recoveryRepair ? 'gameReleases.recovery.repair' : 'gameReleases.recovery.recheck') }}</DialogTitle><DialogDescription>{{ t(recoveryRepair ? 'gameReleases.recovery.repairDescription' : 'gameReleases.recovery.confirmDescription') }}</DialogDescription></DialogHeader>

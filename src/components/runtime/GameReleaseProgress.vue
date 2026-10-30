@@ -53,12 +53,20 @@ function targetName(item) {
       <AlertTitle>{{ t(progress.noUpdate ? 'gameReleases.progress.noUpdate' : 'gameReleases.progress.success') }}</AlertTitle>
       <AlertDescription v-if="!progress.noUpdate">{{ t('gameReleases.progress.restored', { count: progress.restored, total: progress.restoreTotal, stopped: progress.keptStopped }) }}</AlertDescription>
     </Alert>
+    <Alert v-else-if="progress.stage === 'abandoned'">
+      <CircleAlert /><AlertTitle>{{ t('gameReleases.stages.abandoned') }}</AlertTitle>
+      <AlertDescription>{{ t('gameReleases.recovery.finished') }}</AlertDescription>
+    </Alert>
     <Alert v-else-if="failed" variant="destructive">
       <CircleAlert />
       <AlertTitle>{{ t(`gameReleases.stages.${progress.stage}`) }}</AlertTitle>
       <AlertDescription>{{ release.errorMessage || t('gameReleases.progress.incomplete') }}</AlertDescription>
     </Alert>
 
+    <Alert v-if="release.shards?.some(shard => shard.warningCode === 'RUNTIME_FALLBACK_GAME') || release.installations?.some(item => item.warningMessage)">
+      <CircleAlert /><AlertTitle>{{ t('gameReleases.recovery.acceleratorWarning') }}</AlertTitle>
+      <AlertDescription>{{ t(release.shards?.some(shard => shard.warningCode === 'RUNTIME_FALLBACK_GAME') ? 'gameReleases.recovery.runtimeFallback' : 'gameReleases.recovery.acceleratorRepair') }}</AlertDescription>
+    </Alert>
     <div v-if="progress.terminal && progress.rows.installations.length" class="flex flex-col gap-1 text-sm">
       <p v-for="item in progress.rows.installations" :key="`${item.targetId}:${item.installationId}`" class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span>{{ targetName(item) }}</span>

@@ -166,3 +166,42 @@ test('tracking still works without browser storage, and repeated read failures a
     assert.equal(view.timers.size, 1)
   } finally { view.unmount() }
 })
+
+
+test('ending verified maintenance confirms the original plan and polls the original release', async () => {
+  const release = fixture('recovery-release', 'recovery_required')
+  release.plan.planHash = 'a'.repeat(64)
+  release.installations[0].stage = 'verified'
+  const view = mount({ items: [release], jobStatus: 'succeeded' })
+  let submitted
+  api.gameReleasesV2API.retry = async (id, input) => { submitted = { id, input }; return { id: 'finish-job', status: 'queued' } }
+  try {
+    await settle()
+    await view.state.openDetails(release)
+    assert.equal(view.state.canFinishSelectedRelease.value, true)
+    await view.state.finishRelease()
+    assert.deepEqual(submitted, { id: release.id, input: { finishWithoutRestart: true, planHash: release.plan.planHash, confirmation: release.plan.planHash } })
+    assert.equal(view.state.trackedRelease.value.id, release.id)
+    assert.ok(view.reads.includes(release.id))
+    const ended = { ...release, stage: 'abandoned' }
+    view.items([ended])
+    await view.state.pollActivity('finish-job', release.id)
+    assert.equal(view.state.activeJobRunning.value, false)
+    assert.equal(view.state.canFinishSelectedRelease.value, false)
+  } finally { view.unmount() }
+})
+
+test('ending maintenance is unavailable when installation write is incomplete', async () => {
+  const release = fixture('unsafe-release', 'recovery_required')
+  release.plan.planHash = 'b'.repeat(64)
+  const view = mount({ items: [release], jobStatus: 'succeeded' })
+  let writes = 0
+  api.gameReleasesV2API.retry = async () => { writes++; throw new Error('must not write') }
+  try {
+    await settle()
+    await view.state.openDetails(release)
+    assert.equal(view.state.canFinishSelectedRelease.value, false)
+    await view.state.finishRelease()
+    assert.equal(writes, 0)
+  } finally { view.unmount() }
+})
