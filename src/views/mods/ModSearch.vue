@@ -105,7 +105,11 @@
     </Alert>
 
     <p v-if="searching && searchResults.length" class="text-sm text-muted-foreground" role="status">{{ $t('workshop.refreshing') }}</p>
-    <Alert v-if="searchWarning || searchStale"><AlertTitle>{{ searchStale ? $t('workshop.cached', { time: formatDate(searchObservedAt) }) : $t('workshop.partial') }}</AlertTitle></Alert>
+    <Alert v-if="searchWarning || searchStale || searchMetadataWarning" role="status">
+      <Info />
+      <AlertTitle>{{ searchStale ? $t('workshop.cached', { time: formatDate(searchObservedAt) }) : searchMetadataWarning ? $t('mods.metadata.notice') : $t('workshop.partial') }}</AlertTitle>
+      <AlertDescription v-if="searchMetadataWarning">{{ searchMetadataWarning }}</AlertDescription>
+    </Alert>
     <p v-if="loadError && searchResults.length" class="text-sm text-muted-foreground">{{ $t('workshop.currentResults') }}</p>
     <div v-if="searching && !searchResults.length" class="mod-grid">
       <Card v-for="index in 8" :key="index" class="mod-card">
@@ -324,6 +328,9 @@ export default {
     }
   },
   computed: {
+    searchMetadataWarning() {
+      return this.searchResults.find(item => item.metadataWarning)?.metadataWarning || ''
+    },
     networkSearchFailure() { return !['WORKSHOP_ITEM_UNAVAILABLE', 'WORKSHOP_CONFIG_CHANGED', 'INVALID_MOD_REQUEST', 'INVALID_MOD_ID', 'INVALID_MOD_CONFIGURATION'].includes(this.loadFailure?.code) },
     loadError() {
       return this.localizedFailure(this.loadFailure)
