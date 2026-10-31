@@ -108,7 +108,8 @@ onMounted(() => { loadTokens(); loadRooms() })
             <Field><FieldLabel for="ai-token-name">{{ t('ai.tokenName') }}</FieldLabel><Input id="ai-token-name" v-model="credential.name" required maxlength="100" :disabled="creating" /></Field>
             <Field>
               <FieldLabel id="ai-token-profile-label">{{ t('ai.tokenProfile') }}</FieldLabel>
-              <ToggleGroup v-model="credential.profile" type="single" variant="outline" :spacing="1" :disabled="creating" aria-labelledby="ai-token-profile-label" class="max-w-full flex-wrap">
+              <FieldDescription>{{ t('ai.profileSelection') }}</FieldDescription>
+              <ToggleGroup :model-value="credential.profile" type="single" @update:model-value="value => { if (profiles.includes(value)) credential.profile = value }" variant="outline" :spacing="1" :disabled="creating" aria-labelledby="ai-token-profile-label" class="max-w-full flex-wrap">
                 <ToggleGroupItem v-for="profile in profiles" :key="profile" :value="profile">{{ t(`ai.profiles.${profile}`) }}</ToggleGroupItem>
               </ToggleGroup>
               <FieldDescription>{{ t(`ai.profileHints.${credential.profile || 'game-read'}`) }}</FieldDescription>

@@ -235,7 +235,7 @@ onBeforeUnmount(() => { alive = false; sequence++; catalogSequence++; window.rem
           </CardFooter>
         </Card>
       </div>
-      <p class="text-xs text-muted-foreground">{{ t('performance.coverageHelp') }}</p>
+      <details class="text-xs text-muted-foreground"><summary class="cursor-pointer">{{ t('performance.coverage') }}</summary><p class="pt-2">{{ t('performance.coverageHelp') }}</p></details>
       <Card v-for="metric in ['score', 'cpuPercent', 'rssBytes']" :key="metric">
         <CardHeader><CardTitle>{{ t(`performance.metrics.${metric}`) }}</CardTitle></CardHeader>
         <CardContent><PerformanceChart :points="metric === 'score' ? scorePoints : report.items" :metric="metric" :resolution="report.resolutionSeconds" :events="report.events || []" /></CardContent>

@@ -87,7 +87,7 @@ onBeforeUnmount(() => { ++sequence; controller?.abort() })
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
     <DialogContent class="flex w-[calc(100%-2rem)] max-h-[90dvh] flex-col overflow-hidden sm:max-w-4xl">
-      <DialogHeader class="shrink-0 pr-6"><DialogTitle>{{ t('inventory.title') }}<template v-if="playerName"> · {{ playerName }}</template></DialogTitle><DialogDescription>{{ t('inventory.coverage') }}</DialogDescription></DialogHeader>
+      <DialogHeader class="shrink-0 pr-6"><DialogTitle>{{ t('inventory.title') }}<template v-if="playerName"> · {{ playerName }}</template></DialogTitle><DialogDescription>{{ t('novice.inventoryHint') }}</DialogDescription></DialogHeader>
       <form v-if="!player" class="shrink-0" @submit.prevent="load(false, true)">
         <FieldGroup class="flex flex-col gap-3 sm:flex-row sm:items-end">
           <Field class="min-w-0 flex-1"><FieldLabel :for="`${id}-room`">{{ t('inventory.room') }}</FieldLabel><Select v-model="selectedRoom"><SelectTrigger :id="`${id}-room`"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="room in rooms" :key="room.id" :value="room.id">{{ room.name }}</SelectItem></SelectGroup></SelectContent></Select></Field>

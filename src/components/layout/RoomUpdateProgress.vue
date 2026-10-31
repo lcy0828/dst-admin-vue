@@ -1,6 +1,10 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { modsV2API, roomsV2API, runtimeTargetsV2API } from '@/api/v2'
+import { useGameUpdate } from '@/composables/useGameUpdate'
+import { useSoftwareUpdate } from '@/composables/useSoftwareUpdate'
+import { softwareUpdateTask } from '@/lib/softwareUpdate.mjs'
+import { gameReleaseIsTerminal } from '@/lib/gameRelease.mjs'
 import { useSharedJobStatus } from '@/composables/useGlobalJobStatus'
 import { isTaskProgressJob, taskProgress, readableTaskText } from '@/lib/taskProgress.mjs'
 import { globalJobWarning } from '@/lib/globalJobs.mjs'
@@ -13,7 +17,36 @@ const {
   connected, taskListOpen, roomLabels, rememberRoomLabel, jobLabels, closedProgressIds, closeJobProgress
 } = useSharedJobStatus()
 const { t } = useI18n()
-const candidates = computed(() => [...activeJobs.value.filter(isTaskProgressJob), ...recentProgressJobs.value].filter(job => !closedProgressIds.value.includes(job.id)))
+const gameUpdate = useGameUpdate()
+const softwareUpdate = useSoftwareUpdate()
+const softwareSeen = ref('')
+watch(() => softwareUpdate.state.snapshot?.operation, operation => {
+  if (operation && (['downloading', 'verifying', 'prepared', 'restarting'].includes(operation.phase) || Date.now() - Date.parse(operation.updatedAt) < 600_000)) softwareSeen.value = operation.id
+}, { immediate: true })
+const softwareTask = computed(() => softwareUpdateTask(softwareUpdate.state, softwareSeen.value))
+const gameRecords = computed(() => gameUpdate.state.records)
+const gameTask = computed(() => {
+  const release = gameUpdate.pending.value || gameUpdate.state.accepted
+  if (!release?.id) return null
+  const jobId = release.currentJobId || release.sourceJobId || release.id
+  const status = release.stage === 'recovery_required' ? 'failed' : 'running'
+  return { id: jobId, kind: 'game.release', status, createdAt: release.createdAt, progressDetail: { phase: 'checking' } }
+})
+const candidates = computed(() => {
+  const list = [softwareTask.value, ...activeJobs.value.filter(isTaskProgressJob), gameTask.value, ...recentProgressJobs.value].filter(Boolean)
+  const releasesSeen = new Set()
+  const unique = new Map()
+  for (const item of list) {
+    if (closedProgressIds.value.includes(item.id)) continue
+    const release = gameRecords.value.find(record => record.id === item.id || record.sourceJobId === item.id || record.currentJobId === item.id)
+    if (release && releasesSeen.has(release.id)) continue
+    if (release) releasesSeen.add(release.id)
+    const job = release ? { ...item, status: !gameReleaseIsTerminal(release) ? 'running' : release.stage === 'succeeded' ? 'succeeded' : release.stage === 'abandoned' ? 'canceled' : 'failed' } : item
+    if (!unique.has(job.id)) unique.set(job.id, job)
+  }
+  return [...unique.values()]
+})
+const selectedRelease = computed(() => gameRecords.value.find(record => record.id === selected.value?.id || record.sourceJobId === selected.value?.id || record.currentJobId === selected.value?.id) || null)
 const selected = computed(() => candidates.value.find(job => job.id === focusedJobId.value) || candidates.value[0])
 const targetLabels = ref({ local: t('servers.list.targets.local') })
 const modMetadata = ref({})
@@ -33,13 +66,17 @@ watch(() => JSON.stringify([...new Set(candidates.value.flatMap(job => [job.prog
     } catch { /* Display fallback remains usable; do not retry on every tick. */ }
   }
 }, { immediate: true })
-const taskOptions = computed(() => candidates.value.map(job => ({
-  id: job.id, label: [readableTaskText(jobLabels.value[job.id] || roomLabels.value[job.roomId] || job.targets?.[0]?.name, targetLabels.value), globalJobKindLabel(job.kind, t)].filter(Boolean).join(' · '),
-  status: taskProgress(job).status
-})))
+const taskOptions = computed(() => candidates.value.map(job => {
+  const release = gameRecords.value.find(record => [record.id, record.currentJobId, record.sourceJobId].includes(job.id))
+  return {
+    id: job.id, label: [readableTaskText(jobLabels.value[job.id] || roomLabels.value[job.roomId] || job.targets?.[0]?.name, targetLabels.value), globalJobKindLabel(job.kind, t)].filter(Boolean).join(' · '),
+    statusLabel: release ? t(`gameReleases.stages.${release.stage}`) : job.kind === 'software.update' ? t(`softwareUpdate.phases.${job.softwarePhase}`) : '',
+    status: taskProgress(job).status
+  }
+}))
 const targetNames = ref([])
 
-watch(() => activeJobs.value.filter(isTaskProgressJob).map(job => job.id), (ids, before = []) => {
+watch(() => candidates.value.filter(job => ['queued', 'running'].includes(job.status)).map(job => job.id), (ids, before = []) => {
   const added = ids.find(id => !before.includes(id))
   if (added && !focusedJobId.value) {
     focusedJobId.value = added
@@ -86,6 +123,7 @@ watch(() => [selected.value?.id, selected.value && taskProgress(selected.value).
   <TaskProgressDock
     v-if="selected"
     :job="selected"
+    :release="selectedRelease"
     :display-name="jobLabels[selected.id] || ''"
     :task-options="taskOptions"
     v-model:expanded="dockExpanded"
@@ -94,8 +132,11 @@ watch(() => [selected.value?.id, selected.value && taskProgress(selected.value).
     :target-names="targetNames"
     :target-labels="targetLabels"
     :mod-metadata="modMetadata"
-    :connected="connected"
-    :other-count="Math.max(0, activeJobs.length - (selected.status === 'running' || selected.status === 'queued' ? 1 : 0))"
+    :connected="selected.kind === 'software.update' ? !softwareUpdate.state.reconnecting && !softwareUpdate.state.retrying : connected"
+    :cancelable="selected.kind === 'software.update' && !softwareUpdate.state.acting && ['downloading', 'verifying', 'prepared'].includes(softwareUpdate.state.snapshot?.operation?.phase)"
+    :canceling="softwareUpdate.state.canceling"
+    @cancel="softwareUpdate.cancel()"
+    :other-count="Math.max(0, candidates.filter(item => ['queued', 'running'].includes(item.status)).length - (['running', 'queued'].includes(selected.status) ? 1 : 0))"
     @tasks="taskListOpen = true"
     @select="focusedJobId = $event"
     @close="closeJobProgress(selected.id)"

@@ -38,6 +38,7 @@ function mount({ items = [fixture()], jobStatus = 'running', query = {}, history
   api.gameReleasesV2API.create = async () => { throw new Error('Polling must never create an update') }
   api.gameReleasesV2API.preview = async () => ({ ready: true, updateRequired: false, installations: [] })
   api.runtimeObservationsV2API.refresh = async () => ({})
+  api.gameReleasesV2API.installedVersions = async () => ({ installations: [] })
   api.gameV2API.version = async () => ({ officialRelease: { version: '701' } })
   const component = { ...View, setup(props, context) { state = View.setup(props, context); return state }, render: () => null }
   const renderer = createRenderer({ createElement: () => ({}), createText: () => ({}), createComment: () => ({}), insert() {}, remove() {}, patchProp() {}, setElementText() {}, setText() {}, parentNode: () => null, nextSibling: () => null })

@@ -5,7 +5,10 @@ import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff, GitFork, KeyRound } from '@lucide/vue'
 import { authAPI, systemV2API } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
+import HelpCenterDialog from '@/components/layout/HelpCenterDialog.vue'
 import GameVersionStatus from '@/components/layout/GameVersionStatus.vue'
+import GameUpdateDialog from '@/components/runtime/GameUpdateDialog.vue'
+import { provideGameUpdate } from '@/composables/useGameUpdate'
 import SoftwareVersionStatus from '@/components/layout/SoftwareVersionStatus.vue'
 import { provideSoftwareUpdate } from '@/composables/useSoftwareUpdate'
 import GlobalJobStatus from '@/components/layout/GlobalJobStatus.vue'
@@ -54,6 +57,7 @@ import { pageHasMachineScope, queryAfterMachineChange } from '@/lib/pageScope.mj
 const router = useRouter()
 provideGlobalJobStatus()
 provideSoftwareUpdate()
+provideGameUpdate()
 const roomWeather = provideRoomWeather()
 const route = useRoute()
 const roomScopeTarget = ref(null)
@@ -223,6 +227,7 @@ onBeforeUnmount(() => {
           <SoftwareVersionStatus />
           <GlobalJobStatus />
           <div v-if="hasMachineScope" class="hidden xl:block"><SystemResourceRefreshInterval /></div>
+          <HelpCenterDialog :features="runtimeFeatures" />
           <LanguageSwitch />
           <Button v-if="setupPending" variant="ghost" size="sm" @click="router.push('/setup')">{{ t('setup.title') }}</Button>
           <ThemeSwitch />
@@ -315,4 +320,5 @@ onBeforeUnmount(() => {
       </DialogContent>
     </Dialog>
   </SidebarProvider>
+  <GameUpdateDialog />
 </template>

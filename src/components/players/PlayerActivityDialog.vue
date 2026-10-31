@@ -116,7 +116,7 @@ onBeforeUnmount(() => { stopSyncWatch(); ++sequence; controller?.abort() })
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
     <DialogContent class="flex max-h-[92dvh] w-[calc(100%-2rem)] flex-col overflow-hidden sm:max-w-5xl">
-      <DialogHeader class="shrink-0 pr-5"><DialogTitle>{{ t('activity.title') }}<template v-if="player"> · {{ player.player_name || playerId }}</template></DialogTitle><DialogDescription>{{ t('activity.coverage') }}</DialogDescription></DialogHeader>
+      <DialogHeader class="shrink-0 pr-5"><DialogTitle>{{ t('activity.title') }}<template v-if="player"> · {{ player.player_name || playerId }}</template></DialogTitle><DialogDescription>{{ t('novice.activityHint') }}</DialogDescription></DialogHeader>
       <div class="flex min-h-0 flex-col gap-4 overflow-y-auto">
         <form class="flex flex-col gap-3" @submit.prevent="load()">
           <FieldGroup class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -130,7 +130,8 @@ onBeforeUnmount(() => { stopSyncWatch(); ++sequence; controller?.abort() })
         </form>
         <Tabs v-model="tab"><TabsList class="flex h-auto flex-wrap justify-start"><TabsTrigger v-for="key in ['timeline', 'trajectory', 'combat', 'settings']" :key="key" :value="key">{{ t(`activity.${key}`) }}</TabsTrigger></TabsList></Tabs>
         <Alert v-if="error" variant="destructive"><TriangleAlert /><AlertTitle>{{ error }}</AlertTitle></Alert>
-        <div v-if="status" class="grid gap-2 sm:grid-cols-2">
+        <details v-if="status" :open="tab === 'settings'" class="rounded-md border p-3"><summary class="cursor-pointer text-sm">{{ t('novice.syncDetails') }}</summary><p class="py-2 text-xs text-muted-foreground">{{ t('activity.coverage') }}</p>
+        <div class="grid gap-2 sm:grid-cols-2">
           <div v-for="w in worlds" :key="w.worldId" class="flex flex-col gap-1 rounded-md border p-3 text-xs">
             <div class="flex flex-wrap items-center gap-2"><span class="font-medium">{{ w.worldName }}</span><Badge :variant="['unavailable', 'degraded'].includes(w.state) ? 'destructive' : 'secondary'">{{ t(`activity.status.${w.state}`) }}</Badge><Badge variant="outline">{{ t(w.pending ? 'activity.pending' : 'activity.applied') }}</Badge><Badge v-if="w.syncState" variant="secondary">{{ t(`activity.sync.${w.syncState}`) }}</Badge></div>
             <span>{{ t('activity.sourceTime') }}: {{ time(w.sourceUpdatedAt) }} · {{ t('activity.collected') }}: {{ time(w.lastCollectedAt) }}</span>
@@ -145,6 +146,7 @@ onBeforeUnmount(() => { stopSyncWatch(); ++sequence; controller?.abort() })
             <details v-if="w.error || w.diagnostics?.length" class="text-muted-foreground"><summary class="cursor-pointer">{{ t('activity.diagnostics') }}</summary><p v-if="w.error" class="break-words font-mono">{{ w.error }}</p><p v-for="d in w.diagnostics" :key="`${d.generation}-${d.code}`" class="break-words font-mono">{{ d.generation }} · {{ d.code }} {{ d.field }}</p></details>
           </div>
         </div>
+        </details>
         <div v-if="loading" class="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Spinner />{{ t('activity.loading') }}</div>
         <form v-else-if="tab === 'settings' && status" class="flex flex-col gap-4" @submit.prevent="save">
           <p class="text-sm text-muted-foreground">{{ t('activity.dynamic') }}</p>

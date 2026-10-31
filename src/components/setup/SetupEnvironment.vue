@@ -29,7 +29,7 @@ const fields = computed(() => descriptors.flatMap(([id, key]) => {
   return field && (local.value || id.startsWith('ui.')) ? [{ ...field, key }] : []
 }))
 const checks = computed(() => local.value ? readiness.value?.checks || [] : [])
-const basicKeys = ['systemName', 'timezone', 'server', 'saves', 'backups']
+const basicKeys = ['systemName', 'timezone']
 const visibleFields = computed(() => fields.value.filter(field => advanced.value || basicKeys.includes(field.key)))
 const checkStatus = check => check.id === 'serverExecutable' && check.status !== 'pass' ? 'installNext'
   : ['luaFallback', 'mapRenderer'].includes(check.id) && check.status !== 'pass' ? 'optional' : check.status
@@ -76,7 +76,7 @@ onMounted(load)
       <Alert v-if="error" variant="destructive"><AlertTitle>{{ t('setup.checkSettings') }}</AlertTitle><AlertDescription>{{ error }}</AlertDescription></Alert>
       <template v-if="!loading && snapshot">
         <Alert v-if="snapshot.restartRequired"><AlertTitle>{{ t('setup.restartTitle') }}</AlertTitle><AlertDescription>{{ t('setup.restartDescription') }}</AlertDescription></Alert>
-        <p v-else-if="snapshot.runtimeApplySupported" class="text-sm text-muted-foreground">{{ t('setup.dynamicApplyHint') }}</p>
+        <p v-else-if="snapshot.runtimeApplySupported && advanced" class="text-sm text-muted-foreground">{{ t('setup.dynamicApplyHint') }}</p>
         <Alert v-if="!local"><AlertTitle>{{ t('setup.remoteTitle') }}</AlertTitle><AlertDescription>{{ t('setup.remoteEnvironment') }}</AlertDescription></Alert>
         <FieldGroup>
           <Field v-for="field in visibleFields" :key="field.id" :data-disabled="!field.editable || saving">

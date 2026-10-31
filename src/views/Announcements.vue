@@ -97,7 +97,7 @@ function deliveryStatusLabel(status) {
 }
 
 function sourceLabel(source) {
-  const known = ['manual', 'room_stop', 'room_restart', 'game_update', 'mod_sync', 'automation']
+  const known = ['manual', 'room_stop', 'room_restart', 'game_update', 'mod_sync', 'automation', 'backup']
   return known.includes(source) ? t(`announcements.sources.${source}`) : source
 }
 

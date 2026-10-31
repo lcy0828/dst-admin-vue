@@ -25,7 +25,7 @@ test('local onboarding advances from installation through room creation and star
   assert.equal(start.currentStep, 'start')
   assert.equal(start.progress, 67)
 
-  const complete = dashboardOnboardingState({ installed: true, roomCount: 1, runningShards: 2 })
+  const complete = dashboardOnboardingState({ installed: true, roomCount: 1, firstStartCompleted: true })
   assert.equal(complete.complete, true)
   assert.equal(complete.visible, false)
   assert.equal(complete.progress, 100)
@@ -49,7 +49,7 @@ test('controller-only onboarding directs users to remote nodes', () => {
   assert.equal(state.currentStep, 'agent')
   assert.equal(state.visible, true)
 
-  const active = dashboardOnboardingState({ localExecutorEnabled: false, runningShards: 1 })
+  const active = dashboardOnboardingState({ localExecutorEnabled: false, firstStartCompleted: true })
   assert.equal(active.complete, true)
   assert.equal(active.visible, false)
 })
@@ -88,4 +88,10 @@ test('dashboard waits for the initial setup snapshot and preserves it during ref
 test('unknown packaging values fall back to native guidance', () => {
   assert.equal(normalizePackaging('container'), 'container')
   assert.equal(normalizePackaging('future-mode'), 'native')
+})
+
+test('unrelated or partially running worlds do not complete first-start guidance', () => {
+  const state = dashboardOnboardingState({ installed: true, roomCount: 2, runningShards: 1 })
+  assert.equal(state.currentStep, 'start')
+  assert.equal(state.complete, false)
 })

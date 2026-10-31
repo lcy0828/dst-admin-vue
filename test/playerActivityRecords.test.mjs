@@ -47,7 +47,7 @@ test('compact points render without full event fields and preserve historical co
     { id: 'a', userId: 'KU_TEST', worldId: 'world', producerInstanceId: 'boot', sessionId: 'session', occurredAt: '2026-10-28T10:00:00Z', source: 'sample', continuousRangeId: 'range-1', position: { x: 0, z: 2 } },
     { id: 'b', userId: 'KU_TEST', worldId: 'world', producerInstanceId: 'boot', sessionId: 'session', occurredAt: '2026-10-28T10:01:00Z', source: 'action', continuousRangeId: 'range-2', position: { x: 10, z: 2 } }
   ], coverage: [{ worldId: 'world', complete: false }] }, 'trajectory')
-  assert.match(html, /历史覆盖缺口/)
+  assert.match(html, /所选范围有记录缺失/)
   assert.match(html, /位置/)
   assert.match(html, /交互动作/)
   assert.equal((html.match(/<polyline /g) || []).length, 2)

@@ -1,3 +1,4 @@
+import { requestErrorMessage } from './requestErrors.mjs'
 import { backupFailureMessage } from './backupResults.mjs'
 
 export const ACTIVE_JOB_STATUSES = Object.freeze(['queued', 'running'])
@@ -38,6 +39,7 @@ export function globalJobFailure(job, t) {
       failure.message = `${failure.message} ${t('distributed.backups.releaseStates.unconfirmed')}`
     }
   }
+  else if (typeof t === 'function') failure.message = requestErrorMessage({ code: failure.code })
   return failure
 }
 

@@ -49,6 +49,7 @@
       </CardHeader>
 
       <CardContent>
+        <p class="mb-4 text-sm"><a class="text-primary underline underline-offset-4" href="https://accounts.klei.com/account/game/servers?game=DontStarveTogether" target="_blank" rel="noopener noreferrer">{{ $t('novice.getToken') }}</a><span class="block text-muted-foreground">{{ $t('novice.tokenSteps') }}</span></p>
         <div v-if="loading" class="token-skeleton" aria-busy="true" :aria-label="$t('rooms.token.loadingAria')">
           <Skeleton class="h-10 w-full" />
           <Skeleton class="h-20 w-full" />

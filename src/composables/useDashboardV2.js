@@ -136,6 +136,9 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
 
   function handleRuntimeObservationUpdate() {
     void refreshServers()
+    // Recheck setup only while first-start evidence is still missing; reuse
+    // lifecycle observations rather than adding another polling loop.
+    if (!setupReadiness.value.onboarding?.firstStartCompleted && !guidanceLoading.value) void refreshGuidance()
   }
 
   async function refreshVersion(options = {}) {

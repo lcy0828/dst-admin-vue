@@ -19,6 +19,7 @@ import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGlobalJobStatus } from '@/composables/useGlobalJobStatus'
+import { rememberRequestError } from '@/lib/requestErrors.mjs'
 import { isTaskProgressJob } from '@/lib/taskProgress.mjs'
 import { globalJobKindLabel } from '@/i18n/globalJobMessages.js'
 import {
@@ -129,6 +130,8 @@ watch(recentFailures, failures => {
     const toastId = globalJobFailureToastId(job)
     if (!toastId || notifiedFailureIds.has(toastId)) continue
     notifiedFailureIds.add(toastId)
+    const raw = globalJobFailure(job)
+    rememberRequestError({ code: raw.code, message: failureMessage(job), rawMessage: raw.message, details: { jobId: job.id, targetName: raw.targetName } })
     if (isTaskProgressJob(job)) {
       if (!focusedJobId.value) focusedJobId.value = job.id
       continue

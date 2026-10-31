@@ -918,7 +918,7 @@ export default {
     },
 
     notificationSourceLabel(source) {
-      const known = ['manual', 'room_stop', 'room_restart', 'game_update', 'mod_sync', 'automation'];
+      const known = ['manual', 'room_stop', 'room_restart', 'game_update', 'mod_sync', 'automation', 'backup'];
       return known.includes(source) ? this.$t(`announcements.sources.${source}`) : (source || '未知来源');
     },
 

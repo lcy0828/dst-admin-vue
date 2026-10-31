@@ -8,7 +8,7 @@ const catalog = {
       paused: '模拟已暂停',
       installedVersion: '已安装 {version}',
       runningVersion: '运行中 {version}',
-      startupStages: { initializing: '正在初始化游戏', loading_mods: '正在加载模组', generating_world: '正在生成世界', loading_world: '正在加载世界', connecting: '正在连接分片', waiting: '等待游戏就绪' },
+      startupStages: { initializing: '正在初始化游戏', loading_mods: '正在加载模组', generating_world: '正在生成世界', loading_world: '正在加载世界', connecting: '正在连接其他世界', waiting: '等待游戏就绪' },
       installAll: '安装或修复全部',
       noRooms: '没有可管理的房间',
       noRoomsDescription: '创建房间或等待 Agent 上报房间后即可安装 Runtime。',
@@ -16,7 +16,7 @@ const catalog = {
       partialFailed: '{count} 个房间暂时无法读取 Runtime 状态。',
       columns: { room: '房间', world: '世界', install: '安装状态', health: '运行状态', version: '版本', actions: '操作' },
       installStates: { missing: '未安装', installed: '已安装', outdated: '需要升级', invalid: '需要修复', unknown: '未知' },
-      healthStates: { ready: '运行正常', starting: '正在启动', stopped: '分片已停止', degraded: '运行异常', unavailable: '不可用', unknown: '未知' },
+      healthStates: { ready: '运行正常', starting: '正在启动', stopped: '世界已停止', degraded: '运行异常', unavailable: '不可用', unknown: '未知' },
       actions: { install: '安装', repair: '修复', upgrade: '升级', activate: '激活', reload: '热重载' },
       messages: {
         actionSucceeded: '{action}已完成',

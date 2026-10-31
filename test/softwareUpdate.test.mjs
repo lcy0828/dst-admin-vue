@@ -249,3 +249,50 @@ test('invalid prepared-package rejection refreshes the persisted failure and off
   assert.equal(f.memory.size, 0)
   assert.equal(f.scheduled.size, 0)
 })
+
+test('cancel persists removal of automatic apply intent even when a prepared status arrives late', async () => {
+  let cancelCalls = 0, release
+  const held = new Promise(resolve => { release = resolve })
+  const f = fixture({
+    status: async () => snapshot('downloading'),
+    cancel: async id => { assert.equal(id, 'op'); cancelCalls++; return held }
+  })
+  await f.controller.update('v1.1.0', 'auto')
+  assert.equal(f.memory.get('dst-admin-software-operation'), 'op')
+  const cancellation = f.controller.cancel()
+  assert.equal(f.controller.state.canceling, true)
+  assert.equal(f.memory.has('dst-admin-software-operation'), false)
+  release({ ...snapshot('canceled').operation })
+  await cancellation
+  assert.equal(cancelCalls, 1)
+  assert.equal(f.controller.state.snapshot.operation.phase, 'canceled')
+  await f.controller.apply('op')
+  assert.equal(f.calls.apply, 0)
+  f.controller.dispose()
+})
+
+test('cancel with a lost response never automatically applies or repeats the write', async () => {
+  let cancels = 0
+  const f = fixture({ status: async () => snapshot('downloading'), cancel: async () => { cancels++; throw new Error('Connection lost') } })
+  await f.controller.update('v1.1.0')
+  await f.controller.cancel()
+  await f.controller.refresh()
+  await f.controller.apply('op')
+  assert.equal(f.calls.apply, 0)
+  assert.equal(cancels, 1)
+  assert.equal(f.memory.has('dst-admin-software-operation'), false)
+  f.controller.dispose()
+})
+
+test('committed switch cannot be canceled and a definitive rejection permits explicit manual apply', async () => {
+  let phase = 'downloading', cancels = 0
+  const f = fixture({ status: async () => snapshot(phase), cancel: async () => { cancels++; phase = 'prepared'; throw { status: 409, message: 'Busy' } } })
+  await f.controller.update('v1.1.0')
+  await f.controller.cancel()
+  assert.equal(f.calls.apply, 0)
+  await f.controller.apply('op')
+  assert.equal(f.calls.apply, 1)
+  await f.controller.cancel()
+  assert.equal(cancels, 1)
+  f.controller.dispose()
+})

@@ -1,11 +1,11 @@
 export const roomTopologyMessages = {
   'zh-CN': {
     roomTopology: {
-      trigger: '拓扑',
-      title: '房间连接拓扑',
+      trigger: '世界连接',
+      title: '世界连接',
       description: '玩家从 Master 进入房间，附属世界通过分片端口与 Master 互联。',
-      refresh: '刷新拓扑',
-      refreshing: '正在刷新拓扑',
+      refresh: '刷新连接情况',
+      refreshing: '正在刷新连接情况',
       observedAt: '运行数据：{time}',
       noObservedAt: '暂无运行数据时间',
       configuredAt: '配置更新：{time}',
@@ -16,10 +16,10 @@ export const roomTopologyMessages = {
         distributed: '跨机器部署'
       },
       health: {
-        healthy: '拓扑完整',
+        healthy: '连接正常',
         warning: '配置待确认',
         error: '连接受阻',
-        unavailable: '拓扑不可用'
+        unavailable: '连接情况暂不可用'
       },
       lanes: {
         complete: '房间连接关系',
@@ -100,7 +100,7 @@ export const roomTopologyMessages = {
       },
       issues: {
         title: '{count} 个连接问题',
-        description: '拓扑中的异常会直接影响玩家进入或世界间连接。',
+        description: '世界连接异常会直接影响玩家进入或世界间连接。',
         noticeTitle: '{count} 个配置提醒',
         noticeDescription: '这些提醒描述运行目标、清单或待投放文件，不代表线路已经中断。',
         riskTitle: '{count} 个资源提醒',

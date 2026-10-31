@@ -26,9 +26,9 @@ export const announcementMessages = {
       },
       policy: {
         title: '操作前通知',
-        description: '控制停止、重启、游戏更新和 Mod 重启生效前的游戏内倒计时提醒。',
+        description: '控制停服、重启、停服备份、游戏更新和模组重启前的游戏内倒计时提醒。',
         enabled: '启用倒计时通知',
-        enabledDescription: '仅在检测到在线玩家时等待倒计时。',
+        enabledDescription: '确认无人在线时跳过；无法确认人数时仍会提醒和等待。',
         countdown: '提前通知时间',
         countdownDescription: '系统会在倒计时开始及剩余 30 秒、10 秒时提醒，超出所设时长的节点会跳过。',
         seconds: '{count} 秒',
@@ -70,6 +70,7 @@ export const announcementMessages = {
         room_restart: '重启房间',
         game_update: '游戏更新',
         mod_sync: '模组同步',
+        backup: '停服备份',
         automation: '自动化任务'
       },
       statuses: {
@@ -136,9 +137,9 @@ export const announcementMessages = {
       },
       policy: {
         title: 'Pre-operation notification',
-        description: 'Control in-game countdown warnings before stops, restarts, game updates, and Mod activation restarts.',
+        description: 'Control in-game countdown warnings before stops, restarts, stopped backups, game updates, and mod activation restarts.',
         enabled: 'Enable countdown notifications',
-        enabledDescription: 'The countdown only waits when online players are detected.',
+        enabledDescription: 'Skip when no players are online; if the player count is unavailable, keep the warning window.',
         countdown: 'Advance warning',
         countdownDescription: 'Warnings are sent when the countdown starts and at 30 and 10 seconds remaining, skipping checkpoints longer than the selected duration.',
         seconds: '{count} seconds',
@@ -180,6 +181,7 @@ export const announcementMessages = {
         room_restart: 'Room restart',
         game_update: 'Game update',
         mod_sync: 'Mod sync',
+        backup: 'Stopped backup',
         automation: 'Automation'
       },
       statuses: {

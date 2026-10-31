@@ -140,7 +140,7 @@ onMounted(load)
 
       <Alert v-if="restartRequired"><AlertTitle>{{ t('setup.restartTitle') }}</AlertTitle><AlertDescription>{{ t('setup.restartDescription') }}</AlertDescription><Button variant="outline" :disabled="refreshing" @click="refresh"><RefreshCw data-icon="inline-start" />{{ t('setup.recheck') }}</Button></Alert>
 
-      <FleetProfilePanel v-if="step === 'deployment'" ref="editor" />
+      <FleetProfilePanel setup-mode v-if="step === 'deployment'" ref="editor" />
       <SetupEnvironment v-else-if="step === 'environment'" ref="editor" />
 
       <template v-else-if="step === 'game'">

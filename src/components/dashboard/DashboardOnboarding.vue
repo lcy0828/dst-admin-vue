@@ -54,7 +54,6 @@ const state = computed(() => dashboardOnboardingState({
   localExecutorEnabled: localExecutorEnabled.value,
   installed: props.installed,
   roomCount: roomCount.value,
-  runningShards: props.runningShards,
   firstStartCompleted: props.readiness?.onboarding?.firstStartCompleted === true
 }))
 const blockers = computed(() => {

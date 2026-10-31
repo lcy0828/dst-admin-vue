@@ -37,7 +37,7 @@ export const roomsMessages = {
         edit: '编辑',
         more: '更多操作',
         specialLists: '特殊名单',
-        serverToken: '服务器令牌',
+        serverToken: '开服凭证',
         runtimeLocation: '运行位置',
         viewLogs: '查看日志',
         backup: '备份房间',
@@ -126,7 +126,7 @@ export const roomsMessages = {
       },
       start: {
         title: '启动 {room}',
-        description: '选择需要启动的世界分片。',
+        description: '选择需要启动的世界。',
         serverMode: '服务器模式',
         bit32: '32 位',
         bit64: '64 位',
@@ -169,7 +169,7 @@ export const roomsMessages = {
         categoriesAria: '房间设置分类',
         automaticMaintenance: '自动维护',
         specialLists: '特殊名单',
-        serverToken: '服务器令牌',
+        serverToken: '开服凭证',
         selectPlaceholder: '请选择',
         hideField: '隐藏{field}',
         showField: '显示{field}',
@@ -324,7 +324,7 @@ export const roomsMessages = {
         }
       },
       token: {
-        title: '服务器令牌',
+        title: '开服凭证（Klei Token）',
         subtitle: '查看或更新房间使用的 Klei 集群令牌。',
         selectRoom: '选择房间',
         selectRoomDescription: '读取并管理所选房间的真实 Klei 集群令牌。',

@@ -419,7 +419,7 @@ export const modMessages = {
           stateUnavailable: '节点状态读取失败', unavailable: '无法读取节点模组状态：{error}',
           untracked: '这个模组还没有发布观测记录。首次同步后会显示每台机器的实际状态。', untrackedShort: '等待首次同步',
           cached: '已缓存', published: '已发布', configured: '已配置', loaded: '已加载',
-          pendingRestart: '待重启加载', pending: '等待同步', publishing: '正在收敛', ready: '节点就绪', failed: '同步异常',
+          pendingRestart: '待重启加载', pending: '等待同步', publishing: '正在同步', ready: '节点就绪', failed: '同步异常',
           loadedPlaceholder: '0/0 世界已加载', observedAt: '观测于 {time}', revision: '版本 {revision}',
           sources: { steam: '来源：节点 Steam', peer: '来源：节点直传', controller: '来源：控制器', cache: '来源：本机缓存', legacy_upload: '来源：兼容上传', unknown: '来源：未知' },
           fetch: {

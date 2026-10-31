@@ -14,10 +14,18 @@ test('all deployment profiles expose centralized node management', () => {
 })
 
 test('room navigation only exposes room-level destinations', () => {
-  const rooms = navigationItems({}).find(item => item.labelKey === 'navigation.rooms')
+  const rooms = navigationForFeatures({})[0].items.find(item => item.to === '/rooms/list')
 
   assert.deepEqual(
-    rooms.children.map(item => item.to),
-    ['/rooms/list', '/rooms/topology', '/rooms/diagnostics']
+    [rooms.to, ...(rooms.children || []).map(item => item.to)].filter(Boolean),
+    ['/rooms/list']
   )
+})
+
+test('common navigation keeps advanced destinations discoverable without duplicating paths', () => {
+ const sections = navigationForFeatures({})
+ const paths = sections.flatMap(section => section.items.flatMap(item => item.children || [item])).map(item => item.to)
+ assert.equal(new Set(paths).size, paths.length)
+ for (const path of ['/rooms/topology', '/rooms/diagnostics', '/worlds/list', '/players/bans', '/servers/tools', '/logs/service', '/cron/tasks']) assert.ok(paths.includes(path))
+ assert.equal(sections[0].items.length, 6)
 })

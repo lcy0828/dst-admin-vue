@@ -1,3 +1,4 @@
+import { noviceMessages } from './noviceMessages.js'
 import { serviceLogMessages } from './serviceLogMessages.js'
 import { performanceMessages } from './performanceMessages.js'
 import { playerActivityMessages } from './playerActivityMessages.js'
@@ -45,6 +46,7 @@ import { worldsMessages } from './worldsMessages.js'
 
 export const messages = {
   'zh-CN': {
+    ...noviceMessages['zh-CN'],
     ...serviceLogMessages['zh-CN'],
     ...playerActivityMessages['zh-CN'],
     ...performanceMessages['zh-CN'],
@@ -216,8 +218,8 @@ export const messages = {
         noTargetMatches: '没有匹配的机器',
         noTargetMatchesDescription: '更换关键词，或前往机器管理检查 Agent 连接。',
         manageTargets: '机器管理',
-        roomScopeAll: '房间视图显示全部机器上的完整世界拓扑',
-        roomScopeTarget: '已聚焦 {name}；房间视图仍保留完整的跨机器世界拓扑',
+        roomScopeAll: '显示所有机器上的房间和世界',
+        roomScopeTarget: '当前机器：{name}，同时显示房间中的其他世界',
         roomScopeTopology: '查看运行位置',
         states: {
           online: '在线',
@@ -578,6 +580,7 @@ export const messages = {
     }
   },
   'en-US': {
+    ...noviceMessages['en-US'],
     ...serviceLogMessages['en-US'],
     ...playerActivityMessages['en-US'],
     ...performanceMessages['en-US'],

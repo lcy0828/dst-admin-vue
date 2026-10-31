@@ -20,7 +20,7 @@ async function render(props, locale = 'zh-CN') {
 
 test('Both console surfaces show a visible waiting state and hide previous output while pending', async () => {
   const html = await render({ pending: true, target: 'Master', run: { status: 'succeeded', output: { text: 'OLD_OUTPUT' } } })
-  assert.match(html, /正在等待游戏回执/)
+  assert.match(html, /正在等待游戏执行结果/)
   assert.match(html, /请勿重复执行/)
   assert.doesNotMatch(html, /OLD_OUTPUT/)
 })
@@ -34,7 +34,7 @@ test('A printed zero is visible as output while empty, missing and failed runs h
   assert.match(empty, /不表示查询结果为 0/)
   const missing = await render({ run: { status: 'succeeded' } })
   assert.match(missing, /游戏已确认执行/)
-  assert.match(missing, /回执未提供输出/)
+  assert.match(missing, /执行结果未提供输出/)
   const failed = await render({ run: { status: 'failed', output: { text: 'partial' }, errorMessage: 'Lua error' } })
   assert.match(failed, /执行失败/)
   assert.match(failed, /Lua error/)
@@ -45,8 +45,8 @@ test('Unconfirmed results offer reading the original receipt and explain lookup 
   const run = { id: 'run-id', roomId: 'room', worldId: 'Master', status: 'uncertain', receiptRefreshUntil: new Date(Date.now() + 60_000).toISOString(), receiptCheck: { status: 'not_found' } }
   const html = await render({ run })
   assert.match(html, /执行结果未确认/)
-  assert.match(html, /重新读取原回执/)
-  assert.match(html, /暂未找到原回执/)
+  assert.match(html, /重新读取原执行结果/)
+  assert.match(html, /暂未找到原执行结果/)
   const english = await render({ run }, 'en-US')
   assert.match(english, /Read original receipt/)
   assert.match(english, /not found/)

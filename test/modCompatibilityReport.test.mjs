@@ -28,7 +28,7 @@ const report = {
 
 test('Evidence stays visible without AI and stack references remain unconfirmed in both locales', async () => {
   const html = await render(Report, { report })
-  assert.match(html, /有待核实的线索/)
+  assert.match(html, /可能有问题/)
   assert.match(html, /尚不能确认它们是原因/)
   assert.match(html, /测试模组/)
   assert.match(html, /Steam Build 12345/)
@@ -36,7 +36,7 @@ test('Evidence stays visible without AI and stack references remain unconfirmed 
   assert.match(html, /<details[^>]* open/)
   assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/)
   assert.doesNotMatch(html, /<script>bad/)
-  assert.match(html, /不冒充发生报错时的进程快照/)
+  assert.match(html, /可能与报错时不同/)
   const english = await render(Report, { report }, 'en-US')
   assert.match(english, /causation is not established/)
   assert.match(english, /start could not be matched/)
@@ -44,7 +44,7 @@ test('Evidence stays visible without AI and stack references remain unconfirmed 
 
 test('Missing evidence is unknown, and pre-update summaries are not described as compatible', async () => {
   const html = await render(Report, { report: { ...report, status: 'insufficient_evidence', findings: [], evidence: [], baseline: { capturedAt: '2026-10-27T10:00:00Z' }, limitations: ['LOG_FROM_PREVIOUS_START', 'MOD_FACTS_UNAVAILABLE'] } })
-  assert.match(html, /证据有限/)
+  assert.match(html, /暂时无法判断/)
   assert.match(html, /不用于解释本次启动/)
   assert.match(html, /不代表没有启用模组/)
   assert.match(html, /不是“已验证兼容”的基准/)
@@ -54,7 +54,7 @@ test('Missing evidence is unknown, and pre-update summaries are not described as
 test('Update preflight reports are optional and do not introduce a new approval action', async () => {
   assert.doesNotMatch(await render(Preflight, { reports: [] }), /模组与版本提示/)
   const html = await render(Preflight, { reports: [report] })
-  assert.match(html, /这些提示不阻止更新/)
+  assert.match(html, /没有发现问题的模组仍可能受游戏更新影响/)
   assert.match(html, /森林/)
   assert.doesNotMatch(html, /<button/)
 })

@@ -1,9 +1,8 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowRight, ChevronDown, CircleAlert, FileText, History, PackageCheck, PackageOpen, RefreshCw, Server } from '@lucide/vue'
-import { gameReleasesV2API } from '@/api/v2'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -19,8 +18,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useDashboardV2 } from '@/composables/useDashboardV2'
+import { useGameUpdate } from '@/composables/useGameUpdate'
 import {
   gameReleaseApplicationKey,
   gameReleaseGameVersions,
@@ -29,49 +27,27 @@ import {
   gameReleaseVersionChannels
 } from '@/lib/gameRelease.mjs'
 import { gameInstalledVersionStatus } from '@/lib/gameInstalledVersion.mjs'
-import {
-  getManagementScope,
-  MANAGEMENT_SCOPE_CHANGED_EVENT,
-  managementScopeIncludesTarget,
-  managementScopeRequest,
-  managementScopeTargetId
-} from '@/lib/managementScope.mjs'
+
 
 const KLEI_DST_RELEASES_URL = 'https://kleiforums.com/game-updates/dst/'
 
 const router = useRouter()
 const { t } = useI18n()
-const initialLoadPending = ref(true)
 const popoverOpen = ref(false)
-const fleetPlan = ref(null)
-const fleetLoading = ref(false)
-const fleetError = ref('')
-const fleetLoaded = ref(false)
 const technicalOpen = ref(false)
-const managementScope = ref(getManagementScope())
-const localActionsVisible = computed(() => managementScopeIncludesTarget('local', managementScope.value) && !fleetError.value && !fleetLoading.value)
-let fleetRequestSequence = 0
-
-const {
-  versionInfo,
-  versionLoading,
-  versionError,
-  canInstallGame,
-  canUpdateGame,
-  gameUpdateBusy,
-  isVersionOutdated,
-  refreshVersion,
-  updateGame,
-  resumeUpdatePolling
-} = useDashboardV2({ observeRuntime: false })
-
-const officialGameVersion = computed(() => versionInfo.value.official?.version || '--')
-const officialReleaseId = computed(() => versionInfo.value.official?.release_id || '')
-const officialReleaseUrl = computed(() => versionInfo.value.official?.update_url || '')
-const officialReleaseStale = computed(() => versionInfo.value.official?.stale === true)
-const officialTestRelease = computed(() => versionInfo.value.official?.test_release)
-const officialError = computed(() => versionError.value || versionInfo.value.official_check_error || '')
-const fleetInstallations = computed(() => fleetPlan.value?.installations || [])
+const update = useGameUpdate()
+const overview = update.state
+const versionInfo = computed(() => ({ installed: overview.installations.some(item => item.installed), official: overview.report?.officialRelease }))
+const officialGameVersion = computed(() => overview.report?.officialRelease?.version || '--')
+const officialReleaseId = computed(() => overview.report?.officialRelease?.releaseId || '')
+const officialReleaseUrl = computed(() => overview.report?.officialRelease?.updateUrl || '')
+const officialReleaseStale = computed(() => overview.report?.officialRelease?.stale === true || Boolean(overview.versionError))
+const officialTestRelease = computed(() => overview.report?.officialRelease?.testRelease)
+const officialError = computed(() => overview.versionError)
+const fleetInstallations = computed(() => overview.installations)
+const fleetLoading = computed(() => overview.loading)
+const fleetError = computed(() => overview.installationsError)
+const fleetLoaded = computed(() => overview.overviewLoaded)
 const fleetNodeCount = computed(() => gameReleaseNodeCount(fleetInstallations.value))
 const fleetGameVersions = computed(() => gameReleaseGameVersions(fleetInstallations.value))
 const currentGameVersionLabel = computed(() => {
@@ -80,98 +56,35 @@ const currentGameVersionLabel = computed(() => {
   return t('dashboard.version.mixedGameVersions', { count: fleetGameVersions.value.length })
 })
 const fleetVersionChannels = computed(() => gameReleaseVersionChannels(fleetInstallations.value))
-const fleetVersionChannelsLabel = computed(() => fleetVersionChannels.value
-  .map(versionChannelLabel)
-  .join(t('gameReleases.nodes.channelSeparator')))
+const fleetVersionChannelsLabel = computed(() => fleetVersionChannels.value.map(versionChannelLabel).join(t('gameReleases.nodes.channelSeparator')))
 const fleetStates = computed(() => fleetInstallations.value.map(fleetTargetGameStatus))
 const fleetCheckFailed = computed(() => fleetStates.value.some(state => state.key === 'checkFailed'))
-const fleetUpdateRequired = computed(() => fleetStates.value.some(state => state.key === 'ready'))
+const fleetUpdateRequired = computed(() => update.availability.value === 'available')
 const fleetListHeight = computed(() => `${Math.min(fleetInstallations.value.length, 4) * 3.5}rem`)
-const versionPending = computed(() => initialLoadPending.value || versionLoading.value)
+const versionPending = computed(() => !overview.overviewLoaded && overview.loading)
 const gameUpdateState = computed(() => {
   if (versionPending.value) return { key: 'checking', variant: 'outline' }
-  if (gameUpdateBusy.value) {
-    return { key: versionInfo.value.installed ? 'updating' : 'installing', variant: 'secondary' }
-  }
-  if (fleetLoading.value && !fleetLoaded.value) return { key: 'checking', variant: 'outline' }
-  if (officialError.value || fleetError.value) return { key: 'loadFailed', variant: 'destructive' }
-  if (fleetLoaded.value && !fleetInstallations.value.length && !localActionsVisible.value) return { key: 'updateStateUnknown', variant: 'outline' }
-  if (fleetPlan.value && fleetInstallations.value.length) {
-    if (officialError.value || fleetCheckFailed.value) return { key: 'loadFailed', variant: 'destructive' }
-    if (fleetUpdateRequired.value) return { key: 'updateAvailable', variant: 'default' }
-    if (fleetStates.value.every(state => state.key === 'upToDate')) return { key: 'upToDate', variant: 'secondary' }
-    return { key: 'updateStateUnknown', variant: 'outline' }
-  }
-  if (versionError.value) return { key: 'loadFailed', variant: 'destructive' }
-  if (!versionInfo.value.installed) return { key: 'installRequired', variant: 'outline' }
-  if (versionInfo.value.latest?.up_to_date === false) return { key: 'updateAvailable', variant: 'default' }
-  if (versionInfo.value.latest?.up_to_date === true) return { key: 'upToDate', variant: 'secondary' }
+  if (update.active.value) return { key: 'updating', variant: 'secondary' }
+  if (fleetUpdateRequired.value) return { key: 'updateAvailable', variant: 'default' }
+  if (officialError.value || fleetError.value || fleetCheckFailed.value) return { key: 'loadFailed', variant: 'destructive' }
+  if (update.availability.value === 'current') return { key: 'upToDate', variant: 'secondary' }
   return { key: 'updateStateUnknown', variant: 'outline' }
 })
-const triggerLabel = computed(() => [
-  t('dashboard.version.simpleTitle'),
-  `${t('dashboard.version.officialGame')} ${officialGameVersion.value}`,
-  ...(fleetLoaded.value && !fleetError.value ? [t('dashboard.version.managedHosts', { count: fleetNodeCount.value })] : []),
-  t(`dashboard.version.${gameUpdateState.value.key}`)
-].join(' · '))
-
-async function loadVersion(options = {}) {
-  try {
-    await refreshVersion(options)
-  } finally {
-    initialLoadPending.value = false
-  }
-}
-
-async function loadFleet(options = {}) {
-  if (fleetLoading.value || (fleetLoaded.value && !options.force)) return
-  const sequence = ++fleetRequestSequence
-  fleetLoading.value = true
-  fleetError.value = ''
-  try {
-    const value = await gameReleasesV2API.installedVersions(managementScopeRequest(managementScope.value))
-    if (sequence !== fleetRequestSequence) return
-    fleetPlan.value = value
-    fleetLoaded.value = true
-  } catch (error) {
-    if (sequence !== fleetRequestSequence) return
-    fleetError.value = error?.message || t('common.errors.unknown')
-    fleetLoaded.value = true
-  } finally {
-    if (sequence === fleetRequestSequence) fleetLoading.value = false
-  }
-}
-
+const triggerLabel = computed(() => [t('dashboard.version.simpleTitle'), `${t('dashboard.version.officialGame')} ${officialGameVersion.value}`, t(`dashboard.version.${gameUpdateState.value.key}`)].join(' · '))
 async function refreshOverview() {
-  await Promise.all([loadVersion({ fresh: true }), loadFleet({ force: true })])
+  await Promise.all([update.ensureOverview({ fresh: true }), update.refreshPending()])
 }
-
 function handlePopoverOpen(open) {
   popoverOpen.value = open
-  if (open) {
-    void loadFleet({ force: true })
-  } else {
-    technicalOpen.value = false
-  }
+  if (open) { void update.ensureOverview(); void update.refreshPending() }
+  else technicalOpen.value = false
 }
-
-function handleManagementScopeChange(event) {
-  const previousTargetId = managementScopeTargetId(managementScope.value)
-  managementScope.value = event?.detail || getManagementScope()
-  if (previousTargetId === managementScopeTargetId(managementScope.value)) return
-  fleetRequestSequence += 1
-  fleetLoading.value = false
-  fleetLoaded.value = false
-  fleetPlan.value = null
-  fleetError.value = ''
-  void loadFleet({ force: true })
-}
-
 function openFleetUpdates() {
   popoverOpen.value = false
-  router.push('/servers/releases')
+  const active = update.active.value
+  if (active) router.push({ path: '/servers/releases', query: { maintenanceJob: active.currentJobId || active.sourceJobId || active.id } })
+  else void update.openUpdate()
 }
-
 function fleetTargetName(target) {
   return target?.targetName || (target?.targetId === 'local' ? t('gameReleases.values.local') : target?.targetId) || '--'
 }
@@ -224,16 +137,7 @@ function fleetTargetSteamVersions(target) {
   return `${target?.steamBuild || '--'} · ${target?.branch || '--'}`
 }
 
-onMounted(() => {
-  window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
-  loadVersion()
-  void loadFleet()
-  resumeUpdatePolling()
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
-})
+onMounted(() => { void update.ensureOverview(); void update.refreshPending() })
 </script>
 
 <template>
@@ -248,7 +152,7 @@ onBeforeUnmount(() => {
       >
         <Spinner v-if="versionPending || fleetLoading" data-icon="inline-start" />
         <CircleAlert v-else-if="officialError || fleetError || fleetCheckFailed" data-icon="inline-start" />
-        <PackageOpen v-else-if="fleetUpdateRequired || !versionInfo.installed || isVersionOutdated" data-icon="inline-start" />
+        <PackageOpen v-else-if="fleetUpdateRequired || !versionInfo.installed" data-icon="inline-start" />
         <PackageCheck v-else data-icon="inline-start" />
         <span class="hidden min-w-0 items-center gap-1.5 xl:flex">
           <span class="text-muted-foreground hidden 2xl:inline">{{ t('dashboard.version.officialGame') }}</span>
@@ -394,32 +298,18 @@ onBeforeUnmount(() => {
         <AlertDescription class="break-all">{{ officialError }}</AlertDescription>
       </Alert>
 
-      <div class="flex items-center justify-end gap-2">
-        <Tooltip>
-          <TooltipTrigger as-child>
-            <Button variant="ghost" size="icon-sm" :disabled="versionPending || fleetLoading" :aria-label="t('dashboard.version.check')" @click="refreshOverview">
-              <Spinner v-if="versionPending || fleetLoading" />
-              <RefreshCw v-else />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{{ t('dashboard.version.check') }}</TooltipContent>
-        </Tooltip>
-        <Button v-if="fleetInstallations.length" size="sm" @click="openFleetUpdates">
-          <Server data-icon="inline-start" />
-          {{ t('gameReleases.actions.open') }}
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <Button variant="outline" size="sm" :disabled="versionPending || fleetLoading" @click="refreshOverview">
+          <Spinner v-if="versionPending || fleetLoading" data-icon="inline-start" />
+          <RefreshCw v-else data-icon="inline-start" />
+          {{ t('dashboard.version.check') }}
         </Button>
-        <Button v-else-if="canInstallGame && localActionsVisible" size="sm" :disabled="gameUpdateBusy" @click="updateGame">
-          <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
-          <PackageOpen v-else data-icon="inline-start" />
-          {{ t(gameUpdateBusy ? 'dashboard.version.installButtonBusy' : 'dashboard.version.installButton') }}
+        <Button v-if="fleetInstallations.some(item => item.installed) || update.active.value" size="sm" :disabled="overview.loading && !overview.overviewLoaded" @click="openFleetUpdates">
+          <PackageCheck data-icon="inline-start" />
+          {{ t(update.active.value ? update.active.value.stage === 'recovery_required' ? 'gameReleases.workflow.recovery' : 'gameReleases.workflow.progress' : 'gameReleases.workflow.update') }}
         </Button>
-        <Button v-else-if="isVersionOutdated && canUpdateGame && localActionsVisible" size="sm" :disabled="gameUpdateBusy" @click="updateGame">
-          <Spinner v-if="gameUpdateBusy" data-icon="inline-start" />
-          <PackageCheck v-else data-icon="inline-start" />
-          {{ t(gameUpdateBusy ? 'dashboard.version.updateButtonBusy' : 'dashboard.version.updateButton') }}
-        </Button>
-        <Button v-else-if="isVersionOutdated" size="sm" variant="outline" @click="router.push('/servers/releases')">
-          {{ t('dashboard.version.openUpdateHelp') }}
+        <Button v-else size="sm" variant="outline" @click="router.push('/servers/releases')">
+          <Server data-icon="inline-start" />{{ t('gameReleases.actions.open') }}
         </Button>
       </div>
     </PopoverContent>

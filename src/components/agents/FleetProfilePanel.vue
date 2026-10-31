@@ -45,6 +45,8 @@ const ROLE_FIELD_IDS = [
   'fleet.memberEnabled'
 ]
 
+const props = defineProps({ setupMode: Boolean })
+const advanced = ref(false)
 const emit = defineEmits(['changed'])
 const { t } = useI18n()
 const loading = ref(true)
@@ -59,12 +61,14 @@ const formErrors = ref({})
 const baseline = ref('')
 const formValue = () => JSON.stringify([selectedRole.value, controllerUrl.value, memberKey.value])
 
-const roleOptions = computed(() => [
+const allRoleOptions = computed(() => [
   { value: FLEET_ROLES.STANDALONE, icon: MonitorCog },
   { value: FLEET_ROLES.CONTROLLER_WORKER, icon: Network },
   { value: FLEET_ROLES.MANAGED_WORKER, icon: Unplug },
   { value: FLEET_ROLES.CONTROLLER_ONLY, icon: ServerCog }
 ])
+
+const roleOptions = computed(() => props.setupMode && [FLEET_ROLES.STANDALONE, FLEET_ROLES.CONTROLLER_WORKER].includes(actualRole.value) && !advanced.value ? allRoleOptions.value.filter(item => item.value === selectedRole.value) : allRoleOptions.value)
 
 const fieldMap = computed(() => Object.fromEntries(
   (settingsResponse.value?.fields || []).map(field => [field.id, field])
@@ -256,6 +260,7 @@ defineExpose({
           <AlertDescription>{{ t('agents.profile.restart.description') }}</AlertDescription>
         </Alert>
 
+        <Button v-if="setupMode && [FLEET_ROLES.STANDALONE, FLEET_ROLES.CONTROLLER_WORKER].includes(actualRole)" variant="ghost" class="self-start" :aria-expanded="advanced" @click="advanced = !advanced">{{ t(advanced ? 'novice.less' : 'novice.otherMachines') }}</Button>
         <FieldGroup>
           <Field :data-disabled="roleLocked">
             <FieldContent>

@@ -138,3 +138,8 @@ softwareUpdateMessages['zh-CN'].softwareUpdate.phases.interrupted = '下载已�
 softwareUpdateMessages['en-US'].softwareUpdate.phases.interrupted = 'Download interrupted; resume available'
 softwareUpdateMessages['zh-CN'].softwareUpdate.phases.superseded = '目标版本已被当前版本覆盖'
 softwareUpdateMessages['en-US'].softwareUpdate.phases.superseded = 'Target covered by the running version'
+
+Object.assign(softwareUpdateMessages['zh-CN'].softwareUpdate, { cancelDownload: '停止下载', cancelingDownload: '正在停止下载…', canceledHelp: '下载已停止，当前程序未改变。可修改代理或下载源，再重新下载。', switchCannotCancel: '程序正在切换和健康检查，完成前不能停止。' })
+Object.assign(softwareUpdateMessages['en-US'].softwareUpdate, { cancelDownload: 'Stop download', cancelingDownload: 'Stopping download…', canceledHelp: 'Download stopped. The running program is unchanged. Adjust the proxy or source and download again.', switchCannotCancel: 'Program replacement and health checks are in progress and cannot be canceled.' })
+softwareUpdateMessages['zh-CN'].softwareUpdate.phases.canceled = '下载已停止'
+softwareUpdateMessages['en-US'].softwareUpdate.phases.canceled = 'Download stopped'

@@ -155,7 +155,7 @@ test('server workspace uses the direct world-state response without a background
   assert.doesNotMatch(workspace, /refreshStaleWorldStates|worldStateRefreshAttemptKeys|worldStateRefreshActiveKeys|worldStateRefreshErrors/)
 })
 
-test('topology and game release previews refresh runtime observations only on user reads', async () => {
+test('topology refreshes observations on user reads while game updates use their authoritative preflight', async () => {
   const [topology, releases] = await Promise.all([
     source('src/views/rooms/RoomTopology.vue'),
     source('src/views/servers/GameReleases.vue')
@@ -164,7 +164,11 @@ test('topology and game release previews refresh runtime observations only on us
   assert.match(topology, /async function loadTopology\(\{ refreshRuntime = true \} = \{\}\)/)
   assert.match(topology, /if \(refreshRuntime\) \{[\s\S]*?runtimeObservationsV2API\.refresh\(\{ roomId \}\)[\s\S]*?topologyV2API\.get\(roomId\)/)
   assert.match(topology, /handleRuntimeObservationUpdate\(\)[\s\S]*?loading\.value\) return[\s\S]*?loadTopology\(\{ refreshRuntime: false \}\)/)
-  assert.match(releases, /runtimeObservationsV2API\.refresh\(\{ targetId: managementScopeTargetId\(managementScope\.value\) \}\)[\s\S]*?gameReleasesV2API\.preview\(request\)/)
+  assert.match(releases, /update\.openUpdate\(releaseRequest\(\)\)/)
+  assert.doesNotMatch(releases, /runtimeObservationsV2API\.refresh/)
+  const controller = await source('src/lib/gameUpdateController.mjs')
+  assert.match(controller, /api\.preview\(copy\(request\)\)/)
+  assert.doesNotMatch(controller, /runtimeObservationsV2API/)
 })
 
 test('automation room discovery coalesces active reads without retaining a completed room catalog', async () => {

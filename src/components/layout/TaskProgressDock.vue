@@ -12,9 +12,11 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { globalJobKindLabel } from '@/i18n/globalJobMessages'
 import { taskProgressMessages } from '@/i18n/taskProgressMessages'
 import { formatJobBytes, formatJobRate, globalJobFailure, globalJobWarning } from '@/lib/globalJobs.mjs'
+import { gameReleaseStageKey } from '@/lib/gameRelease.mjs'
 import { jobElapsedSeconds, modDownloadGroups, modDownloadSummary, taskProgress, readableTaskText, worldRestartProgress } from '@/lib/taskProgress.mjs'
 import ModDownloadProgressList from './ModDownloadProgressList.vue'
 import WorldRestartProgressList from './WorldRestartProgressList.vue'
+import GameReleaseProgress from '@/components/runtime/GameReleaseProgress.vue'
 
 const props = defineProps({
   job: { type: Object, required: true },
@@ -25,9 +27,12 @@ const props = defineProps({
   displayName: { type: String, default: '' },
   taskOptions: { type: Array, default: () => [] },
   modMetadata: { type: Object, default: () => ({}) },
-  targetLabels: { type: Object, default: () => ({}) }
+  targetLabels: { type: Object, default: () => ({}) },
+  release: { type: Object, default: null },
+  cancelable: { type: Boolean, default: false },
+  canceling: { type: Boolean, default: false }
 })
-defineEmits(['tasks', 'select', 'close'])
+defineEmits(['tasks', 'select', 'close', 'cancel'])
 const { t: globalT } = useI18n({ useScope: 'global' })
 const { t } = useI18n({ useScope: 'local', messages: taskProgressMessages })
 const expanded = defineModel('expanded', { type: Boolean, default: false })
@@ -41,6 +46,7 @@ const worlds = computed(() => worldRestartProgress(props.job))
 const worldPhase = computed(() => model.value.lifecycle || model.value.restart && model.value.phase === 'restarting')
 const warning = computed(() => globalJobWarning(props.job).message)
 const failure = computed(() => globalJobFailure(props.job, globalT).message)
+const progressLabel = computed(() => props.release ? globalT(`gameReleases.stages.${gameReleaseStageKey(props.release.stage)}`) : props.job.kind === 'software.update' && model.value.active ? globalT(`softwareUpdate.phases.${props.job.softwarePhase || 'downloading'}`) : t(`taskProgress.${model.value.status}`))
 const succeeded = computed(() => model.value.status === 'succeeded' && !warning.value)
 const tone = computed(() => model.value.status === 'failed' ? 'destructive'
   : warning.value || ['waiting', 'unconfirmed'].includes(model.value.status) ? 'warning'
@@ -60,7 +66,7 @@ const downloadStates = computed(() => ['downloading', 'queued', 'notStarted', 'u
 const summary = computed(() => {
   if (model.value.status === 'failed') return t(failedCount.value ? 'taskProgress.downloadFailure' : 'taskProgress.failureSummary')
   if (warning.value) return t('taskProgress.failureSummary')
-  return t(`taskProgress.${model.value.status}`)
+  return props.job.kind === 'software.update' ? progressLabel.value : t(`taskProgress.${model.value.status}`)
 })
 const transfer = computed(() => {
   const value = model.value.transfer
@@ -82,7 +88,7 @@ const bubbleLabel = computed(() => [
   scope.value,
   worldPhase.value && worlds.value.total ? t('taskProgress.worlds.readyCount', { ready: worlds.value.ready, total: worlds.value.total }) : groups.value.length ? completedLabel.value : '',
   props.taskOptions.length > 1 ? t('taskProgress.taskCount', { count: props.taskOptions.length }) : '',
-  t(`taskProgress.bubble.${bubbleStatus.value}`),
+  props.release && model.value.active ? progressLabel.value : t(`taskProgress.bubble.${bubbleStatus.value}`),
   !batchRing.value && model.value.active && model.value.percent !== null ? t(worldPhase.value ? 'taskProgress.worlds.overall' : 'taskProgress.downloadPercent', { value: model.value.percent }) : '',
   t('taskProgress.restore')
 ].filter(Boolean).join(' · '))
@@ -144,7 +150,7 @@ watch(() => props.job.id, () => { showDownloads.value = false })
         <span v-else-if="batchRing" class="task-progress-bubble-count">{{ downloads.counts.succeeded }}<small>/{{ downloads.total }}</small></span>
         <span v-else-if="model.percent !== null" class="task-progress-bubble-percent">{{ model.percent }}<small>%</small></span>
         <RotateCw v-else />
-        <span class="task-progress-bubble-caption">{{ t(batchRing && !reconnecting && !warning ? 'taskProgress.downloaded' : `taskProgress.bubble.${bubbleStatus}`) }}</span>
+        <span class="task-progress-bubble-caption">{{ release && model.active && !reconnecting && !warning ? progressLabel : t(batchRing && !reconnecting && !warning ? 'taskProgress.downloaded' : `taskProgress.bubble.${bubbleStatus}`) }}</span>
       </span>
       <Badge v-if="taskOptions.length > 1" :variant="hasOtherFailures ? 'destructive' : 'secondary'" class="absolute -right-1 -top-1" :aria-label="t('taskProgress.taskCount', { count: taskOptions.length })">{{ taskOptions.length }}</Badge>
     </Button>
@@ -157,7 +163,7 @@ watch(() => props.job.id, () => { showDownloads.value = false })
         <Select :model-value="job.id" @update:model-value="$emit('select', $event)">
           <SelectTrigger class="min-w-0 flex-1 sm:max-w-xl" :aria-label="t('taskProgress.switchTask')"><SelectValue>{{ taskOptions.find(task => task.id === job.id)?.label }}</SelectValue></SelectTrigger>
           <SelectContent><SelectGroup>
-            <SelectItem v-for="task in taskOptions" :key="task.id" :value="task.id">{{ task.label }} · {{ t(`taskProgress.${task.status}`) }}</SelectItem>
+            <SelectItem v-for="task in taskOptions" :key="task.id" :value="task.id">{{ task.label }} · {{ task.statusLabel || t(`taskProgress.${task.status}`) }}</SelectItem>
           </SelectGroup></SelectContent>
         </Select>
       </div>
@@ -170,7 +176,7 @@ watch(() => props.job.id, () => { showDownloads.value = false })
             <RotateCw v-else class="size-4" />
           </span>
           <span>{{ succeeded ? resultTitle : title }}</span>
-          <Badge v-if="!succeeded" :variant="tone">{{ t(`taskProgress.${model.status}`) }}</Badge>
+          <Badge v-if="!succeeded" :variant="tone">{{ progressLabel }}</Badge>
         </CardTitle>
         <CardDescription class="min-w-0 truncate" :title="scope">{{ scope }}</CardDescription>
         <CardAction class="flex items-center gap-1">
@@ -183,7 +189,8 @@ watch(() => props.job.id, () => { showDownloads.value = false })
 
       <CardContent v-if="!succeeded || expanded" class="task-progress-content group-data-[size=sm]/card:pt-0">
       <div class="task-progress-body">
-        <template v-if="worldPhase">
+        <GameReleaseProgress v-if="release" :release="release" compact />
+        <template v-else-if="worldPhase">
           <WorldRestartProgressList v-if="worlds.total" :progress="worlds" :connected="connected" :target-labels="targetLabels" />
           <template v-else>
             <p class="task-progress-message" role="status">{{ readableTaskText(detail, targetLabels) || t('taskProgress.restartHint') }}</p>
@@ -219,7 +226,7 @@ watch(() => props.job.id, () => { showDownloads.value = false })
           <span v-if="model.percent !== null && model.active" class="task-progress-percent">{{ t('taskProgress.downloadPercent', { value: model.percent }) }}</span>
         </div>
         <Progress
-          v-if="!worldPhase && !groups.length && model.active"
+          v-if="!release && !worldPhase && !groups.length && model.active"
           :model-value="!connected && model.active ? (model.percent ?? 0) : model.percent"
           :aria-label="t('taskProgress.progressLabel')"
           class="h-1.5"
@@ -227,7 +234,7 @@ watch(() => props.job.id, () => { showDownloads.value = false })
         <div class="task-progress-caption">
           <span v-if="!connected && model.active" role="status">{{ t('taskProgress.reconnecting') }}</span>
           <span v-else-if="transfer && !groups.length" class="tabular-nums">{{ transfer }}</span>
-          <span v-else-if="model.active && !worldPhase">{{ t(!model.restart ? 'taskProgress.applyHint' : 'taskProgress.downloadDone') }}</span>
+          <span v-else-if="model.active && !worldPhase && !release">{{ t(job.kind === 'software.update' ? 'taskProgress.softwareHint' : job.kind.startsWith('game.release') ? 'taskProgress.gameHint' : 'taskProgress.applyHint') }}</span>
         </div>
       </div>
 
@@ -250,6 +257,7 @@ watch(() => props.job.id, () => { showDownloads.value = false })
       <CardFooter class="shrink-0 justify-between gap-2">
         <span class="task-progress-elapsed">{{ t(model.active ? 'taskProgress.elapsed' : 'taskProgress.duration', { time: elapsed }) }}</span>
         <div class="flex items-center gap-1">
+          <Button v-if="cancelable" variant="outline" size="sm" :disabled="canceling" @click="$emit('cancel')">{{ globalT(canceling ? 'softwareUpdate.cancelingDownload' : 'softwareUpdate.cancelDownload') }}</Button>
           <Button v-if="otherCount" variant="ghost" size="sm" @click="$emit('tasks')">{{ t('taskProgress.more', { count: otherCount }) }}</Button>
           <CollapsibleTrigger as-child>
             <Button variant="ghost" size="sm">

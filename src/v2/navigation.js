@@ -120,8 +120,16 @@ export const V2_NAVIGATION = [
 ]
 
 export function navigationForFeatures(features = {}) {
-  return V2_NAVIGATION.map(section => ({
-    ...section,
-    items: section.items.filter(item => !item.requiresFeature || features[item.requiresFeature] !== false)
-  }))
+  const commonPaths = ['/dashboard', '/rooms/list', '/players/list', '/mods', '/backups', '/system/settings']
+  const all = V2_NAVIGATION.flatMap(section => section.items)
+  const flat = all.flatMap(item => item.children?.map(child => ({ ...child, icon: item.icon })) || [item])
+  const common = commonPaths.flatMap(path => { const item = flat.find(item => item.to === path); return item ? [item] : [] })
+  const more = all.flatMap(item => {
+    if (item.children) {
+      const children = item.children.filter(child => !commonPaths.includes(child.to))
+      return children.length ? [{ ...item, children }] : []
+    }
+    return commonPaths.includes(item.to) ? [] : [item]
+  }).filter(item => !item.requiresFeature || features[item.requiresFeature] !== false)
+  return [{ labelKey: 'novice.common', items: common }, { labelKey: 'novice.more', items: more }]
 }

@@ -1,7 +1,7 @@
 export const taskProgressMessages = {
   'zh-CN': {
     taskProgress: {
-      title: '更新并重启', room: '房间 {name}',
+      gameHint: '读取真实更新阶段；版本校验和世界恢复完成后才算成功。', softwareHint: '下载字节为真实进度；校验、程序切换及健康检查分别确认。', title: '更新并重启', room: '房间 {name}',
       unconfirmed: '启动结果待确认',
       worlds: {
         title: '世界启动进度', master: '主分片', readyCount: '已就绪 {ready} / {total} 个世界',
@@ -39,7 +39,7 @@ export const taskProgressMessages = {
   },
   'en-US': {
     taskProgress: {
-      title: 'Update and restart', room: 'Room {name}',
+      gameHint: 'Read the actual release stage. Both installation validation and world restoration must complete.', softwareHint: 'Download bytes are measured. Verification, program replacement and health checks are confirmed separately.', title: 'Update and restart', room: 'Room {name}',
       unconfirmed: 'Startup unconfirmed',
       worlds: {
         title: 'World startup progress', master: 'Master shard', readyCount: '{ready} / {total} worlds ready',

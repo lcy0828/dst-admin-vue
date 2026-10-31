@@ -3,6 +3,25 @@ export const gameReleaseMessages = {
     gameReleases: {
       title: '游戏服务端管理',
       subtitle: '查看各机器的安装状态，安装或接入已有服务端，并管理 LuaJIT 和游戏更新。',
+      workflow: {
+        title: '更新游戏服务端', description: '检查游戏版本，确认需要更新的房间。',
+        preparing: '正在检查 Steam 版本、运行状态和磁盘空间…',
+        update: '更新游戏', progress: '查看进度', recovery: '处理未完成更新',
+        existing: '已有更新任务', existingHint: '请先查看当前任务与世界恢复状态，避免重复更新。',
+        availability: { available: '发现新版', current: '已是最新版本', unknown: '版本待确认', existing: '更新任务待处理' },
+        availabilityHint: '发现官方新版后，仍需检查当前平台可用版本。点击更新即可检查并确认。',
+        checkedAt: '最近检查：{time}', cachedTitle: '刷新失败，保留上次版本信息',
+        protection: '更新时会暂时停服，并自动备份',
+        protectionHint: '完成后自动启动原先运行的世界。请提醒在线玩家稍后重连。',
+        protectionNoRestoreHint: '已关闭自动恢复。更新后相关世界将保持停止；版本和配置摘要仍会保留。',
+        restoreSummary: '当前运行 {running} 个世界；原已停止的 {stopped} 个世界保持停止。',
+        willRestore: '停止后自动恢复', willStop: '停止后不自动恢复', keepStopped: '保持停止',
+        diagnostics: '查看模组检查结果',
+        changed: '执行计划已变化', changedHint: '请重新核对下面的目标版本、完整影响范围和恢复方式，再次确认后才会提交。',
+        reconfirm: '确认新计划并更新', uncertain: '提交结果待确认',
+        uncertainHint: '未收到可靠的提交结果，任务可能已经开始。请读取状态或查看更新记录；不会自动重发。',
+        reconcile: '重新读取任务状态'
+      },
       actions: {
         open: '管理游戏更新', refresh: '刷新更新记录', check: '检查是否有更新', checking: '正在检查',
         publish: '备份并开始更新', retry: '继续更新 / 恢复', view: '查看详情'
@@ -11,7 +30,7 @@ export const gameReleaseMessages = {
         checkedScope: '检查范围', affectedScope: '影响范围', scopeSummary: '{rooms} 个房间 · {worlds} 个世界', runningSummary: '{count} 个世界运行中',
         title: '游戏更新', description: '检查版本不会停服；确认更新后自动备份并恢复房间。',
         notChecked: '尚未检查版本', notCheckedDescription: '点击“检查是否有更新”后，系统会显示各主机当前游戏版本、最新官方版本和受影响的房间。',
-        resultTitle: '检查结果', resultDescription: '先确认官方游戏版本和影响范围；Steam 安装信息可在技术详情中查看。',
+        resultTitle: '检查结果', resultDescription: '查看游戏版本和需要更新的房间。',
         currentGameVersion: '当前游戏版本', latestOfficialVersion: '最新正式版本', affectedNodes: '运行节点', affectedRoomsAndWorlds: '受影响房间 / 世界',
         mixedGameVersions: '{count} 个不同游戏版本', cached: '缓存', officialVersionUnavailable: '最新官方版本暂不可用'
       },
@@ -26,11 +45,11 @@ export const gameReleaseMessages = {
         title: '高级选项', description: '通常保持默认即可，仅在缓存损坏或需要调整启动校验时修改。'
       },
       technical: {
-        title: '技术详情', description: '查看平台、AppID、Steam Build、安装方式、磁盘空间和计划标识。'
+        title: '安装信息', description: '查看平台、AppID、Steam Build、安装方式、磁盘空间和计划标识。'
       },
       notice: {
         title: '更新期间会自动保护并恢复房间',
-        description: '系统会安全停止相关世界，创建并验证保护备份，更新与校验游戏后恢复原先运行的世界。共用安装和跨节点房间会一起处理。'
+        description: '更新时会暂时停服，并自动备份。完成后启动原先运行的世界。'
       },
       form: {
         title: '更新选项', description: '先检查本次更新影响的节点、房间和世界；检查结果变化后需要重新确认。',
@@ -47,7 +66,7 @@ export const gameReleaseMessages = {
         ready: '可以更新', checked: '检查完成', blocked: '更新受阻', upToDate: '全部已是最新版本', updateRequired: '需要更新',
         topology: '拓扑版本', planHash: '计划哈希', targetVersion: '目标 build',
         blockerTitle: '更新检查未通过', blockerDescription: '处理以下问题后重新检查更新范围。',
-        noUpdateTitle: '所有安装目标均为最新版本', noUpdateDescription: '不需要执行停服、备份或更新。',
+        noUpdateTitle: '所有安装目标均为最新版本', noUpdateDescription: '可以继续游玩。之后发现新版本会在这里提示。',
         steamManagedDescription: '本机游戏已是最新版本。该安装由 Steam 客户端维护，面板不会修改 Steam 管理的游戏文件。'
       },
       columns: {
@@ -127,6 +146,25 @@ export const gameReleaseMessages = {
     gameReleases: {
       title: 'Game server management',
       subtitle: 'Inspect installations on each host, install or connect an existing server, and manage LuaJIT and game updates.',
+      workflow: {
+        title: 'Update game server', description: 'Check the game version and rooms that need an update.',
+        preparing: 'Checking Steam versions, runtime state and disk space…',
+        update: 'Update game', progress: 'View progress', recovery: 'Resolve incomplete update',
+        existing: 'An update already exists', existingHint: 'Inspect its progress and world recovery before starting another update.',
+        availability: { available: 'New release found', current: 'Current', unknown: 'Version unconfirmed', existing: 'Update needs attention' },
+        availabilityHint: 'An official release still requires a platform availability check. Select Update game to review and confirm.',
+        checkedAt: 'Last checked: {time}', cachedTitle: 'Refresh failed; previous version information retained',
+        protection: 'Stop worlds → Verify backups → Update and validate → Restore worlds',
+        protectionHint: 'Previously running worlds start again after the update. Ask online players to reconnect afterward.',
+        protectionNoRestoreHint: 'Automatic restore is disabled. Affected worlds stay stopped after the update; diagnostic summaries are retained.',
+        restoreSummary: '{running} worlds currently running; {stopped} previously stopped worlds stay stopped.',
+        willRestore: 'Stop and restore', willStop: 'Stop without automatic restore', keepStopped: 'Keep stopped',
+        diagnostics: 'View mod checks',
+        changed: 'The execution plan changed', changedHint: 'Review the desired versions, full scope and restore policy below before confirming again.',
+        reconfirm: 'Confirm new plan and update', uncertain: 'Submission outcome unconfirmed',
+        uncertainHint: 'The request may have been accepted. Read task status or inspect update history; it will not be automatically resent.',
+        reconcile: 'Read task status again'
+      },
       actions: {
         open: 'Manage game updates', refresh: 'Refresh update history', check: 'Check for updates', checking: 'Checking',
         publish: 'Back up and update', retry: 'Resume update / restore', view: 'View details'
@@ -150,7 +188,7 @@ export const gameReleaseMessages = {
         title: 'Advanced options', description: 'Keep the defaults unless a download cache is damaged or startup verification needs adjustment.'
       },
       technical: {
-        title: 'Technical details', description: 'Inspect platform, AppID, Steam builds, update method, disk capacity, and plan identifiers.'
+        title: 'Installation information', description: 'Inspect platform, AppID, Steam builds, update method, disk capacity, and plan identifiers.'
       },
       notice: {
         title: 'Rooms are protected and restored automatically',
@@ -171,7 +209,7 @@ export const gameReleaseMessages = {
         ready: 'Ready to update', checked: 'Check complete', blocked: 'Update blocked', upToDate: 'Everything is current', updateRequired: 'Update required',
         topology: 'Topology revision', planHash: 'Plan hash', targetVersion: 'Desired build',
         blockerTitle: 'Update check failed', blockerDescription: 'Resolve these blockers and check again.',
-        noUpdateTitle: 'Every installation is current', noUpdateDescription: 'No stop, backup, or update operation is required.',
+        noUpdateTitle: 'Every installation is current', noUpdateDescription: 'You can keep playing. New versions will appear here when available.',
         steamManagedDescription: 'The local game is current. Steam manages this installation, so the panel will not modify its game files.'
       },
       columns: {

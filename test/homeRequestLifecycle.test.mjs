@@ -135,6 +135,8 @@ test('download dock reads cached Mod names once across byte progress updates', a
   const stops = []
   const context = { ref: vueRef, computed: vueComputed,
     watch: (...args) => { const stop = vueWatch(...args); stops.push(stop); return stop },
+    useGameUpdate: () => ({ state: { records: [], accepted: null }, pending: vueRef(null) }),
+    useSoftwareUpdate: () => ({ state: { snapshot: null } }), softwareUpdateTask: () => null,
     useSharedJobStatus: () => api, useI18n: () => ({ t: key => key }),
     isTaskProgressJob, taskProgress: () => ({}), readableTaskText: value => value,
     globalJobKindLabel: () => '', globalJobWarning, setTimeout, clearTimeout,
@@ -335,7 +337,7 @@ test('runtime stream stays connected on metadata hydration and reconnects on act
   assert.equal(f.streams[1].closed, true)
 })
 
-for (const path of ['components/layout/GameVersionStatus.vue', 'composables/useDashboardV2.js']) {
+for (const path of ['composables/useDashboardV2.js']) {
   test(`${path} updates metadata without refreshing the same target`, () => {
     const source = script(path)
     const nodes = body(source)

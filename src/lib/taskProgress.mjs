@@ -5,7 +5,9 @@ const modProgressKinds = new Set(['mod.update.activate', 'mod.installation.downl
 export const isModProgressJob = job => modProgressKinds.has(job?.kind)
 const worldProgressKinds = new Set(['room.start', 'room.restart', 'rooms.start', 'rooms.restart'])
 export const isWorldProgressJob = job => worldProgressKinds.has(job?.kind)
-export const isTaskProgressJob = job => isModProgressJob(job) || isWorldProgressJob(job)
+export const isGameProgressJob = job => ['game.release', 'game.release.retry'].includes(job?.kind)
+export const isSoftwareProgressJob = job => job?.kind === 'software.update'
+export const isTaskProgressJob = job => isModProgressJob(job) || isWorldProgressJob(job) || isGameProgressJob(job) || isSoftwareProgressJob(job)
 export const isActiveJob = job => ['queued', 'running'].includes(job?.status)
 
 export function modDownloadGroups(job = {}, metadata = {}) {
@@ -80,6 +82,13 @@ export function worldRestartProgress(job = {}) {
 // These ranges are the existing modupdates service's workflow milestones,
 // not estimates of elapsed time. Only bytes provide a download percentage.
 export function taskProgress(job = {}) {
+  if (isGameProgressJob(job) || isSoftwareProgressJob(job)) {
+    const phase = job.status === 'queued' ? 'queued' : job.progressDetail?.phase || 'checking'
+    const active = isActiveJob(job)
+    return { restart: false, lifecycle: false, stages: [], item: {}, phase,
+      status: active ? phase : job.status === 'succeeded' ? 'succeeded' : job.status === 'canceled' ? 'canceled' : 'failed',
+      active, transfer: job.transfer || null, percent: isSoftwareProgressJob(job) && phase === 'downloading' && job.transfer?.totalBytes > 0 ? Math.min(100, Math.floor(job.transfer.currentBytes / job.transfer.totalBytes * 100)) : active ? null : job.status === 'succeeded' ? 100 : null, step: 0 }
+  }
   const progress = Number(job.progress) || 0
   const terminal = !isActiveJob(job)
   const failed = job.status === 'failed'

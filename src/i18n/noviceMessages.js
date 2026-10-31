@@ -1,0 +1,35 @@
+export const noviceMessages = {
+  'zh-CN': { novice: {
+    go: '前往设置', common: '常用功能', more: '更多功能', basic: '房间设置', basicHint: '填写游戏中显示的名称，选择玩法和人数。',
+    moreSettings: '更多游戏设置', less: '收起更多设置', saveLocation: '存档名称（已自动生成，可修改）',
+    caves: '同时创建洞穴', cavesHint: '关闭时只创建地面世界。',
+    backupDefault: '创建后按推荐时间自动备份，保留最近 7 份', backupName: '房间定时备份', backupSetupFailed: '请在备份页面确认自动备份计划；若没有计划，再手动添加',
+    getToken: '前往 Klei 获取开服凭证', tokenSteps: '登录 Klei 账号 → 为饥荒联机版创建服务器 → 复制 Token 并粘贴到这里。',
+    createdNeeds: '房间已创建，请检查以下事项', otherMachines: '需要管理其他机器？',
+    help: '帮助与报错记录', helpHint: '查找功能、查看操作步骤和最近报错。', search: '搜索功能，例如：备份、密码、更新', noMatch: '没有匹配的功能，请换个关键词。',
+    guides: '常见操作', errors: '最近报错', noErrors: '本次打开面板后暂无报错记录。', copy: '复制报错信息', copied: '报错信息已复制', copyFailed: '复制失败，请选择下方信息后手动复制。',
+    errorHint: '报错记录仅保留在当前页面内存中。复制前可以展开查看。', record: '查看报错信息',
+    firstGame: '第一次开服', firstGameHelp: '安装游戏 → 创建房间或导入存档 → 填写开服凭证 → 启动。等待地面、洞穴分别显示运行中，再在游戏里搜索房间名称。',
+    connection: '朋友找不到或进不来', connectionHelp: '先确认房间已启动、使用相同游戏版本和正确密码。检查房间是否仅限局域网；云服务器还需放行游戏端口。',
+    mods: '添加模组', modsHelp: '选择房间，在模组页面搜索并下载，启用后保存配置。显示需重启时，重启对应世界后生效。',
+    backups: '备份与恢复', backupsHelp: '在备份页面选择房间，立即备份或添加每天定时计划。恢复前核对时间和世界：备份之后的进度将被覆盖。',
+    updates: '更新游戏', updatesHelp: '点击顶部游戏版本提示检查更新，确认房间范围后开始。更新会暂时停服并自动备份；可在右下角继续查看进度。',
+    syncDetails: '查看采集情况', inventoryHint: '查看装备、背包和容器。', activityHint: '查看玩家活动、移动轨迹和战斗。',
+    permissionHint: '页面仍按当前账户权限检查操作。'
+  } },
+  'en-US': { novice: {
+    go: 'Open settings', common: 'Frequently used', more: 'More features', basic: 'Room settings', basicHint: 'Enter the name players see, then choose the game mode and player limit.',
+    moreSettings: 'More game settings', less: 'Show fewer settings', saveLocation: 'Save name (generated; editable)', caves: 'Create Caves too', cavesHint: 'Turn off to create only the surface world.',
+    backupDefault: 'Use the recommended backup schedule; keep the latest 7', backupName: 'Scheduled room backup', backupSetupFailed: 'Check the Backups page for the schedule before adding another',
+    getToken: 'Get a server token from Klei', tokenSteps: 'Sign in to Klei → create a DST server → copy the Token and paste it here.', createdNeeds: 'Room created; check the following items', otherMachines: 'Manage other machines?',
+    help: 'Help and error records', helpHint: 'Find features, task guides and recent errors.', search: 'Find a feature: backup, password, update', noMatch: 'No matching feature. Try another keyword.',
+    guides: 'Common tasks', errors: 'Recent errors', noErrors: 'No errors recorded since opening this page.', copy: 'Copy error information', copied: 'Error information copied', copyFailed: 'Copy failed. Select the information below and copy it manually.',
+    errorHint: 'Records stay in this page’s memory only. Expand to inspect before copying.', record: 'View error information',
+    firstGame: 'Host your first game', firstGameHelp: 'Install the game → create a room or import saves → add the Klei token → start. Wait for each selected world to run, then search for the room in DST.',
+    connection: 'Friends cannot find or join the room', connectionHelp: 'Check room status, game version and password. Check LAN-only settings and allow game ports in the server firewall.',
+    mods: 'Add a mod', modsHelp: 'Select a room, search and download mods, then enable and save them. Restart the relevant world when a restart is required.',
+    backups: 'Back up and restore', backupsHelp: 'Select a room in Backups, create a backup or set a daily schedule. Check the time and worlds before restoring: later progress will be overwritten.',
+    updates: 'Update the game', updatesHelp: 'Click the game version at the top to check. Confirm the affected rooms to update. Worlds stop briefly and are backed up automatically. Follow progress at the bottom right.',
+    syncDetails: 'View collection status', inventoryHint: 'View equipment, inventory and containers.', activityHint: 'View activity, movement and combat.', permissionHint: 'All operations still require your account permissions.'
+  } }
+}

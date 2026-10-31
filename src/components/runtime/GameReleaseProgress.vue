@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { cn } from '@/lib/utils'
 import { useI18n } from 'vue-i18n'
 import { Check, ChevronDown, CircleAlert } from '@lucide/vue'
 import { gameReleaseProgress, gameReleaseStageVariant } from '@/lib/gameRelease.mjs'
@@ -11,7 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 
-const props = defineProps({ release: { type: Object, required: true } })
+const props = defineProps({ release: { type: Object, required: true }, compact: { type: Boolean, default: false } })
 const { t } = useI18n()
 const progress = computed(() => gameReleaseProgress(props.release))
 const failed = computed(() => ['failed', 'recovery_required'].includes(progress.value.stage))
@@ -22,8 +23,8 @@ function targetName(item) {
 </script>
 
 <template>
-  <section class="flex min-w-0 flex-col gap-3 rounded-lg border p-4" :aria-label="t('gameReleases.progress.title')">
-    <div class="flex flex-wrap items-center justify-between gap-2" role="status" aria-live="polite">
+  <section :class="cn('flex min-w-0 flex-col gap-3', !compact && 'rounded-lg border p-4')" :aria-label="t('gameReleases.progress.title')">
+    <div v-if="!compact" class="flex flex-wrap items-center justify-between gap-2" role="status" aria-live="polite">
       <div class="flex flex-wrap items-center gap-2">
         <Spinner v-if="!progress.terminal" />
         <h3 class="text-sm font-semibold">{{ t('gameReleases.progress.title') }}</h3>
@@ -32,8 +33,8 @@ function targetName(item) {
       <span v-if="updatedAt" class="text-xs text-muted-foreground">{{ t('gameReleases.progress.updatedAt', { time: formatSystemDateTime(updatedAt) }) }}</span>
     </div>
 
-    <ol class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5" :aria-label="t('gameReleases.progress.steps')">
-      <li v-for="(step, index) in progress.steps" :key="step.key" class="flex min-w-0 flex-col gap-2 rounded-md border p-3" :aria-current="step.state === 'active' ? 'step' : undefined">
+    <ol :class="cn('grid', compact ? 'grid-cols-1 gap-0' : 'gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5')" :aria-label="t('gameReleases.progress.steps')">
+      <li v-for="(step, index) in progress.steps" :key="step.key" :class="cn('flex min-w-0 gap-2', compact ? 'flex-row items-center justify-between border-b py-2 last:border-0' : 'flex-col rounded-md border p-3')" :aria-current="step.state === 'active' ? 'step' : undefined">
         <div class="flex items-center justify-between gap-2">
           <span class="text-sm font-medium">{{ index + 1 }}. {{ t(`gameReleases.progress.stepsLabels.${step.key}`) }}</span>
           <Spinner v-if="step.state === 'active'" />

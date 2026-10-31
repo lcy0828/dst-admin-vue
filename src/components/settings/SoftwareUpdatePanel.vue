@@ -25,7 +25,7 @@ const snapshot = computed(() => state.snapshot)
 const latest = computed(() => snapshot.value?.check?.latest)
 const operation = computed(() => snapshot.value?.operation)
 const nextAction = computed(() => softwareUpdateAction(snapshot.value))
-const busy = computed(() => state.acting || state.reconnecting || softwareUpdateActive(operation.value) || snapshot.value?.supported && snapshot.value?.ready === false)
+const busy = computed(() => state.acting || state.canceling || state.reconnecting || softwareUpdateActive(operation.value) || snapshot.value?.supported && snapshot.value?.ready === false)
 const phaseLabel = computed(() => operation.value ? t(`softwareUpdate.phases.${operation.value.phase}`) : '')
 const confirmationTitle = computed(() => t(`softwareUpdate.${confirmation.value === 'apply' ? 'confirmApply' : 'confirmUpdate'}`, { version: confirmingVersion.value }))
 const errorMessage = computed(() => {
@@ -100,6 +100,8 @@ async function execute() {
           <Progress v-if="busy || operation.phase === 'prepared'" :model-value="operation.progress" :aria-label="t('softwareUpdate.progress')" />
           <p v-if="operation.totalBytes > 0 && operation.phase === 'downloading'" class="text-sm text-muted-foreground tabular-nums">{{ t('softwareUpdate.downloaded', { downloaded: formatSoftwareBytes(operation.downloadedBytes), total: formatSoftwareBytes(operation.totalBytes) }) }}</p>
           <p v-if="state.reconnecting || operation.phase === 'restarting'" class="text-sm text-muted-foreground">{{ t('softwareUpdate.reconnecting') }}</p>
+          <p v-if="operation.phase === 'canceled'" class="text-sm text-muted-foreground">{{ t('softwareUpdate.canceledHelp') }}</p>
+          <p v-if="operation.phase === 'restarting'" class="text-sm text-muted-foreground">{{ t('softwareUpdate.switchCannotCancel') }}</p>
           <p v-if="operation.phase === 'superseded'" class="text-sm text-muted-foreground">{{ t('softwareUpdate.supersededHelp') }}</p>
           <Alert v-if="operation.error" variant="destructive"><CircleAlert /><AlertTitle>{{ phaseLabel }}</AlertTitle><AlertDescription class="break-words">{{ operation.error }}</AlertDescription></Alert>
         </div>
@@ -109,6 +111,7 @@ async function execute() {
         </div>
       </CardContent>
       <CardFooter class="flex flex-wrap gap-2">
+        <Button v-if="['downloading', 'verifying', 'prepared'].includes(operation?.phase)" variant="outline" :disabled="state.canceling || state.acting || state.reconnecting" @click="update.cancel()"><Spinner v-if="state.canceling" data-icon="inline-start" />{{ t(state.canceling ? 'softwareUpdate.cancelingDownload' : 'softwareUpdate.cancelDownload') }}</Button>
         <Button variant="outline" :disabled="state.checking || busy" @click="update.check(true, source)">
           <Spinner v-if="state.checking" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />
           {{ t(state.checking ? 'softwareUpdate.checking' : 'softwareUpdate.check') }}

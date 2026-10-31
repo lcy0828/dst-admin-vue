@@ -58,10 +58,7 @@ function isActive(path) {
 }
 
 function isGroupActive(item) {
-  const firstChildPath = item.children?.[0]?.to
-  if (!firstChildPath) return false
-  const groupPath = firstChildPath.slice(0, firstChildPath.lastIndexOf('/'))
-  return route.path === groupPath || route.path.startsWith(`${groupPath}/`)
+  return Boolean(item.children?.some(child => isActive(child.to)))
 }
 </script>
 

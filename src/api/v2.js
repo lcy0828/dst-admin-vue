@@ -7,6 +7,7 @@ import { emitGlobalJobSubmitted } from '@/lib/globalJobs.mjs'
 import { isWorldProgressJob } from '@/lib/taskProgress.mjs'
 import { createRoomBackupsAPI } from '@/lib/roomBackups.mjs'
 import { readAIEvents } from '@/lib/aiStream.mjs'
+import { rememberRequestError, requestErrorMessage } from '@/lib/requestErrors.mjs'
 import { createOpenAPIClient } from './openapiClient.mjs'
 import openapiOperations from './openapiOperations.json'
 
@@ -22,18 +23,18 @@ const gameVersionSummaryCache = createAsyncResourceCache({ ttlMs: 1_000 })
 
 export class APIError extends Error {
   constructor(status, body = {}, requestId = '') {
+    body = body && typeof body === 'object' ? body : {}
     const message = String(body.message || 'The server returned an invalid response.')
     const detail = String(body?.details?.reason || '').trim()
-    const displayMessage = detail && detail !== message && !message.includes(detail)
-      ? `${message}: ${detail}`
-      : message
-    super(requestId ? `${displayMessage} (request ID: ${requestId})` : displayMessage)
+    super(requestErrorMessage({ code: body.code, status }))
     this.name = 'APIError'
     this.status = status
     this.code = body.code || 'UNKNOWN_ERROR'
     this.details = body.details
     this.detail = detail
     this.requestId = requestId
+    this.rawMessage = message
+    rememberRequestError(this)
   }
 }
 
@@ -207,6 +208,7 @@ export const softwareV2API = {
   check: (force = false, source = '') => client.get('/system/software/check', { params: { force, source }, runtimeTarget: false, timeout: 100000 }),
   update: (version, source = '') => client.post('/system/software/actions/update', { version, source, confirmation: version }, { runtimeTarget: false }),
   apply: operationId => client.post('/system/software/actions/apply', { operationId, confirmation: 'APPLY SOFTWARE UPDATE' }, { runtimeTarget: false, timeout: 15000 }),
+  cancel: operationId => client.post('/system/software/actions/cancel', { operationId }, { runtimeTarget: false, timeout: 20000 }),
 }
 
 // Service logs select their own explicit source, independent of Runtime scope.

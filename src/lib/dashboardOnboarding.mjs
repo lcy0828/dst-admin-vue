@@ -8,11 +8,10 @@ export function dashboardOnboardingState({
   localExecutorEnabled = true,
   installed = false,
   roomCount = 0,
-  runningShards = 0,
   firstStartCompleted = false
 } = {}) {
   const persistedComplete = Boolean(firstStartCompleted)
-  const startCompleted = persistedComplete || Number(runningShards) > 0
+  const startCompleted = persistedComplete
   if (!localExecutorEnabled) {
     const complete = startCompleted
     return {

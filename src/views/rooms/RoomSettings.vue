@@ -11,7 +11,7 @@
           </span>
           <Badge v-if="configurationSourceLabel" variant="outline" class="runtime-source-badge">{{ configurationSourceLabel }}</Badge>
         </div>
-        <code v-if="isEdit && roomId" class="room-reference">{{ roomId }}</code>
+
       </div>
       <div class="header-actions">
         <UiButton variant="outline" @click="goBack"><ArrowLeft data-icon="inline-start" />{{ $t('rooms.settings.back') }}</UiButton>
@@ -57,6 +57,7 @@
       </AlertDescription>
     </Alert>
 
+    <Alert v-if="postCreateWarnings.length"><AlertTitle>{{ $t('novice.createdNeeds') }}</AlertTitle><AlertDescription><ul><li v-for="warning in postCreateWarnings" :key="warning">{{ warning }}</li></ul></AlertDescription></Alert>
     <RoomPlacementCard
       v-if="isEdit && roomId"
       :room-id="roomId"
@@ -65,46 +66,23 @@
       :focus-world-id="String($route.query.worldId || '')"
     />
 
-    <Card v-if="!isEdit" size="sm" class="save-name-card">
-      <CardHeader>
-        <CardTitle class="section-title"><FolderKey />{{ $t('rooms.settings.identity') }}</CardTitle>
-        <CardDescription>{{ $t('rooms.settings.identityDescription') }}</CardDescription>
-        <CardAction><Badge variant="outline">{{ $t('rooms.settings.lockedAfterCreate') }}</Badge></CardAction>
-      </CardHeader>
-      <CardContent>
-        <FieldGroup>
-          <Field :data-invalid="Boolean(saveNameError)">
-            <FieldLabel for="room-savename">{{ $t('rooms.settings.archiveName') }}</FieldLabel>
-            <UiInput
-              id="room-savename"
-              v-model.trim="saveNameForm.savename"
-              :placeholder="$t('rooms.settings.archiveNamePlaceholder')"
-              :aria-invalid="Boolean(saveNameError)"
-              autocomplete="off"
-              :maxlength="archiveNameMaxLength"
-              @input="clearSaveNameError"
-            />
-            <FieldDescription>{{ $t('rooms.settings.archiveNameDescription') }}</FieldDescription>
-            <FieldError v-if="saveNameError">{{ saveNameError }}</FieldError>
-          </Field>
-        </FieldGroup>
-      </CardContent>
-    </Card>
-
     <Tabs v-if="!loadError" v-model="activeTab" orientation="horizontal" class="settings-tabs">
-      <div class="settings-tabs-nav">
-        <TabsList variant="line" class="settings-tab-list" :aria-label="$t('rooms.settings.categoriesAria')">
-          <TabsTrigger v-for="section in settingsSections" :key="section.key" :value="section.key" class="settings-tab-trigger">
-            <component :is="section.icon" />
-            {{ section.tabLabel }}
-          </TabsTrigger>
-          <TabsTrigger value="special-lists" class="settings-tab-trigger"><ListChecks />{{ $t('rooms.settings.specialLists') }}</TabsTrigger>
-          <TabsTrigger value="token" class="settings-tab-trigger"><KeyRound />{{ $t('rooms.settings.serverToken') }}</TabsTrigger>
-          <TabsTrigger v-if="isEdit && roomId && !setupMode" value="maintenance" class="settings-tab-trigger"><RefreshCw />{{ $t('rooms.settings.automaticMaintenance') }}</TabsTrigger>
-        </TabsList>
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <div class="settings-tabs-nav">
+          <TabsList variant="line" class="settings-tab-list" :aria-label="$t('rooms.settings.categoriesAria')">
+            <TabsTrigger v-for="section in displayedSections" :key="section.key" :value="section.key" class="settings-tab-trigger">
+              <component :is="section.icon" />
+              {{ section.tabLabel }}
+            </TabsTrigger>
+            <TabsTrigger v-if="moreSettings" value="special-lists" class="settings-tab-trigger"><ListChecks />{{ $t('rooms.settings.specialLists') }}</TabsTrigger>
+            <TabsTrigger value="token" class="settings-tab-trigger"><KeyRound />{{ $t('rooms.settings.serverToken') }}</TabsTrigger>
+            <TabsTrigger v-if="isEdit && roomId && !setupMode" value="maintenance" class="settings-tab-trigger"><RefreshCw />{{ $t('rooms.settings.automaticMaintenance') }}</TabsTrigger>
+          </TabsList>
+        </div>
+        <UiButton variant="outline" size="sm" class="shrink-0" :aria-expanded="moreSettings" @click="toggleMoreSettings">{{ $t(moreSettings ? 'novice.less' : 'novice.moreSettings') }}</UiButton>
       </div>
 
-      <TabsContent v-for="section in settingsSections" :key="section.key" :value="section.key" class="settings-tab-content">
+      <TabsContent v-for="section in displayedSections" :key="section.key" :value="section.key" class="settings-tab-content">
         <Card size="sm" class="settings-section-card">
           <CardHeader>
             <CardTitle class="section-title">
@@ -139,7 +117,7 @@
                     {{ field.label }}<span v-if="field.required" class="required-indicator" aria-hidden="true">*</span>
                   </FieldLabel>
                   <FieldDescription>{{ field.description }}</FieldDescription>
-                  <div v-if="field.constraint" class="field-constraint">
+                  <div v-if="moreSettings && field.constraint" class="field-constraint">
                     <Badge variant="outline">{{ $t('rooms.settings.constraintLabel') }}</Badge>
                     <span>{{ field.constraint }}</span>
                   </div>
@@ -241,6 +219,35 @@
       </TabsContent>
     </Tabs>
 
+    <details ref="saveIdentity" v-if="!isEdit" class="rounded-md border p-3"><summary class="cursor-pointer text-sm">{{ $t('novice.saveLocation') }}</summary>
+    <Card size="sm" class="save-name-card">
+      <CardHeader>
+        <CardTitle class="section-title"><FolderKey />{{ $t('rooms.settings.identity') }}</CardTitle>
+        <CardDescription>{{ $t('rooms.settings.identityDescription') }}</CardDescription>
+        <CardAction><Badge variant="outline">{{ $t('rooms.settings.lockedAfterCreate') }}</Badge></CardAction>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Field :data-invalid="Boolean(saveNameError)">
+            <FieldLabel for="room-savename">{{ $t('rooms.settings.archiveName') }}</FieldLabel>
+            <UiInput
+              id="room-savename"
+              v-model.trim="saveNameForm.savename"
+              :placeholder="$t('rooms.settings.archiveNamePlaceholder')"
+              :aria-invalid="Boolean(saveNameError)"
+              autocomplete="off"
+              :maxlength="archiveNameMaxLength"
+              @input="clearSaveNameError"
+            />
+            <FieldDescription>{{ $t('rooms.settings.archiveNameDescription') }}</FieldDescription>
+            <FieldError v-if="saveNameError">{{ saveNameError }}</FieldError>
+          </Field>
+        </FieldGroup>
+      </CardContent>
+    </Card>
+    </details>
+    <Card v-if="!isEdit" size="sm"><CardContent class="pt-4"><FieldGroup><Field orientation="horizontal"><UiSwitch id="new-room-backup" v-model="automaticBackup" /><FieldLabel for="new-room-backup">{{ $t('novice.backupDefault') }}</FieldLabel></Field></FieldGroup></CardContent></Card>
+
     <UiDialog v-model:open="settingsCopyDialogVisible">
       <DialogContent>
         <DialogHeader>
@@ -311,6 +318,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { confirmAction } from '@/lib/feedback';
 import { globalJobFailureToastId } from '@/lib/globalJobs.mjs';
+import { backupsV2API } from '@/api/v2';
+import { newRoomDirectoryName } from '@/lib/newRoomDefaults.mjs';
 import { clusterTokenError } from '@/lib/clusterToken.mjs';
 import { pickCopiedRoomFields, roomCopyValuesFromConfig } from '@/lib/roomCopy.mjs';
 import {
@@ -453,12 +462,15 @@ export default {
   },
   data() {
     return {
-      activeTab: 'gameplay',
+      activeTab: 'basic',
+      moreSettings: false,
+      automaticBackup: true,
+      postCreateWarnings: [],
       isEdit: false,
       roomId: '',
       savename: '',
       saveNameForm: {
-        savename: ''
+        savename: newRoomDirectoryName()
       },
       saveNameError: '',
       archiveNameMaxLength: ROOM_ARCHIVE_RULE.maxLength,
@@ -527,6 +539,12 @@ export default {
     }
   },
   computed: {
+    displayedSections() {
+      if (this.moreSettings) return this.settingsSections;
+      const keys = ['cluster_name', 'game_mode', 'max_players', 'cluster_password', ...(!this.isEdit ? ['shard_enabled'] : [])];
+      const fields = this.settingsSections.flatMap(section => section.fields);
+      return [{ key: 'basic', icon: Gamepad2, tabLabel: this.$t('novice.basic'), title: this.$t('novice.basic'), description: this.$t('novice.basicHint'), fields: keys.flatMap(key => { const field = fields.find(f => f.key === key); return field ? [{ ...field, ...(key === 'shard_enabled' && !this.isEdit ? { label: this.$t('novice.caves'), description: this.$t('novice.cavesHint') } : {}) }] : [] }) }];
+    },
     settingsSections() {
       return SETTINGS_SECTIONS.map(section => ({
         ...section,
@@ -724,6 +742,11 @@ export default {
       this.saveNameError = '';
       this.formErrors = Object.values(this.validationErrors);
     },
+    toggleMoreSettings() {
+      this.moreSettings = !this.moreSettings;
+      if (this.moreSettings && this.activeTab === 'basic') this.activeTab = 'gameplay';
+      else if (!this.moreSettings && !['token', 'maintenance'].includes(this.activeTab)) this.activeTab = 'basic';
+    },
     toggleSensitiveField(key) {
       this.revealedFields = { ...this.revealedFields, [key]: !this.revealedFields[key] };
     },
@@ -733,9 +756,11 @@ export default {
     focusFirstError() {
       let targetId = '';
       if (this.saveNameError) {
+        if (this.$refs.saveIdentity) this.$refs.saveIdentity.open = true;
         targetId = 'room-savename';
       } else {
         const invalidKey = Object.keys(this.validationErrors)[0];
+        this.moreSettings = true;
         const invalidSection = this.settingsSections.find(section => section.fields.some(field => field.key === invalidKey));
         if (invalidSection) this.activeTab = invalidSection.key;
         if (invalidKey) targetId = `room-setting-${invalidKey}`;
@@ -975,6 +1000,13 @@ export default {
           this.roomId = roomValue;
           this.savename = createdRoom.name || this.savename;
           this.isEdit = true;
+          if (this.automaticBackup) {
+            try {
+              const schedules = await backupsV2API.schedules(roomValue);
+              const defaults = schedules.defaults || {};
+              if (!schedules.items?.length && !schedules.legacyPolicy?.enabled) await backupsV2API.configureSchedule(roomValue, { name: this.$t('novice.backupName'), schedule: defaults.schedule || '0 4 * * *', timezone: defaults.timezone || 'Asia/Shanghai', keep: 7, enabled: true, createNew: true });
+            } catch { pendingListErrors.push(this.$t('novice.backupSetupFailed')); }
+          }
           const { adminList, blockList, whiteList } = this.form;
           // 每次名单写入都会生成新 revision，必须按顺序应用。
           const pendingLists = [
@@ -999,7 +1031,8 @@ export default {
         }
 
         if (pendingListErrors.length) {
-          toast.warning(this.$t('rooms.settings.feedback.partialLists', { errors: pendingListErrors.join('; ') }));
+          this.postCreateWarnings = pendingListErrors;
+          toast.warning(this.$t('novice.createdNeeds'), { description: pendingListErrors.join('; ') });
         } else {
           toast.success(this.$t('rooms.settings.feedback.saved'));
         }
@@ -1225,6 +1258,7 @@ export default {
 }
 
 .settings-tabs-nav {
+  flex: 1 1 15rem;
   width: 100%;
   min-width: 0;
   overflow-x: auto;

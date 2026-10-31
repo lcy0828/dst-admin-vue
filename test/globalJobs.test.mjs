@@ -29,7 +29,7 @@ test('automated backup failure feedback separates the cause from an unconfirmed 
   assert.equal(globalJobFailure(job).message, raw)
   job.targets[0].error.details.barrierReleaseState = 'released'
   assert.equal(globalJobFailure(job, t).message, 'distributed.backups.failureReasons.SNAPSHOT_RECEIPT_INVALID')
-  assert.equal(globalJobFailure({ error: { code: 'TOPOLOGY_CHANGED', message: 'placement changed' } }, t).message, 'placement changed')
+  assert.equal(globalJobFailure({ error: { code: 'TOPOLOGY_CHANGED', message: 'placement changed' } }, t).message, '房间的运行位置已变化，请刷新房间并查看原任务。')
 })
 
 const jobStatusComposable = fs.readFileSync(new URL('../src/composables/useGlobalJobStatus.js', import.meta.url), 'utf8')

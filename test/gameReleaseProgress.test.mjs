@@ -5,12 +5,14 @@ import { createSSRApp, h } from 'vue'
 import { renderToString } from '@vue/server-renderer'
 import { createI18n } from 'vue-i18n'
 import { gameReleaseMessages } from '../src/i18n/gameReleaseMessages.js'
+import { messages } from '../src/i18n/messages.js'
 import { gameReleaseProgress, gameReleaseResultRows, gameReleaseShardState } from '../src/lib/gameRelease.mjs'
 
-let server, Component
+let server, Component, Dock
 before(async () => {
   server = await createServer({ server: { middlewareMode: true, watch: null }, appType: 'custom' })
   Component = (await server.ssrLoadModule('/src/components/runtime/GameReleaseProgress.vue')).default
+  Dock = (await server.ssrLoadModule('/src/components/layout/TaskProgressDock.vue')).default
 })
 after(async () => { await server?.close() })
 
@@ -36,6 +38,35 @@ async function render(release, locale = 'zh-CN') {
   app.use(createI18n({ legacy: false, locale, messages: gameReleaseMessages }))
   return renderToString(app)
 }
+
+async function renderDock(props) {
+  const app = createSSRApp({ render: () => h(Dock, props) })
+  app.use(createI18n({ legacy: false, locale: 'zh-CN', messages }))
+  return renderToString(app)
+}
+
+test('shared game dock uses the durable release stage before the generic job catches up', async () => {
+  const html = await renderDock({
+    job: { id: 'job-1', kind: 'game.release', status: 'running', progressDetail: { phase: 'checking' } },
+    release: releaseFixture()
+  })
+  assert.match(html, /更新安装/)
+  assert.doesNotMatch(html, /检查更新|aria-valuenow="100"/)
+  for (const step of ['停止世界', '保护备份', '更新并校验', '恢复世界', '确认加载']) assert.match(html, new RegExp(step))
+})
+
+test('shared software dock names panel downloads and exposes stopping alongside actual byte progress', async () => {
+  const html = await renderDock({
+    job: { id: 'software:example', kind: 'software.update', softwarePhase: 'downloading', status: 'running',
+      progressDetail: { phase: 'downloading' }, transfer: { currentBytes: 1024, totalBytes: 10240, bytesPerSecond: 1024 } },
+    cancelable: true
+  })
+  assert.match(html, /下载更新包/)
+  assert.match(html, /停止下载/)
+  assert.match(html, /1\.0 KiB\/s/)
+  assert.match(html, /1\.0 KiB \/ 10\.0 KiB/)
+  assert.doesNotMatch(html, /下载模组/)
+})
 
 test('results use immutable room/world/agent names from the exact installation plan', () => {
   const release = releaseFixture()
