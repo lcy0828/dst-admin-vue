@@ -1,17 +1,34 @@
 export function performanceSeries(points, metric, resolutionSeconds = 30) {
   const groups = new Map()
-  for (const point of [...points].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) {
-    const key = JSON.stringify([point.worldId, point.targetId, point.installationId, point.instanceId, point.scoreVersion])
-    if (!groups.has(key)) groups.set(key, { name: point.worldName || point.worldId, worldId: point.worldId, data: [] })
-    const series = groups.get(key), at = Date.parse(point.at)
-    const previous = series.data.at(-1)
-    if (previous && at - previous[0] > resolutionSeconds * 1600) series.data.push([previous[0] + resolutionSeconds * 1000, null])
-    const raw = point[metric]
-    const observed = metric !== 'rssBytes' || raw > 0 && ['running', 'paused', 'idle'].includes(point.state)
-    const value = observed && typeof raw === 'number' && Number.isFinite(raw) ? (metric === 'rssBytes' ? raw / 1048576 : raw) : null
-    series.data.push([at, value])
+  for (const point of points.filter(point => Number.isFinite(Date.parse(point.at))).sort((a, b) => Date.parse(a.at) - Date.parse(b.at))) {
+    const key = JSON.stringify([point.roomId, point.worldId])
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(point)
   }
-  return [...groups.values()]
+  return [...groups.entries()].map(([id, observations]) => {
+    const first = observations[0], data = []
+    let previousIdentity
+    for (const point of observations) {
+      const identity = JSON.stringify([point.targetId, point.installationId, point.instanceId, point.scoreVersion])
+      const at = Date.parse(point.at), previous = data.at(-1)
+      const raw = point[metric]
+      const observed = metric !== 'rssBytes' || raw > 0 && ['running', 'paused', 'idle'].includes(point.state)
+      const value = observed && typeof raw === 'number' && Number.isFinite(raw) ? (metric === 'rssBytes' ? raw / 1048576 : raw) : null
+      if (previous?.[0] === at) {
+        // Conflicting simultaneous observations cannot establish one world value.
+        if (identity !== previousIdentity || previous[1] !== value) previous[1] = null
+      } else {
+        // One series per world keeps axis tooltips unique. Explicit gaps preserve
+        // restart, migration and scoring boundaries without connecting instances.
+        if (previous && (identity !== previousIdentity || at - previous[0] > resolutionSeconds * 1600)) {
+          data.push([previous[0] + Math.min(resolutionSeconds * 1000, (at - previous[0]) / 2), null])
+        }
+        data.push([at, value])
+      }
+      previousIdentity = identity
+    }
+    return { id, name: first.worldName || first.worldId, worldId: first.worldId, data }
+  })
 }
 
 export function performanceCSV(report) {

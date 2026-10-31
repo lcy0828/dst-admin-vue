@@ -186,13 +186,15 @@
           <Alert v-else-if="!selectedSet.restorable && backupArtifactState(selectedSet) === 'available'" variant="destructive">
             <TriangleAlert />
             <AlertTitle>{{ t('distributed.backups.notRestorableTitle') }}</AlertTitle>
-            <AlertDescription>{{ selectedSet.validationError || t('distributed.backups.notRestorable') }}</AlertDescription>
+            <AlertDescription>{{ t('distributed.backups.notRestorable') }}</AlertDescription>
           </Alert>
           <Alert v-if="selectedOperation" :variant="selectedOperation.status === 'recovery_required' || selectedOperation.status === 'failed' ? 'destructive' : 'default'">
             <History />
             <AlertTitle>{{ t('distributed.backups.operationSummary', { kind: operationKindLabel(selectedOperation.kind), status: operationStatusLabel(selectedOperation.status) }) }}</AlertTitle>
             <AlertDescription>{{ t('distributed.backups.operationUpdatedAt', { time: formatTime(selectedOperation.updatedAt) }) }}</AlertDescription>
           </Alert>
+          <div class="flex flex-col gap-2 rounded-md border p-3 text-sm"><span class="font-medium">{{ contentKindLabel(selectedSet) }}</span><span>{{ formatTime(selectedSet.createdAt) }} · {{ formatBytes(selectedSet.size) }}</span><div v-for="part in selectedSet.parts || []" :key="part.id" class="flex flex-wrap items-center gap-2"><span>{{ part.worldName || t('distributed.backups.partColumns.world') }}</span><Badge :variant="partStatusVariant(part.status)">{{ partStatusLabel(part.status) }}</Badge><span>{{ formatBytes(part.size) }}</span></div></div>
+          <details class="min-w-0 rounded-md border p-3"><summary class="cursor-pointer text-sm">{{ t('distributed.backups.technicalDetails') }}</summary><div class="flex min-w-0 flex-col gap-4 pt-3">
           <dl class="grid gap-3 text-sm sm:grid-cols-3">
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.columns.mode') }}</dt><dd class="mt-1 font-medium">{{ backupModeLabel(selectedSet.mode) }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.manifest') }}</dt><dd class="mt-1 font-medium">v{{ selectedSet.manifestVersion }}</dd></div>
@@ -213,7 +215,7 @@
             <CollapsibleContent><pre class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs">{{ technicalDetails }}</pre></CollapsibleContent>
           </Collapsible>
           <div class="overflow-x-auto rounded-lg border">
-            <UiTable class="min-w-[980px]">
+            <UiTable class="min-w-[680px]">
               <TableHeader><TableRow><TableHead>{{ t('distributed.backups.partColumns.world') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.target') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.status') }}</TableHead><TableHead>{{ t('distributed.backups.partColumns.barrier') }}</TableHead><TableHead>{{ t('distributed.backups.columns.size') }}</TableHead><TableHead>SHA-256</TableHead></TableRow></TableHeader>
               <TableBody>
                 <TableRow v-for="part in selectedSet.parts || []" :key="part.id">
@@ -246,6 +248,7 @@
               </TableBody>
             </UiTable>
           </div>
+          </div></details>
         </template>
         <DialogFooter><UiButton variant="outline" @click="detailsDialogOpen = false">{{ t('common.actions.close') }}</UiButton></DialogFooter>
       </DialogScrollContent>

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { Download, Images, RefreshCw, Trash2, Upload } from '@lucide/vue'
 import { artworkPackV2API } from '@/api/v2'
 import { artworkPackState as status, refreshArtworkPack } from '@/composables/useArtworkPack'
+import { artworkPackStatus } from '@/lib/artworkPackStatus.mjs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,10 +17,12 @@ import { Spinner } from '@/components/ui/spinner'
 
 const { t } = useI18n()
 const open = ref(false), source = ref('domestic'), pending = ref(false), error = ref(''), upload = ref(null), uploadProgress = ref(null)
+const refreshing = ref(false), loadError = ref('')
 let timer = 0
 const installed = computed(() => status.value?.installed)
 const available = computed(() => status.value?.available)
 const busy = computed(() => pending.value || status.value?.busy)
+const packStatus = computed(() => artworkPackStatus(status.value, { loading: refreshing.value, error: loadError.value, pending: pending.value }))
 const action = computed(() => !installed.value ? 'install' : installed.value.version !== available.value?.version ? 'update' : 'reinstall')
 const phase = computed(() => uploadProgress.value !== null ? 'uploading' : status.value?.phase || 'idle')
 const progress = computed(() => uploadProgress.value ?? (['downloading', 'uploading'].includes(phase.value) ? Math.min(100, (status.value?.receivedBytes || 0) / (status.value?.totalBytes || 1) * 100) : null))
@@ -30,7 +33,10 @@ function schedule() {
   if (open.value && busy.value) timer = setTimeout(async () => { await refresh(); schedule() }, 1500)
 }
 async function refresh() {
-  try { await refreshArtworkPack() } catch (e) { error.value = e.message }
+  refreshing.value = true
+  try { await refreshArtworkPack(); loadError.value = '' }
+  catch (e) { loadError.value = e.message || t('workbench.pack.checkFailed') }
+  finally { refreshing.value = false }
 }
 async function act(request) {
   pending.value = true; error.value = ''; schedule()
@@ -57,12 +63,12 @@ onBeforeUnmount(() => clearTimeout(timer))
 
 <template>
   <Dialog v-model:open="open">
-    <DialogTrigger as-child><Button variant="outline" size="sm"><Images data-icon="inline-start" />{{ t('workbench.pack.button') }}</Button></DialogTrigger>
+    <DialogTrigger as-child><Button variant="outline" size="sm"><Images data-icon="inline-start" />{{ t('workbench.pack.button') }}<Badge :variant="packStatus.variant" aria-live="polite">{{ t(`workbench.pack.${packStatus.key}`) }}</Badge></Button></DialogTrigger>
     <DialogContent>
       <DialogHeader><DialogTitle>{{ t('workbench.pack.title') }}</DialogTitle><DialogDescription>{{ t('workbench.pack.description') }}</DialogDescription></DialogHeader>
-      <Alert v-if="error" variant="destructive"><AlertDescription>{{ error }}</AlertDescription></Alert>
+      <Alert v-if="error || loadError" variant="destructive"><AlertDescription>{{ error || loadError }}</AlertDescription></Alert>
+      <div class="flex flex-wrap items-center justify-between gap-2"><Badge :variant="packStatus.variant">{{ t(`workbench.pack.${packStatus.key}`) }}</Badge><span class="text-xs text-muted-foreground">{{ t('workbench.pack.shared') }}</span></div>
       <template v-if="available">
-        <div class="flex flex-wrap items-center justify-between gap-2"><Badge :variant="installed ? 'secondary' : 'outline'">{{ t(installed ? 'workbench.pack.installed' : 'workbench.pack.notInstalled') }}</Badge><span class="text-xs text-muted-foreground">{{ t('workbench.pack.shared') }}</span></div>
         <dl class="grid grid-cols-2 gap-3 text-sm">
           <div><dt class="text-muted-foreground">{{ t('workbench.pack.version') }}</dt><dd>{{ installed?.version || available.version }}</dd></div>
           <div><dt class="text-muted-foreground">{{ t('workbench.pack.storage') }}</dt><dd>{{ bytes(installed?.bytes || available.installedBytes) }}</dd></div>

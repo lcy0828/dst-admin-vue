@@ -4,13 +4,35 @@ import { performanceSeries, performanceCSV, performanceWorldSummaries } from '..
 import { performanceMessages } from '../src/i18n/performanceMessages.js'
 
 const point = (seconds, values = {}) => ({ worldId: 'master', worldName: 'Master', targetId: 'local', installationId: 'default', instanceId: 'boot-a', scoreVersion: 'v1', at: new Date(seconds * 1000).toISOString(), state: 'running', score: 95, rssBytes: 2 << 20, ...values })
-test('performance charts keep missing observations and runtime identities separate', () => {
+test('performance charts keep one world curve with gaps at missing observations and runtime changes', () => {
   const series = performanceSeries([point(0), point(30, { state: 'paused', score: null }), point(60), point(300), point(330, { instanceId: 'boot-b' }), point(360, { instanceId: 'boot-b', scoreVersion: 'v2' })], 'score', 30)
-  assert.equal(series.length, 3)
+  assert.equal(series.length, 1)
   assert.equal(series[0].data[1][1], null)
   assert(series[0].data.some(([at, score]) => at === 90000 && score === null))
+  assert(series[0].data.some(([at, score]) => at > 300000 && at < 330000 && score === null))
+  assert(series[0].data.some(([at, score]) => at > 330000 && at < 360000 && score === null))
   assert.deepEqual(performanceSeries([point(1)], 'rssBytes')[0].data, [[1000, 2]])
   assert.deepEqual(performanceSeries([point(1, { state: 'unavailable' }), point(31, { rssBytes: 0 }), point(61, { state: 'paused' })], 'rssBytes')[0].data, [[1000, null], [31000, null], [61000, 2]])
+})
+
+test('repeated stop and restart history yields only Master and Caves in axis tooltips', () => {
+  const points = ['Master', 'Caves'].flatMap(worldId => [
+    point(0, { worldId, worldName: worldId }),
+    point(30, { worldId, worldName: worldId, instanceId: '', state: 'stopped', score: null }),
+    point(60, { worldId, worldName: worldId, instanceId: 'boot-b' }),
+    point(90, { worldId, worldName: worldId, instanceId: 'boot-c' })
+  ])
+  const series = performanceSeries(points.reverse(), 'cpuPercent')
+  assert.deepEqual(new Set(series.map(item => item.name)), new Set(['Master', 'Caves']))
+  assert.equal(series.length, 2)
+  assert.equal(new Set(series.map(item => item.id)).size, 2)
+})
+
+test('conflicting simultaneous readings remain unknown while exact duplicates collapse', () => {
+  const items = [point(0), point(0), point(30), point(30, { instanceId: 'other', score: 10 }), point(60, { score: 0 }), point(60, { score: 90 }), point(90, { score: 0 })]
+  assert.deepEqual(performanceSeries(items, 'score')[0].data, [[0, 95], [30000, null], [45000, null], [60000, null], [90000, 0]])
+  assert.equal(performanceSeries([point(0, { at: 'invalid' })], 'score').length, 0)
+  assert.deepEqual(performanceSeries([point(30), point(0, { at: 'invalid' }), point(0)], 'score')[0].data, [[0, 95], [30000, 95]])
 })
 test('report CSV preserves score versions, absent values, quotes and formula safety', () => {
   const csv = performanceCSV({ items: [point(0, { worldName: '=SUM(1,2)"\nnext', score: null })] })

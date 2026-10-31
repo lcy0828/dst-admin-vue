@@ -120,7 +120,7 @@ const confirmationDescription = computed(() => quickAction.value === 'unban'
   ? t('players.banList.unbanPrompt', { room: activePlayer.value.archive_name })
   : t(`players.confirmations.${quickAction.value}Description`, { player: playerName.value }))
 const commonActions = [
-  { id: 'recover', icon: HeartPulse }, { id: 'clean', icon: Sparkles }
+  { id: 'recover', icon: HeartPulse }
 ]
 const defaultWorkbenchSection = computed(() => canUseLiveActions.value ? 'player' : 'world')
 const speedInputValid = computed(() => playerQuickCommands('speed', activePlayer.value.user_id, { multiplier: speedMultiplier.value }).length > 0)
@@ -158,6 +158,7 @@ watch([() => props.player.room_id, () => props.player.world_id, () => props.play
 
 async function openActionDialog(action = '') {
   dropdownOpen.value = false
+  if (['god', 'creative'].includes(action)) modeEnabled.value = true
   quickAction.value = action
   await nextTick()
   dialogOpen.value = true
@@ -372,8 +373,8 @@ async function runQuickAction({ action, input = {} }) {
           <DropdownMenuItem @select="inventoryOpen = true"><Backpack />{{ t('inventory.view') }}</DropdownMenuItem>
           <DropdownMenuItem v-if="canResurrect" :disabled="Boolean(activeAction)" @select="resurrectPlayer"><HeartPulse />{{ t('players.operations.resurrect') }}</DropdownMenuItem>
           <DropdownMenuItem :disabled="!quickActionAvailable('recover')" @select="selectQuickAction('recover')"><HeartPulse />{{ t('players.quick.recover') }}</DropdownMenuItem>
-          <DropdownMenuItem :disabled="!quickActionAvailable('clean')" @select="selectQuickAction('clean')"><Sparkles />{{ t('players.quick.clean') }}</DropdownMenuItem>
-          <DropdownMenuItem :disabled="!quickActionAvailable('speed')" @select="openActionDialog('speed')"><Gauge />{{ t('players.quick.speed') }}</DropdownMenuItem>
+          <DropdownMenuItem :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @select="openActionDialog('god')"><ShieldCheck />{{ t('players.operations.godMode') }}</DropdownMenuItem>
+          <DropdownMenuItem :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @select="openActionDialog('creative')"><Hammer />{{ t('players.operations.creativeMode') }}</DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -440,18 +441,19 @@ async function runQuickAction({ action, input = {} }) {
               <UiButton variant="outline" size="sm" :disabled="Boolean(activeAction)" @click="openWorkbench('entity')"><HeartPlus data-icon="inline-start" />{{ t('players.quick.give') }}</UiButton>
               <UiButton v-if="canResurrect" variant="outline" size="sm" :disabled="Boolean(activeAction)" @click="resurrectPlayer"><HeartPulse data-icon="inline-start" />{{ t('players.operations.resurrect') }}</UiButton>
               <UiButton v-for="action in commonActions" :key="action.id" variant="outline" size="sm" :disabled="!quickActionAvailable(action.id)" @click="selectQuickAction(action.id)"><Spinner v-if="activeAction === action.id" data-icon="inline-start" /><component :is="action.icon" v-else data-icon="inline-start" /><span>{{ t(`players.quick.${action.id}`) }}</span></UiButton>
+              <UiButton variant="outline" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="openModeDialog('god')"><ShieldCheck data-icon="inline-start" />{{ t('players.operations.godMode') }}</UiButton>
+              <UiButton variant="outline" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="openModeDialog('creative')"><Hammer data-icon="inline-start" />{{ t('players.operations.creativeMode') }}</UiButton>
             </div>
           </section>
           <Separator />
-          <section class="flex flex-col gap-2" :aria-label="t('players.quick.character')">
-            <h3 class="text-xs font-medium text-muted-foreground">{{ t('players.quick.character') }}</h3>
-            <div class="grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
+          <details class="player-management-actions">
+            <summary class="flex cursor-pointer items-center justify-between gap-2 py-1 text-sm font-medium">{{ t('players.quick.character') }}<ChevronDown class="size-4" /></summary>
+            <div class="mt-2 grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
               <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('speed')" @click="selectQuickAction('speed')"><Gauge data-icon="inline-start" />{{ t('players.quick.speed') }}</UiButton>
+              <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('clean')" @click="selectQuickAction('clean')"><Sparkles data-icon="inline-start" />{{ t('players.quick.clean') }}</UiButton>
               <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('penalty')" @click="selectQuickAction('penalty')"><HeartPlus data-icon="inline-start" />{{ t('players.quick.penalty') }}</UiButton>
-              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="openModeDialog('god')"><ShieldCheck data-icon="inline-start" />{{ t('players.operations.godMode') }}</UiButton>
-              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="openModeDialog('creative')"><Hammer data-icon="inline-start" />{{ t('players.operations.creativeMode') }}</UiButton>
             </div>
-          </section>
+          </details>
           <UiButton variant="secondary" class="w-full justify-between" :disabled="Boolean(activeAction)" :aria-label="t('players.actions.openWorkbench')" @click="openWorkbench()">{{ t('players.quick.more') }}<ChevronRight data-icon="inline-end" /></UiButton>
           <Separator />
           <details class="player-management-actions">
