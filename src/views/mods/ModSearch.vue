@@ -79,7 +79,7 @@
           <Field class="search-actions">
             <FieldLabel class="sr-only">{{ $t('mods.actions.search') }}</FieldLabel>
             <div class="search-action-buttons">
-              <UiButton @click="startSearch" :disabled="searching"> <Spinner v-if="searching" data-icon="inline-start" /><SearchIcon v-else data-icon="inline-start" />{{ $t('mods.actions.search') }} </UiButton>
+              <UiButton @click="startSearch" :disabled="searching || searchRetryBlocked"> <Spinner v-if="searching" data-icon="inline-start" /><SearchIcon v-else data-icon="inline-start" />{{ $t('mods.actions.search') }} </UiButton>
               <UiButton variant="outline" @click="resetSearch">{{ $t('mods.actions.reset') }}</UiButton>
             </div>
           </Field>
@@ -90,9 +90,11 @@
     <Alert v-if="loadError" variant="destructive">
       <TriangleAlert /><AlertTitle>{{ $t('mods.search.loadFailedTitle') }}</AlertTitle>
       <AlertDescription class="flex min-w-0 flex-col gap-2">
-        <span>{{ loadError }} <span v-if="networkSearchFailure">{{ $t('workshop.searchUnavailable') }}</span></span>
+        <span>{{ loadError }}</span>
+        <span v-if="loadFailure?.code === 'WORKSHOP_RATE_LIMITED'">{{ searchRetrySeconds ? $t('workshop.retryCountdown', { seconds: searchRetrySeconds }) : $t('workshop.retryReady') }}</span>
+        <span v-else-if="networkSearchFailure">{{ $t(isModItemQuery(searchFailureKeyword) ? 'workshop.itemUnavailable' : 'workshop.searchUnavailable') }}</span>
         <div class="flex flex-wrap gap-2">
-          <UiButton size="sm" variant="outline" @click="retryLoad">{{ $t('mods.actions.retry') }}</UiButton>
+          <UiButton size="sm" variant="outline" :disabled="searching || searchRetryBlocked" @click="retryLoad">{{ $t('mods.actions.retry') }}</UiButton>
           <UiButton v-if="networkSearchFailure" size="sm" variant="outline" @click="$router.push({ path: '/system/settings', query: { tab: 'workshop' } })">{{ $t('workshop.networkSettings') }}</UiButton>
           <UiButton v-if="networkSearchFailure && searchSource !== 'community' && loadFailure?.code !== 'WORKSHOP_RATE_LIMITED'" size="sm" variant="outline" @click="tryCommunity">{{ $t('workshop.tryCommunity') }}</UiButton>
         </div>
@@ -231,7 +233,7 @@ import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigg
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { createModFailure, formatModDate, formatModFailure } from '@/i18n/modMessages'
-import { resolveModSearchSort } from '@/lib/modSearchDefaults.mjs'
+import { isModItemQuery, resolveModSearchSort } from '@/lib/modSearchDefaults.mjs'
 import { modThumbnailUrl } from '@/lib/modImages.mjs'
 import { getManagementScope, MANAGEMENT_SCOPE_CHANGED_EVENT, managementScopeTargetId } from '@/lib/managementScope.mjs'
 import { buildRuntimeInstallationOptions } from '@/lib/runtimeModInventory.mjs'
@@ -306,6 +308,9 @@ export default {
       sortManuallySelected: false,
       searching: false,
       loadFailure: null,
+      searchFailureKeyword: '',
+      searchCooldownUntil: 0,
+      searchClock: 0,
       searchRequestId: 0,
       searchSource: '', searchConfigVersion: '', totalKind: 'exact', hasMore: false, searchWarning: '', searchStale: false, searchObservedAt: '', searchSignature: '', searchComposing: false,
       hasSearched: false,
@@ -328,6 +333,8 @@ export default {
     }
   },
   computed: {
+    searchRetrySeconds() { return Math.max(0, Math.ceil((this.searchCooldownUntil - this.searchClock) / 1000)) },
+    searchRetryBlocked() { return this.searchRetrySeconds > 0 && this.searchForm.keyword.trim() === this.searchFailureKeyword },
     searchMetadataWarning() {
       return this.searchResults.find(item => item.metadataWarning)?.metadataWarning || ''
     },
@@ -391,10 +398,23 @@ export default {
   beforeUnmount() {
     this.searchRequestId++; this.detailsRequestId++; this.runtimeStatusRequestId++
     this.searchController?.abort(); this.enrichmentController?.abort(); clearTimeout(this.searchTimer)
+    clearInterval(this.searchCooldownTimer)
     window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChanged)
   },
   methods: {
     modThumbnailUrl,
+    isModItemQuery,
+    setSearchCooldown(failure) {
+      clearInterval(this.searchCooldownTimer)
+      this.searchClock = Date.now()
+      this.searchCooldownUntil = failure?.code === 'WORKSHOP_RATE_LIMITED' ? this.searchClock + (failure.retryAfterSeconds || 60) * 1000 : 0
+      if (this.searchCooldownUntil > this.searchClock) {
+        this.searchCooldownTimer = setInterval(() => {
+          this.searchClock = Date.now()
+          if (!this.searchRetrySeconds) clearInterval(this.searchCooldownTimer)
+        }, 1000)
+      }
+    },
     handleImageError(event) {
       event.currentTarget.hidden = true
     },
@@ -438,6 +458,11 @@ export default {
     async searchMods() {
       this.applyKeywordSortDefault()
       clearTimeout(this.searchTimer)
+      // Do not turn typing, paging or repeated clicks into immediate retries.
+      // A different ID may use an independent upstream route and remains usable.
+      this.searchClock = Date.now()
+      if (this.searchRetryBlocked) return
+      const keyword = this.searchForm.keyword.trim()
       const signature = JSON.stringify([this.searchForm.keyword.trim(), this.searchForm.sort, this.searchForm.days, this.searchForm.category, this.pageSize, this.$i18n?.locale])
       if (signature !== this.searchSignature) { this.currentPage = 1; this.searchSource = ''; this.searchConfigVersion = ''; this.searchSignature = signature }
       const requestId = ++this.searchRequestId
@@ -465,11 +490,14 @@ export default {
         this.searchWarning = data.warning || ''
         this.searchStale = Boolean(data.stale)
         this.searchObservedAt = data.observedAt || ''
+        this.setSearchCooldown(null)
         if (!data.stale && this.searchResults.length) this.enrichResults(requestId)
 
       } catch (error) {
         if (requestId !== this.searchRequestId) return
         this.loadFailure = this.failure('mods.errors.search', error)
+        this.searchFailureKeyword = keyword
+        this.setSearchCooldown(this.loadFailure)
         if (error.code === 'WORKSHOP_CONFIG_CHANGED') { this.searchSource = ''; this.searchConfigVersion = ''; this.currentPage = 1 }
       } finally {
         if (requestId === this.searchRequestId) this.searching = false

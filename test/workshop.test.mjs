@@ -5,7 +5,7 @@ import { parse } from '@babel/parser'
 import { parse as parseSFC } from '@vue/compiler-sfc'
 import { computed, reactive, ref } from 'vue'
 import { workshopMessages } from '../src/i18n/workshopMessages.js'
-import { resolveModSearchSort } from '../src/lib/modSearchDefaults.mjs'
+import { isModItemQuery, resolveModSearchSort } from '../src/lib/modSearchDefaults.mjs'
 import { createModFailure, formatModFailure, modMessages } from '../src/i18n/modMessages.js'
 
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
@@ -49,7 +49,7 @@ async function searchInstance(search) {
   const script = parseSFC(source).descriptor.script.content
   const declaration = parse(script, { sourceType: 'module' }).program.body.find(node => node.type === 'ExportDefaultDeclaration').declaration
   const properties = declaration.properties.filter(node => node.key.name !== 'components').map(node => script.slice(node.start, node.end))
-  const scope = { resolveModSearchSort, modThumbnailUrl() {}, modApi: { searchMods: search }, workshopV2API: { enrich: async () => ({ items: {} }) }, createModFailure: (_, error) => error, formatModFailure: (_, error) => error?.message || '' }
+  const scope = { isModItemQuery, resolveModSearchSort, modThumbnailUrl() {}, modApi: { searchMods: search }, workshopV2API: { enrich: async () => ({ items: {} }) }, createModFailure: (_, error) => ({ ...error, message: error.message, retryAfterSeconds: error.details?.retryAfterSeconds }), formatModFailure: (_, error) => error?.message || '' }
   const options = new Function(...Object.keys(scope), `return ({${properties.join(',')}})`)(...Object.values(scope))
   const vm = { ...options.data(), $t: key => key }
   for (const [name, fn] of Object.entries(options.methods)) vm[name] = fn.bind(vm)
@@ -130,4 +130,77 @@ test('Chinese IME confirmation does not submit an incomplete search', async () =
   vm.startSearch({ isComposing: false })
   await new Promise(resolve => setImmediate(resolve))
   assert.equal(calls, 1)
+})
+
+test('rate-limit failures preserve a bounded retry time from the server', () => {
+  for (const [input, expected] of [[12.1, 13], [9999999, 86400], [0, undefined], [-1, undefined], ['bad', undefined], [Infinity, undefined]]) {
+    const failure = createModFailure('mods.errors.search', { code: 'WORKSHOP_RATE_LIMITED', details: { retryAfterSeconds: input } })
+    assert.equal(failure.retryAfterSeconds, expected)
+  }
+})
+
+test('an ID or item link does not get mistaken for unavailable name search', () => {
+  for (const input of ['100', ' https://steamcommunity.com/sharedfiles/filedetails/?id=100&l=schinese ']) assert.equal(isModItemQuery(input), true)
+  for (const input of ['example', '', 'https://example.com/sharedfiles/filedetails/?id=100', 'https://steamcommunity.com/sharedfiles/filedetails/?id=bad', '100'.repeat(10)]) assert.equal(isModItemQuery(input), false)
+})
+
+test('rate cooldown blocks repeated clicks and filter changes without automatically retrying', async t => {
+  let calls = 0
+  const vm = await searchInstance(async () => {
+    calls++
+    throw Object.assign(new Error('rate limited'), { code: 'WORKSHOP_RATE_LIMITED', details: { retryAfterSeconds: 10 } })
+  })
+  t.after(() => clearInterval(vm.searchCooldownTimer))
+  vm.searchForm.keyword = 'example'
+  await vm.searchMods()
+  assert.equal(vm.searchRetrySeconds, 10)
+  assert.equal(vm.searchRetryBlocked, true)
+  await vm.retryLoad()
+  vm.searchForm.category = 'utility'
+  await vm.searchMods()
+  assert.equal(calls, 1)
+  assert.equal(vm.searchFailureKeyword, 'example')
+  assert.equal(vm.loadFailure.code, 'WORKSHOP_RATE_LIMITED')
+  // Expiry enables an explicit retry, and does not itself send a request.
+  vm.searchCooldownUntil = Date.now() - 1
+  vm.searchClock = Date.now()
+  assert.equal(vm.searchRetryBlocked, false)
+  assert.equal(calls, 1)
+  await vm.retryLoad()
+  assert.equal(calls, 2)
+})
+
+test('a community cooldown still allows an independent ID lookup and preserves earlier results', async t => {
+  const calls = []
+  const vm = await searchInstance(async input => {
+    calls.push(input.keyword)
+    if (input.keyword === 'example') throw Object.assign(new Error('rate limited'), { code: 'WORKSHOP_RATE_LIMITED', details: { retryAfterSeconds: 20 } })
+    return { items: [{ id: '100', name: 'API result' }], source: 'api' }
+  })
+  t.after(() => clearInterval(vm.searchCooldownTimer))
+  vm.searchResults = [{ id: '200', name: 'Earlier result' }]
+  vm.searchForm.keyword = 'example'
+  await vm.searchMods()
+  assert.equal(vm.searchResults[0].name, 'Earlier result')
+  vm.searchForm.keyword = '100'
+  assert.equal(vm.searchRetryBlocked, false)
+  await vm.searchMods()
+  assert.deepEqual(calls, ['example', '100'])
+  assert.equal(vm.loadFailure, null)
+  assert.equal(vm.searchResults[0].name, 'API result')
+  assert.equal(vm.searchRetrySeconds, 0)
+})
+
+test('a late rate-limit error cannot block a newer successful search', async t => {
+  const first = deferred()
+  const vm = await searchInstance(input => input.keyword === 'old' ? first.promise : Promise.resolve({ items: [{ id: '100' }] }))
+  t.after(() => clearInterval(vm.searchCooldownTimer))
+  vm.searchForm.keyword = 'old'
+  const pending = vm.searchMods()
+  vm.searchForm.keyword = '100'
+  await vm.searchMods()
+  first.reject(Object.assign(new Error('rate limited'), { code: 'WORKSHOP_RATE_LIMITED', details: { retryAfterSeconds: 60 } }))
+  await pending
+  assert.equal(vm.loadFailure, null)
+  assert.equal(vm.searchRetryBlocked, false)
 })

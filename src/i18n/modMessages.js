@@ -1500,11 +1500,13 @@ export function formatModDate(value, locale = 'zh-CN') {
 
 export function createModFailure(key, error) {
   const code = String(error?.code || '').trim()
+  const retryAfter = Number(error?.details?.retryAfterSeconds)
   const localizedAdapterError = (error?.name === 'AdapterProtocolError' && MOD_FAILURE_CODE_KEYS[code]) || workshopFailureKeys[code]
   return {
     key,
     detail: String(error?.detail || error?.details?.reason || (localizedAdapterError ? '' : error?.message) || '').trim(),
     ...(code ? { code } : {}),
+    ...(Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfterSeconds: Math.min(86400, Math.ceil(retryAfter)) } : {}),
     ...(error?.requestId ? { requestId: String(error.requestId) } : {}),
     ...(error?.context?.jobId ? { jobId: String(error.context.jobId) } : {})
   }
