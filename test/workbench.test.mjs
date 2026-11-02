@@ -82,3 +82,13 @@ test('A failed read does not block the latest pending query or future manual ret
  reader.enqueue({query:'retry'});calls[2].resolve('ok');await flush()
  assert.deepEqual(results,['ok'])
 })
+
+import { matchingWorkbenchActions, workbenchActionDefaults } from '../src/lib/workbench.mjs'
+test('Child discovery prefills only unambiguous existing enums, never targets or arbitrary fields',()=>{
+ const command={isBuiltin:true,parameters:[{name:'action',type:'enum',options:['freeze','delete']},{name:'player_id',type:'string'}],actions:[
+  {title:'冻结附近生物',searchTerms:['冰冻'],parameters:{action:'freeze',player_id:'KU_OTHER',confirmed:true}},
+  {title:'删除附近生物',searchTerms:['删除'],parameters:{action:'delete'}}]}
+ assert.deepEqual(workbenchActionDefaults(command,'冰冻'),{action:'freeze'})
+ assert.deepEqual(workbenchActionDefaults(command,'附近生物'),{})
+ assert.deepEqual(matchingWorkbenchActions({...command,isBuiltin:false},'冰冻'),[])
+})

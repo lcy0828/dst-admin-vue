@@ -1,6 +1,22 @@
 export const LUA_MAX_BYTES = 4096
 export const luaByteLength = text => new TextEncoder().encode(String(text)).length
 export const validPrefab = value => /^[a-z0-9_]{1,80}$/.test(String(value))
+export function matchingWorkbenchActions(command, query) {
+  const text = String(query || '').trim().toLowerCase()
+  if (!text || !command?.isBuiltin) return []
+  return (command.actions || []).filter(action => [action.title, ...(action.searchTerms || [])]
+    .some(term => typeof term === 'string' && term && (term.toLowerCase().includes(text) || text.includes(term.toLowerCase()))))
+}
+export function workbenchActionDefaults(command, query) {
+  const matches = matchingWorkbenchActions(command, query)
+  if (matches.length !== 1) return {}
+  const result = {}
+  for (const [key, value] of Object.entries(matches[0].parameters || {})) {
+    const parameter = (command.parameters || []).find(p => p.name === key)
+    if (parameter?.type === 'enum' && parameter.options?.includes(value)) result[key] = value
+  }
+  return result
+}
 export function manualEntity(id) {
   return validPrefab(id) ? { key: `manual:${id}`, id, nameZhCN: id, nameEn: id, source: 'manual', type: 'unknown', capabilities: ['give', 'spawn', 'remove'] } : null
 }

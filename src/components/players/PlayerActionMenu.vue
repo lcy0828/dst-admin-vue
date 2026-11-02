@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, reactive, ref, useId, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   Ban as BanIcon,
@@ -21,6 +21,7 @@ import {
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { playerApi } from '@/api/playerApi'
+import { worldQueryV2API } from '@/api/v2'
 import { commandApi } from '@/api/commandManager'
 import { Button as UiButton } from '@/components/ui/button'
 import {
@@ -93,7 +94,26 @@ const workbenchOpen = ref(false)
 const inventoryOpen = ref(false)
 const activityOpen = ref(false)
 const activeWorkbenchSection = ref('entity')
-const modeEnabled = ref(true)
+const modeEnabled = ref(null)
+const modeObservation = ref(null)
+const modeReading = ref(false)
+let modeSequence = 0
+async function readModes() {
+  const sequence = ++modeSequence
+  modeObservation.value = null
+  if (previewMode || !canUseCharacterActions.value) return
+  const target = activePlayer.value
+  modeReading.value = true
+  try {
+    const result = await worldQueryV2API.modes(target.room_id, target.world_id)
+    if (sequence === modeSequence && ['god', 'creative'].includes(quickAction.value) && result.status === 'succeeded' && result.complete) {
+      modeObservation.value = result.data?.players?.find(p => p.id === target.user_id) || null
+    }
+  } catch { /* Older panels and unavailable observations remain unknown. */ }
+  finally { if (sequence === modeSequence) modeReading.value = false }
+}
+onBeforeUnmount(() => { ++modeSequence })
+const observedMode = computed(() => modeObservation.value?.[quickAction.value === 'god' ? 'panelGod' : 'creative'] || 'unknown')
 const speedMultiplier = ref(1)
 const banSubmitted = ref(false)
 const banForm = reactive({ reason: '', duration: '1d' })
@@ -145,7 +165,7 @@ watch(() => props.openRequest, request => { if (request) openActionDialog() })
 
 watch(dialogOpen, open => {
   if (open) actionFeedback.value = null
-  else quickAction.value = ''
+  else { quickAction.value = ''; ++modeSequence; modeReading.value = false; modeObservation.value = null }
 })
 watch([() => props.player.room_id, () => props.player.world_id, () => props.player.user_id], () => {
   dropdownOpen.value = false
@@ -158,10 +178,11 @@ watch([() => props.player.room_id, () => props.player.world_id, () => props.play
 
 async function openActionDialog(action = '') {
   dropdownOpen.value = false
-  if (['god', 'creative'].includes(action)) modeEnabled.value = true
+  if (['god', 'creative'].includes(action)) modeEnabled.value = null
   quickAction.value = action
   await nextTick()
   dialogOpen.value = true
+  if (['god', 'creative'].includes(action)) void readModes()
 }
 
 function errorText(error) {
@@ -266,11 +287,13 @@ async function resurrectPlayer() {
 
 function openModeDialog(kind) {
   if ((!previewMode && !canUseCharacterActions.value) || activeAction.value) return
-  modeEnabled.value = true
+  modeEnabled.value = null
   quickAction.value = kind
+  void readModes()
 }
 
 async function confirmMode(kind) {
+  if (typeof modeEnabled.value !== 'boolean') return
   if (!previewMode && !canUseCharacterActions.value) return
   const godMode = kind === 'god'
   const succeeded = await runAction(
@@ -424,8 +447,8 @@ async function runQuickAction({ action, input = {} }) {
           <DialogFooter><UiButton type="button" variant="outline" :disabled="Boolean(activeAction)" @click="quickAction = ''">{{ t('players.actions.cancel') }}</UiButton><UiButton type="submit" variant="destructive" :disabled="Boolean(activeAction)"><Spinner v-if="activeAction === 'ban'" data-icon="inline-start" />{{ t('players.actions.confirmBan') }}</UiButton></DialogFooter>
         </form>
         <form v-else-if="['god', 'creative'].includes(quickAction)" class="flex flex-col gap-5 p-5" @submit.prevent="confirmMode(quickAction)">
-          <Field><FieldLabel>{{ t(quickAction === 'god' ? 'players.operations.godMode' : 'players.operations.creativeMode') }}</FieldLabel><ToggleGroup :model-value="modeEnabled ? 'enable' : 'disable'" type="single" variant="outline" class="grid grid-cols-2" :disabled="Boolean(activeAction)" @update:model-value="value => { if (value) modeEnabled = value === 'enable' }"><ToggleGroupItem value="enable">{{ t('players.values.enabled') }}</ToggleGroupItem><ToggleGroupItem value="disable">{{ t('players.values.disabled') }}</ToggleGroupItem></ToggleGroup></Field>
-          <DialogFooter><UiButton type="button" variant="outline" :disabled="Boolean(activeAction)" @click="quickAction = ''">{{ t('players.actions.cancel') }}</UiButton><UiButton type="submit" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)"><Spinner v-if="activeAction" data-icon="inline-start" />{{ t('players.actions.confirm') }}</UiButton></DialogFooter>
+          <Field><FieldLabel>{{ t(quickAction === 'god' ? 'players.operations.godMode' : 'players.operations.creativeMode') }}</FieldLabel><FieldDescription><Spinner v-if="modeReading" />{{ t(modeReading ? 'players.modeState.reading' : 'players.modeState.current', { state: t(`players.modeState.${observedMode}`) }) }}</FieldDescription><ToggleGroup :model-value="modeEnabled === null ? '' : modeEnabled ? 'enable' : 'disable'" type="single" variant="outline" class="grid grid-cols-2" :disabled="Boolean(activeAction)" @update:model-value="value => { if (value) modeEnabled = value === 'enable' }"><ToggleGroupItem value="enable">{{ t('players.values.enabled') }}</ToggleGroupItem><ToggleGroupItem value="disable">{{ t('players.values.disabled') }}</ToggleGroupItem></ToggleGroup><FieldDescription>{{ t('players.modeState.choose') }}</FieldDescription></Field>
+          <DialogFooter><UiButton type="button" variant="outline" :disabled="Boolean(activeAction)" @click="quickAction = ''">{{ t('players.actions.cancel') }}</UiButton><UiButton type="submit" :disabled="modeEnabled === null || (!previewMode && !canUseCharacterActions) || Boolean(activeAction)"><Spinner v-if="activeAction" data-icon="inline-start" />{{ t('players.actions.confirm') }}</UiButton></DialogFooter>
         </form>
         <form v-else-if="confirmingAction" class="flex flex-col gap-5 p-5" @submit.prevent="runConfirmedAction(quickAction)">
           <p class="text-sm text-muted-foreground">{{ confirmationDescription }}</p>

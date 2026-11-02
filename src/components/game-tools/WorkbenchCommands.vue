@@ -6,7 +6,7 @@ import { toast } from 'vue-sonner'
 import { commandApi } from '@/api/commandManager'
 import { consoleV2API } from '@/api/v2'
 import { translateBuiltinCommandField, translateBuiltinParameterField, translateBuiltinParameterOption } from '@/i18n/commandMessages'
-import { commandArguments, LUA_MAX_BYTES, luaByteLength, luaPlayerContext, workbenchExample } from '@/lib/workbench.mjs'
+import { commandArguments, LUA_MAX_BYTES, luaByteLength, luaPlayerContext, workbenchExample, matchingWorkbenchActions, workbenchActionDefaults } from '@/lib/workbench.mjs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,18 +23,20 @@ import CommandRunResult from './CommandRunResult.vue'
 const props=defineProps({roomId:{type:String,default:''},roomName:{type:String,default:''},worldId:{type:String,default:''},worldName:{type:String,default:''},playerId:{type:String,default:''},running:Boolean})
 const {t,te}=useI18n()
 const definitions=ref([]),selected=ref(null),search=ref(''),filter=ref('custom'),script=ref(''),name=ref(''),values=ref({}),loading=ref(false),saving=ref(false),executing=ref(false),error=ref(''),listError=ref(''),lastRun=ref(null),armed=ref(false),saveEditorOpen=ref(false)
+const nearbyPreview=ref(null),nearbyUncertain=ref(false)
+const nearbyGuarded=computed(()=>selected.value?.id==='act_nearby_entities'&&['extinguish','freeze','sleep','pacify','delete','kill'].includes(values.value.action))
 const recentRuns=ref([]),historyError=ref(''),executionContext=ref('')
 const waitingOnTarget=computed(()=>executing.value&&executionContext.value===`${props.roomId}::${props.worldId}`)
 let alive=true,loadSequence=0,contextSequence=0,historySequence=0
 const commandName=item=>translateBuiltinCommandField(t,te,item,'name')
 const commandDescription=item=>translateBuiltinCommandField(t,te,item,'description')
-const items=computed(()=>definitions.value.filter(item=>(filter.value==='all'||!item.isBuiltin)&&`${commandName(item)} ${commandDescription(item)} ${item.name} ${item.id}`.toLowerCase().includes(search.value.toLowerCase())))
+const items=computed(()=>definitions.value.filter(item=>(filter.value==='all'||!item.isBuiltin)&&(`${commandName(item)} ${commandDescription(item)} ${item.name} ${item.id}`.toLowerCase().includes(search.value.toLowerCase())||matchingWorkbenchActions(item,search.value).length)))
 const template=computed(()=>Boolean(selected.value && (selected.value.isBuiltin || selected.value.scriptMode!=='literal')))
-const parameters=computed(()=>template.value?selected.value?.parameters||[]:[])
+const parameters=computed(()=>template.value?(selected.value?.parameters||[]).filter(p=>!['phase','preview_id'].includes(p.name)):[])
 const argumentsMap=computed(()=>commandArguments(parameters.value,values.value))
 const bytes=computed(()=>luaByteLength(script.value.trim()))
 const targetLabel=computed(()=>[props.roomName,props.worldName].filter(Boolean).join(' / '))
-const canRun=computed(()=>Boolean(props.roomId&&props.worldId&&props.running&&!executing.value&&(template.value?argumentsMap.value!==null:script.value.trim()&&bytes.value<=LUA_MAX_BYTES&&!script.value.includes('\0'))))
+const canRun=computed(()=>Boolean(props.roomId&&props.worldId&&props.running&&!executing.value&&!nearbyUncertain.value&&(template.value?argumentsMap.value!==null:script.value.trim()&&bytes.value<=LUA_MAX_BYTES&&!script.value.includes('\0'))))
 const canSave=computed(()=>Boolean(!template.value&&!saving.value&&!executing.value&&name.value.trim()&&script.value.trim()&&bytes.value<=LUA_MAX_BYTES&&!script.value.includes('\0')))
 async function load(){const sequence=++loadSequence;loading.value=true;listError.value='';try{const data=await consoleV2API.definitions();if(alive&&sequence===loadSequence)definitions.value=data.items||[]}catch(e){if(alive&&sequence===loadSequence)listError.value=e.message}finally{if(alive&&sequence===loadSequence)loading.value=false}}
 async function loadHistory(){
@@ -50,7 +52,7 @@ function showRun(run,target){
 }
 function updateRun(run){if(lastRun.value?.id===run.id&&run.roomId===props.roomId&&run.worldId===props.worldId)showRun(run,targetLabel.value)}
 function runTime(run){return new Date(run.createdAt).toLocaleString()}
-function choose(item){selected.value=item;script.value=item.script;name.value=item.name;lastRun.value=null;error.value='';saveEditorOpen.value=false;values.value=Object.fromEntries((item.parameters||[]).map(parameter=>[parameter.name,parameter.name==='player_id'&&props.playerId?props.playerId:parameter.default??(parameter.type==='boolean'?false:'')]))}
+function choose(item){selected.value=item;script.value=item.script;name.value=item.name;lastRun.value=null;error.value='';armed.value=false;saveEditorOpen.value=false;values.value={...Object.fromEntries((item.parameters||[]).map(parameter=>[parameter.name,parameter.name==='player_id'&&props.playerId?props.playerId:parameter.default??(parameter.type==='boolean'?false:'')])),...workbenchActionDefaults(item,search.value)}}
 function fresh(){selected.value=null;script.value='';name.value='';values.value={};error.value='';lastRun.value=null;saveEditorOpen.value=false}
 function example(id){const code=workbenchExample(id,props.playerId);if(!code)return;fresh();script.value=code;name.value=t(`workbench.examples.${id}`)}
 function insertPlayer(){const context=luaPlayerContext(props.playerId);if(context){selected.value=null;script.value=context+script.value}}
@@ -62,17 +64,34 @@ async function save(){
 }
 async function execute(){
  if(!canRun.value)return
- if(!armed.value){armed.value=true;return}
+ if(!nearbyGuarded.value&&!armed.value){armed.value=true;return}
+ const preview=nearbyPreview.value
+ if(nearbyGuarded.value&&preview&&Date.now()>preview.until){nearbyPreview.value=null;error.value=t('workbench.batch.expired');return}
+ const args=nearbyGuarded.value?{...argumentsMap.value,phase:preview?'execute':'preview',...(preview?{preview_id:preview.id}:{})}:argumentsMap.value
+ nearbyPreview.value=null
  armed.value=false;executionContext.value=`${props.roomId}::${props.worldId}`;executing.value=true;error.value='';lastRun.value=null
  ++historySequence
- const sequence=contextSequence,target=targetLabel.value,room=props.roomId,world=props.worldId,confirmation=props.roomName
+ const sequence=contextSequence,target=targetLabel.value,room=props.roomId,world=props.worldId,confirmation=props.roomName,started=Date.now()
  try{
-  const run=template.value?await commandApi.executeCommand(`${room}::${world}`,selected.value.id,argumentsMap.value,confirmation):await commandApi.executeRawCommand(`${room}::${world}`,script.value.trim(),confirmation)
-  if(alive&&sequence===contextSequence)showRun(run,target)
- }catch(e){if(alive&&sequence===contextSequence){if(e.run)showRun(e.run,target);else error.value=e.detail||e.message}}
+  const run=template.value?await commandApi.executeCommand(`${room}::${world}`,selected.value.id,args,confirmation):await commandApi.executeRawCommand(`${room}::${world}`,script.value.trim(),confirmation)
+  if(alive&&sequence===contextSequence){
+    showRun(run,target)
+    if(args.phase==='preview'&&run.status==='succeeded'&&run.executionOutcome==='confirmed'&&run.batch?.state==='preview'&&run.batch.previewId){nearbyPreview.value={id:run.batch.previewId,until:started+30000,args:{...args}}}
+    if(args.phase==='execute'&&!['completed','partial'].includes(run.batch?.state)){nearbyUncertain.value=true;error.value=t('workbench.batch.uncertain')}
+  }
+ }catch(e){if(alive&&sequence===contextSequence){if(e.run)showRun(e.run,target);else error.value=e.detail||e.message;if(args.phase==='execute'){nearbyUncertain.value=true;error.value=t('workbench.batch.uncertain')}}}
  finally{if(alive)executing.value=false}
 }
-watch([script,name,values,selected,()=>props.roomId,()=>props.worldId,()=>props.playerId],()=>{armed.value=false},{deep:true})
+async function cancelNearby(){
+ const preview=nearbyPreview.value
+ if(!preview||executing.value)return
+ nearbyPreview.value=null;executing.value=true
+ const room=props.roomId,world=props.worldId,sequence=contextSequence,target=targetLabel.value
+ try{const run=await commandApi.executeCommand(`${room}::${world}`,'act_nearby_entities',{...preview.args,phase:'cancel',preview_id:preview.id},props.roomName);if(alive&&sequence===contextSequence)showRun(run,target)}
+ catch(e){if(alive&&sequence===contextSequence)error.value=e.message}
+ finally{if(alive)executing.value=false}
+}
+watch([script,name,values,selected,()=>props.roomId,()=>props.worldId,()=>props.playerId],()=>{++contextSequence;armed.value=false;nearbyPreview.value=null},{deep:true,flush:'sync'})
 watch(()=>[props.roomId,props.worldId],()=>{++contextSequence;lastRun.value=null;recentRuns.value=[];error.value='';void loadHistory();if(parameters.value.some(p=>p.name==='player_id'))values.value.player_id=props.playerId||''})
 watch(()=>props.playerId,value=>{if(parameters.value.some(p=>p.name==='player_id'))values.value.player_id=value||''})
 onMounted(()=>{void load();void loadHistory()})
@@ -112,7 +131,7 @@ onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence;++historySeque
     </Field>
    </FieldGroup>
    <details v-if="template"><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.viewCode')}}</summary><pre class="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{script}}</pre></details>
-   <div class="command-action-bar flex flex-wrap items-center justify-between gap-3"><p class="text-xs text-muted-foreground">{{!running?t('workbench.commands.stopped'):armed?t('workbench.commands.confirm',{target:targetLabel}):t('workbench.commands.output')}}</p><div class="flex gap-2"><Button v-if="armed" variant="ghost" @click="armed=false">{{t('workbench.commands.cancel')}}</Button><Button :disabled="!canRun||saving" @click="execute"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{t(executing?'workbench.commands.executing':armed?'workbench.commands.confirmRun':'workbench.commands.run')}}</Button></div></div>
+   <div class="command-action-bar flex flex-wrap items-center justify-between gap-3"><p class="text-xs text-muted-foreground">{{!running?t('workbench.commands.stopped'):armed?t('workbench.commands.confirm',{target:targetLabel}):t('workbench.commands.output')}}</p><div class="flex gap-2"><Button v-if="nearbyUncertain" variant="outline" @click="nearbyUncertain=false;error='';nearbyPreview=null">{{t('workbench.batch.checked')}}</Button><Button v-if="nearbyPreview" variant="ghost" :disabled="executing" @click="cancelNearby">{{t('workbench.batch.cancel')}}</Button><Button v-if="armed" variant="ghost" @click="armed=false">{{t('workbench.commands.cancel')}}</Button><Button :disabled="!canRun||saving" @click="execute"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{t(executing?'workbench.commands.executing':nearbyGuarded?(nearbyPreview?'workbench.batch.confirm':'workbench.batch.preview'):armed?'workbench.commands.confirmRun':'workbench.commands.run')}}</Button></div></div>
    <Alert v-if="error" variant="destructive"><AlertTitle>{{t('workbench.commands.failed')}}</AlertTitle><AlertDescription class="break-all">{{error}}</AlertDescription></Alert>
    <CommandRunResult v-if="waitingOnTarget || lastRun" :run="lastRun" :pending="waitingOnTarget" :target="lastRun?.target || targetLabel" @updated="updateRun" />
    <details v-if="recentRuns.length" data-command-history><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.recentRuns')}}</summary><div class="mt-2 flex max-h-52 flex-col gap-1 overflow-y-auto"><Button v-for="run in recentRuns" :key="run.id" :variant="lastRun?.id===run.id?'secondary':'ghost'" class="h-auto justify-between gap-2 py-2 text-left" @click="lastRun=run"><span class="min-w-0 truncate">{{run.name}} · {{runTime(run)}}</span><span class="shrink-0 text-xs">{{t(`workbench.commands.${run.status==='succeeded'?'succeeded':run.status==='failed'?'runFailed':'uncertain'}`)}}</span></Button></div></details>

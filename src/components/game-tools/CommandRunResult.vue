@@ -71,6 +71,7 @@ async function refreshReceipt() {
       </AlertDescription>
     </Alert>
     <template v-if="!pending">
+    <Alert v-if="current.batch"><AlertTitle>{{t(`workbench.batch.${current.batch.state}`)}}</AlertTitle><AlertDescription>{{t('workbench.batch.counts',current.batch)}}</AlertDescription></Alert>
     <SpawnAuditResult v-if="current.spawnAudit" :audit="current.spawnAudit" />
     <div class="flex items-center justify-between gap-2">
       <span class="text-sm font-medium">{{ t('workbench.commands.outputTitle') }}</span>

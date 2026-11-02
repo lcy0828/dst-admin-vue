@@ -325,6 +325,7 @@ export function playerErrorDetail(value, translate) {
 export const playerMessages = {
   'zh-CN': {
     players: {
+      modeState: { reading: '正在读取当前状态…', current: '最近读取：{state}', enabled: '已开启', disabled: '已关闭', unknown: '暂时无法确认', choose: '请选择要开启还是关闭。关闭只停止后续效果，不恢复之前的数值。' },
       values: {
         unknown: '未知',
         unknownError: '未知错误',
@@ -568,6 +569,7 @@ export const playerMessages = {
   },
   'en-US': {
     players: {
+      modeState: { reading: 'Reading current state…', current: 'Last observation: {state}', enabled: 'Enabled', disabled: 'Disabled', unknown: 'Not confirmed', choose: 'Choose enable or disable. Disabling stops future effects; it does not restore previous values.' },
       values: {
         unknown: 'Unknown', unknownError: 'Unknown error', unknownStatus: 'Unknown status', unknownCharacter: 'Unknown character', unknownDuration: 'Unknown duration',
         unknownPlayer: 'Unknown player', unknownWorld: 'Unknown world', locationPending: 'Locating player', lastKnownWorld: 'Last confirmed in {world}', noReason: 'No reason recorded', enabled: 'enabled', disabled: 'disabled'

@@ -861,6 +861,10 @@ export const runtimeTargetsV2API = {
 	remove: agentId => client.delete(`/runtime-targets/agents/${encode(agentId)}`)
 }
 
+export const worldQueryV2API = {
+  modes: (roomId, worldId) => client.get(`/rooms/${encode(roomId)}/worlds/${encode(worldId)}/queries/player_modes`, { runtimeTarget: false, timeout: 10000, headers: { 'Cache-Control': 'no-store' } })
+}
+
 export const consoleV2API = {
 	definitions: () => client.get('/commands', { headers: { 'Cache-Control': 'no-store' } }),
 	definition: commandId => client.get(`/commands/${encode(commandId)}`, { headers: { 'Cache-Control': 'no-store' } }),
