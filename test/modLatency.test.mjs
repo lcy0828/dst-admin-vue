@@ -88,6 +88,54 @@ test('late shared editor preparation cannot reopen a previous room', async () =>
   assert.equal(list.configDialogVisible, false)
 })
 
+test('unconfigured Mod settings open on an installed world without adding or enabling it', async () => {
+  const options = await componentOptions('views/mods/ModList.vue', { modApi: {} })
+  const worlds = [
+    { id: 'master', appliedTargetId: 'local', appliedInstallationId: 'default' },
+    { id: 'caves', appliedTargetId: 'agent:test', appliedInstallationId: 'remote' }
+  ]
+  const mod = { modid: '100', machineOnly: true, configuredWorlds: [], runtimeVersions: [
+    { targetId: 'agent:test', installationId: 'remote', status: 'unknown' }
+  ] }
+  const list = instance(options, {
+    selectedRoomId: 'room', selectedWorldId: 'master', selectedRoomWorlds: worlds,
+    $nextTick: callback => callback()
+  })
+  list.syncRouteContext = () => {}
+  list.modWorldRevisions = () => assert.fail('preview must not prepare a shared save')
+  await list.openRoomConfigDialog(mod)
+  assert.equal(list.configDialogVisible, true)
+  assert.equal(list.configScope, 'world')
+  assert.equal(list.selectedWorldId, 'caves')
+  assert.deepEqual(list.configWorldIds, ['caves'])
+  assert.deepEqual(mod.configuredWorlds, [])
+  assert.equal(list.canPreviewConfig(mod, worlds[0]), false)
+  assert.equal(list.canPreviewConfig(mod, { ...worlds[1], appliedInstallationId: 'other' }), false)
+  mod.runtimeVersions[0].status = 'unavailable'
+  assert.equal(list.previewConfigWorld(mod), undefined)
+})
+
+test('default configuration preview cannot save, reset or prompt for unsaved edits', async () => {
+  const options = await componentOptions('views/mods/ModConfigDialog.vue', { modApi: {
+    updateModConfig: () => assert.fail('default preview must not save')
+  } })
+  const dialog = instance(options, {
+    modInfo: { configuration: { configured: false, enabled: false } },
+    configForm: { count: 2 }, originalConfig: { count: 1 }, defaultConfig: { count: 1 }
+  })
+  assert.equal(dialog.previewOnly, true)
+  await dialog.saveConfig()
+  dialog.resetToDefault()
+  assert.deepEqual(dialog.configForm, { count: 2 })
+  assert.equal(dialog.resetRequested, false)
+  assert.equal(dialog.hasUnsavedChanges(), false)
+  dialog.modInfo.configuration.configured = true
+  assert.equal(dialog.previewOnly, false)
+  assert.equal(dialog.hasUnsavedChanges(), true)
+  delete dialog.modInfo.configuration.configured
+  assert.equal(dialog.previewOnly, false, 'older servers must retain the existing editor')
+})
+
 async function modAPI(dependencies) {
   const code = await source('api/modApi.js')
   const body = parseJS(code, { sourceType: 'module' }).program.body.flatMap(node => {

@@ -111,6 +111,9 @@
             <Badge v-if="mod.updateAvailable" variant="warning">{{ $t('mods.values.health.updateAvailable') }}</Badge>
           </div>
           <div class="mod-summary-actions">
+            <UiButton v-if="mod.machineOnly && previewConfigWorld(mod)" size="sm" variant="ghost" :disabled="isModBusy(mod)" :aria-label="$t('mods.actions.viewConfig')" @click="openRoomConfigDialog(mod)">
+              <Settings2 data-icon="inline-start" /><span class="hidden sm:inline">{{ $t('mods.actions.viewConfig') }}</span>
+            </UiButton>
             <UiButton v-if="mod.machineOnly" class="mod-add-room-button" size="sm" variant="outline" :disabled="isModBusy(mod)" @click="addModToRoomDefault(mod)">
               <Spinner v-if="isModBusy(mod)" data-icon="inline-start" />
               <Plus v-else data-icon="inline-start" />
@@ -214,7 +217,10 @@
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </template>
-                  <UiButton v-else size="sm" variant="outline" :disabled="isModBusy(mod)" @click="addModToWorld(mod, world)"><Plus data-icon="inline-start" />{{ $t('mods.actions.addToWorld') }}</UiButton>
+                  <template v-else>
+                    <UiButton v-if="canPreviewConfig(mod, world)" size="sm" variant="ghost" :disabled="isModBusy(mod)" @click="openConfigDialog(mod, world)"><Settings2 data-icon="inline-start" />{{ $t('mods.actions.viewConfig') }}</UiButton>
+                    <UiButton size="sm" variant="outline" :disabled="isModBusy(mod)" @click="addModToWorld(mod, world)"><Plus data-icon="inline-start" />{{ $t('mods.actions.addToWorld') }}</UiButton>
+                  </template>
                 </div>
               </div>
             </template>
@@ -942,6 +948,19 @@ export default {
       return Boolean(world?.id && mod?.configuredWorlds?.includes(world.id));
     },
 
+    canPreviewConfig(mod, world) {
+      if (!world?.appliedTargetId || !world?.appliedInstallationId) return false;
+      return (mod?.runtimeVersions || []).some(runtime =>
+        runtime.targetId === world.appliedTargetId && runtime.installationId === world.appliedInstallationId &&
+        ['ready', 'current', 'outdated', 'unknown', 'local'].includes(runtime.status)
+      );
+    },
+
+    previewConfigWorld(mod) {
+      const worlds = this.selectedRoomWorlds.filter(world => this.canPreviewConfig(mod, world));
+      return worlds.find(world => world.id === this.selectedWorldId) || worlds[0];
+    },
+
     isEnabledInWorld(mod, world) {
       return Boolean(world?.id && mod?.enabledWorlds?.includes(world.id));
     },
@@ -1300,7 +1319,9 @@ export default {
       }
       const worlds = this.selectedRoomWorlds.filter(world => this.isConfiguredInWorld(mod, world));
       if (!worlds.length) {
-        toast.warning(this.$t('mods.installed.feedback.selectConfiguredWorld'));
+        const previewWorld = this.previewConfigWorld(mod);
+        if (previewWorld) this.openConfigDialog(mod, previewWorld);
+        else toast.warning(this.$t('mods.installed.feedback.configFilesRequired'));
         return;
       }
       const sourceWorld = sourceWorldId

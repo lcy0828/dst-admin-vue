@@ -4,8 +4,8 @@
       <DialogHeader class="shrink-0">
         <DialogTitle class="min-w-0 break-words">{{ $t('mods.config.title', { name: activeModInfo ? activeModInfo.name || $t('mods.config.unnamed') : $t('mods.config.loadingName') }) }}</DialogTitle>
         <DialogDescription class="flex flex-col gap-1">
-          <span class="block">{{ configurationScope === 'room' ? $t('mods.config.roomDescription', { count: effectiveWorldIds.length }) : $t('mods.config.description', { world: worldName || worldId }) }}</span>
-          <span class="block">{{ $t(configurationScope === 'room' ? 'mods.config.roomSaveBehaviorDescription' : 'mods.config.saveBehaviorDescription', { count: effectiveWorldIds.length }) }}</span>
+          <span class="block">{{ previewOnly ? $t('mods.config.previewDescription') : configurationScope === 'room' ? $t('mods.config.roomDescription', { count: effectiveWorldIds.length }) : $t('mods.config.description', { world: worldName || worldId }) }}</span>
+          <span v-if="!previewOnly" class="block">{{ $t(configurationScope === 'room' ? 'mods.config.roomSaveBehaviorDescription' : 'mods.config.saveBehaviorDescription', { count: effectiveWorldIds.length }) }}</span>
         </DialogDescription>
       </DialogHeader>
 
@@ -27,7 +27,7 @@
         </Alert>
 
         <template v-else-if="activeModInfo">
-          <div v-if="hasOptions" class="reset-button-container">
+          <div v-if="hasOptions && !previewOnly" class="reset-button-container">
             <UiButton size="sm" variant="outline" @click="resetToDefault">
               <RotateCcw data-icon="inline-start" />{{ $t('mods.actions.resetDefaults') }}
             </UiButton>
@@ -105,8 +105,8 @@
           </template>
         </div>
         <div class="save-actions">
-          <UiButton variant="outline" @click="handleClose">{{ $t('mods.actions.cancel') }}</UiButton>
-          <UiButton @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !activeModInfo">
+          <UiButton variant="outline" @click="handleClose">{{ $t(previewOnly ? 'mods.actions.close' : 'mods.actions.cancel') }}</UiButton>
+          <UiButton v-if="!previewOnly" @click="saveConfig" :disabled="saving || loading || Boolean(loadError) || !activeModInfo">
             <Spinner v-if="saving" data-icon="inline-start" />{{ $t('mods.actions.saveConfig') }}
           </UiButton>
         </div>
@@ -269,6 +269,10 @@ export default {
     },
     activeModInfo() {
       return this.resolvedModInfo || this.modInfo;
+    },
+    previewOnly() {
+      // An omitted field from older servers retains the existing editor.
+      return this.activeModInfo?.configuration?.configured === false;
     },
     effectiveWorldIds() {
       return this.worldIds.length > 0 ? this.worldIds : [this.worldId].filter(Boolean);
@@ -533,6 +537,7 @@ export default {
     
     // 重置为默认配置
     resetToDefault() {
+      if (this.previewOnly) return;
       this.configForm = JSON.parse(JSON.stringify(this.defaultConfig));
       this.resetRequested = true;
       toast.success(this.$t('mods.config.feedback.resetSuccess'));
@@ -540,7 +545,7 @@ export default {
     
     // 保存配置
     async saveConfig() {
-      if (this.saving) return;
+      if (this.saving || this.previewOnly) return;
       const requestId = this.configRequestId;
       const prepared = this.prepareConfigForSubmit(this.configForm);
       let changedConfig;
@@ -690,6 +695,7 @@ export default {
     },
 
     hasUnsavedChanges() {
+      if (this.previewOnly) return false;
       if (this.resetRequested && Object.keys(this.customOverrides).some(key => this.findOptionByName(key))) return true;
       return Object.keys(this.configForm).some(key =>
         JSON.stringify(this.configForm[key]) !== JSON.stringify(this.originalConfig[key])
