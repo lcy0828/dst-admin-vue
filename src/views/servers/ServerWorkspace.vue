@@ -183,6 +183,16 @@
               </PopoverContent>
             </Popover>
             <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <UiButton size="sm" variant="outline" :disabled="roomActionsBusy">{{ $t('rooms.list.more') }}<ChevronDown data-icon="inline-end" /></UiButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end"><DropdownMenuGroup>
+                <DropdownMenuItem :disabled="!roomControlAvailable || !worlds.length || worlds.some(world => !canStopWorld(world))" variant="destructive" @select="regenerateRoomWorlds">
+                  {{ $t('worlds.actions.regenerate') }}
+                </DropdownMenuItem>
+              </DropdownMenuGroup></DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
               <DropdownMenuTrigger as-child><UiButton size="sm" variant="outline" :disabled="roomActionsBusy" :aria-label="$t('runtimeMode.change')">{{ $t(`runtimeMode.names.${runtimeModeSummary(worlds)}`) }}<ChevronDown data-icon="inline-end" /></UiButton></DropdownMenuTrigger>
               <DropdownMenuContent align="end"><DropdownMenuGroup>
                 <DropdownMenuItem :disabled="roomStartWorlds.length === 0" @select="handleRoomAction('start', true)">{{ $t('runtimeMode.chooseStart') }}</DropdownMenuItem>
@@ -661,6 +671,10 @@
                   <CircleAlert />
                   <AlertTitle>{{ $t('players.list.currentRefreshFailedTitle') }}</AlertTitle>
                   <AlertDescription>{{ $t('players.list.currentRefreshFailedDescription', { error: playerStats.collection_warnings.join('；') }) }}</AlertDescription>
+                </Alert>
+                <Alert v-if="playerStats?.paused_world_ids?.length && !contextErrors.players">
+                  <AlertTitle>{{ $t('players.list.samplingPausedTitle') }}</AlertTitle>
+                  <AlertDescription>{{ $t('players.list.samplingPausedDescription') }}</AlertDescription>
                 </Alert>
                 <div v-if="recentPlayerRows.length" class="player-list players-list-expanded">
                   <div
@@ -2407,6 +2421,28 @@ export default {
           })
         }
         this.setRoomActionPending(roomId, action, false, actionToken)
+      }
+    },
+    async regenerateRoomWorlds() {
+      const room = this.selectedRoom
+      if (!room || this.roomActionsBusy || !this.roomControlAvailable || !this.worlds.length || this.worlds.some(world => !canStopWorld(world))) return
+      const world = this.worlds.find(item => this.worldIsMaster(item)) || this.worlds[0]
+      const token = this.setRoomActionPending(room.id, 'regenerate', true)
+      try {
+        try {
+          await confirmAction(this.$t('worlds.feedback.regeneratePrompt', { room: room.name }), this.$t('worlds.feedback.regenerateTitle'), {
+            confirmButtonText: this.$t('worlds.feedback.regenerateButton'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            type: 'warning'
+          })
+        } catch { return }
+        await roomApi.regenerateWorld({ room_id: room.id, world_id: world.id, confirmation: room.name })
+        toast.success(this.$t('worlds.feedback.regenerated'))
+        await this.refreshWorkspace(true)
+      } catch (error) {
+        toast.error(this.$t('worlds.feedback.regenerateFailed', { error: error.code === 'REGENERATE_WORLDS_NOT_READY' ? this.$t('worlds.feedback.regenerateNeedsRunning') : error.message || this.$t('common.errors.unknown') }))
+      } finally {
+        this.setRoomActionPending(room.id, 'regenerate', false, token)
       }
     },
     async handleWorldAction(world, action, chooseRuntimeMode = false) {

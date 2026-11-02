@@ -88,6 +88,10 @@
           <AlertTitle>{{ $t('players.list.currentRefreshFailedTitle') }}</AlertTitle>
           <AlertDescription>{{ $t('players.list.currentRefreshFailedDescription', { error: collectionWarnings.join('；') }) }}</AlertDescription>
         </Alert>
+        <Alert v-if="pausedWorlds.length && !loadError" class="mb-4">
+          <AlertTitle>{{ $t('players.list.samplingPausedTitle') }}</AlertTitle>
+          <AlertDescription>{{ $t('players.list.samplingPausedDescription') }}</AlertDescription>
+        </Alert>
         <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('players.list.loading') }}</span></div>
         <div v-else-if="!loadError && playerList.length > 0" class="table-wrap">
           <UiTable>
@@ -452,6 +456,7 @@ export default {
       loadError: null,
       collectionError: null,
       collectionWarnings: [],
+      pausedWorlds: [],
       partialFailures: [],
 
       // 分页参数
@@ -726,6 +731,7 @@ export default {
         if (requestSequence !== this.playerRequestSequence) return false;
         this.playerList = response.data || [];
         this.collectionWarnings = response.warnings || [];
+        this.pausedWorlds = response.pausedWorlds || [];
         this.pagination.total = response.total || 0;
         this.partialFailures = response.failures || [];
         this.openRequestedPlayer();

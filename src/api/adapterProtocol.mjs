@@ -29,6 +29,7 @@ const ERROR_DEFAULT_MESSAGES = Object.freeze({
   MOD_RAW_DATA_REQUIRED: 'Raw mod data is required.',
   MOD_RUNTIME_TARGET_REQUIRED: 'Refresh the room mod list before updating this mod.',
   MOD_UNINSTALL_CONFIRMATION_REQUIRED: 'Enter the full room name to confirm uninstalling the mod.',
+  REGENERATE_WORLDS_NOT_READY: 'Start every world in the room and wait for loading to finish before resetting.',
   REGENERATE_COMMAND_FAILED: 'The regenerate command failed.',
   REGENERATE_COMMAND_TIMEOUT: 'The regenerate command did not finish before the timeout.',
   RESOURCE_NOT_FOUND: 'The requested resource was not found.',

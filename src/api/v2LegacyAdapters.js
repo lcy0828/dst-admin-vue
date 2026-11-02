@@ -13,7 +13,7 @@ import {
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
-import { compareWorldRoles, worldLifecycleSelection } from '@/lib/worldRuntimeStatus.mjs'
+import { canStopWorld, compareWorldRoles, worldLifecycleSelection } from '@/lib/worldRuntimeStatus.mjs'
 import { projectFleetOverview } from '@/lib/fleetOverview.mjs'
 import { MANAGEMENT_SCOPE_CHANGED_EVENT, managementScopeTargetId } from '@/lib/managementScope.mjs'
 
@@ -494,6 +494,9 @@ export const legacyRoomApi = {
   },
   async regenerateWorld(input = {}) {
     const room = await resolveRoom(roomReference(input))
+    if (!room.worlds?.length || room.worlds.some(world => !canStopWorld(world))) {
+      throw adapterError('REGENERATE_WORLDS_NOT_READY')
+    }
     const [worldId] = selectedWorldIDs(room, input)
     let run = await consoleV2API.execute(room.id, worldId, {
       commandId: 'regenerate',

@@ -346,7 +346,7 @@ export default {
         toast.success(this.$t('worlds.feedback.regenerated'));
       } catch (error) {
         toast.error(this.$t('worlds.feedback.regenerateFailed', {
-          error: error.message || this.$t('common.errors.unknown')
+          error: error.code === 'REGENERATE_WORLDS_NOT_READY' ? this.$t('worlds.feedback.regenerateNeedsRunning') : error.message || this.$t('common.errors.unknown')
         }));
       } finally {
         this.loading = false;
