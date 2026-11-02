@@ -34,7 +34,11 @@ const profiles = ['game-read', 'game-manage', 'panel-manage']
 const tokenInput = computed(() => aiTokenInput(credential))
 function chooseRoom(id, checked) { credential.roomIds = checked ? [...new Set([...credential.roomIds, id])] : credential.roomIds.filter(value => value !== id) }
 async function loadRooms() { roomsLoading.value = true; roomsError.value = false; try { rooms.value = (await roomsV2API.controlPlaneList({ all: true })).items || [] } catch (error) { roomsError.value = true; fail(error) } finally { roomsLoading.value = false } }
-const endpoint = computed(() => new URL(props.mcpPath, window.location.origin).href)
+const endpoint = computed(() => {
+  const url = new URL(props.mcpPath, window.location.origin)
+  if (!url.searchParams.has('view')) url.searchParams.set('view', 'tasks')
+  return url.href
+})
 const sample = computed(() => JSON.stringify({ mcpServers: { 'dst-admin': { type: 'http', url: endpoint.value, headers: { Authorization: 'Bearer <ACCESS_TOKEN>' } } } }, null, 2))
 function fail(error) { emit('error', error.message || t('ai.failure')) }
 async function save() {
