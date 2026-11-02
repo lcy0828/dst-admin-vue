@@ -4,13 +4,14 @@ import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { BellRing, CircleAlert, Eye, RefreshCw, Send, ShieldCheck } from '@lucide/vue'
+import { BellRing, ChevronDown, CircleAlert, Eye, RefreshCw, Send, ShieldCheck } from '@lucide/vue'
 import { gameNotificationsV2API, roomsV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog,
   DialogDescription,
@@ -29,6 +30,7 @@ import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableR
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import { gameBroadcastWorld, gameDeliveryLabel, gameDeliveryOutcome, gameNotificationOutcome } from '@/lib/gameNotificationResults.mjs'
 import { toast } from 'vue-sonner'
 
 defineOptions({ name: 'GameNotificationsView' })
@@ -56,6 +58,7 @@ const loadError = ref('')
 const detailOpen = ref(false)
 const selectedNotification = ref(null)
 let roomLoadSequence = 0
+let historyLoadSequence = 0
 let roomWatchReady = false
 
 const runningWorlds = computed(() => worlds.value.filter(world => world.status === 'running'))
@@ -73,9 +76,10 @@ function formatDate(value) {
 }
 
 function statusVariant(status) {
-  if (status === 'succeeded') return 'default'
+  if (status === 'confirmed') return 'success'
   if (status === 'failed') return 'destructive'
-  if (status === 'partial' || status === 'sending') return 'secondary'
+  if (status === 'unconfirmed') return 'warning'
+  if (status === 'waiting') return 'secondary'
   return 'outline'
 }
 
@@ -86,14 +90,30 @@ function worldStatusVariant(status) {
   return 'outline'
 }
 
-function statusLabel(status) {
-  const known = ['queued', 'sending', 'succeeded', 'partial', 'failed', 'skipped', 'canceled']
-  return known.includes(status) ? t(`announcements.statuses.${status}`) : t('common.states.unknown')
+function statusLabel(notification) {
+  return t(`announcements.outcomes.${gameNotificationOutcome(notification)}`)
 }
 
-function deliveryStatusLabel(status) {
-  const known = ['queued', 'succeeded', 'failed', 'skipped', 'canceled']
-  return known.includes(status) ? t(`announcements.deliveryStatuses.${status}`) : t('common.states.unknown')
+function deliveryStatusLabel(delivery) {
+  return t(`announcements.outcomes.${gameDeliveryLabel(delivery)}`)
+}
+
+function worldName(name) {
+  if (name === 'Master') return t('announcements.detail.master')
+  if (name === 'Caves') return t('announcements.detail.caves')
+  return name || t('common.states.unknown')
+}
+
+function broadcastDescription(notification) {
+  const source = gameBroadcastWorld(notification)
+  return source ? t('announcements.detail.viaWorld', { world: worldName(source) }) : t('announcements.detail.wholeRoom')
+}
+
+function deliveryDescription(delivery) {
+  if (delivery.skipReason === 'room_broadcast') return t('announcements.detail.sharedBroadcast', { world: worldName(delivery.broadcastWorldName) })
+  if (delivery.skipReason === 'broadcast_attempted') return t('announcements.detail.noReplay')
+  if (delivery.skipReason === 'world_stopped') return t('announcements.detail.stoppedDescription')
+  return delivery.errorMessage || delivery.message || '—'
 }
 
 function sourceLabel(source) {
@@ -124,30 +144,40 @@ async function loadRooms() {
 }
 
 async function loadHistory() {
-  if (!selectedRoomId.value) {
+  const sequence = ++historyLoadSequence
+  const roomId = selectedRoomId.value
+  const offset = historyOffset.value
+  if (!roomId) {
     notifications.value = []
     notificationTotal.value = 0
+    historyLoading.value = false
     return
   }
   historyLoading.value = true
   try {
-    const result = await gameNotificationsV2API.list(selectedRoomId.value, pageSize, historyOffset.value)
+    const result = await gameNotificationsV2API.list(roomId, pageSize, offset)
+    if (sequence !== historyLoadSequence || roomId !== selectedRoomId.value || offset !== historyOffset.value) return
     notifications.value = result.items || []
     notificationTotal.value = Number(result.total) || 0
+    return result
   } finally {
-    historyLoading.value = false
+    if (sequence === historyLoadSequence) historyLoading.value = false
   }
 }
 
 async function loadRoomContext() {
+  const sequence = ++roomLoadSequence
   const roomId = selectedRoomId.value
+  ++historyLoadSequence
+  historyLoading.value = false
+  notifications.value = []
+  notificationTotal.value = 0
+  detailOpen.value = false
   if (!roomId) {
     worlds.value = []
-    notifications.value = []
-    notificationTotal.value = 0
+    roomLoading.value = false
     return
   }
-  const sequence = ++roomLoadSequence
   roomLoading.value = true
   loadError.value = ''
   try {
@@ -183,6 +213,7 @@ async function refreshPage() {
 }
 
 async function sendNotification() {
+  if (sending.value) return
   messageError.value = ''
   if (messageLength.value === 0) {
     messageError.value = t('announcements.validation.messageRequired')
@@ -193,25 +224,36 @@ async function sendNotification() {
     return
   }
   sending.value = true
+  let submitted
   try {
-    const submitted = await gameNotificationsV2API.send({
+    submitted = await gameNotificationsV2API.send({
       roomId: selectedRoomId.value,
       message: message.value.trim()
     })
     const completed = await waitForV2Job(submitted, 5 * 60 * 1000, undefined, { allowFailure: true })
     historyOffset.value = 0
-    await loadHistory()
-    const sent = notifications.value.find(item => item.jobId === completed.id)
-    if (sent?.successCount > 0) {
-      toast.success(t('announcements.feedback.sent', { count: sent.successCount }))
+    const history = await loadHistory()
+    const sent = history?.items?.find(item => item.jobId === completed.id)
+    const outcome = sent ? gameNotificationOutcome(sent) : 'unconfirmed'
+    if (outcome === 'confirmed') {
+      toast.success(t('announcements.feedback.confirmed'))
       message.value = ''
-    } else if (sent?.status === 'skipped') {
+    } else if (outcome === 'submitted') {
+      toast.info(t('announcements.feedback.sent'))
+      message.value = ''
+    } else if (outcome === 'unconfirmed' || outcome === 'waiting') {
+      toast.warning(t('announcements.feedback.unconfirmed'))
+    } else if (outcome === 'skipped') {
       toast.warning(t('announcements.feedback.noRunningWorlds'))
     } else {
       toast.error(t('announcements.feedback.sendFailed'))
     }
   } catch (error) {
-    toast.error(error?.message || t('announcements.feedback.sendFailed'))
+    if (submitted?.id || !error?.status || error.status >= 500 || error.code === 'INVALID_RESPONSE') {
+      toast.warning(t('announcements.feedback.unconfirmed'))
+    } else {
+      toast.error(error?.message || t('announcements.feedback.sendFailed'))
+    }
     await loadHistory().catch(() => {})
   } finally {
     sending.value = false
@@ -324,8 +366,8 @@ onMounted(async () => {
                 <FieldTitle>{{ t('announcements.composer.worlds') }}</FieldTitle>
                 <div v-if="roomLoading" class="flex flex-wrap gap-2"><Skeleton v-for="index in 2" :key="index" class="h-6 w-24" /></div>
                 <div v-else class="flex flex-wrap gap-2">
-                  <Badge v-for="world in worlds" :key="world.id" :variant="worldStatusVariant(world)">
-                    {{ world.name }} · {{ worldStatusLabel(world) }}
+                  <Badge v-for="world in worlds" :key="world.id" :variant="worldStatusVariant(world.status)">
+                    {{ worldName(world.name) }} · {{ worldStatusLabel(world.status) }}
                   </Badge>
                 </div>
                 <FieldDescription>{{ t('announcements.composer.worldDescription') }}</FieldDescription>
@@ -432,9 +474,9 @@ onMounted(async () => {
                   <TableCell><p class="max-w-xl truncate">{{ item.message }}</p></TableCell>
                   <TableCell>
                     <div class="flex flex-col items-start gap-1">
-                      <Badge :variant="statusVariant(item.status)">{{ statusLabel(item.status) }}</Badge>
+                      <Badge :variant="statusVariant(gameNotificationOutcome(item))">{{ statusLabel(item) }}</Badge>
                       <span class="whitespace-nowrap text-xs text-muted-foreground">
-                        {{ t('announcements.history.counts', { success: item.successCount, failed: item.failureCount, skipped: item.skippedCount }) }}
+                        {{ broadcastDescription(item) }}
                       </span>
                     </div>
                   </TableCell>
@@ -485,29 +527,41 @@ onMounted(async () => {
           <div class="flex flex-col gap-4">
             <div class="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{{ sourceLabel(selectedNotification.source) }}</Badge>
-              <Badge :variant="statusVariant(selectedNotification.status)">{{ statusLabel(selectedNotification.status) }}</Badge>
             </div>
             <p class="whitespace-pre-wrap text-sm leading-6">{{ selectedNotification.message }}</p>
-            <div class="overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow>
-                  <TableHead>{{ t('announcements.detail.columns.world') }}</TableHead>
-                  <TableHead>{{ t('announcements.detail.columns.target') }}</TableHead>
-                  <TableHead>{{ t('announcements.detail.columns.status') }}</TableHead>
-                  <TableHead>{{ t('announcements.detail.columns.message') }}</TableHead>
-                  <TableHead>{{ t('announcements.detail.columns.time') }}</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  <TableRow v-for="delivery in selectedNotification.deliveries" :key="delivery.id">
-                    <TableCell>{{ delivery.worldName }}</TableCell>
-                    <TableCell>{{ deliveryTarget(delivery) }}</TableCell>
-                    <TableCell><Badge :variant="statusVariant(delivery.status)">{{ deliveryStatusLabel(delivery.status) }}</Badge></TableCell>
-                    <TableCell>{{ delivery.errorMessage || delivery.message || '--' }}</TableCell>
-                    <TableCell class="whitespace-nowrap">{{ formatDate(delivery.observedAt || delivery.sentAt) }}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
+            <p class="text-sm text-muted-foreground">{{ broadcastDescription(selectedNotification) }}</p>
+            <Alert>
+              <BellRing />
+              <AlertTitle>{{ statusLabel(selectedNotification) }}</AlertTitle>
+              <AlertDescription>{{ t(`announcements.outcomeDescriptions.${gameNotificationOutcome(selectedNotification)}`) }}</AlertDescription>
+            </Alert>
+            <Collapsible>
+              <CollapsibleTrigger as-child>
+                <Button variant="outline" size="sm"><ChevronDown data-icon="inline-start" />{{ t('announcements.detail.expand') }}</Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent class="pt-3">
+                <div class="overflow-x-auto">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead>{{ t('announcements.detail.columns.world') }}</TableHead>
+                      <TableHead>{{ t('announcements.detail.columns.target') }}</TableHead>
+                      <TableHead>{{ t('announcements.detail.columns.status') }}</TableHead>
+                      <TableHead>{{ t('announcements.detail.columns.message') }}</TableHead>
+                      <TableHead>{{ t('announcements.detail.columns.time') }}</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      <TableRow v-for="delivery in selectedNotification.deliveries" :key="delivery.id">
+                        <TableCell>{{ worldName(delivery.worldName) }}</TableCell>
+                        <TableCell>{{ deliveryTarget(delivery) }}</TableCell>
+                        <TableCell><Badge :variant="statusVariant(gameDeliveryOutcome(delivery))">{{ deliveryStatusLabel(delivery) }}</Badge></TableCell>
+                        <TableCell>{{ deliveryDescription(delivery) }}</TableCell>
+                        <TableCell class="whitespace-nowrap">{{ formatDate(delivery.observedAt || delivery.sentAt) }}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </template>
         <DialogFooter><Button variant="outline" @click="detailOpen = false">{{ t('common.actions.close') }}</Button></DialogFooter>

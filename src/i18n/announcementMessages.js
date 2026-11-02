@@ -37,7 +37,7 @@ export const announcementMessages = {
       },
       history: {
         title: '发送历史',
-        description: '保留手动通知和系统操作提醒的实际分片投递结果。',
+        description: '查看公告发送记录和游戏确认结果。',
         columns: {
           time: '发送时间',
           source: '触发来源',
@@ -45,7 +45,7 @@ export const announcementMessages = {
           result: '投递结果',
           details: '详情'
         },
-        counts: '成功 {success} · 失败 {failed} · 跳过 {skipped}',
+        counts: '已提交 {success} · 未完成 {failed} · 未单独发送 {skipped}',
         empty: '还没有发送记录',
         emptyDescription: '发送即时通知、自动化通知或执行带倒计时的维护操作后，记录会显示在这里。',
         total: '共 {count} 条记录'
@@ -54,14 +54,22 @@ export const announcementMessages = {
         title: '投递详情',
         description: '{room} · {time}',
         localTarget: '本机',
-        agentTarget: 'Agent · {agent}',
-        noTarget: '未投递',
+        agentTarget: '运行机器 · {agent}',
+        noTarget: '—',
+        master: '地面',
+        caves: '洞穴',
+        wholeRoom: '接收范围：整个房间',
+        viaWorld: '接收范围：整个房间 · 发送世界：{world}',
+        sharedBroadcast: '通过{world}广播，由游戏转发到相连世界。',
+        noReplay: '已尝试发送房间广播，为避免重复公告未再次发送。',
+        stoppedDescription: '该世界未运行，未从此处发送。',
+        expand: '各世界发送记录',
         columns: {
           world: '世界',
-          target: '运行目标',
+          target: '运行机器',
           status: '状态',
           message: '结果',
-          time: '观测时间'
+          time: '记录时间'
         }
       },
       sources: {
@@ -76,18 +84,32 @@ export const announcementMessages = {
       statuses: {
         queued: '等待发送',
         sending: '发送中',
-        succeeded: '发送成功',
-        partial: '部分成功',
+        succeeded: '已提交',
+        partial: '部分提交',
         failed: '发送失败',
         skipped: '未发送',
         canceled: '已取消'
       },
       deliveryStatuses: {
         queued: '等待发送',
-        succeeded: '发送成功',
+        succeeded: '已提交',
         failed: '发送失败',
-        skipped: '世界未运行',
+        skipped: '未单独发送',
         canceled: '已取消'
+      },
+      outcomes: {
+        waiting: '正在发送', submitted: '已提交', confirmed: '游戏已执行',
+        unconfirmed: '结果未确认', failed: '发送失败', skipped: '未发送', canceled: '已取消',
+        worldStopped: '世界未运行', roomBroadcast: '无需重复发送', broadcastAttempted: '未重复尝试'
+      },
+      outcomeDescriptions: {
+        waiting: '正在发送公告并等待游戏确认，等待超时后会显示“结果未确认”。',
+        submitted: '公告已提交，目前没有游戏执行确认。旧版本发送记录也会显示此状态。',
+        confirmed: '已收到游戏执行广播的确认；这不代表每位玩家都已收到。',
+        unconfirmed: '未收到有效的游戏确认，公告可能已经发出。系统不会自动重发，以免重复。',
+        failed: '本次发送未完成，请展开各世界发送记录查看原因。',
+        skipped: '没有发送公告，请展开各世界发送记录查看原因。',
+        canceled: '发送任务已取消。'
       },
       worldStatuses: {
         running: '运行中',
@@ -102,7 +124,9 @@ export const announcementMessages = {
       },
       feedback: {
         loadFailed: '加载游戏通知失败',
-        sent: '房间广播已提交',
+        sent: '公告已提交，尚未确认游戏执行',
+        confirmed: '公告已由游戏执行',
+        unconfirmed: '未能确认公告执行结果，可能已经发出；不会自动重发',
         noRunningWorlds: '当前没有运行中的世界，未发送通知',
         sendFailed: '游戏通知发送失败，请查看投递详情',
         policySaved: '操作通知策略已保存',
@@ -148,7 +172,7 @@ export const announcementMessages = {
       },
       history: {
         title: 'Delivery history',
-        description: 'Actual per-Shard results for manual messages and operation warnings.',
+        description: 'Announcement submissions and game execution confirmations.',
         columns: {
           time: 'Sent at',
           source: 'Source',
@@ -156,7 +180,7 @@ export const announcementMessages = {
           result: 'Result',
           details: 'Details'
         },
-        counts: '{success} sent · {failed} failed · {skipped} skipped',
+        counts: '{success} submitted · {failed} incomplete · {skipped} not sent separately',
         empty: 'No delivery history',
         emptyDescription: 'Immediate messages, automated notifications, and maintenance countdown warnings appear here after they are sent.',
         total: '{count} records'
@@ -165,14 +189,22 @@ export const announcementMessages = {
         title: 'Delivery details',
         description: '{room} · {time}',
         localTarget: 'Local',
-        agentTarget: 'Agent · {agent}',
-        noTarget: 'Not delivered',
+        agentTarget: 'Machine · {agent}',
+        noTarget: '—',
+        master: 'Surface',
+        caves: 'Caves',
+        wholeRoom: 'Audience: entire room',
+        viaWorld: 'Audience: entire room · sending world: {world}',
+        sharedBroadcast: 'Broadcast through {world}; the game forwards it to connected worlds.',
+        noReplay: 'A room broadcast was attempted. No additional attempt was made to avoid duplicates.',
+        stoppedDescription: 'This world was stopped, so it was not used to send the announcement.',
+        expand: 'Sending records by world',
         columns: {
           world: 'World',
-          target: 'Runtime target',
+          target: 'Machine',
           status: 'Status',
           message: 'Result',
-          time: 'Observed at'
+          time: 'Recorded at'
         }
       },
       sources: {
@@ -187,18 +219,32 @@ export const announcementMessages = {
       statuses: {
         queued: 'Queued',
         sending: 'Sending',
-        succeeded: 'Sent',
-        partial: 'Partially sent',
+        succeeded: 'Submitted',
+        partial: 'Partially submitted',
         failed: 'Failed',
         skipped: 'Not sent',
         canceled: 'Canceled'
       },
       deliveryStatuses: {
         queued: 'Queued',
-        succeeded: 'Sent',
+        succeeded: 'Submitted',
         failed: 'Failed',
-        skipped: 'World stopped',
+        skipped: 'Not sent separately',
         canceled: 'Canceled'
+      },
+      outcomes: {
+        waiting: 'Sending', submitted: 'Submitted', confirmed: 'Executed by game',
+        unconfirmed: 'Result unconfirmed', failed: 'Failed', skipped: 'Not sent', canceled: 'Canceled',
+        worldStopped: 'World stopped', roomBroadcast: 'No separate send needed', broadcastAttempted: 'No additional attempt'
+      },
+      outcomeDescriptions: {
+        waiting: 'Sending the announcement and waiting for game confirmation. A timeout will be shown as unconfirmed.',
+        submitted: 'The announcement was submitted without game execution confirmation. Older records also use this state.',
+        confirmed: 'The game confirmed broadcast execution; this does not confirm receipt by every player.',
+        unconfirmed: 'No valid game confirmation was received. The announcement may have been sent and will not be retried automatically.',
+        failed: 'Sending did not complete. Expand the world records to see the reason.',
+        skipped: 'No announcement was sent. Expand the world records to see the reason.',
+        canceled: 'The sending task was canceled.'
       },
       worldStatuses: {
         running: 'Running',
@@ -213,7 +259,9 @@ export const announcementMessages = {
       },
       feedback: {
         loadFailed: 'Could not load game notifications',
-        sent: 'Room broadcast submitted',
+        sent: 'Announcement submitted without game execution confirmation',
+        confirmed: 'The game executed the announcement',
+        unconfirmed: 'Execution is unconfirmed; the announcement may have been sent and will not be retried automatically',
         noRunningWorlds: 'No worlds are running, so no message was sent',
         sendFailed: 'The game notification failed. Review delivery details.',
         policySaved: 'Operation notification policy saved',
