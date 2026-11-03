@@ -6,13 +6,14 @@ const deferred = () => { let resolve; return { promise: new Promise(done => { re
 const installation = (targetId = 'local') => ({ targetId, installationId: 'default', installed: true, online: true, branch: 'public', gameVersion: '700', shards: [{ roomId: 'room', worldId: 'master', wasRunning: true }] })
 const plan = () => ({ ready: true, updateRequired: true, planHash: 'hash', selectedInstallations: [{ targetId: 'local', installationId: 'default' }], installations: [installation(), installation('agent:connected')], policy: { restartRunning: true, timeoutSeconds: 300 }, affectedRoomIds: ['room'] })
 function fixture(overrides = {}) {
-  const calls = { overview: [], versions: [], preview: [], create: [], list: [] }, state = {}
+  const calls = { overview: [], versions: [], preview: [], create: [], list: [], retry: [] }, state = {}
   const api = {
     installedVersions: async input => { calls.overview.push(input); return { installations: [installation()] } },
     list: async input => { calls.list.push(input); return { items: [], total: 0 } },
     get: async () => { throw new Error('No record yet') },
     preview: async input => { calls.preview.push(input); return plan() },
     create: async input => { calls.create.push(input); return { id: 'job', status: 'queued', kind: 'game.release' } },
+    retry: async (id, input) => { calls.retry.push({ id, input }); return { id: 'retry-job', status: 'queued', kind: 'game.release.retry' } },
     ...overrides
   }
   const versionAPI = { version: async input => { calls.versions.push(input); return { officialRelease: { version: '701' } } } }
@@ -62,16 +63,19 @@ test('opening the dialog performs only preflight and closing during it cannot su
   assert.equal(f.calls.create.length, 0)
 })
 
-test('confirmed submission copies the exact seed and policy; duplicate clicks submit once', async () => {
+test('single confirmation preserves the exact selected scope and policy; duplicate clicks submit once', async () => {
   const held = deferred(), f = fixture()
-  await f.c.openUpdate({ policy: { restartRunning: false } })
+  await f.c.openUpdate({ installations: plan().selectedInstallations, policy: { restartRunning: false } })
   assert.equal(f.calls.preview[0].includeModDiagnostics, false)
   f.api.create = async input => { f.calls.create.push(input); return held.promise }
   const first = f.c.submit()
   await f.c.submit()
   assert.equal(f.calls.create.length, 1)
   assert.deepEqual(f.calls.create[0].installations, plan().selectedInstallations)
-  assert.deepEqual(f.calls.create[0].policy, plan().policy)
+  assert.deepEqual(f.calls.create[0].policy, { ...plan().policy, skipBackup: false, stopDelaySeconds: 60 })
+  assert.equal(f.calls.create[0].confirmed, true)
+  assert.equal(f.calls.create[0].planHash, undefined)
+  assert.equal(f.calls.create[0].confirmation, undefined)
   assert.equal(f.calls.create[0].includeModDiagnostics, undefined)
   held.resolve({ id: 'job', status: 'queued' }); await first
   assert.equal(f.state.open, false)
@@ -161,4 +165,57 @@ test('renaming the current target updates shared labels without discarding or re
   assert.equal(f.state.scope.targetName, 'after')
   held.resolve({ installations: [installation('agent:a')] }); await read
   assert.equal(f.state.installations[0].targetId, 'agent:a')
+})
+
+test('all-target, local and Agent updates preserve selection representation without hash roundtrip', async () => {
+  for (const scope of [{}, { kind: 'target', targetId: 'local' }, { kind: 'target', targetId: 'agent:one' }]) {
+    const f = fixture({ preview: async () => ({ ...plan(), selectedInstallations: undefined, desiredVersion: '701' }) })
+    f.c.setScope(scope)
+    await f.c.openUpdate()
+    f.c.setOptions({ backupBeforeUpdate: false, stopDelaySeconds: 0 })
+    await f.c.submit()
+    assert.equal(f.calls.create.length, 1)
+    const body = f.calls.create[0]
+    assert.deepEqual(body.targetIds, scope.targetId ? [scope.targetId] : undefined)
+    assert.equal(body.installations, undefined, 'must not change target selection into installation selection')
+    assert.equal(body.confirmed, true)
+    assert.equal(body.planHash, undefined)
+    assert.equal(body.desiredVersion, '701')
+    assert.equal(body.policy.skipBackup, true)
+    assert.equal(body.policy.stopDelaySeconds, 0)
+  }
+})
+
+test('update accepts 0–360 whole seconds and blocks blank, fractional and out-of-range delays', async () => {
+  for (const value of ['', -1, 361, 1.5, 'abc', 0, 360]) {
+    const f = fixture()
+    await f.c.openUpdate()
+    f.c.setOptions({ stopDelaySeconds: value })
+    await f.c.submit()
+    assert.equal(f.calls.create.length, [0, 360].includes(value) ? 1 : 0, String(value))
+  }
+})
+
+test('backup decision uses the original release ID, blocks duplicates and tracks retry receipts', async () => {
+  const held = deferred(), f = fixture()
+  f.api.retry = async (id, input) => { f.calls.retry.push({ id, input }); return held.promise }
+  const first = f.c.resolveBackup('original-release', 'skip')
+  await f.c.resolveBackup('original-release', 'cancel')
+  assert.deepEqual(f.calls.retry, [{ id: 'original-release', input: { confirmed: true, skipBackup: true } }])
+  held.resolve({ id: 'new-job', status: 'queued', kind: 'game.release.retry' })
+  await first
+  assert.equal(f.state.accepted.id, 'new-job')
+  f.c.rememberRelease({ id: 'original-release', currentJobId: 'new-job', stage: 'updating' })
+  assert.equal(f.state.accepted, null)
+})
+
+test('uncertain backup decision is never resent or cleared by unrelated receipts', async () => {
+  const f = fixture({ retry: async (id, input) => { f.calls.retry.push({ id, input }); throw new Error('Lost response') } })
+  await f.c.resolveBackup('original-release', 'skip')
+  f.c.rememberRelease({ id: 'unrelated-release', stage: 'succeeded' })
+  await f.c.resolveBackup('original-release', 'skip')
+  assert.equal(f.state.decisionUncertain, true)
+  assert.equal(f.calls.retry.length, 1)
+  f.c.rememberRelease({ id: 'original-release', stage: 'updating' })
+  assert.equal(f.state.decisionUncertain, false)
 })

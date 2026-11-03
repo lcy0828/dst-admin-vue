@@ -1,5 +1,6 @@
 const RELEASE_STAGES = new Set([
   'previewed',
+  'notifying',
   'protecting',
   'stopping',
   'staged',
@@ -67,7 +68,7 @@ export function gameReleaseIsTerminal(release) {
 }
 
 export function gameReleaseCanRetry(release) {
-  return Boolean(release?.id && RETRYABLE_RELEASE_STAGES.has(gameReleaseStageKey(release?.stage)))
+  return Boolean(release?.id && release?.nextAction !== 'backup_decision' && RETRYABLE_RELEASE_STAGES.has(gameReleaseStageKey(release?.stage)))
 }
 
 export function gameReleaseCanFinish(release) {
@@ -186,13 +187,21 @@ export function gameReleaseProgress(release) {
   const rows = gameReleaseResultRows(release)
   const stage = gameReleaseStageKey(release?.stage)
   const terminal = gameReleaseIsTerminal(release)
+  const backupSkipped = release?.backupSkipped === true || release?.plan?.policy?.skipBackup === true
+  const waitingBackupDecision = release?.nextAction === 'backup_decision' && stage === 'recovery_required'
+  const canceled = stage === 'abandoned' && release?.errorCode === 'UPDATE_CANCELED'
   const running = rows.shards.filter(shard => shard.wasRunning)
-  const restore = release?.plan?.policy?.restartRunning !== false ? running : []
+  // Canceling before a write restores only worlds this attempt actually stopped,
+  // regardless of the successful-update restart preference.
+  const restore = canceled ? running.filter(shard => shard.stopRequestedAt || shard.stoppedAt)
+    : release?.plan?.policy?.restartRunning !== false ? running : []
+  const countdownInterrupted = stage === 'failed' && !running.some(shard => shard.stopRequestedAt || shard.stoppedAt) &&
+    Date.parse(release.updatedAt) < Date.parse(release.countdownEndsAt)
   const counts = [
     [running.filter(shard => shard.stoppedAt || shard.stage === 'staged' && shard.runtimeState === 'stopped').length, running.length],
     [rows.backups.filter(backup => backup.id).length, rows.backups.length],
     [rows.installations.filter(item => ['verified', 'succeeded'].includes(item.stage)).length, rows.installations.length],
-    [restore.filter(shard => shard.startedAt && ['confirming', 'succeeded'].includes(shard.stage)).length, restore.length],
+    [restore.filter(shard => canceled ? shard.runtimeState === 'running' : shard.startedAt && ['confirming', 'succeeded'].includes(shard.stage)).length, restore.length],
     [restore.filter(shard => shard.loadConfirmedAt && shard.stage === 'succeeded').length, restore.length]
   ]
   const stages = ['stopping', 'protecting', 'updating', 'restarting', 'confirming']
@@ -200,22 +209,29 @@ export function gameReleaseProgress(release) {
   // Counts come from recorded evidence. A failed job's generic 100% only means
   // it finished processing; it must not turn incomplete update steps green.
   const noUpdate = release?.plan?.updateRequired === false
-  let interrupted = terminal && stage !== 'succeeded' ? counts.findIndex(([done, total]) => done < total) : -1
-  if (interrupted < 0 && terminal && stage !== 'succeeded') interrupted = 4
+  let interrupted = canceled || countdownInterrupted ? -1 : waitingBackupDecision ? 1
+    : terminal && stage !== 'succeeded' ? counts.findIndex(([done, total], index) => !(index === 1 && backupSkipped) && done < total) : -1
+  if (interrupted < 0 && terminal && stage !== 'succeeded' && !canceled && !countdownInterrupted) interrupted = 4
   const steps = stages.map((key, index) => {
     const [done, total] = counts[index]
-    const skipped = noUpdate || total === 0 || stage === 'abandoned' && index >= 3
+    const canceledStepSkipped = canceled && (index < 2 && done < total || index === 2 || index === 4)
+    const skipped = noUpdate || total === 0 || index === 1 && backupSkipped || canceledStepSkipped ||
+      stage === 'abandoned' && !canceled && index >= 3
     const complete = !skipped && done === total
     let state = skipped ? 'skipped' : complete ? 'done' : 'pending'
     if (!terminal && index === current && !skipped && !complete) state = 'active'
     if (index === interrupted && !skipped) state = 'interrupted'
     return { key, done, total, state }
   })
+  if (Number(release?.plan?.policy?.stopDelaySeconds) > 0 && running.length) {
+    steps.unshift({ key: 'notifying', done: stage === 'notifying' || stage === 'previewed' || countdownInterrupted ? 0 : 1, total: 1,
+      state: stage === 'notifying' ? 'active' : stage === 'previewed' ? 'pending' : countdownInterrupted ? 'interrupted' : 'done' })
+  }
   return {
-    stage, terminal, steps, rows,
+    stage, terminal, steps, rows, backupSkipped, waitingBackupDecision, canceled,
     completed: steps.filter(step => ['done', 'skipped'].includes(step.state)).length,
-    restored: counts[4][0], restoreTotal: restore.length,
-    keptStopped: rows.shards.length - restore.length,
+    restored: counts[canceled ? 3 : 4][0], restoreTotal: restore.length,
+    keptStopped: rows.shards.length - (canceled ? running.length : restore.length),
     noUpdate
   }
 }

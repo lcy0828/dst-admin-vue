@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { cn } from '@/lib/utils'
 import { useI18n } from 'vue-i18n'
 import { Check, ChevronDown, CircleAlert } from '@lucide/vue'
@@ -11,12 +11,21 @@ import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
+import GameReleaseBackupDecision from './GameReleaseBackupDecision.vue'
 
 const props = defineProps({ release: { type: Object, required: true }, compact: { type: Boolean, default: false } })
 const { t } = useI18n()
 const progress = computed(() => gameReleaseProgress(props.release))
 const failed = computed(() => ['failed', 'recovery_required'].includes(progress.value.stage))
 const updatedAt = computed(() => props.release.finishedAt || props.release.updatedAt)
+const now = ref(Date.now())
+const countdown = computed(() => Math.max(0, Math.ceil((Date.parse(props.release.countdownEndsAt) - now.value) / 1000)))
+watch(() => props.release.stage === 'notifying', (active, _, onCleanup) => {
+  now.value = Date.now()
+  if (!active) return
+  const timer = setInterval(() => { now.value = Date.now() }, 1000)
+  onCleanup(() => clearInterval(timer))
+}, { immediate: true })
 function targetName(item) {
   return item.targetId === 'local' ? t('gameReleases.values.local') : item.targetName || t('gameReleases.values.unknownTarget')
 }
@@ -28,7 +37,7 @@ function targetName(item) {
       <div class="flex flex-wrap items-center gap-2">
         <Spinner v-if="!progress.terminal" />
         <h3 class="text-sm font-semibold">{{ t('gameReleases.progress.title') }}</h3>
-        <Badge :variant="progress.stage === 'succeeded' ? 'success' : gameReleaseStageVariant(progress.stage)">{{ t(`gameReleases.stages.${progress.stage}`) }}</Badge>
+        <Badge :variant="progress.stage === 'succeeded' ? 'success' : gameReleaseStageVariant(progress.stage)">{{ t(progress.canceled ? 'gameReleases.options.canceled' : `gameReleases.stages.${progress.stage}`) }}</Badge>
       </div>
       <span v-if="updatedAt" class="text-xs text-muted-foreground">{{ t('gameReleases.progress.updatedAt', { time: formatSystemDateTime(updatedAt) }) }}</span>
     </div>
@@ -47,7 +56,8 @@ function targetName(item) {
 
     <div v-if="!progress.terminal" class="flex flex-col gap-2">
       <Progress :model-value="null" :aria-label="t(`gameReleases.stages.${progress.stage}`)" />
-      <p class="text-sm text-muted-foreground">{{ t(`gameReleases.progress.hints.${progress.stage}`) }}</p>
+      <p v-if="progress.stage === 'notifying' && Number.isFinite(countdown)" class="text-sm tabular-nums" role="status">{{ t('gameReleases.options.countdown', { seconds: countdown }) }}</p>
+      <p v-else class="text-sm text-muted-foreground">{{ t(progress.stage === 'staged' && progress.backupSkipped ? 'gameReleases.options.stagedWithoutBackup' : `gameReleases.progress.hints.${progress.stage}`) }}</p>
     </div>
     <Alert v-else-if="progress.stage === 'succeeded'">
       <Check />
@@ -55,9 +65,10 @@ function targetName(item) {
       <AlertDescription v-if="!progress.noUpdate">{{ t('gameReleases.progress.restored', { count: progress.restored, total: progress.restoreTotal, stopped: progress.keptStopped }) }}</AlertDescription>
     </Alert>
     <Alert v-else-if="progress.stage === 'abandoned'">
-      <CircleAlert /><AlertTitle>{{ t('gameReleases.stages.abandoned') }}</AlertTitle>
-      <AlertDescription>{{ t('gameReleases.recovery.finished') }}</AlertDescription>
+      <CircleAlert /><AlertTitle>{{ t(progress.canceled ? 'gameReleases.options.canceled' : 'gameReleases.stages.abandoned') }}</AlertTitle>
+      <AlertDescription>{{ release.errorCode === 'UPDATE_CANCELED' ? release.errorMessage : t('gameReleases.recovery.finished') }}</AlertDescription>
     </Alert>
+    <GameReleaseBackupDecision v-else-if="progress.waitingBackupDecision" :release="release" />
     <Alert v-else-if="failed" variant="destructive">
       <CircleAlert />
       <AlertTitle>{{ t(`gameReleases.stages.${progress.stage}`) }}</AlertTitle>
@@ -68,7 +79,7 @@ function targetName(item) {
       <CircleAlert /><AlertTitle>{{ t('gameReleases.recovery.acceleratorWarning') }}</AlertTitle>
       <AlertDescription>{{ t(release.shards?.some(shard => shard.warningCode === 'RUNTIME_FALLBACK_GAME') ? 'gameReleases.recovery.runtimeFallback' : 'gameReleases.recovery.acceleratorRepair') }}</AlertDescription>
     </Alert>
-    <div v-if="progress.terminal && progress.rows.installations.length" class="flex flex-col gap-1 text-sm">
+    <div v-if="progress.terminal && !progress.canceled && progress.rows.installations.length" class="flex flex-col gap-1 text-sm">
       <p v-for="item in progress.rows.installations" :key="`${item.targetId}:${item.installationId}`" class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span>{{ targetName(item) }}</span>
         <span class="text-muted-foreground">{{ t('gameReleases.progress.actualBuild') }}</span>
@@ -76,7 +87,8 @@ function targetName(item) {
       </p>
     </div>
 
-    <Collapsible v-if="progress.rows.backups.length">
+    <p v-if="progress.backupSkipped" class="text-sm text-muted-foreground">{{ t('gameReleases.options.backupSkipped') }}</p>
+    <Collapsible v-if="progress.rows.backups.length && !progress.backupSkipped">
       <CollapsibleTrigger as-child><Button size="sm" variant="ghost" class="group"><span>{{ t('gameReleases.progress.backups', { count: progress.rows.backups.filter(item => item.id).length, total: progress.rows.backups.length }) }}</span><ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger>
       <CollapsibleContent class="pt-2">
         <ul class="flex flex-col gap-2 text-sm"><li v-for="backup in progress.rows.backups" :key="backup.roomId" class="flex flex-wrap items-center gap-2"><span>{{ backup.roomName || t('gameReleases.values.unknownRoom') }}</span><Badge :variant="backup.id ? 'success' : 'outline'">{{ t(backup.id ? 'gameReleases.progress.backupReady' : 'gameReleases.progress.backupPending') }}</Badge><span v-if="backup.id" class="break-all font-mono text-xs text-muted-foreground">{{ backup.id }}</span></li></ul>

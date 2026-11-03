@@ -21,7 +21,9 @@ export function createGameUpdateController({ api, versionAPI, changed = () => {}
     pending: [], records: [], pendingError: '', pendingLoading: false, activeJobs: [], accepted: null,
     open: false, preparing: false, submitting: false, plan: null, error: '',
     planChanged: false, previousPlan: null, uncertain: false, requestId: '',
-    diagnostics: [], diagnosticsLoading: false, diagnosticsError: ''
+    diagnostics: [], diagnosticsLoading: false, diagnosticsError: '',
+    backupBeforeUpdate: true, stopDelaySeconds: 60,
+    decisionReleaseId: '', decisionError: '', decisionUncertain: false, decisionUncertainReleaseId: ''
   }
   const releaseFlights = new Map()
   let disposed = false, overviewSequence = 0, dialogSequence = 0
@@ -107,7 +109,7 @@ export function createGameUpdateController({ api, versionAPI, changed = () => {}
             // The job can finish before the first list read. Its durable ID equals
             // the initial job ID, so read the record instead of assuming success.
             try {
-              const release = await readRelease(accepted.id)
+              const release = await readRelease(accepted.releaseId || accepted.id)
               if (release?.id) rememberRelease(release, false)
             } catch { /* A queued job may not have a durable release yet. */ }
           }
@@ -147,7 +149,11 @@ export function createGameUpdateController({ api, versionAPI, changed = () => {}
     state.records = [release, ...state.records.filter(item => item.id !== release.id)].slice(0, 20)
     state.pending = state.pending.filter(item => item.id !== release.id)
     if (!finished.has(release.stage)) state.pending.push(release)
-    if (state.accepted && (release.id === state.accepted.id || release.sourceJobId === state.accepted.id)) state.accepted = null
+    if (state.accepted && (release.id === state.accepted.id || release.sourceJobId === state.accepted.id || release.currentJobId === state.accepted.id)) state.accepted = null
+    if (release.id === state.decisionUncertainReleaseId && release.nextAction !== 'backup_decision') {
+      state.decisionUncertain = false
+      state.decisionUncertainReleaseId = ''
+    }
     if (notify) emit()
   }
 
@@ -163,6 +169,8 @@ export function createGameUpdateController({ api, versionAPI, changed = () => {}
     state.diagnosticsError = ''
     state.diagnosticsLoading = false
     request = copy({ ...scopeRequest(state.scope), ...options, includeModDiagnostics: false })
+    state.backupBeforeUpdate = request.policy?.skipBackup !== true
+    state.stopDelaySeconds = request.policy?.stopDelaySeconds ?? 60
     emit()
     if (state.uncertain) { await refreshPending(); return }
     await prepare()
@@ -232,17 +240,16 @@ export function createGameUpdateController({ api, versionAPI, changed = () => {}
   async function submit() {
     const plan = state.plan
     if (!state.open || state.preparing || state.submitting || state.uncertain || state.diagnosticsLoading ||
-      !plan?.ready || !plan.updateRequired || !plan.planHash || busy() || disposed) return
+      !plan?.ready || !plan.updateRequired || !Number.isInteger(Number(state.stopDelaySeconds)) || Number(state.stopDelaySeconds) < 0 || Number(state.stopDelaySeconds) > 360 || state.stopDelaySeconds === '' || busy() || disposed) return
     state.submitting = true
     state.error = ''
     emit()
     const input = {
-      ...copy(request), policy: copy(plan.policy),
-      installations: copy(plan.selectedInstallations?.length ? plan.selectedInstallations : plan.installations.map(({ targetId, installationId }) => ({ targetId, installationId }))),
-      planHash: plan.planHash, confirmation: plan.planHash
+      ...copy(request), desiredVersion: plan.desiredVersion,
+      policy: { ...copy(plan.policy), skipBackup: !state.backupBeforeUpdate, stopDelaySeconds: Number(state.stopDelaySeconds) },
+      confirmed: true
     }
     delete input.includeModDiagnostics
-    delete input.targetIds
     try {
       const job = await api.create(input)
       if (!job?.id) throw new Error('Update response has no job ID')
@@ -273,9 +280,41 @@ export function createGameUpdateController({ api, versionAPI, changed = () => {}
     }
   }
 
+  function setOptions({ backupBeforeUpdate = state.backupBeforeUpdate, stopDelaySeconds = state.stopDelaySeconds }) {
+    if (state.submitting) return
+    state.backupBeforeUpdate = backupBeforeUpdate
+    state.stopDelaySeconds = stopDelaySeconds
+    emit()
+  }
+
+  async function resolveBackup(releaseId, action) {
+    if (disposed || state.decisionReleaseId || state.decisionUncertain || state.accepted || state.activeJobs.length || !['retry', 'skip', 'cancel'].includes(action)) return
+    state.decisionReleaseId = releaseId
+    state.decisionError = ''
+    emit()
+    try {
+      const input = action === 'retry' ? {} : { confirmed: true, ...(action === 'skip' ? { skipBackup: true } : { cancelUpdate: true }) }
+      const job = await api.retry(releaseId, input)
+      if (!job?.id) throw new Error('Update response has no job ID')
+      if (disposed) return
+      state.accepted = { ...job, releaseId }
+      submitted(job)
+      await readRelease(releaseId).catch(() => {})
+    } catch (error) {
+      if (disposed) return
+      state.decisionError = error?.message || 'Update submission failed'
+      if (!error?.status || error.status >= 500 || error.status === 408) {
+        state.decisionUncertain = true
+        state.decisionUncertainReleaseId = releaseId
+      }
+    } finally {
+      if (!disposed) { state.decisionReleaseId = ''; emit() }
+    }
+  }
+
   return {
     state, setScope, ensureOverview, refreshPending, setActiveJobs, openUpdate, prepare, close, loadDiagnostics, submit,
-    currentPending, busy, rememberRelease, readRelease, refreshProgress,
+    currentPending, busy, rememberRelease, readRelease, refreshProgress, setOptions, resolveBackup,
     dispose() { disposed = true; overviewSequence++; dialogSequence++ }
   }
 }

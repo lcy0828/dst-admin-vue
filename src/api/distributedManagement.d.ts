@@ -318,7 +318,7 @@ export interface RuntimeInfrastructure {
   observedAt: string
 }
 
-export type GameReleaseStage = 'previewed' | 'protecting' | 'stopping' | 'staged' | 'updating' | 'verified' | 'restarting' | 'confirming' | 'succeeded' | 'failed' | 'recovery_required' | 'abandoned'
+export type GameReleaseStage = 'previewed' | 'notifying' | 'protecting' | 'stopping' | 'staged' | 'updating' | 'verified' | 'restarting' | 'confirming' | 'succeeded' | 'failed' | 'recovery_required' | 'abandoned'
 
 export interface GameReleaseBlocker {
   code: string
@@ -396,7 +396,7 @@ export interface GameReleasePlan {
   topologyRevision: string
   planHash: string
   selectedInstallations?: { targetId: string; installationId: string }[]
-  policy: { validate?: boolean; requireEmpty?: boolean; cleanCache: boolean; restartRunning: boolean; loadConfirmation: 'logs' | 'none'; timeoutSeconds: number }
+  policy: { skipBackup?: boolean; pauseOnBackupFailure?: boolean; stopDelaySeconds?: number; validate?: boolean; requireEmpty?: boolean; cleanCache: boolean; restartRunning: boolean; loadConfirmation: 'logs' | 'none'; timeoutSeconds: number }
   affectedRoomIds: string[]
   installations: GameReleaseInstallationPlan[]
   blockers: GameReleaseBlocker[]
@@ -447,11 +447,13 @@ export interface GameReleaseShardResult {
 }
 
 export interface GameRelease {
+  backupSkipped?: boolean
+  countdownEndsAt?: string
   modDiagnosticsWarning?: string
   attempt?: number
   writingStarted?: boolean
   planHistory?: GameReleasePlan[]
-  nextAction?: 'retry_release' | 'preview_and_retry' | 'inspect_release'
+  nextAction?: 'retry_release' | 'preview_and_retry' | 'inspect_release' | 'backup_decision'
   blockers?: GameReleaseBlocker[]
   id: string
   sourceJobId?: string

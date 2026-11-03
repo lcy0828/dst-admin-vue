@@ -405,7 +405,7 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
       if (generation !== pollGeneration) return
       installationGeneration.value += 1
       await Promise.all([update.ensureOverview({ fresh: true }), update.refreshPending()])
-      if (associatedRelease?.errorMessage || !associatedRelease && gameReleaseJobFailed(activeJob.value)) {
+      if (associatedRelease?.nextAction !== 'backup_decision' && associatedRelease?.errorCode !== 'UPDATE_CANCELED' && (associatedRelease?.errorMessage || !associatedRelease && gameReleaseJobFailed(activeJob.value))) {
         taskError.value = associatedRelease?.errorMessage || releaseError(activeJob.value)
         toast.error(t('gameReleases.feedback.taskFailed', { error: taskError.value }))
       }

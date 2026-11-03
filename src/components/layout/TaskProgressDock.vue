@@ -41,12 +41,16 @@ const bubbleButton = ref(null)
 const panel = ref(null)
 const now = ref(Date.now())
 const showDownloads = ref(false)
-const model = computed(() => taskProgress(props.job))
+const waitingBackup = computed(() => props.release?.nextAction === 'backup_decision' && props.release.stage === 'recovery_required')
+const canceledUpdate = computed(() => props.release?.stage === 'abandoned' && props.release.errorCode === 'UPDATE_CANCELED')
+const model = computed(() => waitingBackup.value || canceledUpdate.value
+  ? { ...taskProgress(props.job), status: canceledUpdate.value ? 'canceled' : 'waiting', active: false, percent: null }
+  : taskProgress(props.job))
 const worlds = computed(() => worldRestartProgress(props.job))
 const worldPhase = computed(() => model.value.lifecycle || model.value.restart && model.value.phase === 'restarting')
 const warning = computed(() => globalJobWarning(props.job).message)
 const failure = computed(() => globalJobFailure(props.job, globalT).message)
-const progressLabel = computed(() => props.release ? globalT(`gameReleases.stages.${gameReleaseStageKey(props.release.stage)}`) : props.job.kind === 'software.update' && model.value.active ? globalT(`softwareUpdate.phases.${props.job.softwarePhase || 'downloading'}`) : t(`taskProgress.${model.value.status}`))
+const progressLabel = computed(() => canceledUpdate.value ? globalT('gameReleases.options.canceled') : waitingBackup.value ? globalT('gameReleases.options.backupFailed') : props.release ? globalT(`gameReleases.stages.${gameReleaseStageKey(props.release.stage)}`) : props.job.kind === 'software.update' && model.value.active ? globalT(`softwareUpdate.phases.${props.job.softwarePhase || 'downloading'}`) : t(`taskProgress.${model.value.status}`))
 const succeeded = computed(() => model.value.status === 'succeeded' && !warning.value)
 const tone = computed(() => model.value.status === 'failed' ? 'destructive'
   : warning.value || ['waiting', 'unconfirmed'].includes(model.value.status) ? 'warning'
@@ -171,6 +175,7 @@ watch(() => props.job.id, () => { showDownloads.value = false })
         <CardTitle class="flex min-w-0 flex-wrap items-center gap-2">
           <span class="task-progress-icon" aria-hidden="true">
             <Check v-if="succeeded" class="size-4" />
+            <Minus v-else-if="model.status === 'canceled'" class="size-4" />
             <CircleAlert v-else-if="['failed', 'unconfirmed'].includes(model.status) || warning" class="size-4" />
             <Download v-else-if="model.phase === 'downloading'" class="size-4" />
             <RotateCw v-else class="size-4" />

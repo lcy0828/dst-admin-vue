@@ -14,6 +14,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import ModPreflightReports from './ModPreflightReports.vue'
 
 const { t } = useI18n()
@@ -26,7 +29,8 @@ const dialogState = computed(() => gameUpdateDialogState({ ...state, active: upd
 const installations = computed(() => plan.value?.installations || [])
 const shards = computed(() => installations.value.flatMap(item => item.shards || []))
 const running = computed(() => shards.value.filter(item => item.wasRunning).length)
-const canSubmit = computed(() => plan.value?.ready && plan.value?.updateRequired && plan.value?.planHash &&
+const delayValid = computed(() => state.stopDelaySeconds !== '' && Number.isInteger(Number(state.stopDelaySeconds)) && Number(state.stopDelaySeconds) >= 0 && Number(state.stopDelaySeconds) <= 360)
+const canSubmit = computed(() => plan.value?.ready && plan.value?.updateRequired && delayValid.value &&
   !state.preparing && !state.submitting && !state.uncertain && !state.diagnosticsLoading && !update.active.value)
 const targetName = item => item.targetId === 'local' ? t('gameReleases.values.local') : item.targetName || installations.value.find(target => target.targetId === item.targetId)?.targetName || t('gameReleases.values.unknownTarget')
 const rooms = computed(() => {
@@ -96,8 +100,19 @@ function blockerLabel(blocker) {
           <CircleAlert /><AlertTitle>{{ t('gameReleases.plan.blockerTitle') }}</AlertTitle>
           <AlertDescription class="flex flex-col gap-1"><span v-for="(blocker, index) in plan.blockers" :key="index">{{ blockerLabel(blocker) }}</span></AlertDescription>
         </Alert>
-        <Alert v-else-if="plan.updateRequired">
-          <ShieldCheck /><AlertTitle>{{ t('gameReleases.workflow.protection') }}</AlertTitle><AlertDescription>{{ t(plan.policy?.restartRunning === false ? 'gameReleases.workflow.protectionNoRestoreHint' : 'gameReleases.workflow.protectionHint') }}</AlertDescription>
+        <FieldGroup v-if="plan.updateRequired" :disabled="state.submitting">
+          <Field :data-invalid="!delayValid || undefined" :data-disabled="state.submitting || undefined">
+            <FieldLabel for="game-update-delay">{{ t('gameReleases.options.delay') }}</FieldLabel>
+            <Input id="game-update-delay" type="number" min="0" max="360" step="1" :model-value="state.stopDelaySeconds" :disabled="state.submitting" :aria-invalid="!delayValid" aria-describedby="game-update-delay-hint" @update:model-value="value => update.setOptions({ stopDelaySeconds: value })" />
+            <FieldDescription id="game-update-delay-hint">{{ t(delayValid ? 'gameReleases.options.delayHint' : 'gameReleases.options.delayInvalid') }}</FieldDescription>
+          </Field>
+          <Field orientation="horizontal" :data-disabled="state.submitting || undefined">
+            <FieldContent><FieldLabel for="game-update-backup">{{ t('gameReleases.options.backup') }}</FieldLabel><FieldDescription>{{ t(state.backupBeforeUpdate ? 'gameReleases.options.backupHint' : 'gameReleases.options.noBackupHint') }}</FieldDescription></FieldContent>
+            <Switch id="game-update-backup" :model-value="state.backupBeforeUpdate" :disabled="state.submitting" @update:model-value="value => update.setOptions({ backupBeforeUpdate: value })" />
+          </Field>
+        </FieldGroup>
+        <Alert v-if="plan.updateRequired && !plan.blockers?.length">
+          <ShieldCheck /><AlertTitle>{{ t('gameReleases.options.stopNotice') }}</AlertTitle><AlertDescription>{{ t(plan.policy?.restartRunning === false ? 'gameReleases.workflow.protectionNoRestoreHint' : 'gameReleases.workflow.protectionHint') }}</AlertDescription>
         </Alert>
         <Collapsible v-model:open="technicalOpen">
           <CollapsibleTrigger as-child><Button variant="ghost" size="sm" class="group">{{ t('gameReleases.technical.title') }}<ChevronDown data-icon="inline-end" class="transition-transform group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger>
@@ -107,7 +122,6 @@ function blockerLabel(blocker) {
               <span>{{ t('gameReleases.columns.steamVersions') }}: {{ item.currentVersion || item.steamBuild || '--' }} → {{ item.desiredVersion || '--' }} · {{ item.branch }}</span>
               <span>{{ t('gameReleases.columns.disk') }}: {{ (Number(item.availableBytes) / 1073741824).toFixed(1) }} / {{ (Number(item.requiredBytes) / 1073741824).toFixed(1) }} GiB</span>
             </div>
-            <span class="break-all">{{ t('gameReleases.plan.planHash') }}: {{ plan.planHash }}</span>
             <span v-for="(blocker, index) in plan.blockers || []" :key="`blocker:${index}`" class="break-words">{{ blocker.code }}: {{ blocker.message }}</span>
           </CollapsibleContent>
         </Collapsible>
@@ -122,7 +136,7 @@ function blockerLabel(blocker) {
         <Button v-if="update.active.value" @click="viewProgress">{{ t('gameReleases.workflow.progress') }}</Button>
         <Button v-else-if="state.uncertain" variant="outline" :disabled="state.pendingLoading" @click="update.refreshPending"><RefreshCw data-icon="inline-start" />{{ t('gameReleases.workflow.reconcile') }}</Button>
         <Button v-else-if="['error', 'blocked', 'idle'].includes(dialogState)" :disabled="state.preparing || state.submitting" @click="update.prepare()"><RefreshCw data-icon="inline-start" />{{ t('gameReleases.actions.check') }}</Button>
-        <Button v-else-if="dialogState === 'available'" :disabled="!canSubmit" @click="update.submit"><Spinner v-if="state.submitting" data-icon="inline-start" /><PackageCheck v-else data-icon="inline-start" />{{ t(state.planChanged ? 'gameReleases.workflow.reconfirm' : 'gameReleases.confirm.submit') }}</Button>
+        <Button v-else-if="dialogState === 'available'" :disabled="!canSubmit" @click="update.submit"><Spinner v-if="state.submitting" data-icon="inline-start" /><PackageCheck v-else data-icon="inline-start" />{{ t('gameReleases.options.submit') }}</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

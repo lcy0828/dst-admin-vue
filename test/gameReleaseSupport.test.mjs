@@ -109,7 +109,7 @@ test('game update workspace shares lightweight discovery and opens a read-only p
   assert.match(view, /gameReleasesV2API\.retry/)
   assert.match(view, /jobsV2API\.controlPlaneGet\(jobId\)/)
   assert.match(dialog, /<Collapsible v-model:open="technicalOpen">/)
-  assert.match(dialog, /gameReleases\.plan\.planHash/)
+  assert.doesNotMatch(dialog, /gameReleases\.plan\.planHash/)
   assert.match(controller, /includeModDiagnostics: false/)
   assert.match(controller, /lightweight: true/)
 })

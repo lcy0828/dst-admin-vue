@@ -35,12 +35,14 @@ export function releaseFixture(stage = 'updating') {
 
 async function render(release, locale = 'zh-CN') {
   const app = createSSRApp({ render: () => h(Component, { release }) })
+  app.provide(Symbol.for('dst-admin:game-update'), { state: { activeJobs: [] } })
   app.use(createI18n({ legacy: false, locale, messages: gameReleaseMessages }))
   return renderToString(app)
 }
 
 async function renderDock(props) {
   const app = createSSRApp({ render: () => h(Dock, props) })
+  app.provide(Symbol.for('dst-admin:game-update'), { state: { activeJobs: [] } })
   app.use(createI18n({ legacy: false, locale: 'zh-CN', messages }))
   return renderToString(app)
 }
@@ -158,4 +160,104 @@ test('per-world labels distinguish dispatch, stopped, starting and confirmed run
   assert.equal(gameReleaseShardState({ ...shard, stage: 'confirming' }, release), 'confirming')
   assert.equal(gameReleaseShardState({ ...shard, stage: 'succeeded', runtimeState: 'running' }, release), 'running')
   assert.equal(gameReleaseShardState({ ...shard, stage: 'failed', errorMessage: 'failed' }, release), 'failed')
+})
+
+test('right-corner progress shows countdown and a skipped backup without inventing completion', async () => {
+  const release = releaseFixture('notifying')
+  release.plan.policy.stopDelaySeconds = 60
+  release.plan.policy.skipBackup = true
+  release.protectionBackupIds = []
+  release.countdownEndsAt = new Date(Date.now() + 60_000).toISOString()
+  const progress = gameReleaseProgress(release)
+  assert.equal(progress.steps[0].key, 'notifying')
+  assert.equal(progress.steps[0].state, 'active')
+  assert.equal(progress.steps.find(step => step.key === 'protecting').state, 'skipped')
+  const html = await renderDock({ job: { id: 'job-1', kind: 'game.release', status: 'running' }, release })
+  assert.match(html, /停服倒计时/)
+  assert.match(html, /距离停止世界还有/)
+  assert.match(html, /本次已跳过备份/)
+  assert.doesNotMatch(html, /aria-valuenow="100"/)
+})
+
+test('backup-decision pause exposes retry, skip and cancel in the task dock', async () => {
+  const release = releaseFixture('recovery_required')
+  release.nextAction = 'backup_decision'
+  release.errorMessage = '测试备份失败'
+  release.protectionBackupIds = []
+  const html = await renderDock({ job: { id: 'job-1', kind: 'game.release', status: 'failed' }, release })
+  for (const label of ['备份未成功，等待你的选择', '重试备份', '跳过备份继续', '取消并恢复运行']) assert.match(html, new RegExp(label))
+  assert.match(html, /data-status="waiting"/)
+  assert.doesNotMatch(html, /aria-valuenow="100"/)
+})
+
+test('canceling before a write explains that original running worlds were restored', async () => {
+  const release = releaseFixture('abandoned')
+  release.errorCode = 'UPDATE_CANCELED'
+  release.errorMessage = '已取消更新并恢复原先运行的世界'
+  release.protectionBackupIds = []
+  Object.assign(release.shards[0], { runtimeState: 'running', startedAt: release.updatedAt })
+  const progress = gameReleaseProgress(release)
+  assert.deepEqual(progress.steps.map(step => step.state), ['done', 'skipped', 'skipped', 'done', 'skipped'])
+  assert.equal(progress.restored, 1)
+  assert.equal(progress.keptStopped, 1)
+  const html = await render(release)
+  assert.match(html, /已取消更新/)
+  assert.match(html, /已取消更新并恢复原先运行的世界/)
+  assert.doesNotMatch(html, /游戏更新完成|Steam Build/)
+  const dock = await renderDock({ job: { id: 'job-2', kind: 'game.release.retry', status: 'succeeded', progress: 100 }, release })
+  assert.match(dock, /data-status="canceled"/)
+  assert.match(dock, /已取消更新/)
+  assert.doesNotMatch(dock, /游戏更新完成/)
+})
+
+test('cancel recovery is independent of the update restart preference and skips worlds never stopped', () => {
+  const release = releaseFixture('abandoned')
+  release.errorCode = 'UPDATE_CANCELED'
+  release.plan.policy.restartRunning = false
+  Object.assign(release.shards[0], { runtimeState: 'running', startedAt: release.updatedAt })
+  assert.equal(gameReleaseProgress(release).steps[3].state, 'done')
+  delete release.shards[0].stoppedAt
+  delete release.shards[0].startedAt
+  const progress = gameReleaseProgress(release)
+  assert.equal(progress.steps[0].state, 'skipped')
+  assert.equal(progress.steps[3].state, 'skipped')
+  assert.equal(progress.keptStopped, 1)
+  assert.equal(progress.restoreTotal, 0)
+
+  delete release.errorCode
+  assert.equal(gameReleaseProgress(release).steps[3].state, 'skipped', 'legacy end-maintenance records do not claim restoration')
+})
+
+test('backup-space failure leaves stopping pending and identifies backup as the blocked step', () => {
+  const release = releaseFixture('recovery_required')
+  release.nextAction = 'backup_decision'
+  release.protectionBackupIds = []
+  delete release.shards[0].stoppedAt
+  release.shards[0].stage = 'previewed'
+  release.shards[0].runtimeState = 'running'
+  const progress = gameReleaseProgress(release)
+  assert.equal(progress.steps[0].state, 'pending')
+  assert.equal(progress.steps[1].state, 'interrupted')
+})
+
+test('interrupted countdown does not claim completed notification or failed stop', () => {
+  const release = releaseFixture('failed')
+  release.plan.policy.stopDelaySeconds = 360
+  release.countdownEndsAt = '2026-10-27T12:06:00Z'
+  release.errorCode = 'CANCELED'
+  release.protectionBackupIds = []
+  delete release.shards[0].stoppedAt
+  Object.assign(release.shards[0], { stage: 'previewed', runtimeState: 'running' })
+  const progress = gameReleaseProgress(release)
+  assert.equal(progress.steps[0].state, 'interrupted')
+  assert.equal(progress.steps[0].done, 0)
+  assert.equal(progress.steps[1].state, 'pending')
+})
+
+test('minimized backup-decision task never turns the failed job progress into 100 percent', async () => {
+  const release = releaseFixture('recovery_required')
+  release.nextAction = 'backup_decision'
+  const html = await renderDock({ job: { id: 'job-1', kind: 'game.release', status: 'failed', progress: 100 }, release, minimized: true })
+  assert.match(html, /data-status="waiting"/)
+  assert.doesNotMatch(html, /task-progress-bubble-percent|aria-valuenow="100"/)
 })

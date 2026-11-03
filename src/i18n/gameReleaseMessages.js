@@ -3,6 +3,14 @@ export const gameReleaseMessages = {
     gameReleases: {
       title: '游戏服务端管理',
       subtitle: '查看各机器的安装状态，安装或接入已有服务端，并管理 LuaJIT 和游戏更新。',
+      options: {
+        delay: '停服等待时间（秒）', delayHint: '可设置 0～360 秒。先发送游戏公告，再等待停服；0 表示立即停止。', delayInvalid: '请输入 0～360 之间的整数。',
+        backup: '更新前备份', backupHint: '停止世界后备份存档，再更新游戏。', noBackupHint: '本次直接更新，不创建新的备份。',
+        stopNotice: '更新时会暂时停止相关世界', submit: '开始更新', canceled: '已取消更新',
+        backupFailed: '备份未成功，等待你的选择', backupDecisionHint: '游戏尚未更新。可以重试备份、跳过备份继续更新，或取消并恢复原先运行的世界。',
+        retryBackup: '重试备份', skipBackup: '跳过备份继续', skipWarning: '本次备份未全部完成，继续更新将跳过剩余备份。', confirmSkip: '确认跳过并更新', cancelRestore: '取消并恢复运行',
+        backupSkipped: '本次已跳过备份；已完成的备份仍会保留。', countdown: '距离停止世界还有 {seconds} 秒', stagedWithoutBackup: '已跳过备份，正在准备更新。'
+      },
       workflow: {
         title: '更新游戏服务端', description: '检查游戏版本，确认需要更新的房间。',
         preparing: '正在检查 Steam 版本、运行状态和磁盘空间…',
@@ -84,7 +92,7 @@ export const gameReleaseMessages = {
         unknownRoom: '未知房间', unknownWorld: '未知世界', unknownTarget: '未知机器', defaultInstallation: '默认安装'
       },
       stages: {
-        previewed: '已生成计划', protecting: '保护备份', stopping: '停止分片', staged: '准备更新', updating: '更新安装',
+        previewed: '准备更新', notifying: '停服倒计时', protecting: '保护备份', stopping: '停止分片', staged: '准备更新', updating: '更新安装',
         verified: '版本已校验', restarting: '恢复分片', confirming: '确认世界加载', succeeded: '更新成功',
         abandoned: '已结束维护', failed: '更新失败', recovery_required: '需要人工恢复', unknown: '未知阶段'
       },
@@ -102,10 +110,10 @@ export const gameReleaseMessages = {
       },
       progress: {
         title: '更新进度', steps: '更新执行步骤', updatedAt: '最近更新：{time}',
-        stepsLabels: { stopping: '停止世界', protecting: '保护备份', updating: '更新并校验', restarting: '恢复世界', confirming: '确认加载' },
+        stepsLabels: { notifying: '停服倒计时', stopping: '停止世界', protecting: '保护备份', updating: '更新并校验', restarting: '恢复世界', confirming: '确认加载' },
         states: { pending: '等待', active: '进行中', done: '已完成', skipped: '无需执行', interrupted: '未完成' },
         hints: {
-          previewed: '任务已建立，正在准备执行。', stopping: '正在安全停止原先运行的世界；全部停止后才会备份和更新。',
+          previewed: '任务已建立，正在准备执行。', notifying: '正在发送停服公告，发送后开始倒计时。', stopping: '正在安全停止原先运行的世界；全部停止后才会备份和更新。',
           protecting: '正在创建并验证各房间的保护备份，尚未更新游戏文件。', staged: '保护备份已完成，正在检查安装条件。',
           updating: 'SteamCMD 正在下载更新并校验文件，完成后会读取实际版本。本步骤暂不提供下载百分比。',
           verified: '游戏文件已校验，正在准备恢复原先运行的世界。', restarting: '正在恢复原先运行的世界；原本停止的世界保持停止。',
@@ -130,7 +138,7 @@ export const gameReleaseMessages = {
       confirm: {
         title: '确认备份并更新', description: '确认后将安全停止相关世界、创建保护备份，再更新并恢复原运行状态。',
         warningTitle: '更新期间房间会暂时停止', warningDescription: '本次更新会影响 {rooms} 个房间和 {shards} 个分片。失败时系统会保留恢复状态和完整记录。',
-        submit: '创建备份并更新'
+        submit: '开始更新'
       },
       feedback: {
         operationFailedTitle: '检查或更新失败',
@@ -146,6 +154,14 @@ export const gameReleaseMessages = {
     gameReleases: {
       title: 'Game server management',
       subtitle: 'Inspect installations on each host, install or connect an existing server, and manage LuaJIT and game updates.',
+      options: {
+        delay: 'Wait before stopping (seconds)', delayHint: 'Choose 0–360 seconds. Announce in game, then wait before stopping. 0 stops immediately.', delayInvalid: 'Enter a whole number from 0 to 360.',
+        backup: 'Back up before updating', backupHint: 'Stop worlds, back up saves, then update the game.', noBackupHint: 'Update directly without creating a new backup.',
+        stopNotice: 'Affected worlds will stop during the update', submit: 'Start update', canceled: 'Update canceled',
+        backupFailed: 'Backup failed — choose how to continue', backupDecisionHint: 'Game files have not been updated. Retry the backup, skip it and update, or cancel and restore previously running worlds.',
+        retryBackup: 'Retry backup', skipBackup: 'Skip backup and update', skipWarning: 'Backups are incomplete. Continuing skips the remaining backups.', confirmSkip: 'Confirm skip and update', cancelRestore: 'Cancel and restore worlds',
+        backupSkipped: 'Backup skipped for this update. Completed backups are retained.', countdown: 'Stopping worlds in {seconds} seconds', stagedWithoutBackup: 'Backup skipped. Preparing the update.'
+      },
       workflow: {
         title: 'Update game server', description: 'Check the game version and rooms that need an update.',
         preparing: 'Checking Steam versions, runtime state and disk space…',
@@ -227,7 +243,7 @@ export const gameReleaseMessages = {
         unknownRoom: 'Unknown room', unknownWorld: 'Unknown world', unknownTarget: 'Unknown host', defaultInstallation: 'Default installation'
       },
       stages: {
-        previewed: 'Plan ready', protecting: 'Protection backups', stopping: 'Stopping shards', staged: 'Update staged', updating: 'Updating installation',
+        previewed: 'Preparing update', notifying: 'Stop countdown', protecting: 'Protection backups', stopping: 'Stopping shards', staged: 'Update staged', updating: 'Updating installation',
         verified: 'Version verified', restarting: 'Restoring shards', confirming: 'Confirming world load', succeeded: 'Update succeeded',
         abandoned: 'Maintenance ended', failed: 'Update failed', recovery_required: 'Manual recovery required', unknown: 'Unknown stage'
       },
@@ -245,10 +261,10 @@ export const gameReleaseMessages = {
       },
       progress: {
         title: 'Update progress', steps: 'Update steps', updatedAt: 'Last updated: {time}',
-        stepsLabels: { stopping: 'Stop worlds', protecting: 'Protect backups', updating: 'Update and validate', restarting: 'Restore worlds', confirming: 'Confirm loading' },
+        stepsLabels: { notifying: 'Stop countdown', stopping: 'Stop worlds', protecting: 'Protect backups', updating: 'Update and validate', restarting: 'Restore worlds', confirming: 'Confirm loading' },
         states: { pending: 'Waiting', active: 'In progress', done: 'Completed', skipped: 'Not required', interrupted: 'Incomplete' },
         hints: {
-          previewed: 'The task has been created and is preparing to run.', stopping: 'Safely stopping previously running worlds before backups and game changes.',
+          previewed: 'The task has been created and is preparing to run.', notifying: 'Sending the shutdown announcement. The countdown starts afterward.', stopping: 'Safely stopping previously running worlds before backups and game changes.',
           protecting: 'Creating and verifying protection backups for each room. Game files have not been updated yet.', staged: 'Protection backups are complete. Checking installation prerequisites.',
           updating: 'SteamCMD is downloading updates and validating files. The installed build will be checked afterward. Download percentage is not available for this step.',
           verified: 'Game files have been validated. Preparing to restore previously running worlds.', restarting: 'Restoring previously running worlds. Worlds that were stopped remain stopped.',
