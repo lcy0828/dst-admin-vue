@@ -68,9 +68,12 @@ export default {
         this.loading = false
       }
     },
-    handleChange(roomId) {
-      cronTaskApi.setRoom(roomId)
-      this.$emit('change', roomId)
+    async handleChange(roomId) {
+      const name = String(this.$route.name || '')
+      const path = this.$route.params.id
+        ? (name.includes('Group') ? '/cron/groups' : name.includes('Log') || name.includes('Execution') ? '/cron/logs' : '/cron/tasks')
+        : this.$route.path
+      await this.$router.replace({ path, query: { ...this.$route.query, roomId } })
     }
   }
 }

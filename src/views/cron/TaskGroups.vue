@@ -11,9 +11,10 @@
     <Card>
       <CardHeader><CardTitle>{{ cg('cronGroups.list.cardTitle') }}</CardTitle><CardDescription>{{ cg('cronGroups.list.cardDescription') }}</CardDescription></CardHeader>
       <CardContent>
+        <Alert v-if="loadError" variant="destructive"><AlertTitle>{{ $t('automationScope.tasksFailed') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
         <div v-if="loading && groupList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 5" :key="index" class="h-12 w-full" /></div>
-        <Empty v-else-if="groupList.length === 0"><EmptyHeader><EmptyTitle>{{ cg('cronGroups.list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ cg('cronGroups.list.emptyDescription') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />{{ cg('cronGroups.actions.addGroup') }}</UiButton></EmptyContent></Empty>
-        <div v-else class="overflow-x-auto">
+        <Empty v-else-if="!loadError && groupList.length === 0"><EmptyHeader><EmptyTitle>{{ cg('cronGroups.list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ cg('cronGroups.list.emptyDescription') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />{{ cg('cronGroups.actions.addGroup') }}</UiButton></EmptyContent></Empty>
+        <div v-else-if="groupList.length" class="overflow-x-auto">
           <ShadcnTable>
             <TableHeader><TableRow><TableHead>{{ cg('cronGroups.list.columns.id') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.name') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.description') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.type') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.taskCount') }}</TableHead><TableHead>{{ cg('cronGroups.list.columns.status') }}</TableHead><TableHead class="text-right">{{ cg('cronGroups.list.columns.actions') }}</TableHead></TableRow></TableHeader>
             <TableBody>
@@ -63,9 +64,9 @@
 <script>
 import { ArrowLeft, ChartNoAxesColumn, CircleCheck, CircleOff, Eye, Pencil, Plus, RefreshCw, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
 import { echarts } from '@/lib/echarts.mjs';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -90,9 +91,10 @@ import { confirmAction } from '@/lib/feedback';
 import { getSystemPreferences } from '@/utils/systemPreferences';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskGroups',
   components: {
-    ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription,
+    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription,
     CardHeader, CardTitle, ChartNoAxesColumn, CircleCheck, CircleOff,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
     EmptyDescription, EmptyHeader, EmptyTitle, Eye, Pencil, Plus, RefreshCw, Skeleton,
@@ -101,7 +103,8 @@ export default {
   },
   data() {
     return {
-      loading: false,
+      loading: true,
+      loadError: '',
       statsLoading: false,
       groupList: [],
       statsDialogVisible: false,
@@ -179,7 +182,8 @@ export default {
     },
     fetchData() {
       this.loading = true;
-      cronTaskApi.getGroups()
+      this.loadError = '';
+      this.automationApi.getGroups()
         .then(response => {
           let groupsData = [];
           let success = false;
@@ -210,6 +214,7 @@ export default {
             });
             this.groupList = groupsData;
           } else {
+            this.loadError = this.cg('cronGroups.errors.invalidResponse');
             toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.list', {
               detail: response?.data?.msg || response?.data?.message || this.cg('cronGroups.errors.invalidResponse')
             }));
@@ -217,6 +222,7 @@ export default {
           }
         })
         .catch(error => {
+          this.loadError = error.message || this.cg('cronGroups.errors.invalidResponse');
           console.error('Could not load task groups:', error);
           toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.list', error));
         })
@@ -238,7 +244,7 @@ export default {
         cancelButtonText: this.cg('cronGroups.actions.cancel'),
         type: 'warning'
       }).then(() => {
-        cronTaskApi.deleteGroup(row.id)
+        this.automationApi.deleteGroup(row.id)
           .then(response => {
             if (response.data && (response.data.code === 200 || response.data.status === 200)) {
               toast.success(this.cg('cronGroups.feedback.groupDeleted'));
@@ -257,7 +263,7 @@ export default {
     },
     handleToggleStatus(row) {
       const disabling = row.status === 1;
-      const actionApi = disabling ? cronTaskApi.disableGroup : cronTaskApi.enableGroup;
+      const actionApi = disabling ? this.automationApi.disableGroup : this.automationApi.enableGroup;
       const confirmationKey = disabling ? 'disableGroup' : 'enableGroup';
       const errorKey = disabling ? 'disableGroup' : 'enableGroup';
 
@@ -292,7 +298,7 @@ export default {
       this.disposeChart();
 
       try {
-        const response = await cronTaskApi.getGroupStats(groupId);
+        const response = await this.automationApi.getGroupStats(groupId);
         if (!response.data || (response.data.code !== 200 && response.data.status !== 200)) {
           toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.statistics', response));
           return;
@@ -300,7 +306,7 @@ export default {
         this.groupStats = response.data.data;
 
         try {
-          const chartResponse = await cronTaskApi.getGroupChart(groupId, { days: 30 });
+          const chartResponse = await this.automationApi.getGroupChart(groupId, { days: 30 });
           if (!chartResponse.data || (chartResponse.data.code !== 200 && chartResponse.data.status !== 200)) {
             toast.error(formatCronGroupError(this.cg, 'cronGroups.errors.chart', chartResponse));
             return;

@@ -59,7 +59,6 @@
 <script>
 import { ArrowLeft } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,6 +77,7 @@ import {
 } from '@/i18n/cronGroupMessages';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskGroupForm',
   components: {
     ArrowLeft, AutomationRoomSelect, Card, CardContent, CardDescription, CardHeader,
@@ -126,7 +126,7 @@ export default {
       if (this.isEdit && this.groupId) this.getGroupDetail(this.groupId);
     },
     getGroupDetail(id) {
-      cronTaskApi.getGroupDetail(id)
+      this.automationApi.getGroupDetail(id)
         .then(response => {
           if (response.data && (response.data.status === 200 || response.data.code === 200)) {
             const group = response.data.data;
@@ -165,8 +165,8 @@ export default {
       this.submitting = true;
 
       const apiMethod = this.isEdit
-        ? cronTaskApi.updateGroup(this.groupId, this.groupForm)
-        : cronTaskApi.addGroup(this.groupForm);
+        ? this.automationApi.updateGroup(this.groupId, this.groupForm)
+        : this.automationApi.addGroup(this.groupForm);
 
       apiMethod
         .then(response => {

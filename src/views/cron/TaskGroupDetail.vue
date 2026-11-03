@@ -28,7 +28,6 @@
 <script>
 import { ArrowLeft, Pencil, Play, Plus, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -52,6 +51,7 @@ import {
 import { confirmAction } from '@/lib/feedback';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskGroupDetail',
   components: {
     ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent,
@@ -111,7 +111,7 @@ export default {
     },
     fetchGroupDetail() {
       this.loading = true;
-      cronTaskApi.getGroupDetail(this.groupId)
+      this.automationApi.getGroupDetail(this.groupId)
         .then(response => {
           if (response.data && response.data.status === 200) {
             this.group = response.data.data;
@@ -129,7 +129,7 @@ export default {
     },
     fetchGroupTasks() {
       this.loading = true;
-      cronTaskApi.getGroupTasks(this.groupId)
+      this.automationApi.getGroupTasks(this.groupId)
         .then(response => {
           if (response.data && response.data.status === 200) {
             this.taskList = response.data.data || [];
@@ -163,7 +163,7 @@ export default {
         cancelButtonText: this.cg('cronGroups.actions.cancel'),
         type: 'warning'
       }).then(() => {
-        cronTaskApi.deleteTask(row.id)
+        this.automationApi.deleteTask(row.id)
           .then(response => {
             if (response.data && response.data.status === 200) {
               toast.success(this.cg('cronGroups.feedback.taskDeleted'));
@@ -188,7 +188,7 @@ export default {
       }).then(() => {
         this.loading = true;
         this.currentTaskId = row.id;
-        cronTaskApi.runTask(row.id)
+        this.automationApi.runTask(row.id)
           .then(response => {
             if (response.data && response.data.status === 200) {
               toast.success(this.cg('cronGroups.feedback.taskQueued'));

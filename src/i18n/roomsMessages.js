@@ -1,5 +1,11 @@
 export const roomsMessages = {
   'zh-CN': {
+    automationScope: {
+      chooseAgain: '重新选择房间', filteredTitle: '没有符合条件的任务', filteredDescription: '试试清除筛选条件。', tasksFailed: '暂时无法读取任务分组',
+      title: '定时任务', failed: '暂时无法读取房间',
+      chooseTitle: '先选择一个房间', chooseDescription: '选择房间后，查看它的定时任务、执行记录和统计。',
+      emptyTitle: '当前没有可访问的房间', emptyDescription: '请先创建房间，或切换到有房间的管理范围。'
+    },
     rooms: {
       copy: {
         action: '从其他房间复制', sourceRoom: '来源房间', sourcePlaceholder: '选择要复制的房间',
@@ -392,6 +398,12 @@ export const roomsMessages = {
     }
   },
   'en-US': {
+    automationScope: {
+      chooseAgain: 'Choose another room', filteredTitle: 'No matching tasks', filteredDescription: 'Try clearing the filters.', tasksFailed: 'Could not load task groups',
+      title: 'Scheduled tasks', failed: 'Could not load rooms',
+      chooseTitle: 'Choose a room first', chooseDescription: 'Select a room to view its scheduled tasks, execution history, and statistics.',
+      emptyTitle: 'No accessible rooms', emptyDescription: 'Create a room or switch to a scope with accessible rooms.'
+    },
     rooms: {
       copy: {
         action: 'Copy from another room', sourceRoom: 'Source room', sourcePlaceholder: 'Select a room to copy',

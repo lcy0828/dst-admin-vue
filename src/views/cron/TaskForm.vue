@@ -57,7 +57,7 @@
 <script>
 import { ArrowLeft } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi, roomApi } from '@/api/index';
+import { roomApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,6 +84,7 @@ import {
 } from '@/i18n/cronTaskMessages';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskForm',
   components: {
     ArrowLeft, AutomationRoomSelect, Card, CardContent,
@@ -200,7 +201,7 @@ export default {
       });
     },
     getFunctions() {
-      return cronTaskApi.getFunctions()
+      return this.automationApi.getFunctions()
         .then(response => {
           console.log('函数列表响应:', response);
 
@@ -263,7 +264,7 @@ export default {
         });
     },
     getGroups() {
-      return cronTaskApi.getGroups()
+      return this.automationApi.getGroups()
         .then(response => {
           console.log('获取任务组列表响应:', response);
 
@@ -298,7 +299,7 @@ export default {
         });
     },
     getAvailableTasks() {
-      return cronTaskApi.getTasks()
+      return this.automationApi.getTasks()
         .then(response => {
           console.log('获取可用任务列表响应:', response);
 
@@ -340,7 +341,7 @@ export default {
         });
     },
     getTaskDetail(id) {
-      cronTaskApi.getTaskDetail(id)
+      this.automationApi.getTaskDetail(id)
         .then(response => {
           console.log('获取任务详情响应:', response);
 
@@ -527,7 +528,7 @@ export default {
     },
     // TMUX相关方法
     getTmuxSessions() {
-      return cronTaskApi.getTmuxSessions()
+      return this.automationApi.getTmuxSessions()
         .then(response => {
           if (response.data && response.data.code === 200) {
             this.tmuxSessions = response.data.data || [];
@@ -543,7 +544,7 @@ export default {
     },
 
     getTmuxCommands() {
-      return cronTaskApi.getTmuxCommands()
+      return this.automationApi.getTmuxCommands()
         .then(response => {
           if (response.data && response.data.code === 200) {
             this.tmuxCommands = response.data.data || [];
@@ -658,8 +659,8 @@ export default {
           }
 
           const apiMethod = this.isEdit
-            ? cronTaskApi.updateTask(this.taskId, this.taskForm)
-            : cronTaskApi.addTask(this.taskForm);
+            ? this.automationApi.updateTask(this.taskId, this.taskForm)
+            : this.automationApi.addTask(this.taskForm);
 
           apiMethod
             .then(response => {

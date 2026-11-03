@@ -1,3 +1,4 @@
+import { automationPage } from '@/lib/automationPage'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const MainLayoutV2 = () => import('../layouts/MainLayoutV2.vue')
@@ -260,73 +261,73 @@ export const constantRoutes = [
     children: [
       {
         path: 'tasks',
-        component: () => import('@/views/cron/TaskList.vue'),
+        component: automationPage(() => import('@/views/cron/TaskList.vue')),
         name: 'TaskList',
         meta: { title: '任务列表', titleKey: 'navigation.taskList', icon: 'list' }
       },
       {
         path: 'add',
-        component: () => import('@/views/cron/TaskForm.vue'),
+        component: automationPage(() => import('@/views/cron/TaskForm.vue')),
         name: 'AddTask',
         meta: { title: '添加任务', titleKey: 'navigation.addTask', icon: 'plus' }
       },
       {
         path: 'edit/:id',
-        component: () => import('@/views/cron/TaskForm.vue'),
+        component: automationPage(() => import('@/views/cron/TaskForm.vue')),
         name: 'EditTask',
         meta: { title: '编辑任务', titleKey: 'navigation.editTask', icon: 'edit', hidden: true }
       },
       {
         path: 'groups',
-        component: () => import('@/views/cron/TaskGroups.vue'),
+        component: automationPage(() => import('@/views/cron/TaskGroups.vue')),
         name: 'TaskGroups',
         meta: { title: '任务组管理', titleKey: 'navigation.taskGroups', icon: 'folder' }
       },
       {
         path: 'group/add',
-        component: () => import('@/views/cron/TaskGroupForm.vue'),
+        component: automationPage(() => import('@/views/cron/TaskGroupForm.vue')),
         name: 'AddTaskGroup',
         meta: { title: '添加任务组', titleKey: 'navigation.addTaskGroup', icon: 'plus', hidden: true }
       },
       {
         path: 'group/edit/:id',
-        component: () => import('@/views/cron/TaskGroupForm.vue'),
+        component: automationPage(() => import('@/views/cron/TaskGroupForm.vue')),
         name: 'EditTaskGroup',
         meta: { title: '编辑任务组', titleKey: 'navigation.editTaskGroup', icon: 'edit', hidden: true }
       },
       {
         path: 'group/:id',
-        component: () => import('@/views/cron/TaskGroupDetail.vue'),
+        component: automationPage(() => import('@/views/cron/TaskGroupDetail.vue')),
         name: 'TaskGroupDetail',
         meta: { title: '任务组详情', titleKey: 'navigation.taskGroupDetails', icon: 'folder-opened', hidden: true }
       },
       {
         path: 'logs',
-        component: () => import('@/views/cron/TaskLogs.vue'),
+        component: automationPage(() => import('@/views/cron/TaskLogs.vue')),
         name: 'TaskLogs',
         meta: { title: '执行日志', titleKey: 'navigation.executionLogs', icon: 'document' }
       },
       {
         path: 'logs/:id',
-        component: () => import('@/views/cron/TaskLogDetail.vue'),
+        component: automationPage(() => import('@/views/cron/TaskLogDetail.vue')),
         name: 'TaskLogDetail',
         meta: { title: '日志详情', titleKey: 'navigation.logDetails', icon: 'document', hidden: true }
       },
       {
         path: 'execution/:id',
-        component: () => import('@/views/cron/TaskExecutionResult.vue'),
+        component: automationPage(() => import('@/views/cron/TaskExecutionResult.vue')),
         name: 'TaskExecutionResult',
         meta: { title: '任务执行结果', titleKey: 'navigation.taskResult', icon: 'video-play', hidden: true }
       },
       {
         path: 'charts',
-        component: () => import('@/views/cron/TaskCharts.vue'),
+        component: automationPage(() => import('@/views/cron/TaskCharts.vue')),
         name: 'TaskCharts',
         meta: { title: '统计图表', titleKey: 'navigation.statistics', icon: 'pie-chart' }
       },
       {
         path: 'import-export',
-        component: () => import('@/views/cron/TaskImportExport.vue'),
+        component: automationPage(() => import('@/views/cron/TaskImportExport.vue')),
         name: 'TaskImportExport',
         meta: { title: '导入导出', titleKey: 'navigation.importExport', icon: 'upload' }
       }

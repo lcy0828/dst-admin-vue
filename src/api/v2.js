@@ -1,3 +1,4 @@
+import { AUTH_SCOPE_EVENT } from '@/lib/automationScope.mjs'
 import axios from 'axios'
 import apiConfig from './config'
 import { createIdempotencyKey } from '@/lib/idempotencyKey.mjs'
@@ -151,6 +152,7 @@ export const authAPI = {
     authSessionCache.invalidate()
     return client.post('/auth/setup', { username, password }).then(session => {
       authSessionCache.invalidate()
+      window.dispatchEvent(new Event(AUTH_SCOPE_EVENT))
       return rememberSession(session)
     })
   },
@@ -158,11 +160,13 @@ export const authAPI = {
     authSessionCache.invalidate()
     return client.post('/auth/login', { username, password }).then(session => {
       authSessionCache.invalidate()
+      window.dispatchEvent(new Event(AUTH_SCOPE_EVENT))
       return rememberSession(session)
     })
   },
   logout: () => client.post('/auth/logout').then(session => {
     csrfToken = ''
+    window.dispatchEvent(new Event(AUTH_SCOPE_EVENT))
     authSessionCache.invalidate()
     return session
   }),
@@ -171,6 +175,7 @@ export const authAPI = {
     newPassword
   }).then(session => {
     csrfToken = ''
+    window.dispatchEvent(new Event(AUTH_SCOPE_EVENT))
     authSessionCache.invalidate()
     return session
   })

@@ -129,8 +129,8 @@ test('task group pages localize visible copy while preserving user and protocol 
   assert.match(pages[2], /v-model="groupForm\.name"/)
   assert.match(pages[2], /v-model="groupForm\.description"/)
   assert.match(pages[2], /v-model="groupForm\.type"/)
-  assert.match(pages[2], /cronTaskApi\.updateGroup\(this\.groupId, this\.groupForm\)/)
-  assert.match(pages[2], /cronTaskApi\.addGroup\(this\.groupForm\)/)
+  assert.match(pages[2], /this\.automationApi\.updateGroup\(this\.groupId, this\.groupForm\)/)
+  assert.match(pages[2], /this\.automationApi\.addGroup\(this\.groupForm\)/)
 })
 
 test('task group messages are statically registered in the global locale catalog', async () => {

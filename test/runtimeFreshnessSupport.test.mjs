@@ -171,13 +171,13 @@ test('topology refreshes observations on user reads while game updates use their
   assert.doesNotMatch(controller, /runtimeObservationsV2API/)
 })
 
-test('automation room discovery coalesces active reads without retaining a completed room catalog', async () => {
+test('automation route entry refreshes the shared catalog without eagerly reading every world', async () => {
+  const workspace = await source('src/components/AutomationWorkspace.vue')
+  const scope = await source('src/lib/automationScope.mjs')
   const api = await source('src/api/cronApi.js')
-
-  assert.match(api, /let roomCatalogRequest = null/)
-  assert.match(api, /if \(roomCatalogRequest\) return roomCatalogRequest/)
-  assert.match(api, /roomCatalogRequest = request[\s\S]*?if \(roomCatalogRequest === request\) roomCatalogRequest = null/)
-  assert.doesNotMatch(api, /if \(roomCatalog\.length && !force\) return roomCatalog/)
+  assert.match(workspace, /getRoomScope\(\{ refresh: true \}\)/)
+  assert.match(scope, /if \(request\) return request/)
+  assert.doesNotMatch(api, /rooms\.map[\s\S]*?roomsV2API\.worlds/)
 })
 
 test('server workspace submits starts immediately and confirms disruptive actions', async () => {

@@ -23,7 +23,7 @@ test('automation edit mode loads the task and saves through updateTask', async (
 
   assert.match(form, /this\.isEdit = true/)
   assert.match(form, /this\.getTaskDetail\(this\.taskId\)/)
-  assert.match(form, /this\.isEdit\s*\?\s*cronTaskApi\.updateTask\(this\.taskId, this\.taskForm\)/)
+  assert.match(form, /this\.isEdit\s*\?\s*this\.automationApi\.updateTask\(this\.taskId, this\.taskForm\)/)
   assert.match(form, /toast\.success[\s\S]*?this\.\$router\.push\('\/cron\/tasks'\)/)
 })
 

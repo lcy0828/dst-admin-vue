@@ -77,7 +77,6 @@
 <script>
 import { ArrowLeft, CircleAlert, CircleCheck, CircleX, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
@@ -96,6 +95,7 @@ import {
 } from '@/i18n/cronTaskMessages';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskExecutionResult',
   components: {
     Alert, AlertDescription, AlertTitle, ArrowLeft, Badge, Card, CardContent,
@@ -145,7 +145,7 @@ export default {
   methods: {
     fetchLogDetail() {
       this.loading = true;
-      cronTaskApi.getLogDetail(this.logId)
+      this.automationApi.getLogDetail(this.logId)
         .then(response => {
           console.log('日志详情响应:', response);
 

@@ -49,7 +49,6 @@
 <script>
 import { Download, RefreshCw, Trash2, TriangleAlert, Upload } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
@@ -65,6 +64,7 @@ import { createCronLogFailure, formatCronLogDate, formatCronLogFailure } from '@
 import { confirmAction } from '@/lib/feedback';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskImportExport',
   components: {
     Alert, AlertDescription, AlertTitle, AutomationRoomSelect, Card, CardAction, CardContent,
@@ -96,7 +96,7 @@ export default {
     },
     getExportFiles() {
       this.filesLoading = true;
-      cronTaskApi.getExportFiles()
+      this.automationApi.getExportFiles()
         .then(response => {
           if (response.data && response.data.status === 200) {
             this.exportFiles = response.data.data || [];
@@ -119,7 +119,7 @@ export default {
       }
       
       this.exporting = true;
-      cronTaskApi.exportTasks(this.exportForm)
+      this.automationApi.exportTasks(this.exportForm)
         .then(response => {
           if (response.data && response.data.status === 200) {
             toast.success(this.$t('cronLogs.transfer.feedback.exported'));
@@ -162,7 +162,7 @@ export default {
       formData.append('file', this.importForm.file);
       formData.append('mode', this.importForm.mode);
       
-      cronTaskApi.importTasks(formData)
+      this.automationApi.importTasks(formData)
         .then(response => {
           if (response.data && response.data.status === 200) {
             toast.success(this.$t('cronLogs.transfer.feedback.imported'));
@@ -181,7 +181,7 @@ export default {
         });
     },
     downloadFile(file) {
-      cronTaskApi.downloadExportFile(file.filename)
+      this.automationApi.downloadExportFile(file.filename)
         .then(response => {
           const blob = new Blob([response.data], { type: 'application/json' });
           const link = document.createElement('a');
@@ -201,7 +201,7 @@ export default {
         cancelButtonText: this.$t('common.actions.cancel'),
         type: 'warning'
       }).then(() => {
-        cronTaskApi.deleteExportFile(file.filename)
+        this.automationApi.deleteExportFile(file.filename)
           .then(response => {
             if (response.data && response.data.status === 200) {
               toast.success(this.$t('cronLogs.transfer.feedback.deleted'));

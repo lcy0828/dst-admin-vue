@@ -17,8 +17,8 @@
         <FieldGroup class="filter-grid"><Field><FieldLabel for="task-type-filter">{{ text('list.filters.type') }}</FieldLabel><UiSelect v-model="listQuery.type"><SelectTrigger id="task-type-filter"><SelectValue :placeholder="text('list.filters.selectType')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ text('common.values.all') }}</SelectItem><SelectItem value="function">{{ taskTypeLabel('function') }}</SelectItem><SelectItem value="tmux_command">{{ taskTypeLabel('tmux_command') }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-status-filter">{{ text('list.filters.status') }}</FieldLabel><UiSelect :model-value="String(listQuery.status)" @update:model-value="listQuery.status = $event"><SelectTrigger id="task-status-filter"><SelectValue :placeholder="text('list.filters.selectStatus')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ text('common.values.all') }}</SelectItem><SelectItem value="1">{{ text('common.values.enabled') }}</SelectItem><SelectItem value="0">{{ text('common.values.disabled') }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field><Field><FieldLabel for="task-keyword">{{ text('list.filters.keyword') }}</FieldLabel><UiInput id="task-keyword" v-model="listQuery.keyword" :placeholder="text('list.filters.keywordPlaceholder')" @keyup.enter="fetchData" /></Field><div class="flex items-end gap-2"><UiButton :disabled="loading" @click="fetchData"><Spinner v-if="loading" data-icon="inline-start" /><SearchIcon v-else data-icon="inline-start" />{{ text('common.actions.search') }}</UiButton><UiButton variant="outline" @click="resetQuery">{{ text('common.actions.reset') }}</UiButton></div></FieldGroup>
         <Alert v-if="fetchError" variant="destructive" class="mb-4"><CircleAlert /><AlertTitle>{{ text('list.loadFailedTitle') }}</AlertTitle><AlertDescription>{{ fetchError }}</AlertDescription><AlertAction><UiButton size="sm" variant="outline" @click="retryFetch">{{ text('common.actions.reload') }}</UiButton></AlertAction></Alert>
         <div v-if="loading && taskList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 6" :key="index" class="h-14 w-full" /></div>
-        <Empty v-else-if="taskList.length === 0"><EmptyHeader><EmptyTitle>{{ text('list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ text('list.emptyDescription') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="handleAddTask"><Plus data-icon="inline-start" />{{ text('common.actions.addTask') }}</UiButton></EmptyContent></Empty>
-        <div v-else class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>{{ text('list.columns.id') }}</TableHead><TableHead>{{ text('list.columns.name') }}</TableHead><TableHead>{{ text('list.columns.cron') }}</TableHead><TableHead>{{ text('list.columns.type') }}</TableHead><TableHead>{{ text('list.columns.target') }}</TableHead><TableHead>{{ text('list.columns.dependencies') }}</TableHead><TableHead>{{ text('list.columns.timeoutRetry') }}</TableHead><TableHead>{{ text('list.columns.lastRun') }}</TableHead><TableHead>{{ text('list.columns.status') }}</TableHead><TableHead class="text-right">{{ text('list.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
+        <Empty v-else-if="!fetchError && taskList.length === 0"><EmptyHeader><EmptyTitle>{{ hasTaskFilter ? $t('automationScope.filteredTitle') : text('list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ hasTaskFilter ? $t('automationScope.filteredDescription') : text('list.emptyDescription') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton v-if="hasTaskFilter" variant="outline" @click="resetQuery">{{ text('common.actions.reset') }}</UiButton><UiButton v-else @click="handleAddTask"><Plus data-icon="inline-start" />{{ text('common.actions.addTask') }}</UiButton></EmptyContent></Empty>
+        <div v-else-if="taskList.length" class="overflow-x-auto"><ShadcnTable><TableHeader><TableRow><TableHead>{{ text('list.columns.id') }}</TableHead><TableHead>{{ text('list.columns.name') }}</TableHead><TableHead>{{ text('list.columns.cron') }}</TableHead><TableHead>{{ text('list.columns.type') }}</TableHead><TableHead>{{ text('list.columns.target') }}</TableHead><TableHead>{{ text('list.columns.dependencies') }}</TableHead><TableHead>{{ text('list.columns.timeoutRetry') }}</TableHead><TableHead>{{ text('list.columns.lastRun') }}</TableHead><TableHead>{{ text('list.columns.status') }}</TableHead><TableHead class="text-right">{{ text('list.columns.actions') }}</TableHead></TableRow></TableHeader><TableBody>
           <TableRow v-for="task in taskList" :key="task.id" :class="task.status === 0 ? 'opacity-60' : ''"><TableCell>{{ task.id }}</TableCell><TableCell><div class="min-w-40"><div class="flex items-center gap-2"><span class="font-medium">{{ task.name }}</span><Badge v-if="isNewTask(task)" variant="destructive">{{ text('common.values.new') }}</Badge></div><p v-if="task.description" class="mt-1 max-w-56 truncate text-xs text-muted-foreground">{{ task.description }}</p></div></TableCell><TableCell class="font-mono text-xs">{{ task.spec }}</TableCell><TableCell><Badge variant="outline">{{ getTaskTypeName(task.type) }}</Badge></TableCell><TableCell><TooltipProvider><Tooltip><TooltipTrigger as-child><span class="block max-w-48 truncate">{{ truncate(getFormattedTarget(task), 40) }}</span></TooltipTrigger><TooltipContent>{{ getFormattedTarget(task) }}</TooltipContent></Tooltip></TooltipProvider></TableCell><TableCell><span v-if="!task.dependencies || task.dependencies.length === 0" class="text-muted-foreground">{{ text('common.values.noDependencies') }}</span><div v-else class="flex max-w-48 flex-wrap gap-1"><Badge v-for="dep in task.dependencies" :key="dep.id || dep" variant="secondary">{{ dep.name || dep.id || dep }}</Badge></div></TableCell><TableCell><div class="flex min-w-24 flex-col gap-1 text-xs"><span><Clock class="inline size-3" /> {{ formatTimeout(task.timeout) }}</span><span><RefreshCw class="inline size-3" /> {{ task.retry_times || 0 }}</span></div></TableCell><TableCell><div class="min-w-36"><span v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'">{{ formatDateTime(task.last_run_time) }}</span><span v-else class="text-muted-foreground">{{ text('common.values.notExecuted') }}</span><Badge v-if="task.last_run_time && task.last_run_time !== '0001-01-01T00:00:00Z'" class="mt-1" :variant="task.last_run_status === 'skipped' ? 'secondary' : task.last_status === 1 ? 'default' : 'destructive'">{{ text(task.last_run_status === 'skipped' ? 'common.statuses.skipped' : task.last_status === 1 ? 'common.values.success' : 'common.values.failed') }}</Badge></div></TableCell><TableCell><Badge :variant="task.status === 1 ? 'default' : 'secondary'">{{ text(task.status === 1 ? 'common.values.enabled' : 'common.values.disabled') }}</Badge></TableCell><TableCell><div class="flex min-w-max justify-end gap-1"><UiButton size="icon-sm" variant="outline" :title="text('common.actions.run')" :aria-label="text('list.actionAria.run', { name: task.name })" @click="handleRunNow(task)"><Play /></UiButton><UiButton size="icon-sm" variant="ghost" :title="text(task.status === 1 ? 'common.actions.disableTask' : 'common.actions.enableTask')" :aria-label="text(task.status === 1 ? 'list.actionAria.disable' : 'list.actionAria.enable', { name: task.name })" @click="handleToggleStatus(task)"><CircleOff v-if="task.status === 1" /><CircleCheck v-else /></UiButton><UiButton size="icon-sm" variant="ghost" :title="text('common.actions.edit')" :aria-label="text('list.actionAria.edit', { name: task.name })" @click="handleEdit(task)"><Pencil /></UiButton><DropdownMenu><DropdownMenuTrigger as-child><UiButton size="icon-sm" variant="ghost" :title="text('common.actions.more')" :aria-label="text('list.actionAria.more', { name: task.name })"><Ellipsis /></UiButton></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuGroup><DropdownMenuItem @select="viewTaskLogs(task.id)"><FileText />{{ text('common.actions.viewLogs') }}</DropdownMenuItem><DropdownMenuItem @select="viewTaskStats(task.id)"><ChartNoAxesColumn />{{ text('common.actions.viewStats') }}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem variant="destructive" @select="handleDelete(task)"><Trash2 />{{ text('common.actions.delete') }}</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent></DropdownMenu></div></TableCell></TableRow>
         </TableBody></ShadcnTable></div>
         <div v-if="total > 0" class="mt-4 flex flex-wrap items-center justify-between gap-3"><div class="flex items-center gap-2 text-sm text-muted-foreground"><span>{{ text('list.pagination.perPage') }}</span><UiSelect :model-value="String(listQuery.limit)" @update:model-value="handleSizeChange(Number($event))"><SelectTrigger class="w-24" :aria-label="text('list.pagination.perPageAria')"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="size in [10,20,50,100]" :key="size" :value="String(size)">{{ size }}</SelectItem></SelectGroup></SelectContent></UiSelect><span>{{ text('list.pagination.total', { count: total }) }}</span></div><ShadcnPagination v-model:page="listQuery.page" :total="total" :items-per-page="listQuery.limit" show-edges @update:page="handleCurrentChange"><PaginationContent v-slot="{ items }"><PaginationPrevious /><template v-for="(item, index) in items" :key="index"><PaginationItem v-if="item.type === 'page'" :value="item.value" :is-active="item.value === listQuery.page">{{ item.value }}</PaginationItem><PaginationEllipsis v-else :index="index" /></template><PaginationNext /></PaginationContent></ShadcnPagination></div>
@@ -85,7 +85,6 @@
 <script>
 import { ChartNoAxesColumn, CircleAlert, CircleCheck, CircleOff, Clock, Ellipsis, FileText, Info, Pencil, Play, Plus, RefreshCw, Search as SearchIcon, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
 import { echarts } from '@/lib/echarts.mjs';
 import { LineChart } from 'echarts/charts';
 
@@ -120,6 +119,7 @@ import {
 import { confirmAction } from '@/lib/feedback';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskList',
   components: {
     Alert, AlertAction, AlertDescription, AlertTitle, AutomationRoomSelect, Badge, Card, CardContent,
@@ -135,7 +135,7 @@ export default {
   },
   data() {
     return {
-      loading: false,
+      loading: true,
       statsLoading: false,
       taskList: [],
       groupList: [],
@@ -162,6 +162,11 @@ export default {
     };
   },
   computed: {
+    hasTaskFilter() {
+      return Boolean(this.listQuery.keyword || this.listQuery.group_id ||
+        (this.listQuery.type && this.listQuery.type !== 'all') ||
+        (this.listQuery.status !== undefined && this.listQuery.status !== '' && this.listQuery.status !== 'all'));
+    },
     activeLocale() {
       const state = this.$i18n?.locale;
       return typeof state === 'string' ? state : (state?.value || 'zh-CN');
@@ -294,7 +299,7 @@ export default {
 
     // 获取TMUX命令列表
     fetchTmuxCommands() {
-      return cronTaskApi.getTmuxCommands()
+      return this.automationApi.getTmuxCommands()
         .then(response => {
           if (response.data && response.data.code === 200) {
             this.tmuxCommands = response.data.data || [];
@@ -402,7 +407,7 @@ export default {
         status: this.listQuery.status === 'all' ? '' : this.listQuery.status
       };
       console.log('开始获取任务列表, 查询参数:', query);
-      cronTaskApi.getTasks(query)
+      this.automationApi.getTasks(query)
         .then(response => {
           console.log('获取任务列表响应:', response);
 
@@ -539,7 +544,7 @@ export default {
     },
     fetchGroups() {
       console.log('开始获取任务组列表');
-      return cronTaskApi.getGroups()
+      return this.automationApi.getGroups()
         .then(response => {
           console.log('获取任务组列表响应:', response);
 
@@ -640,7 +645,7 @@ export default {
         cancelButtonText: this.text('common.actions.cancel'),
         type: 'warning'
       }).then(() => {
-        cronTaskApi.deleteTask(row.id)
+        this.automationApi.deleteTask(row.id)
           .then(response => {
             console.log('删除任务响应:', response);
             // 处理多种可能的响应格式
@@ -666,7 +671,7 @@ export default {
     },
     handleToggleStatus(row) {
       const action = row.status === 1 ? 'disable' : 'enable';
-      const actionApi = row.status === 1 ? cronTaskApi.disableTask : cronTaskApi.enableTask;
+      const actionApi = row.status === 1 ? this.automationApi.disableTask : this.automationApi.enableTask;
 
       confirmAction(this.text(`list.confirm.${action}Message`), this.text(`list.confirm.${action}Title`), {
         confirmButtonText: this.text('common.actions.confirm'),
@@ -705,7 +710,7 @@ export default {
       }).then(() => {
         this.loading = true;
         this.currentTaskId = row.id;
-        cronTaskApi.runTask(row.id)
+        this.automationApi.runTask(row.id)
           .then(response => {
             console.log('立即执行任务响应:', response);
             // 处理多种可能的响应格式
@@ -795,7 +800,7 @@ export default {
       this.currentTaskId = taskId;
 
       // 获取任务统计数据
-      cronTaskApi.getTaskStats(taskId)
+      this.automationApi.getTaskStats(taskId)
         .then(response => {
           console.log('获取任务统计数据响应:', response);
 
@@ -821,7 +826,7 @@ export default {
             console.log('处理后的任务统计数据:', this.taskStats);
 
             // 获取执行状态图表数据
-            cronTaskApi.getTaskChart(taskId, { days: 30 })
+            this.automationApi.getTaskChart(taskId, { days: 30 })
               .then(chartResponse => {
                 console.log('获取任务图表数据响应:', chartResponse);
                 // 处理多种可能的响应格式
@@ -843,7 +848,7 @@ export default {
               });
 
             // 获取执行时长图表数据
-            cronTaskApi.getTaskDurationChart(taskId, { days: 30 })
+            this.automationApi.getTaskDurationChart(taskId, { days: 30 })
               .then(durationResponse => {
                 console.log('获取任务时长图表数据响应:', durationResponse);
                 // 处理多种可能的响应格式

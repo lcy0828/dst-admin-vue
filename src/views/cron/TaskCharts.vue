@@ -17,7 +17,7 @@
     </Card>
 
     <div v-if="loading" class="flex flex-col gap-4"><Skeleton class="h-36 w-full" /><Skeleton class="h-96 w-full" /></div>
-    <div v-else class="flex min-w-0 flex-col gap-6">
+    <div v-else-if="!loadError" class="flex min-w-0 flex-col gap-6">
       <div class="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <Card><CardHeader><CardTitle>{{ text('charts.metrics.totalTasks') }}</CardTitle><CardDescription>{{ text('charts.metrics.currentRange') }}</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.total_tasks || 0 }}</strong></CardContent></Card>
         <Card><CardHeader><CardTitle>{{ text('charts.metrics.totalExecutions') }}</CardTitle><CardDescription>{{ text('charts.metrics.cumulativeRuns') }}</CardDescription></CardHeader><CardContent class="min-h-16 pt-1"><strong class="text-3xl font-semibold tabular-nums">{{ overview.total_executions || 0 }}</strong></CardContent></Card>
@@ -43,7 +43,6 @@
 <script>
 import { ArrowLeft, CircleAlert, RefreshCw } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
 import { echarts } from '@/lib/echarts.mjs';
 import { LineChart, PieChart } from 'echarts/charts';
 
@@ -65,6 +64,7 @@ import {
 import { getSystemPreferences } from '@/utils/systemPreferences';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskCharts',
   components: {
     Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Card, CardContent,
@@ -74,7 +74,7 @@ export default {
   },
   data() {
     return {
-      loading: false,
+      loading: true,
       loadFailure: null,
       dateRange: '30',
       groupId: '',
@@ -181,7 +181,7 @@ export default {
       this.loadAllCharts();
     },
     fetchGroups() {
-      cronTaskApi.getGroups()
+      this.automationApi.getGroups()
         .then(response => {
           console.log('获取任务组列表响应:', response);
           
@@ -221,7 +221,7 @@ export default {
         return;
       }
       
-      cronTaskApi.getGroupTasks(groupId)
+      this.automationApi.getGroupTasks(groupId)
         .then(response => {
           console.log('获取任务列表响应:', response);
           
@@ -274,12 +274,13 @@ export default {
       this.groupId = '';
       
       // 获取概览数据
-      cronTaskApi.getOverviewChart({ days: this.dateRange })
+      this.automationApi.getOverviewChart({ days: this.dateRange })
         .then(response => {
           console.log('获取概览数据响应:', response);
           if (response.data && (response.data.code === 200 || response.data.status === 200)) {
             this.overview = response.data.data.stats || {};
             
+            this.loading = false;
             this.$nextTick(() => {
               this.initOverviewChart(response.data.data);
               this.initDurationChart(response.data.data);
@@ -302,10 +303,11 @@ export default {
       this.loading = true;
       this.loadFailure = null;
       
-      cronTaskApi.getGroupChart(this.groupId, { days: this.dateRange })
+      this.automationApi.getGroupChart(this.groupId, { days: this.dateRange })
         .then(response => {
           console.log('获取任务组图表数据响应:', response);
           if (response.data && (response.data.code === 200 || response.data.status === 200)) {
+            this.loading = false;
             this.$nextTick(() => {
               this.initGroupTasksChart(response.data.data);
             });
@@ -328,10 +330,11 @@ export default {
       this.loadFailure = null;
       
       // 获取任务执行图表
-      cronTaskApi.getTaskChart(this.taskId, { days: this.dateRange })
+      this.automationApi.getTaskChart(this.taskId, { days: this.dateRange })
         .then(response => {
           console.log('获取任务执行图表数据响应:', response);
           if (response.data && (response.data.code === 200 || response.data.status === 200)) {
+            this.loading = false;
             this.$nextTick(() => {
               this.initTaskExecutionChart(response.data.data);
             });
@@ -345,10 +348,11 @@ export default {
         });
       
       // 获取任务执行时长图表
-      cronTaskApi.getTaskDurationChart(this.taskId, { days: this.dateRange })
+      this.automationApi.getTaskDurationChart(this.taskId, { days: this.dateRange })
         .then(response => {
           console.log('获取任务执行时长图表数据响应:', response);
           if (response.data && (response.data.code === 200 || response.data.status === 200)) {
+            this.loading = false;
             this.$nextTick(() => {
               this.initTaskDurationChart(response.data.data);
             });

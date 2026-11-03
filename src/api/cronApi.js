@@ -1,7 +1,7 @@
 import {
-  automationV2API,
-  consoleV2API,
-  roomsV2API
+  automationV2API as rawAutomationAPI,
+  consoleV2API as rawConsoleAPI,
+  roomsV2API as rawRoomsAPI
 } from './v2'
 import {
   isSystemAutomationGroup,
@@ -10,26 +10,38 @@ import {
 } from '@/lib/systemDataIdentifiers.mjs'
 import { MANAGEMENT_SCOPE_CHANGED_EVENT } from '@/lib/managementScope.mjs'
 
-const ROOM_KEY = 'dst-admin.automation.room-id'
+import { createAutomationScope, guardAutomationAPI, AUTOMATION_SCOPE_EVENT, AUTH_SCOPE_EVENT } from '@/lib/automationScope.mjs'
+
+const exportHistoryByRoom = new Map()
+const scope = createAutomationScope({
+  listRooms: () => rawRoomsAPI.list(),
+  storage: typeof sessionStorage === 'undefined' ? null : sessionStorage,
+  changed: () => window.dispatchEvent(new Event(AUTOMATION_SCOPE_EVENT))
+})
+window.addEventListener(AUTOMATION_SCOPE_EVENT, () => exportHistoryByRoom.clear())
+window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, () => scope.invalidate())
+window.addEventListener(AUTH_SCOPE_EVENT, () => scope.invalidate({ forget: true }))
 const SUCCESS_STATUSES = new Set(['succeeded'])
 const FAILURE_STATUSES = new Set(['failed', 'canceled'])
 
-let roomCatalog = []
-let roomCatalogRequest = null
-let activeRoomId = sessionStorage.getItem(ROOM_KEY) || ''
-let taskCache = new Map()
-let groupCache = new Map()
-let actionCache = []
-let commandCache = []
-let exportHistory = []
-
-if (typeof window !== 'undefined') {
-  window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, () => {
-    roomCatalog = []
-    roomCatalogRequest = null
-  })
-}
-
+function createRoomApi(binding) {
+  const automationV2API = guardAutomationAPI(rawAutomationAPI, scope, binding)
+  const consoleV2API = guardAutomationAPI(rawConsoleAPI, scope, binding)
+  const roomsV2API = guardAutomationAPI(rawRoomsAPI, scope, binding)
+  const taskCache = new Map()
+  const groupCache = new Map()
+  let actionCache = []
+  let commandCache = []
+  let exportHistory = exportHistoryByRoom.get(binding.room.id) || []
+  if (binding.room.id) exportHistoryByRoom.set(binding.room.id, exportHistory)
+  async function activeRoom() { scope.assert(binding); return binding.room }
+  async function roomForCached() { return activeRoom() }
+  async function findRoomFor() { return activeRoom() }
+  async function roomWorlds(room) {
+    if (room.worlds) return room.worlds
+    room.worlds = (await roomsV2API.worlds(room.id)).items || []
+    return room.worlds
+  }
 function nested(data, message = '操作成功') {
   return {
     code: 200,
@@ -38,88 +50,6 @@ function nested(data, message = '操作成功') {
     message,
     data: { code: 200, status: 200, data, msg: message, message }
   }
-}
-
-async function loadRooms() {
-  if (roomCatalogRequest) return roomCatalogRequest
-  const request = (async () => {
-    const response = await roomsV2API.list()
-    const rooms = response.items || []
-    const current = await Promise.all(rooms.map(async room => {
-      const worlds = await roomsV2API.worlds(room.id)
-      return { ...room, worlds: worlds.items || [] }
-    }))
-    if (activeRoomId && !current.some(room => room.id === activeRoomId)) {
-      activeRoomId = ''
-      sessionStorage.removeItem(ROOM_KEY)
-    }
-    roomCatalog = current
-    if (!activeRoomId && roomCatalog.length === 1) setActiveRoom(roomCatalog[0].id)
-    return roomCatalog
-  })()
-  roomCatalogRequest = request
-  try {
-    return await request
-  } finally {
-    if (roomCatalogRequest === request) roomCatalogRequest = null
-  }
-}
-
-function setActiveRoom(roomId) {
-  if (roomId && !roomCatalog.some(room => room.id === roomId)) {
-    throw new Error('所选房间不存在')
-  }
-  activeRoomId = roomId || ''
-  if (activeRoomId) sessionStorage.setItem(ROOM_KEY, activeRoomId)
-  else sessionStorage.removeItem(ROOM_KEY)
-}
-
-async function activeRoom() {
-  const rooms = await loadRooms()
-  if (!rooms.length) throw new Error('当前没有发现真实房间')
-  const room = rooms.find(item => item.id === activeRoomId)
-  if (room) return room
-  if (rooms.length === 1) {
-    setActiveRoom(rooms[0].id)
-    return rooms[0]
-  }
-  throw new Error('请先选择要管理的房间')
-}
-
-async function findRoomFor(kind, id) {
-  const rooms = await loadRooms()
-  const ordered = activeRoomId
-    ? [...rooms.filter(room => room.id === activeRoomId), ...rooms.filter(room => room.id !== activeRoomId)]
-    : rooms
-  for (const room of ordered) {
-    try {
-      if (kind === 'task') await automationV2API.task(room.id, id)
-      if (kind === 'run') await automationV2API.run(room.id, id)
-      if (kind === 'group') {
-        const response = await automationV2API.groups(room.id)
-        if (!(response.items || []).some(item => item.id === id)) continue
-      }
-      setActiveRoom(room.id)
-      return room
-    } catch (error) {
-      if (error.status !== 404) throw error
-    }
-  }
-  throw new Error('没有找到对应的定时任务数据')
-}
-
-async function roomForCached(kind, id) {
-  const cache = kind === 'task' ? taskCache : groupCache
-  const cached = cache.get(id)
-  if (cached) {
-    const rooms = await loadRooms()
-    const room = rooms.find(item => item.id === cached.roomId)
-    if (room) {
-      setActiveRoom(room.id)
-      return room
-    }
-  }
-  return findRoomFor(kind, id)
 }
 
 function mapGroup(group, roomId) {
@@ -260,13 +190,12 @@ function valueForParameter(value, parameter) {
 async function taskInput(data, room, existing = null) {
   if (data.type === 'shell') throw new Error('定时 Shell 已被后端安全策略禁用，请改用受控函数')
   let groupId = data.group_id
-  if (!groupId || groupId === 0 || groupId === '0') groupId = (await ensureDefaultGroup(room)).id
   const parameters = {}
   const worldIds = []
   let action = data.target
   if (data.type === 'tmux_raw_command') {
     action = 'command.execute'
-    const world = room.worlds.find(item => item.id === data.session_name)
+    const world = (await roomWorlds(room)).find(item => item.id === data.session_name)
     if (!world) throw new Error('请选择命令执行世界')
     worldIds.push(world.id)
     parameters.rawCommand = String(data.raw_command || '').trim()
@@ -275,7 +204,7 @@ async function taskInput(data, room, existing = null) {
     const definition = commandCache.find(item => item.id === data.command_id)
     if (!definition) throw new Error('请选择已有命令')
     if (!data.session_name) throw new Error('请选择命令执行世界')
-    const selectedWorld = room.worlds.find(world => world.id === data.session_name || world.name === data.session_name || world.directoryName === data.session_name)
+    const selectedWorld = (await roomWorlds(room)).find(world => world.id === data.session_name || world.name === data.session_name || world.directoryName === data.session_name)
     if (!selectedWorld) throw new Error('所选命令执行世界不存在')
     worldIds.push(selectedWorld.id)
     const values = data.command_params || []
@@ -296,6 +225,7 @@ async function taskInput(data, room, existing = null) {
       parameters[name] = name === 'keep' ? Number(value) : value
     })
   }
+  if (!groupId || groupId === 0 || groupId === '0') groupId = (await ensureDefaultGroup(room)).id
   return {
     groupId,
     name: String(data.name || '').trim(),
@@ -387,19 +317,7 @@ async function runsForChart(room, params, days) {
   return loadAllRuns(room, { ...params, startDate: dateKey(start) })
 }
 
-export const realCronTaskApi = {
-  async getRoomScope() {
-    const rooms = await loadRooms()
-    return {
-      rooms: rooms.map(room => ({ id: room.id, name: room.name, directoryName: room.directoryName })),
-      roomId: activeRoomId
-    }
-  },
-
-  setRoom(roomId) {
-    setActiveRoom(roomId)
-  },
-
+const api = {
   async getTasks(params = {}) {
     const room = await activeRoom()
     let tasks = await loadTaskData(room)
@@ -573,7 +491,7 @@ export const realCronTaskApi = {
 
   async getTmuxSessions() {
     const room = await activeRoom()
-    return nested(room.worlds.map(world => ({
+    return nested((await roomWorlds(room)).map(world => ({
       name: world.id,
       session_name: world.id,
       archive_name: room.name,
@@ -716,6 +634,7 @@ export const realCronTaskApi = {
 
   deleteExportFile(filename) {
     exportHistory = exportHistory.filter(item => item.filename !== filename)
+    exportHistoryByRoom.set(binding.room.id, exportHistory)
     return Promise.resolve(nested({ deleted: true }, '已移除本次浏览器导出记录'))
   },
 
@@ -740,5 +659,49 @@ export const realCronTaskApi = {
       replace: mode === 'override'
     })
     return nested(result, `导入完成：${result.groupsCreated} 个组，${result.tasksCreated} 个任务`)
+  }
+}
+
+  for (const [name, method] of Object.entries(api)) api[name] = async (...args) => {
+    scope.assert(binding)
+    const result = await method.apply(api, args)
+    scope.assert(binding)
+    return result
+  }
+  api.dispose = () => { binding.disposed = true }
+  return api
+}
+
+export const realCronTaskApi = {
+  getRoomScope: options => scope.load(options),
+  setRoom: id => scope.select(id),
+  forCurrentRoom: () => createRoomApi(scope.capture()),
+  async resolveRoom(kind, id, preferredId = '') {
+    const current = await scope.load()
+    const candidates = preferredId ? current.rooms.filter(room => room.id === preferredId)
+      : [...current.rooms].sort((a, b) => Number(b.id === current.roomId) - Number(a.id === current.roomId))
+    for (const room of candidates) {
+      // Do not change the user's selection until the lookup has succeeded.
+      try {
+        if (kind === 'task') await rawAutomationAPI.task(room.id, id)
+        if (kind === 'run') await rawAutomationAPI.run(room.id, id)
+        if (kind === 'group' && !(await rawAutomationAPI.groups(room.id)).items?.some(item => item.id === id)) continue
+        const latest = await scope.load()
+        if (latest.generation !== current.generation) throw new Error('房间已变化，请重新打开详情')
+        scope.select(room.id)
+        return
+      } catch (error) { if (error.status !== 404) throw error }
+    }
+    throw new Error('当前可访问房间中没有找到这条记录')
+  }
+}
+// Preserve the legacy adapter for other callers. Each invocation still captures
+// a room once; nested awaits can never resolve a new global selection.
+const methodNames = Object.keys(createRoomApi({ room: {}, generation: -1 }))
+for (const name of methodNames) {
+  if (name === 'dispose') continue
+  realCronTaskApi[name] = async (...args) => {
+    await scope.load()
+    return realCronTaskApi.forCurrentRoom()[name](...args)
   }
 }

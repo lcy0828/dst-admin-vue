@@ -40,7 +40,6 @@
 <script>
 import { ArrowLeft, CircleAlert, Eye, RefreshCw, Search as SearchIcon, Trash2 } from '@lucide/vue';
 import { toast } from 'vue-sonner';
-import { cronTaskApi } from '@/api/index';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -68,6 +67,7 @@ import {
 import { confirmAction } from '@/lib/feedback';
 
 export default {
+  inject: ['automationApi'],
   name: 'TaskLogs',
   components: {
     Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card,
@@ -81,7 +81,7 @@ export default {
   },
   data() {
     return {
-      loading: false,
+      loading: true,
       loadFailure: null,
       logList: [],
       taskOptions: [],
@@ -139,7 +139,7 @@ export default {
       this.fetchData();
     },
     fetchTasks() {
-      cronTaskApi.getTasks()
+      this.automationApi.getTasks()
         .then(response => {
           console.log('任务列表响应:', response);
           if (response.data && response.data.code === 200) {
@@ -170,7 +170,7 @@ export default {
         status: this.listQuery.status === 'all' ? '' : this.listQuery.status
       };
       console.log('发送日志查询参数:', query);
-      cronTaskApi.getLogs(query)
+      this.automationApi.getLogs(query)
         .then(response => {
           console.log('日志列表原始响应:', response);
 
@@ -270,7 +270,7 @@ export default {
         type: 'warning'
       }).then(() => {
         this.clearLoading = true;
-        cronTaskApi.clearLogs({
+        this.automationApi.clearLogs({
           ...this.clearForm,
           task_id: this.clearForm.task_id === 'all' ? '' : this.clearForm.task_id,
           status: this.clearForm.status === 'all' ? '' : this.clearForm.status
