@@ -34,7 +34,7 @@ const props = defineProps({
   selectedFeatureId: { type: String, default: '' }
 })
 
-const emit = defineEmits(['feature-selected', 'image-loaded', 'image-error'])
+const emit = defineEmits(['feature-selected', 'point-selected', 'image-loaded', 'image-error'])
 
 const categoryColors = Object.freeze({
   spawnPoint: '#f59e0b',
@@ -276,6 +276,7 @@ function focusFeature(featureId) {
 function handleMapClick(event) {
   const marker = map.forEachFeatureAtPixel(event.pixel, feature => feature, { hitTolerance: 5 })
   emit('feature-selected', marker?.get('payload') || null)
+  emit('point-selected', event.coordinate)
 }
 
 onMounted(() => {

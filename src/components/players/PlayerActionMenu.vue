@@ -194,7 +194,7 @@ function openWorkbench(section = defaultWorkbenchSection.value) {
   if (previewMode) return toast.info(t('players.quick.previewNotice'))
   dropdownOpen.value = false
   dialogOpen.value = false
-  activeWorkbenchSection.value = ['entity', 'player', 'world'].includes(section)
+  activeWorkbenchSection.value = ['entity', 'player', 'world', 'locations'].includes(section)
     ? section
     : defaultWorkbenchSection.value
   workbenchOpen.value = true
@@ -401,6 +401,7 @@ async function runQuickAction({ action, input = {} }) {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem @select="openWorkbench('locations')"><ChevronRight />{{ t('players.locations') }}</DropdownMenuItem>
           <DropdownMenuItem @select="openWorkbench('entity')"><HeartPlus />{{ t('players.quick.more') }}</DropdownMenuItem>
           <DropdownMenuItem @select="openActionDialog()"><ChevronRight />{{ t('players.quick.moreActions') }}</DropdownMenuItem>
         </DropdownMenuGroup>

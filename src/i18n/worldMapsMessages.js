@@ -127,6 +127,7 @@ export const worldMapsMessages = {
         defaultWorld: '世界',
         listSeparator: '、'
       },
+      locations: { save: '在地图上保存地点', cancel: '取消选点', hint: '点击地图上的位置，为它命名并保存。' },
       actions: {
         refresh: '刷新',
         retry: '重试',
@@ -337,6 +338,7 @@ export const worldMapsMessages = {
         defaultWorld: 'World',
         listSeparator: ', '
       },
+      locations: { save: 'Save a map location', cancel: 'Cancel location selection', hint: 'Click a point on the map to name and save it.' },
       actions: {
         refresh: 'Refresh',
         retry: 'Retry',

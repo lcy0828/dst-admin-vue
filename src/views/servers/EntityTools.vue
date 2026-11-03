@@ -2,6 +2,8 @@
 import EntityArtwork from '@/components/game-tools/EntityArtwork.vue'
 import ResourceEntityPicker from '@/components/game-tools/ResourceEntityPicker.vue'
 import { rememberResource } from '@/lib/resourceLibrary.mjs'
+import WorkbenchLocations from '@/components/game-tools/WorkbenchLocations.vue'
+import { isMovementCommand, movementPreview } from '@/lib/locationResults.mjs'
 import WorkbenchCommands from '@/components/game-tools/WorkbenchCommands.vue'
 import CommandRunResult from '@/components/game-tools/CommandRunResult.vue'
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
@@ -182,7 +184,7 @@ const props = defineProps({
   initialSection: {
     type: String,
     default: 'entity',
-    validator: value => ['entity', 'player', 'world', 'commands'].includes(value)
+    validator: value => ['entity', 'player', 'world', 'commands', 'locations'].includes(value)
   }
 })
 
@@ -937,6 +939,38 @@ function clearPendingConfirmation() {
 async function submitOperation(section, operation, confirmationRequired) {
   if (!operation) return
   executionError.value = ''
+  if (isMovementCommand(operation.commandId)) {
+    const prepared = isConfirmationArmed(section, operation) && pendingConfirmation.value?.movement
+    if (prepared && Date.now() < prepared.until) {
+      operation = { ...operation, arguments: { ...operation.arguments, phase: 'execute', preview_id: prepared.id } }
+    } else {
+      clearPendingConfirmation()
+      const room = currentRoom.value, world = currentWorld.value
+      if (!room || !world || executing.value) return
+      const key = operationKey(operation), context = targetSequence, started = Date.now()
+      executing.value = true
+      try {
+        const run = await commandApi.executeCommand(`${room.id}::${world.id}`, operation.commandId, { ...operation.arguments, phase: 'preview' }, room.name)
+        if (context !== targetSequence || key !== operationKey(operation)) return
+        lastOperationRun.value = run
+        lastOperationSection.value = section
+        lastOperationTarget.value = `${room.name} / ${world.name}`
+        const movement = movementPreview(run, started)
+        if (!movement) {
+          executionError.value = locale.value.startsWith('en') ? 'Destination check was not confirmed. No teleport was submitted.' : '未能确认本次玩家和落点，尚未提交传送。'
+          return
+        }
+        pendingConfirmation.value = { section, key, movement }
+        confirmationTimer = window.setTimeout(clearPendingConfirmation, movement.until - Date.now())
+      } catch (error) {
+        if (context === targetSequence) {
+          if (error.run) lastOperationRun.value = error.run
+          executionError.value = error.detail || error.message
+        }
+      } finally { executing.value = false }
+      return
+    }
+  } else
   if (confirmationRequired && !isConfirmationArmed(section, operation)) {
     window.clearTimeout(confirmationTimer)
     pendingConfirmation.value = { section, key: operationKey(operation) }
@@ -1166,6 +1200,7 @@ onBeforeUnmount(() => {
           <TabsTrigger value="entity"><Boxes data-icon="inline-start" />{{ t('entityTools.sections.entity') }}</TabsTrigger>
           <TabsTrigger value="player"><UserRound data-icon="inline-start" />{{ t('entityTools.sections.player') }}</TabsTrigger>
           <TabsTrigger value="world"><SunMedium data-icon="inline-start" />{{ t('entityTools.sections.world') }}</TabsTrigger>
+          <TabsTrigger value="locations">{{ locale.startsWith('en') ? 'Locations' : '地点' }}</TabsTrigger>
           <TabsTrigger value="commands"><Code data-icon="inline-start" />{{ t('workbench.section') }}</TabsTrigger>
         </TabsList>
 
@@ -1767,6 +1802,7 @@ onBeforeUnmount(() => {
           </Card>
           <CommandRunResult v-if="lastOperationRun && lastOperationSection === 'world'" class="mt-3" :run="lastOperationRun" :target="lastOperationTarget" />
         </TabsContent>
+        <TabsContent value="locations"><WorkbenchLocations v-if="activeSection === 'locations'" :room-id="selectedRoomId" :world-id="selectedWorldId" :player-id="currentPlayerIsOnline ? selectedPlayerId : ''" :player-name="currentPlayer ? playerName(currentPlayer) : ''" /></TabsContent>
         <TabsContent value="commands" force-mount v-show="activeSection === 'commands'">
           <WorkbenchCommands v-if="commandsOpened" :room-id="selectedRoomId" :room-name="currentRoom?.name || ''" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :player-id="currentPlayerIsOnline ? selectedPlayerId : ''" :running="currentWorld?.status === 'running'"
                 :world-status="currentWorld?.status || ''"
@@ -1785,7 +1821,7 @@ onBeforeUnmount(() => {
 .target-toolbar-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: .75rem; }
 .target-toolbar-fields :deep([data-slot="field"]) { gap: .35rem; }
 .tools-workspace { min-width: 0; }
-.section-tabs-list { display: grid; width: 100%; height: auto; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.section-tabs-list { display: grid; width: 100%; height: auto; grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .section-tabs-list :deep(button) { min-height: 2.5rem; }
 .section-card-header { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .entity-mode-toggle { display: grid; flex: none; grid-template-columns: repeat(5, minmax(0, 1fr)); }

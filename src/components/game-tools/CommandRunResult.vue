@@ -27,7 +27,7 @@ onMounted(() => {
   }, { immediate: true })
 })
 onBeforeUnmount(() => { alive = false; ++sequence; clearTimeout(expiryTimer) })
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { copy, copied } = useClipboard({ legacy: true })
 const state = computed(() => props.pending ? 'waiting' : commandResultState(current.value))
 const status = computed(() => ({ waiting: 'waiting', output: 'outputReady', no_output: 'completedNoOutput', output_unavailable: 'succeeded', failed: 'runFailed', unconfirmed: 'uncertain' })[state.value])
@@ -72,6 +72,10 @@ async function refreshReceipt() {
     </Alert>
     <template v-if="!pending">
     <Alert v-if="current.batch"><AlertTitle>{{t(`workbench.batch.${current.batch.state}`)}}</AlertTitle><AlertDescription>{{t('workbench.batch.counts',current.batch)}}</AlertDescription></Alert>
+    <Alert v-if="current.movement"><AlertTitle>{{ locale.startsWith('en') ? 'Player destinations' : '本次玩家与落点' }}</AlertTitle><AlertDescription class="flex flex-col gap-1">
+      <p v-for="item in current.movement.items || []" :key="item.playerId">{{ item.playerName || item.playerId }} → X {{ item.point?.x?.toFixed(1) }} / Z {{ item.point?.z?.toFixed(1) }} · {{ locale.startsWith('en') ? ({prepared:'Waiting for confirmation',confirmed:'Confirmed',rejected:'Not moved',uncertain:'Uncertain'}[item.state] || 'Unknown') : ({prepared:'待确认',confirmed:'位置已确认',rejected:'未执行',uncertain:'结果待确认'}[item.state] || '待核对') }}</p>
+      <p v-if="!current.movement.items?.length">{{ locale.startsWith('en') ? 'No players to move.' : '本次没有需要移动的玩家。' }}</p>
+    </AlertDescription></Alert>
     <SpawnAuditResult v-if="current.spawnAudit" :audit="current.spawnAudit" />
     <div class="flex items-center justify-between gap-2">
       <span class="text-sm font-medium">{{ t('workbench.commands.outputTitle') }}</span>

@@ -132,6 +132,11 @@
                 <p v-else class="search-empty">{{ t('worldMaps.viewer.noSearchResults') }}</p>
               </div>
 
+              <UiButton variant="outline" :aria-pressed="locationPicking" @click="locationPicking = !locationPicking">
+                <MapPin data-icon="inline-start" />
+                {{ t(locationPicking ? 'worldMaps.locations.cancel' : 'worldMaps.locations.save') }}
+              </UiButton>
+              <p v-if="locationPicking" class="text-sm text-muted-foreground">{{ t('worldMaps.locations.hint') }}</p>
               <div class="category-filter">
                 <span class="category-filter-label">{{ t('worldMaps.viewer.categoryFilters') }}</span>
                 <ToggleGroup v-model="visibleCategories" type="multiple" variant="outline" :spacing="1" class="category-toggle-group">
@@ -146,6 +151,7 @@
               <div class="map-surface">
                 <Skeleton v-if="mapArtifactLoading || !terrainLoaded" class="map-loading" />
                 <DstMapCanvas
+                  @point-selected="selectLocationPoint"
                   v-if="terrainURL && manifest"
                   ref="mapCanvas"
                   :terrain-url="terrainURL"
@@ -170,6 +176,7 @@
                 <AlertTitle>{{ t('worldMaps.viewer.terrainLoadFailedTitle') }}</AlertTitle>
                 <AlertDescription>{{ t('worldMaps.viewer.terrainLoadFailedDescription') }}</AlertDescription>
               </Alert>
+              <WorkbenchLocations v-if="currentMap && locationPoint" :key="currentMap.id" :room-id="selectedRoomId" :world-id="selectedWorldId" :map-point="locationPoint" />
               <div v-if="manifest" class="map-statistics">
                 <div><span>{{ t('worldMaps.viewer.statistics.tiles') }}</span><strong>{{ manifest.statistics?.tileCount ?? '--' }}</strong></div>
                 <Separator orientation="vertical" />
@@ -381,6 +388,8 @@ import {
 } from '@lucide/vue'
 import { jobsV2API, worldMapsV2API } from '@/api/v2'
 import { getScopedRuntimeOverview } from '@/api/v2LegacyAdapters'
+import WorkbenchLocations from '@/components/game-tools/WorkbenchLocations.vue'
+import { mapClickWorldPoint } from '@/lib/worldMaps.mjs'
 import DstMapCanvas from '@/components/worlds/DstMapCanvas.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -455,6 +464,14 @@ const iconsURL = ref('')
 const terrainLoaded = ref(false)
 const terrainFailed = ref(false)
 const manifest = ref(null)
+const locationPoint = ref(null)
+const locationPicking = ref(false)
+function selectLocationPoint(coordinate) {
+ if (!locationPicking.value) return
+ const point = mapClickWorldPoint(manifest.value, coordinate)
+ locationPoint.value = point && currentMap.value ? { ...point, mapId: currentMap.value.id } : null
+ if (locationPoint.value) locationPicking.value = false
+}
 const mapFeatures = ref([])
 const mapArtifactLoading = ref(false)
 const mapArtifactFailure = ref(null)
@@ -570,6 +587,8 @@ function clearMapArtifacts() {
   terrainLoaded.value = false
   terrainFailed.value = false
   manifest.value = null
+  locationPoint.value = null
+  locationPicking.value = false
   mapFeatures.value = []
   mapArtifactFailure.value = null
   selectedFeature.value = null

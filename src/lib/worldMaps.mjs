@@ -150,3 +150,15 @@ export function mapJobFailure(job) {
   return failed?.error?.message || job?.error?.message || '地图生成任务未成功完成'
 }
 import { formatSystemDateTime } from './dateTime.mjs'
+
+// OpenLayers event coordinates have already undone viewport rotation and zoom.
+// Only this known renderer transform is supported; never evaluate expressions.
+export function mapClickWorldPoint(manifest, coordinate) {
+ const m = manifest?.map, b = m?.worldBounds, c = m?.coordinateTransform
+ if (manifest?.protocolVersion !== '1' || c?.pixelX !== '(x - minX) / worldUnitsPerTile * pixelsPerTile' || c?.pixelY !== '(maxZ - z) / worldUnitsPerTile * pixelsPerTile') return null
+ const [px, py] = coordinate || []
+ const values = [px, py, m?.imageWidth, m?.imageHeight, m?.pixelsPerTile, m?.worldUnitsPerTile, b?.minX, b?.maxZ]
+ if (!values.every(Number.isFinite) || m.pixelsPerTile <= 0 || m.worldUnitsPerTile <= 0 || px < 0 || py < 0 || px > m.imageWidth || py > m.imageHeight) return null
+ const scale = m.worldUnitsPerTile / m.pixelsPerTile
+ return { x: b.minX + px * scale, z: b.maxZ - (m.imageHeight - py) * scale }
+}

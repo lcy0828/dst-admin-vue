@@ -1081,3 +1081,15 @@ export const saveImportsV2API = {
 }
 
 export default client
+
+export const locationsV2API = {
+  list: (room, params = {}) => client.get(`/rooms/${encodeURIComponent(room)}/locations`, { params }),
+  save: (room, data, id = '') => id
+    ? client.patch(`/rooms/${encodeURIComponent(room)}/locations/${encodeURIComponent(id)}`, data)
+    : client.post(`/rooms/${encodeURIComponent(room)}/locations`, data),
+  remove: (room, item) => client.delete(`/rooms/${encodeURIComponent(room)}/locations/${encodeURIComponent(item.id)}`, { data: { revision: item.revision } }),
+  prepare: (room, data) => client.post(`/rooms/${encodeURIComponent(room)}/teleport-previews`, data, { timeout: 25000 }),
+  execute: (room, id) => client.post(`/rooms/${encodeURIComponent(room)}/teleport-previews/${encodeURIComponent(id)}/execute`, {}, { timeout: 30000 }),
+  cancel: (room, id) => client.post(`/rooms/${encodeURIComponent(room)}/teleport-previews/${encodeURIComponent(id)}/cancel`, {}),
+  result: (room, id) => client.get(`/rooms/${encodeURIComponent(room)}/teleport-previews/${encodeURIComponent(id)}`, { params: { refresh: true }, timeout: 12000 })
+}

@@ -20,11 +20,12 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import CommandRunResult from './CommandRunResult.vue'
+import { isMovementCommand, movementPreview } from '@/lib/locationResults.mjs'
 const props=defineProps({roomId:{type:String,default:''},roomName:{type:String,default:''},worldId:{type:String,default:''},worldName:{type:String,default:''},playerId:{type:String,default:''},running:Boolean})
 const {t,te}=useI18n()
 const definitions=ref([]),selected=ref(null),search=ref(''),filter=ref('custom'),script=ref(''),name=ref(''),values=ref({}),loading=ref(false),saving=ref(false),executing=ref(false),error=ref(''),listError=ref(''),lastRun=ref(null),armed=ref(false),saveEditorOpen=ref(false)
 const nearbyPreview=ref(null),nearbyUncertain=ref(false)
-const nearbyGuarded=computed(()=>selected.value?.id==='act_nearby_entities'&&['extinguish','freeze','sleep','pacify','delete','kill'].includes(values.value.action))
+const nearbyGuarded=computed(()=>isMovementCommand(selected.value?.id)||selected.value?.id==='act_nearby_entities'&&['extinguish','freeze','sleep','pacify','delete','kill'].includes(values.value.action))
 const recentRuns=ref([]),historyError=ref(''),executionContext=ref('')
 const waitingOnTarget=computed(()=>executing.value&&executionContext.value===`${props.roomId}::${props.worldId}`)
 let alive=true,loadSequence=0,contextSequence=0,historySequence=0
@@ -77,7 +78,9 @@ async function execute(){
   if(alive&&sequence===contextSequence){
     showRun(run,target)
     if(args.phase==='preview'&&run.status==='succeeded'&&run.executionOutcome==='confirmed'&&run.batch?.state==='preview'&&run.batch.previewId){nearbyPreview.value={id:run.batch.previewId,until:started+30000,args:{...args}}}
-    if(args.phase==='execute'&&!['completed','partial'].includes(run.batch?.state)){nearbyUncertain.value=true;error.value=t('workbench.batch.uncertain')}
+    const movePreview = movementPreview(run,started)
+    if(args.phase==='preview'&&movePreview)nearbyPreview.value={...movePreview,args:{...args}}
+    if(args.phase==='execute'&&!['completed','partial','confirmed'].includes(run.batch?.state||run.movement?.state)){nearbyUncertain.value=true;error.value=t('workbench.batch.uncertain')}
   }
  }catch(e){if(alive&&sequence===contextSequence){if(e.run)showRun(e.run,target);else error.value=e.detail||e.message;if(args.phase==='execute'){nearbyUncertain.value=true;error.value=t('workbench.batch.uncertain')}}}
  finally{if(alive)executing.value=false}
@@ -87,7 +90,7 @@ async function cancelNearby(){
  if(!preview||executing.value)return
  nearbyPreview.value=null;executing.value=true
  const room=props.roomId,world=props.worldId,sequence=contextSequence,target=targetLabel.value
- try{const run=await commandApi.executeCommand(`${room}::${world}`,'act_nearby_entities',{...preview.args,phase:'cancel',preview_id:preview.id},props.roomName);if(alive&&sequence===contextSequence)showRun(run,target)}
+ try{const run=await commandApi.executeCommand(`${room}::${world}`,selected.value.id,{...preview.args,phase:'cancel',preview_id:preview.id},props.roomName);if(alive&&sequence===contextSequence)showRun(run,target)}
  catch(e){if(alive&&sequence===contextSequence)error.value=e.message}
  finally{if(alive)executing.value=false}
 }

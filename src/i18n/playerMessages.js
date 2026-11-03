@@ -464,6 +464,7 @@ export const playerMessages = {
         presenceConflictTitle: '玩家位置存在冲突',
         presenceConflictDescription: '以下分片同时发现该玩家的本地实体：{worlds}。请稍后刷新；持续冲突时检查分片连接。'
       },
+      locations: '地点与传送',
       quick: {
         trigger: '操作', common: '常用操作', character: '角色调整', management: '管理操作',
         managementHint: '执行前需确认',
@@ -620,6 +621,7 @@ export const playerMessages = {
         staleTitle: 'Presence data is stale', staleDescription: 'This player was last observed at {time}. The observation is stale, so live game actions are disabled until a successful refresh.',
         presenceConflictTitle: 'Player location conflict', presenceConflictDescription: 'These Shards simultaneously found a local entity for this player: {worlds}. Refresh shortly; inspect Shard connectivity if the conflict persists.'
       },
+      locations: 'Locations and teleport',
       quick: {
         trigger: 'Actions', common: 'Common actions', character: 'Character', management: 'Management',
         managementHint: 'Confirmation required',
