@@ -189,7 +189,19 @@ test('server workspace exposes Mod details and explicit restart flow', async () 
   assert.match(component, /confirmRoomMaintenance\([\s\S]*applyModUpdatesNow/)
   assert.match(component, /jobStatus\?\.waitForJob \|\| waitForV2Job\)\(job, 20 \* 60 \* 1000\)[\s\S]*emit\('updated'\)/)
   assert.match(client, /`\/rooms\/\$\{encode\(roomId\)\}\/mod-update\/actions\/apply`/)
-  assert.match(adapter, /async function applyModUpdatesNow\(roomId\)/)
+  assert.match(adapter, /async function applyModUpdatesNow\(roomId, input\)/)
   assert.match(messages, /updateAndRestart: '更新并重启'/)
   assert.match(messages, /updateAndRestart: 'Update and restart'/)
+})
+
+test('partial check never promotes a mod with one unknown target into executable updates', () => {
+  const rows = buildRoomModOverview([
+    { id: 'a', enabled: true, runtimeOutdatedTargets: 1, health: 'update_available' },
+    { id: 'b', enabled: true, runtimeOutdatedTargets: 1 }
+  ], { state: { availableModIds: ['b'], checkSummary: { items: [
+    { modId: 'a', status: 'unknown', reason: 'metadata_timeout' }, { modId: 'b', status: 'outdated' }
+  ] } } })
+  assert.equal(rows.find(row => row.id === 'a').updateAvailable, false)
+  assert.equal(rows.find(row => row.id === 'a').updateUnknown, true)
+  assert.equal(rows.find(row => row.id === 'b').updateAvailable, true)
 })

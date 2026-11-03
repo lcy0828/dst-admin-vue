@@ -24,6 +24,8 @@
         <Badge v-if="prepareCount" variant="secondary">{{ t('servers.workspace.mods.prepareCount', { count: prepareCount }) }}</Badge>
         <span class="text-xs text-muted-foreground">{{ updateKnown ? t('servers.workspace.mods.checkedAt', { time: lastCheckedLabel }) : t('servers.workspace.mods.notChecked') }}</span>
       </div>
+      <p v-if="checkSummary" class="text-sm text-muted-foreground" role="status">{{ modCheckSummaryText(checkSummary, t) }}</p>
+      <p v-if="pendingCount" class="text-sm text-muted-foreground">{{ t(updateOverview?.state?.preparedAt ? 'mods.autoUpdate.pendingRestart' : 'mods.autoUpdate.pendingVerification', { count: pendingCount }) }}</p>
       <ScrollArea class="room-mod-scroll">
         <div class="room-mod-content">
           <div v-if="loading" class="flex flex-col gap-3" role="status" :aria-label="t('servers.workspace.mods.loading')">
@@ -82,6 +84,7 @@
               <div class="room-mod-copy">
                 <strong :title="mod.name">{{ mod.name }}</strong>
                 <span>{{ modDetailMeta(mod) }}</span>
+                <span v-if="mod.updateUnknown">{{ unknownReason(mod) }}</span>
               </div>
               <div class="room-mod-badges">
                 <Badge :variant="statusVariant(mod.status)">{{ statusLabel(mod.status, mod) }}</Badge>
@@ -109,14 +112,14 @@
           {{ t('servers.workspace.mods.manage') }}
         </UiButton>
         <UiButton
-          v-if="updateCount || activeUpdateJob"
+          v-if="updateCount || pendingCount || activeUpdateJob"
           type="button"
           :disabled="busy && !activeUpdateJob"
           @click="activeUpdateJob ? viewUpdateProgress() : confirmApplyUpdates()"
         >
           <Spinner v-if="applying" data-icon="inline-start" />
           <RotateCw v-else data-icon="inline-start" />
-          {{ t(activeUpdateJob ? 'globalJobs.viewProgress' : applying ? 'servers.workspace.mods.updating' : 'servers.workspace.mods.updateAndRestart') }}
+          {{ activeUpdateJob ? t('globalJobs.viewProgress') : applying ? t('servers.workspace.mods.updating') : updateCount ? t('mods.autoUpdate.updateCount', { count: updateCount }) : t('mods.autoUpdate.resumeUpdate') }}
         </UiButton>
       </DialogFooter>
 
@@ -125,6 +128,7 @@
 </template>
 
 <script setup>
+import { modCheckSummaryText, modApplySelection } from '@/lib/roomModOverview.mjs'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -193,7 +197,9 @@ const rows = computed(() => buildRoomModOverview(mods.value, updateOverview.valu
 const updateCount = computed(() => rows.value.filter(mod => mod.updateAvailable).length)
 const attentionCount = computed(() => roomModAttentionCount(rows.value))
 const prepareCount = computed(() => roomModPrepareCount(rows.value))
-const updateKnown = computed(() => Boolean(updateOverview.value?.state?.lastCheckedAt))
+const checkSummary = computed(() => updateOverview.value?.state?.checkSummary)
+const pendingCount = computed(() => updateOverview.value?.state?.pendingUpdate?.modIds?.length || (updateOverview.value?.state?.preparedAt ? updateOverview.value?.state?.availableModIds?.length || 0 : 0))
+const updateKnown = computed(() => Boolean(checkSummary.value?.checkedAt || updateOverview.value?.state?.lastCheckedAt))
 const updateErrorDetail = computed(() => updateOverview.value?.state?.errorMessage || '')
 const updateActionFailed = computed(() => ['MOD_RUNTIME_UPDATE_FAILED', 'MOD_WORLD_RESTART_FAILED'].includes(updateOverview.value?.state?.errorCode))
 const updateFileProblem = computed(() => roomModUpdateErrorKey(updateOverview.value?.state) === 'mods.autoUpdate.errors.localFilesUnavailable')
@@ -210,10 +216,11 @@ const triggerStatus = computed(() => {
   if (attentionCount.value) return { variant: 'destructive', label: t('servers.workspace.mods.attentionCount', { count: attentionCount.value }) }
   if (prepareCount.value) return { variant: 'warning', label: t('servers.workspace.mods.prepareCount', { count: prepareCount.value }) }
   if (updateCount.value) return { variant: 'warning', label: t('servers.workspace.mods.updateCount', { count: updateCount.value }) }
+  if (checkSummary.value?.unknown || pendingCount.value) return { variant: 'warning', label: t('mods.autoUpdate.checkUnavailable') }
   if (updateError.value) return { variant: 'warning', label: t('servers.workspace.mods.statusUnavailable') }
   return null
 })
-const lastCheckedLabel = computed(() => formatDateTime(updateOverview.value?.state?.lastCheckedAt))
+const lastCheckedLabel = computed(() => formatDateTime(checkSummary.value?.checkedAt || updateOverview.value?.state?.lastCheckedAt))
 const overviewDescription = computed(() => {
   if (!rows.value.length && loading.value) return t('servers.workspace.mods.loading')
   if (!rows.value.length && loadError.value) return t('servers.workspace.mods.loadFailed')
@@ -236,6 +243,8 @@ watch(() => props.roomId, () => {
   mods.value = []
   factsLoaded.value = false
   loading.value = false
+  checking.value = false
+  applying.value = false
   metadataWarning.value = ''
   incompleteMetadataIds.value = []
   brokenImages.value = new Set()
@@ -336,32 +345,38 @@ async function retryMetadata() {
 
 async function checkUpdates() {
   if (!props.roomId || busy.value) return
+  const roomId = props.roomId
   checking.value = true
   try {
-    const job = await modApi.checkModUpdatesNow(props.roomId)
+    const job = await modApi.checkModUpdatesNow(roomId)
     emitGlobalJobSubmitted(job)
     await waitForV2Job(job, 10 * 60 * 1000)
+    if (roomId !== props.roomId) return
     await refresh({ silent: true })
-    toast.success(t('servers.workspace.mods.checkCompleted'))
+    toast.success(modCheckSummaryText(checkSummary.value, t) || t('servers.workspace.mods.checkCompleted'))
   } catch (error) {
+    if (roomId !== props.roomId) return
     toast.error(t(roomModUpdateErrorKey({ errorCode: 'MOD_UPDATE_CHECK_FAILED', errorMessage: error?.message || 'check failed' })))
     await refresh({ silent: true })
   } finally {
-    checking.value = false
+    if (roomId === props.roomId) checking.value = false
   }
 }
 
 async function confirmApplyUpdates() {
   if (activeUpdateJob.value) return viewUpdateProgress()
-  if (!props.roomId || !updateCount.value || busy.value) return
+  if (!props.roomId || !(updateCount.value || pendingCount.value) || busy.value) return
+  const roomId = props.roomId
+  const sequence = loadSequence
+  const selection = modApplySelection(updateOverview.value?.state)
   try {
     await confirmRoomMaintenance(
       props.roomId,
       t('servers.workspace.mods.confirmDescription', {
-        count: updateCount.value,
+        count: updateCount.value || pendingCount.value,
         worlds: props.worldCount,
         players: props.onlinePlayers
-      }),
+      }) + (checkSummary.value?.unknown ? '\n' + t('mods.autoUpdate.unknownRetained', { count: checkSummary.value.unknown }) : ''),
       t('servers.workspace.mods.confirmTitle'),
       {
         confirmButtonText: t('servers.workspace.mods.confirmAction'),
@@ -373,26 +388,29 @@ async function confirmApplyUpdates() {
   } catch {
     return
   }
-  await applyUpdates()
+  if (roomId !== props.roomId || sequence !== loadSequence) {
+    toast.info(t('mods.autoUpdate.errors.planChanged'))
+    return
+  }
+  await applyUpdates(roomId, selection)
 }
 
-async function applyUpdates() {
-  const roomId = props.roomId
+async function applyUpdates(roomId, selection) {
   applying.value = true
   try {
-    const job = await modApi.applyModUpdatesNow(roomId)
+    const job = await modApi.applyModUpdatesNow(roomId, selection)
     emitGlobalJobSubmitted(job)
     await (jobStatus?.waitForJob || waitForV2Job)(job, 20 * 60 * 1000)
     if (roomId !== props.roomId) return
     await refresh({ silent: true })
     emit('updated')
-    toast.success(t('servers.workspace.mods.updateCompleted'))
+    toast.success(t('servers.workspace.mods.updateCompleted') + (checkSummary.value?.unknown ? '；' + t('mods.autoUpdate.unknownRetained', { count: checkSummary.value.unknown }) : ''))
   } catch (error) {
     if (roomId !== props.roomId) return
     await refresh({ silent: true })
     toast.error(t('servers.workspace.mods.updateFailed', { error: error?.message || t('common.errors.unknown') }))
   } finally {
-    applying.value = false
+    if (roomId === props.roomId) applying.value = false
   }
 }
 
@@ -422,6 +440,12 @@ function statusLabel(status, mod = null) {
     return t('servers.workspace.mods.status.unavailable_targets', { count: mod?.runtimeUnavailableTargets || 1 })
   }
   return t(`servers.workspace.mods.status.${known.includes(status) ? status : 'unknown'}`)
+}
+
+function unknownReason(mod) {
+  const key = `mods.runtimeInventory.reasons.${mod.updateReason}`
+  const label = t(key)
+  return label === key ? t('mods.autoUpdate.errors.versionUnconfirmed') : label
 }
 
 function modMeta(mod) {

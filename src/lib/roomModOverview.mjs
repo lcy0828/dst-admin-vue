@@ -6,6 +6,9 @@ const PREPARE_STATES = new Set(['pending'])
 export function roomModUpdateErrorKey(state) {
   const message = String(state?.errorMessage || '').trim()
   if (!message) return ''
+  if (state?.errorCode === 'MOD_UPDATE_VERSION_UNCONFIRMED') return 'mods.autoUpdate.errors.versionUnconfirmed'
+  if (state?.errorCode === 'MOD_UPDATE_PLAN_CHANGED') return 'mods.autoUpdate.errors.planChanged'
+  if (state?.errorCode === 'MOD_UPDATE_RECOVERY_REQUIRED') return 'mods.autoUpdate.errors.recoveryRequired'
   if (state?.errorCode === 'MOD_RUNTIME_UPDATE_FAILED') return 'mods.autoUpdate.errors.downloadFailed'
   if (state?.errorCode === 'MOD_WORLD_RESTART_FAILED') return 'mods.autoUpdate.errors.restartFailed'
   if (state?.errorCode === 'MOD_UPDATE_CHECK_FAILED' && message.split('\n').every(line =>
@@ -101,13 +104,18 @@ export function buildRoomModOverview(mods = [], overview = null) {
     // comparisons on every target take precedence over that pending restart.
     const currentOnAllTargets = Number(mod.runtimeTotalTargets) > 0
       && Number(mod.runtimeCurrentTargets) === Number(mod.runtimeTotalTargets)
-    const updateAvailable = (available.has(id) && !currentOnAllTargets) || Number(mod.runtimeOutdatedTargets) > 0 || mod.updateAvailable === true || mod.health === 'update_available'
+    const itemCheck = overview?.state?.checkSummary?.items?.find(item => item.modId === id)
+    const updateAvailable = overview?.state?.checkSummary
+      ? itemCheck?.status === 'outdated' && available.has(id) && !currentOnAllTargets
+      : (available.has(id) && !currentOnAllTargets) || Number(mod.runtimeOutdatedTargets) > 0 || mod.updateAvailable === true || mod.health === 'update_available'
     rows.push({
       ...mod,
       id,
       modid: id,
       name: String(mod.localName || mod.name || `Workshop ${id}`).trim(),
       updateAvailable,
+      updateUnknown: itemCheck?.status === 'unknown',
+      updateReason: itemCheck?.reason || '',
       status: roomModOperationalStatus(mod)
     })
   }
@@ -125,4 +133,20 @@ export function roomModAttentionCount(rows = []) {
 
 export function roomModPrepareCount(rows = []) {
   return rows.filter(row => PREPARE_STATES.has(row.status)).length
+}
+
+export function modCheckSummaryText(summary, t) {
+  if (!summary) return ''
+  return t('mods.autoUpdate.checkSummary', summary)
+}
+
+export function modApplySelection(state) {
+  if (!state?.checkSummary) return undefined // older Controller
+  return {
+    expectedScopeRevision: state.checkSummary.scope?.revision || '',
+    modIds: [...new Set([
+      ...state.checkSummary.items.filter(item => item.status === 'outdated').map(item => item.modId),
+      ...(state.pendingUpdate?.modIds || [])
+    ])].sort()
+  }
 }

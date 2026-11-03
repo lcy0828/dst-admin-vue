@@ -293,8 +293,8 @@ async function applyModUpdatesWhenEmpty(roomId) {
   return modUpdatesV2API.applyWhenEmpty(requireValue(roomId, 'ROOM_REQUIRED'))
 }
 
-async function applyModUpdatesNow(roomId) {
-  return modUpdatesV2API.applyNow(requireValue(roomId, 'ROOM_REQUIRED'))
+async function applyModUpdatesNow(roomId, input) {
+  return modUpdatesV2API.applyNow(requireValue(roomId, 'ROOM_REQUIRED'), input)
 }
 
 async function getRooms() {

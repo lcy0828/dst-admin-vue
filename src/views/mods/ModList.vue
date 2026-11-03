@@ -645,6 +645,7 @@ export default {
       const state = this.modUpdateState;
       if (!state) return '';
       if (state.errorMessage) return state.errorMessage;
+      if (state.checkSummary) return this.$t('mods.autoUpdate.checkSummary', state.checkSummary);
       if (state.status === 'waiting_for_players') return this.$t('mods.autoUpdate.status.waitingPlayersDescription', { count: state.onlinePlayers || 0 });
       if (state.availableModIds?.length) return this.$t('mods.autoUpdate.status.availableDescription', { count: state.availableModIds.length });
       return this.$t(`mods.autoUpdate.status.${state.status}Description`);

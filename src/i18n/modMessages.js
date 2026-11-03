@@ -288,10 +288,16 @@ export const modMessages = {
         }
       },
       autoUpdate: {
+        checkSummary: '上次检查 {total} 个工坊模组：{outdated} 个可更新，{current} 个已是最新，{unknown} 个暂时无法确认。另有 {local} 个本地模组。',
+        updateCount: '更新 {count} 个模组', resumeUpdate: '继续上次更新', pendingVerification: '上次更新尚未完成，有 {count} 个模组需要继续核对。',
+        pendingRestart: '{count} 个模组已下载，等待重启生效。', unknownRetained: '另有 {count} 个模组版本尚未确认，未纳入本次更新。',
         title: '模组更新策略',
         checkUnavailable: '更新状态待确认',
         filesUnavailable: '部分机器的模组版本无法比较',
         errors: {
+          versionUnconfirmed: '部分模组的版本暂时无法确认，不能判断是否需要更新。',
+          planChanged: '可更新模组或影响范围已变化，请重新检查并确认。',
+          recoveryRequired: '上次更新尚待确认，请查看原任务和世界状态，避免重复操作。',
           localFilesUnavailable: '上次检查时，部分机器缺少模组文件或文件不完整，无法与工坊版本比较。可在模组管理中直接下载到对应机器；文件补全后再检查更新。',
           checkTimeout: 'Steam 更新检查超时，暂时无法确认最新版本。',
           checkFailed: '本次未能确认模组更新，请重新检查。',
@@ -429,6 +435,7 @@ export const modMessages = {
             status: { selected: '已采用', succeeded: '可用', failed: '不可用', unavailable: '不可用', skipped: '未验证', available: '可用', unknown: '未验证' },
             rate: '有效吞吐 {value}', noTransfer: '命中，无需传输', speedUnavailable: '可用，未上报速度', notMeasured: '未产生传输',
             reasons: {
+          version_evidence_conflict: '安装清单与模组版本不一致，需要重新核对', metadata_too_large: '模组信息文件超过读取上限', metadata_unreadable: '模组信息文件无法读取', metadata_parse_failed: '模组信息文件格式无效', metadata_timeout: '读取模组信息超时', metadata_instruction_limit: '模组信息计算量超过限制', metadata_invalid: '无法解析模组信息', latest_version_unavailable: '暂时无法获取工坊版本', installed_version_unavailable: '暂时读不到已安装版本',
               CACHE_MISS: '当前安装没有该精确版本缓存', SOURCE_NOT_NEEDED: '前一条线路已经满足本次下载',
               FETCH_CAPABILITY_MISSING: '运行节点版本不支持自行获取模组', PEER_CAPABILITY_MISSING: '当前节点组合不支持节点间直传',
               PEER_SOURCE_UNAVAILABLE: '当前没有持有该精确版本且可直连的节点', PEER_GRANT_FAILED: '节点直传授权失败',
@@ -1003,10 +1010,16 @@ export const modMessages = {
         }
       },
       autoUpdate: {
+        checkSummary: 'Last check of {total} Workshop mods: {outdated} updates, {current} current, {unknown} unconfirmed. Plus {local} local mods.',
+        updateCount: 'Update {count} mods', resumeUpdate: 'Resume previous update', pendingVerification: 'The previous update is incomplete; {count} mods need verification.',
+        pendingRestart: '{count} mods downloaded and awaiting restart.', unknownRetained: '{count} other mod versions remain unconfirmed and will be left as-is.',
         title: 'Mod Update Policy',
         checkUnavailable: 'Update status needs confirmation',
         filesUnavailable: 'Some machine Mod versions cannot be compared',
         errors: {
+          versionUnconfirmed: 'Some mod versions remain unconfirmed; update availability is unknown.',
+          planChanged: 'The mods or affected rooms changed. Check and confirm again.',
+          recoveryRequired: 'The previous update needs verification. Review its job and world state before retrying.',
           localFilesUnavailable: 'The last check found missing or incomplete Mod files on some machines. Download directly to those machines in Mod management, then check for updates again.',
           checkTimeout: 'The Steam update check timed out. Latest versions could not be confirmed.',
           checkFailed: 'Mod updates could not be confirmed. Please check again.',
@@ -1144,6 +1157,7 @@ export const modMessages = {
             status: { selected: 'Selected', succeeded: 'Available', failed: 'Unavailable', unavailable: 'Unavailable', skipped: 'Unverified', available: 'Available', unknown: 'Unverified' },
             rate: 'Effective {value}', noTransfer: 'Cache hit, no transfer', speedUnavailable: 'Available, speed not reported', notMeasured: 'No transfer observed',
             reasons: {
+          version_evidence_conflict: 'Installed manifest and version disagree; verification is needed', metadata_too_large: 'Mod metadata file exceeds the read limit', metadata_unreadable: 'Mod metadata file is unreadable', metadata_parse_failed: 'Mod metadata file has invalid syntax', metadata_timeout: 'Mod metadata read timed out', metadata_instruction_limit: 'Mod metadata exceeded its computation limit', metadata_invalid: 'Could not parse mod metadata', latest_version_unavailable: 'Workshop version is unavailable', installed_version_unavailable: 'Installed version is unavailable',
               CACHE_MISS: 'This installation does not have the exact cached version', SOURCE_NOT_NEEDED: 'An earlier path already satisfied this fetch',
               FETCH_CAPABILITY_MISSING: 'The Runtime version cannot fetch Mods directly', PEER_CAPABILITY_MISSING: 'This node combination does not support peer transfer',
               PEER_SOURCE_UNAVAILABLE: 'No reachable node currently has the exact version', PEER_GRANT_FAILED: 'Peer transfer authorization failed',

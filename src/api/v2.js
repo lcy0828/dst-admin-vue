@@ -766,9 +766,9 @@ export const modUpdatesV2API = {
     {},
     { runtimeTarget: false }
   ),
-  applyNow: roomId => client.post(
+  applyNow: (roomId, input = {}) => client.post(
     `/rooms/${encode(roomId)}/mod-update/actions/apply`,
-    {},
+    input,
     { runtimeTarget: false }
   )
 }
