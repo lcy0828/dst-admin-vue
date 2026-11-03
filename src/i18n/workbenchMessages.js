@@ -1,6 +1,6 @@
 export const workbenchMessages = {
  'zh-CN': { workbench: {
-  batch:{uncertain:'本次操作结果尚未确认。请查看原执行记录并核对游戏状态，核对后才能开始新的预览。',checked:'已核对，开始新的预览',preview:'预览影响范围',confirm:'确认本次预览',cancel:'取消预览',expired:'预览已过期，请重新预览。',cancelled:'已取消，没有修改游戏',completed:'效果已确认',partial:'操作结束，部分效果未确认',counts:'预览 {matched} 个 · 已确认 {verified} 个 · 待确认 {unconfirmed} 个 · 跳过 {skipped} 个 · 失败 {failed} 个'},
+  batch:{uncertain:'本次操作结果尚未确认。请查看原执行记录；为避免重复修改，暂不开始新的预览。',checked:'已核对，开始新的预览',preview:'预览影响范围',confirm:'确认本次预览',cancel:'取消预览',expired:'预览已过期，请重新预览。',cancelled:'已取消，没有修改游戏',completed:'效果已确认',partial:'操作结束，部分效果未确认',counts:'对象 {matched} 个 · 已确认 {verified} 个 · 待确认 {unconfirmed} 个 · 跳过 {skipped} 个 · 失败 {failed} 个'},
   section:'Lua / 命令', sources:{common:'常用目录',vanilla:'原版目录',runtime:'当前世界 / 模组',manual:'输入 Prefab'},
   manual:{label:'实体 Prefab',placeholder:'例如 goldnugget 或模组的实体代码',choose:'使用这个实体',hint:'支持原版和模组 Prefab。需已在目标世界加载；名称区分大小写，通常为小写。',selected:'手动输入'},
   catalog:{noArtwork:'未找到对应图片',chooseResource:'选择资源后设置操作参数。',search:'搜索名称、Prefab 或模组名称',source:'实体来源',all:'全部来源',vanilla:'原版',mods:'模组',read:'读取当前世界',refresh:'刷新目录',loading:'正在读取当前世界加载的实体…',ready:'从游戏中读取实体',stopped:'需要先启动目标世界',readHint:'包含这个世界实际注册的原版和模组实体。点击读取，不会生成物品或修改世界。',note:'名称以游戏加载的语言为准；实体是否能放入背包由游戏组件决定。模组专有操作可在「Lua / 命令」中添加。',count:'共 {count} 个实体',observed:'采集于 {time}',empty:'没有匹配的实体',previous:'上一页',next:'下一页',failed:'读取实体失败'},

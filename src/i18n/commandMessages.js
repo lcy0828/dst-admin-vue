@@ -387,6 +387,20 @@ export const commandMessages = {
   }
 }
 
+// Fixed command options use ordinary names; unknown server actions keep their
+// original value so newer directories remain readable on older clients.
+const nearbyOptions = {
+ 'zh-CN': { delete:'删除附近实体',extinguish:'附近灭火',ignite:'点燃附近实体',restore:'恢复附近生物',repair:'修复地面装备耐久',repair_burnt:'重建烧毁的科技站',repair_boat:'修复船只',freshen:'恢复新鲜度',heat:'加热',cool:'降温',salvage:'打捞',haunt:'作祟',fertilize:'为可施肥植物补充肥料',grow:'推进一个生长阶段',ripen:'催熟至可收获',harvest:'采摘植物',pick:'拾取地面物品',chop:'砍树',mine:'挖矿',hammer:'锤毁',dig:'挖掘',till:'耕地',build_complete:'完成建造',chaos:'引发混战',electrocute:'电击',kill:'击杀附近生物',freeze:'冻结',sleep:'催眠',panic:'惊吓',pacify:'平息仇恨',root:'定身',taunt:'嘲讽' },
+ 'en-US': {delete:'Remove nearby entities',extinguish:'Extinguish',ignite:'Ignite',restore:'Restore creatures',repair:'Repair ground equipment durability',repair_burnt:'Rebuild burnt research stations',repair_boat:'Repair boats',freshen:'Restore freshness',heat:'Heat',cool:'Cool',salvage:'Salvage',haunt:'Haunt',fertilize:'Fertilize supported plants',grow:'Advance one growth stage',ripen:'Ripen until harvestable',harvest:'Pick plants',pick:'Pick up ground items',chop:'Chop',mine:'Mine',hammer:'Hammer',dig:'Dig',till:'Till soil',build_complete:'Complete construction',chaos:'Start a brawl',electrocute:'Electrocute',kill:'Kill creatures',freeze:'Freeze',sleep:'Sleep',panic:'Panic',pacify:'Pacify',root:'Root',taunt:'Taunt'}
+}
+for (const locale of ['zh-CN','en-US']) {
+ const zh=locale==='zh-CN', builtins=commandMessages[locale].commands.builtins
+ builtins.act_nearby_entities={parameters:{action:{options:nearbyOptions[locale]}}}
+ builtins.set_player_hunger_rate={name:zh?'调整饥饿消耗':'Adjust hunger consumption',parameters:{mode:{options:{set:zh?'设置倍率':'Set multiplier',remove:zh?'解除面板设置':'Remove panel modifier'}}}}
+ builtins.set_wanda_age={name:zh?'调整旺达年龄':'Adjust Wanda’s age',parameters:{age:{options:{young:zh?'青年':'Young',normal:zh?'中年':'Middle-aged',old:zh?'老年':'Old'}}}}
+ builtins.restore_woodie_human={name:zh?'伍迪恢复人形':'Return Woodie to human form'}
+}
+
 export function translateCommandCategory(translate, hasTranslation, value) {
   const category = normalizeCommandCategory(value)
   const key = `commands.categories.${category}`

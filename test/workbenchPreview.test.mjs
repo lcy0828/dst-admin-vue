@@ -18,7 +18,7 @@ const settle=async()=>{for(let i=0;i<4;i++){await nextTick();await Promise.resol
 const definition={id:'act_nearby_entities',isBuiltin:true,parameters:[
  {name:'player_id',type:'string',required:true},{name:'action',type:'enum',options:['freeze','delete'],required:true,default:'freeze'},
  {name:'radius',type:'integer',required:true,default:10},{name:'phase',type:'enum',options:['preview','execute','cancel']},{name:'preview_id',type:'string'}]}
-const preview={id:'run-a',status:'succeeded',executionOutcome:'confirmed',batch:{state:'preview',previewId:'token-a'}}
+const preview={id:'run-a',status:'succeeded',executionOutcome:'confirmed',batch:{state:'preview',previewId:'00000000-0000-4000-8000-000000000001',expiresIn:30,matched:2}}
 function mount(){
  const props=reactive({roomId:'room',worldId:'Master',playerId:'KU_EXAMPLE',running:true,roomName:'example'});let state
  const renderer=createRenderer({createElement:()=>({}),createText:()=>({}),createComment:()=>({}),insert(){},remove(){},patchProp(){},setElementText(){},setText(){},parentNode:()=>null,nextSibling:()=>null})
@@ -46,7 +46,8 @@ test('preview confirmation freezes the token and uncertain execution requires ma
  commands.executeCommand=async(...args)=>{calls.push(args);return calls.length===1?preview:{id:'run-b',status:'uncertain',mayHaveExecuted:true}}
  await view.state.execute();assert.equal(calls[0][2].phase,'preview')
  assert.ok(view.state.nearbyPreview.value)
- await view.state.execute();assert.equal(calls[1][2].phase,'execute');assert.equal(calls[1][2].preview_id,'token-a')
+ assert.equal(view.state.runStatus(view.state.lastRun.value),workbenchMessages['zh-CN'].workbench.batch.preview)
+ await view.state.execute();assert.equal(calls[1][2].phase,'execute');assert.equal(calls[1][2].preview_id,'00000000-0000-4000-8000-000000000001')
  assert.equal(view.state.nearbyUncertain.value,true);assert.equal(view.state.canRun.value,false)
  await view.state.execute();assert.equal(calls.length,2)
  view.close()
@@ -57,7 +58,7 @@ test('cancel consumes the original preview without executing and expired preview
  await view.state.execute();view.state.nearbyPreview.value.until=0
  await view.state.execute();assert.equal(calls.length,1);assert.equal(view.state.nearbyPreview.value,null)
  await view.state.execute();await view.state.cancelNearby()
- assert.equal(calls.at(-1)[2].phase,'cancel');assert.equal(calls.at(-1)[2].preview_id,'token-a')
+ assert.equal(calls.at(-1)[2].phase,'cancel');assert.equal(calls.at(-1)[2].preview_id,'00000000-0000-4000-8000-000000000001')
  assert.equal(view.state.nearbyPreview.value,null)
  view.close()
 })
