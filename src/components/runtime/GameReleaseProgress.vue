@@ -3,7 +3,8 @@ import { computed, ref, watch } from 'vue'
 import { cn } from '@/lib/utils'
 import { useI18n } from 'vue-i18n'
 import { Check, ChevronDown, CircleAlert } from '@lucide/vue'
-import { gameReleaseProgress, gameReleaseStageVariant } from '@/lib/gameRelease.mjs'
+import { gameReleaseDownloads, gameReleaseProgress, gameReleaseStageVariant } from '@/lib/gameRelease.mjs'
+import { formatJobBytes, formatJobRate } from '@/lib/globalJobs.mjs'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -13,14 +14,16 @@ import { Progress } from '@/components/ui/progress'
 import { Spinner } from '@/components/ui/spinner'
 import GameReleaseBackupDecision from './GameReleaseBackupDecision.vue'
 
-const props = defineProps({ release: { type: Object, required: true }, compact: { type: Boolean, default: false } })
+const props = defineProps({ release: { type: Object, required: true }, compact: { type: Boolean, default: false }, connected: { type: Boolean, default: true } })
 const { t } = useI18n()
 const progress = computed(() => gameReleaseProgress(props.release))
 const failed = computed(() => ['failed', 'recovery_required'].includes(progress.value.stage))
 const updatedAt = computed(() => props.release.finishedAt || props.release.updatedAt)
 const now = ref(Date.now())
+const downloads = computed(() => gameReleaseDownloads(props.release, now.value).map(item => props.connected ? item
+  : { ...item, percent: null, transfer: item.transfer ? { ...item.transfer, bytesPerSecond: 0 } : null }))
 const countdown = computed(() => Math.max(0, Math.ceil((Date.parse(props.release.countdownEndsAt) - now.value) / 1000)))
-watch(() => props.release.stage === 'notifying', (active, _, onCleanup) => {
+watch(() => ['notifying', 'updating'].includes(props.release.stage), (active, _, onCleanup) => {
   now.value = Date.now()
   if (!active) return
   const timer = setInterval(() => { now.value = Date.now() }, 1000)
@@ -50,12 +53,25 @@ function targetName(item) {
           <Check v-else-if="step.state === 'done'" class="size-4 text-success-foreground" />
           <CircleAlert v-else-if="step.state === 'interrupted'" class="size-4 text-destructive" />
         </div>
-        <Badge :variant="step.state === 'done' ? 'success' : step.state === 'active' ? 'info' : step.state === 'interrupted' ? 'destructive' : 'outline'">{{ t(`gameReleases.progress.states.${step.state}`) }}<template v-if="step.total"> · {{ step.done }}/{{ step.total }}</template></Badge>
+        <Badge :variant="step.state === 'done' ? 'success' : step.state === 'active' ? 'info' : step.state === 'interrupted' ? 'destructive' : 'outline'">{{ t(`gameReleases.progress.states.${step.state}`) }}<template v-if="step.total"> · {{ step.key === 'updating' ? t('gameReleases.download.completed', { count: step.done, total: step.total }) : `${step.done}/${step.total}` }}</template></Badge>
       </li>
     </ol>
 
     <div v-if="!progress.terminal" class="flex flex-col gap-2">
-      <Progress :model-value="null" :aria-label="t(`gameReleases.stages.${progress.stage}`)" />
+      <template v-if="downloads.length">
+        <div v-for="item in downloads" :key="`${item.targetId}:${item.installationId}`" class="flex min-w-0 flex-col gap-2" role="status">
+          <p class="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+            <span><template v-if="release.plan.installations.length > 1">{{ targetName(item) }} · </template>{{ t(`gameReleases.download.${item.phase}`) }}<template v-if="item.percent !== null"> · {{ item.percent }}%</template></span>
+            <span v-if="item.elapsed" class="text-xs tabular-nums text-muted-foreground">{{ t('gameReleases.download.elapsed', { time: item.elapsed }) }}</span>
+          </p>
+          <Progress :model-value="item.percent" :aria-label="t(`gameReleases.download.${item.phase}`)" />
+          <p v-if="item.transfer" class="text-sm tabular-nums text-muted-foreground">{{ formatJobBytes(item.transfer.currentBytes) || '0 B' }} / {{ formatJobBytes(item.transfer.totalBytes) }}<template v-if="item.transfer.bytesPerSecond"> · {{ formatJobRate(item.transfer.bytesPerSecond) }}</template></p>
+          <p v-if="item.attempt === 2" class="text-sm text-muted-foreground">{{ t('gameReleases.download.retry') }}</p>
+          <p v-if="item.stale" class="text-sm text-muted-foreground">{{ t('gameReleases.download.silent') }}</p>
+          <p v-if="item.observedAt" class="text-xs text-muted-foreground">{{ t('gameReleases.download.lastOutput', { time: formatSystemDateTime(item.observedAt) }) }}</p>
+        </div>
+      </template>
+      <Progress v-else :model-value="null" :aria-label="t(`gameReleases.stages.${progress.stage}`)" />
       <p v-if="progress.stage === 'notifying' && Number.isFinite(countdown)" class="text-sm tabular-nums" role="status">{{ t('gameReleases.options.countdown', { seconds: countdown }) }}</p>
       <p v-else class="text-sm text-muted-foreground">{{ t(progress.stage === 'staged' && progress.backupSkipped ? 'gameReleases.options.stagedWithoutBackup' : `gameReleases.progress.hints.${progress.stage}`) }}</p>
     </div>

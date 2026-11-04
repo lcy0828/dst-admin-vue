@@ -108,6 +108,7 @@ export const gameReleaseMessages = {
       job: { processing: '正在处理更新任务', progressMeaning: '此进度表示任务步骤的处理情况；最终结果以安装验证与世界恢复状态为准。',
         title: '更新任务', queued: '等待执行', running: '正在执行', succeeded: '任务完成', failed: '任务失败', canceled: '任务已取消', unknown: '未知任务状态'
       },
+      download: { completed: '已校验安装 {count}/{total}', preparing: '正在连接并准备更新', downloading: '正在下载更新', validating: '正在校验游戏文件', finalizing: '正在确认安装版本', waiting: '更新已开始，等待下载进度', elapsed: '已用时 {time}', lastOutput: '最近进度：{time}', silent: '暂未收到新进度，仍在等待更新结果。', retry: '文件校验未通过，正在进行一次修复。' },
       progress: {
         title: '更新进度', steps: '更新执行步骤', updatedAt: '最近更新：{time}',
         stepsLabels: { notifying: '停服倒计时', stopping: '停止世界', protecting: '保护备份', updating: '更新并校验', restarting: '恢复世界', confirming: '确认加载' },
@@ -115,7 +116,7 @@ export const gameReleaseMessages = {
         hints: {
           previewed: '任务已建立，正在准备执行。', notifying: '正在发送停服公告，发送后开始倒计时。', stopping: '正在安全停止原先运行的世界；全部停止后才会备份和更新。',
           protecting: '正在创建并验证各房间的保护备份，尚未更新游戏文件。', staged: '保护备份已完成，正在检查安装条件。',
-          updating: 'SteamCMD 正在下载更新并校验文件，完成后会读取实际版本。本步骤暂不提供下载百分比。',
+          updating: '下载、文件校验和版本确认依次进行；下载达到 100% 后还需等待后续步骤完成。',
           verified: '游戏文件已校验，正在准备恢复原先运行的世界。', restarting: '正在恢复原先运行的世界；原本停止的世界保持停止。',
           confirming: '正在等待各世界加载完成，进程启动不代表更新任务已经完成。', unknown: '正在读取更新任务的执行阶段。'
         },
@@ -259,6 +260,7 @@ export const gameReleaseMessages = {
       job: { processing: 'Processing update', progressMeaning: 'Progress reflects processed task steps. Installation verification and world restoration determine the final result.',
         title: 'Update job', queued: 'Queued', running: 'Running', succeeded: 'Job completed', failed: 'Job failed', canceled: 'Job canceled', unknown: 'Unknown job status'
       },
+      download: { completed: 'Installations verified {count}/{total}', preparing: 'Connecting and preparing update', downloading: 'Downloading update', validating: 'Validating game files', finalizing: 'Checking installed version', waiting: 'Update started; waiting for download progress', elapsed: 'Elapsed {time}', lastOutput: 'Latest progress: {time}', silent: 'No recent progress received; still waiting for the update result.', retry: 'File validation failed; one repair attempt is running.' },
       progress: {
         title: 'Update progress', steps: 'Update steps', updatedAt: 'Last updated: {time}',
         stepsLabels: { notifying: 'Stop countdown', stopping: 'Stop worlds', protecting: 'Protect backups', updating: 'Update and validate', restarting: 'Restore worlds', confirming: 'Confirm loading' },
@@ -266,7 +268,7 @@ export const gameReleaseMessages = {
         hints: {
           previewed: 'The task has been created and is preparing to run.', notifying: 'Sending the shutdown announcement. The countdown starts afterward.', stopping: 'Safely stopping previously running worlds before backups and game changes.',
           protecting: 'Creating and verifying protection backups for each room. Game files have not been updated yet.', staged: 'Protection backups are complete. Checking installation prerequisites.',
-          updating: 'SteamCMD is downloading updates and validating files. The installed build will be checked afterward. Download percentage is not available for this step.',
+          updating: 'Download and file validation are separate phases. After downloading reaches 100%, version verification and world recovery still need to finish.',
           verified: 'Game files have been validated. Preparing to restore previously running worlds.', restarting: 'Restoring previously running worlds. Worlds that were stopped remain stopped.',
           confirming: 'Waiting for each world to finish loading. Starting a process does not complete the update.', unknown: 'Reading the current update stage.'
         },

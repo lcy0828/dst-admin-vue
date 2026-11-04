@@ -236,6 +236,31 @@ export function gameReleaseProgress(release) {
   }
 }
 
+// Byte counts describe the current SteamCMD phase, never whole-task success.
+// Older Agents omit progress; retain an explicit waiting state for them.
+export function gameReleaseDownloads(release, now = Date.now()) {
+  if (release?.stage !== 'updating') return []
+  return gameReleaseResultRows(release).installations.filter(item => item.stage === 'updating').map(item => {
+    const p = item.progress
+    const observed = Date.parse(p?.observedAt)
+    const started = Date.parse(item.startedAt)
+    const valid = p && typeof item.operationId === 'string' && item.operationId && p.operationId === item.operationId && Number.isFinite(observed) &&
+      (!Number.isFinite(started) || observed >= started) && ['preparing', 'downloading', 'validating', 'finalizing'].includes(p.phase)
+    const stale = valid && now - observed > 30_000
+    const knownTotal = valid && Number.isSafeInteger(p.totalBytes) && p.totalBytes > 0 &&
+      Number.isSafeInteger(p.currentBytes) && p.currentBytes >= 0 && p.currentBytes <= p.totalBytes
+    const phase = valid ? p.phase : 'waiting'
+    const measurable = ['downloading', 'validating'].includes(phase) && knownTotal
+    const seconds = Number.isFinite(started) ? Math.max(0, Math.floor((now - started) / 1000)) : null
+    return { ...item, phase, stale, observedAt: valid ? p.observedAt : null,
+      attempt: valid && p.attempt === 2 ? 2 : 1,
+      percent: measurable && !stale ? Math.floor(p.currentBytes / p.totalBytes * 100) : null,
+      transfer: measurable ? { currentBytes: p.currentBytes, totalBytes: p.totalBytes,
+        bytesPerSecond: phase === 'downloading' && !stale && Number.isSafeInteger(p.bytesPerSecond) && p.bytesPerSecond > 0 ? p.bytesPerSecond : 0 } : null,
+      elapsed: seconds === null ? null : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` }
+  })
+}
+
 export function gameReleaseShardState(shard, release) {
   if (release?.stage === 'abandoned') return shard?.runtimeState === 'running' ? 'running' : 'stopped'
   if (shard?.errorMessage || shard?.stage === 'failed') return 'failed'

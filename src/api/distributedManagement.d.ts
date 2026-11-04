@@ -405,7 +405,19 @@ export interface GameReleasePlan {
   createdAt: string
 }
 
+export interface GameReleaseDownloadProgress {
+  operationId: string
+  phase: 'preparing' | 'downloading' | 'validating' | 'finalizing'
+  attempt: number
+  currentBytes: number
+  totalBytes: number
+  bytesPerSecond?: number
+  phaseStartedAt: string
+  observedAt: string
+}
+
 export interface GameReleaseInstallationResult {
+  progress?: GameReleaseDownloadProgress
   warningMessage?: string
   writeState?: 'not_started' | 'dispatched' | 'unknown' | 'failed' | 'version_changed' | 'verified'
   operationId?: string

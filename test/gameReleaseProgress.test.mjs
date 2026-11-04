@@ -6,7 +6,7 @@ import { renderToString } from '@vue/server-renderer'
 import { createI18n } from 'vue-i18n'
 import { gameReleaseMessages } from '../src/i18n/gameReleaseMessages.js'
 import { messages } from '../src/i18n/messages.js'
-import { gameReleaseProgress, gameReleaseResultRows, gameReleaseShardState } from '../src/lib/gameRelease.mjs'
+import { gameReleaseDownloads, gameReleaseProgress, gameReleaseResultRows, gameReleaseShardState } from '../src/lib/gameRelease.mjs'
 
 let server, Component, Dock
 before(async () => {
@@ -99,7 +99,94 @@ test('update progress reports observed stages and keeps download progress indete
   assert.match(html, /确认加载/)
   assert.match(html, /data-indeterminate="true"/)
   assert.doesNotMatch(html, /aria-valuenow="100"|游戏更新完成/)
-  assert.match(html, /SteamCMD 正在下载更新并校验文件/)
+  assert.match(html, /更新已开始，等待下载进度/)
+})
+
+function withDownload(phase = 'downloading') {
+  const release = releaseFixture()
+  const now = Date.now()
+  Object.assign(release.installations[0], {
+    operationId: 'update-operation', startedAt: new Date(now - 6000).toISOString(),
+    progress: { operationId: 'update-operation', phase, attempt: 1, currentBytes: 1024, totalBytes: 4096,
+      bytesPerSecond: 512, observedAt: new Date(now).toISOString(), phaseStartedAt: new Date(now - 5000).toISOString() }
+  })
+  return release
+}
+
+test('page and task dock show measured download bytes and speed without completing the update', async () => {
+  const release = withDownload()
+  for (const html of [await render(release), await renderDock({ job: { id: 'job-1', kind: 'game.release', status: 'running' }, release })]) {
+    assert.match(html, /正在下载更新/)
+    assert.match(html, /25%/)
+    assert.match(html, /1\.0 KiB \/ 4\.0 KiB/)
+    assert.match(html, /512 B\/s/)
+    assert.match(html, /已用时 0:06/)
+    assert.match(html, /aria-valuenow="25"/)
+    assert.doesNotMatch(html, /游戏更新完成|暂不提供下载百分比/)
+  }
+  release.installations[0].progress.currentBytes = 4096
+  assert.equal(gameReleaseProgress(release).steps[2].state, 'active')
+  const html = await render(release)
+  assert.match(html, /100%/)
+  assert.doesNotMatch(html, /游戏更新完成/)
+})
+
+test('validation has its own percentage and clears download speed', async () => {
+  const release = withDownload('validating')
+  const html = await render(release)
+  assert.match(html, /正在校验游戏文件/)
+  assert.match(html, /25%/)
+  assert.doesNotMatch(html, /B\/s/)
+  release.installations[0].progress = { ...release.installations[0].progress, phase: 'preparing', attempt: 2, currentBytes: 0, totalBytes: 0 }
+  const retry = await render(release)
+  assert.match(retry, /正在进行一次修复/)
+  assert.match(retry, /data-indeterminate="true"/)
+  assert.doesNotMatch(retry, /25%|aria-valuenow="100"/)
+})
+
+test('a finished generic job cannot override an updating release with success', async () => {
+  const release = withDownload()
+  const html = await renderDock({ job: { id: 'job-1', kind: 'game.release', status: 'succeeded', progress: 100 }, release })
+  assert.match(html, /正在下载更新/)
+  assert.match(html, /已校验安装 0\/1/)
+  assert.match(html, /data-status="downloading"/)
+  assert.doesNotMatch(html, /游戏更新完成/)
+})
+
+test('a disconnected task dock preserves historical byte counts without presenting a live speed', async () => {
+  const release = withDownload()
+  const html = await renderDock({ job: { id: 'job-1', kind: 'game.release', status: 'running' }, release, connected: false })
+  assert.match(html, /1\.0 KiB \/ 4\.0 KiB/)
+  assert.match(html, /data-indeterminate="true"/)
+  assert.doesNotMatch(html, /512 B\/s|25%|aria-valuenow="25"|游戏更新完成/)
+})
+
+test('missing, stale, mismatched and invalid progress never becomes zero or an invented percentage', () => {
+  const release = withDownload()
+  const p = release.installations[0].progress
+  assert.equal(gameReleaseDownloads(release, Date.parse(p.observedAt) + 31_000)[0].percent, null)
+  assert.equal(gameReleaseDownloads(release, Date.parse(p.observedAt) + 31_000)[0].transfer.bytesPerSecond, 0)
+  for (const patch of [{ operationId: 'old-operation' }, { totalBytes: 0 }, { currentBytes: -1 }, { currentBytes: 5000 }, { totalBytes: '4096' }, { observedAt: 'invalid' }]) {
+    release.installations[0].progress = { ...p, ...patch }
+    assert.equal(gameReleaseDownloads(release)[0].percent, null)
+  }
+  delete release.installations[0].progress
+  assert.equal(gameReleaseDownloads(release)[0].phase, 'waiting')
+  release.stage = 'failed'
+  assert.deepEqual(gameReleaseDownloads(release), [])
+})
+
+test('silent output remains waiting and a remote target is named from its plan', async () => {
+  const release = withDownload()
+  Object.assign(release.installations[0], { targetId: 'agent:test', startedAt: new Date(Date.now() - 120_000).toISOString() })
+  release.plan.installations[0].targetId = 'agent:test'
+  release.plan.installations[0].targetName = '测试节点'
+  release.plan.installations.push({ targetId: 'local', installationId: 'default' })
+  release.installations[0].progress.observedAt = new Date(Date.now() - 60_000).toISOString()
+  const html = await render(release)
+  assert.match(html, /测试节点/)
+  assert.match(html, /暂未收到新进度，仍在等待更新结果/)
+  assert.doesNotMatch(html, /512 B\/s|25%|游戏更新完成/)
 })
 
 test('failed and partially restored releases never display fake 100% completion', async () => {

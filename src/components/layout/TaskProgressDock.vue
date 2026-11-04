@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { globalJobKindLabel } from '@/i18n/globalJobMessages'
 import { taskProgressMessages } from '@/i18n/taskProgressMessages'
 import { formatJobBytes, formatJobRate, globalJobFailure, globalJobWarning } from '@/lib/globalJobs.mjs'
-import { gameReleaseStageKey } from '@/lib/gameRelease.mjs'
+import { gameReleaseDownloads, gameReleaseStageKey } from '@/lib/gameRelease.mjs'
 import { jobElapsedSeconds, modDownloadGroups, modDownloadSummary, taskProgress, readableTaskText, worldRestartProgress } from '@/lib/taskProgress.mjs'
 import ModDownloadProgressList from './ModDownloadProgressList.vue'
 import WorldRestartProgressList from './WorldRestartProgressList.vue'
@@ -45,7 +45,9 @@ const waitingBackup = computed(() => props.release?.nextAction === 'backup_decis
 const canceledUpdate = computed(() => props.release?.stage === 'abandoned' && props.release.errorCode === 'UPDATE_CANCELED')
 const model = computed(() => waitingBackup.value || canceledUpdate.value
   ? { ...taskProgress(props.job), status: canceledUpdate.value ? 'canceled' : 'waiting', active: false, percent: null }
-  : taskProgress(props.job))
+  : props.release?.stage === 'updating'
+    ? { ...taskProgress(props.job), active: true, status: 'downloading', percent: props.connected ? gameReleaseDownloads(props.release, now.value)[0]?.percent ?? null : null }
+    : taskProgress(props.job))
 const worlds = computed(() => worldRestartProgress(props.job))
 const worldPhase = computed(() => model.value.lifecycle || model.value.restart && model.value.phase === 'restarting')
 const warning = computed(() => globalJobWarning(props.job).message)
@@ -194,7 +196,7 @@ watch(() => props.job.id, () => { showDownloads.value = false })
 
       <CardContent v-if="!succeeded || expanded" class="task-progress-content group-data-[size=sm]/card:pt-0">
       <div class="task-progress-body">
-        <GameReleaseProgress v-if="release" :release="release" compact />
+        <GameReleaseProgress v-if="release" :release="release" :connected="connected" compact />
         <template v-else-if="worldPhase">
           <WorldRestartProgressList v-if="worlds.total" :progress="worlds" :connected="connected" :target-labels="targetLabels" />
           <template v-else>
