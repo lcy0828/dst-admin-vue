@@ -4,6 +4,8 @@ import ResourceEntityPicker from '@/components/game-tools/ResourceEntityPicker.v
 import { rememberResource } from '@/lib/resourceLibrary.mjs'
 import WorkbenchLocations from '@/components/game-tools/WorkbenchLocations.vue'
 import { isMovementCommand, movementPreview } from '@/lib/locationResults.mjs'
+import WorkbenchExtraTools from '@/components/game-tools/WorkbenchExtraTools.vue'
+import { resourceShortcut } from '@/lib/workbenchExpansion.mjs'
 import WorkbenchCommands from '@/components/game-tools/WorkbenchCommands.vue'
 import CommandRunResult from '@/components/game-tools/CommandRunResult.vue'
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
@@ -148,13 +150,15 @@ const SPECIAL_EVENT_GROUPS = [
   { id: 'years', events: ['year_of_the_gobbler', 'year_of_the_varg', 'year_of_the_pig', 'year_of_the_carrat', 'year_of_the_beefalo', 'year_of_the_catcoon', 'year_of_the_bunnyman', 'year_of_the_dragonfly', 'year_of_the_snake', 'year_of_the_knight'] }
 ]
 const CHARACTER_POWER_GROUPS = {
+  webber: [{ id: 'beard', actions: ['beard_none', 'beard_short', 'beard_medium', 'beard_long'] }],
   wilson: [{ id: 'beard', actions: ['beard_none', 'beard_short', 'beard_medium', 'beard_long'] }],
   walter: [{ id: 'companion', actions: ['woby_empty', 'woby_half', 'woby_full'] }],
   wendy: [
     { id: 'bond', actions: ['abigail_bond_1', 'abigail_bond_2', 'abigail_bond_3'] },
-    { id: 'health', actions: ['abigail_health_5', 'abigail_health_50', 'abigail_health_100'] },
+    { id: 'health', actions: ['abigail_health_0', 'abigail_health_5', 'abigail_health_50', 'abigail_health_100'] },
     { id: 'form', actions: ['abigail_shadow', 'abigail_lunar_toggle'] }
   ],
+  wathgrithr: [{ id: 'inspiration', actions: ['inspiration_0', 'inspiration_50', 'inspiration_100'] }],
   wigfrid: [{ id: 'inspiration', actions: ['inspiration_0', 'inspiration_50', 'inspiration_100'] }],
   wolfgang: [{ id: 'fitness', actions: ['fitness_0', 'fitness_50', 'fitness_100'] }],
   woodie: [{ id: 'form', actions: ['woody_beaver', 'woody_goose', 'woody_moose'] }],
@@ -199,6 +203,12 @@ const roomRoute = useRoute()
 const selectedWorldId = ref(props.initialWorldId)
 const selectedPlayerId = ref(props.initialPlayerId)
 const selectedEntity = ref(null)
+const extraCommand = ref(''), extraArguments = ref({})
+function resourceAction({item,action,preferences}) {
+ if(action==='location'){activeSection.value='locations';return}
+ const target=resourceShortcut(action,item,preferences);if(!target.command)return
+ extraCommand.value=target.command;extraArguments.value={...target.arguments,feedback:preferences.feedback,...(['map','batch'].includes(action)?{skin:preferences.skins[item.id]||''}:{})};activeSection.value='extra'
+}
 const activeSection = ref(props.initialSection)
 const commandsOpened = ref(props.initialSection === 'commands')
 watch(activeSection, value => { if (value === 'commands') commandsOpened.value = true })
@@ -1200,6 +1210,7 @@ onBeforeUnmount(() => {
           <TabsTrigger value="entity"><Boxes data-icon="inline-start" />{{ t('entityTools.sections.entity') }}</TabsTrigger>
           <TabsTrigger value="player"><UserRound data-icon="inline-start" />{{ t('entityTools.sections.player') }}</TabsTrigger>
           <TabsTrigger value="world"><SunMedium data-icon="inline-start" />{{ t('entityTools.sections.world') }}</TabsTrigger>
+          <TabsTrigger value="extra">更多工具</TabsTrigger>
           <TabsTrigger value="locations">{{ locale.startsWith('en') ? 'Locations' : '地点' }}</TabsTrigger>
           <TabsTrigger value="commands"><Code data-icon="inline-start" />{{ t('workbench.section') }}</TabsTrigger>
         </TabsList>
@@ -1229,7 +1240,7 @@ onBeforeUnmount(() => {
                 :running="currentWorld?.status === 'running'"
                 :world-status="currentWorld?.status || ''"
                 :target-loading="targetsLoading"
-                :selected-key="selectedEntity?.key || ''"
+                :selected-key="selectedEntity?.key || ''" @shortcut="resourceAction"
                 @select="selectEntity"
                 @refresh-target="refreshTargets"
               />
@@ -1802,6 +1813,7 @@ onBeforeUnmount(() => {
           </Card>
           <CommandRunResult v-if="lastOperationRun && lastOperationSection === 'world'" class="mt-3" :run="lastOperationRun" :target="lastOperationTarget" />
         </TabsContent>
+        <TabsContent value="extra"><WorkbenchExtraTools v-if="activeSection==='extra'" :room-id="selectedRoomId" :room-name="currentRoom?.name || ''" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :player-id="currentPlayerIsOnline ? selectedPlayerId : ''" :player-prefab="currentPlayer?.prefab || ''" :running="currentWorld?.status==='running'" :command-id="extraCommand" :initial-arguments="extraArguments" /></TabsContent>
         <TabsContent value="locations"><WorkbenchLocations v-if="activeSection === 'locations'" :room-id="selectedRoomId" :world-id="selectedWorldId" :player-id="currentPlayerIsOnline ? selectedPlayerId : ''" :player-name="currentPlayer ? playerName(currentPlayer) : ''" /></TabsContent>
         <TabsContent value="commands" force-mount v-show="activeSection === 'commands'">
           <WorkbenchCommands v-if="commandsOpened" :room-id="selectedRoomId" :room-name="currentRoom?.name || ''" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :player-id="currentPlayerIsOnline ? selectedPlayerId : ''" :running="currentWorld?.status === 'running'"
@@ -1821,7 +1833,7 @@ onBeforeUnmount(() => {
 .target-toolbar-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: .75rem; }
 .target-toolbar-fields :deep([data-slot="field"]) { gap: .35rem; }
 .tools-workspace { min-width: 0; }
-.section-tabs-list { display: grid; width: 100%; height: auto; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.section-tabs-list { display: grid; width: 100%; height: auto; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .section-tabs-list :deep(button) { min-height: 2.5rem; }
 .section-card-header { display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .entity-mode-toggle { display: grid; flex: none; grid-template-columns: repeat(5, minmax(0, 1fr)); }

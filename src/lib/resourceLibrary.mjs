@@ -1,7 +1,10 @@
+import { pinyin } from 'pinyin-pro'
 import { validPrefab } from './workbench.mjs'
 
-export const resourceCategories = ['all', 'item', 'food', 'equipment', 'structure', 'creature', 'boss', 'nature', 'other']
-const categorySet = new Set(resourceCategories.slice(1))
+export const resourceCategories = ['all', 'favorites', 'crafting', 'creature', 'food', 'equipment', 'item', 'turf', 'mods', 'structure', 'boss', 'nature', 'other']
+const categorySet = new Set(['item', 'food', 'equipment', 'structure', 'creature', 'boss', 'nature', 'other'])
+const searchCache = new Map()
+function phonetic(value) { if (!value) return ''; if (searchCache.has(value)) return searchCache.get(value); const result = pinyin(value, { toneType: 'none', type: 'array' }); const text = `${result.join('')} ${result.map(x => x[0] || '').join('')}`; if (searchCache.size >= 12000) searchCache.clear(); searchCache.set(value, text); return text }
 const commonOrder = ['cutgrass', 'twigs', 'log', 'rocks', 'flint', 'goldnugget', 'boards', 'cutstone', 'rope', 'meatballs', 'perogies', 'healingsalve', 'reviver', 'gears', 'silk', 'nightmarefuel', 'livinglog', 'torch', 'lantern', 'axe', 'pickaxe', 'shovel', 'hammer', 'spear', 'hambat', 'armorwood', 'footballhat', 'backpack', 'cane', 'firepit', 'cookpot', 'icebox', 'treasurechest', 'beefalo', 'pigman', 'deerclops']
 const commonRank = new Map(commonOrder.map((id, index) => [id, commonOrder.length - index]))
 const HISTORY_KEY = 'dst.workbench.resource-history.v1'
@@ -31,7 +34,7 @@ export function mergeResourceDirectory(builtin = [], runtime = []) {
     }
     map.set(item.id, { ...merged, key: `resource:${item.id}`, source: 'runtime', registered: true })
   }
-  return [...map.values()].map(item => ({ ...item, searchText: normalize([item.id, item.nameZhCN, item.nameEn, item.modName, item.modId].join(' ')) }))
+  return [...map.values()].map(item => ({ ...item, searchText: normalize([item.id, item.nameZhCN, item.nameEn, item.modName, item.modId, phonetic(item.nameZhCN)].join(' ')) }))
 }
 
 export function sanitizeResourceHistory(value, now = Date.now()) {
@@ -68,15 +71,18 @@ export function rememberResource(entity, event, storage) {
   try { (storage || globalThis.localStorage)?.setItem(HISTORY_KEY, JSON.stringify(updateResourceHistory(readResourceHistory(storage), entity, event))) } catch { /* Private browsing can disable storage. */ }
 }
 
-export function queryResources(items, { query = '', category = 'all', source = 'all', sort = 'smart', history = {}, now = Date.now(), locale = 'zh-CN' } = {}) {
+export function queryResources(items, { query = '', category = 'all', source = 'all', sort = 'smart', history = {}, now = Date.now(), locale = 'zh-CN', favorites = [] } = {}) {
   const q = normalize(query), tokens = q.split(/\s+/).filter(Boolean)
   const counts = Object.fromEntries(resourceCategories.map(key => [key, 0]))
   const ranked = []
+  const saved = new Set(favorites)
   for (const item of items) {
     if (source === 'vanilla' && item.modId || source === 'mods' && !item.modId || !['all', 'vanilla', 'mods'].includes(source) && item.modId !== source) continue
     if (!tokens.every(token => item.searchText.includes(token))) continue
     counts.all++; counts[item.category]++
-    if (category !== 'all' && item.category !== category) continue
+    const tags = [item.category, ...(saved.has(item.id) ? ['favorites'] : []), ...(item.hasRecipe || item.recipe || item.capabilities?.includes('recipe') || item.capabilities?.includes('materials') ? ['crafting'] : []), ...(item.id.startsWith('turf_') ? ['turf'] : []), ...(item.modId ? ['mods'] : [])]
+    for (const key of tags) if (key !== item.category) counts[key]++
+    if (category !== 'all' && !tags.includes(category)) continue
     const names = [item.id, item.nameZhCN, item.nameEn].map(normalize)
     const relevance = !q ? 0 : names.includes(q) ? 3 : names.some(name => name.startsWith(q)) ? 2 : 1
     const entry = history[resourceIdentity(item)]

@@ -1,8 +1,11 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Check, ChevronLeft, ChevronRight, RefreshCw, Search, X } from '@lucide/vue'
+import { Check, ChevronLeft, ChevronRight, RefreshCw, Search, X, Star, Ellipsis } from '@lucide/vue'
 import { entityCatalogV2API } from '@/api/v2'
+import { readWorkbenchPreferences, writeWorkbenchPreferences } from '@/lib/workbenchPreferences.mjs'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 import { manualEntity } from '@/lib/workbench.mjs'
 import { createWorldCatalogRead } from '@/lib/worldCatalogRead.mjs'
 import { clearResourceHistory, mergeResourceDirectory, queryResources, readResourceHistory, rememberResource, resourceCategories } from '@/lib/resourceLibrary.mjs'
@@ -17,8 +20,17 @@ import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 const props = defineProps({ roomId: { type: String, default: '' }, worldId: { type: String, default: '' }, running: Boolean, targetLoading: Boolean, worldStatus: { type: String, default: '' }, selectedKey: { type: String, default: '' } })
-const emit = defineEmits(['select', 'refresh-target'])
+const emit = defineEmits(['select', 'refresh-target', 'shortcut'])
 const { t, locale } = useI18n()
+const preferences = ref(readWorkbenchPreferences()), contextID = ref('')
+const categoryName = key => ({favorites:'收藏',crafting:'制作',turf:'地皮',mods:'模组'})[key] || t(`workbench.resources.categories.${key}`)
+const menuActions = [{id:'batch',label:'批量生成'},{id:'map',label:'在地图选点生成'},{id:'cycle',label:'传送到下一个'},{id:'materials',label:'获取配方材料'},{id:'favorite',label:'收藏／取消收藏'},{id:'unlock',label:'解锁此配方'},{id:'blueprint',label:'获取蓝图'},{id:'announce',label:'公告世界内数量'},{id:'nearby_remove',label:'清理附近同类'},{id:'location',label:'记录当前位置为地点'},{id:'remove_all',label:'移除世界内同类'}]
+function shortcut(item, action) {
+ contextID.value=''; select(item)
+ if(action==='favorite') { const set=new Set(preferences.value.favorites); if(set.has(item.id))set.delete(item.id);else set.add(item.id);preferences.value=writeWorkbenchPreferences({...preferences.value,favorites:[...set]});return }
+ if(preferences.value.autoFavoriteEquipment && item.category==='equipment')preferences.value=writeWorkbenchPreferences({...preferences.value,favorites:[...new Set([...preferences.value.favorites,item.id])]})
+ emit('shortcut',{item,action,preferences:preferences.value})
+}
 const searchID = `resource-search-${useId()}`
 const builtin = shallowRef([]), snapshot = shallowRef(null), history = shallowRef(readResourceHistory())
 const query = ref(''), settledQuery = ref(''), category = ref('all'), source = ref('all'), sort = ref('smart'), page = ref(0)
@@ -29,18 +41,21 @@ const error = computed(() => errorKey.value ? t(`workbench.resources.${errorKey.
 const grid = ref(null)
 let timer, baseController
 const merged = computed(() => mergeResourceDirectory(builtin.value, snapshot.value?.items || []))
-const result = computed(() => queryResources(merged.value, { query: settledQuery.value, category: category.value, source: source.value, sort: sort.value, history: history.value, locale: locale.value }))
+const categories = computed(()=>preferences.value.moreCategories?resourceCategories:resourceCategories.filter(k=>!['structure','boss','nature','other'].includes(k)))
+const favoriteItems=computed(()=>merged.value.filter(item=>preferences.value.favorites.includes(item.id)).slice(0,12))
+const result = computed(() => queryResources(merged.value, { query: settledQuery.value, category: category.value, source: source.value, sort: sort.value, history: history.value, locale: locale.value, favorites: preferences.value.favorites }))
 const pages = computed(() => Math.max(1, Math.ceil(result.value.items.length / 60)))
 const visible = computed(() => result.value.items.slice(page.value * 60, (page.value + 1) * 60))
 const manual = computed(() => {
   const value = query.value.trim()
-  return merged.value.some(item => item.id === value) ? null : manualEntity(value)
+  return result.value.items.length || merged.value.some(item => item.id === value) ? null : manualEntity(value)
 })
 const canRead = computed(() => props.roomId && props.worldId && props.running && !props.targetLoading)
 const selectedID = computed(() => props.selectedKey.split(':').slice(1).join(':'))
 const observed = computed(() => snapshot.value?.observedAt ? new Date(snapshot.value.observedAt).toLocaleTimeString(locale.value) : '')
 function resetResults() { page.value = 0; history.value = readResourceHistory(); if (grid.value) grid.value.scrollTop = 0 }
 function select(item) { emit('select', item); if (settledQuery.value.trim()) rememberResource(item, 'search') }
+function reloadPreferences(){preferences.value=readWorkbenchPreferences()}
 function clearHistory() { clearResourceHistory(); resetResults() }
 async function loadBase() {
   baseController?.abort(); baseController = new AbortController(); baseError.value = ''; baseLoading.value = true
@@ -84,8 +99,8 @@ watch(() => [props.roomId, props.worldId, props.running, props.targetLoading], (
   reader.cancel(); readState.value = { phase: 'idle', attempt: 0 }; errorKey.value = ''
   snapshot.value = null; source.value = 'all'; resetResults(); emit('select', null); readWorld()
 })
-onMounted(() => { loadBase(); readWorld() })
-onBeforeUnmount(() => { reader.dispose(); baseController?.abort(); clearTimeout(timer) })
+onMounted(() => { loadBase(); readWorld(); window.addEventListener('dst:workbench-preferences',reloadPreferences) })
+onBeforeUnmount(() => { window.removeEventListener('dst:workbench-preferences',reloadPreferences); reader.dispose(); baseController?.abort(); clearTimeout(timer) })
 </script>
 
 <template>
@@ -105,10 +120,12 @@ onBeforeUnmount(() => { reader.dispose(); baseController?.abort(); clearTimeout(
       </Field>
     </div>
     <ToggleGroup :model-value="category" type="single" variant="outline" :spacing="1" class="flex flex-wrap justify-start gap-1" :aria-label="t('workbench.resources.category')" @update:model-value="value => { if (value) category = value }">
-      <ToggleGroupItem v-for="key in resourceCategories" :key="key" :value="key" class="gap-1.5 px-2.5 text-xs sm:text-sm"><span>{{ t(`workbench.resources.categories.${key}`) }}</span><span class="text-[10px] tabular-nums opacity-60">{{ result.counts[key] }}</span></ToggleGroupItem>
+      <ToggleGroupItem v-for="key in categories" :key="key" :value="key" class="gap-1.5 px-2.5 text-xs sm:text-sm"><span>{{ categoryName(key) }}</span><span class="text-[10px] tabular-nums opacity-60">{{ result.counts[key] }}</span></ToggleGroupItem>
     </ToggleGroup>
+    <div v-if="preferences.quickFavorites && favoriteItems.length" class="flex flex-wrap gap-1" aria-label="收藏快捷条"><Button v-for="item in favoriteItems" :key="item.id" size="sm" variant="outline" @click="select(item)">{{item.nameZhCN||item.id}}</Button></div>
+    <Button variant="ghost" size="sm" class="self-start" @click="emit('shortcut',{action:'location'})">传送点 · 保存与管理地点</Button>
     <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-      <span aria-live="polite">{{ t(category === 'all' ? 'workbench.catalog.count' : 'workbench.resources.categoryCount', { count: result.items.length, category: t(`workbench.resources.categories.${category}`) }) }}<span v-if="observed"> · {{ t(error ? 'workbench.resources.lastWorldRead' : 'workbench.resources.worldRead', { time: observed }) }}</span></span>
+      <span aria-live="polite">{{ t(category === 'all' ? 'workbench.catalog.count' : 'workbench.resources.categoryCount', { count: result.items.length, category: categoryName(category) }) }}<span v-if="observed"> · {{ t(error ? 'workbench.resources.lastWorldRead' : 'workbench.resources.worldRead', { time: observed }) }}</span></span>
       <Button v-if="canRead" size="sm" variant="outline" :disabled="loading" @click="readWorld(Boolean(snapshot))"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t(loading ? 'workbench.resources.readingButton' : error ? 'workbench.resources.retryWorld' : snapshot ? 'workbench.catalog.refresh' : 'workbench.catalog.read') }}</Button>
       <Button v-else-if="roomId" size="sm" variant="outline" :disabled="targetLoading" @click="emit('refresh-target')"><RefreshCw data-icon="inline-start" />{{ t('workbench.resources.checkWorld') }}</Button>
     </div>
@@ -118,11 +135,18 @@ onBeforeUnmount(() => { reader.dispose(); baseController?.abort(); clearTimeout(
     <p v-else-if="!snapshot" class="text-xs text-muted-foreground" data-world-catalog-state="idle">{{ t(`workbench.resources.${idleHint}`) }}</p>
     <div v-if="baseLoading && !merged.length" class="flex items-center gap-2 py-10 text-sm text-muted-foreground" role="status"><Spinner />{{ t('entityTools.catalog.searching') }}</div>
     <div v-else-if="visible.length" ref="grid" class="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto overscroll-contain p-0.5 sm:grid-cols-2 xl:grid-cols-3" data-resource-grid>
-      <button v-for="item in visible" :key="item.key" type="button" :data-prefab="item.id" class="flex min-w-0 cursor-pointer items-center gap-2 rounded-md border p-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring" :class="selectedKey === item.key ? 'border-primary bg-accent' : 'border-border'" :aria-pressed="selectedKey === item.key" :title="[item.nameZhCN, item.nameEn, item.id, item.modName].filter(Boolean).join(' · ')" @click="select(item)">
+      <DropdownMenu v-for="item in visible" :key="item.key" :open="contextID === item.id" @update:open="value => contextID = value ? item.id : ''">
+      <div class="relative flex min-w-0" @contextmenu.prevent="contextID = item.id">
+      <button type="button" :data-prefab="item.id" class="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md border p-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring" :class="cn(preferences.highlightSelection && selectedKey === item.key ? 'border-primary bg-accent' : 'border-border')" :aria-pressed="selectedKey === item.key" :title="[item.nameZhCN, item.nameEn, item.id, item.modName].filter(Boolean).join(' · ')" @click="select(item)" @auxclick.middle.prevent="shortcut(item, preferences.middleAction)">
         <span class="size-11 shrink-0 overflow-hidden rounded-md bg-muted"><EntityArtwork :entity="item" :room-id="roomId" :world-id="worldId" /></span>
-        <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-sm">{{ locale === 'zh-CN' ? item.nameZhCN || item.nameEn || item.id : item.nameEn || item.nameZhCN || item.id }}</strong><code class="truncate text-xs text-muted-foreground">{{ item.id }}</code><span v-if="item.modId" class="truncate text-xs text-muted-foreground">{{ item.modName || item.modId }}</span></span>
+        <span class="flex min-w-0 flex-1 flex-col"><strong class="truncate text-sm">{{ locale === 'zh-CN' ? item.nameZhCN || item.nameEn || item.id : item.nameEn || item.nameZhCN || item.id }}</strong><code v-if="preferences.showCode" class="truncate text-xs text-muted-foreground">{{ item.id }}</code><span v-if="item.modId && preferences.showModNames" class="truncate text-xs text-muted-foreground">{{ item.modName || item.modId }}</span></span>
+        <Star v-if="preferences.favorites.includes(item.id)" class="size-4 shrink-0 text-primary" />
         <Check v-if="selectedKey === item.key" class="size-4 shrink-0 text-primary" />
       </button>
+      <DropdownMenuTrigger as-child><Button size="icon-sm" variant="ghost" class="absolute right-0 top-0" :aria-label="`${item.nameZhCN || item.id} · 更多操作`"><Ellipsis /></Button></DropdownMenuTrigger>
+      </div>
+      <DropdownMenuContent><DropdownMenuGroup><DropdownMenuItem v-for="action in menuActions" :key="action.id" @select="shortcut(item,action.id)">{{ action.label }}</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent>
+      </DropdownMenu>
     </div>
     <div v-else class="flex flex-col items-start gap-2 rounded-md border border-dashed p-5 text-sm">
       <strong>{{ t('workbench.catalog.empty') }}</strong><span class="text-muted-foreground">{{ t('workbench.resources.emptyHint') }}</span>
