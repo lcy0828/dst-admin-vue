@@ -216,4 +216,3 @@ export function worldPrimaryAction(world, translator) {
   }
   return { kind: null, label: label('unavailable', '不可操作'), variant: 'outline', disabled: true }
 }
-

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import { babelParse, parse } from '@vue/compiler-sfc'
-import { compareWorldRoles } from '../src/lib/worldRuntimeStatus.mjs'
+import { compareWorldRoles, isWorldConsoleUnresponsive } from '../src/lib/worldRuntimeStatus.mjs'
 
 const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
@@ -27,7 +27,7 @@ test('room catalog projection sorts worlds by role without losing telemetry fiel
   const code = await read('src/api/v2LegacyAdapters.js')
   const nodes = babelParse(code, { sourceType: 'module' }).program.body
     .filter(node => node.type === 'FunctionDeclaration' && ['mapRoom', 'mapWorld', 'worldType'].includes(node.id.name))
-  const mapRoom = runInNewContext(`${nodes.map(node => code.slice(node.start, node.end)).join('\n')}; mapRoom`, { compareWorldRoles })
+  const mapRoom = runInNewContext(`${nodes.map(node => code.slice(node.start, node.end)).join('\n')}; mapRoom`, { compareWorldRoles, isWorldConsoleUnresponsive })
   const worlds = [{ id: 'caves', name: 'Caves', role: 'caves' }, { id: 'master', name: 'Z Prime', role: 'master' }]
   const room = mapRoom({ id: 'room' }, worlds, [{ worldId: 'master', season: 'summer', cycles: 200 }])
   assert.deepEqual([...room.worlds].map(world => world.id), ['master', 'caves'])
