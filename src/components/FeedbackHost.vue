@@ -79,7 +79,7 @@
   </AlertDialog>
 
   <Dialog :open="activeRequest?.kind === 'prompt'" @update:open="handlePromptOpen">
-    <DialogContent :show-close-button="false">
+    <DialogContent :show-close-button="false" overlay-class="z-[60]" class="z-[60]">
       <DialogHeader>
         <DialogTitle>{{ activeRequest?.title }}</DialogTitle>
         <DialogDescription>{{ activeRequest?.message }}</DialogDescription>
@@ -108,7 +108,7 @@
   </Dialog>
 
   <Dialog :open="activeRequest?.kind === 'runtime-mode'" @update:open="handleRuntimeModeOpen">
-    <DialogContent :show-close-button="false" class="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+    <DialogContent :show-close-button="false" overlay-class="z-[60]" class="z-[60] max-h-[90vh] overflow-y-auto sm:max-w-xl">
       <DialogHeader>
         <DialogTitle>{{ t('runtimeMode.title') }}</DialogTitle>
         <DialogDescription>{{ t('runtimeMode.description') }}</DialogDescription>
@@ -165,7 +165,7 @@
               <SelectTrigger id="runtime-package-version" class="w-full" :aria-invalid="!canUseLuaJIT">
                 <SelectValue :placeholder="t('runtimeMode.version.placeholder')" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent class="z-[70]">
                 <SelectGroup>
                   <SelectLabel>{{ t('runtimeMode.version.group') }}</SelectLabel>
                   <SelectItem v-for="option in runtimeVersionOptions" :key="option.id" :value="option.version">

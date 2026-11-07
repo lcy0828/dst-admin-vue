@@ -1,4 +1,4 @@
-import { compareWorldRoles, isWorldSaveWriteFailed } from './worldRuntimeStatus.mjs'
+import { compareWorldRoles, isWorldConsoleUnresponsive, isWorldSaveWriteFailed } from './worldRuntimeStatus.mjs'
 
 function normalizedWorldType(world = {}) {
   const explicit = String(world.type || '').trim().toLowerCase()
@@ -70,7 +70,7 @@ export function summarizeFleetActivity(snapshot = {}, targets = snapshot.targets
 
 export function selectWorkspaceRoom(rooms = [], currentRoomId = '', preferRunning = false) {
   const current = rooms.find(room => room.id === currentRoomId)
-  const isRunning = room => room?.worlds?.some(world => world.status === 'running')
+  const isRunning = room => room?.worlds?.some(world => world.status === 'running' || isWorldConsoleUnresponsive(world))
   if (preferRunning) {
     if (isRunning(current)) return current
     const running = rooms.find(isRunning)
@@ -93,7 +93,7 @@ export function projectFleetOverview(snapshot = {}, requestedTargetId = '') {
         savepath: room.directoryName,
         updateTime: room.updatedAt,
         worlds,
-        isRunning: worlds.some(world => world.status === 'running')
+        isRunning: worlds.some(world => world.status === 'running' || isWorldConsoleUnresponsive(world))
       }
     })
     .filter(room => room.worlds.length > 0)
@@ -120,9 +120,11 @@ export function projectFleetOverview(snapshot = {}, requestedTargetId = '') {
       mixedRooms: rooms.filter(room => room.mixedPlacement).length,
       worlds: worlds.length,
       running: worlds.filter(world => world.status === 'running').length,
-      stopped: worlds.filter(world => world.status === 'stopped').length,
+      stopped: worlds.filter(world => world.status === 'stopped' && !isWorldConsoleUnresponsive(world)).length,
       attention: worlds.filter(world => (
-        !['running', 'stopped'].includes(world.status) || isWorldSaveWriteFailed(world)
+        !['running', 'stopped'].includes(world.status) ||
+        isWorldSaveWriteFailed(world) ||
+        isWorldConsoleUnresponsive(world)
       )).length
     }
   }

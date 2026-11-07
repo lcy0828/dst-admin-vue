@@ -12,13 +12,16 @@ export function worldStatusLabel(worldOrStatus, translator) {
   const status = worldRuntimeStatus(worldOrStatus)
   const presentationStatus = isWorldSaveWriteFailed(worldOrStatus)
     ? 'saveFailed'
-    : isWorldPaused(worldOrStatus) ? 'paused' : status
+    : isWorldConsoleUnresponsive(worldOrStatus)
+      ? 'unresponsive'
+      : isWorldPaused(worldOrStatus) ? 'paused' : status
   if (typeof translator === 'function') return translator(`worldRuntime.statuses.${presentationStatus}`)
   return {
     stopped: '已停止',
     starting: '启动中',
     running: '运行中',
     paused: '运行中 · 已暂停',
+    unresponsive: '进程在线 · 无响应',
     saveFailed: '保存异常',
     failed: '启动失败',
     stopping: '停止中',
@@ -27,7 +30,7 @@ export function worldStatusLabel(worldOrStatus, translator) {
 }
 
 export function worldStatusVariant(worldOrStatus) {
-  if (isWorldSaveWriteFailed(worldOrStatus)) return 'destructive'
+  if (isWorldSaveWriteFailed(worldOrStatus) || isWorldConsoleUnresponsive(worldOrStatus)) return 'destructive'
   if (isWorldPaused(worldOrStatus)) return 'info'
   return {
     stopped: 'outline',
@@ -52,6 +55,27 @@ export function isWorldSaveWriteFailed(world) {
   return worldRuntimeStatus(world) === 'running' && worldStatusCode(world) === 'SAVE_WRITE_FAILED'
 }
 
+export function isWorldProcessAlive(world) {
+  if (!world || typeof world !== 'object') return false
+  return world.sessionExists === true ||
+    world.session_exists === true
+}
+
+export function isWorldBarrierFailed(world) {
+  return worldStatusCode(world) === 'SNAPSHOT_BARRIER_FAILED'
+}
+
+export function isWorldConsoleUnresponsive(world) {
+  if (!world || typeof world !== 'object') return false
+  if (isWorldBarrierFailed(world)) return true
+  const status = worldRuntimeStatus(world)
+  if (isWorldProcessAlive(world) && ['stopped', 'unknown'].includes(status)) return true
+  if (status === 'stopped' && String(world.stateRuntimeState || '').trim().toLowerCase() === 'running') {
+    return true
+  }
+  return false
+}
+
 export function worldStatusMessage(world) {
   if (!world || typeof world !== 'object') return ''
   return String(world.statusMessage || world.status_message || '').trim()
@@ -67,15 +91,15 @@ export function isWorldStarting(worldOrStatus) {
 }
 
 export function canStartWorld(world) {
-  return worldControlAvailable(world) && ['stopped', 'failed'].includes(worldRuntimeStatus(world))
+  return worldControlAvailable(world) && !isWorldConsoleUnresponsive(world) && ['stopped', 'failed'].includes(worldRuntimeStatus(world))
 }
 
 export function canStopWorld(world) {
-  return worldControlAvailable(world) && worldRuntimeStatus(world) === 'running'
+  return worldControlAvailable(world) && (worldRuntimeStatus(world) === 'running' || isWorldConsoleUnresponsive(world))
 }
 
 export function canRequestStopWorld(world) {
-  return worldControlAvailable(world) && ['starting', 'running'].includes(worldRuntimeStatus(world))
+  return worldControlAvailable(world) && (['starting', 'running'].includes(worldRuntimeStatus(world)) || isWorldConsoleUnresponsive(world))
 }
 
 export function canCleanFailedWorld(world) {
@@ -83,11 +107,11 @@ export function canCleanFailedWorld(world) {
 }
 
 export function canConfigureWorld(world) {
-  return worldControlAvailable(world) && worldRuntimeStatus(world) === 'stopped'
+  return worldControlAvailable(world) && !isWorldConsoleUnresponsive(world) && worldRuntimeStatus(world) === 'stopped'
 }
 
 export function canDeleteWorld(world) {
-  return worldControlAvailable(world) && worldRuntimeStatus(world) === 'stopped'
+  return worldControlAvailable(world) && !isWorldConsoleUnresponsive(world) && worldRuntimeStatus(world) === 'stopped'
 }
 
 export function worldActionRequiresConfirmation(action) {
@@ -119,11 +143,17 @@ export function worldLifecycleScope(worlds, target, action) {
   const master = roomWorlds.find(isMasterWorld)
   if (isMasterWorld(selected) && ['stop', 'restart'].includes(normalizedAction)) {
     affected.push(...roomWorlds.filter(world => (
-      world.id !== selected.id && ['starting', 'running'].includes(worldRuntimeStatus(world))
+      world.id !== selected.id && (['starting', 'running'].includes(worldRuntimeStatus(world)) || isWorldConsoleUnresponsive(world))
     )))
   } else if (!isMasterWorld(selected) && ['start', 'restart'].includes(normalizedAction) && master) {
     const masterStatus = worldRuntimeStatus(master)
-    if (['stopped', 'failed'].includes(masterStatus)) {
+    if (isWorldConsoleUnresponsive(master)) {
+      if (normalizedAction === 'restart' && canStopWorld(master)) {
+        affected.unshift(master)
+      } else {
+        return { allowed: false, reason: 'master-state-unknown', worlds: [], addedWorlds: [] }
+      }
+    } else if (['stopped', 'failed'].includes(masterStatus)) {
       if (!canStartWorld(master)) {
         return { allowed: false, reason: 'master-unavailable', worlds: [], addedWorlds: [] }
       }
@@ -169,7 +199,7 @@ export function worldPrimaryAction(world, translator) {
   const label = (key, fallback) => typeof translator === 'function'
     ? translator(`worldRuntime.actions.${key}`)
     : fallback
-  if (status === 'running') {
+  if (status === 'running' || isWorldConsoleUnresponsive(world)) {
     return { kind: 'stop', label: label('stop', '停止'), variant: 'destructive', disabled: !canRequestStopWorld(world) }
   }
   if (status === 'stopped') {
@@ -186,3 +216,4 @@ export function worldPrimaryAction(world, translator) {
   }
   return { kind: null, label: label('unavailable', '不可操作'), variant: 'outline', disabled: true }
 }
+

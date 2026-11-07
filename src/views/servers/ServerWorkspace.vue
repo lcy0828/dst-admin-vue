@@ -401,6 +401,24 @@
           </CardAction>
         </CardHeader>
         <CardContent class="world-card-content">
+        <Alert v-if="unresponsiveWorlds.length" variant="destructive" class="mb-3">
+          <CircleAlert />
+          <AlertTitle>{{ $t('servers.workspace.worlds.unresponsiveAlertTitle') }}</AlertTitle>
+          <AlertDescription>{{ $t('servers.workspace.worlds.unresponsiveAlertDescription', { worlds: unresponsiveWorldNames }) }}</AlertDescription>
+          <AlertAction>
+            <UiButton
+              type="button"
+              size="sm"
+              variant="destructive"
+              :disabled="!roomControlAvailable || roomActionsBusy"
+              @click="handleRoomAction('restart')"
+            >
+              <Spinner v-if="roomActionKind === 'restart'" data-icon="inline-start" />
+              <RotateCw v-else data-icon="inline-start" />
+              {{ $t('servers.workspace.worlds.unresponsiveRestartNow') }}
+            </UiButton>
+          </AlertAction>
+        </Alert>
 
         <div v-if="worlds.length" class="world-grid">
           <article
@@ -1009,6 +1027,7 @@ import {
   canRequestStopWorld,
   canStartWorld,
   canStopWorld,
+  isWorldConsoleUnresponsive,
   isWorldSaveWriteFailed,
   worldActionRequiresConfirmation,
   worldLifecycleScope,
@@ -1288,21 +1307,32 @@ export default {
     saveFailureWorlds() {
       return this.worlds.filter(isWorldSaveWriteFailed)
     },
+    unresponsiveWorlds() {
+      return this.worlds.filter(isWorldConsoleUnresponsive)
+    },
+    unresponsiveWorldNames() {
+      return this.unresponsiveWorlds.map(world => world.name || world.id).join('、')
+    },
     roomControlAvailable() {
       return Boolean(this.selectedRoom) && this.worlds.length > 0 && this.worlds.every(world => world.controlAvailable)
     },
     roomStatusLabel() {
       if (!this.roomControlAvailable) return this.$t('servers.workspace.states.unavailable')
       if (this.saveFailureWorlds.length > 0) return this.$t('worldRuntime.statuses.saveFailed')
+      if (this.unresponsiveWorlds.length > 0) return this.$t('worldRuntime.statuses.unresponsive')
       return this.$t(this.runningWorlds.length > 0 ? 'worldRuntime.statuses.running' : 'worldRuntime.statuses.stopped')
     },
     roomStatusVariant() {
       if (!this.roomControlAvailable) return 'outline'
-      if (this.saveFailureWorlds.length > 0) return 'destructive'
+      if (this.saveFailureWorlds.length > 0 || this.unresponsiveWorlds.length > 0) return 'destructive'
       return this.runningWorlds.length > 0 ? 'secondary' : 'outline'
     },
     attentionWorldCount() {
-      return this.worlds.filter(world => !['running', 'stopped'].includes(world.status) || isWorldSaveWriteFailed(world)).length
+      return this.worlds.filter(world => (
+        !['running', 'stopped'].includes(world.status) ||
+        isWorldSaveWriteFailed(world) ||
+        isWorldConsoleUnresponsive(world)
+      )).length
     },
     roomStartWorlds() {
       return this.worlds.filter(world => canStartWorld(world))
@@ -1641,6 +1671,20 @@ export default {
       if (changed) this.restoreRoomView()
 
       const worlds = room?.worlds || []
+      if (room && room.id === this.selectedRoomId && Array.isArray(this.worldStateSnapshots)) {
+        for (const snapshot of this.worldStateSnapshots) {
+          const matchedWorld = worlds.find(item => item.id === snapshot.worldId)
+          if (!matchedWorld) continue
+          if (snapshot.runtimeState) matchedWorld.stateRuntimeState = snapshot.runtimeState
+          if (snapshot.runtimeCode && !matchedWorld.statusCode) matchedWorld.statusCode = snapshot.runtimeCode
+          if (matchedWorld.status === snapshot.runtimeState || snapshot.runtimeState === 'running') {
+            matchedWorld.paused = snapshot.paused
+          }
+          if (snapshot.runtimeState === 'running') {
+            matchedWorld.sessionExists = true
+          }
+        }
+      }
       let world = worlds.find(item => item.id === this.selectedWorldId)
       if (!world) world = worlds.find(item => item.status === 'running') || worlds[0]
       this.selectedWorldId = world?.id || ''
@@ -1750,6 +1794,18 @@ export default {
         this.worldStateSnapshots = worldStatesResult.status === 'fulfilled'
           ? worldStatesResult.value?.items || []
           : []
+        for (const snapshot of this.worldStateSnapshots) {
+          const world = this.worlds.find(item => item.id === snapshot.worldId)
+          if (!world) continue
+          if (snapshot.runtimeState) world.stateRuntimeState = snapshot.runtimeState
+          if (snapshot.runtimeCode && !world.statusCode) world.statusCode = snapshot.runtimeCode
+          if (world.status === snapshot.runtimeState || snapshot.runtimeState === 'running') {
+            world.paused = snapshot.paused
+          }
+          if (snapshot.runtimeState === 'running') {
+            world.sessionExists = true
+          }
+        }
         this.contextErrors.worldStates = worldStatesResult.status === 'rejected'
           ? this.errorState('servers.workspace.feedback.worldStatesLoadFailed', worldStatesResult.reason)
           : null
@@ -2101,15 +2157,23 @@ export default {
         const response = await worldStatesV2API.list(roomId)
         if (requestSequence === this.worldStateSequence && this.selectedRoomId === roomId) {
           this.worldStateSnapshots = response?.items || []
-          for (const snapshot of this.worldStateSnapshots) {
-            const world = this.worlds.find(item => item.id === snapshot.worldId)
-            if (world && world.status === snapshot.runtimeState) world.paused = snapshot.paused
-          }
           const runtimeChanged = this.worldStateSnapshots.some(snapshot => {
             const world = this.worlds.find(item => item.id === snapshot.worldId)
             return world && world.controlAvailable !== false && snapshot.runtimeState &&
               (world.status !== snapshot.runtimeState || (world.statusCode || '') !== (snapshot.runtimeCode || ''))
           })
+          for (const snapshot of this.worldStateSnapshots) {
+            const world = this.worlds.find(item => item.id === snapshot.worldId)
+            if (!world) continue
+            if (snapshot.runtimeState) world.stateRuntimeState = snapshot.runtimeState
+            if (snapshot.runtimeCode && !world.statusCode) world.statusCode = snapshot.runtimeCode
+            if (world.status === snapshot.runtimeState || snapshot.runtimeState === 'running') {
+              world.paused = snapshot.paused
+            }
+            if (snapshot.runtimeState === 'running') {
+              world.sessionExists = true
+            }
+          }
           if (runtimeChanged && !this.workspaceDisposed && document.visibilityState !== 'hidden') {
             void this.refreshWorkspace(true, { refreshWorldStates: false, refreshPlayers: false })
           }

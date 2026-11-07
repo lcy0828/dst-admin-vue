@@ -63,6 +63,17 @@
           <CardAction><Badge :variant="roomStatusVariant(room)">{{ roomStatusLabel(room) }}</Badge></CardAction>
         </CardHeader>
         <CardContent class="save-item-content">
+          <Alert v-if="roomUnresponsiveWorlds(room).length" variant="destructive" class="mb-4">
+            <CircleAlert />
+            <AlertTitle>{{ $t('servers.workspace.worlds.unresponsiveAlertTitle') }}</AlertTitle>
+            <AlertDescription class="error-description">
+              <span>{{ $t('servers.workspace.worlds.unresponsiveAlertDescription', { worlds: roomUnresponsiveWorldNames(room) }) }}</span>
+              <UiButton variant="outline" size="sm" :disabled="isRoomBusy(room)" @click="restartUnresponsiveRoom(room)">
+                <RefreshCw data-icon="inline-start" />
+                {{ $t('servers.workspace.worlds.unresponsiveRestartNow') }}
+              </UiButton>
+            </AlertDescription>
+          </Alert>
           <TooltipProvider>
             <div class="save-worlds" v-if="room.worlds && room.worlds.length" role="list">
               <template v-for="(world, index) in room.worlds" :key="world.id">
@@ -131,9 +142,9 @@
                           <DropdownMenuItem @select="viewWorld(room, world)">{{ $t('rooms.list.worldActions.view') }}</DropdownMenuItem>
                           <DropdownMenuItem @select="handleViewWorldLogs(room, world)">{{ $t('rooms.list.worldActions.logs') }}</DropdownMenuItem>
                           <DropdownMenuItem @select="manageWorldPlacement(room, world)"><Network />{{ $t('rooms.list.worldActions.placement') }}</DropdownMenuItem>
-                          <DropdownMenuItem :disabled="isWorldBusy(room, world) || !['running', 'stopped', 'failed'].includes(world.status)" @select="world.status === 'running' ? restartWorld(room, world, true) : toggleWorldStatus(room, world, true)">{{ $t(world.status === 'running' ? 'runtimeMode.chooseRestart' : 'runtimeMode.chooseStart') }}</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="isWorldBusy(room, world) || (!['running', 'stopped', 'failed'].includes(world.status) && !isWorldConsoleUnresponsive(world))" @select="(world.status === 'running' || isWorldConsoleUnresponsive(world)) ? restartWorld(room, world, true) : toggleWorldStatus(room, world, true)">{{ $t((world.status === 'running' || isWorldConsoleUnresponsive(world)) ? 'runtimeMode.chooseRestart' : 'runtimeMode.chooseStart') }}</DropdownMenuItem>
                           <DropdownMenuItem @select="editWorld(room, world)">{{ $t('rooms.list.worldActions.edit') }}</DropdownMenuItem>
-                          <DropdownMenuItem :disabled="world.status !== 'running' || isWorldBusy(room, world)" @select="restartWorld(room, world)">{{ $t('rooms.list.worldActions.restart') }}</DropdownMenuItem>
+                          <DropdownMenuItem :disabled="(world.status !== 'running' && !isWorldConsoleUnresponsive(world)) || isWorldBusy(room, world)" @select="restartWorld(room, world)">{{ $t('rooms.list.worldActions.restart') }}</DropdownMenuItem>
                           <DropdownMenuItem v-if="world.status === 'failed'" :disabled="isWorldBusy(room, world)" @select="cleanupWorld(room, world)">{{ $t('rooms.list.worldActions.cleanup') }}</DropdownMenuItem>
                         </DropdownMenuGroup>
                       </DropdownMenuContent>
@@ -271,6 +282,9 @@ import {
 } from '@/lib/roomListPresentation.mjs';
 import { isCapacityRiskCanceled, restartWorldWithCapacityRisk, startRoomWithCapacityRisk } from '@/lib/startCapacityRisk';
 import {
+  canRequestStopWorld,
+  canStartWorld,
+  isWorldConsoleUnresponsive,
   worldActionRequiresConfirmation,
   worldLifecycleScope,
   worldLifecycleSelection,
@@ -517,14 +531,21 @@ export default {
       for (const world of worlds) delete next[this.worldActionKey(room, world)];
       this.worldActions = next;
     },
+    isWorldConsoleUnresponsive,
+    roomUnresponsiveWorlds(room) {
+      return (room?.worlds || []).filter(world => isWorldConsoleUnresponsive(world));
+    },
+    roomUnresponsiveWorldNames(room) {
+      return this.roomUnresponsiveWorlds(room).map(world => world.name || world.id).join('、');
+    },
     canStartRoom(room) {
-      return room.worlds.some(world => world.controlAvailable !== false && ['stopped', 'failed'].includes(world.status));
+      return room.worlds.some(world => canStartWorld(world));
     },
     canStopRoom(room) {
-      return room.worlds.some(world => world.controlAvailable !== false && ['starting', 'running'].includes(world.status));
+      return room.worlds.some(world => canRequestStopWorld(world));
     },
     roomHasActiveWorlds(room) {
-      return room.allWorlds.some(world => ['starting', 'running', 'stopping'].includes(world.status));
+      return room.allWorlds.some(world => ['starting', 'running', 'stopping'].includes(world.status) || isWorldConsoleUnresponsive(world));
     },
     editRoom(room) {
       this.$router.push({
@@ -545,7 +566,7 @@ export default {
       });
     },
     async startRoom(room, chooseRuntimeMode = false) {
-      const selected = room.worlds.filter(world => world.controlAvailable !== false && ['stopped', 'failed'].includes(world.status));
+      const selected = room.worlds.filter(world => canStartWorld(world));
       const scope = worldLifecycleSelection(room.allWorlds, selected, 'start');
       if (!scope.allowed) {
         toast.warning(this.dependencyFailureMessage(scope));
@@ -803,7 +824,7 @@ export default {
     },
     async stopRoom(room) {
       let maintenance = {};
-      const selected = room.worlds.filter(world => world.controlAvailable !== false && ['starting', 'running'].includes(world.status));
+      const selected = room.worlds.filter(world => canRequestStopWorld(world));
       const scope = worldLifecycleSelection(room.allWorlds, selected, 'stop');
       if (!scope.allowed) {
         toast.warning(this.dependencyFailureMessage(scope));
@@ -838,6 +859,56 @@ export default {
         toast.success(this.$t('rooms.list.feedback.stopped', { room: room.name }));
       } catch (error) {
         toast.error(this.$t('rooms.list.feedback.stopFailed', { error: error.message || this.$t('common.errors.unknown') }));
+      } finally {
+        const next = { ...this.roomActions };
+        delete next[room.roomId];
+        this.roomActions = next;
+        this.clearWorldBusy(room, scope.worlds);
+      }
+    },
+    async restartUnresponsiveRoom(room) {
+      const selected = room.worlds.filter(world => world.controlAvailable !== false && (world.status === 'running' || isWorldConsoleUnresponsive(world)));
+      const scope = worldLifecycleSelection(room.allWorlds, selected, 'restart');
+      if (!scope.allowed) {
+        toast.warning(this.dependencyFailureMessage(scope));
+        return;
+      }
+      const action = this.$t('rooms.list.worldActions.restart');
+      const names = scope.worlds.map(world => world.name).join('、');
+      let maintenance = {};
+      try {
+        maintenance = await confirmRoomMaintenance(
+          room.roomId,
+          this.$t('rooms.list.feedback.worldActionDependencyConfirm', { action, count: scope.worlds.length, worlds: names }),
+          this.$t('rooms.list.feedback.worldActionTitle', { action }),
+          {
+            confirmButtonText: this.$t('common.actions.confirm'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            type: 'warning'
+          }
+        );
+      } catch {
+        return;
+      }
+
+      this.roomActions = { ...this.roomActions, [room.roomId]: 'restart' };
+      this.setWorldBusy(room, scope.worlds, 'restart');
+      try {
+        await restartWorldWithCapacityRisk({
+          ...maintenance,
+          room_id: room.roomId,
+          world_ids: scope.worlds.map(item => item.id),
+          exact_world_ids: true
+        });
+        await this.refreshRooms(true, false);
+        toast.success(this.$t('rooms.list.feedback.worldActionCompleted', { action, world: room.name }));
+      } catch (error) {
+        if (!isCapacityRiskCanceled(error)) {
+          toast.error(this.$t('rooms.list.feedback.worldActionFailed', {
+            action,
+            error: error.message || this.$t('common.errors.unknown')
+          }));
+        }
       } finally {
         const next = { ...this.roomActions };
         delete next[room.roomId];

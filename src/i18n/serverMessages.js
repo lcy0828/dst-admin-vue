@@ -250,6 +250,9 @@ export const serverMessages = {
           machine: '运行机器：{name}',
           startAll: '全部启动',
           stopAll: '全部停止',
+          unresponsiveAlertTitle: '检测到进程存在但控制台无响应',
+          unresponsiveAlertDescription: '分片（{worlds}）进程仍在运行，但控制台无响应或快照屏障未释放（世界可能停留在已暂停状态）。建议直接一键重启恢复。',
+          unresponsiveRestartNow: '一键重启恢复',
           connection: {
             trigger: '直连',
             unavailable: '未配置',
@@ -942,6 +945,9 @@ export const serverMessages = {
           machine: 'Runtime machine: {name}',
           startAll: 'Start all',
           stopAll: 'Stop all',
+          unresponsiveAlertTitle: 'Process is running but console is unresponsive',
+          unresponsiveAlertDescription: 'Shard process ({worlds}) is still alive, but its console is unresponsive or a snapshot barrier failed to release (the world may remain paused). Restart now to recover.',
+          unresponsiveRestartNow: 'Restart now',
           connection: {
             trigger: 'Direct connect',
             unavailable: 'Not configured',

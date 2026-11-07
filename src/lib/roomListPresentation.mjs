@@ -1,3 +1,5 @@
+import { isWorldConsoleUnresponsive, isWorldSaveWriteFailed } from './worldRuntimeStatus.mjs'
+
 const KNOWN_RUNTIME_STATUSES = new Set(['stopped', 'starting', 'running', 'failed', 'stopping'])
 
 function clean(value) {
@@ -52,7 +54,7 @@ export function projectRoomList(overview = {}, selectedTargetId = '') {
       targetIds,
       allTargetIds,
       controlAvailable,
-      isRunning: worlds.some(world => world.status === 'running')
+      isRunning: worlds.some(world => world.status === 'running' || isWorldConsoleUnresponsive(world))
     }
   }).filter(room => room.worlds.length > 0)
 }
@@ -68,14 +70,31 @@ export function roomRuntimeSummary(room = {}) {
     failed: 0,
     unknown: 0
   }
+  let abnormalRunning = 0
+  let unresponsive = 0
   for (const world of worlds) {
-    counts[normalizedWorldStatus(world)]++
+    const status = normalizedWorldStatus(world)
+    if (isWorldConsoleUnresponsive(world)) {
+      unresponsive++
+      if (status === 'running') {
+        counts.running++
+        abnormalRunning++
+      } else {
+        counts.unknown++
+      }
+      continue
+    }
+    if (isWorldSaveWriteFailed(world)) {
+      abnormalRunning++
+    }
+    counts[status]++
   }
 
   const transitioning = counts.starting + counts.stopping
-  const attention = counts.failed + counts.unknown
+  const attention = counts.failed + counts.unknown + abnormalRunning
   let state = 'unavailable'
   if (transitioning > 0) state = 'transitioning'
+  else if (unresponsive > 0) state = 'attention'
   else if (attention > 0) state = counts.running > 0 ? 'partial' : 'attention'
   else if (counts.total > 0 && counts.running === counts.total) state = 'running'
   else if (counts.running > 0) state = 'partial'

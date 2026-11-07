@@ -13,7 +13,7 @@ import {
 import { waitForV2Job } from './v2ConfigurationAdapters'
 import { adapterError, adapterSuccess } from './adapterProtocol.mjs'
 import { createAsyncResourceCache } from '@/lib/asyncResourceCache.mjs'
-import { canStopWorld, compareWorldRoles, worldLifecycleSelection } from '@/lib/worldRuntimeStatus.mjs'
+import { canStopWorld, compareWorldRoles, isWorldConsoleUnresponsive, worldLifecycleSelection } from '@/lib/worldRuntimeStatus.mjs'
 import { projectFleetOverview } from '@/lib/fleetOverview.mjs'
 import { MANAGEMENT_SCOPE_CHANGED_EVENT, managementScopeTargetId } from '@/lib/managementScope.mjs'
 
@@ -126,6 +126,8 @@ function mapWorld(world, state) {
     worldName: world.name,
     type: worldType(world.type, world.role),
     updateTime: world.updatedAt,
+    paused: typeof world.paused === 'boolean' ? world.paused : Boolean(state?.paused),
+    statusCode: world.statusCode || state?.runtimeCode || '',
     season: state?.season || null,
     day: state?.cycles ?? null,
     stateObservedAt: state?.observedAt || null,
@@ -138,13 +140,14 @@ function mapWorld(world, state) {
 
 function mapRoom(room, worlds = [], states = []) {
   const statesByWorld = new Map(states.map(state => [state.worldId, state]))
+  const mappedWorlds = worlds.map(world => mapWorld(world, statesByWorld.get(world.id))).sort(compareWorldRoles)
   return {
     ...room,
     savename: room.name,
     savepath: room.directoryName,
     updateTime: room.updatedAt,
-    worlds: worlds.map(world => mapWorld(world, statesByWorld.get(world.id))).sort(compareWorldRoles),
-    isRunning: worlds.some(world => world.status === 'running')
+    worlds: mappedWorlds,
+    isRunning: mappedWorlds.some(world => world.status === 'running' || isWorldConsoleUnresponsive(world))
   }
 }
 
