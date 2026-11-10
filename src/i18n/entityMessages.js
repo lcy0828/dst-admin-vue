@@ -10,7 +10,9 @@ export const entityMessages = {
       sections: {
         entity: '实体',
         player: '玩家',
-        world: '世界'
+        world: '世界',
+        extra: '更多工具',
+        locations: '地点'
       },
       target: {
         title: '执行目标',
@@ -373,7 +375,9 @@ export const entityMessages = {
       sections: {
         entity: 'Entities',
         player: 'Players',
-        world: 'World'
+        world: 'World',
+        extra: 'More tools',
+        locations: 'Locations'
       },
       target: {
         title: 'Target',

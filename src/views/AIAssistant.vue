@@ -7,7 +7,7 @@ import { aiPageRoom, useAIAssistant } from '@/composables/useAIAssistant'
 import AIChat from '@/components/ai/AIChat.vue'
 import AIConnections from '@/components/ai/AIConnections.vue'
 import AIActivity from '@/components/ai/AIActivity.vue'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,7 +35,7 @@ onMounted(async () => {
 <template>
   <div class="flex min-w-0 flex-col gap-5">
     <header class="flex flex-wrap items-start justify-between gap-3"><div><h1 class="text-2xl font-semibold">{{ t('ai.title') }}</h1><p class="mt-1 text-sm text-muted-foreground">{{ t('ai.subtitle') }}</p></div><Badge variant="outline">{{ t('ai.scope') }}</Badge></header>
-    <Alert v-if="error && tab !== 'chat'" variant="destructive"><CircleAlert /><AlertTitle>{{ t('ai.failure') }}</AlertTitle><AlertDescription class="break-words">{{ error }}<Button v-if="!session.initialized.value" variant="outline" size="sm" :disabled="loading" @click="session.load({ force: true })">{{ t('ai.retry') }}</Button></AlertDescription></Alert>
+    <Alert v-if="error && tab !== 'chat'" variant="destructive"><CircleAlert /><AlertTitle>{{ t('ai.failure') }}</AlertTitle><AlertDescription class="break-words">{{ error }}</AlertDescription><AlertAction v-if="!session.initialized.value"><Button variant="outline" size="sm" :disabled="loading" @click="session.load({ force: true })">{{ t('ai.retry') }}</Button></AlertAction></Alert>
     <Tabs v-model="tab" class="min-w-0">
       <TabsList class="max-w-full"><TabsTrigger value="chat"><MessageSquare data-icon="inline-start" />{{ t('ai.chat') }}</TabsTrigger><TabsTrigger value="connection"><Settings2 data-icon="inline-start" />{{ t('ai.connection') }}</TabsTrigger><TabsTrigger value="history"><History data-icon="inline-start" />{{ t('ai.history') }}</TabsTrigger></TabsList>
       <TabsContent value="chat" class="pt-3">

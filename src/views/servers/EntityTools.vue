@@ -1210,8 +1210,8 @@ onBeforeUnmount(() => {
           <TabsTrigger value="entity"><Boxes data-icon="inline-start" />{{ t('entityTools.sections.entity') }}</TabsTrigger>
           <TabsTrigger value="player"><UserRound data-icon="inline-start" />{{ t('entityTools.sections.player') }}</TabsTrigger>
           <TabsTrigger value="world"><SunMedium data-icon="inline-start" />{{ t('entityTools.sections.world') }}</TabsTrigger>
-          <TabsTrigger value="extra">更多工具</TabsTrigger>
-          <TabsTrigger value="locations">{{ locale.startsWith('en') ? 'Locations' : '地点' }}</TabsTrigger>
+          <TabsTrigger value="extra">{{ t('entityTools.sections.extra') }}</TabsTrigger>
+          <TabsTrigger value="locations">{{ t('entityTools.sections.locations') }}</TabsTrigger>
           <TabsTrigger value="commands"><Code data-icon="inline-start" />{{ t('workbench.section') }}</TabsTrigger>
         </TabsList>
 

@@ -21,8 +21,8 @@
     </header>
 
     <section class="filter-panel" :aria-label="$t('mods.installed.filters.title')">
+      <RoomScopeSelect :model-value="selectedRoomId" :rooms="roomOptions" :loading="loadingRooms" @update:model-value="handleRoomChange" />
       <FieldGroup class="filter-form">
-        <RoomScopeSelect :model-value="selectedRoomId" :rooms="roomOptions" :loading="loadingRooms" @update:model-value="handleRoomChange" />
         <Field class="filter-status">
           <FieldLabel class="sr-only">{{ $t('mods.installed.filters.status') }}</FieldLabel>
           <ToggleGroup v-model="filterForm.status" type="single" variant="outline" size="sm" class="status-filter">
@@ -1845,6 +1845,9 @@ export default {
 }
 
 .filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1853,7 +1856,7 @@ export default {
 
 .filter-form {
   display: grid;
-  grid-template-columns: auto minmax(150px, 180px) minmax(180px, 1fr) auto;
+  grid-template-columns: auto minmax(130px, 160px) minmax(150px, 180px) minmax(180px, 1fr) auto;
   align-items: center;
   gap: 8px;
 }
@@ -2187,15 +2190,17 @@ export default {
   gap: 2px;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
   .filter-form {
-    grid-template-columns: minmax(320px, 1fr) minmax(150px, 180px);
+    grid-template-columns: minmax(130px, 160px) minmax(150px, 180px) minmax(0, 1fr) auto;
   }
 
-  .filter-search {
-    grid-column: 1 / -2;
+  .filter-status {
+    grid-column: 1 / -1;
   }
+}
 
+@media (max-width: 1080px) {
   .mod-summary {
     grid-template-columns: 48px minmax(0, 1fr) auto;
   }
@@ -2208,7 +2213,6 @@ export default {
     grid-column: 3;
     grid-row: 1 / span 2;
   }
-
 }
 
 @media (max-width: 760px) {
@@ -2218,11 +2222,16 @@ export default {
   }
 
   .filter-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .filter-status,
+  .filter-sort {
+    grid-column: 1 / -1;
   }
 
   .filter-search {
-    grid-column: auto;
+    grid-column: 1;
   }
 
   .status-filter {

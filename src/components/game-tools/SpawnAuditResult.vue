@@ -24,7 +24,7 @@ function destination(record) {
     <p v-if="audit.origin" class="break-words text-xs text-muted-foreground">{{ t('spawnAudit.origin') }} · {{ position(audit.origin) }}</p>
     <p v-if="Number.isInteger(audit.total)" class="text-xs text-muted-foreground">{{ t('spawnAudit.total', { count: audit.total }) }}</p>
     <div v-if="audit.records?.length" class="max-h-64 overflow-auto">
-      <Table>
+      <Table container-class="overflow-visible">
         <TableHeader><TableRow><TableHead>{{ t('spawnAudit.prefab') }}</TableHead><TableHead>{{ t('spawnAudit.quantity') }}</TableHead><TableHead>{{ t('spawnAudit.destination') }}</TableHead></TableRow></TableHeader>
         <TableBody>
           <TableRow v-for="(record, index) in audit.records" :key="index">

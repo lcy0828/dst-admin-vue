@@ -338,9 +338,14 @@ onMounted(() => {
 .action-column {
   position: sticky;
   right: 0;
+  z-index: 10;
   width: 112px;
   background: var(--card);
   box-shadow: -1px 0 var(--border);
+}
+
+:deep(tbody tr:hover) .action-column {
+  background: color-mix(in srgb, var(--muted) 50%, var(--card));
 }
 
 .pagination-bar {

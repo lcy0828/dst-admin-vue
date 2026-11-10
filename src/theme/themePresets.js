@@ -75,7 +75,11 @@ export const THEME_PRESETS = Object.freeze([
     regular: '#52635b',
     muted: '#65756d',
     border: '#dce6e0',
-    borderBase: '#c8d8cf'
+    borderBase: '#c8d8cf',
+    dark: {
+      primary: '#2bb886',
+      ring: '#2bb886'
+    }
   },
   {
     id: 'teal',
@@ -93,7 +97,11 @@ export const THEME_PRESETS = Object.freeze([
     regular: '#526764',
     muted: '#667a78',
     border: '#d8e6e3',
-    borderBase: '#c3d7d3'
+    borderBase: '#c3d7d3',
+    dark: {
+      primary: '#2bb5ad',
+      ring: '#2bb5ad'
+    }
   },
   {
     id: 'indigo',
@@ -111,7 +119,11 @@ export const THEME_PRESETS = Object.freeze([
     regular: '#56586e',
     muted: '#6c6e83',
     border: '#e0e1ec',
-    borderBase: '#cccede'
+    borderBase: '#cccede',
+    dark: {
+      primary: '#818cf8',
+      ring: '#818cf8'
+    }
   }
 ].map(preset => Object.freeze({
   ...preset,
@@ -127,6 +139,28 @@ function normalizedHex(value) {
   return match ? `#${match[1].toLowerCase()}` : ''
 }
 
+function relativeLuminance(hex) {
+  const channels = [1, 3, 5]
+    .map(index => Number.parseInt(hex.slice(index, index + 2), 16) / 255)
+    .map(value => value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+}
+
+function mixHex(hex, target, amount) {
+  const source = [1, 3, 5].map(index => Number.parseInt(hex.slice(index, index + 2), 16))
+  const destination = [1, 3, 5].map(index => Number.parseInt(target.slice(index, index + 2), 16))
+  const channel = source.map((value, index) => Math.round(value + (destination[index] - value) * amount))
+  return `#${channel.map(value => value.toString(16).padStart(2, '0')).join('')}`
+}
+
+function ensureDarkReadablePrimary(hex) {
+  let candidate = hex
+  for (let step = 0; step < 8 && relativeLuminance(candidate) < 0.24; step++) {
+    candidate = mixHex(candidate, '#ffffff', 0.2)
+  }
+  return candidate
+}
+
 export function themePresetById(id) {
   return THEME_PRESETS.find(preset => preset.id === id) || DEFAULT_THEME
 }
@@ -140,5 +174,13 @@ export function normalizeThemeColor(value) {
 export function resolveThemePreset(value) {
   const primary = normalizeThemeColor(value)
   const preset = THEME_PRESETS.find(item => item.primary === primary)
-  return preset || Object.freeze({ ...CUSTOM_BASE_THEME, id: 'custom', name: '自定义主题', primary })
+  if (preset) return preset
+  const darkPrimary = ensureDarkReadablePrimary(primary)
+  return Object.freeze({
+    ...CUSTOM_BASE_THEME,
+    id: 'custom',
+    name: '自定义主题',
+    primary,
+    dark: Object.freeze({ primary: darkPrimary, ring: darkPrimary })
+  })
 }

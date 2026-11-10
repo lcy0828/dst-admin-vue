@@ -2255,7 +2255,7 @@ export default {
   left: var(--sidebar-width-icon, 3rem);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .page-header {
     align-items: stretch;
     flex-direction: column;

@@ -13,7 +13,7 @@ const props = defineProps({
 <template>
   <div
     data-slot="alert-action"
-    :class="cn('absolute top-2 right-2', props.class)"
+    :class="cn('col-start-2 row-start-1 row-span-4 shrink-0 self-start justify-self-end group-has-[>svg]/alert:col-start-3', props.class)"
   >
     <slot />
   </div>

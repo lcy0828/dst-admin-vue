@@ -1045,10 +1045,15 @@ export default {
 .action-column {
   position: sticky;
   right: 0;
+  z-index: 10;
   width: 104px;
   background: var(--card);
   box-shadow: -1px 0 var(--border);
   text-align: right;
+}
+
+:deep(tbody tr:hover) .action-column {
+  background: color-mix(in srgb, var(--muted) 50%, var(--card));
 }
 
 .pagination-container {

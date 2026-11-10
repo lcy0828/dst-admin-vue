@@ -409,6 +409,20 @@ export const constantRoutes = [
   {
     path: '/scheduled/create',
     redirect: '/cron/add'
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    component: MainLayoutV2,
+    hidden: true,
+    meta: { hidden: true },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/NotFoundView.vue'),
+        name: 'NotFound',
+        meta: { titleKey: 'notFound.title', hidden: true }
+      }
+    ]
   }
 ]
 

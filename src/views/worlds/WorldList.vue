@@ -543,7 +543,7 @@ selectedRoom: null,
           : 'dependencyMasterUnknown'}`));
         return;
       }
-      const affectedNames = scope.worlds.map(item => item.name).join('、');
+      const affectedNames = scope.worlds.map(item => item.name).join(String(this.$i18n?.locale || '').startsWith('en') ? ', ' : '、');
       let maintenance = {};
       if (worldActionRequiresConfirmation(primaryAction.kind)) {
         try {

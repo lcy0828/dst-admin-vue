@@ -818,6 +818,7 @@
             <TabsContent value="chat">
               <RoomChatPanel
                 v-if="activeOperation === 'chat'"
+                ref="roomChatPanel"
                 :key="selectedRoomId"
                 :room-id="selectedRoomId"
                 :worlds="worlds"
@@ -1311,7 +1312,7 @@ export default {
       return this.worlds.filter(isWorldConsoleUnresponsive)
     },
     unresponsiveWorldNames() {
-      return this.unresponsiveWorlds.map(world => world.name || world.id).join('、')
+      return this.unresponsiveWorlds.map(world => world.name || world.id).join(String(this.$i18n?.locale || '').startsWith('en') ? ', ' : '、')
     },
     roomControlAvailable() {
       return Boolean(this.selectedRoom) && this.worlds.length > 0 && this.worlds.every(world => world.controlAvailable)
@@ -1517,6 +1518,7 @@ export default {
       if (this.loading || this.workspaceDisposed) return
       await Promise.all([
         this.$refs.roomModOverview?.refresh({ silent: true }),
+        this.$refs.roomChatPanel?.loadChatLogs({ silent: true }),
         this.refreshWorkspace()
       ])
     },
@@ -2535,7 +2537,7 @@ export default {
         return
       }
       const affectedWorlds = scope.worlds
-      const affectedWorldNames = affectedWorlds.map(item => item.name).join('、')
+      const affectedWorldNames = affectedWorlds.map(item => item.name).join(String(this.$i18n?.locale || '').startsWith('en') ? ', ' : '、')
       const confirmationTitle = action === 'cleanup'
         ? this.$t('servers.workspace.worlds.cleanupFailedSession')
         : this.$t('servers.workspace.feedback.actionTitle', { action: label })

@@ -72,7 +72,12 @@
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.say'), count: counts.say }) }}</Badge>
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.whisper'), count: counts.whisper }) }}</Badge>
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.announcement'), count: counts.announcement }) }}</Badge>
-      <Badge v-if="historyAvailable" :variant="syncState === 'ready' ? 'outline' : 'secondary'">
+      <Badge
+        v-if="historyAvailable"
+        :variant="syncState === 'ready' ? 'outline' : 'secondary'"
+        :class="{ 'cursor-pointer select-none': hasHistoryReview }"
+        @click="hasHistoryReview && (historyReviewOpen = !historyReviewOpen)"
+      >
         {{ syncStateLabel }}
       </Badge>
       <div v-if="historyAvailable && lastSyncedAt" class="chat-summary-times">
@@ -103,14 +108,32 @@
       <AlertDescription>{{ $t('servers.workspace.chat.partialDescription', { count: unavailableWorlds }) }}</AlertDescription>
     </Alert>
 
-    <Alert v-if="historyAvailable && (parseErrors || uncertainTimes || unavailableGenerations)">
-      <Info />
-      <AlertTitle>{{ $t('servers.workspace.chat.historyReview') }}</AlertTitle>
-      <AlertDescription>
-        {{ $t('servers.workspace.chat.reviewDescription', { errors: parseErrors, times: uncertainTimes, missing: unavailableGenerations }) }}
-        <span v-for="problem in parseProblems" :key="problem">{{ problem }}</span>
-      </AlertDescription>
-    </Alert>
+    <Collapsible
+      v-if="hasHistoryReview"
+      v-model:open="historyReviewOpen"
+      as-child
+    >
+      <Alert class="chat-review-alert">
+        <Info />
+        <AlertTitle class="cursor-pointer select-none" @click="historyReviewOpen = !historyReviewOpen">
+          {{ $t('servers.workspace.chat.historyReview') }}
+        </AlertTitle>
+        <AlertAction>
+          <CollapsibleTrigger as-child>
+            <UiButton size="sm" variant="ghost" class="h-6 px-2 text-xs" :aria-expanded="historyReviewOpen">
+              {{ $t(historyReviewOpen ? 'servers.workspace.chat.collapseReview' : 'servers.workspace.chat.expandReview') }}
+              <ChevronDown data-icon="inline-end" class="transition-transform" :class="{ 'rotate-180': historyReviewOpen }" />
+            </UiButton>
+          </CollapsibleTrigger>
+        </AlertAction>
+        <CollapsibleContent class="col-start-2">
+          <AlertDescription class="flex flex-col gap-1 pt-0.5">
+            <span>{{ $t('servers.workspace.chat.reviewDescription', { errors: parseErrors, times: uncertainTimes, missing: unavailableGenerations }) }}</span>
+            <span v-for="problem in parseProblems" :key="problem" class="break-words">{{ problem }}</span>
+          </AlertDescription>
+        </CollapsibleContent>
+      </Alert>
+    </Collapsible>
 
     <Alert v-if="truncated">
       <Info />
@@ -119,7 +142,7 @@
     </Alert>
 
     <div v-if="loading && items.length === 0" class="chat-table-shell" role="status" :aria-label="$t('servers.workspace.chat.loading')">
-      <UiTable class="chat-table">
+      <UiTable class="chat-table" container-class="overflow-visible">
         <TableHeader><TableRow>
           <TableHead v-for="column in 6" :key="column"><Skeleton class="h-4 w-20" /></TableHead>
         </TableRow></TableHeader>
@@ -140,7 +163,7 @@
     </Empty>
 
     <div v-else-if="items.length" class="chat-table-shell">
-      <UiTable class="chat-table">
+      <UiTable class="chat-table" container-class="overflow-visible">
         <TableHeader><TableRow>
           <TableHead>{{ $t('servers.workspace.chat.columns.realTime') }}</TableHead>
           <TableHead>{{ $t('servers.workspace.chat.columns.runtime') }}</TableHead>
@@ -188,16 +211,18 @@
 
 <script>
 import {
-  ArrowLeft, ArrowRight, CircleAlert, Info, MessagesSquare, RefreshCw, Search as SearchIcon, TriangleAlert
+  ArrowLeft, ArrowRight, ChevronDown, CircleAlert, Info, MessagesSquare, RefreshCw, Search as SearchIcon, TriangleAlert
 } from '@lucide/vue'
 import { computed } from 'vue'
 import { toast } from 'vue-sonner'
+import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
 import { useSharedJobStatus } from '@/composables/useGlobalJobStatus'
 import { emitGlobalJobSubmitted } from '@/lib/globalJobs.mjs'
 import { chatLogsV2API } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
@@ -208,13 +233,15 @@ import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRo
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { buildChatLogFilter, normalizeChatLogList } from '@/lib/chatLogSupport.mjs'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
+import { isWorldConsoleUnresponsive } from '@/lib/worldRuntimeStatus.mjs'
 
 const PAGE_SIZE = 100
 
 export default {
   name: 'RoomChatPanel',
   components: {
-    Alert, AlertAction, AlertDescription, AlertTitle, ArrowLeft, ArrowRight, Badge, CircleAlert,
+    Alert, AlertAction, AlertDescription, AlertTitle, ArrowLeft, ArrowRight, Badge, ChevronDown, CircleAlert,
+    Collapsible, CollapsibleContent, CollapsibleTrigger,
     Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldGroup, FieldLabel,
     Info, InputGroup, InputGroupAddon, InputGroupInput, MessagesSquare, RefreshCw, SearchIcon,
     SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, Skeleton, Spinner,
@@ -227,8 +254,9 @@ export default {
   },
   setup(props) {
     const status = useSharedJobStatus()
+    const { refreshIntervalMs } = useRoomRefreshInterval()
     const activeRepair = computed(() => status?.activeJobs.value.find(job => job.kind === 'log.chat.repair' && job.roomId === props.roomId))
-    return { activeRepair }
+    return { activeRepair, refreshIntervalMs }
   },
   data() {
     return {
@@ -258,6 +286,7 @@ export default {
       parseErrors: 0,
       uncertainTimes: 0,
       parseProblems: [],
+      historyReviewOpen: false,
       repairSubmitting: false,
       refreshTimer: null,
       panelActive: true,
@@ -273,6 +302,27 @@ export default {
     },
     rangeEnd() {
       return Math.min(this.total, this.page * PAGE_SIZE)
+    },
+    hasHistoryReview() {
+      return Boolean(this.historyAvailable && (this.parseErrors || this.uncertainTimes || this.unavailableGenerations))
+    },
+    hasActiveWorlds() {
+      if (!Array.isArray(this.worlds) || this.worlds.length === 0) return true
+      return this.worlds.some(world => (
+        ['running', 'starting', 'stopping', 'unknown'].includes(world?.status) ||
+        isWorldConsoleUnresponsive(world)
+      ))
+    },
+    shouldAutoRefresh() {
+      if (this.activeRepair || this.syncState === 'catching_up') return true
+      return this.page === 1 && this.hasActiveWorlds
+    },
+    autoRefreshIntervalMs() {
+      const baseInterval = Number(this.refreshIntervalMs) || 5000
+      if (this.activeRepair || this.syncState === 'catching_up') {
+        return Math.min(5000, baseInterval)
+      }
+      return baseInterval
     },
     syncStateLabel() {
       if (this.syncState === 'ready') return this.$t('servers.workspace.chat.historyReady')
@@ -311,18 +361,25 @@ export default {
     },
     handleVisibility() {
       clearTimeout(this.refreshTimer)
-      if (document.visibilityState !== 'hidden' && (this.activeRepair || this.syncState === 'catching_up')) this.loadChatLogs()
+      if (document.visibilityState !== 'hidden' && this.shouldAutoRefresh) {
+        this.loadChatLogs({ silent: true })
+      }
     },
     scheduleRefresh() {
       clearTimeout(this.refreshTimer)
       if (!this.panelActive || document.visibilityState === 'hidden' || this.loadError) return
-      if (this.activeRepair || this.syncState === 'catching_up') this.refreshTimer = setTimeout(() => this.loadChatLogs(), 5000)
+      if (this.shouldAutoRefresh) {
+        this.refreshTimer = setTimeout(() => this.loadChatLogs({ silent: true }), this.autoRefreshIntervalMs)
+      }
     },
-    async loadChatLogs() {
+    async loadChatLogs(options = {}) {
       if (!this.roomId || !this.panelActive) return
+      const silent = options?.silent === true
+      if (silent && this.loading) return
       clearTimeout(this.refreshTimer)
       const requestSequence = ++this.requestSequence
-      this.loading = true
+      const showLoading = !silent || this.items.length === 0
+      if (showLoading) this.loading = true
       this.loadError = ''
       try {
         const value = await chatLogsV2API.list(this.roomId, buildChatLogFilter({
@@ -336,8 +393,10 @@ export default {
         Object.assign(this, normalizeChatLogList(value))
       } catch (error) {
         if (requestSequence !== this.requestSequence) return
-        Object.assign(this, normalizeChatLogList())
-        this.loadError = error?.message || this.$t('servers.workspace.chat.loadFailed')
+        if (!silent || this.items.length === 0) {
+          Object.assign(this, normalizeChatLogList())
+          this.loadError = error?.message || this.$t('servers.workspace.chat.loadFailed')
+        }
       } finally {
         if (requestSequence === this.requestSequence) {
           this.loading = false
@@ -398,7 +457,10 @@ export default {
   },
   watch: {
     activeRepair(value, previous) {
-      if ((value || previous) && this.panelActive && document.visibilityState !== 'hidden') this.loadChatLogs()
+      if ((value || previous) && this.panelActive && document.visibilityState !== 'hidden') this.loadChatLogs({ silent: true })
+    },
+    refreshIntervalMs() {
+      this.scheduleRefresh()
     },
     roomId(value, previous) {
       if (!value || value === previous) return
@@ -409,13 +471,19 @@ export default {
       this.kind = 'all'
       this.worldId = 'all'
       this.page = 1
+      this.historyReviewOpen = false
       this.loadChatLogs()
     },
-    worlds() {
-      if (this.worldId !== 'all' && !this.worlds.some(world => world.id === this.worldId)) {
-        this.worldId = 'all'
-        this.page = 1
-        this.loadChatLogs()
+    worlds: {
+      deep: true,
+      handler() {
+        if (this.worldId !== 'all' && !this.worlds.some(world => world.id === this.worldId)) {
+          this.worldId = 'all'
+          this.page = 1
+          this.loadChatLogs()
+          return
+        }
+        this.scheduleRefresh()
       }
     }
   }

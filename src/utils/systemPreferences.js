@@ -48,7 +48,7 @@ function applyThemeVariables(themeValue) {
   const darkMode = root.classList.contains('dark')
   const renderPreset = darkMode && preset.dark ? { ...preset, ...preset.dark } : preset
   const palette = darkMode
-    ? (preset.dark ? renderPreset : {
+    ? (preset.dark?.background ? renderPreset : {
         background: mix(preset.sidebarDeep, '#000000', 0.08),
         surface: mix(preset.sidebar, '#ffffff', 0.04),
         surfaceMuted: mix(preset.sidebar, '#ffffff', 0.09),

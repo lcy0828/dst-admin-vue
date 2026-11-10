@@ -577,6 +577,11 @@ export const messages = {
         fixedLines: '新版暂不支持 fixed_lines（旧规则配置为 {count} 行）',
         unsupported: '旧规则参数不受新版支持'
       }
+    },
+    notFound: {
+      title: '页面不存在',
+      description: '未找到路径 {path} 对应的页面，链接可能已失效或地址有误。',
+      backHome: '返回服务总览'
     }
   },
   'en-US': {
@@ -1111,6 +1116,11 @@ export const messages = {
         fixedLines: 'fixed_lines is not supported yet (legacy rule uses {count} lines)',
         unsupported: 'The legacy rule parameters are not supported'
       }
+    },
+    notFound: {
+      title: 'Page not found',
+      description: 'No page matches {path}. The link may be outdated or mistyped.',
+      backHome: 'Back to Overview'
     }
   }
 }

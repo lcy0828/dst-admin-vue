@@ -330,8 +330,16 @@ watch(() => props.job.id, () => { showDownloads.value = false })
 .task-progress-task-id { font-size: 11px; color: var(--muted-foreground); overflow-wrap: anywhere; }
 [data-status='failed'] .task-progress-icon { color: var(--destructive); }
 [data-status='succeeded'] .task-progress-icon { color: var(--success-foreground); }
+:global(body:has(#settings-fixed-footer)) .task-progress-bubble,
+:global(body:has(#settings-fixed-footer)) .task-progress-dock {
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 3.75rem);
+}
 @media (max-width: 767px) {
   .task-progress-bubble { right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); }
   .task-progress-dock { right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); max-width: calc(100vw - 32px); }
+  :global(body:has(#settings-fixed-footer)) .task-progress-bubble,
+  :global(body:has(#settings-fixed-footer)) .task-progress-dock {
+    bottom: calc(max(16px, env(safe-area-inset-bottom)) + 6.5rem);
+  }
 }
 </style>

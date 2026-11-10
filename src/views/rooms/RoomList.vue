@@ -31,7 +31,7 @@
       </AlertDescription>
     </Alert>
 
-    <div v-if="loading" class="room-skeleton settings-card" aria-busy="true" :aria-label="$t('rooms.list.loadingAria')">
+    <div v-if="loading && rooms.length === 0" class="room-skeleton settings-card" aria-busy="true" :aria-label="$t('rooms.list.loadingAria')">
       <Skeleton v-for="row in 6" :key="row" class="h-28 w-full" />
     </div>
 
@@ -46,7 +46,7 @@
       </EmptyContent>
     </Empty>
 
-    <div v-else-if="!loadError" class="save-list">
+    <div v-else-if="filteredRooms.length > 0" class="save-list">
       <Card v-for="room in filteredRooms" :key="room.roomId" class="save-item">
         <CardHeader class="room-header">
           <CardTitle class="room-title">
@@ -379,12 +379,14 @@ export default {
       selectedRoomWorldName: '',
       selectedWorldDisplay: '',
       isRefreshing: false,
+      requestInFlight: false,
       lastRefreshTime: 0,
       recoveryVisible: false,
       managementScope: getManagementScope(),
       roomActions: {},
       worldActions: {},
-      roomRequestSequence: 0
+      roomRequestSequence: 0,
+      transitionRefreshTimer: null
     }
   },
   computed: {
@@ -400,6 +402,19 @@ export default {
       }
 
       return result;
+    },
+    hasTransitioningWorlds() {
+      return this.rooms.some(room =>
+        (room.allWorlds || room.worlds || []).some(world => ['starting', 'stopping'].includes(world.status))
+      );
+    }
+  },
+  watch: {
+    hasTransitioningWorlds: {
+      immediate: true,
+      handler() {
+        this.syncTransitionRefresh();
+      }
     }
   },
   created() {
@@ -407,12 +422,42 @@ export default {
   },
   mounted() {
     window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    this.syncTransitionRefresh();
   },
   beforeUnmount() {
+    this.clearTransitionRefresh();
     window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange);
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
   },
   methods: {
     runtimeModeSummary,
+    formatListNames(items) {
+      const separator = String(this.$i18n?.locale || '').startsWith('en') ? ', ' : '、';
+      return items.filter(Boolean).join(separator);
+    },
+    clearTransitionRefresh() {
+      if (this.transitionRefreshTimer) {
+        clearInterval(this.transitionRefreshTimer);
+        this.transitionRefreshTimer = null;
+      }
+    },
+    syncTransitionRefresh() {
+      this.clearTransitionRefresh();
+      if (!this.hasTransitioningWorlds || (typeof document !== 'undefined' && document.hidden)) {
+        return;
+      }
+      this.transitionRefreshTimer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        void this.refreshRooms(true, false, { silent: true });
+      }, 2500);
+    },
+    handleVisibilityChange() {
+      this.syncTransitionRefresh();
+      if (this.hasTransitioningWorlds && typeof document !== 'undefined' && !document.hidden) {
+        void this.refreshRooms(true, false, { silent: true });
+      }
+    },
     formatDate(timestamp) {
       return formatSystemDateTime(timestamp, {
         locale: this.$i18n.locale,
@@ -427,18 +472,23 @@ export default {
       this.loadError = '';
       void this.refreshRooms(true, false);
     },
-    refreshRooms(force = false, notify = force) {
+    refreshRooms(force = false, notify = force, { silent = false } = {}) {
       force = force === true;
       const now = Date.now();
-      if (this.isRefreshing || (!force && now - this.lastRefreshTime < 2000)) {
+      if (this.isRefreshing || (silent && this.requestInFlight) || (!force && now - this.lastRefreshTime < 2000)) {
         return Promise.resolve();
       }
 
       const sequence = ++this.roomRequestSequence;
-      this.isRefreshing = true;
+      this.requestInFlight = true;
+      if (!silent) {
+        this.isRefreshing = true;
+        if (this.rooms.length === 0) {
+          this.loading = true;
+        }
+        this.loadError = '';
+      }
       this.lastRefreshTime = now;
-      this.loading = true;
-      this.loadError = '';
 
       return roomApi.getScopedRuntimeOverview(managementScopeTargetId(this.managementScope))
         .then(response => {
@@ -447,18 +497,22 @@ export default {
             throw new Error(this.$t('rooms.list.feedback.listFailed'));
           }
           this.rooms = projectRoomList(response.data, managementScopeTargetId(this.managementScope));
+          this.loadError = '';
           if (notify) toast.success(this.$t('rooms.list.feedback.refreshed'));
         })
         .catch(error => {
           if (sequence !== this.roomRequestSequence) return;
           console.error('Failed to load room data:', error);
-          this.loadError = error.message || this.$t('rooms.list.feedback.serviceUnavailable');
-          toast.error(this.$t('rooms.list.feedback.dataFailed', { error: this.loadError }));
+          if (!silent || this.rooms.length === 0) {
+            this.loadError = error.message || this.$t('rooms.list.feedback.serviceUnavailable');
+            toast.error(this.$t('rooms.list.feedback.dataFailed', { error: this.loadError }));
+          }
         })
         .finally(() => {
           if (sequence !== this.roomRequestSequence) return;
           this.loading = false;
           this.isRefreshing = false;
+          this.requestInFlight = false;
         });
     },
     createRoom() {
@@ -536,7 +590,7 @@ export default {
       return (room?.worlds || []).filter(world => isWorldConsoleUnresponsive(world));
     },
     roomUnresponsiveWorldNames(room) {
-      return this.roomUnresponsiveWorlds(room).map(world => world.name || world.id).join('、');
+      return this.formatListNames(this.roomUnresponsiveWorlds(room).map(world => world.name || world.id));
     },
     canStartRoom(room) {
       return room.worlds.some(world => canStartWorld(world));
@@ -603,12 +657,12 @@ export default {
     notifyAddedDependencies(scope) {
       if (!scope.addedWorlds?.length) return;
       toast.info(this.$t('rooms.list.feedback.dependenciesIncluded', {
-        worlds: scope.addedWorlds.map(world => world.name).join('、')
+        worlds: this.formatListNames(scope.addedWorlds.map(world => world.name))
       }));
     },
     async confirmWorldAction(scope, actionKind, actionLabel, world, roomId) {
       if (!worldActionRequiresConfirmation(actionKind)) return {};
-      const names = scope.worlds.map(item => item.name).join('、');
+      const names = this.formatListNames(scope.worlds.map(item => item.name));
       try {
         return await confirmRoomMaintenance(
           roomId,
@@ -830,7 +884,7 @@ export default {
         toast.warning(this.dependencyFailureMessage(scope));
         return;
       }
-      const names = scope.worlds.map(world => world.name).join('、');
+      const names = this.formatListNames(scope.worlds.map(world => world.name));
       try {
         maintenance = await confirmRoomMaintenance(
           room.roomId,
@@ -874,7 +928,7 @@ export default {
         return;
       }
       const action = this.$t('rooms.list.worldActions.restart');
-      const names = scope.worlds.map(world => world.name).join('、');
+      const names = this.formatListNames(scope.worlds.map(world => world.name));
       let maintenance = {};
       try {
         maintenance = await confirmRoomMaintenance(

@@ -6,7 +6,7 @@
     <Alert v-else-if="error" variant="destructive">
       <AlertTitle>{{ $t('automationScope.failed') }}</AlertTitle>
       <AlertDescription>{{ error }}</AlertDescription>
-      <AlertAction class="flex flex-wrap gap-2"><Button variant="outline" @click="load">{{ $t('common.actions.retry') }}</Button><Button v-if="route.params.id || route.query.roomId" variant="outline" @click="chooseAgain">{{ $t('automationScope.chooseAgain') }}</Button></AlertAction>
+      <AlertAction class="flex flex-wrap justify-end gap-2 max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1"><Button size="sm" variant="outline" @click="load">{{ $t('common.actions.retry') }}</Button><Button v-if="route.params.id || route.query.roomId" size="sm" variant="outline" @click="chooseAgain">{{ $t('automationScope.chooseAgain') }}</Button></AlertAction>
     </Alert>
     <template v-else>
       <AutomationRoomSelect v-if="rooms.length" />

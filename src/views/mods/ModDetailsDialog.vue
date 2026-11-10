@@ -335,7 +335,7 @@ function hideImage(event) {
 }
 
 .details-scroll-area {
-  min-height: 260px;
+  min-height: 0;
 }
 
 .details-content {

@@ -302,8 +302,8 @@
           <CardContent>
             <div v-if="sessionsLoading" class="inline-loading"><Spinner /><span>{{ t('worldMaps.generation.readingSessions') }}</span></div>
             <Alert v-else-if="sessionError" variant="destructive"><TriangleAlert /><AlertTitle>{{ t('worldMaps.sessions.loadFailedTitle') }}</AlertTitle><AlertDescription>{{ sessionError }}</AlertDescription></Alert>
-            <ScrollArea v-else-if="sessions.length" class="session-scroll">
-              <ShadcnTable>
+            <ScrollArea v-else-if="sessions.length" horizontal class="session-scroll">
+              <ShadcnTable container-class="overflow-visible">
                 <TableHeader><TableRow><TableHead>{{ t('worldMaps.sessions.columns.snapshot') }}</TableHead><TableHead>{{ t('worldMaps.sessions.columns.size') }}</TableHead><TableHead class="text-right">{{ t('worldMaps.sessions.columns.actions') }}</TableHead></TableRow></TableHeader>
                 <TableBody>
                   <TableRow v-for="session in sessions" :key="session.id">

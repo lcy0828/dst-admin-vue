@@ -7,11 +7,16 @@ const props = defineProps({
     required: false,
     skipCheck: true,
   },
+  containerClass: {
+    type: [Boolean, null, String, Object, Array],
+    required: false,
+    skipCheck: true,
+  },
 });
 </script>
 
 <template>
-  <div data-slot="table-container" class="relative w-full overflow-x-auto">
+  <div data-slot="table-container" :class="cn('relative w-full overflow-x-auto', props.containerClass)">
     <table
       data-slot="table"
       :class="cn('w-full caption-bottom text-sm', props.class)"

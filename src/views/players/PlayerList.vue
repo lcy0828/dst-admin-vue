@@ -211,7 +211,7 @@
               <div><dt>{{ $t('players.fields.playerId') }}</dt><dd>{{ currentPlayer.id }}</dd></div><div><dt>KU ID</dt><dd>{{ currentPlayer.user_id }}</dd></div>
               <div><dt>{{ $t('players.fields.playerName') }}</dt><dd>{{ currentPlayer.player_name }}</dd></div><div><dt>{{ $t('players.fields.archive') }}</dt><dd>{{ currentPlayer.archive_name }}</dd></div>
               <div><dt>{{ $t('players.fields.character') }}</dt><dd>{{ getCharacterName(currentPlayer) }}</dd></div><div :title="$t('players.sorting.daysHint')"><dt>{{ $t('players.fields.days') }}</dt><dd>{{ currentPlayer.player_age ?? '—' }}</dd></div>
-              <div><dt>{{ $t('players.fields.statusChanged') }}</dt><dd>{{ formatDate(currentPlayer.status_change) }}</dd></div><div><dt>Steam ID</dt><dd><UiButton variant="link" size="sm" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</UiButton></dd></div>
+              <div><dt>{{ $t('players.fields.statusChanged') }}</dt><dd>{{ formatDate(currentPlayer.status_change) }}</dd></div><div><dt>Steam ID</dt><dd><UiButton variant="link" size="sm" class="h-auto max-w-full shrink px-0 whitespace-normal break-all text-left" @click="copySteamID(currentPlayer.net_id)">{{ currentPlayer.net_id }}</UiButton></dd></div>
               <div><dt>{{ $t('players.fields.network') }}</dt><dd>{{ isPlayerOnline(currentPlayer.status) ? getNetworkQuality(currentPlayer.net_score) : '-' }}</dd></div>
               <div><dt>{{ $t('players.fields.firstSeen') }}</dt><dd>{{ formatDate(currentPlayer.first_seen) }}</dd></div><div><dt>{{ $t('players.fields.lastSeen') }}</dt><dd>{{ formatDate(currentPlayer.last_seen) }}</dd></div>
               <div><dt>{{ $t('players.fields.lastConnected') }}</dt><dd>{{ formatDate(currentPlayer.last_connected_at) }}</dd></div><div><dt>{{ $t('players.fields.lastDisconnected') }}</dt><dd>{{ formatDate(currentPlayer.last_disconnected_at) }}</dd></div>
@@ -1616,10 +1616,15 @@ export default {
 .action-column {
   position: sticky;
   right: 0;
+  z-index: 10;
   width: 1%;
   background: var(--card);
   box-shadow: inset 1px 0 var(--border);
   text-align: right;
+}
+
+:deep(tbody tr:hover) .action-column {
+  background: color-mix(in srgb, var(--muted) 50%, var(--card));
 }
 
 .action-column .row-actions {
