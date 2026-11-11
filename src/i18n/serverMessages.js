@@ -167,7 +167,28 @@ export const serverMessages = {
           onlinePlayers: '在线玩家',
           totalPlayers: '共 {count} 人',
           attentionWorlds: '异常世界',
-          attentionCount: '{count} 个'
+          attentionCount: '{count} 个',
+          autoUpdate: {
+            modLabel: '模组自动更新',
+            gameLabel: '游戏自动更新',
+            configureHint: '点击前往“房间设置 → 自动更新”',
+            modStates: {
+              auto: '已开启',
+              pendingEmpty: '待无人更新',
+              notify: '仅检查',
+              manual: '未开启',
+              blocked: '受阻',
+              unknown: '--'
+            },
+            gameStates: {
+              auto: '已开启',
+              paused: '未开启',
+              groupPaused: '组已暂停',
+              failed: '上次失败',
+              manual: '未开启',
+              unknown: '--'
+            }
+          }
         },
         backups: {
           latest: '上次备份',
@@ -864,7 +885,28 @@ export const serverMessages = {
           onlinePlayers: 'Online players',
           totalPlayers: '{count} players total',
           attentionWorlds: 'Worlds needing attention',
-          attentionCount: '{count}'
+          attentionCount: '{count}',
+          autoUpdate: {
+            modLabel: 'Mod auto-update',
+            gameLabel: 'Game auto-update',
+            configureHint: 'Open Room Settings → Automatic updates',
+            modStates: {
+              auto: 'On',
+              pendingEmpty: 'Pending empty',
+              notify: 'Check only',
+              manual: 'Off',
+              blocked: 'Blocked',
+              unknown: '--'
+            },
+            gameStates: {
+              auto: 'On',
+              paused: 'Off',
+              groupPaused: 'Group paused',
+              failed: 'Last failed',
+              manual: 'Off',
+              unknown: '--'
+            }
+          }
         },
         backups: {
           latest: 'Last backup',

@@ -388,6 +388,37 @@
                       <FieldDescription>{{ t('backups.imports.apply.allowMissingTokenDescription') }}</FieldDescription>
                     </FieldContent>
                   </Field>
+
+                  <template v-if="applyPlan.mode !== 'replace'">
+                    <Separator />
+                    <div class="flex flex-col gap-3">
+                      <div>
+                        <p class="text-sm font-medium">{{ t('novice.automationTitle') }}</p>
+                        <p class="text-xs text-muted-foreground">{{ t('novice.automationDescription') }}</p>
+                      </div>
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldLabel for="import-auto-backup">{{ t('novice.backupDefaultTitle') }}</FieldLabel>
+                          <FieldDescription>{{ t('novice.backupDefault') }}</FieldDescription>
+                        </FieldContent>
+                        <UiSwitch id="import-auto-backup" v-model="applyPlan.automaticBackup" />
+                      </Field>
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldLabel for="import-auto-mod-update">{{ t('novice.modAutoUpdateDefaultTitle') }}</FieldLabel>
+                          <FieldDescription>{{ t('novice.modAutoUpdateDefault') }}</FieldDescription>
+                        </FieldContent>
+                        <UiSwitch id="import-auto-mod-update" v-model="applyPlan.automaticModUpdate" />
+                      </Field>
+                      <Field orientation="horizontal">
+                        <FieldContent>
+                          <FieldLabel for="import-auto-game-update">{{ t('novice.gameAutoUpdateDefaultTitle') }}</FieldLabel>
+                          <FieldDescription>{{ t('novice.gameAutoUpdateDefault') }}</FieldDescription>
+                        </FieldContent>
+                        <UiSwitch id="import-auto-game-update" v-model="applyPlan.automaticGameUpdate" />
+                      </Field>
+                    </div>
+                  </template>
                 </FieldGroup>
 
                 <Alert v-if="applyPlan.mode === 'replace'" variant="destructive">
@@ -484,7 +515,9 @@ import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigg
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
+import { Switch as UiSwitch } from '@/components/ui/switch'
 import { Table as ShadcnTable, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { applyNewRoomAutomationDefaults } from '@/lib/roomAutoUpdateSupport.mjs'
 import {
   SAVE_IMPORT_TERMINAL_JOB_STATES,
   defaultSaveImportPlan,
@@ -729,7 +762,7 @@ async function refreshImport(importId, generation = lifecycleGeneration) {
   }
 }
 
-async function trackJob(initialJob, importId, purpose) {
+async function trackJob(initialJob, importId, purpose, automationOptions = null) {
   if (!initialJob?.id || jobsByImport.value[importId]?.id === initialJob.id) return
   const generation = lifecycleGeneration
   let job = initialJob
@@ -769,6 +802,21 @@ async function trackJob(initialJob, importId, purpose) {
       const roomsLoaded = await loadRooms()
       if (disposed || generation !== lifecycleGeneration) return
       if (!roomsLoaded) toast.warning(t('backups.imports.feedback.roomsRefreshFailed'))
+      if (automationOptions) {
+        const createdRoom = rooms.value.find(room =>
+          room.directoryName === automationOptions.directoryName || room.id === automationOptions.directoryName
+        )
+        const targetRoomId = createdRoom?.id || automationOptions.directoryName
+        if (targetRoomId) {
+          const warnings = await applyNewRoomAutomationDefaults(targetRoomId, {
+            automaticBackup: automationOptions.automaticBackup,
+            automaticModUpdate: automationOptions.automaticModUpdate,
+            automaticGameUpdate: automationOptions.automaticGameUpdate,
+            translator: key => t(key)
+          })
+          warnings.forEach(warning => toast.warning(warning))
+        }
+      }
       emit('rooms-changed')
     }
     return
@@ -838,6 +886,14 @@ async function applyImport() {
   }
   const generation = lifecycleGeneration
   const importId = selectedImport.value.id
+  const automationOptions = applyPlan.mode !== 'replace'
+    ? {
+      directoryName: applyPlan.directoryName.trim(),
+      automaticBackup: Boolean(applyPlan.automaticBackup),
+      automaticModUpdate: Boolean(applyPlan.automaticModUpdate),
+      automaticGameUpdate: Boolean(applyPlan.automaticGameUpdate)
+    }
+    : null
   applying.value = true
   try {
     const payload = {
@@ -853,7 +909,7 @@ async function applyImport() {
       selectedImport.value = { ...selectedImport.value, status: 'applying' }
     }
     toast.success(t('backups.imports.feedback.applyStarted'))
-    void trackJob(job, importId, 'apply')
+    void trackJob(job, importId, 'apply', automationOptions)
   } catch (error) {
     if (disposed || generation !== lifecycleGeneration) return
     toast.error(t('backups.imports.feedback.applyFailed', { error: error.message || t('common.errors.unknown') }))

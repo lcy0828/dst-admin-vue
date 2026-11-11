@@ -309,7 +309,18 @@ export const corePageMessages = {
         installButtonBusy: '安装中',
         installButton: '安装游戏服务端',
         updateButtonBusy: '更新中',
-        updateButton: '更新游戏'
+        updateButton: '更新游戏',
+        autoUpdate: {
+          label: '游戏无人自动更新',
+          enabledSingle: '已开启',
+          allEnabled: '已开启（{enabled}/{total} 个房间）',
+          partialEnabled: '部分开启（{enabled}/{total} 个房间）',
+          paused: '已暂停',
+          manual: '未开启',
+          noRooms: '暂无房间',
+          unknown: '状态未知',
+          configure: '去配置'
+        }
       },
       startDialog: {
         title: '启动房间',
@@ -677,7 +688,18 @@ export const corePageMessages = {
         installButtonBusy: 'Installing',
         installButton: 'Install game server',
         updateButtonBusy: 'Updating',
-        updateButton: 'Update game'
+        updateButton: 'Update game',
+        autoUpdate: {
+          label: 'Unattended game auto-update',
+          enabledSingle: 'On',
+          allEnabled: 'On ({enabled}/{total} rooms)',
+          partialEnabled: 'Partially on ({enabled}/{total} rooms)',
+          paused: 'Paused',
+          manual: 'Off',
+          noRooms: 'No rooms',
+          unknown: 'Status unknown',
+          configure: 'Configure'
+        }
       },
       startDialog: {
         title: 'Start room',

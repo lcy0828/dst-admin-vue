@@ -19,6 +19,17 @@
         <DialogDescription>{{ dialogDescription }}</DialogDescription>
       </DialogHeader>
       <div class="room-mod-dialog-summary">
+        <Badge
+          v-if="modAutoUpdateMode"
+          as="button"
+          type="button"
+          :variant="modAutoUpdateMode === 'auto' ? 'secondary' : 'outline'"
+          class="cursor-pointer"
+          :title="t('servers.workspace.overview.autoUpdate.configureHint')"
+          @click="openAutoUpdateSettings"
+        >
+          {{ t(`mods.autoUpdate.button.${modAutoUpdateMode}`) }}
+        </Badge>
         <Badge v-if="updateCount" variant="warning">{{ t('servers.workspace.mods.updateCount', { count: updateCount }) }}</Badge>
         <Badge v-if="attentionCount" variant="destructive">{{ t('servers.workspace.mods.attentionCount', { count: attentionCount }) }}</Badge>
         <Badge v-if="prepareCount" variant="secondary">{{ t('servers.workspace.mods.prepareCount', { count: prepareCount }) }}</Badge>
@@ -129,6 +140,7 @@
 
 <script setup>
 import { modCheckSummaryText, modApplySelection } from '@/lib/roomModOverview.mjs'
+import { modUpdateModeFromPolicy } from '@/lib/roomAutoUpdateSupport.mjs'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
@@ -161,7 +173,7 @@ const props = defineProps({
   onlinePlayers: { type: Number, default: 0 }
 })
 
-const emit = defineEmits(['updated'])
+const emit = defineEmits(['updated', 'overview-loaded'])
 const { t, locale } = useI18n()
 const router = useRouter()
 const jobStatus = useSharedJobStatus()
@@ -194,6 +206,7 @@ const brokenImages = ref(new Set())
 let loadSequence = 0
 
 const rows = computed(() => buildRoomModOverview(mods.value, updateOverview.value))
+const modAutoUpdateMode = computed(() => updateOverview.value?.policy ? modUpdateModeFromPolicy(updateOverview.value.policy) : '')
 const updateCount = computed(() => rows.value.filter(mod => mod.updateAvailable).length)
 const attentionCount = computed(() => roomModAttentionCount(rows.value))
 const prepareCount = computed(() => roomModPrepareCount(rows.value))
@@ -287,10 +300,12 @@ async function refresh({ silent = false } = {}) {
       if (sequence !== loadSequence || roomId !== props.roomId) return
       updateOverview.value = overview || null
       updateStateUnavailable.value = false
+      emit('overview-loaded', updateOverview.value)
     },
     () => {
       if (sequence !== loadSequence || roomId !== props.roomId) return
       updateStateUnavailable.value = true
+      emit('overview-loaded', null)
     }
   )
   try {
@@ -493,7 +508,12 @@ function openModManagement() {
   router.push({ path: '/mods', query: { tab: 'room', roomId: props.roomId } })
 }
 
-defineExpose({ refresh })
+function openAutoUpdateSettings() {
+  dialogOpen.value = false
+  router.push({ path: '/rooms/settings', query: { id: props.roomId, tab: 'auto-update' } })
+}
+
+defineExpose({ refresh, updateOverview })
 </script>
 
 <style scoped>

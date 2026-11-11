@@ -279,7 +279,7 @@
           <FieldSet>
             <FieldLegend>{{ $t('mods.autoUpdate.mode.title') }}</FieldLegend>
             <FieldDescription>{{ $t('mods.autoUpdate.mode.description') }}</FieldDescription>
-            <ToggleGroup v-model="modUpdateMode" type="single" variant="outline" class="mod-update-modes">
+            <ToggleGroup :model-value="modUpdateMode" type="single" variant="outline" class="mod-update-modes" @update:model-value="value => { if (value === 'manual' || value === 'notify' || value === 'auto') modUpdateMode = value }">
               <ToggleGroupItem value="manual">{{ $t('mods.autoUpdate.mode.manual') }}</ToggleGroupItem>
               <ToggleGroupItem value="notify">{{ $t('mods.autoUpdate.mode.notify') }}</ToggleGroupItem>
               <ToggleGroupItem value="auto">{{ $t('mods.autoUpdate.mode.auto') }}</ToggleGroupItem>
@@ -464,6 +464,7 @@ import { isLocalMod } from '@/lib/modReference.mjs';
 import { enrichModMetadata } from '@/lib/modMetadata.mjs';
 import { composeModConfigurationPatch, composeModWorldConfigured, composeModWorldEnabled, sameModConfigurationOverrides } from '@/lib/modWorldState.mjs';
 import { matchRoomWorlds } from '@/lib/roomCopy.mjs';
+import { modUpdateModeFromPolicy } from '@/lib/roomAutoUpdateSupport.mjs';
 
 export default {
   name: 'ModList',
@@ -637,9 +638,13 @@ export default {
       return this.modUpdateOverview?.state || null;
     },
     modUpdateButtonLabel() {
+      const policy = this.modUpdateOverview?.policy;
+      const baseLabel = policy
+        ? this.$t(`mods.autoUpdate.button.${modUpdateModeFromPolicy(policy)}`)
+        : this.$t('mods.autoUpdate.actions.open');
       const status = this.modUpdateState?.status;
-      if (status && status !== 'idle') return this.modUpdateStatusLabel(status);
-      return this.$t('mods.autoUpdate.actions.open');
+      if (status && status !== 'idle') return `${baseLabel} · ${this.modUpdateStatusLabel(status)}`;
+      return baseLabel;
     },
     modUpdateStatusDescription() {
       const state = this.modUpdateState;

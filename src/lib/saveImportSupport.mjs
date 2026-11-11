@@ -72,7 +72,10 @@ export function defaultSaveImportPlan(candidate, mode = 'new') {
     networkPolicy: replacement ? 'preserve' : 'auto',
     modPolicy: missingWorkshopMods(candidate).length ? 'install_missing' : 'require_downloaded',
     allowPartial: false,
-    allowMissingToken: false
+    allowMissingToken: false,
+    automaticBackup: !replacement,
+    automaticModUpdate: !replacement,
+    automaticGameUpdate: !replacement
   }
 }
 
@@ -81,6 +84,9 @@ export function normalizeSaveImportPlan(plan, candidate) {
   if (result.mode === 'replace') {
     result.directoryName = ''
     result.roomName = ''
+    result.automaticBackup = false
+    result.automaticModUpdate = false
+    result.automaticGameUpdate = false
   } else {
     result.targetRoomId = ''
     result.confirmation = ''

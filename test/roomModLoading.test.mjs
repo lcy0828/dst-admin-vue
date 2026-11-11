@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm'
 import { babelParse, parse } from '@vue/compiler-sfc'
 import { computed, reactive, ref, watch } from 'vue'
 import { buildRoomModOverview, retainRoomModPresentation, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey } from '../src/lib/roomModOverview.mjs'
+import { modUpdateModeFromPolicy } from '../src/lib/roomAutoUpdateSupport.mjs'
 import { enrichModMetadata } from '../src/lib/modMetadata.mjs'
 import { taskProgress } from '../src/lib/taskProgress.mjs'
 
@@ -35,8 +36,8 @@ function fixture({ deferMetadata = false, open = true } = {}) {
   function read(kind, roomId, items) {
     return new Promise((resolve, reject) => calls.push({ kind, roomId, items, resolve, reject }))
   }
-  const state = runInNewContext(`${script}; ({ refresh, rows, mods, loading, loadError, metadataWarning, metadataLoading, incompleteMetadataIds, retryMetadata, overviewDescription, updateOverview, updateStateUnavailable, updateError, updateErrorDetail, updateKnown, statusLabel, applying, dialogOpen, triggerStatus })`, {
-    computed, ref, buildRoomModOverview, retainRoomModPresentation, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey, enrichModMetadata, taskProgress,
+  const state = runInNewContext(`${script}; ({ refresh, rows, mods, loading, loadError, metadataWarning, metadataLoading, incompleteMetadataIds, retryMetadata, overviewDescription, updateOverview, updateStateUnavailable, updateError, updateErrorDetail, updateKnown, statusLabel, applying, dialogOpen, triggerStatus, modAutoUpdateMode })`, {
+    computed, ref, buildRoomModOverview, modUpdateModeFromPolicy, retainRoomModPresentation, roomModAttentionCount, roomModPrepareCount, roomModUpdateErrorKey, enrichModMetadata, taskProgress,
     defineProps: () => props, defineEmits: () => () => {}, defineExpose: () => {},
     useI18n: () => ({ t: key => key, locale: ref('en-US') }), useRouter: () => ({}),
     useSharedJobStatus: () => jobStatus,

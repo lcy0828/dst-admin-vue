@@ -18,6 +18,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
+import { automationV2API, roomsV2API } from '@/api/v2'
 import { useGameUpdate } from '@/composables/useGameUpdate'
 import {
   gameReleaseApplicationKey,
@@ -27,6 +28,7 @@ import {
   gameReleaseVersionChannels
 } from '@/lib/gameRelease.mjs'
 import { gameInstalledVersionStatus } from '@/lib/gameInstalledVersion.mjs'
+import { summarizeFleetGameAutoUpdate, summarizeGameAutoUpdate } from '@/lib/roomAutoUpdateSupport.mjs'
 
 
 const KLEI_DST_RELEASES_URL = 'https://kleiforums.com/game-updates/dst/'
@@ -35,6 +37,10 @@ const router = useRouter()
 const { t } = useI18n()
 const popoverOpen = ref(false)
 const technicalOpen = ref(false)
+const autoUpdateLoading = ref(false)
+const autoUpdateReadFailed = ref(false)
+const autoUpdateSummaries = ref([])
+let autoUpdateSequence = 0
 const update = useGameUpdate()
 const overview = update.state
 const versionInfo = computed(() => ({ installed: overview.installations.some(item => item.installed), official: overview.report?.officialRelease }))
@@ -70,14 +76,57 @@ const gameUpdateState = computed(() => {
   if (update.availability.value === 'current') return { key: 'upToDate', variant: 'secondary' }
   return { key: 'updateStateUnknown', variant: 'outline' }
 })
+const fleetAutoUpdateSummary = computed(() => summarizeFleetGameAutoUpdate(autoUpdateSummaries.value, { readFailed: autoUpdateReadFailed.value }))
+const fleetAutoUpdateVariant = computed(() => (
+  fleetAutoUpdateSummary.value.state === 'allEnabled' ? 'secondary' : 'outline'
+))
+const fleetAutoUpdateLabel = computed(() => {
+  const summary = fleetAutoUpdateSummary.value
+  const key = summary.state === 'allEnabled' && summary.total === 1 ? 'enabledSingle' : summary.state
+  return t(`dashboard.version.autoUpdate.${key}`, summary)
+})
 const triggerLabel = computed(() => [t('dashboard.version.simpleTitle'), `${t('dashboard.version.officialGame')} ${officialGameVersion.value}`, t(`dashboard.version.${gameUpdateState.value.key}`)].join(' · '))
+async function loadFleetGameAutoUpdate() {
+  const sequence = ++autoUpdateSequence
+  autoUpdateLoading.value = true
+  try {
+    const roomsResponse = await roomsV2API.controlPlaneList()
+    const rooms = Array.isArray(roomsResponse?.items) ? roomsResponse.items : []
+    const summaries = await Promise.all(rooms.map(async room => {
+      try {
+        const [tasksResult, groupsResult] = await Promise.all([
+          automationV2API.tasks(room.id),
+          automationV2API.groups(room.id)
+        ])
+        return summarizeGameAutoUpdate(tasksResult?.items || [], groupsResult?.items || [])
+      } catch {
+        return { state: 'unknown', statusKey: 'unknown', enabled: false }
+      }
+    }))
+    if (sequence === autoUpdateSequence) {
+      autoUpdateReadFailed.value = false
+      autoUpdateSummaries.value = summaries
+    }
+  } catch {
+    if (sequence === autoUpdateSequence) {
+      autoUpdateReadFailed.value = true
+      autoUpdateSummaries.value = []
+    }
+  } finally {
+    if (sequence === autoUpdateSequence) autoUpdateLoading.value = false
+  }
+}
 async function refreshOverview() {
-  await Promise.all([update.ensureOverview({ fresh: true }), update.refreshPending()])
+  await Promise.all([update.ensureOverview({ fresh: true }), update.refreshPending(), loadFleetGameAutoUpdate()])
 }
 function handlePopoverOpen(open) {
   popoverOpen.value = open
-  if (open) { void update.ensureOverview(); void update.refreshPending() }
+  if (open) { void update.ensureOverview(); void update.refreshPending(); void loadFleetGameAutoUpdate() }
   else technicalOpen.value = false
+}
+function openAutoUpdateConfig() {
+  popoverOpen.value = false
+  router.push({ path: '/servers/releases', query: { autoUpdate: '1' } })
 }
 function openFleetUpdates() {
   popoverOpen.value = false
@@ -211,6 +260,19 @@ onMounted(() => { void update.ensureOverview(); void update.refreshPending() })
             <FileText data-icon="inline-start" />
             {{ t('dashboard.version.currentReleaseNotes') }}
           </a>
+        </Button>
+      </div>
+
+      <div class="flex items-center justify-between gap-2 rounded-md border bg-muted/40 px-2.5 py-1.5 text-xs">
+        <div class="flex min-w-0 items-center gap-1.5">
+          <span class="text-muted-foreground">{{ t('dashboard.version.autoUpdate.label') }}</span>
+          <Spinner v-if="autoUpdateLoading && !autoUpdateSummaries.length && !autoUpdateReadFailed" />
+          <Badge v-else :variant="fleetAutoUpdateVariant">
+            {{ fleetAutoUpdateLabel }}
+          </Badge>
+        </div>
+        <Button variant="ghost" size="xs" @click="openAutoUpdateConfig">
+          {{ t('dashboard.version.autoUpdate.configure') }}
         </Button>
       </div>
 

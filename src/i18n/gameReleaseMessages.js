@@ -85,11 +85,46 @@ export const gameReleaseMessages = {
       values: {
         checkFailed: '检查失败', notInstalled: '未安装', unknown: '状态待确认', testBranch: '测试分支', otherBranch: '其他分支',
         local: '本机', online: '在线', offline: '离线', ready: '待更新', blocked: '阻断', upToDate: '已是最新', steamManaged: 'Steam 已是最新',
-        steamClient: 'Steam 客户端管理', steamcmd: '面板自动更新', unknownUpdateMethod: '更新方式未知',
+        steamClient: 'Steam 客户端管理', steamcmd: '面板托管更新 (SteamCMD)', unknownUpdateMethod: '更新方式未知',
         platforms: { macos: 'macOS', linux: 'Linux', windows: 'Windows', unknown: '未知系统' },
         applications: { gameClient: 'DST 游戏客户端', dedicatedServer: 'DST 专用服务器', unknown: '未知 Steam 应用' },
         runningShards: '{running} / {total} 运行', master: '主世界', secondary: '附属世界', noEvidence: '尚未确认加载',
         unknownRoom: '未知房间', unknownWorld: '未知世界', unknownTarget: '未知机器', defaultInstallation: '默认安装'
+      },
+      autoUpdate: {
+        title: '游戏无人自动更新',
+        description: '定期检查新版本，共用安装的所有房间无人时自动备份、更新并恢复原先运行的世界。',
+        loading: '正在读取无人自动更新状态…',
+        states: {
+          enabledSingle: '已开启',
+          allEnabled: '已开启（{enabled}/{total} 个房间）',
+          partialEnabled: '部分开启（{enabled}/{total} 个房间）',
+          paused: '已暂停',
+          manual: '未开启',
+          noRooms: '暂无房间',
+          unknown: '状态未知'
+        },
+        roomStates: {
+          auto: '已开启',
+          paused: '未开启',
+          groupPaused: '任务组已暂停',
+          failed: '上次执行失败',
+          manual: '未开启',
+          multiple: '多个计划（请在任务页管理）',
+          unknown: '状态未知'
+        },
+        frequency: '检查频率',
+        every15: '每 15 分钟',
+        every30: '每 30 分钟',
+        hourly: '每小时',
+        custom: '自定义 Cron',
+        configure: '快捷配置',
+        enableAll: '全部开启（每 15 分钟）',
+        dialogTitle: '配置游戏无人自动更新',
+        dialogDescription: '按房间开启或关闭“无人时更新游戏并重启”定时任务。更新时会自动检查所有共用安装的房间是否均无玩家在线。',
+        openRoomSettings: '房间自动更新设置',
+        saved: '游戏无人自动更新已更新',
+        saveFailed: '保存游戏无人自动更新失败：{error}'
       },
       stages: {
         previewed: '准备更新', notifying: '停服倒计时', protecting: '保护备份', stopping: '停止分片', staged: '准备更新', updating: '更新安装',
@@ -237,11 +272,46 @@ export const gameReleaseMessages = {
       values: {
         checkFailed: 'Check failed', notInstalled: 'Not installed', unknown: 'Unconfirmed', testBranch: 'Test branch', otherBranch: 'Other branch',
         local: 'Local', online: 'Online', offline: 'Offline', ready: 'Pending update', blocked: 'Blocked', upToDate: 'Current', steamManaged: 'Current in Steam',
-        steamClient: 'Managed by Steam', steamcmd: 'Panel-managed', unknownUpdateMethod: 'Unknown update method',
+        steamClient: 'Managed by Steam', steamcmd: 'Panel-managed (SteamCMD)', unknownUpdateMethod: 'Unknown update method',
         platforms: { macos: 'macOS', linux: 'Linux', windows: 'Windows', unknown: 'Unknown OS' },
         applications: { gameClient: 'DST game client', dedicatedServer: 'DST dedicated server', unknown: 'Unknown Steam app' },
         runningShards: '{running} / {total} running', master: 'Master world', secondary: 'Secondary world', noEvidence: 'Loading not confirmed yet',
         unknownRoom: 'Unknown room', unknownWorld: 'Unknown world', unknownTarget: 'Unknown host', defaultInstallation: 'Default installation'
+      },
+      autoUpdate: {
+        title: 'Unattended game auto-update',
+        description: 'Check on a schedule and automatically back up, update, and resume running worlds when all rooms sharing the installation are empty.',
+        loading: 'Loading unattended auto-update status…',
+        states: {
+          enabledSingle: 'On',
+          allEnabled: 'On ({enabled}/{total} rooms)',
+          partialEnabled: 'Partially on ({enabled}/{total} rooms)',
+          paused: 'Paused',
+          manual: 'Off',
+          noRooms: 'No rooms',
+          unknown: 'Status unknown'
+        },
+        roomStates: {
+          auto: 'On',
+          paused: 'Off',
+          groupPaused: 'Task group paused',
+          failed: 'Last run failed',
+          manual: 'Off',
+          multiple: 'Multiple schedules (manage in Tasks)',
+          unknown: 'Status unknown'
+        },
+        frequency: 'Check frequency',
+        every15: 'Every 15 minutes',
+        every30: 'Every 30 minutes',
+        hourly: 'Every hour',
+        custom: 'Custom Cron',
+        configure: 'Quick configure',
+        enableAll: 'Enable all (every 15 min)',
+        dialogTitle: 'Configure unattended game auto-update',
+        dialogDescription: 'Enable or pause the “Update game and restart when empty” scheduled task per room. Updates only proceed when all rooms sharing the installation have zero online players.',
+        openRoomSettings: 'Room automatic updates',
+        saved: 'Unattended game auto-update updated',
+        saveFailed: 'Could not save unattended game auto-update: {error}'
       },
       stages: {
         previewed: 'Preparing update', notifying: 'Stop countdown', protecting: 'Protection backups', stopping: 'Stopping shards', staged: 'Update staged', updating: 'Updating installation',

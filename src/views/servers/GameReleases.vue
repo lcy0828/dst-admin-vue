@@ -3,7 +3,7 @@ import { useGameUpdate } from '@/composables/useGameUpdate'
 import GameReleaseProgress from '@/components/runtime/GameReleaseProgress.vue'
 import GameInstallationManager from '@/components/GameInstallationManager.vue'
 import LuaJITInstaller from '@/components/LuaJITInstaller.vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { nextTick, computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
@@ -14,7 +14,7 @@ import {
   RotateCw,
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import { gameReleasesV2API, jobsV2API } from '@/api/v2'
+import { automationV2API, gameReleasesV2API, jobsV2API, roomsV2API } from '@/api/v2'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
@@ -51,8 +52,14 @@ import {
   MANAGEMENT_SCOPE_TARGET,
   managementScopeRequest,
 } from '@/lib/managementScope.mjs'
+import {
+  configureRoomGameAutoUpdate,
+  summarizeFleetGameAutoUpdate,
+  summarizeGameAutoUpdate
+} from '@/lib/roomAutoUpdateSupport.mjs'
 
 const route = useRoute()
+const router = useRouter()
 const update = useGameUpdate()
 const overview = update.state
 const installationGeneration = ref(0)
@@ -75,6 +82,13 @@ const detailsLoading = ref(false)
 const loadError = ref('')
 const taskError = ref('')
 const advancedOpen = ref(false)
+const autoUpdateDialogOpen = ref(false)
+const autoUpdateLoading = ref(false)
+const autoUpdateReadFailed = ref(false)
+const autoUpdateSavingRoomId = ref('')
+const autoUpdateBulkSaving = ref(false)
+const roomAutoUpdates = ref([])
+let autoUpdateSequence = 0
 const managementScope = ref(getManagementScope())
 let pollTimer = 0
 let requestSequence = 0
@@ -86,6 +100,26 @@ let pollConfirmationMisses = 0
 let disposed = false
 
 const scopeLabel = computed(() => managementScope.value.targetName || t('app.remote.allTargets'))
+const scopedRoomAutoUpdates = computed(() => {
+  if (managementScope.value.kind !== MANAGEMENT_SCOPE_TARGET) return roomAutoUpdates.value
+  return roomAutoUpdates.value.filter(entry =>
+    Array.isArray(entry.room?.targetIds) && entry.room.targetIds.includes(managementScope.value.targetId)
+  )
+})
+const fleetGameAutoUpdateSummary = computed(() =>
+  summarizeFleetGameAutoUpdate(
+    scopedRoomAutoUpdates.value.map(entry => entry.summary),
+    { readFailed: autoUpdateReadFailed.value }
+  )
+)
+const fleetGameAutoUpdateLabel = computed(() => {
+  const summary = fleetGameAutoUpdateSummary.value
+  const key = summary.state === 'allEnabled' && summary.total === 1 ? 'enabledSingle' : summary.state
+  return t(`gameReleases.autoUpdate.states.${key}`, summary)
+})
+const canEnableAllGameAutoUpdate = computed(() =>
+  scopedRoomAutoUpdates.value.some(entry => !entry.summary.enabled && !entry.summary.multiple && entry.summary.state !== 'unknown')
+)
 const scopedReleases = computed(() => {
   if (managementScope.value.kind !== MANAGEMENT_SCOPE_TARGET) return releases.value
   return releases.value.filter(release => (release?.plan?.installations || [])
@@ -127,6 +161,8 @@ watch(() => update.pending.value, release => {
 onMounted(async () => {
   window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
   void update.ensureOverview()
+  void loadRoomAutoUpdates()
+  if (route.query.autoUpdate === '1') autoUpdateDialogOpen.value = true
   await Promise.all([loadHistory({ discover: false }), update.refreshPending()])
   if (disposed) return
   if (!showMaintenanceJob(route.query.maintenanceJob) && !resumePolling()) followRunningRelease()
@@ -136,11 +172,15 @@ onBeforeUnmount(() => {
   disposed = true
   requestSequence += 1
   detailsRequestSequence += 1
+  autoUpdateSequence += 1
   stopPolling()
   window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
 })
 
 watch(() => route.query.maintenanceJob, id => showMaintenanceJob(id))
+watch(() => route.query.autoUpdate, flag => {
+  if (flag === '1') openAutoUpdateDialog()
+})
 
 function showMaintenanceJob(id) {
   if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(id)) return false
@@ -177,6 +217,112 @@ function handleManagementScopeChange(event) {
   selectedRelease.value = null
   taskError.value = ''
   followRunningRelease()
+}
+
+async function loadRoomAutoUpdates() {
+  const sequence = ++autoUpdateSequence
+  autoUpdateLoading.value = true
+  try {
+    const response = await roomsV2API.controlPlaneList()
+    const rooms = Array.isArray(response?.items) ? response.items : []
+    const entries = await Promise.all(rooms.map(async room => {
+      try {
+        const [tasksResult, groupsResult] = await Promise.all([
+          automationV2API.tasks(room.id),
+          automationV2API.groups(room.id)
+        ])
+        const tasks = Array.isArray(tasksResult?.items) ? tasksResult.items : []
+        const groups = Array.isArray(groupsResult?.items) ? groupsResult.items : []
+        const summary = summarizeGameAutoUpdate(tasks, groups)
+        return {
+          room,
+          tasks,
+          groups,
+          summary,
+          preset: summary.preset || 'every15'
+        }
+      } catch {
+        return {
+          room,
+          tasks: [],
+          groups: [],
+          summary: { state: 'unknown', statusKey: 'unknown', enabled: false, preset: 'every15' },
+          preset: 'every15'
+        }
+      }
+    }))
+    if (sequence === autoUpdateSequence) {
+      autoUpdateReadFailed.value = false
+      roomAutoUpdates.value = entries
+    }
+  } catch {
+    if (sequence === autoUpdateSequence) {
+      autoUpdateReadFailed.value = true
+      roomAutoUpdates.value = []
+    }
+  } finally {
+    if (sequence === autoUpdateSequence) {
+      autoUpdateLoading.value = false
+    }
+  }
+}
+
+function openAutoUpdateDialog() {
+  autoUpdateDialogOpen.value = true
+  void loadRoomAutoUpdates()
+}
+
+async function saveRoomGameAutoUpdate(entry, enabled, preset = entry.preset || 'every15') {
+  if (!entry?.room?.id || entry.summary?.multiple || entry.summary?.state === 'unknown' || autoUpdateSavingRoomId.value || autoUpdateBulkSaving.value) return
+  autoUpdateSavingRoomId.value = entry.room.id
+  try {
+    await configureRoomGameAutoUpdate(entry.room.id, {
+      enabled: Boolean(enabled),
+      preset: preset === 'custom' ? '' : preset,
+      schedule: preset === 'custom' ? entry.summary?.schedule || '' : '',
+      taskName: t('novice.gameAutoUpdateTaskName'),
+      tasks: entry.tasks,
+      groups: entry.groups,
+      enablePausedGroup: true
+    })
+    toast.success(t('gameReleases.autoUpdate.saved'))
+    await loadRoomAutoUpdates()
+  } catch (error) {
+    toast.error(t('gameReleases.autoUpdate.saveFailed', { error: error?.message || t('common.errors.unknown') }))
+  } finally {
+    autoUpdateSavingRoomId.value = ''
+  }
+}
+
+async function enableAllGameAutoUpdate() {
+  const targets = scopedRoomAutoUpdates.value.filter(entry => !entry.summary.enabled && !entry.summary.multiple && entry.summary.state !== 'unknown')
+  if (!targets.length || autoUpdateBulkSaving.value || autoUpdateSavingRoomId.value) return
+  autoUpdateBulkSaving.value = true
+  try {
+    for (const entry of targets) {
+      await configureRoomGameAutoUpdate(entry.room.id, {
+        enabled: true,
+        preset: entry.preset === 'custom' ? '' : (entry.preset || 'every15'),
+        schedule: entry.preset === 'custom' ? entry.summary?.schedule || '' : '',
+        taskName: t('novice.gameAutoUpdateTaskName'),
+        tasks: entry.tasks,
+        groups: entry.groups,
+        enablePausedGroup: true
+      })
+    }
+    toast.success(t('gameReleases.autoUpdate.saved'))
+    await loadRoomAutoUpdates()
+  } catch (error) {
+    toast.error(t('gameReleases.autoUpdate.saveFailed', { error: error?.message || t('common.errors.unknown') }))
+  } finally {
+    autoUpdateBulkSaving.value = false
+  }
+}
+
+function openRoomSettingsAutoUpdate(roomId) {
+  if (!roomId) return
+  autoUpdateDialogOpen.value = false
+  router.push({ path: '/rooms/settings', query: { id: roomId, tab: 'auto-update' } })
 }
 
 function selectLoadConfirmation(value) {
@@ -465,6 +611,22 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
         <GameInstallationManager ref="installationsRef" maintenance-menu :disabled="activeJobRunning || overview.submitting" @changed="handleInstallationChanged">
           <template #footer="{ items, busy }">
             <CardFooter v-if="items.some(item => item.installed)" class="min-w-0 flex-col items-stretch gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 p-3">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-sm font-medium">{{ t('gameReleases.autoUpdate.title') }}</span>
+                    <Spinner v-if="autoUpdateLoading && !roomAutoUpdates.length && !autoUpdateReadFailed" />
+                    <Badge v-else :variant="fleetGameAutoUpdateSummary.state === 'allEnabled' ? 'secondary' : 'outline'">
+                      {{ fleetGameAutoUpdateLabel }}
+                    </Badge>
+                  </div>
+                  <p class="text-xs text-muted-foreground">{{ t('gameReleases.autoUpdate.description') }}</p>
+                </div>
+                <UiButton variant="outline" size="sm" @click="openAutoUpdateDialog">
+                  {{ t('gameReleases.autoUpdate.configure') }}
+                </UiButton>
+              </div>
+
               <div class="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <div class="flex flex-col gap-1" role="status" aria-live="polite">
                   <div class="flex flex-wrap items-center gap-2">
@@ -606,6 +768,82 @@ async function pollActivity(jobId, releaseId = '', generation = pollGeneration) 
         <CollapsibleContent class="flex flex-col gap-1 pt-2 text-xs text-muted-foreground"><span class="break-all">{{ t('gameReleases.job.title') }}: {{ selectedRelease.sourceJobId || '—' }}</span><span class="break-all">{{ t('gameReleases.columns.release') }}: {{ selectedRelease.id }}</span><span v-if="selectedRelease.errorCode">{{ selectedRelease.errorCode }}</span></CollapsibleContent>
       </Collapsible>
     </section>
+
+    <Dialog v-model:open="autoUpdateDialogOpen">
+      <DialogContent class="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>{{ t('gameReleases.autoUpdate.dialogTitle') }}</DialogTitle>
+          <DialogDescription>{{ t('gameReleases.autoUpdate.dialogDescription') }}</DialogDescription>
+        </DialogHeader>
+        <div v-if="autoUpdateLoading && !scopedRoomAutoUpdates.length && !autoUpdateReadFailed" class="flex flex-col gap-2 py-2">
+          <Skeleton v-for="index in 2" :key="index" class="h-14 w-full" />
+        </div>
+        <Empty v-else-if="!scopedRoomAutoUpdates.length" class="py-4">
+          <EmptyHeader><EmptyTitle>{{ t(`gameReleases.autoUpdate.states.${autoUpdateReadFailed ? 'unknown' : 'noRooms'}`) }}</EmptyTitle></EmptyHeader>
+        </Empty>
+        <div v-else class="flex max-h-96 flex-col gap-3 overflow-y-auto pr-1">
+          <div
+            v-for="entry in scopedRoomAutoUpdates"
+            :key="entry.room.id"
+            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"
+          >
+            <div class="flex min-w-0 flex-col gap-1">
+              <div class="flex flex-wrap items-center gap-2">
+                <strong class="truncate text-sm font-medium">{{ entry.room.name }}</strong>
+                <Badge :variant="entry.summary.enabled ? 'secondary' : 'outline'">
+                  {{ t(`gameReleases.autoUpdate.roomStates.${entry.summary.multiple ? 'multiple' : entry.summary.state}`) }}
+                </Badge>
+              </div>
+              <UiButton
+                variant="link"
+                size="xs"
+                class="h-auto justify-start p-0 text-xs text-muted-foreground"
+                @click="openRoomSettingsAutoUpdate(entry.room.id)"
+              >
+                {{ t('gameReleases.autoUpdate.openRoomSettings') }}
+              </UiButton>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <UiSelect
+                :model-value="entry.preset"
+                :disabled="autoUpdateSavingRoomId === entry.room.id || autoUpdateBulkSaving || entry.summary.multiple || entry.summary.state === 'unknown'"
+                @update:model-value="value => { entry.preset = value; if (entry.summary.enabled) saveRoomGameAutoUpdate(entry, true, value) }"
+              >
+                <SelectTrigger class="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="every15">{{ t('gameReleases.autoUpdate.every15') }}</SelectItem>
+                    <SelectItem value="every30">{{ t('gameReleases.autoUpdate.every30') }}</SelectItem>
+                    <SelectItem value="hourly">{{ t('gameReleases.autoUpdate.hourly') }}</SelectItem>
+                    <SelectItem v-if="entry.preset === 'custom'" value="custom" disabled>{{ t('gameReleases.autoUpdate.custom') }} ({{ entry.summary.schedule }})</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </UiSelect>
+              <Switch
+                :id="`room-game-auto-update-${entry.room.id}`"
+                :model-value="entry.summary.enabled"
+                :disabled="autoUpdateSavingRoomId === entry.room.id || autoUpdateBulkSaving || entry.summary.multiple || entry.summary.state === 'unknown'"
+                @update:model-value="checked => saveRoomGameAutoUpdate(entry, checked, entry.preset)"
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <UiButton
+            v-if="canEnableAllGameAutoUpdate"
+            variant="secondary"
+            :disabled="autoUpdateBulkSaving || Boolean(autoUpdateSavingRoomId)"
+            @click="enableAllGameAutoUpdate"
+          >
+            <Spinner v-if="autoUpdateBulkSaving" data-icon="inline-start" />
+            {{ t('gameReleases.autoUpdate.enableAll') }}
+          </UiButton>
+          <UiButton variant="outline" @click="autoUpdateDialogOpen = false">{{ t('common.actions.close') }}</UiButton>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <Dialog v-model:open="finishConfirmOpen">
       <DialogContent class="sm:max-w-lg">

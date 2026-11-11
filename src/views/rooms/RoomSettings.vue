@@ -246,7 +246,19 @@
       </CardContent>
     </Card>
     </details>
-    <Card v-if="!isEdit" size="sm"><CardContent class="pt-4"><FieldGroup><Field orientation="horizontal"><UiSwitch id="new-room-backup" v-model="automaticBackup" /><FieldLabel for="new-room-backup">{{ $t('novice.backupDefault') }}</FieldLabel></Field></FieldGroup></CardContent></Card>
+    <Card v-if="!isEdit" size="sm">
+      <CardHeader>
+        <CardTitle class="section-title"><RefreshCw />{{ $t('novice.automationTitle') }}</CardTitle>
+        <CardDescription>{{ $t('novice.automationDescription') }}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <FieldGroup>
+          <Field orientation="horizontal"><FieldContent><FieldLabel for="new-room-backup">{{ $t('novice.backupDefaultTitle') }}</FieldLabel><FieldDescription>{{ $t('novice.backupDefault') }}</FieldDescription></FieldContent><UiSwitch id="new-room-backup" v-model="automaticBackup" /></Field>
+          <Field orientation="horizontal"><FieldContent><FieldLabel for="new-room-mod-auto-update">{{ $t('novice.modAutoUpdateDefaultTitle') }}</FieldLabel><FieldDescription>{{ $t('novice.modAutoUpdateDefault') }}</FieldDescription></FieldContent><UiSwitch id="new-room-mod-auto-update" v-model="automaticModUpdate" /></Field>
+          <Field orientation="horizontal"><FieldContent><FieldLabel for="new-room-game-auto-update">{{ $t('novice.gameAutoUpdateDefaultTitle') }}</FieldLabel><FieldDescription>{{ $t('novice.gameAutoUpdateDefault') }}</FieldDescription></FieldContent><UiSwitch id="new-room-game-auto-update" v-model="automaticGameUpdate" /></Field>
+        </FieldGroup>
+      </CardContent>
+    </Card>
 
     <UiDialog v-model:open="settingsCopyDialogVisible">
       <DialogContent>
@@ -319,6 +331,7 @@ import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { confirmAction } from '@/lib/feedback';
 import { globalJobFailureToastId } from '@/lib/globalJobs.mjs';
 import { backupsV2API } from '@/api/v2';
+import { applyNewRoomAutomationDefaults } from '@/lib/roomAutoUpdateSupport.mjs';
 import { newRoomDirectoryName } from '@/lib/newRoomDefaults.mjs';
 import { clusterTokenError } from '@/lib/clusterToken.mjs';
 import { pickCopiedRoomFields, roomCopyValuesFromConfig } from '@/lib/roomCopy.mjs';
@@ -465,6 +478,8 @@ export default {
       activeTab: 'basic',
       moreSettings: false,
       automaticBackup: true,
+      automaticModUpdate: true,
+      automaticGameUpdate: true,
       postCreateWarnings: [],
       isEdit: false,
       roomId: '',
@@ -619,14 +634,18 @@ export default {
     const roomsLoading = this.fetchSettingsCopyRooms();
     // 检查是否是编辑模式
     const roomId = this.setupMode ? '' : this.$route.query.id;
+    const requestedTab = String(this.$route?.query?.tab || '');
     if (roomId) {
       this.isEdit = true;
       this.roomId = roomId;
+      if (requestedTab === 'auto-update' || requestedTab === 'maintenance') this.activeTab = 'maintenance';
+      else if (requestedTab === 'token') this.activeTab = 'token';
       this.loadRoomSettings(roomId);
-    } else if (!this.setupMode && this.$route.query.edit === 'true') {
+    } else if (!this.setupMode && (this.$route.query.edit === 'true' || requestedTab === 'auto-update' || requestedTab === 'maintenance')) {
       this.isEdit = true;
       await roomsLoading;
       this.roomId = preferredRoomId(this.roomOptions);
+      if (requestedTab === 'auto-update' || requestedTab === 'maintenance') this.activeTab = 'maintenance';
       if (this.roomId) await this.loadRoomSettings(this.roomId);
     } else {
       this.$nextTick(() => this.captureBaseline());
@@ -1000,7 +1019,15 @@ export default {
           this.roomId = roomValue;
           this.savename = createdRoom.name || this.savename;
           this.isEdit = true;
-          if (this.automaticBackup) {
+          if (typeof applyNewRoomAutomationDefaults === 'function' && (this.automaticBackup || this.automaticModUpdate || this.automaticGameUpdate)) {
+            const automationWarnings = await applyNewRoomAutomationDefaults(roomValue, {
+              automaticBackup: Boolean(this.automaticBackup),
+              automaticModUpdate: Boolean(this.automaticModUpdate),
+              automaticGameUpdate: Boolean(this.automaticGameUpdate),
+              translator: this.$t
+            });
+            pendingListErrors.push(...automationWarnings);
+          } else if (this.automaticBackup) {
             try {
               const schedules = await backupsV2API.schedules(roomValue);
               const defaults = schedules.defaults || {};
@@ -1110,6 +1137,11 @@ export default {
       handler() {
         this.updateDirtyState();
       }
+    },
+    '$route.query.tab'(tab) {
+      const value = String(tab || '');
+      if (this.isEdit && (value === 'auto-update' || value === 'maintenance')) this.activeTab = 'maintenance';
+      else if (value === 'token') this.activeTab = 'token';
     }
   },
   async beforeRouteLeave() {

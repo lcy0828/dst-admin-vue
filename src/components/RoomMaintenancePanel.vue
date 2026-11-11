@@ -7,25 +7,35 @@ import { toast } from 'vue-sonner'
 import { automationV2API, modUpdatesV2API } from '@/api/v2'
 import { cronTaskApi } from '@/api/index'
 import { roomMaintenanceMessages } from '@/i18n/roomMaintenanceMessages'
+import { systemTimeZone } from '@/lib/dateTime.mjs'
+import {
+  GAME_AUTO_UPDATE_SCHEDULES,
+  buildModUpdatePolicyPayload,
+  configureRoomGameAutoUpdate,
+  gameAutoUpdateSchedulePreset,
+  normalizeModUpdateDraft
+} from '@/lib/roomAutoUpdateSupport.mjs'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel, FieldDescription, FieldSet, FieldLegend } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 const props = defineProps({ roomId: { type: String, required: true } })
+const emit = defineEmits(['updated'])
 const { t, locale } = useI18n({ messages: roomMaintenanceMessages })
 const router = useRouter()
 const loading = ref(true), error = ref(''), saving = ref('')
 const modOverview = ref(null), tasks = ref([]), groups = ref([])
-const modForm = ref({ enabled: false, interval: 15, grace: 60, announce: true })
-const gameForm = ref({ enabled: false, schedule: '*/15 * * * *', timezone: 'Asia/Shanghai' })
+const modForm = ref({ mode: 'manual', checkIntervalMinutes: 15, emptyGraceSeconds: 60, gameAnnouncement: true })
+const gameForm = ref({ enabled: false, schedule: GAME_AUTO_UPDATE_SCHEDULES.every15, timezone: systemTimeZone() })
 const preset = ref('every15')
-const schedules = { every15: '*/15 * * * *', every30: '*/30 * * * *', hourly: '0 * * * *' }
+const schedules = GAME_AUTO_UPDATE_SCHEDULES
 const gameTask = computed(() => tasks.value[0])
 const groupPaused = computed(() => gameTask.value && !groups.value.find(group => group.id === gameTask.value.groupId)?.enabled)
 const disabled = computed(() => loading.value || Boolean(error.value) || Boolean(saving.value))
@@ -41,22 +51,29 @@ async function load() {
     modOverview.value = mods
     groups.value = groupList.items || []
     tasks.value = (taskList.items || []).filter(task => task.action === 'game.update-empty')
-    const policy = mods.policy
-    modForm.value = { enabled: policy.autoCheck && policy.autoPrepare && policy.applyWhenEmpty, interval: policy.revision ? policy.checkIntervalMinutes : 15, grace: policy.emptyGraceSeconds, announce: policy.gameAnnouncement }
-    gameForm.value = { enabled: gameTask.value?.enabled ?? false, schedule: gameTask.value?.schedule || schedules.every15, timezone: gameTask.value?.timezone || 'Asia/Shanghai' }
-    preset.value = Object.keys(schedules).find(key => schedules[key] === gameForm.value.schedule) || 'custom'
+    modForm.value = normalizeModUpdateDraft(mods?.policy)
+    gameForm.value = {
+      enabled: gameTask.value?.enabled ?? false,
+      schedule: gameTask.value?.schedule || schedules.every15,
+      timezone: gameTask.value?.timezone || systemTimeZone()
+    }
+    preset.value = gameAutoUpdateSchedulePreset(gameForm.value.schedule)
   } catch (cause) { error.value = cause.message } finally { loading.value = false }
 }
+function selectModMode(value) { if (value === 'manual' || value === 'notify' || value === 'auto') modForm.value.mode = value }
 function applyPreset(value) { if (schedules[value]) gameForm.value.schedule = schedules[value] }
 async function saveMods() {
   saving.value = 'mods'; modError.value = ''
   try {
-    const { enabled, interval, grace, announce } = modForm.value
-    if (!Number.isInteger(Number(interval)) || Number(interval) < 5 || Number(interval) > 1440 || !Number.isInteger(Number(grace)) || Number(grace) < 30 || Number(grace) > 1800) throw new Error(t('invalid'))
-    modOverview.value = await modUpdatesV2API.updatePolicy(props.roomId, {
-      autoCheck: enabled, autoPrepare: enabled, applyWhenEmpty: enabled, restartWithPlayers: false,
-      gameAnnouncement: announce, checkIntervalMinutes: Number(interval), emptyGraceSeconds: Number(grace), expectedRevision: modOverview.value.policy.revision || ''
-    })
+    const interval = Number(modForm.value.checkIntervalMinutes)
+    const grace = Number(modForm.value.emptyGraceSeconds)
+    if (!Number.isInteger(interval) || interval < 5 || interval > 1440 || !Number.isInteger(grace) || grace < 30 || grace > 1800) throw new Error(t('invalid'))
+    modOverview.value = await modUpdatesV2API.updatePolicy(
+      props.roomId,
+      buildModUpdatePolicyPayload(modForm.value, modOverview.value?.policy?.revision || '')
+    )
+    modForm.value = normalizeModUpdateDraft(modOverview.value?.policy)
+    emit('updated')
     toast.success(t('saved'))
   } catch (cause) { modError.value = cause.message } finally { saving.value = '' }
 }
@@ -64,16 +81,19 @@ async function saveGame() {
   saving.value = 'game'; gameError.value = ''
   try {
     if (tasks.value.length > 1) throw new Error(t('multiple'))
-    let group = groups.value.find(group => group.id === gameTask.value?.groupId) || groups.value.find(group => group.name === 'room-maintenance')
+    const group = groups.value.find(group => group.id === gameTask.value?.groupId) || groups.value.find(group => group.name === 'room-maintenance')
     if (group && !group.enabled && gameForm.value.enabled) throw new Error(t('groupPaused'))
-    if (!group) {
-      group = await automationV2API.createGroup(props.roomId, { name: 'room-maintenance', description: '', type: 'custom', enabled: true })
-      groups.value.push(group)
-    }
-    const task = gameTask.value
-    const input = { ...gameForm.value, groupId: group.id, name: task?.name || t('gameTaskName'), description: task?.description || '', action: 'game.update-empty', worldIds: [], parameters: {}, timeoutSeconds: 3600, retryTimes: 0, retryIntervalSeconds: 60, dependencies: task?.dependencies || [], expectedRevision: task?.revision || '' }
-    const value = task ? await automationV2API.updateTask(props.roomId, task.id, input) : await automationV2API.createTask(props.roomId, input)
-    tasks.value = [value]
+    const result = await configureRoomGameAutoUpdate(props.roomId, {
+      enabled: gameForm.value.enabled,
+      schedule: gameForm.value.schedule,
+      timezone: gameForm.value.timezone,
+      taskName: t('gameTaskName'),
+      tasks: tasks.value,
+      groups: groups.value
+    })
+    tasks.value = result.tasks
+    groups.value = result.groups
+    emit('updated')
     toast.success(t('saved'))
   } catch (cause) { gameError.value = cause.message } finally { saving.value = '' }
 }
@@ -97,15 +117,24 @@ onMounted(load)
         <CardHeader><CardTitle>{{ t('mods') }}</CardTitle><CardDescription>{{ t('modsHelp') }}</CardDescription></CardHeader>
         <CardContent class="flex flex-1 flex-col gap-4">
           <FieldGroup>
-            <Field orientation="horizontal"><Switch id="maintenance-mods-enabled" v-model="modForm.enabled" :disabled="disabled" /><FieldLabel for="maintenance-mods-enabled">{{ t('enabled') }}</FieldLabel></Field>
-            <Field><FieldLabel for="maintenance-mods-interval">{{ t('interval') }}</FieldLabel><Input id="maintenance-mods-interval" v-model="modForm.interval" type="number" min="5" max="1440" :disabled="disabled" /></Field>
-            <Field><FieldLabel for="maintenance-mods-grace">{{ t('grace') }}</FieldLabel><Input id="maintenance-mods-grace" v-model="modForm.grace" type="number" min="30" max="1800" :disabled="disabled" /></Field>
-            <Field orientation="horizontal"><Switch id="maintenance-mods-announce" v-model="modForm.announce" :disabled="disabled" /><FieldLabel for="maintenance-mods-announce">{{ t('announce') }}</FieldLabel></Field>
+            <FieldSet>
+              <FieldLegend>{{ t('modeTitle') }}</FieldLegend>
+              <FieldDescription>{{ t('modeDescription') }}</FieldDescription>
+              <ToggleGroup :model-value="modForm.mode" type="single" variant="outline" class="justify-start" @update:model-value="selectModMode">
+                <ToggleGroupItem value="manual" :disabled="disabled">{{ t('manual') }}</ToggleGroupItem>
+                <ToggleGroupItem value="notify" :disabled="disabled">{{ t('notify') }}</ToggleGroupItem>
+                <ToggleGroupItem value="auto" :disabled="disabled">{{ t('auto') }}</ToggleGroupItem>
+              </ToggleGroup>
+              <FieldDescription>{{ t(`${modForm.mode}Description`) }}</FieldDescription>
+            </FieldSet>
+            <Field v-if="modForm.mode !== 'manual'"><FieldLabel for="maintenance-mods-interval">{{ t('interval') }}</FieldLabel><Input id="maintenance-mods-interval" v-model="modForm.checkIntervalMinutes" type="number" min="5" max="1440" :disabled="disabled" /></Field>
+            <Field v-if="modForm.mode === 'auto'"><FieldLabel for="maintenance-mods-grace">{{ t('grace') }}</FieldLabel><Input id="maintenance-mods-grace" v-model="modForm.emptyGraceSeconds" type="number" min="30" max="1800" :disabled="disabled" /></Field>
+            <Field v-if="modForm.mode === 'auto'" orientation="horizontal"><Switch id="maintenance-mods-announce" v-model="modForm.gameAnnouncement" :disabled="disabled" /><FieldLabel for="maintenance-mods-announce">{{ t('announce') }}</FieldLabel></Field>
           </FieldGroup>
-          <p v-if="modOverview.policy.autoCheck && !modOverview.policy.autoPrepare" class="text-sm text-muted-foreground">{{ t('notifyOnly') }}</p>
-          <p v-if="modOverview.state.availableModIds?.length" class="text-sm">{{ t('pendingMods', { count: modOverview.state.availableModIds.length }) }}</p>
-          <p v-if="modOverview.policy.autoCheck && modOverview.state.nextCheckAt" class="text-xs text-muted-foreground">{{ t('next', { time: formatTime(modOverview.state.nextCheckAt) }) }}</p>
-          <Alert v-if="modError || modOverview.state.errorMessage" variant="destructive"><AlertTitle>{{ t('failed') }}</AlertTitle><AlertDescription>{{ modError || modOverview.state.errorMessage }}</AlertDescription></Alert>
+          <p v-if="modOverview?.policy?.autoCheck && !modOverview?.policy?.autoPrepare" class="text-sm text-muted-foreground">{{ t('notifyOnly') }}</p>
+          <p v-if="modOverview?.state?.availableModIds?.length" class="text-sm">{{ t('pendingMods', { count: modOverview.state.availableModIds.length }) }}</p>
+          <p v-if="modOverview?.policy?.autoCheck && modOverview?.state?.nextCheckAt" class="text-xs text-muted-foreground">{{ t('next', { time: formatTime(modOverview.state.nextCheckAt) }) }}</p>
+          <Alert v-if="modError || modOverview?.state?.errorMessage" variant="destructive"><AlertTitle>{{ t('failed') }}</AlertTitle><AlertDescription>{{ modError || modOverview.state.errorMessage }}</AlertDescription></Alert>
         </CardContent>
         <CardFooter><Button :disabled="disabled" @click="saveMods"><Spinner v-if="saving === 'mods'" data-icon="inline-start" />{{ t('save') }}</Button></CardFooter>
       </Card>

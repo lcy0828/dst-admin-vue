@@ -291,7 +291,7 @@ export const modMessages = {
         checkSummary: '上次检查 {total} 个工坊模组：{outdated} 个可更新，{current} 个已是最新，{unknown} 个暂时无法确认。另有 {local} 个本地模组。',
         updateCount: '更新 {count} 个模组', resumeUpdate: '继续上次更新', pendingVerification: '上次更新尚未完成，有 {count} 个模组需要继续核对。',
         pendingRestart: '{count} 个模组已下载，等待重启生效。', unknownRetained: '另有 {count} 个模组版本尚未确认，未纳入本次更新。',
-        title: '模组更新策略',
+        title: '模组自动更新',
         checkUnavailable: '更新状态待确认',
         filesUnavailable: '部分机器的模组版本无法比较',
         errors: {
@@ -307,12 +307,17 @@ export const modMessages = {
           showDetails: '查看详情', hideDetails: '收起详情'
         },
         description: '按房间管理 Workshop 检查与无人时自动更新。',
-        loading: '正在读取更新策略',
-        actions: { open: '更新策略', checkNow: '立即检查', save: '保存策略' },
+        loading: '正在读取模组自动更新设置',
+        actions: { open: '模组自动更新', checkNow: '立即检查', save: '保存设置' },
+        button: {
+          auto: '模组自动更新：已开启',
+          notify: '模组自动更新：仅检查',
+          manual: '模组自动更新：未开启'
+        },
         mode: {
           title: '更新方式',
           description: '在房间所在安装实例更新模组，共用这些安装的房间也会检查并重启。',
-          manual: '手动', notify: '仅提醒', auto: '无人自动更新',
+          manual: '关闭', notify: '仅检查提醒', auto: '无人自动更新',
           manualDescription: '只在你点击“立即检查”时读取 Workshop，不自动下载或重启。',
           notifyDescription: '定期检查并在页面提示可用更新，不改动运行节点。',
           autoDescription: '所有共用安装的房间无人时，在运行机器下载更新；等待无人宽限时间并再次确认后，重启原本运行的世界。'
@@ -327,7 +332,7 @@ export const modMessages = {
           description: '系统先主动采集所有世界的玩家状态，连续无人达到宽限时间后，再在重启前复查一次；任何未知状态都会取消本次自动重启。'
         },
         status: {
-          idle: '更新策略', checking: '正在检查更新', available: '发现可用更新', preparing: '正在预下载', prepared: '更新已准备',
+          idle: '模组自动更新', checking: '正在检查更新', available: '发现可用更新', preparing: '正在预下载', prepared: '更新已准备',
           waiting_for_players: '等待玩家离线', scheduled: '等待无人宽限', activating: '正在应用更新', verifying: '正在确认加载',
           loaded: '更新已完成', blocked: '更新受阻', rolled_back: '更新已回滚',
           checkingDescription: '正在读取 Workshop 最新版本。', availableDescription: '发现 {count} 个模组可更新。',
@@ -1013,7 +1018,7 @@ export const modMessages = {
         checkSummary: 'Last check of {total} Workshop mods: {outdated} updates, {current} current, {unknown} unconfirmed. Plus {local} local mods.',
         updateCount: 'Update {count} mods', resumeUpdate: 'Resume previous update', pendingVerification: 'The previous update is incomplete; {count} mods need verification.',
         pendingRestart: '{count} mods downloaded and awaiting restart.', unknownRetained: '{count} other mod versions remain unconfirmed and will be left as-is.',
-        title: 'Mod Update Policy',
+        title: 'Mod Automatic Updates',
         checkUnavailable: 'Update status needs confirmation',
         filesUnavailable: 'Some machine Mod versions cannot be compared',
         errors: {
@@ -1029,12 +1034,17 @@ export const modMessages = {
           showDetails: 'View details', hideDetails: 'Hide details'
         },
         description: 'Manage Workshop checks and automatic updates while rooms are empty.',
-        loading: 'Loading update policy',
-        actions: { open: 'Update Policy', checkNow: 'Check Now', save: 'Save Policy' },
+        loading: 'Loading automatic update settings',
+        actions: { open: 'Mod Auto-Update', checkNow: 'Check Now', save: 'Save Settings' },
+        button: {
+          auto: 'Mod Auto-Update: On',
+          notify: 'Mod Auto-Update: Check Only',
+          manual: 'Mod Auto-Update: Off'
+        },
         mode: {
           title: 'Update Mode',
           description: 'Update the room\'s installations. Rooms sharing them are also checked and restarted.',
-          manual: 'Manual', notify: 'Notify Only', auto: 'Update When Empty',
+          manual: 'Off', notify: 'Check Only', auto: 'Auto-Update When Empty',
           manualDescription: 'Read Workshop only when you click Check Now. Nothing is downloaded or restarted automatically.',
           notifyDescription: 'Check on a schedule and show available updates without changing runtime nodes.',
           autoDescription: 'Wait until every room sharing the installations is empty, download on the runtime machines, then check again after the empty grace period and restart previously running worlds.'
@@ -1049,7 +1059,7 @@ export const modMessages = {
           description: 'The system actively samples every world, waits for continuous empty time, and checks again immediately before restarting. Any unknown state cancels the automatic restart.'
         },
         status: {
-          idle: 'Update Policy', checking: 'Checking for Updates', available: 'Updates Available', preparing: 'Prefetching', prepared: 'Update Prepared',
+          idle: 'Mod Auto-Update', checking: 'Checking for Updates', available: 'Updates Available', preparing: 'Prefetching', prepared: 'Update Prepared',
           waiting_for_players: 'Waiting for Players', scheduled: 'Empty Grace Period', activating: 'Applying Update', verifying: 'Confirming Load',
           loaded: 'Update Completed', blocked: 'Update Blocked', rolled_back: 'Update Rolled Back',
           checkingDescription: 'Reading the latest Workshop versions.', availableDescription: '{count} mods have updates available.',

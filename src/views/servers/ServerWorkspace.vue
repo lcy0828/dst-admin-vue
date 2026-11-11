@@ -42,6 +42,28 @@
               <span class="status-label">{{ $t('servers.workspace.backups.latest') }}</span>
               <span class="status-value">{{ latestBackup ? formatBackupTime(latestBackup.createdAt || latestBackup.create_time) : '--' }}</span>
             </div>
+            <Separator class="status-separator" orientation="vertical" />
+            <button
+              type="button"
+              class="status-metric status-metric-action"
+              role="listitem"
+              :title="$t('servers.workspace.overview.autoUpdate.configureHint')"
+              @click="openRoomAutoUpdateSettings"
+            >
+              <span class="status-label">{{ $t('servers.workspace.overview.autoUpdate.modLabel') }}</span>
+              <span class="status-value">{{ $t(`servers.workspace.overview.autoUpdate.modStates.${modAutoUpdateSummary.state}`) }}</span>
+            </button>
+            <Separator class="status-separator" orientation="vertical" />
+            <button
+              type="button"
+              class="status-metric status-metric-action"
+              role="listitem"
+              :title="$t('servers.workspace.overview.autoUpdate.configureHint')"
+              @click="openRoomAutoUpdateSettings"
+            >
+              <span class="status-label">{{ $t('servers.workspace.overview.autoUpdate.gameLabel') }}</span>
+              <span class="status-value">{{ $t(`servers.workspace.overview.autoUpdate.gameStates.${gameAutoUpdateSummary.state}`) }}</span>
+            </button>
           </div>
         </div>
         <div v-else-if="initialLoading" class="mt-2 flex h-5 items-center" aria-hidden="true">
@@ -77,6 +99,7 @@
           :world-count="worlds.length"
           :runtime-targets="worlds.map(world => worldRuntimeTarget(world)).filter(Boolean)"
           :online-players="playerStats?.online_count || 0"
+          @overview-loaded="handleModOverviewLoaded"
           @updated="handleModsUpdated"
         />
         <UiButton
@@ -975,8 +998,9 @@ import CommandRunResult from '@/components/game-tools/CommandRunResult.vue'
 import RoomTopologyDialog from '@/components/rooms/RoomTopologyDialog.vue'
 import RoomModOverview from '@/components/mods/RoomModOverview.vue'
 import { commandApi, playerApi, roomApi } from '@/api'
-import { backupSetsV2API, configurationV2API, consoleV2API, playersV2API, topologyV2API, worldStatesV2API } from '@/api/v2'
+import { automationV2API, backupSetsV2API, configurationV2API, consoleV2API, playersV2API, topologyV2API, worldStatesV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
+import { summarizeGameAutoUpdate, summarizeModAutoUpdate } from '@/lib/roomAutoUpdateSupport.mjs'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -1264,6 +1288,10 @@ export default {
       playerInitialCollectionKey: '',
       worldStateSequence: 0,
       worldStateRefreshInFlight: false,
+      modUpdateOverview: null,
+      roomAutomationTasks: null,
+      roomAutomationGroups: null,
+      autoUpdateSequence: 0,
       commonCommands: [
         { nameKey: 'servers.workspace.console.commonCommands.save', command: 'c_save()' },
         { nameKey: 'servers.workspace.console.commonCommands.players', command: 'c_listallplayers()' },
@@ -1404,6 +1432,13 @@ export default {
     latestBackup() {
       return this.backups[0] || null
     },
+    modAutoUpdateSummary() {
+      return summarizeModAutoUpdate(this.modUpdateOverview)
+    },
+    gameAutoUpdateSummary() {
+      if (!this.roomAutomationTasks) return { state: 'unknown', enabled: false }
+      return summarizeGameAutoUpdate(this.roomAutomationTasks, this.roomAutomationGroups || [])
+    },
     configurationAvailable() {
       return Array.isArray(this.selectedRoom?.targetIds) && this.selectedRoom.targetIds.includes('local')
     },
@@ -1507,6 +1542,7 @@ export default {
     this.topologyDialogSequence += 1
     this.rollbackConfigurationSequence += 1
     this.commandHistorySequence += 1
+    this.autoUpdateSequence += 1
     this.stopRefreshTimer()
     window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, this.handleManagementScopeChange)
     window.removeEventListener(RUNTIME_OBSERVATION_UPDATED_EVENT, this.handleRuntimeObservationUpdate)
@@ -1555,6 +1591,25 @@ export default {
       if (this.workspaceDisposed || document.visibilityState === 'hidden') return
       void this.refreshWorkspace(true)
     },
+    handleModOverviewLoaded(overview) {
+      this.modUpdateOverview = overview || null
+    },
+    async refreshRoomAutoUpdate() {
+      const roomId = this.selectedRoomId
+      if (!roomId) return
+      const sequence = ++this.autoUpdateSequence
+      try {
+        const [tasksResult, groupsResult] = await Promise.allSettled([
+          automationV2API.tasks(roomId),
+          automationV2API.groups(roomId)
+        ])
+        if (sequence !== this.autoUpdateSequence || this.selectedRoomId !== roomId) return
+        this.roomAutomationTasks = tasksResult.status === 'fulfilled' ? tasksResult.value?.items || [] : null
+        this.roomAutomationGroups = groupsResult.status === 'fulfilled' ? groupsResult.value?.items || [] : []
+      } catch {
+        // Auto-update summary falls back to unknown when unavailable.
+      }
+    },
     async handleModsUpdated() {
       await this.refreshWorkspace()
     },
@@ -1568,6 +1623,7 @@ export default {
       this.playerStatsLoading = false
       this.playerInitialCollectionKey = ''
       this.worldStateSequence += 1
+      this.autoUpdateSequence += 1
       const targetId = managementScopeTargetId(this.managementScope)
       const preferred = readWorkspaceSelection(targetId, this.$route.query.targetId === targetId ? this.$route.query : {})
       this.selectedRoomId = preferred.roomId
@@ -1589,6 +1645,9 @@ export default {
       this.topologyDialogSequence += 1
       this.topologyDialogRefreshing = false
       this.backups = []
+      this.modUpdateOverview = null
+      this.roomAutomationTasks = null
+      this.roomAutomationGroups = null
       this.consoleServers = []
       this.consoleServer = ''
       this.commandResult = null
@@ -1646,6 +1705,9 @@ export default {
               this.playerSnapshotStale = false
               this.pendingPlayerActions = []
               this.playerWorkbenchTargetId = ''
+              this.modUpdateOverview = null
+              this.roomAutomationTasks = null
+              this.roomAutomationGroups = null
             }
             await this.refreshRoomContext()
           }
@@ -1722,6 +1784,9 @@ export default {
       this.playerSnapshotStale = false
       this.pendingPlayerActions = []
       this.playerWorkbenchTargetId = ''
+      this.modUpdateOverview = null
+      this.roomAutomationTasks = null
+      this.roomAutomationGroups = null
       this.restoreRoomView()
       const requestedWorldId = this.$route.query.roomId === this.selectedRoomId ? this.$route.query.worldId : ''
       this.selectedWorldId = (this.worlds.find(world => world.id === requestedWorldId) ||
@@ -1742,6 +1807,7 @@ export default {
       this.topologyDialogRefreshing = false
       this.topologyDialogError = ''
       this.rollbackConfigurationSequence += 1
+      this.autoUpdateSequence += 1
       this.rollbackDialogOpen = false
       this.connectionPopoverOpen = false
       this.playerStats = null
@@ -1749,6 +1815,9 @@ export default {
       this.roomTopology = null
       this.runtimeInfrastructure = null
       this.backups = []
+      this.modUpdateOverview = null
+      this.roomAutomationTasks = null
+      this.roomAutomationGroups = null
       this.consoleServers = []
       this.consoleServer = ''
       this.contextErrors = { players: null, console: null, worldStates: null }
@@ -1772,6 +1841,7 @@ export default {
       this.consoleServers = []
       this.consoleServer = ''
       this.contextErrors = { players: null, console: null, worldStates: null }
+      void this.refreshRoomAutoUpdate?.()
       const worldStateRequestSequence = ++this.worldStateSequence
       const playersCompletion = this.reloadPlayerStats({ collectIfEmpty: true }).catch(() => {})
       const [backupsResult, consoleResult, worldStatesResult] = await Promise.allSettled([
@@ -2738,6 +2808,10 @@ export default {
     openRoomSettings() {
       this.$router.push({ path: '/rooms/settings', query: { id: this.selectedRoomId } })
     },
+    openRoomAutoUpdateSettings() {
+      if (!this.selectedRoomId) return
+      this.$router.push({ path: '/rooms/settings', query: { id: this.selectedRoomId, tab: 'auto-update' } })
+    },
     openWorldPlacement() {
       this.$router.push({ path: '/rooms/settings', query: { id: this.selectedRoomId, deployment: 'edit' } })
     },
@@ -3353,6 +3427,21 @@ export default {
 
 .status-metric:first-child {
   padding-left: 0;
+}
+
+.status-metric-action {
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  transition: background-color 150ms ease;
+}
+
+.status-metric-action:hover,
+.status-metric-action:focus-visible {
+  background: var(--muted);
+  outline: none;
 }
 
 .status-label {
