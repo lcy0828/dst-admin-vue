@@ -51,3 +51,75 @@ export function normalizeChatLogList(value) {
     lastSyncedAt: source.lastSyncedAt || ''
   }
 }
+
+export function buildChatHistoryReviewItems({ parseErrors = 0, uncertainTimes = 0, unavailableGenerations = 0 } = {}) {
+  const items = []
+  const missing = Math.max(0, Number(unavailableGenerations) || 0)
+  const errors = Math.max(0, Number(parseErrors) || 0)
+  const times = Math.max(0, Number(uncertainTimes) || 0)
+  if (missing > 0) items.push({ key: 'unavailableGenerations', messageKey: 'servers.workspace.chat.reviewUnavailableGenerations', count: missing })
+  if (errors > 0) items.push({ key: 'parseErrors', messageKey: 'servers.workspace.chat.reviewParseErrors', count: errors })
+  if (times > 0) items.push({ key: 'uncertainTimes', messageKey: 'servers.workspace.chat.reviewUncertainTimes', count: times })
+  return items
+}
+
+export function shouldShowPrimaryChatRepairAction({ historyAvailable = false, syncState = '', pendingGenerations = 0, activeRepair = false } = {}) {
+  if (!historyAvailable) return false
+  if (activeRepair) return true
+  if ((Number(pendingGenerations) || 0) > 0) return true
+  return syncState === 'partial' || syncState === 'pending' || syncState === 'catching_up'
+}
+
+export function formatChatParseProblem(problem, worlds = []) {
+  const raw = String(problem || '').trim()
+  if (!raw) return ''
+  const separator = raw.indexOf(' / ')
+  if (separator <= 0 || !Array.isArray(worlds) || worlds.length === 0) return raw
+  const worldId = raw.slice(0, separator).trim()
+  const matched = worlds.find(world => String(world?.id || '').trim() === worldId && String(world?.name || '').trim())
+  if (!matched) return raw
+  return `${String(matched.name).trim()} / ${raw.slice(separator + 3)}`
+}
+
+// DST Game Emoji font covers U+F0000-U+F0031; other PUA ranges (BMP U+E000-U+F8FF
+// controller/mod icons such as Status Announcements U+E102, and extended supplementary
+// PUA U+F0032+) have no system font glyph and otherwise render as missing-glyph boxes.
+const UNSUPPORTED_PUA_PATTERN = /[\uE000-\uF8FF\u{F0032}-\u{FFFFF}\u{100000}-\u{10FFFF}]+/gu
+
+export function formatDstChatText(value, { fallback = '' } = {}) {
+  if (value == null) return ''
+  const raw = String(value)
+  if (!raw.trim()) return ''
+  const cleaned = raw
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map(line => line.replace(UNSUPPORTED_PUA_PATTERN, '').replace(/[ \t]{2,}/g, ' ').trim())
+    .filter((line, index, lines) => line !== '' || (index > 0 && index < lines.length - 1))
+    .join('\n')
+    .trim()
+  if (!cleaned) return fallback
+  return cleaned
+}
+
+export function formatDstChatPlayer(entry, { systemLabel = '', fallback = '' } = {}) {
+  const rawName = String(entry?.playerName || '').trim()
+  const formatted = formatDstChatText(rawName)
+  if (formatted) return formatted
+  const playerId = String(entry?.playerId || '').trim()
+  if (playerId) return playerId
+  if (rawName) return fallback
+  return systemLabel
+}
+
+export function isChatContentExpandable(text) {
+  const value = String(text || '')
+  if (!value) return false
+  if (value.includes('\n')) return true
+  let width = 0
+  for (const char of value) {
+    const code = char.codePointAt(0)
+    width += code > 0x7f ? 2 : 1
+    if (width > 48) return true
+  }
+  return false
+}

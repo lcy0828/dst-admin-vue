@@ -10,8 +10,20 @@
               id="room-chat-search"
               v-model="draftQuery"
               :placeholder="$t('servers.workspace.chat.searchPlaceholder')"
+              @input="handleSearchInput"
               @keyup.enter="applySearch"
             />
+            <InputGroupAddon v-if="draftQuery || query" align="inline-end">
+              <InputGroupButton
+                type="button"
+                size="icon-xs"
+                variant="ghost"
+                :aria-label="$t('servers.workspace.chat.clearSearch')"
+                @click="clearSearch"
+              >
+                <XIcon />
+              </InputGroupButton>
+            </InputGroupAddon>
           </InputGroup>
         </Field>
 
@@ -41,7 +53,7 @@
       </FieldGroup>
 
       <div class="chat-actions">
-        <UiButton v-if="historyAvailable" size="sm" variant="outline" :disabled="repairSubmitting || Boolean(activeRepair)" @click="repairHistory">
+        <UiButton v-if="showPrimaryRepairAction" size="sm" variant="outline" :disabled="repairSubmitting || Boolean(activeRepair)" @click="repairHistory">
           <Spinner v-if="repairSubmitting || activeRepair" data-icon="inline-start" />
           {{ $t(activeRepair ? 'servers.workspace.chat.historyCatchingUp' : 'servers.workspace.chat.repairAction') }}
         </UiButton>
@@ -72,14 +84,62 @@
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.say'), count: counts.say }) }}</Badge>
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.whisper'), count: counts.whisper }) }}</Badge>
       <Badge variant="outline">{{ $t('servers.workspace.chat.kindCount', { kind: $t('servers.workspace.chat.kinds.announcement'), count: counts.announcement }) }}</Badge>
-      <Badge
-        v-if="historyAvailable"
-        :variant="syncState === 'ready' ? 'outline' : 'secondary'"
-        :class="{ 'cursor-pointer select-none': hasHistoryReview }"
-        @click="hasHistoryReview && (historyReviewOpen = !historyReviewOpen)"
-      >
-        {{ syncStateLabel }}
-      </Badge>
+      <Popover v-if="historyAvailable" v-model:open="historyReviewOpen">
+        <PopoverTrigger as-child>
+          <Badge
+            as="button"
+            type="button"
+            :variant="syncState === 'ready' || syncState === 'review' ? 'outline' : 'secondary'"
+            class="cursor-pointer select-none gap-1 hover:bg-accent hover:text-accent-foreground"
+            :aria-expanded="historyReviewOpen"
+          >
+            <Info v-if="hasHistoryReview" class="size-3 opacity-75" />
+            <span>{{ syncStateLabel }}</span>
+            <ChevronDown class="size-3 opacity-70 transition-transform" :class="{ 'rotate-180': historyReviewOpen }" />
+          </Badge>
+        </PopoverTrigger>
+        <PopoverContent align="start" class="w-80 sm:w-96 flex flex-col gap-2.5 text-xs">
+          <template v-if="hasHistoryReview">
+            <div class="flex flex-col gap-1">
+              <div class="text-sm font-medium text-foreground">{{ $t('servers.workspace.chat.reviewTitle') }}</div>
+              <p class="leading-relaxed text-muted-foreground">{{ $t('servers.workspace.chat.reviewNoActionHint') }}</p>
+            </div>
+            <ul class="flex flex-col gap-1.5 rounded-md bg-muted/40 px-2.5 py-2 text-muted-foreground">
+              <li v-for="item in historyReviewItems" :key="item.key" class="leading-relaxed">
+                {{ $t(item.messageKey, { count: item.count }) }}
+              </li>
+            </ul>
+            <Collapsible v-if="formattedParseProblems.length" v-model:open="historyProblemDetailsOpen" class="flex flex-col gap-1.5">
+              <CollapsibleTrigger as-child>
+                <UiButton size="sm" variant="ghost" class="h-6 w-fit px-1.5 text-xs text-muted-foreground" :aria-expanded="historyProblemDetailsOpen">
+                  {{ $t(historyProblemDetailsOpen ? 'servers.workspace.chat.hideProblemSamples' : 'servers.workspace.chat.showProblemSamples', { count: formattedParseProblems.length }) }}
+                  <ChevronDown data-icon="inline-end" class="size-3 transition-transform" :class="{ 'rotate-180': historyProblemDetailsOpen }" />
+                </UiButton>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div class="flex max-h-36 flex-col gap-1 overflow-y-auto rounded-md bg-muted/50 px-2.5 py-2 font-mono text-[11px] text-muted-foreground">
+                  <span v-for="problem in formattedParseProblems" :key="problem" class="break-all">{{ problem }}</span>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </template>
+          <template v-else>
+            <div class="flex flex-col gap-1">
+              <div class="text-sm font-medium text-foreground">{{ syncStateLabel }}</div>
+              <p class="leading-relaxed text-muted-foreground">
+                {{ syncState === 'ready' ? $t('servers.workspace.chat.reviewReadyDescription') : (syncMessage || $t('servers.workspace.chat.historyPartialDescription')) }}
+              </p>
+            </div>
+          </template>
+          <div class="flex items-center justify-between gap-2 border-t pt-2">
+            <span class="leading-snug text-muted-foreground">{{ $t('servers.workspace.chat.rescanHint') }}</span>
+            <UiButton size="sm" variant="outline" class="h-7 shrink-0 text-xs" :disabled="repairSubmitting || Boolean(activeRepair)" @click="repairHistory">
+              <Spinner v-if="repairSubmitting || activeRepair" data-icon="inline-start" />
+              {{ $t(activeRepair ? 'servers.workspace.chat.historyCatchingUp' : 'servers.workspace.chat.rescanAction') }}
+            </UiButton>
+          </div>
+        </PopoverContent>
+      </Popover>
       <div v-if="historyAvailable && lastSyncedAt" class="chat-summary-times">
         <span>{{ $t('servers.workspace.chat.lastSyncedAt', { time: formatDateTime(lastSyncedAt) }) }}</span>
       </div>
@@ -108,33 +168,6 @@
       <AlertDescription>{{ $t('servers.workspace.chat.partialDescription', { count: unavailableWorlds }) }}</AlertDescription>
     </Alert>
 
-    <Collapsible
-      v-if="hasHistoryReview"
-      v-model:open="historyReviewOpen"
-      as-child
-    >
-      <Alert class="chat-review-alert">
-        <Info />
-        <AlertTitle class="cursor-pointer select-none" @click="historyReviewOpen = !historyReviewOpen">
-          {{ $t('servers.workspace.chat.historyReview') }}
-        </AlertTitle>
-        <AlertAction>
-          <CollapsibleTrigger as-child>
-            <UiButton size="sm" variant="ghost" class="h-6 px-2 text-xs" :aria-expanded="historyReviewOpen">
-              {{ $t(historyReviewOpen ? 'servers.workspace.chat.collapseReview' : 'servers.workspace.chat.expandReview') }}
-              <ChevronDown data-icon="inline-end" class="transition-transform" :class="{ 'rotate-180': historyReviewOpen }" />
-            </UiButton>
-          </CollapsibleTrigger>
-        </AlertAction>
-        <CollapsibleContent class="col-start-2">
-          <AlertDescription class="flex flex-col gap-1 pt-0.5">
-            <span>{{ $t('servers.workspace.chat.reviewDescription', { errors: parseErrors, times: uncertainTimes, missing: unavailableGenerations }) }}</span>
-            <span v-for="problem in parseProblems" :key="problem" class="break-words">{{ problem }}</span>
-          </AlertDescription>
-        </CollapsibleContent>
-      </Alert>
-    </Collapsible>
-
     <Alert v-if="truncated">
       <Info />
       <AlertTitle>{{ $t('servers.workspace.chat.truncatedTitle') }}</AlertTitle>
@@ -144,7 +177,7 @@
     <div v-if="loading && items.length === 0" class="chat-table-shell" role="status" :aria-label="$t('servers.workspace.chat.loading')">
       <UiTable class="chat-table" container-class="overflow-visible">
         <TableHeader><TableRow>
-          <TableHead v-for="column in 6" :key="column"><Skeleton class="h-4 w-20" /></TableHead>
+          <TableHead v-for="column in 6" :key="column"><Skeleton class="h-4 w-full" /></TableHead>
         </TableRow></TableHeader>
         <TableBody>
           <TableRow v-for="row in 6" :key="row">
@@ -182,12 +215,27 @@
             </TableCell>
             <TableCell><span class="chat-time">{{ entry.sourceTimestamp }}</span></TableCell>
             <TableCell><Badge :variant="kindVariant(entry.kind)">{{ kindLabel(entry) }}</Badge></TableCell>
-            <TableCell><span class="chat-player" :title="entry.playerId || ''">{{ entry.playerName || $t('servers.workspace.chat.system') }}</span></TableCell>
-            <TableCell class="chat-content"><span :title="entry.content">{{ entry.content }}</span></TableCell>
+            <TableCell><span class="chat-player" :title="playerTitle(entry)">{{ displayPlayer(entry) }}</span></TableCell>
+            <TableCell class="chat-content">
+              <span
+                class="chat-content-text"
+                :class="{
+                  'is-clamped': !isEntryExpanded(entry),
+                  'is-expandable': isExpandableEntry(entry)
+                }"
+                :role="isExpandableEntry(entry) ? 'button' : undefined"
+                :tabindex="isExpandableEntry(entry) ? 0 : undefined"
+                :aria-expanded="isExpandableEntry(entry) ? isEntryExpanded(entry) : undefined"
+                :title="displayContent(entry)"
+                @click="toggleEntryExpanded(entry)"
+                @keydown.enter.prevent="toggleEntryExpanded(entry)"
+                @keydown.space.prevent="toggleEntryExpanded(entry)"
+              >{{ displayContent(entry) }}</span>
+            </TableCell>
             <TableCell>
               <span class="chat-source" :title="sourceTitle(entry.sources)">
-                {{ sourceLabel(entry.sources) }}
-                <Badge v-if="entry.sources?.length > 1" variant="outline">+{{ entry.sources.length - 1 }}</Badge>
+                <span class="chat-source-name">{{ sourceLabel(entry.sources) }}</span>
+                <Badge v-if="entry.sources?.length > 1" class="shrink-0" variant="outline">+{{ entry.sources.length - 1 }}</Badge>
               </span>
             </TableCell>
           </TableRow>
@@ -211,7 +259,7 @@
 
 <script>
 import {
-  ArrowLeft, ArrowRight, ChevronDown, CircleAlert, Info, MessagesSquare, RefreshCw, Search as SearchIcon, TriangleAlert
+  ArrowLeft, ArrowRight, ChevronDown, CircleAlert, Info, MessagesSquare, RefreshCw, Search as SearchIcon, TriangleAlert, X as XIcon
 } from '@lucide/vue'
 import { computed } from 'vue'
 import { toast } from 'vue-sonner'
@@ -225,13 +273,23 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { Table as UiTable, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { buildChatLogFilter, normalizeChatLogList } from '@/lib/chatLogSupport.mjs'
+import {
+  buildChatHistoryReviewItems,
+  buildChatLogFilter,
+  formatChatParseProblem,
+  formatDstChatPlayer,
+  formatDstChatText,
+  isChatContentExpandable,
+  normalizeChatLogList,
+  shouldShowPrimaryChatRepairAction
+} from '@/lib/chatLogSupport.mjs'
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { isWorldConsoleUnresponsive } from '@/lib/worldRuntimeStatus.mjs'
 
@@ -243,10 +301,11 @@ export default {
     Alert, AlertAction, AlertDescription, AlertTitle, ArrowLeft, ArrowRight, Badge, ChevronDown, CircleAlert,
     Collapsible, CollapsibleContent, CollapsibleTrigger,
     Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle, Field, FieldGroup, FieldLabel,
-    Info, InputGroup, InputGroupAddon, InputGroupInput, MessagesSquare, RefreshCw, SearchIcon,
+    Info, InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, MessagesSquare, Popover, PopoverContent, PopoverTrigger,
+    RefreshCw, SearchIcon,
     SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue, Skeleton, Spinner,
     TableBody, TableCell, TableHead, TableHeader, TableRow, Tooltip, TooltipContent, TooltipTrigger,
-    TriangleAlert, UiButton, UiSelect, UiTable
+    TriangleAlert, UiButton, UiSelect, UiTable, XIcon
   },
   props: {
     roomId: { type: String, required: true },
@@ -287,6 +346,8 @@ export default {
       uncertainTimes: 0,
       parseProblems: [],
       historyReviewOpen: false,
+      historyProblemDetailsOpen: false,
+      expandedEntryIds: {},
       repairSubmitting: false,
       refreshTimer: null,
       panelActive: true,
@@ -303,8 +364,22 @@ export default {
     rangeEnd() {
       return Math.min(this.total, this.page * PAGE_SIZE)
     },
+    historyReviewItems() {
+      return buildChatHistoryReviewItems(this)
+    },
     hasHistoryReview() {
-      return Boolean(this.historyAvailable && (this.parseErrors || this.uncertainTimes || this.unavailableGenerations))
+      return Boolean(this.historyAvailable && this.historyReviewItems.length > 0)
+    },
+    formattedParseProblems() {
+      return (this.parseProblems || []).map(item => formatChatParseProblem(item, this.worlds)).filter(Boolean)
+    },
+    showPrimaryRepairAction() {
+      return shouldShowPrimaryChatRepairAction({
+        historyAvailable: this.historyAvailable,
+        syncState: this.syncState,
+        pendingGenerations: this.pendingGenerations,
+        activeRepair: Boolean(this.activeRepair)
+      })
     },
     hasActiveWorlds() {
       if (!Array.isArray(this.worlds) || this.worlds.length === 0) return true
@@ -350,6 +425,7 @@ export default {
         const job = await chatLogsV2API.repair(roomId)
         emitGlobalJobSubmitted(job)
         if (this.panelActive && this.roomId === roomId) {
+          this.historyReviewOpen = false
           this.syncState = 'catching_up'
           this.scheduleRefresh()
         }
@@ -404,23 +480,45 @@ export default {
         }
       }
     },
+    handleSearchInput() {
+      if (!this.draftQuery.trim() && this.query) {
+        this.query = ''
+        this.page = 1
+        this.expandedEntryIds = {}
+        this.loadChatLogs()
+      }
+    },
+    clearSearch() {
+      const hadActiveQuery = Boolean(this.query)
+      this.draftQuery = ''
+      this.query = ''
+      if (hadActiveQuery) {
+        this.page = 1
+        this.expandedEntryIds = {}
+        this.loadChatLogs()
+      }
+    },
     applySearch() {
       this.query = this.draftQuery.trim()
       this.page = 1
+      this.expandedEntryIds = {}
       this.loadChatLogs()
     },
     applySelectFilter() {
       this.page = 1
+      this.expandedEntryIds = {}
       this.loadChatLogs()
     },
     previousPage() {
       if (this.page <= 1) return
       this.page -= 1
+      this.expandedEntryIds = {}
       this.loadChatLogs()
     },
     nextPage() {
       if (this.page >= this.pageCount) return
       this.page += 1
+      this.expandedEntryIds = {}
       this.loadChatLogs()
     },
     kindVariant(kind) {
@@ -430,13 +528,44 @@ export default {
     },
     kindLabel(entry) {
       if (entry.kind === 'announcement' && entry.announcementType) {
-        const known = ['join', 'leave', 'death', 'resurrect', 'vote', 'skin']
+        const known = ['join', 'leave', 'death', 'resurrect', 'vote', 'skin', 'roll', 'system']
         if (known.includes(entry.announcementType)) {
           return this.$t(`servers.workspace.chat.announcements.${entry.announcementType}`)
         }
       }
       const kind = ['say', 'whisper', 'announcement'].includes(entry.kind) ? entry.kind : 'announcement'
       return this.$t(`servers.workspace.chat.kinds.${kind}`)
+    },
+    displayPlayer(entry) {
+      return formatDstChatPlayer(entry, {
+        systemLabel: this.$t('servers.workspace.chat.system'),
+        fallback: this.$t('servers.workspace.chat.unsupportedGlyph')
+      })
+    },
+    playerTitle(entry) {
+      const name = this.displayPlayer(entry)
+      const playerId = String(entry?.playerId || '').trim()
+      if (playerId && playerId !== name) return `${name} · ${playerId}`
+      return name
+    },
+    displayContent(entry) {
+      return formatDstChatText(entry?.content, {
+        fallback: this.$t('servers.workspace.chat.unsupportedGlyph')
+      })
+    },
+    isExpandableEntry(entry) {
+      return isChatContentExpandable(this.displayContent(entry))
+    },
+    isEntryExpanded(entry) {
+      return Boolean(entry?.id && this.expandedEntryIds[entry.id])
+    },
+    toggleEntryExpanded(entry) {
+      if (!entry?.id || !this.isExpandableEntry(entry)) return
+      if (typeof window !== 'undefined' && window.getSelection?.()?.toString()) return
+      this.expandedEntryIds = {
+        ...this.expandedEntryIds,
+        [entry.id]: !this.expandedEntryIds[entry.id]
+      }
     },
     sourceLabel(sources) {
       return sources?.[0]?.worldName || this.$t('servers.workspace.chat.unknownSource')
@@ -456,6 +585,9 @@ export default {
     }
   },
   watch: {
+    historyReviewOpen(value) {
+      if (!value) this.historyProblemDetailsOpen = false
+    },
     activeRepair(value, previous) {
       if ((value || previous) && this.panelActive && document.visibilityState !== 'hidden') this.loadChatLogs({ silent: true })
     },
@@ -472,6 +604,8 @@ export default {
       this.worldId = 'all'
       this.page = 1
       this.historyReviewOpen = false
+      this.historyProblemDetailsOpen = false
+      this.expandedEntryIds = {}
       this.loadChatLogs()
     },
     worlds: {
@@ -548,40 +682,59 @@ export default {
 
 .chat-table-shell {
   min-height: 0;
-  max-height: 344px;
+  max-height: clamp(360px, 56vh, 560px);
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
 
 .chat-table {
-  min-width: 940px;
+  width: 100%;
+  min-width: 720px;
   table-layout: fixed;
+}
+
+.chat-table :deep(th),
+.chat-table :deep(td) {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.chat-table :deep(thead th) {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--card);
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+.chat-table :deep(tbody td) {
+  vertical-align: top;
 }
 
 .chat-table :deep(th:nth-child(1)),
 .chat-table :deep(td:nth-child(1)) {
-  width: 184px;
+  width: 172px;
 }
 
 .chat-table :deep(th:nth-child(2)),
 .chat-table :deep(td:nth-child(2)) {
-  width: 86px;
+  width: 82px;
 }
 
 .chat-table :deep(th:nth-child(3)),
 .chat-table :deep(td:nth-child(3)) {
-  width: 94px;
+  width: 102px;
 }
 
 .chat-table :deep(th:nth-child(4)),
 .chat-table :deep(td:nth-child(4)) {
-  width: 150px;
+  width: 112px;
 }
 
 .chat-table :deep(th:nth-child(6)),
 .chat-table :deep(td:nth-child(6)) {
-  width: 128px;
+  width: 108px;
 }
 
 .chat-time {
@@ -591,9 +744,9 @@ export default {
 }
 
 .chat-player,
-.chat-content span,
-.chat-source {
+.chat-source-name {
   display: block;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -603,9 +756,38 @@ export default {
   font-weight: 600;
 }
 
+.chat-content {
+  white-space: normal;
+}
+
+.chat-content-text {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+.chat-content-text.is-clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.chat-content-text.is-expandable {
+  cursor: pointer;
+}
+
+.chat-content-text.is-expandable:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .chat-source {
-  display: flex;
   min-width: 0;
+  gap: 6px;
 }
 
 .chat-empty {
