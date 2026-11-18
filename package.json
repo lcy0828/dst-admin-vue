@@ -8,6 +8,7 @@
     "serve": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "audit:ci": "node scripts/audit-dependencies.mjs",
     "lint": "eslint src --ext .js,.vue",
     "test": "node --test"
   },
