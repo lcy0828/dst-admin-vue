@@ -171,7 +171,8 @@ test('mod pages delegate visible copy to i18n without translating mod-owned data
     '../src/views/mods/ModSearch.vue',
     '../src/views/mods/ModDetailsDialog.vue',
     '../src/views/mods/ModConfigDialog.vue',
-    '../src/views/mods/AddModToRoomDialog.vue'
+    '../src/views/mods/AddModToRoomDialog.vue',
+    '../src/views/mods/ModOverridesEditorDialog.vue'
   ]
   const pages = await Promise.all(paths.map(path => readFile(new URL(path, import.meta.url), 'utf8')))
 

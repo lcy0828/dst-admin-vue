@@ -539,6 +539,18 @@ export const configurationV2API = {
   applyWorld: (roomId, worldId, input) => client.post(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/configuration/actions/apply`,
     input
+  ),
+  worldFiles: (roomId, worldId) => client.get(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/configuration/files`,
+    { headers: { 'Cache-Control': 'no-store' } }
+  ),
+  previewWorldFiles: (roomId, worldId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/configuration/files/preview`,
+    input
+  ),
+  applyWorldFiles: (roomId, worldId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/configuration/files/actions/apply`,
+    input
   )
 }
 
@@ -695,6 +707,16 @@ export const modsV2API = {
   configurationFile: (roomId, worldId) => client.get(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/configuration-file`,
     { runtimeTarget: false, headers: { 'Cache-Control': 'no-store' } }
+  ),
+  previewConfigurationFile: (roomId, worldId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/configuration-file/preview`,
+    input,
+    { runtimeTarget: false }
+  ),
+  applyConfigurationFile: (roomId, worldId, input) => client.post(
+    `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/configuration-file/actions/apply`,
+    input,
+    { runtimeTarget: false }
   ),
   configuration: (roomId, worldId, modId) => client.get(
     `/rooms/${encode(roomId)}/worlds/${encode(worldId)}/mods/${encode(modId)}/configuration`,

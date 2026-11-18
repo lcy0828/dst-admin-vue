@@ -95,10 +95,141 @@
                 <Moon v-else />
                 {{ $t('worlds.settingsPage.worldHeading', { name: world.name, type: worldTypeLabel(world.type) }) }}
               </CardTitle>
-              <CardAction><Badge :variant="world.type === 'forest' ? 'outline' : 'secondary'">{{ worldTypeLabel(world.type) }}</Badge></CardAction>
+              <CardAction class="world-card-actions">
+                <ToggleGroup
+                  :model-value="editorMode"
+                  type="single"
+                  variant="outline"
+                  size="sm"
+                  :aria-label="$t('worlds.settingsPage.sourceEditor.modes.aria')"
+                  @update:model-value="handleEditorModeChange"
+                >
+                  <ToggleGroupItem value="visual" :disabled="sourceModeSwitching">
+                    <SlidersHorizontal />{{ $t('worlds.settingsPage.sourceEditor.modes.visual') }}
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="source" :disabled="sourceModeSwitching">
+                    <FileCode2 />{{ $t('worlds.settingsPage.sourceEditor.modes.source') }}
+                  </ToggleGroupItem>
+                </ToggleGroup>
+                <Badge :variant="world.type === 'forest' ? 'outline' : 'secondary'">{{ worldTypeLabel(world.type) }}</Badge>
+              </CardAction>
             </CardHeader>
             <CardContent>
-              <Tabs v-model="worldSectionTab" orientation="horizontal" class="world-section-tabs">
+              <div v-if="editorMode === 'source'" class="world-source-workspace">
+                <div class="source-editor-toolbar">
+                  <div class="source-file-tabs-group">
+                    <ToggleGroup
+                      :model-value="sourceFileTab"
+                      type="single"
+                      variant="outline"
+                      size="sm"
+                      :aria-label="$t('worlds.settingsPage.sourceEditor.files.aria')"
+                      @update:model-value="handleSourceFileTabChange"
+                    >
+                      <ToggleGroupItem value="leveldataoverride">
+                        <FileCode2 />{{ $t('worlds.settingsPage.sourceEditor.files.leveldataoverride') }}
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="server-ini">
+                        <ServerCog />{{ $t('worlds.settingsPage.sourceEditor.files.serverIni') }}
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                    <div class="section-statuses source-statuses-inline">
+                      <Badge v-if="configurationSourceLabel" variant="outline" class="runtime-source-badge">{{ configurationSourceLabel }}</Badge>
+                      <Badge variant="outline" class="effect-badge">{{ currentEffectLabel }}</Badge>
+                    </div>
+                  </div>
+                  <div class="source-editor-actions">
+                    <input
+                      :ref="el => { if (world.name === activeTab) sourceFileInputEl = el }"
+                      type="file"
+                      class="sr-only"
+                      :accept="sourceFileTab === 'server-ini' ? '.ini,.txt' : '.lua,.txt'"
+                      @change="handleSourceFileInputChange"
+                    />
+                    <UiButton size="sm" variant="outline" :disabled="configurationReadOnly || sourceBusy" @click="pasteIntoSourceEditor">
+                      <ClipboardPaste data-icon="inline-start" />{{ $t('worlds.settingsPage.sourceEditor.toolbar.paste') }}
+                    </UiButton>
+                    <UiButton size="sm" variant="outline" :disabled="configurationReadOnly || sourceBusy" @click="triggerSourceFileImport">
+                      <Upload data-icon="inline-start" />{{ $t('worlds.settingsPage.sourceEditor.toolbar.importFile') }}
+                    </UiButton>
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <UiButton size="sm" variant="outline" :disabled="configurationReadOnly || sourceBusy" @click="formatCurrentSource">
+                          <WandSparkles data-icon="inline-start" />{{ $t('worlds.settingsPage.sourceEditor.toolbar.format') }}
+                        </UiButton>
+                      </TooltipTrigger>
+                      <TooltipContent>{{ $t('worlds.settingsPage.sourceEditor.toolbar.formatHint') }}</TooltipContent>
+                    </Tooltip>
+                    <UiButton size="sm" variant="outline" :disabled="sourceBusy" @click="validateCurrentSourceDraft({ silentSuccess: false })">
+                      <Spinner v-if="sourceValidating" data-icon="inline-start" />
+                      <Check v-else data-icon="inline-start" />
+                      {{ $t('worlds.settingsPage.sourceEditor.toolbar.validate') }}
+                    </UiButton>
+                    <UiButton size="sm" variant="ghost" :disabled="loadingSourceFiles" @click="copyCurrentSource">
+                      <Copy data-icon="inline-start" />{{ $t('worlds.settingsPage.sourceEditor.toolbar.copy') }}
+                    </UiButton>
+                    <UiButton size="sm" variant="ghost" :disabled="loadingSourceFiles" @click="downloadCurrentSource">
+                      <Download data-icon="inline-start" />{{ $t('worlds.settingsPage.sourceEditor.toolbar.download') }}
+                    </UiButton>
+                  </div>
+                </div>
+
+                <Alert v-if="hasKleiHeaderNotice || hasBareTableNotice" role="status">
+                  <Info />
+                  <AlertTitle>{{ $t('worlds.settingsPage.sourceEditor.notices.kleiHeaderTitle') }}</AlertTitle>
+                  <AlertDescription>
+                    <span v-if="hasKleiHeaderNotice">{{ $t('worlds.settingsPage.sourceEditor.notices.kleiHeaderDescription') }}</span>
+                    <span v-if="hasBareTableNotice">{{ hasKleiHeaderNotice ? ' ' : '' }}{{ $t('worlds.settingsPage.sourceEditor.notices.bareTableDescription') }}</span>
+                  </AlertDescription>
+                </Alert>
+
+                <Alert v-if="sourceError && sourceError.isLocationMismatch" variant="destructive">
+                  <TriangleAlert />
+                  <AlertTitle>{{ $t('worlds.settingsPage.sourceEditor.errors.locationMismatchTitle') }}</AlertTitle>
+                  <AlertDescription>
+                    {{ $t('worlds.settingsPage.sourceEditor.errors.locationMismatchDescription', {
+                      expected: worldTypeLabel(sourceError.expectedWorldType || world.type),
+                      actual: worldTypeLabel(sourceError.actualWorldType),
+                      rawActual: sourceError.actualWorldType
+                    }) }}
+                  </AlertDescription>
+                  <AlertAction v-if="matchingMismatchWorld">
+                    <UiButton size="sm" variant="outline" @click="switchToMatchingWorldAndPaste(matchingMismatchWorld)">
+                      {{ $t('worlds.settingsPage.sourceEditor.errors.switchAndApply', { world: matchingMismatchWorld.name }) }}
+                    </UiButton>
+                  </AlertAction>
+                </Alert>
+
+                <Alert v-else-if="sourceError" variant="destructive">
+                  <TriangleAlert />
+                  <AlertTitle>{{ $t('worlds.settingsPage.sourceEditor.errors.syntaxTitle') }}</AlertTitle>
+                  <AlertDescription>
+                    <p v-if="sourceErrorLocationLabel" class="source-error-location">{{ sourceErrorLocationLabel }}</p>
+                    <p>{{ sourceErrorMessage }}</p>
+                  </AlertDescription>
+                </Alert>
+
+                <div v-if="loadingSourceFiles && !sourceFilesLoadedForCurrentWorld" class="skeleton-stack">
+                  <Skeleton v-for="index in 8" :key="index" class="skeleton-row" />
+                </div>
+                <AsyncConfigCodeEditor
+                  v-else
+                  :model-value="activeSourceContent"
+                  :language="sourceFileTab === 'server-ini' ? 'ini' : 'lua'"
+                  :read-only="configurationReadOnly"
+                  :error-line="activeSourceErrorLine"
+                  :error-column="activeSourceErrorColumn"
+                  :placeholder="activeSourcePlaceholder"
+                  :aria-label="sourceFileTab === 'server-ini' ? 'server.ini' : 'leveldataoverride.lua'"
+                  @update:model-value="handleSourceEditorInput"
+                  @import-file="importSourceFile"
+                />
+                <p v-if="sourceFileTab === 'leveldataoverride' && !configurationReadOnly" class="source-editor-hint">
+                  {{ $t('worlds.settingsPage.sourceEditor.notices.commentsPreserved') }}
+                </p>
+              </div>
+
+              <Tabs v-else v-model="worldSectionTab" orientation="horizontal" class="world-section-tabs">
                 <div class="section-tabs-toolbar">
                   <TabsList variant="line" class="section-tab-list" :aria-label="$t('worlds.settingsPage.sectionAria')">
                     <TabsTrigger value="worldgen"><Sparkles />{{ $t('worlds.settingsPage.sections.worldgen') }}</TabsTrigger>
@@ -187,10 +318,10 @@
                       <UiInput id="world-auth-port" v-model.number="serverIni.steam.authentication_port" type="number" min="1024" max="65535" :disabled="configurationReadOnly" @change="serverIniChanged = true" />
                     </Field>
                     <div class="form-actions">
-                      <UiButton @click="saveServerIni" :disabled="configurationReadOnly || savingServerIni || !serverIniChanged">
+                      <UiButton @click="saveServerIni" :disabled="configurationReadOnly || savingServerIni || (!serverIniChanged && !(sourceBackedSave && isSourceServerIniModified))">
                         <Spinner v-if="savingServerIni" data-icon="inline-start" />{{ $t('worlds.settingsPage.serverIni.save') }}
                       </UiButton>
-                      <UiButton variant="outline" @click="resetServerIni" :disabled="!serverIniChanged">{{ $t('common.actions.reset') }}</UiButton>
+                      <UiButton variant="outline" @click="resetServerIni" :disabled="!serverIniChanged && !(sourceBackedSave && isSourceServerIniModified)">{{ $t('common.actions.reset') }}</UiButton>
                     </div>
                   </FieldGroup>
                   <Empty v-else>
@@ -229,10 +360,10 @@
 
     <div v-if="showWorldSettingsFooter" id="settings-fixed-footer">
       <settings-footer
-        :has-changes="hasChanges"
-        :loading="loading"
+        :has-changes="footerHasChanges"
+        :loading="loading || (loadingSourceFiles && !sourceFilesLoadedForCurrentWorld)"
         :save-loading="saveLoading"
-        :changed-items="getChangedItems()"
+        :changed-items="getFooterChangedItems()"
         :read-only="configurationReadOnly"
         @save="saveSettings"
         @reset="resetSettings"
@@ -282,8 +413,15 @@
 
 <script>
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
+import AsyncConfigCodeEditor from '@/components/editor/AsyncConfigCodeEditor'
+import {
+  extractConfigEditorError,
+  findMatchingWorldForLocation,
+  legacyIniFromServerConfig,
+  serverConfigFromLegacyIni
+} from '@/lib/configEditorSupport.mjs';
 import { preferredRoomId } from '@/lib/pageScope.mjs';
-import { Globe2, Moon, Package, Plus, RefreshCw, ServerCog, SlidersHorizontal, Sparkles, Sun, Trash2, TriangleAlert } from '@lucide/vue';
+import { Check, ClipboardPaste, Copy, Download, FileCode2, Globe2, Info, Moon, Package, Plus, RefreshCw, ServerCog, SlidersHorizontal, Sparkles, Sun, Trash2, TriangleAlert, Upload, WandSparkles } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import WorldSettingsPanel from '@/components/worlds/WorldSettingsPanel.vue';
 import SettingsFooter from '@/components/worlds/SettingsFooter.vue';
@@ -301,6 +439,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { confirmAction } from '@/lib/feedback';
 import { applyWorldSettingsLabels, worldSettingsCatalogPath } from '@/lib/worldSettingsLocale.mjs';
 import { compareWorldRoles } from '@/lib/worldRuntimeStatus.mjs';
@@ -310,6 +450,7 @@ export default {
   name: 'WorldSettings',
   components: {
     RoomScopeSelect,
+    AsyncConfigCodeEditor,
     Alert,
     AlertAction,
     AlertDescription,
@@ -320,11 +461,15 @@ export default {
     CardContent,
     CardHeader,
     CardTitle,
+    Check,
+    ClipboardPaste,
+    Copy,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    Download,
     Empty,
     EmptyContent,
     EmptyDescription,
@@ -337,7 +482,9 @@ export default {
     FieldDescription,
     FieldGroup,
     FieldLabel,
+    FileCode2,
     Globe2,
+    Info,
     Moon,
     Package,
     Plus,
@@ -358,6 +505,11 @@ export default {
     TabsContent,
     TabsList,
     TabsTrigger,
+    ToggleGroup,
+    ToggleGroupItem,
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
     Trash2,
     TriangleAlert,
     UiButton,
@@ -365,12 +517,35 @@ export default {
     UiInput,
     UiSelect,
     UiSwitch,
+    Upload,
+    WandSparkles,
     WorldSettingsPanel
   },
   data() {
     return {
       activeTab: 'forest',
       worldSectionTab: 'worldgen',
+      editorMode: 'visual',
+      sourceFileTab: 'leveldataoverride',
+      loadingSourceFiles: false,
+      sourceModeSwitching: false,
+      sourceValidating: false,
+      sourceFormatting: false,
+      sourceFilesWorldName: '',
+      sourceFilesRevision: '',
+      sourceBaselineLeveldata: '',
+      sourceBaselineServerIni: '',
+      sourceDraftLeveldata: '',
+      sourceDraftServerIni: '',
+      sourcePreviewChanges: [],
+      sourceNotices: [],
+      sourceError: null,
+      sourceBackedSave: false,
+      sourceSyncedOverrides: null,
+      pendingTransferredLua: null,
+      sourceFileInputEl: null,
+      sourceValidateTimer: null,
+      sourceLoadEpoch: 0,
       forestSettings: null,
       caveSettings: null,
       originalSettings: null,
@@ -460,6 +635,7 @@ export default {
   beforeUnmount() {
     this.disposed = true;
     this.configurationLoadEpoch += 1;
+    this.sourceLoadEpoch += 1;
     if (this.machineScopeGuard?.check === this.confirmMachineScopeChange) this.machineScopeGuard.check = async () => true;
     // 清理事件监听器
     document.removeEventListener('click', this.debouncedGlobalClick);
@@ -472,6 +648,9 @@ export default {
     // 清理所有定时器
     if (this.checkChangesTimer) {
       clearTimeout(this.checkChangesTimer);
+    }
+    if (this.sourceValidateTimer) {
+      clearTimeout(this.sourceValidateTimer);
     }
     if (this._closeDropdownTimer) {
       clearTimeout(this._closeDropdownTimer);
@@ -514,12 +693,13 @@ export default {
     },
     activeTab(newTab) {
       if (this.initializingWorlds) return;
-      // 切换标签页时，清空变更缓存和跨世界 server.ini 临时状态
+      // 切换标签页时，清空变更缓存和跨世界 server.ini / 源码临时状态
       this.changedItemsCache = null;
       this.hasChanges = false;
       this.serverIni = null;
       this.serverIniOriginal = null;
       this.serverIniChanged = false;
+      this.resetWorldSourceState({ preserveMode: true, preserveTransferred: true });
       
       // 加载当前选中世界的配置
       const currentWorld = this.roomWorlds.find(world => world.name === newTab);
@@ -695,9 +875,116 @@ export default {
     },
 
     currentEffectLabel() {
+      if (this.editorMode === 'source') {
+        if (this.sourceFileTab === 'server-ini') {
+          return this.$t('worlds.settingsPage.effects.restart');
+        }
+        return this.$t(this.worldSectionTab === 'worldgen'
+          ? 'worlds.settingsPage.effects.regeneration'
+          : 'worlds.settingsPage.effects.restart');
+      }
       return this.$t(this.worldSectionTab === 'worldgen'
         ? 'worlds.settingsPage.effects.regeneration'
         : 'worlds.settingsPage.effects.restart');
+    },
+
+    sourceFilesLoadedForCurrentWorld() {
+      return Boolean(this.currentWorld && this.sourceFilesWorldName === this.currentWorld.name && this.sourceFilesRevision);
+    },
+
+    isSourceLeveldataModified() {
+      return Boolean(this.sourceFilesLoadedForCurrentWorld && this.sourceDraftLeveldata !== this.sourceBaselineLeveldata);
+    },
+
+    isSourceServerIniModified() {
+      return Boolean(this.sourceFilesLoadedForCurrentWorld && this.sourceDraftServerIni !== this.sourceBaselineServerIni);
+    },
+
+    hasSourceChanges() {
+      return Boolean(this.isSourceLeveldataModified || this.isSourceServerIniModified);
+    },
+
+    footerHasChanges() {
+      if (this.editorMode === 'source') {
+        return Boolean(this.hasSourceChanges || this.hasChanges || this.serverIniChanged);
+      }
+      return Boolean(this.hasChanges || (this.sourceBackedSave && (this.hasSourceChanges || this.serverIniChanged)));
+    },
+
+    sourceBusy() {
+      return Boolean(
+        this.loading
+        || this.loadingSourceFiles
+        || this.saveLoading
+        || this.sourceModeSwitching
+        || this.sourceValidating
+        || this.sourceFormatting
+      );
+    },
+
+    activeSourceContent() {
+      return this.sourceFileTab === 'server-ini' ? this.sourceDraftServerIni : this.sourceDraftLeveldata;
+    },
+
+    activeSourcePlaceholder() {
+      return this.$t(this.sourceFileTab === 'server-ini'
+        ? 'worlds.settingsPage.sourceEditor.placeholders.serverIni'
+        : 'worlds.settingsPage.sourceEditor.placeholders.leveldataoverride');
+    },
+
+    activeSourceErrorMatchesTab() {
+      if (!this.sourceError) return false;
+      if (this.sourceError.file === 'server.ini') return this.sourceFileTab === 'server-ini';
+      if (this.sourceError.file === 'leveldataoverride.lua') return this.sourceFileTab === 'leveldataoverride';
+      return true;
+    },
+
+    activeSourceErrorLine() {
+      return this.activeSourceErrorMatchesTab ? (Number(this.sourceError?.line) || 0) : 0;
+    },
+
+    activeSourceErrorColumn() {
+      return this.activeSourceErrorMatchesTab ? (Number(this.sourceError?.column) || 0) : 0;
+    },
+
+    hasKleiHeaderNotice() {
+      return this.sourceFileTab === 'leveldataoverride' && Array.isArray(this.sourceNotices) && this.sourceNotices.includes('stripped_klei_header');
+    },
+
+    hasBareTableNotice() {
+      return this.sourceFileTab === 'leveldataoverride' && Array.isArray(this.sourceNotices) && this.sourceNotices.includes('wrapped_bare_table');
+    },
+
+    matchingMismatchWorld() {
+      if (!this.sourceError?.isLocationMismatch) return null;
+      return findMatchingWorldForLocation(this.visibleWorlds, this.sourceError.actualWorldType, this.currentWorld?.name);
+    },
+
+    sourceErrorLocationLabel() {
+      if (!this.sourceError || !this.sourceError.line) return '';
+      const file = this.sourceError.file || (this.sourceFileTab === 'server-ini' ? 'server.ini' : 'leveldataoverride.lua');
+      if (this.sourceError.column) {
+        return this.$t('worlds.settingsPage.sourceEditor.errors.syntaxLocation', {
+          file,
+          line: this.sourceError.line,
+          column: this.sourceError.column
+        });
+      }
+      return this.$t('worlds.settingsPage.sourceEditor.errors.syntaxLineOnly', {
+        file,
+        line: this.sourceError.line
+      });
+    },
+
+    sourceErrorMessage() {
+      if (!this.sourceError) return '';
+      if (this.sourceError.isTooLarge) {
+        return this.$t('worlds.settingsPage.sourceEditor.errors.tooLarge');
+      }
+      if (this.sourceError.isRevisionConflict) {
+        return this.$t('worlds.settingsPage.feedback.revisionConflict');
+      }
+      return this.sourceError.rawMessage || this.$t('common.errors.unknown');
     },
 
     showPageSkeleton() {
@@ -713,8 +1000,12 @@ export default {
     showWorldSettingsFooter() {
       return Boolean(
         !this.showPageSkeleton
-        && this.activeWorldHasBaseline
-        && ['worldgen', 'worldsettings'].includes(this.worldSectionTab)
+        && (this.activeWorldHasBaseline || this.sourceFilesLoadedForCurrentWorld)
+        && (
+          this.editorMode === 'source'
+          || ['worldgen', 'worldsettings'].includes(this.worldSectionTab)
+          || (this.sourceBackedSave && (this.isSourceLeveldataModified || this.hasChanges))
+        )
       );
     },
 
@@ -747,19 +1038,20 @@ export default {
   },
   methods: {
     async confirmMachineScopeChange() {
-      if (this.saveLoading || this.savingServerIni) return false;
+      if (this.saveLoading || this.savingServerIni || this.sourceModeSwitching) return false;
       if (!(await this.confirmDiscardWorldChanges())) return false;
       this.hasChanges = false;
       this.serverIniChanged = false;
+      this.resetWorldSourceDraftsToBaseline();
       return true;
     },
     handleBeforeUnload(event) {
-      if (!this.hasChanges && !this.serverIniChanged) return;
+      if (!this.hasChanges && !this.serverIniChanged && !this.hasSourceChanges) return;
       event.preventDefault();
       event.returnValue = '';
     },
     async confirmDiscardWorldChanges() {
-      if (!this.hasChanges && !this.serverIniChanged) return true;
+      if (!this.hasChanges && !this.serverIniChanged && !this.hasSourceChanges) return true;
       try {
         await confirmAction(this.$t('worlds.settingsPage.leave.description'), this.$t('worlds.settingsPage.leave.title'), {
           confirmButtonText: this.$t('worlds.settingsPage.leave.discard'),
@@ -817,6 +1109,7 @@ export default {
       this.hasChanges = false;
       this.changedItemsCache = null;
       this.loadError = '';
+      this.resetWorldSourceState({ preserveMode: false, preserveTransferred: false });
     },
     async requestWorldTab(tab) {
       if (!tab || tab === this.activeTab) return;
@@ -1067,7 +1360,7 @@ export default {
       return api.worldApi.getWorldConfiguration(savename, worldname, {
         roomId: this.roomId, worldId: world?.id
       })
-        .then(response => {
+        .then(async response => {
           if (loadEpoch !== this.configurationLoadEpoch || this.roomName !== savename || this.activeTab !== worldname) return null;
           const configuration = response.data || {};
           this.applyWorldOverrides(configuration.overrides || {}, worldType, worldname);
@@ -1082,11 +1375,26 @@ export default {
               sync: configuration.sync || null
             }
           };
+          if (this.sourceBackedSave) {
+            this.sourceBackedSave = false;
+            this.sourceSyncedOverrides = null;
+          }
+          if (this.sourceError) {
+            this.sourceError = null;
+          }
+          if (this.sourceNotices?.length) {
+            this.sourceNotices = [];
+          }
           const errors = { ...this.worldLoadErrors };
           delete errors[worldname];
           this.worldLoadErrors = errors;
           this.loadError = '';
           this.loadedWorldConfigs[`${savename}_${worldname}`] = true;
+          if (this.editorMode === 'source' && typeof this.loadActiveWorldSourceFiles === 'function') {
+            await this.loadActiveWorldSourceFiles(world);
+          } else if (this.sourceFilesWorldName === worldname) {
+            this.sourceFilesRevision = '';
+          }
           return configuration;
         })
         .catch(error => {
@@ -1319,6 +1627,10 @@ export default {
       let appliedAt = null;
       this.saveLoading = true;
       try {
+        if ((this.editorMode === 'source' || this.sourceBackedSave) && !currentWorld.isTemp && typeof this.saveSourceBackedSettings === 'function') {
+          appliedAt = await this.saveSourceBackedSettings(currentWorld, roomId, roomName);
+          return;
+        }
         const changedSettings = this.prepareChangedSettings();
         const worldType = currentWorld.type === 'forest' ? 'forest' : 'cave';
 
@@ -1391,13 +1703,19 @@ export default {
       if (!currentWorld) return;
       const worldType = currentWorld.type === 'forest' ? 'forest' : 'cave';
       const baseline = this.worldOriginalSettings[currentWorld.name];
-      if (!baseline) return;
+      if (!baseline && !this.sourceFilesLoadedForCurrentWorld) return;
 
-      if (worldType === 'forest') {
-        this.applySettingsValues(this.forestSettings, baseline);
-      } else {
-        this.applySettingsValues(this.caveSettings, baseline);
+      if (baseline) {
+        if (worldType === 'forest') {
+          this.applySettingsValues(this.forestSettings, baseline);
+        } else {
+          this.applySettingsValues(this.caveSettings, baseline);
+        }
       }
+      if ((this.editorMode === 'source' || this.sourceBackedSave) && this.serverIniOriginal) {
+        this.resetServerIni();
+      }
+      this.resetWorldSourceDraftsToBaseline();
       toast.info(this.$t('worlds.settingsPage.feedback.settingsReset', {
         type: this.worldTypeLabel(worldType)
       }));
@@ -2012,19 +2330,50 @@ export default {
       }
       
       this.savingServerIni = true;
+      const useSourceBackedIni = Boolean(this.sourceBackedSave && this.isSourceServerIniModified);
+      const preservedLuaDraft = this.isSourceLeveldataModified ? this.sourceDraftLeveldata : null;
+      const preservedSyncedOverrides = this.sourceSyncedOverrides ? { ...this.sourceSyncedOverrides } : null;
+      const preservedVisualOverrides = (this.hasChanges || preservedLuaDraft !== null)
+        ? this.extractCurrentVisualOverrides(currentWorld)
+        : null;
 
-      return api.worldApi.saveServerIni({
-        roomId: this.roomId,
-        worldId: currentWorld.id,
-        savename: this.roomName,
-        worldname: currentWorld.name,
-        expectedRevision: this.worldConfigurationMeta[currentWorld.name]?.revision || '',
-        config: this.serverIni
-      })
+      const savePromise = useSourceBackedIni
+        ? api.worldApi.applyWorldFiles({
+          roomId: this.roomId,
+          worldId: currentWorld.id,
+          savename: this.roomName,
+          worldname: currentWorld.name,
+          expectedRevision: this.sourceFilesRevision || this.worldConfigurationMeta[currentWorld.name]?.revision || '',
+          serverIni: this.sourceDraftServerIni,
+          ...(this.serverIniChanged ? { server: this.buildServerPayloadFromIni(this.serverIni) } : {})
+        })
+        : api.worldApi.saveServerIni({
+          roomId: this.roomId,
+          worldId: currentWorld.id,
+          savename: this.roomName,
+          worldname: currentWorld.name,
+          expectedRevision: this.worldConfigurationMeta[currentWorld.name]?.revision || '',
+          config: this.serverIni
+        });
+
+      return savePromise
         .then(async response => {
           if (response.status === 200) {
             toast.success(this.$t('worlds.settingsPage.feedback.serverIniSaved'));
             await this.loadWorldConfiguration(this.roomName, currentWorld.name);
+            if (this.activeTab === currentWorld.name && (preservedLuaDraft !== null || preservedVisualOverrides !== null)) {
+              if (preservedLuaDraft !== null) {
+                const reloaded = await this.loadActiveWorldSourceFiles(currentWorld);
+                if (reloaded) {
+                  this.sourceDraftLeveldata = preservedLuaDraft;
+                  this.sourceBackedSave = true;
+                  this.sourceSyncedOverrides = preservedSyncedOverrides;
+                }
+              }
+              if (preservedVisualOverrides !== null) {
+                this.applyParsedOverridesToVisualDraft(preservedVisualOverrides, currentWorld);
+              }
+            }
           }
         })
         .catch(error => {
@@ -2043,11 +2392,25 @@ export default {
         this.serverIni = JSON.parse(JSON.stringify(this.serverIniOriginal));
         this.serverIniChanged = false;
       }
+      if (this.sourceFilesLoadedForCurrentWorld && this.isSourceServerIniModified) {
+        this.sourceDraftServerIni = this.sourceBaselineServerIni;
+        if (!this.isSourceLeveldataModified) {
+          this.sourceBackedSave = false;
+          this.sourceSyncedOverrides = null;
+        }
+      }
     },
 
     configurationSaveError(error) {
       if (error?.code === 'CONFIG_REVISION_CONFLICT' || error?.context?.targetErrorCode === 'CONFIG_REVISION_CONFLICT') {
         return this.$t('worlds.settingsPage.feedback.revisionConflict');
+      }
+      const parsed = typeof this.parseSourceEditorError === 'function' ? this.parseSourceEditorError(error) : null;
+      if (parsed?.isTooLarge) {
+        return this.$t('worlds.settingsPage.sourceEditor.errors.tooLarge');
+      }
+      if (parsed?.rawMessage) {
+        return parsed.rawMessage;
       }
       return error?.message || this.$t('common.errors.unknown');
     },
@@ -2137,6 +2500,709 @@ export default {
       });
       
       return result;
+    },
+
+    resetWorldSourceState({ preserveMode = false, preserveTransferred = false } = {}) {
+      this.sourceLoadEpoch += 1;
+      if (this.sourceValidateTimer) {
+        clearTimeout(this.sourceValidateTimer);
+        this.sourceValidateTimer = null;
+      }
+      if (!preserveMode) {
+        this.editorMode = 'visual';
+        this.sourceFileTab = 'leveldataoverride';
+      }
+      this.loadingSourceFiles = false;
+      this.sourceModeSwitching = false;
+      this.sourceValidating = false;
+      this.sourceFormatting = false;
+      this.sourceFilesWorldName = '';
+      this.sourceFilesRevision = '';
+      this.sourceBaselineLeveldata = '';
+      this.sourceBaselineServerIni = '';
+      this.sourceDraftLeveldata = '';
+      this.sourceDraftServerIni = '';
+      this.sourcePreviewChanges = [];
+      this.sourceNotices = [];
+      this.sourceError = null;
+      this.sourceBackedSave = false;
+      this.sourceSyncedOverrides = null;
+      if (!preserveTransferred) {
+        this.pendingTransferredLua = null;
+      }
+    },
+
+    resetWorldSourceDraftsToBaseline() {
+      if (this.sourceValidateTimer) {
+        clearTimeout(this.sourceValidateTimer);
+        this.sourceValidateTimer = null;
+      }
+      if (this.sourceFilesLoadedForCurrentWorld) {
+        this.sourceDraftLeveldata = this.sourceBaselineLeveldata;
+        this.sourceDraftServerIni = this.sourceBaselineServerIni;
+      }
+      this.sourcePreviewChanges = [];
+      this.sourceNotices = [];
+      this.sourceError = null;
+      this.sourceBackedSave = false;
+      this.sourceSyncedOverrides = null;
+    },
+
+    async loadActiveWorldSourceFiles(targetWorld = this.currentWorld) {
+      if (!targetWorld || !this.roomName || targetWorld.isTemp) return null;
+      const epoch = ++this.sourceLoadEpoch;
+      this.loadingSourceFiles = true;
+      try {
+        const response = await api.worldApi.getWorldFiles(this.roomName, targetWorld.name, {
+          roomId: this.roomId,
+          worldId: targetWorld.id
+        });
+        if (this.disposed || epoch !== this.sourceLoadEpoch || this.activeTab !== targetWorld.name) return null;
+        const files = response?.data || {};
+        this.sourceFilesWorldName = targetWorld.name;
+        this.sourceFilesRevision = files.revision || '';
+        this.sourceBaselineLeveldata = String(files.leveldataoverride || '');
+        this.sourceBaselineServerIni = String(files.serverIni || '');
+        this.sourceDraftLeveldata = this.sourceBaselineLeveldata;
+        this.sourceDraftServerIni = this.sourceBaselineServerIni;
+        this.sourcePreviewChanges = [];
+        this.sourceNotices = [];
+        this.sourceError = null;
+        this.worldConfigurationMeta = {
+          ...this.worldConfigurationMeta,
+          [targetWorld.name]: {
+            revision: files.revision || this.worldConfigurationMeta[targetWorld.name]?.revision || '',
+            modifiedAt: files.modifiedAt || this.worldConfigurationMeta[targetWorld.name]?.modifiedAt || '',
+            sync: files.sync || this.worldConfigurationMeta[targetWorld.name]?.sync || null
+          }
+        };
+        if (this.pendingTransferredLua && this.pendingTransferredLua.worldName === targetWorld.name) {
+          const transferred = this.pendingTransferredLua;
+          this.pendingTransferredLua = null;
+          this.sourceFileTab = 'leveldataoverride';
+          this.sourceDraftLeveldata = transferred.content;
+          toast.success(this.$t('worlds.settingsPage.sourceEditor.feedback.switchedToMatchingWorld', {
+            world: targetWorld.name
+          }));
+          await this.validateCurrentSourceDraft({ silentSuccess: true });
+        }
+        return files;
+      } catch (error) {
+        if (!this.disposed && epoch === this.sourceLoadEpoch) {
+          toast.error(this.$t('worlds.settingsPage.sourceEditor.errors.filesLoadFailed', {
+            error: error?.rawMessage || error?.message || this.$t('common.errors.unknown')
+          }));
+        }
+        return null;
+      } finally {
+        if (!this.disposed && epoch === this.sourceLoadEpoch) {
+          this.loadingSourceFiles = false;
+        }
+      }
+    },
+
+    async handleEditorModeChange(nextMode) {
+      if (!nextMode || nextMode === this.editorMode || this.sourceModeSwitching) return;
+      const currentWorld = this.currentWorld;
+      if (!currentWorld) return;
+
+      if (nextMode === 'source') {
+        this.sourceModeSwitching = true;
+        try {
+          this.sourceFileTab = this.worldSectionTab === 'server-ini' ? 'server-ini' : 'leveldataoverride';
+          if (!this.sourceFilesLoadedForCurrentWorld) {
+            const loaded = await this.loadActiveWorldSourceFiles(currentWorld);
+            if (!loaded) return;
+          }
+          const visualPatch = this.computeVisualPatchSinceSourceSync(currentWorld);
+          const hasVisualIniEdits = Boolean(this.serverIniChanged && this.serverIni);
+          if (Object.keys(visualPatch).length > 0 || hasVisualIniEdits) {
+            const response = await api.worldApi.previewWorldFiles({
+              roomId: this.roomId,
+              worldId: currentWorld.id,
+              savename: this.roomName,
+              worldname: currentWorld.name,
+              expectedRevision: this.sourceFilesRevision || this.worldConfigurationMeta[currentWorld.name]?.revision || '',
+              ...(this.isSourceLeveldataModified ? { leveldataoverride: this.sourceDraftLeveldata } : {}),
+              ...(this.isSourceServerIniModified ? { serverIni: this.sourceDraftServerIni } : {}),
+              ...(Object.keys(visualPatch).length > 0 ? { overridePatch: visualPatch } : {}),
+              ...(hasVisualIniEdits ? { server: this.buildServerPayloadFromIni(this.serverIni) } : {}),
+              allowEmptyChanges: true
+            });
+            const preview = response?.data || {};
+            this.sourceDraftLeveldata = String(preview.leveldataoverride ?? this.sourceDraftLeveldata);
+            this.sourceDraftServerIni = String(preview.serverIni ?? this.sourceDraftServerIni);
+            this.sourcePreviewChanges = Array.isArray(preview.changes) ? preview.changes : [];
+            this.sourceNotices = Array.isArray(preview.notices) ? preview.notices : [];
+            this.sourceError = null;
+            this.sourceSyncedOverrides = this.extractCurrentVisualOverrides(currentWorld);
+          }
+          this.editorMode = 'source';
+        } catch (error) {
+          const parsed = this.parseSourceEditorError(error);
+          toast.error(parsed?.rawMessage || error?.message || this.$t('common.errors.unknown'));
+        } finally {
+          this.sourceModeSwitching = false;
+        }
+        return;
+      }
+
+      if (nextMode === 'visual') {
+        this.sourceModeSwitching = true;
+        try {
+          if (this.sourceFileTab === 'server-ini') {
+            this.worldSectionTab = 'server-ini';
+          } else if (this.worldSectionTab === 'server-ini') {
+            this.worldSectionTab = 'worldgen';
+          }
+          if (!this.hasSourceChanges) {
+            if (
+              this.sourceFilesLoadedForCurrentWorld
+              && (this.hasChanges || this.serverIniChanged || this.sourceBackedSave || this.sourceSyncedOverrides)
+            ) {
+              const baseline = this.worldOriginalSettings[currentWorld.name];
+              if (baseline) {
+                const targetSettings = currentWorld.type === 'cave' ? this.caveSettings : this.forestSettings;
+                this.applySettingsValues(targetSettings, baseline);
+              }
+              if (this.serverIniOriginal) {
+                this.resetServerIni();
+              }
+              this.sourceBackedSave = false;
+              this.sourceSyncedOverrides = null;
+              this.hasChanges = false;
+              this.changedItemsCache = null;
+            }
+            this.sourceError = null;
+            this.sourceNotices = [];
+            this.sourcePreviewChanges = [];
+            this.editorMode = 'visual';
+            return;
+          }
+          const response = await api.worldApi.previewWorldFiles({
+            roomId: this.roomId,
+            worldId: currentWorld.id,
+            savename: this.roomName,
+            worldname: currentWorld.name,
+            expectedRevision: this.sourceFilesRevision || this.worldConfigurationMeta[currentWorld.name]?.revision || '',
+            ...(this.isSourceLeveldataModified ? { leveldataoverride: this.sourceDraftLeveldata } : {}),
+            ...(this.isSourceServerIniModified ? { serverIni: this.sourceDraftServerIni } : {}),
+            allowEmptyChanges: true
+          });
+          const preview = response?.data || {};
+          this.sourceError = null;
+          this.sourceNotices = Array.isArray(preview.notices) ? preview.notices : [];
+          this.sourcePreviewChanges = Array.isArray(preview.changes) ? preview.changes : [];
+          this.sourceDraftLeveldata = String(preview.leveldataoverride ?? this.sourceDraftLeveldata);
+          this.sourceDraftServerIni = String(preview.serverIni ?? this.sourceDraftServerIni);
+          this.applyParsedOverridesToVisualDraft(preview.overrides || {}, currentWorld);
+          if (preview.server) {
+            this.applyParsedServerToIniState(preview.server);
+          }
+          this.sourceSyncedOverrides = this.extractCurrentVisualOverrides(currentWorld);
+          this.sourceBackedSave = true;
+          this.editorMode = 'visual';
+        } catch (error) {
+          this.sourceError = this.parseSourceEditorError(error);
+          if (this.sourceError?.file === 'server.ini') {
+            this.sourceFileTab = 'server-ini';
+          } else if (this.sourceError?.file === 'leveldataoverride.lua') {
+            this.sourceFileTab = 'leveldataoverride';
+          }
+          toast.error(this.$t('worlds.settingsPage.sourceEditor.errors.cannotSwitchVisual'));
+        } finally {
+          this.sourceModeSwitching = false;
+        }
+      }
+    },
+
+    handleSourceFileTabChange(nextTab) {
+      if (!nextTab || nextTab === this.sourceFileTab) return;
+      this.sourceFileTab = nextTab;
+    },
+
+    handleSourceEditorInput(nextValue) {
+      if (this.configurationReadOnly) return;
+      const previous = this.activeSourceContent;
+      const value = String(nextValue ?? '');
+      if (value === previous) return;
+
+      if (this.sourceFileTab === 'server-ini') {
+        this.sourceDraftServerIni = value;
+      } else {
+        this.sourceDraftLeveldata = value;
+      }
+      this.sourcePreviewChanges = [];
+      if (this.sourceError) {
+        this.sourceError = null;
+      }
+
+      const looksLikePaste = Math.abs(value.length - previous.length) > 32 || value.trimStart().startsWith('KLEI');
+      if (looksLikePaste) {
+        if (this.sourceValidateTimer) clearTimeout(this.sourceValidateTimer);
+        this.sourceValidateTimer = setTimeout(() => {
+          this.sourceValidateTimer = null;
+          if (!this.disposed && this.editorMode === 'source') {
+            void this.validateCurrentSourceDraft({ silentSuccess: true });
+          }
+        }, 400);
+      }
+    },
+
+    applySourceEditorContent(content) {
+      if (this.sourceValidateTimer) {
+        clearTimeout(this.sourceValidateTimer);
+        this.sourceValidateTimer = null;
+      }
+      const normalized = String(content ?? '');
+      if (this.sourceFileTab === 'server-ini') {
+        this.sourceDraftServerIni = normalized;
+      } else {
+        this.sourceDraftLeveldata = normalized;
+      }
+      this.sourcePreviewChanges = [];
+      this.sourceError = null;
+    },
+
+    async pasteIntoSourceEditor() {
+      if (this.configurationReadOnly || this.sourceBusy) return;
+      const clipboard = window?.navigator?.clipboard;
+      if (!clipboard || typeof clipboard.readText !== 'function') {
+        toast.warning(this.$t('worlds.settingsPage.sourceEditor.feedback.clipboardDenied'));
+        return;
+      }
+      try {
+        const text = await clipboard.readText();
+        if (!text || !text.trim()) {
+          toast.warning(this.$t('worlds.settingsPage.sourceEditor.feedback.clipboardEmpty'));
+          return;
+        }
+        this.applySourceEditorContent(text);
+        toast.success(this.$t('worlds.settingsPage.sourceEditor.feedback.pasted'));
+        await this.validateCurrentSourceDraft({ silentSuccess: true });
+      } catch {
+        toast.warning(this.$t('worlds.settingsPage.sourceEditor.feedback.clipboardDenied'));
+      }
+    },
+
+    triggerSourceFileImport() {
+      if (this.configurationReadOnly || this.sourceBusy) return;
+      if (this.sourceFileInputEl && typeof this.sourceFileInputEl.click === 'function') {
+        this.sourceFileInputEl.value = '';
+        this.sourceFileInputEl.click();
+      }
+    },
+
+    async handleSourceFileInputChange(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      await this.importSourceFile(file);
+    },
+
+    async importSourceFile(file) {
+      if (!file || this.configurationReadOnly) return;
+      if (file.size > 256 * 1024) {
+        this.sourceError = {
+          code: 'CONFIGURATION_FILE_TOO_LARGE',
+          file: this.sourceFileTab === 'server-ini' ? 'server.ini' : 'leveldataoverride.lua',
+          line: 0,
+          column: 0,
+          isTooLarge: true,
+          rawMessage: this.$t('worlds.settingsPage.sourceEditor.errors.tooLarge')
+        };
+        return;
+      }
+      try {
+        const fileName = String(file.name || '').toLowerCase();
+        if (fileName.endsWith('.ini') && this.sourceFileTab !== 'server-ini') {
+          this.sourceFileTab = 'server-ini';
+        } else if (fileName.endsWith('.lua') && this.sourceFileTab !== 'leveldataoverride') {
+          this.sourceFileTab = 'leveldataoverride';
+        }
+        const text = typeof file.text === 'function' ? await file.text() : await this.readTextFileFallback(file);
+        this.applySourceEditorContent(text);
+        toast.success(this.$t('worlds.settingsPage.sourceEditor.feedback.imported', { name: file.name || '' }));
+        await this.validateCurrentSourceDraft({ silentSuccess: true });
+      } catch (error) {
+        toast.error(this.$t('worlds.settingsPage.sourceEditor.feedback.importFailed', {
+          error: error?.message || this.$t('common.errors.unknown')
+        }));
+      }
+    },
+
+    readTextFileFallback(file) {
+      return new Promise((resolve, reject) => {
+        const Reader = window?.FileReader;
+        if (!Reader) {
+          reject(new Error('FileReader unavailable'));
+          return;
+        }
+        const reader = new Reader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(reader.error || new Error('File read failed'));
+        reader.readAsText(file, 'utf-8');
+      });
+    },
+
+    async formatCurrentSource() {
+      if (this.configurationReadOnly || this.sourceBusy) return;
+      const currentWorld = this.currentWorld;
+      if (!currentWorld) return;
+      this.sourceFormatting = true;
+      try {
+        if (!this.sourceFilesLoadedForCurrentWorld) {
+          const loaded = await this.loadActiveWorldSourceFiles(currentWorld);
+          if (!loaded) return;
+        }
+        const response = await api.worldApi.previewWorldFiles({
+          roomId: this.roomId,
+          worldId: currentWorld.id,
+          savename: this.roomName,
+          worldname: currentWorld.name,
+          expectedRevision: this.sourceFilesRevision || this.worldConfigurationMeta[currentWorld.name]?.revision || '',
+          ...(this.sourceFileTab === 'server-ini'
+            ? { serverIni: this.sourceDraftServerIni }
+            : { leveldataoverride: this.sourceDraftLeveldata }),
+          format: true,
+          allowEmptyChanges: true
+        });
+        const preview = response?.data || {};
+        this.sourceError = null;
+        this.sourceNotices = Array.isArray(preview.notices) ? preview.notices : [];
+        this.sourcePreviewChanges = Array.isArray(preview.changes) ? preview.changes : [];
+        if (this.sourceFileTab === 'server-ini') {
+          this.sourceDraftServerIni = String(preview.serverIni ?? this.sourceDraftServerIni);
+        } else {
+          this.sourceDraftLeveldata = String(preview.leveldataoverride ?? this.sourceDraftLeveldata);
+        }
+        toast.success(this.$t('worlds.settingsPage.sourceEditor.feedback.formatted'));
+      } catch (error) {
+        this.sourceError = this.parseSourceEditorError(error);
+      } finally {
+        this.sourceFormatting = false;
+      }
+    },
+
+    async validateCurrentSourceDraft({ silentSuccess = false } = {}) {
+      const currentWorld = this.currentWorld;
+      if (!currentWorld || currentWorld.isTemp) return null;
+      this.sourceValidating = true;
+      try {
+        if (!this.sourceFilesLoadedForCurrentWorld) {
+          const loaded = await this.loadActiveWorldSourceFiles(currentWorld);
+          if (!loaded) return null;
+        }
+        const sendLua = this.sourceFileTab === 'leveldataoverride' || this.isSourceLeveldataModified;
+        const sendIni = this.sourceFileTab === 'server-ini' || this.isSourceServerIniModified;
+        const response = await api.worldApi.previewWorldFiles({
+          roomId: this.roomId,
+          worldId: currentWorld.id,
+          savename: this.roomName,
+          worldname: currentWorld.name,
+          expectedRevision: this.sourceFilesRevision || this.worldConfigurationMeta[currentWorld.name]?.revision || '',
+          ...(sendLua ? { leveldataoverride: this.sourceDraftLeveldata } : {}),
+          ...(sendIni ? { serverIni: this.sourceDraftServerIni } : {}),
+          allowEmptyChanges: true
+        });
+        const preview = response?.data || {};
+        this.sourceError = null;
+        this.sourceNotices = Array.isArray(preview.notices) ? preview.notices : [];
+        this.sourcePreviewChanges = Array.isArray(preview.changes) ? preview.changes : [];
+        if (sendLua && Array.isArray(preview.notices) && (preview.notices.includes('stripped_klei_header') || preview.notices.includes('wrapped_bare_table'))) {
+          this.sourceDraftLeveldata = String(preview.leveldataoverride ?? this.sourceDraftLeveldata);
+        }
+        if (!silentSuccess) {
+          toast.success(this.$t('worlds.settingsPage.sourceEditor.feedback.validated', {
+            count: this.sourcePreviewChanges.length
+          }));
+        }
+        return preview;
+      } catch (error) {
+        this.sourceError = this.parseSourceEditorError(error);
+        if (this.sourceError?.file === 'server.ini') {
+          this.sourceFileTab = 'server-ini';
+        } else if (this.sourceError?.file === 'leveldataoverride.lua') {
+          this.sourceFileTab = 'leveldataoverride';
+        }
+        return null;
+      } finally {
+        this.sourceValidating = false;
+      }
+    },
+
+    async saveSourceBackedSettings(currentWorld, roomId, roomName) {
+      if (this.sourceValidateTimer) {
+        clearTimeout(this.sourceValidateTimer);
+        this.sourceValidateTimer = null;
+      }
+      if (!this.sourceFilesLoadedForCurrentWorld) {
+        const loaded = await this.loadActiveWorldSourceFiles(currentWorld);
+        if (!loaded) throw new Error(this.$t('worlds.settingsPage.feedback.saveWorldMissing'));
+      }
+      const payload = {
+        roomId,
+        worldId: currentWorld.id,
+        savename: roomName,
+        worldname: currentWorld.name,
+        expectedRevision: this.sourceFilesRevision || this.worldConfigurationMeta[currentWorld.name]?.revision || ''
+      };
+
+      if (this.editorMode === 'source') {
+        if (this.isSourceLeveldataModified) {
+          payload.leveldataoverride = this.sourceDraftLeveldata;
+        } else if (this.hasChanges) {
+          const patch = this.computeVisualPatchSinceSourceSync(currentWorld);
+          if (Object.keys(patch).length > 0) payload.overridePatch = patch;
+        }
+        if (this.isSourceServerIniModified) {
+          payload.serverIni = this.sourceDraftServerIni;
+        } else if (this.serverIniChanged && this.serverIni) {
+          payload.server = this.buildServerPayloadFromIni(this.serverIni);
+        }
+      } else {
+        const visualPatch = this.computeVisualPatchSinceSourceSync(currentWorld);
+        if (this.isSourceLeveldataModified) {
+          payload.leveldataoverride = this.sourceDraftLeveldata;
+        }
+        if (Object.keys(visualPatch).length > 0) {
+          payload.overridePatch = visualPatch;
+        }
+        if (this.isSourceServerIniModified) {
+          payload.serverIni = this.sourceDraftServerIni;
+        }
+        if (this.serverIniChanged && this.serverIni) {
+          payload.server = this.buildServerPayloadFromIni(this.serverIni);
+        }
+      }
+
+      let response;
+      try {
+        response = await api.worldApi.applyWorldFiles(payload);
+      } catch (error) {
+        this.sourceError = this.parseSourceEditorError(error);
+        if (this.editorMode === 'source') {
+          if (this.sourceError?.file === 'server.ini') {
+            this.sourceFileTab = 'server-ini';
+          } else if (this.sourceError?.file === 'leveldataoverride.lua') {
+            this.sourceFileTab = 'leveldataoverride';
+          }
+        }
+        throw error;
+      }
+
+      const appliedAt = performance.now();
+      if (response?.status === 200) {
+        toast.success(this.$t('worlds.settingsPage.feedback.settingsSaved', {
+          world: currentWorld.name
+        }));
+        if (this.roomId === roomId && this.activeTab === currentWorld.name) {
+          this.sourceBackedSave = false;
+          this.sourceSyncedOverrides = null;
+          await this.loadWorldConfiguration(roomName, currentWorld.name);
+          this.buildCaches();
+        }
+      }
+      return appliedAt;
+    },
+
+    async copyCurrentSource() {
+      const text = this.activeSourceContent || '';
+      const clipboard = window?.navigator?.clipboard;
+      if (!clipboard || typeof clipboard.writeText !== 'function') {
+        toast.error(this.$t('worlds.settingsPage.sourceEditor.feedback.copyFailed'));
+        return;
+      }
+      try {
+        await clipboard.writeText(text);
+        toast.success(this.$t('worlds.settingsPage.sourceEditor.feedback.copied'));
+      } catch {
+        toast.error(this.$t('worlds.settingsPage.sourceEditor.feedback.copyFailed'));
+      }
+    },
+
+    downloadCurrentSource() {
+      const fileName = this.sourceFileTab === 'server-ini' ? 'server.ini' : 'leveldataoverride.lua';
+      const content = this.activeSourceContent || '';
+      const BlobCtor = window?.Blob || (typeof Blob !== 'undefined' ? Blob : null);
+      const urlApi = window?.URL || (typeof URL !== 'undefined' ? URL : null);
+      if (!BlobCtor || !urlApi || typeof document?.createElement !== 'function') return;
+
+      const blob = new BlobCtor([content], { type: 'text/plain;charset=utf-8' });
+      const href = urlApi.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = `${this.currentWorld?.name || 'world'}-${fileName}`;
+      document.body?.appendChild(link);
+      link.click();
+      link.remove?.();
+      urlApi.revokeObjectURL(href);
+      toast.success(this.$t('worlds.settingsPage.sourceEditor.feedback.downloaded', { name: fileName }));
+    },
+
+    switchToMatchingWorldAndPaste(targetWorld) {
+      if (!targetWorld || !targetWorld.name) return;
+      const contentToTransfer = this.sourceDraftLeveldata;
+      const baseline = this.currentWorld ? this.worldOriginalSettings[this.currentWorld.name] : null;
+      if (baseline && this.currentWorld) {
+        const targetSettings = this.currentWorld.type === 'cave' ? this.caveSettings : this.forestSettings;
+        this.applySettingsValues(targetSettings, baseline);
+      }
+      if (this.serverIniOriginal) {
+        this.resetServerIni();
+      }
+      this.resetWorldSourceDraftsToBaseline();
+      this.hasChanges = false;
+      this.changedItemsCache = null;
+
+      this.pendingTransferredLua = {
+        worldName: targetWorld.name,
+        content: contentToTransfer
+      };
+      this.editorMode = 'source';
+      this.sourceFileTab = 'leveldataoverride';
+      this.previousActiveTab = this.activeTab;
+      this.activeTab = targetWorld.name;
+    },
+
+    extractCurrentVisualOverrides(world = this.currentWorld) {
+      if (!world) return {};
+      const worldType = world.type === 'cave' ? 'cave' : 'forest';
+      const activeSettings = worldType === 'cave' ? this.caveSettings : this.forestSettings;
+      const values = {};
+      if (!activeSettings) return values;
+      this.traverseSettings(activeSettings, (item, itemKey) => {
+        values[itemKey] = item.value;
+      });
+      return values;
+    },
+
+    computeVisualPatchSinceSourceSync(world = this.currentWorld) {
+      if (!world) return {};
+      const currentValues = this.extractCurrentVisualOverrides(world);
+      if (this.sourceSyncedOverrides && typeof this.sourceSyncedOverrides === 'object') {
+        const patch = {};
+        for (const [key, value] of Object.entries(currentValues)) {
+          if (this.sourceSyncedOverrides[key] !== value) {
+            patch[key] = value;
+          }
+        }
+        return patch;
+      }
+      const changed = this.getChangedItems();
+      const patch = {};
+      for (const item of changed) {
+        patch[item.key] = item.newValue;
+      }
+      return patch;
+    },
+
+    applyParsedOverridesToVisualDraft(overridesData, world = this.currentWorld) {
+      if (!world || !overridesData) return;
+      const worldType = world.type === 'cave' ? 'cave' : 'forest';
+      const settingsKey = worldType === 'cave' ? 'caveSettings' : 'forestSettings';
+      const defaults = this.originalSettings?.[worldType] || this.worldOriginalSettings[world.name];
+      if (!defaults) return;
+      const nextSettings = JSON.parse(JSON.stringify(defaults));
+      this.traverseSettings(nextSettings, (item, itemKey) => {
+        if (Object.prototype.hasOwnProperty.call(overridesData, itemKey)) {
+          item.value = overridesData[itemKey];
+        }
+      });
+      this[settingsKey] = nextSettings;
+      this.checkChanges();
+    },
+
+    buildServerPayloadFromIni(config = {}) {
+      return serverConfigFromLegacyIni(config);
+    },
+
+    applyParsedServerToIniState(server) {
+      if (!server) return;
+      const nextIni = legacyIniFromServerConfig(server);
+      this.serverIni = nextIni;
+      this.serverIniChanged = Boolean(
+        this.serverIniOriginal && JSON.stringify(nextIni) !== JSON.stringify(this.serverIniOriginal)
+      );
+    },
+
+    getFooterChangedItems() {
+      const visualItems = this.getChangedItems();
+      if (this.editorMode !== 'source') {
+        if (visualItems.length > 0 || !this.sourceBackedSave || !this.hasSourceChanges) {
+          return visualItems;
+        }
+      }
+      if (Array.isArray(this.sourcePreviewChanges) && this.sourcePreviewChanges.length > 0) {
+        return this.sourcePreviewChanges.map(change => {
+          const field = change?.path || change?.field || '';
+          return {
+            key: field,
+            text: this.describeSourceChangeField(field, change?.label),
+            oldValue: change.before,
+            oldValueText: this.formatSourceChangeValue(field, change.before),
+            newValue: change.after,
+            newValueText: this.formatSourceChangeValue(field, change.after)
+          };
+        });
+      }
+      const fallback = [];
+      if (this.isSourceLeveldataModified) {
+        fallback.push({
+          key: 'leveldataoverride.lua',
+          text: this.$t('worlds.settingsPage.sourceEditor.feedback.sourceChangedItem', { file: 'leveldataoverride.lua' }),
+          oldValueText: this.$t('worlds.settingsPage.sourceEditor.feedback.sourceBaselineValue'),
+          newValueText: this.$t('worlds.settingsPage.sourceEditor.feedback.sourceModifiedValue')
+        });
+      }
+      if (this.isSourceServerIniModified) {
+        fallback.push({
+          key: 'server.ini',
+          text: this.$t('worlds.settingsPage.sourceEditor.feedback.sourceChangedItem', { file: 'server.ini' }),
+          oldValueText: this.$t('worlds.settingsPage.sourceEditor.feedback.sourceBaselineValue'),
+          newValueText: this.$t('worlds.settingsPage.sourceEditor.feedback.sourceModifiedValue')
+        });
+      }
+      return fallback.length > 0 ? fallback : visualItems;
+    },
+
+    describeSourceChangeField(field, fallbackLabel = '') {
+      const raw = String(field || '');
+      if (raw.startsWith('overrides.')) {
+        const itemKey = raw.slice('overrides.'.length);
+        const found = this.activeSettings ? this.findItemInSettings(this.activeSettings, itemKey) : null;
+        return found?.text || fallbackLabel || itemKey;
+      }
+      const serverLabels = {
+        'server.serverPort': 'worlds.settingsPage.serverIni.serverPort',
+        'server.isMaster': 'worlds.settingsPage.serverIni.masterWorld',
+        'server.shardName': 'worlds.settingsPage.serverIni.worldName',
+        'server.shardId': 'worlds.settingsPage.serverIni.worldId',
+        'server.encodeUserPath': 'worlds.settingsPage.serverIni.encodePath',
+        'server.masterServerPort': 'worlds.settingsPage.serverIni.masterPort',
+        'server.authenticationPort': 'worlds.settingsPage.serverIni.authPort'
+      };
+      return serverLabels[raw] ? this.$t(serverLabels[raw]) : (fallbackLabel || raw);
+    },
+
+    formatSourceChangeValue(field, value) {
+      if (value === undefined || value === null || value === '') return '—';
+      const raw = String(field || '');
+      if (raw.startsWith('overrides.') && this.activeSettings) {
+        const itemKey = raw.slice('overrides.'.length);
+        const worldType = this.currentWorld?.type === 'cave' ? 'cave' : 'forest';
+        const path = this.categoryPathCache?.[`${worldType}_${itemKey}`];
+        const category = path ? this.getCategoryByPath(this.activeSettings, path) : null;
+        const item = category?.items?.[itemKey];
+        if (category && item) {
+          const options = this.getItemOptions(category.desc, item.desc);
+          if (options && options[value]) return options[value];
+        }
+      }
+      return String(value);
+    },
+
+    parseSourceEditorError(error) {
+      return extractConfigEditorError(error);
     }
   },
   async beforeRouteLeave() {
@@ -2220,6 +3286,61 @@ export default {
   min-width: 0;
   justify-content: space-between;
   gap: 8px;
+}
+
+.world-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.world-source-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.source-editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.source-file-tabs-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+.source-statuses-inline {
+  padding-bottom: 0;
+}
+
+.source-editor-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.source-editor-hint {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.source-error-location {
+  margin: 0 0 2px;
+  font-weight: 600;
 }
 
 .section-tabs-toolbar {
@@ -2383,6 +3504,15 @@ export default {
 
   .world-tabs-toolbar {
     align-items: flex-start;
+  }
+
+  .world-card-actions {
+    justify-content: flex-start;
+  }
+
+  .source-editor-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .section-tabs-toolbar {

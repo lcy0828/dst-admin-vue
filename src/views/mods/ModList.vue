@@ -4,6 +4,7 @@
       <div v-if="!embedded"><h1>{{ $t('mods.installed.title') }}</h1></div>
       <div class="header-actions">
         <UiButton size="sm" variant="outline" @click="refreshModList" :disabled="loading || !selectedRoomId"><RefreshCw data-icon="inline-start" />{{ $t('mods.actions.refresh') }}</UiButton>
+        <UiButton v-if="selectedRoomId && selectedRoomWorlds.length > 0" size="sm" variant="outline" :disabled="loading" @click="openModConfigFileEditor()"><FileCode2 data-icon="inline-start" />{{ $t('mods.actions.editConfigFile') }}</UiButton>
         <UiButton v-if="selectedRoomId" size="sm" variant="outline" @click="openModUpdateDialog"><SunMedium data-icon="inline-start" />{{ modUpdateButtonLabel }}</UiButton>
         <DropdownMenu v-if="selectedRoomId || availableRoomCopySources.length > 0">
           <DropdownMenuTrigger as-child>
@@ -240,7 +241,10 @@
       <EmptyContent>
         <UiButton v-if="!selectedRoomId" @click="$router.push('/rooms/settings')"><Plus data-icon="inline-start" />{{ $t('rooms.list.create') }}</UiButton>
         <UiButton v-else-if="modsList.length > 0 && filterChanged" variant="outline" @click="resetFilter"><RefreshCw data-icon="inline-start" />{{ $t('mods.actions.reset') }}</UiButton>
-        <UiButton v-else @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton>
+        <div v-else class="empty-mod-actions">
+          <UiButton @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton>
+          <UiButton v-if="selectedRoomWorlds.length > 0" variant="outline" @click="openModConfigFileEditor()"><FileCode2 data-icon="inline-start" />{{ $t('mods.actions.editConfigFile') }}</UiButton>
+        </div>
       </EmptyContent>
     </Empty>
 
@@ -429,14 +433,14 @@
       </DialogContent>
     </UiDialog>
 
-    <UiDialog v-model:open="configFileDialogVisible">
-      <DialogContent class="max-w-4xl">
-        <DialogHeader><DialogTitle>{{ $t('mods.installed.configFile.title') }}</DialogTitle><DialogDescription>{{ configFileWorldName }} · modoverrides.lua</DialogDescription></DialogHeader>
-        <div v-if="loadingConfig" class="loading-state"><Spinner /><span>{{ $t('mods.installed.configFile.loading') }}</span></div>
-        <pre v-else class="lua-code">{{ configFileContent }}</pre>
-        <DialogFooter><UiButton variant="outline" @click="configFileDialogVisible = false">{{ $t('mods.actions.close') }}</UiButton><UiButton @click="downloadConfigFile"><Download data-icon="inline-start" />{{ $t('mods.actions.downloadConfigFile') }}</UiButton></DialogFooter>
-      </DialogContent>
-    </UiDialog>
+    <ModOverridesEditorDialog
+      v-model:open="configFileDialogVisible"
+      :room-id="selectedRoomId"
+      :worlds="selectedRoomWorlds"
+      :initial-world-id="configFileWorldId"
+      :initial-scope="configFileInitialScope"
+      @applied="handleModConfigFileApplied"
+    />
   </div>
 </template>
 
@@ -446,6 +450,7 @@ import { ChevronDown, CirclePause, CirclePlay, Copy, Download, FileCode2, ImageI
 import { toast } from 'vue-sonner';
 import ModConfigDialog from './ModConfigDialog.vue';
 import ModDetailsDialog from './ModDetailsDialog.vue';
+import ModOverridesEditorDialog from './ModOverridesEditorDialog.vue';
 import RoomModPublicationPanel from '@/components/mods/RoomModPublicationPanel.vue';
 import { modApi } from '@/api';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -527,6 +532,7 @@ export default {
     InputGroupInput,
     ModConfigDialog,
     ModDetailsDialog,
+    ModOverridesEditorDialog,
     MoreHorizontal,
     Network,
     PackageOpen,
@@ -621,11 +627,10 @@ export default {
       roomCopyCurrentItem: '',
       // 默认图标
       defaultIcon: '',
-      // 配置文件查看相关
+      // 配置文件编辑对话框
       configFileDialogVisible: false,
-      configFileContent: '',
-      configFileWorldName: '',
-      loadingConfig: false,
+      configFileWorldId: '',
+      configFileInitialScope: '',
       modActionState: {},
       expandedModIds: {},
       sharedSourceDialogVisible: false,
@@ -775,6 +780,7 @@ export default {
       this.modsList = [];
       this.loadingRooms = true;
       this.configDialogVisible = false;
+      this.configFileDialogVisible = false;
       this.publicationDialogVisible = false;
       this.modUpdateDialogVisible = false;
       this.modUpdateOverview = null;
@@ -1745,62 +1751,29 @@ export default {
       this.$router.push('/mods');
     },
 
-    // 获取配置文件
-    getModConfigFile(world) {
-      if (!world?.id) {
+    openModConfigFileEditor(world = null, scope = '') {
+      const targetWorld = world || this.currentWorld || this.selectedRoomWorlds[0] || null;
+      if (!targetWorld?.id) {
         toast.warning(this.$t('mods.installed.feedback.selectViewWorld'));
         return;
       }
-      this.selectWorldContext(world);
-      this.configFileWorldName = world.name;
-      this.loadingConfig = true;
-      modApi.getAllModConfigFile({
-        roomId: this.selectedRoomId,
-        worldId: world.id
-      })
-        .then(res => {
-          if (res && res.file?.exists) {
-            // 保存配置文件内容并显示对话框
-            this.configFileContent = res.modinfo;
-            this.configFileDialogVisible = true;
-          } else {
-            toast.warning(this.$t('mods.installed.feedback.configFileMissing'));
-          }
-        })
-        .catch(err => {
-          console.error('获取配置文件失败:', err);
-          toast.error(this.localizedFailure(this.failure('mods.errors.configFile', err)));
-        })
-        .finally(() => {
-          this.loadingConfig = false;
-        });
+      this.selectWorldContext(targetWorld);
+      this.configFileWorldId = targetWorld.id;
+      this.configFileInitialScope = scope || (this.selectedRoomWorlds.length > 1 ? 'room' : 'world');
+      this.configFileDialogVisible = true;
     },
-    
-    // 下载配置文件
-    downloadConfigFile() {
-      if (!this.configFileContent) {
-        toast.error(this.$t('mods.installed.feedback.noDownloadContent'));
-        return;
-      }
-      
-      // 创建一个可下载的 Lua 文件
-      const blob = new Blob([this.configFileContent], { type: 'text/plain' });
-      
-      // 创建临时下载链接
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      const worldName = (this.configFileWorldName || 'world').replace(/[^a-zA-Z0-9_-]+/g, '-');
-      link.download = `${worldName}-modoverrides.lua`;
-      
-      // 点击下载
-      document.body.appendChild(link);
-      link.click();
-      
-      // 清理
-      window.URL.revokeObjectURL(link.href);
-      document.body.removeChild(link);
-      
-      toast.success(this.$t('mods.installed.feedback.configFileDownloaded'));
+
+    // 获取/编辑世界配置文件
+    getModConfigFile(world) {
+      this.openModConfigFileEditor(world, 'world');
+    },
+
+    async handleModConfigFileApplied() {
+      if (!this.selectedRoomId) return;
+      await Promise.all([
+        this.fetchModsList(true),
+        this.loadModUpdateOverview(true)
+      ]);
     }
   }
 };
@@ -2142,18 +2115,12 @@ export default {
   gap: 6px;
 }
 
-.lua-code {
-  max-height: 60vh;
-  margin: 0;
-  padding: 12px;
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--muted);
-  color: var(--foreground);
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
+.empty-mod-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .copy-world-mappings,

@@ -678,6 +678,52 @@ async function getAllModConfigFile({ roomId, worldId }) {
   return { status: 200, modinfo: file.content, file }
 }
 
+async function previewModConfigFile(input = {}) {
+  const roomId = requireValue(input.roomId, 'ROOM_REQUIRED')
+  const worldId = requireValue(input.worldId, 'WORLD_REQUIRED')
+  const worldIds = Array.isArray(input.worldIds) && input.worldIds.length > 0 ? input.worldIds : [worldId]
+  return modsV2API.previewConfigurationFile(roomId, worldId, {
+    content: String(input.content ?? ''),
+    worldIds,
+    expectedRevision: input.expectedRevision || '',
+    expectedRevisions: input.expectedRevisions || {},
+    expectedTopologyRevision: input.expectedTopologyRevision || '',
+    ...(input.format ? { format: true } : {})
+  })
+}
+
+async function applyModConfigFile(input = {}) {
+  const roomId = requireValue(input.roomId, 'ROOM_REQUIRED')
+  const worldId = requireValue(input.worldId, 'WORLD_REQUIRED')
+  const worldIds = Array.isArray(input.worldIds) && input.worldIds.length > 0 ? input.worldIds : [worldId]
+  let response
+  try {
+    response = await modsV2API.applyConfigurationFile(roomId, worldId, {
+      content: String(input.content ?? ''),
+      worldIds,
+      expectedRevision: input.expectedRevision || '',
+      expectedRevisions: input.expectedRevisions || {},
+      expectedTopologyRevision: input.expectedTopologyRevision || '',
+      ...(input.format ? { format: true } : {}),
+      downloadMissing: Boolean(input.downloadMissing)
+    })
+  } catch (error) {
+    if (error?.code === 'NO_MOD_CHANGES') {
+      return { mode: 'noop', result: null }
+    }
+    throw error
+  }
+  if (response?.id && response?.kind) {
+    input.onSubmitted?.(response)
+    if (input.waitForCompletion === false) {
+      return { mode: 'job', job: response, submittedJob: response }
+    }
+    const completed = await (input.waitForJob || waitForV2Job)(response, MOD_JOB_TIMEOUT, input.onProgress)
+    return { mode: 'job', job: completed, submittedJob: response }
+  }
+  return { mode: 'direct', result: response }
+}
+
 export const realModApi = {
   setConfigurationMode: (roomId, modId, mode) => modsV2API.setConfigurationMode(
     requireValue(roomId, 'ROOM_REQUIRED'), requireValue(modId, 'MOD_REQUIRED'), mode
@@ -719,7 +765,9 @@ export const realModApi = {
   updateMod,
   removeModFromRoom,
   deleteMod,
-  getAllModConfigFile
+  getAllModConfigFile,
+  previewModConfigFile,
+  applyModConfigFile
 }
 
 export default realModApi

@@ -319,6 +319,64 @@ export const worldsMessages = {
           serverIniSaveFailed: '保存服务器基础配置失败：{error}',
           worldTypeUpdated: '世界类型更新成功',
           worldTypeUpdateFailed: '更新世界类型失败：{error}'
+        },
+        sourceEditor: {
+          modes: {
+            aria: '配置编辑模式',
+            visual: '可视化表单',
+            source: '源码编辑'
+          },
+          files: {
+            aria: '选择配置文件',
+            leveldataoverride: 'leveldataoverride.lua',
+            serverIni: 'server.ini'
+          },
+          toolbar: {
+            paste: '粘贴配置',
+            importFile: '导入文件',
+            format: '格式化',
+            formatHint: '按标准顺序规范化缩进排版（会移除自定义注释）',
+            copy: '复制',
+            download: '下载',
+            validate: '校验语法'
+          },
+          placeholders: {
+            leveldataoverride: '粘贴客户端存档或社区分享的 leveldataoverride.lua 内容（自动兼容 KLEI 1 文件头）…',
+            serverIni: '编辑当前世界分片的 server.ini 配置…'
+          },
+          notices: {
+            kleiHeaderTitle: '已自动兼容客户端存档格式',
+            kleiHeaderDescription: '已自动剥离 KLEI 1 存档头并校验 Lua 表字面量。',
+            bareTableDescription: '检测到裸 Lua 表，已自动补全 return 前缀。',
+            commentsPreserved: '直接保存源码会保留你的 -- 注释与自定义缩进；点击“格式化”可重排为标准格式。'
+          },
+          errors: {
+            syntaxTitle: '配置语法或字段未通过校验',
+            syntaxLocation: '文件 {file} · 第 {line} 行，第 {column} 列',
+            syntaxLineOnly: '文件 {file} · 第 {line} 行',
+            tooLarge: '配置文件超出 256 KiB 大小上限，请检查粘贴内容。',
+            locationMismatchTitle: '世界类型不匹配（防止地面与洞穴贴反）',
+            locationMismatchDescription: '当前分片为{expected}世界，但粘贴的配置声明为{actual}世界（location = "{rawActual}"）。',
+            switchAndApply: '切换到 {world} 并填入',
+            cannotSwitchVisual: '请先修正源码错误，再切回可视化表单。',
+            filesLoadFailed: '读取世界配置文件失败：{error}'
+          },
+          feedback: {
+            pasted: '已从剪贴板粘贴配置',
+            clipboardEmpty: '剪贴板中没有可用的文本内容',
+            clipboardDenied: '无法直接读取剪贴板，请在编辑器内按 Ctrl/Cmd + V 粘贴',
+            imported: '已导入文件 {name}',
+            importFailed: '读取导入文件失败：{error}',
+            formatted: '已完成标准格式化',
+            copied: '配置内容已复制到剪贴板',
+            copyFailed: '复制失败，请手动选中复制',
+            downloaded: '已下载 {name}',
+            validated: '语法与字段校验通过（共 {count} 项变更）',
+            switchedToMatchingWorld: '已切换到 {world} 并填入粘贴的配置',
+            sourceChangedItem: '源码修改（{file}）',
+            sourceModifiedValue: '已修改',
+            sourceBaselineValue: '原磁盘内容'
+          }
         }
       }
     }
@@ -643,6 +701,64 @@ export const worldsMessages = {
           serverIniSaveFailed: 'Failed to save the basic server configuration: {error}',
           worldTypeUpdated: 'World type updated',
           worldTypeUpdateFailed: 'Failed to update the world type: {error}'
+        },
+        sourceEditor: {
+          modes: {
+            aria: 'Configuration editor mode',
+            visual: 'Visual form',
+            source: 'Source editor'
+          },
+          files: {
+            aria: 'Select configuration file',
+            leveldataoverride: 'leveldataoverride.lua',
+            serverIni: 'server.ini'
+          },
+          toolbar: {
+            paste: 'Paste',
+            importFile: 'Import file',
+            format: 'Format',
+            formatHint: 'Normalize indentation in canonical order (removes custom comments)',
+            copy: 'Copy',
+            download: 'Download',
+            validate: 'Validate'
+          },
+          placeholders: {
+            leveldataoverride: 'Paste leveldataoverride.lua from a local DST client save or community preset (KLEI 1 headers are stripped automatically)…',
+            serverIni: 'Edit server.ini for this world shard…'
+          },
+          notices: {
+            kleiHeaderTitle: 'Normalized client save header',
+            kleiHeaderDescription: 'Stripped the KLEI 1 client save header and validated the Lua literal table.',
+            bareTableDescription: 'Detected a bare Lua table and prepended return automatically.',
+            commentsPreserved: 'Saving directly preserves your -- comments and indentation; click Format to normalize.'
+          },
+          errors: {
+            syntaxTitle: 'Configuration validation failed',
+            syntaxLocation: 'File {file} · Line {line}, Column {column}',
+            syntaxLineOnly: 'File {file} · Line {line}',
+            tooLarge: 'Configuration file exceeds the 256 KiB size limit.',
+            locationMismatchTitle: 'World type mismatch',
+            locationMismatchDescription: 'This shard is a {expected} world, while the pasted file declares a {actual} world (location = "{rawActual}").',
+            switchAndApply: 'Switch to {world} and apply',
+            cannotSwitchVisual: 'Fix the error in the source editor before switching back to the visual form.',
+            filesLoadFailed: 'Failed to read world configuration files: {error}'
+          },
+          feedback: {
+            pasted: 'Configuration pasted from clipboard',
+            clipboardEmpty: 'Clipboard does not contain text',
+            clipboardDenied: 'Clipboard access was denied. Press Ctrl/Cmd + V inside the editor instead',
+            imported: 'Imported {name}',
+            importFailed: 'Failed to read imported file: {error}',
+            formatted: 'Formatted configuration to canonical layout',
+            copied: 'Configuration copied to clipboard',
+            copyFailed: 'Failed to copy to clipboard',
+            downloaded: 'Downloaded {name}',
+            validated: 'Syntax and field validation passed ({count} changes)',
+            switchedToMatchingWorld: 'Switched to {world} and applied the pasted configuration',
+            sourceChangedItem: 'Source edit ({file})',
+            sourceModifiedValue: 'Modified',
+            sourceBaselineValue: 'Disk baseline'
+          }
         }
       }
     }

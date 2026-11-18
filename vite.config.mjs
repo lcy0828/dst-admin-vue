@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
             if (id.includes('/node_modules/echarts/')) return 'vendor-echarts'
             if (id.includes('/node_modules/ol/')) return 'vendor-openlayers'
             if (id.includes('/node_modules/xterm/') || id.includes('/node_modules/xterm-addon-fit/')) return 'vendor-terminal'
+            if (id.includes('/node_modules/@codemirror/') || id.includes('/node_modules/@lezer/') || id.includes('/node_modules/crelt/') || id.includes('/node_modules/style-mod/') || id.includes('/node_modules/w3c-keyname/')) return 'vendor-codemirror'
             return undefined
           }
         }

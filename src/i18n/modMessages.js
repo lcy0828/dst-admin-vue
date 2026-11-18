@@ -169,6 +169,7 @@ export const modMessages = {
         cancel: '取消',
         confirm: '确定',
         downloadConfigFile: '下载配置文件',
+        editConfigFile: '配置文件 / 粘贴导入',
         saveConfig: '保存配置',
         resetDefaults: '恢复默认值',
         backToInstalled: '返回已下载模组',
@@ -197,6 +198,8 @@ export const modMessages = {
         runtimeTargetRequired: '没有可更新的运行机器，请刷新模组列表后重试',
         uninstall: '卸载模组失败',
         configFile: '获取配置文件失败',
+        previewConfigFile: '预检模组配置文件失败',
+        applyConfigFile: '保存模组配置文件失败',
         saveConfig: '保存模组配置失败',
         copyConfiguration: '复制模组配置失败',
         download: '下载模组失败',
@@ -532,8 +535,82 @@ export const modMessages = {
           noTargets: '没有其他已添加该模组的世界可供复制'
         },
         configFile: {
-          title: '模组配置文件',
-          loading: '正在读取配置文件'
+          title: '模组配置文件（modoverrides.lua）',
+          description: '在线编辑、直接粘贴客户端存档配置或导入 .lua 文件；保存后在世界下次启动或重启时生效。',
+          loading: '正在读取配置文件',
+          emptyNotice: '当前世界尚未生成 modoverrides.lua，可直接粘贴配置或编写后保存创建。',
+          scope: {
+            label: '应用范围',
+            room: '同步应用到全部世界（推荐）',
+            roomHint: '同时写入房间内全部 {count} 个世界分片，保持主从模组配置一致。',
+            world: '仅当前世界（{world}）',
+            worldHint: '仅更新 {world} 的 modoverrides.lua，不影响其他分片。',
+            switchWorld: '当前编辑分片'
+          },
+          toolbar: {
+            paste: '粘贴配置',
+            importFile: '导入 .lua',
+            format: '格式化',
+            formatHint: '按标准顺序规范化缩进排版（会移除 -- 注释）',
+            copy: '复制',
+            download: '下载'
+          },
+          placeholder: '粘贴或编写 return { ["workshop-..."] = { enabled = true, configuration_options = {} } }（支持自动清理 KLEI 1 头）…',
+          notices: {
+            kleiHeader: '已自动剥离客户端存档 KLEI 1 头部标识。',
+            bareTable: '检测到裸 Lua 表，已自动补全 return 前缀。',
+            commentsPreserved: '直接保存源码会保留你的 -- 注释与缩进排版。'
+          },
+          preview: {
+            checking: '正在校验语法与运行节点模组库存…',
+            noChanges: '语法校验通过，与目标世界当前磁盘配置一致',
+            summaryTitle: '配置变更预检',
+            added: '新增 {count}',
+            removed: '移除 {count}',
+            enabledChanged: '启停变更 {count}',
+            optionsChanged: '参数调整 {count}',
+            actionLabels: {
+              added: '新增',
+              removed: '移除',
+              enabled_changed: '启停变更',
+              options_changed: '参数变更'
+            },
+            missingWorkshopTitle: '检测到 {count} 个创意工坊模组尚未下载到目标运行节点',
+            missingWorkshopDescription: '饥荒专用服务端普通启动不会自动补齐缺失模组。建议点击“保存并下载缺失模组”，系统会先在对应运行节点完成下载再原子写入配置。',
+            missingLocalTitle: '检测到 {count} 个本地非工坊模组在目标运行节点不存在',
+            missingLocalDescription: '请确认目标服务器的 mods 目录下已放置以下本地模组目录：{ids}'
+          },
+          errors: {
+            syntaxTitle: 'modoverrides.lua 语法或结构未通过校验',
+            syntaxLocation: '第 {line} 行，第 {column} 列',
+            syntaxLineOnly: '第 {line} 行',
+            tooLarge: '配置文件超过 4 MiB 大小限制。',
+            revisionConflict: '目标世界的 modoverrides.lua 已被其他操作修改，请重新读取后再保存。',
+            topologyChanged: '房间分片运行位置已变化，请刷新后再试。'
+          },
+          cta: {
+            reload: '重新读取磁盘',
+            save: '保存配置',
+            saveAndDownload: '保存并下载缺失模组 ({count})',
+            saveFileOnly: '仅保存配置文件',
+            saving: '正在保存…',
+            downloadingAndSaving: '正在下载并写入 ({progress}%)…'
+          },
+          feedback: {
+            pasted: '已从剪贴板粘贴模组配置',
+            clipboardEmpty: '剪贴板中没有可用的文本内容',
+            clipboardDenied: '无法直接读取剪贴板，请在编辑器内按 Ctrl/Cmd + V 粘贴',
+            imported: '已导入 {name}',
+            importFailed: '读取文件失败：{error}',
+            formatted: '已完成标准格式化',
+            copied: '已复制 modoverrides.lua 内容',
+            copyFailed: '复制失败，请手动选中复制',
+            savedRoom: '已更新全部 {count} 个世界的 modoverrides.lua，运行中的世界将在下次重启后生效',
+            savedWorld: '已更新 {world} 的 modoverrides.lua，运行中的世界将在下次重启后生效',
+            downloadedAndSaved: '已完成缺失模组下载并更新 modoverrides.lua，运行中的世界将在下次重启后生效',
+            discardConfirmTitle: '放弃未保存的修改',
+            discardConfirmDescription: '当前编辑器内有未保存的 modoverrides.lua 修改，确定关闭吗？'
+          }
         },
         feedback: {
           selectConfigWorld: '请先选择要配置的世界',
@@ -898,6 +975,7 @@ export const modMessages = {
         cancel: 'Cancel',
         confirm: 'Confirm',
         downloadConfigFile: 'Download Configuration File',
+        editConfigFile: 'Config File / Paste',
         saveConfig: 'Save Configuration',
         resetDefaults: 'Restore Defaults',
         backToInstalled: 'Back to Installed Mods',
@@ -926,6 +1004,8 @@ export const modMessages = {
         runtimeTargetRequired: 'No updatable runtime machine was found. Refresh the mod list and try again.',
         uninstall: 'Could not uninstall the mod',
         configFile: 'Could not load the configuration file',
+        previewConfigFile: 'Could not validate the mod configuration file',
+        applyConfigFile: 'Could not save the mod configuration file',
         saveConfig: 'Could not save the mod configuration',
         copyConfiguration: 'Could not copy the mod configuration',
         download: 'Could not download the mod',
@@ -1261,8 +1341,82 @@ export const modMessages = {
           noTargets: 'No other world using this mod is available as a copy target'
         },
         configFile: {
-          title: 'Mod Configuration File',
-          loading: 'Reading configuration file'
+          title: 'Mod Configuration File (modoverrides.lua)',
+          description: 'Edit online, paste a local client modoverrides.lua, or import a .lua file. Changes apply on next world start or restart.',
+          loading: 'Reading configuration file',
+          emptyNotice: 'This world does not have a modoverrides.lua file yet. Paste a configuration or edit below to create one.',
+          scope: {
+            label: 'Target scope',
+            room: 'Apply to all worlds in room (Recommended)',
+            roomHint: 'Writes modoverrides.lua across all {count} world shards in this room so Master and Caves stay aligned.',
+            world: 'Current world only ({world})',
+            worldHint: 'Updates modoverrides.lua for {world} only without modifying other shards.',
+            switchWorld: 'Editing shard'
+          },
+          toolbar: {
+            paste: 'Paste',
+            importFile: 'Import .lua',
+            format: 'Format',
+            formatHint: 'Normalize indentation in canonical order (removes -- comments)',
+            copy: 'Copy',
+            download: 'Download'
+          },
+          placeholder: 'Paste or edit return { ["workshop-..."] = { enabled = true, configuration_options = {} } } (KLEI 1 headers stripped automatically)…',
+          notices: {
+            kleiHeader: 'Automatically stripped the KLEI 1 client save header.',
+            bareTable: 'Detected a bare Lua table and prepended return automatically.',
+            commentsPreserved: 'Saving directly preserves your -- comments and indentation.'
+          },
+          preview: {
+            checking: 'Validating syntax and checking runtime mod inventory…',
+            noChanges: 'Valid Lua table — matches current disk configuration',
+            summaryTitle: 'Configuration change preview',
+            added: 'Added {count}',
+            removed: 'Removed {count}',
+            enabledChanged: 'Toggled {count}',
+            optionsChanged: 'Options changed {count}',
+            actionLabels: {
+              added: 'Added',
+              removed: 'Removed',
+              enabled_changed: 'Enabled changed',
+              options_changed: 'Options changed'
+            },
+            missingWorkshopTitle: '{count} Workshop mods are not yet downloaded on target runtime nodes',
+            missingWorkshopDescription: 'Normal DST server startup does not auto-download missing mods. Use "Save & download missing" to fetch them on target nodes before writing modoverrides.lua.',
+            missingLocalTitle: '{count} local non-Workshop mods are missing on target runtime nodes',
+            missingLocalDescription: 'Ensure these local mod directories exist under the target server mods folder: {ids}'
+          },
+          errors: {
+            syntaxTitle: 'modoverrides.lua validation failed',
+            syntaxLocation: 'Line {line}, Column {column}',
+            syntaxLineOnly: 'Line {line}',
+            tooLarge: 'Configuration file exceeds the 4 MiB limit.',
+            revisionConflict: 'modoverrides.lua changed on disk. Reload the file before saving.',
+            topologyChanged: 'Room shard placement changed. Refresh and try again.'
+          },
+          cta: {
+            reload: 'Reload from disk',
+            save: 'Save configuration',
+            saveAndDownload: 'Save & download missing ({count})',
+            saveFileOnly: 'Save file only',
+            saving: 'Saving…',
+            downloadingAndSaving: 'Downloading & applying ({progress}%)…'
+          },
+          feedback: {
+            pasted: 'Mod configuration pasted from clipboard',
+            clipboardEmpty: 'Clipboard does not contain text',
+            clipboardDenied: 'Clipboard access denied. Press Ctrl/Cmd + V inside the editor',
+            imported: 'Imported {name}',
+            importFailed: 'Failed to read file: {error}',
+            formatted: 'Formatted modoverrides.lua',
+            copied: 'Copied modoverrides.lua to clipboard',
+            copyFailed: 'Failed to copy to clipboard',
+            savedRoom: 'Updated modoverrides.lua across all {count} worlds; running worlds apply changes on next restart',
+            savedWorld: 'Updated modoverrides.lua for {world}; a running world applies changes on next restart',
+            downloadedAndSaved: 'Downloaded missing mods and updated modoverrides.lua; running worlds apply changes on next restart',
+            discardConfirmTitle: 'Discard unsaved changes',
+            discardConfirmDescription: 'You have unsaved edits to modoverrides.lua. Discard them and close?'
+          }
         },
         feedback: {
           selectConfigWorld: 'Select the world to configure first',

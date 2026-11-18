@@ -402,6 +402,48 @@ export const legacyWorldConfigurationApi = {
     const job = await waitForV2Job(submitted)
     return success(job, 'world_configuration_applied')
   },
+  async getWorldFiles(roomValue, worldValue, target = {}) {
+    const room = target.roomId ? { id: target.roomId, name: roomValue } : await resolveV2Room(roomValue)
+    const world = target.worldId ? { id: target.worldId, name: worldValue } : await resolveV2World(room, worldValue)
+    const files = await configurationV2API.worldFiles(room.id, world.id)
+    return success(files, 'world_configuration_files_loaded')
+  },
+  async previewWorldFiles(input = {}) {
+    const room = input.roomId ? { id: input.roomId, name: input.savename } : await resolveV2Room(input.savename)
+    const world = input.worldId ? { id: input.worldId, name: input.worldname } : await resolveV2World(room, input.worldname)
+    const request = {
+      expectedRevision: input.expectedRevision || '',
+      ...(input.serverIni !== undefined ? { serverIni: input.serverIni } : {}),
+      ...(input.leveldataoverride !== undefined ? { leveldataoverride: input.leveldataoverride } : {}),
+      ...(input.server !== undefined ? { server: input.server } : {}),
+      ...(input.overridePatch !== undefined ? { overridePatch: input.overridePatch } : {}),
+      ...(input.format ? { format: true } : {}),
+      ...(input.allowEmptyChanges ? { allowEmptyChanges: true } : {})
+    }
+    const preview = await configurationV2API.previewWorldFiles(room.id, world.id, request)
+    return success(preview, 'world_configuration_files_previewed')
+  },
+  async applyWorldFiles(input = {}) {
+    const room = input.roomId ? { id: input.roomId, name: input.savename } : await resolveV2Room(input.savename)
+    const world = input.worldId ? { id: input.worldId, name: input.worldname } : await resolveV2World(room, input.worldname)
+    const request = {
+      expectedRevision: input.expectedRevision || '',
+      ...(input.serverIni !== undefined ? { serverIni: input.serverIni } : {}),
+      ...(input.leveldataoverride !== undefined ? { leveldataoverride: input.leveldataoverride } : {}),
+      ...(input.server !== undefined ? { server: input.server } : {}),
+      ...(input.overridePatch !== undefined ? { overridePatch: input.overridePatch } : {}),
+      ...(input.format ? { format: true } : {})
+    }
+    let submitted
+    try {
+      submitted = await configurationV2API.applyWorldFiles(room.id, world.id, request)
+    } catch (error) {
+      if (error.code === 'NO_CONFIGURATION_CHANGES') return success(null, 'no_configuration_changes')
+      throw error
+    }
+    const job = await waitForV2Job(submitted)
+    return success(job, 'world_configuration_applied')
+  },
   async getWorldOverrides(roomValue, worldValue) {
     const { configuration } = await this.get(roomValue, worldValue)
     return success(configuration.overrides || {}, 'world_configuration_loaded')
