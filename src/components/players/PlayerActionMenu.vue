@@ -24,6 +24,7 @@ import { playerApi } from '@/api/playerApi'
 import { worldQueryV2API } from '@/api/v2'
 import { commandApi } from '@/api/commandManager'
 import { Button as UiButton } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Dialog as UiDialog,
   DialogContent,
@@ -470,26 +471,40 @@ async function runQuickAction({ action, input = {} }) {
             </div>
           </section>
           <Separator />
-          <details class="player-management-actions">
-            <summary class="flex cursor-pointer items-center justify-between gap-2 py-1 text-sm font-medium">{{ t('players.quick.character') }}<ChevronDown class="size-4" /></summary>
-            <div class="mt-2 grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
-              <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('speed')" @click="selectQuickAction('speed')"><Gauge data-icon="inline-start" />{{ t('players.quick.speed') }}</UiButton>
-              <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('clean')" @click="selectQuickAction('clean')"><Sparkles data-icon="inline-start" />{{ t('players.quick.clean') }}</UiButton>
-              <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('penalty')" @click="selectQuickAction('penalty')"><HeartPlus data-icon="inline-start" />{{ t('players.quick.penalty') }}</UiButton>
-            </div>
-          </details>
+          <Collapsible class="player-management-actions min-w-0">
+            <CollapsibleTrigger as-child>
+              <UiButton type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between px-0 py-1 text-sm font-medium hover:bg-transparent">
+                <span>{{ t('players.quick.character') }}</span>
+                <ChevronDown data-icon="inline-end" class="size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+              </UiButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent class="pt-2">
+              <div class="grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
+                <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('speed')" @click="selectQuickAction('speed')"><Gauge data-icon="inline-start" />{{ t('players.quick.speed') }}</UiButton>
+                <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('clean')" @click="selectQuickAction('clean')"><Sparkles data-icon="inline-start" />{{ t('players.quick.clean') }}</UiButton>
+                <UiButton variant="ghost" size="sm" :disabled="!quickActionAvailable('penalty')" @click="selectQuickAction('penalty')"><HeartPlus data-icon="inline-start" />{{ t('players.quick.penalty') }}</UiButton>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
           <UiButton variant="secondary" class="w-full justify-between" :disabled="Boolean(activeAction)" :aria-label="t('players.actions.openWorkbench')" @click="openWorkbench()">{{ t('players.quick.more') }}<ChevronRight data-icon="inline-end" /></UiButton>
           <Separator />
-          <details class="player-management-actions">
-            <summary class="flex cursor-pointer items-center justify-between gap-2 py-1 text-sm font-medium">{{ t('players.quick.management') }}<ChevronDown class="size-4" /></summary>
-            <p class="mb-2 text-xs text-muted-foreground">{{ t('players.quick.managementHint') }}</p>
-            <div class="grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
-              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseLiveActions) || Boolean(activeAction)" @click="quickAction = 'character'"><RotateCcw data-icon="inline-start" />{{ t('players.operations.changeCharacter') }}</UiButton>
-              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseLiveActions) || Boolean(activeAction)" @click="quickAction = 'kick'"><LogOut data-icon="inline-start" />{{ t('players.operations.kick') }}</UiButton>
-              <UiButton variant="ghost" size="sm" :disabled="Boolean(activeAction)" @click="openBanDialog"><BanIcon data-icon="inline-start" />{{ t(activePlayer.banned ? 'players.quick.unban' : 'players.operations.ban') }}</UiButton>
-              <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="quickAction = 'kill'"><Skull data-icon="inline-start" />{{ t('players.operations.kill') }}</UiButton>
-            </div>
-          </details>
+          <Collapsible class="player-management-actions min-w-0">
+            <CollapsibleTrigger as-child>
+              <UiButton type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between px-0 py-1 text-sm font-medium hover:bg-transparent">
+                <span>{{ t('players.quick.management') }}</span>
+                <ChevronDown data-icon="inline-end" class="size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+              </UiButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent class="pt-2">
+              <p class="mb-2 text-xs text-muted-foreground">{{ t('players.quick.managementHint') }}</p>
+              <div class="grid grid-cols-2 gap-2 [&_button]:h-auto [&_button]:min-h-10 [&_button]:min-w-0 [&_button]:justify-start [&_button]:whitespace-normal [&_button]:text-left">
+                <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseLiveActions) || Boolean(activeAction)" @click="quickAction = 'character'"><RotateCcw data-icon="inline-start" />{{ t('players.operations.changeCharacter') }}</UiButton>
+                <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseLiveActions) || Boolean(activeAction)" @click="quickAction = 'kick'"><LogOut data-icon="inline-start" />{{ t('players.operations.kick') }}</UiButton>
+                <UiButton variant="ghost" size="sm" :disabled="Boolean(activeAction)" @click="openBanDialog"><BanIcon data-icon="inline-start" />{{ t(activePlayer.banned ? 'players.quick.unban' : 'players.operations.ban') }}</UiButton>
+                <UiButton variant="ghost" size="sm" :disabled="(!previewMode && !canUseCharacterActions) || Boolean(activeAction)" @click="quickAction = 'kill'"><Skull data-icon="inline-start" />{{ t('players.operations.kill') }}</UiButton>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
           <p v-if="!previewMode && !canUseLiveActions" class="text-xs text-muted-foreground">{{ t('players.quick.liveUnavailable') }}</p>
         </div>
         </div>
@@ -523,7 +538,4 @@ async function runQuickAction({ action, input = {} }) {
   gap: 4px;
 }
 :global(.player-actions-dialog [data-slot='dialog-footer']) { margin-top: .5rem; flex-direction: row; justify-content: flex-end; padding: 0; }
-.player-management-actions summary { list-style: none; }
-.player-management-actions summary::-webkit-details-marker { display: none; }
-.player-management-actions[open] summary svg { transform: rotate(180deg); }
 </style>

@@ -78,10 +78,13 @@ export const corePageMessages = {
       },
       playersUnavailable: '部分玩家数据不可用',
       onboarding: {
-        title: '首次开服引导',
-        current: '当前步骤',
+        title: '未完成事项清单',
+        checklistDescription: '仅显示还需完成的准备工作，完成后清单会自动收起。',
+        openWizard: '在向导中处理',
+        completeOnboarding: '标记向导已完成',
+        current: '待办',
         progress: '已完成 {completed}/{total}',
-        loadFailed: '开服环境自检暂时不可用',
+        loadFailed: '开服环境自检暂时不可用，无法确认开服条件；请稍后重试或前往系统设置检查。',
         packaging: {
           native: '裸机本地',
           all_in_one: 'All-in-One',
@@ -97,7 +100,7 @@ export const corePageMessages = {
         },
         remote: {
           title: '先接入运行节点',
-          description: '当前实例没有本地执行器。请添加远程 Agent，再为房间选择运行节点。',
+          description: '当前实例没有本地执行器，暂时无法启动世界。请添加远程 Agent，再为房间选择运行节点。',
           action: '管理节点'
         },
         steps: {
@@ -105,7 +108,7 @@ export const corePageMessages = {
             title: '安装游戏服务端',
             ready: '通过 SteamCMD 安装一份所有本机世界共用的 DST 服务端。',
             installing: '安装任务正在执行，完成后会自动进入下一步。',
-            unavailable: '当前不能从面板安装，请检查 SteamCMD 或右侧版本卡片中的提示。',
+            unavailable: '当前不能从面板安装，暂时无法创建或启动本机世界；请检查 SteamCMD 或版本状态中的提示。',
             done: 'DST 游戏服务端已经安装。'
           },
           room: {
@@ -123,7 +126,7 @@ export const corePageMessages = {
         },
         blocked: {
           title: '启动前需要处理环境问题',
-          description: '未通过检查：{checks}',
+          description: '必要检查未通过（{checks}），暂无法安装服务端或启动世界。请前往系统设置检查路径与权限。',
           separator: '、',
           action: '打开系统设置'
         },
@@ -186,6 +189,14 @@ export const corePageMessages = {
       resources: {
         title: '系统资源',
         refresh: '刷新系统资源',
+        refreshSettings: {
+          trigger: '刷新设置',
+          triggerAria: '刷新设置（系统资源 {system}，房间状态 {room}）',
+          title: '刷新设置',
+          description: '分别设置系统资源与房间世界状态的轮询频率；切到后台标签页时自动暂停。',
+          systemLabel: '系统资源',
+          roomLabel: '房间与世界状态'
+        },
         systemRefreshInterval: '系统资源自动刷新',
         systemRefreshIntervalAria: '系统资源自动刷新间隔：{value}',
         roomRefreshInterval: '房间与世界自动刷新',
@@ -457,10 +468,13 @@ export const corePageMessages = {
       },
       playersUnavailable: 'Some player data is unavailable',
       onboarding: {
-        title: 'First server setup',
-        current: 'Current step',
+        title: 'Pending setup checklist',
+        checklistDescription: 'Only remaining setup items are shown; this checklist closes automatically once complete.',
+        openWizard: 'Open wizard',
+        completeOnboarding: 'Finish setup wizard',
+        current: 'Next',
         progress: '{completed}/{total} complete',
-        loadFailed: 'Server readiness checks are temporarily unavailable',
+        loadFailed: 'Server readiness checks are temporarily unavailable, so setup prerequisites cannot be verified. Retry or inspect System settings.',
         packaging: {
           native: 'Local native',
           all_in_one: 'All-in-One',
@@ -476,7 +490,7 @@ export const corePageMessages = {
         },
         remote: {
           title: 'Connect a runtime node first',
-          description: 'This instance has no local executor. Add a remote Agent, then select a runtime node for the room.',
+          description: 'This instance has no local executor, so worlds cannot be started yet. Add a remote Agent, then select a runtime node for the room.',
           action: 'Manage nodes'
         },
         steps: {
@@ -484,7 +498,7 @@ export const corePageMessages = {
             title: 'Install the game server',
             ready: 'Install one shared DST server with SteamCMD for all local worlds.',
             installing: 'The installation job is running. The next step becomes available when it finishes.',
-            unavailable: 'Installation from the panel is unavailable. Check SteamCMD or the version card for details.',
+            unavailable: 'Panel installation is currently unavailable, blocking local world creation and startup. Check SteamCMD or the game version status.',
             done: 'The DST game server is installed.'
           },
           room: {
@@ -502,7 +516,7 @@ export const corePageMessages = {
         },
         blocked: {
           title: 'Resolve environment issues before starting',
-          description: 'Failed checks: {checks}',
+          description: 'Required checks failed ({checks}), blocking installation and world startup. Open system settings to fix paths or permissions.',
           separator: ', ',
           action: 'Open system settings'
         },
@@ -565,6 +579,14 @@ export const corePageMessages = {
       resources: {
         title: 'System resources',
         refresh: 'Refresh system resources',
+        refreshSettings: {
+          trigger: 'Refresh settings',
+          triggerAria: 'Refresh settings (system {system}, room {room})',
+          title: 'Refresh settings',
+          description: 'Configure polling frequency separately for system resources and room/world status. Pauses while the tab is hidden.',
+          systemLabel: 'System resources',
+          roomLabel: 'Room and world status'
+        },
         systemRefreshInterval: 'System resource auto-refresh',
         systemRefreshIntervalAria: 'System resource auto-refresh interval: {value}',
         roomRefreshInterval: 'Room and world auto-refresh',

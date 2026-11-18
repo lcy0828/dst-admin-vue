@@ -11,7 +11,13 @@
     <Card>
       <CardHeader><CardTitle>{{ cg('cronGroups.list.cardTitle') }}</CardTitle><CardDescription>{{ cg('cronGroups.list.cardDescription') }}</CardDescription></CardHeader>
       <CardContent>
-        <Alert v-if="loadError" variant="destructive"><AlertTitle>{{ $t('automationScope.tasksFailed') }}</AlertTitle><AlertDescription>{{ loadError }}</AlertDescription></Alert>
+        <Alert v-if="loadError" variant="destructive">
+          <AlertTitle>{{ $t('automationScope.tasksFailed') }}</AlertTitle>
+          <AlertDescription>{{ loadError }}</AlertDescription>
+          <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+            <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchData">{{ $t('common.actions.retry') }}</UiButton>
+          </AlertAction>
+        </Alert>
         <div v-if="loading && groupList.length === 0" class="flex flex-col gap-3"><Skeleton v-for="index in 5" :key="index" class="h-12 w-full" /></div>
         <Empty v-else-if="!loadError && groupList.length === 0"><EmptyHeader><EmptyTitle>{{ cg('cronGroups.list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ cg('cronGroups.list.emptyDescription') }}</EmptyDescription></EmptyHeader><EmptyContent><UiButton @click="$router.push('/cron/group/add')"><Plus data-icon="inline-start" />{{ cg('cronGroups.actions.addGroup') }}</UiButton></EmptyContent></Empty>
         <div v-else-if="groupList.length" class="overflow-x-auto">
@@ -66,7 +72,7 @@ import { ArrowLeft, ChartNoAxesColumn, CircleCheck, CircleOff, Eye, Pencil, Plus
 import { toast } from 'vue-sonner';
 import { echarts } from '@/lib/echarts.mjs';
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,7 +100,7 @@ export default {
   inject: ['automationApi'],
   name: 'TaskGroups',
   components: {
-    Alert, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription,
+    Alert, AlertAction, AlertDescription, AlertTitle, ArrowLeft, AutomationRoomSelect, Badge, Card, CardContent, CardDescription,
     CardHeader, CardTitle, ChartNoAxesColumn, CircleCheck, CircleOff,
     DialogDescription, DialogFooter, DialogHeader, DialogTitle, Empty, EmptyContent,
     EmptyDescription, EmptyHeader, EmptyTitle, Eye, Pencil, Plus, RefreshCw, Skeleton,

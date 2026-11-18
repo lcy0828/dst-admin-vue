@@ -142,10 +142,15 @@ function presentWorldActionJob(job) {
   return job
 }
 
+export const AUTH_ONBOARDING_UPDATED_EVENT = 'auth-onboarding-updated'
+
 export const authAPI = {
   session: () => authSessionCache.load(() => client.get('/auth/session')).then(rememberSession),
   saveOnboarding: step => client.put('/auth/onboarding', { step }).then(state => {
     authSessionCache.invalidate()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(AUTH_ONBOARDING_UPDATED_EVENT, { detail: state }))
+    }
     return state
   }),
   setup: (username, password) => {
@@ -156,9 +161,9 @@ export const authAPI = {
       return rememberSession(session)
     })
   },
-  login: (username, password) => {
+  login: (username, password, remember = true) => {
     authSessionCache.invalidate()
-    return client.post('/auth/login', { username, password }).then(session => {
+    return client.post('/auth/login', { username, password, remember }).then(session => {
       authSessionCache.invalidate()
       window.dispatchEvent(new Event(AUTH_SCOPE_EVENT))
       return rememberSession(session)

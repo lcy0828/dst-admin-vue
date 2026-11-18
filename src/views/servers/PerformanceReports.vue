@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
-import { Activity, CircleAlert, Download, RefreshCw } from '@lucide/vue'
+import { Activity, ChevronDown, CircleAlert, Download, RefreshCw } from '@lucide/vue'
 import { roomsV2API, performanceV2API } from '@/api/v2'
 import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { performanceCSV, performanceWorldSummaries } from '@/lib/performanceReport.mjs'
@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -235,7 +236,17 @@ onBeforeUnmount(() => { alive = false; sequence++; catalogSequence++; window.rem
           </CardFooter>
         </Card>
       </div>
-      <details class="text-xs text-muted-foreground"><summary class="cursor-pointer">{{ t('performance.coverage') }}</summary><p class="pt-2">{{ t('performance.coverageHelp') }}</p></details>
+      <Collapsible class="min-w-0">
+        <CollapsibleTrigger as-child>
+          <Button type="button" variant="ghost" size="sm" class="group h-auto px-2 py-1 text-xs text-muted-foreground">
+            <span>{{ t('performance.coverage') }}</span>
+            <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent class="pt-2 text-xs text-muted-foreground">
+          <p>{{ t('performance.coverageHelp') }}</p>
+        </CollapsibleContent>
+      </Collapsible>
       <Card v-for="metric in ['score', 'cpuPercent', 'rssBytes']" :key="metric">
         <CardHeader><CardTitle>{{ t(`performance.metrics.${metric}`) }}</CardTitle></CardHeader>
         <CardContent><PerformanceChart :points="metric === 'score' ? scorePoints : report.items" :metric="metric" :resolution="report.resolutionSeconds" :events="report.events || []" /></CardContent>

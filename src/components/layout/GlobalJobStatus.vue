@@ -50,6 +50,7 @@ const {
   loadError,
   recentFailures,
   recentWarnings,
+  refreshActiveJobs,
   visible,
   warningCount
 } = useGlobalJobStatus()
@@ -221,6 +222,11 @@ watch(recentWarnings, warnings => {
         <CircleAlert />
         <AlertTitle>{{ t('globalJobs.trigger.unavailable') }}</AlertTitle>
         <AlertDescription>{{ t('globalJobs.loadFailed', { detail: loadError }) }}</AlertDescription>
+        <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+          <Button variant="outline" size="sm" @click="refreshActiveJobs">
+            {{ t('common.actions.retry') }}
+          </Button>
+        </AlertAction>
       </Alert>
 
       <section v-if="activeCount" class="flex flex-col gap-2" :aria-label="t('globalJobs.sections.active')">
@@ -278,9 +284,9 @@ watch(recentWarnings, warnings => {
         <Alert v-for="job in displayedFailures" :key="job.id" variant="destructive">
           <TriangleAlert />
           <AlertTitle>{{ taskName(job) }}</AlertTitle>
-          <AlertDescription class="pr-7">{{ failureMessage(job) }}</AlertDescription>
-          <Button v-if="isTaskProgressJob(job)" variant="outline" size="sm" class="w-fit" @click="openProgress(job)">{{ t('globalJobs.viewResult') }}</Button>
-          <AlertAction>
+          <AlertDescription>{{ failureMessage(job) }}</AlertDescription>
+          <AlertAction class="flex items-center gap-1 max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+            <Button v-if="isTaskProgressJob(job)" variant="outline" size="sm" @click="openProgress(job)">{{ t('globalJobs.viewResult') }}</Button>
             <Tooltip>
               <TooltipTrigger as-child>
                 <Button
@@ -316,7 +322,7 @@ watch(recentWarnings, warnings => {
         >
           <CircleAlert />
           <AlertTitle>{{ taskName(job) }}</AlertTitle>
-          <AlertDescription class="pr-7">{{ warningMessage(job) }}</AlertDescription>
+          <AlertDescription>{{ warningMessage(job) }}</AlertDescription>
           <AlertAction>
             <Tooltip>
               <TooltipTrigger as-child>

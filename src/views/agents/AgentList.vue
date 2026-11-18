@@ -39,8 +39,18 @@
         <DialogHeader><DialogTitle>{{ $t('machines.settings') }}</DialogTitle><DialogDescription>{{ $t('agents.list.configuration.title') }}</DialogDescription></DialogHeader>
         <FleetProfilePanel v-if="configurationOpen" @changed="refreshData" />
         <UiButton class="self-start" variant="outline" @click="openReleaseManager"><PackageOpen data-icon="inline-start" />{{ $t('agents.list.updates.manage') }}</UiButton>
-        <details><summary class="cursor-pointer text-sm text-muted-foreground">{{ $t('agents.list.capacity.policyTitle') }}</summary><p class="mt-3 text-sm text-muted-foreground">{{ $t('agents.list.capacity.policyDescription') }}</p></details>
-        <Collapsible><CollapsibleTrigger as-child><UiButton variant="ghost">{{ $t('agents.list.configuration.experimental') }}<ChevronDown data-icon="inline-end" /></UiButton></CollapsibleTrigger><CollapsibleContent><KubernetesProviderPanel :heading-level="2" /></CollapsibleContent></Collapsible>
+        <Collapsible class="min-w-0">
+          <CollapsibleTrigger as-child>
+            <UiButton type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between px-2 text-muted-foreground">
+              <span class="min-w-0 whitespace-normal text-left">{{ $t('agents.list.capacity.policyTitle') }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </UiButton>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-3 text-sm text-muted-foreground">
+            <p>{{ $t('agents.list.capacity.policyDescription') }}</p>
+          </CollapsibleContent>
+        </Collapsible>
+        <Collapsible class="min-w-0"><CollapsibleTrigger as-child><UiButton type="button" variant="ghost" class="group">{{ $t('agents.list.configuration.experimental') }}<ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" /></UiButton></CollapsibleTrigger><CollapsibleContent><KubernetesProviderPanel :heading-level="2" /></CollapsibleContent></Collapsible>
       </DialogScrollContent>
     </UiDialog>
 

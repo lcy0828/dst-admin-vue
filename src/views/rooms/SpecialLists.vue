@@ -7,7 +7,17 @@
 
     <RoomScopeSelect v-if="!savename && !pendingMode" v-model="selectedRoomId" :rooms="roomOptions" :loading="loadingRooms" />
 
-    <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('rooms.selector.loadFailed') }}</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
+    <Alert v-if="roomLoadError" variant="destructive">
+      <CircleAlert />
+      <AlertTitle>{{ $t('rooms.selector.loadFailed') }}</AlertTitle>
+      <AlertDescription>{{ roomLoadError }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton variant="outline" size="sm" :disabled="loadingRooms" @click="fetchRoomOptions">
+          <RefreshCw data-icon="inline-start" />
+          {{ $t('common.actions.retry') }}
+        </UiButton>
+      </AlertAction>
+    </Alert>
 
     <Tabs v-if="pendingMode || roomValue" v-model="activeTab" orientation="horizontal" class="lists-tabs">
       <TabsList>
@@ -40,13 +50,13 @@
             <Alert v-else-if="errors[list.type]" variant="destructive">
               <CircleAlert />
               <AlertTitle>{{ $t('rooms.specialLists.listLoadFailed', { list: list.title }) }}</AlertTitle>
-              <AlertDescription class="error-description">
-                <span>{{ errors[list.type] }}</span>
+              <AlertDescription>{{ errors[list.type] }}</AlertDescription>
+              <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
                 <UiButton variant="outline" size="sm" @click="fetchList(list.type)">
                   <RefreshCw data-icon="inline-start" />
                   {{ $t('common.actions.retry') }}
                 </UiButton>
-              </AlertDescription>
+              </AlertAction>
             </Alert>
             <div v-else-if="getList(list.type).length > 0" class="table-wrap">
               <UiTable>
@@ -77,6 +87,12 @@
                 <EmptyTitle>{{ list.emptyText }}</EmptyTitle>
                 <EmptyDescription>{{ $t('rooms.specialLists.emptyDescription') }}</EmptyDescription>
               </EmptyHeader>
+              <EmptyContent>
+                <UiButton variant="outline" @click="addUser(list.type)">
+                  <UserPlus data-icon="inline-start" />
+                  {{ $t('rooms.specialLists.add', { member: list.actionLabel }) }}
+                </UiButton>
+              </EmptyContent>
             </Empty>
           </CardContent>
         </Card>
@@ -85,6 +101,7 @@
 
     <Empty v-else-if="!loadingRooms && !roomLoadError">
       <EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>{{ $t('rooms.specialLists.noRooms') }}</EmptyTitle><EmptyDescription>{{ $t('rooms.specialLists.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
+      <EmptyContent><UiButton variant="outline" @click="$router.push('/rooms/settings')">{{ $t('rooms.list.create') }}</UiButton></EmptyContent>
     </Empty>
     
     <!-- 添加用户对话框 -->
@@ -188,12 +205,12 @@ import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { CircleAlert, Copy, RefreshCw, Trash2, UserPlus, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, serverApi } from '@/api/index';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -210,6 +227,7 @@ export default {
   components: {
     RoomScopeSelect,
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     UiButton,
@@ -229,6 +247,7 @@ export default {
     DialogHeader,
     DialogTitle,
     Empty,
+    EmptyContent,
     EmptyDescription,
     EmptyHeader,
     EmptyMedia,
@@ -812,23 +831,9 @@ this.selectedRoomId = preferredRoomId(this.roomOptions, this.$route.query.roomId
   overflow-x: auto;
 }
 
-.error-description {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .list-skeleton {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-@media (max-width: 640px) {
-  .error-description {
-    align-items: flex-start;
-    flex-direction: column;
-  }
 }
 </style>

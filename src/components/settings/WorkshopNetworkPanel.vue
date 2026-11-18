@@ -1,6 +1,12 @@
 <template>
   <Card>
-    <CardHeader><CardTitle>{{ t('workshop.title') }}</CardTitle><CardDescription>{{ t('workshop.description') }}</CardDescription></CardHeader>
+    <CardHeader>
+      <div class="flex flex-wrap items-center gap-2">
+        <CardTitle>{{ t('workshop.title') }}</CardTitle>
+        <Badge variant="outline">{{ t('systemSettings.independentSave') }}</Badge>
+      </div>
+      <CardDescription>{{ t('workshop.description') }}</CardDescription>
+    </CardHeader>
     <CardContent class="flex flex-col gap-5">
       <Alert v-if="error" variant="destructive"><AlertTitle>{{ error }}</AlertTitle></Alert>
       <Skeleton v-if="loading" class="h-48 w-full" />

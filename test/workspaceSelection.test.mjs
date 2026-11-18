@@ -29,6 +29,14 @@ test('the actual workspace route key stays stable across room and machine change
   const after = routeKey({ path: '/dashboard', fullPath: '/dashboard?roomId=running&targetId=agent:new' }, 1)
   assert.equal(after, before)
   assert.notEqual(routeKey({ path: '/mods', fullPath: '/mods?tab=room' }, 0), routeKey({ path: '/mods', fullPath: '/mods?tab=room' }, 1))
+  assert.equal(
+    routeKey({ path: '/worlds/settings', fullPath: '/worlds/settings' }, 0),
+    routeKey({ path: '/worlds/settings', fullPath: '/worlds/settings?roomId=room-1&worldId=Master' }, 0)
+  )
+  assert.notEqual(
+    routeKey({ path: '/worlds/settings', fullPath: '/worlds/settings?roomId=room-1&worldId=Master' }, 0),
+    routeKey({ path: '/worlds/settings', fullPath: '/worlds/settings?targetId=agent:2' }, 1)
+  )
 })
 
 function fixture() {

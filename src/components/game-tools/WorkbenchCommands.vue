@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { BookOpen, Code, Play, Plus, RefreshCw, Save, Search } from '@lucide/vue'
+import { BookOpen, ChevronDown, Code, Play, Plus, RefreshCw, Save, Search } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { commandApi } from '@/api/commandManager'
 import { consoleV2API } from '@/api/v2'
@@ -10,6 +10,7 @@ import { commandArguments, LUA_MAX_BYTES, luaByteLength, luaPlayerContext, workb
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -149,14 +150,44 @@ onBeforeUnmount(()=>{alive=false;++loadSequence;++contextSequence;++historySeque
      <FieldDescription v-if="parameter.description">{{translateBuiltinParameterField(t,te,selected,parameter,'description')}}</FieldDescription>
     </Field>
    </FieldGroup>
-   <details v-if="template" :open="showCode"><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.viewCode')}}</summary><pre class="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{script}}</pre></details>
+   <Collapsible v-if="template" :default-open="showCode" class="min-w-0">
+     <CollapsibleTrigger as-child>
+       <Button type="button" variant="ghost" size="sm" class="group h-auto px-0 py-0 text-sm font-normal text-muted-foreground hover:bg-transparent">
+         <span>{{t('workbench.commands.viewCode')}}</span>
+         <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+       </Button>
+     </CollapsibleTrigger>
+     <CollapsibleContent>
+       <pre class="mt-2 max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{script}}</pre>
+     </CollapsibleContent>
+   </Collapsible>
    <div class="command-action-bar flex flex-wrap items-center justify-between gap-3"><p class="text-xs text-muted-foreground">{{!running?t('workbench.commands.stopped'):armed?t('workbench.commands.confirm',{target:targetLabel}):t('workbench.commands.output')}}</p><div class="flex gap-2"><Button v-if="nearbyPreview" variant="ghost" :disabled="executing" @click="cancelNearby">{{t('workbench.batch.cancel')}}</Button><Button v-if="armed" variant="ghost" @click="armed=false">{{t('workbench.commands.cancel')}}</Button><Button :disabled="!canRun||saving" @click="execute"><Spinner v-if="executing" data-icon="inline-start" /><Play v-else data-icon="inline-start" />{{t(executing?'workbench.commands.executing':nearbyGuarded?(nearbyPreview?'workbench.batch.confirm':'workbench.batch.preview'):armed?'workbench.commands.confirmRun':'workbench.commands.run')}}</Button></div></div>
-   <Alert v-if="interaction?.unsupported"><AlertDescription>{{locale.startsWith('en')?'Update the panel page to use this operation.':'请更新面板页面后使用这项操作；其他功能可继续使用。'}}</AlertDescription></Alert>
+   <Alert v-if="interaction?.unsupported"><AlertDescription>{{t('workbench.commands.updatePanel')}}</AlertDescription></Alert>
    <Alert v-if="error" variant="destructive"><AlertTitle>{{t('workbench.commands.failed')}}</AlertTitle><AlertDescription class="break-all">{{error}}</AlertDescription></Alert>
    <CommandRunResult v-if="(waitingOnTarget || lastRun) && feedbackMode==='panel_detail'" :run="lastRun" :pending="waitingOnTarget" :target="lastRun?.target || targetLabel" @updated="updateRun" />
    <Alert v-if="lastRun && feedbackMode!=='panel_detail' && feedbackMode!=='off'"><AlertDescription>{{lastRun.message || t('workbench.commands.output')}}</AlertDescription></Alert>
-   <details v-if="lastRun && feedbackMode!=='panel_detail'"><summary class="cursor-pointer text-sm">查看执行结果</summary><CommandRunResult :run="lastRun" :target="lastRun.target || targetLabel" @updated="updateRun" /></details>
-   <details v-if="recentRuns.length" data-command-history><summary class="cursor-pointer text-sm text-muted-foreground">{{t('workbench.commands.recentRuns')}}</summary><div class="mt-2 flex max-h-52 flex-col gap-1 overflow-y-auto"><Button v-for="run in recentRuns" :key="run.id" :variant="lastRun?.id===run.id?'secondary':'ghost'" class="h-auto justify-between gap-2 py-2 text-left" @click="lastRun=run"><span class="min-w-0 truncate">{{run.name}} · {{runTime(run)}}</span><span class="shrink-0 text-xs">{{runStatus(run)}}</span></Button></div></details>
+   <Collapsible v-if="lastRun && feedbackMode!=='panel_detail'" class="min-w-0">
+     <CollapsibleTrigger as-child>
+       <Button type="button" variant="ghost" size="sm" class="group h-auto px-0 py-0 text-sm font-normal hover:bg-transparent">
+         <span>{{t('workbench.commands.viewResult')}}</span>
+         <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+       </Button>
+     </CollapsibleTrigger>
+     <CollapsibleContent class="pt-2">
+       <CommandRunResult :run="lastRun" :target="lastRun.target || targetLabel" @updated="updateRun" />
+     </CollapsibleContent>
+   </Collapsible>
+   <Collapsible v-if="recentRuns.length" data-command-history class="min-w-0">
+     <CollapsibleTrigger as-child>
+       <Button type="button" variant="ghost" size="sm" class="group h-auto px-0 py-0 text-sm font-normal text-muted-foreground hover:bg-transparent">
+         <span>{{t('workbench.commands.recentRuns')}}</span>
+         <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+       </Button>
+     </CollapsibleTrigger>
+     <CollapsibleContent>
+       <div class="mt-2 flex max-h-52 flex-col gap-1 overflow-y-auto"><Button v-for="run in recentRuns" :key="run.id" :variant="lastRun?.id===run.id?'secondary':'ghost'" class="h-auto justify-between gap-2 py-2 text-left" @click="lastRun=run"><span class="min-w-0 truncate">{{run.name}} · {{runTime(run)}}</span><span class="shrink-0 text-xs">{{runStatus(run)}}</span></Button></div>
+     </CollapsibleContent>
+   </Collapsible>
    <Alert v-if="historyError"><AlertDescription>{{t('workbench.commands.historyFailed')}}<Button variant="ghost" size="sm" @click="loadHistory">{{t('workbench.commands.retryHistory')}}</Button></AlertDescription></Alert>
   </section>
  </div>

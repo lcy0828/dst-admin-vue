@@ -23,9 +23,23 @@ test('room navigation only exposes room-level destinations', () => {
 })
 
 test('common navigation keeps advanced destinations discoverable without duplicating paths', () => {
- const sections = navigationForFeatures({})
- const paths = sections.flatMap(section => section.items.flatMap(item => item.children || [item])).map(item => item.to)
- assert.equal(new Set(paths).size, paths.length)
- for (const path of ['/rooms/topology', '/rooms/diagnostics', '/worlds/list', '/players/bans', '/servers/tools', '/logs/service', '/cron/tasks']) assert.ok(paths.includes(path))
- assert.equal(sections[0].items.length, 6)
+  const sections = navigationForFeatures({})
+  const paths = sections.flatMap(section => section.items.flatMap(item => item.children || [item])).map(item => item.to)
+  assert.equal(new Set(paths).size, paths.length)
+  for (const path of ['/rooms/topology', '/rooms/diagnostics', '/worlds/list', '/players/bans', '/servers/tools', '/logs/service', '/cron/tasks']) assert.ok(paths.includes(path))
+  assert.equal(sections[0].items.length, 6)
+})
+
+test('single-host mode collapses agent and topology entries into one fleet group without duplicate paths', () => {
+  const sections = navigationForFeatures({}, { fleetMode: false })
+  const moreItems = sections[1].items
+  const paths = sections.flatMap(section => section.items.flatMap(item => item.children || [item])).map(item => item.to)
+  assert.equal(new Set(paths).size, paths.length)
+  assert.equal(moreItems.some(item => item.labelKey === 'navigation.agents'), false)
+  const fleetGroup = moreItems.find(item => item.labelKey === 'navigation.fleetDeployment')
+  assert.ok(fleetGroup)
+  assert.deepEqual(
+    fleetGroup.children.map(child => child.to),
+    ['/agents/list', '/agents/command', '/agents/security', '/rooms/topology']
+  )
 })

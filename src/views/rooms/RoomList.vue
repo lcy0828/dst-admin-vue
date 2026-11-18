@@ -22,13 +22,13 @@
     <Alert v-if="loadError && !loading" variant="destructive" class="settings-card">
       <CircleAlert />
       <AlertTitle>{{ $t('rooms.list.loadFailed') }}</AlertTitle>
-      <AlertDescription class="error-description">
-        <span>{{ loadError }}</span>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
         <UiButton variant="outline" size="sm" @click="refreshRooms(true)">
           <RefreshCw data-icon="inline-start" />
           {{ $t('rooms.list.reload') }}
         </UiButton>
-      </AlertDescription>
+      </AlertAction>
     </Alert>
 
     <div v-if="loading && rooms.length === 0" class="room-skeleton settings-card" aria-busy="true" :aria-label="$t('rooms.list.loadingAria')">
@@ -41,8 +41,9 @@
         <EmptyTitle>{{ $t(searchQuery ? 'rooms.list.noMatch' : 'rooms.list.empty') }}</EmptyTitle>
         <EmptyDescription>{{ $t(searchQuery ? 'rooms.list.noMatchDescription' : 'rooms.list.emptyDescription') }}</EmptyDescription>
       </EmptyHeader>
-      <EmptyContent v-if="!searchQuery">
-        <UiButton @click="createRoom"><Plus data-icon="inline-start" />{{ $t('rooms.list.createNew') }}</UiButton>
+      <EmptyContent>
+        <UiButton v-if="!searchQuery" @click="createRoom"><Plus data-icon="inline-start" />{{ $t('rooms.list.createNew') }}</UiButton>
+        <UiButton v-else variant="outline" @click="searchQuery = ''">{{ $t('common.actions.reset') }}</UiButton>
       </EmptyContent>
     </Empty>
 
@@ -66,16 +67,16 @@
           <Alert v-if="roomUnresponsiveWorlds(room).length" variant="destructive" class="mb-4">
             <CircleAlert />
             <AlertTitle>{{ $t('servers.workspace.worlds.unresponsiveAlertTitle') }}</AlertTitle>
-            <AlertDescription class="error-description">
-              <span>{{ $t('servers.workspace.worlds.unresponsiveAlertDescription', { worlds: roomUnresponsiveWorldNames(room) }) }}</span>
+            <AlertDescription>{{ $t('servers.workspace.worlds.unresponsiveAlertDescription', { worlds: roomUnresponsiveWorldNames(room) }) }}</AlertDescription>
+            <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
               <UiButton variant="outline" size="sm" :disabled="isRoomBusy(room)" @click="restartUnresponsiveRoom(room)">
                 <RefreshCw data-icon="inline-start" />
                 {{ $t('servers.workspace.worlds.unresponsiveRestartNow') }}
               </UiButton>
-            </AlertDescription>
+            </AlertAction>
           </Alert>
           <TooltipProvider>
-            <div class="save-worlds" v-if="room.worlds && room.worlds.length" role="list">
+            <div class="save-worlds" :class="{ 'save-worlds--compact': !showRoomPlacement(room) }" v-if="room.worlds && room.worlds.length" role="list">
               <template v-for="(world, index) in room.worlds" :key="world.id">
                 <Separator v-if="index > 0" />
                 <article class="world-row" role="listitem">
@@ -91,7 +92,7 @@
                     </div>
                   </div>
 
-                  <div class="world-machine">
+                  <div v-if="showRoomPlacement(room)" class="world-machine">
                     <Server aria-hidden="true" />
                     <div>
                       <span class="truncate">{{ worldMachineLabel(world) }}</span>
@@ -141,7 +142,7 @@
                         <DropdownMenuGroup>
                           <DropdownMenuItem @select="viewWorld(room, world)">{{ $t('rooms.list.worldActions.view') }}</DropdownMenuItem>
                           <DropdownMenuItem @select="handleViewWorldLogs(room, world)">{{ $t('rooms.list.worldActions.logs') }}</DropdownMenuItem>
-                          <DropdownMenuItem @select="manageWorldPlacement(room, world)"><Network />{{ $t('rooms.list.worldActions.placement') }}</DropdownMenuItem>
+                          <DropdownMenuItem v-if="showRoomPlacement(room)" @select="manageWorldPlacement(room, world)"><Network />{{ $t('rooms.list.worldActions.placement') }}</DropdownMenuItem>
                           <DropdownMenuItem :disabled="isWorldBusy(room, world) || (!['running', 'stopped', 'failed'].includes(world.status) && !isWorldConsoleUnresponsive(world))" @select="(world.status === 'running' || isWorldConsoleUnresponsive(world)) ? restartWorld(room, world, true) : toggleWorldStatus(room, world, true)">{{ $t((world.status === 'running' || isWorldConsoleUnresponsive(world)) ? 'runtimeMode.chooseRestart' : 'runtimeMode.chooseStart') }}</DropdownMenuItem>
                           <DropdownMenuItem @select="editWorld(room, world)">{{ $t('rooms.list.worldActions.edit') }}</DropdownMenuItem>
                           <DropdownMenuItem :disabled="(world.status !== 'running' && !isWorldConsoleUnresponsive(world)) || isWorldBusy(room, world)" @select="restartWorld(room, world)">{{ $t('rooms.list.worldActions.restart') }}</DropdownMenuItem>
@@ -171,7 +172,7 @@
             ><Square data-icon="inline-start" />{{ $t('rooms.list.stopAll') }}</UiButton>
           </div>
           <div class="room-actions">
-            <UiButton variant="outline" size="sm" @click="managePlacement(room)"><Network data-icon="inline-start" />{{ $t('rooms.list.runtimeLocation') }}</UiButton>
+            <UiButton v-if="showRoomPlacement(room)" variant="outline" size="sm" @click="managePlacement(room)"><Network data-icon="inline-start" />{{ $t('rooms.list.runtimeLocation') }}</UiButton>
             <UiButton variant="outline" size="sm" @click="editRoom(room)"><Pencil data-icon="inline-start" />{{ $t('rooms.list.edit') }}</UiButton>
             <TooltipProvider>
               <Tooltip>
@@ -258,7 +259,7 @@ import { toast } from 'vue-sonner';
 import { roomApi } from '../../api/index';
 import { backupSetsV2API } from '@/api/v2';
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -293,6 +294,8 @@ import {
   worldStatusMessage,
   worldStatusVariant as runtimeWorldStatusVariant
 } from '@/lib/worldRuntimeStatus.mjs';
+import { useRoute } from 'vue-router';
+import { useFleetDisclosure } from '@/composables/useFleetDisclosure';
 import SpecialLists from './SpecialLists.vue';
 import ServerToken from './ServerToken.vue';
 import LogViewer from '../servers/LogViewer.vue';
@@ -300,9 +303,15 @@ import RecoveryDialog from '@/components/recovery/RecoveryDialog.vue';
 
 export default {
   name: 'RoomList',
+  setup() {
+    const route = useRoute();
+    const { showFleetControls } = useFleetDisclosure(route);
+    return { showFleetControls };
+  },
   components: {
     RuntimeModeBadge,
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     ArchiveRestore,
@@ -600,6 +609,11 @@ export default {
     },
     roomHasActiveWorlds(room) {
       return room.allWorlds.some(world => ['starting', 'running', 'stopping'].includes(world.status) || isWorldConsoleUnresponsive(world));
+    },
+    showRoomPlacement(room) {
+      if (this.showFleetControls) return true;
+      if (Array.isArray(room?.targetIds) && room.targetIds.length > 1) return true;
+      return (room?.worlds || []).some(world => worldPlacementNotice(world).pending);
     },
     editRoom(room) {
       this.$router.push({
@@ -1023,13 +1037,6 @@ export default {
   margin: 0;
 }
 
-.error-description {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .room-skeleton {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr));
@@ -1105,6 +1112,10 @@ export default {
   align-items: center;
   gap: 12px;
   padding: 8px 0;
+}
+
+.save-worlds--compact .world-row {
+  grid-template-columns: minmax(7rem, 1fr) minmax(6.5rem, auto) 88px;
 }
 
 .world-identity,
@@ -1235,10 +1246,6 @@ export default {
 }
 
 @media (max-width: 640px) {
-  .error-description {
-    align-items: flex-start;
-    flex-direction: column;
-  }
   .page-header {
     align-items: stretch;
     flex-direction: column;
@@ -1269,6 +1276,13 @@ export default {
     grid-template-columns: minmax(0, 1fr) 88px;
     gap: 6px 12px;
     padding: 12px 0;
+  }
+
+  .save-worlds--compact .world-row {
+    grid-template-areas:
+      'identity actions'
+      'state actions';
+    grid-template-columns: minmax(0, 1fr) 88px;
   }
 
   .world-identity {

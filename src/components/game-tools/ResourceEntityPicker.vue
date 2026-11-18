@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Check, ChevronLeft, ChevronRight, RefreshCw, Search, X, Star, Ellipsis } from '@lucide/vue'
+import { Check, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, X, Star, Ellipsis } from '@lucide/vue'
 import { entityCatalogV2API } from '@/api/v2'
 import { readWorkbenchPreferences, writeWorkbenchPreferences } from '@/lib/workbenchPreferences.mjs'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { manualEntity } from '@/lib/workbench.mjs'
@@ -23,8 +24,8 @@ const props = defineProps({ roomId: { type: String, default: '' }, worldId: { ty
 const emit = defineEmits(['select', 'refresh-target', 'shortcut'])
 const { t, locale } = useI18n()
 const preferences = ref(readWorkbenchPreferences()), contextID = ref('')
-const categoryName = key => ({favorites:'收藏',crafting:'制作',turf:'地皮',mods:'模组'})[key] || t(`workbench.resources.categories.${key}`)
-const menuActions = [{id:'batch',label:'批量生成'},{id:'map',label:'在地图选点生成'},{id:'cycle',label:'传送到下一个'},{id:'materials',label:'获取配方材料'},{id:'favorite',label:'收藏／取消收藏'},{id:'unlock',label:'解锁此配方'},{id:'blueprint',label:'获取蓝图'},{id:'announce',label:'公告世界内数量'},{id:'nearby_remove',label:'清理附近同类'},{id:'location',label:'记录当前位置为地点'},{id:'remove_all',label:'移除世界内同类'}]
+const categoryName = key => t(`workbench.resources.categories.${key}`)
+const menuActions = computed(() => ['batch', 'map', 'cycle', 'materials', 'favorite', 'unlock', 'blueprint', 'announce', 'nearby_remove', 'location', 'remove_all'].map(id => ({ id, label: t(`workbench.resources.menuActions.${id}`) })))
 function shortcut(item, action) {
  contextID.value=''; select(item)
  if(action==='favorite') { const set=new Set(preferences.value.favorites); if(set.has(item.id))set.delete(item.id);else set.add(item.id);preferences.value=writeWorkbenchPreferences({...preferences.value,favorites:[...set]});return }
@@ -122,8 +123,8 @@ onBeforeUnmount(() => { window.removeEventListener('dst:workbench-preferences',r
     <ToggleGroup :model-value="category" type="single" variant="outline" :spacing="1" class="flex flex-wrap justify-start gap-1" :aria-label="t('workbench.resources.category')" @update:model-value="value => { if (value) category = value }">
       <ToggleGroupItem v-for="key in categories" :key="key" :value="key" class="gap-1.5 px-2.5 text-xs sm:text-sm"><span>{{ categoryName(key) }}</span><span class="text-[10px] tabular-nums opacity-60">{{ result.counts[key] }}</span></ToggleGroupItem>
     </ToggleGroup>
-    <div v-if="preferences.quickFavorites && favoriteItems.length" class="flex flex-wrap gap-1" aria-label="收藏快捷条"><Button v-for="item in favoriteItems" :key="item.id" size="sm" variant="outline" @click="select(item)">{{item.nameZhCN||item.id}}</Button></div>
-    <Button variant="ghost" size="sm" class="self-start" @click="emit('shortcut',{action:'location'})">传送点 · 保存与管理地点</Button>
+    <div v-if="preferences.quickFavorites && favoriteItems.length" class="flex flex-wrap gap-1" :aria-label="t('workbench.resources.quickFavorites')"><Button v-for="item in favoriteItems" :key="item.id" size="sm" variant="outline" @click="select(item)">{{ (locale === 'zh-CN' ? item.nameZhCN || item.nameEn : item.nameEn || item.nameZhCN) || item.id }}</Button></div>
+    <Button variant="ghost" size="sm" class="self-start" @click="emit('shortcut',{action:'location'})">{{ t('workbench.resources.locationsShortcut') }}</Button>
     <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
       <span aria-live="polite">{{ t(category === 'all' ? 'workbench.catalog.count' : 'workbench.resources.categoryCount', { count: result.items.length, category: categoryName(category) }) }}<span v-if="observed"> · {{ t(error ? 'workbench.resources.lastWorldRead' : 'workbench.resources.worldRead', { time: observed }) }}</span></span>
       <Button v-if="canRead" size="sm" variant="outline" :disabled="loading" @click="readWorld(Boolean(snapshot))"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t(loading ? 'workbench.resources.readingButton' : error ? 'workbench.resources.retryWorld' : snapshot ? 'workbench.catalog.refresh' : 'workbench.catalog.read') }}</Button>
@@ -143,7 +144,7 @@ onBeforeUnmount(() => { window.removeEventListener('dst:workbench-preferences',r
         <Star v-if="preferences.favorites.includes(item.id)" class="size-4 shrink-0 text-primary" />
         <Check v-if="selectedKey === item.key" class="size-4 shrink-0 text-primary" />
       </button>
-      <DropdownMenuTrigger as-child><Button size="icon-sm" variant="ghost" class="absolute right-0 top-0" :aria-label="`${item.nameZhCN || item.id} · 更多操作`"><Ellipsis /></Button></DropdownMenuTrigger>
+      <DropdownMenuTrigger as-child><Button size="icon-sm" variant="ghost" class="absolute right-0 top-0" :aria-label="t('workbench.resources.moreActionsFor', { name: (locale === 'zh-CN' ? item.nameZhCN || item.nameEn : item.nameEn || item.nameZhCN) || item.id })"><Ellipsis /></Button></DropdownMenuTrigger>
       </div>
       <DropdownMenuContent><DropdownMenuGroup><DropdownMenuItem v-for="action in menuActions" :key="action.id" @select="shortcut(item,action.id)">{{ action.label }}</DropdownMenuItem></DropdownMenuGroup></DropdownMenuContent>
       </DropdownMenu>
@@ -157,16 +158,21 @@ onBeforeUnmount(() => { window.removeEventListener('dst:workbench-preferences',r
       <ArtworkPackManager />
       <div class="flex items-center gap-2"><span class="text-xs tabular-nums text-muted-foreground">{{ page + 1 }} / {{ pages }}</span><Button size="icon-sm" variant="outline" :aria-label="t('workbench.catalog.previous')" :disabled="page === 0" @click="page--"><ChevronLeft /></Button><Button size="icon-sm" variant="outline" :aria-label="t('workbench.catalog.next')" :disabled="page + 1 >= pages" @click="page++"><ChevronRight /></Button></div>
     </div>
-    <details class="rounded-md border border-dashed text-xs text-muted-foreground">
-      <summary class="cursor-pointer px-3 py-2">{{ t('workbench.resources.options') }}</summary>
-      <div class="flex flex-col gap-3 border-t p-3">
+    <Collapsible class="min-w-0 rounded-md border border-dashed text-xs text-muted-foreground">
+      <CollapsibleTrigger as-child>
+        <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between px-3 py-2 text-xs font-normal text-muted-foreground">
+          <span>{{ t('workbench.resources.options') }}</span>
+          <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent class="flex flex-col gap-3 border-t p-3">
         <div class="flex flex-wrap items-center gap-2">
           <Select :key="locale" v-model="source"><SelectTrigger class="w-full sm:w-52" :aria-label="t('workbench.catalog.source')"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="all">{{ t('workbench.catalog.all') }}</SelectItem><SelectItem value="vanilla">{{ t('workbench.catalog.vanilla') }}</SelectItem><SelectItem value="mods">{{ t('workbench.catalog.mods') }}</SelectItem><SelectItem v-for="mod in snapshot?.mods || []" :key="mod.id" :value="mod.id">{{ mod.name || mod.id }}</SelectItem></SelectGroup></SelectContent></Select>
           <Button size="sm" variant="ghost" @click="clearHistory">{{ t('workbench.resources.clearHistory') }}</Button>
         </div>
         <p>{{ t('workbench.resources.historyHint') }}</p>
         <p>{{ t('workbench.resources.coverage', { version: gameVersion || '—' }) }}</p>
-      </div>
-    </details>
+      </CollapsibleContent>
+    </Collapsible>
   </div>
 </template>

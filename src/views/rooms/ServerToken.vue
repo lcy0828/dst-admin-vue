@@ -7,7 +7,17 @@
 
     <RoomScopeSelect v-if="!savename && !pendingMode" v-model="selectedRoomId" :rooms="roomOptions" :loading="loadingRooms" />
 
-    <Alert v-if="roomLoadError" variant="destructive"><CircleAlert /><AlertTitle>{{ $t('rooms.selector.loadFailed') }}</AlertTitle><AlertDescription>{{ roomLoadError }}</AlertDescription></Alert>
+    <Alert v-if="roomLoadError" variant="destructive">
+      <CircleAlert />
+      <AlertTitle>{{ $t('rooms.selector.loadFailed') }}</AlertTitle>
+      <AlertDescription>{{ roomLoadError }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton variant="outline" size="sm" :disabled="loadingRooms" @click="fetchRoomOptions">
+          <RefreshCw data-icon="inline-start" />
+          {{ $t('common.actions.retry') }}
+        </UiButton>
+      </AlertAction>
+    </Alert>
 
     <Card v-if="pendingMode || roomValue">
       <CardHeader>
@@ -57,13 +67,13 @@
         <Alert v-else-if="loadError" variant="destructive">
           <CircleAlert />
           <AlertTitle>{{ $t('rooms.token.loadFailed') }}</AlertTitle>
-          <AlertDescription class="error-description">
-            <span>{{ loadError }}</span>
+          <AlertDescription>{{ loadError }}</AlertDescription>
+          <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
             <UiButton variant="outline" size="sm" @click="fetchServerToken">
               <RefreshCw data-icon="inline-start" />
               {{ $t('common.actions.retry') }}
             </UiButton>
-          </AlertDescription>
+          </AlertAction>
         </Alert>
         <div v-else-if="roomValue || serverToken" class="token-info">
           <InputGroup>
@@ -113,6 +123,7 @@
 
     <Empty v-else-if="!loadingRooms && !roomLoadError">
       <EmptyHeader><EmptyMedia variant="icon"><Info /></EmptyMedia><EmptyTitle>{{ $t('rooms.token.noRooms') }}</EmptyTitle><EmptyDescription>{{ $t('rooms.token.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
+      <EmptyContent><UiButton variant="outline" @click="$router.push('/rooms/settings')">{{ $t('rooms.list.create') }}</UiButton></EmptyContent>
     </Empty>
 
     <!-- 修改令牌对话框 -->
@@ -189,11 +200,11 @@ import { preferredRoomId } from '@/lib/pageScope.mjs'
 import { CircleAlert, Copy, Eye, Info, Pencil, RefreshCw, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { roomApi, serverApi } from '@/api/index';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group';
@@ -208,6 +219,7 @@ export default {
   components: {
     RoomScopeSelect,
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     UiButton,
@@ -227,6 +239,7 @@ export default {
     DialogTitle,
     Eye,
     Empty,
+    EmptyContent,
     EmptyDescription,
     EmptyHeader,
     EmptyMedia,
@@ -552,13 +565,6 @@ this.selectedRoomId = preferredRoomId(this.roomOptions, this.$route.query.roomId
   flex-wrap: wrap;
 }
 
-.error-description {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .token-info {
   display: flex;
   flex-direction: column;
@@ -598,14 +604,8 @@ this.selectedRoomId = preferredRoomId(this.roomOptions, this.$route.query.roomId
     width: 100%;
   }
 
-  .token-actions > *,
-  .error-description > button {
+  .token-actions > * {
     flex: 1;
-  }
-
-  .error-description {
-    align-items: flex-start;
-    flex-direction: column;
   }
 }
 </style>

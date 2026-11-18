@@ -326,7 +326,7 @@ test('server workspace exposes connection details from a compact header popover'
 test('server workspace follows configured snapshot retention for confirmed rollback', async () => {
   const source = await readFile(sourceUrl, 'utf8')
 
-  assert.match(source, /@click="handleWorldAction\(world, 'restart'\)"[\s\S]*@click="openRollbackDialog\(world\)"/)
+  assert.match(source, /@click="handleWorldAction\(world, 'restart'\)"[\s\S]*@select="openRollbackDialog\(world\)"/)
   assert.match(source, /<UiDialog v-model:open="rollbackDialogOpen">/)
   assert.match(source, /configurationV2API\.room\(roomId\)/)
   assert.match(source, /roomMaxSnapshots: null/)
@@ -360,4 +360,23 @@ test('server workspace expands lifecycle dependencies and reconciles state after
   assert.match(adapter, /lifecycleWorldIDs\(room, input, 'restart'\)/)
   assert.match(adapter, /runtimeModes\(room\.id, lifecycleWorldIDs\(room, params, 'start'\)\)/)
   assert.match(messages, /dependencyMasterUnknown/)
+})
+
+test('server workspace adapts primary world actions to room state and discloses details and fleet placement progressively', async () => {
+  const [source, messages] = await Promise.all([
+    readFile(sourceUrl, 'utf8'),
+    readFile(new URL('../src/i18n/serverMessages.js', import.meta.url), 'utf8')
+  ])
+
+  assert.match(source, /v-if="runningWorlds\.length === 0"[\s\S]*@click="handleRoomAction\('start'\)"/)
+  assert.match(source, /@click="handleRoomAction\('restart'\)"[\s\S]*@click="handleRoomAction\('stop'\)"/)
+  assert.match(source, /<DropdownMenuItem @select="openTopologyDialog">[\s\S]*<DropdownMenuItem @select="legendDialogOpen = true">/)
+  assert.match(source, /<DropdownMenuItem v-if="showFleetControls" @select="openWorldPlacement">/)
+  assert.match(source, /v-if="showFleetControls" class="world-machine"/)
+  assert.match(source, /<dl class="world-facts" :class="\{ 'is-collapsed': !isWorldExpanded\(world\.id\) \}">[\s\S]*<template v-if="isWorldExpanded\(world\.id\)">/)
+  assert.match(source, /class="world-details-toggle"[\s\S]*:aria-expanded="isWorldExpanded\(world\.id\)"[\s\S]*@click\.stop="toggleWorldExpanded\(world\.id\)"/)
+  assert.match(source, /<Collapsible[\s\S]*:open="commandHistoryOpen"[\s\S]*class="console-history"[\s\S]*@update:open="handleConsoleHistoryToggle"/)
+  assert.doesNotMatch(source, /<details/)
+  assert.match(messages, /restartAll: '全部重启',[\s\S]*detailsShow: '展开详情',[\s\S]*detailsHide: '收起详情'/)
+  assert.match(messages, /restartAll: 'Restart all',[\s\S]*detailsShow: 'Show details',[\s\S]*detailsHide: 'Hide details'/)
 })

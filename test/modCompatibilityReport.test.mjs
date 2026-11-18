@@ -33,7 +33,7 @@ test('Evidence stays visible without AI and stack references remain unconfirmed 
   assert.match(html, /测试模组/)
   assert.match(html, /Steam Build 12345/)
   assert.match(html, /游戏版本 750000/)
-  assert.match(html, /<details[^>]* open/)
+  assert.match(html, /<div(?=[^>]*data-slot="collapsible")(?=[^>]*data-state="open")/)
   assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/)
   assert.doesNotMatch(html, /<script>bad/)
   assert.match(html, /可能与报错时不同/)
@@ -56,7 +56,8 @@ test('Update preflight reports are optional and do not introduce a new approval 
   const html = await render(Preflight, { reports: [report] })
   assert.match(html, /没有发现问题的模组仍可能受游戏更新影响/)
   assert.match(html, /森林/)
-  assert.doesNotMatch(html, /<button/)
+  const buttons = [...html.matchAll(/<button\b[^>]*>/g)]
+  assert.ok(buttons.length > 0 && buttons.every(match => /data-slot="collapsible-trigger"/.test(match[0]) && /\baria-expanded=/.test(match[0]) && /\baria-controls\b/.test(match[0])))
 })
 
 test('Unavailable mod facts display an unknown count rather than zero enabled mods', async () => {

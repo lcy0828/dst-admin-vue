@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, provide, reactive, ref } from 'vu
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff, GitFork, KeyRound } from '@lucide/vue'
-import { authAPI, systemV2API } from '@/api/v2'
+import { authAPI, AUTH_ONBOARDING_UPDATED_EVENT, systemV2API } from '@/api/v2'
 import AppSidebarV2 from '@/components/v2/AppSidebarV2.vue'
 import HelpCenterDialog from '@/components/layout/HelpCenterDialog.vue'
 import GameVersionStatus from '@/components/layout/GameVersionStatus.vue'
@@ -18,7 +18,7 @@ import { provideGlobalJobStatus } from '@/composables/useGlobalJobStatus'
 import LanguageSwitch from '@/components/layout/LanguageSwitch.vue'
 import ManagementScopeSwitch from '@/components/layout/ManagementScopeSwitch.vue'
 import RoomManagementScopeNotice from '@/components/layout/RoomManagementScopeNotice.vue'
-import SystemResourceRefreshInterval from '@/components/layout/SystemResourceRefreshInterval.vue'
+import RefreshSettingsPopover from '@/components/layout/RefreshSettingsPopover.vue'
 import SystemResourceStatus from '@/components/layout/SystemResourceStatus.vue'
 import ThemeSwitch from '@/components/ThemeSwitch.vue'
 import WeatherPreviewControl from '@/components/layout/WeatherPreviewControl.vue'
@@ -53,6 +53,7 @@ import { getSystemPreferences } from '@/utils/systemPreferences'
 import { MANAGEMENT_SCOPE_CHANGED_EVENT, managementScopeTargetId } from '@/lib/managementScope.mjs'
 import { toast } from 'vue-sonner'
 import { pageHasMachineScope, queryAfterMachineChange } from '@/lib/pageScope.mjs'
+import { useFleetDisclosure } from '@/composables/useFleetDisclosure'
 
 const router = useRouter()
 provideGlobalJobStatus()
@@ -64,6 +65,11 @@ const roomScopeTarget = ref(null)
 provide('room-scope-target', roomScopeTarget)
 provide('machine-scope-guard', { check: async () => true })
 const hasMachineScope = computed(() => pageHasMachineScope(route))
+const {
+  showFleetControls,
+  ensureFleetTargetsLoaded,
+  updateCapabilities
+} = useFleetDisclosure(route)
 const { t } = useI18n()
 const systemName = ref(getSystemPreferences().systemName)
 const currentUser = ref({})
@@ -104,7 +110,7 @@ async function refreshManagementScope(event) {
   if (route.path === '/dashboard') return
   const previousPath = route.fullPath
   await router.replace({ query: queryAfterMachineChange(route, targetId) })
-  if (route.path === '/mods' || route.fullPath === previousPath) managementScopeRevision.value += 1
+  if (['/mods', '/worlds/settings'].includes(route.path) || route.fullPath === previousPath) managementScopeRevision.value += 1
 }
 
 async function loadCurrentUser() {
@@ -121,8 +127,10 @@ async function loadRuntimeFeatures() {
   try {
     const capabilities = await systemV2API.capabilities()
     runtimeFeatures.value = capabilities?.features || {}
+    updateCapabilities(capabilities)
   } catch {
     runtimeFeatures.value = {}
+    updateCapabilities(null)
   }
 }
 
@@ -179,13 +187,19 @@ async function changePassword() {
   }
 }
 
+function handleOnboardingUpdated(event) {
+  setupPending.value = event?.detail?.required === true
+}
+
 onMounted(() => {
   document.body.dataset.uiVersion = 'v2'
   window.addEventListener('system-preferences-updated', updateSystemName)
   window.addEventListener('system-runtime-updated', loadRuntimeFeatures)
   window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, refreshManagementScope)
+  window.addEventListener(AUTH_ONBOARDING_UPDATED_EVENT, handleOnboardingUpdated)
   loadCurrentUser()
   loadRuntimeFeatures()
+  void ensureFleetTargetsLoaded({ silent: true })
 })
 
 onBeforeUnmount(() => {
@@ -193,6 +207,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('system-preferences-updated', updateSystemName)
   window.removeEventListener('system-runtime-updated', loadRuntimeFeatures)
   window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, refreshManagementScope)
+  window.removeEventListener(AUTH_ONBOARDING_UPDATED_EVENT, handleOnboardingUpdated)
 })
 </script>
 
@@ -203,14 +218,15 @@ onBeforeUnmount(() => {
       :system-name="systemName"
       :user="currentUser"
       :features="runtimeFeatures"
+      :fleet-mode="showFleetControls"
       @profile="profileOpen = true"
       @password="passwordOpen = true"
       @logout="logout"
     />
     <SidebarInset class="min-h-0 min-w-0">
-      <header class="bg-background/95 sticky top-0 z-30 flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 backdrop-blur md:px-4 lg:px-6">
+      <header class="bg-background/95 sticky top-0 z-30 flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2 backdrop-blur md:px-4 lg:px-6">
         <SidebarTrigger />
-        <Breadcrumb class="hidden min-w-0 flex-[1_0_14rem] overflow-hidden xl:block">
+        <Breadcrumb :class="['hidden min-w-0 max-w-44 shrink overflow-hidden', showFleetControls ? 'min-[1600px]:block' : 'xl:block']">
           <BreadcrumbList class="flex-nowrap whitespace-nowrap">
             <template v-for="(item, index) in breadcrumbs" :key="`${item.label}-${index}`">
               <BreadcrumbItem class="min-w-0">
@@ -222,11 +238,16 @@ onBeforeUnmount(() => {
             </template>
           </BreadcrumbList>
         </Breadcrumb>
-        <div class="ml-auto flex min-w-0 max-w-full flex-1 flex-wrap items-center justify-end gap-1.5 xl:flex-none">
+        <div v-if="hasMachineScope" class="flex min-w-0 items-center gap-2">
+          <div ref="roomScopeTarget" class="flex min-w-0 items-center empty:hidden" />
+          <ManagementScopeSwitch v-if="hasMachineScope && showFleetControls" />
+        </div>
+        <div class="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1.5">
+          <SystemResourceStatus v-if="hasMachineScope" class="hidden md:flex" />
           <GameVersionStatus v-if="hasMachineScope" class="hidden md:block" />
           <SoftwareVersionStatus />
           <GlobalJobStatus />
-          <div v-if="hasMachineScope" class="hidden xl:block"><SystemResourceRefreshInterval /></div>
+          <RefreshSettingsPopover v-if="hasMachineScope" />
           <HelpCenterDialog :features="runtimeFeatures" />
           <LanguageSwitch />
           <Button v-if="setupPending" variant="ghost" size="sm" @click="router.push('/setup')">{{ t('setup.title') }}</Button>
@@ -243,23 +264,18 @@ onBeforeUnmount(() => {
             <TooltipContent>{{ t('app.githubRepository') }}</TooltipContent>
           </Tooltip>
         </div>
-        <div v-show="hasMachineScope" class="flex min-w-0 max-w-full basis-full flex-wrap items-center gap-2">
-          <ManagementScopeSwitch v-if="hasMachineScope" />
-          <div ref="roomScopeTarget" class="flex min-w-0 items-center empty:hidden" />
-          <SystemResourceStatus v-if="hasMachineScope" class="ml-auto hidden md:flex" />
-        </div>
       </header>
 
-      <RoomManagementScopeNotice v-if="hasMachineScope && route.path.startsWith('/rooms')" />
+      <RoomManagementScopeNotice v-if="hasMachineScope && showFleetControls && route.path.startsWith('/rooms')" />
 
       <div class="bg-muted/30 min-h-0 flex-1 overflow-auto">
-        <main id="main-content-v2" class="mx-auto w-full px-4 pt-6 pb-24 md:px-6 lg:px-8 lg:pt-8" :class="{ 'max-w-[1440px]': route.path !== '/players/list' }" tabindex="-1">
+        <main id="main-content-v2" class="mx-auto w-full max-w-[1440px] px-4 pt-6 pb-24 md:px-6 lg:px-8 lg:pt-8" tabindex="-1">
           <Alert v-if="setupPending" class="mb-4">
             <AlertTitle>{{ t('setup.title') }}</AlertTitle>
             <AlertDescription>{{ t('setup.resume') }}</AlertDescription>
             <AlertAction><Button variant="outline" @click="router.push('/setup')">{{ t('setup.return') }}</Button></AlertAction>
           </Alert>
-          <RouterView :key="`${['/mods', '/dashboard', '/servers/performance'].includes(route.path) ? route.path : route.fullPath}:${route.path === '/dashboard' ? '' : managementScopeRevision}`" />
+          <RouterView :key="`${['/mods', '/dashboard', '/servers/performance', '/worlds/settings'].includes(route.path) ? route.path : route.fullPath}:${route.path === '/dashboard' ? '' : managementScopeRevision}`" />
         </main>
       </div>
       <RoomUpdateProgress />

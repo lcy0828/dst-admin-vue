@@ -2,7 +2,14 @@
   <div class="automation-room-select">
     <Field>
       <FieldLabel>{{ $t('rooms.selector.room') }}</FieldLabel>
-      <UiSelect v-model="roomId" :disabled="loading" @update:model-value="handleChange">
+      <div
+        v-if="!loadError && rooms.length === 1"
+        class="flex h-9 min-w-0 items-center gap-2 rounded-md border bg-muted/40 px-3 text-sm font-medium"
+      >
+        <Spinner v-if="loading" class="shrink-0" />
+        <span class="truncate" :title="rooms[0].name">{{ rooms[0].name }}</span>
+      </div>
+      <UiSelect v-else v-model="roomId" :disabled="loading" @update:model-value="handleChange">
         <SelectTrigger class="automation-room-trigger">
           <Spinner v-if="loading" />
           <SelectValue :placeholder="$t('rooms.selector.placeholder')" />
@@ -32,6 +39,8 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { managementScopeTargetId } from '@/lib/managementScope.mjs'
+import { rememberRoomSelection } from '@/lib/workspacePreferences.mjs'
 import { toast } from 'vue-sonner'
 
 export default {
@@ -69,6 +78,7 @@ export default {
       }
     },
     async handleChange(roomId) {
+      rememberRoomSelection(managementScopeTargetId(), String(roomId || ''))
       const name = String(this.$route.name || '')
       const path = this.$route.params.id
         ? (name.includes('Group') ? '/cron/groups' : name.includes('Log') || name.includes('Execution') ? '/cron/logs' : '/cron/tasks')

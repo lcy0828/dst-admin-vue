@@ -10,6 +10,7 @@ const {
   versionInfo,
   capabilities,
   setupReadiness,
+  onboardingSession,
   onboardingResolved,
   serverLoading,
   versionLoading,
@@ -32,6 +33,7 @@ onMounted(refreshDashboard)
       v-if="onboardingResolved"
       :capabilities="capabilities"
       :readiness="setupReadiness"
+      :onboarding-session="onboardingSession"
       :installed="versionInfo.installed"
       :installing="gameUpdateBusy"
       :can-install="canInstallGame"

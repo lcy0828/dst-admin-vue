@@ -1,7 +1,8 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { toast } from 'vue-sonner'
 import {
   ArrowRight,
   Check,
@@ -13,6 +14,7 @@ import {
   ServerCog,
   Settings2
 } from '@lucide/vue'
+import { authAPI } from '@/api/v2'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,6 +22,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
+import { useFleetDisclosure } from '@/composables/useFleetDisclosure'
 import {
   dashboardOnboardingState,
   normalizePackaging,
@@ -29,6 +32,7 @@ import {
 const props = defineProps({
   capabilities: { type: Object, default: () => ({}) },
   readiness: { type: Object, default: () => ({ checks: [] }) },
+  onboardingSession: { type: Object, default: null },
   installed: { type: Boolean, default: false },
   installing: { type: Boolean, default: false },
   canInstall: { type: Boolean, default: false },
@@ -42,6 +46,8 @@ const props = defineProps({
 const emit = defineEmits(['install', 'refresh'])
 const router = useRouter()
 const { t } = useI18n()
+const { showFleetControls } = useFleetDisclosure()
+const completing = ref(false)
 
 const packaging = computed(() => normalizePackaging(props.capabilities?.deployment?.packaging))
 const localExecutorEnabled = computed(() => props.capabilities?.deployment?.localExecutorEnabled !== false)
@@ -69,11 +75,6 @@ const blockers = computed(() => {
   return checks
 })
 const visible = computed(() => state.value.visible)
-const compactHost = computed(() => Number(props.cpuCores) > 0 && Number(props.cpuCores) <= 2)
-const deploymentDescriptionKey = computed(() => {
-  if (packaging.value === 'all_in_one' && compactHost.value) return 'dashboard.onboarding.deployments.all_in_oneCompact'
-  return `dashboard.onboarding.deployments.${packaging.value}`
-})
 const firstRoom = computed(() => props.rooms[0] || null)
 
 function stepDescriptionKey(step) {
@@ -117,23 +118,62 @@ function openRoomControl() {
     document.getElementById('room-operations')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   })
 }
+
+async function openWizard() {
+  const targetStep = state.value.nextWizardStep || 'review'
+  if (props.onboardingSession?.required && ['deployment', 'environment', 'game', 'room', 'review'].includes(targetStep)) {
+    try {
+      await authAPI.saveOnboarding(targetStep)
+    } catch {
+      // Navigate to the setup wizard even if saving the suggested step fails.
+    }
+  }
+  await router.push({ path: '/setup', query: { step: targetStep } })
+}
+
+async function markOnboardingComplete() {
+  if (completing.value) return
+  completing.value = true
+  try {
+    await authAPI.saveOnboarding('complete')
+  } catch (error) {
+    toast.error(error?.message || t('setup.saveFailed'))
+  } finally {
+    completing.value = false
+  }
+}
 </script>
 
 <template>
   <Card v-if="visible" size="sm">
     <CardHeader>
       <CardTitle>{{ t('dashboard.onboarding.title') }}</CardTitle>
-      <CardDescription>{{ t(deploymentDescriptionKey) }}</CardDescription>
-      <CardAction>
-        <Badge variant="outline">{{ t(`dashboard.onboarding.packaging.${packaging}`) }}</Badge>
+      <CardDescription>{{ t('dashboard.onboarding.checklistDescription') }}</CardDescription>
+      <CardAction class="flex flex-wrap items-center gap-2">
+        <Badge v-if="showFleetControls" variant="outline">{{ t(`dashboard.onboarding.packaging.${packaging}`) }}</Badge>
+        <Button v-if="state.nextWizardStep" size="sm" variant="outline" @click="openWizard">
+          {{ t('dashboard.onboarding.openWizard') }}
+          <ArrowRight data-icon="inline-end" />
+        </Button>
+        <Button
+          v-if="onboardingSession?.required"
+          size="sm"
+          variant="ghost"
+          :disabled="completing"
+          @click="markOnboardingComplete"
+        >
+          <Spinner v-if="completing" data-icon="inline-start" />
+          <Check v-else data-icon="inline-start" />
+          {{ t('dashboard.onboarding.completeOnboarding') }}
+        </Button>
       </CardAction>
     </CardHeader>
 
     <CardContent class="flex flex-col gap-4 pt-0">
       <template v-if="loading && !capabilities?.deployment">
         <Skeleton class="h-2 w-full" />
-        <div class="grid gap-3 md:grid-cols-3">
-          <Skeleton v-for="index in 3" :key="index" class="h-20 w-full" />
+        <div class="flex flex-col gap-2.5">
+          <Skeleton v-for="index in 2" :key="index" class="h-14 w-full" />
         </div>
       </template>
 
@@ -159,18 +199,17 @@ function openRoomControl() {
           </span>
         </div>
 
-        <ol class="grid gap-4 md:grid-cols-3">
+        <ol class="flex flex-col gap-2.5">
           <li
-            v-for="(step, index) in state.steps"
+            v-for="(step, index) in state.incompleteSteps"
             :key="step.id"
-            class="flex min-w-0 items-start gap-3"
+            class="flex flex-col gap-2.5 rounded-lg border bg-background/60 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
             :aria-current="step.current ? 'step' : undefined"
           >
-            <Badge :variant="step.complete ? 'secondary' : 'outline'" class="size-7 shrink-0 justify-center p-0">
-              <Check v-if="step.complete" />
-              <span v-else>{{ index + 1 }}</span>
-            </Badge>
-            <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <div class="flex min-w-0 items-start gap-3">
+              <Badge :variant="step.current ? 'secondary' : 'outline'" class="size-7 shrink-0 justify-center p-0">
+                <span>{{ index + 1 }}</span>
+              </Badge>
               <div class="flex min-w-0 flex-col gap-0.5">
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="text-sm font-medium">{{ t(`dashboard.onboarding.steps.${step.id}.title`) }}</span>
@@ -180,27 +219,42 @@ function openRoomControl() {
                   {{ t(stepDescriptionKey(step), stepDescriptionParams(step)) }}
                 </p>
               </div>
-
-              <Button
-                v-if="step.current && step.id === 'game'"
-                size="sm"
-                class="self-start"
-                :disabled="!canInstall || installing || blockers.length > 0"
-                @click="emit('install')"
-              >
-                <Spinner v-if="installing" data-icon="inline-start" />
-                <PackageOpen v-else data-icon="inline-start" />
-                {{ t(installing ? 'dashboard.version.installButtonBusy' : 'dashboard.version.installButton') }}
-              </Button>
-              <Button v-else-if="step.current && step.id === 'room'" size="sm" class="self-start" :disabled="blockers.length > 0" @click="openRoomCreation">
-                <FolderPlus data-icon="inline-start" />
-                {{ t('dashboard.onboarding.steps.room.action') }}
-              </Button>
-              <Button v-else-if="step.current && step.id === 'start'" size="sm" class="self-start" :disabled="blockers.length > 0" @click="openRoomControl">
-                <Play data-icon="inline-start" />
-                {{ t('dashboard.onboarding.steps.start.action') }}
-              </Button>
             </div>
+
+            <Button
+              v-if="step.id === 'game'"
+              size="sm"
+              class="self-start sm:shrink-0 sm:self-center"
+              :variant="step.current ? 'default' : 'outline'"
+              :disabled="!canInstall || installing || blockers.length > 0"
+              @click="emit('install')"
+            >
+              <Spinner v-if="installing" data-icon="inline-start" />
+              <PackageOpen v-else data-icon="inline-start" />
+              {{ t(installing ? 'dashboard.version.installButtonBusy' : 'dashboard.version.installButton') }}
+            </Button>
+            <Button
+              v-else-if="step.id === 'room'"
+              size="sm"
+              class="self-start sm:shrink-0 sm:self-center"
+              :variant="step.current ? 'default' : 'outline'"
+              :disabled="blockers.length > 0"
+              @click="openRoomCreation"
+            >
+              <FolderPlus data-icon="inline-start" />
+              {{ t('dashboard.onboarding.steps.room.action') }}
+            </Button>
+            <Button
+              v-else-if="step.id === 'start'"
+              size="sm"
+              class="self-start sm:shrink-0 sm:self-center"
+              :variant="step.current ? 'default' : 'outline'"
+              :disabled="!firstRoom || blockers.length > 0"
+              @click="openRoomControl"
+            >
+              <Play data-icon="inline-start" />
+              {{ t('dashboard.onboarding.steps.start.action') }}
+            </Button>
           </li>
         </ol>
       </template>

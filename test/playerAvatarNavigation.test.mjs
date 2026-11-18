@@ -113,5 +113,5 @@ test('local player menu confirms destructive actions and resurrects directly', a
   assert.match(actions, /type="submit" variant="destructive"[^>]*>[\s\S]*?players\.actions\.confirmBan/)
   assert.match(actions, /<UiDialog v-model:open="dialogOpen">[\s\S]*<DialogContent/)
   assert.doesNotMatch(actions, /<SheetContent|side="right"/)
-  assert.match(actions, /<details class="player-management-actions">/)
+  assert.match(actions, /<Collapsible class="player-management-actions\b/)
 })

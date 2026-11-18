@@ -3,7 +3,7 @@ import SoftwareUpdateSettings from './SoftwareUpdateSettings.vue'
 import { useSoftwareUpdate } from '@/composables/useSoftwareUpdate'
 import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Mail, Webhook, Plus, RefreshCw, Send, Pencil, Trash2, CircleAlert } from '@lucide/vue'
+import { Mail, Webhook, Plus, RefreshCw, Send, Pencil, Trash2, CircleAlert, ChevronDown } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { notificationsV2API } from '@/api/v2'
 import { notificationEvents, notificationForm, notificationInput, notificationHistoryPending, webhookPresets } from '@/lib/notificationChannels.mjs'
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
@@ -115,7 +116,13 @@ onBeforeUnmount(() => { alive = false; sequence++; clearTimeout(timer); form.val
     <Alert v-if="error" variant="destructive"><CircleAlert /><AlertTitle>{{ t('notifications.failed') }}</AlertTitle><AlertDescription>{{ error }}</AlertDescription><Button size="sm" variant="outline" :disabled="loading" @click="load">{{ t('notifications.refresh') }}</Button></Alert>
     <Card>
       <CardHeader class="flex flex-wrap items-start justify-between gap-3">
-        <div class="flex flex-col gap-1"><CardTitle>{{ t('notifications.channels') }}</CardTitle><CardDescription>{{ t('notifications.description') }}</CardDescription></div>
+        <div class="flex flex-col gap-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <CardTitle>{{ t('notifications.channels') }}</CardTitle>
+            <Badge variant="outline">{{ t('systemSettings.independentSave') }}</Badge>
+          </div>
+          <CardDescription>{{ t('notifications.description') }}</CardDescription>
+        </div>
         <div class="flex flex-wrap gap-2"><Button size="sm" variant="outline" :disabled="Boolean(action) || !customEnabled" :title="customEnabled ? t('notifications.sendHelp') : t('notifications.noCustomChannels')" @click="compose = true"><Send data-icon="inline-start" />{{ t('notifications.send') }}</Button><Button size="sm" :disabled="Boolean(action)" @click="edit(null)"><Plus data-icon="inline-start" />{{ t('notifications.add') }}</Button></div>
       </CardHeader>
       <CardContent>
@@ -161,15 +168,23 @@ onBeforeUnmount(() => { alive = false; sequence++; clearTimeout(timer); form.val
             <Field v-if="form.type === 'email'"><FieldLabel :for="fieldId('recipients')">{{ t('notifications.recipients') }}</FieldLabel><Textarea :id="fieldId('recipients')" v-model="form.recipients" rows="3" :disabled="Boolean(action)" required /><FieldDescription>{{ t('notifications.recipientsHelp') }}</FieldDescription></Field>
             <template v-else>
               <Field><FieldLabel :for="fieldId('url')">{{ t('notifications.url') }}</FieldLabel><Input :id="fieldId('url')" v-model="form.url" type="url" autocomplete="off" :placeholder="form.urlConfigured ? t('notifications.urlSaved') : 'https://example.com/webhook'" :disabled="Boolean(action)" :required="!form.urlConfigured" /><FieldDescription>{{ t('notifications.urlHelp') }}</FieldDescription></Field>
-              <details class="min-w-0"><summary class="cursor-pointer text-sm font-medium">{{ t('notifications.advanced') }}</summary>
-                <FieldGroup class="mt-4">
-                  <Field><FieldLabel :for="fieldId('preset')">{{ t('notifications.preset') }}</FieldLabel><Select :model-value="form.responseMode" :disabled="Boolean(action)" @update:model-value="preset"><SelectTrigger :id="fieldId('preset')" class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="value in ['http', 'wecom', 'dingtalk', 'feishu']" :key="value" :value="value">{{ t(`notifications.${value}`) }}</SelectItem></SelectGroup></SelectContent></Select></Field>
-                  <Field><FieldLabel :for="fieldId('method')">{{ t('notifications.method') }}</FieldLabel><Select v-model="form.method" :disabled="Boolean(action)"><SelectTrigger :id="fieldId('method')" class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="POST">POST</SelectItem><SelectItem value="PUT">PUT</SelectItem></SelectGroup></SelectContent></Select></Field>
-                  <Field><FieldLabel :for="fieldId('format')">{{ t('notifications.format') }}</FieldLabel><Select v-model="form.format" :disabled="Boolean(action)"><SelectTrigger :id="fieldId('format')" class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="json">{{ t('notifications.json') }}</SelectItem><SelectItem value="text">{{ t('notifications.text') }}</SelectItem></SelectGroup></SelectContent></Select></Field>
-                  <Field><FieldLabel :for="fieldId('headers')">{{ t('notifications.headers') }}</FieldLabel><Textarea :id="fieldId('headers')" v-model="form.headers" rows="3" autocomplete="off" :placeholder="form.headersConfigured ? t('notifications.headersSaved') : '{}'" :disabled="Boolean(action)" /><FieldDescription>{{ t('notifications.headersHelp') }}</FieldDescription></Field>
-                  <Field><FieldLabel :for="fieldId('template')">{{ t('notifications.template') }}</FieldLabel><Textarea :id="fieldId('template')" v-model="form.template" rows="8" class="font-mono" :disabled="Boolean(action)" required /><FieldDescription>{{ t('notifications.templateHelp') }}</FieldDescription></Field>
-                </FieldGroup>
-              </details>
+              <Collapsible v-slot="{ open: advancedOpen }" class="min-w-0">
+                <CollapsibleTrigger as-child>
+                  <Button type="button" variant="ghost" size="sm" class="px-0">
+                    {{ t('notifications.advanced') }}
+                    <ChevronDown class="transition-transform" :class="{ 'rotate-180': advancedOpen }" data-icon="inline-end" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent class="pt-4">
+                  <FieldGroup>
+                    <Field><FieldLabel :for="fieldId('preset')">{{ t('notifications.preset') }}</FieldLabel><Select :model-value="form.responseMode" :disabled="Boolean(action)" @update:model-value="preset"><SelectTrigger :id="fieldId('preset')" class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="value in ['http', 'wecom', 'dingtalk', 'feishu']" :key="value" :value="value">{{ t(`notifications.${value}`) }}</SelectItem></SelectGroup></SelectContent></Select></Field>
+                    <Field><FieldLabel :for="fieldId('method')">{{ t('notifications.method') }}</FieldLabel><Select v-model="form.method" :disabled="Boolean(action)"><SelectTrigger :id="fieldId('method')" class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="POST">POST</SelectItem><SelectItem value="PUT">PUT</SelectItem></SelectGroup></SelectContent></Select></Field>
+                    <Field><FieldLabel :for="fieldId('format')">{{ t('notifications.format') }}</FieldLabel><Select v-model="form.format" :disabled="Boolean(action)"><SelectTrigger :id="fieldId('format')" class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="json">{{ t('notifications.json') }}</SelectItem><SelectItem value="text">{{ t('notifications.text') }}</SelectItem></SelectGroup></SelectContent></Select></Field>
+                    <Field><FieldLabel :for="fieldId('headers')">{{ t('notifications.headers') }}</FieldLabel><Textarea :id="fieldId('headers')" v-model="form.headers" rows="3" autocomplete="off" :placeholder="form.headersConfigured ? t('notifications.headersSaved') : '{}'" :disabled="Boolean(action)" /><FieldDescription>{{ t('notifications.headersHelp') }}</FieldDescription></Field>
+                    <Field><FieldLabel :for="fieldId('template')">{{ t('notifications.template') }}</FieldLabel><Textarea :id="fieldId('template')" v-model="form.template" rows="8" class="font-mono" :disabled="Boolean(action)" required /><FieldDescription>{{ t('notifications.templateHelp') }}</FieldDescription></Field>
+                  </FieldGroup>
+                </CollapsibleContent>
+              </Collapsible>
             </template>
             <FieldSet><FieldLegend>{{ t('notifications.events') }}</FieldLegend><FieldGroup class="grid gap-3 sm:grid-cols-2"><Field v-for="kind in notificationEvents" :key="kind" orientation="horizontal"><Checkbox :id="fieldId(kind)" :model-value="form.events.includes(kind)" :disabled="Boolean(action)" @update:model-value="selected => selectEvent(kind, selected)" /><FieldLabel :for="fieldId(kind)">{{ eventLabel(kind) }}</FieldLabel></Field></FieldGroup></FieldSet>
             <Field><div class="flex items-center gap-3"><Switch :id="fieldId('failures')" v-model="form.failuresOnly" :disabled="Boolean(action)" /><FieldLabel :for="fieldId('failures')">{{ t('notifications.failuresOnly') }}</FieldLabel></div><FieldDescription>{{ t('notifications.failuresHelp') }}</FieldDescription></Field>

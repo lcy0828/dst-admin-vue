@@ -119,17 +119,33 @@ export const V2_NAVIGATION = [
   }
 ]
 
-export function navigationForFeatures(features = {}) {
+export function navigationForFeatures(features = {}, { fleetMode = true } = {}) {
   const commonPaths = ['/dashboard', '/rooms/list', '/players/list', '/mods', '/backups', '/system/settings']
   const all = V2_NAVIGATION.flatMap(section => section.items)
   const flat = all.flatMap(item => item.children?.map(child => ({ ...child, icon: item.icon })) || [item])
   const common = commonPaths.flatMap(path => { const item = flat.find(item => item.to === path); return item ? [item] : [] })
   const more = all.flatMap(item => {
+    if (!fleetMode && item.labelKey === 'navigation.agents') return []
     if (item.children) {
-      const children = item.children.filter(child => !commonPaths.includes(child.to))
+      const children = item.children.filter(child => (
+        !commonPaths.includes(child.to)
+        && (fleetMode || child.to !== '/rooms/topology')
+      ))
       return children.length ? [{ ...item, children }] : []
     }
     return commonPaths.includes(item.to) ? [] : [item]
   }).filter(item => !item.requiresFeature || features[item.requiresFeature] !== false)
+  if (!fleetMode) {
+    more.push({
+      labelKey: 'navigation.fleetDeployment',
+      icon: RadioTower,
+      children: [
+        { labelKey: 'navigation.agentList', to: '/agents/list' },
+        { labelKey: 'navigation.agentCommands', to: '/agents/command' },
+        { labelKey: 'navigation.agentSecurity', to: '/agents/security' },
+        { labelKey: 'navigation.roomTopology', to: '/rooms/topology' }
+      ]
+    })
+  }
   return [{ labelKey: 'novice.common', items: common }, { labelKey: 'novice.more', items: more }]
 }

@@ -41,7 +41,8 @@ import { navigationForFeatures } from '@/v2/navigation'
 const props = defineProps({
   systemName: { type: String, default: '' },
   user: { type: Object, default: () => ({}) },
-  features: { type: Object, default: () => ({}) }
+  features: { type: Object, default: () => ({}) },
+  fleetMode: { type: Boolean, default: true }
 })
 
 const emit = defineEmits(['profile', 'password', 'logout'])
@@ -50,7 +51,7 @@ const { t } = useI18n()
 
 const displaySystemName = computed(() => props.systemName?.trim() || t('app.defaultName'))
 const userInitial = computed(() => (props.user.username || t('app.administrator')).trim().slice(0, 1).toUpperCase())
-const navigationSections = computed(() => navigationForFeatures(props.features))
+const navigationSections = computed(() => navigationForFeatures(props.features, { fleetMode: props.fleetMode }))
 
 function isActive(path) {
   if (path === '/dashboard') return route.path === path

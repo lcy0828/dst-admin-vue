@@ -148,6 +148,12 @@
                     <EmptyTitle>{{ t('backups.imports.list.empty') }}</EmptyTitle>
                     <EmptyDescription>{{ t('backups.imports.list.emptyDescription') }}</EmptyDescription>
                   </EmptyHeader>
+                  <EmptyContent>
+                    <UiButton variant="outline" size="sm" :disabled="loading" @click="loadImports">
+                      <RefreshCw data-icon="inline-start" />
+                      {{ t('backups.actions.refresh') }}
+                    </UiButton>
+                  </EmptyContent>
                 </Empty>
               </TableEmpty>
             </TableBody>
@@ -172,21 +178,33 @@
             <TriangleAlert />
             <AlertTitle>{{ t('backups.imports.details.loadFailed') }}</AlertTitle>
             <AlertDescription>{{ detailError }}</AlertDescription>
+            <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+              <UiButton variant="outline" size="sm" :disabled="detailLoading" @click="openDetails(selectedImport)">{{ t('common.actions.retry') }}</UiButton>
+            </AlertAction>
           </Alert>
           <Alert v-if="roomsLoadError">
             <TriangleAlert />
             <AlertTitle>{{ t('backups.imports.apply.roomsLoadFailedTitle') }}</AlertTitle>
             <AlertDescription>{{ roomsLoadError }}</AlertDescription>
+            <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+              <UiButton variant="outline" size="sm" @click="loadRooms">{{ t('common.actions.retry') }}</UiButton>
+            </AlertAction>
           </Alert>
           <Alert v-if="selectedImport.status === 'invalid'" variant="destructive">
             <TriangleAlert />
             <AlertTitle>{{ t('backups.imports.details.invalidTitle') }}</AlertTitle>
             <AlertDescription>{{ localizedImportError(selectedImport) }}</AlertDescription>
+            <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+              <UiButton variant="outline" size="sm" :disabled="isImportBusy(selectedImport)" @click="reanalyze(selectedImport)">{{ t('backups.imports.actions.analyze') }}</UiButton>
+            </AlertAction>
           </Alert>
           <Alert v-else-if="selectedImport.errorCode" variant="destructive">
             <TriangleAlert />
             <AlertTitle>{{ t('backups.imports.details.lastFailureTitle') }}</AlertTitle>
             <AlertDescription>{{ localizedImportError(selectedImport) }}</AlertDescription>
+            <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+              <UiButton variant="outline" size="sm" :disabled="isImportBusy(selectedImport)" @click="reanalyze(selectedImport)">{{ t('backups.imports.actions.analyze') }}</UiButton>
+            </AlertAction>
           </Alert>
 
           <section class="flex flex-col gap-3" :aria-labelledby="'import-summary-heading'">
@@ -506,7 +524,7 @@ import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet, FieldTitle } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { Progress as UiProgress } from '@/components/ui/progress'
@@ -945,14 +963,45 @@ async function deleteImport() {
 
 defineExpose({ busy: computed(() => uploading.value || applying.value || deleting.value || Object.keys(jobsByImport.value).length > 0) })
 
-onMounted(() => {
-  void loadImports()
-  void loadRooms()
+function hasPendingImports() {
+  return imports.value.some(item => ['uploaded', 'analyzing', 'applying'].includes(item.status))
+}
+
+function stopRefreshTimer() {
+  if (refreshTimer) window.clearInterval(refreshTimer)
+  refreshTimer = null
+}
+
+function startRefreshTimer() {
+  stopRefreshTimer()
+  if (disposed || typeof window === 'undefined') return
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
   refreshTimer = window.setInterval(() => {
-    if (imports.value.some(item => ['uploaded', 'analyzing', 'applying'].includes(item.status))) {
+    if (disposed || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
+    if (hasPendingImports()) {
       void loadImports({ quiet: true })
     }
   }, 3000)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    stopRefreshTimer()
+    return
+  }
+  if (hasPendingImports()) {
+    void loadImports({ quiet: true })
+  }
+  startRefreshTimer()
+}
+
+onMounted(() => {
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+  }
+  void loadImports()
+  void loadRooms()
+  startRefreshTimer()
 })
 
 onBeforeUnmount(() => {
@@ -961,6 +1010,9 @@ onBeforeUnmount(() => {
   importRequestSequence += 1
   roomRequestSequence += 1
   detailRequestSequence += 1
-  if (refreshTimer) window.clearInterval(refreshTimer)
+  stopRefreshTimer()
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
 })
 </script>

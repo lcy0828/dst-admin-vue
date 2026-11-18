@@ -1,8 +1,11 @@
 <script setup>
 import { computed } from 'vue'
+import { ChevronDown } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 const props = defineProps({ report: { type: Object, required: true } })
 const { t, te } = useI18n()
@@ -50,41 +53,69 @@ const date = value => value ? new Date(value).toLocaleString() : '--'
 
     <div v-if="report.evidence?.length" class="flex min-w-0 flex-col gap-2">
       <p class="text-xs text-muted-foreground">{{ t(`modDiagnostics.correlation.${report.logCorrelation}`) }}</p>
-      <details v-for="(evidence, index) in report.evidence" :key="evidence.errorCursor" :open="index === 0" class="min-w-0 rounded-md border p-3">
-        <summary class="cursor-pointer text-sm font-medium">{{ t('modDiagnostics.errorBlock', { index: index + 1, cursor: evidence.errorCursor }) }}</summary>
-        <pre class="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs">{{ evidence.lines.join('\n') }}</pre>
-        <p v-if="evidence.truncated" class="mt-2 text-xs text-muted-foreground">{{ t('modDiagnostics.codes.STACK_TRUNCATED') }}</p>
-      </details>
+      <Collapsible v-for="(evidence, index) in report.evidence" :key="evidence.errorCursor" :default-open="index === 0" :unmount-on-hide="false" class="min-w-0 rounded-md border p-3">
+        <CollapsibleTrigger as-child>
+          <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between gap-2 px-0 py-0 text-sm font-medium whitespace-normal text-left hover:bg-transparent">
+            <span class="min-w-0 break-words">{{ t('modDiagnostics.errorBlock', { index: index + 1, cursor: evidence.errorCursor }) }}</span>
+            <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent class="pt-2">
+          <pre class="max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs">{{ evidence.lines.join('\n') }}</pre>
+          <p v-if="evidence.truncated" class="mt-2 text-xs text-muted-foreground">{{ t('modDiagnostics.codes.STACK_TRUNCATED') }}</p>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
 
-    <details v-if="report.baseline || report.changes?.length" class="rounded-md border p-3">
-      <summary class="cursor-pointer text-sm font-medium">{{ t('modDiagnostics.comparison', { count: report.changes?.length || 0 }) }}</summary>
-      <p class="mt-2 text-xs text-muted-foreground">{{ t('modDiagnostics.baseline', { time: date(report.baseline?.capturedAt) }) }}</p>
-      <ul v-if="report.changes?.length" class="mt-2 flex flex-col gap-1 text-sm">
-        <li v-for="(change, index) in report.changes" :key="index" class="break-all">
-          {{ t(`modDiagnostics.fields.${change.field}`) }}<template v-if="change.modId"> · {{ modName(change.modId) }}</template>：{{ change.before || '--' }} → {{ change.after || '--' }}
-        </li>
-      </ul>
-    </details>
+    <Collapsible v-if="report.baseline || report.changes?.length" :unmount-on-hide="false" class="min-w-0 rounded-md border p-3">
+      <CollapsibleTrigger as-child>
+        <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between gap-2 px-0 py-0 text-sm font-medium whitespace-normal text-left hover:bg-transparent">
+          <span class="min-w-0 break-words">{{ t('modDiagnostics.comparison', { count: report.changes?.length || 0 }) }}</span>
+          <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent class="pt-2">
+        <p class="text-xs text-muted-foreground">{{ t('modDiagnostics.baseline', { time: date(report.baseline?.capturedAt) }) }}</p>
+        <ul v-if="report.changes?.length" class="mt-2 flex flex-col gap-1 text-sm">
+          <li v-for="(change, index) in report.changes" :key="index" class="break-all">
+            {{ t(`modDiagnostics.fields.${change.field}`) }}<template v-if="change.modId"> · {{ modName(change.modId) }}</template>：{{ change.before || '--' }} → {{ change.after || '--' }}
+          </li>
+        </ul>
+      </CollapsibleContent>
+    </Collapsible>
 
-    <details v-if="observation.mods?.length" class="rounded-md border p-3">
-      <summary class="cursor-pointer text-sm font-medium">{{ t('modDiagnostics.modList', { count: observation.mods.length }) }}</summary>
-      <ul class="mt-2 flex flex-col gap-2 text-sm">
-        <li v-for="mod in observation.mods" :key="mod.id" class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span class="break-all font-medium">{{ mod.name || mod.id }}</span>
-          <span class="text-xs text-muted-foreground">{{ t('modDiagnostics.modVersion', { version: mod.version || '--', manifest: mod.manifest || '--' }) }}</span>
-          <span class="text-xs text-muted-foreground">{{ t('modDiagnostics.declaration', { dst: mod.dstCompatible === undefined ? '--' : String(mod.dstCompatible), api: mod.apiVersion || '--' }) }}</span>
-        </li>
-      </ul>
-    </details>
+    <Collapsible v-if="observation.mods?.length" :unmount-on-hide="false" class="min-w-0 rounded-md border p-3">
+      <CollapsibleTrigger as-child>
+        <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between gap-2 px-0 py-0 text-sm font-medium whitespace-normal text-left hover:bg-transparent">
+          <span class="min-w-0 break-words">{{ t('modDiagnostics.modList', { count: observation.mods.length }) }}</span>
+          <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent class="pt-2">
+        <ul class="flex flex-col gap-2 text-sm">
+          <li v-for="mod in observation.mods" :key="mod.id" class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span class="break-all font-medium">{{ mod.name || mod.id }}</span>
+            <span class="text-xs text-muted-foreground">{{ t('modDiagnostics.modVersion', { version: mod.version || '--', manifest: mod.manifest || '--' }) }}</span>
+            <span class="text-xs text-muted-foreground">{{ t('modDiagnostics.declaration', { dst: mod.dstCompatible === undefined ? '--' : String(mod.dstCompatible), api: mod.apiVersion || '--' }) }}</span>
+          </li>
+        </ul>
+      </CollapsibleContent>
+    </Collapsible>
 
-    <details class="rounded-md border p-3">
-      <summary class="cursor-pointer text-sm font-medium">{{ t('modDiagnostics.limits') }}</summary>
-      <ul class="mt-2 flex list-disc flex-col gap-1 pl-4 text-xs text-muted-foreground">
-        <li v-for="code in codes" :key="code">{{ label(code) }}</li>
-      </ul>
-      <p class="mt-2 text-xs text-muted-foreground">{{ t('modDiagnostics.observedAt', { time: date(observation.observedAt) }) }}</p>
-    </details>
+    <Collapsible :unmount-on-hide="false" class="min-w-0 rounded-md border p-3">
+      <CollapsibleTrigger as-child>
+        <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between gap-2 px-0 py-0 text-sm font-medium whitespace-normal text-left hover:bg-transparent">
+          <span class="min-w-0 break-words">{{ t('modDiagnostics.limits') }}</span>
+          <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent class="pt-2">
+        <ul class="flex list-disc flex-col gap-1 pl-4 text-xs text-muted-foreground">
+          <li v-for="code in codes" :key="code">{{ label(code) }}</li>
+        </ul>
+        <p class="mt-2 text-xs text-muted-foreground">{{ t('modDiagnostics.observedAt', { time: date(observation.observedAt) }) }}</p>
+      </CollapsibleContent>
+    </Collapsible>
     <ul v-if="report.recommendations?.length" class="flex list-disc flex-col gap-1 pl-4 text-sm">
       <li v-for="code in report.recommendations" :key="code">{{ label(code) }}</li>
     </ul>

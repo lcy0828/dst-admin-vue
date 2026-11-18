@@ -127,6 +127,7 @@ export const topologyMessages = {
         },
         actions: {
           change: '分配机器',
+          viewOrAdjust: '查看或调整',
           review: '检查变更',
           reviewing: '正在检查',
           confirm: '确认并执行',
@@ -490,6 +491,7 @@ export const topologyMessages = {
         },
         actions: {
           change: 'Assign machines',
+          viewOrAdjust: 'View or adjust',
           review: 'Review changes',
           reviewing: 'Reviewing',
           confirm: 'Confirm and apply',

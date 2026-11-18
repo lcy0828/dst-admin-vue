@@ -479,6 +479,8 @@ export const modMessages = {
         empty: {
           noMods: '还没有安装任何模组',
           noModsDescription: '从创意工坊搜索并添加模组。',
+          noMatches: '没有匹配的模组',
+          noMatchesDescription: '调整筛选条件或重置筛选后重试。',
           noRooms: '没有可管理的房间',
           noRoomsDescription: '先创建房间或等待 Agent 上报，再管理模组。'
         },
@@ -1206,6 +1208,8 @@ export const modMessages = {
         empty: {
           noMods: 'No mods installed yet',
           noModsDescription: 'Find and add mods from the Steam Workshop.',
+          noMatches: 'No matching mods',
+          noMatchesDescription: 'Adjust your filters or reset them to see installed mods.',
           noRooms: 'No manageable rooms',
           noRoomsDescription: 'Create a room or wait for an Agent to report one before managing mods.'
         },

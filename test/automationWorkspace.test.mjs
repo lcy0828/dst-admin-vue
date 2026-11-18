@@ -5,12 +5,14 @@ import { runInNewContext } from 'node:vm'
 import { ref, shallowRef } from 'vue'
 const source = readFileSync(new URL('../src/components/AutomationWorkspace.vue', import.meta.url), 'utf8')
 const script = source.match(/<script setup>([\s\S]*?)<\/script>/)[1].replace(/^import .*$/gm, '')
-function workspace(api, route = { name: 'TaskList', query: {}, params: {} }) {
+function workspace(api, route = { name: 'TaskList', query: {}, params: {} }, { targetId = '', rememberedRoomId = '' } = {}) {
   let unmount
   const view = runInNewContext(`${script}; ({load, dispose, rooms, boundApi, loading, error})`, {
     ref, shallowRef, defineProps: () => {}, useRoute: () => route, useRouter: () => ({ replace: async () => {} }),
     watch: () => {}, onBeforeUnmount: fn => { unmount = fn },
-    realCronTaskApi: api, AUTOMATION_SCOPE_EVENT: 'scope', window: new EventTarget()
+    realCronTaskApi: api, AUTOMATION_SCOPE_EVENT: 'scope', window: new EventTarget(),
+    managementScopeTargetId: () => targetId,
+    readWorkspaceSelection: () => ({ roomId: rememberedRoomId })
   })
   return { ...view, unmount }
 }
@@ -26,6 +28,21 @@ test('workspace does not mount tasks or zero-valued charts until a room is selec
   await page.load()
   assert.ok(page.boundApi.value)
   page.unmount()
+})
+test('workspace restores the remembered RoomScopeSelect room when URL omits roomId', async () => {
+  let id = ''
+  const api = {
+    getRoomScope: async () => ({ rooms: [{ id: 'a' }, { id: 'b' }], roomId: id }),
+    setRoom: next => { id = next },
+    forCurrentRoom: () => ({ roomId: id, dispose() {} })
+  }
+  const page = workspace(api, { name: 'TaskList', query: {}, params: {} }, { rememberedRoomId: 'b' })
+  await page.load()
+  assert.equal(page.boundApi.value.roomId, 'b')
+  page.unmount()
+  const roomSelect = readFileSync(new URL('../src/components/AutomationRoomSelect.vue', import.meta.url), 'utf8')
+  assert.match(roomSelect, /v-if="!loadError && rooms\.length === 1"/)
+  assert.match(roomSelect, /rememberRoomSelection\(managementScopeTargetId\(\), String\(roomId \|\| ''\)\)/)
 })
 test('workspace separates catalog errors from no rooms and can recover', async () => {
   let error = true

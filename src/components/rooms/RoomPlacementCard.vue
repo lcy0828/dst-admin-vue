@@ -1,5 +1,27 @@
 <template>
-  <Card size="sm">
+  <div
+    v-if="loading && !topology && !showFleetControls && !props.autoOpen"
+    class="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2 text-sm"
+  >
+    <Skeleton class="h-5 w-48" />
+    <Skeleton class="h-7 w-24" />
+  </div>
+  <div
+    v-else-if="compactSingleHost"
+    class="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2 text-sm"
+  >
+    <div class="flex min-w-0 flex-wrap items-center gap-2">
+      <Network class="size-4 shrink-0 text-muted-foreground" />
+      <span class="font-medium">{{ t('topology.roomPlacement.title') }}</span>
+      <span class="truncate text-muted-foreground">{{ appliedSummaryLabel }}</span>
+      <Badge :variant="summaryVariant">{{ summaryStateLabel }}</Badge>
+    </div>
+    <UiButton size="sm" variant="ghost" :disabled="loading || !topology" @click="openEditor()">
+      <Settings2 data-icon="inline-start" />
+      {{ t('topology.roomPlacement.actions.viewOrAdjust') }}
+    </UiButton>
+  </div>
+  <Card v-else size="sm">
     <CardHeader>
       <CardTitle class="flex items-center gap-2"><Network />{{ t('topology.roomPlacement.title') }}</CardTitle>
       <CardDescription>{{ t('topology.roomPlacement.description') }}</CardDescription>
@@ -256,6 +278,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import {
@@ -273,6 +296,7 @@ import {
 } from '@lucide/vue'
 import { topologyV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
+import { useFleetDisclosure } from '@/composables/useFleetDisclosure'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
@@ -319,6 +343,8 @@ const props = defineProps({
 
 const emit = defineEmits(['updated'])
 const { t } = useI18n()
+const route = useRoute()
+const { showFleetControls } = useFleetDisclosure(route)
 
 const topology = ref(null)
 const managedRoomName = ref('')
@@ -385,6 +411,16 @@ const operationPercent = computed(() => operationProgress.total > 0
   ? Math.round((operationProgress.completed / operationProgress.total) * 100)
   : 0)
 const roomNameForConfirmation = computed(() => props.roomName.trim() || managedRoomName.value || String(props.roomId))
+const compactSingleHost = computed(() => (
+  !showFleetControls.value
+  && !loadError.value
+  && Boolean(topology.value)
+  && pendingPlacements.value.length === 0
+  && !pendingShardLinks.value
+  && !(topology.value?.issues || []).some(issue => issue.severity === 'error')
+  && appliedSummary.value.endpointCount <= 1
+  && !props.autoOpen
+))
 const modeDescription = computed(() => t(draft.mode === ROOM_PLACEMENT_MODE.COLOCATED
   ? 'topology.roomPlacement.mode.colocatedDescription'
   : 'topology.roomPlacement.mode.perWorldDescription'))

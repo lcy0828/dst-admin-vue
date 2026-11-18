@@ -3,7 +3,7 @@ import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Check, ChevronDown, Network, Search, Server, Settings } from '@lucide/vue'
-import { fleetOverviewV2API, runtimeTargetsV2API } from '@/api/v2'
+import { fleetOverviewV2API } from '@/api/v2'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -20,22 +20,25 @@ import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { runtimeTargetMeta, runtimeTargetName } from '@/lib/runtimeTargetPresentation.mjs'
 import { summarizeFleetActivity } from '@/lib/fleetOverview.mjs'
+import { useFleetDisclosure } from '@/composables/useFleetDisclosure'
 import {
   getManagementScope,
   MANAGEMENT_SCOPE_CHANGED_EVENT,
   MANAGEMENT_SCOPE_TARGET,
   setManagementScope
 } from '@/lib/managementScope.mjs'
-import { RUNTIME_TARGETS_UPDATED_EVENT } from '@/utils/runtimeTarget'
-import { toast } from 'vue-sonner'
 
 const router = useRouter()
 const scopeGuard = inject('machine-scope-guard', null)
 const { t } = useI18n()
+const {
+  targets,
+  targetsLoading: loading,
+  refreshTargets,
+  ensureFleetTargetsLoaded
+} = useFleetDisclosure()
 const open = ref(false)
-const loading = ref(false)
 const query = ref('')
-const targets = ref([])
 const scope = ref(getManagementScope())
 const activity = ref(null)
 const activityLoading = ref(false)
@@ -137,55 +140,23 @@ function openMachineManagement() {
   router.push('/agents/list')
 }
 
-async function loadTargets() {
-  if (loading.value) return
-  loading.value = true
-  try {
-    const value = await runtimeTargetsV2API.list()
-    if (disposed) return
-    targets.value = Array.isArray(value?.items) ? value.items : []
-    if (targets.value.length === 1) {
-      applyTargetScope(targets.value[0])
-    } else if (scope.value.kind === MANAGEMENT_SCOPE_TARGET) {
-      const target = targets.value.find(item => item.id === scope.value.targetId)
-      scope.value = target
-        ? setManagementScope({
-            kind: MANAGEMENT_SCOPE_TARGET,
-            targetId: target.id,
-            targetName: targetName(target),
-            targetKind: target.kind,
-            agentId: target.agentId,
-            online: target.online,
-            configured: target.configured
-          })
-        : setManagementScope({ kind: 'all' })
-    }
-  } catch (error) {
-    toast.error(t('app.remote.loadFailedDetail', { error: error?.message || t('common.errors.unknown') }))
-  } finally {
-    loading.value = false
-  }
-}
-
 function handleOpen(next) {
   open.value = next
   if (next) {
     query.value = ''
-    void loadTargets()
+    void refreshTargets({ silent: false })
     void loadActivity()
   }
 }
 
 onMounted(() => {
   window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, syncScope)
-  window.addEventListener(RUNTIME_TARGETS_UPDATED_EVENT, loadTargets)
-  void loadTargets()
+  void ensureFleetTargetsLoaded({ silent: false })
 })
 
 onBeforeUnmount(() => {
   disposed = true
   window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, syncScope)
-  window.removeEventListener(RUNTIME_TARGETS_UPDATED_EVENT, loadTargets)
 })
 </script>
 

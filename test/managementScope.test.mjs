@@ -66,25 +66,30 @@ test('machine preference survives a new session, migrates old session storage, a
   assert.equal(unavailable.getManagementScope().targetId, 'local')
 })
 
-test('the formal layout exposes one searchable fleet and machine scope switcher', async () => {
-  const component = await readFile(new URL('../src/components/layout/ManagementScopeSwitch.vue', import.meta.url), 'utf8')
-  const layout = await readFile(new URL('../src/layouts/MainLayoutV2.vue', import.meta.url), 'utf8')
+test('the formal layout exposes one searchable fleet and machine scope switcher on demand', async () => {
+  const [component, composable, layout] = await Promise.all([
+    readFile(new URL('../src/components/layout/ManagementScopeSwitch.vue', import.meta.url), 'utf8'),
+    readFile(new URL('../src/composables/useFleetDisclosure.js', import.meta.url), 'utf8'),
+    readFile(new URL('../src/layouts/MainLayoutV2.vue', import.meta.url), 'utf8')
+  ])
 
-  assert.match(layout, /<ManagementScopeSwitch v-if="hasMachineScope"/)
-  assert.match(layout, /<RouterView :key="`\$\{\['\/mods', '\/dashboard', '\/servers\/performance'\]\.includes\(route\.path\) \? route\.path : route\.fullPath\}:\$\{route\.path === '\/dashboard' \? '' : managementScopeRevision\}`"/)
-  assert.match(layout, /<RoomManagementScopeNotice v-if="hasMachineScope && route\.path\.startsWith\('\/rooms'\)"/)
-  assert.match(component, /runtimeTargetsV2API\.list\(\)/)
-  assert.match(component, /targets\.value\.length === 1/)
+  assert.match(layout, /useFleetDisclosure\(route\)/)
+  assert.match(layout, /<ManagementScopeSwitch v-if="hasMachineScope && showFleetControls"/)
+  assert.match(layout, /<RouterView :key="`\$\{\['\/mods', '\/dashboard', '\/servers\/performance', '\/worlds\/settings'\]\.includes\(route\.path\) \? route\.path : route\.fullPath\}:\$\{route\.path === '\/dashboard' \? '' : managementScopeRevision\}`"/)
+  assert.match(layout, /<RoomManagementScopeNotice v-if="hasMachineScope && showFleetControls && route\.path\.startsWith\('\/rooms'\)"/)
+  assert.match(composable, /runtimeTargetsV2API\.list\(\)/)
+  assert.match(composable, /items\.length === 1/)
+  assert.match(composable, /RUNTIME_TARGETS_UPDATED_EVENT/)
+  assert.match(component, /useFleetDisclosure\(\)/)
   assert.match(component, /const hasMultipleTargets = computed/)
   assert.match(component, /<InputGroup v-if="hasMultipleTargets">/)
   assert.match(component, /<template v-if="hasMultipleTargets">/)
   assert.match(component, /<Popover\b/)
   assert.match(component, /<InputGroupInput v-model="query"/)
-  assert.match(component, /RUNTIME_TARGETS_UPDATED_EVENT/)
   assert.match(component, /scope\.targetId === target\.id \? 'secondary' : 'ghost'/)
   assert.match(component, /app\.remote\.allTargets/)
   assert.match(component, /app\.remote\.manageTargets/)
-  assert.doesNotMatch(component, /setActiveRuntimeTarget/)
+  assert.doesNotMatch(component, /setActiveRuntimeTarget|runtimeTargetsV2API/)
   assert.match(component, /fleetOverviewV2API\.get\('', \{ detail: 'inventory' \}\)/)
   assert.match(component, /if \(activityLoading\.value\) return/)
   assert.doesNotMatch(component, /setInterval|setTimeout|scopeDescription|allTargetsDescription|h-72/)

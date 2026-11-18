@@ -1,6 +1,6 @@
 <template>
   <Dialog v-model:open="open">
-    <DialogTrigger as-child>
+    <DialogTrigger v-if="!hideTrigger" as-child>
       <UiButton type="button" size="sm" variant="ghost">
         <Waypoints data-icon="inline-start" />
         {{ t('roomTopology.trigger') }}
@@ -151,7 +151,9 @@ const props = defineProps({
   connection: { type: Object, default: () => ({}) },
   worldPorts: { type: Array, default: () => [] },
   refreshing: { type: Boolean, default: false },
-  errorMessage: { type: String, default: '' }
+  errorMessage: { type: String, default: '' },
+  hideTrigger: { type: Boolean, default: false },
+  openRequest: { type: Number, default: 0 }
 })
 
 const emit = defineEmits(['refresh'])
@@ -178,6 +180,10 @@ const entrySource = computed(() => {
   return ['configured', 'detected', 'lan', 'draft', 'panel', 'local', 'missing'].includes(source) ? source : 'configured'
 })
 const entryVariant = computed(() => view.value.playerEntry.ready ? 'outline' : 'warning')
+
+watch(() => props.openRequest, value => {
+  if (value > 0) open.value = true
+})
 
 watch(open, value => {
   if (value) emit('refresh')

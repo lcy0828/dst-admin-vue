@@ -170,8 +170,8 @@ export function previewSystemTheme(themeValue) {
   return { ...current }
 }
 
-export function previewSystemLanguage(locale) {
-  current = { ...current, language: setLocale(locale) }
+export function previewSystemLanguage(locale, { persist = true } = {}) {
+  current = { ...current, language: setLocale(locale, { persist }) }
   notifyPreferencesUpdated()
   return { ...current }
 }

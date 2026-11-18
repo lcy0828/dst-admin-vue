@@ -1,7 +1,26 @@
 export const SETUP_STEPS = Object.freeze(['deployment', 'environment', 'game', 'room', 'review'])
 
-export function setupStep(value) {
-  return SETUP_STEPS.includes(value) ? value : 'deployment'
+export function initialSetupSteps({
+  fleetMode = false,
+  remote = false,
+  member = false,
+  includeDeployment = false
+} = {}) {
+  return (fleetMode || remote || member || includeDeployment)
+    ? SETUP_STEPS
+    : SETUP_STEPS.filter(step => step !== 'deployment')
+}
+
+export function setupStep(value, allowedSteps = SETUP_STEPS) {
+  const steps = Array.isArray(allowedSteps) && allowedSteps.length ? allowedSteps : SETUP_STEPS
+  return steps.includes(value) ? value : steps[0]
+}
+
+export function recommendedSetupStep({ installed = false, roomCount = 0, localExecutorEnabled = true } = {}) {
+  if (!localExecutorEnabled) return 'deployment'
+  if (!installed) return 'game'
+  if (Number(roomCount) <= 0) return 'room'
+  return 'review'
 }
 
 export function authenticatedDestination(session, redirect = '/dashboard') {
@@ -55,4 +74,31 @@ export function setupPendingItems({ capabilities, readiness, installations, room
     )
   })) pending.push('placement')
   return pending
+}
+
+export function setupPendingAction(item, { deploymentVisible = false } = {}) {
+  switch (item) {
+    case 'unavailable':
+      return { kind: 'refresh', labelKey: 'setup.pendingActions.unavailable' }
+    case 'restart':
+      return {
+        kind: 'step',
+        step: deploymentVisible ? 'deployment' : 'environment',
+        labelKey: 'setup.pendingActions.restart'
+      }
+    case 'environment':
+      return { kind: 'step', step: 'environment', labelKey: 'setup.pendingActions.environment' }
+    case 'member':
+      return { kind: 'step', step: 'deployment', labelKey: 'setup.pendingActions.member' }
+    case 'agent':
+      return { kind: 'route', route: '/agents/list', labelKey: 'setup.pendingActions.agent' }
+    case 'game':
+      return { kind: 'step', step: 'game', labelKey: 'setup.pendingActions.game' }
+    case 'room':
+      return { kind: 'step', step: 'room', labelKey: 'setup.pendingActions.room' }
+    case 'placement':
+      return { kind: 'step', step: 'room', labelKey: 'setup.pendingActions.placement' }
+    default:
+      return null
+  }
 }

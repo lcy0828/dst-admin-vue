@@ -362,9 +362,13 @@ export const playerMessages = {
         openPlayerMenu: '打开玩家操作菜单',
         playerActions: '玩家操作',
         openDiagnostics: '房间诊断',
+        openWorkspace: '前往房间控制',
         openWorkbench: '打开游戏工作台',
         viewOnSteam: '在 Steam 中查看',
-        viewPlayerOnSteam: '在 Steam 中查看玩家'
+        viewPlayerOnSteam: '在 Steam 中查看玩家',
+        more: '更多',
+        columnSettings: '列设置',
+        resetColumns: '恢复默认'
       },
       fields: {
         archive: '存档名称',
@@ -444,6 +448,8 @@ export const playerMessages = {
         loading: '正在加载玩家列表',
         emptyTitle: '暂无玩家数据',
         emptyDescription: '选择存档或手动更新玩家列表。',
+        emptyFilteredTitle: '没有符合条件的玩家',
+        emptyFilteredDescription: '调整筛选条件或重置筛选后查看全部记录。',
         perPage: '每页',
         perPageAria: '每页显示数量',
         administrator: '管理员',
@@ -451,7 +457,8 @@ export const playerMessages = {
         sampledAt: '采样于 {time}',
         staleObservedAt: '最后确认于 {time}',
         presenceConflict: '分片冲突',
-        presenceConflictDescription: '同一轮采样在以下世界同时发现该玩家：{worlds}'
+        presenceConflictDescription: '同一轮采样在以下世界同时发现该玩家：{worlds}',
+        columnsHint: '选择在玩家表格中显示的列（默认 6 列）。'
       },
       detail: {
         title: '玩家详情',
@@ -552,7 +559,7 @@ export const playerMessages = {
         title: '封禁记录', subtitle: '查看玩家操作产生的封禁原因与期限；名单本体在房间黑名单中维护。', filterTitle: '筛选记录',
         filterDescription: '按房间或玩家关键词查询封禁记录。', room: '房间', allRooms: '全部房间', keywordPlaceholder: '玩家名称、KU ID 或封禁原因',
         loadFailedTitle: '封禁记录加载失败', recordsTitle: '封禁记录', total: '共 {count} 条有效记录', loading: '正在读取封禁记录',
-        emptyTitle: '没有封禁记录', emptyDescription: '当前筛选范围内没有被封禁的玩家。', expiry: { permanent: '永久', unknown: '未知', expired: '已到期' },
+        emptyTitle: '没有封禁记录', emptyDescription: '当前筛选范围内没有被封禁的玩家。', emptyUnfilteredDescription: '当前没有任何封禁记录。', expiry: { permanent: '永久', unknown: '未知', expired: '已到期' },
         unbanPrompt: '解除封禁会修改房间“{room}”的黑名单，请确认是否继续。', unbanSucceeded: '已解除 {player} 的封禁',
         unbanFailed: '解除封禁失败：{error}', archivesLoadFailed: '房间列表加载失败：{error}'
       },
@@ -578,8 +585,9 @@ export const playerMessages = {
       actions: {
         refresh: 'Refresh', refreshSettings: 'Auto-refresh settings', saveRefreshSettings: 'Save settings', retry: 'Retry', search: 'Search', query: 'Search', reset: 'Reset', cancel: 'Cancel', confirm: 'Confirm', confirmAction: 'Confirm', details: 'Details',
         export: 'Export data', manualUpdate: 'Manual update', defaultTaskWorld: 'Default task world', addSchedule: 'Add scheduled task', startUpdate: 'Start update', confirmAdd: 'Add task',
-        confirmBan: 'Ban player', confirmReselect: 'Reselect character', unban: 'Unban', openPlayerMenu: 'Open player actions menu', playerActions: 'Player actions', openDiagnostics: 'Room diagnostics', openWorkbench: 'Open game workbench',
-        viewOnSteam: 'View on Steam', viewPlayerOnSteam: 'View player on Steam'
+        confirmBan: 'Ban player', confirmReselect: 'Reselect character', unban: 'Unban', openPlayerMenu: 'Open player actions menu', playerActions: 'Player actions', openDiagnostics: 'Room diagnostics', openWorkspace: 'Open room control', openWorkbench: 'Open game workbench',
+        viewOnSteam: 'View on Steam', viewPlayerOnSteam: 'View player on Steam',
+        more: 'More', columnSettings: 'Columns', resetColumns: 'Reset defaults'
       },
       fields: {
         archive: 'Archive', status: 'Player status', character: 'Character', keyword: 'Keyword', playerId: 'Player ID', playerName: 'Player name', days: 'Days played', network: 'Network quality',
@@ -612,9 +620,13 @@ export const playerMessages = {
         samplingPausedDescription: 'Paused worlds keep the last player records and sample times. Updates resume with the world; old records do not confirm that players are still online.',
         currentRefreshFailedDescription: 'The records below are historical and do not represent current presence: {error}', partialTitle: 'Some rooms could not be loaded',
         partialDescription: 'Available data is shown; {count} rooms are unavailable: {rooms}', loading: 'Loading players', emptyTitle: 'No player data',
-        emptyDescription: 'Select an archive or update the player list manually.', perPage: 'Per page', perPageAria: 'Players per page', administrator: 'Administrator', friend: 'Friend',
+        emptyDescription: 'Select an archive or update the player list manually.',
+        emptyFilteredTitle: 'No matching players',
+        emptyFilteredDescription: 'Adjust your filters or reset them to view all records.',
+        perPage: 'Per page', perPageAria: 'Players per page', administrator: 'Administrator', friend: 'Friend',
         sampledAt: 'Sampled at {time}', staleObservedAt: 'Last confirmed at {time}',
-        presenceConflict: 'Shard conflict', presenceConflictDescription: 'This player was observed in these worlds during the same sampling window: {worlds}'
+        presenceConflict: 'Shard conflict', presenceConflictDescription: 'This player was observed in these worlds during the same sampling window: {worlds}',
+        columnsHint: 'Choose columns shown in the player table (6 shown by default).'
       },
       detail: {
         title: 'Player details', description: 'Identity, connection status, and server actions.', gameActions: 'Game actions', dangerousActions: 'Dangerous actions', managementActions: 'Player management',
@@ -685,7 +697,7 @@ export const playerMessages = {
       banList: {
         title: 'Ban records', subtitle: 'Review reasons and expiry dates created by player actions; manage list membership in the room blocklist.', filterTitle: 'Filter records', filterDescription: 'Search ban records by room or player keyword.',
         room: 'Room', allRooms: 'All rooms', keywordPlaceholder: 'Player name, KU ID, or ban reason', loadFailedTitle: 'Could not load ban records', recordsTitle: 'Ban records',
-        total: '{count} active records', loading: 'Loading ban records', emptyTitle: 'No ban records', emptyDescription: 'No banned players match the current filters.',
+        total: '{count} active records', loading: 'Loading ban records', emptyTitle: 'No ban records', emptyDescription: 'No banned players match the current filters.', emptyUnfilteredDescription: 'No banned players have been recorded yet.',
         expiry: { permanent: 'Permanent', unknown: 'Unknown', expired: 'Expired' }, unbanPrompt: 'Unbanning updates the blacklist for room “{room}”. Continue?',
         unbanSucceeded: 'Unbanned {player}', unbanFailed: 'Could not unban player: {error}', archivesLoadFailed: 'Could not load rooms: {error}'
       },

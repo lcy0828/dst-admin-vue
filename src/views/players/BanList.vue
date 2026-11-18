@@ -93,8 +93,12 @@
           <EmptyHeader>
             <EmptyMedia variant="icon"><ShieldCheck /></EmptyMedia>
             <EmptyTitle>{{ t('players.banList.emptyTitle') }}</EmptyTitle>
-            <EmptyDescription>{{ t('players.banList.emptyDescription') }}</EmptyDescription>
+            <EmptyDescription>{{ t(hasActiveFilters ? 'players.banList.emptyDescription' : 'players.banList.emptyUnfilteredDescription') }}</EmptyDescription>
           </EmptyHeader>
+          <EmptyContent>
+            <UiButton v-if="hasActiveFilters" variant="outline" @click="resetFilters">{{ t('players.actions.reset') }}</UiButton>
+            <UiButton v-else variant="outline" :disabled="loading" @click="loadBans"><RefreshCw data-icon="inline-start" />{{ t('players.actions.refresh') }}</UiButton>
+          </EmptyContent>
         </Empty>
 
       </CardContent>
@@ -137,7 +141,7 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
@@ -155,6 +159,7 @@ const unbanningId = ref('')
 const filters = reactive({ archive_name: useRoute().query.roomId ?? readWorkspaceSelection(managementScopeTargetId()).roomId, keyword: '' })
 const pagination = reactive({ page: 1, page_size: 20, total: 0 })
 
+const hasActiveFilters = computed(() => Boolean(filters.archive_name || filters.keyword.trim()))
 const errorText = computed(() => error.value ? playerErrorDetail(error.value, t) : '')
 
 function errorMessage(value) {

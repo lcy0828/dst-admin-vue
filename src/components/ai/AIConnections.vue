@@ -15,7 +15,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Copy, KeyRound, PlugZap } from '@lucide/vue'
+import { ChevronDown, Copy, KeyRound, PlugZap } from '@lucide/vue'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 
 const props = defineProps({ config: { type: Object, required: true }, mcpPath: { type: String, default: '/mcp' } })
 const NotificationChannelsPanel = defineAsyncComponent(() => import('@/components/settings/NotificationChannelsPanel.vue'))
@@ -106,7 +107,18 @@ onMounted(() => { loadTokens(); loadRooms() })
         <FieldGroup>
           <Field><FieldLabel for="ai-mcp-address">{{ t('ai.address') }}</FieldLabel><Input id="ai-mcp-address" :model-value="endpoint" readonly @focus="$event.target.select()" /><FieldDescription>{{ t('ai.authorization') }} · Authorization: Bearer &lt;ACCESS_TOKEN&gt;</FieldDescription></Field>
         </FieldGroup>
-        <details><summary class="cursor-pointer text-sm">{{ t('ai.clientExample') }}</summary><pre class="mt-2 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-all">{{ sample }}</pre><p class="mt-2 text-xs text-muted-foreground">{{ t('ai.clientHint') }}</p></details>
+        <Collapsible class="min-w-0">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-normal hover:bg-transparent">
+              <span>{{ t('ai.clientExample') }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-2">
+            <pre class="overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-all">{{ sample }}</pre>
+            <p class="mt-2 text-xs text-muted-foreground">{{ t('ai.clientHint') }}</p>
+          </CollapsibleContent>
+        </Collapsible>
         <form class="flex flex-col gap-5" @submit.prevent="create">
           <FieldGroup>
             <Field><FieldLabel for="ai-token-name">{{ t('ai.tokenName') }}</FieldLabel><Input id="ai-token-name" v-model="credential.name" required maxlength="100" :disabled="creating" /></Field>
@@ -148,12 +160,28 @@ onMounted(() => { loadTokens(); loadRooms() })
       <CardHeader><CardTitle>{{ t('ai.notifications.title') }}</CardTitle><CardDescription>{{ t('ai.notifications.description') }}</CardDescription></CardHeader>
       <CardContent class="flex min-w-0 flex-col gap-4">
         <p class="text-sm text-muted-foreground">{{ t('ai.notifications.webhook') }}</p>
-        <details @toggle="notificationsOpen = $event.target.open"><summary class="cursor-pointer text-sm font-medium">{{ t('ai.notifications.configure') }}</summary><div class="mt-4"><NotificationChannelsPanel v-if="notificationsOpen" /></div></details>
-        <details><summary class="cursor-pointer text-sm font-medium">{{ t('ai.notifications.mcp') }}</summary>
-          <p class="mt-3 text-sm text-muted-foreground">{{ t('ai.notifications.mcpHelp') }}</p>
-          <Field class="mt-3"><FieldLabel for="ai-notification-feed">{{ t('ai.notifications.feed') }}</FieldLabel><div class="flex min-w-0 gap-2"><Input id="ai-notification-feed" :model-value="notificationFeed" readonly @focus="$event.target.select()" /><Button variant="outline" size="icon" :aria-label="t('ai.copy')" @click="copy(notificationFeed)"><Copy /></Button></div></Field>
-          <p class="mt-3 rounded-md bg-muted p-3 text-sm whitespace-pre-wrap break-words">{{ t('ai.notifications.example') }}</p>
-        </details>
+        <Collapsible v-model:open="notificationsOpen" class="min-w-0">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-medium hover:bg-transparent">
+              <span>{{ t('ai.notifications.configure') }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-4"><NotificationChannelsPanel v-if="notificationsOpen" /></CollapsibleContent>
+        </Collapsible>
+        <Collapsible class="min-w-0">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-medium hover:bg-transparent">
+              <span>{{ t('ai.notifications.mcp') }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-3">
+            <p class="text-sm text-muted-foreground">{{ t('ai.notifications.mcpHelp') }}</p>
+            <Field class="mt-3"><FieldLabel for="ai-notification-feed">{{ t('ai.notifications.feed') }}</FieldLabel><div class="flex min-w-0 gap-2"><Input id="ai-notification-feed" :model-value="notificationFeed" readonly @focus="$event.target.select()" /><Button type="button" variant="outline" size="icon" :aria-label="t('ai.copy')" @click="copy(notificationFeed)"><Copy /></Button></div></Field>
+            <p class="mt-3 rounded-md bg-muted p-3 text-sm whitespace-pre-wrap break-words">{{ t('ai.notifications.example') }}</p>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
     <Dialog v-model:open="secretOpen" @update:open="value => { if (!value) secret = '' }">

@@ -21,7 +21,9 @@ export function dashboardOnboardingState({
       completedCount: complete ? 1 : 0,
       progress: complete ? 100 : 0,
       currentStep: complete ? '' : 'agent',
-      steps: []
+      nextWizardStep: complete ? '' : 'deployment',
+      steps: [],
+      incompleteSteps: complete ? [] : [{ id: 'agent', complete: false, current: true }]
     }
   }
 
@@ -32,6 +34,12 @@ export function dashboardOnboardingState({
   ]
   const current = steps.find(step => !step.complete)
   const completedCount = steps.filter(step => step.complete).length
+  const stepsWithCurrent = steps.map(step => ({
+    ...step,
+    current: step.id === current?.id
+  }))
+  const incompleteSteps = stepsWithCurrent.filter(step => !step.complete)
+  const nextWizardStep = current?.id === 'start' ? 'review' : (current?.id || '')
 
   return {
     mode: 'local',
@@ -40,10 +48,9 @@ export function dashboardOnboardingState({
     completedCount,
     progress: Math.round((completedCount / steps.length) * 100),
     currentStep: current?.id || '',
-    steps: steps.map(step => ({
-      ...step,
-      current: step.id === current?.id
-    }))
+    nextWizardStep,
+    steps: stepsWithCurrent,
+    incompleteSteps
   }
 }
 

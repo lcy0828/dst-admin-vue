@@ -32,19 +32,24 @@
     <Alert v-if="loadError" variant="destructive" class="error-alert">
       <TriangleAlert />
       <AlertTitle>{{ $t('rooms.settings.loadFailed') }}</AlertTitle>
-      <AlertDescription class="load-error-description">
-        <span>{{ loadError }}</span>
+      <AlertDescription>{{ loadError }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
         <UiButton variant="outline" size="sm" @click="loadRoomSettings(roomId)">
           <RefreshCw data-icon="inline-start" />
           {{ $t('rooms.settings.reload') }}
         </UiButton>
-      </AlertDescription>
+      </AlertAction>
     </Alert>
 
     <Alert v-if="configurationSync && configurationSync.status !== 'synced'" class="error-alert">
       <RefreshCw />
       <AlertTitle>{{ $t(`rooms.settings.sync.${configurationSync.status}.title`) }}</AlertTitle>
       <AlertDescription>{{ $t(`rooms.settings.sync.${configurationSync.status}.description`) }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton variant="outline" size="sm" :disabled="loading" @click="loadRoomSettings(roomId)">
+          {{ $t('common.actions.refresh') }}
+        </UiButton>
+      </AlertAction>
     </Alert>
 
     <Alert v-if="formErrors.length > 0" ref="validationAlert" variant="destructive" class="error-alert" tabindex="-1">
@@ -74,7 +79,7 @@
               <component :is="section.icon" />
               {{ section.tabLabel }}
             </TabsTrigger>
-            <TabsTrigger v-if="moreSettings" value="special-lists" class="settings-tab-trigger"><ListChecks />{{ $t('rooms.settings.specialLists') }}</TabsTrigger>
+            <TabsTrigger value="special-lists" class="settings-tab-trigger"><ListChecks />{{ $t('rooms.settings.specialLists') }}</TabsTrigger>
             <TabsTrigger value="token" class="settings-tab-trigger"><KeyRound />{{ $t('rooms.settings.serverToken') }}</TabsTrigger>
             <TabsTrigger v-if="isEdit && roomId && !setupMode" value="maintenance" class="settings-tab-trigger"><RefreshCw />{{ $t('rooms.settings.automaticMaintenance') }}</TabsTrigger>
           </TabsList>
@@ -219,33 +224,44 @@
       </TabsContent>
     </Tabs>
 
-    <details ref="saveIdentity" v-if="!isEdit" class="rounded-md border p-3"><summary class="cursor-pointer text-sm">{{ $t('novice.saveLocation') }}</summary>
-    <Card size="sm" class="save-name-card">
-      <CardHeader>
-        <CardTitle class="section-title"><FolderKey />{{ $t('rooms.settings.identity') }}</CardTitle>
-        <CardDescription>{{ $t('rooms.settings.identityDescription') }}</CardDescription>
-        <CardAction><Badge variant="outline">{{ $t('rooms.settings.lockedAfterCreate') }}</Badge></CardAction>
-      </CardHeader>
-      <CardContent>
-        <FieldGroup>
-          <Field :data-invalid="Boolean(saveNameError)">
-            <FieldLabel for="room-savename">{{ $t('rooms.settings.archiveName') }}</FieldLabel>
-            <UiInput
-              id="room-savename"
-              v-model.trim="saveNameForm.savename"
-              :placeholder="$t('rooms.settings.archiveNamePlaceholder')"
-              :aria-invalid="Boolean(saveNameError)"
-              autocomplete="off"
-              :maxlength="archiveNameMaxLength"
-              @input="clearSaveNameError"
-            />
-            <FieldDescription>{{ $t('rooms.settings.archiveNameDescription') }}</FieldDescription>
-            <FieldError v-if="saveNameError">{{ saveNameError }}</FieldError>
-          </Field>
-        </FieldGroup>
-      </CardContent>
-    </Card>
-    </details>
+    <Collapsible v-if="!isEdit" v-model:open="saveIdentityOpen" class="rounded-md border p-3">
+      <CollapsibleTrigger as-child>
+        <button
+          type="button"
+          class="flex w-full cursor-pointer items-center justify-between gap-2 rounded-sm text-left text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span>{{ $t('novice.saveLocation') }}</span>
+          <ChevronDown class="size-4 shrink-0 text-muted-foreground transition-transform duration-200" :class="{ 'rotate-180': saveIdentityOpen }" />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent class="pt-3">
+        <Card size="sm" class="save-name-card">
+          <CardHeader>
+            <CardTitle class="section-title"><FolderKey />{{ $t('rooms.settings.identity') }}</CardTitle>
+            <CardDescription>{{ $t('rooms.settings.identityDescription') }}</CardDescription>
+            <CardAction><Badge variant="outline">{{ $t('rooms.settings.lockedAfterCreate') }}</Badge></CardAction>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup>
+              <Field :data-invalid="Boolean(saveNameError)">
+                <FieldLabel for="room-savename">{{ $t('rooms.settings.archiveName') }}</FieldLabel>
+                <UiInput
+                  id="room-savename"
+                  v-model.trim="saveNameForm.savename"
+                  :placeholder="$t('rooms.settings.archiveNamePlaceholder')"
+                  :aria-invalid="Boolean(saveNameError)"
+                  autocomplete="off"
+                  :maxlength="archiveNameMaxLength"
+                  @input="clearSaveNameError"
+                />
+                <FieldDescription>{{ $t('rooms.settings.archiveNameDescription') }}</FieldDescription>
+                <FieldError v-if="saveNameError">{{ saveNameError }}</FieldError>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      </CollapsibleContent>
+    </Collapsible>
     <Card v-if="!isEdit" size="sm">
       <CardHeader>
         <CardTitle class="section-title"><RefreshCw />{{ $t('novice.automationTitle') }}</CardTitle>
@@ -310,15 +326,16 @@
 <script>
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue';
 import { preferredRoomId } from '@/lib/pageScope.mjs';
-import { ArrowLeft, Copy, Eye, EyeOff, FolderKey, Gamepad2, GitBranch, KeyRound, ListChecks, Network, RefreshCw, Save, Settings2, TriangleAlert } from '@lucide/vue';
+import { ArrowLeft, ChevronDown, Copy, Eye, EyeOff, FolderKey, Gamepad2, GitBranch, KeyRound, ListChecks, Network, RefreshCw, Save, Settings2, TriangleAlert } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import RoomMaintenancePanel from '@/components/RoomMaintenancePanel.vue';
 import { roomApi, roomConfigApi, serverApi } from '../../api/index';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox as UiCheckbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
@@ -415,6 +432,7 @@ export default {
     RoomMaintenancePanel,
     RoomScopeSelect,
     Alert,
+    AlertAction,
     AlertDescription,
     AlertTitle,
     ArrowLeft,
@@ -425,6 +443,10 @@ export default {
     CardDescription,
     CardHeader,
     CardTitle,
+    ChevronDown,
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
     Copy,
     UiCheckbox,
     UiDialog,
@@ -477,6 +499,7 @@ export default {
     return {
       activeTab: 'basic',
       moreSettings: false,
+      saveIdentityOpen: false,
       automaticBackup: true,
       automaticModUpdate: true,
       automaticGameUpdate: true,
@@ -640,14 +663,19 @@ export default {
       this.roomId = roomId;
       if (requestedTab === 'auto-update' || requestedTab === 'maintenance') this.activeTab = 'maintenance';
       else if (requestedTab === 'token') this.activeTab = 'token';
+      else if (requestedTab === 'special-lists') this.activeTab = 'special-lists';
       this.loadRoomSettings(roomId);
     } else if (!this.setupMode && (this.$route.query.edit === 'true' || requestedTab === 'auto-update' || requestedTab === 'maintenance')) {
       this.isEdit = true;
       await roomsLoading;
       this.roomId = preferredRoomId(this.roomOptions);
       if (requestedTab === 'auto-update' || requestedTab === 'maintenance') this.activeTab = 'maintenance';
+      else if (requestedTab === 'token') this.activeTab = 'token';
+      else if (requestedTab === 'special-lists') this.activeTab = 'special-lists';
       if (this.roomId) await this.loadRoomSettings(this.roomId);
     } else {
+      if (requestedTab === 'token') this.activeTab = 'token';
+      else if (requestedTab === 'special-lists') this.activeTab = 'special-lists';
       this.$nextTick(() => this.captureBaseline());
     }
   },
@@ -764,7 +792,7 @@ export default {
     toggleMoreSettings() {
       this.moreSettings = !this.moreSettings;
       if (this.moreSettings && this.activeTab === 'basic') this.activeTab = 'gameplay';
-      else if (!this.moreSettings && !['token', 'maintenance'].includes(this.activeTab)) this.activeTab = 'basic';
+      else if (!this.moreSettings && !['special-lists', 'token', 'maintenance'].includes(this.activeTab)) this.activeTab = 'basic';
     },
     toggleSensitiveField(key) {
       this.revealedFields = { ...this.revealedFields, [key]: !this.revealedFields[key] };
@@ -775,7 +803,7 @@ export default {
     focusFirstError() {
       let targetId = '';
       if (this.saveNameError) {
-        if (this.$refs.saveIdentity) this.$refs.saveIdentity.open = true;
+        this.saveIdentityOpen = true;
         targetId = 'room-savename';
       } else {
         const invalidKey = Object.keys(this.validationErrors)[0];
@@ -1142,6 +1170,7 @@ export default {
       const value = String(tab || '');
       if (this.isEdit && (value === 'auto-update' || value === 'maintenance')) this.activeTab = 'maintenance';
       else if (value === 'token') this.activeTab = 'token';
+      else if (value === 'special-lists') this.activeTab = 'special-lists';
     }
   },
   async beforeRouteLeave() {
@@ -1270,13 +1299,6 @@ export default {
   padding-left: 18px;
 }
 
-.load-error-description {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .placement-managed-alert {
   margin-bottom: 16px;
 }
@@ -1403,10 +1425,6 @@ export default {
 }
 
 @media (max-width: 760px) {
-  .load-error-description {
-    align-items: flex-start;
-    flex-direction: column;
-  }
   .page-header {
     align-items: stretch;
     flex-direction: column;

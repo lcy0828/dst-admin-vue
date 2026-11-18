@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { Copy, CircleAlert, RefreshCw, Pencil, Settings, ArrowUpCircle, Terminal, Trash2, X } from '@lucide/vue'
+import { ChevronDown, Copy, CircleAlert, RefreshCw, Pencil, Settings, ArrowUpCircle, Terminal, Trash2, X } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { agentsV2API, gameInstallationsV2API, runtimeTargetsV2API, topologyV2API } from '@/api/v2'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
@@ -15,6 +15,7 @@ import AgentSoftwareUpdatePanel from '@/components/agents/AgentSoftwareUpdatePan
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -241,7 +242,17 @@ defineExpose({ refresh: load })
               </form>
               <template v-else-if="profile">
                 <dl class="text-sm"><dt class="text-xs text-muted-foreground">{{ t('distributed.infrastructure.networkDialog.advertiseAddress') }}</dt><dd class="mt-1 break-all">{{ profile.advertiseAddress || t('machines.noPlayerAddress') }}</dd></dl>
-                <details><summary class="cursor-pointer text-sm text-muted-foreground">{{ t('machines.advancedNetwork') }}</summary><dl class="mt-3 text-sm"><dt class="text-xs text-muted-foreground">{{ t('distributed.infrastructure.networkDialog.bindAddress') }}</dt><dd class="mt-1 break-all">{{ profile.bindAddress }}</dd></dl></details>
+                <Collapsible class="min-w-0">
+                  <CollapsibleTrigger as-child>
+                    <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-normal text-muted-foreground hover:bg-transparent">
+                      <span>{{ t('machines.advancedNetwork') }}</span>
+                      <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent class="pt-3">
+                    <dl class="text-sm"><dt class="text-xs text-muted-foreground">{{ t('distributed.infrastructure.networkDialog.bindAddress') }}</dt><dd class="mt-1 break-all">{{ profile.bindAddress }}</dd></dl>
+                  </CollapsibleContent>
+                </Collapsible>
                 <Button class="self-start" size="sm" variant="outline" @click="editNetwork">{{ t('machines.editNetwork') }}</Button>
               </template>
               <p v-else class="text-sm text-muted-foreground">{{ t('machines.networkMissing') }}</p>
@@ -272,14 +283,22 @@ defineExpose({ refresh: load })
                   <Button v-if="!selected.target.online" size="sm" variant="destructive" @click="emit('forget', selected.agent)"><Trash2 data-icon="inline-start" />{{ t('agents.list.actions.remove') }}</Button>
                 </div>
               </template>
-              <details><summary class="cursor-pointer text-sm text-muted-foreground">{{ t('machines.technical') }}</summary>
-                <dl class="mt-4 flex flex-col gap-4 text-sm">
-                  <div><dt class="text-xs text-muted-foreground">{{ t('agents.list.details.hostname') }}</dt><dd class="mt-1 break-all">{{ selected.target.hostname || '—' }}</dd></div>
-                  <div><dt class="text-xs text-muted-foreground">{{ t('agents.list.fields.system') }}</dt><dd class="mt-1">{{ selected.target.os }} / {{ selected.target.arch }}</dd></div>
-                  <div><dt class="text-xs text-muted-foreground">Agent ID</dt><dd class="mt-1 font-mono break-all">{{ selected.target.agentId || selected.id }}</dd></div>
-                  <div><dt class="text-xs text-muted-foreground">{{ t('agents.list.details.capabilities') }}</dt><dd class="mt-1 text-xs break-all">{{ selected.target.capabilities?.join(', ') }}</dd></div>
-                </dl>
-              </details>
+              <Collapsible class="min-w-0">
+                <CollapsibleTrigger as-child>
+                  <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-normal text-muted-foreground hover:bg-transparent">
+                    <span>{{ t('machines.technical') }}</span>
+                    <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent class="pt-4">
+                  <dl class="flex flex-col gap-4 text-sm">
+                    <div><dt class="text-xs text-muted-foreground">{{ t('agents.list.details.hostname') }}</dt><dd class="mt-1 break-all">{{ selected.target.hostname || '—' }}</dd></div>
+                    <div><dt class="text-xs text-muted-foreground">{{ t('agents.list.fields.system') }}</dt><dd class="mt-1">{{ selected.target.os }} / {{ selected.target.arch }}</dd></div>
+                    <div><dt class="text-xs text-muted-foreground">Agent ID</dt><dd class="mt-1 font-mono break-all">{{ selected.target.agentId || selected.id }}</dd></div>
+                    <div><dt class="text-xs text-muted-foreground">{{ t('agents.list.details.capabilities') }}</dt><dd class="mt-1 text-xs break-all">{{ selected.target.capabilities?.join(', ') }}</dd></div>
+                  </dl>
+                </CollapsibleContent>
+              </Collapsible>
             </TabsContent>
           </Tabs>
         </div>

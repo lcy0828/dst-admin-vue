@@ -3,6 +3,9 @@ export const systemSettingsMessages = {
     systemSettings: {
       title: '系统设置',
       controllerScope: '管理端设置',
+      independentSave: '独立保存',
+      unsavedBadge: '有未保存更改',
+      unsavedBanner: '基本、安全、备份与邮件（SMTP）设置尚未保存，离开前请保存或放弃。',
       subtitle: '这些设置作用于管理端，不随所选机器切换。',
       loadFailed: '系统设置加载失败',
       environmentManaged: '部分设置由环境变量管理',
@@ -12,7 +15,32 @@ export const systemSettingsMessages = {
         security: '安全设置',
         backup: '备份设置',
         notification: '通知设置',
-        systemStatus: '系统状态'
+        systemStatus: '系统状态',
+        advanced: '高级与多机'
+      },
+      advanced: {
+        title: '多机管理与部署角色',
+        description: '默认以单机为主；需要纳管多台机器、接入远程 Agent 或跨机部署世界时，可从这里进入对应配置。',
+        agents: {
+          title: '机器与远程 Agent 管理',
+          description: '查看本机与已连接的远程运行节点，管理节点状态、目录配置与版本升级。',
+          action: '前往机器管理'
+        },
+        security: {
+          title: 'Agent 接入密钥与安装命令',
+          description: '生成通信密钥并复制 Docker、Linux 或 Windows 远程节点安装命令。',
+          action: '配置接入密钥'
+        },
+        topology: {
+          title: '房间世界运行位置',
+          description: '为房间的森林或洞穴指定运行机器，并在跨机器迁移世界时预览变更。',
+          action: '查看运行位置'
+        },
+        setup: {
+          title: '切换单机 / 控制端部署角色',
+          description: '在初始化向导中切换独立单机、控制节点或纯控制端角色并检查环境依赖。',
+          action: '调整部署角色'
+        }
       },
       basic: {
         description: '设置管理系统的显示名称、地区格式和界面主题。',
@@ -93,6 +121,8 @@ export const systemSettingsMessages = {
       },
       notification: {
         mailServer: '邮件服务器（SMTP）',
+        smtpConfigured: '已配置',
+        smtpUnconfigured: '未配置',
         description: '配置发件服务器，下方添加接收邮箱或 Webhook 通知渠道。',
         emailEnabled: '启用邮件通知',
         emailEnabledDescription: '启用系统邮件通知功能。',
@@ -186,7 +216,13 @@ export const systemSettingsMessages = {
         emptyDescription: '当前房间还没有可下载的备份。'
       },
       actions: {
-        save: '保存设置'
+        save: '保存设置',
+        discard: '放弃更改'
+      },
+      leave: {
+        title: '离开系统设置',
+        description: '当前有未保存的系统设置修改。确定放弃这些更改并离开吗？',
+        confirm: '放弃更改并离开'
       },
       validation: {
         smtpServerRequired: '请输入 SMTP 服务器地址',
@@ -238,6 +274,9 @@ export const systemSettingsMessages = {
     systemSettings: {
       title: 'System settings',
       controllerScope: 'Management server settings',
+      independentSave: 'Independent save',
+      unsavedBadge: 'Unsaved changes',
+      unsavedBanner: 'General, security, backup, and mail (SMTP) settings have unsaved changes.',
       subtitle: 'These settings apply to the management server, regardless of the selected machine.',
       loadFailed: 'Failed to load system settings',
       environmentManaged: 'Some settings are managed by environment variables',
@@ -247,7 +286,32 @@ export const systemSettingsMessages = {
         security: 'Security',
         backup: 'Backups',
         notification: 'Notifications',
-        systemStatus: 'System status'
+        systemStatus: 'System status',
+        advanced: 'Advanced & fleet'
+      },
+      advanced: {
+        title: 'Fleet & deployment roles',
+        description: 'Single-host deployment is the default. Use these shortcuts when managing multiple hosts, connecting remote Agents, or splitting worlds across machines.',
+        agents: {
+          title: 'Machines & remote Agents',
+          description: 'View the local host and connected remote runtime nodes, configure paths, and manage Agent upgrades.',
+          action: 'Open machine management'
+        },
+        security: {
+          title: 'Agent keys & install commands',
+          description: 'Generate connection keys and copy Docker, Linux, or Windows setup commands for remote Agents.',
+          action: 'Configure access keys'
+        },
+        topology: {
+          title: 'Room world placement',
+          description: 'Assign Forest and Caves worlds to runtime hosts and preview cross-machine migrations.',
+          action: 'View world placement'
+        },
+        setup: {
+          title: 'Switch single-host or controller role',
+          description: 'Run the setup wizard to change between standalone, controller, or controller-only roles and verify prerequisites.',
+          action: 'Adjust deployment role'
+        }
       },
       basic: {
         description: 'Configure the display name, regional formats, and interface theme.',
@@ -328,6 +392,8 @@ export const systemSettingsMessages = {
       },
       notification: {
         mailServer: 'Mail server (SMTP)',
+        smtpConfigured: 'Configured',
+        smtpUnconfigured: 'Not configured',
         description: 'Configure the mail server, then add email or Webhook channels below.',
         emailEnabled: 'Enable email notifications',
         emailEnabledDescription: 'Enable system email notifications.',
@@ -421,7 +487,13 @@ export const systemSettingsMessages = {
         emptyDescription: 'There are no downloadable backups for the discovered rooms yet.'
       },
       actions: {
-        save: 'Save settings'
+        save: 'Save settings',
+        discard: 'Discard changes'
+      },
+      leave: {
+        title: 'Leave system settings',
+        description: 'You have unsaved system settings changes. Discard them and leave this page?',
+        confirm: 'Discard and leave'
       },
       validation: {
         smtpServerRequired: 'Enter the SMTP server address',

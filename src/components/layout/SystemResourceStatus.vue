@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Activity, CircleAlert, Cpu, HardDrive, MemoryStick, RefreshCw, Server } from '@lucide/vue'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -266,6 +266,11 @@ onBeforeUnmount(stopSystemResourcePolling)
           <CircleAlert />
           <AlertTitle>{{ t('dashboard.resources.unavailable') }}</AlertTitle>
           <AlertDescription>{{ error }}</AlertDescription>
+          <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+            <Button variant="outline" size="sm" :disabled="loading" @click="refreshSystemResourceStatus()">
+              {{ t('common.actions.retry') }}
+            </Button>
+          </AlertAction>
         </Alert>
 
         <template v-else-if="fleetMode">
@@ -415,6 +420,11 @@ onBeforeUnmount(stopSystemResourcePolling)
             <CircleAlert />
             <AlertTitle>{{ t(`dashboard.resources.machineStates.${selectedNodeState}`) }}</AlertTitle>
             <AlertDescription>{{ t('dashboard.resources.sampledAt', { time: sampledAt() }) }}</AlertDescription>
+            <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+              <Button variant="outline" size="sm" :disabled="loading" @click="refreshSystemResourceStatus()">
+                {{ t('common.actions.retry') }}
+              </Button>
+            </AlertAction>
           </Alert>
           <div class="grid min-w-0 grid-cols-2 gap-x-4 gap-y-4">
             <div class="flex min-w-0 flex-col gap-2">

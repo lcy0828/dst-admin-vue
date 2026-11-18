@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Download, RefreshCw, TriangleAlert } from '@lucide/vue'
+import { ChevronDown, Download, RefreshCw, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { playerActivityV2API as api } from '@/api/v2'
 import { activityQuery } from '@/lib/playerActivity.mjs'
@@ -9,20 +9,33 @@ import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
 import PlayerActivityRecords from './PlayerActivityRecords.vue'
 
+const ALL_FILTER = '__all__'
+
 const props = defineProps({ open: Boolean, player: { type: Object, default: null }, rooms: { type: Array, default: () => [] }, initialRoomId: { type: String, default: '' } })
 const emit = defineEmits(['update:open'])
 const { t } = useI18n()
 const id = useId()
 const room = ref(''), user = ref(''), world = ref(''), kind = ref(''), hours = ref('24'), tab = ref('timeline')
+const syncDetailsOpen = ref(tab.value === 'settings')
+watch(tab, value => { if (value === 'settings') syncDetailsOpen.value = true })
+const worldFilter = computed({
+  get: () => world.value || ALL_FILTER,
+  set: value => { world.value = value === ALL_FILTER ? '' : value }
+})
+const kindFilter = computed({
+  get: () => kind.value || ALL_FILTER,
+  set: value => { kind.value = value === ALL_FILTER ? '' : value }
+})
 const resyncing = ref(false)
 const status = ref(null), data = ref(null), loading = ref(false), saving = ref(false), error = ref('')
 const form = reactive({})
@@ -120,33 +133,53 @@ onBeforeUnmount(() => { stopSyncWatch(); ++sequence; controller?.abort() })
       <div class="flex min-h-0 flex-col gap-4 overflow-y-auto">
         <form class="flex flex-col gap-3" @submit.prevent="load()">
           <FieldGroup class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Field v-if="!player"><FieldLabel :for="`${id}-room`">{{ t('activity.room') }}</FieldLabel><NativeSelect :id="`${id}-room`" v-model="room"><NativeSelectOption v-for="r in rooms" :key="r.id" :value="r.id">{{ r.name }}</NativeSelectOption></NativeSelect></Field>
+            <Field v-if="!player"><FieldLabel :for="`${id}-room`">{{ t('activity.room') }}</FieldLabel><UiSelect v-model="room" :disabled="!rooms.length"><SelectTrigger :id="`${id}-room`" class="w-full"><SelectValue :placeholder="t('activity.room')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="r in rooms" :key="r.id" :value="r.id">{{ r.name }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
             <Field v-if="!player && tab !== 'settings'"><FieldLabel :for="`${id}-user`">{{ t('activity.player') }}</FieldLabel><Input :id="`${id}-user`" v-model="user" placeholder="KU_…" maxlength="128" /></Field>
-            <Field v-if="tab !== 'settings'"><FieldLabel :for="`${id}-world`">{{ t('activity.world') }}</FieldLabel><NativeSelect :id="`${id}-world`" v-model="world"><NativeSelectOption value="">{{ t('activity.all') }}</NativeSelectOption><NativeSelectOption v-for="w in worlds" :key="w.worldId" :value="w.worldId">{{ w.worldName }}</NativeSelectOption></NativeSelect></Field>
-            <Field v-if="tab !== 'settings'"><FieldLabel :for="`${id}-time`">{{ t('activity.period') }}</FieldLabel><NativeSelect :id="`${id}-time`" v-model="hours"><NativeSelectOption v-for="h in ['1', '24', '168']" :key="h" :value="h">{{ t(`activity.h${h}`) }}</NativeSelectOption></NativeSelect></Field>
-            <Field v-if="tab === 'timeline'"><FieldLabel :for="`${id}-kind`">{{ t('activity.category') }}</FieldLabel><NativeSelect :id="`${id}-kind`" v-model="kind"><NativeSelectOption value="">{{ t('activity.all') }}</NativeSelectOption><NativeSelectOption v-for="[key, label] in [['position', 'position'], ['action.', 'action'], ['combat.', 'combatKind'], ['player.', 'lifecycle'], ['collection.', 'collection']]" :key="key" :value="key">{{ t(`activity.${label}`) }}</NativeSelectOption></NativeSelect></Field>
+            <Field v-if="tab !== 'settings'"><FieldLabel :for="`${id}-world`">{{ t('activity.world') }}</FieldLabel><UiSelect v-model="worldFilter"><SelectTrigger :id="`${id}-world`" class="w-full"><SelectValue :placeholder="t('activity.all')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem :value="ALL_FILTER">{{ t('activity.all') }}</SelectItem><SelectItem v-for="w in worlds" :key="w.worldId" :value="w.worldId">{{ w.worldName }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field v-if="tab !== 'settings'"><FieldLabel :for="`${id}-time`">{{ t('activity.period') }}</FieldLabel><UiSelect v-model="hours"><SelectTrigger :id="`${id}-time`" class="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="h in ['1', '24', '168']" :key="h" :value="h">{{ t(`activity.h${h}`) }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
+            <Field v-if="tab === 'timeline'"><FieldLabel :for="`${id}-kind`">{{ t('activity.category') }}</FieldLabel><UiSelect v-model="kindFilter"><SelectTrigger :id="`${id}-kind`" class="w-full"><SelectValue :placeholder="t('activity.all')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem :value="ALL_FILTER">{{ t('activity.all') }}</SelectItem><SelectItem v-for="[key, label] in [['position', 'position'], ['action.', 'action'], ['combat.', 'combatKind'], ['player.', 'lifecycle'], ['collection.', 'collection']]" :key="key" :value="key">{{ t(`activity.${label}`) }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
           </FieldGroup>
           <div class="flex flex-wrap items-center gap-2"><Button type="submit" size="sm" variant="outline" :disabled="loading || !roomId || saving"><Spinner v-if="loading" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ t('activity.refresh') }}</Button><Button size="sm" variant="outline" type="button" :disabled="resyncing || !roomId || saving" @click="resync"><Spinner v-if="resyncing" data-icon="inline-start" />{{ t('activity.resync') }}</Button><Button v-if="data" size="sm" variant="ghost" type="button" @click="exportPage"><Download data-icon="inline-start" />{{ t('activity.export') }}</Button><span v-if="status" class="text-xs text-muted-foreground">{{ t('activity.stored', { count: status.storedEvents, mib: (status.storedBytes / 1048576).toFixed(1) }) }}</span></div>
         </form>
         <Tabs v-model="tab"><TabsList class="flex h-auto flex-wrap justify-start"><TabsTrigger v-for="key in ['timeline', 'trajectory', 'combat', 'settings']" :key="key" :value="key">{{ t(`activity.${key}`) }}</TabsTrigger></TabsList></Tabs>
         <Alert v-if="error" variant="destructive"><TriangleAlert /><AlertTitle>{{ error }}</AlertTitle></Alert>
-        <details v-if="status" :open="tab === 'settings'" class="rounded-md border p-3"><summary class="cursor-pointer text-sm">{{ t('novice.syncDetails') }}</summary><p class="py-2 text-xs text-muted-foreground">{{ t('activity.coverage') }}</p>
-        <div class="grid gap-2 sm:grid-cols-2">
-          <div v-for="w in worlds" :key="w.worldId" class="flex flex-col gap-1 rounded-md border p-3 text-xs">
-            <div class="flex flex-wrap items-center gap-2"><span class="font-medium">{{ w.worldName }}</span><Badge :variant="['unavailable', 'degraded'].includes(w.state) ? 'destructive' : 'secondary'">{{ t(`activity.status.${w.state}`) }}</Badge><Badge variant="outline">{{ t(w.pending ? 'activity.pending' : 'activity.applied') }}</Badge><Badge v-if="w.syncState" variant="secondary">{{ t(`activity.sync.${w.syncState}`) }}</Badge></div>
-            <span>{{ t('activity.sourceTime') }}: {{ time(w.sourceUpdatedAt) }} · {{ t('activity.collected') }}: {{ time(w.lastCollectedAt) }}</span>
-            <span>{{ t('activity.lastEvent') }}: {{ time(w.lastEventAt) }} · {{ t('activity.gaps', { count: w.gapCount }) }} · {{ t('activity.dropped', { count: w.dropped }) }}</span>
-            <span v-if="w.backlog">{{ t('activity.backlog', { count: w.backlog }) }}</span>
-            <span v-if="w.coverage && !w.coverage.complete">{{ t('activity.coverageSummary', { pending: w.coverage.pendingSegments + w.coverage.isolatedSegments, unavailable: w.coverage.unavailableRanges, recovered: w.coverage.recoveredSegments }) }}</span>
-            <span v-if="w.coverage?.legacyUnknown">{{ t('activity.legacyUnknown') }}</span>
-            <span v-if="w.nextRetryAt">{{ t('activity.retryAt') }}: {{ time(w.nextRetryAt) }}</span>
-            <p v-if="w.state === 'unavailable'" class="text-muted-foreground">{{ t('activity.nodeHint') }}</p>
-            <p v-if="w.configError" class="break-words text-muted-foreground">{{ t('activity.configRetry') }} · {{ w.configError }}</p>
-            <p v-if="w.writeUnconfirmed" class="text-muted-foreground">{{ t('activity.writeUnconfirmed') }}</p>
-            <details v-if="w.error || w.diagnostics?.length" class="text-muted-foreground"><summary class="cursor-pointer">{{ t('activity.diagnostics') }}</summary><p v-if="w.error" class="break-words font-mono">{{ w.error }}</p><p v-for="d in w.diagnostics" :key="`${d.generation}-${d.code}`" class="break-words font-mono">{{ d.generation }} · {{ d.code }} {{ d.field }}</p></details>
-          </div>
-        </div>
-        </details>
+        <Collapsible v-if="status" v-model:open="syncDetailsOpen" class="min-w-0 rounded-md border p-3">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between px-0 py-0 text-sm font-normal hover:bg-transparent">
+              <span>{{ t('novice.syncDetails') }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-2">
+            <p class="pb-2 text-xs text-muted-foreground">{{ t('activity.coverage') }}</p>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <div v-for="w in worlds" :key="w.worldId" class="flex flex-col gap-1 rounded-md border p-3 text-xs">
+                <div class="flex flex-wrap items-center gap-2"><span class="font-medium">{{ w.worldName }}</span><Badge :variant="['unavailable', 'degraded'].includes(w.state) ? 'destructive' : 'secondary'">{{ t(`activity.status.${w.state}`) }}</Badge><Badge variant="outline">{{ t(w.pending ? 'activity.pending' : 'activity.applied') }}</Badge><Badge v-if="w.syncState" variant="secondary">{{ t(`activity.sync.${w.syncState}`) }}</Badge></div>
+                <span>{{ t('activity.sourceTime') }}: {{ time(w.sourceUpdatedAt) }} · {{ t('activity.collected') }}: {{ time(w.lastCollectedAt) }}</span>
+                <span>{{ t('activity.lastEvent') }}: {{ time(w.lastEventAt) }} · {{ t('activity.gaps', { count: w.gapCount }) }} · {{ t('activity.dropped', { count: w.dropped }) }}</span>
+                <span v-if="w.backlog">{{ t('activity.backlog', { count: w.backlog }) }}</span>
+                <span v-if="w.coverage && !w.coverage.complete">{{ t('activity.coverageSummary', { pending: w.coverage.pendingSegments + w.coverage.isolatedSegments, unavailable: w.coverage.unavailableRanges, recovered: w.coverage.recoveredSegments }) }}</span>
+                <span v-if="w.coverage?.legacyUnknown">{{ t('activity.legacyUnknown') }}</span>
+                <span v-if="w.nextRetryAt">{{ t('activity.retryAt') }}: {{ time(w.nextRetryAt) }}</span>
+                <p v-if="w.state === 'unavailable'" class="text-muted-foreground">{{ t('activity.nodeHint') }}</p>
+                <p v-if="w.configError" class="break-words text-muted-foreground">{{ t('activity.configRetry') }} · {{ w.configError }}</p>
+                <p v-if="w.writeUnconfirmed" class="text-muted-foreground">{{ t('activity.writeUnconfirmed') }}</p>
+                <Collapsible v-if="w.error || w.diagnostics?.length" class="min-w-0 text-muted-foreground">
+                  <CollapsibleTrigger as-child>
+                    <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-xs text-muted-foreground hover:bg-transparent">
+                      <span>{{ t('activity.diagnostics') }}</span>
+                      <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent class="pt-1.5">
+                    <p v-if="w.error" class="break-words font-mono">{{ w.error }}</p>
+                    <p v-for="d in w.diagnostics" :key="`${d.generation}-${d.code}`" class="break-words font-mono">{{ d.generation }} · {{ d.code }} {{ d.field }}</p>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
         <div v-if="loading" class="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Spinner />{{ t('activity.loading') }}</div>
         <form v-else-if="tab === 'settings' && status" class="flex flex-col gap-4" @submit.prevent="save">
           <p class="text-sm text-muted-foreground">{{ t('activity.dynamic') }}</p>

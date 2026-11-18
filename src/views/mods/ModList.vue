@@ -75,12 +75,14 @@
       <AlertDescription>
         <p>{{ metadataWarning }}</p>
         <p>{{ $t('mods.metadata.localFactsAvailable') }}</p>
-        <UiButton v-if="incompleteMetadataIds.length" type="button" variant="outline" size="sm" class="mt-2 w-fit" :disabled="metadataLoading" @click="retryModMetadata">
+      </AlertDescription>
+      <AlertAction v-if="incompleteMetadataIds.length" class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton type="button" variant="outline" size="sm" :disabled="metadataLoading" @click="retryModMetadata">
           <Spinner v-if="metadataLoading" aria-hidden="true" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
           {{ $t(metadataLoading ? 'mods.metadata.retrying' : 'mods.metadata.retry') }}
         </UiButton>
-      </AlertDescription>
+      </AlertAction>
     </Alert>
 
     <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('mods.installed.loading') }}</span></div>
@@ -230,8 +232,16 @@
     </div>
 
     <Empty v-else-if="!loadError">
-      <EmptyHeader><EmptyMedia variant="icon"><PackageOpen /></EmptyMedia><EmptyTitle>{{ $t(selectedRoomId ? 'mods.installed.empty.noMods' : 'mods.installed.empty.noRooms') }}</EmptyTitle><EmptyDescription>{{ $t(selectedRoomId ? 'mods.installed.empty.noModsDescription' : 'mods.installed.empty.noRoomsDescription') }}</EmptyDescription></EmptyHeader>
-      <EmptyContent v-if="selectedRoomId"><UiButton @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton></EmptyContent>
+      <EmptyHeader>
+        <EmptyMedia variant="icon"><PackageOpen /></EmptyMedia>
+        <EmptyTitle>{{ $t(!selectedRoomId ? 'mods.installed.empty.noRooms' : (modsList.length > 0 && filterChanged ? 'mods.installed.empty.noMatches' : 'mods.installed.empty.noMods')) }}</EmptyTitle>
+        <EmptyDescription>{{ $t(!selectedRoomId ? 'mods.installed.empty.noRoomsDescription' : (modsList.length > 0 && filterChanged ? 'mods.installed.empty.noMatchesDescription' : 'mods.installed.empty.noModsDescription')) }}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <UiButton v-if="!selectedRoomId" @click="$router.push('/rooms/settings')"><Plus data-icon="inline-start" />{{ $t('rooms.list.create') }}</UiButton>
+        <UiButton v-else-if="modsList.length > 0 && filterChanged" variant="outline" @click="resetFilter"><RefreshCw data-icon="inline-start" />{{ $t('mods.actions.reset') }}</UiButton>
+        <UiButton v-else @click="goToSearch"><Plus data-icon="inline-start" />{{ $t('mods.actions.add') }}</UiButton>
+      </EmptyContent>
     </Empty>
 
     <mod-config-dialog v-model="configDialogVisible" :mod-id="currentModId" :mod-info="currentModInfo" :room-id="selectedRoomId" :world-id="selectedWorldId" :world-name="currentWorld?.name || ''" :target-id="currentWorld?.appliedTargetId || ''" :target-name="currentWorld?.appliedTargetName || ''" :expected-topology-revision="currentWorld?.topologyRevision || ''" :configuration-scope="configScope" :world-ids="configWorldIds" :expected-revisions="configExpectedRevisions" :is-new-mod="false" @config-updated="handleConfigUpdated" />

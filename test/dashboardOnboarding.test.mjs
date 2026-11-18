@@ -93,5 +93,32 @@ test('unknown packaging values fall back to native guidance', () => {
 test('unrelated or partially running worlds do not complete first-start guidance', () => {
   const state = dashboardOnboardingState({ installed: true, roomCount: 2, runningShards: 1 })
   assert.equal(state.currentStep, 'start')
+  assert.equal(state.nextWizardStep, 'review')
   assert.equal(state.complete, false)
+  assert.deepEqual(state.incompleteSteps.map(step => step.id), ['start'])
+})
+
+test('dashboard checklist renders only incomplete steps and links to matching setup wizard steps', () => {
+  const localInstall = dashboardOnboardingState({ installed: false, roomCount: 0, firstStartCompleted: false })
+  assert.equal(localInstall.nextWizardStep, 'game')
+  assert.deepEqual(localInstall.incompleteSteps.map(step => step.id), ['game', 'room', 'start'])
+
+  const roomOnly = dashboardOnboardingState({ installed: true, roomCount: 0, firstStartCompleted: false })
+  assert.equal(roomOnly.nextWizardStep, 'room')
+  assert.deepEqual(roomOnly.incompleteSteps.map(step => step.id), ['room', 'start'])
+
+  const completed = dashboardOnboardingState({ installed: true, roomCount: 1, firstStartCompleted: true })
+  assert.equal(completed.nextWizardStep, '')
+  assert.deepEqual(completed.incompleteSteps, [])
+
+  const remote = dashboardOnboardingState({ localExecutorEnabled: false, firstStartCompleted: false })
+  assert.equal(remote.nextWizardStep, 'deployment')
+  assert.deepEqual(remote.incompleteSteps.map(step => step.id), ['agent'])
+
+  assert.match(onboarding, /state\.incompleteSteps/)
+  assert.match(onboarding, /state\.nextWizardStep/)
+  assert.match(onboarding, /authAPI\.saveOnboarding/)
+  assert.match(onboarding, /useFleetDisclosure/)
+  assert.match(dashboard, /:onboarding-session="onboardingSession"/)
+  assert.match(composable, /AUTH_ONBOARDING_UPDATED_EVENT/)
 })

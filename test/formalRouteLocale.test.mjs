@@ -26,9 +26,7 @@ test('formal route templates do not contain hard-coded Chinese presentation copy
     const presentation = template.replaceAll(/<!--[^]*?-->/g, '')
 
     if (viewPath === 'views/SystemSettings.vue') {
-      const allowed = presentation
-        .replace('>日本語<', '><')
-        .replace('value="YYYY年MM月DD日"', 'value="localized-long-date"')
+      const allowed = presentation.replace('value="YYYY年MM月DD日"', 'value="localized-long-date"')
       assert.doesNotMatch(allowed, /[\u3400-\u9fff]/, viewPath)
       continue
     }

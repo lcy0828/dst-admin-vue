@@ -5,11 +5,21 @@
       <div class="action-buttons">
         <UiButton size="sm" variant="outline" @click="activityOpen = true">{{ $t('activity.title') }}</UiButton>
         <UiButton size="sm" variant="outline" @click="inventoryLookupOpen = true">{{ $t('inventory.byId') }}</UiButton>
-        <UiButton size="sm" variant="outline" @click="refreshPlayerData" :disabled="loading || refreshing"><Spinner v-if="refreshing" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
-        <TooltipProvider><Tooltip><TooltipTrigger as-child><UiButton class="refresh-settings-button" size="icon-sm" variant="outline" :aria-label="$t('players.actions.refreshSettings')" @click="showPlayerRefreshSettings"><Settings2 /></UiButton></TooltipTrigger><TooltipContent>{{ $t('players.actions.refreshSettings') }}</TooltipContent></Tooltip></TooltipProvider>
-        <UiButton size="sm" variant="outline" @click="showUpdateDialog"><Upload data-icon="inline-start" />{{ $t('players.actions.manualUpdate') }}</UiButton>
-        <UiButton size="sm" variant="outline" @click="showSessionSelect"><Globe2 data-icon="inline-start" />{{ $t('players.actions.defaultTaskWorld') }}</UiButton>
-        <UiButton size="sm" @click="showScheduleDialog"><Clock3 data-icon="inline-start" />{{ $t('players.actions.addSchedule') }}</UiButton>
+        <UiButton size="sm" @click="refreshPlayerData" :disabled="loading || refreshing"><Spinner v-if="refreshing" data-icon="inline-start" /><RefreshCw v-else data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <UiButton size="sm" variant="outline">
+              {{ $t('players.actions.more') }}
+              <ChevronDown data-icon="inline-end" />
+            </UiButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem @select="showPlayerRefreshSettings"><Settings2 />{{ $t('players.actions.refreshSettings') }}</DropdownMenuItem>
+            <DropdownMenuItem @select="showUpdateDialog"><Upload />{{ $t('players.actions.manualUpdate') }}</DropdownMenuItem>
+            <DropdownMenuItem @select="showSessionSelect"><Globe2 />{{ $t('players.actions.defaultTaskWorld') }}</DropdownMenuItem>
+            <DropdownMenuItem @select="showScheduleDialog"><Clock3 />{{ $t('players.actions.addSchedule') }}</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Badge v-if="activeSessionName">{{ $t('players.list.taskWorld', { world: activeSessionLabel }) }}</Badge>
       </div>
     </div>
@@ -21,23 +31,41 @@
           <RoomScopeSelect v-model="filterForm.archive_name" :rooms="archiveOptions.map(room => ({ id: room.value, name: room.label }))" allow-all @update:model-value="selectRoomFilter" />
           <Field>
             <FieldLabel for="player-session-scope">{{ $t('players.list.sessionScope') }}</FieldLabel>
-            <NativeSelect id="player-session-scope" v-model="filterForm.scope" @change="handleFilter">
-              <NativeSelectOption value="current">{{ $t('players.list.currentSession') }}</NativeSelectOption>
-              <NativeSelectOption value="history">{{ $t('players.list.previousSessions') }}</NativeSelectOption>
-            </NativeSelect>
+            <UiSelect v-model="filterForm.scope" @update:model-value="handleFilter">
+              <SelectTrigger id="player-session-scope" class="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="current">{{ $t('players.list.currentSession') }}</SelectItem>
+                  <SelectItem value="history">{{ $t('players.list.previousSessions') }}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
           </Field>
           <Field>
             <FieldLabel for="player-status-filter">{{ $t('players.fields.status') }}</FieldLabel>
-            <NativeSelect id="player-status-filter" v-model="filterForm.status" @change="handleFilter">
-              <NativeSelectOption value="">{{ $t('players.list.allStatuses') }}</NativeSelectOption><NativeSelectOption value="online">{{ $t('players.statuses.online') }}</NativeSelectOption><NativeSelectOption value="stale">{{ $t('players.statuses.stale') }}</NativeSelectOption><NativeSelectOption value="offline">{{ $t('players.statuses.offline') }}</NativeSelectOption>
-            </NativeSelect>
+            <UiSelect v-model="statusFilter" @update:model-value="handleFilter">
+              <SelectTrigger id="player-status-filter" class="w-full"><SelectValue :placeholder="$t('players.list.allStatuses')" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem :value="ALL_FILTER">{{ $t('players.list.allStatuses') }}</SelectItem>
+                  <SelectItem value="online">{{ $t('players.statuses.online') }}</SelectItem>
+                  <SelectItem value="stale">{{ $t('players.statuses.stale') }}</SelectItem>
+                  <SelectItem value="offline">{{ $t('players.statuses.offline') }}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
           </Field>
           <Field>
             <FieldLabel for="player-character-filter">{{ $t('players.fields.character') }}</FieldLabel>
-            <NativeSelect id="player-character-filter" v-model="filterForm.prefab" @change="handleFilter">
-              <NativeSelectOption value="">{{ $t('players.list.allCharacters') }}</NativeSelectOption>
-              <NativeSelectOption v-for="character in characterOptions" :key="character.value" :value="character.value">{{ character.label }}</NativeSelectOption>
-            </NativeSelect>
+            <UiSelect v-model="characterFilter" @update:model-value="handleFilter">
+              <SelectTrigger id="player-character-filter" class="w-full"><SelectValue :placeholder="$t('players.list.allCharacters')" /></SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem :value="ALL_FILTER">{{ $t('players.list.allCharacters') }}</SelectItem>
+                  <SelectItem v-for="character in characterOptions" :key="character.value" :value="character.value">{{ character.label }}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </UiSelect>
           </Field>
           <Field>
             <FieldLabel for="player-keyword-filter">{{ $t('players.fields.keyword') }}</FieldLabel>
@@ -51,7 +79,30 @@
     <Card class="table-card">
       <CardHeader class="table-operations">
         <div><CardTitle>{{ $t('players.list.title') }}</CardTitle><CardDescription>{{ $t('players.list.total', { count: pagination.total }) }}</CardDescription></div>
-        <CardAction><UiButton size="sm" @click="exportPlayerData" :disabled="loading || Boolean(loadError)"><Download data-icon="inline-start" />{{ $t('players.actions.export') }}</UiButton></CardAction>
+        <CardAction class="flex flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger as-child>
+              <UiButton size="sm" variant="outline">
+                <SlidersHorizontal data-icon="inline-start" />
+                {{ $t('players.actions.columnSettings') }}
+              </UiButton>
+            </PopoverTrigger>
+            <PopoverContent align="end" class="w-64 p-3">
+              <div class="mb-2 flex items-center justify-between gap-2">
+                <span class="text-sm font-medium">{{ $t('players.actions.columnSettings') }}</span>
+                <UiButton v-if="hasCustomColumns" size="xs" variant="ghost" @click="resetVisibleColumns">{{ $t('players.actions.resetColumns') }}</UiButton>
+              </div>
+              <p class="mb-3 text-xs text-muted-foreground">{{ $t('players.list.columnsHint') }}</p>
+              <div class="flex flex-col gap-2">
+                <label v-for="column in columnOptions" :key="column.id" class="flex cursor-pointer items-center gap-2 text-sm">
+                  <Checkbox :model-value="isColumnVisible(column.id)" @update:model-value="checked => setColumnVisible(column.id, checked)" />
+                  <span>{{ columnLabel(column) }}</span>
+                </label>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <UiButton size="sm" @click="exportPlayerData" :disabled="loading || Boolean(loadError)"><Download data-icon="inline-start" />{{ $t('players.actions.export') }}</UiButton>
+        </CardAction>
       </CardHeader>
       <CardContent>
         <Alert v-if="loadError" variant="destructive" class="mb-4">
@@ -63,56 +114,58 @@
         <Alert v-else-if="collectionError" variant="destructive" class="mb-4">
           <TriangleAlert />
           <AlertTitle>{{ $t('players.list.currentRefreshFailedTitle') }}</AlertTitle>
-          <AlertDescription class="col-start-2 flex min-w-0 flex-col gap-2">
-            <p class="break-words">{{ $t('players.list.currentRefreshFailedDescription', { error: collectionErrorText }) }}</p>
-            <div class="flex flex-wrap gap-2">
-              <UiButton size="sm" variant="outline" @click="openRoomDiagnostics"><Stethoscope data-icon="inline-start" />{{ $t('players.actions.openDiagnostics') }}</UiButton>
-              <UiButton size="sm" variant="outline" :disabled="loading || refreshing" @click="refreshPlayerData">{{ $t('players.actions.retry') }}</UiButton>
-            </div>
-          </AlertDescription>
+          <AlertDescription class="break-words">{{ $t('players.list.currentRefreshFailedDescription', { error: collectionErrorText }) }}</AlertDescription>
+          <AlertAction class="flex flex-wrap gap-2 max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+            <UiButton size="sm" variant="outline" @click="openRoomDiagnostics"><Stethoscope data-icon="inline-start" />{{ $t('players.actions.openDiagnostics') }}</UiButton>
+            <UiButton size="sm" variant="outline" :disabled="loading || refreshing" @click="refreshPlayerData">{{ $t('players.actions.retry') }}</UiButton>
+          </AlertAction>
         </Alert>
         <Alert v-else-if="partialFailures.length > 0" class="mb-4">
           <TriangleAlert />
           <AlertTitle>{{ $t('players.list.partialTitle') }}</AlertTitle>
-          <AlertDescription class="col-start-2 flex min-w-0 flex-col gap-2">
-            <p class="break-words">{{ partialFailureText }}</p>
-            <div class="flex flex-wrap gap-2">
-              <UiButton size="sm" variant="outline" @click="openRoomDiagnostics"><Stethoscope data-icon="inline-start" />{{ $t('players.actions.openDiagnostics') }}</UiButton>
-              <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">{{ $t('players.actions.retry') }}</UiButton>
-            </div>
-          </AlertDescription>
+          <AlertDescription class="break-words">{{ partialFailureText }}</AlertDescription>
+          <AlertAction class="flex flex-wrap gap-2 max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+            <UiButton size="sm" variant="outline" @click="openRoomDiagnostics"><Stethoscope data-icon="inline-start" />{{ $t('players.actions.openDiagnostics') }}</UiButton>
+            <UiButton size="sm" variant="outline" :disabled="loading" @click="fetchPlayerList">{{ $t('players.actions.retry') }}</UiButton>
+          </AlertAction>
         </Alert>
         <p v-if="filterForm.scope === 'history'" class="mb-3 text-sm text-muted-foreground">{{ $t('players.list.previousSessionsHint') }}</p>
         <Alert v-if="collectionWarnings.length && !loadError && !collectionError" class="mb-4">
           <TriangleAlert />
           <AlertTitle>{{ $t('players.list.currentRefreshFailedTitle') }}</AlertTitle>
           <AlertDescription>{{ $t('players.list.currentRefreshFailedDescription', { error: collectionWarnings.join('；') }) }}</AlertDescription>
+          <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+            <UiButton size="sm" variant="outline" :disabled="loading || refreshing" @click="refreshPlayerData">{{ $t('players.actions.retry') }}</UiButton>
+          </AlertAction>
         </Alert>
         <Alert v-if="pausedWorlds.length && !loadError" class="mb-4">
           <AlertTitle>{{ $t('players.list.samplingPausedTitle') }}</AlertTitle>
           <AlertDescription>{{ $t('players.list.samplingPausedDescription') }}</AlertDescription>
+          <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+            <UiButton size="sm" variant="outline" @click="$router.push('/servers/workspace')">{{ $t('players.actions.openWorkspace') }}</UiButton>
+          </AlertAction>
         </Alert>
         <div v-if="loading" class="loading-state"><Spinner /><span>{{ $t('players.list.loading') }}</span></div>
         <div v-else-if="!loadError && playerList.length > 0" class="table-wrap">
           <UiTable>
             <TableHeader>
               <TableRow>
-                <TableHead>{{ $t(filterForm.archive_name ? 'players.fields.world' : 'players.fields.roomAndWorld') }}</TableHead>
+                <TableHead v-if="isColumnVisible('roomAndWorld')">{{ $t(filterForm.archive_name ? 'players.fields.world' : 'players.fields.roomAndWorld') }}</TableHead>
                 <TableHead>{{ $t('players.fields.playerName') }}</TableHead>
-                <TableHead>KU ID</TableHead>
-                <TableHead>{{ $t('players.fields.character') }}</TableHead>
-                <TableHead :title="$t('players.sorting.daysHint')">{{ $t('players.fields.days') }}</TableHead>
-                <TableHead>{{ $t('players.fields.status') }}</TableHead>
-                <TableHead>{{ $t('players.fields.network') }}</TableHead>
-                <TableHead>Steam ID</TableHead>
-                <TableHead>{{ $t('players.fields.firstSeen') }}</TableHead>
-                <TableHead>{{ $t('players.fields.lastSeen') }}</TableHead>
+                <TableHead v-if="isColumnVisible('kuId')">KU ID</TableHead>
+                <TableHead v-if="isColumnVisible('character')">{{ $t('players.fields.character') }}</TableHead>
+                <TableHead v-if="isColumnVisible('days')" :title="$t('players.sorting.daysHint')">{{ $t('players.fields.days') }}</TableHead>
+                <TableHead v-if="isColumnVisible('status')">{{ $t('players.fields.status') }}</TableHead>
+                <TableHead v-if="isColumnVisible('network')">{{ $t('players.fields.network') }}</TableHead>
+                <TableHead v-if="isColumnVisible('steamId')">Steam ID</TableHead>
+                <TableHead v-if="isColumnVisible('firstSeen')">{{ $t('players.fields.firstSeen') }}</TableHead>
+                <TableHead v-if="isColumnVisible('lastSeen')">{{ $t('players.fields.lastSeen') }}</TableHead>
                 <TableHead class="action-column">{{ $t('players.fields.action') }}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow v-for="player in playerList" :key="`${player.room_id}:${player.id}:${player.history_id}`">
-                <TableCell>
+                <TableCell v-if="isColumnVisible('roomAndWorld')">
                   <div class="flex min-w-20 max-w-44 flex-col gap-1 whitespace-normal break-words">
                     <span v-if="!filterForm.archive_name">{{ player.archive_name }}</span>
                     <div class="flex flex-wrap items-center gap-1">
@@ -141,21 +194,21 @@
                     <span class="player-name-cell"><span class="truncate">{{ player.player_name }}</span><Crown v-if="player.is_admin" :title="$t('players.list.administrator')" /><UserRoundCheck v-if="player.is_friend" :title="$t('players.list.friend')" /></span>
                   </UiButton>
                 </TableCell>
-                <TableCell class="mono-cell">{{ player.user_id || player.id }}</TableCell>
-                <TableCell><Badge variant="outline">{{ getCharacterName(player) }}</Badge></TableCell>
-                <TableCell>{{ player.player_age ?? '—' }}</TableCell>
-                <TableCell>
+                <TableCell v-if="isColumnVisible('kuId')" class="mono-cell">{{ player.user_id || player.id }}</TableCell>
+                <TableCell v-if="isColumnVisible('character')"><Badge variant="outline">{{ getCharacterName(player) }}</Badge></TableCell>
+                <TableCell v-if="isColumnVisible('days')">{{ player.player_age ?? '—' }}</TableCell>
+                <TableCell v-if="isColumnVisible('status')">
                   <div class="flex min-w-32 flex-col items-start gap-1">
                     <Badge :variant="getPlayerPresenceMeta(player).variant">{{ getPlayerPresenceMeta(player).label }}</Badge>
                     <span class="text-xs text-muted-foreground" :title="getPlayerStatusNote(player, false)">{{ getPlayerStatusNote(player) }}</span>
                   </div>
                 </TableCell>
-                <TableCell><Badge v-if="isPlayerOnline(player.status)" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
-                <TableCell>
+                <TableCell v-if="isColumnVisible('network')"><Badge v-if="isPlayerOnline(player.status)" :variant="getNetworkBadgeVariant(player.net_score)">{{ getNetworkQuality(player.net_score) }}</Badge><span v-else>-</span></TableCell>
+                <TableCell v-if="isColumnVisible('steamId')">
                   <div class="steam-actions"><UiButton variant="ghost" size="sm" @click="copySteamID(player.net_id)">{{ formatSteamID(player.net_id) }}</UiButton><UiButton variant="ghost" size="icon-xs" :title="$t('players.actions.viewOnSteam')" :aria-label="$t('players.actions.viewPlayerOnSteam')" @click="openSteamProfile(player.net_id)"><ExternalLink /></UiButton></div>
                 </TableCell>
-                <TableCell><PlayerRecordTime :value="player.first_seen" /></TableCell>
-                <TableCell><PlayerRecordTime :value="player.last_seen" /></TableCell>
+                <TableCell v-if="isColumnVisible('firstSeen')"><PlayerRecordTime :value="player.first_seen" /></TableCell>
+                <TableCell v-if="isColumnVisible('lastSeen')"><PlayerRecordTime :value="player.last_seen" /></TableCell>
                 <TableCell class="action-column">
                   <div class="row-actions">
                     <PlayerActionMenu v-if="!player.historical" :player="player" @updated="refreshPlayerAfterAction(player, $event)" @player-state-refreshed="fetchPlayerList" />
@@ -165,15 +218,35 @@
             </TableBody>
           </UiTable>
         </div>
-        <Empty v-else-if="!loadError"><EmptyHeader><EmptyMedia variant="icon"><Users /></EmptyMedia><EmptyTitle>{{ $t('players.list.emptyTitle') }}</EmptyTitle><EmptyDescription>{{ $t('players.list.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
+        <Empty v-else-if="!loadError">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Users /></EmptyMedia>
+            <EmptyTitle>{{ $t(hasActiveFilters ? 'players.list.emptyFilteredTitle' : 'players.list.emptyTitle') }}</EmptyTitle>
+            <EmptyDescription>{{ $t(hasActiveFilters ? 'players.list.emptyFilteredDescription' : 'players.list.emptyDescription') }}</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <div class="flex flex-wrap justify-center gap-2">
+              <UiButton v-if="hasActiveFilters" variant="outline" @click="resetFilter">{{ $t('players.actions.reset') }}</UiButton>
+              <UiButton variant="outline" :disabled="loading || refreshing" @click="refreshPlayerData"><RefreshCw data-icon="inline-start" />{{ $t('players.actions.refresh') }}</UiButton>
+            </div>
+          </EmptyContent>
+        </Empty>
 
       </CardContent>
       <CardFooter v-if="!loading && !loadError && pagination.total > 0" class="pagination-bar">
         <div class="page-size-control">
           <span>{{ $t('players.list.perPage') }}</span>
-          <NativeSelect id="player-page-size" :aria-label="$t('players.list.perPageAria')" :model-value="String(pagination.page_size)" @update:model-value="value => handleSizeChange(Number(value))">
-            <NativeSelectOption value="10">10</NativeSelectOption><NativeSelectOption value="20">20</NativeSelectOption><NativeSelectOption value="50">50</NativeSelectOption><NativeSelectOption value="100">100</NativeSelectOption>
-          </NativeSelect>
+          <UiSelect :model-value="String(pagination.page_size)" @update:model-value="value => handleSizeChange(Number(value))">
+            <SelectTrigger id="player-page-size" class="w-[76px]" :aria-label="$t('players.list.perPageAria')"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </UiSelect>
         </div>
         <Pagination :page="pagination.page" :total="pagination.total" :items-per-page="pagination.page_size" show-edges @update:page="handleCurrentChange">
           <PaginationContent v-slot="{ items }">
@@ -276,7 +349,7 @@
     <UiDialog v-model:open="updateDialogVisible">
       <DialogContent><DialogHeader><DialogTitle>{{ $t('players.dialogs.update.title') }}</DialogTitle><DialogDescription>{{ $t('players.dialogs.update.description') }}</DialogDescription></DialogHeader>
         <FieldGroup><Field><FieldLabel for="update-archive">{{ $t('players.fields.archive') }}</FieldLabel><UiSelect v-model="updateForm.archive_name" @update:model-value="onArchiveChange"><SelectTrigger id="update-archive"><SelectValue :placeholder="$t('players.dialogs.update.archivePlaceholder')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="archive in archiveOptions" :key="archive.value" :value="archive.value">{{ archive.label }}</SelectItem></SelectGroup></SelectContent></UiSelect></Field>
-          <Field><FieldLabel for="update-world">{{ $t('players.fields.world') }}</FieldLabel><NativeSelect id="update-world" v-model="updateForm.world_name"><NativeSelectOption value="">{{ $t('players.dialogs.update.allWorlds') }}</NativeSelectOption><NativeSelectOption v-for="world in worldOptions" :key="world.value" :value="world.value">{{ world.label }}</NativeSelectOption></NativeSelect><FieldDescription>{{ $t('players.dialogs.update.allWorldsDescription') }}</FieldDescription></Field></FieldGroup>
+          <Field><FieldLabel for="update-world">{{ $t('players.fields.world') }}</FieldLabel><UiSelect v-model="updateWorldFilter"><SelectTrigger id="update-world" class="w-full"><SelectValue :placeholder="$t('players.dialogs.update.allWorlds')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem :value="ALL_FILTER">{{ $t('players.dialogs.update.allWorlds') }}</SelectItem><SelectItem v-for="world in worldOptions" :key="world.value" :value="world.value">{{ world.label }}</SelectItem></SelectGroup></SelectContent></UiSelect><FieldDescription>{{ $t('players.dialogs.update.allWorldsDescription') }}</FieldDescription></Field></FieldGroup>
         <DialogFooter><UiButton variant="outline" @click="updateDialogVisible = false">{{ $t('players.actions.cancel') }}</UiButton><UiButton @click="confirmUpdate" :disabled="updating || !updateForm.archive_name"><Spinner v-if="updating" data-icon="inline-start" />{{ $t('players.actions.startUpdate') }}</UiButton></DialogFooter>
       </DialogContent>
     </UiDialog>
@@ -308,20 +381,22 @@
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { readWorkspaceSelection } from '@/lib/workspacePreferences.mjs';
 import { managementScopeTargetId } from '@/lib/managementScope.mjs';
-import { ChevronRight, Clock3, Crown, Download, ExternalLink, Globe2, RefreshCw, Search as SearchIcon, Settings2, Stethoscope, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
+import { ChevronDown, ChevronRight, Clock3, Crown, Download, ExternalLink, Globe2, RefreshCw, Search as SearchIcon, Settings2, SlidersHorizontal, Stethoscope, TriangleAlert, Upload, UserRoundCheck, Users } from '@lucide/vue';
 import { toast } from 'vue-sonner';
 import { playerApi } from '@/api/playerApi';
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
@@ -351,8 +426,17 @@ import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue';
 import PlayerInventoryDialog from '@/components/players/PlayerInventoryDialog.vue';
 import PlayerActivityDialog from '@/components/players/PlayerActivityDialog.vue';
 import PlayerRecordTime from '@/components/players/PlayerRecordTime.vue';
+import {
+  DEFAULT_VISIBLE_PLAYER_COLUMNS,
+  PLAYER_COLUMN_DEFINITIONS,
+  readVisiblePlayerColumns,
+  saveVisiblePlayerColumns,
+  togglePlayerColumn
+} from '@/lib/playerColumns.mjs';
 import { playerHistoryTime, playerListPresenceTime, playerLocationPending, playerLastWorld } from '@/lib/playerHistoryPresentation.mjs';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
+
+const ALL_FILTER = '__all__';
 
 export default {
   name: 'PlayerList',
@@ -371,6 +455,8 @@ export default {
     CardHeader,
     CardTitle,
     CharacterAvatar,
+    Checkbox,
+    ChevronDown,
     ChevronRight,
     PlayerActionMenu,
     PlayerInventoryDialog,
@@ -384,7 +470,12 @@ export default {
     DialogHeader,
     DialogTitle,
     Download,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
     Empty,
+    EmptyContent,
     EmptyDescription,
     EmptyHeader,
     EmptyMedia,
@@ -400,18 +491,20 @@ export default {
     InputGroup,
     InputGroupAddon,
     InputGroupInput,
-    NativeSelect,
-    NativeSelectOption,
     Pagination,
     PaginationContent,
     PaginationEllipsis,
     PaginationItem,
     PaginationNext,
     PaginationPrevious,
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
     RefreshCw,
     ScrollArea,
     SearchIcon,
     Settings2,
+    SlidersHorizontal,
     Stethoscope,
     SelectContent,
     SelectGroup,
@@ -450,6 +543,7 @@ export default {
     return {
       inventoryLookupOpen: false,
       activityOpen: false,
+      visibleColumns: readVisiblePlayerColumns(),
       // 玩家列表数据
       playerList: [],
       loading: false,
@@ -632,6 +726,58 @@ export default {
         count: this.partialFailures.length,
         rooms: this.partialFailures.map(failure => failure.room_name).join(', ')
       });
+    },
+
+    ALL_FILTER() {
+      return ALL_FILTER;
+    },
+
+    statusFilter: {
+      get() {
+        return this.filterForm.status || ALL_FILTER;
+      },
+      set(value) {
+        this.filterForm.status = value === ALL_FILTER ? '' : value;
+      }
+    },
+
+    characterFilter: {
+      get() {
+        return this.filterForm.prefab || ALL_FILTER;
+      },
+      set(value) {
+        this.filterForm.prefab = value === ALL_FILTER ? '' : value;
+      }
+    },
+
+    updateWorldFilter: {
+      get() {
+        return this.updateForm.world_name || ALL_FILTER;
+      },
+      set(value) {
+        this.updateForm.world_name = value === ALL_FILTER ? '' : value;
+      }
+    },
+
+    visibleColumnSet() {
+      return new Set(this.visibleColumns);
+    },
+
+    columnOptions() {
+      return PLAYER_COLUMN_DEFINITIONS.filter(column => !column.locked);
+    },
+
+    hasCustomColumns() {
+      return this.visibleColumns.join(',') !== DEFAULT_VISIBLE_PLAYER_COLUMNS.join(',');
+    },
+
+    hasActiveFilters() {
+      return this.filterForm.scope !== 'current' || Boolean(
+        this.filterForm.archive_name ||
+        this.filterForm.status ||
+        this.filterForm.prefab ||
+        (this.filterForm.keyword && this.filterForm.keyword.trim())
+      );
     }
   },
   methods: {
@@ -646,6 +792,24 @@ export default {
       this.handleFilter();
     },
     isPlayerOnline,
+
+    columnLabel(column) {
+      return column.labelKey ? this.$t(column.labelKey) : column.labelText;
+    },
+
+    isColumnVisible(columnId) {
+      return this.visibleColumnSet.has(columnId);
+    },
+
+    setColumnVisible(columnId, visible) {
+      this.visibleColumns = saveVisiblePlayerColumns(
+        togglePlayerColumn(this.visibleColumns, columnId, Boolean(visible))
+      );
+    },
+
+    resetVisibleColumns() {
+      this.visibleColumns = saveVisiblePlayerColumns(DEFAULT_VISIBLE_PLAYER_COLUMNS);
+    },
 
     getPlayerStatusMeta(status) {
       return playerStatusMeta(status, this.$t);
@@ -1605,10 +1769,6 @@ export default {
   min-height: 96px;
 }
 
-.refresh-settings-button {
-  flex: 0 0 36px !important;
-}
-
 .table-wrap {
   width: 100%;
 }
@@ -1664,7 +1824,7 @@ export default {
   gap: 8px;
 }
 
-.page-size-control :deep([data-slot='native-select-wrapper']) {
+.page-size-control :deep([data-slot='select-trigger']) {
   width: 76px;
 }
 

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Download, RefreshCw, CircleAlert } from '@lucide/vue'
+import { ChevronDown, Download, RefreshCw, CircleAlert } from '@lucide/vue'
 import { agentsV2API, jobsV2API } from '@/api/v2'
 import { createAgentSoftwareController } from '@/lib/agentSoftwareUpdate.mjs'
 import { formatSoftwareBytes, softwareUpdateActive, softwareUpdateAction } from '@/lib/softwareUpdate.mjs'
@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import SoftwareUpdateSettings from '@/components/settings/SoftwareUpdateSettings.vue'
 import { Progress } from '@/components/ui/progress'
@@ -59,7 +60,17 @@ onBeforeUnmount(() => controller.dispose())
         <SoftwareUpdateSettings v-if="snapshot.settings?.source" :agent-id="agentId" :settings="snapshot.settings" :disabled="!online || busy || state.checking" @saved="controller.refresh()" />
         <ToggleGroup v-else v-model="legacySource" type="single" variant="outline" :aria-label="t('softwareUpdate.source')" :disabled="busy"><ToggleGroupItem v-for="value in ['auto', 'direct', 'proxy', 'controller']" :key="value" :value="value">{{ t(`softwareUpdate.${value === 'controller' ? 'controllerTransfer' : value}`) }}</ToggleGroupItem></ToggleGroup>
         <div v-if="phase" class="flex flex-col gap-2" aria-live="polite"><p class="text-sm">{{ t(phase === 'restarting' ? 'softwareUpdate.agentReconnecting' : `softwareUpdate.phases.${phase}`) }}</p><Progress v-if="busy" :model-value="state.job?.progress ?? operation?.progress ?? 0" :aria-label="t('softwareUpdate.progress')" /><p v-if="transfer.totalBytes > 0" class="text-xs text-muted-foreground tabular-nums">{{ t('softwareUpdate.downloaded', { downloaded: formatSoftwareBytes(transfer.currentBytes), total: formatSoftwareBytes(transfer.totalBytes) }) }}<span v-if="transfer.bytesPerSecond > 0"> · {{ formatSoftwareBytes(transfer.bytesPerSecond) }}/s</span></p></div>
-        <details v-if="latest?.notes"><summary class="cursor-pointer text-sm">{{ t('softwareUpdate.notes') }}</summary><p class="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">{{ latest.notes }}</p></details>
+        <Collapsible v-if="latest?.notes" class="min-w-0">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-normal hover:bg-transparent">
+              <span>{{ t('softwareUpdate.notes') }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-2">
+            <p class="whitespace-pre-wrap break-words text-sm text-muted-foreground">{{ latest.notes }}</p>
+          </CollapsibleContent>
+        </Collapsible>
       </template>
     </CardContent>
     <CardFooter class="flex flex-wrap gap-2">

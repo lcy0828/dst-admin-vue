@@ -1,11 +1,18 @@
 <template>
   <div v-if="!hidden && total > 0" class="pagination-container">
     <span class="pagination-total">{{ $t('common.pagination.total', { count: total }) }}</span>
-    <NativeSelect v-model="pageSize" :aria-label="$t('common.pagination.pageSize')" class="page-size-select" @change="handleSizeChange(pageSize)">
-      <NativeSelectOption v-for="size in pageSizes" :key="size" :value="size">
-        {{ $t('common.pagination.perPage', { count: size }) }}
-      </NativeSelectOption>
-    </NativeSelect>
+    <UiSelect :model-value="String(pageSize)" @update:model-value="handleSizeSelect">
+      <SelectTrigger :aria-label="$t('common.pagination.pageSize')" class="page-size-select w-[104px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectItem v-for="size in pageSizes" :key="size" :value="String(size)">
+            {{ $t('common.pagination.perPage', { count: size }) }}
+          </SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </UiSelect>
     <ShadcnPagination
       :page="currentPage"
       :items-per-page="pageSize"
@@ -43,7 +50,6 @@
 <script>
 import { ChevronLeftIcon, ChevronRightIcon } from '@lucide/vue'
 import { Input as UiInput } from '@/components/ui/input'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import {
   Pagination as ShadcnPagination,
   PaginationContent,
@@ -52,6 +58,7 @@ import {
   PaginationNext,
   PaginationPrevious
 } from '@/components/ui/pagination'
+import { Select as UiSelect, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default {
   name: 'AppPagination',
@@ -59,14 +66,18 @@ export default {
     ChevronLeftIcon,
     ChevronRightIcon,
     UiInput,
-    NativeSelect,
-    NativeSelectOption,
     ShadcnPagination,
     PaginationContent,
     PaginationEllipsis,
     PaginationItem,
     PaginationNext,
-    PaginationPrevious
+    PaginationPrevious,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    UiSelect
   },
   props: {
     total: {
@@ -126,6 +137,12 @@ export default {
     }
   },
   methods: {
+    handleSizeSelect(val) {
+      const next = Number(val)
+      if (!Number.isFinite(next) || next <= 0) return
+      this.pageSize = next
+      this.handleSizeChange(next)
+    },
     handleSizeChange(val) {
       this.$emit('pagination', { page: this.currentPage, limit: val })
     },
@@ -171,7 +188,7 @@ export default {
   font-size: 13px;
 }
 
-.page-size-select {
+:deep(.page-size-select) {
   width: 104px;
 }
 

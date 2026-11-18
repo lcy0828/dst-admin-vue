@@ -19,6 +19,9 @@
       <CircleAlert />
       <AlertTitle>{{ t('distributed.diagnostics.loadRoomsFailed') }}</AlertTitle>
       <AlertDescription>{{ roomsError }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton variant="outline" size="sm" :disabled="loadingRooms" @click="loadRooms">{{ t('common.actions.retry') }}</UiButton>
+      </AlertAction>
     </Alert>
 
     <div v-if="loadingRooms && rooms.length === 0" class="flex flex-col gap-2" :aria-label="t('common.states.loading')">

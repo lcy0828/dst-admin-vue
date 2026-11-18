@@ -1,10 +1,11 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, shallowRef, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Backpack, RefreshCw, TriangleAlert } from '@lucide/vue'
+import { Backpack, ChevronDown, RefreshCw, TriangleAlert } from '@lucide/vue'
 import { playersV2API } from '@/api/v2'
 import { loadInventoryNames } from '@/api/inventoryNames'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -103,14 +104,24 @@ onBeforeUnmount(() => { ++sequence; controller?.abort() })
       <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 [scrollbar-gutter:stable]" :aria-busy="loading">
         <Alert v-if="error" :variant="errorCode === 'SOURCE_AMBIGUOUS' ? 'default' : 'destructive'"><TriangleAlert /><AlertTitle>{{ errorText }}</AlertTitle><AlertDescription class="flex flex-col gap-2">
           <Select v-if="candidates.length" @update:model-value="selectCandidate"><SelectTrigger :aria-label="t('inventory.choose')"><SelectValue :placeholder="t('inventory.choose')" /></SelectTrigger><SelectContent><SelectGroup><SelectItem v-for="(candidate, index) in candidates" :key="`${candidate.worldId}:${candidate.sourceId}`" :value="String(index)">{{ t('inventory.candidate', { world: candidate.worldName || candidate.worldId || t('inventory.unknownWorld'), time: timeText(candidate.fileModifiedAt), index: index + 1 }) }}</SelectItem></SelectGroup></SelectContent></Select>
-          <details><summary class="cursor-pointer">{{ t('inventory.details') }}</summary><p class="break-all">{{ errorCode }}<template v-if="error.requestId"> · {{ error.requestId }}</template></p></details>
+          <Collapsible class="min-w-0">
+            <CollapsibleTrigger as-child>
+              <Button type="button" variant="ghost" size="sm" class="group h-auto px-0 py-0 text-xs hover:bg-transparent">
+                <span>{{ t('inventory.details') }}</span>
+                <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent class="pt-1.5">
+              <p class="break-all">{{ errorCode }}<template v-if="error.requestId"> · {{ error.requestId }}</template></p>
+            </CollapsibleContent>
+          </Collapsible>
         </AlertDescription></Alert>
         <p v-if="loading" role="status" class="text-sm text-muted-foreground">{{ t(data ? 'inventory.refreshing' : 'inventory.loading') }}</p>
         <div v-if="loading && !data" class="grid grid-cols-1 gap-3 sm:grid-cols-2"><Skeleton v-for="index in 6" :key="index" class="h-20" /></div>
         <template v-if="data">
           <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"><Badge variant="secondary">{{ t(`inventory.${data.source}`) }}</Badge><Badge v-if="error || loading" variant="outline">{{ t('inventory.previousResult') }}</Badge><span>{{ data.worldName || data.worldId }}</span><span>{{ t('inventory.captured', { time: timeText(data.capturedAt) }) }}</span><span v-if="data.fileModifiedAt">{{ t('inventory.modified', { time: timeText(data.fileModifiedAt) }) }}</span></div>
           <p v-if="data.source === 'save'" class="text-xs text-muted-foreground">{{ t('inventory.snapshotHint') }}</p>
-          <Alert v-if="data.status === 'partial'"><TriangleAlert /><AlertTitle>{{ t('inventory.partial') }}</AlertTitle><AlertDescription>{{ t('inventory.partialHint') }}<details class="mt-2"><summary class="cursor-pointer">{{ t('inventory.details') }}</summary>{{ data.limitsReached?.join(' · ') }}</details></AlertDescription></Alert>
+          <Alert v-if="data.status === 'partial'"><TriangleAlert /><AlertTitle>{{ t('inventory.partial') }}</AlertTitle><AlertDescription>{{ t('inventory.partialHint') }}<Collapsible class="mt-2 min-w-0"><CollapsibleTrigger as-child><Button type="button" variant="ghost" size="sm" class="group h-auto px-0 py-0 text-xs hover:bg-transparent"><span>{{ t('inventory.details') }}</span><ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CollapsibleContent class="pt-1 text-xs">{{ data.limitsReached?.join(' · ') }}</CollapsibleContent></Collapsible></AlertDescription></Alert>
           <Empty v-if="data.empty"><EmptyHeader><EmptyMedia variant="icon"><Backpack /></EmptyMedia><EmptyTitle>{{ t('inventory.empty') }}</EmptyTitle><EmptyDescription>{{ t('inventory.emptyDescription') }}</EmptyDescription></EmptyHeader></Empty>
           <p v-else-if="!hasMatches && query" class="py-4 text-center text-sm text-muted-foreground">{{ t('inventory.noMatch') }}</p>
           <div v-else class="flex min-w-0 flex-col gap-4">

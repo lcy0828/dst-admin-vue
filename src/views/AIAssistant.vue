@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { CircleAlert, History, MessageSquare, Settings2 } from '@lucide/vue'
+import { ChevronDown, CircleAlert, History, MessageSquare, Settings2 } from '@lucide/vue'
 import { aiPageRoom, useAIAssistant } from '@/composables/useAIAssistant'
 import AIChat from '@/components/ai/AIChat.vue'
 import AIConnections from '@/components/ai/AIConnections.vue'
@@ -11,6 +11,7 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -50,7 +51,18 @@ onMounted(async () => {
       <TabsContent value="connection" class="pt-3">
         <Skeleton v-if="loading && !session.initialized.value" class="h-80 w-full" />
         <AIConnections v-else-if="session.initialized.value && tab === 'connection'" :config="config" :mcp-path="mcpPath" @saved="session.saved" @error="session.fail" />
-        <details v-if="tools.length" class="mt-4 text-sm"><summary class="cursor-pointer">{{ t('ai.toolCatalog') }} · {{ tools.length }}</summary><p class="mt-2 text-xs text-muted-foreground">{{ t('ai.toolDescription') }}</p><ul class="mt-3 grid gap-x-5 gap-y-2 text-xs sm:grid-cols-2"><li v-for="tool in tools" :key="tool.name">{{ t(`ai.tools.${tool.name}`, tool.name) }}</li></ul></details>
+        <Collapsible v-if="tools.length" class="mt-4 min-w-0 text-sm">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-normal hover:bg-transparent">
+              <span>{{ t('ai.toolCatalog') }} · {{ tools.length }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-2">
+            <p class="text-xs text-muted-foreground">{{ t('ai.toolDescription') }}</p>
+            <ul class="mt-3 grid gap-x-5 gap-y-2 text-xs sm:grid-cols-2"><li v-for="tool in tools" :key="tool.name">{{ t(`ai.tools.${tool.name}`, tool.name) }}</li></ul>
+          </CollapsibleContent>
+        </Collapsible>
       </TabsContent>
       <TabsContent value="history" class="pt-3"><AIActivity :calls="calls" :rooms="rooms" :loading="activityLoading" @refresh="session.refreshCalls" @error="session.fail" /></TabsContent>
     </Tabs>

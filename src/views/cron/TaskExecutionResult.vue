@@ -125,24 +125,49 @@ export default {
     }
 
     this.fetchLogDetail();
-
-    // 自动刷新 - 每5秒刷新一次，直到任务完成
-    this.refreshInterval = setInterval(() => {
-      if (this.logData && this.logData.end_time) {
-        // 如果任务已完成，停止自动刷新
-        clearInterval(this.refreshInterval);
-      } else {
-        this.fetchLogDetail();
-      }
-    }, 5000);
+    this.startRefreshTimer();
+  },
+  mounted() {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    }
   },
   beforeUnmount() {
-    // 组件销毁前清除定时器
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
+    this.stopRefreshTimer();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     }
   },
   methods: {
+    stopRefreshTimer() {
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval);
+        this.refreshInterval = null;
+      }
+    },
+    startRefreshTimer() {
+      this.stopRefreshTimer();
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (this.logData && this.logData.end_time) return;
+      // 自动刷新 - 每5秒刷新一次，直到任务完成；后台标签页暂停
+      this.refreshInterval = setInterval(() => {
+        if (this.logData && this.logData.end_time) {
+          this.stopRefreshTimer();
+        } else if (typeof document === 'undefined' || document.visibilityState !== 'hidden') {
+          this.fetchLogDetail();
+        }
+      }, 5000);
+    },
+    handleVisibilityChange() {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        this.stopRefreshTimer();
+        return;
+      }
+      if (this.logId && !(this.logData && this.logData.end_time)) {
+        this.fetchLogDetail();
+        this.startRefreshTimer();
+      }
+    },
     fetchLogDetail() {
       this.loading = true;
       this.automationApi.getLogDetail(this.logId)
@@ -176,6 +201,7 @@ export default {
               if (data && data.code === 200 && data.data) {
                 this.logData = data.data;
                 console.log('成功解析数据:', this.logData);
+                if (this.logData?.end_time) this.stopRefreshTimer();
                 return;
               }
             } catch (e) {
@@ -185,6 +211,7 @@ export default {
             console.error('响应格式不符合预期:', response);
             toast.error(this.text('execution.feedback.invalidResponse'));
           }
+          if (this.logData?.end_time) this.stopRefreshTimer();
         })
         .catch(error => {
           console.error('获取日志详情失败:', error);

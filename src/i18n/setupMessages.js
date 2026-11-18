@@ -30,9 +30,11 @@ export const setupMessages = {
       configureRoom: '配置房间', configurePlacement: '配置运行节点', placementHint: '远程房间还需选择运行节点并完成部署。配置完成后，返回向导重新检查。',
       reviewTitle: '初始化检查结果', reviewDescription: '管理员账户已创建。下面展示当前准备情况，游戏是否可加入仍需开服后验证。', accountReady: '管理员：{username}',
       pendingTitle: '以下事项仍需处理', pending: { unavailable: '部分状态读取失败，请重试检查。', restart: '返回管理方式或环境页，保存并应用配置。', environment: '处理运行环境或目录问题。', member: '等待本机成功连接上级管理中心。', agent: '接入在线 Agent，并确认至少一份游戏安装可用。', game: '安装游戏服务端或接入已有游戏目录。', room: '创建房间或导入存档，并配置有效的 Cluster Token。', placement: '检查房间的世界配置与运行节点：所有目标节点需在线、安装游戏并完成房间部署。' },
+      pendingActions: { unavailable: '重试检查', restart: '前往应用配置', environment: '检查环境配置', member: '检查节点接入', agent: '前往机器管理', game: '安装服务端', room: '准备房间', placement: '配置运行节点' },
       ready: '已检测到可用的游戏安装和房间，请开服后继续检查世界日志及玩家连接。',
       finishHint: '完成向导只保存初始化进度，不自动启动、停止或重建世界。稍后可从系统设置再次打开向导。',
       finish: '完成并进入总览', finishLater: '保存初始化，稍后开服', finishStart: '完成并前往开服', incompleteChecks: '部分检查未完成',
+      skipToChecklist: '跳过向导，在总览中按清单完成',
       recheck: '重新检查', reload: '重新读取', save: '保存设置', return: '返回初始化向导', resume: '初始化尚未完成，可返回向导继续。'
     }
   },
@@ -67,9 +69,11 @@ export const setupMessages = {
       configureRoom: 'Configure room', configurePlacement: 'Configure runtime nodes', placementHint: 'Remote rooms also need runtime placement and provisioning. After configuration, return to the wizard and recheck.',
       reviewTitle: 'Setup check results', reviewDescription: 'Your administrator account is ready. Preparation status is shown below; player connectivity still needs verification after game startup.', accountReady: 'Administrator: {username}',
       pendingTitle: 'Tasks still to complete', pending: { unavailable: 'Some status requests failed. Retry the checks.', restart: 'Return to Management role or Environment and save to apply settings.', environment: 'Resolve environment or directory issues.', member: 'Wait for this node to connect to its upstream Controller.', agent: 'Connect an online Agent and verify at least one usable game installation.', game: 'Install the game server or adopt an existing game directory.', room: 'Create a room or import saves, and configure a valid Cluster Token.', placement: 'Check room worlds and runtime placement: all target nodes need to be online, have the game installed, and finish room provisioning.' },
+      pendingActions: { unavailable: 'Retry checks', restart: 'Apply configuration', environment: 'Check environment', member: 'Check connection', agent: 'Manage machines', game: 'Install game server', room: 'Prepare room', placement: 'Configure placement' },
       ready: 'A usable game installation and rooms were detected. Check world logs and player connectivity after starting the game.',
       finishHint: 'Finishing saves setup progress only. It does not start, stop, or regenerate worlds. Reopen this wizard from System settings at any time.',
       finish: 'Finish and open overview', finishLater: 'Save setup; host later', finishStart: 'Finish and open game controls', incompleteChecks: 'Some checks are incomplete',
+      skipToChecklist: 'Skip wizard, finish from dashboard',
       recheck: 'Check again', reload: 'Reload', save: 'Save settings', return: 'Return to setup', resume: 'Setup is incomplete. Return to the wizard to continue.'
     }
   }

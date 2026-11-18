@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Download, KeyRound, Paperclip } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Download, KeyRound, Paperclip } from '@lucide/vue'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -28,10 +28,17 @@ const toolLabel = call => call.tool?.startsWith('api_') ? t('ai.apiOperation') :
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div class="mt-2 flex max-h-64 min-w-0 flex-col gap-3 overflow-y-auto overscroll-contain rounded-md bg-muted p-3">
-          <details v-for="(call, index) in message.calls" :key="call.callId || index" class="min-w-0 text-xs">
-            <summary class="cursor-pointer [overflow-wrap:anywhere]">{{ toolLabel(call) }} · {{ t(`ai.statuses.${statuses.get(call.callId) || call.status}`) }}</summary>
-            <pre class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all">{{ pretty(call) }}</pre>
-          </details>
+          <Collapsible v-for="(call, index) in message.calls" :key="call.callId || index" class="min-w-0 text-xs">
+            <CollapsibleTrigger as-child>
+              <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between gap-2 px-1 py-1 text-left text-xs font-normal whitespace-normal">
+                <span class="min-w-0 [overflow-wrap:anywhere]">{{ toolLabel(call) }} · {{ t(`ai.statuses.${statuses.get(call.callId) || call.status}`) }}</span>
+                <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <pre class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all">{{ pretty(call) }}</pre>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </CollapsibleContent>
     </Collapsible>

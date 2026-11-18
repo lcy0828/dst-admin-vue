@@ -6,7 +6,13 @@
           <h1>{{ roomName ? $t('worlds.settingsPage.titleWithRoom', { room: roomName }) : $t('worlds.settingsPage.title') }}</h1>
         </div>
         <div class="header-actions">
-          <UiButton v-if="currentWorld" variant="outline" size="sm" @click="openWorldMods(currentWorld)">
+          <UiButton
+            v-if="currentWorld || showPageSkeleton"
+            variant="outline"
+            size="sm"
+            :disabled="!currentWorld || loading || loadingRooms"
+            @click="openWorldMods(currentWorld)"
+          >
             <Package data-icon="inline-start" />
             {{ $t('worlds.settingsPage.manageMods') }}
           </UiButton>
@@ -15,7 +21,7 @@
             <RefreshCw v-else data-icon="inline-start" />
             {{ $t('worlds.settingsPage.refresh') }}
           </UiButton>
-          <UiButton size="sm" :disabled="!roomId || roomHasRunningWorld" :title="roomHasRunningWorld ? $t('worlds.settingsPage.stopAllWorlds') : $t('worlds.settingsPage.addWorld')" @click="showAddWorldDialog"><Plus data-icon="inline-start" />{{ $t('worlds.settingsPage.addWorld') }}</UiButton>
+          <UiButton size="sm" :disabled="!roomId || loading || loadingRooms || roomHasRunningWorld" :title="roomHasRunningWorld ? $t('worlds.settingsPage.stopAllWorlds') : $t('worlds.settingsPage.addWorld')" @click="showAddWorldDialog"><Plus data-icon="inline-start" />{{ $t('worlds.settingsPage.addWorld') }}</UiButton>
         </div>
       </header>
 
@@ -39,9 +45,29 @@
         <RefreshCw />
         <AlertTitle>{{ $t(`worlds.settingsPage.sync.${activeConfigurationSync.status}.title`) }}</AlertTitle>
         <AlertDescription>{{ $t(`worlds.settingsPage.sync.${activeConfigurationSync.status}.description`) }}</AlertDescription>
+        <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+          <UiButton size="sm" variant="outline" :disabled="loading" @click="requestReloadSettings">{{ $t('common.actions.refresh') }}</UiButton>
+        </AlertAction>
       </Alert>
 
-      <Tabs v-if="roomId && originalSettings" :model-value="activeTab" orientation="horizontal" class="world-tabs" @update:model-value="requestWorldTab">
+      <div v-if="showPageSkeleton" class="world-page-skeleton" aria-busy="true">
+        <div class="world-tabs-skeleton-bar">
+          <Skeleton class="world-tab-skeleton" />
+          <Skeleton class="world-tab-skeleton" />
+        </div>
+        <Card size="sm" class="world-settings-card">
+          <CardHeader>
+            <Skeleton class="world-heading-skeleton" />
+          </CardHeader>
+          <CardContent>
+            <div class="skeleton-stack">
+              <Skeleton v-for="index in 8" :key="index" class="skeleton-row" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs v-else-if="roomId && originalSettings && visibleWorlds.length > 0" :model-value="activeTab" orientation="horizontal" class="world-tabs" @update:model-value="requestWorldTab">
         <div class="world-tabs-toolbar">
           <TabsList class="world-tab-list" :aria-label="$t('worlds.settingsPage.worldListAria')">
             <TabsTrigger v-for="world in visibleWorlds" :key="world.name" :value="world.name">
@@ -86,7 +112,7 @@
                 </div>
 
                 <TabsContent value="worldgen">
-                  <div v-if="loading" class="skeleton-stack">
+                  <div v-if="loading && !getSettingsForWorld(world)" class="skeleton-stack">
                     <Skeleton v-for="index in 8" :key="index" class="skeleton-row" />
                   </div>
                   <world-settings-panel
@@ -106,7 +132,7 @@
                 </TabsContent>
 
                 <TabsContent value="worldsettings">
-                  <div v-if="loading" class="skeleton-stack">
+                  <div v-if="loading && !getSettingsForWorld(world)" class="skeleton-stack">
                     <Skeleton v-for="index in 8" :key="index" class="skeleton-row" />
                   </div>
                   <world-settings-panel
@@ -126,7 +152,7 @@
                 </TabsContent>
 
                 <TabsContent value="server-ini">
-                  <div v-if="loading || loadingServerIni" class="skeleton-stack">
+                  <div v-if="(loading || loadingServerIni) && !serverIni" class="skeleton-stack">
                     <Skeleton v-for="index in 6" :key="index" class="skeleton-row" />
                   </div>
                   <FieldGroup v-else-if="serverIni" class="server-ini-grid">
@@ -178,7 +204,7 @@
         </TabsContent>
       </Tabs>
 
-      <Empty v-if="roomId && visibleWorlds.length === 0">
+      <Empty v-else-if="roomId && visibleWorlds.length === 0 && !loadError && !roomOptionsError">
         <EmptyHeader>
           <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
           <EmptyTitle>{{ $t('worlds.settingsPage.noWorlds') }}</EmptyTitle>
@@ -187,12 +213,16 @@
         <EmptyContent><UiButton @click="showAddWorldDialog"><Plus data-icon="inline-start" />{{ $t('worlds.settingsPage.addWorld') }}</UiButton></EmptyContent>
       </Empty>
 
-      <Empty v-if="!roomId && !loadingRooms && !roomOptionsError">
+      <Empty v-else-if="!roomId && !roomOptionsError && !loadError">
         <EmptyHeader>
           <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
           <EmptyTitle>{{ $t(roomOptions.length ? 'worlds.settingsPage.chooseRoom' : 'worlds.settingsPage.noRooms') }}</EmptyTitle>
           <EmptyDescription>{{ $t(roomOptions.length ? 'worlds.settingsPage.chooseRoomDescription' : 'worlds.settingsPage.noRoomsDescription') }}</EmptyDescription>
         </EmptyHeader>
+        <EmptyContent>
+          <UiButton v-if="roomOptions.length" @click="requestRoomChange(roomOptions[0].id)">{{ $t('worlds.settingsPage.selectFirstRoom') }}</UiButton>
+          <UiButton v-else @click="$router.push('/rooms/settings')">{{ $t('rooms.list.create') }}</UiButton>
+        </EmptyContent>
       </Empty>
 
     </section>
@@ -344,7 +374,10 @@ export default {
       forestSettings: null,
       caveSettings: null,
       originalSettings: null,
-      loading: false,
+      loading: true,
+      initializingPage: true,
+      switchingRoom: false,
+      disposed: false,
       loadError: '',
       saveLoading: false,
       searchText: '',
@@ -364,13 +397,12 @@ export default {
         width: window.innerWidth,
         height: window.innerHeight
       },
-      menuWidth: '230px', // 默认值，将通过getMenuWidth动态更新
       // 添加房间相关数据
       roomId: null,
       roomName: null,
       roomOptions: [],
       selectedRoomId: '',
-      loadingRooms: false,
+      loadingRooms: true,
       roomOptionsError: '',
       roomWorlds: [],
       hasForestWorld: false,
@@ -411,14 +443,11 @@ export default {
   },
   created() {
     // 从URL参数中获取房间ID和名称
-    const { roomId, roomName, worldId } = this.$route.query;
-    this.roomId = roomId || null;
+    const { roomId, id, roomName, worldId } = this.$route.query;
+    this.roomId = roomId || id || null;
     this.roomName = roomName || '';
     this.initialWorldId = String(worldId || '');
-    this.fetchWorldSettings()
-      .then(() => this.fetchRoomOptions())
-      .then(loaded => (loaded && this.roomId ? this.loadRoomWorlds() : undefined))
-      .catch(() => {});
+    this.initializePage();
     
     // 添加防抖的全局点击事件处理
     this.debouncedGlobalClick = this.debounce(this.handleGlobalClick, 50);
@@ -429,20 +458,15 @@ export default {
     window.addEventListener('resize', this.debouncedResize);
   },
   beforeUnmount() {
+    this.disposed = true;
+    this.configurationLoadEpoch += 1;
     if (this.machineScopeGuard?.check === this.confirmMachineScopeChange) this.machineScopeGuard.check = async () => true;
     // 清理事件监听器
     document.removeEventListener('click', this.debouncedGlobalClick);
     window.removeEventListener('resize', this.debouncedResize);
-    window.removeEventListener('resize', this.handleResize);
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
     if (this.scrollContainer && this.debouncedScrollHandler) {
       this.scrollContainer.removeEventListener('scroll', this.debouncedScrollHandler);
-    }
-    
-    // 清理DOM观察器
-    if (this.domObserver) {
-      this.domObserver.disconnect();
-      this.domObserver = null;
     }
     
     // 清理所有定时器
@@ -454,9 +478,6 @@ export default {
     }
     if (this._renderTimer) {
       clearTimeout(this._renderTimer);
-    }
-    if (this._menuUpdateTimer) {
-      clearTimeout(this._menuUpdateTimer);
     }
     
     // 清空缓存减少内存占用
@@ -471,10 +492,34 @@ export default {
     '$i18n.locale'(locale) {
       this.updateWorldSettingsLocale(locale);
     },
+    '$route.query'(query) {
+      if (this.disposed || this.initializingPage || this.switchingRoom || this.initializingWorlds) return;
+      const nextRoomId = String(query?.roomId || query?.id || '');
+      const nextWorldId = String(query?.worldId || '');
+      if (nextRoomId && nextRoomId !== String(this.roomId || '')) {
+        if (this.roomOptions.some(room => room.id === nextRoomId)) {
+          this.initialWorldId = nextWorldId;
+          this.requestRoomChange(nextRoomId, { preserveQueryWorldId: Boolean(nextWorldId) });
+        }
+        return;
+      }
+      if (nextWorldId) {
+        const matchedWorld = this.sortedRoomWorlds.find(world =>
+          [String(world.id || ''), String(world.name || ''), String(world.directoryName || '')].includes(nextWorldId)
+        );
+        if (matchedWorld && matchedWorld.name !== this.activeTab) {
+          this.requestWorldTab(matchedWorld.name);
+        }
+      }
+    },
     activeTab(newTab) {
       if (this.initializingWorlds) return;
-      // 切换标签页时，清空变更缓存
+      // 切换标签页时，清空变更缓存和跨世界 server.ini 临时状态
       this.changedItemsCache = null;
+      this.hasChanges = false;
+      this.serverIni = null;
+      this.serverIniOriginal = null;
+      this.serverIniChanged = false;
       
       // 加载当前选中世界的配置
       const currentWorld = this.roomWorlds.find(world => world.name === newTab);
@@ -514,6 +559,12 @@ export default {
           return;
         }
 
+        const cachedBaseline = this.worldOriginalSettings[currentWorld.name];
+        if (cachedBaseline) {
+          const targetSettings = currentWorld.type === 'cave' ? this.caveSettings : this.forestSettings;
+          this.applySettingsValues(targetSettings, cachedBaseline);
+        }
+
         this.previousActiveTab = newTab;
         this.syncWorldRoute(currentWorld);
         
@@ -523,14 +574,13 @@ export default {
         const loadEpoch = this.configurationLoadEpoch;
         loading
           .finally(() => {
-            if (loadEpoch !== this.configurationLoadEpoch) return;
+            if (this.disposed || loadEpoch !== this.configurationLoadEpoch) return;
             // 更新已加载配置标记
             if (!this.loadedWorldConfigs) {
               this.loadedWorldConfigs = {};
             }
             this.loadedWorldConfigs[`${this.roomName}_${currentWorld.name}`] = true;
             this.loading = false;
-            
           });
       }
       
@@ -558,27 +608,11 @@ export default {
     window.addEventListener('beforeunload', this.handleBeforeUnload);
     // 优化页面初始渲染
     this.$nextTick(() => {
-      // 使用requestAnimationFrame优化渲染性能
       window.requestAnimationFrame(() => {
-        // 使用防抖优化调用频率
         this.optimizeInitialRendering();
         this.setupScrollListeners();
-        
-        // 获取左侧菜单宽度
-        this.getMenuWidth();
-        
-        // 设置DOM变化观察器来监听侧边栏变化
-        this.setupDomObserver();
-        
-        // 延迟再次检查，确保所有元素都已渲染
-        setTimeout(() => {
-          this.getMenuWidth();
-        }, 500);
       });
     });
-    
-    // 监听窗口大小变化
-    window.addEventListener('resize', this.handleResize);
   },
   updated() {
     // 在组件更新后，确保select组件显示正确的值
@@ -666,8 +700,22 @@ export default {
         : 'worlds.settingsPage.effects.restart');
     },
 
+    showPageSkeleton() {
+      return Boolean(
+        this.initializingPage
+        || this.switchingRoom
+        || (!this.originalSettings && this.loading)
+        || (this.loadingRooms && (!this.roomId || this.visibleWorlds.length === 0))
+        || (this.roomId && this.visibleWorlds.length === 0 && this.loading)
+      );
+    },
+
     showWorldSettingsFooter() {
-      return Boolean(this.activeWorldHasBaseline && ['worldgen', 'worldsettings'].includes(this.worldSectionTab));
+      return Boolean(
+        !this.showPageSkeleton
+        && this.activeWorldHasBaseline
+        && ['worldgen', 'worldsettings'].includes(this.worldSectionTab)
+      );
     },
 
     roomHasRunningWorld() {
@@ -723,52 +771,114 @@ export default {
         return false;
       }
     },
+    async initializePage() {
+      this.initializingPage = true;
+      this.loading = true;
+      try {
+        const [catalogResult, roomsResult] = await Promise.allSettled([
+          this.fetchWorldSettings({ manageLoading: false }),
+          this.fetchRoomOptions({ syncRoute: false })
+        ]);
+        if (this.disposed) return;
+        if (catalogResult.status === 'fulfilled' && roomsResult.status === 'fulfilled' && roomsResult.value) {
+          if (this.roomId) {
+            await this.loadRoomWorlds({ prefetchedRooms: this.roomOptions });
+          }
+        } else if (roomsResult.status === 'fulfilled' && roomsResult.value && this.roomId) {
+          const selectedRoom = this.roomOptions.find(r => r.id === this.roomId || r.name === this.roomName);
+          if (selectedRoom && Array.isArray(selectedRoom.worlds)) {
+            this.roomWorlds = selectedRoom.worlds;
+          }
+          this.syncWorldRoute(this.sortedRoomWorlds[0] || null);
+        }
+      } finally {
+        if (!this.disposed) {
+          this.initializingPage = false;
+          this.loading = false;
+        }
+      }
+    },
+    resetRoomWorldState() {
+      this.configurationLoadEpoch += 1;
+      this.roomWorlds = [];
+      this.hasForestWorld = false;
+      this.hasCaveWorld = false;
+      this.worldOverrides = {};
+      this.worldOriginalSettings = {};
+      this.worldConfigurationMeta = {};
+      this.worldLoadErrors = {};
+      this.loadedWorldConfigs = {};
+      this.activeTab = '';
+      this.previousActiveTab = '';
+      this.serverIni = null;
+      this.serverIniOriginal = null;
+      this.loadingServerIni = false;
+      this.serverIniChanged = false;
+      this.hasChanges = false;
+      this.changedItemsCache = null;
+      this.loadError = '';
+    },
     async requestWorldTab(tab) {
       if (!tab || tab === this.activeTab) return;
-      if (!(await this.confirmDiscardWorldChanges())) return;
+      if (!(await this.confirmDiscardWorldChanges())) {
+        this.syncWorldRoute(this.currentWorld);
+        return;
+      }
       this.previousActiveTab = this.activeTab;
       this.activeTab = tab;
     },
-    async requestRoomChange(roomId) {
+    async requestRoomChange(roomId, options = {}) {
       if (!roomId || roomId === this.roomId) return;
       if (!(await this.confirmDiscardWorldChanges())) {
         this.selectedRoomId = this.roomId || '';
+        this.syncWorldRoute(this.currentWorld);
         return;
       }
-      await this.handleRoomChange(roomId);
+      await this.handleRoomChange(roomId, options);
     },
     async requestReloadSettings() {
       if (await this.confirmDiscardWorldChanges()) await this.reloadSettings();
     },
-    syncWorldRoute(world) {
-      if (!world?.id || String(this.$route.query.worldId || '') === String(world.id)) return;
-      this.$router.replace({
+    syncWorldRoute(targetWorld) {
+      if (!this.roomId) return Promise.resolve();
+      const world = targetWorld || { id: undefined };
+      const nextRoute = {
         path: this.$route.path,
         query: { ...this.$route.query, roomId: this.roomId, worldId: world.id }
-      }).catch(() => {});
+      };
+      delete nextRoute.query.id;
+      delete nextRoute.query.roomName;
+      if (!world.id) delete nextRoute.query.worldId;
+      const currentQuery = this.$route.query || {};
+      const sameRoom = String(currentQuery.roomId || '') === String(this.roomId);
+      const sameWorld = String(currentQuery.worldId || '') === String(world.id || '');
+      const hasLegacyKeys = 'id' in currentQuery || 'roomName' in currentQuery || (!world.id && 'worldId' in currentQuery);
+      if (sameRoom && sameWorld && !hasLegacyKeys) return Promise.resolve();
+      return this.$router.replace(nextRoute).catch(() => {});
     },
     worldTypeLabel(type) {
       if (type === 'forest') return this.$t('worldRuntime.types.forest');
       if (type === 'cave') return this.$t('worldRuntime.types.cave');
       return this.$t('worldRuntime.types.unknown');
     },
-    async fetchRoomOptions() {
+    async fetchRoomOptions({ syncRoute = true } = {}) {
       this.loadingRooms = true;
       this.roomOptionsError = '';
       try {
         const response = await api.worldApi.getWorldList();
+        if (this.disposed) return false;
         this.roomOptions = Array.isArray(response.data) ? response.data : [];
         const wanted = preferredRoomId(this.roomOptions, this.roomId || this.roomName || undefined);
         const selected = this.roomOptions.find(room => room.id === wanted);
         const query = { ...this.$route.query };
-		const hasLegacyRoomQuery = ['id', 'roomName'].some(key => key in query);
-		delete query.id;
-		delete query.roomName;
+        const hasLegacyRoomQuery = ['id', 'roomName'].some(key => key in query);
+        delete query.id;
+        delete query.roomName;
         if (selected) {
           this.roomId = selected.id;
           this.roomName = selected.name;
           this.selectedRoomId = selected.id;
-          if (hasLegacyRoomQuery || query.roomId !== selected.id) {
+          if (syncRoute && (hasLegacyRoomQuery || query.roomId !== selected.id)) {
             query.roomId = selected.id;
             await this.$router.replace({ path: this.$route.path, query });
           }
@@ -776,41 +886,59 @@ export default {
           this.roomId = null;
           this.roomName = '';
           this.selectedRoomId = '';
-          if (hasLegacyRoomQuery || 'roomId' in query) {
+          this.resetRoomWorldState();
+          if (hasLegacyRoomQuery || 'roomId' in query || 'worldId' in query) {
             delete query.roomId;
+            delete query.worldId;
             await this.$router.replace({ path: this.$route.path, query });
           }
         }
         return true;
       } catch (error) {
+        if (this.disposed) return false;
         this.roomOptions = [];
         this.selectedRoomId = '';
         this.roomOptionsError = error.message || this.$t('worlds.settingsPage.feedback.roomDirectoryReadFailed');
         return false;
       } finally {
-        this.loadingRooms = false;
+        if (!this.disposed) {
+          this.loadingRooms = false;
+        }
       }
     },
     async retryRoomOptions() {
-      const loaded = await this.fetchRoomOptions();
-      if (loaded && this.roomId) await this.loadRoomWorlds();
+      this.switchingRoom = true;
+      this.loading = true;
+      try {
+        const loaded = await this.fetchRoomOptions({ syncRoute: false });
+        if (loaded && this.roomId) {
+          await this.loadRoomWorlds({ prefetchedRooms: this.roomOptions });
+        }
+      } finally {
+        if (!this.disposed) {
+          this.switchingRoom = false;
+          this.loading = false;
+        }
+      }
     },
-    async handleRoomChange(roomId) {
+    async handleRoomChange(roomId, { preserveQueryWorldId = false } = {}) {
       const room = this.roomOptions.find(item => item.id === roomId);
       if (!room) return;
+      this.switchingRoom = true;
+      this.loading = true;
       this.roomId = room.id;
       this.roomName = room.name;
-      this.roomWorlds = [];
-      this.activeTab = '';
-      this.serverIni = null;
-      this.hasChanges = false;
-      this.loadError = '';
-      const query = { ...this.$route.query, roomId: room.id };
-      delete query.id;
-      delete query.worldId;
-      delete query.roomName;
-      await this.$router.replace({ path: this.$route.path, query });
-      await this.loadRoomWorlds();
+      this.selectedRoomId = room.id;
+      this.resetRoomWorldState();
+      try {
+        await this.loadRoomWorlds({
+          ignoreRouteWorld: !preserveQueryWorldId
+        });
+      } finally {
+        if (!this.disposed) {
+          this.switchingRoom = false;
+        }
+      }
     },
     getSettingsForWorld(world) {
       if (!this.worldOriginalSettings[world.name]) return null;
@@ -826,81 +954,50 @@ export default {
         }
       });
     },
-    // 获取左侧菜单宽度
-    getMenuWidth() {
-      try {
-        if (window.innerWidth <= 768) {
-          this.menuWidth = '0px';
-          return;
-        }
-
-        // 尝试获取左侧菜单元素，查找多种可能的选择器
-        const sidebarSelectors = [
-          '.sidebar',
-          '.app-sidebar',
-          '.left-menu',
-          '.nav-menu',
-          '#app-menu',
-          '[class*="sidebar"]',
-          '[class*="menu-container"]'
-        ];
-        
-        let sidebar = null;
-        // 尝试所有可能的选择器
-        for (const selector of sidebarSelectors) {
-          sidebar = document.querySelector(selector);
-          if (sidebar) break;
-        }
-        
-        if (sidebar) {
-          // 固定底栏左边缘与实际侧栏右边缘对齐。
-          const sidebarWidth = sidebar.offsetWidth;
-          if (sidebarWidth < 50) {
-            this.menuWidth = '64px';
-          } else {
-            this.menuWidth = sidebarWidth + 'px';
-          }
-        } else {
-          // 如果找不到菜单，则使用默认宽度
-          const parentBody = document.querySelector('body');
-          if (parentBody && parentBody.classList.contains('sidebar-collapse')) {
-            // 如果侧边栏已折叠
-            this.menuWidth = '64px';
-          } else {
-            // 默认宽度
-            this.menuWidth = '216px';
-          }
-        }
-      } catch (error) {
-        this.menuWidth = '216px';
-      }
-    },
     
     // 加载房间世界列表
-    loadRoomWorlds() {
-      if (!this.roomId) return;
+    loadRoomWorlds(options = {}) {
+      if (!this.roomId) return Promise.resolve(null);
+      const normalized = Array.isArray(options)
+        ? { prefetchedRooms: options, ignoreRouteWorld: false }
+        : (options || {});
+      const { prefetchedRooms = null, ignoreRouteWorld = false } = normalized;
+
       this.loading = true;
       this.loadError = '';
 
-      return api.worldApi.getWorldList()
+      const roomListPromise = Array.isArray(prefetchedRooms)
+        ? Promise.resolve({ data: prefetchedRooms })
+        : api.worldApi.getWorldList();
+
+      return roomListPromise
         .then(response => {
-          const room = response.data.find(r => r.id === this.roomId || r.name === this.roomName);
+          if (this.disposed) return null;
+          const rooms = Array.isArray(response?.data) ? response.data : [];
+          if (!Array.isArray(prefetchedRooms) && rooms.length > 0) {
+            this.roomOptions = rooms;
+          }
+          const room = rooms.find(r => r.id === this.roomId || r.name === this.roomName);
           if (!room || !Array.isArray(room.worlds)) {
             throw new Error(this.$t('worlds.settingsPage.feedback.roomWorldsInvalid'));
           }
           this.roomId = room.id;
           this.roomName = room.name;
+          this.selectedRoomId = room.id;
           this.roomWorlds = room.worlds;
           this.hasForestWorld = this.roomWorlds.some(world => world.type === 'forest');
           this.hasCaveWorld = this.roomWorlds.some(world => world.type === 'cave');
           if (this.roomWorlds.length === 0) {
             this.activeTab = 'forest';
+            this.syncWorldRoute(null);
             return null;
           }
 
-          const requestedWorldId = String(this.$route.query.worldId || this.initialWorldId || '');
+          const requestedWorldId = ignoreRouteWorld
+            ? String(this.initialWorldId || '')
+            : String(this.$route.query.worldId || this.initialWorldId || '');
           const firstWorld = this.sortedRoomWorlds.find(world =>
-            [String(world.id || ''), String(world.name || ''), String(world.directoryName || '')].includes(requestedWorldId)
+            Boolean(requestedWorldId) && [String(world.id || ''), String(world.name || ''), String(world.directoryName || '')].includes(requestedWorldId)
           ) || this.sortedRoomWorlds[0];
           this.initialWorldId = '';
           this.initializingWorlds = true;
@@ -910,18 +1007,24 @@ export default {
           return this.$nextTick()
             .then(() => {
               this.initializingWorlds = false;
+              if (this.disposed) return null;
               return this.loadWorldConfiguration(this.roomName, firstWorld.name);
             });
         })
         .catch(error => {
+          if (this.disposed) return null;
+          this.syncWorldRoute(null);
           this.loadError = error.message || this.$t('worlds.settingsPage.feedback.roomWorldsReadFailed');
           toast.error(this.$t('worlds.settingsPage.feedback.roomWorldsLoadFailed', {
             error: error.message || this.$t('common.errors.unknown')
           }));
+          return null;
         })
         .finally(() => {
           this.initializingWorlds = false;
-          this.loading = false;
+          if (!this.disposed && !this.initializingPage) {
+            this.loading = false;
+          }
         });
     },
     
@@ -1055,9 +1158,6 @@ export default {
         height: window.innerHeight
       };
       
-      // 重新获取左侧菜单宽度
-      this.getMenuWidth();
-      
       // 重新优化可视区域内的组件
       this.$nextTick(() => {
         this.optimizeInitialRendering();
@@ -1087,8 +1187,10 @@ export default {
         this.checkChanges();
       }, 200);
     },
-    fetchWorldSettings() {
-      this.loading = true;
+    fetchWorldSettings({ manageLoading = true } = {}) {
+      if (manageLoading) {
+        this.loading = true;
+      }
       this.loadError = '';
       // 使用Promise优化数据加载
       return fetch(worldSettingsCatalogPath(this.$i18n.locale))
@@ -1099,6 +1201,7 @@ export default {
           return response.json();
         })
         .then(data => {
+          if (this.disposed) return data;
           this.forestSettings = data.forest || {};
           this.caveSettings = data.cave || {};
           this.originalSettings = JSON.parse(JSON.stringify(data));
@@ -1109,18 +1212,21 @@ export default {
           
           // 数据加载后更新UI
           this.$nextTick(() => {
-            this.prerenderAllSelects();
+            if (!this.disposed) this.prerenderAllSelects();
           });
           
           return data; // 返回数据以便链式调用
         })
         .catch(error => {
+          if (this.disposed) return Promise.reject(error);
           this.loadError = error.message || this.$t('worlds.settingsPage.feedback.definitionReadFailed');
           toast.error(this.$t('worlds.settingsPage.feedback.definitionLoadFailed'));
           return Promise.reject(error);
         })
         .finally(() => {
-          this.loading = false;
+          if (manageLoading && !this.disposed) {
+            this.loading = false;
+          }
         });
     },
     async updateWorldSettingsLocale(locale) {
@@ -1150,11 +1256,30 @@ export default {
         }));
       }
     },
-    reloadSettings() {
-      return this.fetchWorldSettings()
-        .then(() => this.fetchRoomOptions())
-        .then(loaded => (loaded && this.roomId ? this.loadRoomWorlds() : undefined))
-        .catch(() => {});
+    async reloadSettings() {
+      const needsCatalog = !this.originalSettings;
+      this.initialWorldId = String(this.currentWorld?.id || this.activeTab || this.$route.query.worldId || '');
+      if (needsCatalog) {
+        this.initializingPage = true;
+      }
+      this.loading = true;
+      this.loadError = '';
+      try {
+        if (needsCatalog) {
+          await this.fetchWorldSettings({ manageLoading: false });
+        }
+        const loaded = await this.fetchRoomOptions({ syncRoute: false });
+        if (loaded && this.roomId) {
+          await this.loadRoomWorlds({ prefetchedRooms: this.roomOptions });
+        }
+      } catch {
+        // Errors are already surfaced via loadError / roomOptionsError.
+      } finally {
+        if (!this.disposed) {
+          this.initializingPage = false;
+          this.loading = false;
+        }
+      }
     },
     getItemOptions(categoryDesc, itemDesc) {
       // 优化缓存键计算，减少序列化复杂对象的开销
@@ -1598,39 +1723,6 @@ export default {
       // 滚动时只更新可见区域内的选择器
       this.updateVisibleSelectLabels();
     },
-    setupDomObserver() {
-      // 创建一个MutationObserver实例来监听DOM变化
-      this.domObserver = new MutationObserver((mutations) => {
-        let shouldUpdate = false;
-        
-        // 检查变化是否可能影响侧边栏
-        for (const mutation of mutations) {
-          if (mutation.type === 'childList' || 
-              (mutation.type === 'attributes' && 
-               (mutation.attributeName === 'class' || 
-                mutation.attributeName === 'style'))) {
-            shouldUpdate = true;
-            break;
-          }
-        }
-        
-        if (shouldUpdate) {
-          // 使用防抖避免频繁更新
-          if (this._menuUpdateTimer) clearTimeout(this._menuUpdateTimer);
-          this._menuUpdateTimer = setTimeout(() => {
-            this.getMenuWidth();
-          }, 200);
-        }
-      });
-      
-      // 监听body及其所有子元素的变化
-      this.domObserver.observe(document.body, {
-        childList: true,  // 监听子元素增加或删除
-        subtree: true,    // 监听所有后代元素
-        attributes: true, // 监听属性变化
-        attributeFilter: ['class', 'style'] // 只监听样式相关属性变化
-      });
-    },
     applyCurrentWorldConfig(currentWorld) {
       if (!currentWorld || !this.worldOverrides[currentWorld.name]) {
         return;
@@ -1855,9 +1947,8 @@ export default {
                     this.activeTab = this.sortedRoomWorlds[0].name;
                   }
                 } else {
-                  this.activeTab = '';
-                  this.serverIni = null;
-                  this.hasChanges = false;
+                  this.resetRoomWorldState();
+                  this.syncWorldRoute(null);
                 }
                 resolve();
               } else {
@@ -2205,6 +2296,31 @@ export default {
   height: 24px;
   flex: none;
   color: var(--primary);
+}
+
+.world-page-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.world-tabs-skeleton-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.world-tab-skeleton {
+  width: 128px;
+  height: 36px;
+  border-radius: var(--radius);
+}
+
+.world-heading-skeleton {
+  width: 220px;
+  height: 24px;
 }
 
 .skeleton-stack {

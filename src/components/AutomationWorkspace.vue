@@ -15,6 +15,9 @@
           <EmptyTitle>{{ $t(rooms.length ? 'automationScope.chooseTitle' : 'automationScope.emptyTitle') }}</EmptyTitle>
           <EmptyDescription>{{ $t(rooms.length ? 'automationScope.chooseDescription' : 'automationScope.emptyDescription') }}</EmptyDescription>
         </EmptyHeader>
+        <EmptyContent v-if="!rooms.length">
+          <Button variant="outline" @click="router.push('/rooms/settings')">{{ $t('rooms.list.create') }}</Button>
+        </EmptyContent>
       </Empty>
     </template>
   </div>
@@ -25,11 +28,13 @@ import { onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { realCronTaskApi } from '@/api/cronApi'
 import { AUTOMATION_SCOPE_EVENT } from '@/lib/automationScope.mjs'
+import { managementScopeTargetId } from '@/lib/managementScope.mjs'
+import { readWorkspaceSelection } from '@/lib/workspacePreferences.mjs'
 import AutomationBoundPage from '@/components/AutomationBoundPage.vue'
 import AutomationRoomSelect from '@/components/AutomationRoomSelect.vue'
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 
 defineProps({ page: { type: [Object, Function], required: true } })
@@ -61,8 +66,12 @@ async function load() {
     try {
       const preferred = typeof route.query.roomId === 'string' ? route.query.roomId : ''
       const kind = detailKind()
+      const rememberedRoomId = !preferred && !kind ? readWorkspaceSelection(managementScopeTargetId()).roomId : ''
       if (kind && route.params.id) await realCronTaskApi.resolveRoom(kind, route.params.id, preferred)
       else if (preferred) realCronTaskApi.setRoom(preferred)
+      else if (rememberedRoomId && rememberedRoomId !== state.roomId && state.rooms.some(room => room.id === rememberedRoomId)) {
+        realCronTaskApi.setRoom(rememberedRoomId)
+      }
     } finally { selecting = false }
     if (request !== sequence) return
     state = await realCronTaskApi.getRoomScope()

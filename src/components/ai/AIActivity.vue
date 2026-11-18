@@ -4,16 +4,17 @@ import { reactive } from 'vue'
 import { aiV2API } from '@/api/v2'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Empty, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Spinner } from '@/components/ui/spinner'
-import { RefreshCw } from '@lucide/vue'
+import { ChevronDown, RefreshCw } from '@lucide/vue'
 
 defineProps({ calls: { type: Array, default: () => [] }, rooms: { type: Array, default: () => [] }, loading: Boolean })
 const emit = defineEmits(['refresh', 'error'])
 const { t, locale } = useI18n()
 const results = reactive({}), reading = reactive({})
-async function readResult(event, call) {
-  if (!event.target.open || reading[call.id] || results[call.id]) return
+async function readResult(open, call) {
+  if (!open || reading[call.id] || results[call.id]) return
   reading[call.id] = true
   try { results[call.id] = (await aiV2API.call(call.id)).result || '—' } catch (error) { emit('error', error) } finally { reading[call.id] = false }
 }
@@ -36,8 +37,29 @@ function date(raw) { return new Date(raw).toLocaleString(locale.value) }
         <time class="text-xs text-muted-foreground sm:ml-auto">{{ date(call.createdAt) }}</time>
       </div>
       <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground"><span>{{ t('ai.source') }} · {{ call.source === 'page' ? t('ai.page') : t('ai.external') }}</span><span class="break-all">{{ call.id }}</span></div>
-      <details><summary class="cursor-pointer text-sm">{{ t('ai.arguments') }}</summary><pre class="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-all">{{ pretty(call.arguments) }}</pre></details>
-      <details v-if="call.resultAvailable || call.result" @toggle="readResult($event, call)"><summary class="cursor-pointer text-sm">{{ t('ai.result') }}</summary><Spinner v-if="reading[call.id]" /><pre v-else class="mt-2 max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-all">{{ pretty(results[call.id] || call.result) }}</pre></details>
+      <Collapsible class="min-w-0">
+        <CollapsibleTrigger as-child>
+          <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-normal hover:bg-transparent">
+            <span>{{ t('ai.arguments') }}</span>
+            <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <pre class="mt-2 max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-all">{{ pretty(call.arguments) }}</pre>
+        </CollapsibleContent>
+      </Collapsible>
+      <Collapsible v-if="call.resultAvailable || call.result" class="min-w-0" @update:open="open => readResult(open, call)">
+        <CollapsibleTrigger as-child>
+          <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-normal hover:bg-transparent">
+            <span>{{ t('ai.result') }}</span>
+            <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <Spinner v-if="reading[call.id]" class="mt-2" />
+          <pre v-else class="mt-2 max-h-80 overflow-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-all">{{ pretty(results[call.id] || call.result) }}</pre>
+        </CollapsibleContent>
+      </Collapsible>
     </article>
   </div>
 </template>

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { softwareV2API, agentsV2API } from '@/api/v2'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -61,6 +62,9 @@ async function save() {
       <Field v-if="form.backgroundCheck"><FieldLabel :for="`${id}-interval`">{{ t('softwareUpdate.interval') }}</FieldLabel><Input :id="`${id}-interval`" v-model="checkIntervalMinutes" type="number" min="30" max="10080" step="1" required class="max-w-40" :disabled="disabled || saving" /></Field>
     </FieldGroup>
     <Alert v-if="error" variant="destructive"><AlertDescription>{{ error }}</AlertDescription></Alert>
-    <Button type="submit" variant="outline" class="self-start" :disabled="saving || disabled">{{ t(saving ? 'softwareUpdate.savingSettings' : 'softwareUpdate.saveSettings') }}</Button>
+    <div class="flex flex-wrap items-center gap-2">
+      <Button type="submit" variant="outline" :disabled="saving || disabled">{{ t(saving ? 'softwareUpdate.savingSettings' : 'softwareUpdate.saveSettings') }}</Button>
+      <Badge variant="outline">{{ t('systemSettings.independentSave') }}</Badge>
+    </div>
   </form>
 </template>

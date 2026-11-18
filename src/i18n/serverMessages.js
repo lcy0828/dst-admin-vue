@@ -158,7 +158,10 @@ export const serverMessages = {
           noRooms: '当前目标没有发现房间',
           openRooms: '前往房间管理',
           noWorlds: '当前房间没有世界',
-          selectWorld: '请选择世界'
+          noWorldsDescription: '请先在世界设置中新增森林或洞穴世界。',
+          configureWorlds: '前往世界设置',
+          selectWorld: '请选择世界',
+          selectFirstWorld: '选择第一个世界'
         },
         overview: {
           label: '服务器概况',
@@ -270,7 +273,10 @@ export const serverMessages = {
           placement: '运行位置',
           machine: '运行机器：{name}',
           startAll: '全部启动',
+          restartAll: '全部重启',
           stopAll: '全部停止',
+          detailsShow: '展开详情',
+          detailsHide: '收起详情',
           unresponsiveAlertTitle: '检测到进程存在但控制台无响应',
           unresponsiveAlertDescription: '分片（{worlds}）进程仍在运行，但控制台无响应或快照屏障未释放（世界可能停留在已暂停状态）。建议直接一键重启恢复。',
           unresponsiveRestartNow: '一键重启恢复',
@@ -888,7 +894,10 @@ export const serverMessages = {
           noRooms: 'No rooms were discovered on the current target',
           openRooms: 'Open room management',
           noWorlds: 'This room has no worlds',
-          selectWorld: 'Select a world'
+          noWorldsDescription: 'Add a forest or caves world in World settings first.',
+          configureWorlds: 'Open world settings',
+          selectWorld: 'Select a world',
+          selectFirstWorld: 'Select first world'
         },
         overview: {
           label: 'Server overview',
@@ -1000,7 +1009,10 @@ export const serverMessages = {
           placement: 'World placement',
           machine: 'Runtime machine: {name}',
           startAll: 'Start all',
+          restartAll: 'Restart all',
           stopAll: 'Stop all',
+          detailsShow: 'Show details',
+          detailsHide: 'Hide details',
           unresponsiveAlertTitle: 'Process is running but console is unresponsive',
           unresponsiveAlertDescription: 'Shard process ({worlds}) is still alive, but its console is unresponsive or a snapshot barrier failed to release (the world may remain paused). Restart now to recover.',
           unresponsiveRestartNow: 'Restart now',

@@ -2,13 +2,14 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { CircleHelp, Copy, Search } from '@lucide/vue'
+import { ChevronDown, CircleHelp, Copy, Search } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { navigationForFeatures } from '@/v2/navigation'
 import { REQUEST_ERROR_EVENT, recentRequestErrors } from '@/lib/requestErrors.mjs'
 import { readWorkspaceSelection } from '@/lib/workspacePreferences.mjs'
 import { managementScopeTargetId } from '@/lib/managementScope.mjs'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -45,8 +46,37 @@ onBeforeUnmount(() => window.removeEventListener(REQUEST_ERROR_EVENT, refreshErr
       <DialogHeader><DialogTitle>{{ t('novice.help') }}</DialogTitle><DialogDescription>{{ t('novice.helpHint') }}</DialogDescription></DialogHeader>
       <FieldGroup><Field><FieldLabel for="help-search" class="flex items-center gap-2"><Search />{{ t('novice.guides') }}</FieldLabel><Input id="help-search" v-model="query" :placeholder="t('novice.search')" /></Field></FieldGroup>
       <div v-if="query.trim()" class="flex flex-col gap-2"><Button v-for="item in matches" :key="item.to" variant="outline" class="justify-start" @click="navigate(item.to)">{{ t(item.labelKey) }}</Button><p v-if="!matches.length" class="text-sm text-muted-foreground">{{ t('novice.noMatch') }}</p></div>
-      <div v-else class="flex flex-col gap-3"><details v-for="[key, path] in guides" :key="key" class="rounded-md border p-3"><summary class="cursor-pointer font-medium">{{ t(`novice.${key}`) }}</summary><p class="pt-2 text-sm text-muted-foreground">{{ t(`novice.${key}Help`) }}</p><Button variant="link" class="px-0" @click="navigate(path)">{{ t('novice.go') }}</Button></details></div>
-      <section class="flex flex-col gap-2"><h3 class="font-medium">{{ t('novice.errors') }}</h3><p class="text-xs text-muted-foreground">{{ t('novice.errorHint') }}</p><p v-if="!errors.length" class="text-sm text-muted-foreground">{{ t('novice.noErrors') }}</p><details v-for="(item, index) in errors" :key="index" class="min-w-0 rounded-md border p-3"><summary class="cursor-pointer break-words text-sm">{{ new Date(item.at).toLocaleTimeString(locale) }} · {{ item.message }}</summary><pre class="max-h-48 overflow-auto py-2 text-xs whitespace-pre-wrap break-all">{{ item.report }}</pre><Button size="sm" variant="outline" @click="copy(item)"><Copy data-icon="inline-start" />{{ t('novice.copy') }}</Button></details></section>
+      <div v-else class="flex flex-col gap-3">
+        <Collapsible v-for="[key, path] in guides" :key="key" class="min-w-0 rounded-md border p-3">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between gap-2 px-0 py-0 font-medium whitespace-normal text-left hover:bg-transparent">
+              <span class="min-w-0 break-words">{{ t(`novice.${key}`) }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-2">
+            <p class="text-sm text-muted-foreground">{{ t(`novice.${key}Help`) }}</p>
+            <Button type="button" variant="link" class="px-0" @click="navigate(path)">{{ t('novice.go') }}</Button>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
+      <section class="flex flex-col gap-2">
+        <h3 class="font-medium">{{ t('novice.errors') }}</h3>
+        <p class="text-xs text-muted-foreground">{{ t('novice.errorHint') }}</p>
+        <p v-if="!errors.length" class="text-sm text-muted-foreground">{{ t('novice.noErrors') }}</p>
+        <Collapsible v-for="(item, index) in errors" :key="index" class="min-w-0 rounded-md border p-3">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between gap-2 px-0 py-0 text-sm font-normal whitespace-normal text-left hover:bg-transparent">
+              <span class="min-w-0 break-words">{{ new Date(item.at).toLocaleTimeString(locale) }} · {{ item.message }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-2">
+            <pre class="max-h-48 overflow-auto py-2 text-xs whitespace-pre-wrap break-all">{{ item.report }}</pre>
+            <Button type="button" size="sm" variant="outline" @click="copy(item)"><Copy data-icon="inline-start" />{{ t('novice.copy') }}</Button>
+          </CollapsibleContent>
+        </Collapsible>
+      </section>
     </DialogContent>
   </Dialog>
 </template>

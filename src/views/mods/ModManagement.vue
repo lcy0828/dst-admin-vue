@@ -38,9 +38,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Monitor, Search, SlidersHorizontal } from '@lucide/vue'
+import { roomsV2API } from '@/api/v2'
+import { resolveModsActiveTab } from '@/lib/modsNavigation.mjs'
 import ModList from './ModList.vue'
 import ModSearch from './ModSearch.vue'
 import RuntimeModInventory from './RuntimeModInventory.vue'
@@ -48,11 +50,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const route = useRoute()
 const router = useRouter()
+const hasRooms = ref(true)
 
-const activeTab = computed(() => {
-  if (route.query.tab === 'room') return 'room'
-  if (route.query.tab === 'catalog' || route.query.source === 'runtime' || ['downloaded', 'updates'].includes(String(route.query.scope || ''))) return 'catalog'
-  return 'workshop'
+const activeTab = computed(() => resolveModsActiveTab(route.query, { hasRooms: hasRooms.value }))
+
+onMounted(async () => {
+  if (route.query.tab || route.query.roomId || route.query.source || route.query.scope) return
+  try {
+    const rooms = await roomsV2API.list({ runtimeTarget: false })
+    hasRooms.value = Array.isArray(rooms) && rooms.length > 0
+  } catch {
+    hasRooms.value = true
+  }
 })
 
 function replaceQuery(patch) {
@@ -65,7 +74,7 @@ function replaceQuery(patch) {
 function setActiveTab(value) {
   if (!value) return
   replaceQuery({
-    tab: value === 'workshop' ? undefined : value,
+    tab: value,
     source: undefined,
     scope: undefined
   })

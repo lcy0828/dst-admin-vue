@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { roomApi, systemApi } from '@/api/index'
-import { systemV2API } from '@/api/v2'
+import { authAPI, AUTH_ONBOARDING_UPDATED_EVENT, systemV2API } from '@/api/v2'
 import { confirmAction } from '@/lib/feedback'
 import { confirmRoomMaintenance } from '@/lib/maintenanceConfirmation'
 import { formatResourceDateTime } from '@/lib/systemResourceMetrics.mjs'
@@ -63,6 +63,7 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
   const versionInfo = ref(emptyVersion())
   const capabilities = ref(emptyCapabilities())
   const setupReadiness = ref(emptyReadiness())
+  const onboardingSession = ref(null)
   const updateStatus = ref(null)
   const lastRefreshedAt = ref(null)
   const onboardingResolved = ref(false)
@@ -78,6 +79,7 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
   const versionError = ref('')
   const guidanceError = ref('')
   let updateTimer = null
+  let activeUpdateJobId = ''
   let serverRequestSequence = 0
   let versionRequestSequence = 0
   let guidanceRequestSequence = 0
@@ -164,9 +166,10 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
     const sequence = ++guidanceRequestSequence
     guidanceLoading.value = true
     guidanceError.value = ''
-    const [capabilityResult, readinessResult] = await Promise.allSettled([
+    const [capabilityResult, readinessResult, sessionResult] = await Promise.allSettled([
       systemV2API.capabilities(),
-      systemV2API.setupChecks()
+      systemV2API.setupChecks(),
+      authAPI.session()
     ])
     if (sequence !== guidanceRequestSequence) return false
 
@@ -175,6 +178,9 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
     }
     if (readinessResult.status === 'fulfilled') {
       setupReadiness.value = readinessResult.value || emptyReadiness()
+    }
+    if (sessionResult.status === 'fulfilled') {
+      onboardingSession.value = sessionResult.value?.onboarding || null
     }
     if (capabilityResult.status === 'rejected' || readinessResult.status === 'rejected') {
       guidanceError.value = capabilityResult.reason?.message || readinessResult.reason?.message || translate('dashboard.onboarding.loadFailed')
@@ -288,6 +294,14 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
     updateTimer = null
   }
 
+  function startUpdateTimer(jobId) {
+    stopUpdatePolling()
+    activeUpdateJobId = jobId || ''
+    if (!activeUpdateJobId) return
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    updateTimer = setInterval(() => pollUpdateStatus(activeUpdateJobId), 3000)
+  }
+
   async function pollUpdateStatus(jobId) {
     if (updatePollInFlight) return false
     updatePollInFlight = true
@@ -296,12 +310,14 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
       if (response?.status !== 200 || !response.data) throw new Error(response?.msg || translate('dashboard.feedback.updateStatusFailed'))
       updateStatus.value = response.data
       if (updateStatus.value?.is_completed || updateStatus.value?.error) {
+        activeUpdateJobId = ''
         stopUpdatePolling()
         sessionStorage.removeItem('dstUpdateSessionName')
         if (updateStatus.value.is_completed && !updateStatus.value.error) await refreshVersion()
       }
       return true
     } catch (error) {
+      activeUpdateJobId = ''
       stopUpdatePolling()
       toast.error(error.message || translate('dashboard.feedback.updateStatusFailed'))
       return false
@@ -330,8 +346,7 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
       toast.success(translate(installing ? 'dashboard.feedback.installSubmitted' : 'dashboard.feedback.updateSubmitted'))
       const pollingReady = await pollUpdateStatus(jobId)
       if (pollingReady && !updateStatus.value?.is_completed && !updateStatus.value?.error) {
-        stopUpdatePolling()
-        updateTimer = setInterval(() => pollUpdateStatus(jobId), 3000)
+        startUpdateTimer(jobId)
       }
     } catch (error) {
       toast.error(error.message || translate('dashboard.feedback.updateFailed'))
@@ -345,18 +360,42 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
     if (!jobId) return
     const pollingReady = await pollUpdateStatus(jobId)
     if (pollingReady && !updateStatus.value?.is_completed && !updateStatus.value?.error) {
-      stopUpdatePolling()
-      updateTimer = setInterval(() => pollUpdateStatus(jobId), 3000)
+      startUpdateTimer(jobId)
     }
   }
 
+  async function handleVisibilityChange() {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      stopUpdatePolling()
+      return
+    }
+    if (!activeUpdateJobId || updateStatus.value?.is_completed || updateStatus.value?.error) return
+    const pollingReady = await pollUpdateStatus(activeUpdateJobId)
+    if (pollingReady && activeUpdateJobId && !updateStatus.value?.is_completed && !updateStatus.value?.error) {
+      startUpdateTimer(activeUpdateJobId)
+    }
+  }
+
+  function handleOnboardingUpdated(event) {
+    onboardingSession.value = event?.detail || null
+  }
+
   onMounted(() => {
+    window.addEventListener(AUTH_ONBOARDING_UPDATED_EVENT, handleOnboardingUpdated)
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+    }
     if (!observeRuntime) return
     window.addEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
     window.addEventListener(RUNTIME_OBSERVATION_UPDATED_EVENT, handleRuntimeObservationUpdate)
   })
   onBeforeUnmount(() => {
+    activeUpdateJobId = ''
     stopUpdatePolling()
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+    window.removeEventListener(AUTH_ONBOARDING_UPDATED_EVENT, handleOnboardingUpdated)
     window.removeEventListener(MANAGEMENT_SCOPE_CHANGED_EVENT, handleManagementScopeChange)
     window.removeEventListener(RUNTIME_OBSERVATION_UPDATED_EVENT, handleRuntimeObservationUpdate)
   })
@@ -368,6 +407,7 @@ export function useDashboardV2({ observeRuntime = true } = {}) {
     versionInfo,
     capabilities,
     setupReadiness,
+    onboardingSession,
     onboardingResolved,
     updateStatus,
     lastRefreshedAt,

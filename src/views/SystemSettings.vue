@@ -5,6 +5,7 @@
         <div class="flex flex-wrap items-center gap-2">
           <h1 class="text-2xl font-semibold tracking-normal">{{ $t('systemSettings.title') }}</h1>
           <Badge variant="outline">{{ $t('systemSettings.controllerScope') }}</Badge>
+          <Badge v-if="hasUnsavedChanges" variant="secondary">{{ $t('systemSettings.unsavedBadge') }}</Badge>
         </div>
         <p class="mt-1 text-sm text-muted-foreground">{{ $t('systemSettings.subtitle') }}</p>
       </div>
@@ -12,7 +13,7 @@
         <UiButton variant="outline" size="sm" as-child>
           <RouterLink to="/setup">{{ $t('setup.open') }}</RouterLink>
         </UiButton>
-        <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSettings()">
+        <UiButton variant="outline" size="sm" :disabled="loading" @click="refreshSettings()">
           <Spinner v-if="loading" data-icon="inline-start" />
           <RefreshCw v-else data-icon="inline-start" />
           {{ $t('common.actions.refresh') }}
@@ -34,6 +35,7 @@
           <TabsTrigger value="systemStatus" class="settings-tab-trigger"><Activity />{{ $t('systemSettings.tabs.systemStatus') }}</TabsTrigger>
           <TabsTrigger value="workshop" class="settings-tab-trigger"><Settings2 />{{ $t('workshop.title') }}</TabsTrigger>
           <TabsTrigger value="software" class="settings-tab-trigger"><Download />{{ $t('softwareUpdate.title') }}</TabsTrigger>
+          <TabsTrigger value="advanced" class="settings-tab-trigger"><Network />{{ $t('systemSettings.tabs.advanced') }}</TabsTrigger>
         </TabsList>
       </div>
 
@@ -68,7 +70,6 @@
                   <SelectContent><SelectGroup>
                     <SelectItem value="zh-CN">{{ $t('settings.language.zhCN') }}</SelectItem>
                     <SelectItem value="en-US">{{ $t('settings.language.enUS') }}</SelectItem>
-                    <SelectItem value="ja-JP" disabled>日本語</SelectItem>
                   </SelectGroup></SelectContent>
                 </UiSelect>
               </Field>
@@ -132,10 +133,6 @@
               </Field>
             </FieldGroup>
           </CardContent>
-          <CardFooter class="settings-card-footer">
-            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton>
-            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
-          </CardFooter>
         </Card>
       </TabsContent>
 
@@ -160,10 +157,6 @@
                 <FieldContent><FieldLabel for="max-login-attempts">{{ $t('systemSettings.security.maxLoginAttempts') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.security.maxLoginAttemptsDescription') }}</FieldDescription></FieldContent>
                 <UiInput id="max-login-attempts" class="number-control" type="number" min="3" max="10" :disabled="!fieldEditable('security.maxLoginAttempts')" :model-value="String(settings.maxLoginAttempts)" @update:model-value="settings.maxLoginAttempts = Number($event)" />
               </Field>
-              <Field orientation="horizontal" data-disabled>
-                <FieldContent><FieldLabel for="two-factor-auth">{{ $t('systemSettings.security.twoFactor') }}</FieldLabel><FieldDescription>{{ $t('systemSettings.security.twoFactorDescription') }}</FieldDescription></FieldContent>
-                <UiSwitch id="two-factor-auth" v-model="settings.twoFactorAuth" disabled />
-              </Field>
               <Field>
                 <FieldLabel for="ip-whitelist">{{ $t('systemSettings.security.ipWhitelist') }}</FieldLabel>
                 <UiTextarea id="ip-whitelist" v-model="settings.ipWhitelist" rows="3" :disabled="!fieldEditable('security.ipWhitelist')" :placeholder="$t('systemSettings.security.ipWhitelistPlaceholder')" />
@@ -171,10 +164,6 @@
               </Field>
             </FieldGroup>
           </CardContent>
-          <CardFooter class="settings-card-footer">
-            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton>
-            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
-          </CardFooter>
         </Card>
       </TabsContent>
 
@@ -191,57 +180,109 @@
               <UiButton variant="outline" @click="$router.push('/backups')"><DatabaseBackup data-icon="inline-start" />{{ $t('systemSettings.backup.manage') }}</UiButton>
             </FieldGroup>
           </CardContent>
-          <CardFooter class="settings-card-footer">
-            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton>
-            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
-          </CardFooter>
         </Card>
       </TabsContent>
 
       <TabsContent value="notification" class="settings-tab-content">
-        <details>
-          <summary class="mb-3 cursor-pointer text-sm font-medium">{{ $t('systemSettings.notification.mailServer') }}</summary>
-        <Card size="sm" class="settings-card">
-          <CardHeader><CardTitle>{{ $t('systemSettings.tabs.notification') }}</CardTitle><CardDescription>{{ $t('systemSettings.notification.description') }}</CardDescription></CardHeader>
-          <CardContent>
-            <FieldGroup class="settings-form">
-              <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpServer)">
-                <FieldContent><FieldLabel for="smtp-server">{{ $t('systemSettings.notification.smtpServer') }}</FieldLabel><FieldError v-if="formErrors.smtpServer">{{ formErrors.smtpServer }}</FieldError></FieldContent>
-                <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!fieldEditable('notification.smtpServer')" :aria-invalid="Boolean(formErrors.smtpServer)" :placeholder="$t('systemSettings.notification.smtpServerPlaceholder')" @input="formErrors.smtpServer = ''" />
-              </Field>
-              <Field orientation="responsive">
-                <FieldContent><FieldLabel for="smtp-port">{{ $t('systemSettings.notification.smtpPort') }}</FieldLabel></FieldContent>
-                <UiInput id="smtp-port" class="number-control" type="number" min="1" max="65535" :disabled="!fieldEditable('notification.smtpPort')" :model-value="String(settings.smtpPort)" @update:model-value="settings.smtpPort = Number($event)" />
-              </Field>
-              <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpUsername)">
-                <FieldContent><FieldLabel for="smtp-username">{{ $t('systemSettings.notification.smtpUsername') }}</FieldLabel><FieldError v-if="formErrors.smtpUsername">{{ formErrors.smtpUsername }}</FieldError></FieldContent>
-                <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!fieldEditable('notification.smtpUsername')" :aria-invalid="Boolean(formErrors.smtpUsername)" :placeholder="$t('systemSettings.notification.smtpUsernamePlaceholder')" @input="formErrors.smtpUsername = ''" />
-              </Field>
-              <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpPassword)">
-                <FieldContent><FieldLabel for="smtp-password">{{ $t('systemSettings.notification.smtpPassword') }}</FieldLabel><FieldError v-if="formErrors.smtpPassword">{{ formErrors.smtpPassword }}</FieldError></FieldContent>
-                <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!fieldEditable('notification.smtpPassword')" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="$t(smtpPasswordConfigured ? 'systemSettings.notification.smtpPasswordConfigured' : 'systemSettings.notification.smtpPasswordPlaceholder')" @input="formErrors.smtpPassword = ''" />
-              </Field>
-              <Field orientation="responsive" :data-invalid="Boolean(formErrors.senderEmail)">
-                <FieldContent><FieldLabel for="sender-email">{{ $t('systemSettings.notification.senderEmail') }}</FieldLabel><FieldError v-if="formErrors.senderEmail">{{ formErrors.senderEmail }}</FieldError></FieldContent>
-                <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!fieldEditable('notification.senderEmail')" :aria-invalid="Boolean(formErrors.senderEmail)" :placeholder="$t('systemSettings.notification.senderEmailPlaceholder')" @input="formErrors.senderEmail = ''" />
-              </Field>
-              <Field orientation="responsive">
-                <FieldContent><FieldTitle>{{ $t('systemSettings.notification.connectionCheck') }}</FieldTitle><FieldDescription>{{ $t('systemSettings.notification.connectionCheckDescription') }}</FieldDescription></FieldContent>
-                <UiButton variant="outline" :disabled="loading" @click="testEmailConnection"><Send data-icon="inline-start" />{{ $t('systemSettings.notification.testConnection') }}</UiButton>
-              </Field>
-            </FieldGroup>
-          </CardContent>
-          <CardFooter class="settings-card-footer">
-            <UiButton variant="outline" :disabled="loading" @click="resetSettings"><RotateCcw data-icon="inline-start" />{{ $t('common.actions.reset') }}</UiButton>
-            <UiButton :disabled="loading" @click="saveSettings"><Spinner v-if="loading" data-icon="inline-start" /><Save v-else data-icon="inline-start" />{{ $t('systemSettings.actions.save') }}</UiButton>
-          </CardFooter>
-        </Card>
-        </details>
-        <NotificationChannelsPanel v-if="activeTab === 'notification'" :default-email="settings.adminEmail" />
+        <div class="flex min-w-0 flex-col gap-4">
+          <Collapsible v-model:open="smtpSectionOpen" class="min-w-0">
+            <CollapsibleTrigger as-child>
+              <UiButton type="button" variant="outline" class="w-full justify-between">
+                <span class="flex items-center gap-2">
+                  <span>{{ $t('systemSettings.notification.mailServer') }}</span>
+                  <Badge :variant="smtpConfigured ? 'secondary' : 'outline'">{{ $t(smtpConfigured ? 'systemSettings.notification.smtpConfigured' : 'systemSettings.notification.smtpUnconfigured') }}</Badge>
+                </span>
+                <ChevronDown class="transition-transform" :class="{ 'rotate-180': smtpSectionOpen }" data-icon="inline-end" />
+              </UiButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent class="pt-3">
+              <Card size="sm" class="settings-card">
+                <CardHeader><CardTitle>{{ $t('systemSettings.tabs.notification') }}</CardTitle><CardDescription>{{ $t('systemSettings.notification.description') }}</CardDescription></CardHeader>
+                <CardContent>
+                  <FieldGroup class="settings-form">
+                    <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpServer)">
+                      <FieldContent><FieldLabel for="smtp-server">{{ $t('systemSettings.notification.smtpServer') }}</FieldLabel><FieldError v-if="formErrors.smtpServer">{{ formErrors.smtpServer }}</FieldError></FieldContent>
+                      <UiInput id="smtp-server" v-model="settings.smtpServer" class="setting-control" :disabled="!fieldEditable('notification.smtpServer')" :aria-invalid="Boolean(formErrors.smtpServer)" :placeholder="$t('systemSettings.notification.smtpServerPlaceholder')" @input="formErrors.smtpServer = ''" />
+                    </Field>
+                    <Field orientation="responsive">
+                      <FieldContent><FieldLabel for="smtp-port">{{ $t('systemSettings.notification.smtpPort') }}</FieldLabel></FieldContent>
+                      <UiInput id="smtp-port" class="number-control" type="number" min="1" max="65535" :disabled="!fieldEditable('notification.smtpPort')" :model-value="String(settings.smtpPort)" @update:model-value="settings.smtpPort = Number($event)" />
+                    </Field>
+                    <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpUsername)">
+                      <FieldContent><FieldLabel for="smtp-username">{{ $t('systemSettings.notification.smtpUsername') }}</FieldLabel><FieldError v-if="formErrors.smtpUsername">{{ formErrors.smtpUsername }}</FieldError></FieldContent>
+                      <UiInput id="smtp-username" v-model="settings.smtpUsername" class="setting-control" :disabled="!fieldEditable('notification.smtpUsername')" :aria-invalid="Boolean(formErrors.smtpUsername)" :placeholder="$t('systemSettings.notification.smtpUsernamePlaceholder')" @input="formErrors.smtpUsername = ''" />
+                    </Field>
+                    <Field orientation="responsive" :data-invalid="Boolean(formErrors.smtpPassword)">
+                      <FieldContent><FieldLabel for="smtp-password">{{ $t('systemSettings.notification.smtpPassword') }}</FieldLabel><FieldError v-if="formErrors.smtpPassword">{{ formErrors.smtpPassword }}</FieldError></FieldContent>
+                      <UiInput id="smtp-password" v-model="settings.smtpPassword" class="setting-control" type="password" :disabled="!fieldEditable('notification.smtpPassword')" :aria-invalid="Boolean(formErrors.smtpPassword)" :placeholder="$t(smtpPasswordConfigured ? 'systemSettings.notification.smtpPasswordConfigured' : 'systemSettings.notification.smtpPasswordPlaceholder')" @input="formErrors.smtpPassword = ''" />
+                    </Field>
+                    <Field orientation="responsive" :data-invalid="Boolean(formErrors.senderEmail)">
+                      <FieldContent><FieldLabel for="sender-email">{{ $t('systemSettings.notification.senderEmail') }}</FieldLabel><FieldError v-if="formErrors.senderEmail">{{ formErrors.senderEmail }}</FieldError></FieldContent>
+                      <UiInput id="sender-email" v-model="settings.senderEmail" class="setting-control" type="email" :disabled="!fieldEditable('notification.senderEmail')" :aria-invalid="Boolean(formErrors.senderEmail)" :placeholder="$t('systemSettings.notification.senderEmailPlaceholder')" @input="formErrors.senderEmail = ''" />
+                    </Field>
+                    <Field orientation="responsive">
+                      <FieldContent><FieldTitle>{{ $t('systemSettings.notification.connectionCheck') }}</FieldTitle><FieldDescription>{{ $t('systemSettings.notification.connectionCheckDescription') }}</FieldDescription></FieldContent>
+                      <UiButton variant="outline" :disabled="loading" @click="testEmailConnection"><Send data-icon="inline-start" />{{ $t('systemSettings.notification.testConnection') }}</UiButton>
+                    </Field>
+                  </FieldGroup>
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+          <NotificationChannelsPanel v-if="activeTab === 'notification'" :default-email="settings.adminEmail" />
+        </div>
       </TabsContent>
 
       <TabsContent value="workshop" class="settings-tab-content"><WorkshopNetworkPanel v-if="activeTab === 'workshop'" /></TabsContent>
       <TabsContent value="software" class="settings-tab-content"><SoftwareUpdatePanel /></TabsContent>
+      <TabsContent value="advanced" class="settings-tab-content">
+        <Card size="sm" class="settings-card">
+          <CardHeader>
+            <CardTitle>{{ $t('systemSettings.advanced.title') }}</CardTitle>
+            <CardDescription>{{ $t('systemSettings.advanced.description') }}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div class="grid gap-3 md:grid-cols-2">
+              <div class="flex min-w-0 flex-col justify-between gap-3 rounded-lg border p-4">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <div class="flex items-center gap-2 font-medium"><Network class="size-4 shrink-0" />{{ $t('systemSettings.advanced.agents.title') }}</div>
+                  <p class="text-sm text-muted-foreground">{{ $t('systemSettings.advanced.agents.description') }}</p>
+                </div>
+                <UiButton variant="outline" size="sm" class="self-start" as-child>
+                  <RouterLink to="/agents/list">{{ $t('systemSettings.advanced.agents.action') }}</RouterLink>
+                </UiButton>
+              </div>
+              <div class="flex min-w-0 flex-col justify-between gap-3 rounded-lg border p-4">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <div class="flex items-center gap-2 font-medium"><KeyRound class="size-4 shrink-0" />{{ $t('systemSettings.advanced.security.title') }}</div>
+                  <p class="text-sm text-muted-foreground">{{ $t('systemSettings.advanced.security.description') }}</p>
+                </div>
+                <UiButton variant="outline" size="sm" class="self-start" as-child>
+                  <RouterLink to="/agents/security">{{ $t('systemSettings.advanced.security.action') }}</RouterLink>
+                </UiButton>
+              </div>
+              <div class="flex min-w-0 flex-col justify-between gap-3 rounded-lg border p-4">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <div class="flex items-center gap-2 font-medium"><GitBranch class="size-4 shrink-0" />{{ $t('systemSettings.advanced.topology.title') }}</div>
+                  <p class="text-sm text-muted-foreground">{{ $t('systemSettings.advanced.topology.description') }}</p>
+                </div>
+                <UiButton variant="outline" size="sm" class="self-start" as-child>
+                  <RouterLink to="/rooms/topology">{{ $t('systemSettings.advanced.topology.action') }}</RouterLink>
+                </UiButton>
+              </div>
+              <div class="flex min-w-0 flex-col justify-between gap-3 rounded-lg border p-4">
+                <div class="flex min-w-0 flex-col gap-1">
+                  <div class="flex items-center gap-2 font-medium"><Compass class="size-4 shrink-0" />{{ $t('systemSettings.advanced.setup.title') }}</div>
+                  <p class="text-sm text-muted-foreground">{{ $t('systemSettings.advanced.setup.description') }}</p>
+                </div>
+                <UiButton variant="outline" size="sm" class="self-start" as-child>
+                  <RouterLink :to="{ path: '/setup', query: { step: 'deployment' } }">{{ $t('systemSettings.advanced.setup.action') }}</RouterLink>
+                </UiButton>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
       <TabsContent value="systemStatus" class="settings-tab-content">
         <div class="status-header">
           <div><h2>{{ $t('systemSettings.monitor.title') }}</h2><p>{{ $t('systemSettings.monitor.description') }}</p></div>
@@ -304,7 +345,28 @@
       </TabsContent>
     </Tabs>
 
-
+    <div
+      v-if="!initialLoading && hasUnsavedChanges"
+      class="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background/95 px-4 py-3 shadow-md backdrop-blur"
+      role="region"
+      :aria-label="$t('systemSettings.unsavedBadge')"
+    >
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <Badge variant="secondary">{{ $t('systemSettings.unsavedBadge') }}</Badge>
+        <span class="text-sm text-muted-foreground">{{ $t('systemSettings.unsavedBanner') }}</span>
+      </div>
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <UiButton variant="outline" :disabled="loading" @click="discardChanges">
+          <RotateCcw data-icon="inline-start" />
+          {{ $t('systemSettings.actions.discard') }}
+        </UiButton>
+        <UiButton :disabled="loading" @click="saveSettings">
+          <Spinner v-if="loading" data-icon="inline-start" />
+          <Save v-else data-icon="inline-start" />
+          {{ $t('systemSettings.actions.save') }}
+        </UiButton>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -313,14 +375,19 @@ import {
   Activity,
   BellRing,
   ChartNoAxesCombined,
+  ChevronDown,
   CircleAlert,
   Clock3,
   CodeXml,
+  Compass,
   Cpu,
   DatabaseBackup,
   Download,
+  GitBranch,
   HardDrive,
+  KeyRound,
   MemoryStick,
+  Network,
   RefreshCw,
   RotateCcw,
   Save,
@@ -337,7 +404,8 @@ import NotificationChannelsPanel from '@/components/settings/NotificationChannel
 import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button as UiButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldTitle } from '@/components/ui/field';
 import { Input as UiInput } from '@/components/ui/input';
 import { Progress as UiProgress } from '@/components/ui/progress';
@@ -349,14 +417,18 @@ import { Switch as UiSwitch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea as UiTextarea } from '@/components/ui/textarea';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { hasStoredLocale, setLocale } from '@/i18n';
 import { confirmAction } from '@/lib/feedback';
 import { formatDurationSeconds } from '@/lib/localeFormatters.mjs';
 import { formatSystemDateTime } from '@/lib/dateTime.mjs';
+import { systemSettingsSnapshot, validateEmailFields as validateEmailConfig, validateSystemSettingsForm } from '@/lib/systemSettingsValidation.mjs';
 import { DEFAULT_THEME_ID, THEME_PRESETS, normalizeThemeColor, resolveThemePreset, themePresetById } from '@/theme/themePresets';
 import { applySystemPreferences, previewSystemLanguage, previewSystemTheme } from '@/utils/systemPreferences';
 import { toast } from 'vue-sonner';
 
 const APPLY_CONFIRMATION = 'APPLY SYSTEM SETTINGS';
+const VALID_TABS = ['basic', 'security', 'backup', 'notification', 'software', 'workshop', 'advanced', 'systemStatus'];
+
 export default {
   name: 'SystemSettings',
   components: {
@@ -370,13 +442,17 @@ export default {
     Card,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
     ChartNoAxesCombined,
+    ChevronDown,
     CircleAlert,
     Clock3,
     CodeXml,
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+    Compass,
     Cpu,
     DatabaseBackup,
     Download,
@@ -390,8 +466,11 @@ export default {
     FieldGroup,
     FieldLabel,
     FieldTitle,
+    GitBranch,
     HardDrive,
+    KeyRound,
     MemoryStick,
+    Network,
     UiProgress,
     RefreshCw,
     RotateCcw,
@@ -427,10 +506,13 @@ export default {
       statusLoading: false,
       statusLoaded: false,
       statusError: '',
-      activeTab: ['basic', 'security', 'backup', 'notification', 'software', 'workshop', 'systemStatus'].includes(this.$route.query.tab) ? this.$route.query.tab : 'basic',
+      activeTab: VALID_TABS.includes(this.$route.query.tab) ? this.$route.query.tab : 'basic',
       revision: '',
       settingsResponse: null,
+      savedSnapshot: '',
       smtpPasswordConfigured: false,
+      smtpSectionOpen: false,
+      leavingConfirmed: false,
       themePresets: THEME_PRESETS,
       formErrors: {
         systemName: '',
@@ -454,7 +536,6 @@ export default {
         minPasswordLength: 6,
         sessionTimeout: 1440,
         maxLoginAttempts: 5,
-        twoFactorAuth: false,
         ipWhitelist: '',
 
         // 备份设置
@@ -521,23 +602,49 @@ export default {
     },
     lockedSettingCount() {
       return (this.settingsResponse?.fields || []).filter(field => field.environment && !field.editable).length;
+    },
+    hasUnsavedChanges() {
+      return Boolean(this.savedSnapshot) && systemSettingsSnapshot(this.settings) !== this.savedSnapshot;
+    },
+    smtpConfigured() {
+      return Boolean(String(this.settings.smtpServer || '').trim());
     }
   },
   created() {
     this.loadSettings(false);
   },
   mounted() {
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
     // 初始加载系统状态
     if (this.activeTab === 'systemStatus') {
       this.refreshSystemStatus();
     }
   },
   beforeUnmount() {
-    if (this.settingsResponse) applySystemPreferences(this.settingsResponse);
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
+    if (this.hasUnsavedChanges && this.settingsResponse) {
+      applySystemPreferences(this.settingsResponse);
+    }
+  },
+  async beforeRouteLeave() {
+    if (this.leavingConfirmed || !this.hasUnsavedChanges) return true;
+    if (this.loading) return false;
+    try {
+      await confirmAction(this.$t('systemSettings.leave.description'), this.$t('systemSettings.leave.title'), {
+        confirmButtonText: this.$t('systemSettings.leave.confirm'),
+        cancelButtonText: this.$t('common.actions.cancel'),
+        destructive: true
+      });
+      this.leavingConfirmed = true;
+      this.revertPendingChanges();
+      return true;
+    } catch {
+      return false;
+    }
   },
   watch: {
     '$route.query.tab'(value) {
-      if (['basic', 'security', 'backup', 'notification', 'software', 'workshop', 'systemStatus'].includes(value)) this.activeTab = value;
+      if (VALID_TABS.includes(value)) this.activeTab = value;
     },
     // 监听标签页切换，在切换到系统状态标签页时刷新数据
     activeTab(newVal) {
@@ -596,10 +703,46 @@ export default {
     previewLanguage(value) {
       if (!value) return;
       this.settings.language = value;
-      previewSystemLanguage(value);
+      previewSystemLanguage(value, { persist: false });
     },
     resetDefaultTheme() {
       this.selectTheme(themePresetById(DEFAULT_THEME_ID));
+    },
+    handleBeforeUnload(event) {
+      if (!this.hasUnsavedChanges || this.loading) return;
+      event.preventDefault();
+      event.returnValue = '';
+    },
+    revertPendingChanges() {
+      if (!this.settingsResponse) return;
+      this.populateSettings(this.settingsResponse);
+      applySystemPreferences(this.settingsResponse);
+    },
+    discardChanges() {
+      if (this.loading) return;
+      if (this.settingsResponse) {
+        this.revertPendingChanges();
+        return;
+      }
+      this.loadSettings(false);
+    },
+    async refreshSettings() {
+      if (this.loading) return;
+      if (this.hasUnsavedChanges) {
+        try {
+          await confirmAction(this.$t('systemSettings.feedback.resetConfirm'), this.$t('systemSettings.feedback.resetTitle'), {
+            confirmButtonText: this.$t('systemSettings.feedback.resetConfirmButton'),
+            cancelButtonText: this.$t('common.actions.cancel'),
+            destructive: true
+          });
+        } catch (error) {
+          if (error !== 'cancel' && error !== 'close') {
+            toast.error(error?.message || this.$t('systemSettings.feedback.resetFailed'));
+          }
+          return;
+        }
+      }
+      await this.loadSettings(true);
     },
     populateSettings(response) {
       this.settingsResponse = response;
@@ -616,7 +759,6 @@ export default {
         minPasswordLength: this.fieldNumber(response, 'security.minPasswordLength', 6),
         sessionTimeout: this.fieldNumber(response, 'security.sessionTimeout', 1440),
         maxLoginAttempts: this.fieldNumber(response, 'security.maxLoginAttempts', 5),
-        twoFactorAuth: this.fieldBoolean(response, 'security.twoFactorAuth'),
         ipWhitelist: this.field(response, 'security.ipWhitelist').value,
         backupLocation: this.field(response, 'paths.backup').value,
         smtpServer: this.field(response, 'notification.smtpServer').value,
@@ -625,6 +767,8 @@ export default {
         smtpPassword: '',
         senderEmail: this.field(response, 'notification.senderEmail').value,
       };
+      this.savedSnapshot = systemSettingsSnapshot(this.settings);
+      this.leavingConfirmed = false;
       this.resetFormErrors();
     },
     async loadSettings(showMessage = true) {
@@ -658,28 +802,33 @@ export default {
         ? ['smtpServer', 'smtpUsername', 'smtpPassword', 'senderEmail']
         : ['smtpServer', 'smtpUsername', 'smtpPassword'];
       this.resetFormErrors(fields);
-      if (includeSender) return true;
-
-      if (!String(this.settings.smtpServer || '').trim()) this.formErrors.smtpServer = this.$t('systemSettings.validation.smtpServerRequired');
-      if (String(this.settings.smtpUsername || '').trim() && !String(this.settings.smtpPassword || '').trim() && !this.smtpPasswordConfigured) this.formErrors.smtpPassword = this.$t('systemSettings.validation.smtpPasswordRequired');
-      if (includeSender) {
-        if (!String(this.settings.senderEmail || '').trim()) this.formErrors.senderEmail = this.$t('systemSettings.validation.senderEmailRequired');
-        else if (!this.isValidEmail(this.settings.senderEmail)) this.formErrors.senderEmail = this.$t('systemSettings.validation.emailInvalid');
+      const result = validateEmailConfig(this.settings, {
+        includeSender,
+        smtpPasswordConfigured: this.smtpPasswordConfigured
+      });
+      for (const field of fields) {
+        const key = result.errors[field];
+        if (key) this.formErrors[field] = this.$t(`systemSettings.validation.${key}`);
       }
-      return fields.every(field => !this.formErrors[field]);
+      if (!result.valid) this.smtpSectionOpen = true;
+      return result.valid;
     },
     validateSettings() {
       this.resetFormErrors();
-      if (!String(this.settings.systemName || '').trim()) this.formErrors.systemName = this.$t('systemSettings.validation.systemNameRequired');
-      if (String(this.settings.adminEmail || '').trim() && !this.isValidEmail(this.settings.adminEmail)) {
-        this.formErrors.adminEmail = this.$t('systemSettings.validation.emailInvalid');
+      const result = validateSystemSettingsForm(this.settings, {
+        smtpPasswordConfigured: this.smtpPasswordConfigured
+      });
+      for (const [field, key] of Object.entries(result.errors)) {
+        if (key) this.formErrors[field] = this.$t(`systemSettings.validation.${key}`);
       }
-      const emailValid = this.validateEmailFields(true);
-      const basicValid = !this.formErrors.systemName && !this.formErrors.adminEmail;
-      if (!basicValid) this.activeTab = 'basic';
-      else if (!emailValid) this.activeTab = 'notification';
-      if (!basicValid || !emailValid) toast.warning(this.$t('systemSettings.validation.checkForm'));
-      return basicValid && emailValid;
+      if (!result.basicValid) {
+        this.activeTab = 'basic';
+      } else if (!result.emailValid) {
+        this.activeTab = 'notification';
+        this.smtpSectionOpen = true;
+      }
+      if (!result.valid) toast.warning(this.$t('systemSettings.validation.checkForm'));
+      return result.valid;
     },
     settingsInput() {
       const currentValues = {
@@ -720,8 +869,12 @@ export default {
           toast.info(this.$t('systemSettings.feedback.unchanged'));
           return;
         }
+        const languageChanged = preview.changes.some(change => change.id === 'ui.language');
         const result = await systemV2API.applySettings({ ...input, confirmation: APPLY_CONFIRMATION });
         this.populateSettings(result.settings);
+        if (languageChanged && hasStoredLocale()) {
+          setLocale(this.settings.language, { persist: true });
+        }
         applySystemPreferences(result.settings);
         const refreshed = await this.loadSettings(false);
         if (!refreshed) {
@@ -737,20 +890,10 @@ export default {
         this.loading = false;
       }
     },
-    async resetSettings() {
-      try {
-        await confirmAction(this.$t('systemSettings.feedback.resetConfirm'), this.$t('systemSettings.feedback.resetTitle'), {
-          confirmButtonText: this.$t('systemSettings.feedback.resetConfirmButton'),
-          cancelButtonText: this.$t('common.actions.cancel')
-        });
-        await this.loadSettings(false);
-      } catch (error) {
-        if (error !== 'cancel' && error !== 'close') toast.error(error.message || this.$t('systemSettings.feedback.resetFailed'));
-      }
-    },
     async testEmailConnection() {
       if (!this.validateEmailFields(false)) {
         this.activeTab = 'notification';
+        this.smtpSectionOpen = true;
         toast.warning(this.$t('systemSettings.feedback.smtpCheckForm'));
         return;
       }
@@ -909,12 +1052,6 @@ export default {
 .field-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.settings-card-footer {
-  display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -1196,12 +1333,6 @@ export default {
     width: 100%;
   }
 
-  .settings-card-footer {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .settings-card-footer > button,
   .field-actions > button {
     min-width: 0;
     flex: 1;

@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
@@ -215,7 +216,17 @@ defineExpose({ refresh })
           <span v-if="stage === 'game.download'" class="tabular-nums">{{ t('gameInstallation.speed') }} · {{ rate || t('gameInstallation.measuring') }}</span>
         </div>
         <p v-if="running && stage === 'game.download'" class="text-xs text-muted-foreground">{{ t('gameInstallation.speedHint') }}</p>
-        <details v-if="job.message" class="min-w-0 text-sm"><summary class="cursor-pointer text-muted-foreground">{{ t('gameInstallation.latestOutput') }}</summary><pre class="mt-2 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{ job.message }}</pre></details>
+        <Collapsible v-if="job.message" class="min-w-0 text-sm">
+          <CollapsibleTrigger as-child>
+            <Button type="button" variant="ghost" size="sm" class="group h-auto justify-between px-0 py-0 text-sm font-normal text-muted-foreground hover:bg-transparent">
+              <span>{{ t('gameInstallation.latestOutput') }}</span>
+              <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent class="pt-2">
+            <pre class="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted p-3 text-xs">{{ job.message }}</pre>
+          </CollapsibleContent>
+        </Collapsible>
         <Button v-if="releaseJob" variant="link" size="sm" class="self-start" @click="viewRelease">{{ t('gameInstallation.maintenance.viewDetails') }}</Button>
       </div>
       <Alert v-if="error" variant="destructive"><AlertTitle>{{ t('gameInstallation.failed') }}</AlertTitle><AlertDescription class="break-words">{{ error }}</AlertDescription></Alert>

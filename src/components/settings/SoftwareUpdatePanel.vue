@@ -59,7 +59,10 @@ async function execute() {
     <Skeleton v-if="!snapshot" class="h-60 w-full" />
     <Card v-else>
       <CardHeader>
-        <CardTitle>{{ t('softwareUpdate.management') }}</CardTitle>
+        <div class="flex flex-wrap items-center gap-2">
+          <CardTitle>{{ t('softwareUpdate.management') }}</CardTitle>
+          <Badge variant="outline">{{ t('systemSettings.independentSave') }}</Badge>
+        </div>
         <CardDescription>{{ t('softwareUpdate.description') }}</CardDescription>
       </CardHeader>
       <CardContent class="flex min-w-0 flex-col gap-5">

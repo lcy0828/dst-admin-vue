@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   CircleAlert,
@@ -45,8 +45,14 @@ const ROLE_FIELD_IDS = [
   'fleet.memberEnabled'
 ]
 
-const props = defineProps({ setupMode: Boolean })
-const advanced = ref(false)
+const props = defineProps({
+  setupMode: Boolean,
+  expandRoles: { type: Boolean, default: false }
+})
+const advanced = ref(Boolean(props.expandRoles))
+watch(() => props.expandRoles, value => {
+  if (value) advanced.value = true
+})
 const emit = defineEmits(['changed'])
 const { t } = useI18n()
 const loading = ref(true)

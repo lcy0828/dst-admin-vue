@@ -26,36 +26,65 @@
       <CircleAlert />
       <AlertTitle>{{ t('distributed.backups.loadFailed') }}</AlertTitle>
       <AlertDescription>{{ error }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton variant="outline" size="sm" :disabled="loading || loadingRooms" @click="!rooms.length ? loadRooms() : loadSets()">
+          {{ t('common.actions.retry') }}
+        </UiButton>
+      </AlertAction>
     </Alert>
 
     <Alert v-if="partialLoadError">
       <CircleAlert />
       <AlertTitle>{{ t('backups.catalog.partialLoadTitle') }}</AlertTitle>
       <AlertDescription>{{ partialLoadError }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSets">{{ t('common.actions.retry') }}</UiButton>
+      </AlertAction>
     </Alert>
 
     <Alert v-if="operationsError">
       <CircleAlert />
       <AlertTitle>{{ t('distributed.backups.operationsLoadFailed') }}</AlertTitle>
       <AlertDescription>{{ operationsError }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton variant="outline" size="sm" :disabled="loading" @click="loadSets">{{ t('common.actions.retry') }}</UiButton>
+      </AlertAction>
     </Alert>
 
     <Alert v-if="recoveryOperations.length" variant="destructive">
       <TriangleAlert />
       <AlertTitle>{{ t('distributed.backups.recoveryRequiredTitle', { count: recoveryOperations.length }) }}</AlertTitle>
       <AlertDescription>{{ t('distributed.backups.recoveryRequiredDescription') }}</AlertDescription>
+      <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+        <UiButton variant="outline" size="sm" :disabled="operationRunning" @click="recoverOperation(recoveryOperations[0])">
+          <Spinner v-if="recoveringOperationId === recoveryOperations[0].id" data-icon="inline-start" />
+          <History v-else data-icon="inline-start" />
+          {{ t('distributed.backups.retryRecovery') }}
+        </UiButton>
+      </AlertAction>
     </Alert>
 
     <div v-if="loading && visibleBackupItems.length === 0" class="flex flex-col gap-2" :aria-label="t('distributed.backups.loading')">
       <Skeleton v-for="index in 4" :key="index" class="h-12 w-full" />
     </div>
 
-    <Empty v-else-if="!loading && visibleBackupItems.length === 0">
+    <Empty v-else-if="!loading && !error && visibleBackupItems.length === 0">
       <EmptyHeader>
         <EmptyMedia variant="icon"><ShieldCheck v-if="isSystemCategory" /><DatabaseBackup v-else /></EmptyMedia>
         <EmptyTitle>{{ t(categoryMessage('emptyTitle')) }}</EmptyTitle>
         <EmptyDescription>{{ t(categoryMessage('emptyDescription')) }}</EmptyDescription>
       </EmptyHeader>
+      <EmptyContent>
+        <UiButton v-if="!selectedRoomId" @click="router.push('/rooms/settings')">{{ t('rooms.list.create') }}</UiButton>
+        <UiButton v-else-if="!isSystemCategory" :disabled="operationRunning" @click="openCreateDialog">
+          <DatabaseBackup data-icon="inline-start" />
+          {{ t('backups.actions.create') }}
+        </UiButton>
+        <UiButton v-else variant="outline" @click="loadSets">
+          <RefreshCw data-icon="inline-start" />
+          {{ t('common.actions.refresh') }}
+        </UiButton>
+      </EmptyContent>
     </Empty>
 
     <div v-else class="overflow-x-auto rounded-lg border">
@@ -194,7 +223,14 @@
             <AlertDescription>{{ t('distributed.backups.operationUpdatedAt', { time: formatTime(selectedOperation.updatedAt) }) }}</AlertDescription>
           </Alert>
           <div class="flex flex-col gap-2 rounded-md border p-3 text-sm"><span class="font-medium">{{ contentKindLabel(selectedSet) }}</span><span>{{ formatTime(selectedSet.createdAt) }} · {{ formatBytes(selectedSet.size) }}</span><div v-for="part in selectedSet.parts || []" :key="part.id" class="flex flex-wrap items-center gap-2"><span>{{ part.worldName || t('distributed.backups.partColumns.world') }}</span><Badge :variant="partStatusVariant(part.status)">{{ partStatusLabel(part.status) }}</Badge><span>{{ formatBytes(part.size) }}</span></div></div>
-          <details class="min-w-0 rounded-md border p-3"><summary class="cursor-pointer text-sm">{{ t('distributed.backups.technicalDetails') }}</summary><div class="flex min-w-0 flex-col gap-4 pt-3">
+          <Collapsible class="min-w-0 rounded-md border p-3">
+            <CollapsibleTrigger as-child>
+              <UiButton type="button" variant="ghost" size="sm" class="group h-auto w-full justify-between gap-2 px-0 py-0 text-sm font-normal hover:bg-transparent">
+                <span>{{ t('distributed.backups.technicalDetails') }}</span>
+                <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+              </UiButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent class="flex min-w-0 flex-col gap-4 pt-3">
           <dl class="grid gap-3 text-sm sm:grid-cols-3">
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.columns.mode') }}</dt><dd class="mt-1 font-medium">{{ backupModeLabel(selectedSet.mode) }}</dd></div>
             <div><dt class="text-muted-foreground">{{ t('distributed.backups.detailsDialog.manifest') }}</dt><dd class="mt-1 font-medium">v{{ selectedSet.manifestVersion }}</dd></div>
@@ -248,7 +284,8 @@
               </TableBody>
             </UiTable>
           </div>
-          </div></details>
+            </CollapsibleContent>
+          </Collapsible>
         </template>
         <DialogFooter><UiButton variant="outline" @click="detailsDialogOpen = false">{{ t('common.actions.close') }}</UiButton></DialogFooter>
       </DialogScrollContent>
@@ -280,11 +317,12 @@
 <script setup>
 import RoomScopeSelect from '@/components/layout/RoomScopeSelect.vue'
 import { preferredRoomId } from '@/lib/pageScope.mjs'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 const roomRoute = useRoute()
+const router = useRouter()
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { CircleAlert, DatabaseBackup, Download, Eye, Flame, History, RefreshCw, ShieldCheck, Snowflake, Trash2, TriangleAlert } from '@lucide/vue'
+import { ChevronDown, CircleAlert, DatabaseBackup, Download, Eye, Flame, History, RefreshCw, ShieldCheck, Snowflake, Trash2, TriangleAlert } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import BackupSchedulePanel from './BackupSchedulePanel.vue'
 import { backupsV2API, backupSetsV2API, roomsV2API } from '@/api/v2'
@@ -293,11 +331,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { formatSystemDateTime } from '@/lib/dateTime.mjs'
 import { confirmAction } from '@/lib/feedback'
 import { waitForV2Job } from '@/api/v2ConfigurationAdapters'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogScrollContent, DialogTitle } from '@/components/ui/dialog'
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input as UiInput } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'

@@ -74,7 +74,6 @@
 
       <div class="workspace-toolbar">
         <RoomScopeSelect v-model="selectedRoomId" :rooms="rooms" :loading="initialLoading" @update:model-value="handleRoomChange" />
-        <RoomRefreshIntervalSelect />
         <Tooltip>
           <TooltipTrigger as-child>
             <UiButton
@@ -177,55 +176,11 @@
             <CardTitle>{{ $t('servers.workspace.worlds.title') }}</CardTitle>
           </div>
           <CardAction class="world-card-actions row-span-1 flex flex-wrap items-center justify-end gap-2 self-center">
-            <Popover>
-              <PopoverTrigger as-child>
-                <UiButton type="button" size="sm" variant="ghost">
-                  <Shapes data-icon="inline-start" />
-                  {{ $t('servers.workspace.worlds.legend.open') }}
-                </UiButton>
-              </PopoverTrigger>
-              <PopoverContent align="end" class="world-legend-popover">
-                <PopoverHeader>
-                  <PopoverTitle>{{ $t('servers.workspace.worlds.legend.title') }}</PopoverTitle>
-                  <PopoverDescription>{{ $t('servers.workspace.worlds.legend.description') }}</PopoverDescription>
-                </PopoverHeader>
-                <template v-for="(group, groupIndex) in worldLegendGroups" :key="group.key">
-                  <Separator v-if="groupIndex > 0" />
-                  <section class="world-legend-group">
-                    <h4>{{ group.label }}</h4>
-                    <div class="world-legend-items" role="list">
-                      <div v-for="item in group.items" :key="item.key" class="world-legend-item" role="listitem">
-                        <span class="world-legend-icon" :class="item.tone" aria-hidden="true">
-                          <component :is="item.icon" />
-                        </span>
-                        <span>{{ item.label }}</span>
-                      </div>
-                    </div>
-                  </section>
-                </template>
-              </PopoverContent>
-            </Popover>
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child>
-                <UiButton size="sm" variant="outline" :disabled="roomActionsBusy">{{ $t('rooms.list.more') }}<ChevronDown data-icon="inline-end" /></UiButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end"><DropdownMenuGroup>
-                <DropdownMenuItem :disabled="!roomControlAvailable || !worlds.length || worlds.some(world => !canStopWorld(world))" variant="destructive" @select="regenerateRoomWorlds">
-                  {{ $t('worlds.actions.regenerate') }}
-                </DropdownMenuItem>
-              </DropdownMenuGroup></DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger as-child><UiButton size="sm" variant="outline" :disabled="roomActionsBusy" :aria-label="$t('runtimeMode.change')">{{ $t(`runtimeMode.names.${runtimeModeSummary(worlds)}`) }}<ChevronDown data-icon="inline-end" /></UiButton></DropdownMenuTrigger>
-              <DropdownMenuContent align="end"><DropdownMenuGroup>
-                <DropdownMenuItem :disabled="roomStartWorlds.length === 0" @select="handleRoomAction('start', true)">{{ $t('runtimeMode.chooseStart') }}</DropdownMenuItem>
-                <DropdownMenuItem :disabled="roomStopWorlds.length === 0" @select="handleRoomAction('restart', true)">{{ $t('runtimeMode.chooseRestart') }}</DropdownMenuItem>
-              </DropdownMenuGroup></DropdownMenuContent>
-            </DropdownMenu>
             <UiButton
+              v-if="runningWorlds.length === 0"
               type="button"
               size="sm"
-              variant="outline"
+              variant="default"
               :disabled="roomStartWorlds.length === 0 || roomActionsBusy"
               @click="handleRoomAction('start')"
             >
@@ -233,27 +188,30 @@
               <Play v-else data-icon="inline-start" />
               {{ $t('servers.workspace.worlds.startAll') }}
             </UiButton>
-            <UiButton
-              type="button"
-              size="sm"
-              variant="destructive"
-              :disabled="roomStopWorlds.length === 0 || roomActionsBusy"
-              @click="handleRoomAction('stop')"
-            >
-              <Spinner v-if="roomActionKind === 'stop'" data-icon="inline-start" />
-              <Square v-else data-icon="inline-start" />
-              {{ $t('servers.workspace.worlds.stopAll') }}
-            </UiButton>
-            <RoomTopologyDialog
-              :room="selectedRoom"
-              :topology="roomTopology"
-              :infrastructure="runtimeInfrastructure"
-              :connection="roomConnection"
-              :world-ports="roomWorldPorts"
-              :refreshing="topologyDialogRefreshing"
-              :error-message="topologyDialogError"
-              @refresh="refreshTopologyDialog"
-            />
+            <template v-else>
+              <UiButton
+                type="button"
+                size="sm"
+                variant="outline"
+                :disabled="roomStopWorlds.length === 0 || roomActionsBusy"
+                @click="handleRoomAction('restart')"
+              >
+                <Spinner v-if="roomActionKind === 'restart'" data-icon="inline-start" />
+                <RotateCw v-else data-icon="inline-start" />
+                {{ $t('servers.workspace.worlds.restartAll') }}
+              </UiButton>
+              <UiButton
+                type="button"
+                size="sm"
+                variant="destructive"
+                :disabled="roomStopWorlds.length === 0 || roomActionsBusy"
+                @click="handleRoomAction('stop')"
+              >
+                <Spinner v-if="roomActionKind === 'stop'" data-icon="inline-start" />
+                <Square v-else data-icon="inline-start" />
+                {{ $t('servers.workspace.worlds.stopAll') }}
+              </UiButton>
+            </template>
             <Popover :open="connectionPopoverOpen" @update:open="handleConnectionPopoverOpen">
               <PopoverTrigger as-child>
                 <UiButton type="button" size="sm" variant="outline">
@@ -413,14 +371,55 @@
                 </template>
               </PopoverContent>
             </Popover>
-            <UiButton type="button" size="sm" variant="ghost" :disabled="!configurationAvailable || Boolean(roomActionKind)" @click="openRoomSettings">
-              <Settings data-icon="inline-start" />
-              {{ $t('servers.workspace.worlds.roomSettings') }}
-            </UiButton>
-            <UiButton type="button" size="sm" variant="ghost" @click="openWorldPlacement">
-              <Network data-icon="inline-start" />
-              {{ $t('servers.workspace.worlds.placement') }}
-            </UiButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <UiButton type="button" size="sm" variant="outline" :disabled="roomActionsBusy">
+                  {{ $t('rooms.list.more') }}
+                  <ChevronDown data-icon="inline-end" />
+                </UiButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem v-if="runningWorlds.length > 0 && roomStartWorlds.length > 0" :disabled="roomActionsBusy" @select="handleRoomAction('start')">
+                    <Play />
+                    {{ $t('servers.workspace.worlds.startAll') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem :disabled="roomStartWorlds.length === 0 || roomActionsBusy" @select="handleRoomAction('start', true)">
+                    <Play />
+                    {{ $t('runtimeMode.chooseStart') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem :disabled="roomStopWorlds.length === 0 || roomActionsBusy" @select="handleRoomAction('restart', true)">
+                    <RotateCw />
+                    {{ $t('runtimeMode.chooseRestart') }}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem @select="openTopologyDialog">
+                    <Waypoints />
+                    {{ $t('roomTopology.trigger') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @select="legendDialogOpen = true">
+                    <Shapes />
+                    {{ $t('servers.workspace.worlds.legend.open') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem :disabled="!configurationAvailable || Boolean(roomActionKind)" @select="openRoomSettings">
+                    <Settings />
+                    {{ $t('servers.workspace.worlds.roomSettings') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="showFleetControls" @select="openWorldPlacement">
+                    <Network />
+                    {{ $t('servers.workspace.worlds.placement') }}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem :disabled="!roomControlAvailable || !worlds.length || worlds.some(world => !canStopWorld(world))" variant="destructive" @select="regenerateRoomWorlds">
+                    {{ $t('worlds.actions.regenerate') }}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardAction>
         </CardHeader>
         <CardContent class="world-card-content">
@@ -477,7 +476,7 @@
                   />
                 </div>
                 <span>{{ worldRoleLabel(world) }} · {{ world.directoryName || $t('servers.workspace.worlds.directoryUnset') }}</span>
-                <span class="world-machine" :title="worldMachineName(world)">
+                <span v-if="showFleetControls" class="world-machine" :title="worldMachineName(world)">
                   <Server aria-hidden="true" />
                   {{ $t('servers.workspace.worlds.machine', { name: worldMachineName(world) }) }}
                 </span>
@@ -503,76 +502,91 @@
               </div>
             </div>
 
-            <dl class="world-facts">
-              <div>
-                <dt>{{ $t('servers.workspace.worlds.players') }}</dt>
-                <dd :title="worldOnlinePlayerLabel(world)">{{ worldOnlinePlayerLabel(world) }}</dd>
-              </div>
-              <WorldStateQuickControl
-                kind="day"
-                :label="$t('servers.workspace.worlds.day')"
-                :value="worldDayLabel(world)"
-                :icon="CalendarDays"
-                :snapshot="worldStateFor(world)"
-                :disabled="!canControlWorldState(world)"
-                :pending-key="worldStateActionPendingKey(world.id)"
-                @execute="executeWorldStateAction(world, $event)"
-              />
-              <WorldStateQuickControl
-                kind="season"
-                :label="$t('servers.workspace.worlds.season')"
-                :value="worldSeasonLabel(world)"
-                :icon="worldSeasonIcon(world)"
-                :progress="worldSeasonProgress(world)"
-                :snapshot="worldStateFor(world)"
-                :disabled="!canControlWorldState(world)"
-                :pending-key="worldStateActionPendingKey(world.id)"
-                @execute="executeWorldStateAction(world, $event)"
-              />
-              <WorldStateQuickControl
-                kind="phase"
-                :label="$t('servers.workspace.worlds.phase')"
-                :value="worldPhaseLabel(world)"
-                :icon="worldPhaseIcon(world)"
-                :progress="worldPhaseProgress(world)"
-                :snapshot="worldStateFor(world)"
-                :disabled="!canControlWorldState(world)"
-                :pending-key="worldStateActionPendingKey(world.id)"
-                @execute="executeWorldStateAction(world, $event)"
-              />
-              <WorldStateQuickControl
-                kind="weather"
-                :label="$t('servers.workspace.worlds.weather')"
-                :value="worldWeatherLabel(world)"
-                :icon="Thermometer"
-                :snapshot="worldStateFor(world)"
-                :disabled="!canControlWorldState(world)"
-                :pending-key="worldStateActionPendingKey(world.id)"
-                @execute="executeWorldStateAction(world, $event)"
-              />
-              <div>
-                <dt>{{ worldCycleTitle(world) }}</dt>
-                <dd :title="worldCycleLabel(world)">{{ worldCycleLabel(world) }}</dd>
-              </div>
-              <div>
-                <dt>{{ $t('servers.workspace.worlds.dataTime') }}</dt>
-                <dd class="world-freshness">
-                  <WorldDataFreshnessBadge
-                    :freshness="worldStateFor(world)?.freshness || world.stateFreshness"
-                    :observed-at="worldObservedAt(world)"
-                    :age-seconds="worldStateAgeSeconds(world)"
+            <div class="world-facts-shell">
+              <dl class="world-facts" :class="{ 'is-collapsed': !isWorldExpanded(world.id) }">
+                <div>
+                  <dt>{{ $t('servers.workspace.worlds.players') }}</dt>
+                  <dd :title="worldOnlinePlayerLabel(world)">{{ worldOnlinePlayerLabel(world) }}</dd>
+                </div>
+                <WorldStateQuickControl
+                  kind="day"
+                  :label="$t('servers.workspace.worlds.day')"
+                  :value="worldDayLabel(world)"
+                  :icon="CalendarDays"
+                  :snapshot="worldStateFor(world)"
+                  :disabled="!canControlWorldState(world)"
+                  :pending-key="worldStateActionPendingKey(world.id)"
+                  @execute="executeWorldStateAction(world, $event)"
+                />
+                <WorldStateQuickControl
+                  kind="season"
+                  :label="$t('servers.workspace.worlds.season')"
+                  :value="worldSeasonLabel(world)"
+                  :icon="worldSeasonIcon(world)"
+                  :progress="worldSeasonProgress(world)"
+                  :snapshot="worldStateFor(world)"
+                  :disabled="!canControlWorldState(world)"
+                  :pending-key="worldStateActionPendingKey(world.id)"
+                  @execute="executeWorldStateAction(world, $event)"
+                />
+                <template v-if="isWorldExpanded(world.id)">
+                  <WorldStateQuickControl
+                    kind="phase"
+                    :label="$t('servers.workspace.worlds.phase')"
+                    :value="worldPhaseLabel(world)"
+                    :icon="worldPhaseIcon(world)"
+                    :progress="worldPhaseProgress(world)"
+                    :snapshot="worldStateFor(world)"
+                    :disabled="!canControlWorldState(world)"
+                    :pending-key="worldStateActionPendingKey(world.id)"
+                    @execute="executeWorldStateAction(world, $event)"
                   />
-                </dd>
-              </div>
-            </dl>
+                  <WorldStateQuickControl
+                    kind="weather"
+                    :label="$t('servers.workspace.worlds.weather')"
+                    :value="worldWeatherLabel(world)"
+                    :icon="Thermometer"
+                    :snapshot="worldStateFor(world)"
+                    :disabled="!canControlWorldState(world)"
+                    :pending-key="worldStateActionPendingKey(world.id)"
+                    @execute="executeWorldStateAction(world, $event)"
+                  />
+                  <div>
+                    <dt>{{ worldCycleTitle(world) }}</dt>
+                    <dd :title="worldCycleLabel(world)">{{ worldCycleLabel(world) }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ $t('servers.workspace.worlds.dataTime') }}</dt>
+                    <dd class="world-freshness">
+                      <WorldDataFreshnessBadge
+                        :freshness="worldStateFor(world)?.freshness || world.stateFreshness"
+                        :observed-at="worldObservedAt(world)"
+                        :age-seconds="worldStateAgeSeconds(world)"
+                      />
+                    </dd>
+                  </div>
+                </template>
+              </dl>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <UiButton
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    class="world-details-toggle"
+                    :aria-expanded="isWorldExpanded(world.id)"
+                    :aria-label="$t(isWorldExpanded(world.id) ? 'servers.workspace.worlds.detailsHide' : 'servers.workspace.worlds.detailsShow')"
+                    @click.stop="toggleWorldExpanded(world.id)"
+                    @keyup.enter.stop
+                  >
+                    <ChevronDown class="world-details-chevron" :class="{ 'is-open': isWorldExpanded(world.id) }" />
+                  </UiButton>
+                </TooltipTrigger>
+                <TooltipContent>{{ $t(isWorldExpanded(world.id) ? 'servers.workspace.worlds.detailsHide' : 'servers.workspace.worlds.detailsShow') }}</TooltipContent>
+              </Tooltip>
+            </div>
 
             <div class="world-actions" @click.stop>
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child><UiButton size="icon-sm" variant="outline" :disabled="roomActionsBusy || isWorldActionPending(world.id) || isWorldStateActionPending(world.id) || isRollbackPending(world.id) || (!canStopWorld(world) && !canStartWorld(world))" :aria-label="$t('runtimeMode.change')"><ChevronDown /></UiButton></DropdownMenuTrigger>
-                <DropdownMenuContent align="end"><DropdownMenuGroup>
-                  <DropdownMenuItem @select="handleWorldAction(world, canStopWorld(world) ? 'restart' : 'start', true)">{{ $t(canStopWorld(world) ? 'runtimeMode.chooseRestart' : 'runtimeMode.chooseStart') }}</DropdownMenuItem>
-                </DropdownMenuGroup></DropdownMenuContent>
-              </DropdownMenu>
               <Tooltip>
                 <TooltipTrigger as-child>
                   <UiButton
@@ -605,7 +619,7 @@
                 </TooltipTrigger>
                 <TooltipContent>{{ $t('servers.workspace.worlds.cleanupFailedSession') }}</TooltipContent>
               </Tooltip>
-              <Tooltip>
+              <Tooltip v-else>
                 <TooltipTrigger as-child>
                   <UiButton
                     size="icon-sm"
@@ -620,43 +634,103 @@
                 </TooltipTrigger>
                 <TooltipContent>{{ $t('servers.workspace.worlds.restart') }}</TooltipContent>
               </Tooltip>
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <UiButton
-                    size="icon-sm"
-                    variant="outline"
-                    :aria-label="$t('servers.workspace.worlds.rollback')"
-                    :title="$t('servers.workspace.worlds.rollback')"
-                    :disabled="!canStopWorld(world) || isWorldActionPending(world.id) || isWorldStateActionPending(world.id) || isRollbackPending(world.id) || Boolean(roomActionKind)"
-                    @click="openRollbackDialog(world)"
-                  >
-                    <Spinner v-if="isRollbackPending(world.id)" />
-                    <History v-else />
-                  </UiButton>
-                </TooltipTrigger>
-                <TooltipContent>{{ $t('servers.workspace.worlds.rollback') }}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger as-child>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
                   <UiButton
                     size="icon-sm"
                     variant="ghost"
-                    :aria-label="$t('servers.workspace.worlds.configure')"
-                    :title="$t('servers.workspace.worlds.configure')"
-                    :disabled="!canConfigureWorld(world) || isWorldActionPending(world.id) || isWorldStateActionPending(world.id) || isRollbackPending(world.id) || Boolean(roomActionKind)"
-                    @click="openWorldSettings(world)"
+                    :disabled="Boolean(roomActionKind) || isWorldActionPending(world.id) || isWorldStateActionPending(world.id) || isRollbackPending(world.id)"
+                    :aria-label="$t('rooms.list.more')"
+                    :title="$t('rooms.list.more')"
                   >
-                    <Settings />
+                    <Ellipsis />
                   </UiButton>
-                </TooltipTrigger>
-                <TooltipContent>{{ $t('servers.workspace.worlds.configure') }}</TooltipContent>
-              </Tooltip>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem @select="toggleWorldExpanded(world.id)">
+                      <ChevronDown class="world-details-chevron" :class="{ 'is-open': isWorldExpanded(world.id) }" />
+                      {{ $t(isWorldExpanded(world.id) ? 'servers.workspace.worlds.detailsHide' : 'servers.workspace.worlds.detailsShow') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      :disabled="!canStopWorld(world) || isWorldActionPending(world.id) || isWorldStateActionPending(world.id) || isRollbackPending(world.id) || Boolean(roomActionKind)"
+                      @select="openRollbackDialog(world)"
+                    >
+                      <History />
+                      {{ $t('servers.workspace.worlds.rollback') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      :disabled="!canConfigureWorld(world) || isWorldActionPending(world.id) || isWorldStateActionPending(world.id) || isRollbackPending(world.id) || Boolean(roomActionKind)"
+                      @select="openWorldSettings(world)"
+                    >
+                      <Settings />
+                      {{ $t('servers.workspace.worlds.configure') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      :disabled="roomActionsBusy || isWorldActionPending(world.id) || isWorldStateActionPending(world.id) || isRollbackPending(world.id) || (!canStopWorld(world) && !canStartWorld(world))"
+                      @select="handleWorldAction(world, canStopWorld(world) ? 'restart' : 'start', true)"
+                    >
+                      <SlidersHorizontal />
+                      {{ $t(canStopWorld(world) ? 'runtimeMode.chooseRestart' : 'runtimeMode.chooseStart') }}
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </article>
         </div>
-        <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>{{ $t('servers.workspace.empty.noWorlds') }}</EmptyTitle></EmptyHeader></Empty>
+        <Empty v-else>
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Globe2 /></EmptyMedia>
+            <EmptyTitle>{{ $t('servers.workspace.empty.noWorlds') }}</EmptyTitle>
+            <EmptyDescription>{{ $t('servers.workspace.empty.noWorldsDescription') }}</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <UiButton variant="outline" @click="$router.push({ path: '/worlds/settings', query: selectedRoomId ? { roomId: selectedRoomId } : {} })">
+              {{ $t('servers.workspace.empty.configureWorlds') }}
+            </UiButton>
+          </EmptyContent>
+        </Empty>
         </CardContent>
       </Card>
+
+      <RoomTopologyDialog
+        hide-trigger
+        :open-request="topologyDialogRequest"
+        :room="selectedRoom"
+        :topology="roomTopology"
+        :infrastructure="runtimeInfrastructure"
+        :connection="roomConnection"
+        :world-ports="roomWorldPorts"
+        :refreshing="topologyDialogRefreshing"
+        :error-message="topologyDialogError"
+        @refresh="refreshTopologyDialog"
+      />
+
+      <UiDialog v-model:open="legendDialogOpen">
+        <DialogContent class="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{{ $t('servers.workspace.worlds.legend.title') }}</DialogTitle>
+            <DialogDescription>{{ $t('servers.workspace.worlds.legend.description') }}</DialogDescription>
+          </DialogHeader>
+          <div class="flex flex-col gap-3">
+            <template v-for="(group, groupIndex) in worldLegendGroups" :key="group.key">
+              <Separator v-if="groupIndex > 0" />
+              <section class="world-legend-group">
+                <h4>{{ group.label }}</h4>
+                <div class="world-legend-items" role="list">
+                  <div v-for="item in group.items" :key="item.key" class="world-legend-item" role="listitem">
+                    <span class="world-legend-icon" :class="item.tone" aria-hidden="true">
+                      <component :is="item.icon" />
+                    </span>
+                    <span>{{ item.label }}</span>
+                  </div>
+                </div>
+              </section>
+            </template>
+          </div>
+        </DialogContent>
+      </UiDialog>
 
     </template>
 
@@ -707,15 +781,25 @@
                   <CircleAlert />
                   <AlertTitle>{{ $t('servers.workspace.players.loadFailed') }}</AlertTitle>
                   <AlertDescription>{{ localizedError(contextErrors.players) }}</AlertDescription>
+                  <AlertAction class="flex flex-wrap gap-2 max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+                    <UiButton size="sm" variant="outline" :disabled="playersRefreshing" @click="refreshPlayerStates">{{ $t('common.actions.retry') }}</UiButton>
+                    <UiButton size="sm" variant="outline" @click="$router.push({ path: '/rooms/diagnostics', query: selectedRoomId ? { roomId: selectedRoomId } : {} })">{{ $t('players.actions.openDiagnostics') }}</UiButton>
+                  </AlertAction>
                 </Alert>
                 <Alert v-else-if="playerStats?.collection_warnings?.length">
                   <CircleAlert />
                   <AlertTitle>{{ $t('players.list.currentRefreshFailedTitle') }}</AlertTitle>
                   <AlertDescription>{{ $t('players.list.currentRefreshFailedDescription', { error: playerStats.collection_warnings.join('；') }) }}</AlertDescription>
+                  <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+                    <UiButton size="sm" variant="outline" :disabled="playersRefreshing" @click="refreshPlayerStates">{{ $t('common.actions.retry') }}</UiButton>
+                  </AlertAction>
                 </Alert>
                 <Alert v-if="playerStats?.paused_world_ids?.length && !contextErrors.players">
                   <AlertTitle>{{ $t('players.list.samplingPausedTitle') }}</AlertTitle>
                   <AlertDescription>{{ $t('players.list.samplingPausedDescription') }}</AlertDescription>
+                  <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+                    <UiButton size="sm" variant="outline" :disabled="playersRefreshing" @click="refreshPlayerStates">{{ $t('servers.workspace.players.refresh') }}</UiButton>
+                  </AlertAction>
                 </Alert>
                 <div v-if="recentPlayerRows.length" class="player-list players-list-expanded">
                   <div
@@ -814,6 +898,12 @@
                 </div>
                 <Empty v-else-if="!contextErrors.players" class="players-empty">
                   <EmptyHeader><EmptyTitle>{{ $t('servers.workspace.players.empty') }}</EmptyTitle><EmptyDescription>{{ $t('servers.workspace.players.emptyDescription') }}</EmptyDescription></EmptyHeader>
+                  <EmptyContent>
+                    <UiButton variant="outline" size="sm" :disabled="playersRefreshing" @click="refreshPlayerStates">
+                      <RefreshCw data-icon="inline-start" />
+                      {{ $t('servers.workspace.players.refresh') }}
+                    </UiButton>
+                  </EmptyContent>
                 </Empty>
                 <div v-if="(playerStats?.recent_players?.length || 0) > 5" class="flex flex-wrap items-center gap-2">
                   <UiButton v-if="playerDisplayLimit !== 'all' && playerStats.recent_players.length > recentPlayers.length" variant="ghost" size="sm" @click="playerDisplayLimit += 20">
@@ -835,7 +925,13 @@
                 :title="$t('servers.workspace.operations.shardLogs')"
                 class="workspace-log"
               />
-              <Empty v-else><EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>{{ $t('servers.workspace.empty.selectWorld') }}</EmptyTitle></EmptyHeader></Empty>
+              <Empty v-else>
+                <EmptyHeader><EmptyMedia variant="icon"><Globe2 /></EmptyMedia><EmptyTitle>{{ $t('servers.workspace.empty.selectWorld') }}</EmptyTitle></EmptyHeader>
+                <EmptyContent>
+                  <UiButton v-if="worlds.length" variant="outline" @click="selectWorld(worlds[0])">{{ $t('servers.workspace.empty.selectFirstWorld') }}</UiButton>
+                  <UiButton v-else variant="outline" @click="$router.push({ path: '/worlds/settings', query: selectedRoomId ? { roomId: selectedRoomId } : {} })">{{ $t('servers.workspace.empty.configureWorlds') }}</UiButton>
+                </EmptyContent>
+              </Empty>
             </TabsContent>
 
             <TabsContent value="chat">
@@ -868,6 +964,9 @@
                 </div>
                 <Alert v-if="contextErrors.console" class="context-error" variant="destructive">
                   <CircleAlert /><AlertTitle>{{ $t('servers.workspace.console.unavailable') }}</AlertTitle><AlertDescription>{{ localizedError(contextErrors.console) }}</AlertDescription>
+                  <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+                    <UiButton size="sm" variant="outline" :disabled="contextLoading" @click="refreshRoomContext">{{ $t('common.actions.retry') }}</UiButton>
+                  </AlertAction>
                 </Alert>
                 <UiTextarea
                   v-model="rawCommand"
@@ -890,17 +989,34 @@
                 <Alert v-if="commandExecutionError && commandResultTarget === consoleServer" variant="destructive" role="alert">
                   <CircleAlert /><AlertTitle>{{ $t('servers.workspace.console.failed') }}</AlertTitle><AlertDescription>{{ commandExecutionError }}</AlertDescription>
                 </Alert>
-                <details class="console-history" :open="commandHistoryOpen" @toggle="handleConsoleHistoryToggle">
-                  <summary>{{ $t('workbench.commands.recentRuns') }}</summary>
-                  <div v-if="commandHistoryOpen" class="console-history-list">
-                    <Spinner v-if="commandHistoryLoading" />
-                    <UiButton v-for="run in commandRuns" :key="run.id" size="sm" :variant="commandResult?.id === run.id ? 'secondary' : 'ghost'" class="console-history-item" @click="selectConsoleRun(run)">
-                      <span class="truncate">{{ run.name || run.rawCommand || run.script || $t('workbench.commands.editor') }}</span>
-                      <span class="console-history-status">{{ $t(`workbench.commands.${run.status === 'succeeded' ? 'succeeded' : run.status === 'failed' ? 'runFailed' : 'uncertain'}`) }}</span>
-                    </UiButton>
-                    <Alert v-if="commandHistoryError"><AlertDescription>{{ $t('workbench.commands.historyFailed') }} <UiButton size="sm" variant="ghost" @click="loadConsoleRuns">{{ $t('workbench.commands.retryHistory') }}</UiButton></AlertDescription></Alert>
-                  </div>
-                </details>
+                <Collapsible
+                  :open="commandHistoryOpen"
+                  class="console-history"
+                  @update:open="handleConsoleHistoryToggle"
+                >
+                  <CollapsibleTrigger as-child>
+                    <button type="button" class="console-history-trigger">
+                      <ChevronDown class="console-history-chevron" :class="{ 'is-open': commandHistoryOpen }" aria-hidden="true" />
+                      <span>{{ $t('workbench.commands.recentRuns') }}</span>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div v-if="commandHistoryOpen" class="console-history-list">
+                      <Spinner v-if="commandHistoryLoading" />
+                      <UiButton v-for="run in commandRuns" :key="run.id" size="sm" :variant="commandResult?.id === run.id ? 'secondary' : 'ghost'" class="console-history-item" @click="selectConsoleRun(run)">
+                        <span class="truncate">{{ run.name || run.rawCommand || run.script || $t('workbench.commands.editor') }}</span>
+                        <span class="console-history-status">{{ $t(`workbench.commands.${run.status === 'succeeded' ? 'succeeded' : run.status === 'failed' ? 'runFailed' : 'uncertain'}`) }}</span>
+                      </UiButton>
+                      <Alert v-if="commandHistoryError" variant="destructive">
+                        <CircleAlert />
+                        <AlertDescription>{{ $t('workbench.commands.historyFailed') }}</AlertDescription>
+                        <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+                          <UiButton size="sm" variant="outline" @click="loadConsoleRuns">{{ $t('workbench.commands.retryHistory') }}</UiButton>
+                        </AlertAction>
+                      </Alert>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </TabsContent>
           </Tabs></CardContent>
@@ -988,7 +1104,6 @@ import RuntimeExitBadge from '@/components/runtime/RuntimeExitBadge.vue'
 import WorldDataFreshnessBadge from '@/components/runtime/WorldDataFreshnessBadge.vue'
 import WorldStateQuickControl from '@/components/worlds/WorldStateQuickControl.vue'
 import WorldPerformanceScore from '@/components/worlds/WorldPerformanceScore.vue'
-import RoomRefreshIntervalSelect from '@/components/layout/RoomRefreshIntervalSelect.vue'
 import CharacterAvatar from '@/components/players/CharacterAvatar.vue'
 import { playerHistoryTime, playerLastObservation, playerWorldConfirmed, playerLocationPending, playerLastWorld } from '@/lib/playerHistoryPresentation.mjs'
 import PlayerActionMenu from '@/components/players/PlayerActionMenu.vue'
@@ -1005,8 +1120,9 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Button as UiButton } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Dialog as UiDialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
@@ -1020,6 +1136,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea as UiTextarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRoomRefreshInterval } from '@/composables/useDashboardRefreshIntervals'
+import { useFleetDisclosure } from '@/composables/useFleetDisclosure'
 import { useRoomWeatherSource } from '@/composables/useRoomWeather'
 import { useRuntimeObservation } from '@/composables/useRuntimeObservation'
 import { confirmAction } from '@/lib/feedback'
@@ -1070,12 +1187,13 @@ import { RUNTIME_OBSERVATION_UPDATED_EVENT } from '@/lib/runtimeObservationStrea
 import { selectWorkspaceRoom } from '@/lib/fleetOverview.mjs'
 import { readRoomView, readWorkspaceSelection, rememberWorkspaceView } from '@/lib/workspacePreferences.mjs'
 import {
-  ArrowRight, Brain, Cable, CalendarDays, ChevronDown, CircleAlert, CircleCheck, Copy, DatabaseBackup, Droplets, FileText, Globe2, HeartPulse, History, Leaf,
+  ArrowRight, Brain, Cable, CalendarDays, ChevronDown, CircleAlert, CircleCheck, Copy, DatabaseBackup, Droplets, Ellipsis, FileText, Globe2, HeartPulse, History, Leaf,
   LocateFixed, MessagesSquare, Moon, Mountain, Network, Play, RefreshCw, RotateCw, Save, Send, Server, ServerOff, Settings, Shapes,
-  Snowflake, Sprout, Square, Sun, Sunset, Terminal, Thermometer, Trees, UsersRound, Utensils
+  SlidersHorizontal, Snowflake, Sprout, Square, Sun, Sunset, Terminal, Thermometer, Trees, UsersRound, Utensils, Waypoints
 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 
 const CONTEXT_PLAYER_LIMIT = 5
 const ROOM_ACTION_UI_MAX_AGE_MS = Object.freeze({
@@ -1095,8 +1213,9 @@ export default {
 	const { locale: activeLocale } = useI18n()
 	const { state: runtimeObservationState } = useRuntimeObservation()
 	const publishRoomWeather = useRoomWeatherSource()
+	const { showFleetControls } = useFleetDisclosure(useRoute())
 	return { activeLocale, refreshIntervalMs, runtimeObservationState, CalendarDays, Thermometer,
-    publishRoomWeather }
+    publishRoomWeather, showFleetControls }
   },
   components: {
     RuntimeModeBadge,
@@ -1113,6 +1232,9 @@ export default {
     CardHeader,
     CardTitle,
     CharacterAvatar,
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
     CommandRunResult,
     Cable,
     CalendarDays,
@@ -1131,6 +1253,7 @@ export default {
     DropdownMenuContent,
     DropdownMenuGroup,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
     Empty,
     EmptyContent,
@@ -1169,7 +1292,6 @@ export default {
     RefreshCw,
     RotateCw,
     Save,
-    RoomRefreshIntervalSelect,
     RoomChatPanel,
     SelectContent,
     SelectGroup,
@@ -1183,6 +1305,7 @@ export default {
     Settings,
     Shapes,
     Skeleton,
+    SlidersHorizontal,
     Snowflake,
     Spinner,
     Sprout,
@@ -1204,7 +1327,9 @@ export default {
     UiSelect,
     UiTextarea,
     UsersRound,
+    Waypoints,
     WorldLog,
+    Ellipsis,
     RuntimeExitBadge,
     PlayerNetworkIndicator,
     WorldDataFreshnessBadge,
@@ -1230,6 +1355,9 @@ export default {
       topologyDialogRefreshing: false,
       topologyDialogError: '',
       topologyDialogSequence: 0,
+      topologyDialogRequest: 0,
+      legendDialogOpen: false,
+      expandedWorldIds: [],
       backups: [],
       consoleServers: [],
       contextErrors: {
@@ -1636,6 +1764,7 @@ export default {
       this.playerSnapshotStale = false
       this.pendingPlayerActions = []
       this.playerWorkbenchTargetId = ''
+      this.expandedWorldIds = []
       this.worldStateSnapshots = []
       this.roomTopology = null
       this.runtimeInfrastructure = null
@@ -1784,6 +1913,7 @@ export default {
       this.playerSnapshotStale = false
       this.pendingPlayerActions = []
       this.playerWorkbenchTargetId = ''
+      this.expandedWorldIds = []
       this.modUpdateOverview = null
       this.roomAutomationTasks = null
       this.roomAutomationGroups = null
@@ -2729,8 +2859,8 @@ export default {
     applyCommonCommand(command) {
       this.rawCommand = command
     },
-    handleConsoleHistoryToggle(event) {
-      this.commandHistoryOpen = event.target.open
+    handleConsoleHistoryToggle(open) {
+      this.commandHistoryOpen = Boolean(open)
       if (this.commandHistoryOpen) void this.loadConsoleRuns()
     },
     async loadConsoleRuns() {
@@ -3300,6 +3430,20 @@ export default {
         hour: '2-digit',
         minute: '2-digit'
       })
+    },
+    isWorldExpanded(worldId) {
+      return this.expandedWorldIds.includes(worldId)
+    },
+    toggleWorldExpanded(worldId) {
+      if (!worldId) return
+      if (this.isWorldExpanded(worldId)) {
+        this.expandedWorldIds = this.expandedWorldIds.filter(id => id !== worldId)
+      } else {
+        this.expandedWorldIds = [...this.expandedWorldIds, worldId]
+      }
+    },
+    openTopologyDialog() {
+      this.topologyDialogRequest += 1
     }
   }
 }
@@ -3574,10 +3718,6 @@ export default {
   stroke-width: 1.8;
 }
 
-.world-legend-popover {
-  width: 320px;
-}
-
 .world-connection-popover {
   width: 380px;
 }
@@ -3835,7 +3975,15 @@ export default {
   margin-top: 1px;
 }
 
+.world-facts-shell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .world-facts {
+  flex: 1 1 auto;
   min-width: 0;
   display: grid;
   grid-template-columns:
@@ -3851,6 +3999,30 @@ export default {
   margin: 0;
   padding-left: 14px;
   border-left: 1px solid var(--border);
+}
+
+.world-facts.is-collapsed {
+  grid-template-columns:
+    minmax(0, 0.9fr)
+    minmax(0, 1.3fr)
+    minmax(0, 1fr);
+}
+
+.world-details-toggle {
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+}
+
+.world-details-chevron,
+.console-history-chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 150ms ease;
+}
+
+.world-details-chevron.is-open,
+.console-history-chevron.is-open {
+  transform: rotate(180deg);
 }
 
 .world-facts > div {
@@ -4023,7 +4195,20 @@ export default {
   white-space: nowrap;
 }
 
-.console-history summary { cursor: pointer; color: var(--muted-foreground); font-size: 12px; }
+.console-history-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.console-history-trigger:hover { color: var(--foreground); }
+.console-history-trigger:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; color: var(--foreground); }
 .console-history-list { display: flex; flex-direction: column; gap: 4px; max-height: 180px; margin-top: 8px; overflow-y: auto; }
 .console-history-item { display: flex; min-width: 0; justify-content: space-between; gap: 12px; text-align: left; }
 .console-history-status { flex: none; color: var(--muted-foreground); font-size: 11px; }
@@ -4315,12 +4500,20 @@ export default {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .world-facts {
+  .world-facts-shell {
     grid-column: 1 / -1;
     grid-row: 2;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     padding-left: 46px;
+  }
+
+  .world-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-left: 0;
     border-left: 0;
+  }
+
+  .world-facts.is-collapsed {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .world-actions {
@@ -4334,12 +4527,16 @@ export default {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .world-facts {
+  .world-facts-shell {
     grid-column: auto;
     grid-row: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 2px 0;
     padding-left: 0;
+  }
+
+  .world-facts,
+  .world-facts.is-collapsed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .world-actions {
@@ -4352,7 +4549,9 @@ export default {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .world-item {
+  .world-item,
+  .world-details-chevron,
+  .console-history-chevron {
     transition: none;
   }
 }

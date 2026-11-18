@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowRight, ChevronDown, CircleAlert, FileText, History, PackageCheck, PackageOpen, RefreshCw, Server } from '@lucide/vue'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Alert, AlertAction, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -298,6 +298,11 @@ onMounted(() => { void update.ensureOverview(); void update.refreshPending() })
           <CircleAlert />
           <AlertTitle>{{ t('gameReleases.nodes.loadFailed') }}</AlertTitle>
           <AlertDescription class="break-words">{{ fleetError }}</AlertDescription>
+          <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+            <Button variant="outline" size="sm" :disabled="versionPending || fleetLoading" @click="refreshOverview">
+              {{ t('common.actions.retry') }}
+            </Button>
+          </AlertAction>
         </Alert>
 
         <p v-if="!fleetError && fleetLoaded && !fleetInstallations.length" class="text-muted-foreground py-2 text-sm">
@@ -320,6 +325,11 @@ onMounted(() => { void update.ensureOverview(); void update.refreshPending() })
               <CircleAlert />
               <AlertTitle>{{ t('gameReleases.values.checkFailed') }}</AlertTitle>
               <AlertDescription class="break-words">{{ target.error }}</AlertDescription>
+              <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+                <Button variant="outline" size="sm" :disabled="versionPending || fleetLoading" @click="refreshOverview">
+                  {{ t('common.actions.retry') }}
+                </Button>
+              </AlertAction>
             </Alert>
           </div>
         </div>
@@ -358,6 +368,11 @@ onMounted(() => { void update.ensureOverview(); void update.refreshPending() })
         <CircleAlert />
         <AlertTitle>{{ t('dashboard.version.loadFailed') }}</AlertTitle>
         <AlertDescription class="break-all">{{ officialError }}</AlertDescription>
+        <AlertAction class="max-sm:col-span-full max-sm:col-start-1 max-sm:row-auto max-sm:justify-start max-sm:pt-1">
+          <Button variant="outline" size="sm" :disabled="versionPending || fleetLoading" @click="refreshOverview">
+            {{ t('common.actions.retry') }}
+          </Button>
+        </AlertAction>
       </Alert>
 
       <div class="flex flex-wrap items-center justify-end gap-2">

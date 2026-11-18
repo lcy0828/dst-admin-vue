@@ -192,8 +192,9 @@ export default {
 
       this.loading = true
       try {
-        const action = this.setupRequired ? authAPI.setup : authAPI.login
-        const session = await action(this.loginForm.username, this.loginForm.password)
+        const session = this.setupRequired
+          ? await authAPI.setup(this.loginForm.username, this.loginForm.password)
+          : await authAPI.login(this.loginForm.username, this.loginForm.password, this.loginForm.remember)
         this.loginForm.password = ''
         this.loginForm.confirmPassword = ''
         this.$emit('authenticated', session)

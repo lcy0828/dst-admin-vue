@@ -71,7 +71,20 @@ function blockerLabel(blocker) {
       </Alert>
       <Alert v-if="state.uncertain" variant="destructive">
         <CircleAlert /><AlertTitle>{{ t('gameReleases.workflow.uncertain') }}</AlertTitle>
-        <AlertDescription>{{ t('gameReleases.workflow.uncertainHint') }}<details v-if="state.requestId" class="break-all"><summary class="cursor-pointer">{{ t('novice.record') }}</summary>{{ t('serviceLogs.requestId') }}: {{ state.requestId }}</details></AlertDescription>
+        <AlertDescription class="flex min-w-0 flex-col items-start gap-2">
+          <span>{{ t('gameReleases.workflow.uncertainHint') }}</span>
+          <Collapsible v-if="state.requestId" class="min-w-0 w-full break-all">
+            <CollapsibleTrigger as-child>
+              <Button type="button" variant="ghost" size="sm" class="group h-auto justify-start px-0 py-0.5 text-xs hover:bg-transparent">
+                <span>{{ t('novice.record') }}</span>
+                <ChevronDown data-icon="inline-end" class="shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent class="pt-1 text-xs">
+              {{ t('serviceLogs.requestId') }}: {{ state.requestId }}
+            </CollapsibleContent>
+          </Collapsible>
+        </AlertDescription>
       </Alert>
       <Alert v-if="state.error || state.pendingError" variant="destructive">
         <CircleAlert /><AlertTitle>{{ t('gameReleases.feedback.operationFailedTitle') }}</AlertTitle><AlertDescription>{{ state.error || state.pendingError }}</AlertDescription>
