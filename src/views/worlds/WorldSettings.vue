@@ -214,6 +214,7 @@
                 </div>
                 <AsyncConfigCodeEditor
                   v-else
+                  :key="sourceFileTab"
                   :model-value="activeSourceContent"
                   :language="sourceFileTab === 'server-ini' ? 'ini' : 'lua'"
                   :read-only="configurationReadOnly"

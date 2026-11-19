@@ -3,8 +3,13 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { runInNewContext } from 'node:vm'
 import { babelParse } from '@vue/compiler-sfc'
+import { renderToString } from '@vue/server-renderer'
+import { createServer } from 'vite'
+import { createSSRApp, h } from 'vue'
+import { createI18n } from 'vue-i18n'
 import { adapterError, adapterSuccess } from '../src/api/adapterProtocol.mjs'
 import { globalJobKindLabel, globalJobMessages } from '../src/i18n/globalJobMessages.js'
+import { modMessages } from '../src/i18n/modMessages.js'
 import {
   defaultModOverridesScope,
   extractConfigEditorError,
@@ -18,6 +23,29 @@ import {
 function readSource(relativePath) {
   return readFileSync(new URL(relativePath, import.meta.url), 'utf8')
 }
+
+test('the shared source editor loads through its deferred entry point', async () => {
+  const server = await createServer({ server: { middlewareMode: true, watch: null, hmr: false }, appType: 'custom' })
+  try {
+    const { default: Editor } = await server.ssrLoadModule('/src/components/editor/AsyncConfigCodeEditor.js')
+    const app = createSSRApp({ render: () => h(Editor) })
+    const errors = []
+    app.config.errorHandler = error => errors.push(error)
+    const html = await renderToString(app)
+    assert.deepEqual(errors, [])
+    assert.match(html, /class="config-code-editor-host"/)
+  } finally {
+    await server.close()
+  }
+})
+
+test('mod editor placeholder translates in both supported languages', () => {
+  const { global } = createI18n({ legacy: false, locale: 'zh-CN', messages: modMessages })
+  for (const locale of ['zh-CN', 'en-US']) {
+    global.locale.value = locale
+    assert.match(global.t('mods.installed.configFile.placeholder'), /modoverrides\.lua/)
+  }
+})
 
 test('serverConfigFromLegacyIni and legacyIniFromServerConfig preserve valid shard ID 0 and fallback -1', () => {
   const convertedZero = serverConfigFromLegacyIni({

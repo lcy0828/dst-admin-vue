@@ -539,6 +539,7 @@ export const modMessages = {
           description: '在线编辑、直接粘贴客户端存档配置或导入 .lua 文件；保存后在世界下次启动或重启时生效。',
           loading: '正在读取配置文件',
           emptyNotice: '当前世界尚未生成 modoverrides.lua，可直接粘贴配置或编写后保存创建。',
+          emptyTableNotice: '已读取 {world} 的配置文件。此世界尚未添加模组。机器上已下载的模组，添加到世界后才会出现在这里。',
           scope: {
             label: '应用范围',
             room: '同步应用到全部世界（推荐）',
@@ -555,7 +556,7 @@ export const modMessages = {
             copy: '复制',
             download: '下载'
           },
-          placeholder: '粘贴或编写 return { ["workshop-..."] = { enabled = true, configuration_options = {} } }（支持自动清理 KLEI 1 头）…',
+          placeholder: '粘贴或编辑 modoverrides.lua…',
           notices: {
             kleiHeader: '已自动剥离客户端存档 KLEI 1 头部标识。',
             bareTable: '检测到裸 Lua 表，已自动补全 return 前缀。',
@@ -1345,6 +1346,7 @@ export const modMessages = {
           description: 'Edit online, paste a local client modoverrides.lua, or import a .lua file. Changes apply on next world start or restart.',
           loading: 'Reading configuration file',
           emptyNotice: 'This world does not have a modoverrides.lua file yet. Paste a configuration or edit below to create one.',
+          emptyTableNotice: 'Read the configuration for {world}. No mods have been added to this world. Downloaded mods appear here after you add them to the world.',
           scope: {
             label: 'Target scope',
             room: 'Apply to all worlds in room (Recommended)',
@@ -1361,7 +1363,7 @@ export const modMessages = {
             copy: 'Copy',
             download: 'Download'
           },
-          placeholder: 'Paste or edit return { ["workshop-..."] = { enabled = true, configuration_options = {} } } (KLEI 1 headers stripped automatically)…',
+          placeholder: 'Paste or edit modoverrides.lua…',
           notices: {
             kleiHeader: 'Automatically stripped the KLEI 1 client save header.',
             bareTable: 'Detected a bare Lua table and prepended return automatically.',

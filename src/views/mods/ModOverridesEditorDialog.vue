@@ -102,9 +102,11 @@
           </AlertAction>
         </Alert>
 
-        <Alert v-if="!loading && !loadError && !fileExists && !isDirty" role="status">
+        <Alert v-if="!loading && !loadError && !isDirty && (!fileExists || diskConfigIsEmpty)" role="status">
           <Info />
-          <AlertDescription>{{ $t('mods.installed.configFile.emptyNotice') }}</AlertDescription>
+          <AlertDescription>
+            {{ $t(fileExists ? 'mods.installed.configFile.emptyTableNotice' : 'mods.installed.configFile.emptyNotice', { world: activeWorldName }) }}
+          </AlertDescription>
         </Alert>
 
         <Alert v-if="previewSummary.hasKleiHeaderNotice || previewSummary.hasBareTableNotice" role="status">
@@ -399,6 +401,9 @@ export default {
     },
     isDirty() {
       return !this.loading && this.draftContent !== this.baselineContent
+    },
+    diskConfigIsEmpty() {
+      return /^\s*return\s*\{\s*\}\s*;?\s*$/.test(this.baselineContent)
     },
     busy() {
       return Boolean(this.loading || this.formatting || this.saving)

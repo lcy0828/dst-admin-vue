@@ -74,7 +74,7 @@ const semanticHighlightStyle = HighlightStyle.define([
   { tag: [tags.number, tags.integer, tags.float], color: 'var(--warning)' },
   { tag: [tags.string, tags.special(tags.string)], color: 'var(--success)' },
   { tag: [tags.comment, tags.lineComment, tags.blockComment], color: 'var(--muted-foreground)', fontStyle: 'italic' },
-  { tag: [tags.propertyName, tags.definition(tags.variableName), tags.heading, tags.section], color: 'var(--foreground)', fontWeight: '600' },
+  { tag: [tags.propertyName, tags.definition(tags.variableName), tags.heading], color: 'var(--foreground)', fontWeight: '600' },
   { tag: [tags.invalid], color: 'var(--destructive)', textDecoration: 'underline wavy' }
 ])
 
