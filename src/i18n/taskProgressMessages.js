@@ -12,7 +12,7 @@ export const taskProgressMessages = {
         stages: { queued: '等待执行', stopping: '正在停止旧进程', stopped: '已停止，等待启动', starting: '正在启动，等待游戏日志', initializing: '正在初始化游戏', loading_mods: '正在加载模组', generating_world: '正在生成世界', loading_world: '正在加载世界存档', connecting: '正在连接分片', ready: '世界已就绪', failed: '启动未完成', canceled: '操作已取消', unconfirmed: '启动结果待确认', notStarted: '未执行启动', disconnected: '连接中断，等待恢复' }
       },
       downloads: '文件下载', completedCount: '已完成 {completed} / {total} 个模组', modsCompleted: '{count} 个模组处理完成', failedCount: '{count} 个失败',
-      itemStates: { queued: '等待下载', downloading: '正在下载', succeeded: '下载完成', failed: '下载失败', notStarted: '未执行', unconfirmed: '结果待确认', unknown: '暂无记录', disconnected: '连接中断' },
+      itemStates: { queued: '等待处理', downloading: '正在下载', succeeded: '文件已就绪', failed: '下载失败', notStarted: '未执行', unconfirmed: '结果待确认', unknown: '暂无记录', disconnected: '连接中断' },
       counts: { downloading: '下载中 {count} 个', queued: '等待 {count} 个', notStarted: '未执行 {count} 个', unconfirmed: '结果待确认 {count} 个', disconnected: '等待恢复 {count} 个' },
       downloaded: '已下载', locateCurrent: '定位当前下载', locateFailed: '定位失败项', listHint: '按下载顺序排列，可滚动查看',
       errorDetails: '查看错误详情', itemError: '查看 {name} 在 {machine} 的错误详情',
@@ -50,7 +50,7 @@ export const taskProgressMessages = {
         stages: { queued: 'Waiting to execute', stopping: 'Stopping old process', stopped: 'Stopped, waiting to start', starting: 'Starting, waiting for game logs', initializing: 'Initializing game', loading_mods: 'Loading Mods', generating_world: 'Generating world', loading_world: 'Loading world save', connecting: 'Connecting shards', ready: 'World ready', failed: 'Startup incomplete', canceled: 'Operation canceled', unconfirmed: 'Startup unconfirmed', notStarted: 'Not started', disconnected: 'Disconnected, waiting to reconnect' }
       },
       downloads: 'File downloads', completedCount: '{completed} of {total} Mods completed', modsCompleted: '{count} Mods completed', failedCount: '{count} failed',
-      itemStates: { queued: 'Queued', downloading: 'Downloading', succeeded: 'Downloaded', failed: 'Download failed', notStarted: 'Not started', unconfirmed: 'Result unconfirmed', unknown: 'No record', disconnected: 'Disconnected' },
+      itemStates: { queued: 'Queued', downloading: 'Downloading', succeeded: 'Files ready', failed: 'Download failed', notStarted: 'Not started', unconfirmed: 'Result unconfirmed', unknown: 'No record', disconnected: 'Disconnected' },
       counts: { downloading: '{count} downloading', queued: '{count} queued', notStarted: '{count} not started', unconfirmed: '{count} unconfirmed', disconnected: '{count} awaiting connection' },
       downloaded: 'Loaded', locateCurrent: 'Find current download', locateFailed: 'Find failed download', listHint: 'In download order. Scroll to view all.',
       errorDetails: 'View error details', itemError: 'View error details for {name} on {machine}',

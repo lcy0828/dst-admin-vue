@@ -100,7 +100,7 @@ export function taskProgress(job = {}) {
   const worldProgress = worldRestartProgress(job)
   const downloading = detail.stage === 'mod.cache' || (!detail.stage && progress >= 10 && progress < 65)
   const phase = job.status === 'queued' ? 'queued' : lifecycle ? start ? 'starting' : 'restarting' : !restart
-    ? downloading ? 'downloading' : progress >= 65 ? 'applying' : 'checking'
+    ? downloading ? 'downloading' : detail.stage === 'mod.inspect' ? 'checking' : progress >= 65 ? 'applying' : 'checking'
     : worldProgress.total || detail.stage === 'world.restart' ? 'restarting'
       : terminal && downloading ? 'downloading'
       : progress >= 80 ? 'restarting'

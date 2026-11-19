@@ -197,6 +197,7 @@ test('adding a downloaded mod explicitly selects room worlds', async () => {
   assert.match(dialog, /targetIds: worlds\.value/)
   assert.match(adapter, /async function addModToRoom\(input\)[\s\S]*?modsV2API\.install\(roomId/)
   const addBlock = adapter.slice(adapter.indexOf('async function addModToRoom'), adapter.indexOf('async function getModConfig'))
+  assert.match(addBlock, /reuseInstalled: true/)
   assert.doesNotMatch(addBlock, /modsV2API\.addToRoom|publishPreparedModMutation|getLibrary\(|downloadMod\(/)
 })
 

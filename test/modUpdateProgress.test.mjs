@@ -82,6 +82,9 @@ test('ordinary downloads and room additions never show a world restart phase', (
     assert.ok(!model.stages.includes('restarting'))
     assert.equal(retainCompletedProgressJob([], { id: kind, kind, status: 'succeeded' }).length, 1)
   }
+  const job = { kind: 'mod.install', status: 'running', progress: 10, progressDetail: { stage: 'mod.inspect' } }
+  assert.equal(taskProgress(job).phase, 'checking')
+  assert.equal(taskProgress({ ...job, progressDetail: { stage: 'mod.cache' } }).phase, 'downloading')
 })
 
 test('download uses actual byte progress, never the weighted workflow percentage', () => {

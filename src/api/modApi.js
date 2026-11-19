@@ -508,7 +508,8 @@ async function addModToRoom(input) {
     modId,
     worldIds,
     enabled: input.enabled !== false,
-    includeDependencies: !isLocalMod({ id: modId }) && input.includeDependencies !== false
+    includeDependencies: !isLocalMod({ id: modId }) && input.includeDependencies !== false,
+    reuseInstalled: true
   })
   return (input.waitForJob || waitForV2Job)(job, MOD_JOB_TIMEOUT, input.onProgress)
 }
